@@ -2,7 +2,8 @@
 
 # xdg-open is used to open downloaded files.
 # It runs sensible-browser, which uses $BROWSER.
-BROWSER=/usr/bin/chromeos-chrome /usr/bin/chromeos-chrome --loop &
+export BROWSER=/opt/google/chrome/chrome
+/usr/bin/chromeos-chrome-loop &
 
 BACKGROUND_FILE=background_1024x600.png
 if [ -e /tmp/use_ugly_x_cursor ]; then
