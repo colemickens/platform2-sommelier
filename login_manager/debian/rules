@@ -16,6 +16,7 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
+	cd chromeos_login_manager && make clean && cd ..
 	dh_clean
 
 install:
