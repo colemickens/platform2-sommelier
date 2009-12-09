@@ -17,6 +17,7 @@ LOG_DIR="${HOME}/log"
 XTERM_COMMAND="/usr/bin/xterm -bg black -fg grey"
 
 /usr/bin/xscreensaver -no-splash &
+/usr/sbin/omaha_tracker.sh &
 
 exec "${WM}"                                          \
     --hotkey_overlay_image_dir="${IMAGES}"            \
