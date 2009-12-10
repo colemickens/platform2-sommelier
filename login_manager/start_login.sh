@@ -15,6 +15,9 @@ export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 XAUTH_FILE=${DATA_DIR}/.Xauthority
 export XAUTHORITY=${XAUTH_FILE}
 
+# temporary hack to tell cryptohome that we're doing chrome-login
+touch /tmp/doing-chrome-login
+
 mkdir -p ${HOME}
 /usr/bin/xauth -q -f ${XAUTH_FILE} add :0 . $1
 exec /usr/bin/chromeos-chrome-login 2>> ${DATA_DIR}/login_mgr.log
