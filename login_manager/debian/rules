@@ -16,7 +16,6 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
-	cd chromeos_login_manager && make clean && cd ..
 	dh_clean
 
 install:
@@ -32,15 +31,17 @@ install:
 	    $(CURDIR)/debian/chromeos-login/usr/share/slim/themes/chromeos/panel.png
 	cp $(CURDIR)/slim.conf $(CURDIR)/debian/chromeos-login/etc/slim.conf
 	cp $(CURDIR)/slim $(CURDIR)/debian/chromeos-login/etc/pam.d/
-	# Temporary fix to make sure we don't execute ~/.xsession
-	mkdir -p $(CURDIR)/debian/chromeos-login/etc/X11/Xsession.d
 	cp $(CURDIR)/chromeos-xsession \
 	    $(CURDIR)/debian/chromeos-login/etc/X11/
 	# Scripts for experimentally using the browser as our login manager.
+	cp $(CURDIR)/chromeos-chrome-login \
+	    $(CURDIR)/debian/chromeos-login/usr/bin/chromeos-chrome-login
 	cp $(CURDIR)/session_manager.sh \
 	    $(CURDIR)/debian/chromeos-login/etc/init.d/session_manager.sh
 	cp $(CURDIR)/start_login.sh \
 	    $(CURDIR)/debian/chromeos-login/etc/init.d/start_login.sh
+	cp $(CURDIR)/start_wm.sh \
+	    $(CURDIR)/debian/chromeos-login/etc/init.d/start_wm.sh
 	cp $(CURDIR)/xstart.sh \
 	    $(CURDIR)/debian/chromeos-login/etc/init.d/xstart.sh
 

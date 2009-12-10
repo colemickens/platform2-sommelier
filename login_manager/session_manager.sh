@@ -13,17 +13,17 @@ user1_handler () {
 }
 
 trap user1_handler USR1
-MCOOKIE=$(head -c 8 /dev/random | openssl md5)
+MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)  # speed this up?
 /usr/bin/xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 
-/etc/init.d/xstart.sh ${XAUTH_FILE} $$&
+/etc/init.d/xstart.sh ${XAUTH_FILE} &
 
 while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
-# TODO: move this to a more appropriate place, once we actually start
-# doing login for real in this code pathway.
-/sbin/initctl emit login-prompt-ready &
-su chronos -c "/etc/init.d/start_login.sh ${MCOOKIE}"
+export USER=chronos
+export DATA_DIR=/home/${USER}
+mkdir -p ${DATA_DIR} && chown ${USER}:admin ${DATA_DIR}
+exec su ${USER} -c "/etc/init.d/start_login.sh ${MCOOKIE}"
 
