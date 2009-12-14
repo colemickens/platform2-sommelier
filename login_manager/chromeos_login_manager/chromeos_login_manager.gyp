@@ -33,7 +33,6 @@
       ],
       'include_dirs': [
         '../../..',
-        '../../pam',
       ],
       'libraries': [
         '-lpam',
@@ -58,7 +57,6 @@
       ],
       'include_dirs': [
         '../../..',
-        '../../pam',
       ],
       'libraries': [
         '-lpam', '-lpthread', '-lrt',
