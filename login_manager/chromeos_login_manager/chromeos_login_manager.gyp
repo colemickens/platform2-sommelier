@@ -32,7 +32,8 @@
         '../../../chrome/chrome.gyp:chrome_resources',
       ],
       'include_dirs': [
-        '../../..',        
+        '../../..',
+        '../../pam',
       ],
       'libraries': [
         '-lpam',
@@ -56,7 +57,8 @@
         '../../../base/base.gyp:base',
       ],
       'include_dirs': [
-        '../../..',        
+        '../../..',
+        '../../pam',
       ],
       'libraries': [
         '-lpam', '-lpthread', '-lrt',

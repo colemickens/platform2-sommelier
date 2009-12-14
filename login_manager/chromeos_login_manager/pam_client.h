@@ -6,8 +6,8 @@
 #ifndef PAM_CLIENT_H_
 #define PAM_CLIENT_H_
 
+#include <security/pam_appl.h>
 #include <string>
-#include "third_party/chromeos_login_manager/include/pam_appl.h"
 #include "base/basictypes.h"
 
 namespace chromeos {
