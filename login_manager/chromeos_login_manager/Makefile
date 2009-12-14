@@ -11,8 +11,8 @@ LIB_DIRS=-L../../../third_party/chrome
 SESSION_BIN=session
 SESSION_OBJS=session.o pam_client.o
 
-EMIT_BIN=emit-login-prompt-ready
-EMIT_OBJS=emit-login-prompt-ready.o
+EMIT_BIN=emit_login_prompt_ready
+EMIT_OBJS=emit_login_prompt_ready.o
 
 all:	$(SESSION_BIN) $(EMIT_BIN)
 

@@ -67,10 +67,10 @@
       ],                          
     },
     {
-      'target_name': 'emit-login-prompt-ready',
+      'target_name': 'emit_login_prompt_ready',
       'type': 'executable',
       'sources': [        
-        'emit-login-prompt-ready.cc',
+        'emit_login_prompt_ready.cc',
       ],                          
     },
   ],
