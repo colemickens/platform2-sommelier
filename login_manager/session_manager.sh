@@ -25,5 +25,5 @@ done
 export USER=chronos
 export DATA_DIR=/home/${USER}
 mkdir -p ${DATA_DIR} && chown ${USER}:admin ${DATA_DIR}
-exec su ${USER} -c "/etc/init.d/start_login.sh ${MCOOKIE}"
+exec su ${USER} -c "/usr/bin/ck-launch-session /etc/init.d/start_login.sh ${MCOOKIE}"
 
