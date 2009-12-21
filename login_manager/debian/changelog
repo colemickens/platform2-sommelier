@@ -1,3 +1,9 @@
+chromeos-login (0.5) UNRELEASED; urgency=low
+
+  * Use dh(1).
+
+ -- Colin Watson <cjwatson@canonical.com>  Sat, 28 Nov 2009 11:01:14 +0000
+
 chromeos-login (0.4) unstable; urgency=low
 
   * Adding pam_mount support to the pam config file and dependency on
@@ -8,7 +14,7 @@ chromeos-login (0.4) unstable; urgency=low
 chromeos-login (0.3) jaunty; urgency=low
 
   * Adding pam config file so that slim will use pam-google to authenticate.  
-	Also added dependency on pam-google
+  * Also added dependency on pam-google
 
  -- The Chromium OS Authors <chromium-os-dev@googlegroups.com>  Mon, 01 Jun 2009 14:28:27 -0700
 

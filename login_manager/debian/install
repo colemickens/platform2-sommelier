@@ -1,0 +1,10 @@
+slim.theme usr/share/slim/themes/chromeos
+slim.conf etc
+slim etc/pam.d
+chromeos-xsession etc/X11
+# Scripts for experimentally using the browser as our login manager.
+chromeos-chrome-login usr/bin
+session_manager.sh etc/init.d
+start_login.sh etc/init.d
+start_wm.sh etc/init.d
+xstart.sh etc/init.d
