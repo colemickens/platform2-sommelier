@@ -6,12 +6,12 @@ Source: chromeos-login
 Section: unknown
 Priority: extra
 Maintainer: The Chromium OS Authors <chromium-os-dev@googlegroups.com>
-Build-Depends: debhelper (>= 7)
+Build-Depends: debhelper (>= 7), libchrome-dev
 Standards-Version: 3.8.0
 
 Package: chromeos-login
-Architecture: all
-Depends: chromeos-assets, chromeos-pam-google, libpam-mount, slim, chromeos-cryptohome, chromeos-chrome
+Architecture: any
+Depends: chromeos-assets, chromeos-pam-google, libpam-mount, slim, chromeos-cryptohome, chromeos-chrome, ${shlibs:Depends}, ${misc:Depends}
 Replaces: slim
 Description: Chrome OS login manager
  The Chrome OS login manager.
