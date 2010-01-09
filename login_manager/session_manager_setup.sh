@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -30,6 +30,7 @@ export SHELL=/bin/bash
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
+export GTK_IM_MODULE=ibus
 
 XAUTH_FILE=${DATA_DIR}/.Xauthority
 export XAUTHORITY=${XAUTH_FILE}
