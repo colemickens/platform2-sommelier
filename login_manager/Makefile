@@ -24,6 +24,8 @@ TEST_BIN=session_manager_unittest
 TEST_OBJS=$(SESSION_COMMON_OBJS) session_manager_testrunner.o \
 	session_manager_unittest.o child_job_unittest.o 
 
+BINDINGS_DIR=bindings
+
 all:	$(SESSION_BIN) $(SIGNALLER_BIN) $(TEST_BIN)
 
 $(SESSION_BIN): $(DBUS_SERVER) $(SESSION_OBJS)
@@ -42,7 +44,7 @@ $(TEST_BIN):	$(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
 bindings_dir:
-	mkdir -p bindings
+	mkdir -p $(BINDINGS_DIR)
 
 $(DBUS_SERVER): $(DBUS_SOURCE) bindings_dir
 	dbus-binding-tool --mode=glib-server \
@@ -53,4 +55,4 @@ $(DBUS_CLIENT): $(DBUS_SOURCE) bindings_dir
 	 --prefix=`basename $(DBUS_SOURCE) .xml` $(DBUS_SOURCE) > $(DBUS_CLIENT)
 
 clean:	
-	rm -rf *.o $(SESSION_BIN) $(SIGNALLER_BIN) $(TEST_BIN)
+	rm -rf *.o $(SESSION_BIN) $(SIGNALLER_BIN) $(TEST_BIN) $(BINDINGS_DIR)
