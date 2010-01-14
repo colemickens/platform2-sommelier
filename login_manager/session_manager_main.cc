@@ -10,11 +10,12 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/object.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
-#include "login_manager/ipc_channel.h"
-#include "login_manager/session_manager.h"
+#include "login_manager/session_manager_service.h"
 
 // Watches a Chrome binary and restarts it when it crashes.
 // Can also create and watch a named pipe and respond to IPCs defined
@@ -32,9 +33,6 @@ static const char kUid[] = "uid";
 
 static const char kLogin[] = "login";
 
-static const char kPipe[] = "pipe";
-static const char kPipeDefault[] = "/tmp/session_manager_pipe";
-
 static const char kHelp[] = "help";
 static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
@@ -44,9 +42,6 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "    Numeric uid to transition to prior to execution.\n"
 "  --login\n"
 "    session_manager will append --login-manager to the child's command line.\n"
-"  --pipe=[/path/to/pipe]\n"
-"    FIFO over which session_manager can communicate with the child.\n"
-"    Only used if --login is specified. (default: /tmp/session_manager_pipe)\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
 "    Supplies the required program to execute and its arguments.\n";
 }  // namespace switches
@@ -82,29 +77,22 @@ int main(int argc, char* argv[]) {
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
 
   bool add_login_flag = cl->HasSwitch(switches::kLogin);
-  login_manager::IpcReadChannel* reader = NULL;
-  std::string pipe_name;
-
-  // If there's no |kPipe|, or it doesn't specify a value, use the default.
-  if (!cl->HasSwitch(switches::kPipe) ||
-      cl->GetSwitchValueASCII(switches::kPipe).empty()) {
-    pipe_name.assign(switches::kPipeDefault);
-  } else {
-    pipe_name.assign(cl->GetSwitchValueASCII(switches::kPipe));
-  }
-  if (set_uid)
-    reader = new login_manager::IpcReadChannel(pipe_name, uid);
-  else
-    reader = new login_manager::IpcReadChannel(pipe_name);
 
   login_manager::SetUidExecJob* child_job =
-      new login_manager::SetUidExecJob(cl, add_login_flag, pipe_name);
+      new login_manager::SetUidExecJob(cl,
+                                       new login_manager::FileChecker(
+                                           magic_chrome_file.c_str()),
+                                       add_login_flag);
   if (set_uid)
     child_job->set_uid(uid);
 
-  login_manager::SessionManager manager(new login_manager::FileChecker,
-                                        reader,
-                                        child_job,
-                                        add_login_flag);
-  manager.LoopChrome(magic_chrome_file.c_str());
+  ::g_type_init();
+  login_manager::SessionManagerService manager(child_job,
+                                               false);  // FOR NOW.
+
+  LOG_IF(FATAL, !manager.Initialize()) << "Failed";
+  LOG_IF(FATAL, !manager.Register(chromeos::dbus::GetSystemBusConnection()))
+    << "Failed";
+  LOG_IF(FATAL, !manager.Run()) << "Failed";
+  return 0;
 }

@@ -21,14 +21,24 @@
 namespace login_manager {
 // static
 const char SetUidExecJob::kLoginManagerFlag[] = "--login-manager";
-// static
-const char SetUidExecJob::kSessionManagerPipe[] = "--session-manager-pipe=";
 
 // static
 const int SetUidExecJob::kCantSetuid = 127;
 const int SetUidExecJob::kCantSetgid = 128;
 const int SetUidExecJob::kCantSetgroups = 129;
 const int SetUidExecJob::kCantExec = 255;
+
+SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
+                             FileChecker* checker,  // Takes ownership.
+                             const bool add_flag)
+      : checker_(checker),
+        argv_(NULL),
+        num_args_passed_in_(0),
+        desired_uid_(0),
+        include_login_flag_(add_flag),
+        set_uid_(false) {
+    PopulateArgv(command_line);
+  }
 
 SetUidExecJob::~SetUidExecJob() {
   if (argv_) {
@@ -47,9 +57,9 @@ void SetUidExecJob::PopulateArgv(const CommandLine* command_line) {
   std::vector<std::wstring> loose_wide_args = command_line->GetLooseValues();
   num_args_passed_in_ = loose_wide_args.size();
 
-  // We might need one extra for kLoginManagerFlag, one for the pipe
-  // flag.  And we'll always need one for NULL.
-  int total_args = num_args_passed_in_ + 3;
+  // We might need one extra for kLoginManagerFlag, and we'll always
+  // need one for NULL.
+  int total_args = num_args_passed_in_ + 2;
   argv_ = new char const*[total_args];
   std::vector<std::wstring>::const_iterator arg_it = loose_wide_args.begin();
   char const* *argv_pointer = argv_;
@@ -68,7 +78,6 @@ void SetUidExecJob::PopulateArgv(const CommandLine* command_line) {
 
 void SetUidExecJob::UseLoginManagerFlagIfNeeded() {
   char const* *argv_pointer = argv_ + num_args_passed_in_;
-  *argv_pointer++ = pipe_arg_.c_str();
   *argv_pointer++ = include_login_flag_ ? kLoginManagerFlag : NULL;
   *argv_pointer = NULL;
 }
@@ -96,6 +105,10 @@ int SetUidExecJob::SetIDs() {
   if (setsid() == -1)
     LOG(ERROR) << "can't setsid: " << strerror(errno);
   return to_return;
+}
+
+bool SetUidExecJob::ShouldRun() {
+  return !checker_->exists();
 }
 
 void SetUidExecJob::Run() {

@@ -10,13 +10,15 @@
 namespace login_manager {
 class FileChecker {
  public:
-  FileChecker() {}
-  ~FileChecker() {}
+  FileChecker(const char filename[]) : filename_(filename) {}
+  virtual ~FileChecker() {}
 
-  virtual bool exists(const char* filename) {
+  virtual bool exists() {
     struct stat buf;
-    return 0 == stat(filename, &buf);
+    return 0 == stat(filename_.c_str(), &buf);
   }
+ private:
+  const std::string filename_;
 };
 
 }  // namespace login_manager

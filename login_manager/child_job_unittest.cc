@@ -21,7 +21,7 @@ TEST(SetUidExecJobTest, PopulateArgvTest) {
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, false, "four");
+  SetUidExecJob job(&cl, NULL, false);
 
   std::vector<std::string> data = job.ExtractArgvForTest();
   std::vector<std::string>::const_iterator it  = data.begin();
@@ -38,11 +38,10 @@ TEST(SetUidExecJobTest, FlagAppendTest) {
   const char *my_argv[] = { "zero",
                             "one",
                             "two" };
-  const char pipe_name[] = "four";
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, true, pipe_name);
+  SetUidExecJob job(&cl, NULL, true);
   job.UseLoginManagerFlagIfNeeded();
 
   std::vector<std::string> data = job.ExtractArgvForTest();
@@ -51,9 +50,6 @@ TEST(SetUidExecJobTest, FlagAppendTest) {
     EXPECT_EQ(my_argv[i], *it);
     ++it;
   }
-  std::string pipe_flag(SetUidExecJob::kSessionManagerPipe);
-  pipe_flag.append(pipe_name);
-  EXPECT_EQ(pipe_flag.c_str(), *it++);
   EXPECT_EQ(SetUidExecJob::kLoginManagerFlag, *it++);
   EXPECT_TRUE(data.end() == it) << *it;
 }
@@ -62,13 +58,12 @@ TEST(SetUidExecJobTest, NoFlagAppendTest) {
   const char *my_argv[] = { "zero",
                             "one",
                             "two" };
-  const char pipe_name[] = "four";
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, true, pipe_name);
+  SetUidExecJob job(&cl, NULL, true);
   job.Toggle();
-  job.UseLoginManagerFlagIfNeeded();
+  job.UseLoginManagerFlagIfNeeded();  // should be a no-op
 
   std::vector<std::string> data = job.ExtractArgvForTest();
   std::vector<std::string>::const_iterator it  = data.begin();
@@ -76,9 +71,6 @@ TEST(SetUidExecJobTest, NoFlagAppendTest) {
     EXPECT_EQ(my_argv[i], *it);
     ++it;
   }
-  std::string pipe_flag(SetUidExecJob::kSessionManagerPipe);
-  pipe_flag.append(pipe_name);
-  EXPECT_EQ(pipe_flag.c_str(), *it++);
   EXPECT_TRUE(data.end() == it) << *it;
 }
 

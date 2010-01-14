@@ -9,6 +9,9 @@
 #include <unistd.h>
 
 #include <base/basictypes.h>
+#include <base/scoped_ptr.h>
+
+#include "login_manager/file_checker.h"
 
 class CommandLine;
 
@@ -21,7 +24,9 @@ class ChildJob {
   ChildJob() {}
   virtual ~ChildJob() {}
 
-  // Wraps up all the logic of what the job is meant to do.
+  virtual bool ShouldRun() = 0;
+
+  // Wraps up all the logic of what the job is meant to do.  Should NOT return.
   virtual void Run() = 0;
 
   // If the ChildJob contains a toggleable piece of state, toggle it.
@@ -31,23 +36,12 @@ class ChildJob {
 class SetUidExecJob : public ChildJob {
  public:
   SetUidExecJob(const CommandLine* command_line,
-                const bool add_flag,
-                const std::string pipe_name)
-      : argv_(NULL),
-        num_args_passed_in_(0),
-        pipe_arg_(kSessionManagerPipe),
-        desired_uid_(0),
-        include_login_flag_(add_flag),
-        set_uid_(false) {
-    PopulateArgv(command_line);
-    pipe_arg_.append(pipe_name);
-  }
+                FileChecker* checker,  // Takes ownership.
+                const bool add_flag);
   virtual ~SetUidExecJob();
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
-  // The flag to pass to chrome to tell it how to talk to the session manager.
-  static const char kSessionManagerPipe[];
 
   // Potential exit codes for Run().
   static const int kCantSetuid;
@@ -55,6 +49,7 @@ class SetUidExecJob : public ChildJob {
   static const int kCantSetgroups;
   static const int kCantExec;
 
+  bool ShouldRun();
   void Run();
   void Toggle() { include_login_flag_ = !include_login_flag_; }
 
@@ -68,6 +63,8 @@ class SetUidExecJob : public ChildJob {
 
   // Pulls all loose args from |command_line|, converts them to ASCII, and
   // puts them into an array that's ready to be used by exec().
+  // Might be able to remove this once Chromium's CommandLine class deals with
+  // wstrings is a saner way.
   void PopulateArgv(const CommandLine* command_line);
   void UseLoginManagerFlagIfNeeded();
 
@@ -81,10 +78,9 @@ class SetUidExecJob : public ChildJob {
   int SetIDs();
 
  private:
+  scoped_ptr<FileChecker> checker_;
   char const* *argv_;
   uint32 num_args_passed_in_;
-
-  std::string pipe_arg_;
 
   uid_t desired_uid_;
   bool include_login_flag_;  // This class' piece of toggleable state.

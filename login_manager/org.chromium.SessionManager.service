@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=org.chromium.SessionManager
+Exec=/sbin/session_manager
+# TODO(cmasone) restrict using capabilities
+User=root

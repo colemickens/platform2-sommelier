@@ -15,7 +15,10 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <chromeos/dbus/dbus.h>
 #include "login_manager/ipc_channel.h"
+#include "login_manager/bindings/client.h"
+#include "login_manager/constants.h"
 
 namespace switches {
 static const char kExitSad[] = "exit-sad";
@@ -32,14 +35,6 @@ int main(int argc, char* argv[]) {
   CommandLine *cl = CommandLine::ForCurrentProcess();
   LOG(INFO) << "running as " << getuid() << ", " << argv[argc-1];
 
-  if (cl->HasSwitch(switches::kSessionPipe)) {
-    login_manager::IpcWriteChannel writer(
-        cl->GetSwitchValueASCII(switches::kSessionPipe));
-    writer.init();
-    writer.send(login_manager::EMIT_LOGIN);
-    writer.send(login_manager::START_SESSION);
-    writer.shutdown();
-  }
 
   pid_t pid = fork();
   if (pid ==0) {
@@ -57,5 +52,29 @@ int main(int argc, char* argv[]) {
     int* foo = 0;
     *foo = 1;
   }
+
+  g_type_init();
+  chromeos::dbus::BusConnection bus =
+      chromeos::dbus::GetSystemBusConnection();
+  chromeos::dbus::Proxy proxy(bus,
+                              login_manager::kSessionManagerServiceName,
+                              login_manager::kSessionManagerServicePath,
+                              login_manager::kSessionManagerInterface);
+  DCHECK(proxy.gproxy()) << "Failed to acquire proxy";
+  gboolean done = false;
+  static const gchar *kUser = "chromeos-user";
+  chromeos::glib::ScopedError error;
+  GError **errptr = &chromeos::Resetter(&error).lvalue();
+  if (!org_chromium_SessionManagerInterface_stop_session(proxy.gproxy(),
+                                                         kUser,
+                                                         &done,
+                                                         errptr)) {
+    // TODO(cmasone): make a util function in for this error-message check.
+    LOG(WARNING) << "StopSession failed: "
+        << (error->message ? error->message : "Unknown Error.");
+  }
+  LOG_IF(ERROR, !done) << "stop did not complete?";
+  LOG_IF(INFO, done) << "Call completed";
+
   exit(exit_val);
 }
