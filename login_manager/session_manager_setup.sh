@@ -52,8 +52,8 @@ MANAGER_PIPE="/tmp/session_manager_pipe"
 # It runs sensible-browser, which uses $BROWSER.
 export BROWSER=${CHROME}
 
-UID=$(/usr/bin/id -u ${USER})
-exec /sbin/session_manager --uid=${UID} --login --pipe=${MANAGER_PIPE} -- \
+USER_ID=$(/usr/bin/id -u ${USER})
+exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
     /usr/bin/ck-launch-session \
     $CHROME --enable-gview \
 	    --enable-sync \
