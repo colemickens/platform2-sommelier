@@ -16,6 +16,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/session_manager_service.h"
+#include "login_manager/system_utils.h"
 
 // Watches a Chrome binary and restarts it when it crashes.
 // Can also create and watch a named pipe and respond to IPCs defined
@@ -87,8 +88,7 @@ int main(int argc, char* argv[]) {
     child_job->set_uid(uid);
 
   ::g_type_init();
-  login_manager::SessionManagerService manager(child_job,
-                                               false);  // FOR NOW.
+  login_manager::SessionManagerService manager(child_job);
 
   LOG_IF(FATAL, !manager.Initialize()) << "Failed";
   LOG_IF(FATAL, !manager.Register(chromeos::dbus::GetSystemBusConnection()))

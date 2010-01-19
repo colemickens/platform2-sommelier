@@ -16,6 +16,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 
 #include "login_manager/child_job.h"
@@ -31,19 +32,24 @@ namespace gobject {  // NOLINT
 
 namespace login_manager {
 
+using std::string;
+
+//static
+const uint32 SessionManagerService::kMaxEmailSize = 200;
+//static
+const char SessionManagerService::kEmailSeparator = '@';
+//static
+const char SessionManagerService::kLegalCharacters[] =
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    ".@1234567890";
+
 SessionManagerService::SessionManagerService(ChildJob* child)
     : child_job_(child),
       exit_on_child_done_(false),
-      main_loop_(g_main_loop_new(NULL, FALSE)) {
-  CHECK(child);
-  SetupHandlers();
-}
-
-SessionManagerService::SessionManagerService(ChildJob* child,
-                                             bool exit_on_child_done)
-    : child_job_(child),
-      exit_on_child_done_(exit_on_child_done),
-      main_loop_(g_main_loop_new(NULL, FALSE)) {
+      child_pgid_(0),
+      main_loop_(g_main_loop_new(NULL, FALSE)),
+      system_(new SystemUtils) {
   CHECK(child);
   SetupHandlers();
 }
@@ -90,15 +96,25 @@ bool SessionManagerService::Run() {
     LOG(ERROR) << "You must have a main loop to call Run.";
     return false;
   }
-  int pid = RunChild();
-  if (pid == -1) {
-    // We couldn't fork...maybe we should wait and try again later?
-    PLOG(ERROR) << "Failed to fork!";
 
+  if (should_run_child()) {
+    int pid = RunChild();
+    if (pid == -1) {
+      // We couldn't fork...maybe we should wait and try again later?
+      PLOG(ERROR) << "Failed to fork!";
+      return false;
+    }
+    child_pgid_ = -pid;
   } else {
-    // In the parent.
-    g_main_loop_run(main_loop_);
+    AllowGracefulExit();
   }
+
+  // In the parent.
+  g_main_loop_run(main_loop_);
+
+  if (child_pgid_ != 0)  // otherwise, we never created a child.
+    CleanupChildren(3);
+
   return true;
 }
 
@@ -132,34 +148,48 @@ void SessionManagerService::AllowGracefulExit() {
 gboolean SessionManagerService::EmitLoginPromptReady(gboolean *OUT_emitted,
                                                      GError **error) {
   DLOG(INFO) << "emitting login-prompt-ready ";
-  system("/sbin/initctl emit login-prompt-ready &");
-  *OUT_emitted = TRUE;
-  return TRUE;
+  *OUT_emitted = system("/sbin/initctl emit login-prompt-ready &") == 0;
+  return *OUT_emitted;
 }
 
 gboolean SessionManagerService::StartSession(gchar *email_address,
                                              gchar *unique_identifier,
                                              gboolean *OUT_done,
                                              GError **error) {
-  DLOG(INFO) << "emitting start-user-session";
-  system("/sbin/initctl emit start-user-session &");
-  child_job_->Toggle();
-  *OUT_done = TRUE;
-  return TRUE;
+  // basic validity checking; avoid buffer overflows here, and
+  // canonicalize the email address a little.
+  char email[kMaxEmailSize + 1];
+  snprintf(email, sizeof(email), "%s", email_address);
+  email[kMaxEmailSize] = '\0';  // Just to be sure.
+  string email_string(email);
+  if (!ValidateEmail(email_string)) {
+    *OUT_done = FALSE;
+    return FALSE;
+  }
+  string email_lower = StringToLowerASCII(email_string);
+  DLOG(INFO) << "emitting start-user-session for " << email_lower;
+  string command =
+      StringPrintf("/sbin/initctl emit start-user-session CHROMEOS_USER=%s &",
+                   email_lower.c_str());
+  *OUT_done = system(command.c_str()) == 0;
+  if (*OUT_done)
+    child_job_->Toggle();
+  return *OUT_done;
 }
 
 gboolean SessionManagerService::StopSession(gchar *unique_identifier,
                                             gboolean *OUT_done,
                                             GError **error) {
   DLOG(INFO) << "emitting stop-user-session";
-  system("/sbin/initctl emit stop-user-session &");
-  g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                  ServiceShutdown,
-                  this,
-                  NULL);
-  child_job_->Toggle();
-  *OUT_done = TRUE;
-  return TRUE;
+  *OUT_done = system("/sbin/initctl emit stop-user-session &") == 0;
+  if (*OUT_done) {
+    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+                    ServiceShutdown,
+                    this,
+                    NULL);
+    child_job_->Toggle();
+  }
+  return *OUT_done;
 }
 
 
@@ -185,7 +215,8 @@ void SessionManagerService::HandleChildExit(GPid pid,
   // If the child _ever_ exits, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   if (manager->should_run_child()) {
-    manager->RunChild();
+    // TODO(cmasone): deal with fork failing in RunChild()
+    manager->set_child_pgid(-manager->RunChild());
   } else {
     LOG(INFO) << "Should NOT run";
     manager->AllowGracefulExit();
@@ -203,6 +234,24 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
 
+// This can probably be more efficient, if it needs to be.
+// static
+bool SessionManagerService::ValidateEmail(const string& email_address) {
+  if (email_address.find_first_not_of(kLegalCharacters) != string::npos)
+    return false;
+
+  size_t at = email_address.find(kEmailSeparator);
+  // it has NO @.
+  if (at == string::npos)
+    return false;
+
+  // it has more than one @.
+  if (email_address.find(kEmailSeparator, at+1) != string::npos)
+    return false;
+
+  return true;
+}
+
 void SessionManagerService::SetupHandlers() {
   // I have to ignore SIGUSR1, because Xorg sends it to this process when it's
   // got no clients and is ready for new ones.  If we don't ignore it, we die.
@@ -210,6 +259,15 @@ void SessionManagerService::SetupHandlers() {
   memset(&chld_action, 0, sizeof(chld_action));
   chld_action.sa_handler = SIG_IGN;
   CHECK(sigaction(SIGUSR1, &chld_action, NULL) == 0);
+}
+
+void SessionManagerService::CleanupChildren(int max_tries) {
+  int try_count = 0;
+  while(!system_->child_is_gone(child_pgid_)) {
+    system_->kill(child_pgid_, (try_count++ >= max_tries ? SIGKILL : SIGTERM));
+    // TODO(cmasone): add conversion constants/methods in common/ somewhere.
+    usleep(500 * 1000 /* milliseconds */);
+  }
 }
 
 }  // namespace login_manager

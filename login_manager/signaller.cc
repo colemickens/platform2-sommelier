@@ -16,9 +16,9 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
 #include "login_manager/ipc_channel.h"
 #include "login_manager/bindings/client.h"
-#include "login_manager/constants.h"
 
 namespace switches {
 static const char kExitSad[] = "exit-sad";

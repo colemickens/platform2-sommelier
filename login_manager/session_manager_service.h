@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_SESSION_MANAGER_H_
-#define LOGIN_MANAGER_SESSION_MANAGER_H_
+#ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
+#define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
 #include <gtest/gtest.h>
 
@@ -18,9 +18,10 @@
 #include <base/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
-#include "login_manager/constants.h"
+#include "login_manager/system_utils.h"
 
 class CommandLine;
 
@@ -39,7 +40,6 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
  public:
   // Takes ownership of |child|.
   explicit SessionManagerService(ChildJob* child);
-  SessionManagerService(ChildJob* child, bool exit_on_child_done);
   virtual ~SessionManagerService();
 
   ////////////////////////////////////////////////////////////////////////////
@@ -71,6 +71,12 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     return G_OBJECT(session_manager_.get());
   }
 
+
+  // If you want to call any of these setters, you should do so before calling
+  // any other methods on this class.
+  void set_child_pgid(pid_t pgid) { child_pgid_ = pgid; }
+  void set_systemutils(SystemUtils* utils) { system_.reset(utils); }
+  void set_exit_on_child_done(bool do_exit) { exit_on_child_done_ = do_exit; }
 
   // Returns true if |child_job_| believes it should be run.
   bool should_run_child() { return child_job_->ShouldRun(); }
@@ -115,19 +121,37 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
+  // Perform very, very basic validation of |email_address|.
+  static bool ValidateEmail(const std::string& email_address);
+
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
+  // Terminate all children, with increasing prejudice.
+  void CleanupChildren(int max_tries);
+
+  static const uint32 kMaxEmailSize;
+  static const char kEmailSeparator;
+  static const char kLegalCharacters[];
+
   scoped_ptr<ChildJob> child_job_;
   bool exit_on_child_done_;
+  pid_t child_pgid_;
 
   scoped_ptr<gobject::SessionManager> session_manager_;
   GMainLoop* main_loop_;
 
-  FRIEND_TEST(SessionManagerTest, BadExitTest);
-  FRIEND_TEST(SessionManagerTest, CleanExitTest);
+  scoped_ptr<SystemUtils> system_;
+
+  FRIEND_TEST(SessionManagerTest, EasyCleanupTest);
+  FRIEND_TEST(SessionManagerTest, HarderCleanupTest);
+  FRIEND_TEST(SessionManagerTest, KillCleanupTest);
+  FRIEND_TEST(SessionManagerTest, EmailAddressTest);
+  FRIEND_TEST(SessionManagerTest, EmailAddressNonAsciiTest);
+  FRIEND_TEST(SessionManagerTest, EmailAddressNoAtTest);
+  FRIEND_TEST(SessionManagerTest, EmailAddressTooMuchAtTest);
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_SESSION_MANAGER_H_
+#endif  // LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
