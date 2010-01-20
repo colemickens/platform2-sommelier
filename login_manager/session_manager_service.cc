@@ -49,7 +49,8 @@ SessionManagerService::SessionManagerService(ChildJob* child)
       exit_on_child_done_(false),
       child_pgid_(0),
       main_loop_(g_main_loop_new(NULL, FALSE)),
-      system_(new SystemUtils) {
+      system_(new SystemUtils),
+      session_started_(false) {
   CHECK(child);
   SetupHandlers();
 }
@@ -149,6 +150,11 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean *OUT_emitted,
                                                      GError **error) {
   DLOG(INFO) << "emitting login-prompt-ready ";
   *OUT_emitted = system("/sbin/initctl emit login-prompt-ready &") == 0;
+  if (*OUT_emitted) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
+              "Can't emit login-prompt-ready.");
+  }
   return *OUT_emitted;
 }
 
@@ -156,6 +162,13 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
                                              gchar *unique_identifier,
                                              gboolean *OUT_done,
                                              GError **error) {
+  if (session_started_) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_SESSION_EXISTS,
+              "Can't start a session while a session is already active.");
+    *OUT_done = FALSE;
+    return FALSE;
+  }
   // basic validity checking; avoid buffer overflows here, and
   // canonicalize the email address a little.
   char email[kMaxEmailSize + 1];
@@ -164,6 +177,9 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   string email_string(email);
   if (!ValidateEmail(email_string)) {
     *OUT_done = FALSE;
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
+              "Provided email address is not valid.  ASCII only.");
     return FALSE;
   }
   string email_lower = StringToLowerASCII(email_string);
@@ -172,8 +188,14 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
       StringPrintf("/sbin/initctl emit start-user-session CHROMEOS_USER=%s &",
                    email_lower.c_str());
   *OUT_done = system(command.c_str()) == 0;
-  if (*OUT_done)
+  if (*OUT_done) {
     child_job_->Toggle();
+    session_started_ = true;
+  } else {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
+              "Can't emit start-session.");
+  }
   return *OUT_done;
 }
 
@@ -188,6 +210,11 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
                     this,
                     NULL);
     child_job_->Toggle();
+    session_started_ = false;
+  } else {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
+              "Can't emit stop-session.");
   }
   return *OUT_done;
 }
@@ -268,6 +295,12 @@ void SessionManagerService::CleanupChildren(int max_tries) {
     // TODO(cmasone): add conversion constants/methods in common/ somewhere.
     usleep(500 * 1000 /* milliseconds */);
   }
+}
+
+void SessionManagerService::SetGError(GError** error,
+                                      ChromeOSLoginError code,
+                                      const char* message) {
+  g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
 }
 
 }  // namespace login_manager

@@ -93,20 +93,20 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // SessionManagerService commands
 
   // Emits the "login-prompt-ready" upstart signal.
-  gboolean EmitLoginPromptReady(gboolean *OUT_emitted, GError **error);
+  gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
 
   // In addition to emitting "start-user-session", this function will
   // also call child_job_->Toggle().
-  gboolean StartSession(gchar *email_address,
-                        gchar *unique_identifier,
-                        gboolean *OUT_done,
-                        GError **error);
+  gboolean StartSession(gchar* email_address,
+                        gchar* unique_identifier,
+                        gboolean* OUT_done,
+                        GError** error);
 
   // In addition to emitting "stop-user-session", this function will
   // also call child_job_->Toggle().
-  gboolean StopSession(gchar *unique_identifier,
-                       gboolean *OUT_done,
-                       GError **error);
+  gboolean StopSession(gchar* unique_identifier,
+                       gboolean* OUT_done,
+                       GError** error);
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
@@ -130,6 +130,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int max_tries);
 
+  void SetGError(GError** error, ChromeOSLoginError, const char* message);
+
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
@@ -142,6 +144,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   GMainLoop* main_loop_;
 
   scoped_ptr<SystemUtils> system_;
+
+  bool session_started_;
 
   FRIEND_TEST(SessionManagerTest, EasyCleanupTest);
   FRIEND_TEST(SessionManagerTest, HarderCleanupTest);

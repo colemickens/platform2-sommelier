@@ -181,6 +181,25 @@ TEST(SessionManagerTest, StartSessionTest) {
   manager.StartSession(email, nothing, &out, NULL);
 }
 
+TEST(SessionManagerTest, StartSessionErrorTest) {
+  MockChildJob* job = new MockChildJob;
+  login_manager::SessionManagerService manager(job);  // manager takes ownership
+  manager.set_exit_on_child_done(true);
+
+  EXPECT_CALL(*job, ShouldRun())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*job, Toggle())
+      .Times(0);
+
+  gboolean out;
+  gchar email[] = "user";
+  gchar nothing[] = "";
+  GError* error = NULL;
+  manager.StartSession(email, nothing, &out, &error);
+  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, error->code);
+  g_error_free(error);
+}
+
 TEST(SessionManagerTest, StopSessionTest) {
   MockChildJob* job = new MockChildJob;
   login_manager::SessionManagerService manager(job);  // manager takes ownership
