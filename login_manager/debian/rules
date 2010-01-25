@@ -5,3 +5,14 @@
 # found in the LICENSE file.
 %:
 	dh $@
+
+DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE  := $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+ifeq ($(DEB_BUILD_GNU_TYPE),$(DEB_HOST_GNU_TYPE))
+CXX := g++
+else
+CXX := $(DEB_HOST_GNU_TYPE)-g++
+endif
+
+override_dh_auto_build:
+	$(MAKE) CXX=$(CXX)
