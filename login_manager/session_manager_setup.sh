@@ -19,10 +19,6 @@ ${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 
 /sbin/xstart.sh ${XAUTH_FILE} &
 
-while [ -z ${SERVER_READY} ]; do
-  sleep .1
-done
-
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGNAME=${USER}
@@ -53,6 +49,11 @@ MANAGER_PIPE="/tmp/session_manager_pipe"
 export BROWSER=${CHROME}
 
 USER_ID=$(/usr/bin/id -u ${USER})
+
+while [ -z ${SERVER_READY} ]; do
+  sleep .1
+done
+
 exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
     /usr/bin/ck-launch-session \
     $CHROME --enable-gview \

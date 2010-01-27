@@ -34,6 +34,9 @@ static const char kUid[] = "uid";
 
 static const char kLogin[] = "login";
 
+static const char kLogFile[] = "log-file";
+static const char kDefaultLogFile[] = "/var/log/session_manager";
+
 static const char kHelp[] = "help";
 static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
@@ -43,17 +46,22 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "    Numeric uid to transition to prior to execution.\n"
 "  --login\n"
 "    session_manager will append --login-manager to the child's command line.\n"
+"  --log-file=</path/to/file>\n"
+"    Log file to use. (default: /var/log/session_manager)\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
 "    Supplies the required program to execute and its arguments.\n";
 }  // namespace switches
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
-  logging::InitLogging(NULL,
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
+  CommandLine *cl = CommandLine::ForCurrentProcess();
+  std::string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
+  if (log_file.empty())
+    log_file.assign(switches::kDefaultLogFile);
+  logging::InitLogging(log_file.c_str(),
+                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE);
-  CommandLine *cl = CommandLine::ForCurrentProcess();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
