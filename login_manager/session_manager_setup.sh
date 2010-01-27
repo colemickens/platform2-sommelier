@@ -54,7 +54,7 @@ while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
-exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
+/sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
     /usr/bin/ck-launch-session \
     $CHROME --enable-gview \
 	    --enable-sync \
@@ -64,3 +64,6 @@ exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
             --profile=user \
             "--cookie-pipe=$COOKIE_PIPE"
 
+# nuke the X server, so calls to this are idempotent.
+# TODO(cmasone): make it so that we can re-use the X server if it's up.
+pkill -KILL ^Xorg$
