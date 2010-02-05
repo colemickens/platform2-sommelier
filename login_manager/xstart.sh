@@ -5,4 +5,4 @@
 # found in the LICENSE file.
 
 trap '' USR1 TTOU TTIN
-exec /usr/bin/X11/X -nolisten tcp vt01 -auth $1
+exec /usr/bin/X11/X -nolisten tcp vt01 -auth $1 2> /dev/null

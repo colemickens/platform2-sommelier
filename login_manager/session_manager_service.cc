@@ -4,6 +4,7 @@
 
 #include "login_manager/session_manager_service.h"
 
+#include <errno.h>
 #include <glib.h>
 #include <grp.h>
 #include <sys/errno.h>
@@ -31,8 +32,64 @@ namespace gobject {  // NOLINT
 }  // namespace login_manager
 
 namespace login_manager {
-
 using std::string;
+
+// Jacked from chrome base/eintr_wrapper.h
+#define HANDLE_EINTR(x) ({ \
+  typeof(x) __eintr_result__; \
+  do { \
+    __eintr_result__ = x; \
+  } while (__eintr_result__ == -1 && errno == EINTR); \
+  __eintr_result__;\
+})
+
+int g_shutdown_pipe_write_fd = -1;
+int g_shutdown_pipe_read_fd = -1;
+
+// static
+// Common code between SIG{HUP, INT, TERM}Handler.
+void SessionManagerService::GracefulShutdownHandler(int signal) {
+  // Reinstall the default handler.  We had one shot at graceful shutdown.
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = SIG_DFL;
+  RAW_CHECK(sigaction(signal, &action, NULL) == 0);
+
+  RAW_CHECK(g_shutdown_pipe_write_fd != -1);
+  RAW_CHECK(g_shutdown_pipe_read_fd != -1);
+  size_t bytes_written = 0;
+  do {
+    int rv = HANDLE_EINTR(
+        write(g_shutdown_pipe_write_fd,
+              reinterpret_cast<const char*>(&signal) + bytes_written,
+              sizeof(signal) - bytes_written));
+    RAW_CHECK(rv >= 0);
+    bytes_written += rv;
+  } while (bytes_written < sizeof(signal));
+
+  RAW_LOG(INFO,
+          "Successfully wrote to shutdown pipe, resetting signal handler.");
+}
+
+// static
+void SessionManagerService::SIGHUPHandler(int signal) {
+  RAW_CHECK(signal == SIGHUP);
+  RAW_LOG(INFO, "Handling SIGHUP.");
+  GracefulShutdownHandler(signal);
+}
+// static
+void SessionManagerService::SIGINTHandler(int signal) {
+  RAW_CHECK(signal == SIGINT);
+  RAW_LOG(INFO, "Handling SIGINT.");
+  GracefulShutdownHandler(signal);
+}
+
+// static
+void SessionManagerService::SIGTERMHandler(int signal) {
+  RAW_CHECK(signal == SIGTERM);
+  RAW_LOG(INFO, "Handling SIGTERM.");
+  GracefulShutdownHandler(signal);
+}
 
 //static
 const uint32 SessionManagerService::kMaxEmailSize = 200;
@@ -47,7 +104,7 @@ const char SessionManagerService::kLegalCharacters[] =
 SessionManagerService::SessionManagerService(ChildJob* child)
     : child_job_(child),
       exit_on_child_done_(false),
-      child_pgid_(0),
+      child_pid_(0),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
       session_started_(false) {
@@ -62,6 +119,10 @@ SessionManagerService::~SessionManagerService() {
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_DFL;
   CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
+  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
+  CHECK(sigaction(SIGINT, &action, NULL) == 0);
+  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
 bool SessionManagerService::Initialize() {
@@ -98,6 +159,21 @@ bool SessionManagerService::Run() {
     return false;
   }
 
+  int pipefd[2];
+  int ret = pipe(pipefd);
+  if (ret < 0) {
+    PLOG(DFATAL) << "Failed to create pipe";
+  } else {
+    g_shutdown_pipe_read_fd = pipefd[0];
+    g_shutdown_pipe_write_fd = pipefd[1];
+    g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
+                        G_PRIORITY_HIGH_IDLE,
+                        GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
+                        HandleKill,
+                        this,
+                        NULL);
+  }
+
   if (should_run_child()) {
     int pid = RunChild();
     if (pid == -1) {
@@ -105,15 +181,14 @@ bool SessionManagerService::Run() {
       PLOG(ERROR) << "Failed to fork!";
       return false;
     }
-    child_pgid_ = -pid;
+    child_pid_ = pid;
   } else {
     AllowGracefulExit();
   }
 
-  // In the parent.
   g_main_loop_run(main_loop_);
 
-  if (child_pgid_ != 0)  // otherwise, we never created a child.
+  if (child_pid_ != 0)  // otherwise, we never created a child.
     CleanupChildren(3);
 
   return true;
@@ -202,21 +277,15 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
 gboolean SessionManagerService::StopSession(gchar *unique_identifier,
                                             gboolean *OUT_done,
                                             GError **error) {
-  DLOG(INFO) << "emitting stop-user-session";
-  *OUT_done = system("/sbin/initctl emit stop-user-session &") == 0;
-  if (*OUT_done) {
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                    ServiceShutdown,
-                    this,
-                    NULL);
-    child_job_->Toggle();
-    session_started_ = false;
-  } else {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
-              "Can't emit stop-session.");
-  }
-  return *OUT_done;
+  g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
+                  ServiceShutdown,
+                  this,
+                  NULL);
+  // TODO(cmasone): re-enable these when we try to enable logout without exiting
+  //                the session manager
+  // child_job_->Toggle();
+  // session_started_ = false;
+  return *OUT_done = TRUE;
 }
 
 
@@ -239,20 +308,33 @@ void SessionManagerService::HandleChildExit(GPid pid,
     CHECK(WEXITSTATUS(status) != SetUidExecJob::kCantExec);
   }
 
+  bool exited_clean = WIFEXITED(status) && WEXITSTATUS(status) == 0;
+
   // If the child _ever_ exits, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  if (manager->should_run_child()) {
+  if (exited_clean) {
+    ServiceShutdown(data);
+  } else if (manager->should_run_child()) {
     // TODO(cmasone): deal with fork failing in RunChild()
-    manager->set_child_pgid(-manager->RunChild());
+    manager->set_child_pid(manager->RunChild());
   } else {
     LOG(INFO) << "Should NOT run";
     manager->AllowGracefulExit();
   }
 }
 
+gboolean SessionManagerService::HandleKill(GIOChannel* source,
+                                           GIOCondition condition,
+                                           gpointer data) {
+  // We only get called if there's data on the pipe.  If there's data, we're
+  // supposed to exit,.  So, don't even bother to read it.
+  return ServiceShutdown(data);
+}
+
 gboolean SessionManagerService::ServiceShutdown(gpointer data) {
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   manager->Shutdown();
+  LOG(INFO) << "SessionManagerService exiting";
   return FALSE;  // So that the event source that called this gets removed.
 }
 
@@ -282,19 +364,32 @@ bool SessionManagerService::ValidateEmail(const string& email_address) {
 void SessionManagerService::SetupHandlers() {
   // I have to ignore SIGUSR1, because Xorg sends it to this process when it's
   // got no clients and is ready for new ones.  If we don't ignore it, we die.
-  struct sigaction chld_action;
-  memset(&chld_action, 0, sizeof(chld_action));
-  chld_action.sa_handler = SIG_IGN;
-  CHECK(sigaction(SIGUSR1, &chld_action, NULL) == 0);
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = SIG_IGN;
+  CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
+
+  action.sa_handler = SessionManagerService::do_nothing;
+  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+
+  // We need to handle SIGTERM, because that is how many POSIX-based distros ask
+  // processes to quit gracefully at shutdown time.
+  action.sa_handler = SIGTERMHandler;
+  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
+  // Also handle SIGINT - when the user terminates the browser via Ctrl+C.
+  // If the browser process is being debugged, GDB will catch the SIGINT first.
+  action.sa_handler = SIGINTHandler;
+  CHECK(sigaction(SIGINT, &action, NULL) == 0);
+  // And SIGHUP, for when the terminal disappears. On shutdown, many Linux
+  // distros send SIGHUP, SIGTERM, and then SIGKILL.
+  action.sa_handler = SIGHUPHandler;
+  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-void SessionManagerService::CleanupChildren(int max_tries) {
-  int try_count = 0;
-  while(!system_->child_is_gone(child_pgid_)) {
-    system_->kill(child_pgid_, (try_count++ >= max_tries ? SIGKILL : SIGTERM));
-    // TODO(cmasone): add conversion constants/methods in common/ somewhere.
-    usleep(500 * 1000 /* milliseconds */);
-  }
+void SessionManagerService::CleanupChildren(int timeout) {
+  system_->kill(child_pid_, (session_started_ ? SIGTERM: SIGKILL));
+  if (!system_->child_is_gone(child_pid_, timeout))
+    system_->kill(child_pid_, SIGKILL);
 }
 
 void SessionManagerService::SetGError(GError** error,

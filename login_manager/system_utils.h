@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <base/basictypes.h>
+#include <base/logging.h>
 
 namespace login_manager {
 class SystemUtils {
@@ -17,13 +18,20 @@ class SystemUtils {
   virtual ~SystemUtils() {}
 
   virtual int kill(pid_t pid, int signal) {
+    LOG(INFO) << "Sending " << signal << " to " << pid;
     return ::kill(pid, signal);
   }
 
-  virtual bool child_is_gone(pid_t child_spec) {
-    return ::waitpid(child_spec, NULL, WNOHANG) == -1 && errno == ECHILD;
+  // Returns: true if child specified by |child_spec| exited,
+  //          false if we time out.
+  virtual bool child_is_gone(pid_t child_spec, int timeout) {
+    alarm(timeout);
+    while (::waitpid(child_spec, NULL, 0) > 0)
+      ;
+    // Once we exit the loop, we know there was an error.
+    alarm(0);
+    return errno == ECHILD;  // EINTR means we timed out.
   }
-
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

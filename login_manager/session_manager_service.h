@@ -74,7 +74,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
-  void set_child_pgid(pid_t pgid) { child_pgid_ = pgid; }
+  void set_child_pid(pid_t pid) { child_pid_ = pid; }
   void set_systemutils(SystemUtils* utils) { system_.reset(utils); }
   void set_exit_on_child_done(bool do_exit) { exit_on_child_done_ = do_exit; }
 
@@ -112,10 +112,25 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
+  static void do_nothing(int sig) {}
+
+  // Common code between SIG{HUP, INT, TERM}Handler.
+  static void GracefulShutdownHandler(int signal);
+  static void SIGHUPHandler(int signal);
+  static void SIGINTHandler(int signal);
+  static void SIGTERMHandler(int signal);
+
   // |data| is a SessionManagerService*
   static void HandleChildExit(GPid pid,
                               gint status,
                               gpointer data);
+
+  // |data| is a SessionManagerService*.  This is a wrapper around
+  // ServiceShutdown() so that we can register it as the callback for
+  // when |source| has data to read.
+  static gboolean HandleKill(GIOChannel* source,
+                             GIOCondition condition,
+                             gpointer data);
 
   // So that we can enqueue an event that will exit the main loop.
   // |data| is a SessionManagerService*
@@ -128,7 +143,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   void SetupHandlers();
 
   // Terminate all children, with increasing prejudice.
-  void CleanupChildren(int max_tries);
+  void CleanupChildren(int timeout);
 
   void SetGError(GError** error, ChromeOSLoginError, const char* message);
 
@@ -138,7 +153,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   scoped_ptr<ChildJob> child_job_;
   bool exit_on_child_done_;
-  pid_t child_pgid_;
+  pid_t child_pid_;
 
   scoped_ptr<gobject::SessionManager> session_manager_;
   GMainLoop* main_loop_;
@@ -147,9 +162,10 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   bool session_started_;
 
-  FRIEND_TEST(SessionManagerTest, EasyCleanupTest);
-  FRIEND_TEST(SessionManagerTest, HarderCleanupTest);
-  FRIEND_TEST(SessionManagerTest, KillCleanupTest);
+  FRIEND_TEST(SessionManagerTest, SessionNotStartedCleanupTest);
+  FRIEND_TEST(SessionManagerTest, SessionNotStartedSlowKillCleanupTest);
+  FRIEND_TEST(SessionManagerTest, SessionStartedCleanupTest);
+  FRIEND_TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest);
   FRIEND_TEST(SessionManagerTest, EmailAddressTest);
   FRIEND_TEST(SessionManagerTest, EmailAddressNonAsciiTest);
   FRIEND_TEST(SessionManagerTest, EmailAddressNoAtTest);

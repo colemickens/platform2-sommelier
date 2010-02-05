@@ -16,7 +16,7 @@ class MockSystemUtils : public SystemUtils {
   MockSystemUtils() {}
   ~MockSystemUtils() {}
   MOCK_METHOD2(kill, int(pid_t pid, int signal));
-  MOCK_METHOD1(child_is_gone, bool(pid_t child_spec));
+  MOCK_METHOD2(child_is_gone, bool(pid_t child_spec, int timeout));
 };
 }  // namespace login_manager
 

@@ -94,86 +94,135 @@ TEST(SessionManagerTest, MultiRunTest) {
 }
 
 static const pid_t kDummyPid = 4;
-TEST(SessionManagerTest, EasyCleanupTest) {
+TEST(SessionManagerTest, SessionNotStartedCleanupTest) {
   MockChildJob* job = new MockChildJob;
   MockSystemUtils* utils = new MockSystemUtils;
   login_manager::SessionManagerService manager(job);  // manager takes ownership
   manager.set_exit_on_child_done(true);
-  manager.set_child_pgid(kDummyPid);
+  manager.set_child_pid(kDummyPid);
   manager.set_systemutils(utils);
 
-  int tries = 3;
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid))
-      .Times(2)
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
-      .Times(1)
+  int timeout = 3;
+  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
+  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+      .WillOnce(Return(true));
 
-  manager.CleanupChildren(tries);
+  manager.CleanupChildren(timeout);
 }
 
-TEST(SessionManagerTest, HarderCleanupTest) {
+TEST(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
   MockChildJob* job = new MockChildJob;
   MockSystemUtils* utils = new MockSystemUtils;
   login_manager::SessionManagerService manager(job);  // manager takes ownership
   manager.set_exit_on_child_done(true);
-  manager.set_child_pgid(kDummyPid);
+  manager.set_child_pid(kDummyPid);
   manager.set_systemutils(utils);
 
-  int tries = 3;
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid))
-      .Times(tries)
-      .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
-      .Times(tries - 1)
+  int timeout = 3;
+  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
+      .Times(2)
       .WillRepeatedly(Return(0));
+  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+      .WillOnce(Return(false));
 
-  manager.CleanupChildren(tries);
+  manager.CleanupChildren(timeout);
 }
 
-TEST(SessionManagerTest, KillCleanupTest) {
+MockChildJob* CreateTrivialMockJob() {
   MockChildJob* job = new MockChildJob;
-  MockSystemUtils* utils = new MockSystemUtils;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-  manager.set_child_pgid(kDummyPid);
-  manager.set_systemutils(utils);
-
-  int tries = 3;
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid))
-      .Times(tries + 2)
-      .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-
-  {
-    InSequence dummy;
-    EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
-        .Times(tries)
-        .WillRepeatedly(Return(0));
-    EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
-        .Times(1)
-        .WillOnce(Return(0));
-  }
-
-  manager.CleanupChildren(tries);
-}
-
-TEST(SessionManagerTest, StartSessionTest) {
-  MockChildJob* job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
 
   EXPECT_CALL(*job, ShouldRun())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*job, Toggle())
       .Times(1);
+
+  return job;
+}
+
+TEST(SessionManagerTest, SessionStartedCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob();
+  MockSystemUtils* utils = new MockSystemUtils;
+  login_manager::SessionManagerService manager(job);  // manager takes ownership
+  manager.set_exit_on_child_done(true);
+  manager.set_child_pid(kDummyPid);
+  manager.set_systemutils(utils);
+
+  int timeout = 3;
+  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
+      .WillOnce(Return(0));
+  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+      .WillOnce(Return(true));
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  manager.StartSession(email, nothing, &out, NULL);
+  manager.CleanupChildren(timeout);
+}
+
+TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob();
+  MockSystemUtils* utils = new MockSystemUtils;
+  login_manager::SessionManagerService manager(job);  // manager takes ownership
+  manager.set_exit_on_child_done(true);
+  manager.set_child_pid(kDummyPid);
+  manager.set_systemutils(utils);
+
+  int timeout = 3;
+  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
+      .WillOnce(Return(0));
+  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
+      .WillOnce(Return(0));
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  manager.StartSession(email, nothing, &out, NULL);
+  manager.CleanupChildren(timeout);
+}
+
+static void Sleep() { execl("/bin/sleep", "sleep", "10000", NULL); }
+TEST(SessionManagerTest, SessionStartedSigTermTest) {
+  int pid = fork();
+  if (pid == 0) {
+    MockChildJob* job = CreateTrivialMockJob();
+    login_manager::SessionManagerService* manager =
+        new login_manager::SessionManagerService(job);
+
+    ON_CALL(*job, Run())
+        .WillByDefault(Invoke(Sleep));
+
+    gboolean out;
+    gchar email[] = "user@somewhere";
+    gchar nothing[] = "";
+    manager->StartSession(email, nothing, &out, NULL);
+
+    manager->Run();
+    delete manager;
+    exit(0);
+  }
+  sleep(1);
+  kill(pid, SIGTERM);
+  int status;
+  while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
+    ;
+
+  DLOG(INFO) << "exited waitpid. " << pid << "\n"
+             << "  WIFSIGNALED is " << WIFSIGNALED(status) << "\n"
+             << "  WTERMSIG is " << WTERMSIG(status) << "\n"
+             << "  WIFEXITED is " << WIFEXITED(status) << "\n"
+             << "  WEXITSTATUS is " << WEXITSTATUS(status);
+
+  EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+}
+
+TEST(SessionManagerTest, StartSessionTest) {
+  MockChildJob* job = CreateTrivialMockJob();
+  login_manager::SessionManagerService manager(job);  // manager takes ownership
+  manager.set_exit_on_child_done(true);
 
   gboolean out;
   gchar email[] = "user@somewhere";
@@ -188,8 +237,6 @@ TEST(SessionManagerTest, StartSessionErrorTest) {
 
   EXPECT_CALL(*job, ShouldRun())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*job, Toggle())
-      .Times(0);
 
   gboolean out;
   gchar email[] = "user";
@@ -207,8 +254,6 @@ TEST(SessionManagerTest, StopSessionTest) {
 
   EXPECT_CALL(*job, ShouldRun())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*job, Toggle())
-      .Times(1);
 
   gboolean out;
   gchar nothing[] = "";
