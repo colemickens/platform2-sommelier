@@ -75,26 +75,38 @@ GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
 }
 
 
-GLuint SetupTexture(GLsizei width, GLsizei height) {
+GLuint SetupTexture(GLsizei size_log2) {
+  GLsizei size = 1 << size_log2;
   GLuint name = ~0;
   glGenTextures(1, &name);
   glBindTexture(GL_TEXTURE_2D, name);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-  unsigned char *pixels = new unsigned char[width * height * 4];
+  unsigned char *pixels = new unsigned char[size * size * 4];
   if (!pixels)
     return 0;
 
-  unsigned char *p = pixels;
-  for (int i = 0; i < width; i++) {
-    for (int j = 0; j < height; j++) {
-      for (int k = 0; k < 4; k++)
-        *p++ = i ^ j;
+  for (GLint level = 0; size > 0; level++, size /= 2) {
+    unsigned char *p = pixels;
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        *p++ = level %3 != 0 ? (i ^ j) << level : 0;
+        *p++ = level %3 != 1 ? (i ^ j) << level : 0;
+        *p++ = level %3 != 2 ? (i ^ j) << level : 0;
+        *p++ = 255;
+      }
     }
+    if (size == 1) {
+      unsigned char *p = pixels;
+      *p++ = 255;
+      *p++ = 255;
+      *p++ = 255;
+      *p++ = 255;
+    }
+    glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, size, size, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   }
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-               GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   delete[] pixels;
 
   assert(glGetError() == 0);
@@ -103,56 +115,94 @@ GLuint SetupTexture(GLsizei width, GLsizei height) {
 
 
 static void FSQuad(int iter);
-static void FillRateTest2(const char *name);
+static void FillRateTestNormal(const char *name, float coeff=1.f);
+static void FillRateTestBlendDepth(const char *name);
 
 void FillRateTest() {
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
   glDisable(GL_DEPTH_TEST);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  GLfloat buffer[8] = {
+  GLfloat buffer_vertex[8] = {
     -1.f, -1.f,
     1.f,  -1.f,
     -1.f, 1.f,
     1.f,  1.f,
   };
-  glVertexPointer(2, GL_FLOAT, 0, buffer);
-  glTexCoordPointer(2, GL_FLOAT, 0, buffer);
+  GLfloat buffer_texture[8] = {
+    0.f, 0.f,
+    1.f, 0.f,
+    0.f, 1.f,
+    1.f, 1.f,
+  };
   glEnableClientState(GL_VERTEX_ARRAY);
 
-  GLuint vbo = SetupVBO(GL_ARRAY_BUFFER, sizeof(buffer), buffer);
-  if (vbo)
+  GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
+                               sizeof(buffer_vertex), buffer_vertex);
+  if (vbo_vertex)
     printf("# Using VBO.\n");
-  glVertexPointer(2, GL_FLOAT, 0, vbo ? 0 : buffer);
-  glTexCoordPointer(2, GL_FLOAT, 0, vbo ? 0 : buffer);
+  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+
+  GLuint vbo_texture = SetupVBO(GL_ARRAY_BUFFER,
+                                sizeof(buffer_texture), buffer_texture);
+  glTexCoordPointer(2, GL_FLOAT, 0, vbo_texture ? 0 : buffer_texture);
 
   glColor4f(1.f, 0.f, 0.f, 1.f);
-  FillRateTest2("fill_solid");
+  FillRateTestNormal("fill_solid");
+  FillRateTestBlendDepth("fill_solid");
 
   glColor4f(1.f, 1.f, 1.f, 1.f);
   glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   glEnable(GL_TEXTURE_2D);
 
-  GLuint texture = SetupTexture(256, 256);
-  FillRateTest2("fill_tex_nearest");
+  GLuint texture = SetupTexture(9);
+  FillRateTestNormal("fill_tex_nearest");
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  FillRateTest2("fill_tex_bilinear");
+  FillRateTestNormal("fill_tex_bilinear");
 
-  glDeleteBuffers(1, &vbo);
+  // lod = 0.5
+  glScalef(0.7071f, 0.7071f, 1.f);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_NEAREST);
+  FillRateTestNormal("fill_tex_trilinear_nearest_05", 0.7071f * 0.7071f);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  FillRateTestNormal("fill_tex_trilinear_linear_05", 0.7071f * 0.7071f);
+
+  // lod = 0.4
+  glLoadIdentity();
+  glScalef(0.758f, 0.758f, 1.f);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  FillRateTestNormal("fill_tex_trilinear_linear_04", 0.758f * 0.758f);
+
+  // lod = 0.1
+  glLoadIdentity();
+  glScalef(0.933f, 0.933f, 1.f);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                  GL_LINEAR_MIPMAP_LINEAR);
+  FillRateTestNormal("fill_tex_trilinear_linear_01", 0.933f * 0.933f);
+
+  glDeleteBuffers(1, &vbo_vertex);
+  glDeleteBuffers(1, &vbo_texture);
   glDeleteTextures(1, &texture);
 }
 
 
-static void FillRateTest2(const char *name) {
+static void FillRateTestNormal(const char *name, float coeff) {
   float x = 0.f;
 
   {
     x = RunTest(FSQuad);
-    printf("mpixels_sec_%s_opaque: %g\n", name, g_width * g_height / x);
+    printf("mpixels_sec_%s: %g\n", name, coeff * g_width * g_height / x);
   }
+}
 
+static void FillRateTestBlendDepth(const char *name) {
+  float x = 0.f;
   {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_BLEND);
