@@ -193,34 +193,25 @@ void FillRateTest() {
 
 
 static void FillRateTestNormal(const char *name, float coeff) {
-  float x = 0.f;
-
-  {
-    x = RunTest(FSQuad);
-    printf("mpixels_sec_%s: %g\n", name, coeff * g_width * g_height / x);
-  }
+  float x = RunTest(FSQuad);
+  printf("mpixels_sec_%s: %g\n", name, coeff * g_width * g_height / x);
 }
 
 static void FillRateTestBlendDepth(const char *name) {
-  float x = 0.f;
-  {
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
-    x = RunTest(FSQuad);
-    printf("mpixels_sec_%s_blended: %g\n", name, g_width * g_height / x);
-    glDisable(GL_BLEND);
-  }
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
+  float x = RunTest(FSQuad);
+  printf("mpixels_sec_%s_blended: %g\n", name, g_width * g_height / x);
+  glDisable(GL_BLEND);
 
-  {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_NOTEQUAL);
-    x = RunTest(FSQuad);
-    printf("mpixels_sec_%s_depth_neq: %g\n", name, g_width * g_height / x);
-    glDepthFunc(GL_NEVER);
-    x = RunTest(FSQuad);
-    printf("mpixels_sec_%s_depth_never: %g\n", name, g_width * g_height / x);
-    glDisable(GL_DEPTH_TEST);
-  }
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_NOTEQUAL);
+  x = RunTest(FSQuad);
+  printf("mpixels_sec_%s_depth_neq: %g\n", name, g_width * g_height / x);
+  glDepthFunc(GL_NEVER);
+  x = RunTest(FSQuad);
+  printf("mpixels_sec_%s_depth_never: %g\n", name, g_width * g_height / x);
+  glDisable(GL_DEPTH_TEST);
 }
 
 
@@ -241,21 +232,35 @@ static void TriangleSetupTestFunc(int iter) {
   }
 }
 
+// Generates a tautological lattice.
+static void CreateLattice(GLuint **vertices, GLsizeiptr *size,
+                          int width, int height)
+{
+  GLuint *vptr = *vertices = new GLuint[2 * (width + 1) * (height + 1)];
+  for (int j = 0; j <= height; j++) {
+    for (int i = 0; i <= width; i++) {
+      *vptr++ = i;
+      *vptr++ = j;
+    }
+  }
+  *size = (vptr - *vertices) * sizeof(GLuint);
+}
+
 // Generates a mesh of 2*width*height triangles.  The ratio of front facing to
 // back facing triangles is culled_ratio/RAND_MAX.  Returns the number of
 // vertices in the mesh.
-static int CreateMesh(GLuint *indices,
+static int CreateMesh(GLuint **indices, GLsizeiptr *size,
                       int width, int height, int culled_ratio) {
   srand(0);
 
-  GLuint *iptr = indices;
+  GLuint *iptr = *indices = new GLuint[2 * 3 * (width * height)];
   const int swath_height = 4;
   for (int j = 0; j < height - swath_height; j += swath_height) {
     for (int i = 0; i < width; i++) {
       for (int j2 = 0; j2 < swath_height; j2++) {
-        GLuint first = (j+j2) * width + i;
+        GLuint first = (j + j2) * (width + 1) + i;
         GLuint second = first + 1;
-        GLuint third = first + width;
+        GLuint third = first + (width + 1);
         GLuint fourth = third + 1;
 
         bool flag = rand() < culled_ratio;
@@ -269,8 +274,9 @@ static int CreateMesh(GLuint *indices,
       }
     }
   }
+  *size = (iptr - *indices) * sizeof(GLuint);
 
-  return iptr - indices;
+  return iptr - *indices;
 }
 
 void TriangleSetupTest() {
@@ -281,44 +287,55 @@ void TriangleSetupTest() {
   GLint width = 64;
   GLint height = 64;
 
-  GLint *vertices = new GLint[2 * width * height];
-  GLint *vptr = vertices;
-  for (int j = 0; j < height; j++) {
-    for (int i = 0; i < width; i++) {
-      *vptr++ = i;
-      *vptr++ = j;
-    }
+  GLuint *vertices = NULL;
+  GLsizeiptr vertex_buffer_size = 0;
+  CreateLattice(&vertices, &vertex_buffer_size, width, height);
+  GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
+                                  vertex_buffer_size, vertices);
+  glVertexPointer(2, GL_INT, 0, vertex_buffer != 0 ? 0 : vertices);
+
+  GLuint *indices = NULL;
+  GLuint index_buffer = 0;
+  GLsizeiptr index_buffer_size = 0;
+
+  float x;
+  {
+    arg1 = CreateMesh(&indices, &index_buffer_size, width, height, 0);
+
+    glEnableClientState(GL_VERTEX_ARRAY);
+    index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
+                            index_buffer_size, indices);
+    arg2 = index_buffer ? 0 : indices;
+
+    x = RunTest(TriangleSetupTestFunc);
+    printf("mtri_sec_triangle_setup: %g\n", (arg1 / 3) / x);
+    glEnable(GL_CULL_FACE);
+    x = RunTest(TriangleSetupTestFunc);
+    printf("mtri_sec_triangle_setup_all_culled: %g\n", (arg1 / 3) / x);
+
+    delete[] indices;
+    glDeleteBuffers(1, &index_buffer);
   }
 
-  GLuint vbo_v = SetupVBO(GL_ARRAY_BUFFER,
-                          (vptr - vertices) * sizeof(GLint), vertices);
-  glVertexPointer(2, GL_INT, 0, vbo_v != 0 ? 0 : vertices);
-  glEnableClientState(GL_VERTEX_ARRAY);
+  {
+    glColor4f(0.f, 1.f, 1.f, 1.f);
+    arg1 = CreateMesh(&indices, &index_buffer_size, width, height,
+                      RAND_MAX / 2);
 
-  GLuint *indices = new GLuint[2 * 3 * (width * height)];
+    glEnableClientState(GL_VERTEX_ARRAY);
+    index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
+                            index_buffer_size, indices);
+    arg2 = index_buffer ? 0 : indices;
 
-  arg1 = CreateMesh(indices, width, height, 0);
-  GLuint vbo_i = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
-                          arg1*sizeof(GLuint), indices);
-  arg2 = vbo_i ? 0 : indices;
+    float x = RunTest(TriangleSetupTestFunc);
+    printf("mtri_sec_triangle_setup_half_culled: %g\n", (arg1 / 3) / x);
 
-  float x = RunTest(TriangleSetupTestFunc);
-  printf("mtri_sec_triangle_setup: %g\n", (arg1 / 3) / x);
-  glEnable(GL_CULL_FACE);
-  x = RunTest(TriangleSetupTestFunc);
-  printf("mtri_sec_triangle_setup_all_culled: %g\n", (arg1 / 3) / x);
-  glDeleteBuffers(1, &vbo_i);
+    delete[] indices;
+    glDeleteBuffers(1, &index_buffer);
+  }
 
-  arg1 = CreateMesh(indices, width, height, RAND_MAX / 2);
-  vbo_i = SetupVBO(GL_ELEMENT_ARRAY_BUFFER, arg1*sizeof(GLuint), indices);
-  arg2 = vbo_i ? 0 : indices;
-  x = RunTest(TriangleSetupTestFunc);
-  printf("mtri_sec_triangle_setup_half_culled: %g\n", (arg1 / 3) / x);
-
+  glDeleteBuffers(1, &vertex_buffer);
   delete[] vertices;
-  delete[] indices;
-  glDeleteBuffers(1, &vbo_v);
-  glDeleteBuffers(1, &vbo_i);
 }
 
 
