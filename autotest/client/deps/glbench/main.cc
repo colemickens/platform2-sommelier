@@ -233,17 +233,18 @@ static void TriangleSetupTestFunc(int iter) {
 }
 
 // Generates a tautological lattice.
-static void CreateLattice(GLuint **vertices, GLsizeiptr *size,
+static void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
+                          GLfloat size_x, GLfloat size_y,
                           int width, int height)
 {
-  GLuint *vptr = *vertices = new GLuint[2 * (width + 1) * (height + 1)];
+  GLfloat *vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
   for (int j = 0; j <= height; j++) {
     for (int i = 0; i <= width; i++) {
-      *vptr++ = i;
-      *vptr++ = j;
+      *vptr++ = i * size_x;
+      *vptr++ = j * size_y;
     }
   }
-  *size = (vptr - *vertices) * sizeof(GLuint);
+  *size = (vptr - *vertices) * sizeof(GLfloat);
 }
 
 // Generates a mesh of 2*width*height triangles.  The ratio of front facing to
@@ -255,7 +256,7 @@ static int CreateMesh(GLuint **indices, GLsizeiptr *size,
 
   GLuint *iptr = *indices = new GLuint[2 * 3 * (width * height)];
   const int swath_height = 4;
-  for (int j = 0; j < height - swath_height; j += swath_height) {
+  for (int j = 0; j < height; j += swath_height) {
     for (int i = 0; i < width; i++) {
       for (int j2 = 0; j2 < swath_height; j2++) {
         GLuint first = (j + j2) * (width + 1) + i;
@@ -281,18 +282,18 @@ static int CreateMesh(GLuint **indices, GLsizeiptr *size,
 
 void TriangleSetupTest() {
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
-  glScalef(1.f / g_width, 1.f / g_height, 1.f);
 
   // Larger meshes make this test too slow for devices that do 1 mtri/sec.
   GLint width = 64;
   GLint height = 64;
 
-  GLuint *vertices = NULL;
+  GLfloat *vertices = NULL;
   GLsizeiptr vertex_buffer_size = 0;
-  CreateLattice(&vertices, &vertex_buffer_size, width, height);
+  CreateLattice(&vertices, &vertex_buffer_size, 1.f / g_width, 1.f / g_height,
+                width, height);
   GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
                                   vertex_buffer_size, vertices);
-  glVertexPointer(2, GL_INT, 0, vertex_buffer != 0 ? 0 : vertices);
+  glVertexPointer(2, GL_FLOAT, 0, vertex_buffer != 0 ? 0 : vertices);
 
   GLuint *indices = NULL;
   GLuint index_buffer = 0;
@@ -318,6 +319,8 @@ void TriangleSetupTest() {
   }
 
   {
+    glEnable(GL_CULL_FACE);
+
     glColor4f(0.f, 1.f, 1.f, 1.f);
     arg1 = CreateMesh(&indices, &index_buffer_size, width, height,
                       RAND_MAX / 2);
@@ -327,7 +330,7 @@ void TriangleSetupTest() {
                             index_buffer_size, indices);
     arg2 = index_buffer ? 0 : indices;
 
-    float x = RunTest(TriangleSetupTestFunc);
+    x = RunTest(TriangleSetupTestFunc);
     printf("mtri_sec_triangle_setup_half_culled: %g\n", (arg1 / 3) / x);
 
     delete[] indices;
