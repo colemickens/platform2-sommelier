@@ -17,6 +17,7 @@ SOURCES += glx_stuff.cc
 endif
 
 OBJS = $(SOURCES:.cc=.o)
+DEPS = $(SOURCES:.cc=.d)
 
 .PHONY: all clean
 
@@ -24,14 +25,13 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 
-main.o: main.h
-bench.o: main.h
-
 clean:
-	$(RM) $(TARGET) $(OBJS)
+	$(RM) $(TARGET) $(OBJS) $(DEPS)
 
 $(TARGET):
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)
 
 $(OBJS): %.o: %.cc
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@ -MMD
+
+-include $(DEPS)
