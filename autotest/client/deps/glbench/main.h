@@ -12,10 +12,17 @@
 #include <GLES/gl.h>
 #else
 #include <GL/gl.h>
-extern PFNGLGENBUFFERSPROC glGenBuffers;
-extern PFNGLBINDBUFFERPROC glBindBuffer;
-extern PFNGLBUFFERDATAPROC glBufferData;
-extern PFNGLDELETEBUFFERSPROC glDeleteBuffers;
+
+#define LIST_PROC_FUNCTIONS(F) \
+    F(glGenBuffers, PFNGLGENBUFFERSPROC) \
+    F(glBindBuffer, PFNGLBINDBUFFERPROC) \
+    F(glBufferData, PFNGLBUFFERDATAPROC) \
+    F(glDeleteBuffers, PFNGLDELETEBUFFERSPROC)
+
+#define F(fun, type) extern type fun;
+LIST_PROC_FUNCTIONS(F)
+#undef F
+
 #endif
 
 inline uint64_t GetUTime() {

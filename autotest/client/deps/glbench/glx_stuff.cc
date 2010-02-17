@@ -9,10 +9,9 @@
 
 GLXContext glx_context = NULL;
 
-PFNGLGENBUFFERSPROC glGenBuffers = 0;
-PFNGLBINDBUFFERPROC glBindBuffer = 0;
-PFNGLBUFFERDATAPROC glBufferData = 0;
-PFNGLDELETEBUFFERSPROC glDeleteBuffers = 0;
+#define F(fun, type) type fun = NULL;
+LIST_PROC_FUNCTIONS(F)
+#undef F
 
 bool Init() {
   return XlibInit();
@@ -54,14 +53,10 @@ bool InitContext() {
                       "GL_ARB_vertex_buffer_object"))
     return false;
 
-  glGenBuffers = reinterpret_cast<PFNGLGENBUFFERSPROC>(
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>("glGenBuffers")));
-  glBindBuffer = reinterpret_cast<PFNGLBINDBUFFERPROC>(
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>("glBindBuffer")));
-  glBufferData = reinterpret_cast<PFNGLBUFFERDATAPROC>(
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>("glBufferData")));
-  glDeleteBuffers = reinterpret_cast<PFNGLDELETEBUFFERSPROC>(
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>("glDeleteBuffers")));
+#define F(fun, type) fun = reinterpret_cast<type>( \
+    glXGetProcAddress(reinterpret_cast<const GLubyte *>(#fun)));
+  LIST_PROC_FUNCTIONS(F)
+#undef F
 
   return true;
 }
