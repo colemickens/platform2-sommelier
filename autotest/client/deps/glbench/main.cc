@@ -5,15 +5,32 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "main.h"
 
 
-float RunTest(BenchFunc f) {
+const unsigned int enabled_tests_max = 8;
+const char *enabled_tests[enabled_tests_max+1] = {NULL};
+int seconds_to_run = 0;
+
+void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
   float slope;
   int64_t bias;
+
+  if (enabled_tests[0]) {
+    bool found = false;
+    for (const char **e = enabled_tests; *e; e++)
+      if (strstr(name, *e)) {
+        found = true;
+        break;
+      }
+    if (!found)
+      return;
+  }
+
   Bench(f, &slope, &bias);
-  return slope;
+  printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
 }
 
 static int arg1 = 0;
@@ -27,8 +44,7 @@ void SwapTestFunc(int iter) {
 }
 
 void SwapTest() {
-  float x = RunTest(SwapTestFunc);
-  printf("us_swap_swap: %g\n", x);
+  RunTest(SwapTestFunc, "us_swap_swap", 1., false);
 }
 
 
@@ -44,24 +60,22 @@ void ClearTestFunc(int iter) {
 
 void ClearTest() {
   arg1 = GL_COLOR_BUFFER_BIT;
-  float x = RunTest(ClearTestFunc);
-  printf("mpixels_sec_clear_color: %g\n", g_width * g_height / x);
+  RunTest(ClearTestFunc, "mpixels_sec_clear_color", g_width * g_height, true);
 
   arg1 = GL_DEPTH_BUFFER_BIT;
-  x = RunTest(ClearTestFunc);
-  printf("mpixels_sec_clear_depth: %g\n", g_width * g_height / x);
+  RunTest(ClearTestFunc, "mpixels_sec_clear_depth", g_width * g_height, true);
 
   arg1 = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT;
-  x = RunTest(ClearTestFunc);
-  printf("mpixels_sec_clear_colordepth: %g\n", g_width * g_height / x);
+  RunTest(ClearTestFunc, "mpixels_sec_clear_colordepth",
+          g_width * g_height, true);
 
   arg1 = GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-  x = RunTest(ClearTestFunc);
-  printf("mpixels_sec_clear_depthstencil: %g\n", g_width * g_height / x);
+  RunTest(ClearTestFunc, "mpixels_sec_clear_depthstencil",
+          g_width * g_height, true);
 
   arg1 = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
-  x = RunTest(ClearTestFunc);
-  printf("mpixels_sec_clear_colordepthstencil: %g\n", g_width * g_height / x);
+  RunTest(ClearTestFunc, "mpixels_sec_clear_colordepthstencil",
+          g_width * g_height, true);
 }
 
 
@@ -139,8 +153,8 @@ void FillRateTest() {
 
   GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
                                sizeof(buffer_vertex), buffer_vertex);
-  if (vbo_vertex)
-    printf("# Using VBO.\n");
+  if (!vbo_vertex)
+    printf("# Not Using VBO!\n");
   glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
 
   GLuint vbo_texture = SetupVBO(GL_ARRAY_BUFFER,
@@ -193,24 +207,29 @@ void FillRateTest() {
 
 
 static void FillRateTestNormal(const char *name, float coeff) {
-  float x = RunTest(FSQuad);
-  printf("mpixels_sec_%s: %g\n", name, coeff * g_width * g_height / x);
+  const int buffer_len = 64;
+  char buffer[buffer_len];
+  snprintf(buffer, buffer_len, "mpixels_sec_%s", name);
+  RunTest(FSQuad, buffer, coeff * g_width * g_height, true);
 }
 
 static void FillRateTestBlendDepth(const char *name) {
+  const int buffer_len = 64;
+  char buffer[buffer_len];
+
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
-  float x = RunTest(FSQuad);
-  printf("mpixels_sec_%s_blended: %g\n", name, g_width * g_height / x);
+  snprintf(buffer, buffer_len, "mpixels_sec_%s_blended", name);
+  RunTest(FSQuad, buffer, g_width * g_height, true);
   glDisable(GL_BLEND);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
-  x = RunTest(FSQuad);
-  printf("mpixels_sec_%s_depth_neq: %g\n", name, g_width * g_height / x);
+  snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_neq", name);
+  RunTest(FSQuad, buffer, g_width * g_height, true);
   glDepthFunc(GL_NEVER);
-  x = RunTest(FSQuad);
-  printf("mpixels_sec_%s_depth_never: %g\n", name, g_width * g_height / x);
+  snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_never", name);
+  RunTest(FSQuad, buffer, g_width * g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
 
@@ -299,7 +318,6 @@ void TriangleSetupTest() {
   GLuint index_buffer = 0;
   GLsizeiptr index_buffer_size = 0;
 
-  float x;
   {
     arg1 = CreateMesh(&indices, &index_buffer_size, width, height, 0);
 
@@ -308,11 +326,10 @@ void TriangleSetupTest() {
                             index_buffer_size, indices);
     arg2 = index_buffer ? 0 : indices;
 
-    x = RunTest(TriangleSetupTestFunc);
-    printf("mtri_sec_triangle_setup: %g\n", (arg1 / 3) / x);
+    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup", arg1 / 3, true);
     glEnable(GL_CULL_FACE);
-    x = RunTest(TriangleSetupTestFunc);
-    printf("mtri_sec_triangle_setup_all_culled: %g\n", (arg1 / 3) / x);
+    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup_all_culled",
+            arg1 / 3, true);
 
     delete[] indices;
     glDeleteBuffers(1, &index_buffer);
@@ -330,8 +347,8 @@ void TriangleSetupTest() {
                             index_buffer_size, indices);
     arg2 = index_buffer ? 0 : indices;
 
-    x = RunTest(TriangleSetupTestFunc);
-    printf("mtri_sec_triangle_setup_half_culled: %g\n", (arg1 / 3) / x);
+    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup_half_culled",
+            arg1 / 3, true);
 
     delete[] indices;
     glDeleteBuffers(1, &index_buffer);
@@ -342,7 +359,32 @@ void TriangleSetupTest() {
 }
 
 
+// TODO: use proper command line parsing library.
+static void ParseArgs(int argc, char *argv[]) {
+  const char **enabled_tests_ptr = enabled_tests;
+  bool test_name_arg = false;
+  bool duration_arg = false;
+  for (int i = 0; i < argc; i++) {
+    if (test_name_arg) {
+      test_name_arg = false;
+      *enabled_tests_ptr++ = argv[i];
+      if (enabled_tests_ptr - enabled_tests >= enabled_tests_max)
+        break;
+    } else if (duration_arg) {
+      duration_arg = false;
+      seconds_to_run = atoi(argv[i]);
+    } else if (strcmp("-t", argv[i]) == 0) {
+      test_name_arg = true;
+    } else if (strcmp("-d", argv[i]) == 0) {
+      duration_arg = true;
+    }
+  }
+  *enabled_tests_ptr++ = NULL;
+}
+
+
 int main(int argc, char *argv[]) {
+  ParseArgs(argc, argv);
   if (!Init()) {
     printf("# Failed to initialize.\n");
     return 1;
@@ -355,11 +397,14 @@ int main(int argc, char *argv[]) {
     TriangleSetupTest,
   };
 
-  for (unsigned int i = 0; i < sizeof(test) / sizeof(*test); i++) {
-    InitContext();
-    test[i]();
-    DestroyContext();
-  }
+  uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
+  do {
+    for (unsigned int i = 0; i < sizeof(test) / sizeof(*test); i++) {
+      InitContext();
+      test[i]();
+      DestroyContext();
+    }
+  } while (GetUTime() < done);
 
   return 0;
 }
