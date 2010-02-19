@@ -10,7 +10,7 @@
 #include "main.h"
 
 
-const unsigned int enabled_tests_max = 8;
+const int enabled_tests_max = 8;
 const char *enabled_tests[enabled_tests_max+1] = {NULL};
 int seconds_to_run = 0;
 
