@@ -14,10 +14,23 @@
 #include <GL/gl.h>
 
 #define LIST_PROC_FUNCTIONS(F) \
-    F(glGenBuffers, PFNGLGENBUFFERSPROC) \
+    F(glAttachShader, PFNGLATTACHSHADERPROC) \
     F(glBindBuffer, PFNGLBINDBUFFERPROC) \
     F(glBufferData, PFNGLBUFFERDATAPROC) \
-    F(glDeleteBuffers, PFNGLDELETEBUFFERSPROC)
+    F(glCompileShader, PFNGLCOMPILESHADERPROC) \
+    F(glCreateProgram, PFNGLCREATEPROGRAMPROC) \
+    F(glCreateShader, PFNGLCREATESHADERPROC) \
+    F(glDeleteBuffers, PFNGLDELETEBUFFERSPROC) \
+    F(glDeleteProgram, PFNGLDELETEPROGRAMPROC) \
+    F(glDeleteShader, PFNGLDELETESHADERPROC) \
+    F(glEnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC) \
+    F(glGenBuffers, PFNGLGENBUFFERSPROC) \
+    F(glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC) \
+    F(glGetInfoLogARB, PFNGLGETPROGRAMINFOLOGPROC) \
+    F(glLinkProgram, PFNGLLINKPROGRAMPROC) \
+    F(glShaderSource, PFNGLSHADERSOURCEPROC) \
+    F(glUseProgram, PFNGLUSEPROGRAMPROC) \
+    F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC)
 
 #define F(fun, type) extern type fun;
 LIST_PROC_FUNCTIONS(F)

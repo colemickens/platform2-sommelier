@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "main.h"
+#include "shaders.h"
 
 
 const int enabled_tests_max = 8;
@@ -128,7 +129,7 @@ GLuint SetupTexture(GLsizei size_log2) {
 }
 
 
-static void FSQuad(int iter);
+static void DrawArraysTestFunc(int iter);
 static void FillRateTestNormal(const char *name, float coeff=1.f);
 static void FillRateTestBlendDepth(const char *name);
 
@@ -210,7 +211,7 @@ static void FillRateTestNormal(const char *name, float coeff) {
   const int buffer_len = 64;
   char buffer[buffer_len];
   snprintf(buffer, buffer_len, "mpixels_sec_%s", name);
-  RunTest(FSQuad, buffer, coeff * g_width * g_height, true);
+  RunTest(DrawArraysTestFunc, buffer, coeff * g_width * g_height, true);
 }
 
 static void FillRateTestBlendDepth(const char *name) {
@@ -220,21 +221,21 @@ static void FillRateTestBlendDepth(const char *name) {
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_blended", name);
-  RunTest(FSQuad, buffer, g_width * g_height, true);
+  RunTest(DrawArraysTestFunc, buffer, g_width * g_height, true);
   glDisable(GL_BLEND);
 
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_NOTEQUAL);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_neq", name);
-  RunTest(FSQuad, buffer, g_width * g_height, true);
+  RunTest(DrawArraysTestFunc, buffer, g_width * g_height, true);
   glDepthFunc(GL_NEVER);
   snprintf(buffer, buffer_len, "mpixels_sec_%s_depth_never", name);
-  RunTest(FSQuad, buffer, g_width * g_height, true);
+  RunTest(DrawArraysTestFunc, buffer, g_width * g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
 
 
-static void FSQuad(int iter) {
+static void DrawArraysTestFunc(int iter) {
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
   for (int i = 0; i < iter-1; ++i) {
@@ -243,7 +244,7 @@ static void FSQuad(int iter) {
 }
 
 
-static void TriangleSetupTestFunc(int iter) {
+static void DrawElementsTestFunc(int iter) {
   glDrawElements(GL_TRIANGLES, arg1, GL_UNSIGNED_INT, arg2);
   glFlush();
   for (int i = 0 ; i < iter-1; ++i) {
@@ -313,6 +314,7 @@ void TriangleSetupTest() {
   GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
                                   vertex_buffer_size, vertices);
   glVertexPointer(2, GL_FLOAT, 0, vertex_buffer != 0 ? 0 : vertices);
+  glEnableClientState(GL_VERTEX_ARRAY);
 
   GLuint *indices = NULL;
   GLuint index_buffer = 0;
@@ -321,43 +323,96 @@ void TriangleSetupTest() {
   {
     arg1 = CreateMesh(&indices, &index_buffer_size, width, height, 0);
 
-    glEnableClientState(GL_VERTEX_ARRAY);
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
                             index_buffer_size, indices);
     arg2 = index_buffer ? 0 : indices;
 
-    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup", arg1 / 3, true);
+    RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup", arg1 / 3, true);
     glEnable(GL_CULL_FACE);
-    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup_all_culled",
+    RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup_all_culled",
             arg1 / 3, true);
+    glDisable(GL_CULL_FACE);
 
-    delete[] indices;
     glDeleteBuffers(1, &index_buffer);
+    delete[] indices;
   }
 
   {
-    glEnable(GL_CULL_FACE);
-
     glColor4f(0.f, 1.f, 1.f, 1.f);
     arg1 = CreateMesh(&indices, &index_buffer_size, width, height,
                       RAND_MAX / 2);
 
-    glEnableClientState(GL_VERTEX_ARRAY);
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
                             index_buffer_size, indices);
     arg2 = index_buffer ? 0 : indices;
 
-    RunTest(TriangleSetupTestFunc, "mtri_sec_triangle_setup_half_culled",
+    glEnable(GL_CULL_FACE);
+    RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup_half_culled",
             arg1 / 3, true);
 
-    delete[] indices;
     glDeleteBuffers(1, &index_buffer);
+    delete[] indices;
   }
 
   glDeleteBuffers(1, &vertex_buffer);
   delete[] vertices;
 }
 
+
+void ShaderTest() {
+  GLint width = 64;
+  GLint height = 64;
+
+  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+
+  GLfloat *vertices = NULL;
+  GLsizeiptr vertex_buffer_size = 0;
+  CreateLattice(&vertices, &vertex_buffer_size, 1.f / g_width, 1.f / g_height,
+                width, height);
+  GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
+                                  vertex_buffer_size, vertices);
+
+  GLuint *indices = NULL;
+  GLuint index_buffer = 0;
+  GLsizeiptr index_buffer_size = 0;
+
+  // Everything will be back-face culled.
+  arg1 = CreateMesh(&indices, &index_buffer_size, width, height, 0);
+  index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
+                          index_buffer_size, indices);
+
+  glEnable(GL_CULL_FACE);
+
+  GLuint vertex_buffers[8];
+  for (GLuint i = 0; i < sizeof(vertex_buffers)/sizeof(vertex_buffers[0]); i++)
+    vertex_buffers[i] = vertex_buffer;
+
+  ShaderProgram program = AttributeFetchShaderProgram(1, vertex_buffers);
+  RunTest(DrawElementsTestFunc,
+          "mvtx_sec_attribute_fetch_shader", arg1, true);
+  DeleteShaderProgram(program);
+
+  AttributeFetchShaderProgram(2, vertex_buffers);
+  RunTest(DrawElementsTestFunc,
+          "mvtx_sec_attribute_fetch_shader_2_attr", arg1, true);
+  DeleteShaderProgram(program);
+
+  AttributeFetchShaderProgram(4, vertex_buffers);
+  RunTest(DrawElementsTestFunc,
+          "mvtx_sec_attribute_fetch_shader_4_attr", arg1, true);
+  DeleteShaderProgram(program);
+
+  AttributeFetchShaderProgram(8, vertex_buffers);
+  RunTest(DrawElementsTestFunc,
+          "mvtx_sec_attribute_fetch_shader_8_attr", arg1, true);
+  DeleteShaderProgram(program);
+
+  glDeleteBuffers(1, &index_buffer);
+  delete[] indices;
+
+  glDeleteBuffers(1, &vertex_buffer);
+  delete[] vertices;
+}
 
 // TODO: use proper command line parsing library.
 static void ParseArgs(int argc, char *argv[]) {
@@ -395,6 +450,7 @@ int main(int argc, char *argv[]) {
     ClearTest,
     FillRateTest,
     TriangleSetupTest,
+    ShaderTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
