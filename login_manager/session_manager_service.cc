@@ -105,6 +105,7 @@ SessionManagerService::SessionManagerService(ChildJob* child)
     : child_job_(child),
       exit_on_child_done_(false),
       child_pid_(0),
+      session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
       session_started_(false) {
@@ -114,6 +115,7 @@ SessionManagerService::SessionManagerService(ChildJob* child)
 
 SessionManagerService::~SessionManagerService() {
   g_main_loop_unref(main_loop_);
+  g_object_unref(session_manager_);
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
@@ -134,10 +136,11 @@ bool SessionManagerService::Initialize() {
 }
 
 bool SessionManagerService::Reset() {
-  session_manager_.reset(NULL);  // Make sure the destructor is run first.
-  session_manager_.reset(
+  if (session_manager_)
+    g_object_unref(session_manager_);
+  session_manager_ =
       reinterpret_cast<gobject::SessionManager*>(
-          g_object_new(gobject::session_manager_get_type(), NULL)));
+          g_object_new(gobject::session_manager_get_type(), NULL));
 
   // Allow references to this instance.
   session_manager_->service = this;

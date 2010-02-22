@@ -68,7 +68,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     return kSessionManagerInterface;
   }
   virtual GObject* service_object() const {
-    return G_OBJECT(session_manager_.get());
+    return G_OBJECT(session_manager_);
   }
 
 
@@ -155,7 +155,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   bool exit_on_child_done_;
   pid_t child_pid_;
 
-  scoped_ptr<gobject::SessionManager> session_manager_;
+  gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
 
   scoped_ptr<SystemUtils> system_;
