@@ -392,17 +392,17 @@ void ShaderTest() {
           "mvtx_sec_attribute_fetch_shader", arg1, true);
   DeleteShaderProgram(program);
 
-  AttributeFetchShaderProgram(2, vertex_buffers);
+  program = AttributeFetchShaderProgram(2, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_2_attr", arg1, true);
   DeleteShaderProgram(program);
 
-  AttributeFetchShaderProgram(4, vertex_buffers);
+  program = AttributeFetchShaderProgram(4, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_4_attr", arg1, true);
   DeleteShaderProgram(program);
 
-  AttributeFetchShaderProgram(8, vertex_buffers);
+  program = AttributeFetchShaderProgram(8, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_8_attr", arg1, true);
   DeleteShaderProgram(program);
@@ -458,6 +458,9 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < sizeof(test) / sizeof(*test); i++) {
       InitContext();
       test[i]();
+      GLenum err = glGetError();
+      if (err != 0)
+        printf("# glGetError returned non-zero: 0x%x", err);
       DestroyContext();
     }
   } while (GetUTime() < done);
