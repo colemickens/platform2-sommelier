@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "base/logging.h"
 
 #include "main.h"
 #include "shaders.h"
@@ -124,7 +125,7 @@ GLuint SetupTexture(GLsizei size_log2) {
   }
   delete[] pixels;
 
-  assert(glGetError() == 0);
+  CHECK(glGetError() == 0);
   return name;
 }
 
@@ -276,6 +277,9 @@ static int CreateMesh(GLuint **indices, GLsizeiptr *size,
 
   GLuint *iptr = *indices = new GLuint[2 * 3 * (width * height)];
   const int swath_height = 4;
+
+  CHECK(width % swath_height == 0 && height % swath_height == 0);
+
   for (int j = 0; j < height; j += swath_height) {
     for (int i = 0; i < width; i++) {
       for (int j2 = 0; j2 < swath_height; j2++) {
@@ -359,7 +363,7 @@ void TriangleSetupTest() {
 }
 
 
-void ShaderTest() {
+void AttributeFetchShaderTest() {
   GLint width = 64;
   GLint height = 64;
 
@@ -414,6 +418,53 @@ void ShaderTest() {
   delete[] vertices;
 }
 
+
+void VaryingsShaderTest() {
+  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+
+  const int c = 4;
+  GLfloat *vertices = NULL;
+  GLsizeiptr vertex_buffer_size = 0;
+  CreateLattice(&vertices, &vertex_buffer_size, 1.f / c, 1.f / c, c, c);
+  GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
+                                  vertex_buffer_size, vertices);
+
+  GLuint *indices = NULL;
+  GLuint index_buffer = 0;
+  GLsizeiptr index_buffer_size = 0;
+
+  arg1 = CreateMesh(&indices, &index_buffer_size, c, c, 0);
+  index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
+                          index_buffer_size, indices);
+
+  ShaderProgram program = VaryingsShaderProgram(1, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_varyings_shader_1", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  program = VaryingsShaderProgram(2, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_varyings_shader_2", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  program = VaryingsShaderProgram(4, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_varyings_shader_4", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  program = VaryingsShaderProgram(8, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_varyings_shader_8", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  glDeleteBuffers(1, &index_buffer);
+  delete[] indices;
+
+  glDeleteBuffers(1, &vertex_buffer);
+  delete[] vertices;
+}
+
+
 // TODO: use proper command line parsing library.
 static void ParseArgs(int argc, char *argv[]) {
   const char **enabled_tests_ptr = enabled_tests;
@@ -450,7 +501,8 @@ int main(int argc, char *argv[]) {
     ClearTest,
     FillRateTest,
     TriangleSetupTest,
-    ShaderTest,
+    AttributeFetchShaderTest,
+    VaryingsShaderTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
