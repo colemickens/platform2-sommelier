@@ -301,24 +301,26 @@ void SessionManagerService::HandleChildExit(GPid pid,
   // If I could wait for descendants here, I would.  Instead, I kill them.
   kill(-pid, SIGKILL);
 
-  DLOG(INFO) << "exited waitpid.\n"
-             << "  WIFSIGNALED is " << WIFSIGNALED(status) << "\n"
-             << "  WTERMSIG is " << WTERMSIG(status) << "\n"
-             << "  WIFEXITED is " << WIFEXITED(status) << "\n"
-             << "  WEXITSTATUS is " << WEXITSTATUS(status);
-  if (WIFEXITED(status)) {
+  DLOG(INFO) << "Handling child process exit.";
+  if (WIFSIGNALED(status)) {
+    DLOG(INFO) << "  Exited with signal " << WTERMSIG(status);
+  } else if (WIFEXITED(status)) {
+    DLOG(INFO) << "  Exited with exit code " << WEXITSTATUS(status);
     CHECK(WEXITSTATUS(status) != SetUidExecJob::kCantSetuid);
     CHECK(WEXITSTATUS(status) != SetUidExecJob::kCantExec);
+  } else {
+    DLOG(INFO) << "  Exited...somehow, without an exit code or a signal??";
   }
 
   bool exited_clean = WIFEXITED(status) && WEXITSTATUS(status) == 0;
 
-  // If the child _ever_ exits, we want to start it up again.
+  // If the child _ever_ exits uncleanly, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   if (exited_clean) {
     ServiceShutdown(data);
   } else if (manager->should_run_child()) {
     // TODO(cmasone): deal with fork failing in RunChild()
+    LOG(INFO) << "Running the child again...";
     manager->set_child_pid(manager->RunChild());
   } else {
     LOG(INFO) << "Should NOT run";
