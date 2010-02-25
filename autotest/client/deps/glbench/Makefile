@@ -8,6 +8,8 @@ CXXFLAGS = -g -Wall -Werror -I$(GCLIENT_ROOT)/src/third_party/chrome/files
 LDFLAGS = -lGL -lX11 -L$(GCLIENT_ROOT)/src/third_party/chrome -lbase -lrt
 TARGET = ../gl_Bench
 
+GCLIENT_ROOT ?= ../../../../../../../..
+
 ifdef USE_EGL
 CXXFLAGS += -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
 SOURCES += egl_stuff.cc

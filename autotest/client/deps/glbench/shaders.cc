@@ -15,8 +15,16 @@ static void print_info_log(int obj)
   char info_log[4096];
   int length;
   glGetInfoLogARB(obj, sizeof(info_log)-1, &length, info_log);
-  if (length)
-    printf("Log: %s\n", info_log);
+  char *p = info_log;
+  while (p < info_log + length) {
+    char *newline = strchr(p, '\n');
+    if (newline)
+      *newline = '\0';
+    printf("# Log: %s\n", p);
+    if (!newline)
+      break;
+    p = newline + 1;
+  }
 }
 
 static ShaderProgram InitShaderProgram(const char *vertex_src,
@@ -117,7 +125,6 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
     glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
     glEnableVertexAttribArray(attribute_index);
   }
-  CHECK(glGetError() == 0);
 
   return program;
 }
@@ -223,6 +230,18 @@ const char *fragment_shader_8_varying =
 "  gl_FragColor =" V1 "+" V2 "+" V3 "+" V4 "+" V5 "+" V6 "+" V7 "+" V8 ";"
 "}";
 
+const char *fragment_shader_ddx =
+"varying vec4 v1;"
+"void main() {"
+"  gl_FragColor = vec4(ddx(" V1 ".x), 0., 0., 1.);"
+"}";
+
+const char *fragment_shader_ddy =
+"varying vec4 v1;"
+"void main() {"
+"  gl_FragColor = vec4(ddy(" V1 ".y), 0., 0., 1.);"
+"}";
+
 #undef V1
 #undef V2
 #undef V3
@@ -263,7 +282,19 @@ ShaderProgram VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer) {
   glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
   glEnableVertexAttribArray(attribute_index);
 
-  CHECK(glGetError() == 0);
+  return program;
+}
+
+
+ShaderProgram DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {
+  ShaderProgram program =
+    InitShaderProgram(vertex_shader_1_varying,
+                      ddx ? fragment_shader_ddx : fragment_shader_ddy);
+
+  int attribute_index = glGetAttribLocation(program, "c");
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
 
   return program;
 }

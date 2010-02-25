@@ -31,8 +31,15 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
       return;
   }
 
-  Bench(f, &slope, &bias);
-  printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
+  GLenum err = glGetError();
+  if (err != 0) {
+    printf("# %s failed, glGetError returned 0x%x.\n", name, err);
+    // float() in python will happily parse Nan.
+    printf("%s: Nan\n", name);
+  } else {
+    Bench(f, &slope, &bias);
+    printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
+  }
 }
 
 static int arg1 = 0;
@@ -124,8 +131,6 @@ GLuint SetupTexture(GLsizei size_log2) {
                  GL_RGBA, GL_UNSIGNED_BYTE, pixels);
   }
   delete[] pixels;
-
-  CHECK(glGetError() == 0);
   return name;
 }
 
@@ -419,7 +424,7 @@ void AttributeFetchShaderTest() {
 }
 
 
-void VaryingsShaderTest() {
+void VaryingsAndDdxyShaderTest() {
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
   const int c = 4;
@@ -455,6 +460,16 @@ void VaryingsShaderTest() {
   program = VaryingsShaderProgram(8, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_varyings_shader_8", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  program = DdxDdyShaderProgram(true, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_ddx_shader", g_width * g_height, true);
+  DeleteShaderProgram(program);
+
+  program = DdxDdyShaderProgram(false, vertex_buffer);
+  RunTest(DrawElementsTestFunc,
+          "mpixels_sec_ddy_shader", g_width * g_height, true);
   DeleteShaderProgram(program);
 
   glDeleteBuffers(1, &index_buffer);
@@ -502,7 +517,7 @@ int main(int argc, char *argv[]) {
     FillRateTest,
     TriangleSetupTest,
     AttributeFetchShaderTest,
-    VaryingsShaderTest,
+    VaryingsAndDdxyShaderTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;

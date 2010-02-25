@@ -11,5 +11,6 @@ void DeleteShaderProgram(ShaderProgram program);
 ShaderProgram AttributeFetchShaderProgram(int attribute_count,
                                           GLuint vertex_buffers[]);
 ShaderProgram VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer);
+ShaderProgram DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer);
 
 #endif // BENCH_GL_SHADERS_H_
