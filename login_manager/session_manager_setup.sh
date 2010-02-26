@@ -54,6 +54,10 @@ while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
+if [ -f /root/.forget_usernames ] ; then
+  rm -f "${DATA_DIR}/Local State"
+fi
+
 exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
     $CHROME --enable-gview \
 	    --enable-sync \
