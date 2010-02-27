@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_CHILD_JOB_H_
 
 #include <gtest/gtest.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <base/basictypes.h>
@@ -25,6 +26,12 @@ class ChildJob {
   virtual ~ChildJob() {}
 
   virtual bool ShouldRun() = 0;
+
+  // ShouldStop() is different from !ShouldRun().  If ShouldStop() returns
+  // true, this means that the parent should tear everything down.
+  virtual bool ShouldStop() = 0;
+
+  virtual void RecordTime() = 0;
 
   // Wraps up all the logic of what the job is meant to do.  Should NOT return.
   virtual void Run() = 0;
@@ -49,7 +56,11 @@ class SetUidExecJob : public ChildJob {
   static const int kCantSetgroups;
   static const int kCantExec;
 
+  static const int kRestartWindow;
+
   bool ShouldRun();
+  bool ShouldStop();
+  void RecordTime();
   void Run();
   void Toggle() { include_login_flag_ = !include_login_flag_; }
 
@@ -85,6 +96,7 @@ class SetUidExecJob : public ChildJob {
   uid_t desired_uid_;
   bool include_login_flag_;  // This class' piece of toggleable state.
   bool set_uid_;
+  time_t last_start_;
 
   FRIEND_TEST(SetUidExecJobTest, FlagAppendTest);
   FRIEND_TEST(SetUidExecJobTest, NoFlagAppendTest);

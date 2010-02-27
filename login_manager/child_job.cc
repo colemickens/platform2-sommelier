@@ -11,6 +11,7 @@
 #include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <base/basictypes.h>
@@ -28,6 +29,9 @@ const int SetUidExecJob::kCantSetgid = 128;
 const int SetUidExecJob::kCantSetgroups = 129;
 const int SetUidExecJob::kCantExec = 255;
 
+// static
+const int SetUidExecJob::kRestartWindow = 1;
+
 SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
                              FileChecker* checker,  // Takes ownership.
                              const bool add_flag)
@@ -36,7 +40,8 @@ SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
         num_args_passed_in_(0),
         desired_uid_(0),
         include_login_flag_(add_flag),
-        set_uid_(false) {
+        set_uid_(false),
+        last_start_(0) {
     PopulateArgv(command_line);
   }
 
@@ -109,6 +114,14 @@ int SetUidExecJob::SetIDs() {
 
 bool SetUidExecJob::ShouldRun() {
   return !checker_->exists();
+}
+
+bool SetUidExecJob::ShouldStop() {
+  return (time(NULL) - last_start_ < kRestartWindow);
+}
+
+void SetUidExecJob::RecordTime() {
+  time(&last_start_);
 }
 
 void SetUidExecJob::Run() {

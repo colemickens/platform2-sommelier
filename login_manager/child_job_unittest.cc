@@ -74,4 +74,29 @@ TEST(SetUidExecJobTest, NoFlagAppendTest) {
   EXPECT_TRUE(data.end() == it) << *it;
 }
 
+TEST(SetUidExecJobTest, ShouldStopTest) {
+  const char *my_argv[] = { "zero",
+                            "one",
+                            "two" };
+  const int my_argc = 3;
+  CommandLine cl(my_argc, my_argv);
+
+  SetUidExecJob job(&cl, NULL, false);
+  job.RecordTime();
+  EXPECT_TRUE(job.ShouldStop());
+}
+
+TEST(SetUidExecJobTest, ShouldNotStopTest) {
+  const char *my_argv[] = { "zero",
+                            "one",
+                            "two" };
+  const int my_argc = 3;
+  CommandLine cl(my_argc, my_argv);
+
+  SetUidExecJob job(&cl, NULL, false);
+  job.RecordTime();
+  sleep(1);
+  EXPECT_FALSE(job.ShouldStop());
+}
+
 }  // namespace login_manager

@@ -12,11 +12,13 @@
 namespace login_manager {
 class MockChildJob : public ChildJob {
  public:
-   MockChildJob() { }
-   ~MockChildJob() { }
-   MOCK_METHOD0(ShouldRun, bool());
-   MOCK_METHOD0(Toggle, void());
-   MOCK_METHOD0(Run, void());
+  MockChildJob() { }
+  ~MockChildJob() { }
+  MOCK_METHOD0(ShouldRun, bool());
+  MOCK_METHOD0(ShouldStop, bool());
+  MOCK_METHOD0(RecordTime, void());
+  MOCK_METHOD0(Toggle, void());
+  MOCK_METHOD0(Run, void());
 };
 }  // namespace login_manager
 

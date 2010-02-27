@@ -198,6 +198,7 @@ bool SessionManagerService::Run() {
 }
 
 int SessionManagerService::RunChild() {
+  child_job_->RecordTime();
   int pid = fork();
   if (pid == 0) {
     // In the child.
@@ -316,7 +317,7 @@ void SessionManagerService::HandleChildExit(GPid pid,
 
   // If the child _ever_ exits uncleanly, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  if (exited_clean) {
+  if (exited_clean || manager->should_stop_child()) {
     ServiceShutdown(data);
   } else if (manager->should_run_child()) {
     // TODO(cmasone): deal with fork failing in RunChild()

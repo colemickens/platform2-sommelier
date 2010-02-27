@@ -80,6 +80,10 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // Returns true if |child_job_| believes it should be run.
   bool should_run_child() { return child_job_->ShouldRun(); }
+  // Returns true if |child_job_| believes it should be stopped.
+  // If the child believes it should be stopped (as opposed to not run anymore)
+  // we actually exit the Service as well.
+  bool should_stop_child() { return child_job_->ShouldStop(); }
 
   // Fork, then call child_job_->Run() in the child and set a
   // babysitter in the parent's glib default context that calls

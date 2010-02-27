@@ -77,6 +77,21 @@ TEST(SessionManagerTest, CleanExitChild) {
   manager.Run();
 }
 
+TEST(SessionManagerTest, MustStopChild) {
+  MockChildJob *job = new MockChildJob;
+  login_manager::SessionManagerService manager(job);  // manager takes ownership
+
+  EXPECT_CALL(*job, ShouldRun())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*job, ShouldStop())
+      .Times(1)
+      .WillOnce(Return(true));
+  ON_CALL(*job, Run())
+      .WillByDefault(Invoke(BadExit));
+
+  manager.Run();
+}
+
 TEST(SessionManagerTest, MultiRunTest) {
   MockChildJob* job = new MockChildJob;
   login_manager::SessionManagerService manager(job);  // manager takes ownership

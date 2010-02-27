@@ -61,6 +61,7 @@ fi
 exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
     $CHROME --enable-gview \
 	    --enable-sync \
+            --log-level=0 \
 	    --main-menu-url="http://welcome-cros.appspot.com/menu" \
             --no-first-run \
             --user-data-dir=/home/$USER \
