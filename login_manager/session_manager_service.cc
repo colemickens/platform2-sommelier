@@ -114,8 +114,10 @@ SessionManagerService::SessionManagerService(ChildJob* child)
 }
 
 SessionManagerService::~SessionManagerService() {
-  g_main_loop_unref(main_loop_);
-  g_object_unref(session_manager_);
+  if (main_loop_)
+    g_main_loop_unref(main_loop_);
+  if (session_manager_)
+    g_object_unref(session_manager_);
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
@@ -145,9 +147,8 @@ bool SessionManagerService::Reset() {
   // Allow references to this instance.
   session_manager_->service = this;
 
-  if (main_loop_) {
-    ::g_main_loop_unref(main_loop_);
-  }
+  if (main_loop_)
+    g_main_loop_unref(main_loop_);
   main_loop_ = g_main_loop_new(NULL, false);
   if (!main_loop_) {
     LOG(ERROR) << "Failed to create main loop";

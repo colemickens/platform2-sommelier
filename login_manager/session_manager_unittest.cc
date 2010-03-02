@@ -45,7 +45,7 @@ TEST(SessionManagerTest, NoLoopTest) {
   manager.Run();
 }
 
-static void BadExit() { exit(1); }  // compatible with void Run()
+static void BadExit() { _exit(1); }  // compatible with void Run()
 TEST(SessionManagerTest, BadExitChild) {
   MockChildJob *job = new MockChildJob;
   login_manager::SessionManagerService manager(job);  // manager takes ownership
@@ -55,22 +55,28 @@ TEST(SessionManagerTest, BadExitChild) {
       .Times(2)
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
+  EXPECT_CALL(*job, ShouldStop())
+      .Times(1)
+      .WillOnce(Return(false));
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
   manager.Run();
 }
 
-static void CleanExit() { exit(0); }
+static void CleanExit() { _exit(0); }
 TEST(SessionManagerTest, CleanExitChild) {
   MockChildJob* job = new MockChildJob;
   login_manager::SessionManagerService manager(job);  // manager takes ownership
   manager.set_exit_on_child_done(true);
 
   EXPECT_CALL(*job, ShouldRun())
-      .Times(2)
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
@@ -83,6 +89,8 @@ TEST(SessionManagerTest, MustStopChild) {
 
   EXPECT_CALL(*job, ShouldRun())
       .WillOnce(Return(true));
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
   EXPECT_CALL(*job, ShouldStop())
       .Times(1)
       .WillOnce(Return(true));
@@ -102,8 +110,13 @@ TEST(SessionManagerTest, MultiRunTest) {
       .WillOnce(Return(true))
       .WillOnce(Return(true))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(*job, RecordTime())
+      .Times(2);
+  EXPECT_CALL(*job, ShouldStop())
+      .Times(2)
+      .WillRepeatedly(Return(false));
   ON_CALL(*job, Run())
-      .WillByDefault(Invoke(CleanExit));
+      .WillByDefault(Invoke(BadExit));
 
   manager.Run();
 }
@@ -207,6 +220,8 @@ TEST(SessionManagerTest, SessionStartedSigTermTest) {
     login_manager::SessionManagerService* manager =
         new login_manager::SessionManagerService(job);
 
+    EXPECT_CALL(*job, RecordTime())
+        .Times(1);
     ON_CALL(*job, Run())
         .WillByDefault(Invoke(Sleep));
 
