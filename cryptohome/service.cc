@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <base/logging.h>
 #include <chromeos/dbus/dbus.h>
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
@@ -63,7 +64,7 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
 }
 
 gboolean Service::Mount(gchar *userid,
-                        gchar *key, 
+                        gchar *key,
                         gboolean *OUT_done,
                         GError **error) {
   // Never double mount.
@@ -80,7 +81,7 @@ gboolean Service::Mount(gchar *userid,
   setenv("CHROMEOS_USER", userid, 1);
   FILE *mount = popen(mount_command(), "w");
   if (!mount) {
-    // TODO(wad) *error = 
+    // TODO(wad) *error =
     return FALSE;
   }
   fprintf(mount, "%s", key);
@@ -95,8 +96,8 @@ gboolean Service::Mount(gchar *userid,
 
 gboolean Service::Unmount(gboolean *OUT_done, GError **error) {
   // Check for a mount first.
-  if (IsMounted(OUT_done, error) && *OUT_done) {
-    *OUT_done = FALSE;
+  if (IsMounted(OUT_done, error) && !*OUT_done) {
+    *OUT_done = TRUE;  // unmounting nothing works fine.
     return TRUE;
   }
 

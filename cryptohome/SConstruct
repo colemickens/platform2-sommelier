@@ -13,13 +13,17 @@ dbus_client_builder = Builder(action = 'dbus-binding-tool --mode=glib-client --p
 env.Append(BUILDERS = { 'DbusServerBindings' : dbus_server_builder,
                         'DbusClientBindings' : dbus_client_builder})
 # setup sources
-serverlib_sources = env.Split("""service.cc
+serverlib_sources = env.Split("""authenticator.cc
                                  interface.cc
+				 service.cc
+				 username_passhash.cc
                               """)
 server_sources = env.Split("""cryptohomed.cc""")
 example_sources = env.Split("""example_client.cc
                             """)
-test_sources = env.Split("""service_unittest.cc
+test_sources = env.Split("""authenticator_unittest.cc
+	                    service_unittest.cc
+			    username_passhash_unittest.cc
                             cryptohome_testrunner.cc
                          """)
 
@@ -29,7 +33,7 @@ env.Append(
     CPPPATH=['.', '..'],
     CPPFLAGS=['-pie', '-fstack-protector-all',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
-    LIBS = ['base', 'chromeos', 'rt'],
+    LIBS = ['base', 'chromeos', 'rt', 'crypto'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)
@@ -41,6 +45,7 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
   if os.environ.has_key(key):
     env['ENV'][key] = os.environ[key]
 
+env.Append(LIBPATH = ['.'])
 env.ParseConfig('pkg-config --cflags --libs gobject-2.0 dbus-1 dbus-glib-1')
 
 env_serverlib = env.Clone()
@@ -48,15 +53,14 @@ env_serverlib.DbusServerBindings('bindings/server.h', 'cryptohome.xml')
 env_serverlib.SharedLibrary('cryptohome_service', serverlib_sources)
 
 env_server = env.Clone()
-env_server.Append(LIBPATH = ['.'], LIBS=['cryptohome_service'])
+env_server.Append(LIBS=['cryptohome_service'])
 env_server.Program('cryptohomed', server_sources)
 
 # TODO(wad) we'll probably want a separate runner for client roundtrip tests
 env_tests = env.Clone()
-env_tests.Append(LIBPATH = ['.'], LIBS=['cryptohome_service', 'gtest'])
+env_tests.Append(LIBS=['cryptohome_service', 'gtest'])
 env_tests.Program('cryptohome_testrunner', test_sources)
 
 env_client = env.Clone()
 env_client.DbusClientBindings('bindings/client.h', 'cryptohome.xml')
-env_client.Append(LIBPATH = ['.'])
 env_client.Program('example_client', example_sources)
