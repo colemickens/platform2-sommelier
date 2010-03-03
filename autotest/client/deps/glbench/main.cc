@@ -484,7 +484,7 @@ void VaryingsAndDdxyShaderTest() {
 
 void YuvToRgbShaderTest() {
   size_t size = 0;
-  GLuint texture = ~0;
+  GLuint texture[2];
   ShaderProgram program = 0;
   GLuint vertex_buffer = 0;
   GLfloat vertices[8] = {
@@ -493,6 +493,7 @@ void YuvToRgbShaderTest() {
     0.f, 1.0f,
     1.f, 1.0f,
   };
+  char evenodd[2] = {0, 255};
 
   char *pixels = static_cast<char *>(MmapFile(YUV2RGB_NAME, &size));
   if (!pixels) {
@@ -500,35 +501,49 @@ void YuvToRgbShaderTest() {
     goto done;
   }
   if (size != YUV2RGB_SIZE) {
-    printf("# Image file of wrong size, got %ld, expected %d\n",
-           size, YUV2RGB_SIZE);
+    printf("# Image file of wrong size, got %d, expected %d\n",
+           static_cast<int>(size), YUV2RGB_SIZE);
     goto done;
   }
 
-  glGenTextures(1, &texture);
-  glBindTexture(GL_TEXTURE_2D, texture);
+  glGenTextures(2, texture);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture[0]);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, YUV2RGB_WIDTH, YUV2RGB_HEIGHT,
                0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
 
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, texture[1]);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2, 1,
+               0, GL_LUMINANCE, GL_UNSIGNED_BYTE, evenodd);
+
   glViewport(-YUV2RGB_WIDTH, -(YUV2RGB_HEIGHT*2/3),
              YUV2RGB_WIDTH*2, (YUV2RGB_HEIGHT*2/3)*2);
   vertex_buffer = SetupVBO(GL_ARRAY_BUFFER, sizeof(vertices), vertices);
 
-  program = YuvToRgbShaderProgram(vertex_buffer,
+  program = YuvToRgbShaderProgram(1, vertex_buffer,
                                   YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
-  if (program == 0) {
+  if (program)
+    FillRateTestNormal("yuv_shader_1");
+  else
     printf("# Could not set up YUV shader.\n");
-    goto done;
-  }
+  DeleteShaderProgram(program);
 
-  FillRateTestNormal("yuv_shader_1");
+  program = YuvToRgbShaderProgram(2, vertex_buffer,
+                                  YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
+  if (program)
+    FillRateTestNormal("yuv_shader_2");
+  else
+    printf("# Could not set up YUV shader.\n");
 
 done:
-  glDeleteTextures(1, &texture);
-  glDeleteBuffers(1, &vertex_buffer);
   DeleteShaderProgram(program);
+  glDeleteTextures(2, texture);
+  glDeleteBuffers(1, &vertex_buffer);
   munmap(pixels, size);
 }
 

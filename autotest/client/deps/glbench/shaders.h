@@ -12,7 +12,7 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
                                           GLuint vertex_buffers[]);
 ShaderProgram VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer);
 ShaderProgram DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer);
-ShaderProgram YuvToRgbShaderProgram(GLuint vertex_buffer,
+ShaderProgram YuvToRgbShaderProgram(int type, GLuint vertex_buffer,
                                     int width, int height);
 
 #endif // BENCH_GL_SHADERS_H_

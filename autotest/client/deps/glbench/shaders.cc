@@ -302,32 +302,45 @@ ShaderProgram DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {
   return program;
 }
 
-
-ShaderProgram YuvToRgbShaderProgram(GLuint vertex_buffer,
+ShaderProgram YuvToRgbShaderProgram(int type, GLuint vertex_buffer,
                                     int width, int height) {
-  size_t size = 0;
-  char *yuv_to_rgb_shader = static_cast<char *>(
-      MmapFile(YUV2RGB_SHADER, &size));
-  if (!yuv_to_rgb_shader)
-    return 0;
+  const char *vertex = type == 1 ? YUV2RGB_VERTEX_1 : YUV2RGB_VERTEX_2; 
+  const char *fragment = type == 1 ? YUV2RGB_FRAGMENT_1 : YUV2RGB_FRAGMENT_2;
+  size_t size_vertex = 0;
+  size_t size_fragment = 0;
+  char *yuv_to_rgb_vertex = static_cast<char *>(
+      MmapFile(vertex, &size_vertex));
+  char *yuv_to_rgb_fragment = static_cast<char *>(
+      MmapFile(fragment, &size_fragment));
+  ShaderProgram program = 0;
 
-  ShaderProgram program = InitShaderProgram(vertex_shader_1_varying,
-                                            yuv_to_rgb_shader);
+  if (!yuv_to_rgb_fragment || !yuv_to_rgb_vertex)
+    goto done;
 
-  munmap(yuv_to_rgb_shader, size);
+  {
+    program = InitShaderProgram(yuv_to_rgb_vertex,
+                                yuv_to_rgb_fragment);
 
-  int imageWidthUniform = glGetUniformLocation(program, "imageWidth");
-  int imageHeightUniform = glGetUniformLocation(program, "imageHeight");
-  int textureSampler = glGetUniformLocation(program, "textureSampler");
+    int imageWidthUniform = glGetUniformLocation(program, "imageWidth");
+    int imageHeightUniform = glGetUniformLocation(program, "imageHeight");
+    int textureSampler = glGetUniformLocation(program, "textureSampler");
+    int evenLinesSampler = glGetUniformLocation(program, "paritySampler");
 
-  glUniform1f(imageWidthUniform, width);
-  glUniform1f(imageHeightUniform, height);
-  glUniform1i(textureSampler, 0);
+    glUniform1f(imageWidthUniform, width);
+    glUniform1f(imageHeightUniform, height);
+    glUniform1i(textureSampler, 0);
+    glUniform1i(evenLinesSampler, 1);
 
-  int attribute_index = glGetAttribLocation(program, "c");
-  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-  glEnableVertexAttribArray(attribute_index);
+    int attribute_index = glGetAttribLocation(program, "c");
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+    glEnableVertexAttribArray(attribute_index);
+    return program;
+  }
 
+
+done:
+  munmap(yuv_to_rgb_fragment, size_fragment);
+  munmap(yuv_to_rgb_fragment, size_vertex);
   return program;
 }

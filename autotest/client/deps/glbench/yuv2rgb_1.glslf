@@ -88,7 +88,7 @@ float getYPixel(vec2 position) {
 vec2 mapCommon(vec2 position, float planarOffset) {
   planarOffset += imageWidth * floor(position.y / 2.0) / 2.0 +
                   floor((imageWidth - 1.0 - position.x) / 2.0);
-  float x = floor(imageWidth - 1.0 - floor(fmod(planarOffset, imageWidth)));
+  float x = floor(imageWidth - 1.0 - floor(mod(planarOffset, imageWidth)));
   float y = floor(planarOffset / imageWidth);
   return vec2((x + 0.5) / imageWidth, (y + 0.5) / (1.5 * imageHeight));
 }
@@ -211,8 +211,8 @@ void main() {
    */
   vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
   mat4 conversion = mat4( 1.0,    1.0,    1.0,   0.0,
-                          0.0,   -0.344,  1.772, 0.0,  
-                          1.402, -0.714,  0.0,   0.0,  
+                          0.0,   -0.344,  1.772, 0.0,
+                          1.402, -0.714,  0.0,   0.0,
                          -0.701,  0.529, -0.886, 1.0);
 
   gl_FragColor = conversion * channels;
