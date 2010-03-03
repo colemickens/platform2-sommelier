@@ -27,8 +27,11 @@
     F(glGenBuffers, PFNGLGENBUFFERSPROC) \
     F(glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC) \
     F(glGetInfoLogARB, PFNGLGETPROGRAMINFOLOGPROC) \
+    F(glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC) \
     F(glLinkProgram, PFNGLLINKPROGRAMPROC) \
     F(glShaderSource, PFNGLSHADERSOURCEPROC) \
+    F(glUniform1f, PFNGLUNIFORM1FPROC) \
+    F(glUniform1i, PFNGLUNIFORM1IPROC) \
     F(glUseProgram, PFNGLUSEPROGRAMPROC) \
     F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC)
 
@@ -57,5 +60,7 @@ typedef void (*BenchFunc)(int iter);
 
 uint64_t TimeBench(BenchFunc func, int iter);
 void Bench(BenchFunc func, float *slope, int64_t *bias);
+
+void *MmapFile(const char *name, size_t *length);
 
 #endif  // BENCH_GL_MAIN_H_

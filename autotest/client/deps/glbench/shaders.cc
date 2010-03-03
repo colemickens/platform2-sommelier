@@ -3,11 +3,13 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <sys/mman.h>
 
 #include "base/logging.h"
 
 #include "main.h"
 #include "shaders.h"
+#include "yuv2rgb.h"
 
 
 static void print_info_log(int obj)
@@ -26,6 +28,7 @@ static void print_info_log(int obj)
     p = newline + 1;
   }
 }
+
 
 static ShaderProgram InitShaderProgram(const char *vertex_src,
                                        const char *fragment_src) {
@@ -290,6 +293,36 @@ ShaderProgram DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {
   ShaderProgram program =
     InitShaderProgram(vertex_shader_1_varying,
                       ddx ? fragment_shader_ddx : fragment_shader_ddy);
+
+  int attribute_index = glGetAttribLocation(program, "c");
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  return program;
+}
+
+
+ShaderProgram YuvToRgbShaderProgram(GLuint vertex_buffer,
+                                    int width, int height) {
+  size_t size = 0;
+  char *yuv_to_rgb_shader = static_cast<char *>(
+      MmapFile(YUV2RGB_SHADER, &size));
+  if (!yuv_to_rgb_shader)
+    return 0;
+
+  ShaderProgram program = InitShaderProgram(vertex_shader_1_varying,
+                                            yuv_to_rgb_shader);
+
+  munmap(yuv_to_rgb_shader, size);
+
+  int imageWidthUniform = glGetUniformLocation(program, "imageWidth");
+  int imageHeightUniform = glGetUniformLocation(program, "imageHeight");
+  int textureSampler = glGetUniformLocation(program, "textureSampler");
+
+  glUniform1f(imageWidthUniform, width);
+  glUniform1f(imageHeightUniform, height);
+  glUniform1i(textureSampler, 0);
 
   int attribute_index = glGetAttribLocation(program, "c");
   glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);

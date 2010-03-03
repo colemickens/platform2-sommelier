@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "base/logging.h"
 
 #include "main.h"
 #include "shaders.h"
+#include "yuv2rgb.h"
 
 
 const int enabled_tests_max = 8;
@@ -479,6 +482,77 @@ void VaryingsAndDdxyShaderTest() {
   delete[] vertices;
 }
 
+void YuvToRgbShaderTest() {
+  size_t size = 0;
+  GLuint texture = ~0;
+  ShaderProgram program = 0;
+  GLuint vertex_buffer = 0;
+  GLfloat vertices[8] = {
+    0.f, 0.f,
+    1.f, 0.f,
+    0.f, 1.0f,
+    1.f, 1.0f,
+  };
+
+  char *pixels = static_cast<char *>(MmapFile(YUV2RGB_NAME, &size));
+  if (!pixels) {
+    printf("# Could not open image file: %s\n", YUV2RGB_NAME);
+    goto done;
+  }
+  if (size != YUV2RGB_SIZE) {
+    printf("# Image file of wrong size, got %ld, expected %d\n",
+           size, YUV2RGB_SIZE);
+    goto done;
+  }
+
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, YUV2RGB_WIDTH, YUV2RGB_HEIGHT,
+               0, GL_LUMINANCE, GL_UNSIGNED_BYTE, pixels);
+
+  glViewport(-YUV2RGB_WIDTH, -(YUV2RGB_HEIGHT*2/3),
+             YUV2RGB_WIDTH*2, (YUV2RGB_HEIGHT*2/3)*2);
+  vertex_buffer = SetupVBO(GL_ARRAY_BUFFER, sizeof(vertices), vertices);
+
+  program = YuvToRgbShaderProgram(vertex_buffer,
+                                  YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
+  if (program == 0) {
+    printf("# Could not set up YUV shader.\n");
+    goto done;
+  }
+
+  FillRateTestNormal("yuv_shader_1");
+
+done:
+  glDeleteTextures(1, &texture);
+  glDeleteBuffers(1, &vertex_buffer);
+  DeleteShaderProgram(program);
+  munmap(pixels, size);
+}
+
+
+// TODO: get the path from a command line option or something.
+void *MmapFile(const char *name, size_t *length) {
+  int fd = open(name, O_RDONLY);
+  if (fd == -1)
+    return NULL;
+
+  struct stat sb;
+  CHECK(fstat(fd, &sb) != -1);
+
+  char *mmap_ptr = static_cast<char *>(
+    mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
+
+  close(fd);
+
+  if (mmap_ptr)
+    *length = sb.st_size;
+
+  return mmap_ptr;
+}
+
 
 // TODO: use proper command line parsing library.
 static void ParseArgs(int argc, char *argv[]) {
@@ -518,6 +592,7 @@ int main(int argc, char *argv[]) {
     TriangleSetupTest,
     AttributeFetchShaderTest,
     VaryingsAndDdxyShaderTest,
+    YuvToRgbShaderTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
