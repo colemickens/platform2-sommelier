@@ -38,6 +38,14 @@ class ChildJob {
 
   // If the ChildJob contains a toggleable piece of state, toggle it.
   virtual void Toggle() = 0;
+
+  virtual bool desired_uid_is_set() const {
+    return false;
+  }
+
+  virtual uid_t desired_uid() const {
+    return -1;
+  }
 };
 
 class SetUidExecJob : public ChildJob {
@@ -64,9 +72,17 @@ class SetUidExecJob : public ChildJob {
   void Run();
   void Toggle() { include_login_flag_ = !include_login_flag_; }
 
-  void set_uid(uid_t uid) {
+  bool desired_uid_is_set() const {
+    return desired_uid_is_set_;
+  }
+
+  uid_t desired_uid() const {
+    return desired_uid_is_set() ? desired_uid_ : -1;
+  }
+
+  void set_desired_uid(uid_t uid) {
     desired_uid_ = uid;
-    set_uid_ = true;
+    desired_uid_is_set_ = true;
   }
 
  protected:
@@ -79,7 +95,7 @@ class SetUidExecJob : public ChildJob {
   void PopulateArgv(const CommandLine* command_line);
   void UseLoginManagerFlagIfNeeded();
 
-  // If the caller has provided a UID with SetUid(), this method will:
+  // If the caller has provided a UID with set_desired_uid(), this method will:
   // 1) try to setgid to that uid
   // 2) try to setgroups to that uid
   // 3) try to setuid to that uid
@@ -95,7 +111,7 @@ class SetUidExecJob : public ChildJob {
 
   uid_t desired_uid_;
   bool include_login_flag_;  // This class' piece of toggleable state.
-  bool set_uid_;
+  bool desired_uid_is_set_;
   time_t last_start_;
 
   FRIEND_TEST(SetUidExecJobTest, FlagAppendTest);

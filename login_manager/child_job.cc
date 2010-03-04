@@ -40,7 +40,7 @@ SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
         num_args_passed_in_(0),
         desired_uid_(0),
         include_login_flag_(add_flag),
-        set_uid_(false),
+        desired_uid_is_set_(false),
         last_start_(0) {
     PopulateArgv(command_line);
   }
@@ -97,7 +97,7 @@ std::vector<std::string> SetUidExecJob::ExtractArgvForTest() {
 
 int SetUidExecJob::SetIDs() {
   int to_return = 0;
-  if (set_uid_) {
+  if (desired_uid_is_set_) {
     struct passwd* entry = getpwuid(desired_uid_);
     endpwent();
     if (initgroups(entry->pw_name, entry->pw_gid) == -1)

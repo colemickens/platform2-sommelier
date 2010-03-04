@@ -264,9 +264,18 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   }
   string email_lower = StringToLowerASCII(email_string);
   DLOG(INFO) << "emitting start-user-session for " << email_lower;
-  string command =
-      StringPrintf("/sbin/initctl emit start-user-session CHROMEOS_USER=%s &",
-                   email_lower.c_str());
+  string command;
+  if (child_job_->desired_uid_is_set()) {
+    command = StringPrintf("/sbin/initctl emit start-user-session "
+                           "CHROMEOS_USER=%s USER_ID=%d &",
+                           email_lower.c_str(), child_job_->desired_uid());
+  } else {
+    command = StringPrintf("/sbin/initctl emit start-user-session "
+                           "CHROMEOS_USER=%s &",
+                           email_lower.c_str());
+  }
+  // TODO(yusukes,cmasone): set DATA_DIR variable as well?
+
   *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
     child_job_->Toggle();

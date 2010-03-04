@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
                                            magic_chrome_file.c_str()),
                                        add_login_flag);
   if (set_uid)
-    child_job->set_uid(uid);
+    child_job->set_desired_uid(uid);
 
   ::g_type_init();
   login_manager::SessionManagerService manager(child_job);
