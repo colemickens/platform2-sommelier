@@ -18,7 +18,8 @@ using namespace chromeos;
 const char kFakeUser[] = "fakeuser";
 const char kFakeHash[] = "176c1e698b521373d77ce655d2e56a1d";
 
-const char kFakeSystemSalt[] = "012345678901234567890";
+// salt must have even number of characters.
+const char kFakeSystemSalt[] = "01234567890123456789";
 
 class UsernamePasshashTest : public ::testing::Test { };
 
@@ -32,7 +33,7 @@ TEST(UsernamePasshashTest, GetFullUsernameTest) {
   EXPECT_EQ(0, strcmp(username, full_username));
 }
 
-TEST(UsernamePasswordTest, GetPartialUsernameTest) {
+TEST(UsernamePasshashTest, GetPartialUsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
   UsernamePasshash up(username, strlen(username),
@@ -48,7 +49,7 @@ TEST(UsernamePasshashTest, GetObfuscatedUsernameTest) {
 
   Blob fake_salt(AsciiDecode(kFakeSystemSalt));
 
-  EXPECT_EQ("8a8b96d525830c10a92fdef2394136bd9b0d7217",
+  EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             up.GetObfuscatedUsername(fake_salt));
 }
 
