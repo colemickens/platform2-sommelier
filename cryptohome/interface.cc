@@ -47,7 +47,16 @@ void cryptohome_init(Cryptohome *self) { }
   } \
   return self->service->_NAME(args, error);
 
-gboolean cryptohome_is_mounted(Cryptohome *self, gboolean *out_is_mounted, GError **error) {
+gboolean cryptohome_check_key(Cryptohome *self,
+                              gchar *userid,
+                              gchar *key,
+                              gboolean *OUT_success,
+                              GError **error) {
+  CRYPTOHOME_WRAP_METHOD(CheckKey, userid, key, OUT_success);
+}
+gboolean cryptohome_is_mounted(Cryptohome *self,
+                               gboolean *out_is_mounted,
+                               GError **error) {
   CRYPTOHOME_WRAP_METHOD(IsMounted, out_is_mounted);
 }
 gboolean cryptohome_mount(Cryptohome *self,

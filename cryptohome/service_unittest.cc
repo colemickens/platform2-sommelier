@@ -9,8 +9,30 @@
 #include <glib.h>
 #include <gtest/gtest.h>
 
-namespace cryptohome {
+#include "cryptohome/mock_authenticator.h"
 
+namespace cryptohome {
+using ::testing::Return;
+using ::testing::_;
+
+TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
+  MockAuthenticator *auth = new MockAuthenticator;
+  EXPECT_CALL(*auth, Init())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*auth, TestAllMasterKeys(_))
+      .WillOnce(Return(true));
+
+  Service service;
+  service.Initialize();
+  service.set_authenticator(auth);  // takes ownership.
+  gboolean out = FALSE;
+  GError *error = NULL;
+
+  char user[] = "chromeos-user";
+  char key[] = "274146c6e8886a843ddfea373e2dc71b";
+  EXPECT_EQ(TRUE, service.CheckKey(user, key, &out, &error));
+  EXPECT_EQ(TRUE, out);
+}
 
 TEST(ServiceInterfaceTests, NopWrappers) {
   Service service;

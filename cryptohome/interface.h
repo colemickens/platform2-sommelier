@@ -31,6 +31,11 @@ struct CryptohomeClass { GObjectClass parent_class; };
 GType cryptohome_get_type();  // defined by G_DEFINE_TYPE
 
 // Interface function prototypes which wrap service.
+gboolean cryptohome_check_key(Cryptohome *self,
+                              gchar *userid,
+                              gchar *key,
+                              gboolean *OUT_success,
+                              GError **error);
 gboolean cryptohome_is_mounted(Cryptohome *self,
                                gboolean *out_is_mounted,
                                GError **error);
@@ -45,4 +50,3 @@ gboolean cryptohome_unmount(Cryptohome *self,
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_
-

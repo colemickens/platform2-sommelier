@@ -58,7 +58,7 @@ env_server.Program('cryptohomed', server_sources)
 
 # TODO(wad) we'll probably want a separate runner for client roundtrip tests
 env_tests = env.Clone()
-env_tests.Append(LIBS=['cryptohome_service', 'gtest'])
+env_tests.Append(LIBS=['cryptohome_service', 'gtest', 'gmock'])
 env_tests.Program('cryptohome_testrunner', test_sources)
 
 env_client = env.Clone()

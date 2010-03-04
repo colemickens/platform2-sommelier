@@ -1,14 +1,16 @@
 // Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "cryptohome/interface.h"
 #include "cryptohome/service.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <base/logging.h>
 #include <chromeos/dbus/dbus.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "cryptohome/authenticator.h"
+#include "cryptohome/interface.h"
+#include "cryptohome/username_passhash.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -26,11 +28,17 @@ const char *Service::kDefaultIsMountedCommand =
   "/bin/mount | /bin/grep -q /dev/mapper/cryptohome";
 
 Service::Service() : loop_(NULL),
+                     auth_(new Authenticator),
                      cryptohome_(NULL),
                      mount_command_(kDefaultMountCommand),
                      unmount_command_(kDefaultUnmountCommand),
                      is_mounted_command_(kDefaultIsMountedCommand) { }
-Service::~Service() { }
+Service::~Service() {
+  if (loop_)
+    g_main_loop_unref(loop_);
+  if (cryptohome_)
+    g_object_unref(cryptohome_);
+}
 
 bool Service::Initialize() {
   // Install the type-info for the service with dbus.
@@ -40,9 +48,10 @@ bool Service::Initialize() {
 }
 
 bool Service::Reset() {
-  cryptohome_.reset(NULL);  // Make sure the destructor is run first.
-  cryptohome_.reset(reinterpret_cast<gobject::Cryptohome*>(
-                     g_object_new(gobject::cryptohome_get_type(), NULL)));
+  if (cryptohome_)
+    g_object_unref(cryptohome_);
+  cryptohome_ = reinterpret_cast<gobject::Cryptohome*>(
+      g_object_new(gobject::cryptohome_get_type(), NULL));
   // Allow references to this instance.
   cryptohome_->service = this;
 
@@ -55,6 +64,19 @@ bool Service::Reset() {
     return false;
   }
   return true;
+}
+
+gboolean Service::CheckKey(gchar *userid,
+                           gchar *key,
+                           gboolean *OUT_success,
+                           GError **error) {
+  UsernamePasshash creds(userid, strlen(userid), key, strlen(key));
+  if (!auth_->Init()) {
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  *OUT_success = auth_->TestAllMasterKeys(creds);
+  return TRUE;
 }
 
 gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {

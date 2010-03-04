@@ -10,9 +10,11 @@
     <method name="IsMounted">
       <arg type="b" name="is_mounted" direction="out" />
     </method>
-    <!--method name="CheckKey">
+    <method name="CheckKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
       <arg type="b" name="success" direction="out" />
-    </method-->
+    </method>
     <method name="Mount">
       <!-- long term, this should just be the hash -->
       <arg type="s" name="username" direction="in" />

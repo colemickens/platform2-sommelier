@@ -13,6 +13,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 
+#include "cryptohome/authenticator.h"
+
 namespace cryptohome {
 namespace gobject {
 struct Cryptohome;
@@ -46,7 +48,7 @@ class Service : public chromeos::dbus::AbstractDbusService {
   virtual const char *service_interface() const
     { return kCryptohomeInterface; }
   virtual GObject* service_object() const {
-    return G_OBJECT(cryptohome_.get());
+    return G_OBJECT(cryptohome_);
   }
   // Command-related accesors
   virtual const char *mount_command() const
@@ -59,6 +61,7 @@ class Service : public chromeos::dbus::AbstractDbusService {
     { return is_mounted_command_; }
   virtual void set_is_mounted_command(const char *cmd)
     { is_mounted_command_ = cmd; }
+  virtual void set_authenticator(Authenticator *auth) { auth_.reset(auth); }
 
   static const char *kDefaultMountCommand;
   static const char *kDefaultUnmountCommand;
@@ -66,6 +69,10 @@ class Service : public chromeos::dbus::AbstractDbusService {
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
+  virtual gboolean CheckKey(gchar *user,
+                            gchar *key,
+                            gboolean *OUT_success,
+                            GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,
@@ -78,7 +85,9 @@ class Service : public chromeos::dbus::AbstractDbusService {
 
  private:
   GMainLoop *loop_;
-  scoped_ptr<gobject::Cryptohome> cryptohome_;
+  scoped_ptr<Authenticator> auth_;
+  // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
+  gobject::Cryptohome *cryptohome_;
   const char *mount_command_;
   const char *unmount_command_;
   const char *is_mounted_command_;

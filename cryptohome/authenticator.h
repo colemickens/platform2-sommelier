@@ -32,14 +32,29 @@ class Authenticator {
   //
   explicit Authenticator(const std::string &shadow_root);
 
-  ~Authenticator();
+  virtual ~Authenticator();
 
   // Loads the system salt, and anything else that might need to be done.
   // This *must* be called before other methods.
   //
   // Returns false if the initialization fails for some reason.  May also
   // spew LOG messages on failure.
-  bool Init();
+  virtual bool Init();
+
+  // Enumerates all of the master keys (master.0, master.1, etc), looking
+  // for ones that can be successfully decrypted with the given credentials.
+  //
+  // Parameters
+  //  credentials - An object representing the user's credentials.
+  //
+  virtual bool TestAllMasterKeys(const Credentials &credentials) const;
+
+ private:
+  std::string shadow_root_;
+  chromeos::Blob system_salt_;
+
+  bool LoadFileBytes(const FilePath &path, chromeos::Blob *blob) const;
+  bool LoadFileString(const FilePath &path, std::string *str) const;
 
   // Returns the system salt
   chromeos::Blob GetSystemSalt() const;
@@ -78,21 +93,6 @@ class Authenticator {
   //
   bool TestOneMasterKey(const FilePath &master_key_file,
                         const std::string &hashed_password) const;
-
-  // Enumerates all of the master keys (master.0, master.1, etc), looking
-  // for that can be successfully decrypted with the given credentials.
-  //
-  // Parameters
-  //  credentials - An object representing the user's credentials.
-  //
-  bool TestAllMasterKeys(const Credentials &credentials) const;
-
- private:
-  std::string shadow_root_;
-  chromeos::Blob system_salt_;
-
-  bool LoadFileBytes(const FilePath &path, chromeos::Blob *blob) const;
-  bool LoadFileString(const FilePath &path, std::string *str) const;
 
   DISALLOW_COPY_AND_ASSIGN(Authenticator);
 };
