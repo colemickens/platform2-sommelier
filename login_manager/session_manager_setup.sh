@@ -54,8 +54,12 @@ while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
+SKIP_OOBE=
+# For test automation.  If file exists, do not remember last username and skip
+# out-of-box-experience windows except the login window
 if [ -f /root/.forget_usernames ] ; then
   rm -f "${DATA_DIR}/Local State"
+  SKIP_OOBE="--login-screen login"
 fi
 
 exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
@@ -66,4 +70,5 @@ exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
             --no-first-run \
             --user-data-dir=/home/$USER \
             --profile=user \
-            "--cookie-pipe=$COOKIE_PIPE"
+            "--cookie-pipe=$COOKIE_PIPE" \
+            ${SKIP_OOBE}
