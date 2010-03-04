@@ -6,7 +6,7 @@
 
 # A script to install from removable media to hard disk.
 
-if [ "$USER" != "chronos" ]
+if [ "$USER_ID" -ne 1000 ]
 then
   echo ""
   echo "Note: You must be the 'chronos' user to run this script."
