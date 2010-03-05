@@ -14,6 +14,7 @@ namespace cryptohome {
 extern const char *kCryptohomeInterface;
 extern const char *kCryptohomeServicePath;
 extern const char *kCryptohomeServiceName;
+extern const char *kCryptohomeCheckKey;
 extern const char *kCryptohomeIsMounted;
 extern const char *kCryptohomeMount;
 extern const char *kCryptohomeUnmount;

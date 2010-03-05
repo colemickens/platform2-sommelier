@@ -12,6 +12,7 @@ namespace cryptohome {
 const char *kCryptohomeInterface = "org.chromium.CryptohomeInterface";
 const char *kCryptohomeServiceName = "org.chromium.Cryptohome";
 const char *kCryptohomeServicePath = "/org/chromium/Cryptohome";
+const char *kCryptohomeCheckKey = "CheckKey";
 const char *kCryptohomeIsMounted = "IsMounted";
 const char *kCryptohomeMount = "Mount";
 const char *kCryptohomeUnmount = "Unmount";
