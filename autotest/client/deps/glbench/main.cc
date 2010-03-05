@@ -40,8 +40,12 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
     // float() in python will happily parse Nan.
     printf("%s: Nan\n", name);
   } else {
-    Bench(f, &slope, &bias);
-    printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
+    if (Bench(f, &slope, &bias)) {
+      printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
+    } else {
+      printf("# %s is too slow, returning zero.\n", name);
+      printf("%s: 0\n", name);
+    }
   }
 }
 
@@ -482,7 +486,8 @@ void VaryingsAndDdxyShaderTest() {
   delete[] vertices;
 }
 
-void YuvToRgbShaderTest() {
+
+void YuvToRgbShaderTestHelper(int type, const char *name) {
   size_t size = 0;
   GLuint texture[2];
   ShaderProgram program = 0;
@@ -525,18 +530,10 @@ void YuvToRgbShaderTest() {
              YUV2RGB_WIDTH*2, (YUV2RGB_HEIGHT*2/3)*2);
   vertex_buffer = SetupVBO(GL_ARRAY_BUFFER, sizeof(vertices), vertices);
 
-  program = YuvToRgbShaderProgram(1, vertex_buffer,
+  program = YuvToRgbShaderProgram(type, vertex_buffer,
                                   YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
   if (program)
-    FillRateTestNormal("yuv_shader_1");
-  else
-    printf("# Could not set up YUV shader.\n");
-  DeleteShaderProgram(program);
-
-  program = YuvToRgbShaderProgram(2, vertex_buffer,
-                                  YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
-  if (program)
-    FillRateTestNormal("yuv_shader_2");
+    FillRateTestNormal(name);
   else
     printf("# Could not set up YUV shader.\n");
 
@@ -545,6 +542,14 @@ done:
   glDeleteTextures(2, texture);
   glDeleteBuffers(1, &vertex_buffer);
   munmap(pixels, size);
+}
+
+void YuvToRgbShaderTest1() {
+  YuvToRgbShaderTestHelper(1, "yuv_shader_1");
+}
+
+void YuvToRgbShaderTest2() {
+  YuvToRgbShaderTestHelper(2, "yuv_shader_2");
 }
 
 
@@ -607,7 +612,8 @@ int main(int argc, char *argv[]) {
     TriangleSetupTest,
     AttributeFetchShaderTest,
     VaryingsAndDdxyShaderTest,
-    YuvToRgbShaderTest,
+    YuvToRgbShaderTest1,
+    YuvToRgbShaderTest2,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
@@ -617,7 +623,7 @@ int main(int argc, char *argv[]) {
       test[i]();
       GLenum err = glGetError();
       if (err != 0)
-        printf("# glGetError returned non-zero: 0x%x", err);
+        printf("# glGetError returned non-zero: 0x%x\n", err);
       DestroyContext();
     }
   } while (GetUTime() < done);

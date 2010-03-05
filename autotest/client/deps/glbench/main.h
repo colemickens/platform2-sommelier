@@ -59,7 +59,12 @@ void SwapBuffers();
 typedef void (*BenchFunc)(int iter);
 
 uint64_t TimeBench(BenchFunc func, int iter);
-void Bench(BenchFunc func, float *slope, int64_t *bias);
+
+#define MAX_ITERATION_DURATION_MS 100000
+// Returns false if one iteration of the test takes longer than
+// MAX_ITERATION_LENGTH_MS.  The test is then assumed too slow to provide
+// meaningful results.
+bool Bench(BenchFunc func, float *slope, int64_t *bias);
 
 void *MmapFile(const char *name, size_t *length);
 

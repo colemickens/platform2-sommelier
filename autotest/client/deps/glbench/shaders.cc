@@ -144,6 +144,8 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
 #define V6 "gl_TexCoord[5]"
 #define V7 "gl_TexCoord[6]"
 #define V8 "gl_TexCoord[7]"
+#define DDX "dFdx"
+#define DDY "dFdy"
 #else
 #define V1 "v1"
 #define V2 "v2"
@@ -153,6 +155,8 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
 #define V6 "v6"
 #define V7 "v7"
 #define V8 "v8"
+#define DDX "ddx"
+#define DDY "ddy"
 #endif
 
 const char *vertex_shader_1_varying =
@@ -236,13 +240,13 @@ const char *fragment_shader_8_varying =
 const char *fragment_shader_ddx =
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(ddx(" V1 ".x), 0., 0., 1.);"
+"  gl_FragColor = vec4(" DDX "(" V1 ".x), 0., 0., 1.);"
 "}";
 
 const char *fragment_shader_ddy =
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(ddy(" V1 ".y), 0., 0., 1.);"
+"  gl_FragColor = vec4(" DDY "(" V1 ".y), 0., 0., 1.);"
 "}";
 
 #undef V1
@@ -253,6 +257,8 @@ const char *fragment_shader_ddy =
 #undef V6
 #undef V7
 #undef V8
+#undef DDX
+#undef DDY
 
 
 ShaderProgram VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer) {

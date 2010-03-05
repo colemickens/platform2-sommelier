@@ -18,9 +18,10 @@ uint64_t TimeBench(BenchFunc func, int iter) {
 // We want to measure the marginal cost, so we try more and more iterations
 // until we get a somewhat linear response (to eliminate constant cost), and we
 // do a linear regression on a few samples.
-void Bench(BenchFunc func, float *slope, int64_t *bias) {
+bool Bench(BenchFunc func, float *slope, int64_t *bias) {
   // Do one iteration in case the driver needs to set up states.
-  TimeBench(func, 1);
+  if (TimeBench(func, 1) > MAX_ITERATION_DURATION_MS)
+    return false;
   int64_t count = 0;
   int64_t sum_x = 0;
   int64_t sum_y = 0;
@@ -51,4 +52,5 @@ void Bench(BenchFunc func, float *slope, int64_t *bias) {
   *slope = static_cast<float>(sum_x * sum_y - count * sum_xy) /
     (sum_x * sum_x - count * sum_x2);
   *bias = (sum_x * sum_xy - sum_x2 * sum_y) / (sum_x * sum_x - count * sum_x2);
+  return true;
 }
