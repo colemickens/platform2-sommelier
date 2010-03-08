@@ -37,4 +37,10 @@ typedef enum {
 
 }  // namespace login_manager
 
+namespace speech_synthesis {
+extern const char *kSpeechSynthesizerInterface;
+extern const char *kSpeechSynthesizerServicePath;
+extern const char *kSpeechSynthesizerServiceName;
+}  // namespace speech_synthesis
+
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_

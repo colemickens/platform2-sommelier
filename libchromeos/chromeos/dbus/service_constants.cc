@@ -26,3 +26,10 @@ const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
 }  // namespace login_manager
+
+namespace speech_synthesis {
+const char *kSpeechSynthesizerInterface =
+    "org.chromium.SpeechSynthesizerInterface";
+const char *kSpeechSynthesizerServicePath = "/org/chromium/SpeechSynthesizer";
+const char *kSpeechSynthesizerServiceName = "org.chromium.SpeechSynthesizer";
+}  // namespace speech_synthesis
