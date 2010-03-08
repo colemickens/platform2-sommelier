@@ -17,13 +17,11 @@
 #include <base/logging.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include "login_manager/ipc_channel.h"
 #include "login_manager/bindings/client.h"
 
 namespace switches {
 static const char kExitSad[] = "exit-sad";
 static const char kSuicide[] = "suicide";
-static const char kSessionPipe[] = "session-manager-pipe";
 }
 
 int main(int argc, char* argv[]) {

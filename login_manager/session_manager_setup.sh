@@ -42,7 +42,6 @@ touch /tmp/doing-chrome-login
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
 COOKIE_PIPE="/tmp/cookie_pipe"
-MANAGER_PIPE="/tmp/session_manager_pipe"
 
 # xdg-open is used to open downloaded files.
 # It runs sensible-browser, which uses $BROWSER.
@@ -62,7 +61,7 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen login"
 fi
 
-exec /sbin/session_manager --uid=${USER_ID} --login --pipe=${MANAGER_PIPE} -- \
+exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
 	    --enable-sync \
             --log-level=0 \

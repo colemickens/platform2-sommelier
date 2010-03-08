@@ -19,10 +19,9 @@
 #include "login_manager/system_utils.h"
 
 // Watches a Chrome binary and restarts it when it crashes.
-// Can also create and watch a named pipe and respond to IPCs defined
-// in ipc_messages.h
+// Also listens over DBus for the commands specified in interface.h.
 // Usage:
-//   session_manager --uid=1000 --login --pipe=/path/to/pipe --
+//   session_manager --uid=1000 --login --
 //     /path/to/command [arg1 [arg2 [ . . . ] ] ]
 
 namespace switches {
