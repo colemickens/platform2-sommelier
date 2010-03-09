@@ -1,10 +1,14 @@
 #!/bin/sh
 
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # A script to install from removable media to hard disk.
+
+# This is used to force partitions to be larger than they may be
+# On the source install media
+INSTALL_ROOT_PART_SIZE=$((1024 * 1024))  # 1024 byte blocks, thus 1 gig
 
 if [ "$USER_ID" -ne 1000 ]
 then
@@ -100,6 +104,12 @@ sudo -K  # Force them to enter a password
 # Verify sizes. Since we use sfdisk, this needs to be done after we start
 # asking for the root password.
 SIZE=`sudo sfdisk -l "$SRC" 2>/dev/null | grep "$SRC_PARTITION" | grep '*' | awk '{ print $6 }'`
+if [ $INSTALL_ROOT_PART_SIZE -lt $SIZE ]; then
+  echo "Install partition size too small: $INSTALL_ROOT_PART_SIZE vs $SIZE"
+  echo "(1024 byte blocks)"
+  exit 1
+fi
+SIZE=$INSTALL_ROOT_PART_SIZE
 SIZE=$((SIZE * 1024))
 if [ $SIZE -eq 0 ]
 then
