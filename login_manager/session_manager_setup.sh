@@ -61,7 +61,7 @@ SKIP_OOBE=
 # out-of-box-experience windows except the login window
 if [ -f /root/.forget_usernames ] ; then
   rm -f "${DATA_DIR}/Local State"
-  SKIP_OOBE="--login-screen login"
+  SKIP_OOBE="--login-screen=login"
 fi
 
 # Enables gathering of chrome dumps.  In stateful partition so testers
@@ -85,4 +85,4 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --user-data-dir=/home/$USER \
             --profile=user \
             "--cookie-pipe=$COOKIE_PIPE" \
-            ${SKIP_OOBE}
+            "${SKIP_OOBE}"
