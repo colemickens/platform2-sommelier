@@ -61,6 +61,18 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen login"
 fi
 
+# Enables gathering of chrome dumps.  In stateful partition so testers
+# can enable getting core dumps after build time.
+if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
+  mkdir -p /mnt/stateful_partition/var/crash/
+  # Chrome runs and chronos so we need to change the permissions of this folder
+  # so it can write there when it crashes
+  chown chronos /mnt/stateful_partition/var/crash/
+  ulimit -c unlimited
+  echo "/mnt/stateful_partition/var/crash/core.%e.%p" > \
+    /proc/sys/kernel/core_pattern
+fi
+
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
 	    --enable-sync \
