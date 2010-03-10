@@ -53,6 +53,9 @@ while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
 
+# TODO: consider moving this when we start X in a different way.
+/sbin/initctl emit x-started&
+
 SKIP_OOBE=
 # For test automation.  If file exists, do not remember last username and skip
 # out-of-box-experience windows except the login window
