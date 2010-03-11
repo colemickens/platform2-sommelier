@@ -71,6 +71,12 @@ mount -n --bind /mnt/stateful_partition/var/log /var/log
 mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid vartmp /var/tmp
 mount -n --bind /mnt/stateful_partition/home /home
 
+# Mount stateful partition for dev packages
+# TODO(sosa@chromium.org) - Use kernel flag
+if [ -f /root/.dev_mode ] ; then
+  mount -n --bind /mnt/stateful_partition/dev_image /usr/local
+fi
+
 mount -n -t tmpfs -omode=0755,nosuid varrun /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?
 mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid varlock /var/lock
