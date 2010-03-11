@@ -56,11 +56,17 @@ bool InitContext();
 void DestroyContext();
 void SwapBuffers();
 
+// BenchFunc functions are assumed to execute an operation iter times.  See
+// Bench for a detailed explanation.
 typedef void (*BenchFunc)(int iter);
 
 uint64_t TimeBench(BenchFunc func, int iter);
 
 #define MAX_ITERATION_DURATION_MS 100000
+// Runs func passing it sequential powers of two (8, 16, 32,...) recording time
+// it took.  The data is then fitted linearly, obtaining slope and bias such
+// that:
+//   time it took to run x iterations = slope * x + bias
 // Returns false if one iteration of the test takes longer than
 // MAX_ITERATION_LENGTH_MS.  The test is then assumed too slow to provide
 // meaningful results.

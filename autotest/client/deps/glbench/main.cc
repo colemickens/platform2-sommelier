@@ -19,6 +19,23 @@ const int enabled_tests_max = 8;
 const char *enabled_tests[enabled_tests_max+1] = {NULL};
 int seconds_to_run = 0;
 
+// Runs Bench on a test function f and prints out results.  Bench function
+// returns the slope and bias of a linear model relating the argument passed to
+// f and time it took f to run.  Normally the argument of f is assumed to be
+// number of iterations an operation is executed.
+//
+// coefficient is multiplied (if inverse is false) or divided (if inverse is
+// true) by the slope and the result is printed.
+//
+// The test will not run if enabled_tests is nonempty and no string in
+// enabled_tests is contained in name.
+//
+// Examples:
+//   coefficient = width * height (measured in pixels), inverse = true
+//       returns the throughput in megapixels per second;
+//
+//   coefficient = 1, inverse = false
+//       returns number of operations per second.
 void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
   float slope;
   int64_t bias;
