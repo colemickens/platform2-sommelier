@@ -41,7 +41,7 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
     printf("%s: Nan\n", name);
   } else {
     if (Bench(f, &slope, &bias)) {
-      printf("%s: %g\n", name, coefficient * (inverse ? 1. / slope : slope));
+      printf("%s: %g\n", name, coefficient * (inverse ? 1.f / slope : slope));
     } else {
       printf("# %s is too slow, returning zero.\n", name);
       printf("%s: 0\n", name);
@@ -60,7 +60,7 @@ void SwapTestFunc(int iter) {
 }
 
 void SwapTest() {
-  RunTest(SwapTestFunc, "us_swap_swap", 1., false);
+  RunTest(SwapTestFunc, "us_swap_swap", 1.f, false);
 }
 
 
@@ -495,10 +495,11 @@ void YuvToRgbShaderTestHelper(int type, const char *name) {
   GLfloat vertices[8] = {
     0.f, 0.f,
     1.f, 0.f,
-    0.f, 1.0f,
-    1.f, 1.0f,
+    0.f, 1.f,
+    1.f, 1.f,
   };
   char evenodd[2] = {0, 255};
+  const int pixel_height = YUV2RGB_HEIGHT * 2 / 3;
 
   char *pixels = static_cast<char *>(MmapFile(YUV2RGB_NAME, &size));
   if (!pixels) {
@@ -526,16 +527,22 @@ void YuvToRgbShaderTestHelper(int type, const char *name) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, 2, 1,
                0, GL_LUMINANCE, GL_UNSIGNED_BYTE, evenodd);
 
-  glViewport(-YUV2RGB_WIDTH, -(YUV2RGB_HEIGHT*2/3),
-             YUV2RGB_WIDTH*2, (YUV2RGB_HEIGHT*2/3)*2);
+  glViewport(-YUV2RGB_WIDTH, -pixel_height, YUV2RGB_WIDTH*2, pixel_height * 2);
   vertex_buffer = SetupVBO(GL_ARRAY_BUFFER, sizeof(vertices), vertices);
 
   program = YuvToRgbShaderProgram(type, vertex_buffer,
-                                  YUV2RGB_WIDTH, YUV2RGB_HEIGHT*2/3);
-  if (program)
-    FillRateTestNormal(name);
-  else
+                                  YUV2RGB_WIDTH, pixel_height);
+
+  if (program) {
+    float coeff = 1.f *
+      (YUV2RGB_WIDTH < g_width ?
+       static_cast<float>(YUV2RGB_WIDTH) / g_width : 1.f) *
+      (pixel_height < g_height ?
+       static_cast<float>(pixel_height) / g_height : 1.f);
+    FillRateTestNormal(name, coeff);
+  } else {
     printf("# Could not set up YUV shader.\n");
+  }
 
 done:
   DeleteShaderProgram(program);
