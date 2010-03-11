@@ -12,6 +12,7 @@
 
 #include "main.h"
 #include "shaders.h"
+#include "utils.h"
 #include "yuv2rgb.h"
 
 
@@ -423,22 +424,22 @@ void AttributeFetchShaderTest() {
   ShaderProgram program = AttributeFetchShaderProgram(1, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader", arg1, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(2, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_2_attr", arg1, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(4, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_4_attr", arg1, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = AttributeFetchShaderProgram(8, vertex_buffers);
   RunTest(DrawElementsTestFunc,
           "mvtx_sec_attribute_fetch_shader_8_attr", arg1, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   glDeleteBuffers(1, &index_buffer);
   delete[] indices;
@@ -469,32 +470,32 @@ void VaryingsAndDdxyShaderTest() {
   ShaderProgram program = VaryingsShaderProgram(1, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_varyings_shader_1", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = VaryingsShaderProgram(2, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_varyings_shader_2", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = VaryingsShaderProgram(4, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_varyings_shader_4", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = VaryingsShaderProgram(8, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_varyings_shader_8", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = DdxDdyShaderProgram(true, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_ddx_shader", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   program = DdxDdyShaderProgram(false, vertex_buffer);
   RunTest(DrawElementsTestFunc,
           "mpixels_sec_ddy_shader", g_width * g_height, true);
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
 
   glDeleteBuffers(1, &index_buffer);
   delete[] indices;
@@ -562,7 +563,7 @@ void YuvToRgbShaderTestHelper(int type, const char *name) {
   }
 
 done:
-  DeleteShaderProgram(program);
+  glDeleteProgram(program);
   glDeleteTextures(2, texture);
   glDeleteBuffers(1, &vertex_buffer);
   munmap(pixels, size);
@@ -577,27 +578,7 @@ void YuvToRgbShaderTest2() {
 }
 
 
-// TODO: get the path from a command line option or something.
-void *MmapFile(const char *name, size_t *length) {
-  int fd = open(name, O_RDONLY);
-  if (fd == -1)
-    return NULL;
-
-  struct stat sb;
-  CHECK(fstat(fd, &sb) != -1);
-
-  char *mmap_ptr = static_cast<char *>(
-    mmap(NULL, sb.st_size, PROT_READ, MAP_PRIVATE, fd, 0));
-
-  close(fd);
-
-  if (mmap_ptr)
-    *length = sb.st_size;
-
-  return mmap_ptr;
-}
-
-
+// TODO: get resources file from a command line option or something.
 // TODO: use proper command line parsing library.
 static void ParseArgs(int argc, char *argv[]) {
   const char **enabled_tests_ptr = enabled_tests;

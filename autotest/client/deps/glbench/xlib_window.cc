@@ -5,11 +5,13 @@
 #include "main.h"
 #include "xlib_window.h"
 
+
 Display *xlib_display = NULL;
 Window xlib_window = 0;
 
-GLint g_width = 0;
-GLint g_height = 0;
+GLint g_width = 512;
+GLint g_height = 512;
+
 
 bool XlibInit() {
   xlib_display = ::XOpenDisplay(0);
@@ -18,6 +20,12 @@ bool XlibInit() {
 
   int screen = DefaultScreen(xlib_display);
   Window root_window = RootWindow(xlib_display, screen);
+
+  XWindowAttributes attributes;
+  XGetWindowAttributes(xlib_display, root_window, &attributes);
+
+  g_width = g_width == -1 ? attributes.width : g_width;
+  g_height = g_height == -1 ? attributes.height : g_height;
 
   int attrib[] = {
     GLX_RGBA,
@@ -40,13 +48,12 @@ bool XlibInit() {
   attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
   attr.override_redirect = True;
   xlib_window = ::XCreateWindow(xlib_display, root_window,
-                                0, 0, 512, 512, 0, visinfo->depth, InputOutput,
-                                visinfo->visual, mask, &attr);
+                                0, 0, g_width, g_height, 0, visinfo->depth,
+                                InputOutput, visinfo->visual, mask, &attr);
 
   ::XMapWindow(xlib_display, xlib_window);
   ::XSync(xlib_display, True);
 
-  XWindowAttributes attributes;
   ::XGetWindowAttributes(xlib_display, xlib_window, &attributes);
   g_width = attributes.width;
   g_height = attributes.height;

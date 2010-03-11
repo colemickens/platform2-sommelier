@@ -9,60 +9,8 @@
 
 #include "main.h"
 #include "shaders.h"
+#include "utils.h"
 #include "yuv2rgb.h"
-
-
-static void print_info_log(int obj)
-{
-  char info_log[4096];
-  int length;
-  glGetInfoLogARB(obj, sizeof(info_log)-1, &length, info_log);
-  char *p = info_log;
-  while (p < info_log + length) {
-    char *newline = strchr(p, '\n');
-    if (newline)
-      *newline = '\0';
-    printf("# Log: %s\n", p);
-    if (!newline)
-      break;
-    p = newline + 1;
-  }
-}
-
-
-static ShaderProgram InitShaderProgram(const char *vertex_src,
-                                       const char *fragment_src) {
-  GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-  glShaderSource(vertex_shader, 1, &vertex_src, NULL);
-  glShaderSource(fragment_shader, 1, &fragment_src, NULL);
-
-  glCompileShader(vertex_shader);
-  print_info_log(vertex_shader);
-  glCompileShader(fragment_shader);
-  print_info_log(fragment_shader);
-
-  GLuint program = glCreateProgram();
-  glAttachShader(program, vertex_shader);
-  glAttachShader(program, fragment_shader);
-  glLinkProgram(program);
-  print_info_log(program);
-  glUseProgram(program);
-
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
-
-  return program;
-}
-
-void DeleteShaderProgram(ShaderProgram program) {
-  if (!program)
-    return;
-
-  glUseProgram(0);
-  glDeleteProgram(program);
-}
 
 
 const char *simple_vertex_shader =
