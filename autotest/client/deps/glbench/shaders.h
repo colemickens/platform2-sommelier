@@ -7,6 +7,8 @@
 
 typedef GLuint ShaderProgram;
 
+ShaderProgram InitShaderProgram(const char *vertex_src,
+                                const char *fragment_src);
 void DeleteShaderProgram(ShaderProgram program);
 ShaderProgram AttributeFetchShaderProgram(int attribute_count,
                                           GLuint vertex_buffers[]);

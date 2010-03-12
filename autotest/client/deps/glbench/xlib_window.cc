@@ -11,6 +11,7 @@ Window xlib_window = 0;
 
 GLint g_width = 512;
 GLint g_height = 512;
+bool g_override_redirect = true;
 
 
 bool XlibInit() {
@@ -46,7 +47,7 @@ bool XlibInit() {
   attr.colormap = XCreateColormap(xlib_display, root_window, visinfo->visual,
                                   AllocNone);
   attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
-  attr.override_redirect = True;
+  attr.override_redirect = g_override_redirect ? True : False;
   xlib_window = ::XCreateWindow(xlib_display, root_window,
                                 0, 0, g_width, g_height, 0, visinfo->depth,
                                 InputOutput, visinfo->visual, mask, &attr);

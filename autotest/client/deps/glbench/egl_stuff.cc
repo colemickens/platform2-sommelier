@@ -86,3 +86,7 @@ void TerminateGL() {
 void SwapBuffers() {
   eglSwapBuffers(egl_display, egl_surface);
 }
+
+bool SwapInterval(int interval) {
+  return eglSwapInterval(interval) == EGL_TRUE;
+}

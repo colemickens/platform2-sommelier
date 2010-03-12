@@ -12,6 +12,7 @@
 #include <GLES/gl.h>
 #else
 #include <GL/gl.h>
+#include <GL/glx.h>
 
 #define LIST_PROC_FUNCTIONS(F) \
     F(glAttachShader, PFNGLATTACHSHADERPROC) \
@@ -33,7 +34,8 @@
     F(glUniform1f, PFNGLUNIFORM1FPROC) \
     F(glUniform1i, PFNGLUNIFORM1IPROC) \
     F(glUseProgram, PFNGLUSEPROGRAMPROC) \
-    F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC)
+    F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC) \
+    F(glXSwapIntervalSGI, PFNGLXSWAPINTERVALSGIPROC)
 
 #define F(fun, type) extern type fun;
 LIST_PROC_FUNCTIONS(F)
@@ -50,11 +52,13 @@ inline uint64_t GetUTime() {
 
 extern GLint g_width;
 extern GLint g_height;
+extern bool g_override_redirect;
 
 bool Init();
 bool InitContext();
 void DestroyContext();
 void SwapBuffers();
+bool SwapInterval(int interval);
 
 // BenchFunc functions are assumed to execute an operation iter times.  See
 // Bench for a detailed explanation.

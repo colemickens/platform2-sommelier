@@ -69,3 +69,7 @@ void DestroyContext() {
 void SwapBuffers() {
   glXSwapBuffers(xlib_display, xlib_window);
 }
+
+bool SwapInterval(int interval) {
+  return glXSwapIntervalSGI(interval) == 0;
+}
