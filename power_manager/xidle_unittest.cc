@@ -10,17 +10,17 @@
 
 #include "power_manager/xidle.h"
 
-namespace chromeos {
+namespace power_manager {
 
 class XIdleTest : public ::testing::Test { };
 
 TEST(XIdleTest, GetIdleTimeTest) {
-  uint64 idleTime = kuint64max;
-  chromeos::XIdle idle;
-  if (idle.getIdleTime(&idleTime))
-    ASSERT_NE(idleTime, kuint64max);
-  else
-    ASSERT_EQ(idleTime, kuint64max);
+  int64 idle_time = kint64max;
+  power_manager::XIdle idle;
+  if (idle.Init()) {
+    ASSERT_TRUE(idle.GetIdleTime(&idle_time));
+    ASSERT_NE(kint64max, idle_time);
+  }
 }
 
-}  // namespace login_manager
+}  // namespace power_manager
