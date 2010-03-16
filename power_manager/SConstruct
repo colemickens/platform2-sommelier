@@ -39,7 +39,7 @@ Default(xidle_example)
 
 # Build unit tests
 test_env = base_env.Clone()
-test_env.Append(LIBS=['gtest'])
+test_env.Append(LIBS=['gtest', 'Xtst'])
 test_env.Program('xidle_unittest',
                  ['testrunner.cc', 'xidle_unittest.cc', xidle])
 tests = []

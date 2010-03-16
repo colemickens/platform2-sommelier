@@ -19,20 +19,19 @@ static inline void XSyncInt64ToValue(XSyncValue* xvalue, int64 value) {
 
 XIdle::XIdle()
     : idle_counter_(0),
-      min_timeout_(kint64max) {
+      min_timeout_(kint64max),
+      display_(NULL) {
 }
 
 XIdle::~XIdle() {
   ClearTimeouts();
-  if (display_)
-    XCloseDisplay(display_);
 }
 
-bool XIdle::Init() {
+bool XIdle::Init(Display* display) {
   int major_version, minor_version;
-  display_ = XOpenDisplay(NULL);
-  if (display_ &&
-      XSyncQueryExtension(display_, &event_base_, &error_base_) &&
+  CHECK(display);
+  display_ = display;
+  if (XSyncQueryExtension(display_, &event_base_, &error_base_) &&
       XSyncInitialize(display_, &major_version, &minor_version)) {
     XSyncSystemCounter* counters;
     int ncounters;
@@ -53,10 +52,16 @@ bool XIdle::Init() {
 
 bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
   DCHECK_NE(idle_counter_, 0);
+  DCHECK_GT(idle_timeout_ms, 1);
 
   if (idle_timeout_ms < min_timeout_) {
     min_timeout_ = idle_timeout_ms;
-    XSyncAlarm alarm = CreateIdleAlarm(min_timeout_, XSyncNegativeTransition);
+
+    // Setup an alarm to fire when the user was idle, but is now active.
+    // This occurs when old_idle_time > min_timeout_ - 1, and the user becomes
+    // active.
+    XSyncAlarm alarm = CreateIdleAlarm(min_timeout_ - 1,
+                                       XSyncNegativeTransition);
     if (!alarm)
       return false;
     if (!alarms_.empty()) {
@@ -66,6 +71,7 @@ bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
     alarms_.push_front(alarm);
   }
 
+  // Send idle event when new_idle_time >= idle_timeout_ms
   XSyncAlarm alarm = CreateIdleAlarm(idle_timeout_ms, XSyncPositiveTransition);
   if (alarm)
     alarms_.push_back(alarm);

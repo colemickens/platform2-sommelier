@@ -4,11 +4,15 @@
 
 #include <inttypes.h>
 #include <cstdio>
+#include "base/logging.h"
 #include "power_manager/xidle.h"
 
 int main(int argc, char *argv[]) {
   power_manager::XIdle idle;
-  idle.Init();
+  Display* display = XOpenDisplay(NULL);
+  CHECK(display);
+  bool init = idle.Init(display);
+  CHECK(init);
   idle.AddIdleTimeout(2000);
   idle.AddIdleTimeout(5000);
   bool is_idle;
@@ -19,5 +23,6 @@ int main(int argc, char *argv[]) {
     else
       printf("User is active\n");
   }
+  XCloseDisplay(display);
   return 0;
 }

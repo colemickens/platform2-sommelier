@@ -20,7 +20,8 @@ namespace power_manager {
 //
 // \example
 // power_manager::XIdle idle;
-// idle.Init();
+// Display* display = XOpenDisplay(NULL);
+// idle.Init(display);
 // idle.AddIdleTimeout(2000);
 // idle.AddIdleTimeout(5000);
 // int64 idle_time;
@@ -31,6 +32,7 @@ namespace power_manager {
 //   else
 //     std::cout << "User is active\n";
 // }
+// XCloseDisplay(display);
 // \end_example
 
 class XIdle {
@@ -38,9 +40,9 @@ class XIdle {
   XIdle();
   ~XIdle();
 
-  // Connect to the X server and initialize the object.
+  // Initialize the object with the given X connection.
   // On success, return true; otherwise return false.
-  bool Init();
+  bool Init(Display* display);
 
   // Add a timeout value. If the user exceeds this timeout value,
   // the Monitor function will return and notify us. If there are
