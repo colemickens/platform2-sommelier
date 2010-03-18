@@ -30,16 +30,25 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
   if os.environ.has_key(key):
     base_env['ENV'][key] = os.environ[key]
 
-# Build example program
-base_env.Append(LIBS=Split('base rt X11 Xext'))
-base_env.Append(CPPPATH=['..'])
-xidle = base_env.Library('xidle', ['xidle.cc'])
-xidle_example = base_env.Program('xidle-example', ['xidle-example.cc', xidle])
+# Build example xidle program
+xidle_env = base_env.Clone()
+xidle_env.Append(LIBS=Split('base rt X11 Xext'))
+xidle_env.Append(CPPPATH=['..'])
+xidle = xidle_env.Library('xidle', ['xidle.cc'])
+xidle_example = xidle_env.Program('xidle-example', ['xidle-example.cc', xidle])
 Default(xidle_example)
 
+# Build example backlight program
+backlight_env = base_env.Clone()
+backlight_env.Append(LIBS=Split('base rt'))
+backlight_env.Append(CPPPATH=['..'])
+backlight = xidle_env.Library('backlight', ['backlight.cc'])
+backlight_example = backlight_env.Program('backlight-example',
+    ['backlight-example.cc', backlight])
+Default(backlight_example)
+
 # Build unit tests
-test_env = base_env.Clone()
+test_env = xidle_env.Clone()
 test_env.Append(LIBS=['gtest', 'Xtst'])
 test_env.Program('xidle_unittest',
                  ['testrunner.cc', 'xidle_unittest.cc', xidle])
-tests = []
