@@ -29,6 +29,20 @@ export DISPLAY=:0.0
 export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 export GTK_IM_MODULE=ibus
 
+# Forces Chrome mini dumps that are sent to the crash server to also be written
+# locally.  Chrome by default will create these mini dump files in
+# ~/.config/google-chrome/Crash Reports/
+if [ -f /mnt/stateful_partition/etc/enable_chromium_minidumps ] ; then
+  export CHROME_HEADLESS=1
+  # If possible we would like to have the crash reports located somewhere else
+  if [ ! -f ~/.config/google-chrome/Crash\ Reports ] ; then
+    mkdir -p /mnt/stateful_partition/var/minidumps/
+    chown chronos /mnt/stateful_partition/var/minidumps/
+    ln -s /mnt/stateful_partition/var/minidumps/ \
+      ~/.config/google-chrome/Crash\ Reports
+  fi
+fi
+
 XAUTH_FILE=${DATA_DIR}/.Xauthority
 export XAUTHORITY=${XAUTH_FILE}
 
@@ -60,13 +74,6 @@ export BROWSER=${CHROME}
 
 USER_ID=$(/usr/bin/id -u ${USER})
 
-while [ -z ${SERVER_READY} ]; do
-  sleep .1
-done
-
-# TODO: consider moving this when we start X in a different way.
-/sbin/initctl emit x-started&
-
 SKIP_OOBE=
 # For test automation.  If file exists, do not remember last username and skip
 # out-of-box-experience windows except the login window
@@ -78,14 +85,21 @@ fi
 # Enables gathering of chrome dumps.  In stateful partition so testers
 # can enable getting core dumps after build time.
 if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
-  mkdir -p /mnt/stateful_partition/var/crash/
+  mkdir -p /mnt/stateful_partition/var/coredumps/
   # Chrome runs and chronos so we need to change the permissions of this folder
   # so it can write there when it crashes
-  chown chronos /mnt/stateful_partition/var/crash/
+  chown chronos /mnt/stateful_partition/var/coredumps/
   ulimit -c unlimited
-  echo "/mnt/stateful_partition/var/crash/core.%e.%p" > \
+  echo "/mnt/stateful_partition/var/coredumps/core.%e.%p" > \
     /proc/sys/kernel/core_pattern
 fi
+
+while [ -z ${SERVER_READY} ]; do
+  sleep .1
+done
+
+# TODO: consider moving this when we start X in a different way.
+/sbin/initctl emit x-started&
 
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
