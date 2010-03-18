@@ -67,6 +67,8 @@ touch /tmp/doing-chrome-login
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
 COOKIE_PIPE="/tmp/cookie_pipe"
+SEND_METRICS="/etc/send_metrics"
+CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
 # xdg-open is used to open downloaded files.
 # It runs sensible-browser, which uses $BROWSER.
@@ -92,6 +94,15 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
   ulimit -c unlimited
   echo "/mnt/stateful_partition/var/coredumps/core.%e.%p" > \
     /proc/sys/kernel/core_pattern
+fi
+
+if [ -f "$SEND_METRICS" ]; then
+  if [ ! -f "$CONSENT_FILE" ]; then
+    # Automatically opt-in to Chrome OS stats collecting.  This does
+    # not have to be a cryptographically random string, but we do need
+    # a 32 byte, printable string.
+    head -c 8 /dev/random | openssl md5 > "$CONSENT_FILE"
+  fi
 fi
 
 while [ -z ${SERVER_READY} ]; do
