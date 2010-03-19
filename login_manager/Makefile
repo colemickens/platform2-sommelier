@@ -4,10 +4,12 @@
 
 CXX ?= g++
 CXXFLAGS ?= -Wall -Werror -g
+PKG_CONFIG ?= pkg-config
 
 LIBS = -lbase -lpthread -lrt -lchromeos
-INCLUDE_DIRS = -I.. $(shell pkg-config --cflags gobject-2.0 dbus-1 dbus-glib-1)
-LIB_DIRS = $(shell pkg-config --libs gobject-2.0 dbus-1 dbus-glib-1)
+INCLUDE_DIRS = -I.. \
+	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
+LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1)
 
 SESSION_COMMON_OBJS = session_manager_service.o child_job.o interface.o
 
