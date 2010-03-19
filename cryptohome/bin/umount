@@ -38,6 +38,18 @@ function umount_main() {
   if cryptohome::is_mounted "$target"; then
     cryptohome::unmount "$target"
   fi
+  # is_mounted ignores incognito mounts since they diverge from
+  # the actual cryptohome landscape (dm, losetup).
+  if $mount | $grep -q "^$INCOGNITO_MOUNT_NAME "; then
+    # We want all processes killed that use this mountpoint, but
+    # we also need to ensure that the user is completely gone to
+    # avoid processes persisting across mounts.
+    cryptohome::log "unmounting incognito mount"
+    $pkill -9 -u ${DEFAULT_USER} && $true &> /dev/null
+    # Since we don't have additional work after the unmount, we can
+    # do it lazily.
+    $umount -n -l "$INCOGNITO_MOUNT_NAME"
+  fi
 }
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then

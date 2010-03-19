@@ -12,8 +12,9 @@ PASSWORD=""
 function error_handler() {
   if ! typeset -F cryptohome::log; then
     echo "An error occurred before/in cryptohome." 1>&2
-    # Assume common is ok.
-    /bin/mount -t tmpfs tmpfs $DEFAULT_MOUNT_POINT
+    # Assume common is ok, but maybe not mount options
+    /bin/mount -t tmpfs "$INCOGNITO_MOUNT_NAME" \
+      -onoexec,nosuid,nodev "$DEFAULT_MOUNT_POINT"
     /bin/chown $DEFAULT_USER $DEFAULT_MOUNT_POINT
     exit 1
   fi
@@ -40,12 +41,23 @@ function error_handler() {
 # TODO: move traps into a single call
 trap error_handler ERR;
 
+function incognito_error() {
+  cryptohome::log "failed to mount incognito!"
+  $exit 1
+}
+
+function incognito_mount() {
+  trap incognito_error ERR;
+  $mount -t tmpfs -o"${MOUNT_OPTIONS}" "$INCOGNITO_MOUNT_NAME" \
+    $DEFAULT_MOUNT_POINT
+  $chown ${DEFAULT_USER}:${DEFAULT_USER} $DEFAULT_MOUNT_POINT
+  cryptohome::log "incognito mount completed"
+}
+
 function second_chance() {
   cryptohome::log "new image creation failed (again)"
-  cryptohome::log "mounting tmpfs"
-  $mount -t tmpfs tmpfs $DEFAULT_MOUNT_POINT
-  $chown $DEFAULT_USER $DEFAULT_MOUNT_POINT
-  cryptohome::log "mount completed"
+  cryptohome::log "falling back to incognito mode"
+  incognito_mount
   $exit 0
 }
 
@@ -70,6 +82,11 @@ function mount_main() {
   # login so that we don't blow away old logs during a debug login.
   $exec 1>$STDOUT_FILE
   $exec 2>$STDERR_FILE
+  if [[ "$CHROMEOS_USER" == "$INCOGNITO_USER" ]]; then
+    cryptohome::log "incognito mode requested"
+    incognito_mount
+    $exit 0
+  fi
   USERID="$($cat $IMAGE_DIR/salt <($echo -n $CHROMEOS_USER) | $openssl sha1)"
   PASSWORD="$($cat)"
   cryptohome::mount_or_create "$USERID" "$PASSWORD"

@@ -14,6 +14,10 @@ export LOG_FILE=/var/log/cryptohome.log
 export STDOUT_FILE=/var/log/cryptohome.stdout.log
 export STDERR_FILE=/var/log/cryptohome.stderr.log
 
+# Magic username which just mounts a tmpfs homedir
+export INCOGNITO_USER=incognito
+export INCOGNITO_MOUNT_NAME="$INCOGNITO_USER"
+
 export DEFAULT_USER=chronos
 export DEFAULT_LOOP_DEVICE=/dev/loop0
 export DEFAULT_MAPPER_DEVICE=/dev/mapper/cryptohome
