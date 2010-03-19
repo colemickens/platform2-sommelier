@@ -110,7 +110,7 @@ while [ -z ${SERVER_READY} ]; do
 done
 
 # TODO: consider moving this when we start X in a different way.
-/sbin/initctl emit x-started&
+/sbin/initctl emit x-started
 
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
@@ -121,4 +121,5 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --user-data-dir=/home/$USER \
             --profile=user \
             "--cookie-pipe=$COOKIE_PIPE" \
+            --enable-login-images \
             "${SKIP_OOBE}"
