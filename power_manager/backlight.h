@@ -46,7 +46,7 @@ class Backlight {
 
  private:
 
-  FilePath brightness_path_, max_brightness_path_;
+  FilePath actual_brightness_path_, brightness_path_, max_brightness_path_;
 
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };

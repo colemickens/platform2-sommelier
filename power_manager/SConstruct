@@ -47,6 +47,10 @@ backlight_example = backlight_env.Program('backlight-example',
     ['backlight-example.cc', backlight])
 Default(backlight_example)
 
+# Build power daemon
+powerd = xidle_env.Program('powerd', ['powerd.cc', xidle, backlight])
+Default(powerd)
+
 # Build unit tests
 test_env = xidle_env.Clone()
 test_env.Append(LIBS=['gtest', 'Xtst'])
