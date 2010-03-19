@@ -162,8 +162,6 @@ MockChildJob* CreateTrivialMockJob() {
 
   EXPECT_CALL(*job, ShouldRun())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*job, Toggle())
-      .Times(1);
 
   return job;
 }
@@ -176,15 +174,19 @@ TEST(SessionManagerTest, SessionStartedCleanupTest) {
   manager.set_child_pid(kDummyPid);
   manager.set_systemutils(utils);
 
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
   int timeout = 3;
   EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(true));
 
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
+  std::string email_string(email);
+  EXPECT_CALL(*job, SetState(email_string))
+      .Times(1);
+
   manager.StartSession(email, nothing, &out, NULL);
   manager.CleanupChildren(timeout);
 }
@@ -208,6 +210,11 @@ TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
+
+  std::string email_string(email);
+  EXPECT_CALL(*job, SetState(email_string))
+      .Times(1);
+
   manager.StartSession(email, nothing, &out, NULL);
   manager.CleanupChildren(timeout);
 }
@@ -220,16 +227,19 @@ TEST(SessionManagerTest, SessionStartedSigTermTest) {
     login_manager::SessionManagerService* manager =
         new login_manager::SessionManagerService(job);
 
+    gboolean out;
+    gchar email[] = "user@somewhere";
+    gchar nothing[] = "";
+    std::string email_string(email);
+
     EXPECT_CALL(*job, RecordTime())
         .Times(1);
     ON_CALL(*job, Run())
         .WillByDefault(Invoke(Sleep));
+    EXPECT_CALL(*job, SetState(email_string))
+        .Times(1);
 
-    gboolean out;
-    gchar email[] = "user@somewhere";
-    gchar nothing[] = "";
     manager->StartSession(email, nothing, &out, NULL);
-
     manager->Run();
     delete manager;
     exit(0);
@@ -257,6 +267,9 @@ TEST(SessionManagerTest, StartSessionTest) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
+  std::string email_string(email);
+  EXPECT_CALL(*job, SetState(email_string))
+      .Times(1);
   manager.StartSession(email, nothing, &out, NULL);
 }
 

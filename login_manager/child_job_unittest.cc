@@ -42,7 +42,7 @@ TEST(SetUidExecJobTest, FlagAppendTest) {
   CommandLine cl(my_argc, my_argv);
 
   SetUidExecJob job(&cl, NULL, true);
-  job.UseLoginManagerFlagIfNeeded();
+  job.AppendNeededFlags();
 
   std::vector<std::string> data = job.ExtractArgvForTest();
   std::vector<std::string>::const_iterator it  = data.begin();
@@ -54,16 +54,17 @@ TEST(SetUidExecJobTest, FlagAppendTest) {
   EXPECT_TRUE(data.end() == it) << *it;
 }
 
-TEST(SetUidExecJobTest, NoFlagAppendTest) {
+TEST(SetUidExecJobTest, AppendUserFlagTest) {
   const char *my_argv[] = { "zero",
                             "one",
                             "two" };
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
+  std::string user("me");
   SetUidExecJob job(&cl, NULL, true);
-  job.Toggle();
-  job.UseLoginManagerFlagIfNeeded();  // should be a no-op
+  job.SetState(user);
+  job.AppendNeededFlags();
 
   std::vector<std::string> data = job.ExtractArgvForTest();
   std::vector<std::string>::const_iterator it  = data.begin();
@@ -71,6 +72,9 @@ TEST(SetUidExecJobTest, NoFlagAppendTest) {
     EXPECT_EQ(my_argv[i], *it);
     ++it;
   }
+  std::string userflag(SetUidExecJob::kLoginUserFlag);
+  userflag.append(user);
+  EXPECT_EQ(userflag, *it++);
   EXPECT_TRUE(data.end() == it) << *it;
 }
 

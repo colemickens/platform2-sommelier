@@ -36,8 +36,11 @@ class ChildJob {
   // Wraps up all the logic of what the job is meant to do.  Should NOT return.
   virtual void Run() = 0;
 
-  // If the ChildJob contains a toggleable piece of state, toggle it.
-  virtual void Toggle() = 0;
+  // If the ChildJob contains a switch, set it to |new_value|.
+  virtual void SetSwitch(const bool new_value) = 0;
+
+  // If the ChildJob contains a settable piece of state, set it to |state|.
+  virtual void SetState(const std::string& state) = 0;
 
   virtual bool desired_uid_is_set() const {
     return false;
@@ -57,6 +60,8 @@ class SetUidExecJob : public ChildJob {
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
+  // The flag to pass to chrome to tell it which user has logged in.
+  static const char kLoginUserFlag[];
 
   // Potential exit codes for Run().
   static const int kCantSetuid;
@@ -66,11 +71,13 @@ class SetUidExecJob : public ChildJob {
 
   static const int kRestartWindow;
 
+  // Overridden from ChildJob
   bool ShouldRun();
   bool ShouldStop();
   void RecordTime();
   void Run();
-  void Toggle() { include_login_flag_ = !include_login_flag_; }
+  void SetSwitch(const bool new_value);
+  void SetState(const std::string& state);
 
   bool desired_uid_is_set() const {
     return desired_uid_is_set_;
@@ -93,7 +100,7 @@ class SetUidExecJob : public ChildJob {
   // Might be able to remove this once Chromium's CommandLine class deals with
   // wstrings is a saner way.
   void PopulateArgv(const CommandLine* command_line);
-  void UseLoginManagerFlagIfNeeded();
+  void AppendNeededFlags();
 
   // If the caller has provided a UID with set_desired_uid(), this method will:
   // 1) try to setgid to that uid
@@ -111,11 +118,12 @@ class SetUidExecJob : public ChildJob {
 
   uid_t desired_uid_;
   bool include_login_flag_;  // This class' piece of toggleable state.
+  std::string user_flag_;  // This class' piece of settable state.
   bool desired_uid_is_set_;
   time_t last_start_;
 
   FRIEND_TEST(SetUidExecJobTest, FlagAppendTest);
-  FRIEND_TEST(SetUidExecJobTest, NoFlagAppendTest);
+  FRIEND_TEST(SetUidExecJobTest, AppendUserFlagTest);
   FRIEND_TEST(SetUidExecJobTest, PopulateArgvTest);
   DISALLOW_COPY_AND_ASSIGN(SetUidExecJob);
 

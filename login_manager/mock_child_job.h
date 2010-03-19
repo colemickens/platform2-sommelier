@@ -8,6 +8,7 @@
 #include "login_manager/child_job.h"
 
 #include <gmock/gmock.h>
+#include <string>
 
 namespace login_manager {
 class MockChildJob : public ChildJob {
@@ -17,8 +18,9 @@ class MockChildJob : public ChildJob {
   MOCK_METHOD0(ShouldRun, bool());
   MOCK_METHOD0(ShouldStop, bool());
   MOCK_METHOD0(RecordTime, void());
-  MOCK_METHOD0(Toggle, void());
   MOCK_METHOD0(Run, void());
+  MOCK_METHOD1(SetState, void(const std::string& state));
+  MOCK_METHOD1(SetSwitch, void(const bool new_value));
 };
 }  // namespace login_manager
 

@@ -100,14 +100,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
 
   // In addition to emitting "start-user-session", this function will
-  // also call child_job_->Toggle().
+  // also call child_job_->SetState(email_address).
   gboolean StartSession(gchar* email_address,
                         gchar* unique_identifier,
                         gboolean* OUT_done,
                         GError** error);
 
   // In addition to emitting "stop-user-session", this function will
-  // also call child_job_->Toggle().
+  // also call child_job_->SetSwitch(true).
   gboolean StopSession(gchar* unique_identifier,
                        gboolean* OUT_done,
                        GError** error);

@@ -278,7 +278,7 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
 
   *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
-    child_job_->Toggle();
+    child_job_->SetState(email_lower);
     session_started_ = true;
   } else {
     SetGError(error,
@@ -297,7 +297,7 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
                   NULL);
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
-  // child_job_->Toggle();
+  // child_job_->SetSwitch(true);
   // session_started_ = false;
   return *OUT_done = TRUE;
 }

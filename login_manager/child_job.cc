@@ -22,6 +22,8 @@
 namespace login_manager {
 // static
 const char SetUidExecJob::kLoginManagerFlag[] = "--login-manager";
+// static
+const char SetUidExecJob::kLoginUserFlag[] = "--login-user=";
 
 // static
 const int SetUidExecJob::kCantSetuid = 127;
@@ -40,6 +42,7 @@ SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
         num_args_passed_in_(0),
         desired_uid_(0),
         include_login_flag_(add_flag),
+        user_flag_(kLoginUserFlag),
         desired_uid_is_set_(false),
         last_start_(0) {
     PopulateArgv(command_line);
@@ -81,9 +84,10 @@ void SetUidExecJob::PopulateArgv(const CommandLine* command_line) {
   }
 }
 
-void SetUidExecJob::UseLoginManagerFlagIfNeeded() {
+void SetUidExecJob::AppendNeededFlags() {
   char const* *argv_pointer = argv_ + num_args_passed_in_;
-  *argv_pointer++ = include_login_flag_ ? kLoginManagerFlag : NULL;
+  *argv_pointer++ =
+      include_login_flag_ ? kLoginManagerFlag : user_flag_.c_str();
   *argv_pointer = NULL;
 }
 
@@ -125,7 +129,7 @@ void SetUidExecJob::RecordTime() {
 }
 
 void SetUidExecJob::Run() {
-  UseLoginManagerFlagIfNeeded();
+  AppendNeededFlags();
   // We try to set our UID/GID to the desired UID, and then exec
   // the command passed in.
   int exit_code = SetIDs();
@@ -137,6 +141,16 @@ void SetUidExecJob::Run() {
   // Should never get here, unless we couldn't exec the command.
   LOG(ERROR) << strerror(errno);
   exit(kCantExec);
+}
+void SetUidExecJob::SetSwitch(const bool new_value) {
+  if (!new_value)
+    user_flag_.assign(kLoginUserFlag);
+  include_login_flag_ = new_value;
+}
+
+void SetUidExecJob::SetState(const std::string& state) {
+  SetSwitch(false);
+  user_flag_.append(state);
 }
 
 }  // namespace login_manager

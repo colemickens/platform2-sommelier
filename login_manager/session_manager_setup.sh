@@ -119,7 +119,7 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
 	    --main-menu-url="http://welcome-cros.appspot.com/menu" \
             --no-first-run \
             --user-data-dir=/home/$USER \
-            --profile=user \
+            --login-profile=user \
             "--cookie-pipe=$COOKIE_PIPE" \
             --enable-login-images \
             "${SKIP_OOBE}"
