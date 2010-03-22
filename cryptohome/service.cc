@@ -25,7 +25,7 @@ namespace cryptohome {
 const char *Service::kDefaultMountCommand = "/usr/sbin/mount.cryptohome";
 const char *Service::kDefaultUnmountCommand = "/usr/sbin/umount.cryptohome";
 const char *Service::kDefaultIsMountedCommand =
-  "/bin/mount | /bin/grep -q /dev/mapper/cryptohome";
+  "/bin/mount | /bin/grep -q ' /home/chronos/user '";
 
 Service::Service() : loop_(NULL),
                      auth_(new Authenticator),
