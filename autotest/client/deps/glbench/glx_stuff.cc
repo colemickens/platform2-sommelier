@@ -5,6 +5,7 @@
 #include <string.h>
 #include <GL/glx.h>
 
+#include "base/logging.h"
 #include "main.h"
 #include "xlib_window.h"
 
@@ -19,7 +20,7 @@ bool Init() {
 }
 
 VisualID GetVisualID() {
-  int screen = DefaultScreen(xlib_display);
+  int screen = DefaultScreen(g_xlib_display);
   int attrib[] = {
     GLX_DOUBLEBUFFER, True,
     GLX_RED_SIZE, 1,
@@ -31,22 +32,22 @@ VisualID GetVisualID() {
     None
   };
   int nelements;
-  GLXFBConfig *fbconfigs = glXChooseFBConfig(xlib_display, screen,
+  GLXFBConfig *fbconfigs = glXChooseFBConfig(g_xlib_display, screen,
                                              attrib, &nelements);
   CHECK(nelements >= 1);
   int visual_id;
-  glXGetFBConfigAttrib(xlib_display, fbconfigs[0], GLX_VISUAL_ID, &visual_id);
+  glXGetFBConfigAttrib(g_xlib_display, fbconfigs[0], GLX_VISUAL_ID, &visual_id);
   XFree(fbconfigs);
   return static_cast<VisualID>(visual_id);
 }
 
 bool InitContext() {
-  glx_context = glXCreateContext(xlib_display, xlib_visinfo, 0, True);
+  glx_context = glXCreateContext(g_xlib_display, g_xlib_visinfo, 0, True);
   if (!glx_context)
     return false;
 
-  if (!glXMakeCurrent(xlib_display, xlib_window, glx_context)) {
-    glXDestroyContext(xlib_display, glx_context);
+  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, glx_context)) {
+    glXDestroyContext(g_xlib_display, glx_context);
     return false;
   }
 
@@ -72,12 +73,12 @@ bool InitContext() {
 }
 
 void DestroyContext() {
-  glXMakeCurrent(xlib_display, 0, NULL);
-  glXDestroyContext(xlib_display, glx_context);
+  glXMakeCurrent(g_xlib_display, 0, NULL);
+  glXDestroyContext(g_xlib_display, glx_context);
 }
 
 void SwapBuffers() {
-  glXSwapBuffers(xlib_display, xlib_window);
+  glXSwapBuffers(g_xlib_display, g_xlib_window);
 }
 
 bool SwapInterval(int interval) {

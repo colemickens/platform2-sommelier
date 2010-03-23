@@ -22,7 +22,7 @@ bool Init() {
     return false;
 
   EGLNativeWindowType native_window =
-      static_cast<EGLNativeWindowType>(xlib_window);
+      static_cast<EGLNativeWindowType>(g_xlib_window);
   egl_surface = eglCreateWindowSurface(egl_display, egl_config,
                                        native_window, NULL);
   CHECK_EGL();
@@ -41,7 +41,7 @@ VisualID GetVisualID() {
   };
 
   EGLNativeDisplayType native_display =
-      static_cast<EGLNativeDisplayType>(xlib_display);
+      static_cast<EGLNativeDisplayType>(g_xlib_display);
 
   EGLDisplay egl_display = eglGetDisplay(native_display);
   CHECK_EGL();

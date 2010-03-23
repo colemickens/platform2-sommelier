@@ -7,9 +7,9 @@
 
 #include <X11/Xlib.h>
 
-extern Display *xlib_display;
-extern Window xlib_window;
-extern XVisualInfo *xlib_visinfo;
+extern Display *g_xlib_display;
+extern Window g_xlib_window;
+extern XVisualInfo *g_xlib_visinfo;
 
 bool XlibInit();
 VisualID GetVisualID();

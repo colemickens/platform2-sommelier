@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
   SwapInterval(g_sleep_duration ? 0 : 1);
   for (;;) {
     XEvent event;
-    Bool got_event = XCheckWindowEvent(xlib_display, xlib_window,
+    Bool got_event = XCheckWindowEvent(g_xlib_display, g_xlib_window,
                                        KeyPressMask, &event);
     if (got_event)
       break;
