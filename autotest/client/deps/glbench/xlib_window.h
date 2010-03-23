@@ -5,12 +5,13 @@
 #ifndef BENCH_GL_XLIB_H_
 #define BENCH_GL_XLIB_H_
 
-#include <GL/glx.h>
 #include <X11/Xlib.h>
 
 extern Display *xlib_display;
 extern Window xlib_window;
+extern XVisualInfo *xlib_visinfo;
 
 bool XlibInit();
+VisualID GetVisualID();
 
 #endif // BENCH_GL_XLIB_H_

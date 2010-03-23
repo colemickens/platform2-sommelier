@@ -9,6 +9,7 @@
 
 #include "main.h"
 #include "utils.h"
+#include "xlib_window.h"
 
 
 GLuint GenerateAndBindTexture() {
@@ -66,7 +67,7 @@ static void ParseArgs(int argc, char* argv[]) {
         printf("-r requires integer greater than one.\n");
       }
     } else if (strcmp("-o", argv[i]) == 0) {
-      g_override_redirect = false;
+      g_override_redirect = true;
     } else if (strcmp("-r", argv[i]) == 0) {
       refresh_arg = true;
     }
@@ -75,8 +76,9 @@ static void ParseArgs(int argc, char* argv[]) {
 
 
 int main(int argc, char* argv[]) {
-  ParseArgs(argc, argv);
+  g_override_redirect = false;
   g_height = -1;
+  ParseArgs(argc, argv);
   if (!Init()) {
     printf("# Failed to initialize.\n");
     return 1;
@@ -109,6 +111,11 @@ int main(int argc, char* argv[]) {
   int i = 0;
   SwapInterval(g_sleep_duration ? 0 : 1);
   for (;;) {
+    XEvent event;
+    Bool got_event = XCheckWindowEvent(xlib_display, xlib_window,
+                                       KeyPressMask, &event);
+    if (got_event)
+      break;
     glClear(GL_COLOR_BUFFER_BIT);
     glUniform1f(shift_uniform, 1.f / g_width *
                 (i < g_width ? i : 2 * g_width - i));

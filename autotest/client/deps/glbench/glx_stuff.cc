@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 #include <string.h>
+#include <GL/glx.h>
 
 #include "main.h"
 #include "xlib_window.h"
 
-GLXContext glx_context = NULL;
+static GLXContext glx_context = NULL;
 
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
@@ -17,24 +18,33 @@ bool Init() {
   return XlibInit();
 }
 
+VisualID GetVisualID() {
+  int screen = DefaultScreen(xlib_display);
+  int attrib[] = {
+    GLX_DOUBLEBUFFER, True,
+    GLX_RED_SIZE, 1,
+    GLX_GREEN_SIZE, 1,
+    GLX_BLUE_SIZE, 1,
+    GLX_DEPTH_SIZE, 1,
+    GLX_STENCIL_SIZE, 1,
+    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+    None
+  };
+  int nelements;
+  GLXFBConfig *fbconfigs = glXChooseFBConfig(xlib_display, screen,
+                                             attrib, &nelements);
+  CHECK(nelements >= 1);
+  int visual_id;
+  glXGetFBConfigAttrib(xlib_display, fbconfigs[0], GLX_VISUAL_ID, &visual_id);
+  XFree(fbconfigs);
+  return static_cast<VisualID>(visual_id);
+}
+
 bool InitContext() {
-  XWindowAttributes attributes;
-  XGetWindowAttributes(xlib_display, xlib_window, &attributes);
-  XVisualInfo visual_info_template;
-  visual_info_template.visualid = XVisualIDFromVisual(attributes.visual);
-  int visual_info_count = 0;
-  XVisualInfo *visual_info_list = XGetVisualInfo(xlib_display, VisualIDMask,
-                                                 &visual_info_template,
-                                                 &visual_info_count);
-  glx_context = 0;
-  for (int i = 0; i < visual_info_count; ++i) {
-    glx_context = glXCreateContext(xlib_display, visual_info_list + i, 0, True);
-    if (glx_context) break;
-  }
-  XFree(visual_info_list);
-  if (!glx_context) {
+  glx_context = glXCreateContext(xlib_display, xlib_visinfo, 0, True);
+  if (!glx_context)
     return false;
-  }
+
   if (!glXMakeCurrent(xlib_display, xlib_window, glx_context)) {
     glXDestroyContext(xlib_display, glx_context);
     return false;

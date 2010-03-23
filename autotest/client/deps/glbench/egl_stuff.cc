@@ -21,20 +21,27 @@ bool Init() {
   if (!XlibInit())
     return false;
 
+  EGLNativeWindowType native_window =
+      static_cast<EGLNativeWindowType>(xlib_window);
+  egl_surface = eglCreateWindowSurface(egl_display, egl_config,
+                                       native_window, NULL);
+  CHECK_EGL();
+  return true;
+}
+
+VisualID GetVisualID() {
   EGLint attribs[] = {
-    EGL_RED_SIZE,       5,
-    EGL_GREEN_SIZE,     6,
-    EGL_BLUE_SIZE,      5,
-    EGL_DEPTH_SIZE,     16,
-    EGL_STENCIL_SIZE,   0,
-    EGL_SURFACE_TYPE,   EGL_WINDOW_BIT,
+    EGL_RED_SIZE, 1,
+    EGL_GREEN_SIZE, 1,
+    EGL_BLUE_SIZE, 1,
+    EGL_DEPTH_SIZE, 1,
+    EGL_STENCIL_SIZE, 1,
+    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
     EGL_NONE
   };
 
   EGLNativeDisplayType native_display =
       static_cast<EGLNativeDisplayType>(xlib_display);
-  EGLNativeWindowType native_window =
-      static_cast<EGLNativeWindowType>(xlib_window);
 
   EGLDisplay egl_display = eglGetDisplay(native_display);
   CHECK_EGL();
@@ -50,10 +57,11 @@ bool Init() {
   eglChooseConfig(egl_display, attribs, &egl_config, 1, &num_configs);
   CHECK_EGL();
 
-  egl_surface = eglCreateWindowSurface(egl_display, egl_config,
-                                                  native_window, NULL);
+  EGLint visual_id;
+  eglGetConfigAttrib(egl_display, egl_config, EGL_NATIVE_VISUAL_ID, &visual_id);
   CHECK_EGL();
-  return true;
+
+  return static_cast<VisualID>(visual_id);
 }
 
 bool InitContext() {
@@ -88,5 +96,5 @@ void SwapBuffers() {
 }
 
 bool SwapInterval(int interval) {
-  return eglSwapInterval(interval) == EGL_TRUE;
+  return eglSwapInterval(egl_display, interval) == EGL_TRUE;
 }
