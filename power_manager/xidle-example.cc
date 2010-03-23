@@ -2,27 +2,30 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gdk/gdk.h>
 #include <inttypes.h>
 #include <cstdio>
 #include "base/logging.h"
 #include "power_manager/xidle.h"
 
-int main(int argc, char *argv[]) {
-  power_manager::XIdle idle;
-  Display* display = XOpenDisplay(NULL);
-  CHECK(display);
-  bool init = idle.Init(display);
-  CHECK(init);
-  idle.AddIdleTimeout(2000);
-  idle.AddIdleTimeout(5000);
-  bool is_idle;
-  int64 idle_time;
-  while (idle.Monitor(&is_idle, &idle_time)) {
+class IdleMonitorExample : public power_manager::XIdleMonitor {
+ public:
+  void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (is_idle)
-      printf("User has been idle for %" PRIi64 " milliseconds\n", idle_time);
+      printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
     else
       printf("User is active\n");
   }
-  XCloseDisplay(display);
+};
+
+int main(int argc, char* argv[]) {
+  gdk_init(&argc, &argv);
+  GMainLoop* loop = g_main_loop_new(NULL, false);
+  power_manager::XIdle idle;
+  IdleMonitorExample monitor;
+  CHECK(idle.Init(&monitor));
+  CHECK(idle.AddIdleTimeout(2000));
+  CHECK(idle.AddIdleTimeout(5000));
+  g_main_loop_run(loop);
   return 0;
 }

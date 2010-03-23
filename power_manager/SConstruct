@@ -18,12 +18,12 @@ for key in Split('CC CXX AR RANLIB LD NM'):
   value = os.environ.get(key)
   if value != None:
     base_env[key] = value
-for key in Split('CFLAGS CCFLAGS CPPPATH LIBPATH'):
-  value = os.environ.get(key)
-  if value != None:
-    base_env[key] = Split(value)
+for key in Split('CFLAGS CPPFLAGS CCFLAGS CPPPATH LIBPATH'):
+  value = os.environ.get(key, '')
+  base_env[key] = Split(value)
 
-base_env['CPPFLAGS'] = ['-D__STDC_FORMAT_MACROS']
+base_env['CFLAGS'].extend(Split('-Wall -Wextra -Werror -Wuninitialized'))
+base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
 
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
@@ -34,6 +34,7 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
 xidle_env = base_env.Clone()
 xidle_env.Append(LIBS=Split('base rt X11 Xext'))
 xidle_env.Append(CPPPATH=['..'])
+xidle_env.ParseConfig('pkg-config --cflags --libs gdk-2.0')
 xidle = xidle_env.Library('xidle', ['xidle.cc'])
 xidle_example = xidle_env.Program('xidle-example', ['xidle-example.cc', xidle])
 Default(xidle_example)
@@ -48,7 +49,9 @@ backlight_example = backlight_env.Program('backlight-example',
 Default(backlight_example)
 
 # Build power daemon
-powerd = xidle_env.Program('powerd', ['powerd.cc', xidle, backlight])
+powerd_env = xidle_env.Clone()
+powerd_env.Append(LIBS=Split('gflags'))
+powerd = powerd_env.Program('powerd', ['powerd.cc', xidle, backlight])
 Default(powerd)
 
 # Build unit tests

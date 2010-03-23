@@ -11,16 +11,15 @@
 int main(int argc, char* argv[]) {
   power_manager::Backlight backlight;
   int64 level, max;
-  bool ok = backlight.Init() && backlight.GetBrightness(&level, &max);
-  CHECK(ok) << "Can't get brightness";
+  CHECK(backlight.Init());
+  CHECK(backlight.GetBrightness(&level, &max));
   printf("Current brightness level is %" PRIi64 " out of %" PRIi64 "\n",
          level, max);
   if (argc > 1) {
     int64 new_level;
-    ok = StringToInt64(argv[1], &new_level) &&
-         backlight.SetBrightness(new_level) &&
-         backlight.GetBrightness(&level, &max);
-    CHECK(ok) << "Can't set brightness to " << argv[1] << " out of " << max;
+    CHECK(StringToInt64(argv[1], &new_level));
+    CHECK(backlight.SetBrightness(new_level));
+    CHECK(backlight.GetBrightness(&level, &max));
     printf("New brightness level is %" PRIi64 " out of %" PRIi64 "\n",
            level, max);
   }
