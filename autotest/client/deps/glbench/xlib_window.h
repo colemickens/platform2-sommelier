@@ -12,6 +12,6 @@ extern Window g_xlib_window;
 extern XVisualInfo *g_xlib_visinfo;
 
 bool XlibInit();
-VisualID GetVisualID();
+XVisualInfo* GetXVisual();
 
 #endif // BENCH_GL_XLIB_H_

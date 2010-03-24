@@ -4,6 +4,7 @@
 
 #include <EGL/egl.h>
 
+#include "base/logging.h"
 #include "main.h"
 #include "xlib_window.h"
 
@@ -29,39 +30,46 @@ bool Init() {
   return true;
 }
 
-VisualID GetVisualID() {
-  EGLint attribs[] = {
-    EGL_RED_SIZE, 1,
-    EGL_GREEN_SIZE, 1,
-    EGL_BLUE_SIZE, 1,
-    EGL_DEPTH_SIZE, 1,
-    EGL_STENCIL_SIZE, 1,
-    EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-    EGL_NONE
-  };
+XVisualInfo* GetXVisual() {
+  if (!egl_config) {
+    EGLint attribs[] = {
+      EGL_RED_SIZE, 1,
+      EGL_GREEN_SIZE, 1,
+      EGL_BLUE_SIZE, 1,
+      EGL_DEPTH_SIZE, 1,
+      EGL_STENCIL_SIZE, 1,
+      EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+      EGL_NONE
+    };
 
-  EGLNativeDisplayType native_display =
+    EGLNativeDisplayType native_display =
       static_cast<EGLNativeDisplayType>(g_xlib_display);
 
-  EGLDisplay egl_display = eglGetDisplay(native_display);
-  CHECK_EGL();
+    egl_display = eglGetDisplay(native_display);
+    CHECK_EGL();
 
-  eglInitialize(egl_display, NULL, NULL);
-  CHECK_EGL();
+    eglInitialize(egl_display, NULL, NULL);
+    CHECK_EGL();
 
-  EGLint num_configs = -1;
-  eglGetConfigs(egl_display, NULL, 0, &num_configs);
-  CHECK_EGL();
+    EGLint num_configs = -1;
+    eglGetConfigs(egl_display, NULL, 0, &num_configs);
+    CHECK_EGL();
 
-  EGLConfig egl_config;
-  eglChooseConfig(egl_display, attribs, &egl_config, 1, &num_configs);
-  CHECK_EGL();
+    eglChooseConfig(egl_display, attribs, &egl_config, 1, &num_configs);
+    CHECK_EGL();
+  }
 
   EGLint visual_id;
   eglGetConfigAttrib(egl_display, egl_config, EGL_NATIVE_VISUAL_ID, &visual_id);
   CHECK_EGL();
 
-  return static_cast<VisualID>(visual_id);
+  XVisualInfo vinfo_template;
+  vinfo_template.visualid = static_cast<VisualID>(visual_id);
+  int nitems = 0;
+  XVisualInfo* ret = XGetVisualInfo(g_xlib_display, VisualIDMask,
+                                    &vinfo_template, &nitems);
+  CHECK(nitems == 1);
+  return ret;
 }
 
 bool InitContext() {

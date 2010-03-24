@@ -10,6 +10,7 @@
 #include "xlib_window.h"
 
 static GLXContext glx_context = NULL;
+static GLXFBConfig glx_fbconfig = NULL;
 
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
@@ -19,30 +20,33 @@ bool Init() {
   return XlibInit();
 }
 
-VisualID GetVisualID() {
-  int screen = DefaultScreen(g_xlib_display);
-  int attrib[] = {
-    GLX_DOUBLEBUFFER, True,
-    GLX_RED_SIZE, 1,
-    GLX_GREEN_SIZE, 1,
-    GLX_BLUE_SIZE, 1,
-    GLX_DEPTH_SIZE, 1,
-    GLX_STENCIL_SIZE, 1,
-    GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
-    None
-  };
-  int nelements;
-  GLXFBConfig *fbconfigs = glXChooseFBConfig(g_xlib_display, screen,
-                                             attrib, &nelements);
-  CHECK(nelements >= 1);
-  int visual_id;
-  glXGetFBConfigAttrib(g_xlib_display, fbconfigs[0], GLX_VISUAL_ID, &visual_id);
-  XFree(fbconfigs);
-  return static_cast<VisualID>(visual_id);
+XVisualInfo* GetXVisual() {
+  if (!glx_fbconfig) {
+    int screen = DefaultScreen(g_xlib_display);
+    int attrib[] = {
+      GLX_DOUBLEBUFFER, True,
+      GLX_RED_SIZE, 1,
+      GLX_GREEN_SIZE, 1,
+      GLX_BLUE_SIZE, 1,
+      GLX_DEPTH_SIZE, 1,
+      GLX_STENCIL_SIZE, 1,
+      GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+      None
+    };
+    int nelements;
+    GLXFBConfig *fbconfigs = glXChooseFBConfig(g_xlib_display, screen,
+                                               attrib, &nelements);
+    CHECK(nelements >= 1);
+    glx_fbconfig = fbconfigs[0];
+    XFree(fbconfigs);
+  }
+
+  return glXGetVisualFromFBConfig(g_xlib_display, glx_fbconfig);
 }
 
 bool InitContext() {
-  glx_context = glXCreateContext(g_xlib_display, g_xlib_visinfo, 0, True);
+  glx_context = glXCreateNewContext(g_xlib_display, glx_fbconfig,
+                                    GLX_RGBA_TYPE, 0, True);
   if (!glx_context)
     return false;
 
