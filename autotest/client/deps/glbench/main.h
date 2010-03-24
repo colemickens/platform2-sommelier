@@ -66,6 +66,11 @@ typedef void (*BenchFunc)(int iter);
 
 uint64_t TimeBench(BenchFunc func, int iter);
 
+// This size is for a window that is very large but will fit on all
+// the displays we care about.
+#define WINDOW_WIDTH 512
+#define WINDOW_HEIGHT 512
+
 #define MAX_ITERATION_DURATION_MS 100000
 // Runs func passing it sequential powers of two (8, 16, 32,...) recording time
 // it took.  The data is then fitted linearly, obtaining slope and bias such

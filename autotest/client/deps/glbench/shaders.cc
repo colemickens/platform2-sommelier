@@ -80,7 +80,6 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
   return program;
 }
 
-
 #define I915_WORKAROUND 1
 
 #if I915_WORKAROUND
@@ -106,6 +105,175 @@ ShaderProgram AttributeFetchShaderProgram(int attribute_count,
 #define DDX "ddx"
 #define DDY "ddy"
 #endif
+
+const char *basic_texture_vertex_shader =
+"attribute vec4 c1;"
+"attribute vec4 c2;"
+"varying vec2 v1;"
+"void main() {"
+"    gl_Position = c1;"
+"    " V1 " = c2;"
+"}";
+
+const char *basic_texture_fragment_shader =
+"uniform sampler2D texture_sampler;"
+"varying vec2 v1;"
+"void main() {"
+"    gl_FragColor = texture2D(texture_sampler, " V1 ".xy);"
+"}";
+
+ShaderProgram BasicTextureShaderProgram(GLuint vertex_buffer,
+                                        GLuint texture_buffer) {
+  ShaderProgram program =
+    InitShaderProgram(basic_texture_vertex_shader,
+                      basic_texture_fragment_shader);
+
+  // Set up the texture sampler
+  int textureSampler = glGetUniformLocation(program, "texture_sampler");
+  glUniform1i(textureSampler, 0);
+
+  // Set up vertex attribute
+  int attribute_index = glGetAttribLocation(program, "c1");
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  // Set up texture attribute
+  attribute_index = glGetAttribLocation(program, "c2");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  return program;
+}
+
+const char *double_texture_blend_vertex_shader =
+"attribute vec4 c1;"
+"attribute vec4 c2;"
+"attribute vec4 c3;"
+"varying vec2 v1;"
+"varying vec2 v2;"
+"void main() {"
+"    gl_Position = c1;"
+"    " V1 " = c2;"
+"    " V2 " = c3;"
+"}";
+
+const char *double_texture_blend_fragment_shader =
+"uniform sampler2D texture_sampler_0;"
+"uniform sampler2D texture_sampler_1;"
+"varying vec2 v1;"
+"varying vec2 v2;"
+"void main() {"
+"    vec4 one = texture2D(texture_sampler_0, " V1 ".xy);"
+"    vec4 two = texture2D(texture_sampler_1, " V2 ".xy);"
+"    gl_FragColor = mix(one, two, 0.5);"
+"}";
+
+// This shader blends the three textures
+ShaderProgram DoubleTextureBlendShaderProgram(GLuint vertex_buffer,
+                                              GLuint texture_buffer_0,
+                                              GLuint texture_buffer_1) {
+  ShaderProgram program =
+    InitShaderProgram(double_texture_blend_vertex_shader,
+                      double_texture_blend_fragment_shader);
+
+  // Set up the texture sampler
+  int textureSampler0 = glGetUniformLocation(program, "texture_sampler_0");
+  glUniform1i(textureSampler0, 0);
+  int textureSampler1 = glGetUniformLocation(program, "texture_sampler_1");
+  glUniform1i(textureSampler1, 1);
+
+  // Set up vertex attribute
+  int attribute_index = glGetAttribLocation(program, "c1");
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  // Set up texture attributes
+  attribute_index = glGetAttribLocation(program, "c2");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer_0);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  attribute_index = glGetAttribLocation(program, "c3");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer_1);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  return program;
+}
+
+const char *triple_texture_blend_vertex_shader =
+"attribute vec4 c1;"
+"attribute vec4 c2;"
+"attribute vec4 c3;"
+"attribute vec4 c4;"
+"varying vec2 v1;"
+"varying vec2 v2;"
+"varying vec2 v3;"
+"void main() {"
+"    gl_Position = c1;"
+"    " V1 " = c2;"
+"    " V2 " = c3;"
+"    " V3 " = c4;"
+"}";
+
+const char *triple_texture_blend_fragment_shader =
+"uniform sampler2D texture_sampler_0;"
+"uniform sampler2D texture_sampler_1;"
+"uniform sampler2D texture_sampler_2;"
+"varying vec2 v1;"
+"varying vec2 v2;"
+"varying vec2 v3;"
+"void main() {"
+"    vec4 one = texture2D(texture_sampler_0, " V1 ".xy);"
+"    vec4 two = texture2D(texture_sampler_1, " V2 ".xy);"
+"    vec4 three = texture2D(texture_sampler_2, " V3 ".xy);"
+"    gl_FragColor = mix(mix(one, two, 0.5), three, 0.5);"
+"}";
+
+// This shader blends the three textures
+ShaderProgram TripleTextureBlendShaderProgram(GLuint vertex_buffer,
+                                              GLuint texture_buffer_0,
+                                              GLuint texture_buffer_1,
+                                              GLuint texture_buffer_2) {
+  ShaderProgram program =
+    InitShaderProgram(triple_texture_blend_vertex_shader,
+                      triple_texture_blend_fragment_shader);
+
+  // Set up the texture sampler
+  int textureSampler0 = glGetUniformLocation(program, "texture_sampler_0");
+  glUniform1i(textureSampler0, 0);
+  int textureSampler1 = glGetUniformLocation(program, "texture_sampler_1");
+  glUniform1i(textureSampler1, 1);
+  int textureSampler2 = glGetUniformLocation(program, "texture_sampler_2");
+  glUniform1i(textureSampler2, 2);
+
+  // Set up vertex attribute
+  int attribute_index = glGetAttribLocation(program, "c1");
+  glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  // Set up texture attributes
+  attribute_index = glGetAttribLocation(program, "c2");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer_0);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  attribute_index = glGetAttribLocation(program, "c3");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer_1);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  attribute_index = glGetAttribLocation(program, "c4");
+  glBindBuffer(GL_ARRAY_BUFFER, texture_buffer_2);
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  return program;
+}
 
 const char *vertex_shader_1_varying =
 "attribute vec4 c;"

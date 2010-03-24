@@ -70,7 +70,6 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
 static int arg1 = 0;
 static void *arg2 = NULL;
 
-
 void SwapTestFunc(int iter) {
   for (int i = 0 ; i < iter; ++i) {
     SwapBuffers();
@@ -80,7 +79,6 @@ void SwapTestFunc(int iter) {
 void SwapTest() {
   RunTest(SwapTestFunc, "us_swap_swap", 1.f, false);
 }
-
 
 void ClearTestFunc(int iter) {
   GLbitfield mask = arg1;
@@ -577,6 +575,230 @@ void YuvToRgbShaderTest2() {
   YuvToRgbShaderTestHelper(2, "yuv_shader_2");
 }
 
+static GLuint compositing_textures[5];
+static uint32_t texture_base[WINDOW_HEIGHT*WINDOW_WIDTH];
+static uint32_t texture_update[WINDOW_HEIGHT*WINDOW_WIDTH];
+static ShaderProgram compositing_background_program = 0;
+static ShaderProgram compositing_foreground_program = 0;
+
+void InitBaseTexture() {
+  for (int y = 0; y < WINDOW_HEIGHT; y++) {
+    for (int x = 0; x < WINDOW_WIDTH; x++) {
+      // This color is gray, half alpha.
+      texture_base[y*WINDOW_WIDTH+x] = 0x80808080;
+    }
+  }
+}
+
+// UpdateTexture simulates Chrome updating tab contents.
+// We cause a bunch of read and write cpu memory bandwidth.
+// It's a very rough approximation.
+void UpdateTexture() {
+  memcpy(texture_update, texture_base, sizeof(texture_base));
+}
+
+void LoadTexture() {
+  // Use GL_RGBA for compatibility with GLES2.0.
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+               WINDOW_WIDTH, WINDOW_HEIGHT, 0,
+               GL_RGBA, GL_UNSIGNED_BYTE, texture_update);
+}
+
+// Test how fast we can do full-screen compositing of images
+// continuously updated from the CPU.
+// This tests both GPU compositing performance and also
+// CPU -> GPU data transfer speed.
+// It is a basic perf test to make sure we have enough performance
+// to run a compositing window manager.
+void CompositingTestFunc(int iter) {
+  for (int i = 0 ; i < iter; ++i) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw the background
+    glDisable(GL_BLEND);
+    glDisable(GL_DEPTH_TEST);
+    // We have to blend three textures, but we use multi-texture for this
+    // blending, not fb blend, to avoid the external memory traffic
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[1]);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[2]);
+    // Set up the texture coordinate arrays
+    glClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glClientActiveTexture(GL_TEXTURE1);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glClientActiveTexture(GL_TEXTURE2);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    // Use the right shader
+    glUseProgram(compositing_background_program);
+    // Draw the quad
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    // Set up one texture coordinate array
+    glClientActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glClientActiveTexture(GL_TEXTURE1);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glClientActiveTexture(GL_TEXTURE2);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    // Use the right shader
+    glUseProgram(compositing_foreground_program);
+
+    // Compositing is blending, so we shall blend.
+    glEnable(GL_BLEND);
+    // Depth test is on for window occlusion
+    glEnable(GL_DEPTH_TEST);
+
+    // Draw window number one
+    // This update acts like a chrome webkit sw rendering update.
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[3]);
+    UpdateTexture();
+    // TODO(papakipos): this LoadTexture is likely doing more CPU memory copies
+    // than we would like.
+    LoadTexture();
+    // TODO(papakipos): add color interpolation here, and modulate
+    // texture against it.
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    // Draw window number two
+    // This is a static window, so we don't update it.
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[4]);
+    // TODO(papakipos): add color interpolation here, and modulate
+    // texture against it.
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+  }
+}
+
+void InitializeCompositing() {
+  InitBaseTexture();
+
+  glClearColor(0.f, 0.f, 0.f, 0.f);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glDepthFunc(GL_LEQUAL);
+
+  glGenTextures(5, compositing_textures);
+  glActiveTexture(GL_TEXTURE0);
+  for (int i = 0; i < 5; i++) {
+    glBindTexture(GL_TEXTURE_2D, compositing_textures[i]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+  }
+
+  glColor4f(1.f, 1.f, 1.f, 1.f);
+
+  // Set up the vertex arrays for drawing textured quads later on.
+  glEnableClientState(GL_VERTEX_ARRAY);
+  GLfloat buffer_vertex[8] = {
+    -1.f, -1.f,
+    1.f,  -1.f,
+    -1.f, 1.f,
+    1.f,  1.f,
+  };
+  GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
+                               sizeof(buffer_vertex), buffer_vertex);
+  if (!vbo_vertex)
+    printf("# Not Using VBO!\n");
+  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+
+  GLfloat buffer_texture[8] = {
+    0.f, 0.f,
+    1.f, 0.f,
+    0.f, 1.f,
+    1.f, 1.f,
+  };
+  GLuint vbo_texture = SetupVBO(GL_ARRAY_BUFFER,
+                                sizeof(buffer_texture), buffer_texture);
+  for (int i = 0; i < 3; i++) {
+    glClientActiveTexture(GL_TEXTURE0 + i);
+    glTexCoordPointer(2, GL_FLOAT, 0, vbo_texture ? 0 : buffer_texture);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+  }
+
+  // Set up the static background textures.
+  UpdateTexture();
+  UpdateTexture();
+  UpdateTexture();
+  // Load these textures into bound texture ids and keep using them
+  // from there to avoid having to reload this texture every frame
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, compositing_textures[0]);
+  LoadTexture();
+  glActiveTexture(GL_TEXTURE1);
+  glBindTexture(GL_TEXTURE_2D, compositing_textures[1]);
+  LoadTexture();
+  glActiveTexture(GL_TEXTURE2);
+  glBindTexture(GL_TEXTURE_2D, compositing_textures[2]);
+  LoadTexture();
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, compositing_textures[3]);
+  UpdateTexture();
+  LoadTexture();
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, compositing_textures[4]);
+  UpdateTexture();
+  LoadTexture();
+
+  // Set up vertex & fragment shaders.
+  compositing_background_program =
+      TripleTextureBlendShaderProgram(vbo_vertex,
+                                      vbo_texture, vbo_texture, vbo_texture);
+  compositing_foreground_program =
+      BasicTextureShaderProgram(vbo_vertex, vbo_texture);
+  if ((!compositing_background_program) ||
+      (!compositing_foreground_program)) {
+    printf("# Could not set up compositing shader.\n");
+  }
+
+  if (!vbo_vertex)
+    printf("# Not Using VBO!\n");
+  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+}
+
+void TeardownCompositing() {
+  glDeleteProgram(compositing_background_program);
+  glDeleteProgram(compositing_foreground_program);
+}
+
+// Notes on the window manager compositing test:
+// Depth
+//      Depth complexity = 3: background, active window, static window
+//      Background: may be a tex-blend of three images (2.5d effect)
+// The windows -- at most two, fullscreen
+//      Depth test is on, passing most of the time.
+//      A lot of texture min-filtering -- not modelled
+//      One of the two windows is getting live browser frame updates -- not mod
+//          The live window runs at x/2 and y/2 size -- not modelled
+//      The two windows are modulated by color interpolation to get gradient
+static float screen_scale_factor = (1e6f*
+                                    (WINDOW_WIDTH*WINDOW_HEIGHT)/
+                                    (1280.f*768));
+
+void WindowManagerCompositingTest() {
+  InitializeCompositing();
+  RunTest(CompositingTestFunc, "1280x768_fps_compositing",
+          screen_scale_factor, true);
+  TeardownCompositing();
+}
+
+void NoFillWindowManagerCompositingTest() {
+  glScissor(0, 0, 1, 1);
+  glEnable(GL_SCISSOR_TEST);
+  InitializeCompositing();
+  RunTest(CompositingTestFunc, "1280x768_fps_no_fill_compositing",
+          screen_scale_factor, true);
+  TeardownCompositing();
+}
 
 // TODO: get resources file from a command line option or something.
 // TODO: use proper command line parsing library.
@@ -620,6 +842,8 @@ int main(int argc, char *argv[]) {
     VaryingsAndDdxyShaderTest,
     YuvToRgbShaderTest1,
     YuvToRgbShaderTest2,
+    NoFillWindowManagerCompositingTest,
+    WindowManagerCompositingTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;

@@ -10,8 +10,8 @@
 Display *g_xlib_display = NULL;
 Window g_xlib_window = 0;
 
-GLint g_width = 512;
-GLint g_height = 512;
+GLint g_width = WINDOW_WIDTH;
+GLint g_height = WINDOW_HEIGHT;
 bool g_override_redirect = true;
 
 
