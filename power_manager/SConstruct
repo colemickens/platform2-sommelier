@@ -41,12 +41,12 @@ Default(xidle_example)
 
 # Build example backlight program
 backlight_env = base_env.Clone()
-backlight_env.Append(LIBS=Split('base rt'))
+backlight_env.Append(LIBS=Split('base rt gflags'))
 backlight_env.Append(CPPPATH=['..'])
 backlight = xidle_env.Library('backlight', ['backlight.cc'])
-backlight_example = backlight_env.Program('backlight-example',
-    ['backlight-example.cc', backlight])
-Default(backlight_example)
+backlight_tool = backlight_env.Program('backlight-tool',
+    ['backlight-tool.cc', backlight])
+Default(backlight_tool)
 
 # Build power daemon
 powerd_env = xidle_env.Clone()
