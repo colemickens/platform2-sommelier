@@ -134,6 +134,7 @@ done
 
 # TODO: consider moving this when we start X in a different way.
 /sbin/initctl emit x-started
+cat /proc/uptime > /tmp/uptime-x-started
 
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
