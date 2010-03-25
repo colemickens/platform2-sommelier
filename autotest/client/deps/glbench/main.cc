@@ -68,7 +68,6 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
 }
 
 static int arg1 = 0;
-static void *arg2 = NULL;
 
 void SwapTestFunc(int iter) {
   for (int i = 0 ; i < iter; ++i) {
@@ -116,8 +115,8 @@ GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
   glGenBuffers(1, &buf);
   glBindBuffer(target, buf);
   glBufferData(target, size, data, GL_STATIC_DRAW);
-
-  return glGetError() == 0 ? buf : 0;
+  CHECK(!glGetError());
+  return buf;
 }
 
 
@@ -183,13 +182,11 @@ void FillRateTest() {
 
   GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
                                sizeof(buffer_vertex), buffer_vertex);
-  if (!vbo_vertex)
-    printf("# Not Using VBO!\n");
-  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+  glVertexPointer(2, GL_FLOAT, 0, 0);
 
   GLuint vbo_texture = SetupVBO(GL_ARRAY_BUFFER,
                                 sizeof(buffer_texture), buffer_texture);
-  glTexCoordPointer(2, GL_FLOAT, 0, vbo_texture ? 0 : buffer_texture);
+  glTexCoordPointer(2, GL_FLOAT, 0, 0);
 
   glColor4f(1.f, 0.f, 0.f, 1.f);
   FillRateTestNormal("fill_solid");
@@ -274,10 +271,10 @@ static void DrawArraysTestFunc(int iter) {
 
 
 static void DrawElementsTestFunc(int iter) {
-  glDrawElements(GL_TRIANGLES, arg1, GL_UNSIGNED_INT, arg2);
+  glDrawElements(GL_TRIANGLES, arg1, GL_UNSIGNED_INT, 0);
   glFlush();
   for (int i = 0 ; i < iter-1; ++i) {
-    glDrawElements(GL_TRIANGLES, arg1, GL_UNSIGNED_INT, arg2);
+    glDrawElements(GL_TRIANGLES, arg1, GL_UNSIGNED_INT, 0);
   }
 }
 
@@ -345,7 +342,7 @@ void TriangleSetupTest() {
                 width, height);
   GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
                                   vertex_buffer_size, vertices);
-  glVertexPointer(2, GL_FLOAT, 0, vertex_buffer != 0 ? 0 : vertices);
+  glVertexPointer(2, GL_FLOAT, 0, 0);
   glEnableClientState(GL_VERTEX_ARRAY);
 
   GLuint *indices = NULL;
@@ -357,8 +354,6 @@ void TriangleSetupTest() {
 
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
                             index_buffer_size, indices);
-    arg2 = index_buffer ? 0 : indices;
-
     RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup", arg1 / 3, true);
     glEnable(GL_CULL_FACE);
     RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup_all_culled",
@@ -376,8 +371,6 @@ void TriangleSetupTest() {
 
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
                             index_buffer_size, indices);
-    arg2 = index_buffer ? 0 : indices;
-
     glEnable(GL_CULL_FACE);
     RunTest(DrawElementsTestFunc, "mtri_sec_triangle_setup_half_culled",
             arg1 / 3, true);
@@ -705,9 +698,7 @@ void InitializeCompositing() {
   };
   GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
                                sizeof(buffer_vertex), buffer_vertex);
-  if (!vbo_vertex)
-    printf("# Not Using VBO!\n");
-  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+  glVertexPointer(2, GL_FLOAT, 0, 0);
 
   GLfloat buffer_texture[8] = {
     0.f, 0.f,
@@ -719,7 +710,7 @@ void InitializeCompositing() {
                                 sizeof(buffer_texture), buffer_texture);
   for (int i = 0; i < 3; i++) {
     glClientActiveTexture(GL_TEXTURE0 + i);
-    glTexCoordPointer(2, GL_FLOAT, 0, vbo_texture ? 0 : buffer_texture);
+    glTexCoordPointer(2, GL_FLOAT, 0, 0);
     glEnableClientState(GL_TEXTURE_COORD_ARRAY);
   }
 
@@ -760,9 +751,7 @@ void InitializeCompositing() {
     printf("# Could not set up compositing shader.\n");
   }
 
-  if (!vbo_vertex)
-    printf("# Not Using VBO!\n");
-  glVertexPointer(2, GL_FLOAT, 0, vbo_vertex ? 0 : buffer_vertex);
+  glVertexPointer(2, GL_FLOAT, 0, 0);
 }
 
 void TeardownCompositing() {
