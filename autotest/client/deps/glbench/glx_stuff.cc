@@ -9,8 +9,8 @@
 #include "main.h"
 #include "xlib_window.h"
 
-static GLXContext glx_context = NULL;
-static GLXFBConfig glx_fbconfig = NULL;
+GLXContext g_glx_context = NULL;
+GLXFBConfig g_glx_fbconfig = NULL;
 
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
@@ -22,7 +22,7 @@ bool Init() {
 }
 
 XVisualInfo* GetXVisual() {
-  if (!glx_fbconfig) {
+  if (!g_glx_fbconfig) {
     int screen = DefaultScreen(g_xlib_display);
     int attrib[] = {
       GLX_DOUBLEBUFFER, True,
@@ -38,21 +38,21 @@ XVisualInfo* GetXVisual() {
     GLXFBConfig *fbconfigs = glXChooseFBConfig(g_xlib_display, screen,
                                                attrib, &nelements);
     CHECK(nelements >= 1);
-    glx_fbconfig = fbconfigs[0];
+    g_glx_fbconfig = fbconfigs[0];
     XFree(fbconfigs);
   }
 
-  return glXGetVisualFromFBConfig(g_xlib_display, glx_fbconfig);
+  return glXGetVisualFromFBConfig(g_xlib_display, g_glx_fbconfig);
 }
 
 bool InitContext() {
-  glx_context = glXCreateNewContext(g_xlib_display, glx_fbconfig,
+  g_glx_context = glXCreateNewContext(g_xlib_display, g_glx_fbconfig,
                                     GLX_RGBA_TYPE, 0, True);
-  if (!glx_context)
+  if (!g_glx_context)
     return false;
 
-  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, glx_context)) {
-    glXDestroyContext(g_xlib_display, glx_context);
+  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, g_glx_context)) {
+    glXDestroyContext(g_xlib_display, g_glx_context);
     return false;
   }
 
@@ -82,7 +82,7 @@ bool InitContext() {
 
 void DestroyContext() {
   glXMakeCurrent(g_xlib_display, 0, NULL);
-  glXDestroyContext(g_xlib_display, glx_context);
+  glXDestroyContext(g_xlib_display, g_glx_context);
 }
 
 void SwapBuffers() {

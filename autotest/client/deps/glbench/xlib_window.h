@@ -9,7 +9,6 @@
 
 extern Display *g_xlib_display;
 extern Window g_xlib_window;
-extern XVisualInfo *g_xlib_visinfo;
 
 bool XlibInit();
 XVisualInfo* GetXVisual();

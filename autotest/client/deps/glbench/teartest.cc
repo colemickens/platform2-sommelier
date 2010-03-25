@@ -7,10 +7,17 @@
 #include <string.h>
 #include <time.h>
 
+#include "base/logging.h"
+
 #include "main.h"
 #include "utils.h"
 #include "xlib_window.h"
 
+#include "teartest.h"
+
+
+static Pixmap pixmap = 0;
+static int shift_uniform = 0;
 
 GLuint GenerateAndBindTexture() {
   GLuint name = ~0;
@@ -18,18 +25,9 @@ GLuint GenerateAndBindTexture() {
   glBindTexture(GL_TEXTURE_2D, name);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   return name;
-}
-
-
-char *CreateBitmap(int w, int h) {
-  char *bitmap = new char[w * h];
-  memset(bitmap, 255, w * h);
-  memset(bitmap + w * (1 + h / 2), 0, w);
-  memset(bitmap + w * (5 + h / 2), 0, w);
-  return bitmap;
 }
 
 
@@ -75,6 +73,92 @@ static void ParseArgs(int argc, char* argv[]) {
 }
 
 
+void AllocatePixmap() {
+  XWindowAttributes attributes;
+  XGetWindowAttributes(g_xlib_display, g_xlib_window, &attributes);
+  pixmap = XCreatePixmap(g_xlib_display, g_xlib_window,
+                         g_height, g_width, attributes.depth);
+}
+
+void InitializePixmap() {
+  GC gc = DefaultGC(g_xlib_display, 0);
+  XSetForeground(g_xlib_display, gc, 0xffffff);
+  XFillRectangle(g_xlib_display, pixmap, gc, 0, 0, g_height, g_width);
+  UpdatePixmap(0);
+}
+
+void UpdatePixmap(int i) {
+  static int last_i = 0;
+  GC gc = DefaultGC(g_xlib_display, 0);
+  XSetForeground(g_xlib_display, gc, 0xffffff);
+  XDrawLine(g_xlib_display, pixmap, gc,
+            0, last_i, g_height - 1, last_i);
+  XDrawLine(g_xlib_display, pixmap, gc,
+            0, last_i + 4, g_height - 1, last_i + 4);
+
+  XSetForeground(g_xlib_display, gc, 0x000000);
+  XDrawLine(g_xlib_display, pixmap, gc, 0, i, g_height - 1, i);
+  XDrawLine(g_xlib_display, pixmap, gc, 0, i + 4, g_height - 1, i + 4);
+
+  last_i = i;
+}
+
+void CopyPixmapToTexture() {
+  XImage *xim = XGetImage(g_xlib_display, pixmap, 0, 0, g_height, g_width,
+                          AllPlanes, ZPixmap);
+  CHECK(xim != NULL);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_height, g_width, 0,
+               GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
+  XDestroyImage(xim);
+}
+
+
+bool UpdateUniform(TestState state, int shift) {
+  switch (state) {
+    case TestStart:
+      printf("# Plain texture draw.\n");
+      InitializePixmap();
+      CopyPixmapToTexture();
+      break;
+
+    case TestLoop:
+      glUniform1f(shift_uniform, 1.f / g_width * shift);
+      break;
+
+    case TestStop:
+      glUniform1f(shift_uniform, 0.f);
+      break;
+  }
+  return true;
+}
+
+bool UpdateTexImage2D(TestState state, int shift) {
+  switch (state) {
+    case TestStart:
+      printf("# Full texture update.\n");
+      InitializePixmap();
+      CopyPixmapToTexture();
+      break;
+
+    case TestLoop: {
+      UpdatePixmap(shift);
+      // TODO: it's probably much cheaper to not use Pixmap and XImage.
+      CopyPixmapToTexture();
+    }
+
+    case TestStop:
+      break;
+  }
+  return true;
+}
+
+
+Test test[] = {
+  UpdateUniform,
+  UpdateTexImage2D,
+  UpdateBindTexImage
+};
+
 int main(int argc, char* argv[]) {
   g_override_redirect = false;
   g_height = -1;
@@ -87,10 +171,10 @@ int main(int argc, char* argv[]) {
   InitContext();
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
-  char *bitmap = CreateBitmap(g_height, g_width*2);
   GLuint texture = GenerateAndBindTexture();
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, g_height, g_width, 0,
-               GL_LUMINANCE, GL_UNSIGNED_BYTE, bitmap + g_height * g_width);
+
+  AllocatePixmap();
+  InitNative(pixmap);
 
   GLfloat vertices[8] = {
     0.f, 0.f,
@@ -107,27 +191,37 @@ int main(int argc, char* argv[]) {
   int texture_sampler = glGetUniformLocation(program, "tex");
   glUniform1f(texture_sampler, 0);
 
-  int shift_uniform = glGetUniformLocation(program, "shift");
-  int i = 0;
+  shift_uniform = glGetUniformLocation(program, "shift");
   SwapInterval(g_sleep_duration ? 0 : 1);
-  for (;;) {
+
+  for (unsigned int i = 0; i < sizeof(test)/sizeof(*test); i++)
+  {
     XEvent event;
-    Bool got_event = XCheckWindowEvent(g_xlib_display, g_xlib_window,
-                                       KeyPressMask, &event);
-    if (got_event)
-      break;
-    glClear(GL_COLOR_BUFFER_BIT);
-    glUniform1f(shift_uniform, 1.f / g_width *
-                (i < g_width ? i : 2 * g_width - i));
-    i = (i + 4) % (2 * g_width);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    glFlush();
+    if (!test[i](TestStart, 0))
+      continue;
 
-    if (g_sleep_duration)
-      nanosleep(g_sleep_duration, NULL);
+    Bool got_event = False;
+    for (int x = 0; !got_event; x = (x + 4) % (2 * g_width)) {
+      const int shift = x < g_width ? x : 2 * g_width - x;
 
-    SwapBuffers();
+      test[i](TestLoop, shift);
+
+      glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+      glFlush();
+
+      if (g_sleep_duration)
+        nanosleep(g_sleep_duration, NULL);
+
+      SwapBuffers();
+
+      got_event = XCheckWindowEvent(g_xlib_display, g_xlib_window,
+                                    KeyPressMask, &event);
+    }
+
+    test[i](TestStop, 0);
   }
+
+  // TODO: clean teardown.
 
   glDeleteTextures(1, &texture);
   DestroyContext();
