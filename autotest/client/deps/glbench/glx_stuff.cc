@@ -15,6 +15,7 @@ static GLXFBConfig glx_fbconfig = NULL;
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
 #undef F
+PFNGLXSWAPINTERVALMESAPROC _glXSwapIntervalMESA = NULL;
 
 bool Init() {
   return XlibInit();
@@ -72,6 +73,9 @@ bool InitContext() {
     glXGetProcAddress(reinterpret_cast<const GLubyte *>(#fun)));
   LIST_PROC_FUNCTIONS(F)
 #undef F
+  _glXSwapIntervalMESA = reinterpret_cast<PFNGLXSWAPINTERVALMESAPROC>(
+    glXGetProcAddress(reinterpret_cast<const GLubyte *>(
+        "glXSwapIntervalMESA")));
 
   return true;
 }
@@ -86,5 +90,11 @@ void SwapBuffers() {
 }
 
 bool SwapInterval(int interval) {
-  return glXSwapIntervalSGI(interval) == 0;
+  // Strictly, glXSwapIntervalSGI only allows interval > 0, whereas
+  // glXSwapIntervalMESA allow 0 with the same semantics as eglSwapInterval.
+  if (_glXSwapIntervalMESA) {
+    return _glXSwapIntervalMESA(interval) == 0;
+  } else {
+    return glXSwapIntervalSGI(interval) == 0;
+  }
 }
