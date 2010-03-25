@@ -8,6 +8,10 @@
 
 testNoUserEnvVariable() {
   unset CHROMEOS_USER
+  mock mount mock::ok
+  mock chown mock::ok
+  export DISABLED_ENCRYPTION_FILE=<(echo -n "notme@example.com")
+  function incognito_error() { true; }
   mount_main 1>${stdoutF} 2>${stderrF} 3>${logF}
   ret=$?
   assertEquals 'expecting return code of 0' 0 ${ret}
@@ -15,7 +19,9 @@ testNoUserEnvVariable() {
   assertNull 'unexpected output to stderr' "$(cat ${stderrF})"
   expected_log="\
 CHROMEOS_USER not exported.
-Assuming we aren't coming via pam_google..."
+Assuming incognito mode...
+disabled_encryption_file present
+incognito mount completed"
   assertSame 'unexpected output to log' \
              "$(echo -ne "$expected_log")" \
              "$(cat ${logF})"

@@ -43,7 +43,7 @@ trap error_handler ERR;
 
 function incognito_error() {
   cryptohome::log "failed to mount incognito!"
-  $exit 1
+  exit 1
 }
 
 function incognito_mount() {
@@ -58,14 +58,16 @@ function second_chance() {
   cryptohome::log "new image creation failed (again)"
   cryptohome::log "falling back to incognito mode"
   incognito_mount
-  $exit 0
+  exit 0
 }
 
 function mount_main() {
+  # This catches the unexported CHROMEOS_USER. A defined, but empty
+  # CHROMEOS_USER will pass through and be caught later.
   if ! typeset -p CHROMEOS_USER &>/dev/null  ; then
     cryptohome::log "CHROMEOS_USER not exported."
-    cryptohome::log "Assuming we aren't coming via pam_google..."
-    return 0
+    cryptohome::log "Assuming incognito mode..."
+    CHROMEOS_USER="$INCOGNITO_USER"
   fi
 
   # Support a file to disable encryption for given users.
@@ -83,9 +85,8 @@ function mount_main() {
   $exec 1>$STDOUT_FILE
   $exec 2>$STDERR_FILE
   if [[ "$CHROMEOS_USER" == "$INCOGNITO_USER" ]]; then
-    cryptohome::log "incognito mode requested"
     incognito_mount
-    $exit 0
+    return 0
   fi
   USERID="$($cat $IMAGE_DIR/salt <($echo -n $CHROMEOS_USER) | $openssl sha1)"
   PASSWORD="$($cat)"
