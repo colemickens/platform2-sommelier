@@ -223,14 +223,13 @@ STATEFUL_PARTITION="${DST}1"
 sudo mkfs.ext3 "$STATEFUL_PARTITION"
 sudo tune2fs -L "H-STATE" "$STATEFUL_PARTITION"
 
-# install things into stateful partition
-if [ -d /home/autotest-client ]
-then
+# Install dev image into the stateful partition
+# TODO(sosa@chromium.org) - Remove old autotest support
+if [ -f /root/.dev_mode ] || [ -d /mnt/stateful_partition/dev_image ] ; then
   STATEFUL_DIR=/tmp/stateful_partition_on_hd
   mkdir -p "$STATEFUL_DIR"
   sudo mount "$STATEFUL_PARTITION" "$STATEFUL_DIR"
-  sudo mkdir -p "$STATEFUL_DIR/home/autotest-client"
-  sudo cp -fpru /home/autotest-client "$STATEFUL_DIR/home/autotest-client"
+  sudo cp -fpru /mnt/stateful_partition/dev_image "$STATEFUL_DIR/dev_image"
   sudo umount "$STATEFUL_DIR"
 fi
 
