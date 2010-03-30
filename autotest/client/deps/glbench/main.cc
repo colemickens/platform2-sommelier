@@ -68,6 +68,7 @@ void RunTest(BenchFunc f, const char *name, float coefficient, bool inverse) {
 }
 
 static int arg1 = 0;
+static void *arg2 = NULL;
 
 void SwapTestFunc(int iter) {
   for (int i = 0 ; i < iter; ++i) {
@@ -789,7 +790,39 @@ void NoFillWindowManagerCompositingTest() {
   TeardownCompositing();
 }
 
-// TODO: get resources file from a command line option or something.
+void ReadPixelTestFunc(int iter) {
+  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, arg2);
+  CHECK(glGetError() == 0);
+  for (int i = 0; i < iter; i++)
+    glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, arg2);
+}
+
+// TODO: better test names.
+void ReadPixelTest() {
+  // One GL_RGBA pixel takes 4 bytes.
+  const int row_size = g_width * 4;
+  // Default GL_PACK_ALIGNMENT is 4, round up pixel row size to multiple of 4.
+  // This is a no-op because row_size is already divisible by 4.
+  // One is added so that we can test reads into unaligned location.
+  char* pixels = new char[((row_size + 3) & ~3) * g_height + 1];
+
+  arg2 = pixels;
+  RunTest(ReadPixelTestFunc, "mpixels_sec_pixel_read",
+          g_width * g_height, true);
+
+  // Reducing GL_PACK_ALIGNMENT can only make rows smaller.  No need to
+  // reallocate the buffer.
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  RunTest(ReadPixelTestFunc, "mpixels_sec_pixel_read_2",
+          g_width * g_height, true);
+
+  arg2 = static_cast<void*>(pixels + 1);
+  RunTest(ReadPixelTestFunc, "mpixels_sec_pixel_read_3",
+          g_width * g_height, true);
+
+  delete[] pixels;
+}
+
 // TODO: use proper command line parsing library.
 static void ParseArgs(int argc, char *argv[]) {
   const char **enabled_tests_ptr = enabled_tests;
@@ -833,6 +866,7 @@ int main(int argc, char *argv[]) {
     YuvToRgbShaderTest2,
     NoFillWindowManagerCompositingTest,
     WindowManagerCompositingTest,
+    ReadPixelTest,
   };
 
   uint64_t done = GetUTime() + 1000000ULL * seconds_to_run;
