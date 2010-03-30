@@ -146,4 +146,5 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --user-data-dir=/home/$USER \
             --login-profile=user \
             "--cookie-pipe=$COOKIE_PIPE" \
+            --enable-login-images \
             "${SKIP_OOBE}"
