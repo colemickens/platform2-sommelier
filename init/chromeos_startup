@@ -36,22 +36,9 @@ mount -n -t tmpfs tmp /tmp
 mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
 mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
-# Mount our stateful partition
-ROOT_DEV=$(sed 's/.*root=\([^ ]*\).*/\1/g' /proc/cmdline)
-if [ "${ROOT_DEV#*=}" = "$ROOT_DEV" ]
-then
-  # We get here if $ROOT doesn't have an = in it.
-
-  # Old installations have system partitions on partitions 1 and 2. They
-  # have the stateful partition on partition 4. New installations have
-  # partitions 3 and 4 as system partitions and partition 1 as the stateful
-  # partition.
-  STATE_DEV=$(echo "$ROOT_DEV" | tr 1234 4411)
-else
-  # $ROOT has an = in it, so we assume it's LABEL= or UUID=. Follow that
-  # convention when specifying the stateful partition.
-  STATE_DEV="/dev/disk/by-label/C-STATE"
-fi
+# Mount our stateful partition. It's always partition 1.
+ROOT_DEV=$(rootdev)
+STATE_DEV=${ROOT_DEV%%[0-9]*}1
 mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
 
 # Make sure stateful partition has some basic directories
