@@ -1,19 +1,30 @@
-#!/bin/sh
+#!/bin/sh -e
 
 # Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script is called after an AutoUpdate or USB install.
-set -e
+# This script is called after an AutoUpdate or USB install. The first argument
+# is the partition where the new rootfs is installed. The autoupdate invocation
+# will provide a second argument, specifying the partition for the new kernel.
 
-# update /boot/extlinux.conf
+# Update /boot/extlinux.conf.
 INSTALL_ROOT=`dirname "$0"`
 INSTALL_DEV="$1"
+KINSTALL_DEV="$2"
 
-# set default label to chromeos-hd
+
+# Set default label to chromeos-hd.
 sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' "$INSTALL_ROOT"/boot/extlinux.conf
 sed -i "{ s:HDROOT:$INSTALL_DEV: }" "$INSTALL_ROOT"/boot/extlinux.conf
 
-# NOTE: The stateful partition will not be mounted when this is
-# called at USB-key install time.
+# NOTE: The stateful partition will not be mounted when this is called at
+# USB-key install time. It will be mounted following an upgrade. ChromeOS
+# hardware expects the kernel to be in a partition of its own. Legacy systems
+# will use syslinux to boot from the kernel image found in the rootfs.
+# TODO: The ChromeOS kernel partition will contain a signature header, a config
+# file, and the kernel image as a single blob. We'll need to revisit this to
+# ensure that gets installed properly.
+if [ -n "$KINSTALL_DEV" ]; then
+  dd if=${INSTALL_ROOT}/boot/vmlinuz of=${KINSTALL_DEV}
+fi
