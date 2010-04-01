@@ -1,14 +1,12 @@
-# Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 import os
-import itertools
 
-
-Help('''\
+Help("""\
 Type: 'scons' to build and 'scons -c' to clean\
-''')
+""")
 
 # Create a base environment including things that are likely to be common
 # to all of the objects in this directory. We pull in overrides from the
@@ -16,7 +14,7 @@ Type: 'scons' to build and 'scons -c' to clean\
 base_env = Environment()
 for key in Split('CC CXX AR RANLIB LD NM'):
   value = os.environ.get(key)
-  if value != None:
+  if value is not None:
     base_env[key] = value
 for key in Split('CFLAGS CPPFLAGS CCFLAGS CPPPATH LIBPATH'):
   value = os.environ.get(key, '')
@@ -27,7 +25,7 @@ base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
 
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
-  if os.environ.has_key(key):
+  if key in os.environ:
     base_env['ENV'][key] = os.environ[key]
 
 # Build example xidle program
@@ -45,7 +43,7 @@ backlight_env.Append(LIBS=Split('base rt gflags'))
 backlight_env.Append(CPPPATH=['..'])
 backlight = xidle_env.Library('backlight', ['backlight.cc'])
 backlight_tool = backlight_env.Program('backlight-tool',
-    ['backlight-tool.cc', backlight])
+                                       ['backlight-tool.cc', backlight])
 Default(backlight_tool)
 
 # Build power daemon

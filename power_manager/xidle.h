@@ -1,9 +1,9 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SRC_PLATFORM_POWER_MANAGER_XIDLE_H_
-#define SRC_PLATFORM_POWER_MANAGER_XIDLE_H_
+#ifndef POWER_MANAGER_XIDLE_H_
+#define POWER_MANAGER_XIDLE_H_
 
 #include <gdk/gdkevents.h>
 #include <X11/Xlib.h>
@@ -16,8 +16,13 @@ namespace power_manager {
 // \brief Interface for monitoring idle events
 class XIdleMonitor {
  public:
-  virtual ~XIdleMonitor() {}
+  // Idle event handler. This handler should be called when the user either
+  // becomes newly idle (due to exceeding an idle timeout) or is no longer
+  // idle.
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) = 0;
+
+ protected:
+  ~XIdleMonitor() {}
 };
 
 // \brief Receive notifications from the X Server when the user is marked as
@@ -95,4 +100,4 @@ class XIdle {
 
 }  // namespace power_manager
 
-#endif  // SRC_PLATFORM_POWER_MANAGER_XIDLE_H_
+#endif  // POWER_MANAGER_XIDLE_H_

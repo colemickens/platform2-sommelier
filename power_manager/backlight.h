@@ -2,13 +2,32 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SRC_PLATFORM_POWER_MANAGER_BACKLIGHT_H_
-#define SRC_PLATFORM_POWER_MANAGER_BACKLIGHT_H_
+#ifndef POWER_MANAGER_BACKLIGHT_H_
+#define POWER_MANAGER_BACKLIGHT_H_
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
 
 namespace power_manager {
+
+// \brief Interface for getting and setting the level of the backlight
+class BacklightInterface {
+ public:
+  // Set *level to the current brightness level of the backlight, and set
+  // *max to the max brightness level of the backlight. The minimum brightness
+  // level of the backlight is zero.
+  //
+  // On success, return true; otherwise return false.
+  virtual bool GetBrightness(int64* level, int64* max) = 0;
+
+  // Set the backlight to the specified brightness level.
+  //
+  // On success, return true; otherwise return false.
+  virtual bool SetBrightness(int64 level) = 0;
+
+ protected:
+  ~BacklightInterface() { }
+};
 
 // \brief Get and set the brightness level of the display backlight.
 //
@@ -23,7 +42,7 @@ namespace power_manager {
 // }
 // \end_example
 
-class Backlight {
+class Backlight : public BacklightInterface {
  public:
   Backlight() { }
 
@@ -32,25 +51,16 @@ class Backlight {
   // On success, return true; otherwise return false.
   bool Init();
 
-  // Set *level to the current brightness level of the backlight, and set
-  // *max to the max brightness level of the backlight. The minimum brightness
-  // level of the backlight is zero.
-  //
-  // On success, return true; otherwise return false.
   bool GetBrightness(int64* level, int64* max);
-
-  // Set the backlight to the specified brightness level.
-  //
-  // On success, return true; otherwise return false.
   bool SetBrightness(int64 level);
 
  private:
-
+  // Paths to the actual_brightness, brightness, and max_brightness files
+  // under /sys/class/backlight
   FilePath actual_brightness_path_, brightness_path_, max_brightness_path_;
-
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };
 
 }  // namespace power_manager
 
-#endif  // SRC_PLATFORM_POWER_MANAGER_BACKLIGHT_H_
+#endif  // POWER_MANAGER_BACKLIGHT_H_
