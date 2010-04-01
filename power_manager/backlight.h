@@ -5,29 +5,10 @@
 #ifndef POWER_MANAGER_BACKLIGHT_H_
 #define POWER_MANAGER_BACKLIGHT_H_
 
-#include "base/basictypes.h"
 #include "base/file_path.h"
+#include "power_manager/backlight_interface.h"
 
 namespace power_manager {
-
-// \brief Interface for getting and setting the level of the backlight
-class BacklightInterface {
- public:
-  // Set *level to the current brightness level of the backlight, and set
-  // *max to the max brightness level of the backlight. The minimum brightness
-  // level of the backlight is zero.
-  //
-  // On success, return true; otherwise return false.
-  virtual bool GetBrightness(int64* level, int64* max) = 0;
-
-  // Set the backlight to the specified brightness level.
-  //
-  // On success, return true; otherwise return false.
-  virtual bool SetBrightness(int64 level) = 0;
-
- protected:
-  ~BacklightInterface() { }
-};
 
 // \brief Get and set the brightness level of the display backlight.
 //

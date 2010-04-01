@@ -10,20 +10,9 @@
 #include <X11/extensions/sync.h>
 #include <list>
 #include "base/basictypes.h"
+#include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
-
-// \brief Interface for monitoring idle events
-class XIdleMonitor {
- public:
-  // Idle event handler. This handler should be called when the user either
-  // becomes newly idle (due to exceeding an idle timeout) or is no longer
-  // idle.
-  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) = 0;
-
- protected:
-  ~XIdleMonitor() {}
-};
 
 // \brief Receive notifications from the X Server when the user is marked as
 // idle, or as no longer idle.
