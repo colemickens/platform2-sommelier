@@ -92,10 +92,10 @@ fi
 
 
 # This installs a GPT into the specified device or file, using the given
-# components. If the target is a block device we'll do a full install.
-# Otherwise, it'll be just enough to boot.
+# components. If the target is a block device or the FORCE_FULL arg is "true"
+# we'll do a full install. Otherwise, it'll be just enough to boot.
 # Invoke as: command (not subshell)
-# Args: TARGET ROOTFS_IMG KERNEL_IMG STATEFUL_IMG PMBRCODE
+# Args: TARGET ROOTFS_IMG KERNEL_IMG STATEFUL_IMG PMBRCODE FORCE_FULL
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all untis are 512-byte sectors):
@@ -115,6 +115,7 @@ install_gpt() {
   local kernel_img=$3
   local stateful_img=$4
   local pmbrcode=$5
+  local force_full="${6:-}"
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -159,9 +160,13 @@ install_gpt() {
   local start_useful=$(roundup $num_header_sectors)
 
   # What are we doing?
-  if [ -b $outdev ]; then
+  if [[ -b "$outdev" || "$force_full" = "true" ]]; then
     # Block device, need to be root.
-    local sudo=sudo
+    if [[ -b "$outdev" ]]; then
+      local sudo=sudo
+    else
+      local sudo=""
+    fi
 
     # Full install, use max sizes and create both A & B images.
     NUM_KERN_SECTORS=$max_kern_sectors
