@@ -38,7 +38,7 @@ mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
 # Mount our stateful partition. It's always partition 1.
 ROOT_DEV=$(rootdev)
-STATE_DEV=${ROOT_DEV%%[0-9]*}1
+STATE_DEV=${ROOT_DEV%[0-9]*}1
 mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
 
 # Make sure stateful partition has some basic directories
