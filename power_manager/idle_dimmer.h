@@ -10,7 +10,7 @@
 
 namespace power_manager {
 
-// \brief Dim the screen when the user becomes idle.
+// \brief Adjusts the backlight based on whether the user is idle.
 class IdleDimmer : public XIdleMonitor {
  public:
   // Constructor. When the user becomes idle, use the provided backlight

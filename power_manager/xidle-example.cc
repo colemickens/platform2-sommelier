@@ -8,6 +8,9 @@
 #include "base/logging.h"
 #include "power_manager/xidle.h"
 
+// xidle-example: Prints console notifications when the user is and is not
+//                idle.
+
 class IdleMonitorExample : public power_manager::XIdleMonitor {
  public:
   void OnIdleEvent(bool is_idle, int64 idle_time_ms) {

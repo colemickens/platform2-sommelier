@@ -1,0 +1,37 @@
+On Chrome OS, we want to dim the screen when the user is idle. To do this,
+the power manager subscribes for idle notifications from XSync, and adjusts
+the backlight based on whether or not the user is idle.
+
+Executable programs:
+  * backlight-tool (backlight-tool.cc)
+    Simple tool to get and set the brightness level of the display backlight.
+  * powerd (powerd.cc)
+    Main power manager. Adjusts device status based on whether the
+    user is idle. Currently, this daemon just adjusts the backlight,
+    but in future it will handle other tasks such as turning off
+    the screen and suspending to RAM.
+  * xidle-example (xidle-example.cc)
+    Prints console notifications when the user is and is not idle.
+
+Main Classes:
+  * Backlight (backlight.{cc,h})
+    Get and set the brightness level of the display backlight.
+  * IdleDimmer (idle_dimmer.{cc,h})
+    Adjusts the backlight based on whether the user is idle.
+  * XIdle (xidle.{cc,h})
+    Receive notifications from the X Server when the user is marked as
+    idle, or as no longer idle
+
+Unit tests:
+  * idle_dimmer_unittest.cc:
+    Tests the IdleDimmer class.
+  * xidle_unittest.cc:
+    Tests the XIdle class with a real X server (or a virtual framebuffer).
+
+Autotests:
+  * hardware_Backlight
+    Verifies that backlight-tool can adjust brightness.
+  * power_Backlight
+    Verifies that adjusting the brightness with the backlight-tool changes the
+    amount of power used by the machine.
+

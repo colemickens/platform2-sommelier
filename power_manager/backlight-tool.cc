@@ -9,6 +9,9 @@
 #include "base/string_util.h"
 #include "power_manager/backlight.h"
 
+// backlight-tool: A simple tool to get and set the brightness level of the
+//                 display backlight.
+
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
 DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
 DEFINE_int64(set_brightness, -1, "Set brightness level.");

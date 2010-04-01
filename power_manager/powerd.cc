@@ -10,6 +10,11 @@
 #include "power_manager/idle_dimmer.h"
 #include "power_manager/xidle.h"
 
+// powerd: Main power manager. Adjusts device status based on whether the
+//         user is idle. Currently, this daemon just adjusts the backlight,
+//         but in future it will handle other tasks such as turning off
+//         the screen and suspending to RAM.
+
 DEFINE_int64(dim_ms, 0,
              "Number of milliseconds before dimming screen.");
 DEFINE_int64(idle_brightness, -1,
