@@ -8,7 +8,8 @@ SOURCES_TEARTEST = teartest.cc
 SOURCES_ALL = $(SOURCES_COMMON) $(SOURCES_GL_BENCH) $(SOURCES_TEARTEST)
 
 CXXFLAGS = -g -Wall -Werror -I$(GCLIENT_ROOT)/src/third_party/chrome/files
-LDFLAGS = -lGL -lX11 -L$(GCLIENT_ROOT)/src/third_party/chrome -lbase -lrt
+LDFLAGS = -lGL -lX11
+LDFLAGS += -L$(GCLIENT_ROOT)/src/third_party/chrome -lbase -lrt -lgflags
 GL_BENCH = ../glbench
 TEARTEST = ../teartest
 

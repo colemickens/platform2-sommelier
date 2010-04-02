@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gflags/gflags.h>
+
 #include "base/logging.h"
 #include "main.h"
 #include "xlib_window.h"
@@ -12,7 +14,7 @@ Window g_xlib_window = 0;
 
 GLint g_width = WINDOW_WIDTH;
 GLint g_height = WINDOW_HEIGHT;
-bool g_override_redirect = true;
+DEFINE_bool(override_redirect, true, "Use an override redirect window");
 
 
 bool XlibInit() {
@@ -38,7 +40,7 @@ bool XlibInit() {
   attr.colormap = XCreateColormap(g_xlib_display, root_window,
                                   xlib_visinfo->visual, AllocNone);
   attr.event_mask = StructureNotifyMask | ExposureMask | KeyPressMask;
-  attr.override_redirect = g_override_redirect ? True : False;
+  attr.override_redirect = FLAGS_override_redirect ? True : False;
   g_xlib_window = XCreateWindow(g_xlib_display, root_window,
                                 0, 0, g_width, g_height, 0,
                                 xlib_visinfo->depth, InputOutput,

@@ -5,6 +5,7 @@
 #ifndef BENCH_GL_MAIN_H_
 #define BENCH_GL_MAIN_H_
 
+#include <gflags/gflags.h>
 #include <sys/time.h>
 
 #ifdef USE_GLES
@@ -52,7 +53,7 @@ inline uint64_t GetUTime() {
 
 extern GLint g_width;
 extern GLint g_height;
-extern bool g_override_redirect;
+DECLARE_bool(override_redirect);
 
 bool Init();
 bool InitContext();

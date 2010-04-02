@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@
 
 static Pixmap pixmap = 0;
 static int shift_uniform = 0;
+DEFINE_int32(refresh, 0,
+             "If 1 or more, target refresh rate; otherwise enable vsync");
 
 GLuint GenerateAndBindTexture() {
   GLuint name = ~0;
@@ -44,33 +47,6 @@ const char *fragment_shader =
     "void main() {"
     "    gl_FragColor = texture2D(tex, gl_TexCoord[0].xy);"
     "}";
-
-
-// If refresh is set to zero, we enable vsync.  Otherwise we redraw that many
-// times a second.
-struct timespec* g_sleep_duration = NULL;
-static void ParseArgs(int argc, char* argv[]) {
-  bool refresh_arg = false;
-  for (int i = 0; i < argc; i++) {
-    if (refresh_arg) {
-      refresh_arg = false;
-
-      int refresh = atoi(argv[i]);
-      if (refresh > 1) {
-        delete g_sleep_duration;
-        g_sleep_duration = new struct timespec;
-        g_sleep_duration->tv_sec = 0;
-        g_sleep_duration->tv_nsec = static_cast<long>(1.e9 / refresh);
-      } else {
-        printf("-r requires integer greater than one.\n");
-      }
-    } else if (strcmp("-o", argv[i]) == 0) {
-      g_override_redirect = true;
-    } else if (strcmp("-r", argv[i]) == 0) {
-      refresh_arg = true;
-    }
-  }
-}
 
 
 void AllocatePixmap() {
@@ -160,9 +136,14 @@ Test test[] = {
 };
 
 int main(int argc, char* argv[]) {
-  g_override_redirect = false;
+  struct timespec* sleep_duration = NULL;
   g_height = -1;
-  ParseArgs(argc, argv);
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  if (FLAGS_refresh >= 1) {
+    sleep_duration = new struct timespec;
+    sleep_duration->tv_sec = 0;
+    sleep_duration->tv_nsec = static_cast<long>(1.e9 / FLAGS_refresh);
+  }
   if (!Init()) {
     printf("# Failed to initialize.\n");
     return 1;
@@ -192,7 +173,7 @@ int main(int argc, char* argv[]) {
   glUniform1f(texture_sampler, 0);
 
   shift_uniform = glGetUniformLocation(program, "shift");
-  SwapInterval(g_sleep_duration ? 0 : 1);
+  SwapInterval(sleep_duration ? 0 : 1);
 
   for (unsigned int i = 0; i < sizeof(test)/sizeof(*test); i++)
   {
@@ -209,8 +190,8 @@ int main(int argc, char* argv[]) {
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
       glFlush();
 
-      if (g_sleep_duration)
-        nanosleep(g_sleep_duration, NULL);
+      if (sleep_duration)
+        nanosleep(sleep_duration, NULL);
 
       SwapBuffers();
 
