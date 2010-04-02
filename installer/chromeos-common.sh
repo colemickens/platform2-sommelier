@@ -160,9 +160,9 @@ install_gpt() {
   local start_useful=$(roundup $num_header_sectors)
 
   # What are we doing?
-  if [[ -b "$outdev" || "$force_full" = "true" ]]; then
+  if [ -b "$outdev" -o "$force_full" = "true" ]; then
     # Block device, need to be root.
-    if [[ -b "$outdev" ]]; then
+    if [ -b "$outdev" ]; then
       local sudo=sudo
     else
       local sudo=""

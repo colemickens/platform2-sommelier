@@ -1,4 +1,4 @@
-#!/bin/sh -eu
+#!/bin/sh -u
 # Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -6,77 +6,81 @@
 # A script to install from removable media to hard disk.
 
 # Load functions and constants for chromeos-install.
-. "$(dirname "$0")/chromeos-common.sh"
+. "$(dirname "$0")/chromeos-common.sh" || exit 1
+. /usr/lib/shflags || exit 1
 
+DEFINE_string dst "/dev/sda" "Destination device"
+DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
+  "Skip check to ensure source is removable"
+DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
+  "Skip installing the rootfs; Only set up partition table"
+DEFINE_boolean run_as_root ${FLAGS_FALSE} \
+  "Allow root to run this script (Careful, it won't prompt for a password!)"
+DEFINE_boolean yes ${FLAGS_FALSE} \
+  "Answer yes to everything"
 
-# You can't be root when you start this, because we want to force you to give
-# the root password as confirmation that you're allowed to do it. We don't care
-# what other account you're using; you'll still need to sudo before this works.
-if [ $(id -u) == "0" ]
+# Parse command line
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
+set -e
+
+# Unless you pass --run_as_root, you can't be root when you start this,
+# because we want to force you to give the root password as confirmation
+# that you're allowed to do it. We don't care what other account you're using;
+# you'll still need to sudo before this works.
+if [ $(id -u) -eq "0" -a "${FLAGS_run_as_root}" -eq "${FLAGS_FALSE}" ]
 then
-  echo ""
-  echo "Note: You must be the 'chronos' user to run this script."
-  echo ""
-  echo "Usage: $0 [destination_device] [skip_source_removable_check]"
-  echo ""
-  echo "This will install the usb image to your machine's hard disk."
-  echo "By default, it will attempt to install to '/dev/sda'."
-  echo "First 'su chronos' and then run the script. It will ask"
-  echo "for the root password before messing with your hard disk."
-  echo "Skips checking whether the source device is removable if second"
-  echo "argument is 'true'."
+  echo "Note: You must be the 'chronos' user to run this script. Unless"
+  echo "you pass --run_as_root and run as root."
   exit 1
 fi
-
-# Default destination is /dev/sda.
-DST=${1:-/dev/sda}
-
-# Check for a removeable source.
-SKIP_CHECK_SOURCE_REMOVABLE=${2:-false}
 
 # First find the root partition that we are installing from and verify it.
 ROOTDEV=$(rootdev)
 # Remove numbers at end of rootfs device.
 SRC=${ROOTDEV%%[0-9]*}
 REMOVABLE=$(cat /sys/block/${SRC#/dev/}/removable)
-if [ "$SKIP_CHECK_SOURCE_REMOVABLE" = "false" -a "$REMOVABLE" != "1" ]
+if [ "$FLAGS_skip_src_removable" -eq "${FLAGS_FALSE}" -a "$REMOVABLE" != "1" ]
 then
   echo "Error: Source does not look like a removable device: $SRC"
   exit 1
 fi
 
 # Check out the dst device.
-if [ ! -b "$DST" ]
+if [ ! -b "$FLAGS_dst" ]
 then
-  echo "Error: Unable to find destination block device: $DST"
+  echo "Error: Unable to find destination block device: $FLAGS_dst"
   exit 1
 fi
-REMOVABLE=$(cat /sys/block/${DST#/dev/}/removable)
+REMOVABLE=$(cat /sys/block/${FLAGS_dst#/dev/}/removable)
 if [ $? -ne 0 ]
 then
-  echo "Error: Invalid destination device (must be whole device): $DST"
+  echo "Error: Invalid destination device (must be whole device): $FLAGS_dst"
   exit 1
 fi
 if [ "$REMOVABLE" != "0" ]
 then
-  echo "Error: Attempt to install to a removeable device: $DST"
+  echo "Error: Attempt to install to a removeable device: $FLAGS_dst"
   exit 1
 fi
-if [ "$DST" = "$SRC" ]; then
-  echo "Error: src and dst the same: $SRC = $DST"
+if [ "$FLAGS_dst" = "$SRC" ]; then
+  echo "Error: src and dst the same: $SRC = $FLAGS_dst"
   exit 1
 fi
 
 # Ask for root password to be sure.
-echo "This will install from '$SRC' to '$DST'. If you are sure this is"
+echo "This will install from '$SRC' to '$FLAGS_dst'. If you are sure this is"
 echo "what you want then feel free to enter the root password to proceed."
 sudo -K
 
-echo "This will erase all data at this destination: $DST"
-read -p "Are you sure (y/N)? " SURE
-if [ "$SURE" != "y" ] ; then
-  echo "Ok, better safe than sorry; you answered '$SURE'."
-  exit 1
+echo "This will erase all data at this destination: $FLAGS_dst"
+if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
+  read -p "Are you sure (y/N)? " SURE
+  if [ "$SURE" != "y" ] ; then
+    echo "Ok, better safe than sorry; you answered '$SURE'."
+    exit 1
+  fi
 fi
 
 ##############################################################################
@@ -185,16 +189,23 @@ ROOTFS_IMG=${SRC}3
 sudo dd if=$SRC of=$PMBRCODE bs=512 count=1
 
 # Create the GPT.
-install_gpt $DST $ROOTFS_IMG $KERNEL_IMG $STATEFUL_IMG $PMBRCODE
+install_gpt $FLAGS_dst $ROOTFS_IMG $KERNEL_IMG $STATEFUL_IMG $PMBRCODE
+
+if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
+  echo Done installing partitons.
+  exit 0
+fi
 
 # Install the content.
 echo "Copying kernel..."
-sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 seek=${START_KERN_A}
-sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 seek=${START_KERN_B}
+sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+  seek=${START_KERN_A}
+sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+  seek=${START_KERN_B}
 
 echo "Copying rootfs..."
-install_rootfs ${ROOTFS_IMG} ${DST} ${START_ROOTFS_A} "H-ROOT-A"
-install_rootfs ${ROOTFS_IMG} ${DST} ${START_ROOTFS_B} "H-ROOT-B"
+install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
+install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_B} "H-ROOT-B"
 
 # We can't guarantee that the kernel will see the new partition table, so we
 # can't use it directly. We could force the kernel to reload it with an ioctl,
@@ -206,28 +217,28 @@ install_rootfs ${ROOTFS_IMG} ${DST} ${START_ROOTFS_B} "H-ROOT-B"
 # Now run the postinstall script in each new rootfs. Note that even though
 # we're passing the new destination partition number as an arg, the postinst
 # script had better not try to access it, for the reasons we just gave.
-loop_offset_setup ${DST} ${START_ROOTFS_A}
+loop_offset_setup ${FLAGS_dst} ${START_ROOTFS_A}
 trap loop_offset_cleanup EXIT
 mount_on_loop_dev
 trap my_cleanup EXIT
-sudo ${TMPMNT}/postinst ${DST}3
+sudo ${TMPMNT}/postinst ${FLAGS_dst}3
 umount_from_loop_dev
 trap loop_offset_cleanup EXIT
 loop_offset_cleanup
 trap - EXIT
 
-loop_offset_setup ${DST} ${START_ROOTFS_B}
+loop_offset_setup ${FLAGS_dst} ${START_ROOTFS_B}
 trap loop_offset_cleanup EXIT
 mount_on_loop_dev
 trap my_cleanup EXIT
-sudo ${TMPMNT}/postinst ${DST}5
+sudo ${TMPMNT}/postinst ${FLAGS_dst}5
 umount_from_loop_dev
 trap loop_offset_cleanup EXIT
 loop_offset_cleanup
 trap - EXIT
 
 echo "Installing the stateful partition..."
-loop_offset_setup $DST $START_STATEFUL
+loop_offset_setup $FLAGS_dst $START_STATEFUL
 trap loop_offset_cleanup EXIT
 sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
   $(($NUM_STATEFUL_SECTORS / 8))
@@ -249,5 +260,5 @@ sync
 
 echo "------------------------------------------------------------"
 echo ""
-echo "Installation to '$DST' complete."
+echo "Installation to '$FLAGS_dst' complete."
 echo "Please shutdown, remove the USB device, cross your fingers, and reboot."
