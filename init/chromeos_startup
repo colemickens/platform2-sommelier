@@ -45,6 +45,7 @@ mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
 mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/etc
 mkdir -p -m 0755 /mnt/stateful_partition/var/cache
+mkdir -p -m 0755 /mnt/stateful_partition/var/empty
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib
 mkdir -p -m 0755 /mnt/stateful_partition/var/lock
 mkdir -p -m 0755 /mnt/stateful_partition/var/log
