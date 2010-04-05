@@ -55,7 +55,7 @@ roundup() {
   local num=$1
   local rem=$(( $num % 8 ))
 
-  if (( $rem )); then
+  if [ $rem -ne 0 ]; then
     num=$(($num + 8 - $rem))
   fi
   echo $num
@@ -70,7 +70,7 @@ rounddown() {
   local num=$1
   local rem=$(( $num % 8 ))
 
-  if (( $rem )); then
+  if [ $rem -ne 0 ]; then
     num=$(($num - $rem))
   fi
   echo $num
@@ -286,7 +286,7 @@ _partinfo() {
 # Returns: offset and size (in sectors) of partition PARTNUM
 partinfo() {
   # get string
-  local X=$(_partinfo $1 $2)
+  local X="$(_partinfo $1 $2)"
   # detect success or failure here
   [ -n "$X" ]
   echo $X
@@ -298,7 +298,7 @@ partinfo() {
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
   # get string
-  local X=$(_partinfo $1 $2)
+  local X="$(_partinfo $1 $2)"
   # detect success or failure here
   [ -n "$X" ]
   echo ${X% *}
@@ -310,7 +310,7 @@ partoffset() {
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
   # get string
-  local X=$(_partinfo $1 $2)
+  local X="$(_partinfo $1 $2)"
   # detect success or failure here
   [ -n "$X" ]
   echo ${X#* }
