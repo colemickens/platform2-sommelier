@@ -1,3 +1,0 @@
-lib/* usr/lib/chromeos-cryptohome
-# How do we update this without incurring a conflict?
-pam_mount.conf.xml etc/security
