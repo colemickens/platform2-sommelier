@@ -28,11 +28,11 @@ numsectors() {
   /dev/*[0-9])
     dnum=${1##*/}
     dev=${dnum%%[0-9]*}
-    cat /sys/block/$dev/$dnum/size 
+    cat /sys/block/$dev/$dnum/size
     ;;
   /dev/*)
     dev=${1##*/}
-    cat /sys/block/$dev/size 
+    cat /sys/block/$dev/size
     ;;
   *)
     local bytes=$(stat -c%s "$1")
@@ -43,7 +43,7 @@ numsectors() {
     fi
     echo $sectors
     ;;
-  esac    
+  esac
 }
 
 # Round a number of 512-byte sectors up to an integral number of 4096-byte
@@ -95,7 +95,7 @@ fi
 # components. If the target is a block device or the FORCE_FULL arg is "true"
 # we'll do a full install. Otherwise, it'll be just enough to boot.
 # Invoke as: command (not subshell)
-# Args: TARGET ROOTFS_IMG KERNEL_IMG STATEFUL_IMG PMBRCODE FORCE_FULL
+# Args: TARGET ROOTFS_IMG KERNEL_IMG STATEFUL_IMG PMBRCODE ESP_IMG FORCE_FULL
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all untis are 512-byte sectors):
@@ -103,19 +103,22 @@ fi
 #   NUM_ROOTFS_SECTORS
 #   NUM_STATEFUL_SECTORS
 #   NUM_RESERVED_SECTORS
+#   NUM_ESP_SECTORS
 #   START_KERN_A
 #   START_STATEFUL
 #   START_ROOTFS_A
 #   START_KERN_B
 #   START_ROOTFS_B
 #   START_RESERVED
+#   START_ESP
 install_gpt() {
   local outdev=$1
   local rootfs_img=$2
   local kernel_img=$3
   local stateful_img=$4
   local pmbrcode=$5
-  local force_full="${6:-}"
+  local esp_img=$6
+  local force_full="${7:-}"
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -149,6 +152,7 @@ install_gpt() {
   local max_kern_sectors=32768        # 16M
   local max_rootfs_sectors=2097152    # 1G
   local max_reserved_sectors=131072   # 64M
+  local max_esp_sectors=32768         # 16M
   local min_stateful_sectors=262144   # 128M, expands to fill available space
 
   local num_pmbr_sectors=1
@@ -171,12 +175,14 @@ install_gpt() {
     # Full install, use max sizes and create both A & B images.
     NUM_KERN_SECTORS=$max_kern_sectors
     NUM_ROOTFS_SECTORS=$max_rootfs_sectors
+    NUM_ESP_SECTORS=$max_esp_sectors
     NUM_RESERVED_SECTORS=$max_reserved_sectors
 
     # Where do things go?
     START_KERN_A=$start_useful
     START_KERN_B=$(($START_KERN_A + $NUM_KERN_SECTORS))
-    START_RESERVED=$(($START_KERN_B + $NUM_KERN_SECTORS))
+    START_ESP=$(($START_KERN_B + $NUM_KERN_SECTORS))
+    START_RESERVED=$(($START_ESP + $NUM_ESP_SECTORS))
     START_STATEFUL=$(($START_RESERVED + $NUM_RESERVED_SECTORS))
 
     local total_sectors=$(numsectors $outdev)
@@ -196,10 +202,12 @@ install_gpt() {
     NUM_KERN_SECTORS=$(roundup $(numsectors $kernel_img))
     NUM_ROOTFS_SECTORS=$(roundup $(numsectors $rootfs_img))
     NUM_STATEFUL_SECTORS=$(roundup $(numsectors $stateful_img))
+    NUM_ESP_SECTORS=$(roundup $(numsectors $esp_img))
     NUM_RESERVED_SECTORS=0
 
     START_KERN_A=$start_useful
-    START_STATEFUL=$(($START_KERN_A + $NUM_KERN_SECTORS))
+    START_ESP=$(($START_KERN_A + $NUM_KERN_SECTORS))
+    START_STATEFUL=$(($START_ESP + $NUM_ESP_SECTORS))
     START_ROOTFS_A=$(($START_STATEFUL + $NUM_STATEFUL_SECTORS))
     START_KERN_B=""
     START_ROOTFS_B=""
@@ -226,38 +234,44 @@ install_gpt() {
     count=$num_header_sectors
   $sudo dd if=/dev/zero of=${outdev} conv=notrunc bs=512 \
     seek=${start_gpt_footer} count=$num_footer_sectors
-  
+
   # Create the new GPT partitions. The order determines the partition number.
   # Note that the partition label is in the GPT only. The filesystem label is
   # what's used to populate /dev/disk/by-label/, and this is not that.
   $sudo $GPT create ${outdev}
-  
+
   $sudo $GPT add -b ${START_STATEFUL} -s ${NUM_STATEFUL_SECTORS} \
     -t ${STATEFUL_GUID} ${outdev}
   $sudo $GPT label -i 1 -l "STATE" ${outdev}
-  
+
   $sudo $GPT add -b ${START_KERN_A} -s ${NUM_KERN_SECTORS} \
     -t ${KERN_GUID} ${outdev}
   $sudo $GPT label -i 2 -l "KERN-A" ${outdev}
-  
+
   $sudo $GPT add -b ${START_ROOTFS_A} -s ${NUM_ROOTFS_SECTORS} \
     -t ${ROOTFS_GUID} ${outdev}
   $sudo $GPT label -i 3 -l "ROOT-A" ${outdev}
-  
+
   # add the rest of the partitions for a full install
   if [ -n "$START_KERN_B" ]; then
     $sudo $GPT add -b ${START_KERN_B} -s ${NUM_KERN_SECTORS} \
       -t ${KERN_GUID} ${outdev}
     $sudo $GPT label -i 4 -l "KERN-B" ${outdev}
-   
+
     $sudo $GPT add -b ${START_ROOTFS_B} -s ${NUM_ROOTFS_SECTORS} \
       -t ${ROOTFS_GUID} ${outdev}
     $sudo $GPT label -i 5 -l "ROOT-B" ${outdev}
   fi
 
+  # add the ESP partition
+  $sudo $GPT add -b ${START_ESP} -s ${NUM_ESP_SECTORS} \
+    -t ${ESP_GUID} ${outdev}
+  # FIXME: no label because I've lost count of the partition number
+  # I'll fix this when I've modified gpt to accept a label arg to 'add'.
+
   # Create the PMBR and instruct it to boot ROOT-A
   $sudo $GPT boot -i 3 -b ${pmbrcode} ${outdev}
-  
+
   # Display what we've got
   $sudo $GPT -r show -l ${outdev}
 

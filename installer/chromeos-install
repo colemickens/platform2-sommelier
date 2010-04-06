@@ -183,13 +183,14 @@ install_rootfs() {
 STATEFUL_IMG=${SRC}1
 KERNEL_IMG=${SRC}2
 ROOTFS_IMG=${SRC}3
+ESP_IMG=${SRC}4
 
 # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
 # on legacy-BIOS devices.
 sudo dd if=$SRC of=$PMBRCODE bs=512 count=1
 
 # Create the GPT.
-install_gpt $FLAGS_dst $ROOTFS_IMG $KERNEL_IMG $STATEFUL_IMG $PMBRCODE
+install_gpt $FLAGS_dst $ROOTFS_IMG $KERNEL_IMG $STATEFUL_IMG $PMBRCODE $ESP_IMG
 
 if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
   echo Done installing partitons.
@@ -206,6 +207,9 @@ sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
 echo "Copying rootfs..."
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_B} "H-ROOT-B"
+
+echo "Copying ESP..."
+sudo dd if=${ESP_IMG} of=${DST} conv=notrunc bs=512 seek=${START_ESP}
 
 # We can't guarantee that the kernel will see the new partition table, so we
 # can't use it directly. We could force the kernel to reload it with an ioctl,
