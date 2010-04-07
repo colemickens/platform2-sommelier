@@ -209,7 +209,7 @@ install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_B} "H-ROOT-B"
 
 echo "Copying ESP..."
-sudo dd if=${ESP_IMG} of=${DST} conv=notrunc bs=512 seek=${START_ESP}
+sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP}
 
 # We can't guarantee that the kernel will see the new partition table, so we
 # can't use it directly. We could force the kernel to reload it with an ioctl,
