@@ -4,6 +4,7 @@
 
 #include "cryptohome/authenticator.h"
 
+#include <limits.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -231,9 +232,18 @@ bool Authenticator::LoadFileBytes(const FilePath &path, Blob *blob) const {
     LOG(ERROR) << "Could not get size of " << path.value();
     return false;
   }
-  char buf[file_size];
-  int data_read = ReadFile(path, buf, file_size);
-  blob->assign(buf, buf + data_read);
+  if (file_size > INT_MAX) {
+    LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
+    return false;
+  }
+  Blob buf(file_size);
+  int data_read = ReadFile(path, reinterpret_cast<char*>(&buf[0]), file_size);
+  // Cast is okay because of comparison to INT_MAX above
+  if (data_read != static_cast<int>(file_size)) {
+    LOG(ERROR) << "Could not read entire file " << file_size;
+    return false;
+  }
+  blob->swap(buf);
   return true;
 }
 
