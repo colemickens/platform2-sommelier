@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include "power_manager/idle_dimmer.h"
+
 #include <algorithm>
+
 #include "base/logging.h"
 
 using std::min;

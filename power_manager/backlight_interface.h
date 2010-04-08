@@ -9,7 +9,7 @@
 
 namespace power_manager {
 
-// \brief Interface for getting and setting the level of the backlight
+// Interface for getting and setting the level of the backlight
 class BacklightInterface {
  public:
   // Set *level to the current brightness level of the backlight, and set
@@ -25,7 +25,7 @@ class BacklightInterface {
   virtual bool SetBrightness(int64 level) = 0;
 
  protected:
-  ~BacklightInterface() { }
+  ~BacklightInterface() {}
 };
 
 }  // namespace power_manager

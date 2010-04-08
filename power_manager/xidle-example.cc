@@ -4,7 +4,9 @@
 
 #include <gdk/gdk.h>
 #include <inttypes.h>
+
 #include <cstdio>
+
 #include "base/logging.h"
 #include "power_manager/xidle.h"
 

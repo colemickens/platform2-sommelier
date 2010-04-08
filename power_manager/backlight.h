@@ -10,22 +10,21 @@
 
 namespace power_manager {
 
-// \brief Get and set the brightness level of the display backlight.
+// Get and set the brightness level of the display backlight.
 //
-// \example
-// power_manager::Backlight backlight;
-// int64 level, max;
-// if (backlight.Init() && backlight.GetBrightness(&level, &max)) {
-//   std::cout << "Current brightness level is "
-//             << level << " out of " << max << "\n";
-// } else {
-//   std::cout << "Cannot get brightness level\n";
-// }
-// \end_example
+// Example usage:
+//   power_manager::Backlight backlight;
+//   int64 level, max;
+//   if (backlight.Init() && backlight.GetBrightness(&level, &max)) {
+//     std::cout << "Current brightness level is "
+//               << level << " out of " << max << "\n";
+//   } else {
+//     std::cout << "Cannot get brightness level\n";
+//   }
 
 class Backlight : public BacklightInterface {
  public:
-  Backlight() { }
+  Backlight() {}
 
   // Initialize the backlight object.
   //

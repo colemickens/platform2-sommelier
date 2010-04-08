@@ -6,6 +6,7 @@
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
 #include <X11/extensions/XTest.h>
+
 #include <cstdio>
 
 #include "base/command_line.h"
@@ -32,9 +33,7 @@ static void FakeMotionEvent(Display* display) {
 
 class IdleMonitorTest : public power_manager::XIdleMonitor {
  public:
-  explicit IdleMonitorTest(GMainLoop* loop) : count_(0), loop_(loop) { }
-  ~IdleMonitorTest() {
-  }
+  explicit IdleMonitorTest(GMainLoop* loop) : count_(0), loop_(loop) {}
   void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (count_ & 1) {
       ASSERT_FALSE(is_idle);

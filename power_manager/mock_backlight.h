@@ -6,6 +6,7 @@
 #define POWER_MANAGER_MOCK_BACKLIGHT_H_
 
 #include <gmock/gmock.h>
+
 #include "power_manager/backlight_interface.h"
 
 namespace power_manager {

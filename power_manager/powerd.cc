@@ -4,7 +4,9 @@
 
 #include <gdk/gdk.h>
 #include <gflags/gflags.h>
+
 #include <algorithm>
+
 #include "base/logging.h"
 #include "power_manager/backlight.h"
 #include "power_manager/idle_dimmer.h"

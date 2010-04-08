@@ -4,7 +4,9 @@
 
 #include <gflags/gflags.h>
 #include <inttypes.h>
+
 #include <cstdio>
+
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "power_manager/backlight.h"

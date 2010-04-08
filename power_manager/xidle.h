@@ -8,33 +8,34 @@
 #include <gdk/gdkevents.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/sync.h>
+
 #include <list>
+
 #include "base/basictypes.h"
 #include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
 
-// \brief Receive notifications from the X Server when the user is marked as
+// Receive notifications from the X Server when the user is marked as
 // idle, or as no longer idle.
 //
-// \example
-// class IdleMonitorExample : public power_manager::XIdleMonitor {
-//  public:
-//   void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-//     if (is_idle)
-//       printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
-//     else
-//       printf("User is active\n");
-//   }
-// };
-// IdleMonitorExample example;
-// power_manager::XIdle idle;
-// idle.Init(&example);
-// idle.AddIdleTimeout(2000);
-// idle.AddIdleTimeout(5000);
-// GMainLoop* loop = g_main_loop_new(NULL, false);
-// g_main_loop_run(loop);
-// \end_example
+// Example usage:
+//   class IdleMonitorExample : public power_manager::XIdleMonitor {
+//    public:
+//     void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+//       if (is_idle)
+//         printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
+//       else
+//         printf("User is active\n");
+//     }
+//   };
+//   IdleMonitorExample example;
+//   power_manager::XIdle idle;
+//   idle.Init(&example);
+//   idle.AddIdleTimeout(2000);
+//   idle.AddIdleTimeout(5000);
+//   GMainLoop* loop = g_main_loop_new(NULL, false);
+//   g_main_loop_run(loop);
 
 class XIdle {
  public:

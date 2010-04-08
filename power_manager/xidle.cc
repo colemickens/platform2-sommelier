@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include "power_manager/xidle.h"
+
 #include <gdk/gdkx.h>
 #include <inttypes.h>
+
 #include "base/logging.h"
 
 namespace power_manager {
@@ -115,8 +117,8 @@ XSyncAlarm XIdle::CreateIdleAlarm(int64 idle_timeout_ms,
   return XSyncCreateAlarm(GDK_DISPLAY(), mask, &attr);
 }
 
-GdkFilterReturn XIdle::gdk_event_filter(
-    GdkXEvent* gxevent, GdkEvent*, gpointer data) {
+GdkFilterReturn XIdle::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
+                                        gpointer data) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   XSyncAlarmNotifyEvent* alarm_event =
       static_cast<XSyncAlarmNotifyEvent*>(gxevent);
