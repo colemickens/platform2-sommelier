@@ -143,7 +143,7 @@ install_rootfs() {
   local dst_dev=$2
   local start_offset=$3
   local label=$4
-  
+
   # We copy the system image a bit strangely here because we have observed
   # cases in installing to hard disk where people ctrl-c the operation and then
   # are not longer able to properly boot a USB image. This is because when
@@ -247,12 +247,14 @@ trap loop_offset_cleanup EXIT
 sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
   $(($NUM_STATEFUL_SECTORS / 8))
 
-# Install dev image into the stateful partition
-# TODO(sosa@chromium.org) - Remove old autotest support
-if [ -f /root/.dev_mode ] || [ -d /mnt/stateful_partition/dev_image ] ; then
+# Install the stateful partition content
+if [ -f /root/.dev_mode ] ; then
   mount_on_loop_dev
   trap my_cleanup EXIT
-  sudo cp -fpru /mnt/stateful_partition/dev_image "$TMPMNT/dev_image"
+  sudo cp -fpru /mnt/stateful_partition/var "$TMPMNT/var"
+  if [ -d /mnt/stateful_partition/dev_image ] ; then
+    sudo cp -fpru /mnt/stateful_partition/dev_image "$TMPMNT/dev_image"
+  fi
   umount_from_loop_dev
   trap loop_offset_cleanup EXIT
 fi
