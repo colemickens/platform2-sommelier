@@ -5,26 +5,18 @@
 # found in the LICENSE file.
 
 # This script is called after an AutoUpdate or USB install. The first argument
-# is the partition where the new rootfs is installed. The autoupdate invocation
-# will provide a second argument, specifying the partition for the new kernel.
+# is the partition where the new rootfs is installed or empty. If non-empty
+# the rootfs should be updated w/ the new bootloader config. If empty, the
+# rootfs is mounted-read only and should not be updated.
 
 # Update /boot/extlinux.conf.
 INSTALL_ROOT=`dirname "$0"`
 INSTALL_DEV="$1"
-KINSTALL_DEV="$2"
 
-
-# Set default label to chromeos-hd.
-sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' "$INSTALL_ROOT"/boot/extlinux.conf
-sed -i "{ s:HDROOT:$INSTALL_DEV: }" "$INSTALL_ROOT"/boot/extlinux.conf
-
-# NOTE: The stateful partition will not be mounted when this is called at
-# USB-key install time. It will be mounted following an upgrade. ChromeOS
-# hardware expects the kernel to be in a partition of its own. Legacy systems
-# will use syslinux to boot from the kernel image found in the rootfs.
-# TODO: The ChromeOS kernel partition will contain a signature header, a config
-# file, and the kernel image as a single blob. We'll need to revisit this to
-# ensure that gets installed properly.
-if [ -n "$KINSTALL_DEV" ]; then
-  dd if=${INSTALL_ROOT}/boot/vmlinuz of=${KINSTALL_DEV}
+# Only update extlinux.conf if $1 is non-empty
+if [ -n "$INSTALL_DEV" ]; then
+  # Set default label to chromeos-hd.
+  sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' "$INSTALL_ROOT"/boot/extlinux.conf
+  sed -i "{ s:HDROOT:$INSTALL_DEV: }" "$INSTALL_ROOT"/boot/extlinux.conf
 fi
+
