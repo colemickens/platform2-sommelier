@@ -189,7 +189,8 @@ install_rootfs() {
 STATEFUL_IMG=$(make_partition_dev ${SRC} 1)
 KERNEL_IMG=$(make_partition_dev ${SRC} 2)
 ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
-ESP_IMG=$(make_partition_dev ${SRC} 4)
+OEM_IMG=$(make_partition_dev ${SRC} 8)
+ESP_IMG=$(make_partition_dev ${SRC} 12)
 
 if [ $(uname -m) = "armv7l" ]; then
   PMBRCODE=/dev/zero
@@ -224,6 +225,9 @@ sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
 echo "Copying rootfs..."
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_B} "H-ROOT-B"
+
+echo "Copying OEM customization..."
+sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM}
 
 echo "Copying ESP..."
 sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP}
