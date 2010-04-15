@@ -1,0 +1,51 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script can be called during startup to trash the stateful partition
+# and possibly reset the other root filesystem
+
+. /usr/sbin/chromeos-common.sh
+
+# stateful partition isn't around for logging, so dump to the screen:
+set -x
+
+if [ $(id -u) -ne 0 ]; then
+  echo 'You must run this as root'
+  exit 1
+fi
+
+wipedev() {
+  DEV="$1"
+  SECTORS=$(numsectors ${DEV})
+  BLK_SIZE=$((4 * 1024 * 1024 / 512))  # 4MiB in 512-byte sectors
+  FULL_BLKS=$(($SECTORS / $BLK_SIZE))
+  REMAINDER_SECTORS=$(($SECTORS % $BLK_SIZE))
+  dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
+  dd if=/dev/zero of=${DEV} bs=512 count=${REMAINDER_SECTORS} \
+    seek=$(($FULL_BLKS * $BLK_SIZE))
+}
+
+ROOT_DEV=$(rootdev)
+ROOT_DEV=/dev/sda5
+STATE_DEV=${ROOT_DEV%[0-9]*}1
+
+wipedev ${STATE_DEV}
+
+umount /mnt/stateful_partition
+/sbin/mkfs.ext3 "$STATE_DEV"
+
+ROOT_PART_NUM=${ROOT_DEV##[/a-z]*[/a-z]}
+if [ "$ROOT_PART_NUM" = "5" ]; then
+  # Trash rootfs on partition 3
+  OTHER_ROOTFS=${ROOT_DEV%[0-9]*}3
+  echo "Erasing rootfs on ${OTHER_ROOTFS}..."
+  wipedev ${OTHER_ROOTFS}
+fi
+
+echo "Rebooting in 60 seconds"
+sleep 60
+/sbin/shutdown -r now
+sleep 1d  # Wait for shutdown

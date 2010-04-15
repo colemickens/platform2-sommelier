@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -40,6 +40,16 @@ mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 ROOT_DEV=$(rootdev)
 STATE_DEV=${ROOT_DEV%[0-9]*}1
 mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+
+# Check if the stateful partition has requested self-destruction
+# This is used for the factory install process
+RESET_FILE="/mnt/stateful_partition/factory_install_reset"
+if [ -f "$RESET_FILE" ]; then
+  if [ $(stat -c%u "$RESET_FILE") -eq 0 ]; then
+    echo "Erasing stateful partition..."
+    exec /sbin/clobber-state
+  fi
+fi
 
 # Make sure stateful partition has some basic directories
 mkdir -p -m 0755 /mnt/stateful_partition/home
