@@ -89,7 +89,6 @@ touch /tmp/doing-chrome-login
 
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
-COOKIE_PIPE="/tmp/cookie_pipe"
 SEND_METRICS="/etc/send_metrics"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
@@ -145,6 +144,6 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --no-first-run \
             --user-data-dir=/home/$USER \
             --login-profile=user \
-            "--cookie-pipe=$COOKIE_PIPE" \
+            --in-chrome-auth \
             --enable-login-images \
             "${SKIP_OOBE}"
