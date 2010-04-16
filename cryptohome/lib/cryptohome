@@ -11,7 +11,7 @@
 # Declare the executable dependencies for this code.
 # This includes bash builtins so we can stub them.
 utils::declare_commands read echo mkdir test mount grep blockdev
-utils::declare_commands pkill chown df tr cut dd cat openssl
+utils::declare_commands pkill chown df tr cut dd cat openssl ls
 utils::declare_commands losetup dmsetup tune2fs chmod xxd exec
 utils::declare_commands head tail cp umount touch rm date true sleep
 
@@ -74,34 +74,43 @@ function cryptohome::make_table() {
  echo "0 $($blockdev --getsize $loopdev) crypt aes-cbc-essiv:sha256 "$masterkey" 0 $loopdev 0"
 }
 
-# maximize /path/to/image.img masterkey [online] [loopdev]  [mapperdev]
-function cryptohome::maximize() {
+# maximize_image /path/to/image.img
+function cryptohome::maximize_image() {
+  local image="$1"
+  local blocks="$(cryptohome::total_blocks)"  # looks under home mount
+  local current="$($ls --block-size=$BLOCK_SIZE -s "$image" | $cut -f1 -d' ')"
+  # Round down by one bg to avoid trying to resize past the end of the fs
+  blocks=$((blocks - BLOCKS_IN_A_GROUP))
+  if [[ "$blocks" -le "$current" ]]; then
+    return 0
+  fi
+  # This will create a file if it doesn't exist or expand it to full size.
+  $dd if=/dev/zero of="$image" count=0 bs=$BLOCK_SIZE seek=$blocks
+}
+
+# maximize_fs /path/to/image.img masterkey [online] [loopdev]  [mapperdev]
+# performs an online resize of the filesystem. Does not update the image.
+function cryptohome::maximize_fs() {
   local image="$1"
   local masterkey="$2"
-  local online="${3:-0}"
+  local mountpt="$3"
   local loopdev="${4:-$DEFAULT_LOOP_DEVICE}"
   local mapperdev="${5:-$DEFAULT_MAPPER_DEVICE}"
   [[ $# -lt 2 ]] && return 1  # argument sanity check
-  cryptohome::log "maximize start"
-  local blocks="$(cryptohome::total_blocks $image)"
-  local current="$($blockdev --getsize64 $loopdev)"
-  current=$((current / BLOCK_SIZE))
-  blocks=$((blocks - BLOCKS_IN_A_GROUP))
-  if [[ "$blocks" -le "$current" ]]; then
-    cryptohome::log "no work to do: $blocks <= $current"
-    cryptohome::log "maximize end"
-    return 0
-  fi
-  $dd if=/dev/zero of="$image" count=0 bs=$BLOCK_SIZE seek=$blocks
-  $losetup -c "$loopdev"
-  $dmsetup suspend $mapperdev
-  $dmsetup reload $mapperdev <(cryptohome::make_table "$masterkey" "$loopdev")
-  $dmsetup resume $mapperdev
-  if [[ "$online" -eq 0 ]]; then
+  cryptohome::log "maximize_fs start"
+  if [[ -z "$mountpt" ]]; then
     cryptohome::check -f
     # Do it as quickly as possible if we are offline.
     $resize2fs $mapperdev
   else
+    local blocks="$(cryptohome::total_blocks $image)"
+    local current="$(cryptohome::total_blocks $mountpt)"
+    blocks=$((blocks - BLOCKS_IN_A_GROUP))
+    if [[ "$blocks" -le "$current" ]]; then
+      cryptohome::log "no work to do: $blocks <= $current"
+      cryptohome::log "maximize_fs end"
+      return 0
+    fi
     # If we're online, we don't want to saturate the I/O and it's
     # okay if it doesn't complete. So we add a block group at a time.
     # With lazy inode tables, this isn't adding much data to disk, but
@@ -109,25 +118,14 @@ function cryptohome::maximize() {
     # quite large. For small images, the metadata needed is very little,
     # but this rate limited resize won't take long either.
     local next_blocks=$((current + BLOCKS_IN_A_GROUP))
-    $sleep 3  # TODO(wad) make start delay configurable
+    $sleep 3  # TODO(wad) make configurable
     while [[ "$next_blocks" -lt "$blocks" ]]; do
       $sleep 0.3  # TODO(wad) make configurable
       $resize2fs -f $mapperdev ${next_blocks} || true
       next_blocks=$((next_blocks + BLOCKS_IN_A_GROUP))
     done
   fi
-  cryptohome::log "maximize end"
-}
-
-# create_minimal /path/to/image
-function cryptohome::create_minimal() {
-  local image="$1"
-  [[ $# -lt 1 ]] && return 1  # argument sanity check
-  $dd if=/dev/zero \
-      of="$image" \
-      bs=$BLOCK_SIZE \
-      seek=$((BLOCKS_IN_A_GROUP + 1)) \
-      count=0
+  cryptohome::log "maximize_fs end"
 }
 
 # attach /path/to/image [loop device]
@@ -144,16 +142,17 @@ function cryptohome::detach() {
   $losetup -d "$loopdev"
 }
 
-# format max_resize_blocs [target mapper device] [loop device]
+# format num_blocks max_resize_blocks [target mapper device] [loop device]
 function cryptohome::format() {
   local blocks="$1"
-  local mapperdev="${2:-$DEFAULT_MAPPER_DEVICE}"
-  local loopdev="${3:-$DEFAULT_LOOP_DEVICE}"
+  local resize_blocks="$2"
+  local mapperdev="${3:-$DEFAULT_MAPPER_DEVICE}"
+  local loopdev="${4:-$DEFAULT_LOOP_DEVICE}"
   [[ $# -lt 1 ]] && return 1  # argument sanity check
   $mkfs__ext4 -b $BLOCK_SIZE \
               -O ^huge_file \
-              -E lazy_itable_init=1,resize=$blocks \
-              "$mapperdev"
+              -E lazy_itable_init=1,resize=$resize_blocks \
+              "$mapperdev" "$blocks"
   $tune2fs -c -1 -i 0 "$mapperdev" # we'll be checking later.
 }
 
@@ -321,6 +320,7 @@ function cryptohome::mount_or_create() {
       return 1
     fi
 
+    cryptohome::maximize_image "$image"
     cryptohome::attach "$image"
     local masterkey="$(cryptohome::unwrap_master_key "$password" "$userid")"
     # TODO: we should track mount attempts so we can delete a broken mount.
@@ -347,15 +347,13 @@ function cryptohome::mount_or_create() {
     # Perform an online resize behind the scenes just in case it
     # wasn't completed before.
     trap - ERR  # disable any potential err handlers
-    cryptohome::maximize "$image" "$masterkey" 1 &
+    cryptohome::maximize_fs "$image" "$masterkey" "$DEFAULT_MOUNT_POINT" &
     disown -a
     cryptohome::log "mount end"
   else
     cryptohome::log "create_and_mount start"
-    # Creates a sparse file roughly 131M (BLOCK_SIZE * BLOCKS_IN_A_GROUP) in
-    # size so that the first block group is about the same size as the others
-    # after resize.
-    cryptohome::create_minimal "$image"
+    # Creates a sparse file of the maximum ever possible on the given partition
+    cryptohome::maximize_image "$image"
 
     if ! cryptohome::check_and_clear_loop; then
       cryptohome::log "mount_or_create bailing"
@@ -365,7 +363,9 @@ function cryptohome::mount_or_create() {
 
     local masterkey="$(cryptohome::create_master_key "$password" "$userid")"
     cryptohome::open "$masterkey"
-    cryptohome::format "$(cryptohome::total_blocks $image)"
+    # Initially, just format to around 131m then resize online to bring the
+    # filesystem up as soon as possible.
+    cryptohome::format "$BLOCKS_IN_A_GROUP" "$(cryptohome::total_blocks $image)"
     cryptohome::mount
     $cp -r $IMAGE_DIR/skel/. $DEFAULT_MOUNT_POINT/
     $chown -R $DEFAULT_USER $DEFAULT_MOUNT_POINT
@@ -374,7 +374,7 @@ function cryptohome::mount_or_create() {
     # Perform an online resize behind the scenes
     # and remove the retry trap.
     trap - ERR  # disable any potential err handlers
-    cryptohome::maximize "$image" "$masterkey" 1 &
+    cryptohome::maximize_fs "$image" "$masterkey" "$DEFAULT_MOUNT_POINT" &
     disown -a
 
     cryptohome::log "create_and_mount end"
