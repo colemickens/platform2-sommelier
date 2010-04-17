@@ -7,12 +7,15 @@
 # create the initial image at compile time and to install or upgrade a running
 # image.
 
-# Here are the GUIDs we'll be using to identify various partitions.
-DATA_GUID='ebd0a0a2-b9e5-4433-87c0-68b6b72699c7'
-KERN_GUID='fe3a2a5d-4f32-41a7-b725-accc3285a309'
-ROOTFS_GUID='3cb8e202-3b7e-47dd-8a3c-7ff2a13cfcec'
+# Here are the GUIDs we'll be using to identify various partitions. NOTE: The
+# first three fields are byte-reversed to work around a bug in our gpt tool.
+# We'll be replacing that tool with a new one, so it's easier to just work
+# around the bug for now.
+DATA_GUID='a2a0d0eb-e5b9-3344-87c0-68b6b72699c7'
+KERN_GUID='5d2a3afe-324f-a741-b725-accc3285a309'
+ROOTFS_GUID='02e2b83c-7e3b-dd47-8a3c-7ff2a13cfcec'
 ESP_GUID='28732ac1-1ff8-d211-ba4b-00a0c93ec93b'
-FUTURE_GUID='2e0a753d-9e48-43b0-8337-b15192cb1b5e'
+FUTURE_GUID='3d750a2e-489e-b043-8337-b15192cb1b5e'
 
 
 # The GPT tables describe things in terms of 512-byte sectors, but some
@@ -309,7 +312,7 @@ install_gpt() {
   $sudo $GPT label -i 7 -l "ROOT-C" ${outdev}
 
   $sudo $GPT add -b ${START_OEM} -s ${NUM_OEM_SECTORS} \
-    -t ${FUTURE_GUID} ${outdev}
+    -t ${DATA_GUID} ${outdev}
   $sudo $GPT label -i 8 -l "OEM" ${outdev}
 
   $sudo $GPT add -b ${start_future_9} -s ${num_future_sectors} \
