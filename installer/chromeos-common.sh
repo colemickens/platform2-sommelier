@@ -81,20 +81,22 @@ rounddown() {
   echo $num
 }
 
-
-# We need to locate the gpt tool. It should already be installed in the build
-# chroot, but some of these functions may be invoked outside the chroot (by
+# Locate the gpt tool. It should already be installed in the build chroot,
+# but some of these functions may be invoked outside the chroot (by
 # image_to_usb or similar), so we need to find it.
-GPT=$(which gpt 2>/dev/null) || /bin/true
-if [ -z "$GPT" ]; then
-  if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt" ]; then
-    GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt"
-  else
-    echo "can't find gpt tool" 1>&2
-    exit 1
+locate_gpt() {
+  if [ -z "$GPT" ]; then
+    GPT=$(which gpt 2>/dev/null) || /bin/true
+    if [ -z "$GPT" ]; then
+      if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt" ]; then
+        GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt"
+      else
+        echo "can't find gpt tool" 1>&2
+        exit 1
+      fi
+    fi
   fi
-fi
-
+}
 
 # This installs a GPT into the specified device or file, using the given
 # components. If the target is a block device or the FORCE_FULL arg is "true"
@@ -191,6 +193,8 @@ install_gpt() {
 
   local start_useful=$(roundup $(($start_future_11 + 1)))
 
+  locate_gpt
+
   # What are we doing?
   if [ -b "$outdev" -o "$force_full" = "true" ]; then
     # Block device, need to be root.
@@ -281,6 +285,7 @@ install_gpt() {
   # Create the new GPT partitions. The order determines the partition number.
   # Note that the partition label is in the GPT only. The filesystem label is
   # what's used to populate /dev/disk/by-label/, and this is not that.
+
   $sudo $GPT create ${outdev}
 
   $sudo $GPT add -b ${START_STATEFUL} -s ${NUM_STATEFUL_SECTORS} \
@@ -346,6 +351,9 @@ _partinfo() {
   local device=$1
   local partnum=$2
   local start size part x n
+
+  locate_gpt
+
   sudo $GPT -r -S show $device \
     | grep 'GPT part -' \
     | while read start size part x x x n x; do \
