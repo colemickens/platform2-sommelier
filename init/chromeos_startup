@@ -63,6 +63,10 @@ mkdir -p -m 0755 /mnt/stateful_partition/var/tmp
 mkdir -p -m 0755 /mnt/stateful_partition/var/run
 chmod 0755 /mnt/stateful_partition/var
 
+# Directory for ChromeOS metrics collection
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
+chown chronos:chronos /mnt/stateful_partition/var/log/metrics
+
 # Default to Pacific timezone if we don't have one set
 ! ln -s /usr/share/zoneinfo/US/Pacific /mnt/stateful_partition/etc/localtime \
     > /dev/null 2>&1
