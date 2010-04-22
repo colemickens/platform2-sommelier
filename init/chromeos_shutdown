@@ -42,8 +42,10 @@ fi
 # Measure shutdown time
 cut -f 1 -d ' ' /proc/uptime > /var/log/metrics/uptime_shutdown_stop
 cat /sys/block/sda/stat > /var/log/metrics/disk_shutdown_stop
- 
-umount -n /var/cache /var/log /home /mnt/stateful_partition
+
+# Lazy umount the tmpfs dirs under /var so we can immediately umount it.
+umount -n -l /var/tmp /var/run /var/lock
+umount -n /var /usr/local /home /mnt/stateful_partition
 if [ $? -ne 0 ] ; then
   mount > /mnt/stateful_partition/var/log/shutdown_stateful_umount_failure
   mount > /var/log/shutdown_stateful_umount_failure
