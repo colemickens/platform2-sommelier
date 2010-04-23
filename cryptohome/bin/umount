@@ -12,12 +12,17 @@ function error_handler() {
   cryptohome::log "unmount failed: the system may be rebooted"
   $sync || $true
 
+  cryptohome::log "lsof ${DEFAULT_MOUNT_POINT}: $(lsof ${DEFAULT_MOUNT_POINT})"
+  cryptohome::log "current mount table: $(mount)"
+
   cryptohome::is_mounted && $reboot
   cryptohome::log "unmount but the filesystem is no longer mounted"
 
   # Make sure we aren't leaving a mess or an accessible key.
   if cryptohome::is_opened; then
     cryptohome::log "device mapper device still present; attempting to close"
+    cryptohome::log \
+        "lsof ${DEFAULT_MAPPER_DEVICE}: $(lsof ${DEFAULT_MAPPER_DEVICE})"
     cryptohome::close || $reboot
     $exit 1
   fi
