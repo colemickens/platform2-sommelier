@@ -40,9 +40,25 @@ function error_handler() {
 function umount_main() {
   # If we can't unmount, do it the hard way, for now.
   local target="${1:-$DEFAULT_MOUNT_POINT}"
-  if cryptohome::is_mounted "$target"; then
-    cryptohome::unmount "$target"
-  fi
+  # Variables that define how long to wait for unmount to complete and the
+  # increment to check for its completion.
+  local max_delay=20
+  local current_delay=0
+  local increment=1
+
+  # Loop until we've unmounted cryptohome or have reached the $max_delay.
+  while cryptohome::is_mounted "$target" ; do
+    if [ $current_delay -ge $max_delay ] ; then
+      # If we've reached a max_delay, abort and go through reboot logic
+      cryptohome::log "Unmount max delay reached.  Aborting."
+      error_handler
+    fi
+    if ! cryptohome::unmount "$target" ; then
+      cryptohome::log "Unmount error, sleeping and attempting to unmount again"
+      $sync && $sleep $increment
+      current_delay=$(( current_delay + increment ))
+    fi
+  done
   # is_mounted ignores incognito mounts since they diverge from
   # the actual cryptohome landscape (dm, losetup).
   if $mount | $grep -q "^$INCOGNITO_MOUNT_NAME "; then
