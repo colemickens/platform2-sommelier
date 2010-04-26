@@ -5,7 +5,10 @@
 #ifndef CROMO_DUMMY_MODEM_MANAGER_H_
 #define CROMO_DUMMY_MODEM_MANAGER_H_
 
+#include "base/basictypes.h"
+
 #include <dbus-c++/types.h>
+
 #include "modem_manager.h"
 
 class ModemManagerServer;
@@ -18,6 +21,8 @@ class DummyModemManager : public ModemManager {
 
  protected:
   virtual bool Initialize();
+
+  DISALLOW_COPY_AND_ASSIGN(DummyModemManager);
 };
 
 #endif // CROMO_DUMMY_MODEM_MANAGER_H_

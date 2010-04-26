@@ -5,7 +5,10 @@
 #ifndef CROMO_PLUGIN_MANAGER_H_
 #define CROMO_PLUGIN_MANAGER_H_
 
+#include <string>
 #include <vector>
+
+#include "base/basictypes.h"
 #include "plugin.h"
 
 class ModemManagerServer;
@@ -22,6 +25,8 @@ class PluginManager {
     bool initted;
   };
   static std::vector<Plugin*> loaded_plugins_;
+
+  DISALLOW_COPY_AND_ASSIGN(PluginManager);
 };
 
 

@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include "dummy_modem.h"
+
+#include <iostream>
 
 using std::cout;
 using std::endl;
 using std::string;
 
-DummyModem::DummyModem(DBus::Connection &connection,
-                       const DBus::Path &path)
+DummyModem::DummyModem(DBus::Connection& connection,
+                       const DBus::Path& path)
     : DBus::ObjectAdaptor(connection, path) {
 }
 

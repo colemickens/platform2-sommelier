@@ -2,9 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "modem_manager_server.h"
+
 #include <iostream>
 
-#include "modem_manager_server.h"
 #include "modem_manager.h"
 #include "plugin_manager.h"
 
@@ -20,26 +21,25 @@ ModemManagerServer::ModemManagerServer(DBus::Connection& connection)
 }
 
 ModemManagerServer::~ModemManagerServer() {
-  vector<ModemManager *>::iterator it;
-
-  for (it = modem_managers_.begin(); it != modem_managers_.end(); it++) {
+  for (vector<ModemManager*>::iterator it = modem_managers_.begin();
+       it != modem_managers_.end(); it++) {
     delete *it;
   }
   modem_managers_.clear();
 }
 
 vector<DBus::Path> ModemManagerServer::EnumerateDevices() {
-  vector<DBus::Path > allpaths;
-  vector<ModemManager *>::iterator it;
+  vector<DBus::Path> allpaths;
 
-  for (it = modem_managers_.begin(); it != modem_managers_.end(); it++) {
+  for (vector<ModemManager*>::iterator it = modem_managers_.begin();
+       it != modem_managers_.end(); it++) {
     vector<DBus::Path> paths = (*it)->EnumerateDevices();
     allpaths.insert(allpaths.end(), paths.begin(), paths.end());
   }
   return allpaths;
 }
 
-void ModemManagerServer::AddModemManager(ModemManager *manager) {
+void ModemManagerServer::AddModemManager(ModemManager* manager) {
   cout << "AddModemManager(" << manager->vendor_tag() << ")" << endl;
   modem_managers_.push_back(manager);
 }

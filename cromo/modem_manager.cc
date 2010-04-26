@@ -2,17 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "modem_manager.h"
+
 #include <cstdio>
 
 #include "modem_manager_server.h"
-#include "modem_manager.h"
 
 using std::string;
 
-ModemManager::ModemManager(ModemManagerServer& server, const char* tag)
+ModemManager::ModemManager(ModemManagerServer& server, const std::string& tag)
     : server_(server),
       vendor_tag_(tag),
-  instance_number_(0) {
+      instance_number_(0) {
 }
 
 ModemManager::~ModemManager() {
@@ -33,9 +34,7 @@ void ModemManager::RemoveModem(DBus::ObjectAdaptor* modem) {
 }
 
 void ModemManager::ClearModemList() {
-  ModemMap::iterator it;
-
-  for (it = modems_.begin(); it != modems_.end(); ++it) {
+  for (ModemMap::iterator it = modems_.begin(); it != modems_.end(); ++it) {
     delete (*it).second;
   }
   modems_.clear();
@@ -47,8 +46,4 @@ string ModemManager::MakePath() {
 
   snprintf(instance, sizeof(instance), "%d", instance_number_++);
   return path.append("/").append(vendor_tag_).append("/").append(instance);
-}
-
-string ModemManager::vendor_tag() const {
-  return vendor_tag_;
 }

@@ -5,7 +5,10 @@
 #ifndef CROMO_MODEM_MANAGER_SERVER_H_
 #define CROMO_MODEM_MANAGER_SERVER_H_
 
+#include "base/basictypes.h"
+
 #include <dbus-c++/dbus.h>
+
 #include "manager_server_glue.h"
 
 class ModemManager;
@@ -18,20 +21,22 @@ class ModemManagerServer
       public DBus::IntrospectableAdaptor,
       public DBus::ObjectAdaptor {
  public:
-  ModemManagerServer(DBus::Connection& connection);
+  explicit ModemManagerServer(DBus::Connection& connection);
   ~ModemManagerServer();
 
   void AddModemManager(ModemManager* manager);
 
-  // ModemManager DBUS API methods
+  // ModemManager DBUS API methods.
   std::vector<DBus::Path> EnumerateDevices();
 
   static const char* SERVER_NAME;
   static const char* SERVER_PATH;
 
  private:
-  // The modem managers that we are managing
+  // The modem managers that we are managing.
   std::vector<ModemManager*> modem_managers_;
+
+  DISALLOW_COPY_AND_ASSIGN(ModemManagerServer);
 };
 
 #endif // CROMO_MODEM_MANAGER_SERVER_H_

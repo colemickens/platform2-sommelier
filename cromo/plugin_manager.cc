@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "plugin_manager.h"
+
+#include <dirent.h>
+#include <dlfcn.h>
+
 #include <cerrno>
 #include <cstring>
 #include <iostream>
-#include <dirent.h>
-#include <dlfcn.h>
-#include "plugin_manager.h"
 
 #ifndef PLUGINDIR
 #define PLUGINDIR "./plugins"
@@ -21,7 +23,7 @@ using std::endl;
 
 vector<PluginManager::Plugin*> PluginManager::loaded_plugins_;
 
-void PluginManager::LoadPlugins(ModemManagerServer *server,
+void PluginManager::LoadPlugins(ModemManagerServer* server,
                                 string& plugins) {
   DIR* pdir = opendir(PLUGINDIR);
   struct dirent* dirent;
@@ -45,7 +47,7 @@ void PluginManager::LoadPlugins(ModemManagerServer *server,
       continue;
     }
     cromo_plugin_descriptor* pdesc =
-        (cromo_plugin_descriptor *)dlsym(handle, "plugin_descriptor");
+        (cromo_plugin_descriptor*)dlsym(handle, "plugin_descriptor");
     if (pdesc == NULL) {
       cerr << "Plugin does not contain descriptor: " << dlerror() << endl;
       dlclose(handle);

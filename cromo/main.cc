@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <signal.h>
+
 #include <gflags/gflags.h>
 
 #include "modem_manager_server.h"
@@ -17,7 +18,7 @@ void onsignal(int sig) {
   dispatcher.leave();
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   signal(SIGTERM, onsignal);

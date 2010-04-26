@@ -5,10 +5,13 @@
 #ifndef CROMO_DUMMY_MODEM_H_
 #define CROMO_DUMMY_MODEM_H_
 
+#include "base/basictypes.h"
+
 #include <dbus-c++/dbus.h>
+
+#include "modem-cdma_server_glue.h"
 #include "modem_server_glue.h"
 #include "modem-simple_server_glue.h"
-#include "modem-cdma_server_glue.h"
 
 typedef std::map<std::string, DBus::Variant> PropertyMap;
 
@@ -37,6 +40,8 @@ class DummyModem
   std::string GetEsn();
   DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem();
   void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state);
+
+  DISALLOW_COPY_AND_ASSIGN(DummyModem);
 };
 
 #endif // CROMO_DUMMY_MODEM_H_

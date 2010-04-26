@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <iostream>
 #include "dummy_modem_manager.h"
+
+#include <iostream>
+
 #include "dummy_modem.h"
 #include "modem_manager_server.h"
 #include "plugin.h"
@@ -13,7 +15,7 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-DummyModemManager::DummyModemManager(ModemManagerServer &server)
+DummyModemManager::DummyModemManager(ModemManagerServer& server)
     : ModemManager(server, "dummy") {
 }
 
@@ -30,7 +32,7 @@ DummyModemManager::Initialize() {
 vector<DBus::Path> DummyModemManager::EnumerateDevices() {
   vector<DBus::Path> paths;
 
-  DummyModem *dummy = new DummyModem(server_.conn(), MakePath());
+  DummyModem* dummy = new DummyModem(server().conn(), MakePath());
   paths.push_back(dummy->path());
   AddModem(dummy);
   return paths;
