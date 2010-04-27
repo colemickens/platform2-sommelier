@@ -54,11 +54,13 @@ fi
 # Check if we have an update to stateful pending.  This is used for dev_mode.
 VAR_NEW="/mnt/stateful_partition/var_new"
 DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
-if [ -d "$VAR_NEW" ] && [ -d "$DEVELOPER_NEW" ] ; then
+STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+if [ -f "$STATEFUL_UPDATE" ] ; then
   sudo rm -rf /mnt/stateful_partition/dev_image
   sudo rm -rf /mnt/stateful_partition/var
   sudo mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image
   sudo mv "$VAR_NEW" /mnt/stateful_partition/var
+  sudo rm "$STATEFUL_UPDATE"
 fi
 
 # Make sure stateful partition has some basic directories
