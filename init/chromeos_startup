@@ -51,6 +51,16 @@ if [ -f "$RESET_FILE" ]; then
   fi
 fi
 
+# Check if we have an update to stateful pending.  This is used for dev_mode.
+VAR_NEW="/mnt/stateful_partition/var_new"
+DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
+if [ -d "$VAR_NEW" ] && [ -d "$DEVELOPER_NEW" ] ; then
+  sudo rm -rf /mnt/stateful_partition/dev_image
+  sudo rm -rf /mnt/stateful_partition/var
+  sudo mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image
+  sudo mv "$VAR_NEW" /mnt/stateful_partition/var
+fi
+
 # Make sure stateful partition has some basic directories
 mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/etc
