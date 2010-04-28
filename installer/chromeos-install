@@ -150,6 +150,15 @@ install_rootfs() {
   local start_offset=$3
   local label=$4
 
+  # Going to copy using a block size of 1MB which is ok because
+  # the partitions are aligned (to 2MB)
+  # Need to keep next three lines in step!
+  # first is blocksize to dd, second is the same in 512 byte sectors
+  # third is number of copy_bs needed to cover 2kB needed for label
+  local copy_bs=1M
+  local sec_per_copybs=2048
+  local tmp_count=1
+
   # We copy the system image a bit strangely here because we have observed
   # cases in installing to hard disk where people ctrl-c the operation and then
   # are not longer able to properly boot a USB image. This is because when
@@ -160,13 +169,26 @@ install_rootfs() {
 
   echo "image $label..."
 
-  # Copy first 2 kilobytes of the root image to a temp file, set the label,
+  # start_offset is in 512 byte sectors, but we will tell dd to use
+  # blocksize of copy_bs. Need to convert and check sanity
+  local start_off_incopybs=$((${start_offset} / ${sec_per_copybs}))
+
+  if [ $((${start_offset} % ${sec_per_copybs})) -ne 0 ]; then
+      echo Rootfs offset ${start_offset} not multiple of block size ${copy_bs}
+      echo Rootfs install FAILED
+      exit 1
+  fi
+
+
+  # Copy first 1MB of the root image to a temp file, set the label,
   # and then copy it to the dest.
+  # (this was done using 2kB with bs=512 tmp_count=4
+  # but a 1MB file in tmp should be ok)
   # NOTE: This hack won't work if we stop using an ext-based rootfs.
   local superblock_offset=1024
   local label_field_offset=120
   local label_field_length=16
-  sudo dd if=${src_partition} of=${TMPFILE} bs=512 count=4
+  sudo dd if=${src_partition} of=${TMPFILE} bs=${copy_bs} count=${tmp_count}
   sudo dd if=/dev/zero of=${TMPFILE} bs=1                \
     seek=$((superblock_offset + label_field_offset)) \
     count=$label_field_length conv=notrunc
@@ -174,11 +196,13 @@ install_rootfs() {
     seek=$((superblock_offset + label_field_offset)) \
     bs=1 count=$((label_field_length - 1)) conv=notrunc
   # Copy the new label superblock to the dest.
-  sudo dd if=${TMPFILE} of=${dst_dev} bs=512 seek=${start_offset} conv=notrunc
+  sudo dd if=${TMPFILE} of=${dst_dev} bs=${copy_bs} \
+    seek=${start_off_incopybs} conv=notrunc
 
   # Copy the rest of the source to the dest.
   sudo dd if=${src_partition} of=${dst_dev} conv=notrunc \
-    bs=512 skip=4 seek=$((${start_offset} + 4))
+    bs=${copy_bs} skip=${tmp_count} \
+    seek=$((${start_off_incopybs} + ${tmp_count}))
 
   sync
 }
