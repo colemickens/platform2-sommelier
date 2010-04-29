@@ -71,6 +71,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     return G_OBJECT(session_manager_);
   }
 
+  // Emits "SessionStateChanged:stopped" D-Bus signal if applicable
+  // before invoking the inherited method.
+  virtual bool Shutdown();
 
   // If you want to call any of these setters, you should do so before calling
   // any other methods on this class.
@@ -99,7 +102,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Emits the "login-prompt-ready" upstart signal.
   gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
 
-  // In addition to emitting "start-user-session", this function will
+  // In addition to emitting "start-user-session" upstart signal and
+  // "SessionStateChanged:started" D-Bus signal, this function will
   // also call child_job_->SetState(email_address).
   gboolean StartSession(gchar* email_address,
                         gchar* unique_identifier,
@@ -116,6 +120,12 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
+  // D-Bus signals.
+  enum Signals {
+    kSignalSessionStateChanged,
+    kNumSignals
+  };
+
   static void do_nothing(int sig) {}
 
   // Common code between SIG{HUP, INT, TERM}Handler.
@@ -165,6 +175,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   scoped_ptr<SystemUtils> system_;
 
   bool session_started_;
+
+  // D-Bus GLib signal ids.
+  guint signals_[kNumSignals];
 
   FRIEND_TEST(SessionManagerTest, SessionNotStartedCleanupTest);
   FRIEND_TEST(SessionManagerTest, SessionNotStartedSlowKillCleanupTest);

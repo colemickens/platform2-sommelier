@@ -26,5 +26,9 @@
       <arg type="s" name="unique_identifier" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <signal name="SessionStateChanged">
+      <!-- started, stopped -->
+      <arg type="s" name="state" />
+    </signal>
   </interface>
 </node>

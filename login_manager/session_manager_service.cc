@@ -134,6 +134,17 @@ bool SessionManagerService::Initialize() {
   dbus_g_object_type_install_info(
       gobject::session_manager_get_type(),
       &gobject::dbus_glib_session_manager_object_info);
+
+  // Creates D-Bus GLib signal ids.
+  signals_[kSignalSessionStateChanged] =
+      g_signal_new("session_state_changed",
+                   gobject::session_manager_get_type(),
+                   G_SIGNAL_RUN_LAST,
+                   0,
+                   NULL, NULL,
+                   g_cclosure_marshal_VOID__STRING,
+                   G_TYPE_NONE, 1, G_TYPE_STRING);
+
   return Reset();
 }
 
@@ -196,6 +207,17 @@ bool SessionManagerService::Run() {
     CleanupChildren(3);
 
   return true;
+}
+
+bool SessionManagerService::Shutdown() {
+  if (session_started_) {
+    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:stopped";
+    g_signal_emit(session_manager_,
+                  signals_[kSignalSessionStateChanged],
+                  0, "stopped");
+  }
+
+  return chromeos::dbus::AbstractDbusService::Shutdown();
 }
 
 int SessionManagerService::RunChild() {
@@ -280,6 +302,11 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   if (*OUT_done) {
     child_job_->SetState(email_lower);
     session_started_ = true;
+
+    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
+    g_signal_emit(session_manager_,
+                  signals_[kSignalSessionStateChanged],
+                  0, "started");
   } else {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
