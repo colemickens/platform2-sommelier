@@ -14,6 +14,7 @@ namespace cryptohome {
 extern const char *kCryptohomeInterface;
 extern const char *kCryptohomeServicePath;
 extern const char *kCryptohomeServiceName;
+// Methods
 extern const char *kCryptohomeCheckKey;
 extern const char *kCryptohomeIsMounted;
 extern const char *kCryptohomeMount;
@@ -24,9 +25,12 @@ namespace login_manager {
 extern const char *kSessionManagerInterface;
 extern const char *kSessionManagerServicePath;
 extern const char *kSessionManagerServiceName;
+// Methods
 extern const char *kSessionManagerEmitLoginPromptReady;
 extern const char *kSessionManagerStartSession;
 extern const char *kSessionManagerStopSession;
+// Signals
+extern const char *kSessionManagerSessionStateChanged;
 
 // Also, conforming to GError conventions
 typedef enum {

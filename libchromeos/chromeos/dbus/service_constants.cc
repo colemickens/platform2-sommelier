@@ -12,6 +12,7 @@ namespace cryptohome {
 const char *kCryptohomeInterface = "org.chromium.CryptohomeInterface";
 const char *kCryptohomeServiceName = "org.chromium.Cryptohome";
 const char *kCryptohomeServicePath = "/org/chromium/Cryptohome";
+// Methods
 const char *kCryptohomeCheckKey = "CheckKey";
 const char *kCryptohomeIsMounted = "IsMounted";
 const char *kCryptohomeMount = "Mount";
@@ -22,9 +23,12 @@ namespace login_manager {
 const char *kSessionManagerInterface = "org.chromium.SessionManagerInterface";
 const char *kSessionManagerServiceName = "org.chromium.SessionManager";
 const char *kSessionManagerServicePath = "/org/chromium/SessionManager";
+// Methods
 const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
+// Signals
+const char *kSessionManagerSessionStateChanged = "SessionStateChanged";
 }  // namespace login_manager
 
 namespace speech_synthesis {
