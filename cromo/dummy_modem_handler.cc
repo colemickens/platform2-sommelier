@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "dummy_modem_manager.h"
+#include "dummy_modem_handler.h"
 
 #include <iostream>
 
 #include "dummy_modem.h"
-#include "modem_manager_server.h"
+#include "cromo_server.h"
 #include "plugin.h"
 
 using std::vector;
@@ -15,21 +15,21 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-DummyModemManager::DummyModemManager(ModemManagerServer& server)
-    : ModemManager(server, "dummy") {
+DummyModemHandler::DummyModemHandler(CromoServer& server)
+    : ModemHandler(server, "dummy") {
 }
 
 bool
-DummyModemManager::Initialize() {
-  // ... first do any modem-manager-specific initialization ...
-
-  return ModemManager::Initialize();
+DummyModemHandler::Initialize() {
+  // ... do any modem-manager-specific initialization ...
+  RegisterSelf();
+  return true;
 }
 
 // Enumerate the existing devices, and add them to the list of devices
 // that are managed by the ChromeOS modem manager
 
-vector<DBus::Path> DummyModemManager::EnumerateDevices() {
+vector<DBus::Path> DummyModemHandler::EnumerateDevices() {
   vector<DBus::Path> paths;
 
   DummyModem* dummy = new DummyModem(server().conn(), MakePath());
@@ -38,11 +38,11 @@ vector<DBus::Path> DummyModemManager::EnumerateDevices() {
   return paths;
 }
 
-static void onload(ModemManagerServer* server) {
+void onload(CromoServer* server) {
   cout << __FILE__ << ": onload() called" << endl;
-  ModemManager* mm = new DummyModemManager(*server);
-  if (!mm->Initialize())
-    cerr << "Failed to initialize DummyModemManager" << endl;
+  ModemHandler* mh = new DummyModemHandler(*server);
+  if (!mh->Initialize())
+    cerr << "Failed to initialize DummyModemHandler" << endl;
 }
 
 static void onunload() {

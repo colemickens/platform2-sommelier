@@ -5,7 +5,7 @@
 #ifndef CROMO_PLUGIN_H_
 #define CROMO_PLUGIN_H_
 
-class ModemManagerServer;
+class CromoServer;
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,7 +13,7 @@ extern "C" {
 
 typedef struct _cromo_plugin_descriptor {
   const char* name;
-  void (*onload)(ModemManagerServer*);
+  void (*onload)(CromoServer*);
   void (*onunload)(void);
 } cromo_plugin_descriptor;
 

@@ -6,10 +6,10 @@
 
 #include <gflags/gflags.h>
 
-#include "modem_manager_server.h"
+#include "cromo_server.h"
 #include "plugin_manager.h"
 
-DEFINE_string(plugins, NULL,
+DEFINE_string(plugins, "",
               "comma-separated list of plugins to load at startup");
 
 DBus::BusDispatcher dispatcher;
@@ -27,11 +27,11 @@ int main(int argc, char* argv[]) {
   DBus::default_dispatcher = &dispatcher;
 
   DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(ModemManagerServer::SERVER_NAME);
+  conn.request_name(CromoServer::kServiceName);
 
-  ModemManagerServer server(conn);
+  CromoServer server(conn);
 
-  // Instantiate modem managers for each type of hardware supported
+  // Instantiate modem handlers for each type of hardware supported
   PluginManager::LoadPlugins(&server, FLAGS_plugins);
 
   dispatcher.enter();

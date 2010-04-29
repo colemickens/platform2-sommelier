@@ -76,6 +76,7 @@ DBus::Struct<uint32_t, string, uint32_t> DummyModem::GetServingSystem() {
   return result;
 }
 
-void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state) {
+void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state,
+                                      uint32_t& evdo_state) {
   cout << "GetRegistrationState" << endl;
 }

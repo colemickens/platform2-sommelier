@@ -2,27 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CROMO_DUMMY_MODEM_MANAGER_H_
-#define CROMO_DUMMY_MODEM_MANAGER_H_
+#ifndef CROMO_DUMMY_MODEM_HANDLER_H_
+#define CROMO_DUMMY_MODEM_HANDLER_H_
 
 #include "base/basictypes.h"
 
 #include <dbus-c++/types.h>
 
-#include "modem_manager.h"
+#include "modem_handler.h"
 
-class ModemManagerServer;
+class CromoServer;
 
-class DummyModemManager : public ModemManager {
+class DummyModemHandler : public ModemHandler {
  public:
-  explicit DummyModemManager(ModemManagerServer& server);
+  explicit DummyModemHandler(CromoServer& server);
 
   virtual std::vector<DBus::Path> EnumerateDevices();
 
  protected:
   virtual bool Initialize();
 
-  DISALLOW_COPY_AND_ASSIGN(DummyModemManager);
+  DISALLOW_COPY_AND_ASSIGN(DummyModemHandler);
 };
 
-#endif // CROMO_DUMMY_MODEM_MANAGER_H_
+#endif // CROMO_DUMMY_MODEM_HANDLER_H_

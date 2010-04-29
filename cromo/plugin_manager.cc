@@ -23,13 +23,14 @@ using std::endl;
 
 vector<PluginManager::Plugin*> PluginManager::loaded_plugins_;
 
-void PluginManager::LoadPlugins(ModemManagerServer* server,
+void PluginManager::LoadPlugins(CromoServer* server,
                                 string& plugins) {
   DIR* pdir = opendir(PLUGINDIR);
   struct dirent* dirent;
 
   if (pdir == NULL) {
-    cerr << "Cannot open plugin directory " PLUGINDIR ": " << strerror(errno) << endl;
+    cerr << "Cannot open plugin directory " PLUGINDIR ": "
+         << strerror(errno) << endl;
     return;
   }
 

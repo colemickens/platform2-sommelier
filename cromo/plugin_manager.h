@@ -11,11 +11,11 @@
 #include "base/basictypes.h"
 #include "plugin.h"
 
-class ModemManagerServer;
+class CromoServer;
 
 class PluginManager {
  public:
-  static void LoadPlugins(ModemManagerServer* server, std::string& plugins);
+  static void LoadPlugins(CromoServer* server, std::string& plugins);
   static void UnloadPlugins();
 
  private:

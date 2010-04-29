@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CROMO_MODEM_MANAGER_SERVER_H_
-#define CROMO_MODEM_MANAGER_SERVER_H_
+#ifndef CROMO_SERVER_H_
+#define CROMO_SERVER_H_
 
 #include "base/basictypes.h"
 
@@ -11,32 +11,32 @@
 
 #include "manager_server_glue.h"
 
-class ModemManager;
+class ModemHandler;
 
 // Implements the ModemManager DBus API, and manages the
 // modem manager instances that handle specific types of
 // modems.
-class ModemManagerServer
+class CromoServer
     : public org::freedesktop::ModemManager_adaptor,
       public DBus::IntrospectableAdaptor,
       public DBus::ObjectAdaptor {
  public:
-  explicit ModemManagerServer(DBus::Connection& connection);
-  ~ModemManagerServer();
+  explicit CromoServer(DBus::Connection& connection);
+  ~CromoServer();
 
-  void AddModemManager(ModemManager* manager);
+  void AddModemHandler(ModemHandler* handler);
 
   // ModemManager DBUS API methods.
   std::vector<DBus::Path> EnumerateDevices();
 
-  static const char* SERVER_NAME;
-  static const char* SERVER_PATH;
+  static const char* kServiceName;
+  static const char* kServicePath;
 
  private:
-  // The modem managers that we are managing.
-  std::vector<ModemManager*> modem_managers_;
+  // The modem handlers that we are managing.
+  std::vector<ModemHandler*> modem_handlers_;
 
-  DISALLOW_COPY_AND_ASSIGN(ModemManagerServer);
+  DISALLOW_COPY_AND_ASSIGN(CromoServer);
 };
 
-#endif // CROMO_MODEM_MANAGER_SERVER_H_
+#endif // CROMO_SERVER_H_

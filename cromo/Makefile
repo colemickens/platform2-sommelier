@@ -16,13 +16,13 @@ SYMFILE=symfile
 
 CROMO = cromo
 PLUGINS = dummy_modem.so
-PLUGINDIR ?= /usr/local/cromo/plugins
+PLUGINDIR ?= /usr/lib/cromo/plugins
 DBUSDATADIR ?= /etc/dbus-1/system.d
 DBUSCONFIGFILE ?= org.chromium.ModemManager.conf
 
 plugin_manager_CPPFLAGS=-DPLUGINDIR=\"$(PLUGINDIR)\"
 dummy_modem_CPPFLAGS = -fPIC
-dummy_modem_manager_CPPFLAGS = -fPIC
+dummy_modem_handler_CPPFLAGS = -fPIC
 
 XMLFILES = mm-manager.xml \
 	mm-mobile-error.xml \
@@ -42,12 +42,12 @@ XMLFILES = mm-manager.xml \
 GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 
 SRCS = main.cc \
-       modem_manager_server.cc \
-       modem_manager.cc \
+       cromo_server.cc \
+       modem_handler.cc \
        plugin_manager.cc
 OBJS = $(SRCS:.cc=.o)
 
-dummy_SRCS = dummy_modem_manager.cc \
+dummy_SRCS = dummy_modem_handler.cc \
 	     dummy_modem.cc
 dummy_OBJS = $(dummy_SRCS:.cc=.o)
 
@@ -59,13 +59,20 @@ all: $(CROMO) $(PLUGINS)
 $(OBJS): $(GLUE_HEADERS)
 $(dummy_OBJS): $(GLUE_HEADERS)
 
-$(CROMO): $(OBJS)
-	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+$(CROMO): $(OBJS) $(SYMFILE)
+	$(CXX) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
 
-EXPORT_HEADERS=$(GLUE_HEADERS) modem_manager.h modem_manager_server.h plugin.h
+# Plugins, which are built and loaded separately from the main
+# executable, must subclass ModemHandler, so we must export
+# the symbols defined by that class.
+$(SYMFILE): modem_handler.o
+	@nm --defined-only $< | grep 'T _ZN12ModemHandler' | \
+	    awk 'BEGIN {print "{"} {print "  " $$3";"} END {print "};"}' >$@
+
+EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h
 
 install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo

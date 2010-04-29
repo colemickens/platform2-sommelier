@@ -35,7 +35,7 @@ class DummyModem
   void Connect(const PropertyMap& properties);
   PropertyMap GetStatus();
 
-  // DBUS Methods: ModemCDMA
+  // DBUS Methods: ModemCdma
   uint32_t GetSignalQuality();
   std::string GetEsn();
   DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem();
