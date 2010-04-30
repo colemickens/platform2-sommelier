@@ -461,12 +461,14 @@ make_arm_mbr() {
   local KERNEL_OFFSET=$(printf "0x%08x" ${1})
   local KERNEL_SECS_HEX=$(printf "0x%08x" ${2})
   local DEVICE=${3}
+  local EXTRA_BOOTARGS=${4}
 
   BOOTARGS="root=/dev/mmcblk${DEVICE}p3"
   BOOTARGS="${BOOTARGS} init=/sbin/init"
   BOOTARGS="${BOOTARGS} console=ttySAC2,115200"
   BOOTARGS="${BOOTARGS} mem=1024M"
   BOOTARGS="${BOOTARGS} rootwait"
+  BOOTARGS="${BOOTARGS} ${EXTRA_BOOTARGS}"
 
   MBR_SCRIPT="/var/tmp/mbr_script"
   echo -e "echo\necho ---- ChromeOS Boot ----\necho\n" \
