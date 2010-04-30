@@ -16,11 +16,12 @@ for key in Split('CC CXX AR RANLIB LD NM'):
   value = os.environ.get(key)
   if value is not None:
     base_env[key] = value
-for key in Split('CFLAGS CPPFLAGS CCFLAGS CPPPATH LIBPATH'):
+for key in Split('CFLAGS CPPFLAGS CXXFLAGS CCFLAGS CPPPATH LIBPATH'):
   value = os.environ.get(key, '')
   base_env[key] = Split(value)
 
 base_env['CFLAGS'].extend(Split('-Wall -Wextra -Werror -Wuninitialized'))
+base_env['CXXFLAGS'].extend(Split('-Wall -Wextra -Werror -Wuninitialized'))
 base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
 
 # Fix issue with scons not passing some vars through the environment.
@@ -41,18 +42,20 @@ Default(xidle_example)
 
 # Build backlight tool
 backlight = gdk_env.Library('backlight', ['backlight.cc'])
-backlight_env = base_env.Clone()
+backlight_env = gdk_env.Clone()
 backlight_env.Append(LIBS=Split('base rt gflags'))
 backlight_tool = backlight_env.Program('backlight-tool',
                                        ['backlight-tool.cc', backlight])
 Default(backlight_tool)
 
 # Build power daemon
-idle_dimmer = base_env.Library('idle_dimmer', ['idle_dimmer.cc'])
+backlight_controller = base_env.Library('backlight_controller',
+                                        ['backlight_controller.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('gflags'))
 powerd = powerd_env.Program('powerd',
-                            ['powerd.cc', xidle, backlight, idle_dimmer])
+                            ['powerd.cc', xidle, backlight,
+                             backlight_controller, '../cros/load.cc'])
 Default(powerd)
 
 # Build unit tests
@@ -62,9 +65,11 @@ xidle_unittest_env = xidle_env.Clone()
 xidle_unittest_env.Append(LIBS=['gtest', 'Xtst'])
 deps = [testrunner, 'xidle_unittest.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
-idle_dimmer_unittest_env = gdk_env.Clone()
-idle_dimmer_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
-deps = [testrunner, 'idle_dimmer_unittest.cc', idle_dimmer]
-tests.append(idle_dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
+dimmer_unittest_env = gdk_env.Clone()
+dimmer_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
+deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller]
+tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
+deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller]
+tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))
 

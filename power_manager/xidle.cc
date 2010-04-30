@@ -127,12 +127,20 @@ GdkFilterReturn XIdle::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   CHECK(xidle->idle_counter_);
   CHECK(!xidle->alarms_.empty());
 
+  XSyncValue value;
   if (xevent->type == xidle->event_base_ + XSyncAlarmNotify &&
-      alarm_event->state != XSyncAlarmDestroyed) {
+      alarm_event->state != XSyncAlarmDestroyed &&
+      XSyncQueryCounter(GDK_DISPLAY(), xidle->idle_counter_, &value)) {
     bool is_idle = !XSyncValueLessThan(alarm_event->counter_value,
                                        alarm_event->alarm_value);
-    int64 idle_time_ms = XSyncValueToInt64(alarm_event->counter_value);
-    xidle->monitor_->OnIdleEvent(is_idle, idle_time_ms);
+    bool is_idle2 = !XSyncValueLessThan(value,
+                                        alarm_event->alarm_value);
+    if (is_idle == is_idle2) {
+      int64 idle_time_ms = XSyncValueToInt64(alarm_event->counter_value);
+      xidle->monitor_->OnIdleEvent(is_idle, idle_time_ms);
+    } else {
+      LOG(INFO) << "Filtering out stale event";
+    }
   }
 
   return GDK_FILTER_CONTINUE;
