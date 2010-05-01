@@ -8,9 +8,9 @@
 #include <gflags/gflags.h>
 #include <sys/time.h>
 
-#ifdef USE_GLES
+#ifdef USE_EGL
+#include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#include <GLES/gl.h>
 #else
 #include <GL/gl.h>
 #include <GL/glx.h>
@@ -29,6 +29,8 @@
     F(glGenBuffers, PFNGLGENBUFFERSPROC) \
     F(glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC) \
     F(glGetInfoLogARB, PFNGLGETPROGRAMINFOLOGPROC) \
+    F(glGetProgramInfoLog, PFNGLGETPROGRAMINFOLOGPROC) \
+    F(glGetShaderInfoLog, PFNGLGETSHADERINFOLOGPROC) \
     F(glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC) \
     F(glLinkProgram, PFNGLLINKPROGRAMPROC) \
     F(glShaderSource, PFNGLSHADERSOURCEPROC) \
@@ -36,7 +38,9 @@
     F(glUniform1i, PFNGLUNIFORM1IPROC) \
     F(glUseProgram, PFNGLUSEPROGRAMPROC) \
     F(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC) \
-    F(glXSwapIntervalSGI, PFNGLXSWAPINTERVALSGIPROC)
+    F(glXSwapIntervalSGI, PFNGLXSWAPINTERVALSGIPROC) \
+    F(glXBindTexImageEXT, PFNGLXBINDTEXIMAGEEXTPROC) \
+    F(glXReleaseTexImageEXT, PFNGLXRELEASETEXIMAGEEXTPROC)
 
 #define F(fun, type) extern type fun;
 LIST_PROC_FUNCTIONS(F)

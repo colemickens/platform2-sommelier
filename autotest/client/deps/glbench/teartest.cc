@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,9 +17,9 @@
 
 #include "teartest.h"
 
+typedef std::map<const char*, Test*> TestMap;
 
-static Pixmap pixmap = 0;
-static int shift_uniform = 0;
+
 DEFINE_int32(refresh, 0,
              "If 1 or more, target refresh rate; otherwise enable vsync");
 
@@ -49,21 +50,20 @@ const char *fragment_shader =
     "}";
 
 
-void AllocatePixmap() {
+Pixmap AllocatePixmap() {
   XWindowAttributes attributes;
   XGetWindowAttributes(g_xlib_display, g_xlib_window, &attributes);
-  pixmap = XCreatePixmap(g_xlib_display, g_xlib_window,
-                         g_height, g_width, attributes.depth);
-}
-
-void InitializePixmap() {
+  Pixmap pixmap = XCreatePixmap(g_xlib_display, g_xlib_window,
+                                g_height, g_width, attributes.depth);
   GC gc = DefaultGC(g_xlib_display, 0);
   XSetForeground(g_xlib_display, gc, 0xffffff);
   XFillRectangle(g_xlib_display, pixmap, gc, 0, 0, g_height, g_width);
-  UpdatePixmap(0);
+  UpdatePixmap(pixmap, 0);
+  return pixmap;
 }
 
-void UpdatePixmap(int i) {
+
+void UpdatePixmap(Pixmap pixmap, int i) {
   static int last_i = 0;
   GC gc = DefaultGC(g_xlib_display, 0);
   XSetForeground(g_xlib_display, gc, 0xffffff);
@@ -79,7 +79,8 @@ void UpdatePixmap(int i) {
   last_i = i;
 }
 
-void CopyPixmapToTexture() {
+
+void CopyPixmapToTexture(Pixmap pixmap) {
   XImage *xim = XGetImage(g_xlib_display, pixmap, 0, 0, g_height, g_width,
                           AllPlanes, ZPixmap);
   CHECK(xim != NULL);
@@ -89,55 +90,78 @@ void CopyPixmapToTexture() {
 }
 
 
-bool UpdateUniform(TestState state, int shift) {
-  switch (state) {
-    case TestStart:
-      printf("# Plain texture draw.\n");
-      InitializePixmap();
-      CopyPixmapToTexture();
-      break;
-
-    case TestLoop:
-      glUniform1f(shift_uniform, 1.f / g_width * shift);
-      break;
-
-    case TestStop:
-      glUniform1f(shift_uniform, 0.f);
-      break;
+// This test needs shift_uniform from outside, don't add it right away.
+class UniformTest : public Test {
+ public:
+  UniformTest() : pixmap_(0), shift_uniform_(-1) {}
+  virtual bool Start() {
+    printf("# Plain texture draw.\n");
+    pixmap_ = AllocatePixmap();
+    CopyPixmapToTexture(pixmap_);
+    return true;
   }
-  return true;
-}
 
-bool UpdateTexImage2D(TestState state, int shift) {
-  switch (state) {
-    case TestStart:
-      printf("# Full texture update.\n");
-      InitializePixmap();
-      CopyPixmapToTexture();
-      break;
-
-    case TestLoop: {
-      UpdatePixmap(shift);
-      // TODO: it's probably much cheaper to not use Pixmap and XImage.
-      CopyPixmapToTexture();
-    }
-
-    case TestStop:
-      break;
+  virtual bool Loop(int shift) {
+    glUniform1f(shift_uniform_, 1.f / g_width * shift);
+    return true;
   }
-  return true;
-}
 
+  virtual void Stop() {
+    glUniform1f(shift_uniform_, 0.f);
+    XFreePixmap(g_xlib_display, pixmap_);
+  }
 
-Test test[] = {
-  UpdateUniform,
-  UpdateTexImage2D,
-  UpdateBindTexImage
+  void SetUniform(int shift_uniform) {
+    shift_uniform_ = shift_uniform;
+  }
+
+ private:
+  Pixmap pixmap_;
+  int shift_uniform_;
 };
+
+Test* GetUniformTest(int uniform) {
+  UniformTest* ret = new UniformTest();
+  ret->SetUniform(uniform);
+  return ret;
+}
+
+
+class TexImage2DTest : public Test {
+ public:
+  TexImage2DTest() : pixmap_(0) {}
+  virtual bool Start() {
+    printf("# Full texture update.\n");
+    pixmap_ = AllocatePixmap();
+    CopyPixmapToTexture(pixmap_);
+    return true;
+  }
+
+  virtual bool Loop(int shift) {
+    UpdatePixmap(pixmap_, shift);
+    // TODO: it's probably much cheaper to not use Pixmap and XImage.
+    CopyPixmapToTexture(pixmap_);
+    return true;
+  }
+
+  virtual void Stop() {
+    XFreePixmap(g_xlib_display, pixmap_);
+  }
+
+ private:
+  Pixmap pixmap_;
+};
+
+Test* GetTexImage2DTest() {
+  return new TexImage2DTest();
+}
+
 
 int main(int argc, char* argv[]) {
   struct timespec* sleep_duration = NULL;
   g_height = -1;
+  TestMap test_map;
+
   google::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_refresh >= 1) {
     sleep_duration = new struct timespec;
@@ -154,9 +178,6 @@ int main(int argc, char* argv[]) {
 
   GLuint texture = GenerateAndBindTexture();
 
-  AllocatePixmap();
-  InitNative(pixmap);
-
   GLfloat vertices[8] = {
     0.f, 0.f,
     1.f, 0.f,
@@ -172,20 +193,29 @@ int main(int argc, char* argv[]) {
   int texture_sampler = glGetUniformLocation(program, "tex");
   glUniform1f(texture_sampler, 0);
 
-  shift_uniform = glGetUniformLocation(program, "shift");
+  // UniformTest needs a uniform from the shader program.  Get the uniform
+  // and instantiate the test.
+  Test* uniform_test = GetUniformTest(glGetUniformLocation(program, "shift"));
+  test_map["uniform"] = uniform_test;
+  test_map["teximage2d"] = GetTexImage2DTest();
+#ifdef USE_EGL
+  test_map["pixmap_to_texture"] = GetPixmapToTextureTestEGL();
+#else
+  test_map["pixmap_to_texture"] = GetPixmapToTextureTest();
+#endif
+
   SwapInterval(sleep_duration ? 0 : 1);
 
-  for (unsigned int i = 0; i < sizeof(test)/sizeof(*test); i++)
-  {
-    XEvent event;
-    if (!test[i](TestStart, 0))
+  for (TestMap::iterator it = test_map.begin(); it != test_map.end(); it++) {
+    Test* t = it->second;
+    if (!t->Start())
       continue;
 
     Bool got_event = False;
     for (int x = 0; !got_event; x = (x + 4) % (2 * g_width)) {
       const int shift = x < g_width ? x : 2 * g_width - x;
 
-      test[i](TestLoop, shift);
+      t->Loop(shift);
 
       glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
       glFlush();
@@ -195,14 +225,15 @@ int main(int argc, char* argv[]) {
 
       SwapBuffers();
 
+      XEvent event;
       got_event = XCheckWindowEvent(g_xlib_display, g_xlib_window,
                                     KeyPressMask, &event);
     }
 
-    test[i](TestStop, 0);
+    t->Stop();
   }
 
-  // TODO: clean teardown.
+  // TODO: cleaner teardown.
 
   glDeleteTextures(1, &texture);
   DestroyContext();

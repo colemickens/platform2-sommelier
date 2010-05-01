@@ -160,6 +160,8 @@ GLuint SetupTexture(GLsizei size_log2) {
 
 static void DrawArraysTestFunc(int iter);
 static void FillRateTestNormal(const char *name, float coeff=1.f);
+
+#ifndef USE_EGL
 static void FillRateTestBlendDepth(const char *name);
 
 void FillRateTest() {
@@ -232,6 +234,7 @@ void FillRateTest() {
   glDeleteBuffers(1, &vbo_texture);
   glDeleteTextures(1, &texture);
 }
+#endif
 
 
 static void FillRateTestNormal(const char *name, float coeff) {
@@ -241,6 +244,7 @@ static void FillRateTestNormal(const char *name, float coeff) {
   RunTest(DrawArraysTestFunc, buffer, coeff * g_width * g_height, true);
 }
 
+#ifndef USE_EGL
 static void FillRateTestBlendDepth(const char *name) {
   const int buffer_len = 64;
   char buffer[buffer_len];
@@ -260,6 +264,7 @@ static void FillRateTestBlendDepth(const char *name) {
   RunTest(DrawArraysTestFunc, buffer, g_width * g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
+#endif
 
 
 static void DrawArraysTestFunc(int iter) {
@@ -330,6 +335,7 @@ static int CreateMesh(GLuint **indices, GLsizeiptr *size,
   return iptr - *indices;
 }
 
+#ifndef USE_EGL
 void TriangleSetupTest() {
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
@@ -383,6 +389,7 @@ void TriangleSetupTest() {
   glDeleteBuffers(1, &vertex_buffer);
   delete[] vertices;
 }
+#endif
 
 
 void AttributeFetchShaderTest() {
@@ -569,11 +576,13 @@ void YuvToRgbShaderTest2() {
   YuvToRgbShaderTestHelper(2, "yuv_shader_2");
 }
 
-static GLuint compositing_textures[5];
 static uint32_t texture_base[WINDOW_HEIGHT*WINDOW_WIDTH];
 static uint32_t texture_update[WINDOW_HEIGHT*WINDOW_WIDTH];
+#ifndef USE_EGL
+static GLuint compositing_textures[5];
 static ShaderProgram compositing_background_program = 0;
 static ShaderProgram compositing_foreground_program = 0;
+#endif
 
 void InitBaseTexture() {
   for (int y = 0; y < WINDOW_HEIGHT; y++) {
@@ -598,6 +607,7 @@ void LoadTexture() {
                GL_RGBA, GL_UNSIGNED_BYTE, texture_update);
 }
 
+#ifndef USE_EGL
 // Test how fast we can do full-screen compositing of images
 // continuously updated from the CPU.
 // This tests both GPU compositing performance and also
@@ -789,6 +799,7 @@ void NoFillWindowManagerCompositingTest() {
           screen_scale_factor, true);
   TeardownCompositing();
 }
+#endif
 
 void ReadPixelTestFunc(int iter) {
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, arg2);
@@ -858,14 +869,16 @@ int main(int argc, char *argv[]) {
   void (*test[])() = {
     SwapTest,
     ClearTest,
-    FillRateTest,
-    TriangleSetupTest,
     AttributeFetchShaderTest,
     VaryingsAndDdxyShaderTest,
     YuvToRgbShaderTest1,
     YuvToRgbShaderTest2,
+#ifndef USE_EGL
+    FillRateTest,
+    TriangleSetupTest,
     NoFillWindowManagerCompositingTest,
     WindowManagerCompositingTest,
+#endif
     ReadPixelTest,
   };
 

@@ -21,7 +21,7 @@ WINDOWMANAGERTEST = ../windowmanagertest
 GCLIENT_ROOT ?= ../../../../../../../..
 
 ifdef USE_EGL
-CXXFLAGS += -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include
+CXXFLAGS += -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include -DUSE_EGL
 SOURCES_COMMON += egl_stuff.cc
 SOURCES_TEARTEST += teartest_egl.cc
 LDFLAGS += -L$(GCLIENT_ROOT)/src/third_party/khronos/files -lEGL
@@ -39,7 +39,11 @@ DEPS_ALL = $(SOURCES_ALL:.cc=.d)
 
 .PHONY: all clean
 
-all: $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST)
+all: $(GL_BENCH) $(TEARTEST)
+
+ifndef USE_EGL
+all: $(WINDOWMANAGERTEST)
+endif
 
 $(TEARTEST): $(OBJS_COMMON) $(OBJS_TEARTEST)
 $(GL_BENCH): $(OBJS_COMMON) $(OBJS_GL_BENCH)

@@ -12,22 +12,44 @@
 #include "teartest.h"
 
 
-PFNGLXBINDTEXIMAGEEXTPROC glXBindTexImageEXT = NULL;
-PFNGLXRELEASETEXIMAGEEXTPROC glXReleaseTexImageEXT = NULL;
+class PixmapToTextureTest : public Test {
+ public:
+  PixmapToTextureTest();
+  virtual bool Start();
+  virtual bool Loop(int shift);
+  virtual void Stop();
+ private:
+  bool InitNative();
 
-static GLXPixmap glxpixmap = 0;
+  GLXPixmap glxpixmap_;
+  Pixmap pixmap_;
+  bool init_succeeded;
+};
+
+Test* GetPixmapToTextureTest() {
+  return new PixmapToTextureTest();
+}
 
 
-void InitNative(Pixmap pixmap) {
-  glXBindTexImageEXT = reinterpret_cast<PFNGLXBINDTEXIMAGEEXTPROC>(
-      glXGetProcAddress(
-          reinterpret_cast<const GLubyte *>("glXBindTexImageEXT")));
-  glXReleaseTexImageEXT = reinterpret_cast<PFNGLXRELEASETEXIMAGEEXTPROC>(
-      glXGetProcAddress(
-          reinterpret_cast<const GLubyte *>("glXReleaseTexImageEXT")));
+PixmapToTextureTest::PixmapToTextureTest() :
+  glxpixmap_(0),
+  pixmap_(0),
+  init_succeeded(false) {}
+
+
+bool PixmapToTextureTest::InitNative() {
+  int major = 0;
+  int minor = 0;
+  if (!glXQueryVersion(g_xlib_display, &major, &minor))
+    return false;
+
+  if (major < 1 || (major == 1 && minor < 3))
+    return false;
 
   if (!glXBindTexImageEXT)
-    return;
+    return false;
+
+  pixmap_ = AllocatePixmap();
 
   int rgba, rgb;
   glXGetFBConfigAttrib(g_xlib_display, g_glx_fbconfig,
@@ -42,33 +64,34 @@ void InitNative(Pixmap pixmap) {
     None
   };
 
-  glxpixmap = glXCreatePixmap(g_xlib_display, g_glx_fbconfig,
-                              pixmap, pixmapAttribs);
+  glxpixmap_ = glXCreatePixmap(g_xlib_display, g_glx_fbconfig,
+                              pixmap_, pixmapAttribs);
+  return true;
 }
 
-bool UpdateBindTexImage(TestState state, int shift) {
-  if (!glXBindTexImageEXT) {
-    printf("# Could not load glXBindTexImageEXT\n");
-    return false;
-  }
 
-  switch (state) {
-    case TestStart:
-      printf("# Update pixmap bound to texture.\n");
-      InitializePixmap();
-      CopyPixmapToTexture();
-      glXBindTexImageEXT(g_xlib_display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
-      break;
-
-    case TestLoop:
-      glXReleaseTexImageEXT(g_xlib_display, glxpixmap, GLX_FRONT_LEFT_EXT);
-      UpdatePixmap(shift);
-      glXBindTexImageEXT(g_xlib_display, glxpixmap, GLX_FRONT_LEFT_EXT, NULL);
-      break;
-
-    case TestStop:
-      glXReleaseTexImageEXT(g_xlib_display, glxpixmap, GLX_FRONT_LEFT_EXT);
-      break;
-  }
+bool PixmapToTextureTest::Start() {
+  init_succeeded = InitNative();
+  printf("# Update pixmap bound to texture.\n");
+  CopyPixmapToTexture(pixmap_);
+  glXBindTexImageEXT(g_xlib_display, glxpixmap_, GLX_FRONT_LEFT_EXT, NULL);
   return true;
+}
+
+
+bool PixmapToTextureTest::Loop(int shift) {
+  if (!init_succeeded)
+    return false;
+  glXReleaseTexImageEXT(g_xlib_display, glxpixmap_, GLX_FRONT_LEFT_EXT);
+  UpdatePixmap(pixmap_, shift);
+  glXBindTexImageEXT(g_xlib_display, glxpixmap_, GLX_FRONT_LEFT_EXT, NULL);
+  return true;
+}
+
+
+void PixmapToTextureTest::Stop() {
+  glXReleaseTexImageEXT(g_xlib_display, glxpixmap_, GLX_FRONT_LEFT_EXT);
+  glFinish();
+  glXDestroyPixmap(g_xlib_display, glxpixmap_);
+  XFreePixmap(g_xlib_display, pixmap_);
 }

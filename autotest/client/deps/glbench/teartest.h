@@ -7,20 +7,28 @@
 
 #include <X11/Xlib.h>
 
-enum TestState {
-  TestStart,
-  TestLoop,
-  TestStop
+
+class Test {
+ public:
+  virtual bool Start() = 0;
+  virtual bool Loop(int shift) = 0;
+  virtual void Stop() = 0;
+  virtual ~Test() {}
 };
 
-typedef bool (*Test)(TestState state, int arg);
 
-void InitializePixmap();
-void UpdatePixmap(int i);
-void CopyPixmapToTexture();
+Pixmap AllocatePixmap();
+void InitializePixmap(Pixmap pixmap);
+void UpdatePixmap(Pixmap pixmap, int i);
+void CopyPixmapToTexture(Pixmap pixmap);
 
-// TODO: implement EGL counterpart.
-void InitNative(Pixmap pixmap);
-bool UpdateBindTexImage(TestState state, int arg);
+Test* GetUniformTest();
+Test* GetTexImage2DTest();
+#ifdef USE_EGL
+Test* GetPixmapToTextureTestEGL();
+#else
+Test* GetPixmapToTextureTest();
+#endif
+
 
 #endif // BENCH_GL_TEARTEST_H_

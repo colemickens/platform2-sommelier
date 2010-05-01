@@ -5,7 +5,11 @@
 #ifndef BENCH_GL_UTILS_H_
 #define BENCH_GL_UTILS_H_
 
+#ifdef USE_EGL
+#include "GLES2/gl2.h"
+#else
 #include "GL/gl.h"
+#endif
 
 
 void SetBasePathFromArgv0(const char* argv0, const char* relative);

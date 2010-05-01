@@ -83,8 +83,10 @@ bool InitContext() {
   eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &g_width);
   eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &g_height);
 
+#ifndef USE_EGL
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+#endif
 
   return true;
 }

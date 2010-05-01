@@ -51,7 +51,10 @@ static void print_info_log(int obj)
 {
   char info_log[4096];
   int length;
-  glGetInfoLogARB(obj, sizeof(info_log)-1, &length, info_log);
+  glGetError();
+  glGetShaderInfoLog(obj, sizeof(info_log)-1, &length, info_log);
+  if (glGetError() != 0)
+    glGetProgramInfoLog(obj, sizeof(info_log)-1, &length, info_log);
   char *p = info_log;
   while (p < info_log + length) {
     char *newline = strchr(p, '\n');
