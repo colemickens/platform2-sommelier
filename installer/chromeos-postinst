@@ -12,11 +12,27 @@
 # Update /boot/extlinux.conf.
 INSTALL_ROOT=`dirname "$0"`
 INSTALL_DEV="$1"
+POSTCOMMIT="$2"
 
-# Only update extlinux.conf if $1 is non-empty
-if [ -n "$INSTALL_DEV" ]; then
-  # Set default label to chromeos-hd.
-  sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' "$INSTALL_ROOT"/boot/extlinux.conf
-  sed -i "{ s:HDROOT:$INSTALL_DEV: }" "$INSTALL_ROOT"/boot/extlinux.conf
+if [ "$POSTCOMMIT" != "--postcommit" ]; then
+  # Pre-commit. Returning an error here will prevent ever booting into the
+  # installed system.
+
+  # If the mount-point is read-write, update the bootloader
+  # Only update extlinux.conf if $1 is non-empty
+  if [ -n "$INSTALL_DEV" ]; then
+    # Set default label to chromeos-hd.
+    sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' \
+        "$INSTALL_ROOT"/boot/extlinux.conf || true
+    sed -i "{ s:HDROOT:$INSTALL_DEV: }" \
+        "$INSTALL_ROOT"/boot/extlinux.conf || true
+  fi
+
+else
+  # Post-commit. At this point an unexpected reboot may boot the installed
+  # system, but returning an error here will cause the updater to try to
+  # not boot the installed system, instead keeping the existing system.
+
 fi
+
 
