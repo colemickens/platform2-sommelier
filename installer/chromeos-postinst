@@ -33,6 +33,7 @@ else
   # system, but returning an error here will cause the updater to try to
   # not boot the installed system, instead keeping the existing system.
 
+  echo -n  # this is a noop, required for 'sh'
 fi
 
 
