@@ -225,8 +225,8 @@ int SessionManagerService::RunChild() {
   int pid = fork();
   if (pid == 0) {
     // Log the time we execute chrome.
-    system("cat /proc/uptime > /tmp/uptime-chrome-exec");
-    system("cat /sys/block/sda/stat > /tmp/disk-chrome-exec");
+    system("set -o noclobber ; cat /proc/uptime > /tmp/uptime-chrome-exec");
+    system("set -o noclobber ; cat /sys/block/sda/stat > /tmp/disk-chrome-exec");
     // In the child.
     child_job_->Run();
     exit(1);  // Run() is not supposed to return.
