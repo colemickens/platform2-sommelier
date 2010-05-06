@@ -51,26 +51,31 @@ unsigned char* CreateBitmap(int w, int h) {
 
 
 const char kVertexShader[] =
-    "attribute vec4 c;"
+    "attribute vec4 vertices;"
     "void main() {"
-    "    gl_Position = c;"
-    "    gl_TexCoord[0] = vec4(c.y, c.x, 0.0, 0.0);"
+    "    gl_Position = vertices;"
+    "    gl_TexCoord[0] = vec4(vertices.y, vertices.x, 0.0, 0.0);"
     "}";
 
 const char kFragmentShader[] =
     "uniform sampler2D tex;"
+    "uniform vec4 color;"
     "void main() {"
-    "    gl_FragColor = texture2D(tex, gl_TexCoord[0].xy);"
+    "    gl_FragColor = color * texture2D(tex, gl_TexCoord[0].xy);"
     "}";
 
-
-// If refresh is set to zero, we enable vsync.  Otherwise we redraw that many
-// times a second.
-DEFINE_int32(seconds_to_run, 10, "seconds to run application for");
+// Command line flags
+DEFINE_double(screenshot1_sec, 2.f, "seconds delay before screenshot1_cmd");
+DEFINE_double(screenshot2_sec, 1.f, "seconds delay before screenshot2_cmd");
+DEFINE_string(screenshot1_cmd, "", "system command to take a screen shot 1");
+DEFINE_string(screenshot2_cmd, "", "system command to take a screen shot 2");
+DEFINE_double(cooldown_sec, 1.f, "seconds delay after all screenshots");
 
 int main(int argc, char* argv[]) {
+  // Configure full screen
   g_width = -1;
   g_height = -1;
+
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   if (!Init()) {
@@ -94,19 +99,64 @@ int main(int argc, char* argv[]) {
   };
 
   GLuint program = InitShaderProgram(kVertexShader, kFragmentShader);
-  int attribute_index = glGetAttribLocation(program, "c");
+  int attribute_index = glGetAttribLocation(program, "vertices");
   glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glEnableVertexAttribArray(attribute_index);
 
   int texture_sampler = glGetUniformLocation(program, "tex");
-  glUniform1f(texture_sampler, 0);
+  glUniform1i(texture_sampler, 0);
 
-  uint64_t wait_until_done = GetUTime() + 1000000ULL * FLAGS_seconds_to_run;
+  int display_color = glGetUniformLocation(program, "color");
+  float white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+  float blue[4] = {0.5f, 0.5f, 1.0f, 1.0f};
+
+  uint64_t last_event_time = GetUTime();
+  enum State {
+    kStateScreenShot1,
+    kStateScreenShot2,
+    kStateCooldown,
+    kStateExit
+  } state = kStateScreenShot1;
+  float seconds_delay_for_next_state[] = {
+      FLAGS_screenshot1_sec,
+      FLAGS_screenshot2_sec,
+      FLAGS_cooldown_sec,
+      0
+  };
+
   do {
+    // Draw
     glClear(GL_COLOR_BUFFER_BIT);
+    if (state == kStateScreenShot1)
+      glUniform4fv(display_color, 1, white);
+    else
+      glUniform4fv(display_color, 1, blue);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     SwapBuffers();
-  } while (GetUTime() < wait_until_done);
+
+    // Loop until next event
+    float seconds_since_last_event =
+        static_cast<float>(GetUTime() - last_event_time) / 1000000ULL;
+    if (seconds_since_last_event < seconds_delay_for_next_state[state])
+      continue;
+
+    // State change. Perform action.
+    switch(state) {
+      case kStateScreenShot1:
+        system(FLAGS_screenshot1_cmd.c_str());
+        break;
+      case kStateScreenShot2:
+        system(FLAGS_screenshot2_cmd.c_str());
+        break;
+      default:
+        break;
+    }
+
+    // Advance to next state
+    last_event_time = GetUTime();
+    state = static_cast<State>(state + 1);
+
+  } while (state != kStateExit);
 
   glDeleteTextures(1, &texture);
   DestroyContext();
