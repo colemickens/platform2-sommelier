@@ -127,6 +127,11 @@ if [ -f "$SEND_METRICS" ]; then
   fi
 fi
 
+# We need to delete these files as Chrome may have left them around from
+# its prior run (if it crashed).
+rm -f /home/$USER/SingletonLock
+rm -f /home/$USER/SingletonSocket
+
 while [ -z ${SERVER_READY} ]; do
   sleep .1
 done
