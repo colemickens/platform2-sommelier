@@ -20,8 +20,9 @@ for key in Split('CFLAGS CPPFLAGS CXXFLAGS CCFLAGS CPPPATH LIBPATH'):
   value = os.environ.get(key, '')
   base_env[key] = Split(value)
 
-base_env['CFLAGS'].extend(Split('-Wall -Wextra -Werror -Wuninitialized'))
-base_env['CXXFLAGS'].extend(Split('-Wall -Wextra -Werror -Wuninitialized'))
+extra_flags = '-fno-strict-aliasing -Wall -Wextra -Werror -Wuninitialized'
+base_env['CFLAGS'].extend(Split(extra_flags))
+base_env['CXXFLAGS'].extend(Split(extra_flags))
 base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
 
 # Fix issue with scons not passing some vars through the environment.
@@ -51,10 +52,11 @@ Default(backlight_tool)
 # Build power daemon
 backlight_controller = base_env.Library('backlight_controller',
                                         ['backlight_controller.cc'])
+power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('gflags'))
 powerd = powerd_env.Program('powerd',
-                            ['powerd.cc', xidle, backlight,
+                            ['powerd.cc', xidle, backlight, power_prefs,
                              backlight_controller, '../cros/load.cc'])
 Default(powerd)
 
@@ -67,9 +69,11 @@ deps = [testrunner, 'xidle_unittest.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 dimmer_unittest_env = gdk_env.Clone()
 dimmer_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
-deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller]
+deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller,
+        power_prefs]
 tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
-deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller]
+deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller,
+        power_prefs]
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))
 

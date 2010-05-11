@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include "power_manager/backlight_interface.h"
+#include "power_manager/power_prefs_interface.h"
 #include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
@@ -19,27 +20,25 @@ enum BacklightState {
 // Control the backlight.
 class BacklightController {
  public:
-  explicit BacklightController(BacklightInterface* backlight);
+  explicit BacklightController(BacklightInterface* backlight,
+                               PowerPrefsInterface *prefs);
   virtual ~BacklightController() {}
 
   // Initialize the object.
   bool Init();
 
-  // Set |level| to the current brightness level of the backlight, and set
-  // |max| to the max brightness level of the backlight. The minimum
-  // brightness level of the backlight is zero.
-  void GetBrightness(int64* level, int64* max);
+  // Set |level| to the current brightness level of the backlight as a
+  // percentage.
+  void GetBrightness(int64* level);
 
-  // Increase / decrease brightness by specified offset
+  // Increase / decrease brightness by specified offset.
   void ChangeBrightness(int64 offset);
 
-  // Set the state of the backlight to active or dim
+  // Set the state of the backlight to active or dim.
   void SetBacklightState(BacklightState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
-  // appropriately. Before calling this method, make sure to call the
-  // set_plugged_brightness_offset and set_unplugged_brightness_offset
-  // methods below.
+  // appropriately.
   void OnPlugEvent(bool is_plugged);
 
   // Read brightness settings from the system and apply any changes made
@@ -62,11 +61,17 @@ class BacklightController {
   }
 
  private:
-  // Clamp |x| to fit between min_ and max_.
-  int64 clamp(int64 x) { return std::min(max_, std::max(min_, x)); }
+  // Clamp |x| to fit between 0 and 100.
+  int64 clamp(int64 x) { return std::min(100LL, std::max(0LL, x)); }
+
+  void ReadPrefs();
+  void WritePrefs();
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
+
+  // Interface for saving preferences. Non-owned.
+  PowerPrefsInterface* prefs_;
 
   // Offsets used to calculate desired brightness.
   int64 als_brightness_level_;
@@ -87,7 +92,7 @@ class BacklightController {
   // Current system brightness.
   int64 system_brightness_;
 
-  // Min and max brightness for clamp.
+  // Min and max brightness for backlight object.
   int64 min_;
   int64 max_;
 

@@ -4,12 +4,16 @@
 
 #include "power_manager/backlight_controller.h"
 
+#include <math.h>
+
 #include "base/logging.h"
 
 namespace power_manager {
 
-BacklightController::BacklightController(BacklightInterface* backlight)
+BacklightController::BacklightController(BacklightInterface* backlight,
+                                         PowerPrefsInterface *prefs)
     : backlight_(backlight),
+      prefs_(prefs),
       als_brightness_level_(0),
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
@@ -22,11 +26,17 @@ BacklightController::BacklightController(BacklightInterface* backlight)
 
 bool BacklightController::Init() {
   int64 level;
-  return backlight_->GetBrightness(&level, &max_);
+  if (backlight_->GetBrightness(&level, &max_)) {
+    ReadPrefs();
+    return true;
+  }
+  return false;
 }
 
-void BacklightController::GetBrightness(int64* level, int64* max) {
-  CHECK(backlight_->GetBrightness(level, max));
+void BacklightController::GetBrightness(int64* level) {
+  int64 raw_level;
+  CHECK(backlight_->GetBrightness(&raw_level, &max_));
+  *level = lround(100. * raw_level / max_);
 }
 
 void BacklightController::ChangeBrightness(int64 diff) {
@@ -45,10 +55,6 @@ void BacklightController::SetBacklightState(BacklightState state) {
 }
 
 void BacklightController::OnPlugEvent(bool is_plugged) {
-  CHECK(plugged_brightness_offset_ >= 0)
-      << "set_plugged_brightness_offset_ must be called first";
-  CHECK(unplugged_brightness_offset_ >= 0)
-      << "set_unplugged_brightness_offset_ must be called first";
   if (brightness_offset_ && is_plugged == plugged_state_)
     return;
   if (brightness_offset_)
@@ -66,8 +72,8 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
 int64 BacklightController::ReadBrightness() {
   CHECK(max_ >= 0) << "Init() must be called";
   CHECK(brightness_offset_) << "Plugged state must be initialized";
-  int64 level, max;
-  backlight_->GetBrightness(&level, &max);
+  int64 level;
+  GetBrightness(&level);
   if (level != system_brightness_) {
     // Another program adjusted the brightness. Sync up.
     int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
@@ -84,11 +90,34 @@ int64 BacklightController::WriteBrightness() {
   if (state_ == BACKLIGHT_ACTIVE)
     system_brightness_ = clamp(als_brightness_level_ + *brightness_offset_);
   else
-    system_brightness_ = min_;
-  CHECK(backlight_->SetBrightness(system_brightness_));
+    system_brightness_ = 0;
+  int64 val = lround(max_ * system_brightness_ / 100.);
   LOG(INFO) << "Brightness: " << old_brightness << " -> "
-            << system_brightness_;
+            << system_brightness_ ;
+  CHECK(backlight_->SetBrightness(val));
+  WritePrefs();
   return system_brightness_;
+}
+
+void BacklightController::ReadPrefs() {
+  CHECK(prefs_->ReadSetting("plugged_brightness_offset",
+                            &plugged_brightness_offset_));
+  CHECK(prefs_->ReadSetting("unplugged_brightness_offset",
+                            &unplugged_brightness_offset_));
+  CHECK(plugged_brightness_offset_ >= -100);
+  CHECK(plugged_brightness_offset_ <= 100);
+  CHECK(unplugged_brightness_offset_ >= -100);
+  CHECK(unplugged_brightness_offset_ <= 100);
+}
+
+void BacklightController::WritePrefs() {
+  if (plugged_state_ == POWER_CONNECTED) {
+    CHECK(prefs_->WriteSetting("plugged_brightness_offset",
+                               plugged_brightness_offset_));
+  } else if (plugged_state_ == POWER_DISCONNECTED) {
+    CHECK(prefs_->WriteSetting("unplugged_brightness_offset",
+                               unplugged_brightness_offset_));
+  }
 }
 
 }  // namespace power_manager

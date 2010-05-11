@@ -8,6 +8,7 @@
 #include "base/logging.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/mock_backlight.h"
+#include "power_manager/power_prefs.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -23,24 +24,29 @@ static const int64 kDefaultBrightness = 5;
 static const int64 kMaxBrightness = 10;
 static const int64 kPluggedBrightness = 7;
 static const int64 kUnpluggedBrightness = 3;
+static const int64 kPluggedBrightnessP = kPluggedBrightness * 10;
+static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 10;
 
 class IdleDimmerTest : public Test {
  public:
-  IdleDimmerTest() : backlight_ctl_(&backlight_) {
+  IdleDimmerTest() :
+      prefs_(FilePath("/tmp")),
+      backlight_ctl_(&backlight_, &prefs_) {
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
-    CHECK(backlight_ctl_.Init());
-    backlight_ctl_.set_plugged_brightness_offset(kPluggedBrightness);
-    backlight_ctl_.set_unplugged_brightness_offset(kUnpluggedBrightness);
+    prefs_.WriteSetting("plugged_brightness_offset", kPluggedBrightnessP);
+    prefs_.WriteSetting("unplugged_brightness_offset", kUnpluggedBrightnessP);
     EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
         .WillOnce(Return(true));
+    CHECK(backlight_ctl_.Init());
     backlight_ctl_.OnPlugEvent(true);
   }
 
  protected:
   MockBacklight backlight_;
+  PowerPrefs prefs_;
   BacklightController backlight_ctl_;
 };
 
