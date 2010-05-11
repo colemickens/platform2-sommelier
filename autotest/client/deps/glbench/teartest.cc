@@ -10,6 +10,7 @@
 #include <time.h>
 
 #include "base/logging.h"
+#include "base/string_util.h"
 
 #include "main.h"
 #include "utils.h"
@@ -17,11 +18,16 @@
 
 #include "teartest.h"
 
-typedef std::map<const char*, Test*> TestMap;
+typedef std::map<std::string, Test*> TestMap;
 
 
 DEFINE_int32(refresh, 0,
-             "If 1 or more, target refresh rate; otherwise enable vsync");
+             "If 1 or more, target refresh rate; otherwise enable vsync.");
+
+DEFINE_string(tests, "uniform,teximage2d,pixmap_to_texture",
+              "Comma-separated list of tests to run.");
+
+DEFINE_int32(seconds_to_run, 5, "Seconds to run a test case for.");
 
 GLuint GenerateAndBindTexture() {
   GLuint name = ~0;
@@ -206,13 +212,23 @@ int main(int argc, char* argv[]) {
 
   SwapInterval(sleep_duration ? 0 : 1);
 
-  for (TestMap::iterator it = test_map.begin(); it != test_map.end(); it++) {
-    Test* t = it->second;
-    if (!t->Start())
+  std::vector<std::string> tests;
+  SplitString(FLAGS_tests, ',', &tests);
+
+  for (std::vector<std::string>::iterator it = tests.begin();
+       it != tests.end();
+       it++)
+  {
+    Test* t = test_map[*it];
+    if (!t || !t->Start())
       continue;
 
     Bool got_event = False;
-    for (int x = 0; !got_event; x = (x + 4) % (2 * g_width)) {
+    uint64_t wait_until = GetUTime() + 1000000ULL * FLAGS_seconds_to_run;
+    for (int x = 0;
+         !got_event && GetUTime() < wait_until;
+         x = (x + 4) % (2 * g_width))
+    {
       const int shift = x < g_width ? x : 2 * g_width - x;
 
       t->Loop(shift);
