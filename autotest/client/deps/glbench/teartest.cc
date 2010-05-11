@@ -215,13 +215,16 @@ int main(int argc, char* argv[]) {
   std::vector<std::string> tests;
   SplitString(FLAGS_tests, ',', &tests);
 
+  int return_code = 0;
   for (std::vector<std::string>::iterator it = tests.begin();
        it != tests.end();
        it++)
   {
     Test* t = test_map[*it];
-    if (!t || !t->Start())
+    if (!t || !t->Start()) {
+      return_code = 1;
       continue;
+    }
 
     Bool got_event = False;
     uint64_t wait_until = GetUTime() + 1000000ULL * FLAGS_seconds_to_run;
@@ -253,5 +256,5 @@ int main(int argc, char* argv[]) {
 
   glDeleteTextures(1, &texture);
   DestroyContext();
-  return 0;
+  return return_code;
 }

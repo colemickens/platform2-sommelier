@@ -43,8 +43,10 @@ bool PixmapToTextureTest::InitNative() {
   if (!glXQueryVersion(g_xlib_display, &major, &minor))
     return false;
 
-  if (major < 1 || (major == 1 && minor < 3))
+  if (major < 1 || (major == 1 && minor < 3)) {
+    printf("# GLX 1.3 required for pixmap to texture extension.\n");
     return false;
+  }
 
   if (!glXBindTexImageEXT)
     return false;
