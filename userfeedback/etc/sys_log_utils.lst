@@ -1,0 +1,3 @@
+/usr/sbin/lspci
+/usr/sbin/lsusb
+/sbin/ifconfig
