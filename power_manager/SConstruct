@@ -56,8 +56,9 @@ power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('gflags'))
 powerd = powerd_env.Program('powerd',
-                            ['powerd.cc', xidle, backlight, power_prefs,
-                             backlight_controller, '../cros/load.cc'])
+                            ['powerd_main.cc', 'powerd.cc', xidle, backlight,
+                             power_prefs, backlight_controller,
+                             '../cros/load.cc'])
 Default(powerd)
 
 # Build unit tests
