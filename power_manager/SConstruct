@@ -26,13 +26,13 @@ base_env['CXXFLAGS'].extend(Split(extra_flags))
 base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
 
 # Fix issue with scons not passing some vars through the environment.
-for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
+for key in Split('SYSROOT'):
   if key in os.environ:
     base_env['ENV'][key] = os.environ[key]
 base_env.Append(CPPPATH=['..'])
 
 gdk_env = base_env.Clone()
-gdk_env.ParseConfig('pkg-config --cflags --libs gdk-2.0')
+gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
 
 # Build example xidle program
 xidle_env = gdk_env.Clone()
@@ -54,7 +54,7 @@ backlight_controller = base_env.Library('backlight_controller',
                                         ['backlight_controller.cc'])
 power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
-powerd_env.Append(LIBS=Split('gflags'))
+powerd_env.Append(LIBS=Split('gflags metrics'))
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', 'powerd.cc', xidle, backlight,
                              power_prefs, backlight_controller,
