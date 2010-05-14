@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# Copyright 2010 Google Inc. All Rights Reserved.
+# Author: rkc@google.com (Rahul Chaturvedi)
+
+
+echo "LOGDATE="`date`
+cat /etc/lsb-release
+echo "hostname="`hostname`
+echo -n "/var/log/fontconfig.log"='"""'
+cat /var/log/fontconfig.log
+echo '"""'
+echo "uname="`uname`

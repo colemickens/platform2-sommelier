@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+set -e
+
+if ! [ -e "${1}" ]
+then
+  log_utils_file="../etc/sys_log_utils.lst"
+else
+  log_utils_file=${1}
+fi
+
+# Do not exit in case a script wasn't found or threw an error
+for i in `cat ${log_utils_file}`
+do
+  log=`${i} 2>/dev/null` && echo "${i}"='"""'"${log}"'"""'
+done
+
