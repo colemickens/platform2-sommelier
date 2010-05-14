@@ -21,7 +21,7 @@ class GobiModemHandler : public ModemHandler {
   virtual ~GobiModemHandler() {};
 
   virtual std::vector<DBus::Path> EnumerateDevices();
-  bool Initialize();
+  virtual bool Initialize();
 
  protected:
   std::vector<DEVICE_ELEMENT> GetAvailableDevices();

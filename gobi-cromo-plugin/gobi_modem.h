@@ -71,12 +71,12 @@ class GobiModem
   virtual void GetRegistrationState(
       uint32_t& cdma_1x_state, uint32_t& evdo_state);
 
-
  protected:
   bool ApiConnect();
   bool EnsureActivated();
   bool EnsureFirmwareLoaded(const char *carrier_name);
-  bool WaitForPowerCycle();
+  bool ResetModem();
+  bool GetSignalStrengthDbm(int *strength );
 
   static void ActivationStatusTrampoline(ULONG activation_status) {
     if (connected_modem_) {
@@ -84,6 +84,13 @@ class GobiModem
     }
   }
   void ActivationStatusCallback(ULONG activation_status);
+
+  static void NmeaPlusCallbackTrampoline(LPCSTR nmea, ULONG mode) {
+    if (connected_modem_) {
+      connected_modem_->NmeaPlusCallback(nmea, mode);
+    }
+  }
+  void NmeaPlusCallback(const char *nmea, ULONG mode);
 
  private:
 

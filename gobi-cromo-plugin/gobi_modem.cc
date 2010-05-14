@@ -4,6 +4,8 @@
 
 #include "gobi_modem.h"
 
+#include <algorithm>
+
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
@@ -34,7 +36,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
   Enabled = false;
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
   MasterDevice = "TODO(rochberg)";
-  Type = 2;
+  // TODO(rochberg):  Gobi can be either
+  Type = MM_MODEM_TYPE_CDMA;
   UnlockRequired = "";
 
   // Reviewer note:  These are just temporary calls
@@ -42,9 +45,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
   LOG(INFO) << "Enabled: ";
 
   QueryGobi(sdk_);
-
-  Connect("ignored");
-  LOG(INFO) << "Connected: ";
 }
 
 // DBUS Methods: Modem
@@ -56,7 +56,7 @@ void GobiModem::Enable(const bool& enable) {
       // TODO(rochberg): ERROR
       CHECK(0);
     }
-    if (!EnsureFirmwareLoaded("Verizon Wireless")) {
+    if (!EnsureFirmwareLoaded("Sprint")) {
       // TODO(rochberg): ERROR
       CHECK(0);
     }
@@ -111,7 +111,6 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config() {
 
 DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
   DBus::Struct<std::string, std::string, std::string> result;
-  LOG(INFO) << "Disconnect";
   return result;
 }
 
@@ -123,17 +122,16 @@ void GobiModem::Connect(const DBusPropertyMap& properties) {
 DBusPropertyMap GobiModem::GetStatus() {
   DBusPropertyMap result;
 
-  LOG(INFO) << "GetStatus";
+  int32_t rssi;
 
+  // TODO(rochberg):  Much more than just rssi
+  if (GetSignalStrengthDbm(&rssi)) {
+    result["signal_strength_dbm"].writer().append_int32(rssi);
+  }
   return result;
 }
 
   // DBUS Methods: ModemCDMA
-uint32_t GobiModem::GetSignalQuality() {
-  LOG(INFO) << "GetSignalQuality";
-
-  return 50;
-}
 
 std::string GobiModem::GetEsn() {
   LOG(INFO) << "GetEsn";
@@ -141,9 +139,20 @@ std::string GobiModem::GetEsn() {
   return "12345";
 }
 
+
+uint32_t GobiModem::GetSignalQuality() {
+  if (!Enabled()) {
+    // TODO(rochberg): ERROR
+    LOG(WARNING) << "GetSignalQuality on disabled modem";
+    return 0;
+  }
+  // TODO(rochberg): Map dBM to quality
+  return 11;
+}
+
+
 DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem() {
   DBus::Struct<uint32_t, std::string, uint32_t> result;
-
   LOG(INFO) << "GetServingSystem";
 
   return result;
@@ -162,7 +171,9 @@ bool GobiModem::ApiConnect() {
     return false;
   }
   connected_modem_ = this;
+
   SetActivationStatusCallback(ActivationStatusTrampoline);
+  SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
 
   return true;
 }
@@ -210,20 +221,45 @@ static void QueryGobi(gobi::Sdk *sdk_) {
   LOG(INFO) << "ESN: " << esn;
   LOG(INFO) << "IMEI: " << imei;
   LOG(INFO) << "MEID: " << meid;
+
+  char number[SIZE], min_array[SIZE];
+  rc = GetVoiceNumber(SIZE, number, SIZE, min_array);
+  LOG(INFO) << "Voice: " << number
+            << " MIN: " << min_array;
 }
 
-bool GobiModem::WaitForPowerCycle() {
+bool GobiModem::ResetModem() {
   ULONG rc;
 
   // TODO(rochberg):  Is this going to confuse connman?
   Enabled = false;
+
+  LOG(INFO) << "Offline";
+  rc = sdk_->SetPower(gobi::kOffline);
+  if (rc != 0) {
+    LOG(WARNING) << "Offline: " << rc;
+    // TODO(rochberg):  Disconnect?
+    return false;
+  }
+
+  LOG(INFO) << "Reset";
+  rc = sdk_->SetPower(gobi::kReset);
+  if (rc != 0) {
+    LOG(WARNING) << "Offline: " << rc;
+    // TODO(rochberg):  Disconnect?
+    return false;
+  }
+
   rc = QCWWANDisconnect();
   if (rc != 0) {
     LOG(WARNING) << "QCWWANDisconnect: " << rc;
     return false;
   }
-  // TODO(rochberg):  Timeout
 
+
+  // TODO(rochberg): Timeout
+  // TODO(rochberg): This reconnects right away before the modem is
+  // happy.  I wonder if we have to further stop the library somehow
   while (true) {
     rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
     if (rc == 0) {
@@ -233,7 +269,8 @@ bool GobiModem::WaitForPowerCycle() {
   }
 
   if (rc != 0) {
-    LOG(WARNING) << "Modem did not come back after power cycle";
+    // TODO(rochberg):  Send DeviceRemoved
+    LOG(WARNING) << "Modem did not come back after reset";
     return false;
   }
 
@@ -267,20 +304,13 @@ bool GobiModem::EnsureActivated() {
   }
   pthread_mutex_unlock(&activation_mutex_);
 
-  // TODO(rochberg): Updated gobi manual says to go offline->reset
-  rc = sdk_->SetPower(gobi::kPowerOff);
-  if (rc != 0) {
-    LOG(WARNING) << "SetPower failed: " << rc;
-    // TODO(rochberg):  Disconnect?
-    return false;
-  }
   rc = sdk_->QCWWANDisconnect();
   Enabled = false;
   if (rc != 0) {
     LOG(WARNING) << "QCWWANDisconnect(): " << rc;
     return false;
   }
-  return WaitForPowerCycle();
+  return ResetModem();
 }
 
 // TODO(rochberg):  Make this into a class, add dBM -> % maps
@@ -345,7 +375,7 @@ bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
       return false;
     }
 
-    if (!WaitForPowerCycle()) {
+    if (!ResetModem()) {
       return false;
     }
 
@@ -366,9 +396,47 @@ bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
     }
   }
 
-  LOG(INFO) << "Carrier image selection complete.";
+  LOG(INFO) << "Carrier image selection complete: " << carrier_name;
   return true;
 }
+
+bool GobiModem::GetSignalStrengthDbm(int *output) {
+  if (!Enabled()) {
+    // TODO(rochberg): ERROR
+    LOG(WARNING) << "GetSignalQuality on disabled modem";
+    return false;
+  }
+  ULONG rc;
+  ULONG kSignals = 10;
+  ULONG signals = kSignals;
+  INT8 strengths[kSignals];
+  ULONG interfaces[kSignals];
+
+  rc = sdk_->GetSignalStrengths(&signals, strengths, interfaces);
+  if (rc != 0) {
+    // TODO(rochberg):  ERROR
+    LOG(WARNING) << "GetSignalStrengths failed: " << rc;
+    return false;
+  }
+  signals = std::min(kSignals, signals);
+
+  for (ULONG i = 0; i < signals; ++i) {
+    LOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
+              << " dBM technology: " << interfaces[i];
+  }
+  if (!output) {
+    LOG(WARNING) << "signal";
+    return false;
+  }
+  // TODO(rochberg): Use GetDataBearerTechnology() to determine which
+  // bearer we're using and return that signal.  In the mean time,
+  // return the best of what's out there and assume the modem is using
+  // that.
+  *output = *(std::max_element(strengths, &strengths[signals]));
+
+  return true;
+}
+
 
 void GobiModem::ActivationStatusCallback(ULONG activation_state) {
   LOG(INFO) << "Activation status callback: " << activation_state;
@@ -376,4 +444,8 @@ void GobiModem::ActivationStatusCallback(ULONG activation_state) {
   activation_state_ = activation_state;
   pthread_cond_broadcast(&activation_cond_);
   pthread_mutex_unlock(&activation_mutex_);
+}
+
+void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
+  LOG(INFO) << "NMEA mode: " << mode << " " << nmea;
 }
