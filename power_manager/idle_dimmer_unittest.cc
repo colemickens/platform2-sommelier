@@ -29,9 +29,9 @@ static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 10;
 
 class IdleDimmerTest : public Test {
  public:
-  IdleDimmerTest() :
-      prefs_(FilePath("/tmp")),
-      backlight_ctl_(&backlight_, &prefs_) {
+  IdleDimmerTest()
+      : prefs_(FilePath("/tmp")),
+        backlight_ctl_(&backlight_, &prefs_) {
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),

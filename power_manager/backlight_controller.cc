@@ -93,7 +93,7 @@ int64 BacklightController::WriteBrightness() {
     system_brightness_ = 0;
   int64 val = lround(max_ * system_brightness_ / 100.);
   LOG(INFO) << "Brightness: " << old_brightness << " -> "
-            << system_brightness_ ;
+            << system_brightness_;
   CHECK(backlight_->SetBrightness(val));
   WritePrefs();
   return system_brightness_;

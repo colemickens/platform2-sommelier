@@ -16,17 +16,27 @@ namespace power_manager {
 class Daemon : public XIdleMonitor {
  public:
   Daemon(BacklightController* ctl, PowerPrefs* prefs);
+
   void Init();
   void Run();
   void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
+
  private:
+  enum PluggedState { kPowerDisconnected, kPowerConnected, kPowerUnknown };
+
   BacklightController* ctl_;
-  XIdle idle;
-  int64 plugged_dim_ms_, plugged_off_ms_, plugged_suspend_ms_,
-        unplugged_dim_ms_, unplugged_off_ms_, unplugged_suspend_ms_,
-        dim_ms_, off_ms_, suspend_ms_;
-  enum { POWER_DISCONNECTED, POWER_CONNECTED, POWER_UNKNOWN } plugged_state_;
+  XIdle idle_;
+  int64 plugged_dim_ms_;
+  int64 plugged_off_ms_;
+  int64 plugged_suspend_ms_;
+  int64 unplugged_dim_ms_;
+  int64 unplugged_off_ms_;
+  int64 unplugged_suspend_ms_;
+  int64 dim_ms_;
+  int64 off_ms_;
+  int64 suspend_ms_;
+  PluggedState plugged_state_;
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 };

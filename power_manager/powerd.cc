@@ -13,8 +13,8 @@ namespace power_manager {
 //         but in future it will handle other tasks such as turning off
 //         the screen and suspending to RAM.
 
-Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs) :
-    ctl_(ctl), plugged_state_(POWER_UNKNOWN) {
+Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs)
+    : ctl_(ctl), plugged_state_(kPowerUnknown) {
   CHECK(prefs->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -33,7 +33,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs) :
 }
 
 void Daemon::Init() {
-  CHECK(idle.Init(this));
+  CHECK(idle_.Init(this));
 }
 
 void Daemon::Run() {
@@ -47,31 +47,31 @@ void Daemon::Run() {
 void Daemon::SetPlugged(bool plugged) {
   if (plugged != plugged_state_) {
     if (plugged) {
-      plugged_state_ = POWER_CONNECTED;
+      plugged_state_ = kPowerConnected;
       dim_ms_ = plugged_dim_ms_;
       off_ms_ = plugged_off_ms_;
       suspend_ms_ = plugged_suspend_ms_;
     } else {
-      plugged_state_ = POWER_DISCONNECTED;
+      plugged_state_ = kPowerDisconnected;
       dim_ms_ = unplugged_dim_ms_;
       off_ms_ = unplugged_off_ms_;
       suspend_ms_ = unplugged_suspend_ms_;
     }
-    CHECK(idle.ClearTimeouts());
-    CHECK(idle.AddIdleTimeout(dim_ms_));
-    CHECK(idle.AddIdleTimeout(off_ms_));
-    CHECK(idle.AddIdleTimeout(suspend_ms_));
+    CHECK(idle_.ClearTimeouts());
+    CHECK(idle_.AddIdleTimeout(dim_ms_));
+    CHECK(idle_.AddIdleTimeout(off_ms_));
+    CHECK(idle_.AddIdleTimeout(suspend_ms_));
     ctl_->OnPlugEvent(plugged);
 
     // Sync up idle state with new settings
     int64 idle_time_ms;
-    CHECK(idle.GetIdleTime(&idle_time_ms));
+    CHECK(idle_.GetIdleTime(&idle_time_ms));
     OnIdleEvent(idle_time_ms >= dim_ms_, idle_time_ms);
   }
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-  CHECK(plugged_state_ != POWER_UNKNOWN);
+  CHECK(plugged_state_ != kPowerUnknown);
   if (!is_idle) {
     LOG(INFO) << "User is active";
     ctl_->SetBacklightState(BACKLIGHT_ACTIVE);
