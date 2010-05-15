@@ -486,3 +486,15 @@ make_arm_mbr() {
   fi
   echo ${MBR_SCRIPT_UIMG}
 }
+
+
+# The scripts that source this file typically want to use the root password as
+# confirmation, unless the --run_as_root flag is given.
+dont_run_as_root() {
+  if [ $(id -u) -eq "0" -a "${FLAGS_run_as_root}" -eq "${FLAGS_FALSE}" ]
+  then
+    echo "Note: You must be the 'chronos' user to run this script. Unless"
+    echo "you pass --run_as_root and run as root."
+    exit 1
+  fi
+}

@@ -1,0 +1,71 @@
+#!/bin/sh -u
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A script to display or change the preferred image
+
+# Load functions and constants for chromeos-install.
+. "$(dirname "$0")/chromeos-common.sh" || exit 1
+. /usr/lib/shflags || exit 1
+
+
+# The default device is the one we booted from.
+ROOTDEV=$(rootdev)
+# From root partition to root block device.
+DEFAULT_DST=$(get_block_dev_from_partition_dev ${ROOTDEV})
+
+DEFINE_string dst "${DEFAULT_DST}" "Boot device to update"
+DEFINE_boolean run_as_root ${FLAGS_FALSE} \
+  "Allow root to run this script (Careful, it won't prompt for a password!)"
+
+# Parse command line
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
+set -e
+
+# Validate args.
+if [ -n "${@:-}" ]; then
+  if [ "$1" = "0" ] || [ "$1" = "A" ] || [ "$1" = "a" ]; then
+    newimg=0
+  elif [ "$1" = "1" ] || [ "$1" = "B" ] || [ "$1" = "b" ]; then
+    newimg=1
+  else
+    echo "Usage: $0 [A|B]" 1>&2
+    exit 1
+  fi
+fi
+
+
+# Don't run this as root
+dont_run_as_root
+
+# Check out the dst device.
+if [ ! -b "$FLAGS_dst" ]
+then
+  echo "Error: Unable to find block device: $FLAGS_dst"
+  exit 1
+fi
+
+
+# Mount the EFI System Partition
+mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
+tempfile=$(mktemp /tmp/grubcfg_XXXXXXXXX)
+sudo mount ${FLAGS_dst}12 ${mountpoint}
+
+# Make the change
+if [ -n "${newimg:-}" ]; then
+  sed -e "s/^set default=.*/set default=$newimg/" \
+    ${mountpoint}/efi/boot/grub.cfg > ${tempfile}
+  sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
+fi
+
+# Print the [new] default choice
+grep -qs '^set default=0' ${mountpoint}/efi/boot/grub.cfg && echo "A"
+grep -qs '^set default=1' ${mountpoint}/efi/boot/grub.cfg && echo "B"
+
+# Clean up
+sudo umount ${mountpoint}
+rm -f ${tempfile}
+rmdir ${mountpoint}

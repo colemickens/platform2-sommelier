@@ -31,16 +31,8 @@ eval set -- "${FLAGS_ARGV}"
 
 set -e
 
-# Unless you pass --run_as_root, you can't be root when you start this,
-# because we want to force you to give the root password as confirmation
-# that you're allowed to do it. We don't care what other account you're using;
-# you'll still need to sudo before this works.
-if [ $(id -u) -eq "0" -a "${FLAGS_run_as_root}" -eq "${FLAGS_FALSE}" ]
-then
-  echo "Note: You must be the 'chronos' user to run this script. Unless"
-  echo "you pass --run_as_root and run as root."
-  exit 1
-fi
+# Don't run this as root
+dont_run_as_root
 
 # First find the root partition that we are installing from and verify it.
 ROOTDEV=$(rootdev)
