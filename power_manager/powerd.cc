@@ -13,14 +13,21 @@ namespace power_manager {
 //         but in future it will handle other tasks such as turning off
 //         the screen and suspending to RAM.
 
-Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs)
-    : ctl_(ctl), plugged_state_(kPowerUnknown) {
-  CHECK(prefs->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
-  CHECK(prefs->ReadSetting("plugged_off_ms", &plugged_off_ms_));
-  CHECK(prefs->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
-  CHECK(prefs->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
-  CHECK(prefs->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
-  CHECK(prefs->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
+Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
+               MetricsLibraryInterface* metrics_lib)
+    : ctl_(ctl),
+      prefs_(prefs),
+      metrics_lib_(metrics_lib),
+      plugged_state_(kPowerUnknown),
+      battery_discharge_rate_metric_last_(0) {}
+
+void Daemon::Init() {
+  CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
+  CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
+  CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
+  CHECK(prefs_->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
+  CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
+  CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
 
   // Check that timeouts are sane
   int64 fuzz = 500;
@@ -30,9 +37,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs)
   CHECK(unplugged_dim_ms_ > fuzz);
   CHECK(unplugged_off_ms_ > unplugged_dim_ms_ + fuzz);
   CHECK(unplugged_suspend_ms_ > unplugged_off_ms_ + fuzz);
-}
 
-void Daemon::Init() {
   CHECK(idle_.Init(this));
 }
 
@@ -90,6 +95,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
   Daemon* daemon = static_cast<Daemon*>(object);
   daemon->SetPlugged(info.line_power_on);
+  daemon->GenerateMetricsOnPowerEvent(info);
 }
 
 }  // namespace power_manager

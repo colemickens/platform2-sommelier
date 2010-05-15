@@ -30,7 +30,9 @@ int main(int argc, char* argv[]) {
   CHECK(backlight.Init()) << "Cannot initialize backlight";
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
   CHECK(backlight_ctl.Init()) << "Cannot initialize backlight controller";
-  power_manager::Daemon daemon(&backlight_ctl, &prefs);
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  power_manager::Daemon daemon(&backlight_ctl, &prefs, &metrics_lib);
   daemon.Init();
   daemon.Run();
   return 0;
