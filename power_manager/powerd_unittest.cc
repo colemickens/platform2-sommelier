@@ -67,6 +67,15 @@ class DaemonTest : public Test {
         .RetiresOnSaturation();
   }
 
+  // Adds a metrics library mock expectation that the specified enum
+  // metric will be generated.
+  void ExpectEnumMetric(const std::string& name, int sample, int max) {
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
+        .Times(1)
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
+  }
+
   // Adds a metrics library mock expectation for the battery discharge
   // rate metric with the given |sample|.
   void ExpectBatteryDischargeRateMetric(int sample) {
@@ -74,6 +83,13 @@ class DaemonTest : public Test {
                  Daemon::kMetricBatteryDischargeRateMin,
                  Daemon::kMetricBatteryDischargeRateMax,
                  Daemon::kMetricBatteryDischargeRateBuckets);
+  }
+
+  // Adds a metrics library mock expectation for the remaining battery
+  // charge metric with the given |sample|.
+  void ExpectBatteryRemainingChargeMetric(int sample) {
+    ExpectEnumMetric(Daemon::kMetricBatteryRemainingChargeName, sample,
+                     Daemon::kMetricBatteryRemainingChargeMax);
   }
 
   // Resets all fields of |info| to 0.
@@ -134,6 +150,7 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
   EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
+  info.battery_energy_rate = 4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 30));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
@@ -157,16 +174,83 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
+TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
+  chromeos::PowerStatus info;
+  ResetPowerStatus(info);
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  info.battery_percentage = 10.4;
+  ExpectBatteryRemainingChargeMetric(10);
+  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(info, /* now */ 30));
+  EXPECT_EQ(30, daemon_.battery_remaining_charge_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricBackInTime) {
+  chromeos::PowerStatus info;
+  ResetPowerStatus(info);
+
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.battery_remaining_charge_metric_last_ = 30;
+  info.battery_percentage = 11.6;
+  ExpectBatteryRemainingChargeMetric(12);
+  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(info, /* now */ 29));
+  EXPECT_EQ(29, daemon_.battery_remaining_charge_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
+  chromeos::PowerStatus info;
+  ResetPowerStatus(info);
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  info.battery_percentage = 13.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
+                                                            /* now */ 0));
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
+                                                            /* now */ 29));
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
+  chromeos::PowerStatus info;
+  ResetPowerStatus(info);
+  EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+
+  info.battery_percentage = 20.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
+                                                            /* now */ 30));
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+
+  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
+                                                            /* now */ 60));
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+}
+
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   chromeos::PowerStatus info;
   ResetPowerStatus(info);
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
   info.battery_energy_rate = 4.9;
+  info.battery_percentage = 32.5;
   ExpectBatteryDischargeRateMetric(4900);
+  ExpectBatteryRemainingChargeMetric(33);
   daemon_.GenerateMetricsOnPowerEvent(info);
   EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_LT(0, daemon_.battery_remaining_charge_metric_last_);
+}
+
+TEST_F(DaemonTest, SendEnumMetric) {
+  ExpectEnumMetric("Dummy.EnumMetric", 50, 200);
+  EXPECT_TRUE(daemon_.SendEnumMetric("Dummy.EnumMetric", /* sample */ 50,
+                                     /* max */ 200));
 }
 
 TEST_F(DaemonTest, SendMetric) {

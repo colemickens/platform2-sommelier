@@ -19,7 +19,8 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       plugged_state_(kPowerUnknown),
-      battery_discharge_rate_metric_last_(0) {}
+      battery_discharge_rate_metric_last_(0),
+      battery_remaining_charge_metric_last_(0) {}
 
 void Daemon::Init() {
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
