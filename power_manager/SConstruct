@@ -57,10 +57,10 @@ powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('gflags metrics'))
 powerd_lib = powerd_env.Library('powerd_lib',
                                 ['powerd.cc', 'powerd_metrics.cc'])
+load_lib = base_env.Library('load',  ['../cros/load.cc'])
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,
-                             power_prefs, backlight_controller,
-                             '../cros/load.cc'])
+                             power_prefs, backlight_controller, load_lib])
 Default(powerd)
 
 # Build unit tests
@@ -81,6 +81,6 @@ tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = xidle_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
-        backlight_controller, power_prefs, '../cros/load.cc']
+        backlight_controller, power_prefs, load_lib]
 tests.append(dimmer_unittest_env.Program('powerd_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))
