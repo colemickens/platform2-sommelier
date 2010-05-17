@@ -7,7 +7,6 @@
 #include <dirent.h>
 #include <inttypes.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <string>
 
@@ -39,7 +38,7 @@ bool Backlight::Init() {
           LOG(WARNING) << "Can't find " << max_brightness_path_.value();
         } else if (!file_util::PathExists(actual_brightness_path_)) {
           LOG(WARNING) << "Can't find " << actual_brightness_path_.value();
-        } else if (access(brightness_path_.value().c_str(), R_OK | W_OK)) {
+        } else if (!file_util::PathIsWritable(brightness_path_)) {
           LOG(WARNING) << "Can't write to " << brightness_path_.value();
         } else {
           closedir(dir);
