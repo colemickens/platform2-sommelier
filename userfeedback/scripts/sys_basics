@@ -7,7 +7,6 @@
 # Simple script meant to gather basic system data and serve as an example
 # of a system log script for userfeedback
 
-
 echo "LOGDATE="`date`
 cat /etc/lsb-release
 echo "hostname="`hostname`
