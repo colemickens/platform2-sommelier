@@ -105,6 +105,13 @@ class Proxy {
       : object_(GetGProxy(connection, name, path, interface, false)) {
   }
 
+  // Creates a peer proxy using dbus_g_proxy_new_for_peer.
+  Proxy(const BusConnection& connection,
+        const char* path,
+        const char* interface)
+      : object_(GetGPeerProxy(connection, path, interface)) {
+  }
+
   Proxy(const Proxy& x)
       : object_(x.object_) {
     if (object_)
@@ -144,6 +151,10 @@ class Proxy {
                               const char* path,
                               const char* interface,
                               bool connect_to_name_owner);
+
+  static value_type GetGPeerProxy(const BusConnection& connection,
+                                  const char* path,
+                                  const char* interface);
 
   operator int() const;  // for safe bool cast
   friend void swap(Proxy& x, Proxy& y);

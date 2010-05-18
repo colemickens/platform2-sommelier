@@ -125,6 +125,19 @@ Proxy::value_type Proxy::GetGProxy(const BusConnection& connection,
   return result;
 }
 
+/* static */
+Proxy::value_type Proxy::GetGPeerProxy(const BusConnection& connection,
+                                       const char* path,
+                                       const char* interface) {
+  value_type result = ::dbus_g_proxy_new_for_peer(connection.object_,
+                                                  path,
+                                                  interface);
+  if (!result)
+    LOG(ERROR) << "Failed to construct peer proxy: " << path;
+
+  return result;
+}
+
 bool RegisterExclusiveService(const BusConnection& connection,
                               const char* interface_name,
                               const char* service_name,
