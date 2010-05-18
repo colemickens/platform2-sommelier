@@ -30,6 +30,8 @@ static const int64 kUnpluggedDim = 60 * 1000;
 static const int64 kUnpluggedOff = 120 * 1000;
 static const int64 kUnpluggedSuspend = 10 * 60 * 1000;
 
+bool CheckMetricInterval(time_t now, time_t last, time_t interval);
+
 class DaemonTest : public Test {
  public:
   DaemonTest()
@@ -38,6 +40,11 @@ class DaemonTest : public Test {
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_) {}
 
   virtual void SetUp() {
+    // Tests initialization done by the daemon's constructor.
+    EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+    EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
+    EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+
     ASSERT_TRUE(gdk_init_check(NULL, NULL));
 
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
@@ -54,6 +61,8 @@ class DaemonTest : public Test {
     prefs_.WriteSetting("unplugged_suspend_ms", kUnpluggedSuspend);
     CHECK(backlight_ctl_.Init());
     daemon_.Init();
+
+    ResetPowerStatus(status_);
   }
 
  protected:
@@ -92,13 +101,23 @@ class DaemonTest : public Test {
                      Daemon::kMetricBatteryRemainingChargeMax);
   }
 
+  // Adds a metrics library mock expectation for the battery's
+  // remaining to empty metric with the given |sample|.
+  void ExpectBatteryTimeToEmptyMetric(int sample) {
+    ExpectMetric(Daemon::kMetricBatteryTimeToEmptyName, sample,
+                 Daemon::kMetricBatteryTimeToEmptyMin,
+                 Daemon::kMetricBatteryTimeToEmptyMax,
+                 Daemon::kMetricBatteryTimeToEmptyBuckets);
+  }
+
   // Resets all fields of |info| to 0.
-  void ResetPowerStatus(chromeos::PowerStatus& info) {
-    memset(&info, 0, sizeof(chromeos::PowerStatus));
+  void ResetPowerStatus(chromeos::PowerStatus& status) {
+    memset(&status, 0, sizeof(chromeos::PowerStatus));
   }
 
   MockBacklight backlight_;
   PowerPrefs prefs_;
+  chromeos::PowerStatus status_;
   BacklightController backlight_ctl_;
 
   // StrictMock turns all unexpected calls into hard failures.
@@ -106,145 +125,187 @@ class DaemonTest : public Test {
   Daemon daemon_;
 };
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_energy_rate = 5.0;
-  ExpectBatteryDischargeRateMetric(5000);
-  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 30));
-  EXPECT_EQ(30, daemon_.battery_discharge_rate_metric_last_);
+TEST_F(DaemonTest, CheckMetricInterval) {
+  EXPECT_FALSE(CheckMetricInterval(29, 0, 30));
+  EXPECT_TRUE(CheckMetricInterval(30, 0, 30));
+  EXPECT_TRUE(CheckMetricInterval(29, 30, 100));
+  EXPECT_FALSE(CheckMetricInterval(39, 30, 10));
+  EXPECT_TRUE(CheckMetricInterval(40, 30, 10));
+  EXPECT_TRUE(CheckMetricInterval(41, 30, 10));
 }
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricBackInTime) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-
+TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  daemon_.battery_discharge_rate_metric_last_ = 30;
-  info.battery_energy_rate = 4.5;
+  status_.battery_energy_rate = 5.0;
+  ExpectBatteryDischargeRateMetric(5000);
+  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, Daemon::kMetricBatteryDischargeRateInterval));
+  EXPECT_EQ(Daemon::kMetricBatteryDischargeRateInterval,
+            daemon_.battery_discharge_rate_metric_last_);
+
+  status_.battery_energy_rate = 4.5;
   ExpectBatteryDischargeRateMetric(4500);
-  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 29));
-  EXPECT_EQ(29, daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, Daemon::kMetricBatteryDischargeRateInterval - 1));
+  EXPECT_EQ(Daemon::kMetricBatteryDischargeRateInterval - 1,
+            daemon_.battery_discharge_rate_metric_last_);
+
+  status_.battery_energy_rate = 6.4;
+  ExpectBatteryDischargeRateMetric(6400);
+  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
+  EXPECT_EQ(2 * Daemon::kMetricBatteryDischargeRateInterval,
+            daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_energy_rate = 4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 0));
+  status_.battery_energy_rate = 4.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(status_,
+                                                          /* now */ 0));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 29));
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, Daemon::kMetricBatteryDischargeRateInterval - 1));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
   EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-  info.battery_energy_rate = 4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 30));
+  status_.battery_energy_rate = 4.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   daemon_.plugged_state_ = Daemon::kPowerConnected;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 60));
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_energy_rate = 0.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 30));
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-  info.battery_energy_rate = -4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(info, /* now */ 60));
+  status_.battery_energy_rate = -4.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
+      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_percentage = 10.4;
+  status_.battery_percentage = 10.4;
   ExpectBatteryRemainingChargeMetric(10);
-  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(info, /* now */ 30));
-  EXPECT_EQ(30, daemon_.battery_remaining_charge_metric_last_);
-}
+  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, Daemon::kMetricBatteryRemainingChargeInterval));
+  EXPECT_EQ(Daemon::kMetricBatteryRemainingChargeInterval,
+            daemon_.battery_remaining_charge_metric_last_);
 
-TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricBackInTime) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  daemon_.battery_remaining_charge_metric_last_ = 30;
-  info.battery_percentage = 11.6;
+  status_.battery_percentage = 11.6;
   ExpectBatteryRemainingChargeMetric(12);
-  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(info, /* now */ 29));
-  EXPECT_EQ(29, daemon_.battery_remaining_charge_metric_last_);
+  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, Daemon::kMetricBatteryRemainingChargeInterval - 1));
+  EXPECT_EQ(Daemon::kMetricBatteryRemainingChargeInterval - 1,
+            daemon_.battery_remaining_charge_metric_last_);
+
+  status_.battery_percentage = 14.5;
+  ExpectBatteryRemainingChargeMetric(15);
+  EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, 2 * Daemon::kMetricBatteryRemainingChargeInterval));
+  EXPECT_EQ(2 * Daemon::kMetricBatteryRemainingChargeInterval,
+            daemon_.battery_remaining_charge_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_percentage = 13.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
+  status_.battery_percentage = 13.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(status_,
                                                             /* now */ 0));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
-                                                            /* now */ 29));
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, Daemon::kMetricBatteryRemainingChargeInterval - 1));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
   EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
-  info.battery_percentage = 20.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
-                                                            /* now */ 30));
+  status_.battery_percentage = 20.0;
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, Daemon::kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
   daemon_.plugged_state_ = Daemon::kPowerConnected;
-  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(info,
-                                                            /* now */ 60));
+  EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
+      status_, 2 * Daemon::kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
-TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
-  chromeos::PowerStatus info;
-  ResetPowerStatus(info);
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-  EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
-
+TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
   daemon_.plugged_state_ = Daemon::kPowerDisconnected;
-  info.battery_energy_rate = 4.9;
-  info.battery_percentage = 32.5;
+  status_.battery_time_to_empty = 90;
+  ExpectBatteryTimeToEmptyMetric(2);
+  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, Daemon::kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(Daemon::kMetricBatteryTimeToEmptyInterval,
+            daemon_.battery_time_to_empty_metric_last_);
+
+  status_.battery_time_to_empty = 89;
+  ExpectBatteryTimeToEmptyMetric(1);
+  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, Daemon::kMetricBatteryTimeToEmptyInterval - 1));
+  EXPECT_EQ(Daemon::kMetricBatteryTimeToEmptyInterval - 1,
+            daemon_.battery_time_to_empty_metric_last_);
+
+  status_.battery_time_to_empty = 151;
+  ExpectBatteryTimeToEmptyMetric(3);
+  EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, 2 * Daemon::kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(2 * Daemon::kMetricBatteryTimeToEmptyInterval,
+            daemon_.battery_time_to_empty_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  status_.battery_time_to_empty = 100;
+  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(status_, /* now */ 0));
+  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, Daemon::kMetricBatteryTimeToEmptyInterval - 1));
+  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
+  EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
+
+  status_.battery_time_to_empty = 120;
+  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, Daemon::kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+
+  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
+      status_, 2 * Daemon::kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  status_.battery_energy_rate = 4.9;
+  status_.battery_percentage = 32.5;
+  status_.battery_time_to_empty = 10 * 60;
   ExpectBatteryDischargeRateMetric(4900);
   ExpectBatteryRemainingChargeMetric(33);
-  daemon_.GenerateMetricsOnPowerEvent(info);
+  ExpectBatteryTimeToEmptyMetric(10);
+  daemon_.GenerateMetricsOnPowerEvent(status_);
   EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
   EXPECT_LT(0, daemon_.battery_remaining_charge_metric_last_);
+  EXPECT_LT(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
 TEST_F(DaemonTest, SendEnumMetric) {

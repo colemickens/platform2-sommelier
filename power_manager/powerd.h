@@ -31,14 +31,15 @@ class Daemon : public XIdleMonitor {
  private:
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricBackInTime);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetric);
-  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricBackInTime);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected);
+  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
+  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
+  FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
@@ -50,8 +51,15 @@ class Daemon : public XIdleMonitor {
   static const int kMetricBatteryDischargeRateMin;
   static const int kMetricBatteryDischargeRateMax;
   static const int kMetricBatteryDischargeRateBuckets;
+  static const time_t kMetricBatteryDischargeRateInterval;
   static const char kMetricBatteryRemainingChargeName[];
   static const int kMetricBatteryRemainingChargeMax;
+  static const time_t kMetricBatteryRemainingChargeInterval;
+  static const char kMetricBatteryTimeToEmptyName[];
+  static const int kMetricBatteryTimeToEmptyMin;
+  static const int kMetricBatteryTimeToEmptyMax;
+  static const int kMetricBatteryTimeToEmptyBuckets;
+  static const time_t kMetricBatteryTimeToEmptyInterval;
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
@@ -68,6 +76,12 @@ class Daemon : public XIdleMonitor {
   // true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryRemainingChargeMetric(const chromeos::PowerStatus& info,
                                             time_t now);
+
+  // Generates the battery's remaining time to empty UMA metric
+  // sample. Returns true if a sample was sent to UMA, false
+  // otherwise.
+  bool GenerateBatteryTimeToEmptyMetric(const chromeos::PowerStatus& info,
+                                        time_t now);
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See
@@ -102,6 +116,10 @@ class Daemon : public XIdleMonitor {
 
   // Timestamp the last generated remaining battery charge metric.
   time_t battery_remaining_charge_metric_last_;
+
+  // Timestamp the last generated battery's remaining time to empty
+  // metric.
+  time_t battery_time_to_empty_metric_last_;
 };
 
 }  // namespace power_manager

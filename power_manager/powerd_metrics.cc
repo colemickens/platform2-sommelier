@@ -15,14 +15,31 @@ const char Daemon::kMetricBatteryDischargeRateName[] =
 const int Daemon::kMetricBatteryDischargeRateMin = 1000;
 const int Daemon::kMetricBatteryDischargeRateMax = 30000;
 const int Daemon::kMetricBatteryDischargeRateBuckets = 50;
+const time_t Daemon::kMetricBatteryDischargeRateInterval = 30;  // seconds
 const char Daemon::kMetricBatteryRemainingChargeName[] =
     "Power.BatteryRemainingCharge";  // %
 const int Daemon::kMetricBatteryRemainingChargeMax = 101;
+const time_t Daemon::kMetricBatteryRemainingChargeInterval = 30;  // seconds
+const char Daemon::kMetricBatteryTimeToEmptyName[] =
+    "Power.BatteryTimeToEmpty";  // minutes
+const int Daemon::kMetricBatteryTimeToEmptyMin = 1;
+const int Daemon::kMetricBatteryTimeToEmptyMax = 1000;
+const int Daemon::kMetricBatteryTimeToEmptyBuckets = 50;
+const time_t Daemon::kMetricBatteryTimeToEmptyInterval = 30;  // seconds
+
+// Checks if |now| is the time to generate a new sample of a given
+// metric. Returns true if the last metric sample was generated at
+// least |interval| seconds ago (or if there is a clock jump back in
+// time).
+bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
+  return now < last || now - last >= interval;
+}
 
 void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
   time_t now = time(NULL);
   GenerateBatteryDischargeRateMetric(info, now);
   GenerateBatteryRemainingChargeMetric(info, now);
+  GenerateBatteryTimeToEmptyMetric(info, now);
 }
 
 bool Daemon::GenerateBatteryDischargeRateMetric(
@@ -38,9 +55,8 @@ bool Daemon::GenerateBatteryDischargeRateMetric(
     return false;
 
   // Ensures that the metric is not generated too frequently.
-  const int kMinMetricInterval = 30;  // seconds
-  if (now >= battery_discharge_rate_metric_last_ &&
-      now - battery_discharge_rate_metric_last_ < kMinMetricInterval)
+  if (!CheckMetricInterval(now, battery_discharge_rate_metric_last_,
+                           kMetricBatteryDischargeRateInterval))
     return false;
 
   if (!SendMetric(kMetricBatteryDischargeRateName, rate,
@@ -61,9 +77,8 @@ bool Daemon::GenerateBatteryRemainingChargeMetric(
     return false;
 
   // Ensures that the metric is not generated too frequently.
-  const int kMinMetricInterval = 30;  // seconds
-  if (now >= battery_remaining_charge_metric_last_ &&
-      now - battery_remaining_charge_metric_last_ < kMinMetricInterval)
+  if (!CheckMetricInterval(now, battery_remaining_charge_metric_last_,
+                           kMetricBatteryRemainingChargeInterval))
     return false;
 
   int charge = static_cast<int>(round(info.battery_percentage));
@@ -72,6 +87,31 @@ bool Daemon::GenerateBatteryRemainingChargeMetric(
     return false;
 
   battery_remaining_charge_metric_last_ = now;
+  return true;
+}
+
+bool Daemon::GenerateBatteryTimeToEmptyMetric(
+    const chromeos::PowerStatus& info, time_t now) {
+  // The battery's remaining time to empty metric is relevant and
+  // collected only when running on battery.
+  if (plugged_state_ != kPowerDisconnected)
+    return false;
+
+  // Ensures that the metric is not generated too frequently.
+  if (!CheckMetricInterval(now, battery_time_to_empty_metric_last_,
+                           kMetricBatteryTimeToEmptyInterval))
+    return false;
+
+  // Converts the time to empty from seconds to minutes by rounding to
+  // the nearest whole minute.
+  int time = (info.battery_time_to_empty + 30) / 60;
+  if (!SendMetric(kMetricBatteryTimeToEmptyName, time,
+                  kMetricBatteryTimeToEmptyMin,
+                  kMetricBatteryTimeToEmptyMax,
+                  kMetricBatteryTimeToEmptyBuckets))
+    return false;
+
+  battery_time_to_empty_metric_last_ = now;
   return true;
 }
 
