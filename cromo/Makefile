@@ -78,11 +78,13 @@ install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo
 	install -t $(DESTDIR)/usr/include/cromo $(EXPORT_HEADERS)
 
-install:
+install-programs:
 	install -d $(DESTDIR)$(PLUGINDIR) $(DESTDIR)$(DBUSDATADIR) \
 		$(DESTDIR)/usr/sbin
 	install -t $(DESTDIR)/usr/sbin $(CROMO)
 	install -t $(DESTDIR)$(DBUSDATADIR) -m 0644 $(DBUSCONFIGFILE)
+
+install: install-headers install-programs
 
 .PHONY: clean
 clean:
