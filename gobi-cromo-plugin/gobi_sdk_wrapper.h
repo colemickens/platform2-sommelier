@@ -22,9 +22,7 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
-// TODO(rochberg): Can we namespace all of QCWWANCMAPI2k.h?
-#include <QCWWANCMAPI2k.h>
-
+#include "QCWWANCMAPI2k.h"
 
 namespace gobi {
 
