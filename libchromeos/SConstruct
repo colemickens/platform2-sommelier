@@ -8,6 +8,7 @@ import sys
 SOURCES=['chromeos/dbus/abstract_dbus_service.cc',
          'chromeos/dbus/dbus.cc',
          'chromeos/dbus/service_constants.cc',
+         'chromeos/profiler.cc',
          'chromeos/string.cc',
          'chromeos/utility.cc']
 
