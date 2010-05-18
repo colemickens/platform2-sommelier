@@ -1,7 +1,11 @@
 #!/bin/sh
-#
-# Copyright 2010 Google Inc. All Rights Reserved.
-# Author: rkc@google.com (Rahul Chaturvedi)
+
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Simple script meant to gather basic system data and serve as an example
+# of a system log script for userfeedback
 
 
 echo "LOGDATE="`date`
