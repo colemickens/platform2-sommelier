@@ -47,4 +47,16 @@ extern const char *kSpeechSynthesizerServicePath;
 extern const char *kSpeechSynthesizerServiceName;
 }  // namespace speech_synthesis
 
+namespace chromium {
+extern const char* kChromiumInterface;
+// ScreenLock signals.
+extern const char* kLockScreenSignal;
+extern const char* kUnlockScreenSignal;
+}  // namespace chromium
+
+namespace power_manager {
+extern const char* kPowerManagerInterface;
+extern const char* kUnlockScreenFailedSignal;
+}  // namespace screen_lock
+
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_

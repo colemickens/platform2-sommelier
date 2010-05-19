@@ -37,3 +37,14 @@ const char *kSpeechSynthesizerInterface =
 const char *kSpeechSynthesizerServicePath = "/org/chromium/SpeechSynthesizer";
 const char *kSpeechSynthesizerServiceName = "org.chromium.SpeechSynthesizer";
 }  // namespace speech_synthesis
+
+namespace chromium {
+const char* kChromiumInterface = "org.chromium.Chromium";
+const char* kLockScreenSignal = "LockScreen";
+const char* kUnlockScreenSignal = "UnlockScreen";
+}  // namespace chromium
+
+namespace power_manager {
+const char* kPowerManagerInterface = "org.chromium.PowerManager";
+const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
+}  // namespace screen_lock
