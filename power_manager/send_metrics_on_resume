@@ -1,0 +1,28 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script collects UMA metrics when the device is coming out of
+# suspend or, if the machine shut down while in suspend, at boot time.
+#
+# Usage:
+#   -b -- indicates that this script is invoked at boot time.
+
+F_SUSPEND_AT=/var/log/metrics/suspend-to-ram-time
+[ -r $F_SUSPEND_AT ] || exit
+
+RESUME_AT=`cat /sys/class/rtc/rtc0/since_epoch`
+SUSPEND_AT=`cat $F_SUSPEND_AT`
+
+rm -f $F_SUSPEND_AT
+
+TIME_IN_SUSPEND_NAME=Power.TimeInSuspendAtResume
+[ "$1" = "-b" ] && TIME_IN_SUSPEND_NAME=Power.TimeInSuspendAtBoot
+
+if [ $RESUME_AT -gt $SUSPEND_AT ]; then
+  # Converts seconds to minutes rounding to the nearest whole minute.
+  TIME_IN_SUSPEND=$((($RESUME_AT - $SUSPEND_AT + 30) / 60))
+  /usr/bin/metrics_client $TIME_IN_SUSPEND_NAME $TIME_IN_SUSPEND 1 10000 50
+fi
