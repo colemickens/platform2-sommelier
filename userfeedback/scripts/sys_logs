@@ -1,11 +1,11 @@
 #!/bin/sh
 
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Script to read commands from ../etc/sys_log_utils.lst and execute
-# then, creating a key/value pair as output, with the key=command and
+# them, creating a key/value pair as output, with the key=command and
 # value=output of the command.
 
 set -e
