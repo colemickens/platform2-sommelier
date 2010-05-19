@@ -4,14 +4,15 @@
 
 #include "login_manager/session_manager_service.h"
 
+#include <dbus/dbus-glib-lowlevel.h>
 #include <errno.h>
 #include <glib.h>
 #include <grp.h>
+#include <signal.h>
+#include <stdio.h>
 #include <sys/errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <signal.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #include <base/basictypes.h>
@@ -19,6 +20,7 @@
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
@@ -332,6 +334,17 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
   return *OUT_done = TRUE;
 }
 
+gboolean SessionManagerService::LockScreen(GError **error) {
+  SendSignalToChromium(chromium::kLockScreenSignal);
+  LOG(INFO) << "LockScreen";
+  return TRUE;
+}
+
+gboolean SessionManagerService::UnlockScreen(GError **error) {
+  SendSignalToChromium(chromium::kUnlockScreenSignal);
+  LOG(INFO) << "UnlockScreen";
+  return TRUE;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
@@ -442,6 +455,17 @@ void SessionManagerService::SetGError(GError** error,
                                       ChromeOSLoginError code,
                                       const char* message) {
   g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
+}
+
+void SessionManagerService::SendSignalToChromium(const char* signal_name) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              "/",
+                              chromium::kChromiumInterface);
+  DBusMessage* signal = ::dbus_message_new_signal("/",
+                                                  chromium::kChromiumInterface,
+                                                  signal_name);
+  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  ::dbus_message_unref(signal);
 }
 
 }  // namespace login_manager

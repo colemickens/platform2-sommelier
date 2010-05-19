@@ -52,6 +52,12 @@ void session_manager_init(SessionManager *self) { }
   } \
   return self->service->_NAME(args, error);
 
+#define SESSION_MANAGER_WRAP_METHOD0(_NAME) \
+  if (!self->service) { \
+    return FALSE; \
+  } \
+  return self->service->_NAME(error);
+
 gboolean session_manager_emit_login_prompt_ready(SessionManager* self,
                                                  gboolean* OUT_emitted,
                                                  GError** error) {
@@ -73,6 +79,15 @@ gboolean session_manager_stop_session(SessionManager* self,
                                       GError** error) {
   SESSION_MANAGER_WRAP_METHOD(StopSession, unique_identifier, OUT_done);
 }
+gboolean session_manager_lock_screen(SessionManager *self,
+                                     GError **error) {
+  SESSION_MANAGER_WRAP_METHOD0(LockScreen);
+}
+gboolean session_manager_unlock_screen(SessionManager *self,
+                                       GError **error) {
+  SESSION_MANAGER_WRAP_METHOD0(UnlockScreen);
+}
+
 #undef SESSION_MANAGER_WRAP_METHOD
 
 }  // namespace gobject

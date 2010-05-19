@@ -30,5 +30,11 @@
       <!-- started, stopped -->
       <arg type="s" name="state" />
     </signal>
+    <method name="LockScreen">
+      <!-- Lock screen -->
+    </method>
+    <method name="UnlockScreen">
+      <!-- Unlock screen -->
+    </method>
   </interface>
 </node>

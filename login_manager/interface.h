@@ -44,6 +44,10 @@ gboolean session_manager_stop_session(SessionManager *self,
                                       gchar *unique_identifier,
                                       gboolean *OUT_done,
                                       GError **error);
+gboolean session_manager_unlock_screen(SessionManager *self,
+                                       GError **error);
+gboolean session_manager_lock_screen(SessionManager *self,
+                                     GError **error);
 }  // namespace gobject
 }  // namespace login_manager
 #endif  // LOGIN_MANAGER_INTERFACE_H_

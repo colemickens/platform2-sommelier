@@ -116,6 +116,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
                        gboolean* OUT_done,
                        GError** error);
 
+  // Handles LockScreen request from PowerManager. It switches itself to
+  // lock mode, and emit LockScreen signal to Chromium Browser.
+  gboolean LockScreen(GError** error);
+
+  // Handles UnlockScreen request from PowerManager. It switches itself to
+  // unlock mode, and emit UnlockScreen signal to Chromium Browser.
+  gboolean UnlockScreen(GError** error);
+
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
 
@@ -160,6 +168,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   void CleanupChildren(int timeout);
 
   void SetGError(GError** error, ChromeOSLoginError, const char* message);
+
+  // Sends a given signal to Chromium browser.
+  void SendSignalToChromium(const char* signal_name);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
