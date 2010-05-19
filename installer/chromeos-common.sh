@@ -130,6 +130,7 @@ install_gpt() {
   local pmbrcode=$5
   local esp_img=$6
   local force_full="${7:-}"
+  local recovery="${8:-}"
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -252,13 +253,24 @@ install_gpt() {
     NUM_ESP_SECTORS=$(roundup $(numsectors $esp_img))
     NUM_RESERVED_SECTORS=1
 
+    # For recovery image, use max sizes and create both A & B images
+    if [ ${FLAGS_recovery} -eq $FLAGS_TRUE ]; then
+      NUM_KERN_SECTORS=$max_kern_sectors
+      num_kern_a_sectors=$NUM_KERN_SECTORS
+      num_kern_b_sectors=$NUM_KERN_SECTORS
+
+      NUM_ROOTFS_SECTORS=$max_rootfs_sectors
+      num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
+      num_rootfs_b_sectors=$NUM_ROOTFS_SECTORS
+    fi
+
     START_KERN_A=$start_useful
     START_ROOTFS_A=$(($START_KERN_A + $NUM_KERN_SECTORS))
     START_STATEFUL=$(($START_ROOTFS_A + $NUM_ROOTFS_SECTORS))
     START_OEM=$(($START_STATEFUL + $NUM_STATEFUL_SECTORS))
     START_ESP=$(($START_OEM + $NUM_OEM_SECTORS))
     START_KERN_B=$(($START_ESP + $NUM_ESP_SECTORS))
-    START_ROOTFS_B=$((START_KERN_B + $num_kern_b_sectors))
+    START_ROOTFS_B=$(($START_KERN_B + $num_kern_b_sectors))
     START_RESERVED=$(($START_ROOTFS_B + $num_rootfs_b_sectors))
 
     # For minimal install, we're not worried about the secondary GPT header
