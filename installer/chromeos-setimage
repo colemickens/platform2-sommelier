@@ -48,7 +48,6 @@ then
   exit 1
 fi
 
-
 # Mount the EFI System Partition
 mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
 tempfile=$(mktemp /tmp/grubcfg_XXXXXXXXX)
@@ -56,11 +55,13 @@ sudo mount ${FLAGS_dst}12 ${mountpoint}
 
 # Make the change
 if [ -n "${newimg:-}" ]; then
-  sed -e "s/^set default=.*/set default=$newimg/" \
+  echo "Update boot default to menu item $newimg"
+  sed -e "s/^set default=.*/set default=${newimg}/" \
     ${mountpoint}/efi/boot/grub.cfg > ${tempfile}
   sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
 fi
 
+echo "Current boot default is:"
 # Print the [new] default choice
 grep -qs '^set default=0' ${mountpoint}/efi/boot/grub.cfg && echo "A"
 grep -qs '^set default=1' ${mountpoint}/efi/boot/grub.cfg && echo "B"

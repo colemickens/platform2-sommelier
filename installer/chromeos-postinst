@@ -13,11 +13,33 @@
 INSTALL_ROOT=`dirname "$0"`
 INSTALL_DEV="$1"
 POSTCOMMIT="$2"
+# Find whole disk device.
+ROOT_DEV=${INSTALL_DEV%%[0-9]*}
+NEW_PART_NUM=${INSTALL_DEV##*/*[a-z]}
+
+case ${NEW_PART_NUM} in
+  "3" )
+    BOOT_SLOT="A"
+    ;;
+  "5" )
+    BOOT_SLOT="B"
+    ;;
+  * )
+    # Not a valid boot location.
+    echo "Not a valid target parition number: ${NEW_PART_NUM}"
+    exit 1
+    ;;
+esac
 
 if [ "$POSTCOMMIT" != "--postcommit" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
   # installed system.
 
+  echo "Postinst running"
+  echo " Set boot target to ${INSTALL_DEV}: \
+Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
+
+  echo "Updating /boot/extlinux.conf target"
   # If the mount-point is read-write, update the bootloader
   # Only update extlinux.conf if $1 is non-empty
   if [ -n "$INSTALL_DEV" ]; then
@@ -28,6 +50,27 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
         "$INSTALL_ROOT"/boot/extlinux.conf || true
   fi
 
+  echo "Updating grub target for EFI BIOS"
+  # Set up grub.cfg
+  ${INSTALL_ROOT}/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+      --dst=${ROOT_DEV} --run_as_root
+
+  # Set up gpt boot selection for legacy devices.
+  # flush linux caches; seems to be necessary
+  sync
+  echo 3 > /proc/sys/vm/drop_caches
+
+  echo "Updating gpt PMBR target for legacy BIOS"
+  # Configure the PMBR to boot the new image.
+  # TODO(wfrichar): The current gpt tool requires a -b arg to specify the PMBR
+  # bootcode. We don't want to change the code, so we have to extract it, then
+  # put it back. We'll fix this RSN.
+
+  # IMPORTANT NOTE: postinst is run by the previoulsy installed image
+  # rather than the new image. So changes here need to be backwards compatible
+  # with the old image's gpt binaries.
+  dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
+  gpt -S boot -i $NEW_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
   # system, but returning an error here will cause the updater to try to
