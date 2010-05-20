@@ -18,18 +18,20 @@ fi
 PRE_UPTIME_STAT=$(cat /proc/uptime)
 PRE_DISK_STAT=$(cat /sys/block/sda/stat)
 
-# Moblin trick: Disable blinking cursor. Without this a splash screen
-# will show a distinct cursor shape even when the cursor is set to none.
-echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-
 # Since we defer udev until later in the boot process, we pre-populate /dev
 # with the set of devices needed for X and other early services to run.
 cp -a -f /lib/chromiumos/devices/* /dev
 
-# Splash screen!
-if [ -x /usr/bin/ply-image ]
-then
-  /usr/bin/ply-image /usr/share/chromeos-assets/images/login_splash.png &
+# Splash screen! Unless we are in noninteractive mode.
+# TODO(sosa@chromium.org) - Use kernel flag
+if [ -x /usr/bin/ply-image ]; then
+  if [ ! -f /root/.factory_test ] && [ ! -f /root/.factory_installer ]; then
+    # Moblin trick: Disable blinking cursor. Without this a splash screen
+    # will show a distinct cursor shape even when the cursor is set to none.
+    echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
+
+    /usr/bin/ply-image /usr/share/chromeos-assets/images/login_splash.png &
+  fi
 fi
 
 mount -n -t tmpfs tmp /tmp
@@ -39,7 +41,13 @@ mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 # Mount our stateful partition. It's always partition 1.
 ROOT_DEV=$(rootdev)
 STATE_DEV=${ROOT_DEV%[0-9]*}1
-mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+
+# For factory install shim, we never want to write to the SDCard.
+if [ -f /root/.factory_installer ]; then
+  mount -n -t tmpfs tmp /mnt/stateful_partition
+else
+  mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+fi
 
 # Check if the stateful partition has requested self-destruction
 # This is used for the factory install process
