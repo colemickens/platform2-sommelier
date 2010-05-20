@@ -8,6 +8,8 @@
 
 namespace power_manager {
 
+static const int64 kFuzzMS = 100;
+
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle. Currently, this daemon just adjusts the backlight,
 //         but in future it will handle other tasks such as turning off
@@ -32,13 +34,13 @@ void Daemon::Init() {
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
 
   // Check that timeouts are sane
-  int64 fuzz = 500;
-  CHECK(plugged_dim_ms_ > fuzz);
-  CHECK(plugged_off_ms_ > plugged_dim_ms_ + fuzz);
-  CHECK(plugged_suspend_ms_ > plugged_off_ms_ + fuzz);
-  CHECK(unplugged_dim_ms_ > fuzz);
-  CHECK(unplugged_off_ms_ > unplugged_dim_ms_ + fuzz);
-  CHECK(unplugged_suspend_ms_ > unplugged_off_ms_ + fuzz);
+  CHECK(kMetricIdleMin >= kFuzzMS);
+  CHECK(plugged_dim_ms_ >= kFuzzMS);
+  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + kFuzzMS);
+  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + kFuzzMS);
+  CHECK(unplugged_dim_ms_ >= kFuzzMS);
+  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kFuzzMS);
+  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kFuzzMS);
 
   CHECK(idle_.Init(this));
 }
@@ -65,6 +67,8 @@ void Daemon::SetPlugged(bool plugged) {
       suspend_ms_ = unplugged_suspend_ms_;
     }
     CHECK(idle_.ClearTimeouts());
+    if (kMetricIdleMin + kFuzzMS <= dim_ms_)
+      CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
     CHECK(idle_.AddIdleTimeout(dim_ms_));
     CHECK(idle_.AddIdleTimeout(off_ms_));
     CHECK(idle_.AddIdleTimeout(suspend_ms_));
@@ -79,6 +83,7 @@ void Daemon::SetPlugged(bool plugged) {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
+  GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   if (!is_idle) {
     LOG(INFO) << "User is active";
     ctl_->SetBacklightState(BACKLIGHT_ACTIVE);

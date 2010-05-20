@@ -79,8 +79,8 @@ deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller,
         power_prefs]
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = xidle_env.Clone()
-powerd_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
+powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
         backlight_controller, power_prefs, load_lib]
-tests.append(dimmer_unittest_env.Program('powerd_unittest', deps))
+tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))

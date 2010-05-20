@@ -9,6 +9,7 @@
 
 #include <ctime>
 
+#include "base/time.h"
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/backlight.h"
@@ -43,6 +44,7 @@ class Daemon : public XIdleMonitor {
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
+  FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
 
   enum PluggedState { kPowerDisconnected, kPowerConnected, kPowerUnknown };
 
@@ -60,8 +62,23 @@ class Daemon : public XIdleMonitor {
   static const int kMetricBatteryTimeToEmptyMax;
   static const int kMetricBatteryTimeToEmptyBuckets;
   static const time_t kMetricBatteryTimeToEmptyInterval;
+  static const char kMetricIdleName[];
+  static const int kMetricIdleMin;
+  static const int kMetricIdleMax;
+  static const int kMetricIdleBuckets;
+  static const char kMetricIdleAfterDimName[];
+  static const int kMetricIdleAfterDimMin;
+  static const int kMetricIdleAfterDimMax;
+  static const int kMetricIdleAfterDimBuckets;
+  static const char kMetricIdleAfterScreenOffName[];
+  static const int kMetricIdleAfterScreenOffMin;
+  static const int kMetricIdleAfterScreenOffMax;
+  static const int kMetricIdleAfterScreenOffBuckets;
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
+
+  // Generates UMA metrics on every idle event.
+  void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 
   // Generates UMA metrics on every power event based on the current
   // power status.
@@ -96,6 +113,14 @@ class Daemon : public XIdleMonitor {
   // description of the arguments.
   bool SendEnumMetric(const std::string& name, int sample, int max);
 
+  // Sends a regular (exponential) histogram sample to Chrome for
+  // transport to UMA. Appends the current power state to the name of the
+  // metric. Returns true on success. See MetricsLibrary::SendToUMA in
+  // metrics/metrics_library.h for a description of the arguments.
+  bool SendMetricWithPowerState(const std::string& name, int sample,
+                                int min, int max, int nbuckets);
+
+
   BacklightController* ctl_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -120,6 +145,12 @@ class Daemon : public XIdleMonitor {
   // Timestamp the last generated battery's remaining time to empty
   // metric.
   time_t battery_time_to_empty_metric_last_;
+
+  // Timestamp of the last idle event.
+  base::TimeTicks last_idle_event_timestamp_;
+
+  // Idle time as of last idle event.
+  base::TimeDelta last_idle_timedelta_;
 };
 
 }  // namespace power_manager

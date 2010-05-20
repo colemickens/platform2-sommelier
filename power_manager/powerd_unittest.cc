@@ -2,8 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gdk/gdk.h>
 #include <gtest/gtest.h>
+#include <gdk/gdk.h>
+#include <gdk/gdkx.h>
+#include <X11/extensions/XTest.h>
 
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
@@ -12,7 +14,9 @@
 
 namespace power_manager {
 
+using ::testing::_;
 using ::testing::DoAll;
+using ::testing::InSequence;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
@@ -23,14 +27,23 @@ static const int64 kDefaultBrightness = 50;
 static const int64 kMaxBrightness = 100;
 static const int64 kPluggedBrightness = 70;
 static const int64 kUnpluggedBrightness = 30;
-static const int64 kPluggedDim = 60 * 1000;
-static const int64 kPluggedOff = 120 * 1000;
-static const int64 kPluggedSuspend = 10 * 60 * 1000;
-static const int64 kUnpluggedDim = 60 * 1000;
-static const int64 kUnpluggedOff = 120 * 1000;
-static const int64 kUnpluggedSuspend = 10 * 60 * 1000;
+static const int64 kSmallInterval = 20;
+static const int64 kBigInterval = 100;
+static const int64 kPluggedDim = kBigInterval;
+static const int64 kPluggedOff = 2 * kBigInterval;
+static const int64 kPluggedSuspend = 3 * kBigInterval;
+static const int64 kUnpluggedDim = kPluggedDim;
+static const int64 kUnpluggedOff = kPluggedOff;
+static const int64 kUnpluggedSuspend = kPluggedSuspend;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
+
+static gboolean FakeMotionEvent(gpointer data) {
+  Display* display = static_cast<Display*>(data);
+  XTestFakeRelativeMotionEvent(display, 0, 0, 0);
+  XSync(display, false);
+  return false;
+}
 
 class DaemonTest : public Test {
  public:
@@ -46,6 +59,7 @@ class DaemonTest : public Test {
     EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 
     ASSERT_TRUE(gdk_init_check(NULL, NULL));
+    FakeMotionEvent(GDK_DISPLAY());
 
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
@@ -115,7 +129,7 @@ class DaemonTest : public Test {
     memset(&status, 0, sizeof(chromeos::PowerStatus));
   }
 
-  MockBacklight backlight_;
+  StrictMock<MockBacklight> backlight_;
   PowerPrefs prefs_;
   chromeos::PowerStatus status_;
   BacklightController backlight_ctl_;
@@ -318,6 +332,98 @@ TEST_F(DaemonTest, SendMetric) {
   ExpectMetric("Dummy.Metric", 3, 1, 100, 50);
   EXPECT_TRUE(daemon_.SendMetric("Dummy.Metric", /* sample */ 3,
                                  /* min */ 1, /* max */ 100, /* buckets */ 50));
+}
+
+TEST_F(DaemonTest, SendMetricWithPowerState) {
+  EXPECT_FALSE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
+      /* min */ 1, /* max */ 100, /* buckets */ 50));
+  daemon_.plugged_state_ = daemon_.kPowerDisconnected;
+  ExpectMetric("Dummy.MetricOnBattery", 3, 1, 100, 50);
+  EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
+      /* min */ 1, /* max */ 100, /* buckets */ 50));
+  daemon_.plugged_state_ = daemon_.kPowerConnected;
+  ExpectMetric("Dummy.MetricOnAC", 3, 1, 100, 50);
+  EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
+      /* min */ 1, /* max */ 100, /* buckets */ 50));
+}
+
+static gboolean QuitLoop(gpointer data) {
+  GMainLoop *loop = static_cast<GMainLoop*>(data);
+  g_main_loop_quit(loop);
+  return false;
+}
+
+TEST_F(DaemonTest, GeneratesMetricsOnIdleEvent) {
+  {
+    InSequence metrics;
+    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(0))
+        .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeAfterDimOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(0),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(0))
+        .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeAfterScreenOffOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(0),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(0))
+        .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(0),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(0),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
+    EXPECT_CALL(backlight_, SetBrightness(0))
+        .WillOnce(Return(true));
+  }
+  daemon_.SetPlugged(false);
+  GMainLoop* loop = g_main_loop_new(NULL, false);
+  g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());
+  g_timeout_add(4 * kBigInterval, FakeMotionEvent, GDK_DISPLAY());
+  g_timeout_add(7 * kBigInterval + kSmallInterval, FakeMotionEvent,
+                GDK_DISPLAY());
+  g_timeout_add(12 * kBigInterval, QuitLoop, loop);
+  g_main_loop_run(loop);
 }
 
 }  // namespace power_manager
