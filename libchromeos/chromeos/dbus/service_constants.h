@@ -52,11 +52,15 @@ extern const char* kChromiumInterface;
 // ScreenLock signals.
 extern const char* kLockScreenSignal;
 extern const char* kUnlockScreenSignal;
+extern const char* kUnlockScreenFailedSignal;
 }  // namespace chromium
 
 namespace power_manager {
 extern const char* kPowerManagerInterface;
-extern const char* kUnlockScreenFailedSignal;
+extern const char* kRequestLockScreenSignal;
+extern const char* kRequestUnlockScreenSignal;
+extern const char* kScreenIsLockedSignal;
+extern const char* kScreenIsUnlockedSignal;
 }  // namespace screen_lock
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_

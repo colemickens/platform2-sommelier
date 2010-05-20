@@ -42,9 +42,13 @@ namespace chromium {
 const char* kChromiumInterface = "org.chromium.Chromium";
 const char* kLockScreenSignal = "LockScreen";
 const char* kUnlockScreenSignal = "UnlockScreen";
+const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
 }  // namespace chromium
 
 namespace power_manager {
 const char* kPowerManagerInterface = "org.chromium.PowerManager";
-const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
+const char* kRequestLockScreenSignal = "RequestLockScreen";
+const char* kRequestUnlockScreenSignal = "RequestUnlockScreen";
+const char* kScreenIsLockedSignal = "ScreenIsLocked";
+const char* kScreenIsUnlockedSignal = "ScreenIsUnlocked";
 }  // namespace screen_lock
