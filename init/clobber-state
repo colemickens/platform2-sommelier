@@ -28,24 +28,55 @@ wipedev() {
     seek=$(($FULL_BLKS * $BLK_SIZE))
 }
 
+copydev() {
+  SRC_DEV="$1"
+  DST_DEV="$2"
+  SRC_SECTORS=$(numsectors ${SRC_DEV})
+  DST_SECTORS=$(numsectors ${DST_DEV})
+  if [ "$SRC_SECTORS" != "$DST_SECTORS" ]; then 
+    echo "Parition size mismatch. Wiping $DST_DEV instead."
+    wipedev $DST_DEV
+  else
+    BLK_SIZE=$((4 * 1024 * 1024 / 512))  # 4MiB in 512-byte sectors
+    FULL_BLKS=$(($SECTORS / $BLK_SIZE))
+    REMAINDER_SECTORS=$(($SECTORS % $BLK_SIZE))
+    dd if=${SRC_DEV} of=${DST_DEV} bs=4M count=${FULL_BLKS}
+    dd if=${SRC_DEV} of=${DST_DEV} bs=512 count=${REMAINDER_SECTORS} \
+      seek=$(($FULL_BLKS * $BLK_SIZE)) skip=$(($FULL_BLKS * $BLK_SIZE))
+  fi
+}
+
+# Root devs are sda3, sda5. 
+# Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev)
-ROOT_DEV=/dev/sda5
 STATE_DEV=${ROOT_DEV%[0-9]*}1
+OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
+KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
+OTHER_KERNEL_DEV=$(echo $OTHER_ROOT_DEV | tr '35' '24')
+WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
 
-wipedev ${STATE_DEV}
-
-umount /mnt/stateful_partition
-/sbin/mkfs.ext3 "$STATE_DEV"
-
-ROOT_PART_NUM=${ROOT_DEV##[/a-z]*[/a-z]}
-if [ "$ROOT_PART_NUM" = "5" ]; then
-  # Trash rootfs on partition 3
-  OTHER_ROOTFS=${ROOT_DEV%[0-9]*}3
-  echo "Erasing rootfs on ${OTHER_ROOTFS}..."
-  wipedev ${OTHER_ROOTFS}
+if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
+then
+  echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
+  exit 1
 fi
 
-echo "Rebooting in 60 seconds"
-sleep 60
+umount /mnt/stateful_partition
+
+# Wipe everything on the stateful partition.
+wipedev ${STATE_DEV}
+
+/sbin/mkfs.ext3 "$STATE_DEV"
+
+echo "Erasing rootfs on ${OTHER_ROOT_DEV}..."
+copydev ${ROOT_DEV} ${OTHER_ROOT_DEV}
+
+echo "Erasing kernelfs on ${OTHER_KERNEL_DEV}..."
+copydev ${KERNEL_DEV} ${OTHER_KERNEL_DEV}
+
+# Flush linux caches.
+sync
+echo 3 > /proc/sys/vm/drop_caches
+
 /sbin/shutdown -r now
 sleep 1d  # Wait for shutdown
