@@ -6,7 +6,7 @@ CXX ?= g++
 CXXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-LIBS = -lbase -lpthread -lrt -lchromeos
+LIBS = -lbase -lpthread -lrt -lchromeos -lcrash
 INCLUDE_DIRS = -I.. \
 	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1)
