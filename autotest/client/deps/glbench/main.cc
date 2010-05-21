@@ -68,6 +68,7 @@ int main(int argc, char *argv[]) {
     glbench::GetVaryingsAndDdxyShaderTest(),
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
+    glbench::GetTextureUpdateTest(),
   };
 
   for (unsigned int i = 0; i < arraysize(tests); i++) {

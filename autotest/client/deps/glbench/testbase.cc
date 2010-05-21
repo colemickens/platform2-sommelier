@@ -12,7 +12,8 @@ uint64_t TimeTest(TestBase* test, int iter) {
   SwapBuffers();
   glFinish();
   uint64_t time1 = GetUTime();
-  test->TestFunc(iter);
+  if (!test->TestFunc(iter))
+    return ~0;
   glFinish();
   uint64_t time2 = GetUTime();
   return time2 - time1;
