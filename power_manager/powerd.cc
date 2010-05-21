@@ -33,6 +33,7 @@ void Daemon::Init() {
   CHECK(prefs_->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
   CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
+  CHECK(prefs_->ReadSetting("lock_ms", &lock_ms_));
 
   // Check that timeouts are sane
   CHECK(kMetricIdleMin >= kFuzzMS);
@@ -42,6 +43,17 @@ void Daemon::Init() {
   CHECK(unplugged_dim_ms_ >= kFuzzMS);
   CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kFuzzMS);
   CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kFuzzMS);
+  CHECK(lock_ms_ >= unplugged_off_ms_ + kFuzzMS);
+  CHECK(lock_ms_ >= plugged_off_ms_ + kFuzzMS);
+
+  // If lock_ms_ and suspend_ms_ are close (but not equal), then we run into
+  // timer precision problems, so we exclude that case via a CHECK.
+  CHECK(lock_ms_ == unplugged_suspend_ms_ ||
+        lock_ms_ + kFuzzMS <= unplugged_suspend_ms_ ||
+        unplugged_suspend_ms_ + kFuzzMS <= lock_ms_);
+  CHECK(lock_ms_ == plugged_suspend_ms_ ||
+        lock_ms_ + kFuzzMS <= plugged_suspend_ms_ ||
+        plugged_suspend_ms_ + kFuzzMS <= lock_ms_);
 
   CHECK(idle_.Init(this));
 }
@@ -72,6 +84,8 @@ void Daemon::SetPlugged(bool plugged) {
       CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
     CHECK(idle_.AddIdleTimeout(dim_ms_));
     CHECK(idle_.AddIdleTimeout(off_ms_));
+    if (lock_ms_ != suspend_ms_)
+      CHECK(idle_.AddIdleTimeout(lock_ms_));
     CHECK(idle_.AddIdleTimeout(suspend_ms_));
     ctl_->OnPlugEvent(plugged);
 
@@ -101,6 +115,10 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     LOG(INFO) << "TODO: Turn on backlight";
     ctl_->SetBacklightState(BACKLIGHT_ACTIVE);
     idle_state_ = kIdleNormal;
+  }
+
+  if (idle_time_ms >= lock_ms_) {
+    LOG(INFO) << "TODO: Lock computer";
   }
 }
 

@@ -136,6 +136,7 @@ class Daemon : public XIdleMonitor {
   int64 dim_ms_;
   int64 off_ms_;
   int64 suspend_ms_;
+  int64 lock_ms_;
   PluggedState plugged_state_;
   IdleState idle_state_;
 

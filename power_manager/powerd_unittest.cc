@@ -35,6 +35,7 @@ static const int64 kPluggedSuspend = 3 * kBigInterval;
 static const int64 kUnpluggedDim = kPluggedDim;
 static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
+static const int64 kLockMs = kPluggedSuspend;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -73,6 +74,7 @@ class DaemonTest : public Test {
     prefs_.WriteSetting("unplugged_dim_ms", kUnpluggedDim);
     prefs_.WriteSetting("unplugged_off_ms", kUnpluggedOff);
     prefs_.WriteSetting("unplugged_suspend_ms", kUnpluggedSuspend);
+    prefs_.WriteSetting("lock_ms", kLockMs);
     CHECK(backlight_ctl_.Init());
     daemon_.Init();
 
