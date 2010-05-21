@@ -66,27 +66,9 @@ void DestroyContext();
 void SwapBuffers();
 bool SwapInterval(int interval);
 
-// BenchFunc functions are assumed to execute an operation iter times.  See
-// Bench for a detailed explanation.
-typedef void (*BenchFunc)(int iter);
-
-uint64_t TimeBench(BenchFunc func, int iter);
-
 // This size is for a window that is very large but will fit on all
 // the displays we care about.
 #define WINDOW_WIDTH 512
 #define WINDOW_HEIGHT 512
-
-#define MAX_ITERATION_DURATION_MS 100000
-// Runs func passing it sequential powers of two (8, 16, 32,...) recording time
-// it took.  The data is then fitted linearly, obtaining slope and bias such
-// that:
-//   time it took to run x iterations = slope * x + bias
-// Returns false if one iteration of the test takes longer than
-// MAX_ITERATION_LENGTH_MS.  The test is then assumed too slow to provide
-// meaningful results.
-bool Bench(BenchFunc func, float *slope, int64_t *bias);
-
-void *MmapFile(const char *name, size_t *length);
 
 #endif  // BENCH_GL_MAIN_H_

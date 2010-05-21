@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     1.f, 1.f,
   };
 
-  GLuint program = InitShaderProgram(kVertexShader, kFragmentShader);
+  GLuint program = glbench::InitShaderProgram(kVertexShader, kFragmentShader);
   int attribute_index = glGetAttribLocation(program, "vertices");
   glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, vertices);
   glEnableVertexAttribArray(attribute_index);

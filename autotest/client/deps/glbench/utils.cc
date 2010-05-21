@@ -47,6 +47,103 @@ void *MmapFile(const char* name, size_t* length) {
 }
 
 
+namespace glbench {
+
+GLuint SetupTexture(GLsizei size_log2) {
+  GLsizei size = 1 << size_log2;
+  GLuint name = ~0;
+  glGenTextures(1, &name);
+  glBindTexture(GL_TEXTURE_2D, name);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+  unsigned char *pixels = new unsigned char[size * size * 4];
+  if (!pixels)
+    return 0;
+
+  for (GLint level = 0; size > 0; level++, size /= 2) {
+    unsigned char *p = pixels;
+    for (int i = 0; i < size; i++) {
+      for (int j = 0; j < size; j++) {
+        *p++ = level %3 != 0 ? (i ^ j) << level : 0;
+        *p++ = level %3 != 1 ? (i ^ j) << level : 0;
+        *p++ = level %3 != 2 ? (i ^ j) << level : 0;
+        *p++ = 255;
+      }
+    }
+    if (size == 1) {
+      unsigned char *p = pixels;
+      *p++ = 255;
+      *p++ = 255;
+      *p++ = 255;
+      *p++ = 255;
+    }
+    glTexImage2D(GL_TEXTURE_2D, level, GL_RGBA, size, size, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+  }
+  delete[] pixels;
+  return name;
+}
+
+GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
+  GLuint buf = ~0;
+  glGenBuffers(1, &buf);
+  glBindBuffer(target, buf);
+  glBufferData(target, size, data, GL_STATIC_DRAW);
+  CHECK(!glGetError());
+  return buf;
+}
+
+// Generates a tautological lattice.
+void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
+                   GLfloat size_x, GLfloat size_y, int width, int height)
+{
+  GLfloat *vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
+  for (int j = 0; j <= height; j++) {
+    for (int i = 0; i <= width; i++) {
+      *vptr++ = i * size_x;
+      *vptr++ = j * size_y;
+    }
+  }
+  *size = (vptr - *vertices) * sizeof(GLfloat);
+}
+
+// Generates a mesh of 2*width*height triangles.  The ratio of front facing to
+// back facing triangles is culled_ratio/RAND_MAX.  Returns the number of
+// vertices in the mesh.
+int CreateMesh(GLuint **indices, GLsizeiptr *size,
+                      int width, int height, int culled_ratio) {
+  srand(0);
+
+  GLuint *iptr = *indices = new GLuint[2 * 3 * (width * height)];
+  const int swath_height = 4;
+
+  CHECK(width % swath_height == 0 && height % swath_height == 0);
+
+  for (int j = 0; j < height; j += swath_height) {
+    for (int i = 0; i < width; i++) {
+      for (int j2 = 0; j2 < swath_height; j2++) {
+        GLuint first = (j + j2) * (width + 1) + i;
+        GLuint second = first + 1;
+        GLuint third = first + (width + 1);
+        GLuint fourth = third + 1;
+
+        bool flag = rand() < culled_ratio;
+        *iptr++ = first;
+        *iptr++ = flag ? second : third;
+        *iptr++ = flag ? third : second;
+
+        *iptr++ = fourth;
+        *iptr++ = flag ? third : second;
+        *iptr++ = flag ? second : third;
+      }
+    }
+  }
+  *size = (iptr - *indices) * sizeof(GLuint);
+
+  return iptr - *indices;
+}
+
 static void print_info_log(int obj)
 {
   char info_log[4096];
@@ -66,7 +163,6 @@ static void print_info_log(int obj)
     p = newline + 1;
   }
 }
-
 
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -92,3 +188,5 @@ GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
 
   return program;
 }
+
+} // namespace glbench

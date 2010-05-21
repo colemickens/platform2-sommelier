@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include "main.h"
+#include "testbase.h"
 
-uint64_t TimeBench(BenchFunc func, int iter) {
+uint64_t TimeTest(glbench::TestBase* test, int iter) {
   SwapBuffers();
   glFinish();
   uint64_t time1 = GetUTime();
-  func(iter);
+  test->TestFunc(iter);
   glFinish();
   uint64_t time2 = GetUTime();
   return time2 - time1;
@@ -18,9 +19,9 @@ uint64_t TimeBench(BenchFunc func, int iter) {
 // We want to measure the marginal cost, so we try more and more iterations
 // until we get a somewhat linear response (to eliminate constant cost), and we
 // do a linear regression on a few samples.
-bool Bench(BenchFunc func, float *slope, int64_t *bias) {
+bool Bench(glbench::TestBase* test, float *slope, int64_t *bias) {
   // Do one iteration in case the driver needs to set up states.
-  if (TimeBench(func, 1) > MAX_ITERATION_DURATION_MS)
+  if (TimeTest(test, 1) > MAX_ITERATION_DURATION_MS)
     return false;
   int64_t count = 0;
   int64_t sum_x = 0;
@@ -31,7 +32,7 @@ bool Bench(BenchFunc func, float *slope, int64_t *bias) {
   bool do_count = false;
   uint64_t iter;
   for (iter = 8; iter < 1<<30; iter *= 2) {
-    uint64_t time = TimeBench(func, iter);
+    uint64_t time = TimeTest(test, iter);
     if (last_time > 0 && (time > last_time * 1.8))
       do_count = true;
     last_time = time;

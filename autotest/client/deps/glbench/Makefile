@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 
 SOURCES_COMMON = xlib_window.cc utils.cc
-SOURCES_GL_BENCH = main.cc bench.cc shaders.cc
+SOURCES_GL_BENCH = main.cc swaptest.cc yuvtest.cc testbase.cc
+SOURCES_GL_BENCH += fillratetest.cc readpixeltest.cc trianglesetuptest.cc
+SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
+SOURCES_GL_BENCH += windowmanagercompositingtest.cc
 SOURCES_TEARTEST = teartest.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc
 SOURCES_ALL = $(SOURCES_COMMON) \
