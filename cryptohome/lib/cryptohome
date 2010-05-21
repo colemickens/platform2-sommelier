@@ -251,23 +251,16 @@ function cryptohome::check() {
   $e2fsck $arg -p "$mapperdev"
 }
 
-# prepare_skel [mount point]
-function cryptohome::prepare_skel() {
+# update_skel [mount point]
+function cryptohome::update_skel() {
   local mountpt="${1:-$DEFAULT_MOUNT_POINT}"
-
-  if [[ ! -d $IMAGE_DIR/skel ]]; then
-    $mkdir -p $IMAGE_DIR/skel
-    $cp -r /etc/skel/. $IMAGE_DIR/skel
-  fi
-
-  if [[ ! -d $IMAGE_DIR/skel/logs ]]; then
-    $mkdir -p $IMAGE_DIR/skel/logs
-  fi
-
-  if [[ $mountpt/.xsession -nt $IMAGE_DIR/skel/.xsession ]]; then
-    $cp $mountpt/.xsession $IMAGE_DIR/skel
-  fi
-
+  $mkdir -p $IMAGE_DIR/skel
+  $mkdir -p $IMAGE_DIR/skel/logs
+  $cp -ru /etc/skel/. $IMAGE_DIR/skel/
+  $chown -R $DEFAULT_USER:$DEFAULT_USER $IMAGE_DIR/skel
+  $cp -ru $IMAGE_DIR/skel/. "$mountpt"
+  # This is temporary until we replace the script.  Otherwise
+  # users can cross-contaminate each other's encrypted stores.
   return 0
 }
 
@@ -309,7 +302,6 @@ function cryptohome::mount_or_create() {
   if [[ ! -d "$IMAGE_DIR/$userid" ]]; then
     $mkdir -p "$IMAGE_DIR/$userid"
   fi
-  cryptohome::prepare_skel
 
   # We need a master key file and an image
   if [[ -f "$image" && -f "$IMAGE_DIR/$userid/$KEY_FILE_USER_ZERO" ]]; then
@@ -337,11 +329,7 @@ function cryptohome::mount_or_create() {
     # area.
     # cryptohome::check
     cryptohome::mount
-    # Make sure to pass along .xsession updates and keep it rx.
-    if [[ $IMAGE_DIR/skel/.xsession -nt $DEFAULT_MOUNT_POINT/.xsession ]]; then
-      $cp $IMAGE_DIR/skel/.xsession $DEFAULT_MOUNT_POINT/.xsession
-      $chmod 755 $DEFAULT_MOUNT_POINT/.xsession
-    fi
+    cryptohome::update_skel
     $chown $DEFAULT_USER $DEFAULT_MOUNT_POINT
     $chmod 750 $DEFAULT_MOUNT_POINT
     # Perform an online resize behind the scenes just in case it
@@ -367,7 +355,7 @@ function cryptohome::mount_or_create() {
     # filesystem up as soon as possible.
     cryptohome::format "$BLOCKS_IN_A_GROUP" "$(cryptohome::total_blocks $image)"
     cryptohome::mount
-    $cp -r $IMAGE_DIR/skel/. $DEFAULT_MOUNT_POINT/
+    cryptohome::update_skel
     $chown -R $DEFAULT_USER $DEFAULT_MOUNT_POINT
     $chmod 750 $DEFAULT_MOUNT_POINT
 
