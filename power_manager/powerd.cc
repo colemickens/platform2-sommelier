@@ -21,6 +21,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       plugged_state_(kPowerUnknown),
+      idle_state_(kIdleUnknown),
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
       battery_time_to_empty_metric_last_(0) {}
@@ -77,25 +78,29 @@ void Daemon::SetPlugged(bool plugged) {
     // Sync up idle state with new settings
     int64 idle_time_ms;
     CHECK(idle_.GetIdleTime(&idle_time_ms));
-    OnIdleEvent(idle_time_ms >= dim_ms_, idle_time_ms);
+    OnIdleEvent(idle_time_ms >= dim_ms_ || idle_time_ms >= kMetricIdleMin,
+                idle_time_ms);
   }
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
-  if (!is_idle) {
-    LOG(INFO) << "User is active";
-    ctl_->SetBacklightState(BACKLIGHT_ACTIVE);
+  if (idle_time_ms >= suspend_ms_) {
+    LOG(INFO) << "TODO: Suspend computer";
+    idle_state_ = kIdleSuspend;
+  } else if (idle_time_ms >= off_ms_) {
+    LOG(INFO) << "TODO: Turn off backlight";
+    idle_state_ = kIdleScreenOff;
   } else if (idle_time_ms >= dim_ms_) {
-    LOG(INFO) << "User is idle";
+    LOG(INFO) << "TODO: Turn on backlight";
     ctl_->SetBacklightState(BACKLIGHT_DIM);
-    if (idle_time_ms >= off_ms_) {
-      LOG(INFO) << "TODO: Turn off backlight";
-    }
-    if (idle_time_ms >= suspend_ms_) {
-      LOG(INFO) << "TODO: Suspend computer";
-    }
+    idle_state_ = kIdleDim;
+  } else {
+    LOG(INFO) << "User is active";
+    LOG(INFO) << "TODO: Turn on backlight";
+    ctl_->SetBacklightState(BACKLIGHT_ACTIVE);
+    idle_state_ = kIdleNormal;
   }
 }
 

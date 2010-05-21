@@ -47,6 +47,8 @@ class Daemon : public XIdleMonitor {
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
 
   enum PluggedState { kPowerDisconnected, kPowerConnected, kPowerUnknown };
+  enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
+                   kIdleSuspend };
 
   // UMA metrics parameters.
   static const char kMetricBatteryDischargeRateName[];
@@ -135,6 +137,7 @@ class Daemon : public XIdleMonitor {
   int64 off_ms_;
   int64 suspend_ms_;
   PluggedState plugged_state_;
+  IdleState idle_state_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

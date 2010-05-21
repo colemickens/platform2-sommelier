@@ -61,21 +61,19 @@ void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
     TimeDelta total_delta = event_delta + last_idle_timedelta_;
     int64 total_delta_ms = total_delta.InMilliseconds();
     last_idle_event_timestamp_ = TimeTicks();
-    if (total_delta_ms >= kMetricIdleMin || total_delta_ms >= dim_ms_) {
-      SendMetricWithPowerState(kMetricIdleName, total_delta_ms, kMetricIdleMin,
-          kMetricIdleMax, kMetricIdleBuckets);
 
-      int64 event_delta_ms = event_delta.InMilliseconds();
-      int64 last_idle_ms = last_idle_timedelta_.InMilliseconds();
-      if (last_idle_ms >= off_ms_ && last_idle_ms < suspend_ms_) {
-        SendMetricWithPowerState(kMetricIdleAfterScreenOffName, event_delta_ms,
-            kMetricIdleAfterScreenOffMin, kMetricIdleAfterScreenOffMax,
-            kMetricIdleAfterScreenOffBuckets);
-      } else if (last_idle_ms >= dim_ms_ && last_idle_ms < off_ms_) {
-        SendMetricWithPowerState(kMetricIdleAfterDimName, event_delta_ms,
-            kMetricIdleAfterDimMin, kMetricIdleAfterDimMax,
-            kMetricIdleAfterDimBuckets);
-      }
+    SendMetricWithPowerState(kMetricIdleName, total_delta_ms, kMetricIdleMin,
+        kMetricIdleMax, kMetricIdleBuckets);
+
+    int64 event_delta_ms = event_delta.InMilliseconds();
+    if (idle_state_ == kIdleScreenOff) {
+      SendMetricWithPowerState(kMetricIdleAfterScreenOffName, event_delta_ms,
+          kMetricIdleAfterScreenOffMin, kMetricIdleAfterScreenOffMax,
+          kMetricIdleAfterScreenOffBuckets);
+    } else if (idle_state_ == kIdleDim) {
+      SendMetricWithPowerState(kMetricIdleAfterDimName, event_delta_ms,
+          kMetricIdleAfterDimMin, kMetricIdleAfterDimMax,
+          kMetricIdleAfterDimBuckets);
     }
   }
 }
