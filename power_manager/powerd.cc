@@ -4,11 +4,78 @@
 
 #include "power_manager/powerd.h"
 
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include "base/logging.h"
+#include "base/string_util.h"
+#include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/service_constants.h"
 
 namespace power_manager {
 
 static const int64 kFuzzMS = 100;
+
+// Lock the screen
+static void SendSignalToSessionManager(const char *signal) {
+  DBusGProxy *proxy = dbus_g_proxy_new_for_name(
+      chromeos::dbus::GetSystemBusConnection().g_connection(),
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface);
+  CHECK(proxy);
+  GError *error = NULL;
+  if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
+                         G_TYPE_INVALID)) {
+    LOG(ERROR) << "Error sending signal: " << error->message;
+  }
+  g_object_unref(proxy);
+}
+
+// A message filter to receive signals.
+static DBusHandlerResult DBusMessageHandler(DBusConnection*,
+                                            DBusMessage* message,
+                                            void*) {
+  if (dbus_message_is_signal(message, kPowerManagerInterface,
+                             kRequestLockScreenSignal)) {
+    LOG(INFO) << "RequestLockScreen event";
+    SendSignalToSessionManager("LockScreen");
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestUnlockScreenSignal)) {
+    LOG(INFO) << "RequestUnlockScreen event";
+    SendSignalToSessionManager("UnlockScreen");
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kScreenIsLockedSignal)) {
+    // TODO: Record screen lock/unlock state
+    LOG(INFO) << "ScreenIsLocked event";
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kScreenIsUnlockedSignal)) {
+    // TODO: Record screen lock/unlock state
+    LOG(INFO) << "ScreenIsUnlocked event";
+  } else {
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
+  return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static void RegisterDBusMessageHandler(Daemon *object) {
+  const std::string filter = StringPrintf("type='signal', interface='%s'",
+                                          kPowerManagerInterface);
+
+  DBusError error;
+  dbus_error_init(&error);
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  dbus_bus_add_match(connection, filter.c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "Failed to add a filter:" << error.name << ", message="
+               << error.message;
+    NOTREACHED();
+  } else {
+    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, object,
+                                     NULL));
+    LOG(INFO) << "DBus monitoring started";
+  }
+}
 
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle. Currently, this daemon just adjusts the backlight,
@@ -27,6 +94,11 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       battery_time_to_empty_metric_last_(0) {}
 
 void Daemon::Init() {
+  TimerInit();
+  DbusInit();
+}
+
+void Daemon::TimerInit() {
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -58,10 +130,12 @@ void Daemon::Init() {
   CHECK(idle_.Init(this));
 }
 
+void Daemon::DbusInit() {
+  RegisterDBusMessageHandler(this);
+  CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
+}
+
 void Daemon::Run() {
-  chromeos::PowerStatusConnection connection =
-      chromeos::MonitorPowerStatus(&OnPowerEvent, this);
-  CHECK(connection) << "Cannot establish power status connection";
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
 }

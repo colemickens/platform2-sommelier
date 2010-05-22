@@ -54,7 +54,10 @@ backlight_controller = base_env.Library('backlight_controller',
                                         ['backlight_controller.cc'])
 power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
-powerd_env.Append(LIBS=Split('gflags metrics'))
+powerd_env.Append(LIBS=Split('chromeos gflags metrics'))
+powerd_env.ParseConfig(
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+)
 powerd_lib = powerd_env.Library('powerd_lib',
                                 ['powerd.cc', 'powerd_metrics.cc'])
 load_lib = base_env.Library('load',  ['../cros/load.cc'])
@@ -78,7 +81,7 @@ tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
 deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller,
         power_prefs]
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
-powerd_unittest_env = xidle_env.Clone()
+powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
         backlight_controller, power_prefs, load_lib]

@@ -58,26 +58,13 @@ class DaemonTest : public Test {
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
     EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
     EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
-
-    ASSERT_TRUE(gdk_init_check(NULL, NULL));
-    FakeMotionEvent(GDK_DISPLAY());
-
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
     prefs_.WriteSetting("plugged_brightness_offset", kPluggedBrightness);
     prefs_.WriteSetting("unplugged_brightness_offset", kUnpluggedBrightness);
-    prefs_.WriteSetting("plugged_dim_ms", kPluggedDim);
-    prefs_.WriteSetting("plugged_off_ms", kPluggedOff);
-    prefs_.WriteSetting("plugged_suspend_ms", kPluggedSuspend);
-    prefs_.WriteSetting("unplugged_dim_ms", kUnpluggedDim);
-    prefs_.WriteSetting("unplugged_off_ms", kUnpluggedOff);
-    prefs_.WriteSetting("unplugged_suspend_ms", kUnpluggedSuspend);
-    prefs_.WriteSetting("lock_ms", kLockMs);
     CHECK(backlight_ctl_.Init());
-    daemon_.Init();
-
     ResetPowerStatus(status_);
   }
 
@@ -355,7 +342,7 @@ static gboolean QuitLoop(gpointer data) {
   return false;
 }
 
-TEST_F(DaemonTest, GeneratesMetricsOnIdleEvent) {
+TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   {
     InSequence metrics;
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
@@ -418,6 +405,17 @@ TEST_F(DaemonTest, GeneratesMetricsOnIdleEvent) {
     EXPECT_CALL(backlight_, SetBrightness(0))
         .WillOnce(Return(true));
   }
+
+  ASSERT_TRUE(gdk_init_check(NULL, NULL));
+  FakeMotionEvent(GDK_DISPLAY());
+  prefs_.WriteSetting("plugged_dim_ms", kPluggedDim);
+  prefs_.WriteSetting("plugged_off_ms", kPluggedOff);
+  prefs_.WriteSetting("plugged_suspend_ms", kPluggedSuspend);
+  prefs_.WriteSetting("unplugged_dim_ms", kUnpluggedDim);
+  prefs_.WriteSetting("unplugged_off_ms", kUnpluggedOff);
+  prefs_.WriteSetting("unplugged_suspend_ms", kUnpluggedSuspend);
+  prefs_.WriteSetting("lock_ms", kLockMs);
+  daemon_.TimerInit();
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());

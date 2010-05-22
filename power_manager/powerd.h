@@ -41,6 +41,7 @@ class Daemon : public XIdleMonitor {
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
+  FRIEND_TEST(DaemonTest, GenerateMetricsOnIdleEvent);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
@@ -76,6 +77,12 @@ class Daemon : public XIdleMonitor {
   static const int kMetricIdleAfterScreenOffMin;
   static const int kMetricIdleAfterScreenOffMax;
   static const int kMetricIdleAfterScreenOffBuckets;
+
+  // Initialize timers
+  void TimerInit();
+
+  // Initialize dbus connections
+  void DbusInit();
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
