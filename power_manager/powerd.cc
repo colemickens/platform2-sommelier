@@ -5,6 +5,8 @@
 #include "power_manager/powerd.h"
 
 #include <dbus/dbus-glib-lowlevel.h>
+#include <gdk/gdkx.h>
+#include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -96,6 +98,12 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
 void Daemon::Init() {
   TimerInit();
   DbusInit();
+  if (!DPMSCapable(GDK_DISPLAY())) {
+    LOG(WARNING) << "X Server not DPMS capable";
+  } else {
+    CHECK(DPMSEnable(GDK_DISPLAY()));
+    CHECK(DPMSSetTimeouts(GDK_DISPLAY(), 0, 0, 0));
+  }
 }
 
 void Daemon::TimerInit() {

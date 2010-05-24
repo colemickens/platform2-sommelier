@@ -57,12 +57,17 @@ void BacklightController::SetDimState(DimState state) {
 }
 
 void BacklightController::SetPowerState(PowerState state) {
-  if (state == BACKLIGHT_OFF)
-    DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff);
-  else if (state == BACKLIGHT_ON)
-    DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn);
-  else
-    NOTREACHED();
+  if (!DPMSCapable(GDK_DISPLAY())) {
+    LOG(WARNING) << "X Server is not DPMS capable";
+  } else {
+    CHECK(DPMSEnable(GDK_DISPLAY()));
+    if (state == BACKLIGHT_OFF)
+      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+    else if (state == BACKLIGHT_ON)
+      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
+    else
+      NOTREACHED();
+  }
 }
 
 void BacklightController::OnPlugEvent(bool is_plugged) {
