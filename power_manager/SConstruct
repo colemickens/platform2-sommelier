@@ -50,8 +50,8 @@ backlight_tool = backlight_env.Program('backlight-tool',
 Default(backlight_tool)
 
 # Build power daemon
-backlight_controller = base_env.Library('backlight_controller',
-                                        ['backlight_controller.cc'])
+backlight_controller = gdk_env.Library('backlight_controller',
+                                       ['backlight_controller.cc'])
 power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('chromeos gflags metrics'))

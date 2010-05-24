@@ -175,19 +175,22 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   if (idle_time_ms >= suspend_ms_) {
+    LOG(INFO) << "state = kIdleSuspend";
     LOG(INFO) << "TODO: Suspend computer";
     idle_state_ = kIdleSuspend;
   } else if (idle_time_ms >= off_ms_) {
-    LOG(INFO) << "TODO: Turn off backlight";
+    LOG(INFO) << "state = kIdleScreenOff";
+    ctl_->SetPowerState(BACKLIGHT_OFF);
     idle_state_ = kIdleScreenOff;
   } else if (idle_time_ms >= dim_ms_) {
-    LOG(INFO) << "TODO: Turn on backlight";
-    ctl_->SetBacklightState(BACKLIGHT_DIM);
+    LOG(INFO) << "state = kIdleDim";
+    ctl_->SetDimState(BACKLIGHT_DIM);
+    ctl_->SetPowerState(BACKLIGHT_ON);
     idle_state_ = kIdleDim;
   } else {
-    LOG(INFO) << "User is active";
-    LOG(INFO) << "TODO: Turn on backlight";
-    ctl_->SetBacklightState(BACKLIGHT_ACTIVE);
+    LOG(INFO) << "state = kIdleNormal";
+    ctl_->SetDimState(BACKLIGHT_ACTIVE);
+    ctl_->SetPowerState(BACKLIGHT_ON);
     idle_state_ = kIdleNormal;
   }
 

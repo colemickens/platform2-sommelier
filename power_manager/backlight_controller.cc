@@ -4,7 +4,9 @@
 
 #include "power_manager/backlight_controller.h"
 
+#include <gdk/gdkx.h>
 #include <math.h>
+#include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
 
@@ -46,12 +48,21 @@ void BacklightController::ChangeBrightness(int64 diff) {
   WriteBrightness();
 }
 
-void BacklightController::SetBacklightState(BacklightState state) {
+void BacklightController::SetDimState(DimState state) {
   if (state != state_) {
     ReadBrightness();
     state_ = state;
     WriteBrightness();
   }
+}
+
+void BacklightController::SetPowerState(PowerState state) {
+  if (state == BACKLIGHT_OFF)
+    DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff);
+  else if (state == BACKLIGHT_ON)
+    DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn);
+  else
+    NOTREACHED();
 }
 
 void BacklightController::OnPlugEvent(bool is_plugged) {

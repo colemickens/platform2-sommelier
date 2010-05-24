@@ -13,8 +13,12 @@
 
 namespace power_manager {
 
-enum BacklightState {
+enum DimState {
   BACKLIGHT_ACTIVE, BACKLIGHT_DIM
+};
+
+enum PowerState {
+  BACKLIGHT_OFF, BACKLIGHT_ON
 };
 
 // Control the backlight.
@@ -34,8 +38,11 @@ class BacklightController {
   // Increase / decrease brightness by specified offset.
   void ChangeBrightness(int64 offset);
 
-  // Set the state of the backlight to active or dim.
-  void SetBacklightState(BacklightState state);
+  // Set the backlight to active or dim.
+  void SetDimState(DimState state);
+
+  // Turn the backlight on or off
+  void SetPowerState(PowerState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
   // appropriately.
@@ -81,8 +88,8 @@ class BacklightController {
   // Pointer to currently in-use brightness offset
   int64* brightness_offset_;
 
-  // Whether backlight is active, dimmed, or off
-  BacklightState state_;
+  // Whether backlight is active or dimmed
+  DimState state_;
 
   // Whether the computer is plugged in.
   enum {
