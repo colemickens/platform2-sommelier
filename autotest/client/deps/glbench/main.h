@@ -8,10 +8,10 @@
 #include <gflags/gflags.h>
 #include <sys/time.h>
 
-#ifdef USE_EGL
+#if defined(USE_OPENGLES)
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#else
+#elif defined(USE_OPENGL)
 #include <GL/gl.h>
 #include <GL/glx.h>
 
@@ -47,6 +47,8 @@
 LIST_PROC_FUNCTIONS(F)
 #undef F
 
+#else
+#error bad graphics backend
 #endif
 
 inline uint64_t GetUTime() {

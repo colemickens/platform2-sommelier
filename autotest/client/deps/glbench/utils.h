@@ -5,9 +5,9 @@
 #ifndef BENCH_GL_UTILS_H_
 #define BENCH_GL_UTILS_H_
 
-#ifdef USE_EGL
+#if defined(USE_OPENGLES)
 #include "GLES2/gl2.h"
-#else
+#elif defined(USE_OPENGL)
 #include "GL/gl.h"
 #endif
 
@@ -24,8 +24,6 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 int CreateMesh(GLuint **indices, GLsizeiptr *size,
                       int width, int height, int culled_ratio);
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src);
-
-#define I915_WORKAROUND 1
 
 } // namespace glbench
 

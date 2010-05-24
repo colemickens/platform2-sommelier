@@ -107,7 +107,7 @@ void DrawArraysTestFunc::FillRateTestNormalSubWindow(const char* name,
 }
 
 
-#ifndef USE_EGL
+#if defined(USE_OPENGL)
 void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   const int buffer_len = 64;
   char buffer[buffer_len];

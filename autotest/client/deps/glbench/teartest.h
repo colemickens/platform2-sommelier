@@ -24,9 +24,9 @@ void CopyPixmapToTexture(Pixmap pixmap);
 
 Test* GetUniformTest();
 Test* GetTexImage2DTest();
-#ifdef USE_EGL
+#if defined(USE_OPENGLES)
 Test* GetPixmapToTextureTestEGL();
-#else
+#elif defined(USE_OPENGL)
 Test* GetPixmapToTextureTest();
 #endif
 

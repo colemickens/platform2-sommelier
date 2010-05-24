@@ -204,9 +204,9 @@ int main(int argc, char* argv[]) {
   Test* uniform_test = GetUniformTest(glGetUniformLocation(program, "shift"));
   test_map["uniform"] = uniform_test;
   test_map["teximage2d"] = GetTexImage2DTest();
-#ifdef USE_EGL
+#if defined(USE_OPENGLES)
   test_map["pixmap_to_texture"] = GetPixmapToTextureTestEGL();
-#else
+#elif defined(USE_OPENGL)
   test_map["pixmap_to_texture"] = GetPixmapToTextureTest();
 #endif
 

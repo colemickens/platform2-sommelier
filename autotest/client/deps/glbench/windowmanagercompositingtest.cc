@@ -34,11 +34,9 @@ class WindowManagerCompositingTest : public TestBase {
   bool scissor_;
   uint32_t texture_base_[WINDOW_HEIGHT*WINDOW_WIDTH];
   uint32_t texture_update_[WINDOW_HEIGHT*WINDOW_WIDTH];
-#ifndef USE_EGL
   GLuint compositing_textures_[5];
   GLuint compositing_background_program_;
   GLuint compositing_foreground_program_;
-#endif
   DISALLOW_COPY_AND_ASSIGN(WindowManagerCompositingTest);
 };
 
@@ -124,7 +122,7 @@ bool WindowManagerCompositingTest::TestFunc(int iter) {
   return true;
 }
 
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
 #define V1 "gl_TexCoord[0]"
 #define V2 "gl_TexCoord[1]"
 #define V3 "gl_TexCoord[2]"

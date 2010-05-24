@@ -20,7 +20,7 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
   DISALLOW_COPY_AND_ASSIGN(VaryingsAndDdxyShaderTest);
 };
 
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
 #define V1 "gl_TexCoord[0]"
 #define V2 "gl_TexCoord[1]"
 #define V3 "gl_TexCoord[2]"
@@ -29,8 +29,6 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
 #define V6 "gl_TexCoord[5]"
 #define V7 "gl_TexCoord[6]"
 #define V8 "gl_TexCoord[7]"
-#define DDX "dFdx"
-#define DDY "dFdy"
 #else
 #define V1 "v1"
 #define V2 "v2"
@@ -40,8 +38,6 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
 #define V6 "v6"
 #define V7 "v7"
 #define V8 "v8"
-#define DDX "ddx"
-#define DDY "ddy"
 #endif
 
 
@@ -158,15 +154,17 @@ GLuint VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer) {
 
 
 const char *fragment_shader_ddx =
+"#extension GL_OES_standard_derivatives : enable\n"
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(" DDX "(" V1 ".x), 0., 0., 1.);"
+"  gl_FragColor = vec4(dFdx(" V1 ".x), 0., 0., 1.);"
 "}";
 
 const char *fragment_shader_ddy =
+"#extension GL_OES_standard_derivatives : enable\n"
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(" DDY "(" V1 ".y), 0., 0., 1.);"
+"  gl_FragColor = vec4(dFdy(" V1 ".y), 0., 0., 1.);"
 "}";
 
 GLuint DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {

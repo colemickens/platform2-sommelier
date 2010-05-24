@@ -58,7 +58,7 @@ class DrawArraysTestFunc : public TestBase {
   // Runs the test and reports results in mpixels per second, assuming each
   // iteration updates a window of width by height pixels.
   void FillRateTestNormalSubWindow(const char* name, float width, float height);
-#ifndef USE_EGL
+#if defined(USE_OPENGL)
   // Runs the test three times: with blending on; with depth test enabled and
   // depth function of GL_NOTEQUAL; with depth function GL_NEVER.  Results are
   // reported as in FillRateTestNormal.

@@ -39,6 +39,7 @@ XVisualInfo* GetXVisual() {
       EGL_DEPTH_SIZE, 1,
       EGL_STENCIL_SIZE, 1,
       EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
       EGL_NONE
     };
 
@@ -59,12 +60,21 @@ XVisualInfo* GetXVisual() {
     CHECK_EGL();
   }
 
+  // TODO: for some reason on some systems EGL_NATIVE_VISUAL_ID returns an ID
+  // that XVisualIDFromVisual cannot find.  Use default visual until this is
+  // resolved.
+#if 0
   EGLint visual_id;
   eglGetConfigAttrib(egl_display, egl_config, EGL_NATIVE_VISUAL_ID, &visual_id);
   CHECK_EGL();
-
   XVisualInfo vinfo_template;
   vinfo_template.visualid = static_cast<VisualID>(visual_id);
+#else
+  XVisualInfo vinfo_template;
+  vinfo_template.visualid = XVisualIDFromVisual(DefaultVisual(
+      g_xlib_display, DefaultScreen(g_xlib_display)));
+#endif
+
   int nitems = 0;
   XVisualInfo* ret = XGetVisualInfo(g_xlib_display, VisualIDMask,
                                     &vinfo_template, &nitems);
@@ -73,8 +83,12 @@ XVisualInfo* GetXVisual() {
 }
 
 bool InitContext() {
+  EGLint attribs[] = {
+    EGL_CONTEXT_CLIENT_VERSION, 2,
+    EGL_NONE
+  };
   EGLContext egl_context = eglCreateContext(egl_display, egl_config,
-                                            NULL, NULL);
+                                            NULL, attribs);
   CHECK_EGL();
 
   eglMakeCurrent(egl_display, egl_surface, egl_surface, egl_context);
@@ -82,11 +96,6 @@ bool InitContext() {
 
   eglQuerySurface(egl_display, egl_surface, EGL_WIDTH, &g_width);
   eglQuerySurface(egl_display, egl_surface, EGL_HEIGHT, &g_height);
-
-#ifndef USE_EGL
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-#endif
 
   return true;
 }

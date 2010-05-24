@@ -4,9 +4,17 @@
 
 SOURCES_COMMON = xlib_window.cc utils.cc
 SOURCES_GL_BENCH = main.cc swaptest.cc yuvtest.cc testbase.cc
-SOURCES_GL_BENCH += fillratetest.cc readpixeltest.cc trianglesetuptest.cc
+SOURCES_GL_BENCH += readpixeltest.cc
 SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
-SOURCES_GL_BENCH += windowmanagercompositingtest.cc textureupdatetest.cc
+SOURCES_GL_BENCH += textureupdatetest.cc
+
+GRAPHICS_BACKEND ?= OPENGL
+
+# TODO: port these to GLES
+ifeq ($(GRAPHICS_BACKEND),OPENGL)
+SOURCES_GL_BENCH += fillratetest.cc trianglesetuptest.cc
+SOURCES_GL_BENCH += windowmanagercompositingtest.cc
+endif
 SOURCES_TEARTEST = teartest.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc
 SOURCES_ALL = $(SOURCES_COMMON) \
@@ -14,23 +22,26 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_TEARTEST) \
               $(SOURCES_WINDOWMANAGERTEST)
 
-CXXFLAGS = -g -Wall -Werror -I$(GCLIENT_ROOT)/src/third_party/chrome/files
-LDFLAGS = -lGL -lX11
-LDFLAGS += -L$(GCLIENT_ROOT)/src/third_party/chrome -lbase -lrt -lgflags
+CXXFLAGS = -g -Wall -Werror
+LDFLAGS = -lbase -lrt -lgflags
+# To compile outside of chroot, use the following two lines:
+#CXXFLAGS += -I../../../../../../chrome/files
+#LDFLAGS += -L../../../../../../chrome
+
 GL_BENCH = ../glbench
 TEARTEST = ../teartest
 WINDOWMANAGERTEST = ../windowmanagertest
 
-GCLIENT_ROOT ?= ../../../../../../../..
-
-ifdef USE_EGL
-CXXFLAGS += -I$(GCLIENT_ROOT)/src/third_party/khronos/files/include -DUSE_EGL
+ifeq ($(GRAPHICS_BACKEND),OPENGLES)
+CXXFLAGS += -DUSE_OPENGLES
 SOURCES_COMMON += egl_stuff.cc
 SOURCES_TEARTEST += teartest_egl.cc
-LDFLAGS += -L$(GCLIENT_ROOT)/src/third_party/khronos/files -lEGL
-else
+LDFLAGS += -lGLESv2 -lX11 -lEGL
+else ifeq ($(GRAPHICS_BACKEND),OPENGL)
+CXXFLAGS += -DUSE_OPENGL -DI915_WORKAROUND
 SOURCES_COMMON += glx_stuff.cc
 SOURCES_TEARTEST += teartest_glx.cc
+LDFLAGS += -lGL -lX11
 endif
 
 OBJS_COMMON = $(SOURCES_COMMON:.cc=.o)
@@ -44,7 +55,7 @@ DEPS_ALL = $(SOURCES_ALL:.cc=.d)
 
 all: $(GL_BENCH) $(TEARTEST)
 
-ifndef USE_EGL
+ifeq ($(GRAPHICS_BACKEND),OPENGL)
 all: $(WINDOWMANAGERTEST)
 endif
 
@@ -55,6 +66,7 @@ $(WINDOWMANAGERTEST): $(OBJS_COMMON) $(OBJS_WINDOWMANAGERTEST)
 clean:
 	$(RM) $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST)
 	$(RM) $(OBJS_ALL) $(DEPS_ALL)
+	$(RM) *.o *.d
 
 $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST):
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)

@@ -59,15 +59,17 @@ int main(int argc, char *argv[]) {
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
     glbench::GetClearTest(),
+#if defined(USE_OPENGL)
     glbench::GetFillRateTest(),
+    glbench::GetTriangleSetupTest(),
+    glbench::GetWindowManagerCompositingTest(false),
+    glbench::GetWindowManagerCompositingTest(true),
+#endif
     glbench::GetYuvToRgbTest(1, "yuv_shader_1"),
     glbench::GetYuvToRgbTest(2, "yuv_shader_2"),
     glbench::GetReadPixelTest(),
-    glbench::GetTriangleSetupTest(),
     glbench::GetAttributeFetchShaderTest(),
     glbench::GetVaryingsAndDdxyShaderTest(),
-    glbench::GetWindowManagerCompositingTest(false),
-    glbench::GetWindowManagerCompositingTest(true),
     glbench::GetTextureUpdateTest(),
   };
 

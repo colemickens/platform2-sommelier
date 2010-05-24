@@ -36,7 +36,7 @@ class TextureUpdateTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(TextureUpdateTest);
 };
 
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
 #define V1 "gl_TexCoord[0]"
 #else
 #define V1 "v1"
