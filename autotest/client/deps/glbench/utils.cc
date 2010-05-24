@@ -165,11 +165,23 @@ static void print_info_log(int obj)
 }
 
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
+  return InitShaderProgramWithHeader(NULL, vertex_src, fragment_src);
+}
+
+GLuint InitShaderProgramWithHeader(const char* header,
+                                   const char* vertex_src,
+                                   const char* fragment_src) {
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
-  glShaderSource(vertex_shader, 1, &vertex_src, NULL);
-  glShaderSource(fragment_shader, 1, &fragment_src, NULL);
+  const char* header_and_body[2];
+  header_and_body[0] = header ? header : "";
+  header_and_body[1] = vertex_src;
+  glShaderSource(vertex_shader,
+                 arraysize(header_and_body), header_and_body, NULL);
+  header_and_body[1] = fragment_src;
+  glShaderSource(fragment_shader,
+                 arraysize(header_and_body), header_and_body, NULL);
 
   glCompileShader(vertex_shader);
   print_info_log(vertex_shader);

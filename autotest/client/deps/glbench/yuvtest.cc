@@ -43,7 +43,13 @@ GLuint YuvToRgbShaderProgram(int type, GLuint vertex_buffer,
     goto done;
 
   {
-    program = InitShaderProgram(yuv_to_rgb_vertex, yuv_to_rgb_fragment);
+#if defined(I915_WORKAROUND)
+    const char* header = "#define I915_WORKAROUND 1\n";
+#else
+    const char* header = NULL;
+#endif
+    program = InitShaderProgramWithHeader(header, yuv_to_rgb_vertex,
+                                          yuv_to_rgb_fragment);
 
     int imageWidthUniform = glGetUniformLocation(program, "imageWidth");
     int imageHeightUniform = glGetUniformLocation(program, "imageHeight");

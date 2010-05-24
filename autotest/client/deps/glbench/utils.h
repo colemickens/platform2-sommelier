@@ -24,6 +24,9 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 int CreateMesh(GLuint **indices, GLsizeiptr *size,
                       int width, int height, int culled_ratio);
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src);
+GLuint InitShaderProgramWithHeader(const char* header,
+                                   const char* vertex_src,
+                                   const char* fragment_src);
 
 } // namespace glbench
 

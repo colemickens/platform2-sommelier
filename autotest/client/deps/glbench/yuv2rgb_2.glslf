@@ -35,8 +35,6 @@
  * of the original image is 2 modulo 4.
  */
 
-#define I915_WORKAROUND 1
-
 uniform sampler2D textureSampler;
 uniform sampler2D paritySampler;
 
@@ -49,7 +47,7 @@ void main() {
   /*
    * If the height of the original image is even, offset_odd is not needed.
    */
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
   vec2 offset_even = vec2(texture2D(paritySampler, gl_TexCoord[0].xy).x * 0.5,
                           0.0);
 #else
@@ -57,7 +55,7 @@ void main() {
 #endif
   vec2 offset_odd = vec2(0.5 - offset_even.x, 0.0);
 
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
   float yChannel = texture2D(textureSampler, gl_TexCoord[0].zw).x;
   float uChannel = texture2D(textureSampler, gl_TexCoord[1].xy + offset_even).x;
   float vChannel = texture2D(textureSampler, gl_TexCoord[1].zw + offset_odd).x;

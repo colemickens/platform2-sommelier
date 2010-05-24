@@ -33,7 +33,6 @@
  * This is a conversion of a cg shader from Chrome:
  * http://src.chromium.org/viewvc/chrome/trunk/src/o3d/samples/shaders/yuv2rgb.shader
  */
-#define I915_WORKAROUND 1
 
 /*
  * This shader takes a Y'UV420p image as a single greyscale plane, and
@@ -178,7 +177,7 @@ void main() {
    * the location in the image stream, using floor in several places
    * which makes it hard to use parametric coordinates.
    */
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
   vec2 pixelPosition = vec2(floor(imageWidth * gl_TexCoord[0].x),
                             floor(imageHeight * gl_TexCoord[0].y));
 #else
@@ -190,7 +189,7 @@ void main() {
    * We can use the parametric coordinates to get the Y channel, since it's
    * a relatively normal image.
    */
-#if I915_WORKAROUND
+#if defined(I915_WORKAROUND)
   float yChannel = getYPixel(vec2(gl_TexCoord[0]));
 #else
   float yChannel = getYPixel(vec2(v1));
