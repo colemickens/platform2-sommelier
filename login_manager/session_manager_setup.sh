@@ -146,7 +146,6 @@ cat /proc/uptime > /tmp/uptime-x-started
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
             --enable-sync \
-            --enable-chat-manager \
             --log-level=0 \
             "$CHROME_LOG_FLAG" \
             --main-menu-url="http://welcome-cros.appspot.com/menu" \
