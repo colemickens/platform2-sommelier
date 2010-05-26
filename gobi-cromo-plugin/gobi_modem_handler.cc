@@ -101,6 +101,8 @@ std::vector<DEVICE_ELEMENT> GobiModemHandler::GetAvailableDevices() {
     CHECK(rc == 0);
   }
 
+  LOG(INFO) << "Found " << numDevices << " gobi modems";
+
   return std::vector<DEVICE_ELEMENT>(devices.get(), devices.get() + numDevices);
 }
 

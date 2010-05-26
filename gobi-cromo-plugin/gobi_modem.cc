@@ -11,9 +11,9 @@
 
 #include "gobi_sdk_wrapper.h"
 
-GobiModem* GobiModem::connected_modem_(NULL);
+static const size_t DEFAULT_SIZE=128;
 
-static void QueryGobi(gobi::Sdk *sdk_);
+GobiModem* GobiModem::connected_modem_(NULL);
 
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
@@ -42,15 +42,11 @@ GobiModem::GobiModem(DBus::Connection& connection,
 
   // Reviewer note:  These are just temporary calls
   Enable(true);
-  LOG(INFO) << "Enabled: ";
-
-  QueryGobi(sdk_);
+  LogGobiInformation();
 }
 
 // DBUS Methods: Modem
 void GobiModem::Enable(const bool& enable) {
-  LOG(INFO) << "Enable: " << enable;
-  LOG(INFO) << "Enabled: " << Enabled();
   if (enable && !Enabled()) {
     if (!ApiConnect()) {
       // TODO(rochberg): ERROR
@@ -62,7 +58,6 @@ void GobiModem::Enable(const bool& enable) {
     }
     Enabled = true;
   }
-
 }
 
 void GobiModem::Connect(const std::string& unused_number) {
@@ -110,7 +105,39 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config() {
 }
 
 DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
+  // (manufacturer, modem, version).
   DBus::Struct<std::string, std::string, std::string> result;
+
+  char buffer[DEFAULT_SIZE];
+  ULONG rc;
+  rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
+  if (rc != 0) {
+    // TODO(rochberg): ERROR
+    LOG(WARNING) << "GetManufacturer: " << rc;
+    return result;
+  }
+
+  result._1 = buffer;
+
+  rc = sdk_->GetModelID(sizeof(buffer), buffer);
+  if (rc != 0) {
+    // TODO(rochberg): ERROR
+    LOG(WARNING) << "GetModelID: " << rc;
+    return result;
+  }
+  result._2 = buffer;
+
+  rc = sdk_->GetFirmwareRevision(sizeof(buffer), buffer);
+  if (rc != 0) {
+    // TODO(rochberg): ERROR
+    LOG(WARNING) << "GetFirmwareRevision: " << rc;
+    return result;
+  }
+  result._3 = buffer;
+
+  LOG(INFO) << "Manufacturer: " << result._1;
+  LOG(INFO) << "Modem: " << result._2;
+  LOG(INFO) << "Version: " << result._3;
   return result;
 }
 
@@ -119,15 +146,46 @@ void GobiModem::Connect(const DBusPropertyMap& properties) {
   LOG(INFO) << "Simple.Connect";
 }
 
+
+bool GobiModem::GetSerialNumbers(SerialNumbers *out) {
+  char esn[DEFAULT_SIZE], imei[DEFAULT_SIZE], meid[DEFAULT_SIZE];
+  ULONG rc = sdk_-> GetSerialNumbers(DEFAULT_SIZE, esn,
+                                     DEFAULT_SIZE, imei,
+                                     DEFAULT_SIZE, meid);
+  if (rc != 0) {
+    LOG(WARNING) << "GSN: " << rc;
+    return false;
+  }
+  out->esn = esn;
+  out->imei = imei;
+  out->meid = meid;
+  return true;
+}
+
 DBusPropertyMap GobiModem::GetStatus() {
   DBusPropertyMap result;
 
   int32_t rssi;
 
-  // TODO(rochberg):  Much more than just rssi
+  // TODO(rochberg):  More mandatory properties expected
   if (GetSignalStrengthDbm(&rssi)) {
     result["signal_strength_dbm"].writer().append_int32(rssi);
   }
+
+  SerialNumbers serials;
+
+  if (this->GetSerialNumbers(&serials)) {
+    if (serials.esn.length()) {
+      result["esn"].writer().append_string(serials.esn.c_str());
+    }
+    if (serials.meid.length()) {
+      result["meid"].writer().append_string(serials.meid.c_str());
+    }
+    if (serials.imei.length()) {
+      result["imei"].writer().append_string(serials.imei.c_str());
+    }
+  }
+
   return result;
 }
 
@@ -136,7 +194,12 @@ DBusPropertyMap GobiModem::GetStatus() {
 std::string GobiModem::GetEsn() {
   LOG(INFO) << "GetEsn";
 
-  return "12345";
+  SerialNumbers serials;
+  if (!GetSerialNumbers(&serials)) {
+    // TODO(rochberg): ERROR
+    CHECK(0);
+  }
+  return serials.esn;
 }
 
 
@@ -178,11 +241,10 @@ bool GobiModem::ApiConnect() {
   return true;
 }
 
-static void QueryGobi(gobi::Sdk *sdk_) {
-  const int SIZE=128;
+void GobiModem::LogGobiInformation() {
   ULONG rc;
 
-  char buffer[SIZE];
+  char buffer[DEFAULT_SIZE];
   rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
   LOG(INFO) << "Manufacturer: " << buffer;
 
@@ -204,8 +266,10 @@ static void QueryGobi(gobi::Sdk *sdk_) {
             << " region: " << region
             << " gps_capability: " << gps_capability;
 
-  char amss[SIZE], boot[SIZE], pri[SIZE];
-  rc = sdk_->GetFirmwareRevisions(SIZE, amss, SIZE, boot, SIZE, pri);
+  char amss[DEFAULT_SIZE], boot[DEFAULT_SIZE], pri[DEFAULT_SIZE];
+  rc = sdk_->GetFirmwareRevisions(DEFAULT_SIZE, amss,
+                                  DEFAULT_SIZE, boot,
+                                  DEFAULT_SIZE, pri);
   CHECK(rc == 0) << rc;
 
   LOG(INFO) << "Firmware Revisions: AMSS: " << amss
@@ -216,16 +280,30 @@ static void QueryGobi(gobi::Sdk *sdk_) {
   CHECK(rc == 0) << rc;
   LOG(INFO) << "ImageStore: " << buffer;
 
-  char esn[SIZE], imei[SIZE], meid[SIZE];
-  rc = GetSerialNumbers(SIZE, esn, SIZE, imei, SIZE, meid);
-  LOG(INFO) << "ESN: " << esn;
-  LOG(INFO) << "IMEI: " << imei;
-  LOG(INFO) << "MEID: " << meid;
+  SerialNumbers serials;
+  CHECK(GetSerialNumbers(&serials));
+  LOG(INFO) << "ESN: " << serials.esn;
+  LOG(INFO) << "IMEI: " << serials.imei;
+  LOG(INFO) << "MEID: " << serials.meid;
 
-  char number[SIZE], min_array[SIZE];
-  rc = GetVoiceNumber(SIZE, number, SIZE, min_array);
+  char number[DEFAULT_SIZE], min_array[DEFAULT_SIZE];
+  rc = GetVoiceNumber(DEFAULT_SIZE, number, DEFAULT_SIZE, min_array);
   LOG(INFO) << "Voice: " << number
             << " MIN: " << min_array;
+}
+
+
+bool GobiModem::ResetToFactoryDefaults() {
+  ULONG rc;
+  // TODO(rochberg):  Some carriers require actual numbers here
+  const char code[] = "";
+  rc = sdk_->ResetToFactoryDefaults(const_cast<CHAR *>(code));
+  if (rc != 0) {
+    LOG(WARNING) << "Factory reset failed: " << rc;
+    return false;
+  }
+  ResetModem();
+  return rc == 0;
 }
 
 bool GobiModem::ResetModem() {
@@ -256,7 +334,8 @@ bool GobiModem::ResetModem() {
     return false;
   }
 
-
+  LOG(INFO) << "Waiting 4 seconds for modem to start reset";
+  sleep(4);
   // TODO(rochberg): Timeout
   // TODO(rochberg): This reconnects right away before the modem is
   // happy.  I wonder if we have to further stop the library somehow
@@ -304,12 +383,6 @@ bool GobiModem::EnsureActivated() {
   }
   pthread_mutex_unlock(&activation_mutex_);
 
-  rc = sdk_->QCWWANDisconnect();
-  Enabled = false;
-  if (rc != 0) {
-    LOG(WARNING) << "QCWWANDisconnect(): " << rc;
-    return false;
-  }
   return ResetModem();
 }
 

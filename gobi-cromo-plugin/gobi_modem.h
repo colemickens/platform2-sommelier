@@ -12,7 +12,8 @@
 
 #include <map>
 
-#include <dbus-c++/types.h>
+#include <dbus-c++/dbus.h>
+
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
@@ -76,7 +77,16 @@ class GobiModem
   bool EnsureActivated();
   bool EnsureFirmwareLoaded(const char *carrier_name);
   bool ResetModem();
-  bool GetSignalStrengthDbm(int *strength );
+  bool GetSignalStrengthDbm(int *strength);
+  bool ResetToFactoryDefaults();
+
+  struct SerialNumbers {
+    std::string esn;
+    std::string imei;
+    std::string meid;
+  };
+  bool GetSerialNumbers(SerialNumbers *out);
+  void LogGobiInformation();
 
   static void ActivationStatusTrampoline(ULONG activation_status) {
     if (connected_modem_) {
