@@ -6,18 +6,18 @@
 
 XAUTH=/usr/bin/xauth
 XAUTH_FILE="/var/run/chromelogin.auth"
-SERVER_READY=
 
-user1_handler () {
-  echo "received SIGUSR1!"
-  SERVER_READY=y
-}
-
-trap user1_handler USR1
 MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)  # speed this up?
 ${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 
-/sbin/xstart.sh ${XAUTH_FILE} &
+# The X server sends SIGUSR1 to its parent once it's ready to accept
+# connections.  Fork a subshell here to start X and wait for that
+# signal.  The subshell terminates once X is ready.
+(
+  trap 'exit 0' USR1
+  /sbin/xstart.sh ${XAUTH_FILE} &
+  wait
+) &
 
 export USER=chronos
 export DATA_DIR=/home/${USER}
@@ -135,9 +135,9 @@ fi
 rm -f /home/$USER/SingletonLock
 rm -f /home/$USER/SingletonSocket
 
-while [ -z ${SERVER_READY} ]; do
-  sleep .1
-done
+# The subshell that started the X server will terminate once X is
+# ready.  Wait here for that event before continuing.
+wait
 
 # TODO: consider moving this when we start X in a different way.
 /sbin/initctl emit x-started
