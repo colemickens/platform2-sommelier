@@ -43,7 +43,7 @@ if [ -n "$ENABLE_CHROME_LOGGING" ] ; then
   CHROME_LOG_FLAG="--enable-logging"
   mkdir -p $CHROME_OLD_LOGS
   chown $USER $CHROME_OLD_LOGS
-  if [ -e ${CHROME_LOG} ] ; then 
+  if [ -e ${CHROME_LOG} ] ; then
     LS_ARGS="-lht --time-style=+chrome.%Y%m%d-%H%M%S"
     OLD_LOG=${CHROME_OLD_LOGS}/`ls $LS_ARGS $CHROME_LOG | awk '{ print $6 }'`
     mv $CHROME_LOG $OLD_LOG
@@ -86,6 +86,9 @@ chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 
 # temporary hack to tell cryptohome that we're doing chrome-login
 touch /tmp/doing-chrome-login
+
+# Read default_proxy file from etc.  Ok if not set.
+PROXY_ARGS=--proxy-pac-url="$(cat /etc/default_proxy)"
 
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
@@ -152,4 +155,5 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --login-profile=user \
             --in-chrome-auth \
             --enable-login-images \
-            "${SKIP_OOBE}"
+            "${SKIP_OOBE}" \
+            "${PROXY_ARGS}"
