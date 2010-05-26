@@ -13,6 +13,10 @@ using base::TimeTicks;
 
 namespace power_manager {
 
+const char Daemon::kMetricBacklightLevelName[] =
+    "Power.BacklightLevel";  // %
+const int Daemon::kMetricBacklightLevelMax = 100;
+const time_t Daemon::kMetricBacklightLevelInterval = 30000;  // ms
 const char Daemon::kMetricBatteryDischargeRateName[] =
     "Power.BatteryDischargeRate";  // mW
 const int Daemon::kMetricBatteryDischargeRateMin = 1000;
@@ -51,6 +55,11 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
   return now < last || now - last >= interval;
 }
 
+void Daemon::MetricInit() {
+  g_timeout_add(kMetricBacklightLevelInterval,
+                &Daemon::GenerateBacklightLevelMetric, this);
+}
+
 void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
   if (is_idle) {
     last_idle_event_timestamp_ = TimeTicks::Now();
@@ -83,6 +92,17 @@ void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
   GenerateBatteryDischargeRateMetric(info, now);
   GenerateBatteryRemainingChargeMetric(info, now);
   GenerateBatteryTimeToEmptyMetric(info, now);
+}
+
+gboolean Daemon::GenerateBacklightLevelMetric(gpointer data) {
+  Daemon* self = static_cast<Daemon*>(data);
+  if (self->idle_state_ == Daemon::kIdleNormal) {
+    int64 level;
+    self->ctl_->GetBrightness(&level);
+    self->SendEnumMetricWithPowerState(kMetricBacklightLevelName, level,
+        kMetricBacklightLevelMax);
+  }
+  return true;
 }
 
 bool Daemon::GenerateBatteryDischargeRateMetric(
@@ -181,6 +201,19 @@ bool Daemon::SendMetricWithPowerState(const std::string& name, int sample,
     return false;
   }
   return SendMetric(name_with_power_state, sample, min, max, nbuckets);
+}
+
+bool Daemon::SendEnumMetricWithPowerState(const std::string& name, int sample,
+                                          int max) {
+  std::string name_with_power_state = name;
+  if (plugged_state_ == kPowerDisconnected) {
+    name_with_power_state += "OnBattery";
+  } else if (plugged_state_ == kPowerConnected) {
+    name_with_power_state += "OnAC";
+  } else {
+    return false;
+  }
+  return SendEnumMetric(name_with_power_state, sample, max);
 }
 
 }  // namespace power_manager

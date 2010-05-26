@@ -31,6 +31,7 @@ class Daemon : public XIdleMonitor {
 
  private:
   friend class DaemonTest;
+  FRIEND_TEST(DaemonTest, GenerateBacklightLevelMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected);
@@ -52,6 +53,9 @@ class Daemon : public XIdleMonitor {
                    kIdleSuspend };
 
   // UMA metrics parameters.
+  static const char kMetricBacklightLevelName[];
+  static const int kMetricBacklightLevelMax;
+  static const time_t kMetricBacklightLevelInterval;
   static const char kMetricBatteryDischargeRateName[];
   static const int kMetricBatteryDischargeRateMin;
   static const int kMetricBatteryDischargeRateMax;
@@ -84,6 +88,9 @@ class Daemon : public XIdleMonitor {
   // Initialize dbus connections
   void DbusInit();
 
+  // Initialize metrics
+  void MetricInit();
+
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
   // Generates UMA metrics on every idle event.
@@ -92,6 +99,10 @@ class Daemon : public XIdleMonitor {
   // Generates UMA metrics on every power event based on the current
   // power status.
   void GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info);
+
+  // Generates UMA metrics about the current backlight level.
+  // Always returns true.
+  static gboolean GenerateBacklightLevelMetric(gpointer data);
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
@@ -129,6 +140,12 @@ class Daemon : public XIdleMonitor {
   bool SendMetricWithPowerState(const std::string& name, int sample,
                                 int min, int max, int nbuckets);
 
+  // Sends an enumeration (linear) histogram sample to Chrome for
+  // transport to UMA. Appends the current power state to the name of the
+  // metric. Returns true on success. See MetricsLibrary::SendEnumToUMA in
+  // metrics/metrics_library.h for a description of the arguments.
+  bool SendEnumMetricWithPowerState(const std::string& name, int sample,
+                                    int max);
 
   BacklightController* ctl_;
   PowerPrefs* prefs_;

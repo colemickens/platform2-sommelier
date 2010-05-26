@@ -426,4 +426,26 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   g_main_loop_run(loop);
 }
 
+TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
+  daemon_.idle_state_ = Daemon::kIdleDim;
+  daemon_.GenerateBacklightLevelMetric(&daemon_);
+  daemon_.idle_state_ = Daemon::kIdleNormal;
+  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                      SetArgumentPointee<1>(kMaxBrightness),
+                      Return(true)));
+  ExpectEnumMetric("Power.BacklightLevelOnBattery",
+                   kDefaultBrightness, kMaxBrightness);
+  daemon_.GenerateBacklightLevelMetric(&daemon_);
+  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                      SetArgumentPointee<1>(kMaxBrightness),
+                      Return(true)));
+  ExpectEnumMetric("Power.BacklightLevelOnAC",
+                   kDefaultBrightness, kMaxBrightness);
+  daemon_.GenerateBacklightLevelMetric(&daemon_);
+}
+
 }  // namespace power_manager

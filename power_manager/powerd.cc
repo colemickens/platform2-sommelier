@@ -98,6 +98,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
 void Daemon::Init() {
   TimerInit();
   DbusInit();
+  MetricInit();
   if (!DPMSCapable(GDK_DISPLAY())) {
     LOG(WARNING) << "X Server not DPMS capable";
   } else {
@@ -174,8 +175,8 @@ void Daemon::SetPlugged(bool plugged) {
     // Sync up idle state with new settings
     int64 idle_time_ms;
     CHECK(idle_.GetIdleTime(&idle_time_ms));
-    OnIdleEvent(idle_time_ms >= dim_ms_ || idle_time_ms >= kMetricIdleMin,
-                idle_time_ms);
+    OnIdleEvent(idle_time_ms >= dim_ms_ || idle_time_ms >= kMetricIdleMin ||
+                idle_state_ == kIdleUnknown, idle_time_ms);
   }
 }
 
