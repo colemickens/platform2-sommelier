@@ -28,6 +28,8 @@ export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 export GTK_IM_MODULE=ibus
+# By default, libdbus treats all warnings as fatal errors. That's too strict.
+export DBUS_FATAL_WARNINGS=0
 
 # Uncomment this to turn on chrome logs.
 # They will be be output to /home/chrome/chrome_log
