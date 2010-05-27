@@ -16,6 +16,9 @@ extern const char *kCryptohomeServicePath;
 extern const char *kCryptohomeServiceName;
 // Methods
 extern const char *kCryptohomeCheckKey;
+extern const char *kCryptohomeMigrateKey;
+extern const char *kCryptohomeRemove;
+extern const char *kCryptohomeGetSystemSalt;
 extern const char *kCryptohomeIsMounted;
 extern const char *kCryptohomeMount;
 extern const char *kCryptohomeUnmount;

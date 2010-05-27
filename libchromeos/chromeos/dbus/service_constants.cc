@@ -14,6 +14,9 @@ const char *kCryptohomeServiceName = "org.chromium.Cryptohome";
 const char *kCryptohomeServicePath = "/org/chromium/Cryptohome";
 // Methods
 const char *kCryptohomeCheckKey = "CheckKey";
+const char *kCryptohomeMigrateKey = "MigrateKey";
+const char *kCryptohomeRemove = "Remove";
+const char *kCryptohomeGetSystemSalt = "GetSystemSalt";
 const char *kCryptohomeIsMounted = "IsMounted";
 const char *kCryptohomeMount = "Mount";
 const char *kCryptohomeUnmount = "Unmount";
