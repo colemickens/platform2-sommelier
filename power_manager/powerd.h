@@ -82,14 +82,21 @@ class Daemon : public XIdleMonitor {
   static const int kMetricIdleAfterScreenOffMax;
   static const int kMetricIdleAfterScreenOffBuckets;
 
-  // Initialize timers
-  void TimerInit();
+  // Read settings from disk
+  void ReadSettings();
 
   // Initialize dbus connections
   void DbusInit();
 
   // Initialize metrics
   void MetricInit();
+
+  // Update our idle state based on the provided |idle_time_ms|
+  void SetIdleState(int64 idle_time_ms);
+
+  // Setup idle timers, adding the provided offset to all timeouts
+  // except the locking timeout.
+  void SetIdleOffset(int64 offset_ms);
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
@@ -161,6 +168,7 @@ class Daemon : public XIdleMonitor {
   int64 off_ms_;
   int64 suspend_ms_;
   int64 lock_ms_;
+  int64 offset_ms_;
   PluggedState plugged_state_;
   IdleState idle_state_;
 

@@ -35,7 +35,7 @@ static const int64 kPluggedSuspend = 3 * kBigInterval;
 static const int64 kUnpluggedDim = kPluggedDim;
 static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
-static const int64 kLockMs = kPluggedSuspend;
+static const int64 kLockMs = 60 * 10 * 1000;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -408,14 +408,14 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
 
   ASSERT_TRUE(gdk_init_check(NULL, NULL));
   FakeMotionEvent(GDK_DISPLAY());
-  prefs_.WriteSetting("plugged_dim_ms", kPluggedDim);
-  prefs_.WriteSetting("plugged_off_ms", kPluggedOff);
-  prefs_.WriteSetting("plugged_suspend_ms", kPluggedSuspend);
-  prefs_.WriteSetting("unplugged_dim_ms", kUnpluggedDim);
-  prefs_.WriteSetting("unplugged_off_ms", kUnpluggedOff);
-  prefs_.WriteSetting("unplugged_suspend_ms", kUnpluggedSuspend);
-  prefs_.WriteSetting("lock_ms", kLockMs);
-  daemon_.TimerInit();
+  daemon_.plugged_dim_ms_ = kPluggedDim;
+  daemon_.plugged_off_ms_ = kPluggedOff;
+  daemon_.plugged_suspend_ms_ = kPluggedSuspend;
+  daemon_.unplugged_dim_ms_ = kUnpluggedDim;
+  daemon_.unplugged_off_ms_ = kUnpluggedOff;
+  daemon_.unplugged_suspend_ms_ = kUnpluggedSuspend;
+  daemon_.lock_ms_ = kLockMs;
+  daemon_.idle_.Init(&daemon_);
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());

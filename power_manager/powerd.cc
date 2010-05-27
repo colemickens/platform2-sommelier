@@ -8,14 +8,23 @@
 #include <gdk/gdkx.h>
 #include <X11/extensions/dpms.h>
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 
+using std::max;
+using std::min;
+
 namespace power_manager {
 
+// The minimum delta between timers to avoid timer precision issues
 static const int64 kFuzzMS = 100;
+
+// The minimum delta between timers when we want to give a user time to react
+static const int64 kReactMS = 30000;
 
 // Lock the screen
 static void SendSignalToSessionManager(const char *signal) {
@@ -96,7 +105,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       battery_time_to_empty_metric_last_(0) {}
 
 void Daemon::Init() {
-  TimerInit();
+  ReadSettings();
   DbusInit();
   MetricInit();
   if (!DPMSCapable(GDK_DISPLAY())) {
@@ -107,7 +116,7 @@ void Daemon::Init() {
   }
 }
 
-void Daemon::TimerInit() {
+void Daemon::ReadSettings() {
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -118,23 +127,14 @@ void Daemon::TimerInit() {
 
   // Check that timeouts are sane
   CHECK(kMetricIdleMin >= kFuzzMS);
-  CHECK(plugged_dim_ms_ >= kFuzzMS);
-  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + kFuzzMS);
-  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + kFuzzMS);
-  CHECK(unplugged_dim_ms_ >= kFuzzMS);
-  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kFuzzMS);
-  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kFuzzMS);
-  CHECK(lock_ms_ >= unplugged_off_ms_ + kFuzzMS);
-  CHECK(lock_ms_ >= plugged_off_ms_ + kFuzzMS);
-
-  // If lock_ms_ and suspend_ms_ are close (but not equal), then we run into
-  // timer precision problems, so we exclude that case via a CHECK.
-  CHECK(lock_ms_ == unplugged_suspend_ms_ ||
-        lock_ms_ + kFuzzMS <= unplugged_suspend_ms_ ||
-        unplugged_suspend_ms_ + kFuzzMS <= lock_ms_);
-  CHECK(lock_ms_ == plugged_suspend_ms_ ||
-        lock_ms_ + kFuzzMS <= plugged_suspend_ms_ ||
-        plugged_suspend_ms_ + kFuzzMS <= lock_ms_);
+  CHECK(plugged_dim_ms_ >= kReactMS);
+  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + kReactMS);
+  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + kReactMS);
+  CHECK(unplugged_dim_ms_ >= kReactMS);
+  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kReactMS);
+  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kReactMS);
+  CHECK(lock_ms_ >= unplugged_off_ms_ + kReactMS);
+  CHECK(lock_ms_ >= plugged_off_ms_ + kReactMS);
 
   CHECK(idle_.Init(this));
 }
@@ -151,38 +151,66 @@ void Daemon::Run() {
 
 void Daemon::SetPlugged(bool plugged) {
   if (plugged != plugged_state_) {
-    if (plugged) {
-      plugged_state_ = kPowerConnected;
-      dim_ms_ = plugged_dim_ms_;
-      off_ms_ = plugged_off_ms_;
-      suspend_ms_ = plugged_suspend_ms_;
-    } else {
-      plugged_state_ = kPowerDisconnected;
-      dim_ms_ = unplugged_dim_ms_;
-      off_ms_ = unplugged_off_ms_;
-      suspend_ms_ = unplugged_suspend_ms_;
-    }
-    CHECK(idle_.ClearTimeouts());
-    if (kMetricIdleMin + kFuzzMS <= dim_ms_)
-      CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
-    CHECK(idle_.AddIdleTimeout(dim_ms_));
-    CHECK(idle_.AddIdleTimeout(off_ms_));
-    if (lock_ms_ != suspend_ms_)
-      CHECK(idle_.AddIdleTimeout(lock_ms_));
-    CHECK(idle_.AddIdleTimeout(suspend_ms_));
-    ctl_->OnPlugEvent(plugged);
-
-    // Sync up idle state with new settings
+    plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
     int64 idle_time_ms;
     CHECK(idle_.GetIdleTime(&idle_time_ms));
-    OnIdleEvent(idle_time_ms >= dim_ms_ || idle_time_ms >= kMetricIdleMin ||
-                idle_state_ == kIdleUnknown, idle_time_ms);
+    // If the screen is on, and the user plugged or unplugged the computer,
+    // we should wait a bit before turning off the screen.
+    if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
+      SetIdleOffset(idle_time_ms);
+    else
+      SetIdleOffset(0);
+
+    ctl_->OnPlugEvent(plugged);
+    SetIdleState(idle_time_ms);
+  }
+}
+
+void Daemon::SetIdleOffset(int64 offset_ms) {
+  LOG(INFO) << "offset_ms_ = " << offset_ms;
+  offset_ms_ = offset_ms;
+  if (plugged_state_ == kPowerConnected) {
+    dim_ms_ = plugged_dim_ms_ + offset_ms;
+    off_ms_ = plugged_off_ms_ + offset_ms;
+    suspend_ms_ = plugged_suspend_ms_ + offset_ms;
+  } else {
+    CHECK(plugged_state_ == kPowerDisconnected);
+    dim_ms_ = unplugged_dim_ms_ + offset_ms;
+    off_ms_ = unplugged_off_ms_ + offset_ms;
+    suspend_ms_ = unplugged_suspend_ms_ + offset_ms;
+  }
+
+  // Make sure that the screen turns off before it locks, and dims before
+  // it turns off. This ensures the user gets a warning before we lock the
+  // screen.
+  off_ms_ = min(off_ms_, lock_ms_ - kReactMS);
+  dim_ms_ = min(dim_ms_, lock_ms_ - 2 * kReactMS);
+
+  // Sync up idle state with new settings
+  CHECK(idle_.ClearTimeouts());
+  if (offset_ms > kFuzzMS)
+    CHECK(idle_.AddIdleTimeout(kFuzzMS));
+  if (kMetricIdleMin + kFuzzMS <= dim_ms_)
+    CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
+  CHECK(idle_.AddIdleTimeout(dim_ms_));
+  CHECK(idle_.AddIdleTimeout(off_ms_));
+  if (lock_ms_ + kFuzzMS < suspend_ms_ || lock_ms_ > suspend_ms_ + kFuzzMS) {
+    CHECK(idle_.AddIdleTimeout(lock_ms_));
+    CHECK(idle_.AddIdleTimeout(suspend_ms_));
+  } else {
+    CHECK(idle_.AddIdleTimeout(max(lock_ms_, suspend_ms_)));
   }
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
+  SetIdleState(idle_time_ms);
+  if (!is_idle && offset_ms_ != 0)
+    SetIdleOffset(0);
+}
+
+void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
     LOG(INFO) << "TODO: Suspend computer";
