@@ -510,3 +510,26 @@ dont_run_as_root() {
     exit 1
   fi
 }
+
+list_usb_disks() {
+  local sd
+  for sd in /sys/block/sd*; do
+    if readlink ${sd}/device | grep -q usb &&
+      [ "$(cat ${sd}/removable)" = 1 ]; then
+      echo ${sd##*/}
+    fi
+  done
+}
+
+get_disk_info() {
+  # look for a "given" file somewhere in the path upwards from the device
+  local dev_path=/sys/block/${1}/device
+  while [ -d "${dev_path}" -a "${dev_path}" != "/sys" ]; do
+    if [ -f "${dev_path}/${2}" ]; then
+      cat "${dev_path}/${2}"
+      return
+    fi
+    dev_path=$(readlink -f ${dev_path}/..)
+  done
+  echo '[Unknown]'
+}
