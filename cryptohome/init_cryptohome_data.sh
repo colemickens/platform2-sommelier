@@ -20,7 +20,6 @@ function dmsetup { exit 255; }
 CH_LIB="./lib"
 source "$CH_LIB/common"
 source "$CH_LIB/utils/declare_commands"
-source "$CH_LIB/cryptohome"
 
 utils::declare_commands sha256sum
 
@@ -90,26 +89,61 @@ USERID=$($cat "$SYSTEM_SALT_FILE" <($echo -n $USERNAME) \
 $info "USERNAME: $USERNAME"
 $info "USERID: $USERID"
 
+$mkdir -p "$IMAGE_DIR/skel/sub_path"
+echo -n "testfile" > "$IMAGE_DIR/skel/sub_path/.testfile"
+
 $mkdir -p "$IMAGE_DIR/$USERID"
 
 $info "Creating master keys..."
 INDEX=0
 for PASSWORD in $PASSWORDS; do
-  HASHED_PASSWORD=$(cat <($echo -n $($xxd -p "$SYSTEM_SALT_FILE")) \
-    <($echo -n "$PASSWORD") | $sha256sum | $head -c 32)
-
   $info "PASSWORD: $PASSWORD"
-  $info "HASHED_PASSWORD: $HASHED_PASSWORD"
 
-  MASTER_KEY=$(cryptohome::create_master_key "$HASHED_PASSWORD" "$USERID" \
-    "$IMAGE_DIR/$USERID/master.$INDEX")
+  ASCII_SALT=$(cat "$SYSTEM_SALT_FILE" | xxd -p)
+
+  echo -n "${ASCII_SALT}${PASSWORD}" | sha256sum | head -c 32 \
+    > "$IMAGE_DIR/$USERID/pwhash.$INDEX"
+
+  READABLE=$(cat "$IMAGE_DIR/$USERID/pwhash.$INDEX")
+  $info "HASHED_PASSWORD: $READABLE"
+
+  openssl rand -rand /dev/urandom \
+    -out "$IMAGE_DIR/$USERID/master.$INDEX.salt" 16
+
+  READABLE=$(cat "$IMAGE_DIR/$USERID/master.$INDEX.salt" |xxd -p)
+  $info "SALT: $READABLE"
+
+  cat "$IMAGE_DIR/$USERID/pwhash.$INDEX" \
+    | cat "$IMAGE_DIR/$USERID/master.$INDEX.salt" - \
+    | openssl sha1 > "$IMAGE_DIR/$USERID/pwwrapper.$INDEX"
+
+  READABLE=$(cat "$IMAGE_DIR/$USERID/pwwrapper.$INDEX")
+  $info "WRAPPER: $READABLE"
+
+  openssl rand -rand /dev/urandom \
+    -out "$IMAGE_DIR/$USERID/rawkey.$INDEX" 160
+
+  echo -n -e 'ch\0001\0001' | cat "$IMAGE_DIR/$USERID/rawkey.$INDEX" - \
+    > "$IMAGE_DIR/$USERID/keyvault.$INDEX"
+
+  cat "$IMAGE_DIR/$USERID/pwwrapper.$INDEX" | openssl aes-256-ecb \
+    -p \
+    -in "$IMAGE_DIR/$USERID/keyvault.$INDEX" \
+    -out "$IMAGE_DIR/$USERID/master.$INDEX" \
+    -pass fd:0 -md sha1 -e
+
+  rm -f "$IMAGE_DIR/$USERID/pwhash.$INDEX"
+  rm -f "$IMAGE_DIR/$USERID/pwwrapper.$INDEX"
+  rm -f "$IMAGE_DIR/$USERID/rawkey.$INDEX"
+  rm -f "$IMAGE_DIR/$USERID/keyvault.$INDEX"
 
   EXIT=$?
   if [ $EXIT != 0 ]; then
     exit $EXIT
   fi
 
-  $info "MASTER_KEY: $MASTER_KEY"
+  READABLE=$(cat "$IMAGE_DIR/$USERID/master.$INDEX" |xxd -p)
+  $info "MASTER_KEY: $READABLE"
 
   INDEX=$(($INDEX + 1))
 done

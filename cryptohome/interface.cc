@@ -54,10 +54,29 @@ gboolean cryptohome_check_key(Cryptohome *self,
                               GError **error) {
   CRYPTOHOME_WRAP_METHOD(CheckKey, userid, key, OUT_success);
 }
-gboolean cryptohome_is_mounted(Cryptohome *self,
-                               gboolean *out_is_mounted,
+gboolean cryptohome_migrate_key(Cryptohome *self,
+                                gchar *userid,
+                                gchar *from_key,
+                                gchar *to_key,
+                                gboolean *OUT_success,
+                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(MigrateKey, userid, from_key, to_key, OUT_success);
+}
+gboolean cryptohome_remove(Cryptohome *self,
+                           gchar *userid,
+                           gboolean *OUT_success,
+                           GError **error) {
+  CRYPTOHOME_WRAP_METHOD(Remove, userid, OUT_success);
+}
+gboolean cryptohome_get_system_salt(Cryptohome *self,
+                               GArray **OUT_salt,
                                GError **error) {
-  CRYPTOHOME_WRAP_METHOD(IsMounted, out_is_mounted);
+  CRYPTOHOME_WRAP_METHOD(GetSystemSalt, OUT_salt);
+}
+gboolean cryptohome_is_mounted(Cryptohome *self,
+                               gboolean *OUT_is_mounted,
+                               GError **error) {
+  CRYPTOHOME_WRAP_METHOD(IsMounted, OUT_is_mounted);
 }
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
@@ -67,9 +86,9 @@ gboolean cryptohome_mount(Cryptohome *self,
   CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_done);
 }
 gboolean cryptohome_unmount(Cryptohome *self,
-                            gboolean *out_done,
+                            gboolean *OUT_done,
                             GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Unmount, out_done);
+  CRYPTOHOME_WRAP_METHOD(Unmount, OUT_done);
 }
 #undef CRYPTOHOME_WRAP_METHOD
 

@@ -8,7 +8,7 @@
 #ifndef CRYPTOHOME_CREDENTIALS_H_
 #define CRYPTOHOME_CREDENTIALS_H_
 
-#include "chromeos/utility.h"
+#include "cryptohome/secure_blob.h"
 
 namespace cryptohome {
 
@@ -25,6 +25,9 @@ class Credentials {
   //
   virtual void GetFullUsername(char *name_buffer, int length) const = 0;
 
+  // Returns the full user name as a std::string
+  virtual std::string GetFullUsername() const = 0;
+
   // Returns the part of the username before the '@'
   //
   // Parameters
@@ -39,22 +42,12 @@ class Credentials {
   virtual std::string GetObfuscatedUsername(
       const chromeos::Blob &system_salt) const = 0;
 
-  // Returns a "weak hash" of the user's password.  Requires the system
-  // salt to compute.
-  //
-  // This hashes using the same algorithm that pam/pam_google/pam_mount use to
-  // get the user's plaintext password passed on to the login session.  The
-  // two hashing algorithms must be kept in sync, as the hash is used to derive
-  // a passphrase for the master key.
-  //
-  // Parameters
-  //  system_salt - A blob containing the current system salt value.
+  // Returns a the user's passkey
   //
   // Returns
-  //  A std::string containing the weak hash encoded as a hex sequence in ASCII.
+  //  A SecureBlob containing the passkey
   //
-  virtual std::string GetPasswordWeakHash(
-      const chromeos::Blob &system_salt) const = 0;
+  virtual SecureBlob GetPasskey() const = 0;
 };
 
 }  // namespace cryptohome

@@ -21,12 +21,6 @@
 
 
 namespace switches {
-// Specifies the mount command to call
-static const char *kMountSwitch = "mount";
-// Specifies the unmount command to call
-static const char *kUnmountSwitch = "unmount";
-// Specifies the is_mounted command to call
-static const char *kIsMountedSwitch = "is_mounted";
 // Keeps std* open for debugging
 static const char *kNoCloseOnDaemonize = "noclose";
 }  // namespace switches
@@ -46,21 +40,6 @@ int main(int argc, char **argv) {
   CommandLine *cl = CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
-
-  std::string mount_command = cl->GetSwitchValueASCII(switches::kMountSwitch);
-  if (!mount_command.empty()) {
-    service.set_mount_command(mount_command.c_str());
-  }
-  std::string unmount_command =
-    cl->GetSwitchValueASCII(switches::kUnmountSwitch);
-  if (!unmount_command.empty()) {
-    service.set_unmount_command(unmount_command.c_str());
-  }
-  std::string is_mounted_command =
-    cl->GetSwitchValueASCII(switches::kIsMountedSwitch);
-  if (!is_mounted_command.empty()) {
-    service.set_is_mounted_command(is_mounted_command.c_str());
-  }
 
   LOG_IF(FATAL, !service.Register(chromeos::dbus::GetSystemBusConnection()))
     << "Failed";

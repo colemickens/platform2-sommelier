@@ -8,9 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cryptohome/authenticator.h"
 #include "cryptohome/interface.h"
-#include "cryptohome/username_passhash.h"
+#include "cryptohome/mount.h"
+#include "cryptohome/secure_blob.h"
+#include "cryptohome/username_passkey.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -22,25 +23,25 @@ namespace gobject {  // NOLINT
 
 namespace cryptohome {
 
-const char *Service::kDefaultMountCommand = "/usr/sbin/mount.cryptohome";
-const char *Service::kDefaultUnmountCommand = "/usr/sbin/umount.cryptohome";
-const char *Service::kDefaultIsMountedCommand =
-  "/bin/mount | /bin/grep -q ' /home/chronos/user '";
-
 Service::Service() : loop_(NULL),
-                     auth_(new Authenticator),
                      cryptohome_(NULL),
-                     mount_command_(kDefaultMountCommand),
-                     unmount_command_(kDefaultUnmountCommand),
-                     is_mounted_command_(kDefaultIsMountedCommand) { }
+                     system_salt_(),
+                     mount_(NULL) { }
+
 Service::~Service() {
   if (loop_)
     g_main_loop_unref(loop_);
   if (cryptohome_)
     g_object_unref(cryptohome_);
+  if (mount_)
+    delete mount_;
 }
 
 bool Service::Initialize() {
+  if(mount_ == NULL) {
+    mount_ = new cryptohome::Mount();
+    mount_->Init();
+  }
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
                                   &gobject::dbus_glib_cryptohome_object_info);
@@ -70,18 +71,48 @@ gboolean Service::CheckKey(gchar *userid,
                            gchar *key,
                            gboolean *OUT_success,
                            GError **error) {
-  UsernamePasshash creds(userid, strlen(userid), key, strlen(key));
-  if (!auth_->Init()) {
-    *OUT_success = FALSE;
-    return TRUE;
+  UsernamePasskey credentials(userid, strlen(userid),
+                              chromeos::Blob(key, key + strlen(key)));
+
+  // TODO(fes): Handle CHROMEOS_PAM_LOCALACCOUNT
+  *OUT_success = mount_->TestCredentials(credentials);
+  return TRUE;
+}
+
+gboolean Service::MigrateKey(gchar *userid,
+                             gchar *from_key,
+                             gchar *to_key,
+                             gboolean *OUT_success,
+                             GError **error) {
+  UsernamePasskey credentials(userid, strlen(userid),
+                              chromeos::Blob(to_key, to_key + strlen(to_key)));
+
+  *OUT_success = mount_->MigratePasskey(credentials, from_key);
+  return TRUE;
+}
+
+gboolean Service::Remove(gchar *userid,
+                         gboolean *OUT_success,
+                         GError **error) {
+  UsernamePasskey credentials(userid, strlen(userid),
+                              chromeos::Blob());
+
+  *OUT_success = mount_->RemoveCryptohome(credentials);
+  return TRUE;
+}
+
+gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
+  if(system_salt_.size() == 0) {
+    system_salt_ = mount_->GetSystemSalt();
   }
-  *OUT_success = auth_->TestAllMasterKeys(creds);
+  *OUT_salt = g_array_new(false, false, 1);
+  g_array_append_vals(*OUT_salt, &system_salt_.front(), system_salt_.size());
+
   return TRUE;
 }
 
 gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
-  int status = system(is_mounted_command());
-  *OUT_is_mounted = !status;
+  *OUT_is_mounted = mount_->IsCryptohomeMounted();
   return TRUE;
 }
 
@@ -89,42 +120,44 @@ gboolean Service::Mount(gchar *userid,
                         gchar *key,
                         gboolean *OUT_done,
                         GError **error) {
-  // Never double mount.
-  // This will mean we don't mount over existing mounts,
-  // but at present, we reboot on user change so it is ok.
-  // Later, this can be more intelligent.
-  if (IsMounted(OUT_done, error) && *OUT_done) {
-    *OUT_done = FALSE;
-    return TRUE;
+  UsernamePasskey credentials(userid, strlen(userid),
+                              chromeos::Blob(key, key + strlen(key)));
+
+  if(mount_->IsCryptohomeMounted()) {
+    if(mount_->IsCryptohomeMountedForUser(credentials)) {
+      LOG(INFO) << "Cryptohome already mounted for this user";
+      *OUT_done = TRUE;
+      return TRUE;
+    } else {
+      if(!mount_->UnmountCryptohome()) {
+        LOG(ERROR) << "Could not unmount cryptohome from previous user";
+        *OUT_done = FALSE;
+        return TRUE;
+      }
+    }
   }
-  // Note, by doing this we allow any chronos caller to
-  // send a variable for use in the scripts. Bad idea.
-  // Thankfully, this will go away with the scripts.
-  setenv("CHROMEOS_USER", userid, 1);
-  FILE *mount = popen(mount_command(), "w");
-  if (!mount) {
-    // TODO(wad) *error =
-    return FALSE;
-  }
-  fprintf(mount, "%s", key);
-  int status = pclose(mount);
-  if (status != 0) {
-    *OUT_done = FALSE;
-  } else {
-    *OUT_done = TRUE;
+
+  // TODO(fes): Iterate keys if we change how cryptohome keeps track of key
+  // indexes.  Right now, 0 is always the current, and 0+n should only be used
+  // temporarily during password migration.
+  Mount::MountError mount_error = Mount::MOUNT_ERROR_NONE;
+  *OUT_done = mount_->MountCryptohome(credentials, 0, &mount_error);
+  if(!(*OUT_done) && (mount_error == Mount::MOUNT_ERROR_KEY_FAILURE)) {
+    // If there is a key failure, create cryptohome from scratch.
+    // TODO(fes): remove this when Chrome is no longer expecting this behavior.
+    if(mount_->RemoveCryptohome(credentials)) {
+      *OUT_done = mount_->MountCryptohome(credentials, 0, &mount_error);
+    }
   }
   return TRUE;
 }
 
 gboolean Service::Unmount(gboolean *OUT_done, GError **error) {
-  // Check for a mount first.
-  if (IsMounted(OUT_done, error) && !*OUT_done) {
-    *OUT_done = TRUE;  // unmounting nothing works fine.
-    return TRUE;
+  if(mount_->IsCryptohomeMounted()) {
+    *OUT_done = mount_->UnmountCryptohome();
+  } else {
+    *OUT_done = true;
   }
-
-  int status = system(unmount_command());
-  *OUT_done = !status;
   return TRUE;
 }
 

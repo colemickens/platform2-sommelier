@@ -13,7 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 
-#include "cryptohome/authenticator.h"
+#include "cryptohome/mount.h"
 
 namespace cryptohome {
 namespace gobject {
@@ -50,22 +50,8 @@ class Service : public chromeos::dbus::AbstractDbusService {
   virtual GObject* service_object() const {
     return G_OBJECT(cryptohome_);
   }
-  // Command-related accesors
-  virtual const char *mount_command() const
-    { return mount_command_; }
-  virtual void set_mount_command(const char *cmd) { mount_command_ = cmd; }
-  virtual const char *unmount_command() const
-    { return unmount_command_; }
-  virtual void set_unmount_command(const char *cmd) { unmount_command_ = cmd; }
-  virtual const char *is_mounted_command() const
-    { return is_mounted_command_; }
-  virtual void set_is_mounted_command(const char *cmd)
-    { is_mounted_command_ = cmd; }
-  virtual void set_authenticator(Authenticator *auth) { auth_.reset(auth); }
-
-  static const char *kDefaultMountCommand;
-  static const char *kDefaultUnmountCommand;
-  static const char *kDefaultIsMountedCommand;
+  virtual void set_mount(Mount* mount)
+    { mount_ = mount; }
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
@@ -73,6 +59,15 @@ class Service : public chromeos::dbus::AbstractDbusService {
                             gchar *key,
                             gboolean *OUT_success,
                             GError **error);
+  virtual gboolean MigrateKey(gchar *user,
+                              gchar *from_key,
+                              gchar *to_key,
+                              gboolean *OUT_success,
+                              GError **error);
+  virtual gboolean Remove(gchar *user,
+                          gboolean *OUT_success,
+                          GError **error);
+  virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,
@@ -85,12 +80,10 @@ class Service : public chromeos::dbus::AbstractDbusService {
 
  private:
   GMainLoop *loop_;
-  scoped_ptr<Authenticator> auth_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome *cryptohome_;
-  const char *mount_command_;
-  const char *unmount_command_;
-  const char *is_mounted_command_;
+  chromeos::Blob system_salt_;
+  cryptohome::Mount* mount_;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

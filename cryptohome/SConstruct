@@ -13,17 +13,21 @@ dbus_client_builder = Builder(action = 'dbus-binding-tool --mode=glib-client --p
 env.Append(BUILDERS = { 'DbusServerBindings' : dbus_server_builder,
                         'DbusClientBindings' : dbus_client_builder})
 # setup sources
-serverlib_sources = env.Split("""authenticator.cc
-                                 interface.cc
-				 service.cc
-				 username_passhash.cc
+serverlib_sources = env.Split("""interface.cc
+                                 mount.cc
+                                 secure_blob.cc
+                                 service.cc
+                                 username_passkey.cc
+                                 vault_keyset.cc
                               """)
 server_sources = env.Split("""cryptohomed.cc""")
-example_sources = env.Split("""example_client.cc
+client_sources = env.Split("""cryptohome.cc
+                              secure_blob.cc
+                              username_passkey.cc
                             """)
-test_sources = env.Split("""authenticator_unittest.cc
-	                    service_unittest.cc
-			    username_passhash_unittest.cc
+test_sources = env.Split("""service_unittest.cc
+                            mount_unittest.cc
+                            username_passkey_unittest.cc
                             cryptohome_testrunner.cc
                          """)
 
@@ -33,7 +37,7 @@ env.Append(
     CPPPATH=['.', '..'],
     CPPFLAGS=['-pie', '-fstack-protector-all',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
-    LIBS = ['base', 'chromeos', 'rt', 'crypto'],
+    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'keyutils'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)
@@ -63,4 +67,4 @@ env_tests.Program('cryptohome_testrunner', test_sources)
 
 env_client = env.Clone()
 env_client.DbusClientBindings('bindings/client.h', 'cryptohome.xml')
-env_client.Program('example_client', example_sources)
+env_client.Program('cryptohome', client_sources)

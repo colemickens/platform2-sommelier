@@ -36,8 +36,21 @@ gboolean cryptohome_check_key(Cryptohome *self,
                               gchar *key,
                               gboolean *OUT_success,
                               GError **error);
+gboolean cryptohome_migrate_key(Cryptohome *self,
+                                gchar *userid,
+                                gchar *from_key,
+                                gchar *to_key,
+                                gboolean *OUT_success,
+                                GError **error);
+gboolean cryptohome_remove(Cryptohome *self,
+                           gchar *userid,
+                           gboolean *OUT_success,
+                           GError **error);
+gboolean cryptohome_get_system_salt(Cryptohome *self,
+                                    GArray **OUT_salt,
+                                    GError **error);
 gboolean cryptohome_is_mounted(Cryptohome *self,
-                               gboolean *out_is_mounted,
+                               gboolean *OUT_is_mounted,
                                GError **error);
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
@@ -45,7 +58,7 @@ gboolean cryptohome_mount(Cryptohome *self,
                           gboolean *OUT_done,
                           GError **error);
 gboolean cryptohome_unmount(Cryptohome *self,
-                            gboolean *out_done,
+                            gboolean *OUT_done,
                             GError **error);
 }  // namespace gobject
 }  // namespace cryptohome
