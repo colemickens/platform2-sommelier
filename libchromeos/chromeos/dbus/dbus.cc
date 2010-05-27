@@ -58,12 +58,25 @@ BusConnection GetPrivateBusConnection(const char* address) {
   // signals nor method calls.
   GetSystemBusConnection();
 
+  ::DBusError error;
+  ::dbus_error_init(&error);
+
   ::DBusGConnection* result = NULL;
   ::DBusConnection* raw_connection
-        = ::dbus_connection_open_private(address, NULL);
-  CHECK(raw_connection);
+        = ::dbus_connection_open_private(address, &error);
+  if (!raw_connection) {
+    // TODO(yusukes): We should return an error rather than just abort().
+    LOG(FATAL) << "dbus_connection_open_private failed";
+  }
 
-  ::dbus_connection_setup_with_g_main(raw_connection, NULL);
+  if (!::dbus_bus_register(raw_connection, &error)) {
+    LOG(ERROR) << "dbus_bus_register failed";
+    ::dbus_error_free(&error);
+  }
+  
+  ::dbus_connection_setup_with_g_main(
+      raw_connection, NULL /* default context */);
+
   // A reference count of |raw_connection| is transferred to |result|. You don't
   // have to (and should not) unref the |raw_connection|.
   result = ::dbus_connection_get_g_connection(raw_connection);
@@ -72,8 +85,6 @@ BusConnection GetPrivateBusConnection(const char* address) {
   ::dbus_connection_set_exit_on_disconnect(
       ::dbus_g_connection_get_connection(result), FALSE);
 
-  // TODO(yusukes): We should call dbus_connection_close() for private
-  // connections.
   return BusConnection(result);
 }
 
