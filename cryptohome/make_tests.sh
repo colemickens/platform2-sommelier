@@ -49,7 +49,8 @@ function package_tests() {
   local source="$OLDPWD/$(dirname $0)"
   cp -r "$source/../../third_party/shunit2" shunit2
   cp -r "$source/lib" lib
-  cp -r "$source/bin" bin
+  # Not needed anymore
+  #cp -r "$source/bin" bin
   cp -r "$source/tests" tests
   cp -a "$source/$testfile" $testfile
   tar --exclude=".svn" --exclude=".git" -czf - * >> $package
