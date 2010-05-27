@@ -29,7 +29,7 @@ kill_with_open_files_on /mnt/stateful_partition /home/chronos
 
 # Unmount our stateful mount points. If any of these fail we do a best-effort
 # attempt to touch a /var/log file for future inspection.
-/usr/sbin/umount.cryptohome
+/usr/sbin/cryptohome --action=unmount
 if [ $? -ne 0 ] ; then
   mount > /var/log/shutdown_cryptohome_umount_failure
 fi
