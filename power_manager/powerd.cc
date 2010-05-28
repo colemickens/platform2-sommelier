@@ -6,6 +6,7 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdkx.h>
+#include <sys/wait.h>
 #include <X11/extensions/dpms.h>
 
 #include <algorithm>
@@ -68,6 +69,18 @@ static DBusHandlerResult DBusMessageHandler(DBusConnection*,
   return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+static void launch(const char* cmd) {
+  LOG(INFO) << "Launching " << cmd;
+  pid_t pid = fork();
+  if (pid == 0) {
+    // Detach from parent so that powerd doesn't need to wait around for us
+    setsid();
+    exit(fork() == 0 ? system(cmd) : 0);
+  } else if (pid > 0) {
+    waitpid(pid, NULL, 0);
+  }
+}
+
 static void RegisterDBusMessageHandler(Daemon *object) {
   const std::string filter = StringPrintf("type='signal', interface='%s'",
                                           kPowerManagerInterface);
@@ -117,6 +130,7 @@ void Daemon::Init() {
 }
 
 void Daemon::ReadSettings() {
+  int64 use_xscreensaver;
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -124,6 +138,8 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
   CHECK(prefs_->ReadSetting("lock_ms", &lock_ms_));
+  CHECK(prefs_->ReadSetting("use_xscreensaver", &use_xscreensaver));
+  use_xscreensaver_ = use_xscreensaver;
 
   // Check that timeouts are sane
   CHECK(kMetricIdleMin >= kFuzzMS);
@@ -232,7 +248,12 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   }
 
   if (idle_time_ms >= lock_ms_) {
-    LOG(INFO) << "TODO: Lock computer";
+    LOG(INFO) << "Locking screen";
+    if (use_xscreensaver_) {
+      launch("xscreensaver-command -lock");
+    } else {
+      SendSignalToSessionManager("LockScreen");
+    }
   }
 }
 
