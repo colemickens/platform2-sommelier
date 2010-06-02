@@ -131,6 +131,7 @@ install_gpt() {
   local esp_img=$6
   local force_full="${7:-}"
   local recovery="${8:-}"
+  local rootfs_size="${9:-1024}"   # 1G
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -170,7 +171,7 @@ install_gpt() {
 
   # Here are the size limits that we're currently requiring
   local max_kern_sectors=32768        # 16M
-  local max_rootfs_sectors=2097152    # 1G
+  local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 1G by default
   local max_oem_sectors=32768         # 16M
   local max_reserved_sectors=131072   # 64M
   local max_esp_sectors=32768         # 16M
