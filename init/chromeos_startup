@@ -25,7 +25,8 @@ cp -a -f /lib/chromiumos/devices/* /dev
 # Splash screen! Unless we are in noninteractive mode.
 # TODO(sosa@chromium.org) - Use kernel flag
 if [ -x /usr/bin/ply-image ]; then
-  if [ ! -f /root/.factory_test ] && [ ! -f /root/.factory_installer ]; then
+  if [ ! -f /root/.factory_test ] && [ ! -f /root/.factory_installer ] && \
+     [ ! -f /root/.recovery_installer ]; then
     # Moblin trick: Disable blinking cursor. Without this a splash screen
     # will show a distinct cursor shape even when the cursor is set to none.
     echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
@@ -46,8 +47,9 @@ if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
 fi
 STATE_DEV=${ROOT_DEV%[0-9]*}1
 
-# For factory install shim, we never want to write to the SDCard.
-if [ -f /root/.factory_installer ]; then
+# For factory install shim and recovery image, we never want to write to
+# the SDCard.
+if [ -f /root/.factory_installer ] || [ -f /root/.recovery_installer ]; then
   mount -n -t tmpfs tmp /mnt/stateful_partition
 else
   mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
