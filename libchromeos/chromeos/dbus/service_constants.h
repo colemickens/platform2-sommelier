@@ -56,6 +56,9 @@ extern const char* kChromiumInterface;
 extern const char* kLockScreenSignal;
 extern const char* kUnlockScreenSignal;
 extern const char* kUnlockScreenFailedSignal;
+// Text-to-speech service signals
+extern const char* kTTSReadySignal;
+extern const char* kTTSFailedSignal;
 }  // namespace chromium
 
 namespace power_manager {

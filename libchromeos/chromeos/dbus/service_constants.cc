@@ -46,6 +46,8 @@ const char* kChromiumInterface = "org.chromium.Chromium";
 const char* kLockScreenSignal = "LockScreen";
 const char* kUnlockScreenSignal = "UnlockScreen";
 const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
+const char* kTTSReadySignal = "TTSReady";
+const char* kTTSFailedSignal = "TTSFailed";
 }  // namespace chromium
 
 namespace power_manager {
