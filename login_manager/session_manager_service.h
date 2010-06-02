@@ -175,6 +175,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
+  static const char kIncognitoUser[];
 
   scoped_ptr<ChildJob> child_job_;
   bool exit_on_child_done_;

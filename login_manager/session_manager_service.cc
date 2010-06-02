@@ -102,6 +102,8 @@ const char SessionManagerService::kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890";
+//static
+const char SessionManagerService::kIncognitoUser[] = "incognito";
 
 SessionManagerService::SessionManagerService(ChildJob* child)
     : child_job_(child),
@@ -282,7 +284,10 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   snprintf(email, sizeof(email), "%s", email_address);
   email[kMaxEmailSize] = '\0';  // Just to be sure.
   string email_string(email);
-  if (!ValidateEmail(email_string)) {
+  if (email_string == kIncognitoUser) {
+    // TODO(nkostylev): http://crosbug.com/3675 Disable screen lock.
+    email_string = "";
+  } else if (!ValidateEmail(email_string)) {
     *OUT_done = FALSE;
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,

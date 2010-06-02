@@ -62,6 +62,8 @@ class SetUidExecJob : public ChildJob {
   static const char kLoginManagerFlag[];
   // The flag to pass to chrome to tell it which user has logged in.
   static const char kLoginUserFlag[];
+  // The flag to pass to chrome when starting browse without sign in mode.
+  static const char kIncognitoFlag[];
 
   // Potential exit codes for Run().
   static const int kCantSetuid;

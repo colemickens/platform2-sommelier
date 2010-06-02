@@ -24,6 +24,8 @@ namespace login_manager {
 const char SetUidExecJob::kLoginManagerFlag[] = "--login-manager";
 // static
 const char SetUidExecJob::kLoginUserFlag[] = "--login-user=";
+// static
+const char SetUidExecJob::kIncognitoFlag[] = "--incognito";
 
 // static
 const int SetUidExecJob::kCantSetuid = 127;
@@ -150,7 +152,10 @@ void SetUidExecJob::SetSwitch(const bool new_value) {
 
 void SetUidExecJob::SetState(const std::string& state) {
   SetSwitch(false);
-  user_flag_.append(state);
+  if (!state.empty())
+    user_flag_.append(state);
+  else
+    user_flag_.assign(kIncognitoFlag);
 }
 
 }  // namespace login_manager
