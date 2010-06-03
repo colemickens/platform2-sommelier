@@ -93,6 +93,12 @@ chmod 0755 /mnt/stateful_partition/var
 mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
 chown chronos:chronos /mnt/stateful_partition/var/log/metrics
 
+# Create a directory for the window manager to write logs to before the
+# user has logged in (it won't be able to do it itself, since it runs as
+# chronos but /var/log is owned by root).
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
+chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
+
 # Default to Pacific timezone if we don't have one set
 ! ln -s /usr/share/zoneinfo/US/Pacific /mnt/stateful_partition/etc/localtime \
     > /dev/null 2>&1
