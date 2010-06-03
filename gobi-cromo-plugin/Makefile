@@ -22,6 +22,8 @@ SRCS = gobi_modem_handler.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
+UDEVRULES = 77-cromo-gobi-device-blacklist.rules
+UDEVRULES_DIR = $(DESTDIR)/lib/udev/rules.d
 
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $(LDFLAGS) -o $@ $^
@@ -31,9 +33,9 @@ $(GOBI_PLUGIN) : $(OBJS)
 %unittest : LDFLAGS += -lgtest
 
 install: $(GOBI_PLUGIN)
-	install -d $(PLUGINDEST)
+	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
-
+	install $(UDEVRULES) $(UDEVRULES_DIR)
 
 .PHONY: clean
 clean:
