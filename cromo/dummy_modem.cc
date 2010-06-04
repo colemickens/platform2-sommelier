@@ -28,6 +28,10 @@ void DummyModem::Disconnect() {
   cout << "Disconnect" << endl;
 }
 
+void DummyModem::FactoryReset(const string& code) {
+  cout << "FactoryReset: " << code << endl;
+}
+
 DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config() {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
 
@@ -38,7 +42,7 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config() 
 
 DBus::Struct<string, string, string> DummyModem::GetInfo() {
   DBus::Struct<string, string, string> result;
-  cout << "Disconnect" << endl;
+  cout << "GetInfo" << endl;
   return result;
 }
 

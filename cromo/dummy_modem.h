@@ -28,6 +28,7 @@ class DummyModem
   void Enable(const bool& enable);
   void Connect(const std::string& number);
   void Disconnect();
+  void FactoryReset(const std::string& code);
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config();
   DBus::Struct<std::string, std::string, std::string> GetInfo();
 
