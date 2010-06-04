@@ -30,6 +30,9 @@ const char *kSessionManagerServicePath = "/org/chromium/SessionManager";
 const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
+const char *kSessionManagerTpmIsReady = "TpmIsReady";
+const char *kSessionManagerTpmIsEnabled = "TpmIsEnabled";
+const char *kSessionManagerGetTpmPassword = "GetTpmPassword";
 // Signals
 const char *kSessionManagerSessionStateChanged = "SessionStateChanged";
 }  // namespace login_manager

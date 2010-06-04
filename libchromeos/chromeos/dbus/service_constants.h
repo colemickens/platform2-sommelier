@@ -32,6 +32,9 @@ extern const char *kSessionManagerServiceName;
 extern const char *kSessionManagerEmitLoginPromptReady;
 extern const char *kSessionManagerStartSession;
 extern const char *kSessionManagerStopSession;
+extern const char *kSessionManagerTpmIsReady;
+extern const char *kSessionManagerTpmIsEnabled;
+extern const char *kSessionManagerGetTpmPassword;
 // Signals
 extern const char *kSessionManagerSessionStateChanged;
 
