@@ -73,8 +73,6 @@ void BacklightController::SetPowerState(PowerState state) {
 void BacklightController::OnPlugEvent(bool is_plugged) {
   if (brightness_offset_ && is_plugged == plugged_state_)
     return;
-  if (brightness_offset_)
-    ReadBrightness();
   if (is_plugged) {
     brightness_offset_ = &plugged_brightness_offset_;
     plugged_state_ = POWER_CONNECTED;
@@ -92,10 +90,12 @@ int64 BacklightController::ReadBrightness() {
   GetBrightness(&level);
   if (level != system_brightness_) {
     // Another program adjusted the brightness. Sync up.
+    LOG(INFO) << "ReadBrightness: " << system_brightness_ << " -> " << level;
     int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
     int64 diff = clamp(brightness + level - system_brightness_) - brightness;
     *brightness_offset_ += diff;
     system_brightness_ = level;
+    WritePrefs();
   }
   return level;
 }
@@ -108,7 +108,7 @@ int64 BacklightController::WriteBrightness() {
   else
     system_brightness_ = 0;
   int64 val = lround(max_ * system_brightness_ / 100.);
-  LOG(INFO) << "Brightness: " << old_brightness << " -> "
+  LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
             << system_brightness_;
   CHECK(backlight_->SetBrightness(val));
   WritePrefs();

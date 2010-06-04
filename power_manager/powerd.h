@@ -9,6 +9,7 @@
 
 #include <ctime>
 
+#include "base/scoped_ptr.h"
 #include "base/time.h"
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
@@ -100,6 +101,9 @@ class Daemon : public XIdleMonitor {
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
+  static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
+    GdkEvent* gevent, gpointer data);
+
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 
@@ -188,6 +192,10 @@ class Daemon : public XIdleMonitor {
 
   // Idle time as of last idle event.
   base::TimeDelta last_idle_timedelta_;
+
+  // Key symbols for brightness up and down
+  KeyCode key_brightness_up_;
+  KeyCode key_brightness_down_;
 };
 
 }  // namespace power_manager

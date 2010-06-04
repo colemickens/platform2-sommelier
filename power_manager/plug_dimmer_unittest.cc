@@ -51,34 +51,15 @@ TEST_F(PlugDimmerTest, TestPlug) {
   EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness+1),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
-  EXPECT_CALL(backlight_, SetBrightness(kDefaultBrightness))
-      .WillOnce(Return(true));
-  backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness+1))
-      .WillOnce(Return(true));
-  backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(false);
+  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+      .WillOnce(Return(true));
+  backlight_ctl_.OnPlugEvent(true);
 }
 
 // Test that OnPlugEvent sets the brightness appropriately when
@@ -87,20 +68,15 @@ TEST_F(PlugDimmerTest, TestUnplug) {
   EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(true);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(false);
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
-  EXPECT_CALL(backlight_, SetBrightness(kDefaultBrightness))
+  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
       .WillOnce(Return(true));
   backlight_ctl_.OnPlugEvent(true);
+  EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+      .WillOnce(Return(true));
+  backlight_ctl_.OnPlugEvent(false);
 }
 
 // Test that OnPlugEvent does not mess with the user's brightness settings

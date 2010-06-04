@@ -8,6 +8,7 @@
 #include <gdk/gdkx.h>
 #include <sys/wait.h>
 #include <X11/extensions/dpms.h>
+#include <X11/XF86keysym.h>
 
 #include <algorithm>
 
@@ -127,6 +128,23 @@ void Daemon::Init() {
     CHECK(DPMSEnable(GDK_DISPLAY()));
     CHECK(DPMSSetTimeouts(GDK_DISPLAY(), 0, 0, 0));
   }
+  key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
+  key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
+                                          XF86XK_MonBrightnessDown);
+  if (key_brightness_up_ == 0) {
+    LOG(ERROR) << "No brightness up keycode found. Guessing instead.";
+    key_brightness_up_ = 212;
+  }
+  if (key_brightness_down_ == 0) {
+    LOG(ERROR) << "No brightness down keycode found. Guessing instead.";
+    key_brightness_down_ = 101;
+  }
+  Window root = DefaultRootWindow(GDK_DISPLAY());
+  XGrabKey(GDK_DISPLAY(), key_brightness_up_, 0, root, True, GrabModeAsync,
+           GrabModeAsync);
+  XGrabKey(GDK_DISPLAY(), key_brightness_down_, 0, root, True, GrabModeAsync,
+           GrabModeAsync);
+  gdk_window_add_filter(NULL, gdk_event_filter, this);
 }
 
 void Daemon::ReadSettings() {
@@ -262,5 +280,23 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
   daemon->SetPlugged(info.line_power_on);
   daemon->GenerateMetricsOnPowerEvent(info);
 }
+
+GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
+                                         gpointer data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  XEvent* xevent = static_cast<XEvent*>(gxevent);
+  if (xevent->type == KeyPress) {
+    if (xevent->xkey.keycode == daemon->key_brightness_up_) {
+      LOG(INFO) << "Key press: Brightness up";
+    } else if (xevent->xkey.keycode == daemon->key_brightness_down_) {
+      LOG(INFO) << "Key press: Brightness down";
+    } else {
+      return GDK_FILTER_CONTINUE;
+    }
+    daemon->ctl_->ReadBrightness();
+  }
+  return GDK_FILTER_CONTINUE;
+}
+
 
 }  // namespace power_manager
