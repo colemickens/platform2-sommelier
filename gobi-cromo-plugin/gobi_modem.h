@@ -7,17 +7,14 @@
 #define PLUGIN_GOBI_MODEM_H_
 
 #include <pthread.h>
-
 #include <base/basictypes.h>
-
 #include <map>
-
-#include <dbus-c++/dbus.h>
 
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
 
+#include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
 
 
@@ -34,8 +31,10 @@ class GobiModem
     : public org::freedesktop::ModemManager::Modem_adaptor,
       public org::freedesktop::ModemManager::Modem::Simple_adaptor,
       public org::freedesktop::ModemManager::Modem::Cdma_adaptor,
+      public org::chromium::ModemManager::Modem::Gobi_adaptor,
       public DBus::IntrospectableAdaptor,
-      public DBus::ObjectAdaptor {
+      public DBus::ObjectAdaptor,
+      public DBus::PropertiesAdaptor {
  public:
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
@@ -54,6 +53,7 @@ class GobiModem
   virtual void Enable(const bool& enable);
   virtual void Connect(const std::string& number);
   virtual void Disconnect();
+  virtual void FactoryReset(const std::string& number);
 
   virtual ::DBus::Struct<
   uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config();
@@ -72,13 +72,23 @@ class GobiModem
   virtual void GetRegistrationState(
       uint32_t& cdma_1x_state, uint32_t& evdo_state);
 
+  // DBUS Methods: ModemGobi
+  virtual void SetCarrier(const std::string& image);
+  virtual void SoftReset();
+
+  // DBUS Property Getter
+  virtual void on_get_property(DBus::InterfaceAdaptor& interface,
+                               const std::string& property,
+                               DBus::Variant& vale);
+
  protected:
+  bool ActivateOmadm();
+  bool ActivateOtasp();  // Verizon uses OTASP
   bool ApiConnect();
   bool EnsureActivated();
   bool EnsureFirmwareLoaded(const char *carrier_name);
-  bool ResetModem();
   bool GetSignalStrengthDbm(int *strength);
-  bool ResetToFactoryDefaults();
+  bool ResetModem();
 
   struct SerialNumbers {
     std::string esn;
@@ -101,6 +111,15 @@ class GobiModem
     }
   }
   void NmeaPlusCallback(const char *nmea, ULONG mode);
+
+  static void OmadmStateCallbackTrampoline(ULONG sessionState,
+                                           ULONG failureReason) {
+    if (connected_modem_) {
+      connected_modem_->OmadmStateCallback(sessionState, failureReason);
+    }
+  }
+  void OmadmStateCallback(ULONG sessionState, ULONG failureReason);
+
 
  private:
 

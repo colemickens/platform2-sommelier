@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.ModemManager.Modem.Gobi">
+    <tp:docstring>
+      Gobi-specific features for use in test and debugging.  
+    </tp:docstring>
+    <method name="SetCarrier">
+      <tp:docstring>
+          Prepares the modem to use the given carrier.  Modem will
+          reset after this is called.
+      </tp:docstring>
+      <arg name="image" type="s" direction="in">
+	    <tp:docstring>
+          Name of carrier.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="SoftReset">
+      <tp:docstring>
+          Tells the module to do a soft reset and waits for the reset to complete.
+      </tp:docstring>
+    </method>
+  </interface>
+</node>
+ 

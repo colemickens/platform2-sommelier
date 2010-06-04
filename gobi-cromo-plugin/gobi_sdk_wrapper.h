@@ -36,6 +36,31 @@ enum PowerMode {
   kPersistentLowPower = 6, // airplane mode
 };
 
+enum OmadmSessionType {
+  kConfigure = 0,
+  kPrlUpdate = 1,
+  kHandsFreeActivation = 2,
+};
+
+enum OmadmSessionState {
+  // Table 2-11 of QC WWAN CM API
+  kOmadmComplete = 0,
+  kOmadmUpdateInformationUnavailable = 1,
+  kOmadmFailed = 2,
+
+  // Artificial state: The last state that signifies that the OMADM
+  // session is over.
+  kOmadmMaxFinal = 2,
+  kOmadmRetrying = 3,
+  kOmadmConnecting = 4,
+  kOmadmConnected = 5,
+  kOmadmAuthenticated = 6,
+  kOmadmMdnDownloaded = 7,
+  kOmadmMsidDownloaded = 8,
+  kOmadmPrlDownloaded = 9,
+  kOmadmMipProfiledDownloaded = 10,
+};
+
 enum ActivationState {
   kNotActivated = 0,
   kActivated = 1,
@@ -48,6 +73,13 @@ enum ActivationState {
   kOtaspPrlDownloaded = 8,
   kOtaspSpcDownloaded = 9,
   kOtaspSettingsCommitted = 10,
+};
+
+// Selected return codes from table 2-3 of QC WWAN CM API
+enum ReturnCode {
+  kNotProvisioned = 1016,
+  kNotSupportedByNetwork = 1024,
+  kNotSupportedByDevice = 1025,
 };
 
 class Sdk {
