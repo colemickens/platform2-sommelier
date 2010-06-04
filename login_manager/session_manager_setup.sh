@@ -76,14 +76,9 @@ mkdir -p ${HOME} && chown ${USER}:${USER} ${HOME}
 ${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE} && \
   chown ${USER}:${USER} ${XAUTH_FILE}
 
-# Disallow the login profile from having persistent data until
-# http://code.google.com/p/chromium-os/issues/detail?id=1967 is resolved.
-if mount | grep -q "${LOGIN_PROFILE_DIR} "; then
-  umount -f ${LOGIN_PROFILE_DIR}
-fi
-rm -rf ${LOGIN_PROFILE_DIR}
+# Old builds will have a ${LOGIN_PROFILE_DIR} that's owned by root; newer ones
+# won't have this directory at all.
 mkdir -p ${LOGIN_PROFILE_DIR}
-mount -n -t tmpfs -onodev,noexec,nosuid loginprofile ${LOGIN_PROFILE_DIR}
 chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 
 # temporary hack to tell cryptohome that we're doing chrome-login
