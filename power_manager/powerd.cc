@@ -5,6 +5,7 @@
 #include "power_manager/powerd.h"
 
 #include <gdk/gdkx.h>
+#include <stdint.h>
 #include <X11/extensions/dpms.h>
 #include <X11/XF86keysym.h>
 
@@ -165,6 +166,7 @@ void Daemon::Init() {
 
 void Daemon::ReadSettings() {
   int64 use_xscreensaver;
+  int64 disable_idle_suspend;
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -173,6 +175,12 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
   CHECK(prefs_->ReadSetting("lock_ms", &lock_ms_));
   CHECK(prefs_->ReadSetting("use_xscreensaver", &use_xscreensaver));
+  if (prefs_->ReadSetting("disable_idle_suspend", &disable_idle_suspend) &&
+      disable_idle_suspend) {
+    LOG(INFO) << "Idle suspend feature disabled";
+    plugged_suspend_ms_ = INT64_MAX;
+    unplugged_suspend_ms_ = INT64_MAX;
+  }
   use_xscreensaver_ = use_xscreensaver;
 
   // Check that timeouts are sane
@@ -258,8 +266,8 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
-    LOG(INFO) << "TODO: Suspend computer";
     idle_state_ = kIdleSuspend;
+    suspender_.RequestSuspend();
   } else if (idle_time_ms >= off_ms_) {
     LOG(INFO) << "state = kIdleScreenOff";
     ctl_->SetPowerState(BACKLIGHT_OFF);

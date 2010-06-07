@@ -21,9 +21,10 @@ for key in Split('CFLAGS CPPFLAGS CXXFLAGS CCFLAGS CPPPATH LIBPATH'):
   base_env[key] = Split(value)
 
 extra_flags = '-fno-strict-aliasing -Wall -Wextra -Werror -Wuninitialized'
+extra_cppflags = '-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS'
 base_env['CFLAGS'].extend(Split(extra_flags))
 base_env['CXXFLAGS'].extend(Split(extra_flags))
-base_env['CPPFLAGS'].append('-D__STDC_FORMAT_MACROS')
+base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):
