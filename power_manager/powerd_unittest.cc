@@ -337,7 +337,7 @@ TEST_F(DaemonTest, SendMetricWithPowerState) {
 }
 
 static gboolean QuitLoop(gpointer data) {
-  GMainLoop *loop = static_cast<GMainLoop*>(data);
+  GMainLoop* loop = static_cast<GMainLoop*>(data);
   g_main_loop_quit(loop);
   return false;
 }

@@ -13,7 +13,7 @@
 namespace power_manager {
 
 BacklightController::BacklightController(BacklightInterface* backlight,
-                                         PowerPrefsInterface *prefs)
+                                         PowerPrefsInterface* prefs)
     : backlight_(backlight),
       prefs_(prefs),
       als_brightness_level_(0),

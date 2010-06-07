@@ -18,7 +18,7 @@ class PowerPrefs : public PowerPrefsInterface {
 
   // Read a setting from disk into |val|.
   // Returns true if successful; otherwise returns false.
-  bool ReadSetting(const char* setting_name, int64 *val);
+  bool ReadSetting(const char* setting_name, int64* val);
 
   // Write a setting to disk.
   // Returns true if successful; otherwise returns false.

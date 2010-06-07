@@ -17,7 +17,7 @@ namespace power_manager {
 PowerPrefs::PowerPrefs(const FilePath& base_path)
     : base_path_(base_path) {}
 
-bool PowerPrefs::ReadSetting(const char* setting_name, int64 *val) {
+bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
   FilePath path = base_path_.Append(setting_name);
   string buf;
   if (!file_util::ReadFileToString(path, &buf))

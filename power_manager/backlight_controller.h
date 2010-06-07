@@ -25,7 +25,7 @@ enum PowerState {
 class BacklightController {
  public:
   explicit BacklightController(BacklightInterface* backlight,
-                               PowerPrefsInterface *prefs);
+                               PowerPrefsInterface* prefs);
   virtual ~BacklightController() {}
 
   // Initialize the object.

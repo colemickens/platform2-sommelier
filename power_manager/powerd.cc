@@ -29,14 +29,14 @@ static const int64 kFuzzMS = 100;
 static const int64 kReactMS = 30000;
 
 // Lock the screen
-static void SendSignalToSessionManager(const char *signal) {
-  DBusGProxy *proxy = dbus_g_proxy_new_for_name(
+static void SendSignalToSessionManager(const char* signal) {
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
       login_manager::kSessionManagerServiceName,
       login_manager::kSessionManagerServicePath,
       login_manager::kSessionManagerInterface);
   CHECK(proxy);
-  GError *error = NULL;
+  GError* error = NULL;
   if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
                          G_TYPE_INVALID)) {
     LOG(ERROR) << "Error sending signal: " << error->message;
@@ -82,7 +82,7 @@ static void launch(const char* cmd) {
   }
 }
 
-static void RegisterDBusMessageHandler(Daemon *object) {
+static void RegisterDBusMessageHandler(Daemon* object) {
   const std::string filter = StringPrintf("type='signal', interface='%s'",
                                           kPowerManagerInterface);
 
