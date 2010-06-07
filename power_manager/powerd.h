@@ -5,6 +5,7 @@
 #ifndef POWER_DAEMON_H_
 #define POWER_DAEMON_H_
 
+#include <dbus/dbus-glib-lowlevel.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <ctime>
@@ -16,6 +17,8 @@
 #include "power_manager/backlight.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/power_prefs.h"
+#include "power_manager/screen_locker.h"
+#include "power_manager/suspender.h"
 #include "power_manager/xidle.h"
 
 namespace power_manager {
@@ -86,9 +89,6 @@ class Daemon : public XIdleMonitor {
   // Read settings from disk
   void ReadSettings();
 
-  // Initialize dbus connections
-  void DbusInit();
-
   // Initialize metrics
   void MetricInit();
 
@@ -103,6 +103,15 @@ class Daemon : public XIdleMonitor {
 
   static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
     GdkEvent* gevent, gpointer data);
+
+  // Standard handler for dbus messages. |data| contains a pointer to a
+  // Daemon object.
+  static DBusHandlerResult DBusMessageHandler(DBusConnection*,
+                                              DBusMessage* message,
+                                              void* data);
+
+  // Register the dbus message handler with appropriate dbus events.
+  void RegisterDBusMessageHandler();
 
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
@@ -176,6 +185,8 @@ class Daemon : public XIdleMonitor {
   bool use_xscreensaver_;
   PluggedState plugged_state_;
   IdleState idle_state_;
+  ScreenLocker locker_;
+  Suspender suspender_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

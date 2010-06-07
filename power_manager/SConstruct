@@ -59,7 +59,8 @@ powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
 powerd_lib = powerd_env.Library('powerd_lib',
-                                ['powerd.cc', 'powerd_metrics.cc'])
+                                ['powerd.cc', 'powerd_metrics.cc',
+                                 'suspender.cc', 'util.cc'])
 load_lib = base_env.Library('load',  ['../cros/load.cc'])
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,

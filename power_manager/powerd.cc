@@ -4,9 +4,7 @@
 
 #include "power_manager/powerd.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdkx.h>
-#include <sys/wait.h>
 #include <X11/extensions/dpms.h>
 #include <X11/XF86keysym.h>
 
@@ -16,6 +14,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/util.h"
 
 using std::max;
 using std::min;
@@ -28,7 +27,7 @@ static const int64 kFuzzMS = 100;
 // The minimum delta between timers when we want to give a user time to react
 static const int64 kReactMS = 30000;
 
-// Lock the screen
+// TODO(davidjames): Move this to util.cc.
 static void SendSignalToSessionManager(const char* signal) {
   DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
@@ -44,45 +43,58 @@ static void SendSignalToSessionManager(const char* signal) {
   g_object_unref(proxy);
 }
 
+// ScreenLocker implementation
+// TODO(davidjames): Move this to screen_locker.cc.
+
+void ScreenLocker::LockScreen() {
+  LOG(INFO) << "Locking screen";
+  if (use_xscreensaver_) {
+    util::Launch("xscreensaver-command -lock");
+  } else {
+    SendSignalToSessionManager("LockScreen");
+  }
+}
+
+void ScreenLocker::Init(bool use_xscreensaver) {
+  locked_ = false;
+  use_xscreensaver_ = use_xscreensaver;
+}
+
 // A message filter to receive signals.
-static DBusHandlerResult DBusMessageHandler(DBusConnection*,
-                                            DBusMessage* message,
-                                            void*) {
+// TODO(davidjames): Move this down with the rest of the daemon methods.
+DBusHandlerResult Daemon::DBusMessageHandler(
+    DBusConnection*, DBusMessage* message, void* data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
   if (dbus_message_is_signal(message, kPowerManagerInterface,
                              kRequestLockScreenSignal)) {
     LOG(INFO) << "RequestLockScreen event";
-    SendSignalToSessionManager("LockScreen");
+    daemon->locker_.LockScreen();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestUnlockScreenSignal)) {
+    // TODO(davidjames): Check lid state
     LOG(INFO) << "RequestUnlockScreen event";
     SendSignalToSessionManager("UnlockScreen");
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kScreenIsLockedSignal)) {
-    // TODO: Record screen lock/unlock state
     LOG(INFO) << "ScreenIsLocked event";
+    daemon->locker_.set_locked(true);
+    daemon->suspender_.CheckSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kScreenIsUnlockedSignal)) {
-    // TODO: Record screen lock/unlock state
     LOG(INFO) << "ScreenIsUnlocked event";
+    daemon->locker_.set_locked(false);
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestSuspendSignal)) {
+    LOG(INFO) << "RequestSuspend event";
+    daemon->suspender_.RequestSuspend();
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
   return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static void launch(const char* cmd) {
-  LOG(INFO) << "Launching " << cmd;
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Detach from parent so that powerd doesn't need to wait around for us
-    setsid();
-    exit(fork() == 0 ? system(cmd) : 0);
-  } else if (pid > 0) {
-    waitpid(pid, NULL, 0);
-  }
-}
-
-static void RegisterDBusMessageHandler(Daemon* object) {
+// TODO(davidjames): Move this down with the rest of the daemon methods.
+void Daemon::RegisterDBusMessageHandler() {
   const std::string filter = StringPrintf("type='signal', interface='%s'",
                                           kPowerManagerInterface);
 
@@ -96,7 +108,7 @@ static void RegisterDBusMessageHandler(Daemon* object) {
                << error.message;
     NOTREACHED();
   } else {
-    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, object,
+    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                      NULL));
     LOG(INFO) << "DBus monitoring started";
   }
@@ -114,13 +126,13 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       metrics_lib_(metrics_lib),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
+      suspender_(&locker_),
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
       battery_time_to_empty_metric_last_(0) {}
 
 void Daemon::Init() {
   ReadSettings();
-  DbusInit();
   MetricInit();
   if (!DPMSCapable(GDK_DISPLAY())) {
     LOG(WARNING) << "X Server not DPMS capable";
@@ -145,6 +157,10 @@ void Daemon::Init() {
   XGrabKey(GDK_DISPLAY(), key_brightness_down_, 0, root, True, GrabModeAsync,
            GrabModeAsync);
   gdk_window_add_filter(NULL, gdk_event_filter, this);
+
+  locker_.Init(use_xscreensaver_);
+  RegisterDBusMessageHandler();
+  CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
 }
 
 void Daemon::ReadSettings() {
@@ -171,11 +187,6 @@ void Daemon::ReadSettings() {
   CHECK(lock_ms_ >= plugged_off_ms_ + kReactMS);
 
   CHECK(idle_.Init(this));
-}
-
-void Daemon::DbusInit() {
-  RegisterDBusMessageHandler(this);
-  CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
 }
 
 void Daemon::Run() {
@@ -265,13 +276,8 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     idle_state_ = kIdleNormal;
   }
 
-  if (idle_time_ms >= lock_ms_) {
-    LOG(INFO) << "Locking screen";
-    if (use_xscreensaver_) {
-      launch("xscreensaver-command -lock");
-    } else {
-      SendSignalToSessionManager("LockScreen");
-    }
+  if (idle_time_ms >= lock_ms_ && util::LoggedIn()) {
+    locker_.LockScreen();
   }
 }
 
@@ -297,6 +303,5 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   }
   return GDK_FILTER_CONTINUE;
 }
-
 
 }  // namespace power_manager
