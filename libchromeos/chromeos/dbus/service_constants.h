@@ -67,9 +67,10 @@ extern const char* kTTSFailedSignal;
 namespace power_manager {
 extern const char* kPowerManagerInterface;
 extern const char* kRequestLockScreenSignal;
+extern const char* kRequestSuspendSignal;
 extern const char* kRequestUnlockScreenSignal;
 extern const char* kScreenIsLockedSignal;
 extern const char* kScreenIsUnlockedSignal;
-}  // namespace screen_lock
+}  // namespace power_manager
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
