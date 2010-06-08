@@ -36,6 +36,14 @@ enum PowerMode {
   kPersistentLowPower = 6, // airplane mode
 };
 
+enum RegistrationState {
+  kUnregistered = 0,
+  kRegistered = 1,
+  kSearching = 2,
+  kRegistrationDenied = 3,
+  kUnknown = 4
+};
+
 enum OmadmSessionType {
   kConfigure = 0,
   kPrlUpdate = 1,
@@ -75,12 +83,52 @@ enum ActivationState {
   kOtaspSettingsCommitted = 10,
 };
 
+enum SessionState {
+  kDisconnected = 1,
+  kConnected = 2,
+  kSuspended = 3,
+  kAuthenticating = 4
+};
+
+enum RadioInterfaceTechnology {
+  kRfiNoService = 0,
+  kRfiCdma1xRtt = 1,
+  kRfiCdmaEvdo = 2,
+  kRfiAmps = 3,
+  kRfiGsm = 4,
+  kRfiUmts = 5
+};
+
+enum DataBearerTechnology {
+  kDataBearerCdma1xRtt = 1,
+  kDataBearerCdmaEvdo = 2,
+  kDataBearerGprs = 3,
+  kDataBearerWcdma = 4,
+  kDataBearerCdmaEvdoRevA = 5,
+  kDataBearerEdge = 6,
+  kDataBearerHsdpaDlWcdmaUl = 7,
+  kDataBearerWcdmaDlUsupaUl = 8,
+  kDataBearerHsdpaDlHsupaUl = 9
+};
+
+enum RoamingState {
+  kRoaming = 0,
+  kHome = 1,
+  kRoamingPartner = 2
+};
+
 // Selected return codes from table 2-3 of QC WWAN CM API
 enum ReturnCode {
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
   kNotSupportedByDevice = 1025,
 };
+
+typedef struct {
+  ULONG radioInterface;
+  ULONG activeBandClass;
+  ULONG activeChannel;
+} RfInfoInstance;
 
 class Sdk {
  public:

@@ -33,8 +33,8 @@ class GobiModem
       public org::freedesktop::ModemManager::Modem::Cdma_adaptor,
       public org::chromium::ModemManager::Modem::Gobi_adaptor,
       public DBus::IntrospectableAdaptor,
-      public DBus::ObjectAdaptor,
-      public DBus::PropertiesAdaptor {
+      public DBus::PropertiesAdaptor,
+      public DBus::ObjectAdaptor {
  public:
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
@@ -86,8 +86,8 @@ class GobiModem
   bool ActivateOtasp();  // Verizon uses OTASP
   bool ApiConnect();
   bool EnsureActivated();
-  bool EnsureFirmwareLoaded(const char *carrier_name);
-  bool GetSignalStrengthDbm(int *strength);
+  bool EnsureFirmwareLoaded(const char* carrier_name);
+  bool GetSignalStrengthDbm(int& strength);
   bool ResetModem();
 
   struct SerialNumbers {
@@ -95,10 +95,10 @@ class GobiModem
     std::string imei;
     std::string meid;
   };
-  bool GetSerialNumbers(SerialNumbers *out);
+  bool GetSerialNumbers(SerialNumbers* out);
   void LogGobiInformation();
 
-  static void ActivationStatusTrampoline(ULONG activation_status) {
+  static void ActivationStatusCallbackTrampoline(ULONG activation_status) {
     if (connected_modem_) {
       connected_modem_->ActivationStatusCallback(activation_status);
     }
@@ -112,17 +112,53 @@ class GobiModem
   }
   void NmeaPlusCallback(const char *nmea, ULONG mode);
 
-  static void OmadmStateCallbackTrampoline(ULONG sessionState,
-                                           ULONG failureReason) {
+  static void OmadmStateCallbackTrampoline(ULONG session_state,
+                                           ULONG failure_reason) {
     if (connected_modem_) {
-      connected_modem_->OmadmStateCallback(sessionState, failureReason);
+      connected_modem_->OmadmStateCallback(session_state, failure_reason);
     }
   }
-  void OmadmStateCallback(ULONG sessionState, ULONG failureReason);
+  void OmadmStateCallback(ULONG session_state, ULONG failure_reason);
+
+  static void SessionStateCallbackTrampoline(ULONG state,
+                                             ULONG session_end_reason) {
+    if (connected_modem_) {
+      connected_modem_->SessionStateCallback(state, session_end_reason);
+    }
+  }
+  void SessionStateCallback(ULONG state, ULONG session_end_reason);
+
+  static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
+    if (connected_modem_) {
+      connected_modem_->DataBearerCallback(data_bearer_technology);
+    }
+  }
+  void DataBearerCallback(ULONG dataBearerTechnology);
+
+  static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
+    if (connected_modem_) {
+      connected_modem_->RoamingIndicatorCallback(roaming);
+    }
+  }
+  void RoamingIndicatorCallback(ULONG roaming);
+
+  static void SignalStrengthCallbackTrampoline(INT8 signal_strength,
+                                               ULONG radio_interface) {
+    if (connected_modem_) {
+      connected_modem_->SignalStrengthCallback(signal_strength, radio_interface);
+    }
+  }
+  void SignalStrengthCallback(INT8 signal_strength, ULONG radio_interface);
 
 
  private:
+  void UpdateRegistrationState(ULONG data_bearer_technology,
+                               ULONG roaming_state);
 
+  ULONG GetServingNetworkInfo(ULONG* registration_state,
+                              BYTE*  num_radio_interfaces,
+                              BYTE*  radio_interfaces,
+                              ULONG* roaming_state);
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
@@ -133,6 +169,11 @@ class GobiModem
   pthread_mutex_t activation_mutex_;
   pthread_cond_t activation_cond_;
   ULONG activation_state_;
+  ULONG session_state_;
+  ULONG session_id_;
+  ULONG data_bearer_technology_;
+  ULONG roaming_state_;
+  INT8  signal_strength_;
 
   static GobiModem *connected_modem_;
 

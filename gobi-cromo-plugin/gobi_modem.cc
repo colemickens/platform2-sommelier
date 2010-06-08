@@ -6,11 +6,59 @@
 
 #include <algorithm>
 
+#include <base/scoped_ptr.h>
 #include <base/time.h>
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
-static const size_t DEFAULT_SIZE=128;
+static const size_t kDefaultBufferSize = 128;
+
+// The following constants define the granularity with which signal
+// strength is reported, i.e., the number of bars.
+//
+// The values given here are used to compute an array of thresholds
+// consisting of the values [-113, -98, -83, -68, -53], which results
+// in the following mapping of signal strength as reported in dBm to
+// bars displayed:
+//
+// <  -113             0 bars
+// >= -113 and < -98   1 bar
+// >=  -98 and < -83   2 bars
+// >=  -83 and < -68   3 bars
+// >=  -68 and < -53   4 bars
+// >=  -53             5 bars
+
+// Any reported signal strength larger than or equal to kMaxSignalStrengthDbm
+// is considered full strength.
+static const int kMaxSignalStrengthDbm = -53;
+// Any reported signal strength smaller than kMaxSignalStrengthDbm is
+// considered zero strength.
+static const int kMinSignalStrengthDbm = -113;
+// The number of signal strength levels we want to report, ranging from
+// 0 bars to kSignalStrengthNumLevels-1 bars.
+static const int kSignalStrengthNumLevels = 6;
+
+static unsigned long signal_strength_dbm_to_percent(INT8 signal_strength_dbm) {
+  unsigned long signal_strength_percent;
+
+  if (signal_strength_dbm < kMinSignalStrengthDbm)
+    signal_strength_percent = 0;
+  else if (signal_strength_dbm >= kMaxSignalStrengthDbm)
+    signal_strength_percent = 100;
+  else
+    signal_strength_percent =
+        ((signal_strength_dbm - kMinSignalStrengthDbm) * 100 /
+         (kMaxSignalStrengthDbm - kMinSignalStrengthDbm));
+  return signal_strength_percent;
+}
+
+ULONG get_rfi_technology(ULONG data_bearer_technology) {
+  switch (data_bearer_technology) {
+    default:
+      return gobi::kRfiCdmaEvdo;
+  }
+}
+
 
 GobiModem* GobiModem::connected_modem_(NULL);
 
@@ -23,14 +71,26 @@ GobiModem::GobiModem(DBus::Connection& connection,
       handler_(handler),
       sdk_(sdk),
       last_seen_(-1),
-      activation_state_(0) {
+      activation_state_(0),
+      session_state_(gobi::kDisconnected),
+      session_id_(0),
+      data_bearer_technology_(0),
+      roaming_state_(0),
+      signal_strength_(-127) {
   memcpy(&device_, &device, sizeof(device_));
 
   pthread_mutex_init(&activation_mutex_, NULL);
   pthread_cond_init(&activation_cond_, NULL);
 
   // Initialize DBus object properties
-  Device = device_.deviceNode;
+  //Device = device_.deviceNode;
+  // TODO(ers) Hard-wire device to be usb0. This needs
+  // to be the name of the network interface, but
+  // device_.deviceNode is "/dev/qcqmi0", which is
+  // not useful to flimflam. We need to find out
+  // whether there is an API that can report the
+  // name of the network interface.
+  Device = "usb0";
   Driver = "";
   Enabled = false;
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
@@ -68,6 +128,7 @@ void GobiModem::Enable(const bool& enable) {
       // TODO(rochberg):  ERROR
       return;
     }
+    LOG(INFO) << "Current carrier is " << carrier;
 
     // TODO(rochberg):  Make this more general
     if (carrier != 1  && // Generic
@@ -87,32 +148,42 @@ void GobiModem::Connect(const std::string& unused_number) {
 
   EnsureActivated();
   ULONG rc;
-  ULONG session_id;
   ULONG failure_reason;
   LOG(INFO) << "Starting data session: ";
-  rc = StartDataSession(NULL,  // technology
-                        NULL,  // Primary DNS
-                        NULL,  // Secondary DNS
-                        NULL,  // Primary NetBIOS NS
-                        NULL,  // Secondary NetBIOS NS
-                        NULL,  // APN Name
-                        NULL,  // Preferred IP address
-                        NULL,  // Authentication
-                        NULL,  // Username
-                        NULL,  // Password
-                        &session_id,  // OUT: session ID
-                        &failure_reason  // OUT: failure reason
+  rc = sdk_->StartDataSession(NULL,  // technology
+                              NULL,  // Primary DNS
+                              NULL,  // Secondary DNS
+                              NULL,  // Primary NetBIOS NS
+                              NULL,  // Secondary NetBIOS NS
+                              NULL,  // APN Name
+                              NULL,  // Preferred IP address
+                              NULL,  // Authentication
+                              NULL,  // Username
+                              NULL,  // Password
+                              &session_id_,  // OUT: session ID
+                              &failure_reason  // OUT: failure reason
                         );
   if (rc != 0) {
     LOG(WARNING) << "StartDataSession failed: " << rc;
     LOG(INFO) << "Failure Reason " <<  failure_reason;
   }
-  LOG(INFO) << "Session ID " <<  session_id;
+  LOG(INFO) << "Session ID " <<  session_id_;
+  // session_state_ will be set in SessionStateCallback
 }
 
 
 void GobiModem::Disconnect() {
   LOG(INFO) << "Disconnect";
+  if (session_state_ != gobi::kConnected) {
+    LOG(WARNING) << "Disconnect called when not connecting";
+    return;
+  }
+  ULONG rc = sdk_->StopDataSession(session_id_);
+  if (rc != 0) {
+    LOG(WARNING) << "StopDataSession failed: " << rc;
+    // TODO(ers) ERROR
+  }
+  // session_state_ will be set in SessionStateCallback
 }
 
 DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config() {
@@ -142,7 +213,7 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
   // (manufacturer, modem, version).
   DBus::Struct<std::string, std::string, std::string> result;
 
-  char buffer[DEFAULT_SIZE];
+  char buffer[kDefaultBufferSize];
   ULONG rc;
   rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
   if (rc != 0) {
@@ -178,13 +249,16 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
 // DBUS Methods: ModemSimple
 void GobiModem::Connect(const DBusPropertyMap& properties) {
   LOG(INFO) << "Simple.Connect";
+  Connect("unused_number");
 }
 
 bool GobiModem::GetSerialNumbers(SerialNumbers *out) {
-  char esn[DEFAULT_SIZE], imei[DEFAULT_SIZE], meid[DEFAULT_SIZE];
-  ULONG rc = sdk_-> GetSerialNumbers(DEFAULT_SIZE, esn,
-                                     DEFAULT_SIZE, imei,
-                                     DEFAULT_SIZE, meid);
+  char esn[kDefaultBufferSize];
+  char imei[kDefaultBufferSize];
+  char meid[kDefaultBufferSize];
+  ULONG rc = sdk_-> GetSerialNumbers(kDefaultBufferSize, esn,
+                                     kDefaultBufferSize, imei,
+                                     kDefaultBufferSize, meid);
   if (rc != 0) {
     LOG(WARNING) << "GSN: " << rc;
     return false;
@@ -201,7 +275,7 @@ DBusPropertyMap GobiModem::GetStatus() {
   int32_t rssi;
 
   // TODO(rochberg):  More mandatory properties expected
-  if (GetSignalStrengthDbm(&rssi)) {
+  if (GetSignalStrengthDbm(rssi)) {
     result["signal_strength_dbm"].writer().append_int32(rssi);
   }
 
@@ -242,24 +316,125 @@ uint32_t GobiModem::GetSignalQuality() {
     LOG(WARNING) << "GetSignalQuality on disabled modem";
     return 0;
   }
-  // TODO(rochberg): Map dBM to quality
-  LOG(WARNING) << "Returning bogus signal quality";
-  return 61;
+  int32_t signal_strength_dbm;
+  if (GetSignalStrengthDbm(signal_strength_dbm)) {
+    uint32_t result = signal_strength_dbm_to_percent(signal_strength_dbm);
+    LOG(INFO) << "GetSignalQuality => " << result << "%";
+    return result;
+  }
+  // TODO(ers) ERROR
+  return 11;
 }
 
 
+// returns <band class, band, system id>
 DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem() {
   DBus::Struct<uint32_t, std::string, uint32_t> result;
+  ULONG rc;
+  WORD mcc, mnc, sid, nid;
+  CHAR netname[32];
   LOG(INFO) << "GetServingSystem";
+
+  rc = sdk_->GetHomeNetwork(&mcc, &mnc, sizeof(netname), netname, &sid, &nid);
+  if (rc != 0) {
+    // TODO(ers) ERROR
+    LOG(WARNING) << "GetHomeNetwork failed: " << rc;
+    return result;
+  }
+  gobi::RfInfoInstance rf_info[10];
+  BYTE rf_info_size = sizeof(rf_info) / sizeof(rf_info[0]);
+  rc = sdk_->GetRFInfo(&rf_info_size, static_cast<BYTE*>((void *)&rf_info[0]));
+  if (rc != 0) {
+    // TODO(ers) ERROR
+    LOG(WARNING) << "GetRFInfo failed: " << rc;
+    return result;
+  }
+  if (rf_info_size != 0) {
+    LOG(INFO) << "RF info for " << rf_info[0].radioInterface
+              << " band class " << rf_info[0].activeBandClass
+              << " channel "    << rf_info[0].activeChannel;
+    switch (rf_info[0].activeBandClass) {
+      case 0:
+      case 85:          // WCDMA 800
+        result._1 = 1;  // 800 Mhz band class
+        break;
+      case 1:
+      case 81:          // WCDMA PCS 1900
+        result._1 = 2;  // 1900 Mhz band class
+        break;
+      default:
+        result._1 = 0;  // unknown band class
+        break;
+    }
+    result._2 = "F";    // XXX bogus
+  }
+  result._3 = sid;
 
   return result;
 }
 
+ULONG GobiModem::GetServingNetworkInfo(ULONG* registration_state,
+                                       BYTE*  num_radio_interfaces,
+                                       BYTE*  radio_interfaces,
+                                       ULONG* roaming_state) {
+  // variables for values we don't care about:
+  CHAR netName[32];
+  ULONG l1, l2, l3;
+  WORD w4, w5;
+
+  return sdk_->GetServingNetwork(
+      registration_state,
+      &l1,              // CS domain
+      &l2,              // PS domain
+      &l3,              // radio access network type
+      num_radio_interfaces,
+      radio_interfaces,
+      roaming_state,
+      &w4,              // mobile country code
+      &w5,              // mobile network code
+      sizeof(netName),  // size of name array
+      netName           // network name
+      );
+}
+
 void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
                                      uint32_t& evdo_state) {
-  LOG(WARNING) << "Returning bogus values for GetRegistrationState";
-  cdma_1x_state = 1;
-  evdo_state = 1;
+  LOG(INFO) << "GetRegistrationState";
+  ULONG rc;
+  ULONG reg_state;
+  ULONG roaming_state;
+  BYTE radio_interfaces[10];
+  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
+
+  cdma_1x_state = 0;
+  evdo_state = 0;
+  rc = GetServingNetworkInfo(
+      &reg_state,
+      &num_radio_interfaces,
+      radio_interfaces,
+      &roaming_state);
+  if (rc != 0) {
+    // TODO(ers) Error
+    LOG(WARNING) << "GetServingNetwork() failed: " << rc;
+    return;
+  }
+  uint32_t mm_reg_state;
+
+  if (reg_state == gobi::kRegistered) {
+    if (roaming_state == gobi::kHome)
+      mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+    else
+      mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  } else {
+    mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  }
+
+  for (int i = 0; i < num_radio_interfaces; i++) {
+    if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
+      cdma_1x_state = mm_reg_state;
+    else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
+      evdo_state = mm_reg_state;
+  }
 }
 
 bool GobiModem::ApiConnect() {
@@ -270,9 +445,25 @@ bool GobiModem::ApiConnect() {
   }
   connected_modem_ = this;
 
-  SetActivationStatusCallback(ActivationStatusTrampoline);
+  SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
   SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
   SetOMADMStateCallback(OmadmStateCallbackTrampoline);
+  SetSessionStateCallback(SessionStateCallbackTrampoline);
+  SetDataBearerCallback(DataBearerCallbackTrampoline);
+  SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
+
+  int num_thresholds = kSignalStrengthNumLevels - 1;
+  int interval =
+      (kMaxSignalStrengthDbm - kMinSignalStrengthDbm) /
+      (kSignalStrengthNumLevels - 1);
+  scoped_array<INT8> thresholds(new INT8[num_thresholds]);
+  for (int i = 0; i < num_thresholds; i++) {
+    thresholds[i] = kMinSignalStrengthDbm + interval * i;
+  }
+
+  SetSignalStrengthCallback(SignalStrengthCallbackTrampoline,
+                            num_thresholds,
+                            thresholds.get());
 
   return true;
 }
@@ -280,7 +471,7 @@ bool GobiModem::ApiConnect() {
 void GobiModem::LogGobiInformation() {
   ULONG rc;
 
-  char buffer[DEFAULT_SIZE];
+  char buffer[kDefaultBufferSize];
   rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
   LOG(INFO) << "Manufacturer: " << buffer;
 
@@ -302,10 +493,11 @@ void GobiModem::LogGobiInformation() {
             << " region: " << region
             << " gps_capability: " << gps_capability;
 
-  char amss[DEFAULT_SIZE], boot[DEFAULT_SIZE], pri[DEFAULT_SIZE];
-  rc = sdk_->GetFirmwareRevisions(DEFAULT_SIZE, amss,
-                                  DEFAULT_SIZE, boot,
-                                  DEFAULT_SIZE, pri);
+  char amss[kDefaultBufferSize], boot[kDefaultBufferSize];
+  char pri[kDefaultBufferSize];
+  rc = sdk_->GetFirmwareRevisions(kDefaultBufferSize, amss,
+                                  kDefaultBufferSize, boot,
+                                  kDefaultBufferSize, pri);
   if (rc == 0) {
     LOG(INFO) << "Firmware Revisions: AMSS: " << amss
               << " boot: " << boot
@@ -327,8 +519,9 @@ void GobiModem::LogGobiInformation() {
   LOG(INFO) << "IMEI: " << serials.imei;
   LOG(INFO) << "MEID: " << serials.meid;
 
-  char number[DEFAULT_SIZE], min_array[DEFAULT_SIZE];
-  rc = GetVoiceNumber(DEFAULT_SIZE, number, DEFAULT_SIZE, min_array);
+  char number[kDefaultBufferSize], min_array[kDefaultBufferSize];
+  rc = GetVoiceNumber(kDefaultBufferSize, number,
+                      kDefaultBufferSize, min_array);
   if (rc == 0) {
     LOG(INFO) << "Voice: " << number
               << " MIN: " << min_array;
@@ -477,7 +670,7 @@ bool GobiModem::EnsureActivated() {
     return false;
   }
 
-  // TODO(rochberg): Switch based on carrer
+  // TODO(rochberg): Switch based on carrier
   return ActivateOmadm();
 }
 
@@ -584,7 +777,7 @@ void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
 }
 
 
-bool GobiModem::GetSignalStrengthDbm(int *output) {
+bool GobiModem::GetSignalStrengthDbm(int& output) {
   if (!Enabled()) {
     // TODO(rochberg): ERROR
     LOG(WARNING) << "GetSignalQuality on disabled modem";
@@ -603,24 +796,48 @@ bool GobiModem::GetSignalStrengthDbm(int *output) {
     return false;
   }
   signals = std::min(kSignals, signals);
-
+  INT8 max_strength = -127;
   for (ULONG i = 0; i < signals; ++i) {
     LOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
               << " dBM technology: " << interfaces[i];
+    // TODO(ers) mark radio interface technology as registered
+    if (strengths[i] > max_strength) {
+      max_strength = strengths[i];
+    }
   }
-  if (!output) {
-    LOG(WARNING) << "signal";
+
+  // If we're in the connected state, pick the signal strength for the radio
+  // interface that's being used. Otherwise, pick the strongest signal.
+  ULONG session_state;
+  rc = sdk_->GetSessionState(&session_state);
+  if (rc != 0) {
+    // TODO(ers):  ERROR
+    LOG(WARNING) << "GetSessionState failed: " << rc;
     return false;
   }
-  // TODO(rochberg): Use GetDataBearerTechnology() to determine which
-  // bearer we're using and return that signal.  In the mean time,
-  // return the best of what's out there and assume the modem is using
-  // that.
-  *output = *(std::max_element(strengths, &strengths[signals]));
+  if (session_state == gobi::kConnected) {
+    ULONG db_technology;
+    rc = GetDataBearerTechnology(&db_technology);
+    if (rc != 0) {
+      // TODO(ers):  ERROR
+      LOG(WARNING) << "GetDataBearerTechnology failed: " << rc;
+      return false;
+    }
+    ULONG rfi_technology = get_rfi_technology(db_technology);
+    for (ULONG i = 0; i < signals; ++i) {
+      if (interfaces[i] == rfi_technology) {
+        signal_strength_ = strengths[i];
+        output = strengths[i];
+        return true;
+      }
+    }
+  }
 
+  output = max_strength;
   return true;
 }
 
+// Event callbacks:
 
 void GobiModem::ActivationStatusCallback(ULONG activation_state) {
   LOG(INFO) << "Activation status callback: " << activation_state;
@@ -634,11 +851,75 @@ void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
   LOG(INFO) << "NMEA mode: " << mode << " " << nmea;
 }
 
-void GobiModem::OmadmStateCallback(ULONG sessionState, ULONG failureReason) {
+void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
   LOG(INFO) << "OMA-DM State Callback: "
-            << sessionState << " " << failureReason;
+            << session_state << " " << failure_reason;
   pthread_mutex_lock(&activation_mutex_);
-  activation_state_ = sessionState;
+  activation_state_ = session_state;
   pthread_cond_broadcast(&activation_cond_);
   pthread_mutex_unlock(&activation_mutex_);
+}
+
+void GobiModem::SignalStrengthCallback(INT8 signal_strength,
+                                       ULONG radio_interface) {
+  // translate dBm into percent
+  unsigned long ss_percent =
+      signal_strength_dbm_to_percent(signal_strength);
+  signal_strength_ = signal_strength;
+  SignalQuality(ss_percent);
+  LOG(INFO) << "Signal strength " << static_cast<int>(signal_strength)
+            << " dBm on radio interface " << radio_interface
+            << " (" << ss_percent << "%)";
+  // TODO(ers) mark radio interface technology as registered
+}
+
+void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
+  LOG(INFO) << "SessionStateCallback " << state;
+  if (state == gobi::kConnected)
+    sdk_->GetDataBearerTechnology(&data_bearer_technology_);
+  session_state_ = state;
+  session_id_ = 0;
+}
+
+void GobiModem::UpdateRegistrationState(ULONG data_bearer_technology,
+                                        ULONG roaming_state) {
+  uint32_t cdma_1x_state;
+  uint32_t evdo_state;
+  uint32_t reg_state;
+
+  if (roaming_state == gobi::kHome)
+    reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  else
+    reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+
+  switch (data_bearer_technology) {
+    case gobi::kDataBearerCdma1xRtt:
+      cdma_1x_state = reg_state;
+      break;
+
+    case gobi::kDataBearerCdmaEvdo:
+    case gobi::kDataBearerCdmaEvdoRevA:
+      evdo_state = reg_state;
+      break;
+
+    default:
+      cdma_1x_state = 0;
+      evdo_state = 0;
+      break;
+  }
+  data_bearer_technology_ = data_bearer_technology;
+  roaming_state_ = roaming_state;
+  RegistrationStateChanged(cdma_1x_state, evdo_state);
+}
+
+void GobiModem::DataBearerCallback(ULONG data_bearer_technology) {
+  LOG(INFO) << "DataBearerCallback " << data_bearer_technology;
+
+  UpdateRegistrationState(data_bearer_technology, roaming_state_);
+}
+
+void GobiModem::RoamingIndicatorCallback(ULONG roaming) {
+  LOG(INFO) << "RoamingIndicatorCallback " << roaming;
+
+  UpdateRegistrationState(data_bearer_technology_, roaming);
 }
