@@ -1,0 +1,128 @@
+#!/bin/bash
+# Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+HELP='
+ help
+  Display this help
+
+ exit
+  Exit crosh
+
+ ssh <user> <host> [<port>]
+  Open an ssh connection to the given <host>, as <user>.  The <port> parameter
+  is optional and defaults to 22.
+'
+
+if [ "$1" == "--dev" -o -f "/root/.dev_mode" ]; then
+  . "$(dirname "$0")/crosh-dev"
+fi
+
+function cmd_help() {
+  echo "$HELP"
+}
+
+function cmd_exit() {
+  exit
+}
+
+function cmd_ssh() {
+  local user="$1"
+  local host="$2"
+  local port="${3:-22}"
+
+  if [ -z "$user" ]; then
+    echo "Missing required parameter: user"
+    return
+  elif ! check_username "$user"; then
+    echo "Invalid user: $user"
+    return
+  fi
+
+  if [ -z "$host" ]; then
+    echo "Missing required parameter: host"
+    return
+  elif ! check_hostname "$host"; then
+    echo "Invalid host: $host"
+    return
+  fi
+
+  if [ ! -z "$port" ]; then
+    if ! check_digits "$port"; then
+      echo "Invalid port: $port"
+      return
+    fi
+  fi
+
+  echo "open: host: $host, user: $user, port: $port"
+  ssh -p "$port" "$user@$host"
+}
+
+function dispatch() {
+  local line="$1"
+  local command=""
+  local params=""
+
+  local space_pos=$(expr index "$line" ' ')
+
+  if [ $space_pos == 0 ]; then
+    command=$line
+  else
+    command=${line:0:$((space_pos - 1))}
+    params=${line:$space_pos}
+  fi
+
+  if [ -z $(typeset -F "cmd_$command") ]; then
+    echo "Unknown command: '$command'"
+  else
+    command="cmd_$command"
+    $command $params
+  fi
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric, '.' or '-' characters
+function check_hostname() {
+  expr "$1" : '^[[:alnum:]][[:alnum:].\-]*$' > /dev/null
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric, '.' or '-' characters
+function check_hostname() {
+  expr "$1" : '^[[:alnum:]][[:alnum:].\-]*$' > /dev/null
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric and zero or more of ".~%$^\-"
+function check_username() {
+  expr "$1" : '^[[:alnum:]][[:alnum:].~%$^\-]*$' > /dev/null
+}
+
+function check_digits() {
+  expr "$1" : '^[[:digit:].]*$' > /dev/null
+}
+
+function repl() {
+  echo "Welcome to crosh, type 'help' for a list of commands"
+  echo
+
+  while [[ 1 ]]; do
+    if read -p "crosh> " -e LINE_; then
+      if [ ! -z "$LINE_" ]; then
+        history -s "$LINE_"
+        dispatch "$LINE_"
+      fi
+    else
+      echo
+      return 1
+    fi
+  done
+}
+
+HISTFILE="$HOME/.ssh_history"
+history -r $HISTFILE
+
+repl
+
+history -w $HISTFILE
