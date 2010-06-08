@@ -1,0 +1,69 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script executes each line in a flat file of commands. 
+#
+# If a filename is provided this script will execute only that file. 
+#
+# If no argument is given then every .lst file in ../etc will 
+# be executed. 
+
+
+
+# Goes through a file line by line ignoring '#' style comments
+# and whitespace. 
+#
+# Each line will be executed and the output will setup such that
+# our feedback mechanism will pick it up correctly. 
+# 
+# The file format is key/value pairs delimited by a comma. The value will
+# be executed. We will use the command that is executed as the key if it is
+# not provided.
+#
+# Example -> cpuinfo,cat /proc/cpuinfo
+# In this case the output of cat /proc/cpuinfo will be logged as "cpuinfo"
+#
+# Args
+#  $1 - The file to iterate over
+#
+simple_line_executor() {
+  # Do not exit in case a script wasn't found or threw an error.
+  while i=`line`
+  do
+    if [ ${#i} -eq 0 ]; then
+      continue
+    fi
+   
+   local comment_check=`expr "${i}" : '[ \t]*#' || true`
+   if [ $? -gt 0 ]; then
+     continue
+   fi
+
+    # Split the line into a key and value.
+    local key="$(echo ${i} | awk -F, '{ print $1 }')"
+    local value="$(echo ${i} | awk -F, '{ print $2 }')"
+    if [ ${#value} -eq 0 ]; then
+      value=${i}
+    fi
+
+    log=`${value} 2>/dev/null` && echo "${key}"='"""'"${log}"'"""'
+  done < ${1}
+}
+
+SCRIPTS_DIR="$(dirname "$0")/../etc"
+
+if [ -f "${1}" ]; then
+  simple_line_executor ${1}
+  exit 0
+fi
+
+# Dump the key-val pairs from lsb-release.
+cat /etc/lsb-release
+
+for file in $(ls ${SCRIPTS_DIR}/*.lst) 
+do
+  simple_line_executor ${file}
+done

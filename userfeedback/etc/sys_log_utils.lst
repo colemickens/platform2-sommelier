@@ -1,3 +1,26 @@
-/sbin/ifconfig
-/usr/sbin/lspci
-/usr/sbin/lsusb
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Every command listed here will be executed and logged to our feedback
+# mechanism. The format is comma delimted and the first term will be the key.
+# if no key is provided then the command will be used as the key and the value.
+#
+# Lines starting with # will be ignored. 
+#
+# Arguments will be included
+
+LOGDATE,/bin/date
+hostname,hostname
+cpu,uname -p
+hw_platform,uname -i
+dmesg,/bin/dmesg
+uname,/bin/uname -a
+lsmod,/usr/sbin/lsmod
+lspci,/usr/sbin/lspci
+lsusb,/usr/sbin/lsusb
+cpuinfo,cat /proc/cpuinfo
+meminfo,cat /proc/meminfo
+fontconfig.log,cat /var/log/fontconfig.log
+syslog,tail --bytes=30K /var/log/messages
+CLIENT_ID,cat /home/chronos/Consent\ To\ Send\ Stats
