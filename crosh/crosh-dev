@@ -10,7 +10,7 @@ if [ "$(basename $0)" == "crosh-dev" ]; then
 fi
 
 DEV_HELP='
-shell
+ shell
   Open a command line shell.
 '
 

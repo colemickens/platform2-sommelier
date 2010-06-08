@@ -3,6 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# NOTE: This script *almost* works in dash.  Unfortunately, dash is missing
+# the 'history' builtin and readline support is missing from the 'read'
+# builtin.  
+
 HELP='
  help
   Display this help
@@ -15,19 +19,20 @@ HELP='
   is optional and defaults to 22.
 '
 
-if [ "$1" == "--dev" -o -f "/root/.dev_mode" ]; then
+# TODO(rginda): Switch to the "real" dev mode file when we have one.
+if [ "$1" = "--dev" -o -f "/root/.dev_mode" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
 
-function cmd_help() {
+cmd_help() {
   echo "$HELP"
 }
 
-function cmd_exit() {
+cmd_exit() {
   exit
 }
 
-function cmd_ssh() {
+cmd_ssh() {
   local user="$1"
   local host="$2"
   local port="${3:-22}"
@@ -59,21 +64,21 @@ function cmd_ssh() {
   ssh -p "$port" "$user@$host"
 }
 
-function dispatch() {
+dispatch() {
   local line="$1"
   local command=""
   local params=""
 
   local space_pos=$(expr index "$line" ' ')
 
-  if [ $space_pos == 0 ]; then
+  if [ $space_pos = 0 ]; then
     command=$line
   else
     command=${line:0:$((space_pos - 1))}
     params=${line:$space_pos}
   fi
 
-  if [ -z $(typeset -F "cmd_$command") ]; then
+  if ! type "cmd_$command" | head -1 | grep -q "function"; then
     echo "Unknown command: '$command'"
   else
     command="cmd_$command"
@@ -83,31 +88,25 @@ function dispatch() {
 
 # Checks that a given string starts with an alphanumeric, and contains only
 # alphanumeric, '.' or '-' characters
-function check_hostname() {
+check_hostname() {
   expr "$1" : '^[[:alnum:]][[:alnum:].\-]*$' > /dev/null
 }
 
 # Checks that a given string starts with an alphanumeric, and contains only
-# alphanumeric, '.' or '-' characters
-function check_hostname() {
-  expr "$1" : '^[[:alnum:]][[:alnum:].\-]*$' > /dev/null
+# alphanumeric and zero or more of ":.~%$^\-"
+check_username() {
+  expr "$1" : '^[[:alnum:]][[:alnum:]:.~%$^\-]*$' > /dev/null
 }
 
-# Checks that a given string starts with an alphanumeric, and contains only
-# alphanumeric and zero or more of ".~%$^\-"
-function check_username() {
-  expr "$1" : '^[[:alnum:]][[:alnum:].~%$^\-]*$' > /dev/null
+check_digits() {
+  expr "$1" : '^[[:digit:]]*$' > /dev/null
 }
 
-function check_digits() {
-  expr "$1" : '^[[:digit:].]*$' > /dev/null
-}
-
-function repl() {
+repl() {
   echo "Welcome to crosh, type 'help' for a list of commands"
   echo
 
-  while [[ 1 ]]; do
+  while [ 1 ]; do
     if read -p "crosh> " -e LINE_; then
       if [ ! -z "$LINE_" ]; then
         history -s "$LINE_"
@@ -120,7 +119,11 @@ function repl() {
   done
 }
 
-HISTFILE="$HOME/.ssh_history"
+# The terminal seems to come up with a bogus notion of its geometry.  Calling
+# reset works around the problem.
+reset
+
+HISTFILE="$HOME/.crosh_history"
 history -r $HISTFILE
 
 repl
