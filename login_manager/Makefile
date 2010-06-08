@@ -6,7 +6,9 @@ CXX ?= g++
 CXXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-LIBS = -lbase -lpthread -lrt -lchromeos -lcrash
+BASE_LIBS = -lbase -lpthread -lrt -lchromeos
+LIBS = $(BASE_LIBS) -lcrash
+TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
 	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1)
@@ -41,11 +43,11 @@ $(SESSION_BIN): $(SESSION_OBJS)
 
 $(SIGNALLER_BIN): $(SIGNALLER_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(SIGNALLER_OBJS) \
-	$(LIBS) $(LDFLAGS) -o $(SIGNALLER_BIN)
+	$(TEST_LIBS) $(LDFLAGS) -o $(SIGNALLER_BIN)
 
 $(TEST_BIN): $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(TEST_OBJS) \
-	$(LIBS) $(LDFLAGS) -lgtest -lgmock -o $(TEST_BIN)
+	$(TEST_LIBS) $(LDFLAGS) -lgtest -lgmock -o $(TEST_BIN)
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
