@@ -54,6 +54,10 @@ uniform float imageHeight;
  */
 uniform sampler2D textureSampler;
 
+#if defined (USE_UNIFORM_MATRIX)
+uniform mat4 conversion;
+#endif
+
 varying vec4 v1;
 
 /**
@@ -66,7 +70,7 @@ varying vec4 v1;
  *        trying to render, in parametric coordinates.
  */
 float getYPixel(vec2 position) {
-  position.y = position.y * 2.0 / 3.0 + 1.0 / 3.0;
+  position.y = 1. - (position.y * 2.0 / 3.0 + 1.0 / 3.0);
   return texture2D(textureSampler, position).x;
 }
 
@@ -89,7 +93,7 @@ vec2 mapCommon(vec2 position, float planarOffset) {
                   floor((imageWidth - 1.0 - position.x) / 2.0);
   float x = floor(imageWidth - 1.0 - floor(mod(planarOffset, imageWidth)));
   float y = floor(planarOffset / imageWidth);
-  return vec2((x + 0.5) / imageWidth, (y + 0.5) / (1.5 * imageHeight));
+  return vec2((x + 0.5) / imageWidth, 1. - (y + 0.5) / (1.5 * imageHeight));
 }
 
 /**
@@ -209,10 +213,12 @@ void main() {
    * [0,1] to [-.5,.5] as part of the transform.
    */
   vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
+#if !defined(USE_UNIFORM_MATRIX)
   mat4 conversion = mat4( 1.0,    1.0,    1.0,   0.0,
                           0.0,   -0.344,  1.772, 0.0,
                           1.402, -0.714,  0.0,   0.0,
                          -0.701,  0.529, -0.886, 1.0);
+#endif
 
   gl_FragColor = conversion * channels;
 }

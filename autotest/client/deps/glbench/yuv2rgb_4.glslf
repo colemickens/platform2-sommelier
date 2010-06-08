@@ -29,27 +29,42 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-uniform float imageHeight;
+/*
+ * This is a semiplanar YUV to RGB conversion shader that uses separate
+ * samplers to hold Y, and UV components.
+ */
 
-attribute vec4 c;
+uniform sampler2D ySampler;
+uniform sampler2D uvSampler; /* GL_LUMINANCE_ALPHA */
 
-varying vec2 lineCounter;
+#if defined (USE_UNIFORM_MATRIX)
+uniform mat4 conversion;
+#endif
+
 varying vec2 yPlane;
-varying vec2 uPlane;
-varying vec2 vPlane;
+varying vec2 uvPlane;
 
 void main() {
-  gl_Position = c;
 #if defined(I915_WORKAROUND)
-  gl_TexCoord[0].xy = vec2(c.y * imageHeight / 4.0, 0.0);
-  gl_TexCoord[0].zw = vec2(c.x, 1. - (2.0 * c.y + 1.0) / 3.0);
-  gl_TexCoord[1].xy = vec2(c.x / 2.0, 1. - (c.y + 1.0) / 6.0);
-  gl_TexCoord[1].zw = vec2(c.x / 2.0, 1. - c.y / 6.0);
+  float yChannel = texture2D(ySampler, gl_TexCoord[0].xy).r;
+  vec2 uvChannel = texture2D(uvSampler, gl_TexCoord[0].zw).ra;
 #else
-  lineCounter = vec2(c.y * imageHeight / 4.0, 0.0);
-  yPlane = vec2(c.x, 1. - (2.0 * c.y + 1.0) / 3.0);
-  uPlane = vec2(c.x / 2.0, 1. - (c.y + 1.0) / 6.0);
-  vPlane = vec2(c.x / 2.0, 1. - c.y / 6.0);
+  float yChannel = texture2D(ySampler, yPlane).r;
+  vec2 uvChannel = texture2D(uvSampler, uvPlane).ra;
 #endif
-}
+  /*
+   * This does the colorspace conversion from Y'UV to RGB as a matrix
+   * multiply.  It also does the offset of the U and V channels from
+   * [0,1] to [-.5,.5] as part of the transform.
+   */
+  vec4 channels = vec4(yChannel, uvChannel, 1.0);
 
+#if !defined(USE_UNIFORM_MATRIX)
+  mat4 conversion = mat4( 1.0,    1.0,    1.0,   0.0,
+                          0.0,   -0.344,  1.772, 0.0,
+                          1.402, -0.714,  0.0,   0.0,
+                         -0.701,  0.529, -0.886, 1.0);
+#endif
+
+  gl_FragColor = conversion * channels;
+}

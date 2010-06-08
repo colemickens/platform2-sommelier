@@ -65,8 +65,7 @@ int main(int argc, char *argv[]) {
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
 #endif
-    glbench::GetYuvToRgbTest(1, "yuv_shader_1"),
-    glbench::GetYuvToRgbTest(2, "yuv_shader_2"),
+    glbench::GetYuvToRgbTest(),
     glbench::GetReadPixelTest(),
     glbench::GetAttributeFetchShaderTest(),
     glbench::GetVaryingsAndDdxyShaderTest(),

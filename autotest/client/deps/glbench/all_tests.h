@@ -8,7 +8,7 @@ class TestBase;
 TestBase* GetSwapTest();
 TestBase* GetClearTest();
 TestBase* GetFillRateTest();
-TestBase* GetYuvToRgbTest(int type, const char* name);
+TestBase* GetYuvToRgbTest();
 TestBase* GetReadPixelTest();
 TestBase* GetTriangleSetupTest();
 TestBase* GetAttributeFetchShaderTest();

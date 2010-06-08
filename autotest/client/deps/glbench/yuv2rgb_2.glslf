@@ -43,6 +43,10 @@ varying vec2 yPlane;
 varying vec2 uPlane;
 varying vec2 vPlane;
 
+#if defined (USE_UNIFORM_MATRIX)
+uniform mat4 conversion;
+#endif
+
 void main() {
   /*
    * If the height of the original image is even, offset_odd is not needed.
@@ -70,10 +74,12 @@ void main() {
    * [0,1] to [-.5,.5] as part of the transform.
    */
   vec4 channels = vec4(yChannel, uChannel, vChannel, 1.0);
+#if !defined(USE_UNIFORM_MATRIX)
   mat4 conversion = mat4( 1.0,    1.0,    1.0,   0.0,
                           0.0,   -0.344,  1.772, 0.0,
                           1.402, -0.714,  0.0,   0.0,
                          -0.701,  0.529, -0.886, 1.0);
+#endif
 
   gl_FragColor = conversion * channels;
 }
