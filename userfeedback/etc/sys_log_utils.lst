@@ -21,6 +21,7 @@ lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 cpuinfo,cat /proc/cpuinfo
 meminfo,cat /proc/meminfo
+ps,/bin/ps ux
 fontconfig.log,cat /var/log/fontconfig.log
 syslog,tail --bytes=30K /var/log/messages
 CLIENT_ID,cat /home/chronos/Consent\ To\ Send\ Stats
