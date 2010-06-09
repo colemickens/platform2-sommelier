@@ -515,7 +515,7 @@ dont_run_as_root() {
 list_usb_disks() {
   local sd
   for sd in /sys/block/sd*; do
-    if readlink ${sd}/device | grep -q usb &&
+    if readlink -f ${sd}/device | grep -q usb &&
       [ "$(cat ${sd}/removable)" = 1 ]; then
       echo ${sd##*/}
     fi
