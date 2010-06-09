@@ -7,6 +7,8 @@
 #include <sys/wait.h>
 
 #include "base/logging.h"
+#include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/service_constants.h"
 
 namespace power_manager {
 
@@ -26,6 +28,21 @@ void Launch(const char* cmd) {
   } else if (pid > 0) {
     waitpid(pid, NULL, 0);
   }
+}
+
+void SendSignalToSessionManager(const char* signal) {
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
+      chromeos::dbus::GetSystemBusConnection().g_connection(),
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface);
+  CHECK(proxy);
+  GError* error = NULL;
+  if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
+                         G_TYPE_INVALID)) {
+    LOG(ERROR) << "Error sending signal: " << error->message;
+  }
+  g_object_unref(proxy);
 }
 
 }  // namespace util

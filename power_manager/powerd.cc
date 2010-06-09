@@ -28,93 +28,6 @@ static const int64 kFuzzMS = 100;
 // The minimum delta between timers when we want to give a user time to react
 static const int64 kReactMS = 30000;
 
-// TODO(davidjames): Move this to util.cc.
-static void SendSignalToSessionManager(const char* signal) {
-  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      login_manager::kSessionManagerServiceName,
-      login_manager::kSessionManagerServicePath,
-      login_manager::kSessionManagerInterface);
-  CHECK(proxy);
-  GError* error = NULL;
-  if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
-                         G_TYPE_INVALID)) {
-    LOG(ERROR) << "Error sending signal: " << error->message;
-  }
-  g_object_unref(proxy);
-}
-
-// ScreenLocker implementation
-// TODO(davidjames): Move this to screen_locker.cc.
-
-void ScreenLocker::LockScreen() {
-  LOG(INFO) << "Locking screen";
-  if (use_xscreensaver_) {
-    util::Launch("xscreensaver-command -lock");
-  } else {
-    SendSignalToSessionManager("LockScreen");
-  }
-}
-
-void ScreenLocker::Init(bool use_xscreensaver) {
-  locked_ = false;
-  use_xscreensaver_ = use_xscreensaver;
-}
-
-// A message filter to receive signals.
-// TODO(davidjames): Move this down with the rest of the daemon methods.
-DBusHandlerResult Daemon::DBusMessageHandler(
-    DBusConnection*, DBusMessage* message, void* data) {
-  Daemon* daemon = static_cast<Daemon*>(data);
-  if (dbus_message_is_signal(message, kPowerManagerInterface,
-                             kRequestLockScreenSignal)) {
-    LOG(INFO) << "RequestLockScreen event";
-    daemon->locker_.LockScreen();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kRequestUnlockScreenSignal)) {
-    // TODO(davidjames): Check lid state
-    LOG(INFO) << "RequestUnlockScreen event";
-    SendSignalToSessionManager("UnlockScreen");
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kScreenIsLockedSignal)) {
-    LOG(INFO) << "ScreenIsLocked event";
-    daemon->locker_.set_locked(true);
-    daemon->suspender_.CheckSuspend();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kScreenIsUnlockedSignal)) {
-    LOG(INFO) << "ScreenIsUnlocked event";
-    daemon->locker_.set_locked(false);
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kRequestSuspendSignal)) {
-    LOG(INFO) << "RequestSuspend event";
-    daemon->suspender_.RequestSuspend();
-  } else {
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  }
-  return DBUS_HANDLER_RESULT_HANDLED;
-}
-
-// TODO(davidjames): Move this down with the rest of the daemon methods.
-void Daemon::RegisterDBusMessageHandler() {
-  const std::string filter = StringPrintf("type='signal', interface='%s'",
-                                          kPowerManagerInterface);
-
-  DBusError error;
-  dbus_error_init(&error);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a filter:" << error.name << ", message="
-               << error.message;
-    NOTREACHED();
-  } else {
-    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
-                                     NULL));
-    LOG(INFO) << "DBus monitoring started";
-  }
-}
-
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle. Currently, this daemon just adjusts the backlight,
 //         but in future it will handle other tasks such as turning off
@@ -315,6 +228,57 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
     daemon->ctl_->ReadBrightness();
   }
   return GDK_FILTER_CONTINUE;
+}
+
+DBusHandlerResult Daemon::DBusMessageHandler(
+    DBusConnection*, DBusMessage* message, void* data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  if (dbus_message_is_signal(message, kPowerManagerInterface,
+                             kRequestLockScreenSignal)) {
+    LOG(INFO) << "RequestLockScreen event";
+    daemon->locker_.LockScreen();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestUnlockScreenSignal)) {
+    // TODO(davidjames): Check lid state
+    LOG(INFO) << "RequestUnlockScreen event";
+    util::SendSignalToSessionManager("UnlockScreen");
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kScreenIsLockedSignal)) {
+    LOG(INFO) << "ScreenIsLocked event";
+    daemon->locker_.set_locked(true);
+    daemon->suspender_.CheckSuspend();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kScreenIsUnlockedSignal)) {
+    LOG(INFO) << "ScreenIsUnlocked event";
+    daemon->locker_.set_locked(false);
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestSuspendSignal)) {
+    LOG(INFO) << "RequestSuspend event";
+    daemon->suspender_.RequestSuspend();
+  } else {
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
+  return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+void Daemon::RegisterDBusMessageHandler() {
+  const std::string filter = StringPrintf("type='signal', interface='%s'",
+                                          kPowerManagerInterface);
+
+  DBusError error;
+  dbus_error_init(&error);
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  dbus_bus_add_match(connection, filter.c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "Failed to add a filter:" << error.name << ", message="
+               << error.message;
+    NOTREACHED();
+  } else {
+    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
+                                     NULL));
+    LOG(INFO) << "DBus monitoring started";
+  }
 }
 
 }  // namespace power_manager

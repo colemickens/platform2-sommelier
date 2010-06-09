@@ -11,6 +11,7 @@ namespace util {
 
 bool LoggedIn();
 void Launch(const char* cmd);
+void SendSignalToSessionManager(const char* signal);
 
 }  // namespace util
 
