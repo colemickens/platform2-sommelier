@@ -150,6 +150,8 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --user-data-dir=/home/$USER \
             --login-profile=user \
             --in-chrome-auth \
+	    --apps-gallery-title="Web Store" \
+	    --apps-gallery-url="http://chrome.google.com/extensions/" \
             --enable-login-images \
             "${SKIP_OOBE}" \
             "${PROXY_ARGS}"
