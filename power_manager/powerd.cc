@@ -223,15 +223,20 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
   LOG(INFO) << "offset_ms_ = " << offset_ms;
   offset_ms_ = offset_ms;
   if (plugged_state_ == kPowerConnected) {
-    dim_ms_ = plugged_dim_ms_ + offset_ms;
-    off_ms_ = plugged_off_ms_ + offset_ms;
-    suspend_ms_ = plugged_suspend_ms_ + offset_ms;
+    dim_ms_ = plugged_dim_ms_;
+    off_ms_ = plugged_off_ms_;
+    suspend_ms_ = plugged_suspend_ms_;
   } else {
     CHECK(plugged_state_ == kPowerDisconnected);
-    dim_ms_ = unplugged_dim_ms_ + offset_ms;
-    off_ms_ = unplugged_off_ms_ + offset_ms;
-    suspend_ms_ = unplugged_suspend_ms_ + offset_ms;
+    dim_ms_ = unplugged_dim_ms_;
+    off_ms_ = unplugged_off_ms_;
+    suspend_ms_ = unplugged_suspend_ms_;
   }
+
+  // Protect against overflow
+  dim_ms_ = max(dim_ms_ + offset_ms, dim_ms_);
+  off_ms_ = max(off_ms_ + offset_ms, off_ms_);
+  suspend_ms_ = max(suspend_ms_ + offset_ms, suspend_ms_);
 
   // Make sure that the screen turns off before it locks, and dims before
   // it turns off. This ensures the user gets a warning before we lock the
@@ -243,11 +248,11 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
   CHECK(idle_.ClearTimeouts());
   if (offset_ms > kFuzzMS)
     CHECK(idle_.AddIdleTimeout(kFuzzMS));
-  if (kMetricIdleMin + kFuzzMS <= dim_ms_)
+  if (kMetricIdleMin <= dim_ms_ - kFuzzMS)
     CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
   CHECK(idle_.AddIdleTimeout(dim_ms_));
   CHECK(idle_.AddIdleTimeout(off_ms_));
-  if (lock_ms_ + kFuzzMS < suspend_ms_ || lock_ms_ > suspend_ms_ + kFuzzMS) {
+  if (lock_ms_ < suspend_ms_ - kFuzzMS || lock_ms_ - kFuzzMS > suspend_ms_) {
     CHECK(idle_.AddIdleTimeout(lock_ms_));
     CHECK(idle_.AddIdleTimeout(suspend_ms_));
   } else {

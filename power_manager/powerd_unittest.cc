@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
+#include <stdint.h>
 #include <X11/extensions/XTest.h>
 
 #include "base/logging.h"
@@ -27,8 +28,8 @@ static const int64 kDefaultBrightness = 50;
 static const int64 kMaxBrightness = 100;
 static const int64 kPluggedBrightness = 70;
 static const int64 kUnpluggedBrightness = 30;
-static const int64 kSmallInterval = 20;
-static const int64 kBigInterval = 100;
+static const int64 kSmallInterval = 250;
+static const int64 kBigInterval = kSmallInterval * 4;
 static const int64 kPluggedDim = kBigInterval;
 static const int64 kPluggedOff = 2 * kBigInterval;
 static const int64 kPluggedSuspend = 3 * kBigInterval;
@@ -342,6 +343,18 @@ static gboolean QuitLoop(gpointer data) {
   return false;
 }
 
+static gboolean SetPlugged(gpointer data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  daemon->SetPlugged(true);
+  return false;
+}
+
+static gboolean SetUnplugged(gpointer data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  daemon->SetPlugged(false);
+  return false;
+}
+
 TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   {
     InSequence metrics;
@@ -383,8 +396,12 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
                         Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
         .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+        .WillOnce(Return(true));
+    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+        .WillOnce(Return(true));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
+        .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(0))
@@ -392,14 +409,17 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
     EXPECT_CALL(metrics_lib_,
         SendToUMA("Power.IdleTimeOnBattery", _, _, _, _))
         .WillOnce(Return(true));
+    EXPECT_CALL(metrics_lib_,
+        SendToUMA("Power.IdleTimeAfterDimOnBattery", _, _, _, _))
+        .WillOnce(Return(true));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(0),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
-    EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
+    EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
         .WillOnce(Return(true));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(0),
+        .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(0))
@@ -410,19 +430,23 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   FakeMotionEvent(GDK_DISPLAY());
   daemon_.plugged_dim_ms_ = kPluggedDim;
   daemon_.plugged_off_ms_ = kPluggedOff;
-  daemon_.plugged_suspend_ms_ = kPluggedSuspend;
+  daemon_.plugged_suspend_ms_ = INT64_MAX;
   daemon_.unplugged_dim_ms_ = kUnpluggedDim;
   daemon_.unplugged_off_ms_ = kUnpluggedOff;
-  daemon_.unplugged_suspend_ms_ = kUnpluggedSuspend;
+  daemon_.unplugged_suspend_ms_ = INT64_MAX;
   daemon_.lock_ms_ = kLockMs;
   daemon_.idle_.Init(&daemon_);
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());
   g_timeout_add(4 * kBigInterval, FakeMotionEvent, GDK_DISPLAY());
-  g_timeout_add(7 * kBigInterval + kSmallInterval, FakeMotionEvent,
+  g_timeout_add(4 * kBigInterval + 2 * kSmallInterval, SetPlugged, &daemon_);
+  g_timeout_add(5 * kBigInterval + kSmallInterval, FakeMotionEvent,
                 GDK_DISPLAY());
-  g_timeout_add(12 * kBigInterval, QuitLoop, loop);
+  g_timeout_add(5 * kBigInterval + 2 * kSmallInterval, SetUnplugged, &daemon_);
+  g_timeout_add(6 * kBigInterval + 3 * kSmallInterval, FakeMotionEvent,
+                GDK_DISPLAY());
+  g_timeout_add(9 * kBigInterval, QuitLoop, loop);
   g_main_loop_run(loop);
 }
 
