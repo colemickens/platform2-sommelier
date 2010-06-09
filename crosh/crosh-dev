@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/dash
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # dev-mode functionality for chrosh
 
-if [ "$(basename $0)" == "crosh-dev" ]; then
+if [ "$(basename $0)" = "crosh-dev" ]; then
   exec "$(dirname $0)/crosh --dev"
 fi
 
@@ -16,6 +16,6 @@ DEV_HELP='
 
 HELP="$HELP$DEV_HELP"
 
-function cmd_shell() {
+cmd_shell() {
   bash
 }

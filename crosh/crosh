@@ -1,11 +1,30 @@
-#!/bin/bash
+#!/bin/dash
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+TRY_BASH=1
 # NOTE: This script *almost* works in dash.  Unfortunately, dash is missing
 # the 'history' builtin and readline support is missing from the 'read'
-# builtin.  
+# builtin.
+#
+# Please test that any changes continue to work in dash (change TRY_BASH to 0),
+# just don't forget to change it back before pushing :)
+
+if type "history" 2>/dev/null | grep -q "shell builtin"; then
+  IS_BASH=1
+else
+  IS_BASH=0
+fi
+
+# The terminal seems to come up with a bogus notion of its geometry.  Calling
+# reset works around the problem.
+reset
+
+if [ "$TRY_BASH" = "1" -a "$IS_BASH" != "1" -a -x "/bin/bash" ]; then
+  # Relaunch in bash if we can.
+  exec /bin/bash $0 "$@"
+fi
 
 HELP='
  help
@@ -19,10 +38,44 @@ HELP='
   is optional and defaults to 22.
 '
 
+CHROMEOS_INSTALL=/usr/sbin/chromeos-install
+
+if [ -f $CHROMEOS_INSTALL ]; then
+  # Install script exists.  Test if it thinks we booted from a removable
+  # device.  This is based on the knowledge that the install script checks
+  # that the root device is removable before validating its other arguments.
+  # Also, we expect that when it fails in this manner, it mentions the word
+  # "removable" on stdout.
+
+  if ! $CHROMEOS_INSTALL --dst=/dev/null | grep -q "removable"; then
+    REMOVABLE=1
+  fi
+fi
+
+if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
+  . "$(dirname "$0")/crosh-usb"
+fi
+  
 # TODO(rginda): Switch to the "real" dev mode file when we have one.
-if [ "$1" = "--dev" -o -f "/root/.dev_mode" ]; then
+if [ "$(echo "$@" | grep -- "--dev")" -o -f "/root/.dev_mode" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
+
+shell_read() {
+  if [ "$IS_BASH" = "1" ]; then
+    # In bash, -e gives readline support.
+    read -p "crosh> " -e $@
+  else
+    read -p "crosh> " $@
+  fi
+}
+
+shell_history() {
+  if [ "$IS_BASH" = "1" ]; then
+    # In bash, the history builtin can be used to manage readline history
+    history $@
+  fi
+}
 
 cmd_help() {
   echo "$HELP"
@@ -78,7 +131,7 @@ dispatch() {
     params=${line:$space_pos}
   fi
 
-  if ! type "cmd_$command" | head -1 | grep -q "function"; then
+  if ! type "cmd_$command" 2>/dev/null | head -1 | grep -q "function"; then
     echo "Unknown command: '$command'"
   else
     command="cmd_$command"
@@ -103,13 +156,17 @@ check_digits() {
 }
 
 repl() {
-  echo "Welcome to crosh, type 'help' for a list of commands"
+  echo "Welcome to crosh, type 'help' for a list of commands."
+  if [ "$IS_BASH" != "1" ]; then
+    echo "Sorry, line editing and command history disabled due to" \
+      "shell limitations."
+  fi
   echo
 
   while [ 1 ]; do
-    if read -p "crosh> " -e LINE_; then
+    if shell_read LINE_; then
       if [ ! -z "$LINE_" ]; then
-        history -s "$LINE_"
+        shell_history -s "$LINE_"
         dispatch "$LINE_"
       fi
     else
@@ -119,13 +176,9 @@ repl() {
   done
 }
 
-# The terminal seems to come up with a bogus notion of its geometry.  Calling
-# reset works around the problem.
-reset
-
 HISTFILE="$HOME/.crosh_history"
-history -r $HISTFILE
+shell_history -r $HISTFILE
 
 repl
 
-history -w $HISTFILE
+shell_history -w $HISTFILE
