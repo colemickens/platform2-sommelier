@@ -16,7 +16,7 @@ Executable programs:
 Main Classes:
   * Backlight (backlight.{cc,h})
     Get and set the brightness level of the display backlight.
-  * IdleDimmer (idle_dimmer.{cc,h})
+  * BacklightController (backlight_controller.{cc,h})
     Adjusts the backlight based on whether the user is idle.
   * XIdle (xidle.{cc,h})
     Receive notifications from the X Server when the user is marked as
@@ -24,7 +24,7 @@ Main Classes:
 
 Unit tests:
   * idle_dimmer_unittest.cc:
-    Tests the IdleDimmer class.
+    Tests the BacklightController class.
   * xidle_unittest.cc:
     Tests the XIdle class with a real X server (or a virtual framebuffer).
 
