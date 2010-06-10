@@ -35,8 +35,11 @@ class BacklightController {
   // percentage.
   void GetBrightness(int64* level);
 
-  // Increase / decrease brightness by specified offset.
-  void ChangeBrightness(int64 offset);
+  // Increase the brightness level of the backlight by one level.
+  void IncreaseBrightness();
+
+  // Decrease the brightness level of the backlight by one level.
+  void DecreaseBrightness();
 
   // Set the backlight to active or dim.
   void SetDimState(DimState state);

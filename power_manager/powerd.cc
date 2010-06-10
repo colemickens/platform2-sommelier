@@ -218,6 +218,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   Daemon* daemon = static_cast<Daemon*>(data);
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   if (xevent->type == KeyPress) {
+    // TODO(davidjames): Actually increase/decrease the brightness here.
     if (xevent->xkey.keycode == daemon->key_brightness_up_) {
       LOG(INFO) << "Key press: Brightness up";
     } else if (xevent->xkey.keycode == daemon->key_brightness_down_) {

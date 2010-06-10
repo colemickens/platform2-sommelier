@@ -41,10 +41,25 @@ void BacklightController::GetBrightness(int64* level) {
   *level = lround(100. * raw_level / max_);
 }
 
-void BacklightController::ChangeBrightness(int64 diff) {
-  ReadBrightness();
+void BacklightController::IncreaseBrightness() {
+  // Increase brightness by ~6.25%, trying to give the user at least 16
+  // distinct brightness levels
   int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
-  *brightness_offset_ += clamp(brightness + diff) - brightness;
+  int64 offset = 1 + (max_ >> 5);
+  int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
+  int64 new_brightness = clamp(lround(100. * new_val / max_));
+  *brightness_offset_ += new_brightness - brightness;
+  WriteBrightness();
+}
+
+void BacklightController::DecreaseBrightness() {
+  // Decrease brightness by ~6.25%, trying to give the user at least 16
+  // distinct brightness levels
+  int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
+  int64 offset = 1 + (max_ >> 5);
+  int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
+  int64 new_brightness = clamp(lround(100. * new_val / max_));
+  *brightness_offset_ += new_brightness - brightness;
   WriteBrightness();
 }
 
