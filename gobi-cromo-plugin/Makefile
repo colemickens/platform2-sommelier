@@ -11,7 +11,8 @@ LDFLAGS += -lbase -lQCWWAN2k -lglog -lpthread -lrt
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 PLUGINDEST ?= $(DESTDIR)/usr/lib/cromo/plugins
-UDEVRULES = 77-cromo-gobi-device-blacklist.rules
+UDEVRULES = 77-cromo-gobi-device-blacklist.rules \
+	77-cromo-gobi-device.rules
 UDEVRULES_DIR = $(DESTDIR)/lib/udev/rules.d
 
 GOBI_PLUGIN = gobi.so
