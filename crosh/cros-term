@@ -1,3 +1,3 @@
 #!/bin/bash
 
-exec /usr/bin/aterm -tn xterm -bg black -fg grey +sb -e /usr/bin/cros-term
+exec /usr/bin/aterm -tn xterm -bg black -fg grey +sb -e /usr/bin/crosh
