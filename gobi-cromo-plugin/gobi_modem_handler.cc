@@ -38,7 +38,7 @@ bool GobiModemHandler::Initialize() {
 // Enumerate the existing devices, and add them to the list of devices
 // that are managed by the ChromeOS modem manager
 
-vector<DBus::Path> GobiModemHandler::EnumerateDevices() {
+vector<DBus::Path> GobiModemHandler::EnumerateDevices(DBus::Error& error) {
   vector <DBus::Path> to_return;
   std::vector<DEVICE_ELEMENT> available =
       GetAvailableDevices();

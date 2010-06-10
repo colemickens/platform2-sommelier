@@ -20,7 +20,7 @@ class GobiModemHandler : public ModemHandler {
   explicit GobiModemHandler(CromoServer& server);
   virtual ~GobiModemHandler() {};
 
-  virtual std::vector<DBus::Path> EnumerateDevices();
+  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
   virtual bool Initialize();
 
  protected:

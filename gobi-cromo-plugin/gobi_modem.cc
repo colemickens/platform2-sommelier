@@ -100,12 +100,13 @@ GobiModem::GobiModem(DBus::Connection& connection,
   UnlockRequired = "";
 
   // Reviewer note:  These are just temporary calls
-  Enable(true);
+  DBus::Error error;
+  Enable(true, error);
   LogGobiInformation();
 }
 
 // DBUS Methods: Modem
-void GobiModem::Enable(const bool& enable) {
+void GobiModem::Enable(const bool& enable, DBus::Error& error) {
   if (enable && !Enabled()) {
     if (!ApiConnect()) {
       // TODO(rochberg): ERROR
@@ -133,13 +134,13 @@ void GobiModem::Enable(const bool& enable) {
     // TODO(rochberg):  Make this more general
     if (carrier != 1  && // Generic
         carrier < 101) {  // Defined carriers start at 101
-      SetCarrier("Sprint");
+      SetCarrier("Sprint", error);
     }
     Enabled = true;
   }
 }
 
-void GobiModem::Connect(const std::string& unused_number) {
+void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   if (!Enabled()) {
     // TODO(rochberg): ERROR
     LOG(WARNING) << "Connect on disabled modem";
@@ -172,7 +173,7 @@ void GobiModem::Connect(const std::string& unused_number) {
 }
 
 
-void GobiModem::Disconnect() {
+void GobiModem::Disconnect(DBus::Error& error) {
   LOG(INFO) << "Disconnect";
   if (session_state_ != gobi::kConnected) {
     LOG(WARNING) << "Disconnect called when not connecting";
@@ -186,7 +187,8 @@ void GobiModem::Disconnect() {
   // session_state_ will be set in SessionStateCallback
 }
 
-DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config() {
+DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config(
+    DBus::Error& error) {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
 
   LOG(INFO) << "GetIP4Config";
@@ -194,7 +196,7 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config() {
   return result;
 }
 
-void GobiModem::FactoryReset(const std::string& code) {
+void GobiModem::FactoryReset(const std::string& code, DBus::Error& error) {
   ULONG rc;
   LOG(INFO) << "ResetToFactoryDefaults";
   rc = sdk_->ResetToFactoryDefaults(const_cast<CHAR *>(code.c_str()));
@@ -209,7 +211,8 @@ void GobiModem::FactoryReset(const std::string& code) {
   return;
 }
 
-DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
+DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
+    DBus::Error& error) {
   // (manufacturer, modem, version).
   DBus::Struct<std::string, std::string, std::string> result;
 
@@ -247,9 +250,9 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo() {
 }
 
 // DBUS Methods: ModemSimple
-void GobiModem::Connect(const DBusPropertyMap& properties) {
+void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   LOG(INFO) << "Simple.Connect";
-  Connect("unused_number");
+  Connect("unused_number", error);
 }
 
 bool GobiModem::GetSerialNumbers(SerialNumbers *out) {
@@ -269,7 +272,7 @@ bool GobiModem::GetSerialNumbers(SerialNumbers *out) {
   return true;
 }
 
-DBusPropertyMap GobiModem::GetStatus() {
+DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   DBusPropertyMap result;
 
   int32_t rssi;
@@ -298,7 +301,7 @@ DBusPropertyMap GobiModem::GetStatus() {
 
   // DBUS Methods: ModemCDMA
 
-std::string GobiModem::GetEsn() {
+std::string GobiModem::GetEsn(DBus::Error& error) {
   LOG(INFO) << "GetEsn";
 
   SerialNumbers serials;
@@ -310,7 +313,7 @@ std::string GobiModem::GetEsn() {
 }
 
 
-uint32_t GobiModem::GetSignalQuality() {
+uint32_t GobiModem::GetSignalQuality(DBus::Error& error) {
   if (!Enabled()) {
     // TODO(rochberg): ERROR
     LOG(WARNING) << "GetSignalQuality on disabled modem";
@@ -328,7 +331,8 @@ uint32_t GobiModem::GetSignalQuality() {
 
 
 // returns <band class, band, system id>
-DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem() {
+DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
+    DBus::Error& error) {
   DBus::Struct<uint32_t, std::string, uint32_t> result;
   ULONG rc;
   WORD mcc, mnc, sid, nid;
@@ -398,7 +402,8 @@ ULONG GobiModem::GetServingNetworkInfo(ULONG* registration_state,
 }
 
 void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
-                                     uint32_t& evdo_state) {
+                                     uint32_t& evdo_state,
+                                     DBus::Error &error) {
   LOG(INFO) << "GetRegistrationState";
   ULONG rc;
   ULONG reg_state;
@@ -538,7 +543,7 @@ void GobiModem::LogGobiInformation() {
   }
 }
 
-void GobiModem::SoftReset() {
+void GobiModem::SoftReset(DBus::Error& error) {
   if (!ResetModem()) {
     // TODO(rochberg):  ERROR
   }
@@ -764,7 +769,7 @@ bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
   return true;
 }
 
-void GobiModem::SetCarrier(const std::string& carrier) {
+void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
   if (!EnsureFirmwareLoaded(carrier.c_str())) {
     // TODO(rochberg): ERROR
   }
@@ -772,7 +777,8 @@ void GobiModem::SetCarrier(const std::string& carrier) {
 
 void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
                                 const std::string& property,
-                                DBus::Variant& vale) {
+                                DBus::Variant& value,
+                                DBus::Error& error) {
   LOG(INFO) << "GetProperty called for " << property;
 }
 

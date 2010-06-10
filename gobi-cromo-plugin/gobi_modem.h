@@ -50,36 +50,38 @@ class GobiModem
   }
 
   // DBUS Methods: Modem
-  virtual void Enable(const bool& enable);
-  virtual void Connect(const std::string& number);
-  virtual void Disconnect();
-  virtual void FactoryReset(const std::string& number);
+  virtual void Enable(const bool& enable, DBus::Error& error);
+  virtual void Connect(const std::string& number, DBus::Error& error);
+  virtual void Disconnect(DBus::Error& error);
+  virtual void FactoryReset(const std::string& number, DBus::Error& error);
 
   virtual ::DBus::Struct<
-  uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config();
+  uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config(DBus::Error& error);
 
   virtual ::DBus::Struct<
-    std::string, std::string, std::string> GetInfo();
+    std::string, std::string, std::string> GetInfo(DBus::Error& error);
 
   // DBUS Methods: ModemSimple
-  virtual void Connect(const DBusPropertyMap& properties);
-  virtual DBusPropertyMap GetStatus();
+  virtual void Connect(const DBusPropertyMap& properties, DBus::Error& error);
+  virtual DBusPropertyMap GetStatus(DBus::Error& error);
 
   // DBUS Methods: ModemCDMA
-  virtual uint32_t GetSignalQuality();
-  virtual std::string GetEsn();
-  virtual DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem();
+  virtual uint32_t GetSignalQuality(DBus::Error& error);
+  virtual std::string GetEsn(DBus::Error& error);
+  virtual DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem(
+      DBus::Error& error);
   virtual void GetRegistrationState(
-      uint32_t& cdma_1x_state, uint32_t& evdo_state);
+      uint32_t& cdma_1x_state, uint32_t& evdo_state, DBus::Error& error);
 
   // DBUS Methods: ModemGobi
-  virtual void SetCarrier(const std::string& image);
-  virtual void SoftReset();
+  virtual void SetCarrier(const std::string& image, DBus::Error& error);
+  virtual void SoftReset(DBus::Error& error);
 
   // DBUS Property Getter
   virtual void on_get_property(DBus::InterfaceAdaptor& interface,
                                const std::string& property,
-                               DBus::Variant& vale);
+                               DBus::Variant& value,
+                               DBus::Error& error);
 
  protected:
   bool ActivateOmadm();
