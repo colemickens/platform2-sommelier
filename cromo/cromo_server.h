@@ -27,7 +27,7 @@ class CromoServer
   void AddModemHandler(ModemHandler* handler);
 
   // ModemManager DBUS API methods.
-  std::vector<DBus::Path> EnumerateDevices();
+  std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
 
   static const char* kServiceName;
   static const char* kServicePath;

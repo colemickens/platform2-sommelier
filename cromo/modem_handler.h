@@ -23,7 +23,7 @@ class ModemHandler {
   virtual ~ModemHandler();
   virtual bool Initialize() = 0;
 
-  virtual std::vector<DBus::Path> EnumerateDevices() = 0;
+  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error) = 0;
 
   // Adds a modem to the list of modems managed by this modem manager.
   // The modem must already have a unique path on the dbus.

@@ -17,7 +17,7 @@ class DummyModemHandler : public ModemHandler {
  public:
   explicit DummyModemHandler(CromoServer& server);
 
-  virtual std::vector<DBus::Path> EnumerateDevices();
+  virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error &error);
 
  protected:
   virtual bool Initialize();

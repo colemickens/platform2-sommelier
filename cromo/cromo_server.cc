@@ -28,12 +28,12 @@ CromoServer::~CromoServer() {
   modem_handlers_.clear();
 }
 
-vector<DBus::Path> CromoServer::EnumerateDevices() {
+vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
   vector<DBus::Path> allpaths;
 
   for (vector<ModemHandler*>::iterator it = modem_handlers_.begin();
        it != modem_handlers_.end(); it++) {
-    vector<DBus::Path> paths = (*it)->EnumerateDevices();
+    vector<DBus::Path> paths = (*it)->EnumerateDevices(error);
     allpaths.insert(allpaths.end(), paths.begin(), paths.end());
   }
   return allpaths;

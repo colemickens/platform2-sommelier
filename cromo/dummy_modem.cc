@@ -16,23 +16,24 @@ DummyModem::DummyModem(DBus::Connection& connection,
 }
 
 // DBUS Methods: Modem
-void DummyModem::Enable(const bool& enable) {
+void DummyModem::Enable(const bool& enable, DBus::Error& error) {
   cout << "Enable: " << enable << endl;
 }
 
-void DummyModem::Connect(const string& number) {
+void DummyModem::Connect(const string& number, DBus::Error& error) {
   cout << "Connect: " << number << endl;
 }
 
-void DummyModem::Disconnect() {
+void DummyModem::Disconnect(DBus::Error& error) {
   cout << "Disconnect" << endl;
 }
 
-void DummyModem::FactoryReset(const string& code) {
+void DummyModem::FactoryReset(const string& code, DBus::Error& error) {
   cout << "FactoryReset: " << code << endl;
 }
 
-DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config() {
+DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config(
+    DBus::Error& error) {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
 
   cout << "GetIP4Config" << endl;
@@ -40,18 +41,18 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> DummyModem::GetIP4Config() 
   return result;
 }
 
-DBus::Struct<string, string, string> DummyModem::GetInfo() {
+DBus::Struct<string, string, string> DummyModem::GetInfo(DBus::Error& error) {
   DBus::Struct<string, string, string> result;
   cout << "GetInfo" << endl;
   return result;
 }
 
 // DBUS Methods: ModemSimple
-void DummyModem::Connect(const PropertyMap& properties) {
+void DummyModem::Connect(const PropertyMap& properties, DBus::Error& error) {
   cout << "Simple.Connect" << endl;
 }
 
-PropertyMap DummyModem::GetStatus() {
+PropertyMap DummyModem::GetStatus(DBus::Error& error) {
   PropertyMap result;
 
   cout << "GetStatus" << endl;
@@ -60,19 +61,20 @@ PropertyMap DummyModem::GetStatus() {
 }
 
   // DBUS Methods: ModemCDMA
-uint32_t DummyModem::GetSignalQuality() {
+uint32_t DummyModem::GetSignalQuality(DBus::Error& error) {
   cout << "GetSignalQuality" << endl;
 
   return 50;
 }
 
-string DummyModem::GetEsn() {
+string DummyModem::GetEsn(DBus::Error& error) {
   cout << "GetEsn" << endl;
 
   return "12345";
 }
 
-DBus::Struct<uint32_t, string, uint32_t> DummyModem::GetServingSystem() {
+DBus::Struct<uint32_t, string, uint32_t> DummyModem::GetServingSystem(
+    DBus::Error& error) {
   DBus::Struct<uint32_t, string, uint32_t> result;
 
   cout << "GetServingSystem" << endl;
@@ -81,6 +83,8 @@ DBus::Struct<uint32_t, string, uint32_t> DummyModem::GetServingSystem() {
 }
 
 void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state,
-                                      uint32_t& evdo_state) {
+                                      uint32_t& evdo_state,
+                                      DBus::Error& error
+                                      ) {
   cout << "GetRegistrationState" << endl;
 }

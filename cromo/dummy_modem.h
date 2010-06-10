@@ -25,22 +25,26 @@ class DummyModem
   DummyModem(DBus::Connection& connection, const DBus::Path& path);
 
   // DBUS Methods: Modem
-  void Enable(const bool& enable);
-  void Connect(const std::string& number);
-  void Disconnect();
-  void FactoryReset(const std::string& code);
-  DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config();
-  DBus::Struct<std::string, std::string, std::string> GetInfo();
+  void Enable(const bool& enable, DBus::Error& error);
+  void Connect(const std::string& number, DBus::Error& error);
+  void Disconnect(DBus::Error& error);
+  void FactoryReset(const std::string& code, DBus::Error& error);
+  DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GetIP4Config(
+      DBus::Error& error);
+  DBus::Struct<std::string, std::string, std::string> GetInfo(
+      DBus::Error& error);
 
   // DBUS Methods: ModemSimple
-  void Connect(const PropertyMap& properties);
-  PropertyMap GetStatus();
+  void Connect(const PropertyMap& properties, DBus::Error& error);
+  PropertyMap GetStatus(DBus::Error& error);
 
   // DBUS Methods: ModemCdma
-  uint32_t GetSignalQuality();
-  std::string GetEsn();
-  DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem();
-  void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state);
+  uint32_t GetSignalQuality(DBus::Error& error);
+  std::string GetEsn(DBus::Error& error);
+  DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem(
+      DBus::Error& error);
+  void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state,
+                            DBus::Error& error);
 
   DISALLOW_COPY_AND_ASSIGN(DummyModem);
 };
