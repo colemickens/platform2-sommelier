@@ -20,6 +20,7 @@
 #include "power_manager/screen_locker.h"
 #include "power_manager/suspender.h"
 #include "power_manager/xidle.h"
+#include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
 

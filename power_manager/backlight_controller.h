@@ -9,7 +9,6 @@
 
 #include "power_manager/backlight_interface.h"
 #include "power_manager/power_prefs_interface.h"
-#include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
 
