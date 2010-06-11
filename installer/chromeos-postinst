@@ -62,20 +62,23 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
   echo "Updating gpt PMBR target for legacy BIOS"
   # Configure the PMBR to boot the new image.
-  # TODO(wfrichar): The current gpt tool requires a -b arg to specify the PMBR
-  # bootcode. We don't want to change the code, so we have to extract it, then
-  # put it back. We'll fix this RSN.
-
+  #
   # IMPORTANT NOTE: postinst is run by the previoulsy installed image
   # rather than the new image. So changes here need to be backwards compatible
   # with the old image's gpt binaries.
-  dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
-  gpt -S boot -i $NEW_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
+  #
+  if [ -x /usr/bin/cgpt ]; then
+    cgpt boot -i $NEW_PART_NUM ${ROOT_DEV} 2>&1
+  else
+    # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
+    # want to change the code, so we have to extract it, then put it back.
+    dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
+    gpt -S boot -i $NEW_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
+  fi
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
   # system, but returning an error here will cause the updater to try to
   # not boot the installed system, instead keeping the existing system.
-
   echo -n  # this is a noop, required for 'sh'
 fi
 

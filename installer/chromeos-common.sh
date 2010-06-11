@@ -7,17 +7,6 @@
 # create the initial image at compile time and to install or upgrade a running
 # image.
 
-# Here are the GUIDs we'll be using to identify various partitions. NOTE: The
-# first three fields are byte-reversed to work around a bug in our gpt tool.
-# We'll be replacing that tool with a new one, so it's easier to just work
-# around the bug for now.
-DATA_GUID='a2a0d0eb-e5b9-3344-87c0-68b6b72699c7'
-KERN_GUID='5d2a3afe-324f-a741-b725-accc3285a309'
-ROOTFS_GUID='02e2b83c-7e3b-dd47-8a3c-7ff2a13cfcec'
-ESP_GUID='28732ac1-1ff8-d211-ba4b-00a0c93ec93b'
-FUTURE_GUID='3d750a2e-489e-b043-8337-b15192cb1b5e'
-
-
 # The GPT tables describe things in terms of 512-byte sectors, but some
 # filesystems prefer 4096-byte blocks. These functions help with alignment
 # issues.
@@ -81,19 +70,19 @@ rounddown() {
   echo $num
 }
 
-# Locate the gpt tool. It should already be installed in the build chroot,
+# Locate the cgpt tool. It should already be installed in the build chroot,
 # but some of these functions may be invoked outside the chroot (by
 # image_to_usb or similar), so we need to find it.
 GPT=""
 
 locate_gpt() {
   if [ -z "$GPT" ]; then
-    GPT=$(which gpt 2>/dev/null) || /bin/true
+    GPT=$(which cgpt 2>/dev/null) || /bin/true
     if [ -z "$GPT" ]; then
-      if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt" ]; then
-        GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/gpt"
+      if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt" ]; then
+        GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt"
       else
-        echo "can't find gpt tool" 1>&2
+        echo "can't find cgpt tool" 1>&2
         exit 1
       fi
     fi
@@ -188,6 +177,7 @@ install_gpt() {
   # unused partitions in there.
   local start_kern_c=$(($num_header_sectors))
   local num_kern_c_sectors=1
+  local kern_c_priority=0
   local start_rootfs_c=$(($start_kern_c + 1))
   local num_rootfs_c_sectors=1
   local start_future_9=$(($start_rootfs_c + 1))
@@ -218,8 +208,10 @@ install_gpt() {
     # Where do things go?
     START_KERN_A=$start_useful
     local num_kern_a_sectors=$NUM_KERN_SECTORS
+    local kern_a_priority=15
     START_KERN_B=$(($START_KERN_A + $NUM_KERN_SECTORS))
     local num_kern_b_sectors=$NUM_KERN_SECTORS
+    local kern_b_priority=15
     START_OEM=$(($START_KERN_B + $NUM_KERN_SECTORS))
     START_RESERVED=$(($START_OEM + $NUM_OEM_SECTORS))
     START_ESP=$(($START_RESERVED + $NUM_RESERVED_SECTORS))
@@ -246,7 +238,9 @@ install_gpt() {
     NUM_STATEFUL_SECTORS=$(roundup $(numsectors $stateful_img))
     NUM_KERN_SECTORS=$(roundup $(numsectors $kernel_img))
     local num_kern_a_sectors=$NUM_KERN_SECTORS
+    local kern_a_priority=15
     local num_kern_b_sectors=1
+    local kern_b_priority=0
     NUM_ROOTFS_SECTORS=$(roundup $(numsectors $rootfs_img))
     local num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
     local num_rootfs_b_sectors=1
@@ -304,91 +298,48 @@ install_gpt() {
   $sudo $GPT create ${outdev}
 
   $sudo $GPT add -b ${START_STATEFUL} -s ${NUM_STATEFUL_SECTORS} \
-    -t ${DATA_GUID} ${outdev}
-  $sudo $GPT label -i 1 -l "STATE" ${outdev}
+    -t data -l "STATE" ${outdev}
 
   $sudo $GPT add -b ${START_KERN_A} -s ${num_kern_a_sectors} \
-    -t ${KERN_GUID} ${outdev}
-  $sudo $GPT label -i 2 -l "KERN-A" ${outdev}
+    -t kernel -l "KERN-A" -S 0 -T 15 -P ${kern_a_priority} ${outdev}
 
   $sudo $GPT add -b ${START_ROOTFS_A} -s ${num_rootfs_a_sectors} \
-    -t ${ROOTFS_GUID} ${outdev}
-  $sudo $GPT label -i 3 -l "ROOT-A" ${outdev}
+    -t rootfs -l "ROOT-A" ${outdev}
 
   $sudo $GPT add -b ${START_KERN_B} -s ${num_kern_b_sectors} \
-    -t ${KERN_GUID} ${outdev}
-  $sudo $GPT label -i 4 -l "KERN-B" ${outdev}
+    -t kernel -l "KERN-B" -S 0 -T 15 -P ${kern_b_priority} ${outdev}
 
   $sudo $GPT add -b ${START_ROOTFS_B} -s ${num_rootfs_b_sectors} \
-    -t ${ROOTFS_GUID} ${outdev}
-  $sudo $GPT label -i 5 -l "ROOT-B" ${outdev}
+    -t rootfs -l "ROOT-B" ${outdev}
 
   $sudo $GPT add -b ${start_kern_c} -s ${num_kern_c_sectors} \
-    -t ${KERN_GUID} ${outdev}
-  $sudo $GPT label -i 6 -l "KERN-C" ${outdev}
+    -t kernel -l "KERN-C" -S 0 -T 15 -P ${kern_c_priority} ${outdev}
 
   $sudo $GPT add -b ${start_rootfs_c} -s ${num_rootfs_c_sectors} \
-    -t ${ROOTFS_GUID} ${outdev}
-  $sudo $GPT label -i 7 -l "ROOT-C" ${outdev}
+    -t rootfs -l "ROOT-C" ${outdev}
 
   $sudo $GPT add -b ${START_OEM} -s ${NUM_OEM_SECTORS} \
-    -t ${DATA_GUID} ${outdev}
-  $sudo $GPT label -i 8 -l "OEM" ${outdev}
+    -t data -l "OEM" ${outdev}
 
   $sudo $GPT add -b ${start_future_9} -s ${num_future_sectors} \
-    -t ${FUTURE_GUID} ${outdev}
-  $sudo $GPT label -i 9 -l "reserved" ${outdev}
+    -t reserved -l "reserved" ${outdev}
 
   $sudo $GPT add -b ${start_future_10} -s ${num_future_sectors} \
-    -t ${FUTURE_GUID} ${outdev}
-  $sudo $GPT label -i 10 -l "reserved" ${outdev}
+    -t reserved -l "reserved" ${outdev}
 
   $sudo $GPT add -b ${start_future_11} -s ${num_future_sectors} \
-    -t ${FUTURE_GUID} ${outdev}
-  $sudo $GPT label -i 11 -l "reserved" ${outdev}
+    -t reserved -l "reserved" ${outdev}
 
   $sudo $GPT add -b ${START_ESP} -s ${NUM_ESP_SECTORS} \
-    -t ${ESP_GUID} ${outdev}
-  $sudo $GPT label -i 12 -l "EFI-SYSTEM" ${outdev}
+    -t efi -l "EFI-SYSTEM" ${outdev}
 
   # Create the PMBR and instruct it to boot ROOT-A
-  $sudo $GPT boot -i 3 -b ${pmbrcode} ${outdev}
+  $sudo $GPT boot -p -b ${pmbrcode} -i 3 ${outdev}
 
   # Display what we've got
-  $sudo $GPT -r show -l ${outdev}
+  $sudo $GPT show ${outdev}
 
   sync
-}
-
-
-# Helper function, please ignore and look below.
-_partinfo() {
-  local device=$1
-  local partnum=$2
-  local start size part x n
-
-  locate_gpt
-
-  sudo $GPT -r -S show $device \
-    | grep 'GPT part -' \
-    | while read start size part x x x n x; do \
-        if [ "${part}" -eq "${partnum}" ]; then \
-          echo $start $size; \
-        fi; \
-      done
-  # The 'while' is a subshell, so there's no way to indicate success.
-}
-
-# Read GPT table to find information about a specific partition.
-# Invoke as: subshell
-# Args: DEVICE PARTNUM
-# Returns: offset and size (in sectors) of partition PARTNUM
-partinfo() {
-  # get string
-  local X="$(_partinfo $1 $2)"
-  # detect success or failure here
-  [ -n "$X" ]
-  echo $X
 }
 
 # Read GPT table to find the starting location of a specific partition.
@@ -396,11 +347,7 @@ partinfo() {
 # Args: DEVICE PARTNUM
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
-  # get string
-  local X="$(_partinfo $1 $2)"
-  # detect success or failure here
-  [ -n "$X" ]
-  echo ${X% *}
+  sudo $GPT show -b -i $2 $1
 }
 
 # Read GPT table to find the size of a specific partition.
@@ -408,11 +355,7 @@ partoffset() {
 # Args: DEVICE PARTNUM
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
-  # get string
-  local X="$(_partinfo $1 $2)"
-  # detect success or failure here
-  [ -n "$X" ]
-  echo ${X#* }
+  sudo $GPT show -s -i $2 $1
 }
 
 # Extract the whole disk block device from the partition device.
