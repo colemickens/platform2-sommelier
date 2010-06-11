@@ -4,14 +4,12 @@
 
 #include "cromo_server.h"
 
-#include <iostream>
+#include <glog/logging.h>
 
 #include "modem_handler.h"
 #include "plugin_manager.h"
 
 using std::vector;
-using std::cout;
-using std::endl;
 
 const char* CromoServer::kServiceName = "org.chromium.ModemManager";
 const char* CromoServer::kServicePath = "/org/chromium/ModemManager";
@@ -40,6 +38,6 @@ vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
 }
 
 void CromoServer::AddModemHandler(ModemHandler* handler) {
-  cout << "AddModemHandler(" << handler->vendor_tag() << ")" << endl;
+  LOG(INFO) << "AddModemHandler(" << handler->vendor_tag() << ")";
   modem_handlers_.push_back(handler);
 }

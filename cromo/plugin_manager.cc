@@ -9,7 +9,8 @@
 
 #include <cerrno>
 #include <cstring>
-#include <iostream>
+
+#include <glog/logging.h>
 
 #ifndef PLUGINDIR
 #define PLUGINDIR "./plugins"
@@ -17,9 +18,6 @@
 
 using std::string;
 using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 vector<PluginManager::Plugin*> PluginManager::loaded_plugins_;
 
@@ -29,8 +27,7 @@ void PluginManager::LoadPlugins(CromoServer* server,
   struct dirent* dirent;
 
   if (pdir == NULL) {
-    cerr << "Cannot open plugin directory " PLUGINDIR ": "
-         << strerror(errno) << endl;
+    PLOG(ERROR) << "Cannot open plugin directory " PLUGINDIR;
     return;
   }
 
@@ -44,13 +41,13 @@ void PluginManager::LoadPlugins(CromoServer* server,
     filename.append("/").append(leafname);
     void* handle = dlopen(filename.c_str(), RTLD_LAZY);
     if (handle == NULL) {
-      cerr << "Cannot load plugin: " << dlerror() << endl;
+      LOG(ERROR) << "Cannot load plugin: " << dlerror();
       continue;
     }
     cromo_plugin_descriptor* pdesc =
         (cromo_plugin_descriptor*)dlsym(handle, "plugin_descriptor");
     if (pdesc == NULL) {
-      cerr << "Plugin does not contain descriptor: " << dlerror() << endl;
+      LOG(ERROR) << "Plugin does not contain descriptor: " << dlerror();
       dlclose(handle);
       continue;
     }
@@ -61,7 +58,7 @@ void PluginManager::LoadPlugins(CromoServer* server,
       pl->descriptor = pdesc;
       pl->initted = false;
       loaded_plugins_.push_back(pl);
-      cout << "Loaded plugin " << pdesc->name << endl;
+      LOG(INFO) << "Loaded plugin " << pdesc->name;
     }
   }
   closedir(pdir);

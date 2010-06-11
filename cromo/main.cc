@@ -3,8 +3,10 @@
 // found in the LICENSE file.
 
 #include <signal.h>
+#include <syslog.h>
 
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include "cromo_server.h"
 #include "plugin_manager.h"
@@ -18,8 +20,48 @@ void onsignal(int sig) {
   dispatcher.leave();
 }
 
+
+namespace google {
+class LogSinkSyslog : public google::LogSink {
+ public:
+  LogSinkSyslog() {
+    openlog("cromo",
+            0,  // Options
+            LOG_LOCAL3);  // 5,6,7 are taken
+  }
+
+  virtual void send(LogSeverity severity, const char* full_filename,
+                    const char* base_filename, int line,
+                    const struct ::tm* tm_time,
+                    const char* message, size_t message_len) {
+    static const int glog_to_syslog[NUM_SEVERITIES] = {
+      LOG_INFO, LOG_WARNING, LOG_ERR, LOG_CRIT};
+    CHECK(severity < google::NUM_SEVERITIES && severity >= 0);
+
+    syslog(glog_to_syslog[severity],
+           "%s:%d %.*s",
+           base_filename, line, message_len, message);
+  }
+
+  virtual ~LogSinkSyslog() {
+    closelog();
+  }
+};
+}  // namespace google
+
 int main(int argc, char* argv[]) {
+  google::LogSinkSyslog syslogger;
+
   google::ParseCommandLineFlags(&argc, &argv, true);
+  google::SetCommandLineOptionWithMode("log_dir",
+                                       "/tmp",
+                                       google::SET_FLAG_IF_DEFAULT);
+  google::SetCommandLineOptionWithMode("min_log_level",
+                                       "0",
+                                       google::SET_FLAG_IF_DEFAULT);
+  google::InitGoogleLogging(argv[0]);
+  google::AddLogSink(&syslogger);
+  google::InstallFailureSignalHandler();
 
   signal(SIGTERM, onsignal);
   signal(SIGINT, onsignal);
