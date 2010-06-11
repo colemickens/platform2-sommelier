@@ -4,8 +4,6 @@
 
 #include "gobi_modem_handler.h"
 
-#include <iostream>
-
 #include <glog/logging.h>
 #include <base/scoped_ptr.h>
 
@@ -15,12 +13,8 @@
 #include "gobi_modem.h"
 
 using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
 
 static gobi::Sdk GOBI_SDK;
-
 
 GobiModemHandler::GobiModemHandler(CromoServer& server)
     : ModemHandler(server, "Gobi"),
@@ -107,10 +101,9 @@ std::vector<DEVICE_ELEMENT> GobiModemHandler::GetAvailableDevices() {
 }
 
 static void onload(CromoServer* server) {
-  cout << __FILE__ << ": onload() called" << endl;
   ModemHandler* mm = new GobiModemHandler(*server);
   if (!mm->Initialize())
-    cerr << "Failed to initialize GobiModemHandler" << endl;
+    LOG(ERROR) << "Failed to initialize GobiModemHandler";
 }
 
 static void onunload() {
