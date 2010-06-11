@@ -242,6 +242,13 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   return GDK_FILTER_CONTINUE;
 }
 
+void Daemon::GrabKey(KeyCode key, uint32 mask) {
+  Window root = DefaultRootWindow(GDK_DISPLAY());
+  XGrabKey(GDK_DISPLAY(), key, mask, root, True, GrabModeAsync, GrabModeAsync);
+  XGrabKey(GDK_DISPLAY(), key, mask | LockMask, root, True,
+           GrabModeAsync, GrabModeAsync);
+}
+
 DBusHandlerResult Daemon::DBusMessageHandler(
     DBusConnection*, DBusMessage* message, void* data) {
   Daemon* daemon = static_cast<Daemon*>(data);
@@ -291,13 +298,6 @@ void Daemon::RegisterDBusMessageHandler() {
                                      NULL));
     LOG(INFO) << "DBus monitoring started";
   }
-}
-
-void Daemon::GrabKey(KeyCode key, uint32 mask) {
-  Window root = DefaultRootWindow(GDK_DISPLAY());
-  XGrabKey(GDK_DISPLAY(), key, mask, root, True, GrabModeAsync, GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key, mask | LockMask, root, True,
-           GrabModeAsync, GrabModeAsync);
 }
 
 }  // namespace power_manager
