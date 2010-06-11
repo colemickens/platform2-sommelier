@@ -2,22 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/logging.h"
-#include "chromeos/utility.h"
-#include "cryptohome/cryptohome_common.h"
-#include "cryptohome/vault_keyset.h"
+#include <base/logging.h>
+#include <chromeos/utility.h>
+
+#include "cryptohome_common.h"
+#include "vault_keyset.h"
 
 namespace cryptohome {
 
 VaultKeyset::VaultKeyset()
     : major_version_(CRYPTOHOME_VAULT_KEYSET_VERSION_MAJOR),
       minor_version_(CRYPTOHOME_VAULT_KEYSET_VERSION_MINOR) {
-}
-
-VaultKeyset::VaultKeyset(const SecureBlob& source)
-    : major_version_(CRYPTOHOME_VAULT_KEYSET_VERSION_MAJOR),
-      minor_version_(CRYPTOHOME_VAULT_KEYSET_VERSION_MINOR) {
-  AssignBuffer(source);
 }
 
 bool VaultKeyset::AssignBuffer(const SecureBlob& source) {
@@ -51,42 +46,52 @@ bool VaultKeyset::AssignBuffer(const SecureBlob& source) {
   memcpy(&fnek_sig_[0], keys.fnek_sig, fnek_sig_.size());
   fnek_salt_.resize(sizeof(keys.fnek_salt));
   memcpy(&fnek_salt_[0], keys.fnek_salt, fnek_salt_.size());
-  chromeos::SecureMemset(&keys, sizeof(keys), 0);
+  chromeos::SecureMemset(&keys, 0, sizeof(keys));
 
   return true;
 }
 
-SecureBlob VaultKeyset::ToBuffer() const {
-  SecureBlob buffer(VaultKeyset::SerializedSize());
+bool VaultKeyset::ToBuffer(SecureBlob* buffer) const {
+  SecureBlob local_buffer(VaultKeyset::SerializedSize());
+  unsigned char* data = static_cast<unsigned char*>(local_buffer.data());
 
   VaultKeysetHeader header;
   memcpy(header.signature, kVaultKeysetSignature, sizeof(header.signature));
   header.major_version = major_version_;
   header.minor_version = minor_version_;
-  memcpy(&buffer[0], &header, sizeof(header));
+  memcpy(data, &header, sizeof(header));
 
   VaultKeysetKeys keys;
-  chromeos::SecureMemset(&keys, sizeof(keys), 0);
-  memcpy(keys.fek, &fek_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SIZE, sizeof(keys.fek)));
-  memcpy(keys.fek_sig, &fek_sig_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
-                        sizeof(keys.fek_sig)));
-  memcpy(keys.fek_salt, &fek_salt_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE,
-                        sizeof(keys.fek_salt)));
-  memcpy(keys.fnek, &fnek_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SIZE, sizeof(keys.fnek)));
-  memcpy(keys.fnek_sig, &fnek_sig_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
-                        sizeof(keys.fnek_sig)));
-  memcpy(keys.fnek_salt, &fnek_salt_[0],
-         CRYPTOHOME_MIN(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE,
-                        sizeof(keys.fnek_salt)));
-  memcpy(&buffer[sizeof(header)], &keys, sizeof(keys));
-  chromeos::SecureMemset(&keys, sizeof(keys), 0);
+  chromeos::SecureMemset(&keys, 0, sizeof(keys));
+  if (fek_.size() != sizeof(keys.fek)) {
+    return false;
+  }
+  memcpy(keys.fek, fek_.const_data(), sizeof(keys.fek));
+  if (fek_sig_.size() != sizeof(keys.fek_sig)) {
+    return false;
+  }
+  memcpy(keys.fek_sig, fek_sig_.const_data(), sizeof(keys.fek_sig));
+  if (fek_salt_.size() != sizeof(keys.fek_salt)) {
+    return false;
+  }
+  memcpy(keys.fek_salt, fek_salt_.const_data(), sizeof(keys.fek_salt));
+  if (fnek_.size() != sizeof(keys.fnek)) {
+    return false;
+  }
+  memcpy(keys.fnek, fnek_.const_data(), sizeof(keys.fnek));
+  if (fnek_sig_.size() != sizeof(keys.fnek_sig)) {
+    return false;
+  }
+  memcpy(keys.fnek_sig, fnek_sig_.const_data(), sizeof(keys.fnek_sig));
+  if (fnek_salt_.size() != sizeof(keys.fnek_salt)) {
+    return false;
+  }
+  memcpy(keys.fnek_salt, fnek_salt_.const_data(), sizeof(keys.fnek_salt));
+  memcpy(&data[sizeof(header)], &keys, sizeof(keys));
+  chromeos::SecureMemset(&keys, 0, sizeof(keys));
 
-  return buffer;
+  buffer->swap(local_buffer);
+  return true;
 }
 
 void VaultKeyset::CreateRandom(const EntropySource& entropy_source) {
@@ -137,4 +142,4 @@ unsigned int VaultKeyset::SerializedSize() {
   return sizeof(VaultKeysetHeader) + sizeof(VaultKeysetKeys);
 }
 
-}  // cryptohome
+}  // namespace cryptohome

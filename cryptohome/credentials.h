@@ -8,7 +8,7 @@
 #ifndef CRYPTOHOME_CREDENTIALS_H_
 #define CRYPTOHOME_CREDENTIALS_H_
 
-#include "cryptohome/secure_blob.h"
+#include "secure_blob.h"
 
 namespace cryptohome {
 
@@ -26,7 +26,10 @@ class Credentials {
   virtual void GetFullUsername(char *name_buffer, int length) const = 0;
 
   // Returns the full user name as a std::string
-  virtual std::string GetFullUsername() const = 0;
+  //
+  // Parameters
+  //
+  virtual std::string GetFullUsernameString() const = 0;
 
   // Returns the part of the username before the '@'
   //
@@ -44,10 +47,10 @@ class Credentials {
 
   // Returns a the user's passkey
   //
-  // Returns
-  //  A SecureBlob containing the passkey
+  // Parameters
+  //  passkey - A SecureBlob containing the passkey
   //
-  virtual SecureBlob GetPasskey() const = 0;
+  virtual void GetPasskey(SecureBlob* passkey) const = 0;
 };
 
 }  // namespace cryptohome

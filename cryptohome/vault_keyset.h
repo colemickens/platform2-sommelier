@@ -5,8 +5,10 @@
 #ifndef VAULT_KEYSET_H_
 #define VAULT_KEYSET_H_
 
-#include "cryptohome/entropy_source.h"
-#include "cryptohome/secure_blob.h"
+#include <base/basictypes.h>
+
+#include "entropy_source.h"
+#include "secure_blob.h"
 
 namespace cryptohome {
 
@@ -20,10 +22,9 @@ const char kVaultKeysetSignature[] = "ch";
 class VaultKeyset {
  public:
   VaultKeyset();
-  VaultKeyset(const SecureBlob& source);
 
   bool AssignBuffer(const SecureBlob& buffer);
-  SecureBlob ToBuffer() const;
+  bool ToBuffer(SecureBlob* buffer) const;
 
   void CreateRandom(const EntropySource& entropy_source);
 
@@ -37,6 +38,7 @@ class VaultKeyset {
   static unsigned int SerializedSize();
 
  private:
+
   SecureBlob fek_;
   SecureBlob fek_sig_;
   SecureBlob fek_salt_;
@@ -49,6 +51,6 @@ class VaultKeyset {
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);
 };
 
-}  // cryptohome
+}  // namespace cryptohome
 
 #endif  // VAULT_KEYSET_H_

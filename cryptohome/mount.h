@@ -44,19 +44,21 @@
 //
 // Passkey change: <TBD>
 
-#ifndef MOUNT_H_
-#define MOUNT_H_
+#ifndef CRYPTOHOME_MOUNT_H_
+#define CRYPTOHOME_MOUNT_H_
 
-#include "base/basictypes.h"
-#include "base/file_path.h"
-#include "cryptohome/credentials.h"
-#include "cryptohome/secure_blob.h"
-#include "cryptohome/vault_keyset.h"
+#include <base/basictypes.h>
+#include <base/file_path.h>
+#include <base/scoped_ptr.h>
+
+#include "credentials.h"
+#include "crypto.h"
+#include "platform.h"
+#include "secure_blob.h"
+#include "vault_keyset.h"
 
 namespace cryptohome {
 
-// Default entropy source is used to seed openssl's random number generator
-extern const std::string kDefaultEntropySource;
 // The directory to mount the user's cryptohome at
 extern const std::string kDefaultHomeDir;
 // The directory containing the system salt and the user vaults
@@ -67,10 +69,6 @@ extern const std::string kDefaultSharedUser;
 extern const std::string kDefaultSkeletonSource;
 // The incognito user
 extern const std::string kIncognitoUser;
-// Where to find mtab
-extern const std::string kMtab;
-// Openssl-encrypted files start with "Salted__" and an 8-byte salt
-extern const std::string kOpenSSLMagic;
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
@@ -81,15 +79,12 @@ class Mount : public EntropySource {
     MOUNT_ERROR_NONE = 0,
     MOUNT_ERROR_FATAL = 1 << 0,
     MOUNT_ERROR_KEY_FAILURE = 1 << 1,
+    MOUNT_ERROR_MOUNT_POINT_BUSY = 1 << 2,
+    MOUNT_ERROR_NO_SUCH_FILE = 1 << 3,
   };
 
   // Sets up Mount with the default locations, username, etc., as defined above.
   Mount();
-
-  // Sets up Mount with non-default locations
-  explicit Mount(const std::string& username, const std::string& entropy_source,
-                 const std::string& home_dir, const std::string& shadow_root,
-                 const std::string& skel_source);
 
   virtual ~Mount();
 
@@ -143,15 +138,45 @@ class Mount : public EntropySource {
   virtual bool MigratePasskey(const Credentials& credentials,
                               const char* old_key);
 
-  // Mounts an incognito home directory to the cryptohome mount point
-  virtual bool MountIncognitoCryptohome();
+  // Mounts a guest home directory to the cryptohome mount point
+  virtual bool MountGuestCryptohome();
 
   // Returns the system salt
-  virtual SecureBlob GetSystemSalt();
+  virtual void GetSystemSalt(chromeos::Blob* salt);
 
   // Used to disable setting vault ownership
   void set_set_vault_ownership(bool value) {
     set_vault_ownership_ = value;
+  }
+
+  // Used to override the default home directory
+  void set_home_dir(const std::string& value) {
+    home_dir_ = value;
+  }
+
+  // Used to override the default shadow root
+  void set_shadow_root(const std::string& value) {
+    shadow_root_ = value;
+  }
+
+  // Used to override the default shared username
+  void set_shared_user(const std::string& value) {
+    default_username_ = value;
+  }
+
+  // Used to override the default skeleton directory
+  void set_skel_source(const std::string& value) {
+    skel_source_ = value;
+  }
+
+  // Used to override the default Crypto handler (does not take ownership)
+  void set_crypto(Crypto* value) {
+    crypto_ = value;
+  }
+
+  // Used to override the default Platform handler (does not take ownership)
+  void set_platform(Platform* value) {
+    platform_ = value;
   }
 
  private:
@@ -235,119 +260,32 @@ class Mount : public EntropySource {
   //   index - the key index to generate
   bool CreateMasterKey(const Credentials& credentials, int index);
 
-  // Converts the passkey to a symmetric key used to decrypt the user's
-  // cryptohome key.
-  //
-  // Parameters
-  //   passkey - The passkey (hash, currently) to create the key from
-  //   salt - The salt used in creating the key
-  //   iters - The hash iterations to use in generating the key
-  SecureBlob PasskeyToWrapper(const chromeos::Blob& passkey,
-                         const chromeos::Blob& salt, int iters);
-
   // Returns the user's salt at the given index
   //
   // Parameters
   //   credentials - The Credentials representing the user
   //   index - The salt index to return
   //   force - Whether to force creation of a new salt
-  SecureBlob GetUserSalt(const Credentials& credentials, int index,
-                         bool force_new = false);
-
-  // Gets the salt in the specified file, creating it if it does not exist
-  //
-  // Parameters
-  //   path - The path of the salt file
-  //   length - The length of the salt to create if it doesn't exist
-  //   force - Whether to force creation of a new salt
-  SecureBlob GetOrCreateSalt(const FilePath& path, int length,
-                             bool force_new);
+  //   salt (OUT) - The user's salt
+  void GetUserSalt(const Credentials& credentials, int index,
+                   bool force_new, SecureBlob* salt);
 
   // Loads the contents of the specified file as a blob
   //
   // Parameters
   //   path - The file path to read from
   //   blob (OUT) - Where to store the loaded file bytes
-  bool LoadFileBytes(const FilePath& path, SecureBlob& blob);
+  bool LoadFileBytes(const FilePath& path, SecureBlob* blob);
 
-  // Unmount a mount point
+  // Attempt to unwrap the keyset for the specified user
   //
   // Parameters
-  //   path - The path to unmount
-  //   lazy - Whether to perform a lazy unmount
-  //   was_busy (OUT) - Whether the mount point was busy
-  bool Unmount(const std::string& path, bool lazy, bool* was_busy);
-
-  // Attempt to unwrap the key at the specified path
-  //
-  // Parameters
-  //   path - The file path for the master key
-  //   passkey - The passkey to use (converted to a passkey wrapper by this
-  //     method)
-  //   key (OUT) - Where to store the cryptohome key on success
-  bool UnwrapMasterKey(const FilePath& path,
-                       const chromeos::Blob& passkey,
-                       VaultKeyset* key);
-
-  // Adds the specified key to the ecryptfs keyring so that the cryptohome can
-  // be mounted.  Clears the user keyring first.
-  //
-  // Parameters
-  //   vault_keyset - The keyset to add
-  //   key_signature (OUT) - The signature of the cryptohome key that should be
-  //     used in subsequent calls to mount(2)
-  //   fnek_signature (OUT) - The signature of the cryptohome filename
-  //     encryption key that should be used in subsequent calls to mount(2)
-  bool AddKeyToEcryptfsKeyring(const VaultKeyset& vault_keyset,
-                               std::string* key_signature,
-                               std::string* fnek_signature);
-
-  // Adds the specified key to the user keyring
-  //
-  // Parameters
-  //   key - The key to add
-  //   key_sig - The key's (ascii) signature
-  //   salt - The salt
-  bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                    const SecureBlob& salt);
-
-  // Encodes a binary blob to hex-ascii
-  //
-  // Parameters
-  //   blob - The binary blob to convert
-  //   buffer (IN/OUT) - Where to store the converted blob
-  //   buffer_length - The size of the buffer
-  void AsciiEncodeToBuffer(const chromeos::Blob& blob, char *buffer,
-                           int buffer_length);
-
-  // Terminates or kills processes (except the current) that have files open on
-  // the specified path.  Returns true if it tried to kill any processes.
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   hard - If true, send a SIGKILL instead of SIGTERM
-  bool TerminatePidsWithOpenFiles(const std::string& path, bool hard);
-
-  // Returns a vector of PIDs that have files open on the given path
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  std::vector<pid_t> LookForOpenFiles(const std::string& path);
-
-  // Terminates or kills processes (except the current) that have the user ID
-  // specified.  Returns true if it tried to kill any processes.
-  //
-  // Parameters
-  //   path - The path to check if the process has open files on
-  //   hard - If true, send a SIGKILL instead of SIGTERM
-  bool TerminatePidsForUser(const uid_t uid, bool hard);
-
-  // Returns a vector of PIDs whose Real, Effective, Saved, or File UID is equal
-  // to that requested
-  //
-  // Parameters
-  //   uid - the user ID to search for
-  std::vector<pid_t> GetPidsForUser(uid_t uid);
+  //   credentials - The user credentials to use
+  //   index - The keyset index to unwrap
+  //   vault_keyset (OUT) - The unencrypted vault keyset on success
+  //   error (OUT) - The specific error when unwrapping
+  bool UnwrapVaultKeyset(const Credentials& credentials, int index,
+                         VaultKeyset* vault_keyset, MountError* error);
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -358,20 +296,17 @@ class Mount : public EntropySource {
   gid_t default_group_;
 
   // The shared user name.  This user's uid/gid is used for vault ownership.
-  const std::string default_username_;
-
-  // The file path to load entropy from.  Defaults to /dev/urandom
-  const std::string entropy_source_;
+  std::string default_username_;
 
   // The file path to mount cryptohome at.  Defaults to /home/chronos/user
-  const std::string home_dir_;
+  std::string home_dir_;
 
   // Where to store the system salt and user salt/key/vault.  Defaults to
   // /home/chronos/shadow
-  const std::string shadow_root_;
+  std::string shadow_root_;
 
   // Where the skeleton for the user's cryptohome is copied from
-  const std::string skel_source_;
+  std::string skel_source_;
 
   // Stores the global system salt
   cryptohome::SecureBlob system_salt_;
@@ -379,9 +314,18 @@ class Mount : public EntropySource {
   // Whether to change ownership of the vault file
   bool set_vault_ownership_;
 
+  // The crypto implementation
+  scoped_ptr<Crypto> default_crypto_;
+  Crypto *crypto_;
+
+  // The platform-specific calls
+  scoped_ptr<Platform> default_platform_;
+  Platform *platform_;
+
+ private:
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };
 
-}
+}  // namespace cryptohome
 
-#endif  // MOUNT_H_
+#endif  // CRYPTOHOME_MOUNT_H_

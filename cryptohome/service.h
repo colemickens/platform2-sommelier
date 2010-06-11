@@ -4,19 +4,20 @@
 #ifndef CRYPTOHOME_SERVICE_H_
 #define CRYPTOHOME_SERVICE_H_
 
-#include <dbus/dbus-glib.h>
-#include <glib-object.h>
-
 #include <base/logging.h>
+#include <base/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
+#include <dbus/dbus-glib.h>
+#include <glib-object.h>
 
-#include "cryptohome/mount.h"
+#include "mount.h"
 
 namespace cryptohome {
 namespace gobject {
+
 struct Cryptohome;
 }  // namespace gobject
 
@@ -71,8 +72,12 @@ class Service : public chromeos::dbus::AbstractDbusService {
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,
+                         gint *OUT_error,
                          gboolean *OUT_done,
                          GError **error);
+  virtual gboolean MountGuest(gint *OUT_error,
+                              gboolean *OUT_done,
+                              GError **error);
   virtual gboolean Unmount(gboolean *OUT_done, GError **error);
 
  protected:
@@ -83,9 +88,11 @@ class Service : public chromeos::dbus::AbstractDbusService {
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome *cryptohome_;
   chromeos::Blob system_salt_;
+  scoped_ptr<cryptohome::Mount> default_mount_;
   cryptohome::Mount* mount_;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 
-}  // cryptohome
+}  // namespace cryptohome
+
 #endif  // CRYPTOHOME_SERVICE_H_

@@ -14,29 +14,20 @@
 # call this script to create their test data.
 #
 
-# mock dmsetup because we don't have it in the chroot and don't need it here.
-function dmsetup { exit 255; }
-
-CH_LIB="./lib"
-source "$CH_LIB/common"
-source "$CH_LIB/utils/declare_commands"
-
-utils::declare_commands sha256sum
-
 USERNAME="testuser@invalid.domain"
 PASSWORDS="zero one two"
 
 function usage {
-  $echo "Usage: $0 [-q] <image-dir>"
-  $echo
-  $echo "Initialize a directory of sample cryptohome data containing "
-  $echo "system salt, and a single user named $USERNAME."
-  $echo "The user will have three master keys, encrypted with the "
-  $echo "passwords: $PASSWORDS."
-  $echo
-  $echo "         -q   Quiet mode"
-  $echo " <image-dir>  Directory to store cryptohome data"
-  $echo
+  echo "Usage: $0 [-q] <image-dir>"
+  echo
+  echo "Initialize a directory of sample cryptohome data containing "
+  echo "system salt, and a single user named $USERNAME."
+  echo "The user will have three master keys, encrypted with the "
+  echo "passwords: $PASSWORDS."
+  echo
+  echo "         -q   Quiet mode"
+  echo " <image-dir>  Directory to store cryptohome data"
+  echo
   exit 1
 }
 
@@ -75,24 +66,24 @@ if [ -d "$IMAGE_DIR" ]; then
 fi
 
 $info "Initializing sample crpytohome image root: $IMAGE_DIR"
-$mkdir -p "$IMAGE_DIR"
+mkdir -p "$IMAGE_DIR"
 
 $info "Creating system salt."
 SYSTEM_SALT_FILE="$IMAGE_DIR/salt"
-$head -c 16 /dev/urandom > $SYSTEM_SALT_FILE
+head -c 16 /dev/urandom > $SYSTEM_SALT_FILE
 
 $info "Creating user directory"
 
-USERID=$($cat "$SYSTEM_SALT_FILE" <($echo -n $USERNAME) \
-  | $openssl sha1)
+USERID=$(cat "$SYSTEM_SALT_FILE" <(echo -n $USERNAME) \
+  | openssl sha1)
 
 $info "USERNAME: $USERNAME"
 $info "USERID: $USERID"
 
-$mkdir -p "$IMAGE_DIR/skel/sub_path"
+mkdir -p "$IMAGE_DIR/skel/sub_path"
 echo -n "testfile" > "$IMAGE_DIR/skel/sub_path/.testfile"
 
-$mkdir -p "$IMAGE_DIR/$USERID"
+mkdir -p "$IMAGE_DIR/$USERID"
 
 $info "Creating master keys..."
 INDEX=0

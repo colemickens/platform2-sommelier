@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_MOCK_MOUNT_H_
 #define CRYPTOHOME_MOCK_MOUNT_H_
 
-#include "cryptohome/mount.h"
+#include "mount.h"
 
 #include <gmock/gmock.h>
 

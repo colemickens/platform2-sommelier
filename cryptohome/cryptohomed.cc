@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/service.h"
+#include "service.h"
 
 #include <stdio.h>
 #include <unistd.h>

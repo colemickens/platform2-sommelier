@@ -4,16 +4,16 @@
 #ifndef CRYPTOHOME_INTERFACE_H_
 #define CRYPTOHOME_INTERFACE_H_
 
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-bindings.h>
-#include <glib-object.h>
 #include <stdlib.h>
 
 #include <base/logging.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-bindings.h>
+#include <glib-object.h>
 
-#include "cryptohome/service.h"
+#include "service.h"
 
 // Helpers for using GObjects until we can get a C++ wrapper going.
 namespace cryptohome {
@@ -55,11 +55,17 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,
+                          gint *OUT_error,
                           gboolean *OUT_done,
                           GError **error);
+gboolean cryptohome_mount_guest(Cryptohome *self,
+                                gint *OUT_error,
+                                gboolean *OUT_done,
+                                GError **error);
 gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_done,
                             GError **error);
+
 }  // namespace gobject
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_INTERFACE_H_

@@ -4,74 +4,46 @@
 
 // Contains the implementation of class Mount
 
-// TODO(fes): Use correct ordering of file includes once the platform-specific
-// calls are moved into a separate file.  Right now, this is required in order
-// to avoid redefinitions.
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/platform_thread.h"
-#include "base/time.h"
-#include "base/string_util.h"
-#include "chromeos/utility.h"
-#include "cryptohome/cryptohome_common.h"
-#include "cryptohome/mount.h"
-#include "cryptohome/username_passkey.h"
+#include "mount.h"
 
-extern "C" {
-#include <ecryptfs.h>
-#include <keyutils.h>
-}
-#include <dirent.h>
 #include <errno.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/rand.h>
-#include <openssl/sha.h>
-#include <pwd.h>
-#include <signal.h>
-#include <sys/mount.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/platform_thread.h>
+#include <base/time.h>
+#include <base/string_util.h>
+#include <chromeos/utility.h>
+
+#include "crypto.h"
+#include "cryptohome_common.h"
+#include "platform.h"
+#include "username_passkey.h"
 
 using std::string;
 
 namespace cryptohome {
 
-const string kDefaultEntropySource = "/dev/urandom";
-const string kDefaultHomeDir = "/home/chronos/user";
-const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
-const string kDefaultShadowRoot = "/home/.shadow";
-const string kDefaultSharedUser = "chronos";
-const string kDefaultSkeletonSource = "/etc/skel";
-const string kIncognitoUser = "incognito";
-const string kMtab = "/etc/mtab";
-const string kOpenSSLMagic = "Salted__";
-const std::string kProcDir = "/proc";
+const std::string kDefaultHomeDir = "/home/chronos/user";
+const std::string kDefaultShadowRoot = "/home/.shadow";
+const std::string kDefaultSharedUser = "chronos";
+const std::string kDefaultSkeletonSource = "/etc/skel";
+// TODO(fes): Remove once UI for BWSI switches to MountGuest()
+const std::string kIncognitoUser = "incognito";
 
 Mount::Mount()
     : default_user_(-1),
       default_group_(-1),
       default_username_(kDefaultSharedUser),
-      entropy_source_(kDefaultEntropySource),
       home_dir_(kDefaultHomeDir),
       shadow_root_(kDefaultShadowRoot),
       skel_source_(kDefaultSkeletonSource),
       system_salt_(),
-      set_vault_ownership_(true) {
-}
-
-Mount::Mount(const std::string& username, const std::string& entropy_source,
-        const std::string& home_dir, const std::string& shadow_root,
-        const std::string& skel_source)
-    : default_user_(-1),
-      default_group_(-1),
-      default_username_(username),
-      entropy_source_(entropy_source),
-      home_dir_(home_dir),
-      shadow_root_(shadow_root),
-      skel_source_(skel_source),
-      system_salt_(),
-      set_vault_ownership_(true) {
+      set_vault_ownership_(true),
+      default_crypto_(new Crypto()),
+      crypto_(default_crypto_.get()),
+      default_platform_(new Platform()),
+      platform_(default_platform_.get()) {
 }
 
 Mount::~Mount() {
@@ -80,20 +52,16 @@ Mount::~Mount() {
 bool Mount::Init() {
   bool result = true;
 
-  // Load the passwd entry for the shared user
-  struct passwd* user_info = getpwnam(default_username_.c_str());
-  if (user_info) {
-    // Store the user's uid/gid for later use in changing vault ownership
-    default_user_ = user_info->pw_uid;
-    default_group_ = user_info->pw_gid;
-  } else {
+  // Get the user id and group id of the default user
+  if (!platform_->GetUserId(default_username_, &default_user_,
+                           &default_group_)) {
     result = false;
   }
 
   // One-time load of the global system salt (used in generating username
   // hashes)
   if (!LoadFileBytes(FilePath(StringPrintf("%s/salt", shadow_root_.c_str())),
-                       system_salt_)) {
+                       &system_salt_)) {
     result = false;
   }
 
@@ -126,13 +94,13 @@ bool Mount::EnsureCryptohome(const Credentials& credentials, bool* created) {
 
 bool Mount::MountCryptohome(const Credentials& credentials, int index,
                             MountError* mount_error) {
-  std::string username = credentials.GetFullUsername();
+  std::string username = credentials.GetFullUsernameString();
   if (username.compare(kIncognitoUser) == 0) {
-    // TODO(fes): Have incognito set error conditions?
+    // TODO(fes): Have guest set error conditions?
     if (mount_error) {
       *mount_error = MOUNT_ERROR_NONE;
     }
-    return MountIncognitoCryptohome();
+    return MountGuestCryptohome();
   }
 
   bool created = false;
@@ -144,31 +112,18 @@ bool Mount::MountCryptohome(const Credentials& credentials, int index,
     return false;
   }
 
-  FilePath user_key_file(GetUserKeyFile(credentials, index));
-
-  // Retrieve the user's salt for the key index
-  SecureBlob user_salt = GetUserSalt(credentials, index);
-
-  // Generate the passkey wrapper (key encryption key)
-  SecureBlob passkey_wrapper =
-      PasskeyToWrapper(credentials.GetPasskey(), user_salt, 1);
-
-  // Attempt to unwrap the master key at the index with the passkey wrapper
+  // Attempt to unwrap the vault keyset with the specified credentials
   VaultKeyset vault_keyset;
-  bool mount_result = UnwrapMasterKey(user_key_file, passkey_wrapper,
-                                      &vault_keyset);
-
-  if (!mount_result) {
-    if (mount_error) {
-      *mount_error = Mount::MOUNT_ERROR_KEY_FAILURE;
-    }
+  if (!UnwrapVaultKeyset(credentials, index, &vault_keyset, mount_error)) {
     return false;
   }
 
+  crypto_->ClearKeyset();
+
   // Add the decrypted key to the keyring so that ecryptfs can use it
   string key_signature, fnek_signature;
-  if (!AddKeyToEcryptfsKeyring(vault_keyset, &key_signature, &fnek_signature)) {
-    LOG(ERROR) << "Cryptohome mount failed because of keyring failure.";
+  if (!crypto_->AddKeyset(vault_keyset, &key_signature, &fnek_signature)) {
+    LOG(INFO) << "Cryptohome mount failed because of keyring failure.";
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }
@@ -184,12 +139,10 @@ bool Mount::MountCryptohome(const Credentials& credentials, int index,
                                          fnek_signature.c_str(),
                                          key_signature.c_str());
 
-  // TODO(fes): mount(1) -> mount(2): how to issue "user"
+  // Mount cryptohome
   string vault_path = GetUserVaultPath(credentials);
-  // Attempt to mount the user's cryptohome
-  if (mount(vault_path.c_str(), home_dir_.c_str(),
-            "ecryptfs", kDefaultMountOptions, ecryptfs_options.c_str())) {
-    LOG(ERROR) << "Cryptohome mount failed: " << errno << " for vault: "
+  if (!platform_->Mount(vault_path, home_dir_, "ecryptfs", ecryptfs_options)) {
+    LOG(INFO) << "Cryptohome mount failed: " << errno << " for vault: "
                << vault_path;
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
@@ -210,12 +163,10 @@ bool Mount::MountCryptohome(const Credentials& credentials, int index,
 bool Mount::UnmountCryptohome() {
   // Try an immediate unmount
   bool was_busy;
-  if (!Unmount(home_dir_.c_str(), false, &was_busy)) {
-    // If the unmount fails, do a lazy unmount
-    Unmount(home_dir_.c_str(), true, NULL);
+  if (!platform_->Unmount(home_dir_, false, &was_busy)) {
     if (was_busy) {
       // Signal processes to close
-      if (TerminatePidsWithOpenFiles(home_dir_, false)) {
+      if (platform_->TerminatePidsWithOpenFiles(home_dir_, false)) {
         // Then we had to send a SIGINT to some processes with open files.  Give
         // a "grace" period before killing with a SIGKILL.
         // TODO(fes): This isn't ideal, nor is it accurate (a static sleep can't
@@ -223,11 +174,13 @@ bool Mount::UnmountCryptohome() {
         // namespace-based mounts, then we can get away from this construct.
         PlatformThread::Sleep(100);
         sync();
-        if (TerminatePidsWithOpenFiles(home_dir_, true)) {
+        if (platform_->TerminatePidsWithOpenFiles(home_dir_, true)) {
           PlatformThread::Sleep(100);
         }
       }
     }
+    // Failed to unmount immediately, do a lazy unmount
+    platform_->Unmount(home_dir_, true, NULL);
     sync();
     // TODO(fes): This should return an error condition if it is still mounted.
     // Right now it doesn't, since it should get cleaned up outside of
@@ -238,7 +191,7 @@ bool Mount::UnmountCryptohome() {
   //TerminatePidsForUser(default_user_, true);
 
   // Clear the user keyring if the unmount was successful
-  keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
+  crypto_->ClearKeyset();
 
   return true;
 }
@@ -251,41 +204,16 @@ bool Mount::RemoveCryptohome(const Credentials& credentials) {
 }
 
 bool Mount::IsCryptohomeMounted() {
-  // Trivial string match from /etc/mtab to see if the cryptohome mount point is
-  // listed.  This works because Chrome OS is a controlled environment and the
-  // only way /home/chronos/user should be mounted is if cryptohome mounted it.
-  string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
-    if (contents.find(StringPrintf(" %s ", home_dir_.c_str()).c_str())
-        != string::npos) {
-      return true;
-    }
-  }
-  return false;
+  return platform_->IsDirectoryMounted(home_dir_);
 }
 
 bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) {
-  // Trivial string match from /etc/mtab to see if the cryptohome mount point
-  // and the user's vault path are present.  Assumes this user is mounted if it
-  // finds both.  This will need to change if simultaneous login is implemented.
-  string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
-    FilePath vault_path(GetUserVaultPath(credentials));
-    if ((contents.find(StringPrintf(" %s ", home_dir_.c_str()).c_str())
-         != string::npos)
-        && (contents.find(StringPrintf("%s ",
-                                       vault_path.value().c_str()).c_str())
-            != string::npos)) {
-      return true;
-    }
-  }
-  return false;
+  return platform_->IsDirectoryMountedWith(home_dir_,
+                                           GetUserVaultPath(credentials));
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials, int index) {
-  // Save the current umask
-  mode_t original_mask = umask(S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
-                               | S_IXOTH);
+  int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Create the user's entry in the shadow root
   FilePath user_dir(GetUserDirectory(credentials));
@@ -293,30 +221,29 @@ bool Mount::CreateCryptohome(const Credentials& credentials, int index) {
 
   // Generates a new master key and salt at the given index
   if (!CreateMasterKey(credentials, index)) {
-    umask(original_mask);
+    platform_->SetMask(original_mask);
     return false;
   }
 
   // Create the user's path and set the proper ownership
-  FilePath vault_path(GetUserVaultPath(credentials));
-  if (!file_util::CreateDirectory(vault_path)) {
-    LOG(ERROR) << "Couldn't create vault path: " << vault_path.value().c_str();
-    umask(original_mask);
+  std::string vault_path = GetUserVaultPath(credentials);
+  if (!file_util::CreateDirectory(FilePath(vault_path))) {
+    LOG(ERROR) << "Couldn't create vault path: " << vault_path.c_str();
+    platform_->SetMask(original_mask);
     return false;
   }
   if (set_vault_ownership_) {
-    // TODO(fes): Move platform-specific calls to a separate class
-    if (chown(vault_path.value().c_str(), default_user_, default_group_)) {
+    if (!platform_->SetOwnership(vault_path, default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of vault path: "
-                 << vault_path.value().c_str();
-      umask(original_mask);
+                 << vault_path.c_str();
+      platform_->SetMask(original_mask);
       return false;
     }
   }
 
   // Restore the umask
-  umask(original_mask);
+  platform_->SetMask(original_mask);
   return true;
 }
 
@@ -324,44 +251,73 @@ bool Mount::TestCredentials(const Credentials& credentials) {
   // Iterate over the keys in the user's entry in the shadow root to see if
   // these credentials successfully decrypt any
   for (int index = 0; /* loop forever */; index++) {
-    FilePath user_key_file(GetUserKeyFile(credentials, index));
-    if (!file_util::AbsolutePath(&user_key_file)) {
-      break;
-    }
-
-    SecureBlob user_salt = GetUserSalt(credentials, index);
-
-    SecureBlob passkey_wrapper = PasskeyToWrapper(credentials.GetPasskey(),
-                                                  user_salt, 1);
-
+    MountError mount_error;
     VaultKeyset vault_keyset;
-    if (UnwrapMasterKey(user_key_file, passkey_wrapper, &vault_keyset)) {
+    if (UnwrapVaultKeyset(credentials, index, &vault_keyset, &mount_error)) {
       return true;
+    } else if (mount_error != Mount::MOUNT_ERROR_KEY_FAILURE) {
+      break;
     }
   }
   return false;
+}
+
+bool Mount::UnwrapVaultKeyset(const Credentials& credentials, int index,
+                              VaultKeyset* vault_keyset, MountError* error) {
+  // Generate the passkey wrapper (key encryption key)
+  SecureBlob user_salt;
+  GetUserSalt(credentials, index, false, &user_salt);
+  if (user_salt.size() == 0) {
+    if (error) {
+      *error = MOUNT_ERROR_FATAL;
+    }
+    return false;
+  }
+  SecureBlob passkey;
+  credentials.GetPasskey(&passkey);
+  SecureBlob passkey_wrapper;
+  crypto_->PasskeyToWrapper(passkey, user_salt, 1, &passkey_wrapper);
+
+  // Load the encrypted keyset
+  FilePath user_key_file(GetUserKeyFile(credentials, index));
+  if (!file_util::PathExists(user_key_file)) {
+    if (error) {
+      *error = MOUNT_ERROR_NO_SUCH_FILE;
+    }
+    return false;
+  }
+  SecureBlob cipher_text;
+  if (!LoadFileBytes(user_key_file, &cipher_text)) {
+    if (error) {
+      *error = MOUNT_ERROR_FATAL;
+    }
+    return false;
+  }
+
+  // Attempt to unwrap the master key at the index with the passkey wrapper
+  if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey_wrapper, vault_keyset)) {
+    if (error) {
+      *error = Mount::MOUNT_ERROR_KEY_FAILURE;
+    }
+    return false;
+  }
+
+  return true;
 }
 
 bool Mount::MigratePasskey(const Credentials& credentials,
                            const char* old_key) {
   // Iterate over the keys in the user's entry in the shadow root to see if
   // these credentials successfully decrypt any
-  std::string username = credentials.GetFullUsername();
-  UsernamePasskey old_credentials(username.c_str(), username.length(),
-                                  old_key, strlen(old_key));
+  std::string username = credentials.GetFullUsernameString();
+  UsernamePasskey old_credentials(username.c_str(),
+                                  SecureBlob(old_key, strlen(old_key)));
   for (int index = 0; /* loop forever */; index++) {
-    FilePath user_key_file(GetUserKeyFile(old_credentials, index));
-    if (!file_util::AbsolutePath(&user_key_file)) {
-      break;
-    }
-
-    SecureBlob user_salt = GetUserSalt(old_credentials, index);
-
-    SecureBlob passkey_wrapper = PasskeyToWrapper(old_credentials.GetPasskey(),
-                                                  user_salt, 1);
-
+    // Attempt to unwrap the vault keyset with the specified credentials
+    MountError mount_error;
     VaultKeyset vault_keyset;
-    if (UnwrapMasterKey(user_key_file, passkey_wrapper, &vault_keyset)) {
+    if (UnwrapVaultKeyset(old_credentials, index, &vault_keyset,
+                          &mount_error)) {
       // Save to the next key index first so that if there is a failure, we
       // don't delete the existing working keyset.
       bool save_result = SaveVaultKeyset(credentials, vault_keyset, index + 1);
@@ -396,25 +352,26 @@ bool Mount::MigratePasskey(const Credentials& credentials,
                           false);
         return false;
       }
+    } else if (mount_error != Mount::MOUNT_ERROR_KEY_FAILURE) {
+      break;
     }
   }
   return false;
 }
 
-bool Mount::MountIncognitoCryptohome() {
-  // Attempt to mount incognitofs
-  if (mount("incognitofs", home_dir_.c_str(), "tmpfs",
-            kDefaultMountOptions, "")) {
-    LOG(ERROR) << "Cryptohome mount failed: " << errno << " for incognitofs";
+bool Mount::MountGuestCryptohome() {
+  // Attempt to mount guestfs
+  if (!platform_->Mount("guestfs", home_dir_, "tmpfs", "")) {
+    LOG(ERROR) << "Cryptohome mount failed: " << errno << " for guestfs";
     return false;
   }
   if (set_vault_ownership_) {
-    if (chown(home_dir_.c_str(), default_user_, default_group_)) {
+    if (!platform_->SetOwnership(home_dir_, default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of incognitofs path: "
+                 << default_group_ << ") of guestfs path: "
                  << home_dir_.c_str();
       bool was_busy;
-      Unmount(home_dir_.c_str(), false, &was_busy);
+      platform_->Unmount(home_dir_.c_str(), false, &was_busy);
       return false;
     }
   }
@@ -495,119 +452,7 @@ void Mount::CopySkeleton() {
 }
 
 void Mount::GetSecureRandom(unsigned char *rand, int length) const {
-  // TODO(fes): Get assistance from the TPM when it is available
-  // Seed the OpenSSL random number generator until it is happy
-  while (!RAND_status()) {
-    char buffer[256];
-    file_util::ReadFile(FilePath(entropy_source_), buffer, sizeof(buffer));
-    RAND_add(buffer, sizeof(buffer), sizeof(buffer));
-  }
-
-  // Have OpenSSL generate the random bytes
-  RAND_bytes(rand, length);
-}
-
-bool Mount::Unmount(const std::string& path, bool lazy, bool* was_busy) {
-  if (lazy) {
-    // TODO(fes): Place platform-specific calls in a separate class so that
-    // they can be mocked.
-    if (umount2(path.c_str(), MNT_DETACH)) {
-      if (was_busy) {
-        *was_busy = (errno == EBUSY);
-      }
-      return false;
-    }
-  } else {
-    if (umount(path.c_str())) {
-      if (was_busy) {
-        *was_busy = (errno == EBUSY);
-      }
-      return false;
-    }
-  }
-  if (was_busy) {
-    *was_busy = false;
-  }
-  return true;
-}
-
-bool Mount::UnwrapMasterKey(const FilePath& path,
-                            const chromeos::Blob& passkey,
-                            VaultKeyset* vault_keyset) {
-  // TODO(fes): Update this with openssl/tpm_engine or opencryptoki once
-  // available
-  // Load the encrypted master key
-  SecureBlob cipher_text;
-  if (!LoadFileBytes(path, cipher_text)) {
-    LOG(ERROR) << "Unable to read master key file";
-    return false;
-  }
-
-  unsigned int header_size = kOpenSSLMagic.length() + PKCS5_SALT_LEN;
-
-  if (cipher_text.size() < header_size) {
-    LOG(ERROR) << "Master key file too short";
-    return false;
-  }
-
-  // Grab the salt used in converting the passkey to a key (OpenSSL
-  // passkey-encrypted files have the format:
-  // Salted__<8-byte-salt><ciphertext>)
-  unsigned char salt[PKCS5_SALT_LEN];
-  memcpy(salt, &cipher_text[kOpenSSLMagic.length()], PKCS5_SALT_LEN);
-
-  cipher_text.erase(cipher_text.begin(), cipher_text.begin() + header_size);
-
-  unsigned char wrapper_key[EVP_MAX_KEY_LENGTH];
-  unsigned char iv[EVP_MAX_IV_LENGTH];
-
-  // Convert the passkey to a key encryption key
-  if (!EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, &passkey[0],
-                          passkey.size(), 1, wrapper_key, iv)) {
-    LOG(ERROR) << "Failure converting bytes to key";
-    return false;
-  }
-
-  SecureBlob plain_text(cipher_text.size());
-
-  int final_size = 0;
-  int decrypt_size = plain_text.size();
-
-  // Do the actual decryption
-  EVP_CIPHER_CTX d_ctx;
-  EVP_CIPHER_CTX_init(&d_ctx);
-  EVP_DecryptInit_ex(&d_ctx, EVP_aes_256_ecb(), NULL, wrapper_key, iv);
-  if (!EVP_DecryptUpdate(&d_ctx, &plain_text[0], &decrypt_size,
-                        &cipher_text[0],
-                        cipher_text.size())) {
-    LOG(ERROR) << "DecryptUpdate failed";
-    return false;
-  }
-  if (!EVP_DecryptFinal_ex(&d_ctx, &plain_text[decrypt_size], &final_size)) {
-    unsigned long err = ERR_get_error();
-    ERR_load_ERR_strings();
-    ERR_load_crypto_strings();
-
-    LOG(ERROR) << "DecryptFinal Error: " << err
-               << ": " << ERR_lib_error_string(err)
-               << ", " << ERR_func_error_string(err)
-               << ", " << ERR_reason_error_string(err);
-
-    return false;
-  }
-  final_size += decrypt_size;
-
-  plain_text.resize(final_size);
-
-  if (plain_text.size() != VaultKeyset::SerializedSize()) {
-    LOG(ERROR) << "Plain text was not the correct size: " << plain_text.size()
-               << ", expected: " << VaultKeyset::SerializedSize();
-    return false;
-  }
-
-  (*vault_keyset).AssignBuffer(plain_text);
-
-  return true;
+  crypto_->GetSecureRandom(rand, length);
 }
 
 bool Mount::CreateMasterKey(const Credentials& credentials, int index) {
@@ -619,65 +464,29 @@ bool Mount::CreateMasterKey(const Credentials& credentials, int index) {
 bool Mount::SaveVaultKeyset(const Credentials& credentials,
                             const VaultKeyset& vault_keyset,
                             int index) {
-  unsigned char wrapper_key[EVP_MAX_KEY_LENGTH];
-  unsigned char iv[EVP_MAX_IV_LENGTH];
-  unsigned char salt[PKCS5_SALT_LEN];
+  // Get the vault keyset wrapper
+  SecureBlob user_salt;
+  GetUserSalt(credentials, index, true, &user_salt);
+  SecureBlob passkey;
+  credentials.GetPasskey(&passkey);
+  SecureBlob passkey_wrapper;
+  crypto_->PasskeyToWrapper(passkey, user_salt, 1, &passkey_wrapper);
 
-  // Create a salt for this master key
-  GetSecureRandom(salt, sizeof(salt));
-  SecureBlob user_salt = GetUserSalt(credentials, index, true);
-
-  // Convert the passkey to a passkey wrapper
-  SecureBlob passkey_wrapper =
-      PasskeyToWrapper(credentials.GetPasskey(), user_salt, 1);
-
-  // Convert the passkey wrapper to a key encryption key
-  if (!EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, &passkey_wrapper[0],
-                          passkey_wrapper.size(), 1, wrapper_key, iv)) {
-    LOG(ERROR) << "Failure converting bytes to key";
+  // Wrap the vault keyset
+  SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  SecureBlob cipher_text;
+  crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
+                           salt.size());
+  if (!crypto_->WrapVaultKeyset(vault_keyset, passkey_wrapper, salt,
+                               &cipher_text)) {
+    LOG(ERROR) << "Wrapping vault keyset failed";
     return false;
   }
-
-  SecureBlob keyset_blob = vault_keyset.ToBuffer();
-
-  // Store the salt and encrypt the master key
-  unsigned int header_size = kOpenSSLMagic.length() + PKCS5_SALT_LEN;
-  SecureBlob cipher_text(header_size
-                         + keyset_blob.size()
-                         + EVP_CIPHER_block_size(EVP_aes_256_ecb()));
-  memcpy(&cipher_text[0], kOpenSSLMagic.c_str(), kOpenSSLMagic.length());
-  memcpy(&cipher_text[kOpenSSLMagic.length()], salt, PKCS5_SALT_LEN);
-
-  int current_size = header_size;
-  int encrypt_size = 0;
-  EVP_CIPHER_CTX e_ctx;
-  EVP_CIPHER_CTX_init(&e_ctx);
-
-  // Encrypt the keyset
-  EVP_EncryptInit_ex(&e_ctx, EVP_aes_256_ecb(), NULL, wrapper_key, iv);
-  if (!EVP_EncryptUpdate(&e_ctx, &cipher_text[current_size], &encrypt_size,
-                         &keyset_blob[0],
-                         keyset_blob.size())) {
-    LOG(ERROR) << "EncryptUpdate failed";
-    return false;
-  }
-  current_size += encrypt_size;
-  encrypt_size = 0;
-
-  // Finish the encryption
-  if (!EVP_EncryptFinal_ex(&e_ctx, &cipher_text[current_size], &encrypt_size)) {
-    LOG(ERROR) << "EncryptFinal failed";
-    return false;
-  }
-  current_size += encrypt_size;
-  cipher_text.resize(current_size);
-
-  chromeos::SecureMemset(wrapper_key, sizeof(wrapper_key), 0);
 
   // Save the master key
   unsigned int data_written = file_util::WriteFile(
       FilePath(GetUserKeyFile(credentials, index)),
-      reinterpret_cast<const char*>(&cipher_text[0]),
+      static_cast<const char*>(cipher_text.const_data()),
       cipher_text.size());
 
   if (data_written != cipher_text.size()) {
@@ -687,145 +496,21 @@ bool Mount::SaveVaultKeyset(const Credentials& credentials,
   return true;
 }
 
-SecureBlob Mount::PasskeyToWrapper(const chromeos::Blob& passkey,
-                              const chromeos::Blob& salt, int iters) {
-  // TODO(fes): Update this when TPM support is available, or use a memory-
-  // bound strengthening algorithm.
-  int update_length = passkey.size();
-  SecureBlob holder(CRYPTOHOME_MAX(update_length, SHA_DIGEST_LENGTH));
-  memcpy(&holder[0], &passkey[0], update_length);
-
-  // Repeatedly hash the user passkey and salt to generate the wrapper
-  for (int i = 0; i < iters; ++i) {
-    SHA_CTX ctx;
-    unsigned char md_value[SHA_DIGEST_LENGTH];
-
-    SHA1_Init(&ctx);
-    SHA1_Update(&ctx, &salt[0], salt.size());
-    SHA1_Update(&ctx, &holder[0], update_length);
-    SHA1_Final(md_value, &ctx);
-
-    memcpy(&holder[0], md_value, SHA_DIGEST_LENGTH);
-    update_length = SHA_DIGEST_LENGTH;
-  }
-
-  holder.resize(update_length);
-  SecureBlob wrapper(update_length * 2);
-  AsciiEncodeToBuffer(holder, reinterpret_cast<char*>(&wrapper[0]),
-                      wrapper.size());
-  return wrapper;
+void Mount::GetSystemSalt(chromeos::Blob* salt) {
+  *salt = system_salt_;
 }
 
-SecureBlob Mount::GetSystemSalt() {
-  return system_salt_;
-}
-
-SecureBlob Mount::GetUserSalt(const Credentials& credentials, int index,
-                              bool force) {
+void Mount::GetUserSalt(const Credentials& credentials, int index, bool force,
+                        SecureBlob* salt) {
   FilePath path(GetUserSaltFile(credentials, index));
-  return GetOrCreateSalt(path, CRYPTOHOME_DEFAULT_SALT_LENGTH, force);
-}
-
-SecureBlob Mount::GetOrCreateSalt(const FilePath& path, int length,
-                                  bool force) {
-  SecureBlob salt;
-  if (force || !file_util::PathExists(path)) {
-    // If this salt doesn't exist, automatically create it
-    salt.resize(length);
-    GetSecureRandom(&salt[0], salt.size());
-    int data_written = file_util::WriteFile(path,
-        reinterpret_cast<const char*>(&salt[0]),
-        length);
-    if (data_written != length) {
-      LOG(ERROR) << "Could not write user salt";
-      return SecureBlob();
-    }
-  } else {
-    // Otherwise just load the contents of the salt
-    int64 file_size;
-    if (!file_util::GetFileSize(path, &file_size)) {
-      LOG(ERROR) << "Could not get size of " << path.value();
-      return SecureBlob();
-    }
-    if (file_size > INT_MAX) {
-      LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
-      return SecureBlob();
-    }
-    salt.resize(file_size);
-    int data_read = file_util::ReadFile(path, reinterpret_cast<char*>(&salt[0]),
-                                        file_size);
-    if (data_read != file_size) {
-      LOG(ERROR) << "Could not read entire file " << file_size;
-      return SecureBlob();
-    }
-  }
-  return salt;
-}
-
-void Mount::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                              int buffer_length) {
-  const char hex_chars[] = "0123456789abcdef";
-  int i = 0;
-  for (chromeos::Blob::const_iterator it = blob.begin();
-      it < blob.end() && (i + 1) < buffer_length; ++it) {
-    buffer[i++] = hex_chars[((*it) >> 4) & 0x0f];
-    buffer[i++] = hex_chars[(*it) & 0x0f];
-  }
-  if (i < buffer_length) {
-    buffer[i] = '\0';
-  }
-}
-
-bool Mount::AddKeyToEcryptfsKeyring(const VaultKeyset& vault_keyset,
-                                    string* key_signature,
-                                    string* fnek_signature) {
-  // Clear the user keyring
-  keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
-
-  // Add the FEK
-  *key_signature = chromeos::AsciiEncode(vault_keyset.FEK_SIG());
-  if (!PushVaultKey(vault_keyset.FEK(), *key_signature,
-                    vault_keyset.FEK_SALT())) {
-    LOG(ERROR) << "Couldn't add ecryptfs key to keyring";
-    return false;
-  }
-
-  // Add the FNEK
-  *fnek_signature = chromeos::AsciiEncode(vault_keyset.FNEK_SIG());
-  if (!PushVaultKey(vault_keyset.FNEK(), *fnek_signature,
-                    vault_keyset.FNEK_SALT())) {
-    LOG(ERROR) << "Couldn't add ecryptfs fnek key to keyring";
-    return false;
-  }
-
-  return true;
-}
-
-bool Mount::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
-                         const SecureBlob& salt) {
-  DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
-  DCHECK(key_sig.length() == (ECRYPTFS_SIG_SIZE * 2));
-  DCHECK(salt.size() == ECRYPTFS_SALT_SIZE);
-
-  struct ecryptfs_auth_tok auth_token;
-
-  generate_payload(&auth_token, const_cast<char*>(key_sig.c_str()),
-                   const_cast<char*>(reinterpret_cast<const char*>(&salt[0])),
-                   const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
-
-  if (ecryptfs_add_auth_tok_to_keyring(&auth_token,
-      const_cast<char*>(key_sig.c_str())) < 0) {
-    LOG(ERROR) << "PushVaultKey failed";
-  }
-
-  return true;
+  crypto_->GetOrCreateSalt(path, CRYPTOHOME_DEFAULT_SALT_LENGTH, force, salt);
 }
 
 bool Mount::LoadFileBytes(const FilePath& path,
-                          SecureBlob& blob) {
+                          SecureBlob* blob) {
   int64 file_size;
   if (!file_util::PathExists(path)) {
-    LOG(ERROR) << path.value() << " does not exist!";
+    LOG(INFO) << path.value() << " does not exist!";
     return false;
   }
   if (!file_util::GetFileSize(path, &file_size)) {
@@ -844,155 +529,8 @@ bool Mount::LoadFileBytes(const FilePath& path,
     LOG(ERROR) << "Could not read entire file " << file_size;
     return false;
   }
-  blob.swap(buf);
+  blob->swap(buf);
   return true;
 }
 
-bool Mount::TerminatePidsWithOpenFiles(const std::string& path, bool hard) {
-  std::vector<pid_t> pids = LookForOpenFiles(path);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
-    pid_t pid = static_cast<pid_t>(*it);
-    if (pid != getpid()) {
-      if (hard) {
-        kill(pid, SIGTERM);
-      } else {
-        kill(pid, SIGKILL);
-      }
-    }
-  }
-  return (pids.size() != 0);
-}
-
-std::vector<pid_t> Mount::LookForOpenFiles(const std::string& path_in) {
-  // Make sure that if we get a directory, it has a trailing separator
-  FilePath file_path(path_in);
-  file_util::EnsureEndsWithSeparator(&file_path);
-  std::string path = file_path.value();
-
-  std::vector<pid_t> pids;
-
-  // Open /proc
-  DIR* proc_dir = opendir(kProcDir.c_str());
-
-  if (!proc_dir) {
-    return pids;
-  }
-
-  int linkbuf_length = path.length();
-  std::vector<char> linkbuf(linkbuf_length);
-
-  // List PIDs in /proc
-  while (struct dirent* pid_dirent = readdir(proc_dir)) {
-    pid_t pid = static_cast<pid_t>(atoi(pid_dirent->d_name));
-    // Ignore PID 1 and errors
-    if (pid <= 1) {
-      continue;
-    }
-    // Open /proc/<pid>/fd
-    std::string fd_dirname = StringPrintf("%s/%d/fd", kProcDir.c_str(), pid);
-    DIR* fd_dir = opendir(fd_dirname.c_str());
-    if (!fd_dir) {
-      continue;
-    }
-
-    // List open file descriptors
-    while (struct dirent* fd_dirent = readdir(fd_dir)) {
-      std::string fd_path = StringPrintf("%s/%s", fd_dirname.c_str(),
-                                         fd_dirent->d_name);
-      ssize_t link_length = readlink(fd_path.c_str(), &linkbuf[0],
-                                     linkbuf.size());
-      if (link_length > 0) {
-        std::string open_file(&linkbuf[0], link_length);
-        if (open_file.length() >= path.length()) {
-          if (open_file.substr(0, path.length()).compare(path) == 0) {
-            pids.push_back(pid);
-            break;
-          }
-        }
-      }
-    }
-
-    closedir(fd_dir);
-  }
-
-  closedir(proc_dir);
-
-  return pids;
-}
-
-bool Mount::TerminatePidsForUser(const uid_t uid, bool hard) {
-  std::vector<pid_t> pids = GetPidsForUser(uid);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
-    pid_t pid = static_cast<pid_t>(*it);
-    if (pid != getpid()) {
-      if (hard) {
-        kill(pid, SIGTERM);
-      } else {
-        kill(pid, SIGKILL);
-      }
-    }
-  }
-  return (pids.size() != 0);
-}
-
-// TODO(fes): Pull this into a separate helper class
-std::vector<pid_t> Mount::GetPidsForUser(uid_t uid) {
-  std::vector<pid_t> pids;
-
-  // Open /proc
-  DIR* proc_dir = opendir(kProcDir.c_str());
-
-  if (!proc_dir) {
-    return pids;
-  }
-
-  // List PIDs in /proc
-  while (struct dirent* pid_dirent = readdir(proc_dir)) {
-    pid_t pid = static_cast<pid_t>(atoi(pid_dirent->d_name));
-    if (pid <= 0) {
-      continue;
-    }
-    // Open /proc/<pid>/status
-    std::string stat_path = StringPrintf("%s/%d/status", kProcDir.c_str(),
-                                         pid);
-    string contents;
-    if (!file_util::ReadFileToString(FilePath(stat_path), &contents)) {
-      continue;
-    }
-
-    size_t uid_loc = contents.find("Uid:");
-    if (!uid_loc) {
-      continue;
-    }
-    uid_loc += 4;
-
-    size_t uid_end = contents.find("\n", uid_loc);
-    if (!uid_end) {
-      continue;
-    }
-
-    contents = contents.substr(uid_loc, uid_end - uid_loc);
-
-    std::vector<std::string> tokens;
-    Tokenize(contents, " \t", &tokens);
-
-    for (std::vector<std::string>::iterator it = tokens.begin();
-        it != tokens.end(); it++) {
-      std::string& value = *it;
-      if (value.length() == 0) {
-        continue;
-      }
-      uid_t check_uid = static_cast<uid_t>(atoi(value.c_str()));
-      if (check_uid == uid) {
-        pids.push_back(pid);
-        break;
-      }
-    }
-  }
-
-  closedir(proc_dir);
-
-  return pids;
-}
-
-} // cryptohome
+} // namespace cryptohome

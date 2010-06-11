@@ -32,6 +32,11 @@
       <!-- long term, this should just be the hash -->
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
+      <arg type="i" name="error" direction="out" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="MountGuest">
+      <arg type="i" name="error" direction="out" />
       <arg type="b" name="done" direction="out" />
     </method>
     <method name="Unmount">

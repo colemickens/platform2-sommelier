@@ -4,24 +4,23 @@
 //
 // Unit tests for Service
 
-#include "cryptohome/service.h"
+#include "service.h"
 
-#include <glib.h>
 #include <gtest/gtest.h>
 
-#include "cryptohome/mock_mount.h"
+#include "mock_mount.h"
 
 namespace cryptohome {
 using ::testing::Return;
 using ::testing::_;
 
 TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
-  MockMount *mount = new MockMount;
-  EXPECT_CALL(*mount, TestCredentials(_))
+  MockMount mount;
+  EXPECT_CALL(mount, TestCredentials(_))
       .WillOnce(Return(true));
 
   Service service;
-  service.set_mount(mount);  // takes ownership.
+  service.set_mount(&mount);
   service.Initialize();
   gboolean out = FALSE;
   GError *error = NULL;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -11,18 +11,16 @@ COMMON_SH="$(dirname "$0")/../../scripts/common.sh"
 . "$COMMON_SH"
 
 mkdir -p ${OUT_DIR}
-TARGET=${OUT_DIR}/cryptohome_tests
+TARGET=${OUT_DIR}/cryptohome_test
 
-# package_tests target runfile
+# package_tests target initfile runfile
 function package_tests() {
   local package="$1"
-  local testfile="$2"
-  shift; shift
-  local libs="$@"
-  TMPDIR="${TMPDIR:-/tmp}"
-  local builddir="$(mktemp -d $TMPDIR/shpkgr.XXXXXX)"
-  eval "cleanup() { [[ -n \"$builddir\" ]] && rm -rf $builddir; }"
-  trap cleanup ERR
+  local initfile="$2"
+  local testfile="$3"
+  shift; shift; shift
+
+  local test_dir="test_image_dir"
 
   cat <<-EOF > $package
 	#!/bin/sh
@@ -37,25 +35,29 @@ function package_tests() {
 	test \$? -eq 0 || exit 1
 	# delete the runfiles on exit using a trap
 	trap "test \$PKG_LEAVE_RUNFILES || rm -rf \$RUNFILES" EXIT
-	# extract starting at the last line (20)
-	tail -n +20 \$0 | gzip -dc | tar x -C \$RUNFILES
+	# extract starting at the last line (21)
+	tail -n +21 \$0 | base64 -d |tar xvf - -C \$RUNFILES
 	test \$? -eq 0 || exit 1
 	# execute the package but keep the current directory
-	/bin/bash --noprofile --norc -c "cd \$RUNFILES;. $testfile" \$0 "\$@"
+	/bin/bash --noprofile --norc -c "cd \$RUNFILES;. $initfile $test_dir"
+	/bin/bash --noprofile --norc -c "cd \$RUNFILES; ./$testfile" \$0 "\$@"
 	exit \$?
-	__PACKAGER_TARBALL_GZ__
+	__PACKAGER_TARBALL__
 	EOF
-  pushd $builddir &> /dev/null
-  local source="$OLDPWD/$(dirname $0)"
-  cp -r "$source/../../third_party/shunit2" shunit2
-  cp -r "$source/lib" lib
-  cp -r "$source/tests" tests
-  cp -a "$source/$testfile" $testfile
-  tar --exclude=".svn" --exclude=".git" -czf - * >> $package
-  popd &> /dev/null
-  trap - ERR
-  cleanup
+  tar cvf - $initfile $testfile |base64 >> $package
   chmod +x $package
 }
 
-package_tests "$TARGET" test.sh
+
+SCRIPT_DIR=`dirname "$0"`
+SCRIPT_DIR=`readlink -f "$SCRIPT_DIR"`
+
+BUILD_ROOT=${BUILD_ROOT:-${SCRIPT_DIR}/../../../src/build}
+mkdir -p $OUT_DIR
+
+pushd $SCRIPT_DIR
+
+scons cryptohome_testrunner
+package_tests "$TARGET" init_cryptohome_data.sh cryptohome_testrunner
+
+popd

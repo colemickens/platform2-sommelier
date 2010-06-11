@@ -4,7 +4,7 @@
 
 // Unit tests for Mount.
 
-#include "cryptohome/mount.h"
+#include "mount.h"
 
 #include <openssl/sha.h>
 #include <pwd.h>
@@ -12,16 +12,17 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#include "base/file_path.h"
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "chromeos/utility.h"
-#include "cryptohome/username_passkey.h"
-#include "gtest/gtest.h"
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <chromeos/utility.h>
+#include <gtest/gtest.h>
+
+#include "crypto.h"
+#include "secure_blob.h"
+#include "username_passkey.h"
 
 namespace cryptohome {
-using namespace chromeos;
-using namespace file_util;
 using std::string;
 
 const char kImageDir[] = "test_image_dir";
@@ -31,40 +32,44 @@ const char kFakeUser2[] = "testuser2@invalid.domain";
 const char kFakeUser3[] = "testuser3@invalid.domain";
 
 class MountTest : public ::testing::Test {
+ public:
+  MountTest() { }
+  virtual ~MountTest() { }
+
   void SetUp() {
     FilePath image_dir(kImageDir);
     FilePath path = image_dir.Append("salt");
-    ASSERT_TRUE(PathExists(path)) << path.value() << " does not exist!";
+    ASSERT_TRUE(file_util::PathExists(path)) << path.value()
+                                             << " does not exist!";
 
     int64 file_size;
-    ASSERT_TRUE(GetFileSize(path, &file_size)) << "Could not get size of "
-                                               << path.value();
+    ASSERT_TRUE(file_util::GetFileSize(path, &file_size))
+                << "Could not get size of "
+                << path.value();
 
     char* buf = new char[file_size];
-    int data_read = ReadFile(path, buf, file_size);
+    int data_read = file_util::ReadFile(path, buf, file_size);
     system_salt_.assign(buf, buf + data_read);
     delete buf;
   }
 
- public:
-
  protected:
   // Protected for trivial access
-  Blob system_salt_;
+  chromeos::Blob system_salt_;
 
  private:
+  DISALLOW_COPY_AND_ASSIGN(MountTest);
 };
 
 TEST_F(MountTest, BadInitTest) {
   // create a Mount instance that points to a bad shadow root
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              "/dev/null",
-              kSkelDir);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser,
-                                                             "zero",
-                                                             system_salt_);
+  Mount mount;
+  mount.set_shadow_root("/dev/null");
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("zero", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(false, mount.Init());
   EXPECT_EQ(false, mount.TestCredentials(up));
@@ -73,14 +78,13 @@ TEST_F(MountTest, BadInitTest) {
 TEST_F(MountTest, GoodDecryptTest0) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the first key
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser,
-                                                             "zero",
-                                                             system_salt_);
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("zero", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(true, mount.TestCredentials(up));
@@ -89,14 +93,13 @@ TEST_F(MountTest, GoodDecryptTest0) {
 TEST_F(MountTest, GoodDecryptTest1) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the second key
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser,
-                                                             "one",
-                                                             system_salt_);
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("one", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(true, mount.TestCredentials(up));
@@ -105,14 +108,13 @@ TEST_F(MountTest, GoodDecryptTest1) {
 TEST_F(MountTest, GoodDecryptTest2) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the third key
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser,
-                                                             "two",
-                                                             system_salt_);
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("two", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(true, mount.TestCredentials(up));
@@ -121,14 +123,13 @@ TEST_F(MountTest, GoodDecryptTest2) {
 TEST_F(MountTest, BadDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser,
-                                                             "bogus",
-                                                             system_salt_);
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("bogus", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(false, mount.TestCredentials(up));
@@ -136,16 +137,14 @@ TEST_F(MountTest, BadDecryptTest) {
 
 TEST_F(MountTest, CreateCryptohomeTest) {
   // creates a cryptohome
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
-  // Don't set the vault ownership--this will fail
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
   mount.set_set_vault_ownership(false);
-  UsernamePasskey up = UsernamePasskey::FromUsernamePassword(kFakeUser2,
-                                                             "one",
-                                                             system_salt_);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("one", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser2, passkey);
 
   EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(true, mount.CreateCryptohome(up, 0));
@@ -162,14 +161,13 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
 TEST_F(MountTest, SystemSaltTest) {
   // checks that cryptohome reads the system salt
-  Mount mount(cryptohome::kDefaultSharedUser,
-              cryptohome::kDefaultEntropySource,
-              cryptohome::kDefaultHomeDir,
-              kImageDir,
-              kSkelDir);
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
 
   EXPECT_EQ(true, mount.Init());
-  chromeos::Blob system_salt = mount.GetSystemSalt();
+  chromeos::Blob system_salt;
+  mount.GetSystemSalt(&system_salt);
   EXPECT_EQ(true, (system_salt.size() == system_salt_.size()));
   EXPECT_EQ(0, memcmp(&system_salt[0], &system_salt_[0],
                          system_salt.size()));

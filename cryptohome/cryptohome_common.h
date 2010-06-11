@@ -2,25 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_COMMON_H_
-#define CRYPTOHOME_COMMON_H_
-
-extern "C" {
-#include <ecryptfs.h>
-}
+#ifndef CRYPTOHOME_CRYPTOHOME_COMMON_H_
+#define CRYPTOHOME_CRYPTOHOME_COMMON_H_
 
 namespace cryptohome {
 
 // The default symmetric key size for cryptohome is the ecryptfs default
-#define CRYPTOHOME_DEFAULT_KEY_SIZE ECRYPTFS_MAX_KEY_BYTES
-#define CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE ECRYPTFS_SIG_SIZE
-#define CRYPTOHOME_DEFAULT_KEY_SALT_SIZE ECRYPTFS_SALT_SIZE
-#define CRYPTOHOME_AES_KEY_BYTES ECRYPTFS_AES_KEY_BYTES
+#define CRYPTOHOME_DEFAULT_KEY_SIZE 64           // ECRYPTFS_MAX_KEY_BYTES
+#define CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE 8  // ECRYPTFS_SIG_SIZE
+#define CRYPTOHOME_DEFAULT_KEY_SALT_SIZE 8       // ECRYPTFS_SALT_SIZE
+#define CRYPTOHOME_AES_KEY_BYTES 16              // ECRYPTFS_AES_KEY_BYTES
 // The default salt length for the user salt
 #define CRYPTOHOME_DEFAULT_SALT_LENGTH 16
-// Macros for min and max
-#define CRYPTOHOME_MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-#define CRYPTOHOME_MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#define CRYPTOHOME_PWNAME_BUF_LENGTH 1024
 
 struct VaultKeysetHeader {
   char signature[2];
@@ -39,6 +33,6 @@ struct VaultKeysetKeys {
 } __attribute__((__packed__));
 typedef struct VaultKeysetKeys VaultKeysetKeys;
 
-}  // cryptohome
+}  // namespace cryptohome
 
-#endif  // CRYPTOHOME_COMMON_H_
+#endif  // CRYPTOHOME_CRYPTOHOME_COMMON_H_

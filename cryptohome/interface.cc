@@ -1,7 +1,7 @@
 // Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "cryptohome/interface.h"
+#include "interface.h"
 
 namespace cryptohome {
 namespace gobject {
@@ -81,9 +81,16 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,
+                          gint *OUT_error,
                           gboolean *OUT_done,
                           GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_done);
+  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_error, OUT_done);
+}
+gboolean cryptohome_mount_guest(Cryptohome *self,
+                                gint *OUT_error,
+                                gboolean *OUT_done,
+                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(MountGuest, OUT_error, OUT_done);
 }
 gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_done,

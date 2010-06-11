@@ -5,7 +5,7 @@
 #ifndef SECURE_BLOB_H_
 #define SECURE_BLOB_H_
 
-#include "chromeos/utility.h"
+#include <chromeos/utility.h>
 
 namespace cryptohome {
 
@@ -19,10 +19,15 @@ class SecureBlob : public chromeos::Blob {
   SecureBlob(chromeos::Blob::const_iterator begin,
              chromeos::Blob::const_iterator end);
   explicit SecureBlob(int size);
+  SecureBlob(const unsigned char* from, int from_length);
+  SecureBlob(const char* from, int from_length);
   virtual ~SecureBlob();
 
   void resize(size_type sz);
   void resize(size_type sz, const SecureBlobElement& x);
+
+  void* data();
+  const void* const_data() const;
 };
 
 }  // cryptohome
