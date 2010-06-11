@@ -21,6 +21,7 @@ extern const char *kCryptohomeRemove;
 extern const char *kCryptohomeGetSystemSalt;
 extern const char *kCryptohomeIsMounted;
 extern const char *kCryptohomeMount;
+extern const char *kCryptohomeMountGuest;
 extern const char *kCryptohomeUnmount;
 }  // namespace cryptohome
 

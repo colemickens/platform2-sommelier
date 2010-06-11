@@ -19,6 +19,7 @@ const char *kCryptohomeRemove = "Remove";
 const char *kCryptohomeGetSystemSalt = "GetSystemSalt";
 const char *kCryptohomeIsMounted = "IsMounted";
 const char *kCryptohomeMount = "Mount";
+const char *kCryptohomeMountGuest = "MountGuest";
 const char *kCryptohomeUnmount = "Unmount";
 }  // namespace cryptohome
 
