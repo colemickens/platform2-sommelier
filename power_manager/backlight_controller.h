@@ -52,8 +52,9 @@ class BacklightController {
   void OnPlugEvent(bool is_plugged);
 
   // Read brightness settings from the system and apply any changes made
-  // by other programs to our local view.
-  int64 ReadBrightness();
+  // by other programs to our local view. Return true if the brightness
+  // has not been modified by other programs; return false otherwise.
+  bool ReadBrightness();
 
   // Write brightness based on current settings. Returns new brightness level.
   int64 WriteBrightness();

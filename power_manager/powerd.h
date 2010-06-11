@@ -104,6 +104,10 @@ class Daemon : public XIdleMonitor {
   static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
     GdkEvent* gevent, gpointer data);
 
+  // Tell X we are interested in the specified key/mask combination.
+  // Capslock is always ignored.
+  void GrabKey(KeyCode key, uint32 mask);
+
   // Standard handler for dbus messages. |data| contains a pointer to a
   // Daemon object.
   static DBusHandlerResult DBusMessageHandler(DBusConnection*,
@@ -204,9 +208,11 @@ class Daemon : public XIdleMonitor {
   // Idle time as of last idle event.
   base::TimeDelta last_idle_timedelta_;
 
-  // Key symbols for brightness up and down
+  // Key symbols for brightness up and down, F6 and F7
   KeyCode key_brightness_up_;
   KeyCode key_brightness_down_;
+  KeyCode key_f6_;
+  KeyCode key_f7_;
 };
 
 }  // namespace power_manager

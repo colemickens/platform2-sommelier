@@ -7,6 +7,7 @@
 #include <gdk/gdkx.h>
 #include <stdint.h>
 #include <X11/extensions/dpms.h>
+#include <X11/keysym.h>
 #include <X11/XF86keysym.h>
 
 #include <algorithm>
@@ -57,6 +58,10 @@ void Daemon::Init() {
   key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
   key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
                                           XF86XK_MonBrightnessDown);
+  key_f6_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F6);
+  key_f7_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F7);
+  CHECK(key_f6_ != 0);
+  CHECK(key_f7_ != 0);
   if (key_brightness_up_ == 0) {
     LOG(ERROR) << "No brightness up keycode found. Guessing instead.";
     key_brightness_up_ = 212;
@@ -65,13 +70,11 @@ void Daemon::Init() {
     LOG(ERROR) << "No brightness down keycode found. Guessing instead.";
     key_brightness_down_ = 101;
   }
-  Window root = DefaultRootWindow(GDK_DISPLAY());
-  XGrabKey(GDK_DISPLAY(), key_brightness_up_, 0, root, True, GrabModeAsync,
-           GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key_brightness_down_, 0, root, True, GrabModeAsync,
-           GrabModeAsync);
+  GrabKey(key_brightness_up_, 0);
+  GrabKey(key_brightness_down_, 0);
+  GrabKey(key_f6_, 0);
+  GrabKey(key_f7_, 0);
   gdk_window_add_filter(NULL, gdk_event_filter, this);
-
   locker_.Init(use_xscreensaver_);
   RegisterDBusMessageHandler();
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
@@ -218,15 +221,23 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   Daemon* daemon = static_cast<Daemon*>(data);
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   if (xevent->type == KeyPress) {
-    // TODO(davidjames): Actually increase/decrease the brightness here.
-    if (xevent->xkey.keycode == daemon->key_brightness_up_) {
-      LOG(INFO) << "Key press: Brightness up";
-    } else if (xevent->xkey.keycode == daemon->key_brightness_down_) {
-      LOG(INFO) << "Key press: Brightness down";
-    } else {
-      return GDK_FILTER_CONTINUE;
+    int keycode = xevent->xkey.keycode;
+    if (keycode == daemon->key_brightness_up_ || keycode == daemon->key_f7_) {
+      if (keycode == daemon->key_brightness_up_) {
+        LOG(INFO) << "Key press: Brightness up";
+      } else {  // keycode == daemon->key_f7_
+        LOG(INFO) << "Key press: F7";
+      }
+      daemon->ctl_->IncreaseBrightness();
+    } else if (keycode == daemon->key_brightness_down_ ||
+               keycode == daemon->key_f6_) {
+      if (keycode == daemon->key_brightness_down_) {
+        LOG(INFO) << "Key press: Brightness down";
+      } else {  // keycode == daemon->key_f6_
+        LOG(INFO) << "Key press: F6";
+      }
+      daemon->ctl_->DecreaseBrightness();
     }
-    daemon->ctl_->ReadBrightness();
   }
   return GDK_FILTER_CONTINUE;
 }
@@ -280,6 +291,13 @@ void Daemon::RegisterDBusMessageHandler() {
                                      NULL));
     LOG(INFO) << "DBus monitoring started";
   }
+}
+
+void Daemon::GrabKey(KeyCode key, uint32 mask) {
+  Window root = DefaultRootWindow(GDK_DISPLAY());
+  XGrabKey(GDK_DISPLAY(), key, mask, root, True, GrabModeAsync, GrabModeAsync);
+  XGrabKey(GDK_DISPLAY(), key, mask | LockMask, root, True,
+           GrabModeAsync, GrabModeAsync);
 }
 
 }  // namespace power_manager

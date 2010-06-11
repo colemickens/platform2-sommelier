@@ -42,25 +42,29 @@ void BacklightController::GetBrightness(int64* level) {
 }
 
 void BacklightController::IncreaseBrightness() {
-  // Increase brightness by ~6.25%, trying to give the user at least 16
-  // distinct brightness levels
-  int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
-  int64 offset = 1 + (max_ >> 5);
-  int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
-  int64 new_brightness = clamp(lround(100. * new_val / max_));
-  *brightness_offset_ += new_brightness - brightness;
-  WriteBrightness();
+  if (ReadBrightness()) {
+    // Give the user between 8 and 16 distinct brightness levels
+    int64 offset = 1 + (max_ >> 4);
+    int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
+    int64 new_brightness = clamp(lround(100. * new_val / max_));
+    if (new_brightness != system_brightness_) {
+      *brightness_offset_ += new_brightness - system_brightness_;
+      WriteBrightness();
+    }
+  }
 }
 
 void BacklightController::DecreaseBrightness() {
-  // Decrease brightness by ~6.25%, trying to give the user at least 16
-  // distinct brightness levels
-  int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
-  int64 offset = 1 + (max_ >> 5);
-  int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
-  int64 new_brightness = clamp(lround(100. * new_val / max_));
-  *brightness_offset_ += new_brightness - brightness;
-  WriteBrightness();
+  if (ReadBrightness()) {
+    // Give the user between 8 and 16 distinct brightness levels
+    int64 offset = 1 + (max_ >> 4);
+    int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
+    int64 new_brightness = clamp(lround(100. * new_val / max_));
+    if (new_brightness != system_brightness_) {
+      *brightness_offset_ += new_brightness - system_brightness_;
+      WriteBrightness();
+    }
+  }
 }
 
 void BacklightController::SetDimState(DimState state) {
@@ -98,7 +102,7 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
   WriteBrightness();
 }
 
-int64 BacklightController::ReadBrightness() {
+bool BacklightController::ReadBrightness() {
   CHECK(max_ >= 0) << "Init() must be called";
   CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 level;
@@ -111,8 +115,9 @@ int64 BacklightController::ReadBrightness() {
     *brightness_offset_ += diff;
     system_brightness_ = level;
     WritePrefs();
+    return false;
   }
-  return level;
+  return true;
 }
 
 int64 BacklightController::WriteBrightness() {
@@ -123,6 +128,7 @@ int64 BacklightController::WriteBrightness() {
   else
     system_brightness_ = 0;
   int64 val = lround(max_ * system_brightness_ / 100.);
+  system_brightness_ = clamp(lround(100. * val / max_));
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
             << system_brightness_;
   CHECK(backlight_->SetBrightness(val));
