@@ -1,0 +1,47 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script should be called daily to clean up log files.
+
+NUM_DAYS_TO_PRESERVE=7
+
+remove_old_dated_files() {
+  find "$1" -name "$2" -mtime +${NUM_DAYS_TO_PRESERVE} -exec rm '{}' ';'
+}
+
+rotate_file() {
+  local file="$1"
+  if [ ! -f "${file}" ]; then
+    # Avoid creating an empty file if it does not exist to begin with
+    return
+  fi
+  echo Rotating "${file}"
+  for i in $(seq ${NUM_DAYS_TO_PRESERVE} -1 2); do
+    mv -f "${file}.$((i - 1))" "${file}.$i"
+  done
+  mv -f "${file}" "${file}.1"
+  touch "${file}"
+}
+
+rotate_logs() {
+  echo Rotating rsyslogd logs
+  for x in messages secure faillog; do
+    rotate_file "/var/log/${x}"
+  done
+  sudo initctl restart syslog
+}
+
+# Remove old window manager logs (not logged in)
+remove_old_dated_files /var/log/window_manager chromeos-wm.*-*
+
+# Remove old window manager logs (logged in)
+remove_old_dated_files /home/chronos/user/log chromeos-wm.*-*
+
+# Remove old screen locker logs
+remove_old_dated_files /home/chronos/user/log screen-locker.*-*
+
+# Rotate other logs
+rotate_logs
