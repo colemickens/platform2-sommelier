@@ -24,6 +24,7 @@ class YuvToRgbTest : public DrawArraysTestFunc {
     glDeleteTextures(arraysize(textures_), textures_);
   }
   virtual bool Run();
+  virtual const char* Name() const { return "yuv_to_rgb"; }
 
   enum YuvTestFlavor {
     YUV_PLANAR_ONE_TEXTURE_SLOW,

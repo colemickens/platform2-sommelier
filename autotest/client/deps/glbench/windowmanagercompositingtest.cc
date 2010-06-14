@@ -23,6 +23,7 @@ class WindowManagerCompositingTest : public TestBase {
   virtual ~WindowManagerCompositingTest() {}
   virtual bool TestFunc(int iter);
   virtual bool Run();
+  virtual const char* Name() const { return "compositing"; }
 
   void InitializeCompositing();
   void TeardownCompositing();

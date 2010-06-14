@@ -14,6 +14,7 @@ class AttributeFetchShaderTest : public DrawElementsTestFunc {
   AttributeFetchShaderTest() {}
   virtual ~AttributeFetchShaderTest() {}
   virtual bool Run();
+  virtual const char* Name() const { return "attribute_fetch_shader"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AttributeFetchShaderTest);

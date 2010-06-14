@@ -8,11 +8,9 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "utils.h"
-
-#include "base/file_path.h"
 #include "base/logging.h"
 #include "main.h"
+#include "utils.h"
 
 FilePath *g_base_path = new FilePath();
 
@@ -24,6 +22,10 @@ void SetBasePathFromArgv0(const char* argv0, const char* relative) {
   FilePath argv0_path = FilePath(argv0).DirName();
   FilePath base_path = relative ? argv0_path.Append(relative) : argv0_path;
   g_base_path = new FilePath(base_path);
+}
+
+const FilePath& GetBasePath() {
+  return *g_base_path;
 }
 
 void *MmapFile(const char* name, size_t* length) {

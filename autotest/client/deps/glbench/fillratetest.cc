@@ -15,6 +15,7 @@ class FillRateTest : public DrawArraysTestFunc {
   FillRateTest() {}
   virtual ~FillRateTest() {}
   virtual bool Run();
+  virtual const char* Name() const { return "fill_rate"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FillRateTest);

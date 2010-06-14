@@ -15,6 +15,7 @@ class SwapTest : public TestBase {
   virtual ~SwapTest() {}
   virtual bool TestFunc(int iter);
   virtual bool Run();
+  virtual const char* Name() const { return "swap"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SwapTest);

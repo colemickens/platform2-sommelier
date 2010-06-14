@@ -17,6 +17,7 @@ class TriangleSetupTest : public DrawElementsTestFunc {
   TriangleSetupTest() {}
   virtual ~TriangleSetupTest() {}
   virtual bool Run();
+  virtual const char* Name() const { return "triangle_setup"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TriangleSetupTest);

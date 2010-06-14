@@ -2,59 +2,54 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <fcntl.h>
+#include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/mman.h>
 
 #include "base/logging.h"
+#include "base/string_util.h"
 
 #include "main.h"
 #include "utils.h"
-#include "yuv2rgb.h"
 
 #include "all_tests.h"
 #include "testbase.h"
 
+using std::string;
+using std::vector;
 
-const int enabled_tests_max = 8;
-// TODO: fix enabled_tests.
-const char *enabled_tests[enabled_tests_max+1] = {NULL};
-int seconds_to_run = 0;
+DEFINE_int32(duration, 0, "run tests in a loop for at least this many seconds");
+DEFINE_string(tests, "", "colon-separated list of tests to run; "
+              "all tests if omitted");
 
 
-// TODO: use proper command line parsing library.
-static void ParseArgs(int argc, char *argv[]) {
-  const char **enabled_tests_ptr = enabled_tests;
-  bool test_name_arg = false;
-  bool duration_arg = false;
-  for (int i = 0; i < argc; i++) {
-    if (test_name_arg) {
-      test_name_arg = false;
-      *enabled_tests_ptr++ = argv[i];
-      if (enabled_tests_ptr - enabled_tests >= enabled_tests_max)
-        break;
-    } else if (duration_arg) {
-      duration_arg = false;
-      seconds_to_run = atoi(argv[i]);
-    } else if (strcmp("-t", argv[i]) == 0) {
-      test_name_arg = true;
-    } else if (strcmp("-d", argv[i]) == 0) {
-      duration_arg = true;
-    }
+bool test_is_enabled(glbench::TestBase* test,
+                     const vector<string>& enabled_tests) {
+  if (enabled_tests.empty())
+    return true;
+
+  const char* test_name = test->Name();
+  for (vector<string>::const_iterator i = enabled_tests.begin();
+       i != enabled_tests.end(); ++i) {
+    // This is not very precise, but will do until there's a need for something
+    // more flexible.
+    if (strstr(test_name, i->c_str()))
+      return true;
   }
-  *enabled_tests_ptr++ = NULL;
-}
 
+  return false;
+}
 
 int main(int argc, char *argv[]) {
   SetBasePathFromArgv0(argv[0], "src");
-  ParseArgs(argc, argv);
+  google::ParseCommandLineFlags(&argc, &argv, true);
   if (!Init()) {
     printf("# Failed to initialize.\n");
     return 1;
   }
+
+  vector<string> enabled_tests;
+  SplitString(FLAGS_tests, ':', &enabled_tests);
 
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
@@ -72,10 +67,18 @@ int main(int argc, char *argv[]) {
     glbench::GetTextureUpdateTest(),
   };
 
+  uint64_t done = GetUTime() + 1000000ULL * FLAGS_duration;
+  do {
+    for (unsigned int i = 0; i < arraysize(tests); i++) {
+      if (!test_is_enabled(tests[i], enabled_tests))
+        continue;
+      InitContext();
+      tests[i]->Run();
+      DestroyContext();
+    }
+  } while (GetUTime() < done);
+
   for (unsigned int i = 0; i < arraysize(tests); i++) {
-    InitContext();
-    tests[i]->Run();
-    DestroyContext();
     delete tests[i];
     tests[i] = NULL;
   }

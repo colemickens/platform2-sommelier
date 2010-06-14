@@ -18,6 +18,7 @@ class ReadPixelTest : public TestBase {
   virtual ~ReadPixelTest() {}
   virtual bool TestFunc(int iter);
   virtual bool Run();
+  virtual const char* Name() const { return "pixel_read"; }
 
  private:
   void* pixels_;

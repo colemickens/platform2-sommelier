@@ -20,6 +20,7 @@ class TextureUpdateTest : public TestBase {
   virtual ~TextureUpdateTest() {}
   bool TestFunc(int iter);
   virtual bool Run();
+  virtual const char* Name() const { return "texture_update"; }
 
   enum UpdateFlavor {
     TEX_IMAGE,
@@ -122,7 +123,9 @@ bool TextureUpdateTest::Run() {
 
 
   UpdateFlavor flavors[] = {TEX_IMAGE, TEX_SUBIMAGE};
-  const std::string flavor_names[] = {"teximage2d", "texsubimage2d"};
+  const std::string flavor_names[] = {
+    "texture_update_teximage2d", "texture_update_texsubimage2d"
+  };
   for (unsigned int f = 0; f < arraysize(flavors); f++) {
     flavor_ = flavors[f];
     int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};

@@ -44,6 +44,7 @@ class TestBase {
   virtual bool TestFunc(int n) = 0;
   // Main entry point into the test.
   virtual bool Run() = 0;
+  virtual const char* Name() const = 0;
 };
 
 // Helper class to time glDrawArrays.

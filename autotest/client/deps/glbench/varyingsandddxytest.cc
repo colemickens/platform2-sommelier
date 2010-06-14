@@ -15,6 +15,7 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
   VaryingsAndDdxyShaderTest() {}
   virtual ~VaryingsAndDdxyShaderTest() {}
   virtual bool Run();
+  virtual const char* Name() const { return "varyings_ddx_shader"; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VaryingsAndDdxyShaderTest);

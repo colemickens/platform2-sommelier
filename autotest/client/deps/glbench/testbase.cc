@@ -2,9 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <gflags/gflags.h>
 #include <stdio.h>
 
+#include "base/scoped_ptr.h"
+#include "base/file_util.h"
+
 #include "testbase.h"
+#include "utils.h"
+
+DEFINE_bool(save, false, "save images after each test case");
+DEFINE_string(out, "out", "directory to save images");
 
 namespace glbench {
 
@@ -62,7 +70,18 @@ bool Bench(TestBase* test, float *slope, int64_t *bias) {
   return true;
 }
 
-void RunTest(TestBase* test, const char *name,
+void SaveImage(const char* name) {
+  const int size = g_width * g_height * 4;
+  scoped_array<char> pixels(new char[size]);
+  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE,
+               pixels.get());
+  FilePath dirname = GetBasePath().Append(FLAGS_out);
+  file_util::CreateDirectory(dirname);
+  FilePath filename = dirname.Append(name);
+  file_util::WriteFile(filename, pixels.get(), size);
+}
+
+void RunTest(TestBase* test, const char* name,
              float coefficient, bool inverse) {
   float slope;
   int64_t bias;
@@ -74,6 +93,8 @@ void RunTest(TestBase* test, const char *name,
     printf("%s: Nan\n", name);
   } else {
     if (Bench(test, &slope, &bias)) {
+      if (FLAGS_save)
+        SaveImage(name);
       printf("%s: %g\n", name, coefficient * (inverse ? 1.f / slope : slope));
     } else {
       printf("# %s is too slow, returning zero.\n", name);
