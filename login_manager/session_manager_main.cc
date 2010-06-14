@@ -18,6 +18,9 @@
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
+using std::vector;
+using std::wstring;
+
 // Watches a Chrome binary and restarts it when it crashes.
 // Also listens over DBus for the commands specified in interface.h.
 // Usage:
@@ -48,8 +51,20 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --log-file=</path/to/file>\n"
 "    Log file to use. (default: /var/log/session_manager)\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
-"    Supplies the required program to execute and its arguments.\n";
+"    Supplies the required program to execute and its arguments.\n"
+"    Multiple programs can be executed by delimiting them with addition --\n"
+"    as -- foo a b c -- bar d e f\n";
 }  // namespace switches
+
+
+static login_manager::SetUidExecJob* CreateJob(
+    vector<wstring> args, bool set_uid, uid_t uid, bool add_login_flag) {
+  login_manager::SetUidExecJob* child_job =
+      new login_manager::SetUidExecJob(args, add_login_flag);
+  if (set_uid)
+    child_job->set_desired_uid(uid);
+  return child_job;
+}
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
@@ -79,23 +94,26 @@ int main(int argc, char* argv[]) {
       DLOG(WARNING) << "failed to parse uid, defaulting to none.";
   }
 
+  bool add_login_flag = cl->HasSwitch(switches::kLogin);
+
+  vector<wstring> loose_args = cl->GetLooseValues();
+  vector<login_manager::ChildJob*> child_jobs;
+
+  vector<vector<wstring> > arg_lists =
+      login_manager::SessionManagerService::GetArgLists(loose_args);
+  for (size_t i_list = 0; i_list < arg_lists.size(); i_list++) {
+    vector<wstring> arg_list = arg_lists[i_list];
+    child_jobs.push_back(CreateJob(arg_list, set_uid, uid, add_login_flag));
+  }
+
+  ::g_type_init();
+  login_manager::SessionManagerService manager(child_jobs);
+
   std::string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-
-  bool add_login_flag = cl->HasSwitch(switches::kLogin);
-
-  login_manager::SetUidExecJob* child_job =
-      new login_manager::SetUidExecJob(cl,
-                                       new login_manager::FileChecker(
-                                           magic_chrome_file.c_str()),
-                                       add_login_flag);
-  if (set_uid)
-    child_job->set_desired_uid(uid);
-
-  ::g_type_init();
-  login_manager::SessionManagerService manager(child_job);
+  manager.set_file_checker(new login_manager::FileChecker(magic_chrome_file));
 
   LOG_IF(FATAL, !manager.Initialize()) << "Failed";
   LOG_IF(FATAL, !manager.Register(chromeos::dbus::GetSystemBusConnection()))

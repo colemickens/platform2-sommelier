@@ -36,19 +36,17 @@ const int SetUidExecJob::kCantExec = 255;
 // static
 const int SetUidExecJob::kRestartWindow = 1;
 
-SetUidExecJob::SetUidExecJob(const CommandLine* command_line,
-                             FileChecker* checker,  // Takes ownership.
+SetUidExecJob::SetUidExecJob(std::vector<std::wstring> loose_wide_args,
                              const bool add_flag)
-      : checker_(checker),
-        argv_(NULL),
+      : argv_(NULL),
         num_args_passed_in_(0),
         desired_uid_(0),
         include_login_flag_(add_flag),
         user_flag_(kLoginUserFlag),
         desired_uid_is_set_(false),
         last_start_(0) {
-    PopulateArgv(command_line);
-  }
+  PopulateArgv(loose_wide_args);
+}
 
 SetUidExecJob::~SetUidExecJob() {
   if (argv_) {
@@ -61,10 +59,9 @@ SetUidExecJob::~SetUidExecJob() {
   }
 }
 
-void SetUidExecJob::PopulateArgv(const CommandLine* command_line) {
+void SetUidExecJob::PopulateArgv(std::vector<std::wstring> loose_wide_args) {
   // Grab the loose args to use as the command line.
   // We have to wstring->argv[][] manually. Ugh.
-  std::vector<std::wstring> loose_wide_args = command_line->GetLooseValues();
   num_args_passed_in_ = loose_wide_args.size();
 
   // We might need one extra for kLoginManagerFlag, and we'll always
@@ -118,10 +115,6 @@ int SetUidExecJob::SetIDs() {
   return to_return;
 }
 
-bool SetUidExecJob::ShouldRun() {
-  return !checker_->exists();
-}
-
 bool SetUidExecJob::ShouldStop() {
   return (time(NULL) - last_start_ < kRestartWindow);
 }
@@ -138,10 +131,12 @@ void SetUidExecJob::Run() {
   if (exit_code)
     exit(exit_code);
 
-  execv(argv_[0], const_cast<char * const*>(argv_));
+  int ret = execv(argv_[0], const_cast<char * const*>(argv_));
 
   // Should never get here, unless we couldn't exec the command.
-  LOG(ERROR) << strerror(errno);
+  LOG(ERROR) <<
+      StringPrintf(
+          "Error (%d) executing %s: %s", ret, argv_[0], strerror(errno));
   exit(kCantExec);
 }
 void SetUidExecJob::SetSwitch(const bool new_value) {
@@ -156,6 +151,10 @@ void SetUidExecJob::SetState(const std::string& state) {
     user_flag_.append(state);
   else
     user_flag_.assign(kIncognitoFlag);
+}
+
+const std::string SetUidExecJob::name() const {
+  return argv_[0];
 }
 
 }  // namespace login_manager

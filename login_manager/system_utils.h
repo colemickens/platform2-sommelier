@@ -32,6 +32,7 @@ class SystemUtils {
     alarm(0);
     return errno == ECHILD;  // EINTR means we timed out.
   }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

@@ -21,7 +21,7 @@ TEST(SetUidExecJobTest, PopulateArgvTest) {
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, NULL, false);
+  SetUidExecJob job(cl.GetLooseValues(), false);
 
   std::vector<std::string> data = job.ExtractArgvForTest();
   std::vector<std::string>::const_iterator it  = data.begin();
@@ -41,7 +41,7 @@ TEST(SetUidExecJobTest, FlagAppendTest) {
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, NULL, true);
+  SetUidExecJob job(cl.GetLooseValues(), true);
   job.AppendNeededFlags();
 
   std::vector<std::string> data = job.ExtractArgvForTest();
@@ -62,7 +62,7 @@ TEST(SetUidExecJobTest, AppendUserFlagTest) {
   CommandLine cl(my_argc, my_argv);
 
   std::string user("me");
-  SetUidExecJob job(&cl, NULL, true);
+  SetUidExecJob job(cl.GetLooseValues(), true);
   job.SetState(user);
   job.AppendNeededFlags();
 
@@ -85,7 +85,7 @@ TEST(SetUidExecJobTest, ShouldStopTest) {
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, NULL, false);
+  SetUidExecJob job(cl.GetLooseValues(), false);
   job.RecordTime();
   EXPECT_TRUE(job.ShouldStop());
 }
@@ -97,7 +97,7 @@ TEST(SetUidExecJobTest, ShouldNotStopTest) {
   const int my_argc = 3;
   CommandLine cl(my_argc, my_argv);
 
-  SetUidExecJob job(&cl, NULL, false);
+  SetUidExecJob job(cl.GetLooseValues(), false);
   job.RecordTime();
   sleep(1);
   EXPECT_FALSE(job.ShouldStop());

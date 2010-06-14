@@ -16,11 +16,13 @@
 
 #include <base/basictypes.h>
 #include <base/scoped_ptr.h>
+#include <base/scoped_vector.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
+#include "login_manager/file_checker.h"
 #include "login_manager/system_utils.h"
 
 class CommandLine;
@@ -38,14 +40,64 @@ class ChildJob;
 // ::g_type_init() must be called before this class is used.
 class SessionManagerService : public chromeos::dbus::AbstractDbusService {
  public:
-  // Takes ownership of |child|.
-  explicit SessionManagerService(ChildJob* child);
+  SessionManagerService(std::vector<ChildJob*> child_jobs);
   virtual ~SessionManagerService();
 
+  // If you want to call any of these setters, you should do so before calling
+  // any other methods on this class.
+  class TestApi {
+   public:
+    // Allows a test program to set the pid of a child.
+    void set_child_pid(int i_child, int pid) {
+      session_manager_service_->child_pids_[i_child] = pid;
+    }
+
+    // Set the SystemUtils used by the manager. Useful for mocking.
+    void set_systemutils(SystemUtils* utils) {
+      session_manager_service_->system_.reset(utils);
+    }
+
+    // Sets whether the the manager exits when a child finishes.
+    void set_exit_on_child_done(bool do_exit) {
+      session_manager_service_->exit_on_child_done_ = do_exit;
+    }
+     
+    // Executes the CleanupChildren() method on the manager.
+    void CleanupChildren(int timeout) {
+      session_manager_service_->CleanupChildren(timeout);
+    }
+
+    // Sets whether the screen is locked.
+    // TODO(davemoore) Need to come up with a way to mock dbus so we can
+    // better test this functionality.
+    void set_screen_locked(bool screen_locked) {
+      session_manager_service_->screen_locked_ = screen_locked;
+    }
+
+   private:
+    friend class SessionManagerService;
+    explicit TestApi(SessionManagerService* session_manager_service)
+        : session_manager_service_(session_manager_service) {}
+    SessionManagerService* session_manager_service_;
+  };
+
+  // TestApi exposes internal routines for testing purposes.
+  TestApi test_api() { return TestApi(this); }
   ////////////////////////////////////////////////////////////////////////////
   // Implementing chromeos::dbus::AbstractDbusService
   virtual bool Initialize();
   virtual bool Reset();
+
+  // Takes ownership of |file_checker|
+  void set_file_checker(FileChecker* file_checker) {
+    file_checker_.reset(file_checker);
+  }
+
+  // Can't be "unset".
+  void set_uid(uid_t uid) {
+    uid_ = uid;
+    set_uid_ = true;
+  }
 
   // Runs the command specified on the command line as |desired_uid_| and
   // watches it, restarting it whenever it exits abnormally -- UNLESS
@@ -75,23 +127,13 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // before invoking the inherited method.
   virtual bool Shutdown();
 
-  // If you want to call any of these setters, you should do so before calling
-  // any other methods on this class.
-  void set_child_pid(pid_t pid) { child_pid_ = pid; }
-  void set_systemutils(SystemUtils* utils) { system_.reset(utils); }
-  void set_exit_on_child_done(bool do_exit) { exit_on_child_done_ = do_exit; }
-
-  // Returns true if |child_job_| believes it should be run.
-  bool should_run_child() { return child_job_->ShouldRun(); }
-  // Returns true if |child_job_| believes it should be stopped.
-  // If the child believes it should be stopped (as opposed to not run anymore)
-  // we actually exit the Service as well.
-  bool should_stop_child() { return child_job_->ShouldStop(); }
-
   // Fork, then call child_job_->Run() in the child and set a
   // babysitter in the parent's glib default context that calls
   // HandleChildExit when the child is done.
-  int RunChild();
+  void RunChildren();
+
+  // Run one of the children.
+  int RunChild(ChildJob* child_job);
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -123,6 +165,17 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Handles UnlockScreen request from PowerManager. It switches itself to
   // unlock mode, and emit UnlockScreen signal to Chromium Browser.
   gboolean UnlockScreen(GError** error);
+
+  // Perform very, very basic validation of |email_address|.
+  static bool ValidateEmail(const std::string& email_address);
+
+  // Breaks |args| into separate arg lists, delimited by "--".
+  // No initial "--" is needed, but is allowed.
+  // ("a", "b", "c") => ("a", "b", "c")
+  // ("a", "b", "c", "--", "d", "e", "f") =>
+  //     ("a", "b", "c"), ("d", "e", "f").
+  static std::vector<std::vector<std::wstring> > GetArgLists(
+      std::vector<std::wstring> args);
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
@@ -158,9 +211,6 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
-  // Perform very, very basic validation of |email_address|.
-  static bool ValidateEmail(const std::string& email_address);
-
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
@@ -172,14 +222,20 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Sends a given signal to Chromium browser.
   void SendSignalToChromium(const char* signal_name);
 
+  bool ShouldRunChildren();
+  // Returns true if |child_job| believes it should be stopped.
+  // If the child believes it should be stopped (as opposed to not run anymore)
+  // we actually exit the Service as well.
+  bool ShouldStopChild(ChildJob* child_job);
+
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
 
-  scoped_ptr<ChildJob> child_job_;
+  ScopedVector<ChildJob> child_jobs_;
+  std::vector<int> child_pids_;
   bool exit_on_child_done_;
-  pid_t child_pid_;
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
@@ -191,14 +247,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];
 
-  FRIEND_TEST(SessionManagerTest, SessionNotStartedCleanupTest);
-  FRIEND_TEST(SessionManagerTest, SessionNotStartedSlowKillCleanupTest);
-  FRIEND_TEST(SessionManagerTest, SessionStartedCleanupTest);
-  FRIEND_TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest);
-  FRIEND_TEST(SessionManagerTest, EmailAddressTest);
-  FRIEND_TEST(SessionManagerTest, EmailAddressNonAsciiTest);
-  FRIEND_TEST(SessionManagerTest, EmailAddressNoAtTest);
-  FRIEND_TEST(SessionManagerTest, EmailAddressTooMuchAtTest);
+  scoped_ptr<FileChecker> file_checker_;
+  bool screen_locked_;
+  uid_t uid_;
+  bool set_uid_;
+
+  bool shutting_down_;
+
+  friend class TestAPI;
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };
 }  // namespace login_manager

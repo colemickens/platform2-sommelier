@@ -15,10 +15,10 @@ class MockChildJob : public ChildJob {
  public:
   MockChildJob() { }
   ~MockChildJob() { }
-  MOCK_METHOD0(ShouldRun, bool());
   MOCK_METHOD0(ShouldStop, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
+  MOCK_CONST_METHOD0(name, const std::string());
   MOCK_METHOD1(SetState, void(const std::string& state));
   MOCK_METHOD1(SetSwitch, void(const bool new_value));
 };

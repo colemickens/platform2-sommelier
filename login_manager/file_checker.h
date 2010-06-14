@@ -10,7 +10,7 @@
 namespace login_manager {
 class FileChecker {
  public:
-  FileChecker(const char filename[]) : filename_(filename) {}
+  explicit FileChecker(std::string filename) : filename_(filename) {}
   virtual ~FileChecker() {}
 
   virtual bool exists() {

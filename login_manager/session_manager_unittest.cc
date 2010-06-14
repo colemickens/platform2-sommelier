@@ -11,6 +11,8 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include "base/file_path.h"
+#include "base/file_util.h"
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 #include <base/string_util.h>
@@ -21,6 +23,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
+#include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/system_utils.h"
 
@@ -30,31 +33,126 @@ using ::testing::Invoke;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::_;
+using ::testing::AnyNumber;
 
-class SessionManagerTest : public ::testing::Test { };
+static const char kCheckedFile[] = "/tmp/checked_file";
+static const char kUptimeFile1[] = "/tmp/uptime-job1";
+static const char kDiskFile1[] = "/tmp/disk-job1";
+static const char kUptimeFile2[] = "/tmp/uptime-job2";
+static const char kDiskFile2[] = "/tmp/disk-job2";
 
-TEST(SessionManagerTest, NoLoopTest) {
-  MockChildJob *job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
+// Used as a base class for the tests in this file.
+// Gives useful shared functionality.
+class SessionManagerTest : public ::testing::Test {
+ public:
+  SessionManagerTest() {
+    manager_ = NULL;
+    utils_ = new MockSystemUtils;
+    file_checker_ = new MockFileChecker(kCheckedFile);
+  }
 
-  EXPECT_CALL(*job, ShouldRun())
-      .Times(1)
-      .WillRepeatedly(Return(false));
+  ~SessionManagerTest() {
+    delete manager_;
+    FilePath uptime1(kUptimeFile1);
+    FilePath disk1(kDiskFile1);
+    FilePath uptime2(kUptimeFile2);
+    FilePath disk2(kDiskFile2);
+    file_util::Delete(uptime1, false);
+    file_util::Delete(disk1, false);
+    file_util::Delete(uptime2, false);
+    file_util::Delete(disk2, false);
+  }
 
-  manager.Run();
+ protected:
+  // Creates the manager with the jobs. Mocks the file checker
+  void InitManager(MockChildJob* job1, MockChildJob* job2 = NULL) {
+    std::vector<ChildJob*> jobs;
+    EXPECT_CALL(*job1, name())
+        .WillRepeatedly(Return(std::string("job1")));
+    jobs.push_back(job1);
+    if (job2) {
+      EXPECT_CALL(*job2, name())
+          .WillRepeatedly(Return(std::string("job2")));
+      jobs.push_back(job2);
+    }
+    manager_ = new SessionManagerService(jobs);
+    manager_->set_file_checker(file_checker_);
+    manager_->test_api().set_exit_on_child_done(true);
+  }
+
+  void Run() {
+    manager_->Run();
+  }
+
+  void MockUtils() {
+    manager_->test_api().set_systemutils(utils_);
+  }
+
+  enum ChildRuns {
+    ALWAYS, NEVER, ONCE, EXACTLY_ONCE, TWICE, MAYBE_NEVER
+  };
+
+  // Configures the file_checker_ to run the children.
+  void RunChildren(ChildRuns child_runs) {
+    switch (child_runs) {
+    case ALWAYS:
+      EXPECT_CALL(*file_checker_, exists())
+          .WillRepeatedly(Return(false));
+      break;
+    case NEVER:
+      EXPECT_CALL(*file_checker_, exists())
+          .WillOnce(Return(true));
+      break;
+    case ONCE:
+      EXPECT_CALL(*file_checker_, exists())
+          .WillOnce(Return(false))
+          .WillOnce(Return(true));
+      break;
+    case EXACTLY_ONCE:
+      EXPECT_CALL(*file_checker_, exists())
+          .WillOnce(Return(false));
+      break;
+    case TWICE:
+      EXPECT_CALL(*file_checker_, exists())
+          .WillOnce(Return(false))
+          .WillOnce(Return(false))
+          .WillOnce(Return(true));
+      break;
+    case MAYBE_NEVER:
+      // If it's called, don't run.
+      EXPECT_CALL(*file_checker_, exists())
+          .Times(AnyNumber())
+          .WillOnce(Return(true));
+    }
+  }
+
+  // Creates one job and a manager for it, running it |child_runs| times.
+  MockChildJob* CreateTrivialMockJob(ChildRuns child_runs) {
+    MockChildJob* job = new MockChildJob();
+    InitManager(job);
+    RunChildren(child_runs);
+
+    return job;
+  }
+
+  SessionManagerService* manager_;
+  MockSystemUtils* utils_;
+  MockFileChecker* file_checker_;
+};
+
+// compatible with void Run()
+static void BadExit() { _exit(1); }
+static void BadExitAfterSleep() { sleep(1); _exit(1); }
+static void RunAndSleep() { while (true) { sleep(1); } };
+static void CleanExit() { _exit(0); }
+
+TEST_F(SessionManagerTest, NoLoopTest) {
+  MockChildJob* job = CreateTrivialMockJob(NEVER);
+  Run();
 }
 
-static void BadExit() { _exit(1); }  // compatible with void Run()
-TEST(SessionManagerTest, BadExitChild) {
-  MockChildJob *job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-
-  EXPECT_CALL(*job, ShouldRun())
-      .Times(2)
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
+TEST_F(SessionManagerTest, BadExitChild) {
+  MockChildJob* job = CreateTrivialMockJob(ONCE);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
@@ -63,32 +161,106 @@ TEST(SessionManagerTest, BadExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  manager.Run();
+  Run();
 }
 
-static void CleanExit() { _exit(0); }
-TEST(SessionManagerTest, CleanExitChild) {
-  MockChildJob* job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
+TEST_F(SessionManagerTest, BadExitChild1) {
+  MockChildJob* job1 = new MockChildJob;
+  MockChildJob* job2 = new MockChildJob;
+  InitManager(job1, job2);
 
-  EXPECT_CALL(*job, ShouldRun())
-      .Times(1)
-      .WillOnce(Return(true));
+  RunChildren(TWICE);
+  EXPECT_CALL(*job1, RecordTime())
+      .Times(2);
+  EXPECT_CALL(*job2, RecordTime())
+      .Times(1);
+  EXPECT_CALL(*job1, ShouldStop())
+      .Times(2);
+  ON_CALL(*job1, Run())
+      .WillByDefault(Invoke(BadExitAfterSleep));
+  ON_CALL(*job2, Run())
+      .WillByDefault(Invoke(RunAndSleep));
+
+  Run();
+}
+
+TEST_F(SessionManagerTest, BadExitChild2) {
+  MockChildJob* job1 = new MockChildJob;
+  MockChildJob* job2 = new MockChildJob;
+  InitManager(job1, job2);
+
+  RunChildren(TWICE);
+  EXPECT_CALL(*job1, RecordTime())
+      .Times(1);
+  EXPECT_CALL(*job2, RecordTime())
+      .Times(2);
+  EXPECT_CALL(*job2, ShouldStop())
+      .Times(2);
+  ON_CALL(*job1, Run())
+      .WillByDefault(Invoke(RunAndSleep));
+  ON_CALL(*job2, Run())
+      .WillByDefault(Invoke(BadExitAfterSleep));
+
+  Run();
+}
+
+TEST_F(SessionManagerTest, CleanExitChild) {
+  MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  manager.Run();
+  Run();
 }
 
-TEST(SessionManagerTest, MustStopChild) {
-  MockChildJob *job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
+TEST_F(SessionManagerTest, CleanExitChild2) {
+  MockChildJob* job1 = new MockChildJob;
+  MockChildJob* job2 = new MockChildJob;
+  InitManager(job1, job2);
+  // Let the manager cause the clean exit.
+  manager_->test_api().set_exit_on_child_done(false);
 
-  EXPECT_CALL(*job, ShouldRun())
-      .WillOnce(Return(true));
+  RunChildren(EXACTLY_ONCE);
+  EXPECT_CALL(*job1, RecordTime())
+      .Times(1);
+  EXPECT_CALL(*job2, RecordTime())
+      .Times(1);
+  ON_CALL(*job1, Run())
+      .WillByDefault(Invoke(RunAndSleep));
+  ON_CALL(*job2, Run())
+      .WillByDefault(Invoke(CleanExit));
+
+  Run();
+}
+
+TEST_F(SessionManagerTest, LockedExit) {
+  MockChildJob* job1 = new MockChildJob;
+  MockChildJob* job2 = new MockChildJob;
+  InitManager(job1, job2);
+  // Let the manager cause the clean exit.
+  manager_->test_api().set_exit_on_child_done(false);
+
+  RunChildren(ALWAYS);
+
+  EXPECT_CALL(*job1, RecordTime())
+      .Times(AnyNumber());
+  EXPECT_CALL(*job2, RecordTime())
+      .Times(AnyNumber());
+  EXPECT_CALL(*job1, ShouldStop())
+      .Times(AnyNumber());
+
+  manager_->test_api().set_screen_locked(true);
+  ON_CALL(*job1, Run())
+      .WillByDefault(Invoke(BadExitAfterSleep));
+  ON_CALL(*job2, Run())
+      .WillByDefault(Invoke(RunAndSleep));
+
+  Run();
+}
+
+TEST_F(SessionManagerTest, MustStopChild) {
+  MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   EXPECT_CALL(*job, ShouldStop())
@@ -97,114 +269,73 @@ TEST(SessionManagerTest, MustStopChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  manager.Run();
-}
-
-TEST(SessionManagerTest, MultiRunTest) {
-  MockChildJob* job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-
-  EXPECT_CALL(*job, ShouldRun())
-      .Times(3)
-      .WillOnce(Return(true))
-      .WillOnce(Return(true))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*job, RecordTime())
-      .Times(2);
-  EXPECT_CALL(*job, ShouldStop())
-      .Times(2)
-      .WillRepeatedly(Return(false));
-  ON_CALL(*job, Run())
-      .WillByDefault(Invoke(BadExit));
-
-  manager.Run();
+  Run();
 }
 
 static const pid_t kDummyPid = 4;
-TEST(SessionManagerTest, SessionNotStartedCleanupTest) {
-  MockChildJob* job = new MockChildJob;
-  MockSystemUtils* utils = new MockSystemUtils;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-  manager.set_child_pid(kDummyPid);
-  manager.set_systemutils(utils);
+TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(true));
 
-  manager.CleanupChildren(timeout);
+  manager_->test_api().CleanupChildren(timeout);
 }
 
-TEST(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
-  MockChildJob* job = new MockChildJob;
-  MockSystemUtils* utils = new MockSystemUtils;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-  manager.set_child_pid(kDummyPid);
-  manager.set_systemutils(utils);
+TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
       .Times(2)
       .WillRepeatedly(Return(0));
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(false));
 
-  manager.CleanupChildren(timeout);
+  manager_->test_api().CleanupChildren(timeout);
 }
 
-MockChildJob* CreateTrivialMockJob() {
-  MockChildJob* job = new MockChildJob;
-
-  EXPECT_CALL(*job, ShouldRun())
-      .WillRepeatedly(Return(true));
-
-  return job;
-}
-
-TEST(SessionManagerTest, SessionStartedCleanupTest) {
-  MockChildJob* job = CreateTrivialMockJob();
-  MockSystemUtils* utils = new MockSystemUtils;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-  manager.set_child_pid(kDummyPid);
-  manager.set_systemutils(utils);
+TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  manager_->test_api().set_child_pid(0, kDummyPid);
 
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   int timeout = 3;
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(true));
 
   std::string email_string(email);
   EXPECT_CALL(*job, SetState(email_string))
       .Times(1);
 
-  manager.StartSession(email, nothing, &out, NULL);
-  manager.CleanupChildren(timeout);
+  manager_->StartSession(email, nothing, &out, NULL);
+  manager_->test_api().CleanupChildren(timeout);
 }
 
-TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
-  MockChildJob* job = CreateTrivialMockJob();
-  MockSystemUtils* utils = new MockSystemUtils;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-  manager.set_child_pid(kDummyPid);
-  manager.set_systemutils(utils);
+TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  SessionManagerService::TestApi test_api = manager_->test_api();
+  test_api.set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*utils, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
 
   gboolean out;
@@ -215,17 +346,15 @@ TEST(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   EXPECT_CALL(*job, SetState(email_string))
       .Times(1);
 
-  manager.StartSession(email, nothing, &out, NULL);
-  manager.CleanupChildren(timeout);
+  manager_->StartSession(email, nothing, &out, NULL);
+  test_api.CleanupChildren(timeout);
 }
 
 static void Sleep() { execl("/bin/sleep", "sleep", "10000", NULL); }
-TEST(SessionManagerTest, SessionStartedSigTermTest) {
+TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
   int pid = fork();
   if (pid == 0) {
-    MockChildJob* job = CreateTrivialMockJob();
-    login_manager::SessionManagerService* manager =
-        new login_manager::SessionManagerService(job);
+    MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
 
     gboolean out;
     gchar email[] = "user@somewhere";
@@ -239,9 +368,10 @@ TEST(SessionManagerTest, SessionStartedSigTermTest) {
     EXPECT_CALL(*job, SetState(email_string))
         .Times(1);
 
-    manager->StartSession(email, nothing, &out, NULL);
-    manager->Run();
-    delete manager;
+    manager_->StartSession(email, nothing, &out, NULL);
+    Run();
+    delete manager_;
+    manager_ = NULL;
     exit(0);
   }
   sleep(1);
@@ -259,10 +389,8 @@ TEST(SessionManagerTest, SessionStartedSigTermTest) {
   EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
 }
 
-TEST(SessionManagerTest, StartSessionTest) {
-  MockChildJob* job = CreateTrivialMockJob();
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
+TEST_F(SessionManagerTest, StartSessionTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   gboolean out;
   gchar email[] = "user@somewhere";
@@ -270,59 +398,110 @@ TEST(SessionManagerTest, StartSessionTest) {
   std::string email_string(email);
   EXPECT_CALL(*job, SetState(email_string))
       .Times(1);
-  manager.StartSession(email, nothing, &out, NULL);
+  manager_->StartSession(email, nothing, &out, NULL);
 }
 
-TEST(SessionManagerTest, StartSessionErrorTest) {
-  MockChildJob* job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-
-  EXPECT_CALL(*job, ShouldRun())
-      .WillRepeatedly(Return(true));
-
+TEST_F(SessionManagerTest, StartSessionErrorTest) {
+  MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   gboolean out;
   gchar email[] = "user";
   gchar nothing[] = "";
   GError* error = NULL;
-  manager.StartSession(email, nothing, &out, &error);
+  manager_->StartSession(email, nothing, &out, &error);
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, error->code);
   g_error_free(error);
 }
 
-TEST(SessionManagerTest, StopSessionTest) {
-  MockChildJob* job = new MockChildJob;
-  login_manager::SessionManagerService manager(job);  // manager takes ownership
-  manager.set_exit_on_child_done(true);
-
-  EXPECT_CALL(*job, ShouldRun())
-      .WillRepeatedly(Return(true));
-
+TEST_F(SessionManagerTest, StopSessionTest) {
+  MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   gboolean out;
   gchar nothing[] = "";
-  manager.StopSession(nothing, &out, NULL);
+  manager_->StopSession(nothing, &out, NULL);
 }
 
-TEST(SessionManagerTest, EmailAddressTest) {
+static const std::string name() { return "foo"; }
+
+TEST_F(SessionManagerTest, StatsRecorded) {
+  FilePath uptime(kUptimeFile1);
+  FilePath disk(kDiskFile1);
+  file_util::Delete(uptime, false);
+  file_util::Delete(disk, false);
+  MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
+  ON_CALL(*job, Run())
+      .WillByDefault(Invoke(CleanExit));
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
+  ON_CALL(*job, name())
+      .WillByDefault(Invoke(name));
+  Run();
+  EXPECT_TRUE(file_util::PathExists(uptime));
+  EXPECT_TRUE(file_util::PathExists(disk));
+}
+
+TEST(SessionManagerTestStatic, EmailAddressTest) {
   const char valid[] = "user@somewhere";
   EXPECT_TRUE(login_manager::SessionManagerService::ValidateEmail(valid));
 }
 
-TEST(SessionManagerTest, EmailAddressNonAsciiTest) {
+TEST(SessionManagerTestStatic, EmailAddressNonAsciiTest) {
   char invalid[4] = "a@m";
   invalid[2] = 254;
   EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(invalid));
 }
 
-TEST(SessionManagerTest, EmailAddressNoAtTest) {
+TEST(SessionManagerTestStatic, EmailAddressNoAtTest) {
   const char no_at[] = "user";
   EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(no_at));
 }
 
-TEST(SessionManagerTest, EmailAddressTooMuchAtTest) {
+TEST(SessionManagerTestStatic, EmailAddressTooMuchAtTest) {
   const char extra_at[] = "user@what@where";
   EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(extra_at));
 }
 
+TEST(SessionManagerTestStatic, GetArgLists0) {
+  std::vector<std::wstring> args;
+  std::vector<std::vector<std::wstring> > arg_lists =
+      SessionManagerService::GetArgLists(args);
+  EXPECT_EQ(0, arg_lists.size());
+}
+
+static std::vector<std::vector<std::wstring> > GetArgs(const wchar_t** c_args) {
+  std::vector<std::wstring> args;
+  while (*c_args) {
+    args.push_back(*c_args);
+    c_args++;
+  }
+  return SessionManagerService::GetArgLists(args);
+}
+
+TEST(SessionManagerTestStatic, GetArgLists1) {
+  const wchar_t* c_args[] = {L"a", L"b", L"c", NULL};
+  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  EXPECT_EQ(1, arg_lists.size());
+  EXPECT_EQ(3, arg_lists[0].size());
+}
+
+TEST(SessionManagerTestStatic, GetArgLists2) {
+  const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", L"d", NULL};
+  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  EXPECT_EQ(2, arg_lists.size());
+  EXPECT_EQ(3, arg_lists[0].size());
+  EXPECT_EQ(1, arg_lists[1].size());
+}
+
+TEST(SessionManagerTestStatic, GetArgLists_TrailingDashes) {
+  const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", NULL};
+  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  EXPECT_EQ(1, arg_lists.size());
+  EXPECT_EQ(3, arg_lists[0].size());
+}
+
+TEST(SessionManagerTestStatic, GetArgLists3_InitialDashes) {
+  const wchar_t* c_args[] = {L"--", L"a", L"b", L"c", NULL};
+  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  EXPECT_EQ(1, arg_lists.size());
+  EXPECT_EQ(3, arg_lists[0].size());
+}
 
 }  // namespace login_manager

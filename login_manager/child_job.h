@@ -12,8 +12,6 @@
 #include <base/basictypes.h>
 #include <base/scoped_ptr.h>
 
-#include "login_manager/file_checker.h"
-
 class CommandLine;
 
 namespace login_manager {
@@ -25,10 +23,8 @@ class ChildJob {
   ChildJob() {}
   virtual ~ChildJob() {}
 
-  virtual bool ShouldRun() = 0;
-
-  // ShouldStop() is different from !ShouldRun().  If ShouldStop() returns
-  // true, this means that the parent should tear everything down.
+  // If ShouldStop() returns true, this means that the parent should tear
+  // everything down.
   virtual bool ShouldStop() = 0;
 
   virtual void RecordTime() = 0;
@@ -49,12 +45,15 @@ class ChildJob {
   virtual uid_t desired_uid() const {
     return -1;
   }
+
+  virtual const std::string name() const {
+    return std::string();
+  }
 };
 
 class SetUidExecJob : public ChildJob {
  public:
-  SetUidExecJob(const CommandLine* command_line,
-                FileChecker* checker,  // Takes ownership.
+  SetUidExecJob(std::vector<std::wstring> loose_wide_args,
                 const bool add_flag);
   virtual ~SetUidExecJob();
 
@@ -74,7 +73,6 @@ class SetUidExecJob : public ChildJob {
   static const int kRestartWindow;
 
   // Overridden from ChildJob
-  bool ShouldRun();
   bool ShouldStop();
   void RecordTime();
   void Run();
@@ -94,14 +92,14 @@ class SetUidExecJob : public ChildJob {
     desired_uid_is_set_ = true;
   }
 
+  const std::string name() const;
+
  protected:
   std::vector<std::string> ExtractArgvForTest();
 
-  // Pulls all loose args from |command_line|, converts them to ASCII, and
+  // Pulls all loose args from |loose_wide_args|, converts them to ASCII, and
   // puts them into an array that's ready to be used by exec().
-  // Might be able to remove this once Chromium's CommandLine class deals with
-  // wstrings is a saner way.
-  void PopulateArgv(const CommandLine* command_line);
+  void PopulateArgv(std::vector<std::wstring> loose_wide_args);
   void AppendNeededFlags();
 
   // If the caller has provided a UID with set_desired_uid(), this method will:
@@ -114,7 +112,6 @@ class SetUidExecJob : public ChildJob {
   int SetIDs();
 
  private:
-  scoped_ptr<FileChecker> checker_;
   char const* *argv_;
   uint32 num_args_passed_in_;
 

@@ -17,6 +17,8 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include "base/file_path.h"
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
@@ -34,7 +36,9 @@ namespace gobject {  // NOLINT
 }  // namespace login_manager
 
 namespace login_manager {
+
 using std::string;
+using std::vector;
 
 // Jacked from chrome base/eintr_wrapper.h
 #define HANDLE_EINTR(x) ({ \
@@ -105,15 +109,19 @@ const char SessionManagerService::kLegalCharacters[] =
 //static
 const char SessionManagerService::kIncognitoUser[] = "incognito";
 
-SessionManagerService::SessionManagerService(ChildJob* child)
-    : child_job_(child),
-      exit_on_child_done_(false),
-      child_pid_(0),
+SessionManagerService::SessionManagerService(std::vector<ChildJob*> child_jobs)
+    : exit_on_child_done_(false),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
-      session_started_(false) {
-  CHECK(child);
+      session_started_(false),
+      screen_locked_(false),
+      set_uid_(false),
+      shutting_down_(false) {
+  for (size_t i_child = 0; i_child < child_jobs.size(); ++i_child) {
+    child_jobs_.push_back(child_jobs[i_child]);
+  }
+  child_pids_.resize(child_jobs.size(), -1);
   SetupHandlers();
 }
 
@@ -122,6 +130,9 @@ SessionManagerService::~SessionManagerService() {
     g_main_loop_unref(main_loop_);
   if (session_manager_)
     g_object_unref(session_manager_);
+
+  // Remove this in case it was added by StopSession().
+  g_idle_remove_by_data(this);
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
@@ -193,24 +204,25 @@ bool SessionManagerService::Run() {
                         NULL);
   }
 
-  if (should_run_child()) {
-    int pid = RunChild();
-    if (pid == -1) {
-      // We couldn't fork...maybe we should wait and try again later?
-      PLOG(ERROR) << "Failed to fork!";
-      return false;
-    }
-    child_pid_ = pid;
+  if (ShouldRunChildren()) {
+    RunChildren();
   } else {
     AllowGracefulExit();
   }
 
   g_main_loop_run(main_loop_);
 
-  if (child_pid_ != 0)  // otherwise, we never created a child.
-    CleanupChildren(3);
+  CleanupChildren(3);
 
   return true;
+}
+
+bool SessionManagerService::ShouldRunChildren() {
+  return !file_checker_.get() || !file_checker_->exists();
+}
+
+bool SessionManagerService::ShouldStopChild(ChildJob* child_job) {
+  return child_job->ShouldStop();
 }
 
 bool SessionManagerService::Shutdown() {
@@ -224,15 +236,51 @@ bool SessionManagerService::Shutdown() {
   return chromeos::dbus::AbstractDbusService::Shutdown();
 }
 
-int SessionManagerService::RunChild() {
-  child_job_->RecordTime();
+// Output uptime and disk stats to a file
+static void RecordStats(ChildJob* job) {
+  // File uptime logs are located in.
+  static const char kLogPath[] = "/tmp";
+  // Prefix for the time measurement files.
+  static const char kUptimePrefix[] = "uptime-";
+  // Prefix for the disk usage files.
+  static const char kDiskPrefix[] = "disk-";
+  // The location of the current uptime stats.
+  static const FilePath kProcUptime("/proc/uptime");
+  // The location the the current disk stats.
+  static const FilePath kDiskStat("/sys/block/sda/stat");
+  std::string job_name = job->name();
+  if (job_name.size()) {
+    FilePath log_dir(kLogPath);
+    FilePath uptime_file = log_dir.Append(kUptimePrefix + job_name);
+    if (!file_util::PathExists(uptime_file)) {
+      std::string uptime;
+
+      file_util::ReadFileToString(kProcUptime, &uptime);
+      file_util::WriteFile(uptime_file, uptime.data(), uptime.size());
+    }
+    FilePath disk_file = log_dir.Append(kDiskPrefix + job_name);
+    if (!file_util::PathExists(disk_file)) {
+      std::string disk;
+
+      file_util::ReadFileToString(kDiskStat, &disk);
+      file_util::WriteFile(disk_file, disk.data(), disk.size());
+    }
+  }
+}
+
+void SessionManagerService::RunChildren() {
+  for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
+    ChildJob* child_job = child_jobs_[i_child];
+    RecordStats(child_job);
+    child_pids_[i_child] = RunChild(child_job);
+  }
+}
+
+int SessionManagerService::RunChild(ChildJob* child_job) {
+  child_job->RecordTime();
   int pid = fork();
   if (pid == 0) {
-    // Log the time we execute chrome.
-    system("set -o noclobber ; cat /proc/uptime > /tmp/uptime-chrome-exec");
-    system("set -o noclobber ; cat /sys/block/sda/stat > /tmp/disk-chrome-exec");
-    // In the child.
-    child_job_->Run();
+    child_job->Run();
     exit(1);  // Run() is not supposed to return.
   }
   g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
@@ -244,6 +292,7 @@ int SessionManagerService::RunChild() {
 }
 
 void SessionManagerService::AllowGracefulExit() {
+  shutting_down_ = true;
   if (exit_on_child_done_) {
     g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
                     ServiceShutdown,
@@ -297,10 +346,10 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   string email_lower = StringToLowerASCII(email_string);
   DLOG(INFO) << "emitting start-user-session for " << email_lower;
   string command;
-  if (child_job_->desired_uid_is_set()) {
+  if (set_uid_) {
     command = StringPrintf("/sbin/initctl emit start-user-session "
                            "CHROMEOS_USER=%s USER_ID=%d &",
-                           email_lower.c_str(), child_job_->desired_uid());
+                           email_lower.c_str(), uid_);
   } else {
     command = StringPrintf("/sbin/initctl emit start-user-session "
                            "CHROMEOS_USER=%s &",
@@ -310,7 +359,10 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
 
   *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
-    child_job_->SetState(email_lower);
+    for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
+      ChildJob* child_job = child_jobs_[i_child];
+      child_job->SetState(email_lower);
+    }
     session_started_ = true;
 
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
@@ -340,12 +392,14 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
 }
 
 gboolean SessionManagerService::LockScreen(GError **error) {
+  screen_locked_ = TRUE;
   SendSignalToChromium(chromium::kLockScreenSignal);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
 gboolean SessionManagerService::UnlockScreen(GError **error) {
+  screen_locked_ = FALSE;
   SendSignalToChromium(chromium::kUnlockScreenSignal);
   LOG(INFO) << "UnlockScreen";
   return TRUE;
@@ -372,18 +426,41 @@ void SessionManagerService::HandleChildExit(GPid pid,
   }
 
   bool exited_clean = WIFEXITED(status) && WEXITSTATUS(status) == 0;
-
   // If the child _ever_ exits uncleanly, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  if (exited_clean || manager->should_stop_child()) {
+
+  if (manager->screen_locked_) {
+    LOG(ERROR) << "Process crashed while screen locked, shutting down";
     ServiceShutdown(data);
-  } else if (manager->should_run_child()) {
-    // TODO(cmasone): deal with fork failing in RunChild()
-    LOG(INFO) << "Running the child again...";
-    manager->set_child_pid(manager->RunChild());
+  }
+
+  int i_child = -1;
+  for (int i = 0; i < manager->child_pids_.size(); ++i) {
+    if (manager->child_pids_[i] == pid) {
+      i_child = i;
+      manager->child_pids_[i] = -1;
+      break;
+    }
+  }
+
+  // Do nothing if already shutting down.
+  if (manager->shutting_down_)
+    return;
+
+  if (i_child >= 0) {
+    ChildJob* child_job = manager->child_jobs_[i_child];
+    if (exited_clean || manager->ShouldStopChild(child_job)) {
+      ServiceShutdown(data);
+    } else if (manager->ShouldRunChildren()) {
+      // TODO(cmasone): deal with fork failing in RunChild()
+      LOG(INFO) << "Running the child again...";
+      manager->child_pids_[i_child] = manager->RunChild(child_job);
+    } else {
+      LOG(INFO) << "Should NOT run";
+      manager->AllowGracefulExit();
+    }
   } else {
-    LOG(INFO) << "Should NOT run";
-    manager->AllowGracefulExit();
+    LOG(ERROR) << "Couldn't find pid of exiting child: " << pid;
   }
 }
 
@@ -451,9 +528,14 @@ void SessionManagerService::SetupHandlers() {
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
-  system_->kill(child_pid_, (session_started_ ? SIGTERM: SIGKILL));
-  if (!system_->child_is_gone(child_pid_, timeout))
-    system_->kill(child_pid_, SIGKILL);
+  for (size_t i_child = 0; i_child < child_pids_.size(); ++i_child) {
+    int child_pid = child_pids_[i_child];
+    if (child_pid > 0) {
+      system_->kill(child_pid, (session_started_ ? SIGTERM: SIGKILL));
+      if (!system_->child_is_gone(child_pid, timeout))
+        system_->kill(child_pid, SIGKILL);
+    }
+  }
 }
 
 void SessionManagerService::SetGError(GError** error,
@@ -471,6 +553,28 @@ void SessionManagerService::SendSignalToChromium(const char* signal_name) {
                                                   signal_name);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
+}
+
+// static
+std::vector<std::vector<std::wstring> > SessionManagerService::GetArgLists(
+    std::vector<std::wstring> args) {
+  std::vector<std::wstring> arg_list;
+  std::vector<std::vector<std::wstring> > arg_lists;
+  for (size_t i_arg = 0; i_arg < args.size(); ++i_arg) {
+   std::wstring arg = args[i_arg];
+   if (arg == L"--") {
+     if (arg_list.size()) {
+       arg_lists.push_back(arg_list);
+       arg_list.clear();
+     }
+   } else {
+     arg_list.push_back(arg);
+   }
+  }
+  if (arg_list.size()) {
+    arg_lists.push_back(arg_list);
+  }
+  return arg_lists;
 }
 
 }  // namespace login_manager
