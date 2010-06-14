@@ -76,6 +76,8 @@ class GobiModem
   // DBUS Methods: ModemGobi
   virtual void SetCarrier(const std::string& image, DBus::Error& error);
   virtual void SoftReset(DBus::Error& error);
+  virtual void Activate(const std::string& carrier_name,
+                        DBus::Error& error);
 
   // DBUS Property Getter
   virtual void on_get_property(DBus::InterfaceAdaptor& interface,
@@ -85,9 +87,10 @@ class GobiModem
 
  protected:
   bool ActivateOmadm();
-  bool ActivateOtasp();  // Verizon uses OTASP
+  // Verizon uses OTASP, code *22899
+  bool ActivateOtasp(const std::string& number);
   bool ApiConnect();
-  bool EnsureActivated();
+  bool DoActivation(const uint32_t method, const char* number);
   bool EnsureFirmwareLoaded(const char* carrier_name);
   bool GetSignalStrengthDbm(int& strength);
   bool ResetModem();
@@ -157,10 +160,6 @@ class GobiModem
   void UpdateRegistrationState(ULONG data_bearer_technology,
                                ULONG roaming_state);
 
-  ULONG GetServingNetworkInfo(ULONG* registration_state,
-                              BYTE*  num_radio_interfaces,
-                              BYTE*  radio_interfaces,
-                              ULONG* roaming_state);
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;

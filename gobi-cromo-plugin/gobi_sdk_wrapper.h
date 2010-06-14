@@ -119,6 +119,7 @@ enum RoamingState {
 
 // Selected return codes from table 2-3 of QC WWAN CM API
 enum ReturnCode {
+  kCallFailed = 1014,
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
   kNotSupportedByDevice = 1025,
@@ -238,25 +239,21 @@ class Sdk {
 
   virtual ULONG StartDataSession(
       ULONG *                    pTechnology,
-      ULONG *                    pPrimaryDNS,
-      ULONG *                    pSecondaryDNS,
-      ULONG *                    pPrimaryNBNS,
-      ULONG *                    pSecondaryNBNS,
       CHAR *                     pAPNName,
-      ULONG *                    pIPAddress,
       ULONG *                    pAuthentication,
       CHAR *                     pUsername,
       CHAR *                     pPassword,
       ULONG *                    pSessionId,
-      ULONG *                    pFailureReason) {
+      ULONG *                    pFailureReason 
+                        ) {
     return ::StartDataSession(
         pTechnology,
-        pPrimaryDNS,
-        pSecondaryDNS,
-        pPrimaryNBNS,
-        pSecondaryNBNS,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
         pAPNName,
-        pIPAddress,
+        NULL,
         pAuthentication,
         pUsername,
         pPassword,
@@ -474,28 +471,25 @@ class Sdk {
 
   virtual ULONG GetServingNetwork(
       ULONG *                    pRegistrationState,
-      ULONG *                    pCSDomain,
-      ULONG *                    pPSDomain,
-      ULONG *                    pRAN,
       BYTE *                     pRadioIfacesSize,
       BYTE *                     pRadioIfaces,
-      ULONG *                    pRoaming,
-      WORD *                     pMCC,
-      WORD *                     pMNC,
-      BYTE                       nameSize,
-      CHAR *                     pName) {
-    return ::GetServingNetwork(
-        pRegistrationState,
-        pCSDomain,
-        pPSDomain,
-        pRAN,
-        pRadioIfacesSize,
-        pRadioIfaces,
-        pRoaming,
-        pMCC,
-        pMNC,
-        nameSize,
-        pName);
+      ULONG *                    pRoaming) {
+    CHAR netName[32];
+    ULONG l1, l2, l3;
+    WORD w4, w5;
+  return ::GetServingNetwork(
+      pRegistrationState,
+      &l1,              // CS domain
+      &l2,              // PS domain
+      &l3,              // radio access network type
+      pRadioIfacesSize,
+      pRadioIfaces,
+      pRoaming,
+      &w4,              // mobile country code
+      &w5,              // mobile network code
+      sizeof(netName),  // size of name array
+      netName           // network name
+      );
   }
 
   virtual ULONG GetServingNetworkCapabilities(

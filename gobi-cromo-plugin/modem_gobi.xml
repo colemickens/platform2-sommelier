@@ -7,7 +7,7 @@
     </tp:docstring>
     <method name="SetCarrier">
       <tp:docstring>
-          Prepares the modem to use the given carrier.  Modem will
+          Prepares the modem to use the given carrier. Modem will
           reset after this is called.
       </tp:docstring>
       <arg name="image" type="s" direction="in">
@@ -21,6 +21,16 @@
           Tells the module to do a soft reset and waits for the reset to complete.
       </tp:docstring>
     </method>
+    <method name="Activate">
+      <tp:docstring>
+        Activates the modem for use with a given carrier.
+      </tp:docstring>
+      <arg name="carrier" type="s" direction="in">
+        <tp:docstring>
+          Name of carrier.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>
- 
+
