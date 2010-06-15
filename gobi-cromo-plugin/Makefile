@@ -42,6 +42,8 @@ install: $(GOBI_PLUGIN)
 	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
+# Temporary hack for dogfooding L13
+	install -D record_modem $(DESTDIR)/usr/bin/record_modem
 
 .PHONY: clean
 clean:
