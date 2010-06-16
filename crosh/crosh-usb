@@ -12,20 +12,34 @@ fi
 
 USB_HELP='
  install [<dev>]
-  Install ChromeOS to the target device.
+  Install ChromeOS to the target device, clearing out all existing data.
+
+ upgrade [<dev>]
+  Upgrade an existing ChromeOS installation, saving existing user data.
 '
 
 HELP="$HELP$USB_HELP"
 
-cmd_install() {
+do_install() {
   if [ "$1" ]; then
     if [ $(expr "$1" : '^/dev/[[:alnum:]]\+$') == 0 ]; then
       echo "Invalid device name: $1"
       return 1
     fi
 
-    $CHROMEOS_INSTALL --dst="$1"
+    local dst="$1"
+    shift
+
+    echo $CHROMEOS_INSTALL --dst="$dst" "$@"
   else
-    $CHROMEOS_INSTALL
+    echo $CHROMEOS_INSTALL "$@"
   fi
+}
+
+cmd_install() {
+  do_install "$1"
+}
+
+cmd_upgrade() {
+  do_install "$1" --preserve_stateful
 }
