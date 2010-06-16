@@ -31,28 +31,15 @@ export GTK_IM_MODULE=ibus
 # By default, libdbus treats all warnings as fatal errors. That's too strict.
 export DBUS_FATAL_WARNINGS=0
 
-# Uncomment this to turn on chrome logs.
-# They will be be output to /home/chrome/chrome_log
-# and preserved in /home/chrome/chrome_old_logs
-#ENABLE_CHROME_LOGGING=YES
+# Forces Chrome to put its log into the home directory.
+# Release versions do this already, but not Debug ones.
+# Note that $CHROME_LOG and $CHROME_OLD_LOGS are defined in ui.conf
+export CHROME_LOG_FILE=${CHROME_LOG}
 
-if [ -n "$ENABLE_CHROME_LOGGING" ] ; then
-  CHROME_LOG=${DATA_DIR}/chrome_log
-  CHROME_OLD_LOGS=${DATA_DIR}/chrome_old_logs
-  # Forces Chrome to put its log into the home directory.
-  # Release versions do this already, but not Debug ones.
-  export CHROME_LOG_FILE=${CHROME_LOG}
-  CHROME_LOG_FLAG="--enable-logging"
-  mkdir -p $CHROME_OLD_LOGS
-  chown $USER $CHROME_OLD_LOGS
-  if [ -e ${CHROME_LOG} ] ; then
-    LS_ARGS="-lht --time-style=+chrome.%Y%m%d-%H%M%S"
-    OLD_LOG=${CHROME_OLD_LOGS}/`ls $LS_ARGS $CHROME_LOG | awk '{ print $6 }'`
-    mv $CHROME_LOG $OLD_LOG
-  fi
-else
-  CHROME_LOG_FLAG="--disable-logging"
-fi
+# Clean up old chrome logs.
+mkdir -p $CHROME_OLD_LOGS
+chown $USER $CHROME_OLD_LOGS
+mv ${CHROME_LOG}_* $CHROME_OLD_LOGS
 
 # Forces Chrome mini dumps that are sent to the crash server to also be written
 # locally.  Chrome by default will create these mini dump files in
@@ -144,7 +131,7 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
             --enable-sync \
             --log-level=0 \
-            "$CHROME_LOG_FLAG" \
+            --enable-logging \
             --main-menu-url="http://welcome-cros.appspot.com/menu" \
             --no-first-run \
             --user-data-dir=/home/$USER \
