@@ -133,8 +133,10 @@ bool TextureUpdateTest::Run() {
       std::string name = "mtexel_sec_" + flavor_names[f] + "_" +
           IntToString(sizes[i]);
       width_ = height_ = sizes[i];
-      for (int i = 0; i < kNumberOfTextures; ++i)
+      for (int i = 0; i < kNumberOfTextures; ++i) {
         pixels_[i].reset(new char[width_ * height_]);
+        memset(pixels_[i].get(), 255, width_ * height_);
+      }
       RunTest(this, name.c_str(), width_ * height_, true);
     }
   }
