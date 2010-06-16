@@ -248,17 +248,19 @@ static void RecordStats(ChildJob* job) {
   static const FilePath kProcUptime("/proc/uptime");
   // The location the the current disk stats.
   static const FilePath kDiskStat("/sys/block/sda/stat");
+  // Suffix for both uptime and disk stats
+  static const char kSuffix[] = "-exec";
   std::string job_name = job->name();
   if (job_name.size()) {
     FilePath log_dir(kLogPath);
-    FilePath uptime_file = log_dir.Append(kUptimePrefix + job_name);
+    FilePath uptime_file = log_dir.Append(kUptimePrefix + job_name + kSuffix);
     if (!file_util::PathExists(uptime_file)) {
       std::string uptime;
 
       file_util::ReadFileToString(kProcUptime, &uptime);
       file_util::WriteFile(uptime_file, uptime.data(), uptime.size());
     }
-    FilePath disk_file = log_dir.Append(kDiskPrefix + job_name);
+    FilePath disk_file = log_dir.Append(kDiskPrefix + job_name + kSuffix);
     if (!file_util::PathExists(disk_file)) {
       std::string disk;
 
@@ -271,6 +273,8 @@ static void RecordStats(ChildJob* job) {
 void SessionManagerService::RunChildren() {
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJob* child_job = child_jobs_[i_child];
+    LOG(INFO) << StringPrintf(
+        "Running child %s...", child_job->name().data());
     RecordStats(child_job);
     child_pids_[i_child] = RunChild(child_job);
   }
@@ -429,10 +433,9 @@ void SessionManagerService::HandleChildExit(GPid pid,
   // If the child _ever_ exits uncleanly, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
 
-  if (manager->screen_locked_) {
-    LOG(ERROR) << "Process crashed while screen locked, shutting down";
-    ServiceShutdown(data);
-  }
+  // Do nothing if already shutting down.
+  if (manager->shutting_down_)
+    return;
 
   int i_child = -1;
   for (int i = 0; i < manager->child_pids_.size(); ++i) {
@@ -443,20 +446,29 @@ void SessionManagerService::HandleChildExit(GPid pid,
     }
   }
 
-  // Do nothing if already shutting down.
-  if (manager->shutting_down_)
-    return;
+  ChildJob* child_job = i_child >= 0 ? manager->child_jobs_[i_child] : NULL;
 
-  if (i_child >= 0) {
-    ChildJob* child_job = manager->child_jobs_[i_child];
+  LOG(ERROR) << StringPrintf(
+      "Process %s(%d) exited.",
+      child_job ? child_job->name().data() : "",
+      pid);
+  if (manager->screen_locked_) {
+    LOG(ERROR) << "Screen locked, shutting down",
+    ServiceShutdown(data);
+    return;
+  }
+
+  if (child_job) {
     if (exited_clean || manager->ShouldStopChild(child_job)) {
       ServiceShutdown(data);
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()
-      LOG(INFO) << "Running the child again...";
+      LOG(INFO) << StringPrintf(
+          "Running child %s again...", child_job->name().data());
       manager->child_pids_[i_child] = manager->RunChild(child_job);
     } else {
-      LOG(INFO) << "Should NOT run";
+      LOG(INFO) << StringPrintf(
+          "Should NOT run %s again...", child_job->name().data());
       manager->AllowGracefulExit();
     }
   } else {

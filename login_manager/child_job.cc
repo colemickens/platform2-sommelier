@@ -16,6 +16,7 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/string_util.h>
 
@@ -154,7 +155,8 @@ void SetUidExecJob::SetState(const std::string& state) {
 }
 
 const std::string SetUidExecJob::name() const {
-  return argv_[0];
+  FilePath exec_file(argv_[0]);
+  return exec_file.BaseName().value();
 }
 
 }  // namespace login_manager

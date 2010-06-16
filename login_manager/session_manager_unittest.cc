@@ -36,10 +36,10 @@ using ::testing::_;
 using ::testing::AnyNumber;
 
 static const char kCheckedFile[] = "/tmp/checked_file";
-static const char kUptimeFile1[] = "/tmp/uptime-job1";
-static const char kDiskFile1[] = "/tmp/disk-job1";
-static const char kUptimeFile2[] = "/tmp/uptime-job2";
-static const char kDiskFile2[] = "/tmp/disk-job2";
+static const char kUptimeFile1[] = "/tmp/uptime-job1-exec";
+static const char kDiskFile1[] = "/tmp/disk-job1-exec";
+static const char kUptimeFile2[] = "/tmp/uptime-job2-exec";
+static const char kDiskFile2[] = "/tmp/disk-job2-exec";
 
 // Used as a base class for the tests in this file.
 // Gives useful shared functionality.
@@ -244,11 +244,11 @@ TEST_F(SessionManagerTest, LockedExit) {
   RunChildren(ALWAYS);
 
   EXPECT_CALL(*job1, RecordTime())
-      .Times(AnyNumber());
+      .Times(1);
   EXPECT_CALL(*job2, RecordTime())
-      .Times(AnyNumber());
+      .Times(1);
   EXPECT_CALL(*job1, ShouldStop())
-      .Times(AnyNumber());
+      .Times(0);
 
   manager_->test_api().set_screen_locked(true);
   ON_CALL(*job1, Run())
