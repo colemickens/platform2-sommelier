@@ -26,6 +26,10 @@ DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
 DEFINE_boolean recovery ${FLAGS_FALSE} \
   "Install from a recovery image. Default: False"
+DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
+  "Don't create a new filesystem for the stateful partition. Be careful \
+using this option as this may make the stateful partition not mountable. \
+Default: False."
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -293,8 +297,10 @@ fi
 echo "Installing the stateful partition..."
 loop_offset_setup $FLAGS_dst $START_STATEFUL
 trap loop_offset_cleanup EXIT
-sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
-  $(($NUM_STATEFUL_SECTORS / 8))
+if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
+  sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+    $(($NUM_STATEFUL_SECTORS / 8))
+fi
 
 # Install the stateful partition content
 if [ -f /root/.dev_mode ] ; then
