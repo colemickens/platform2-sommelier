@@ -76,6 +76,7 @@ PROXY_ARGS=--proxy-pac-url="$(cat /etc/default_proxy)"
 
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
+WM_SCRIPT="/sbin/window-manager-session.sh"
 SEND_METRICS="/etc/send_metrics"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
@@ -141,4 +142,5 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
 	    --apps-gallery-url="http://chrome.google.com/extensions/" \
             --enable-login-images \
             "${SKIP_OOBE}" \
-            "${PROXY_ARGS}"
+            "${PROXY_ARGS}" \
+-- $WM_SCRIPT          
