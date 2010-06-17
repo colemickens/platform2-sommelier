@@ -30,9 +30,9 @@ do_install() {
     local dst="$1"
     shift
 
-    echo $CHROMEOS_INSTALL --dst="$dst" "$@"
+    $CHROMEOS_INSTALL --dst="$dst" "$@"
   else
-    echo $CHROMEOS_INSTALL "$@"
+    $CHROMEOS_INSTALL "$@"
   fi
 }
 
