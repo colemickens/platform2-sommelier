@@ -61,9 +61,6 @@ if [ "$(echo "$@" | grep -- "--dev")" -o -f "/root/.dev_mode" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
 
-if [ -e "$(dirname $0)/crosh-workarounds" ]; then
-  . "$(dirname "$0")/crosh-workarounds"
-
 shell_read() {
   if [ "$IS_BASH" = "1" ]; then
     # In bash, -e gives readline support.
