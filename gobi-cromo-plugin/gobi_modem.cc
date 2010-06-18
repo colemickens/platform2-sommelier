@@ -12,8 +12,32 @@
 #include <mm/mm-modem.h>
 
 static const size_t kDefaultBufferSize = 128;
-// TODO(ers) define constants for each distinct error we return
-static const char* kErrorName = "org.freedesktop.ModemManager";
+
+#define DEFINE_ERROR(name) \
+  static const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
+
+DEFINE_ERROR(Activation)
+DEFINE_ERROR(Connect)
+DEFINE_ERROR(Disconnect)
+DEFINE_ERROR(FirmwareLoad)
+DEFINE_ERROR(Sdk)
+DEFINE_ERROR(Mode)
+
+#define SDKCALL(errtype, function, callargs...)          \
+    rc = sdk_->function(callargs);                       \
+    if (rc != 0) {                                       \
+      error.set(k##errtype##Error, #function);           \
+      LOG(WARNING) << #function << " failed : " << rc;   \
+      return;                                            \
+    }
+
+#define SDKCALLWITHRESULT(errtype, function, callargs...)  \
+    rc = sdk_->function(callargs);                         \
+    if (rc != 0) {                                         \
+      error.set(k##errtype##Error, #function);             \
+      LOG(WARNING) << #function << " failed : " << rc;     \
+      return result;                                       \
+    }
 
 // from mm-modem.h in ModemManager. This enum
 // should move into an XML file to become part
@@ -79,6 +103,51 @@ ULONG get_rfi_technology(ULONG data_bearer_technology) {
   }
 }
 
+enum ActivationMethod {
+  kActMethodOmadm,
+  kActMethodOtasp,
+  kActMethodNone
+};
+
+// TODO(rochberg):  Make this into a class, add dBM -> % maps,
+// activation routines
+struct Carrier {
+  const char* name;
+  const char* firmware_directory;
+  ULONG carrier_id;
+  int   carrier_type;
+  int   activation_method;
+  const char* activation_code;
+};
+
+static const Carrier kCarrierList[] = {
+  // This is only a subset of the available carriers
+  {"Vodafone", "0", 202, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
+  {"Verizon Wireless", "1", 101, MM_MODEM_TYPE_CDMA, kActMethodOtasp, "*22899"},
+  {"AT&T", "2", 201, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
+  {"Sprint", "3", 102, MM_MODEM_TYPE_CDMA, kActMethodOmadm, NULL},
+  {"T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
+  {NULL, NULL, -1, -1},
+};
+
+static const Carrier *find_carrier(const char* carrier_name) {
+  for (size_t i = 0; kCarrierList[i].name; ++i) {
+    if (strcasecmp(carrier_name, kCarrierList[i].name) == 0) {
+      return &kCarrierList[i];
+    }
+  }
+  return NULL;
+}
+
+static const Carrier *find_carrier(ULONG carrier_id) {
+  for (size_t i = 0; kCarrierList[i].name; ++i) {
+    if (kCarrierList[i].carrier_id == carrier_id) {
+      return &kCarrierList[i];
+    }
+  }
+  return NULL;
+}
+
 
 GobiModem* GobiModem::connected_modem_(NULL);
 
@@ -128,10 +197,9 @@ GobiModem::GobiModem(DBus::Connection& connection,
 // DBUS Methods: Modem
 void GobiModem::Enable(const bool& enable, DBus::Error& error) {
   if (enable && !Enabled()) {
-    if (!ApiConnect()) {
-      // TODO(rochberg): ERROR
-      CHECK(0);
-    }
+    ApiConnect(error);
+    if (error.is_set())
+      return;
 
     ULONG firmware_id;
     ULONG technology;
@@ -139,16 +207,14 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ULONG region;
     ULONG gps_capability;
     ULONG rc;
-    rc = sdk_->GetFirmwareInfo(&firmware_id,
-                               &technology,
-                               &carrier,
-                               &region,
-                               &gps_capability);
-    if (rc != 0) {
-      LOG(WARNING) << "GetFirmwareInfo: " << rc;
-      // TODO(rochberg):  ERROR
-      return;
-    }
+
+    SDKCALL(Sdk,
+    GetFirmwareInfo, &firmware_id,
+                     &technology,
+                     &carrier,
+                     &region,
+                     &gps_capability)
+
     LOG(INFO) << "Current carrier is " << carrier;
 
     // TODO(rochberg):  Make this more general
@@ -162,18 +228,20 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
 
 void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   if (!Enabled()) {
-    // TODO(rochberg): ERROR
     LOG(WARNING) << "Connect on disabled modem";
+    error.set(kConnectError, "Modem is disabled");
     return;
   }
 
   // TODO(ers) check activation status and return error if not activated
   ULONG rc;
-  rc = sdk_->GetActivationState(&activation_state_);
+  SDKCALL(Connect,
+  GetActivationState, &activation_state_)
+
   LOG(INFO) << "Activation state: " << activation_state_;
   if (activation_state_ != gobi::kActivated) {
-    // TODO(ers) ERROR
     LOG(WARNING) << "Connect failed because modem is not activated";
+    error.set(kConnectError, "Modem is not activated");
     return;
   }
 
@@ -184,13 +252,14 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
                               NULL,  // Authentication
                               NULL,  // Username
                               NULL,  // Password
-                              &session_id_,  // OUT: session ID
-                              &failure_reason  // OUT: failure reason
-                        );
+                              &session_id_,
+                              &failure_reason);
   if (rc != 0) {
     LOG(WARNING) << "StartDataSession failed: " << rc;
     if (rc == gobi::kCallFailed)
       LOG(INFO) << "Failure Reason " <<  failure_reason;
+    error.set(kConnectError, "StartDataSession");
+    return;
   }
   LOG(INFO) << "Session ID " <<  session_id_;
   // session_state_ will be set in SessionStateCallback
@@ -198,16 +267,16 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
 
 
 void GobiModem::Disconnect(DBus::Error& error) {
-  LOG(INFO) << "Disconnect";
+  LOG(INFO) << "Disconnect(" << session_id_ << ")";
   if (session_state_ != gobi::kConnected) {
     LOG(WARNING) << "Disconnect called when not connecting";
+    error.set(kDisconnectError, "Not connected");
     return;
   }
-  ULONG rc = sdk_->StopDataSession(session_id_);
-  if (rc != 0) {
-    LOG(WARNING) << "StopDataSession failed: " << rc;
-    // TODO(ers) ERROR
-  }
+
+  ULONG rc;
+  SDKCALL(Disconnect,
+  StopDataSession, session_id_)
   // session_state_ will be set in SessionStateCallback
 }
 
@@ -215,7 +284,7 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config(
     DBus::Error& error) {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
 
-  LOG(INFO) << "GetIP4Config";
+  LOG(INFO) << "GetIP4Config (unimplemented)";
 
   return result;
 }
@@ -223,16 +292,9 @@ DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config(
 void GobiModem::FactoryReset(const std::string& code, DBus::Error& error) {
   ULONG rc;
   LOG(INFO) << "ResetToFactoryDefaults";
-  rc = sdk_->ResetToFactoryDefaults(const_cast<CHAR *>(code.c_str()));
-  if (rc != 0) {
-    // TODO(rochberg): ERROR
-    LOG(WARNING) << "Factory reset failed: " << rc;
-    return;
-  }
-  // TODO(rochberg): check ResetModem and ERROR
-  ResetModem();
-
-  return;
+  SDKCALL(Sdk,
+  ResetToFactoryDefaults, const_cast<CHAR *>(code.c_str()))
+  ResetModem(error);
 }
 
 DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
@@ -242,29 +304,16 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
 
   char buffer[kDefaultBufferSize];
   ULONG rc;
-  rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
-  if (rc != 0) {
-    // TODO(rochberg): ERROR
-    LOG(WARNING) << "GetManufacturer: " << rc;
-    return result;
-  }
-
+  SDKCALLWITHRESULT(Sdk,
+  GetManufacturer, sizeof(buffer), buffer)
   result._1 = buffer;
 
-  rc = sdk_->GetModelID(sizeof(buffer), buffer);
-  if (rc != 0) {
-    // TODO(rochberg): ERROR
-    LOG(WARNING) << "GetModelID: " << rc;
-    return result;
-  }
+  SDKCALLWITHRESULT(Sdk,
+  GetModelID, sizeof(buffer), buffer)
   result._2 = buffer;
 
-  rc = sdk_->GetFirmwareRevision(sizeof(buffer), buffer);
-  if (rc != 0) {
-    // TODO(rochberg): ERROR
-    LOG(WARNING) << "GetFirmwareRevision: " << rc;
-    return result;
-  }
+  SDKCALLWITHRESULT(Sdk,
+  GetFirmwareRevision, sizeof(buffer), buffer)
   result._3 = buffer;
 
   LOG(INFO) << "Manufacturer: " << result._1;
@@ -279,36 +328,36 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   Connect("unused_number", error);
 }
 
-bool GobiModem::GetSerialNumbers(SerialNumbers *out) {
+void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
   char esn[kDefaultBufferSize];
   char imei[kDefaultBufferSize];
   char meid[kDefaultBufferSize];
-  ULONG rc = sdk_-> GetSerialNumbers(kDefaultBufferSize, esn,
-                                     kDefaultBufferSize, imei,
-                                     kDefaultBufferSize, meid);
-  if (rc != 0) {
-    LOG(WARNING) << "GSN: " << rc;
-    return false;
-  }
+  ULONG rc;
+  SDKCALL(Sdk,
+  GetSerialNumbers, kDefaultBufferSize, esn,
+                    kDefaultBufferSize, imei,
+                    kDefaultBufferSize, meid)
   out->esn = esn;
   out->imei = imei;
   out->meid = meid;
-  return true;
 }
 
 DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   DBusPropertyMap result;
-
   int32_t rssi;
+  DBus::Error tmperr;
 
   // TODO(rochberg):  More mandatory properties expected
-  if (GetSignalStrengthDbm(rssi)) {
+  // if we get SDK errors while trying to retrieve information,
+  // we ignore them, and just don't set the corresponding properties
+  GetSignalStrengthDbm(rssi, tmperr);
+  if (!tmperr.is_set())
     result["signal_strength_dbm"].writer().append_int32(rssi);
-  }
 
   SerialNumbers serials;
 
-  if (this->GetSerialNumbers(&serials)) {
+  this->GetSerialNumbers(&serials, tmperr);
+  if (!tmperr.is_set()) {
     if (serials.esn.length()) {
       result["esn"].writer().append_string(serials.esn.c_str());
     }
@@ -325,6 +374,34 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   if (rc == 0)
     result["activation_state"].writer().append_uint32(activation_state);
 
+  ULONG firmware_id;
+  ULONG technology_id;
+  ULONG carrier_id;
+  ULONG region;
+  ULONG gps_capability;
+  rc = sdk_->GetFirmwareInfo(&firmware_id,
+                             &technology_id,
+                             &carrier_id,
+                             &region,
+                             &gps_capability);
+  if (rc == 0) {
+    const Carrier *carrier = find_carrier(carrier_id);
+    const char* name;
+    if (carrier != NULL)
+      name = carrier->name;
+    else
+      name = "unknown";
+    result["carrier"].writer().append_string(name);
+
+    const char* technology;
+    if (technology_id == 0)
+      technology = "CDMA";
+    else if (technology_id == 1)
+      technology = "UMTS";
+    else
+      technology = "unknown";
+    result["technology"].writer().append_string(technology);
+  }
   ULONG session_state;
   ULONG mm_modem_state;
   rc = sdk_->GetSessionState(&session_state);
@@ -370,28 +447,26 @@ std::string GobiModem::GetEsn(DBus::Error& error) {
   LOG(INFO) << "GetEsn";
 
   SerialNumbers serials;
-  if (!GetSerialNumbers(&serials)) {
-    // TODO(rochberg): ERROR
-    CHECK(0);
-  }
+  GetSerialNumbers(&serials, error);
   return serials.esn;
 }
 
 
 uint32_t GobiModem::GetSignalQuality(DBus::Error& error) {
   if (!Enabled()) {
-    // TODO(rochberg): ERROR
     LOG(WARNING) << "GetSignalQuality on disabled modem";
-    return 0;
+    error.set(kModeError, "Modem is disabled");
+  } else {
+    int32_t signal_strength_dbm;
+    GetSignalStrengthDbm(signal_strength_dbm, error);
+    if (!error.is_set()) {
+      uint32_t result = signal_strength_dbm_to_percent(signal_strength_dbm);
+      LOG(INFO) << "GetSignalQuality => " << result << "%";
+      return result;
+    }
   }
-  int32_t signal_strength_dbm;
-  if (GetSignalStrengthDbm(signal_strength_dbm)) {
-    uint32_t result = signal_strength_dbm_to_percent(signal_strength_dbm);
-    LOG(INFO) << "GetSignalQuality => " << result << "%";
-    return result;
-  }
-  // TODO(ers) ERROR
-  return 11;
+  // for the error cases, return an impossible value
+  return 999;
 }
 
 
@@ -404,20 +479,15 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
   CHAR netname[32];
   LOG(INFO) << "GetServingSystem";
 
-  rc = sdk_->GetHomeNetwork(&mcc, &mnc, sizeof(netname), netname, &sid, &nid);
-  if (rc != 0) {
-    // TODO(ers) ERROR
-    LOG(WARNING) << "GetHomeNetwork failed: " << rc;
-    return result;
-  }
+  SDKCALLWITHRESULT(Sdk,
+  GetHomeNetwork, &mcc, &mnc, sizeof(netname), netname, &sid, &nid)
+
   gobi::RfInfoInstance rf_info[10];
   BYTE rf_info_size = sizeof(rf_info) / sizeof(rf_info[0]);
-  rc = sdk_->GetRFInfo(&rf_info_size, static_cast<BYTE*>((void *)&rf_info[0]));
-  if (rc != 0) {
-    // TODO(ers) ERROR
-    LOG(WARNING) << "GetRFInfo failed: " << rc;
-    return result;
-  }
+
+  SDKCALLWITHRESULT(Sdk,
+  GetRFInfo, &rf_info_size, static_cast<BYTE*>((void *)&rf_info[0]))
+
   if (rf_info_size != 0) {
     LOG(INFO) << "RF info for " << rf_info[0].radioInterface
               << " band class " << rf_info[0].activeBandClass
@@ -454,15 +524,11 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
 
   cdma_1x_state = 0;
   evdo_state = 0;
-  rc = sdk_->GetServingNetwork(&reg_state,
-                               &num_radio_interfaces,
-                               radio_interfaces,
-                               &roaming_state);
-  if (rc != 0) {
-    // TODO(ers) Error
-    LOG(WARNING) << "GetServingNetwork() failed: " << rc;
-    return;
-  }
+
+  SDKCALL(Sdk,
+  GetServingNetwork, &reg_state, &num_radio_interfaces,
+                     radio_interfaces, &roaming_state)
+
   uint32_t mm_reg_state;
 
   if (reg_state == gobi::kRegistered) {
@@ -484,12 +550,12 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   }
 }
 
-bool GobiModem::ApiConnect() {
+void GobiModem::ApiConnect(DBus::Error& error) {
   ULONG rc;
-  rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
-  if (rc != 0) {
-    return false;
-  }
+
+  SDKCALL(Sdk,
+  QCWWANConnect, device_.deviceNode, device_.deviceKey)
+
   connected_modem_ = this;
 
   SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
@@ -511,8 +577,6 @@ bool GobiModem::ApiConnect() {
   SetSignalStrengthCallback(SignalStrengthCallbackTrampoline,
                             num_thresholds,
                             thresholds.get());
-
-  return true;
 }
 
 void GobiModem::LogGobiInformation() {
@@ -532,13 +596,16 @@ void GobiModem::LogGobiInformation() {
                              &carrier,
                              &region,
                              &gps_capability);
-  CHECK(rc == 0) << rc ;
-  LOG(INFO) << "Firmware info: "
-            << "firmware_id: " << firmware_id
-            << " technology: " << technology
-            << " carrier: " << carrier
-            << " region: " << region
-            << " gps_capability: " << gps_capability;
+  if (rc == 0) {
+    LOG(INFO) << "Firmware info: "
+              << "firmware_id: " << firmware_id
+              << " technology: " << technology
+              << " carrier: " << carrier
+              << " region: " << region
+              << " gps_capability: " << gps_capability;
+  } else {
+    LOG(WARNING) << "Cannot get firmware info: " << rc;
+  }
 
   char amss[kDefaultBufferSize], boot[kDefaultBufferSize];
   char pri[kDefaultBufferSize];
@@ -550,21 +617,26 @@ void GobiModem::LogGobiInformation() {
               << " boot: " << boot
               << " pri: " << pri;
   } else {
-    LOG(WARNING) << "GFR: " << rc;
+    LOG(WARNING) << "Cannot get firmware revision info: " << rc;
   }
 
   rc = GetImageStore(sizeof(buffer), buffer);
   if (rc == 0) {
     LOG(INFO) << "ImageStore: " << buffer;
   } else {
-    LOG(WARNING) << "GIS: " << rc;
+    LOG(WARNING) << "Cannot get image store info: " << rc;
   }
 
   SerialNumbers serials;
-  CHECK(GetSerialNumbers(&serials));
-  LOG(INFO) << "ESN: " << serials.esn;
-  LOG(INFO) << "IMEI: " << serials.imei;
-  LOG(INFO) << "MEID: " << serials.meid;
+  DBus::Error error;
+  GetSerialNumbers(&serials, error);
+  if (!error.is_set()) {
+    LOG(INFO) << "ESN: " << serials.esn;
+    LOG(INFO) << "IMEI: " << serials.imei;
+    LOG(INFO) << "MEID: " << serials.meid;
+  } else {
+    LOG(WARNING) << "Cannot get serial numbers: " << error;
+  }
 
   char number[kDefaultBufferSize], min_array[kDefaultBufferSize];
   rc = GetVoiceNumber(kDefaultBufferSize, number,
@@ -573,7 +645,7 @@ void GobiModem::LogGobiInformation() {
     LOG(INFO) << "Voice: " << number
               << " MIN: " << min_array;
   } else if (rc != gobi::kNotProvisioned) {
-    LOG(INFO) << "GetVoiceNumber failed: " << rc;
+    LOG(WARNING) << "GetVoiceNumber failed: " << rc;
   }
 
   BYTE index;
@@ -586,31 +658,22 @@ void GobiModem::LogGobiInformation() {
 }
 
 void GobiModem::SoftReset(DBus::Error& error) {
-  if (!ResetModem()) {
-    // TODO(rochberg):  ERROR
-  }
+  ResetModem(error);
 }
 
-bool GobiModem::ResetModem() {
+void GobiModem::ResetModem(DBus::Error& error) {
   ULONG rc;
 
   // TODO(rochberg):  Is this going to confuse connman?
   Enabled = false;
 
   LOG(INFO) << "Offline";
-  rc = sdk_->SetPower(gobi::kOffline);
-  if (rc != 0) {
-    LOG(WARNING) << "Offline: " << rc;
-    // TODO(rochberg):  Disconnect?
-    return false;
-  }
+  SDKCALL(Sdk,
+  SetPower, gobi::kOffline)
 
   LOG(INFO) << "Reset";
-  rc = sdk_->SetPower(gobi::kReset);
-  if (rc != 0) {
-    LOG(WARNING) << "Offline: " << rc;
-    return false;
-  }
+  SDKCALL(Sdk,
+  SetPower, gobi::kReset)
 
   const int kPollIntervalMs = 500;
   base::Time::Time deadline = base::Time::NowFromSystemTime() +
@@ -618,19 +681,22 @@ bool GobiModem::ResetModem() {
 
   bool connected = false;
   // Wait for modem to become unavailable, then available again.
+  DBus::Error tmperr;
   while (base::Time::NowFromSystemTime() < deadline) {
-    sdk_->QCWWANDisconnect();
-    if (!ApiConnect()) {
+    SDKCALL(Sdk, QCWWANDisconnect)
+    ApiConnect(tmperr);
+    if (tmperr.is_set())
       break;
-    }
     usleep(kPollIntervalMs * 1000);
   }
 
   LOG(INFO) << "Modem reset:  Modem now unavailable";
 
   while (base::Time::NowFromSystemTime() < deadline) {
-    sdk_->QCWWANDisconnect();
-    if ((connected = ApiConnect())) {
+    SDKCALL(Sdk, QCWWANDisconnect)
+    ApiConnect(tmperr);
+    if (!tmperr.is_set()) {
+      connected = true;
       break;
     };
     usleep(kPollIntervalMs * 1000);
@@ -639,26 +705,22 @@ bool GobiModem::ResetModem() {
   if (!connected) {
     // TODO(rochberg):  Send DeviceRemoved
     LOG(WARNING) << "Modem did not come back after reset";
-    return false;
+    error = tmperr;
+    return;
   } else {
     LOG(INFO) << "Modem returned from reset";
   }
   Enabled = true;
-  return true;
 }
 
 
-bool GobiModem::ActivateOmadm() {
+// pre-condition: activation_state_ == gobi::kNotActivated
+void GobiModem::ActivateOmadm(DBus::Error& error) {
   ULONG rc;
   LOG(INFO) << "Activating OMA-DM";
 
-  activation_state_ = -1;
-
-  rc = sdk_->OMADMStartSession(gobi::kConfigure);
-  if (rc != 0) {
-    LOG(WARNING) << "OMADMStartSession failed: " << rc;
-    return false;
-  }
+  SDKCALL(Activation,
+  OMADMStartSession, gobi::kConfigure)
 
   // TODO(rochberg):  Factor out this pattern + add timeouts
   pthread_mutex_lock(&activation_mutex_);
@@ -670,25 +732,15 @@ bool GobiModem::ActivateOmadm() {
     }
   }
   pthread_mutex_unlock(&activation_mutex_);
-  return true;
 }
 
-bool GobiModem::ActivateOtasp(const std::string& number) {
+void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
   ULONG rc;
 
-  rc = sdk_->GetActivationState(&activation_state_);
-  LOG(INFO) << "Activation state: " << activation_state_;
-  if (activation_state_ == gobi::kActivated) {
-    return true;
-  }
+  LOG(INFO) << "Activating OTASP";
 
-  if (activation_state_ != gobi::kNotActivated) {
-    LOG(WARNING) << "Unexpected activation state: " << activation_state_;
-    return false;
-  }
-
-  LOG(INFO) << "Activating";
-  rc = sdk_->ActivateAutomatic(number.c_str());
+  SDKCALL(Activation,
+  ActivateAutomatic, number.c_str())
 
   LOG(INFO) << "Waiting for activation to complete";
   // TODO(rochberg):  Timeout
@@ -698,79 +750,17 @@ bool GobiModem::ActivateOtasp(const std::string& number) {
   }
   pthread_mutex_unlock(&activation_mutex_);
 
-  return ResetModem();
+  ResetModem(error);
 }
 
-enum ActivationMethod {
-  kActMethodOmadm,
-  kActMethodOtasp,
-  kActMethodNone
-};
-
-// TODO(rochberg):  Make this into a class, add dBM -> % maps,
-// activation routines
-struct Carrier {
-  const char* name;
-  const char* firmware_directory;
-  ULONG carrier_id;
-  int   carrier_type;
-  int   activation_method;
-  const char* activation_code;
-};
-
-static const Carrier kCarrierList[] = {
-  // This is only a subset of the available carriers
-  {"Vodafone", "0", 202, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {"Verizon Wireless", "1", 101, MM_MODEM_TYPE_CDMA, kActMethodOtasp, "*22899"},
-  {"AT&T", "2", 201, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {"Sprint", "3", 102, MM_MODEM_TYPE_CDMA, kActMethodOmadm, NULL},
-  {"T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {NULL, NULL, -1, -1},
-};
-
-static const Carrier *find_carrier(const char* carrier_name) {
-  for (size_t i = 0; kCarrierList[i].name; ++i) {
-    if (strcasecmp(carrier_name, kCarrierList[i].name) == 0) {
-      return &kCarrierList[i];
-    }
-  }
-  return NULL;
-}
-
-// TODO(rochberg):  Refactor this and build a Carrier class
-bool GobiModem::DoActivation(const uint32_t method,
-                             const char* number) {
-  ULONG rc;
-
-  rc = sdk_->GetActivationState(&activation_state_);
-  LOG(INFO) << "Activation state: " << activation_state_;
-
-  if (activation_state_ == gobi::kActivated) {
-    return true;
-  }
-
-  if (activation_state_ != gobi::kNotActivated) {
-    LOG(WARNING) << "Unexpected activation state: " << activation_state_;
-    return false;
-  }
-
-  switch (method) {
-  case kActMethodOmadm:
-    return ActivateOmadm();
-  case kActMethodOtasp:
-    return ActivateOtasp(number);
-  default:  // can't happen, our caller already validated args
-    LOG(FATAL) << "Unexpected activation method: " << method;
-    break;
-  }
-}
-
-bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
+void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
+                                     DBus::Error& error) {
   const Carrier *carrier = find_carrier(carrier_name);
   if (!carrier) {
     // TODO(rochberg):  Do we need to sanitize this string?
     LOG(WARNING) << "Could not parse carrier: " << carrier_name;
-    return false;
+    error.set(kFirmwareLoadError, "Unknown carrier name");
+    return;
   }
 
   ULONG rc;
@@ -779,17 +769,13 @@ bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
   ULONG modem_carrier_id;
   ULONG region;
   ULONG gps_capability;
-  rc = sdk_->GetFirmwareInfo(&firmware_id,
-                             &technology,
-                             &modem_carrier_id,
-                             &region,
-                             &gps_capability);
-
-  if (rc != 0) {
-    LOG(WARNING) << "Could not get firmware info: " << rc;
-    return false;
-  }
-
+  SDKCALL(FirmwareLoad,
+  GetFirmwareInfo, &firmware_id,
+                   &technology,
+                   &modem_carrier_id,
+                   &region,
+                   &gps_capability)
+ 
   if (modem_carrier_id != carrier->carrier_id) {
     std::string image_path = "/opt/Qualcomm/Images2k/HP/";
     image_path += carrier->firmware_directory;
@@ -800,56 +786,52 @@ bool GobiModem::EnsureFirmwareLoaded(const char* carrier_name) {
     rc = UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
     if (rc != 0) {
       LOG(WARNING) << "Firmware load from " << image_path << " failed: " << rc;
-      return false;
+      error.set(kFirmwareLoadError, "UpgradeFirmware");
+      return;
     }
 
-    if (!ResetModem()) {
-      return false;
-    }
+    ResetModem(error);
+    if (error.is_set())
+      return;
 
-    rc = sdk_->GetFirmwareInfo(&firmware_id,
-                               &technology,
-                               &modem_carrier_id,
-                               &region,
-                               &gps_capability);
-    if (rc != 0) {
-      LOG(WARNING) << "Could not get confirmation firmware info: " << rc;
-      return false;
-    }
+    SDKCALL(FirmwareLoad,
+    GetFirmwareInfo, &firmware_id,
+                     &technology,
+                     &modem_carrier_id,
+                     &region,
+                     &gps_capability)
 
     if (modem_carrier_id != carrier->carrier_id) {
       LOG(WARNING) << "After upgrade, expected carrier: " << carrier->carrier_id
                    << ".  Instead got: " << modem_carrier_id;
-      return false;
+      error.set(kFirmwareLoadError, "failed to switch carrier");
+      return;
     }
   }
 
   LOG(INFO) << "Carrier image selection complete: " << carrier_name;
   LogGobiInformation();
-  return true;
 }
 
 void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
-  if (!EnsureFirmwareLoaded(carrier.c_str())) {
-    // TODO(rochberg): ERROR
-  }
+  EnsureFirmwareLoaded(carrier.c_str(), error);
 }
 
 void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
   LOG(INFO) << "Activate(" << carrier_name << ")";
   const Carrier *carrier = find_carrier(carrier_name.c_str());
   if (carrier == NULL) {
-    LOG(WARNING) << "Unknown carrier";
-    error.set(kErrorName, "unknown carrier");
+    LOG(WARNING) << "Unknown carrier: " << carrier_name;
+    error.set(kActivationError, "Unknown carrier");
     return;
   }
   ULONG rc;
 #if 0
   // re-enable this when we know how to block until the
   // firmware load operation is complete
-  if (!EnsureFirmwareLoaded(carrier->name)) {
-    error.set(kErrorName, "loading firmware failed");
-  }
+  EnsureFirmwareLoaded(carrier->name), error);
+  if (error.is_set())
+    return;
 #else
 
   // Check current firmware to see whether it's for the requested carrier
@@ -858,56 +840,56 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
   ULONG carrier_id;
   ULONG region;
   ULONG gps_capability;
-  rc = sdk_->GetFirmwareInfo(&firmware_id,
-                             &technology,
-                             &carrier_id,
-                             &region,
-                             &gps_capability);
 
-  if (rc != 0) {
-    LOG(WARNING) << "Could not get firmware info: " << rc;
-    error.set(kErrorName, "Error getting firmware info");
-    return;
-  }
+  SDKCALL(Activation,
+  GetFirmwareInfo, &firmware_id,
+                   &technology,
+                   &carrier_id,
+                   &region,
+                   &gps_capability)
+
   if (carrier_id != carrier->carrier_id) {
     LOG(WARNING) << "Current device firmware does not match the requested carrier.";
     LOG(WARNING) << "SetCarrier operation must be done before activating.";
-    error.set(kErrorName, "Wrong carrier");
+    error.set(kActivationError, "Wrong carrier");
     return;
   }
 #endif
 
-  rc = sdk_->GetActivationState(&activation_state_);
-  if (rc != 0) {
-    LOG(WARNING) << "Cannot determine current activation state: " << rc;
-    error.set(kErrorName, "Cannot determine current activation state");
-    return;
-  }
+  SDKCALL(Activation,
+  GetActivationState, &activation_state_)
+
   LOG(INFO) << "Current activation state: " << activation_state_;
   if (activation_state_ == gobi::kActivated) {
     LOG(WARNING) << "Nothing to do: device is already activated";
-    error.set(kErrorName, "Device is already activated");
+    error.set(kActivationError, "Device is already activated");
+    return;
+  }
+
+  if (activation_state_ != gobi::kNotActivated) {
+    LOG(WARNING) << "Unexpected activation state: " << activation_state_;
+    error.set(kActivationError, "Unexpected activation state");
     return;
   }
 
   switch (carrier->activation_method) {
     case kActMethodOmadm:    // OMA-DM
-      DoActivation(carrier->activation_method, carrier->activation_code);
+      ActivateOmadm(error);
       break;
 
     case kActMethodOtasp:
       if (carrier->activation_code == NULL) {
         LOG(WARNING) << "Number was not supplied for OTASP activation";
-        error.set(kErrorName, "No number supplied for OTASP activation");
+        error.set(kActivationError, "No number supplied for OTASP activation");
         return;
       }
-      DoActivation(carrier->activation_method, carrier->activation_code);
+      ActivateOtasp(carrier->activation_code, error);
       break;
 
     default:
       LOG(WARNING) << "Unknown activation method: "
                    << carrier->activation_method;
-      error.set(kErrorName, "Unknown activation method");
+      error.set(kActivationError, "Unknown activation method");
       break;
   }
 }
@@ -920,11 +902,11 @@ void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
 }
 
 
-bool GobiModem::GetSignalStrengthDbm(int& output) {
+void GobiModem::GetSignalStrengthDbm(int& output, DBus::Error& error) {
   if (!Enabled()) {
-    // TODO(rochberg): ERROR
     LOG(WARNING) << "GetSignalQuality on disabled modem";
-    return false;
+    error.set(kModeError, "Modem is disabled");
+    return;
   }
   ULONG rc;
   ULONG kSignals = 10;
@@ -932,18 +914,15 @@ bool GobiModem::GetSignalStrengthDbm(int& output) {
   INT8 strengths[kSignals];
   ULONG interfaces[kSignals];
 
-  rc = sdk_->GetSignalStrengths(&signals, strengths, interfaces);
-  if (rc != 0) {
-    // TODO(rochberg):  ERROR
-    LOG(WARNING) << "GetSignalStrengths failed: " << rc;
-    return false;
-  }
+  SDKCALL(Sdk,
+  GetSignalStrengths, &signals, strengths, interfaces)
+
   signals = std::min(kSignals, signals);
   INT8 max_strength = -127;
   for (ULONG i = 0; i < signals; ++i) {
     LOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
               << " dBM technology: " << interfaces[i];
-    // TODO(ers) mark radio interface technology as registered
+    // TODO(ers) mark radio interface technology as registered?
     if (strengths[i] > max_strength) {
       max_strength = strengths[i];
     }
@@ -952,32 +931,27 @@ bool GobiModem::GetSignalStrengthDbm(int& output) {
   // If we're in the connected state, pick the signal strength for the radio
   // interface that's being used. Otherwise, pick the strongest signal.
   ULONG session_state;
-  rc = sdk_->GetSessionState(&session_state);
-  if (rc != 0) {
-    // TODO(ers):  ERROR
-    LOG(WARNING) << "GetSessionState failed: " << rc;
-    return false;
-  }
+  SDKCALL(Sdk,
+  GetSessionState, &session_state)
+
   if (session_state == gobi::kConnected) {
     ULONG db_technology;
     rc = GetDataBearerTechnology(&db_technology);
     if (rc != 0) {
-      // TODO(ers):  ERROR
       LOG(WARNING) << "GetDataBearerTechnology failed: " << rc;
-      return false;
+      error.set(kSdkError, "GetDataBearerTechnology");
+      return;
     }
     ULONG rfi_technology = get_rfi_technology(db_technology);
     for (ULONG i = 0; i < signals; ++i) {
       if (interfaces[i] == rfi_technology) {
         signal_strength_ = strengths[i];
         output = strengths[i];
-        return true;
+        return;
       }
     }
   }
-
   output = max_strength;
-  return true;
 }
 
 // Event callbacks:
@@ -1022,7 +996,8 @@ void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
   if (state == gobi::kConnected)
     sdk_->GetDataBearerTechnology(&data_bearer_technology_);
   session_state_ = state;
-  session_id_ = 0;
+  if (state == gobi::kDisconnected)
+    session_id_ = 0;
 }
 
 void GobiModem::UpdateRegistrationState(ULONG data_bearer_technology,

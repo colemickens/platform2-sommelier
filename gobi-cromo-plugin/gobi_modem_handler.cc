@@ -63,7 +63,6 @@ void GobiModemHandler::HandleNewDeviceList(
                                    &GOBI_SDK);
       m->set_last_seen(scan_generation_);
       key_to_modem_[std::string(incoming[i].deviceKey)] = m;
-      AddModem(m);
     }
   }
 

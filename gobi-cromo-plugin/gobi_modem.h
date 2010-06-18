@@ -86,21 +86,20 @@ class GobiModem
                                DBus::Error& error);
 
  protected:
-  bool ActivateOmadm();
+  void ActivateOmadm(DBus::Error& error);
   // Verizon uses OTASP, code *22899
-  bool ActivateOtasp(const std::string& number);
-  bool ApiConnect();
-  bool DoActivation(const uint32_t method, const char* number);
-  bool EnsureFirmwareLoaded(const char* carrier_name);
-  bool GetSignalStrengthDbm(int& strength);
-  bool ResetModem();
+  void ActivateOtasp(const std::string& number, DBus::Error& error);
+  void ApiConnect(DBus::Error& error);
+  void EnsureFirmwareLoaded(const char* carrier_name, DBus::Error& error);
+  void GetSignalStrengthDbm(int& strength, DBus::Error& error);
+  void ResetModem(DBus::Error& error);
 
   struct SerialNumbers {
     std::string esn;
     std::string imei;
     std::string meid;
   };
-  bool GetSerialNumbers(SerialNumbers* out);
+  void GetSerialNumbers(SerialNumbers* out, DBus::Error &error);
   void LogGobiInformation();
 
   static void ActivationStatusCallbackTrampoline(ULONG activation_status) {
