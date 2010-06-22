@@ -6,7 +6,7 @@ PKG_CONFIG ?= pkg-config
 INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1)
 
 CXXFLAGS += -fPIC -I$(INCLUDE_DIRS) -Wall -Werror -g -O0
-LDFLAGS += -lbase -lQCWWAN2k -lglog -lpthread -lrt
+LDLIBS += -lbase -lQCWWAN2k -lglog -lpthread -lrt
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
@@ -33,7 +33,10 @@ $(GOBI_PLUGIN) : $(OBJS)
 
 %unittest : %unittest.cc
 
-%unittest : LDFLAGS += -lgtest
+%unittest : LDLIBS += -lgtest -lgmock $(shell $(PKG_CONFIG) --libs gobject-2.0 \
+	 dbus-1 dbus-glib-1 dbus-c++-1)
+
+gobi_modem_unittest : gobi_modem.cc 
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@

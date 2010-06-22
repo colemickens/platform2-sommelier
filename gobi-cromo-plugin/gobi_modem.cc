@@ -187,11 +187,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
   // TODO(rochberg):  Gobi can be either
   Type = MM_MODEM_TYPE_CDMA;
   UnlockRequired = "";
-
-  // Reviewer note:  These are just temporary calls
-  DBus::Error error;
-  Enable(true, error);
-  LogGobiInformation();
 }
 
 // DBUS Methods: Modem
@@ -200,7 +195,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ApiConnect(error);
     if (error.is_set())
       return;
-
+    LogGobiInformation();
     ULONG firmware_id;
     ULONG technology;
     ULONG carrier;
@@ -252,12 +247,13 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
                               NULL,  // Authentication
                               NULL,  // Username
                               NULL,  // Password
-                              &session_id_,
-                              &failure_reason);
+                              &session_id_,  // OUT: session ID
+                              &failure_reason  // OUT: failure reason
+                        );
   if (rc != 0) {
     LOG(WARNING) << "StartDataSession failed: " << rc;
     if (rc == gobi::kCallFailed)
-      LOG(INFO) << "Failure Reason " <<  failure_reason;
+      LOG(WARNING) << "Failure Reason " <<  failure_reason;
     error.set(kConnectError, "StartDataSession");
     return;
   }
@@ -584,7 +580,9 @@ void GobiModem::LogGobiInformation() {
 
   char buffer[kDefaultBufferSize];
   rc = sdk_->GetManufacturer(sizeof(buffer), buffer);
-  LOG(INFO) << "Manufacturer: " << buffer;
+  if (rc == 0) {
+    LOG(INFO) << "Manufacturer: " << buffer;
+  }
 
   ULONG firmware_id;
   ULONG technology;
@@ -609,6 +607,7 @@ void GobiModem::LogGobiInformation() {
 
   char amss[kDefaultBufferSize], boot[kDefaultBufferSize];
   char pri[kDefaultBufferSize];
+
   rc = sdk_->GetFirmwareRevisions(kDefaultBufferSize, amss,
                                   kDefaultBufferSize, boot,
                                   kDefaultBufferSize, pri);
@@ -620,7 +619,7 @@ void GobiModem::LogGobiInformation() {
     LOG(WARNING) << "Cannot get firmware revision info: " << rc;
   }
 
-  rc = GetImageStore(sizeof(buffer), buffer);
+  rc = sdk_->GetImageStore(sizeof(buffer), buffer);
   if (rc == 0) {
     LOG(INFO) << "ImageStore: " << buffer;
   } else {
@@ -639,8 +638,8 @@ void GobiModem::LogGobiInformation() {
   }
 
   char number[kDefaultBufferSize], min_array[kDefaultBufferSize];
-  rc = GetVoiceNumber(kDefaultBufferSize, number,
-                      kDefaultBufferSize, min_array);
+  rc = sdk_->GetVoiceNumber(kDefaultBufferSize, number,
+                            kDefaultBufferSize, min_array);
   if (rc == 0) {
     LOG(INFO) << "Voice: " << number
               << " MIN: " << min_array;
@@ -649,7 +648,7 @@ void GobiModem::LogGobiInformation() {
   }
 
   BYTE index;
-  rc = GetActiveMobileIPProfile(&index);
+  rc = sdk_->GetActiveMobileIPProfile(&index);
   if (rc != 0 && rc != gobi::kNotSupportedByDevice) {
     LOG(WARNING) << "GetAMIPP: " << rc;
   } else {
