@@ -29,7 +29,7 @@ OBJS = $(SRCS:.cc=.o)
 all: $(GOBI_PLUGIN) $(TESTS)
 
 $(GOBI_PLUGIN) : $(OBJS)
-	$(CXX) -shared $^ $(LDFLAGS) -o $@ 
+	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@ 
 
 %unittest : %unittest.cc
 
