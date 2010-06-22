@@ -9,9 +9,13 @@
 #include <base/scoped_ptr.h>
 #include <base/time.h>
 #include <glog/logging.h>
+extern "C" {
+#include <libudev.h>
+};
 #include <mm/mm-modem.h>
 
 static const size_t kDefaultBufferSize = 128;
+static const char *kNetworkDriver = "QCUSBNet2k";
 
 #define DEFINE_ERROR(name) \
   static const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
@@ -148,6 +152,28 @@ static const Carrier *find_carrier(ULONG carrier_id) {
   return NULL;
 }
 
+static struct udev_enumerate *enumerate_net_devices(struct udev *udev)
+{
+  int rc;
+  struct udev_enumerate *udev_enumerate = udev_enumerate_new(udev);
+
+  if (udev_enumerate == NULL) {
+    return NULL;
+  }
+
+  rc = udev_enumerate_add_match_subsystem(udev_enumerate, "net");
+  if (rc != 0) {
+    udev_enumerate_unref(udev_enumerate);
+    return NULL;
+  }
+
+  rc = udev_enumerate_scan_devices(udev_enumerate);
+  if (rc != 0) {
+    udev_enumerate_unref(udev_enumerate);
+    return NULL;
+  }
+  return udev_enumerate;
+}
 
 GobiModem* GobiModem::connected_modem_(NULL);
 
@@ -172,14 +198,7 @@ GobiModem::GobiModem(DBus::Connection& connection,
   pthread_cond_init(&activation_cond_, NULL);
 
   // Initialize DBus object properties
-  //Device = device_.deviceNode;
-  // TODO(ers) Hard-wire device to be usb0. This needs
-  // to be the name of the network interface, but
-  // device_.deviceNode is "/dev/qcqmi0", which is
-  // not useful to flimflam. We need to find out
-  // whether there is an API that can report the
-  // name of the network interface.
-  Device = "usb0";
+  Device = FindNetworkDevice();
   Driver = "";
   Enabled = false;
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
@@ -321,6 +340,10 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
 // DBUS Methods: ModemSimple
 void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   LOG(INFO) << "Simple.Connect";
+
+  if (!Enabled()) {
+    Enable(true, error);
+  }
   Connect("unused_number", error);
 }
 
@@ -1040,4 +1063,61 @@ void GobiModem::RoamingIndicatorCallback(ULONG roaming) {
   LOG(INFO) << "RoamingIndicatorCallback " << roaming;
 
   UpdateRegistrationState(data_bearer_technology_, roaming);
+}
+
+std::string GobiModem::FindNetworkDevice()
+{
+  std::string network_device_name;
+  struct udev *udev = udev_new();
+
+  if (udev == NULL) {
+    LOG(WARNING) << "udev == NULL";
+    return network_device_name;
+  }
+
+  struct udev_list_entry *entry;
+  struct udev_enumerate *udev_enumerate = enumerate_net_devices(udev);
+  if (udev_enumerate == NULL) {
+    LOG(WARNING) << "udev_enumerate == NULL";
+    udev_unref(udev);
+    return network_device_name;
+  }
+
+  for(entry = udev_enumerate_get_list_entry(udev_enumerate);
+      entry != NULL;
+      entry = udev_list_entry_get_next(entry)) {
+
+    std::string syspath(udev_list_entry_get_name(entry));
+
+    struct udev_device *udev_device =
+        udev_device_new_from_syspath(udev, syspath.c_str());
+    if (udev_device == NULL)
+      continue;
+
+    std::string driver;
+    struct udev_device *parent = udev_device_get_parent(udev_device);
+    if (parent != NULL)
+      driver = udev_device_get_driver(parent);
+    udev_device_unref(udev_device);
+
+    if (driver.compare(kNetworkDriver) != 0)
+      continue;
+
+    // Extract last portion of syspath...
+    size_t found = syspath.find_last_of('/');
+    if (found != std::string::npos) {
+      network_device_name = syspath.substr(found + 1);
+
+      // TODO(jglasgow): Support multiple devices.
+      // This functions returns the first network device whose
+      // driver is a qualcomm network device driver.  This will not
+      // work properly if a machine has multiple devices that use the
+      // Qualcomm network device driver.
+      break;
+    }
+  }
+  udev_enumerate_unref(udev_enumerate);
+  udev_unref(udev);
+
+  return network_device_name;
 }

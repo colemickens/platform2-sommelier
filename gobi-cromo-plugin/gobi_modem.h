@@ -159,6 +159,8 @@ class GobiModem
   void UpdateRegistrationState(ULONG data_bearer_technology,
                                ULONG roaming_state);
 
+  std::string FindNetworkDevice();
+
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
