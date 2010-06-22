@@ -131,6 +131,14 @@ TEST_F(GobiModemTest, EnableFalseToTrue) {
   ASSERT_FALSE(error_->is_set());
 }
 
+TEST_F(GobiModemTest, GetStatusWhenDisabled) {
+  DBusPropertyMap map;
+
+  EXPECT_CALL(sdk_, GetSerialNumbers(_, _, _, _, _, _)).WillOnce(Return(1));
+  map = modem_->GetStatus(*error_);
+}
+
+
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);

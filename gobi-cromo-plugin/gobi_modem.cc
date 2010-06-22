@@ -363,20 +363,23 @@ void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
 
 DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   DBusPropertyMap result;
-  int32_t rssi;
-  DBus::Error tmperr;
 
   // TODO(rochberg):  More mandatory properties expected
   // if we get SDK errors while trying to retrieve information,
   // we ignore them, and just don't set the corresponding properties
-  GetSignalStrengthDbm(rssi, tmperr);
-  if (!tmperr.is_set())
+  int32_t rssi;
+  DBus::Error signal_strength_error;
+
+  GetSignalStrengthDbm(rssi, signal_strength_error);
+  if (!signal_strength_error.is_set())
     result["signal_strength_dbm"].writer().append_int32(rssi);
 
   SerialNumbers serials;
+  // Distinct error because it invalid to modify an error once it is set
+  DBus::Error serial_numbers_error;
 
-  this->GetSerialNumbers(&serials, tmperr);
-  if (!tmperr.is_set()) {
+  this->GetSerialNumbers(&serials, serial_numbers_error);
+  if (!serial_numbers_error.is_set()) {
     if (serials.esn.length()) {
       result["esn"].writer().append_string(serials.esn.c_str());
     }
