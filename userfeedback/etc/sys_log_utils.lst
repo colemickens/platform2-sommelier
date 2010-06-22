@@ -21,6 +21,7 @@ lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 cpuinfo,cat /proc/cpuinfo
 meminfo,cat /proc/meminfo
+ifconfig, /sbin/ifconfig -a
 ps,/bin/ps ux
 fontconfig.log,cat /var/log/fontconfig.log
 syslog,tail --bytes=30K /var/log/messages
