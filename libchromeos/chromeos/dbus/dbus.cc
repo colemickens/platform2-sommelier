@@ -65,15 +65,21 @@ BusConnection GetPrivateBusConnection(const char* address) {
   ::DBusConnection* raw_connection
         = ::dbus_connection_open_private(address, &error);
   if (!raw_connection) {
-    // TODO(yusukes): We should return an error rather than just abort().
-    LOG(FATAL) << "dbus_connection_open_private failed";
+    LOG(WARNING) << "dbus_connection_open_private failed: " << address;
+    return BusConnection(NULL);
   }
 
   if (!::dbus_bus_register(raw_connection, &error)) {
-    LOG(ERROR) << "dbus_bus_register failed";
+    LOG(ERROR) << "dbus_bus_register failed: "
+               << (error.message ? error.message : "Unknown Error.");
     ::dbus_error_free(&error);
+    // TODO(yusukes): We don't call dbus_connection_close() nor g_object_unref()
+    // here for now since these calls might interfare with IBusBus connections
+    // in libcros and Chrome. See the comment in ~InputMethodStatusConnection()
+    // function in platform/cros/chromeos_input_method.cc for details.
+    return BusConnection(NULL);
   }
-  
+
   ::dbus_connection_setup_with_g_main(
       raw_connection, NULL /* default context */);
 
@@ -210,7 +216,7 @@ bool RegisterExclusiveService(const BusConnection& connection,
   }
 
   // Determine a path from the service name and register the object.
-  dbus_g_connection_register_g_object(connection.g_connection(), 
+  dbus_g_connection_register_g_object(connection.g_connection(),
                                       service_path,
                                       object);
   return true;

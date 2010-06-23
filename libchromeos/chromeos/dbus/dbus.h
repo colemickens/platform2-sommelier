@@ -34,11 +34,14 @@ class BusConnection {
   typedef ::DBusGConnection* value_type;
 
   BusConnection(const BusConnection& x)
-      : object_(dbus_g_connection_ref(x.object_)) {
+      : object_(x.object_) {
+    if (object_)
+      ::dbus_g_connection_ref(object_);
   }
 
   ~BusConnection() {
-    ::dbus_g_connection_unref(object_);
+    if (object_)
+      ::dbus_g_connection_unref(object_);
   }
 
   BusConnection& operator=(BusConnection x) {
@@ -48,6 +51,14 @@ class BusConnection {
 
   const value_type& g_connection() const {
     DCHECK(object_) << "referencing an empty connection";
+    return object_;
+  }
+
+  operator bool() const {
+    return object_;
+  }
+
+  bool HasConnection() const {
     return object_;
   }
 
@@ -61,7 +72,6 @@ class BusConnection {
   // Constructor takes ownership
   explicit BusConnection(::DBusGConnection* x)
       : object_(x) {
-    DCHECK(object_) << "Constructing BusConnection with NULL object.";
   }
 
   value_type object_;
