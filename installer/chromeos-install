@@ -24,8 +24,6 @@ DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
-DEFINE_boolean recovery ${FLAGS_FALSE} \
-  "Install from a recovery image. Default: False"
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable. \
@@ -213,12 +211,6 @@ KERNEL_IMG=$(make_partition_dev ${SRC} 2)
 ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
 OEM_IMG=$(make_partition_dev ${SRC} 8)
 ESP_IMG=$(make_partition_dev ${SRC} 12)
-
-# For recovery image, copy from ROOT-B and KERN-B to destination
-if [ "$FLAGS_recovery" -eq "$FLAGS_TRUE" ]; then
-  KERNEL_IMG=$(make_partition_dev ${SRC} 4)
-  ROOTFS_IMG=$(make_partition_dev ${SRC} 5)
-fi
 
 if [ $(uname -m) = "armv7l" ]; then
   PMBRCODE=/dev/zero
