@@ -715,12 +715,17 @@ void GobiModem::ResetModem(DBus::Error& error) {
     usleep(kPollIntervalMs * 1000);
   }
 
+  if (!tmperr.is_set()) {
+    LOG(WARNING) << "Modem reset:  Modem never disconnected";
+    error.set(kDisconnectError, "Modem never disconnected");
+    return;
+  }
   LOG(INFO) << "Modem reset:  Modem now unavailable";
 
   while (base::Time::NowFromSystemTime() < deadline) {
-    SDKCALL(Sdk, QCWWANDisconnect)
-    ApiConnect(tmperr);
-    if (!tmperr.is_set()) {
+    DBus::Error reconnect_error;
+    ApiConnect(reconnect_error);
+    if (!reconnect_error.is_set()) {
       connected = true;
       break;
     };
@@ -730,7 +735,7 @@ void GobiModem::ResetModem(DBus::Error& error) {
   if (!connected) {
     // TODO(rochberg):  Send DeviceRemoved
     LOG(WARNING) << "Modem did not come back after reset";
-    error = tmperr;
+    error.set(kConnectError, "Modem did not come back after reset");
     return;
   } else {
     LOG(INFO) << "Modem returned from reset";
@@ -800,8 +805,11 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
                    &modem_carrier_id,
                    &region,
                    &gps_capability)
- 
+
   if (modem_carrier_id != carrier->carrier_id) {
+
+    // N.B. All but basename of image_path is ignored, by the
+    // UpgradeFirmware call
     std::string image_path = "/opt/Qualcomm/Images2k/HP/";
     image_path += carrier->firmware_directory;
 

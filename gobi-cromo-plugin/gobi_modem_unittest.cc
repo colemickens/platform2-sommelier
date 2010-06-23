@@ -134,8 +134,34 @@ TEST_F(GobiModemTest, EnableFalseToTrue) {
 TEST_F(GobiModemTest, GetStatusWhenDisabled) {
   DBusPropertyMap map;
 
+  EXPECT_CALL(sdk_, GetActivationState(_)).WillOnce(Return(0));
+  ExpectGetFirmwareInfoWithCarrier(102);
+  EXPECT_CALL(sdk_, GetSessionState(_)).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, GetServingNetwork(_, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(sdk_, GetSerialNumbers(_, _, _, _, _, _)).WillOnce(Return(1));
   map = modem_->GetStatus(*error_);
+  ASSERT_FALSE(error_->is_set());
+}
+
+TEST_F(GobiModemTest, ResetModem) {
+  InSequence s;
+
+  EXPECT_CALL(sdk_, SetPower(gobi::kOffline)).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, SetPower(gobi::kReset)).WillOnce(Return(0));
+
+  // Waiting for modem to go down
+  EXPECT_CALL(sdk_, QCWWANDisconnect()).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, QCWWANDisconnect()).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
+
+  // Waiting for modem to come back up
+  EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
+  EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
+  EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(0));
+
+  modem_->SoftReset(*error_);
+  ASSERT_FALSE(error_->is_set());
 }
 
 
