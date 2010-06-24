@@ -55,10 +55,14 @@ fi
 if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
   . "$(dirname "$0")/crosh-usb"
 fi
-  
+
 # TODO(rginda): Switch to the "real" dev mode file when we have one.
 if [ "$(echo "$@" | grep -- "--dev")" -o -f "/root/.dev_mode" ]; then
   . "$(dirname "$0")/crosh-dev"
+fi
+
+if [ -e "$(dirname $0)/crosh-workarounds" ]; then
+  . "$(dirname "$0")/crosh-workarounds"
 fi
 
 shell_read() {
