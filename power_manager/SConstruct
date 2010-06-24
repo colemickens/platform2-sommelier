@@ -55,17 +55,16 @@ backlight_controller = gdk_env.Library('backlight_controller',
                                        ['backlight_controller.cc'])
 power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
-powerd_env.Append(LIBS=Split('chromeos gflags metrics'))
+powerd_env.Append(LIBS=Split('chromeos crosapi gflags metrics'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
 powerd_sources = ['powerd.cc', 'powerd_metrics.cc', 'screen_locker.cc',
                   'suspender.cc', 'util.cc']
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
-load_lib = base_env.Library('load',  ['../cros/load.cc'])
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,
-                             power_prefs, backlight_controller, load_lib])
+                             power_prefs, backlight_controller])
 Default(powerd)
 
 # Build unit tests
@@ -86,6 +85,6 @@ tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
-        backlight_controller, power_prefs, load_lib]
+        backlight_controller, power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))
