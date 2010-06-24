@@ -18,7 +18,9 @@ void Suspender::RequestSuspend() {
     locker_->LockScreen();
     g_timeout_add(3000, CheckSuspendTimeout, this);
   } else {
-    util::Launch("shutdown -h now");
+    // TODO(davidjames): Switch to using the reboot.2 system call when we
+    // have CAP_SYS_BOOT permissions.
+    util::Launch("sudo shutdown -P now");
   }
 }
 

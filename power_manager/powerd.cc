@@ -58,6 +58,7 @@ void Daemon::Init() {
   key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
   key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
                                           XF86XK_MonBrightnessDown);
+  key_power_off_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_PowerOff);
   key_f6_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F6);
   key_f7_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F7);
   CHECK(key_f6_ != 0);
@@ -74,6 +75,11 @@ void Daemon::Init() {
   GrabKey(key_brightness_down_, 0);
   GrabKey(key_f6_, 0);
   GrabKey(key_f7_, 0);
+  if (key_power_off_ != 0) {
+    GrabKey(key_power_off_, 0);
+  } else {
+    LOG(ERROR) << "No power off keycode found.";
+  }
   gdk_window_add_filter(NULL, gdk_event_filter, this);
   locker_.Init(use_xscreensaver_);
   RegisterDBusMessageHandler();
@@ -222,7 +228,14 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   if (xevent->type == KeyPress) {
     int keycode = xevent->xkey.keycode;
-    if (keycode == daemon->key_brightness_up_ || keycode == daemon->key_f7_) {
+    if (keycode == daemon->key_power_off_ &&
+        (daemon->idle_state_ == kIdleNormal ||
+         daemon->idle_state_ == kIdleDim)) {
+      // TODO(davidjames): Switch to using the reboot.2 system call when we
+      // have CAP_SYS_BOOT permissions.
+      util::Launch("sudo shutdown -P now");
+    } else if (keycode == daemon->key_brightness_up_ ||
+               keycode == daemon->key_f7_) {
       if (keycode == daemon->key_brightness_up_) {
         LOG(INFO) << "Key press: Brightness up";
       } else {  // keycode == daemon->key_f7_

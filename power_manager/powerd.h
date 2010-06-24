@@ -209,9 +209,10 @@ class Daemon : public XIdleMonitor {
   // Idle time as of last idle event.
   base::TimeDelta last_idle_timedelta_;
 
-  // Key symbols for brightness up and down, F6 and F7
+  // Key symbols
   KeyCode key_brightness_up_;
   KeyCode key_brightness_down_;
+  KeyCode key_power_off_;
   KeyCode key_f6_;
   KeyCode key_f7_;
 };
