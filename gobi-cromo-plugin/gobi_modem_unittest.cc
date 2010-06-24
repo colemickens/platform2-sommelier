@@ -73,6 +73,24 @@ class GobiModemTest : public ::testing::Test {
         Return(0)));
   }
 
+  void ExpectRegisterCallbacks() {
+    EXPECT_CALL(sdk_, SetActivationStatusCallback(
+        GobiModem::ActivationStatusCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetNMEAPlusCallback(
+        GobiModem::NmeaPlusCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetOMADMStateCallback(
+        GobiModem::OmadmStateCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetSessionStateCallback(
+        GobiModem::SessionStateCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetDataBearerCallback(
+        GobiModem::DataBearerCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetRoamingIndicatorCallback(
+        GobiModem::RoamingIndicatorCallbackTrampoline));
+    EXPECT_CALL(sdk_, SetSignalStrengthCallback(
+        GobiModem::SignalStrengthCallbackTrampoline, 5, _));
+
+  }
+
   void ExpectLogGobiInformation() {
     EXPECT_CALL(sdk_, GetManufacturer(_, _)).WillOnce(DoAll(
         SetQString<0, 1>("Mock Manufacturer"),
@@ -123,6 +141,7 @@ TEST_F(GobiModemTest, EnableFalseToTrue) {
   EXPECT_CALL(sdk_, QCWWANConnect(
       StrEq(kDeviceElement.deviceNode),
       StrEq(kDeviceElement.deviceKey)));
+  ExpectRegisterCallbacks();
 
   ExpectLogGobiInformation();
   ExpectGetFirmwareInfoWithCarrier(102);
@@ -152,6 +171,7 @@ TEST_F(GobiModemTest, ResetModem) {
   // Waiting for modem to go down
   EXPECT_CALL(sdk_, QCWWANDisconnect()).WillOnce(Return(0));
   EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(0));
+  ExpectRegisterCallbacks();
   EXPECT_CALL(sdk_, QCWWANDisconnect()).WillOnce(Return(0));
   EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
 
@@ -159,6 +179,7 @@ TEST_F(GobiModemTest, ResetModem) {
   EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
   EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(1));
   EXPECT_CALL(sdk_, QCWWANConnect(_, _)).WillOnce(Return(0));
+  ExpectRegisterCallbacks();
 
   modem_->SoftReset(*error_);
   ASSERT_FALSE(error_->is_set());

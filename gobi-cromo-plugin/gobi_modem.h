@@ -92,6 +92,7 @@ class GobiModem
   void ApiConnect(DBus::Error& error);
   void EnsureFirmwareLoaded(const char* carrier_name, DBus::Error& error);
   void GetSignalStrengthDbm(int& strength, DBus::Error& error);
+  void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
   struct SerialNumbers {
@@ -178,6 +179,8 @@ class GobiModem
   INT8  signal_strength_;
 
   static GobiModem *connected_modem_;
+
+  friend class GobiModemTest;
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };

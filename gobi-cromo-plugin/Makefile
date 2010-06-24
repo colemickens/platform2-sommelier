@@ -22,7 +22,8 @@ GLUE_HEADERS = modem_gobi_server_glue.h
 TESTS = gobi_modem_unittest
 
 SRCS = gobi_modem_handler.cc \
-	gobi_modem.cc
+	gobi_modem.cc \
+	gobi_sdk_wrapper.cc
 
 OBJS = $(SRCS:.cc=.o)
 
@@ -31,12 +32,10 @@ all: $(GOBI_PLUGIN) $(TESTS)
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
 
-%unittest : %unittest.cc
-
 %unittest : LDLIBS += -lgtest -lgmock $(shell $(PKG_CONFIG) --libs gobject-2.0 \
 	 dbus-1 dbus-glib-1 dbus-c++-1)
 
-gobi_modem_unittest : gobi_modem.cc
+gobi_modem_unittest : gobi_modem.o gobi_sdk_wrapper.o gobi_modem_unittest.o
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@

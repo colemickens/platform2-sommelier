@@ -572,20 +572,13 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   }
 }
 
-void GobiModem::ApiConnect(DBus::Error& error) {
-  ULONG rc;
-
-  SDKCALL(Sdk,
-  QCWWANConnect, device_.deviceNode, device_.deviceKey)
-
-  connected_modem_ = this;
-
-  SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
-  SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
-  SetOMADMStateCallback(OmadmStateCallbackTrampoline);
-  SetSessionStateCallback(SessionStateCallbackTrampoline);
-  SetDataBearerCallback(DataBearerCallbackTrampoline);
-  SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
+void GobiModem::RegisterCallbacks() {
+  sdk_->SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
+  sdk_->SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
+  sdk_->SetOMADMStateCallback(OmadmStateCallbackTrampoline);
+  sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);
+  sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
+  sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
 
   int num_thresholds = kSignalStrengthNumLevels - 1;
   int interval =
@@ -595,10 +588,18 @@ void GobiModem::ApiConnect(DBus::Error& error) {
   for (int i = 0; i < num_thresholds; i++) {
     thresholds[i] = kMinSignalStrengthDbm + interval * i;
   }
+  sdk_->SetSignalStrengthCallback(SignalStrengthCallbackTrampoline,
+                                  num_thresholds,
+                                  thresholds.get());
+}
 
-  SetSignalStrengthCallback(SignalStrengthCallbackTrampoline,
-                            num_thresholds,
-                            thresholds.get());
+void GobiModem::ApiConnect(DBus::Error& error) {
+  ULONG rc;
+
+  SDKCALL(Sdk,
+  QCWWANConnect, device_.deviceNode, device_.deviceKey)
+  connected_modem_ = this;
+  RegisterCallbacks();
 }
 
 void GobiModem::LogGobiInformation() {
@@ -805,7 +806,6 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
                    &modem_carrier_id,
                    &region,
                    &gps_capability)
-
   if (modem_carrier_id != carrier->carrier_id) {
 
     // N.B. All but basename of image_path is ignored, by the
@@ -816,7 +816,7 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
     LOG(INFO) << "Current Gobi carrier: " << modem_carrier_id
               << ".  Upgrading Gobi firmware with "
               << image_path;
-    rc = UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
+    rc = sdk_->UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
     if (rc != 0) {
       LOG(WARNING) << "Firmware load from " << image_path << " failed: " << rc;
       error.set(kFirmwareLoadError, "UpgradeFirmware");
@@ -969,7 +969,7 @@ void GobiModem::GetSignalStrengthDbm(int& output, DBus::Error& error) {
 
   if (session_state == gobi::kConnected) {
     ULONG db_technology;
-    rc = GetDataBearerTechnology(&db_technology);
+    rc =  sdk_->GetDataBearerTechnology(&db_technology);
     if (rc != 0) {
       LOG(WARNING) << "GetDataBearerTechnology failed: " << rc;
       error.set(kSdkError, "GetDataBearerTechnology");

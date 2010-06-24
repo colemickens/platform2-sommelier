@@ -6,6 +6,7 @@
   gobi_sdk_wrapper.h,
   derived from
   QCWWANCMAPI2k.h
+  which has the following copyright notice:
 
   DESCRIPTION:
   QUALCOMM Wireless WAN Connection Manager API for Gobi 2000
@@ -22,7 +23,100 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
-#include "QCWWANCMAPI2k.h"
+
+// Type Definitions
+typedef unsigned long      ULONG;
+typedef unsigned long long ULONGLONG;
+typedef signed char        INT8;
+typedef unsigned char      BYTE;
+typedef char               CHAR;
+typedef unsigned short     WORD;
+typedef unsigned short     USHORT;
+typedef const char *       LPCSTR;
+
+// Session state callback function
+typedef void (* tFNSessionState)(
+   ULONG                      state,
+   ULONG                      sessionEndReason );
+
+// RX/TX byte counts callback function
+typedef void (* tFNByteTotals)(
+   ULONGLONG                  totalBytesTX,
+   ULONGLONG                  totalBytesRX );
+
+// Dormancy status callback function
+typedef void (* tFNDormancyStatus)( ULONG dormancyStatus );
+
+// Mobile IP status callback function
+typedef void (* tFNMobileIPStatus)( ULONG mipStatus );
+
+// Activation status callback function
+typedef void (* tFNActivationStatus)( ULONG activationStatus );
+
+// Power operating mode callback function
+typedef void (* tFNPower)( ULONG operatingMode );
+
+// Serving system data capabilities callback function
+typedef void (* tFNDataCapabilities)(
+   BYTE                       dataCapsSize,
+   BYTE *                     pDataCaps );
+
+// Data bearer technology callback function
+typedef void (* tFNDataBearer)( ULONG dataBearer );
+
+// Roaming indicator callback function
+typedef void (* tFNRoamingIndicator)( ULONG roaming );
+
+// Signal strength callback function
+typedef void (* tFNSignalStrength)(
+   INT8                       signalStrength,
+   ULONG                      radioInterface );
+
+// RF information callback function
+typedef void (* tFNRFInfo)(
+   ULONG                      radioInterface,
+   ULONG                      activeBandClass,
+   ULONG                      activeChannel );
+
+// LU reject callback function
+typedef void (* tFNLUReject)(
+   ULONG                      serviceDomain,
+   ULONG                      rejectCause );
+
+// New SMS message callback function
+typedef void (* tFNNewSMS)(
+   ULONG                      storageType,
+   ULONG                      messageIndex );
+
+// New NMEA sentence callback function
+typedef void (* tFNNewNMEA)( LPCSTR pNMEA );
+
+// New NMEA sentence plus mode callback function
+typedef void (* tFNNewNMEAPlus)(
+   LPCSTR                     pNMEA,
+   ULONG                      mode );
+
+// PDS session state callback function
+typedef void (* tFNPDSState)(
+   ULONG                      enabledStatus,
+   ULONG                      trackingStatus );
+
+// CAT event callback function
+typedef void (* tFNCATEvent)(
+   ULONG                      eventID,
+   ULONG                      eventLen,
+   BYTE *                     pEventData );
+
+// OMA-DM network initiated alert callback function
+typedef void (* tFNOMADMAlert)(
+   ULONG                      sessionType,
+   USHORT                     sessionID );
+
+// OMA-DM state callback function
+typedef void (* tFNOMADMState)(
+   ULONG                      sessionState,
+   ULONG                      failureReason );
+
 
 namespace gobi {
 
@@ -134,58 +228,33 @@ typedef struct {
 class Sdk {
  public:
   virtual ~Sdk() {}
-
   virtual ULONG QCWWANEnumerateDevices(
       BYTE *                     pDevicesSize,
-      BYTE *                     pDevices) {
-    return ::QCWWANEnumerateDevices(pDevicesSize,
-                                    pDevices);
-  }
+      BYTE *                     pDevices);
 
   virtual ULONG QCWWANConnect(
       CHAR *                     pDeviceNode,
-      CHAR *                     pDeviceKey) {
-    return ::QCWWANConnect(pDeviceNode,
-                           pDeviceKey);
-  }
+      CHAR *                     pDeviceKey);
 
-  virtual ULONG QCWWANDisconnect() {
-    return ::QCWWANDisconnect();
-  }
+  virtual ULONG QCWWANDisconnect();
 
   virtual ULONG QCWWANGetConnectedDeviceID(
       ULONG                      deviceNodeSize,
       CHAR *                     pDeviceNode,
       ULONG                      deviceKeySize,
-      CHAR *                     pDeviceKey) {
-    return ::QCWWANGetConnectedDeviceID(
-        deviceNodeSize,
-        pDeviceNode,
-        deviceKeySize,
-        pDeviceKey);
-  }
+      CHAR *                     pDeviceKey);
 
-  virtual ULONG GetSessionState(ULONG * pState) {
-    return ::GetSessionState(pState);
-  }
+  virtual ULONG GetSessionState(ULONG * pState);
 
-  virtual ULONG GetSessionDuration(ULONGLONG * pDuration) {
-    return ::GetSessionDuration(pDuration);
-  }
+  virtual ULONG GetSessionDuration(ULONGLONG * pDuration);
 
-  virtual ULONG GetDormancyState(ULONG * pState) {
-    return ::GetDormancyState(pState);
-  }
+  virtual ULONG GetDormancyState(ULONG * pState);
 
-  virtual ULONG GetAutoconnect(ULONG * pSetting) {
-    return ::GetAutoconnect(pSetting);
-  }
+  virtual ULONG GetAutoconnect(ULONG * pSetting);
 
-  virtual ULONG SetAutoconnect(ULONG setting) {
-    return ::SetAutoconnect(setting);
-  }
+  virtual ULONG SetAutoconnect(ULONG setting);
 
-  ULONG SetDefaultProfile(
+  virtual ULONG SetDefaultProfile(
       ULONG                      profileType,
       ULONG *                    pPDPType,
       ULONG *                    pIPAddress,
@@ -195,19 +264,7 @@ class Sdk {
       CHAR *                     pName,
       CHAR *                     pAPNName,
       CHAR *                     pUsername,
-      CHAR *                     pPassword) {
-    return ::SetDefaultProfile(
-        profileType,
-        pPDPType,
-        pIPAddress,
-        pPrimaryDNS,
-        pSecondaryDNS,
-        pAuthentication,
-        pName,
-        pAPNName,
-        pUsername,
-        pPassword);
-  }
+      CHAR *                     pPassword);
 
   virtual ULONG GetDefaultProfile(
       ULONG                      profileType,
@@ -221,21 +278,7 @@ class Sdk {
       BYTE                       apnSize,
       CHAR *                     pAPNName,
       BYTE                       userSize,
-      CHAR *                     pUsername) {
-    return ::GetDefaultProfile(
-        profileType,
-        pPDPType,
-        pIPAddress,
-        pPrimaryDNS,
-        pSecondaryDNS,
-        pAuthentication,
-        nameSize,
-        pName,
-        apnSize,
-        pAPNName,
-        userSize,
-        pUsername);
-  }
+      CHAR *                     pUsername);
 
   virtual ULONG StartDataSession(
       ULONG *                    pTechnology,
@@ -244,42 +287,17 @@ class Sdk {
       CHAR *                     pUsername,
       CHAR *                     pPassword,
       ULONG *                    pSessionId,
-      ULONG *                    pFailureReason 
-                        ) {
-    return ::StartDataSession(
-        pTechnology,
-        NULL,
-        NULL,
-        NULL,
-        NULL,
-        pAPNName,
-        NULL,
-        pAuthentication,
-        pUsername,
-        pPassword,
-        pSessionId,
-        pFailureReason);
-  }
+      ULONG *                    pFailureReason);
 
-  virtual ULONG StopDataSession(ULONG sessionId) {
-    return ::StopDataSession(sessionId);
-  }
+  virtual ULONG StopDataSession(ULONG sessionId);
 
-  virtual ULONG GetIPAddress(ULONG * pIPAddress) {
-    return ::GetIPAddress(pIPAddress);
-  }
+  virtual ULONG GetIPAddress(ULONG * pIPAddress);
 
   virtual ULONG GetConnectionRate(
       ULONG *                    pCurrentChannelTXRate,
       ULONG *                    pCurrentChannelRXRate,
       ULONG *                    pMaxChannelTXRate,
-      ULONG *                    pMaxChannelRXRate) {
-    return ::GetConnectionRate(
-        pCurrentChannelTXRate,
-        pCurrentChannelRXRate,
-        pMaxChannelTXRate,
-        pMaxChannelRXRate);
-  }
+      ULONG *                    pMaxChannelRXRate);
 
   virtual ULONG GetPacketStatus(
       ULONG *                    pTXPacketSuccesses,
@@ -287,43 +305,21 @@ class Sdk {
       ULONG *                    pTXPacketErrors,
       ULONG *                    pRXPacketErrors,
       ULONG *                    pTXPacketOverflows,
-      ULONG *                    pRXPacketOverflows) {
-    return ::GetPacketStatus(
-        pTXPacketSuccesses,
-        pRXPacketSuccesses,
-        pTXPacketErrors,
-        pRXPacketErrors,
-        pTXPacketOverflows,
-        pRXPacketOverflows);
-  }
+      ULONG *                    pRXPacketOverflows);
 
   virtual ULONG GetByteTotals(
       ULONGLONG *                pTXTotalBytes,
-      ULONGLONG *                pRXTotalBytes) {
-    return ::GetByteTotals(
-        pTXTotalBytes,
-        pRXTotalBytes);
-  }
+      ULONGLONG *                pRXTotalBytes);
 
-  virtual ULONG SetMobileIP(ULONG mode) {
-    return ::SetMobileIP(mode);
-  }
+  virtual ULONG SetMobileIP(ULONG mode);
 
-  virtual ULONG GetMobileIP(ULONG * pMode) {
-    return ::GetMobileIP(pMode);
-  }
+  virtual ULONG GetMobileIP(ULONG * pMode);
 
   virtual ULONG SetActiveMobileIPProfile(
       CHAR *                     pSPC,
-      BYTE                       index) {
-    return ::SetActiveMobileIPProfile(
-        pSPC,
-        index);
-  }
+      BYTE                       index);
 
-  virtual ULONG GetActiveMobileIPProfile(BYTE * pIndex) {
-    return ::GetActiveMobileIPProfile(pIndex);
-  }
+  virtual ULONG GetActiveMobileIPProfile(BYTE * pIndex);
 
   virtual ULONG SetMobileIPProfile(
       CHAR *                     pSPC,
@@ -337,21 +333,7 @@ class Sdk {
       ULONG *                    pHASPI,
       ULONG *                    pAAASPI,
       CHAR *                     pMNHA,
-      CHAR *                     pMNAAA) {
-    return ::SetMobileIPProfile(
-        pSPC,
-        index,
-        pEnabled,
-        pAddress,
-        pPrimaryHA,
-        pSecondaryHA,
-        pRevTunneling,
-        pNAI,
-        pHASPI,
-        pAAASPI,
-        pMNHA,
-        pMNAAA);
-  }
+      CHAR *                     pMNAAA);
 
   virtual ULONG GetMobileIPProfile(
       BYTE                       index,
@@ -365,21 +347,7 @@ class Sdk {
       ULONG *                    pHASPI,
       ULONG *                    pAAASPI,
       ULONG *                    pHAState,
-      ULONG *                    pAAAState) {
-    return ::GetMobileIPProfile(
-        index,
-        pEnabled,
-        pAddress,
-        pPrimaryHA,
-        pSecondaryHA,
-        pRevTunneling,
-        naiSize,
-        pNAI,
-        pHASPI,
-        pAAASPI,
-        pHAState,
-        pAAAState);
-  }
+      ULONG *                    pAAAState);
 
   virtual ULONG SetMobileIPParameters(
       CHAR *                     pSPC,
@@ -389,17 +357,7 @@ class Sdk {
       BYTE *                     pReRegPeriod,
       BYTE *                     pReRegTraffic,
       BYTE *                     pHAAuthenticator,
-      BYTE *                     pHA2002bis) {
-    return ::SetMobileIPParameters(
-        pSPC,
-        pMode,
-        pRetryLimit,
-        pRetryInterval,
-        pReRegPeriod,
-        pReRegTraffic,
-        pHAAuthenticator,
-        pHA2002bis);
-  }
+      BYTE *                     pHA2002bis);
 
   virtual ULONG GetMobileIPParameters(
       ULONG *                    pMode,
@@ -408,101 +366,44 @@ class Sdk {
       BYTE *                     pReRegPeriod,
       BYTE *                     pReRegTraffic,
       BYTE *                     pHAAuthenticator,
-      BYTE *                     pHA2002bis) {
-    return ::GetMobileIPParameters(
-        pMode,
-        pRetryLimit,
-        pRetryInterval,
-        pReRegPeriod,
-        pReRegTraffic,
-        pHAAuthenticator,
-        pHA2002bis);
-  }
+      BYTE *                     pHA2002bis);
 
-  virtual ULONG GetLastMobileIPError(ULONG * pError) {
-    return ::GetLastMobileIPError(pError);
-  }
+  virtual ULONG GetLastMobileIPError(ULONG * pError);
 
-  virtual ULONG GetANAAAAuthenticationStatus(ULONG * pStatus) {
-    return ::GetANAAAAuthenticationStatus(pStatus);
-  }
+  virtual ULONG GetANAAAAuthenticationStatus(ULONG * pStatus);
 
   virtual ULONG GetSignalStrengths(
       ULONG *                    pArraySizes,
       INT8 *                     pSignalStrengths,
-      ULONG *                    pRadioInterfaces) {
-    return ::GetSignalStrengths(
-        pArraySizes,
-        pSignalStrengths,
-        pRadioInterfaces);
-  }
+      ULONG *                    pRadioInterfaces);
 
   virtual ULONG GetRFInfo(
       BYTE *                     pInstanceSize,
-      BYTE *                     pInstances) {
-    return ::GetRFInfo(
-        pInstanceSize,
-        pInstances);
-  }
+      BYTE *                     pInstances);
 
   virtual ULONG PerformNetworkScan(
       BYTE *                     pInstanceSize,
-      BYTE *                     pInstances) {
-    return ::PerformNetworkScan(
-        pInstanceSize,
-        pInstances);
-  }
+      BYTE *                     pInstances);
 
   virtual ULONG InitiateNetworkRegistration(
       ULONG                      regType,
       WORD                       mcc,
       WORD                       mnc,
-      ULONG                      rat) {
-    return ::InitiateNetworkRegistration(
-        regType,
-        mcc,
-        mnc,
-        rat);
-  }
+      ULONG                      rat);
 
-  virtual ULONG InitiateDomainAttach(ULONG action) {
-    return ::InitiateDomainAttach(action);
-  }
+  virtual ULONG InitiateDomainAttach(ULONG action);
 
   virtual ULONG GetServingNetwork(
       ULONG *                    pRegistrationState,
       BYTE *                     pRadioIfacesSize,
       BYTE *                     pRadioIfaces,
-      ULONG *                    pRoaming) {
-    CHAR netName[32];
-    ULONG l1, l2, l3;
-    WORD w4, w5;
-  return ::GetServingNetwork(
-      pRegistrationState,
-      &l1,              // CS domain
-      &l2,              // PS domain
-      &l3,              // radio access network type
-      pRadioIfacesSize,
-      pRadioIfaces,
-      pRoaming,
-      &w4,              // mobile country code
-      &w5,              // mobile network code
-      sizeof(netName),  // size of name array
-      netName           // network name
-      );
-  }
+      ULONG *                    pRoaming);
 
   virtual ULONG GetServingNetworkCapabilities(
       BYTE *                     pDataCapsSize,
-      BYTE *                     pDataCaps) {
-    return ::GetServingNetworkCapabilities(
-        pDataCapsSize,
-        pDataCaps);
-  }
+      BYTE *                     pDataCaps);
 
-  virtual ULONG GetDataBearerTechnology(ULONG * pDataBearer) {
-    return ::GetDataBearerTechnology(pDataBearer);
-  }
+  virtual ULONG GetDataBearerTechnology(ULONG * pDataBearer);
 
   virtual ULONG GetHomeNetwork(
       WORD *                     pMCC,
@@ -510,33 +411,16 @@ class Sdk {
       BYTE                       nameSize,
       CHAR *                     pName,
       WORD *                     pSID,
-      WORD *                     pNID) {
-    return ::GetHomeNetwork(
-        pMCC,
-        pMNC,
-        nameSize,
-        pName,
-        pSID,
-        pNID);
-  }
+      WORD *                     pNID);
 
   virtual ULONG SetNetworkPreference(
       ULONG                      technologyPref,
-      ULONG                      duration) {
-    return ::SetNetworkPreference(
-        technologyPref,
-        duration);
-  }
+      ULONG                      duration);
 
   virtual ULONG GetNetworkPreference(
       ULONG *                    pTechnologyPref,
       ULONG *                    pDuration,
-      ULONG *                    pPersistentTechnologyPref) {
-    return ::GetNetworkPreference(
-        pTechnologyPref,
-        pDuration,
-        pPersistentTechnologyPref);
-  }
+      ULONG *                    pPersistentTechnologyPref);
 
   virtual ULONG SetCDMANetworkParameters(
       CHAR *                     pSPC,
@@ -545,16 +429,7 @@ class Sdk {
       ULONG *                    pProtocol,
       ULONG *                    pBroadcast,
       ULONG *                    pApplication,
-      ULONG *                    pRoaming) {
-    return ::SetCDMANetworkParameters(
-        pSPC,
-        pForceRev0,
-        pCustomSCP,
-        pProtocol,
-        pBroadcast,
-        pApplication,
-        pRoaming);
-  }
+      ULONG *                    pRoaming);
 
   virtual ULONG GetCDMANetworkParameters(
       BYTE *                     pSCI,
@@ -567,32 +442,13 @@ class Sdk {
       ULONG *                    pProtocol,
       ULONG *                    pBroadcast,
       ULONG *                    pApplication,
-      ULONG *                    pRoaming) {
-    return ::GetCDMANetworkParameters(
-        pSCI,
-        pSCM,
-        pRegHomeSID,
-        pRegForeignSID,
-        pRegForeignNID,
-        pForceRev0,
-        pCustomSCP,
-        pProtocol,
-        pBroadcast,
-        pApplication,
-        pRoaming);
-  }
+      ULONG *                    pRoaming);
 
-  virtual ULONG GetACCOLC(BYTE * pACCOLC) {
-    return ::GetACCOLC(pACCOLC);
-  }
+  virtual ULONG GetACCOLC(BYTE * pACCOLC);
 
   virtual ULONG SetACCOLC(
       CHAR *                     pSPC,
-      BYTE                       accolc) {
-    return ::SetACCOLC(
-        pSPC,
-        accolc);
-  }
+      BYTE                       accolc);
 
   virtual ULONG GetDeviceCapabilities(
       ULONG *                    pMaxTXChannelRate,
@@ -600,39 +456,19 @@ class Sdk {
       ULONG *                    pDataServiceCapability,
       ULONG *                    pSimCapability,
       ULONG *                    pRadioIfacesSize,
-      BYTE *                     pRadioIfaces) {
-    return ::GetDeviceCapabilities(
-        pMaxTXChannelRate,
-        pMaxRXChannelRate,
-        pDataServiceCapability,
-        pSimCapability,
-        pRadioIfacesSize,
-        pRadioIfaces);
-  }
+      BYTE *                     pRadioIfaces);
 
   virtual ULONG GetManufacturer(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::GetManufacturer(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
 
   virtual ULONG GetModelID(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::GetModelID(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
 
   virtual ULONG GetFirmwareRevision(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::GetFirmwareRevision(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
 
   virtual ULONG GetFirmwareRevisions(
       BYTE                       amssSize,
@@ -640,49 +476,24 @@ class Sdk {
       BYTE                       bootSize,
       CHAR *                     pBootString,
       BYTE                       priSize,
-      CHAR *                     pPRIString) {
-    return ::GetFirmwareRevisions(
-        amssSize,
-        pAMSSString,
-        bootSize,
-        pBootString,
-        priSize,
-        pPRIString);
-  }
+      CHAR *                     pPRIString);
 
   virtual ULONG GetFirmwareInfo(
       ULONG *                    pFirmwareID,
       ULONG *                    pTechnology,
       ULONG *                    pCarrier,
       ULONG *                    pRegion,
-      ULONG *                    pGPSCapability) {
-    return ::GetFirmwareInfo(
-        pFirmwareID,
-        pTechnology,
-        pCarrier,
-        pRegion,
-        pGPSCapability);
-  }
+      ULONG *                    pGPSCapability);
 
   virtual ULONG GetVoiceNumber(
       BYTE                       voiceNumberSize,
       CHAR *                     pVoiceNumber,
       BYTE                       minSize,
-      CHAR *                     pMIN) {
-    return ::GetVoiceNumber(
-        voiceNumberSize,
-        pVoiceNumber,
-        minSize,
-        pMIN);
-  }
+      CHAR *                     pMIN);
 
   virtual ULONG GetIMSI(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::GetIMSI(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
 
   virtual ULONG GetSerialNumbers(
       BYTE                       esnSize,
@@ -690,60 +501,30 @@ class Sdk {
       BYTE                       imeiSize,
       CHAR *                     pIMEIString,
       BYTE                       meidSize,
-      CHAR *                     pMEIDString) {
-    return ::GetSerialNumbers(
-        esnSize,
-        pESNString,
-        imeiSize,
-        pIMEIString,
-        meidSize,
-        pMEIDString);
-  }
+      CHAR *                     pMEIDString);
 
   virtual ULONG SetLock(
       ULONG                      state,
-      CHAR *                     pCurrentPIN) {
-    return ::SetLock(
-        state,
-        pCurrentPIN);
-  }
+      CHAR *                     pCurrentPIN);
 
-  virtual ULONG QueryLock(ULONG * pState) {
-    return ::QueryLock(pState);
-  }
+  virtual ULONG QueryLock(ULONG * pState);
 
   virtual ULONG ChangeLockPIN(
       CHAR *                     pCurrentPIN,
-      CHAR *                     pDesiredPIN) {
-    return ::ChangeLockPIN(
-        pCurrentPIN,
-        pDesiredPIN);
-  }
+      CHAR *                     pDesiredPIN);
 
   virtual ULONG GetHardwareRevision(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::GetHardwareRevision(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
 
-  virtual ULONG GetPRLVersion(WORD * pPRLVersion) {
-    return ::GetPRLVersion(pPRLVersion);
-  }
+  virtual ULONG GetPRLVersion(WORD * pPRLVersion);
 
   virtual ULONG GetERIFile(
       ULONG *                    pFileSize,
-      BYTE *                     pFile) {
-    return ::GetERIFile(
-        pFileSize,
-        pFile);
-  }
+      BYTE *                     pFile);
 
   // NB: CHROMIUM: modified this to const after investigating QC code
-  virtual ULONG ActivateAutomatic(const CHAR * pActivationCode) {
-    return ::ActivateAutomatic(const_cast<CHAR *>(pActivationCode));
-  }
+  virtual ULONG ActivateAutomatic(const CHAR * pActivationCode);
 
   virtual ULONG ActivateManual(
       CHAR *                     pSPC,
@@ -753,75 +534,36 @@ class Sdk {
       ULONG                      prlSize,
       BYTE *                     pPRL,
       CHAR *                     pMNHA,
-      CHAR *                     pMNAAA) {
-    return ::ActivateManual(
-        pSPC,
-        sid,
-        pMDN,
-        pMIN,
-        prlSize,
-        pPRL,
-        pMNHA,
-        pMNAAA);
-  }
+      CHAR *                     pMNAAA);
 
-  virtual ULONG ResetToFactoryDefaults(CHAR * pSPC) {
-    return ::ResetToFactoryDefaults(pSPC);
-  }
+  virtual ULONG ResetToFactoryDefaults(CHAR * pSPC);
 
-  virtual ULONG GetActivationState(ULONG * pActivationState) {
-    return ::GetActivationState(pActivationState);
-  }
+  virtual ULONG GetActivationState(ULONG * pActivationState);
 
-  virtual ULONG SetPower(ULONG powerMode) {
-    return ::SetPower(powerMode);
-  }
+  virtual ULONG SetPower(ULONG powerMode);
 
-  virtual ULONG GetPower(ULONG * pPowerMode) {
-    return ::GetPower(pPowerMode);
-  }
+  virtual ULONG GetPower(ULONG * pPowerMode);
 
   virtual ULONG GetOfflineReason(
       ULONG *                    pReasonMask,
-      ULONG *                    pbPlatform) {
-    return ::GetOfflineReason(
-        pReasonMask,
-        pbPlatform);
-  }
+      ULONG *                    pbPlatform);
 
   virtual ULONG GetNetworkTime(
       ULONGLONG *                pTimeCount,
-      ULONG *                    pTimeSource) {
-    return ::GetNetworkTime(
-        pTimeCount,
-        pTimeSource);
-  }
+      ULONG *                    pTimeSource);
 
-  virtual ULONG ValidateSPC(CHAR * pSPC) {
-    return ::ValidateSPC(pSPC);
-  }
+  virtual ULONG ValidateSPC(CHAR * pSPC);
 
   virtual ULONG DeleteSMS(
       ULONG                      storageType,
       ULONG *                    pMessageIndex,
-      ULONG *                    pMessageTag) {
-    return ::DeleteSMS(
-        storageType,
-        pMessageIndex,
-        pMessageTag);
-  }
+      ULONG *                    pMessageTag);
 
   virtual ULONG GetSMSList(
       ULONG                      storageType,
       ULONG *                    pRequestedTag,
       ULONG *                    pMessageListSize,
-      BYTE *                     pMessageList) {
-    return ::GetSMSList(
-        storageType,
-        pRequestedTag,
-        pMessageListSize,
-        pMessageList);
-  }
+      BYTE *                     pMessageList);
 
   virtual ULONG GetSMS(
       ULONG                      storageType,
@@ -829,344 +571,171 @@ class Sdk {
       ULONG *                    pMessageTag,
       ULONG *                    pMessageFormat,
       ULONG *                    pMessageSize,
-      BYTE *                     pMessage) {
-    return ::GetSMS(
-        storageType,
-        messageIndex,
-        pMessageTag,
-        pMessageFormat,
-        pMessageSize,
-        pMessage);
-  }
+      BYTE *                     pMessage);
 
   virtual ULONG ModifySMSStatus(
       ULONG                      storageType,
       ULONG                      messageIndex,
-      ULONG                      messageTag) {
-    return ::ModifySMSStatus(
-        storageType,
-        messageIndex,
-        messageTag);
-  }
+      ULONG                      messageTag);
 
   virtual ULONG SaveSMS(
       ULONG                      storageType,
       ULONG                      messageFormat,
       ULONG                      messageSize,
       BYTE *                     pMessage,
-      ULONG *                    pMessageIndex) {
-    return ::SaveSMS(
-        storageType,
-        messageFormat,
-        messageSize,
-        pMessage,
-        pMessageIndex);
-  }
+      ULONG *                    pMessageIndex);
 
   virtual ULONG SendSMS(
       ULONG                      messageFormat,
       ULONG                      messageSize,
       BYTE *                     pMessage,
-      ULONG *                    pMessageFailureCode) {
-    return ::SendSMS(
-        messageFormat,
-        messageSize,
-        pMessage,
-        pMessageFailureCode);
-  }
+      ULONG *                    pMessageFailureCode);
 
   virtual ULONG GetSMSCAddress(
       BYTE                       addressSize,
       CHAR *                     pSMSCAddress,
       BYTE                       typeSize,
-      CHAR *                     pSMSCType) {
-    return ::GetSMSCAddress(
-        addressSize,
-        pSMSCAddress,
-        typeSize,
-        pSMSCType);
-  }
+      CHAR *                     pSMSCType);
 
   virtual ULONG SetSMSCAddress(
       CHAR *                     pSMSCAddress,
-      CHAR *                     pSMSCType) {
-    return ::SetSMSCAddress(
-        pSMSCAddress,
-        pSMSCType);
-  }
+      CHAR *                     pSMSCType);
 
   virtual ULONG UIMSetPINProtection(
       ULONG                      id,
       ULONG                      bEnable,
       CHAR *                     pValue,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMSetPINProtection(
-        id,
-        bEnable,
-        pValue,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMVerifyPIN(
       ULONG                      id,
       CHAR *                     pValue,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMVerifyPIN(
-        id,
-        pValue,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMUnblockPIN(
       ULONG                      id,
       CHAR *                     pPUKValue,
       CHAR *                     pNewValue,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMUnblockPIN(
-        id,
-        pPUKValue,
-        pNewValue,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMChangePIN(
       ULONG                      id,
       CHAR *                     pOldValue,
       CHAR *                     pNewValue,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMChangePIN(
-        id,
-        pOldValue,
-        pNewValue,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMGetPINStatus(
       ULONG                      id,
       ULONG *                    pStatus,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMGetPINStatus(
-        id,
-        pStatus,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMGetICCID(
       BYTE                       stringSize,
-      CHAR *                     pString) {
-    return ::UIMGetICCID(
-        stringSize,
-        pString);
-  }
+      CHAR *                     pString);
   virtual ULONG UIMGetControlKeyStatus(
       ULONG                      id,
       ULONG *                    pStatus,
       ULONG *                    pVerifyRetriesLeft,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMGetControlKeyStatus(
-        id,
-        pStatus,
-        pVerifyRetriesLeft,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG UIMSetControlKeyProtection(
       ULONG                      id,
       ULONG                      status,
       CHAR *                     pValue,
-      ULONG *                    pVerifyRetriesLeft) {
-    return ::UIMSetControlKeyProtection(
-        id,
-        status,
-        pValue,
-        pVerifyRetriesLeft);
-  }
+      ULONG *                    pVerifyRetriesLeft);
 
   virtual ULONG UIMUnblockControlKey(
       ULONG                      id,
       CHAR *                     pValue,
-      ULONG *                    pUnblockRetriesLeft) {
-    return ::UIMUnblockControlKey(
-        id,
-        pValue,
-        pUnblockRetriesLeft);
-  }
+      ULONG *                    pUnblockRetriesLeft);
 
   virtual ULONG GetPDSState(
       ULONG *                    pEnabled,
-      ULONG *                    pTracking) {
-    return ::GetPDSState(
-        pEnabled,
-        pTracking);
-  }
+      ULONG *                    pTracking);
 
-  virtual ULONG SetPDSState(ULONG enable) {
-    return ::SetPDSState(enable);
-  }
+  virtual ULONG SetPDSState(ULONG enable);
 
   virtual ULONG PDSInjectTimeReference(
       ULONGLONG                  systemTime,
-      USHORT                     systemDiscontinuities) {
-    return ::PDSInjectTimeReference(
-        systemTime,
-        systemDiscontinuities);
-  }
+      USHORT                     systemDiscontinuities);
 
   virtual ULONG GetPDSDefaults(
       ULONG *                    pOperation,
       BYTE *                     pTimeout,
       ULONG *                    pInterval,
-      ULONG *                    pAccuracy) {
-    return ::GetPDSDefaults(
-        pOperation,
-        pTimeout,
-        pInterval,
-        pAccuracy);
-  }
+      ULONG *                    pAccuracy);
 
   virtual ULONG SetPDSDefaults(
       ULONG                      operation,
       BYTE                       timeout,
       ULONG                      interval,
-      ULONG                      accuracy) {
-    return ::SetPDSDefaults(
-        operation,
-        timeout,
-        interval,
-        accuracy);
-  }
+      ULONG                      accuracy);
 
   virtual ULONG GetXTRAAutomaticDownload(
       ULONG *                    pbEnabled,
-      USHORT *                   pInterval) {
-    return ::GetXTRAAutomaticDownload(
-        pbEnabled,
-        pInterval);
-  }
+      USHORT *                   pInterval);
 
   virtual ULONG SetXTRAAutomaticDownload(
       ULONG                      bEnabled,
-      USHORT                     interval) {
-    return ::SetXTRAAutomaticDownload(
-        bEnabled,
-        interval);
-  }
+      USHORT                     interval);
 
-  virtual ULONG GetXTRANetwork(ULONG * pPreference) {
-    return ::GetXTRANetwork(pPreference);
-  }
+  virtual ULONG GetXTRANetwork(ULONG * pPreference);
 
-  virtual ULONG SetXTRANetwork(ULONG preference) {
-    return ::SetXTRANetwork(preference);
-  }
+  virtual ULONG SetXTRANetwork(ULONG preference);
 
   virtual ULONG GetXTRAValidity(
       USHORT *                   pGPSWeek,
       USHORT *                   pGPSWeekOffset,
-      USHORT *                   pDuration) {
-    return ::GetXTRAValidity(
-        pGPSWeek,
-        pGPSWeekOffset,
-        pDuration);
-  }
+      USHORT *                   pDuration);
 
-  virtual ULONG ForceXTRADownload() {
-    return ::ForceXTRADownload();
-  }
+  virtual ULONG ForceXTRADownload();
 
   virtual ULONG GetAGPSConfig(
       ULONG *                    pServerAddress,
-      ULONG *                    pServerPort) {
-    return ::GetAGPSConfig(
-        pServerAddress,
-        pServerPort);
-  }
+      ULONG *                    pServerPort);
 
   virtual ULONG SetAGPSConfig(
       ULONG                      serverAddress,
-      ULONG                      serverPort) {
-    return ::SetAGPSConfig(
-        serverAddress,
-        serverPort);
-  }
+      ULONG                      serverPort);
 
-  virtual ULONG GetServiceAutomaticTracking(ULONG * pbAuto) {
-    return ::GetServiceAutomaticTracking(pbAuto);
-  }
+  virtual ULONG GetServiceAutomaticTracking(ULONG * pbAuto);
 
-  virtual ULONG SetServiceAutomaticTracking(ULONG bAuto) {
-    return ::SetServiceAutomaticTracking(bAuto);
-  }
+  virtual ULONG SetServiceAutomaticTracking(ULONG bAuto);
 
-  virtual ULONG GetPortAutomaticTracking(ULONG * pbAuto) {
-    return ::GetPortAutomaticTracking(pbAuto);
-  }
+  virtual ULONG GetPortAutomaticTracking(ULONG * pbAuto);
 
-  virtual ULONG SetPortAutomaticTracking(ULONG bAuto) {
-    return ::SetPortAutomaticTracking(bAuto);
-  }
+  virtual ULONG SetPortAutomaticTracking(ULONG bAuto);
 
   virtual ULONG ResetPDSData(
       ULONG *                    pGPSDataMask,
-      ULONG *                    pCellDataMask) {
-    return ::ResetPDSData(
-        pGPSDataMask,
-        pCellDataMask);
-  }
+      ULONG *                    pCellDataMask);
 
   virtual ULONG CATSendTerminalResponse(
       ULONG                      refID,
       ULONG                      dataLen,
-      BYTE *                     pData) {
-    return ::CATSendTerminalResponse(
-        refID,
-        dataLen,
-        pData);
-  }
+      BYTE *                     pData);
 
   virtual ULONG CATSendEnvelopeCommand(
       ULONG                      cmdID,
       ULONG                      dataLen,
-      BYTE *                     pData) {
-    return ::CATSendEnvelopeCommand(
-        cmdID,
-        dataLen,
-        pData);
-  }
+      BYTE *                     pData);
 
   virtual ULONG GetSMSWake(
       ULONG *                    pbEnabled,
-      ULONG *                    pWakeMask) {
-    return ::GetSMSWake(
-        pbEnabled,
-        pWakeMask);
-  }
+      ULONG *                    pWakeMask);
 
   virtual ULONG SetSMSWake(
       ULONG                      bEnable,
-      ULONG                      wakeMask) {
-    return ::SetSMSWake(
-        bEnable,
-        wakeMask);
-  }
+      ULONG                      wakeMask);
 
-  virtual ULONG OMADMStartSession(ULONG sessionType) {
-    return ::OMADMStartSession(sessionType);
-  }
+  virtual ULONG OMADMStartSession(ULONG sessionType);
 
-  virtual ULONG OMADMCancelSession() {
-    return ::OMADMCancelSession();
-  }
+  virtual ULONG OMADMCancelSession();
 
   virtual ULONG OMADMGetSessionInfo(
       ULONG *                    pSessionState,
@@ -1174,55 +743,27 @@ class Sdk {
       ULONG *                    pFailureReason,
       BYTE *                     pRetryCount,
       WORD *                     pSessionPause,
-      WORD *                     pTimeRemaining) {
-    return ::OMADMGetSessionInfo(
-        pSessionState,
-        pSessionType,
-        pFailureReason,
-        pRetryCount,
-        pSessionPause,
-        pTimeRemaining);
-  }
+      WORD *                     pTimeRemaining);
 
   virtual ULONG OMADMGetPendingNIA(
       ULONG *                    pSessionType,
-      USHORT *                   pSessionID) {
-    return ::OMADMGetPendingNIA(
-        pSessionType,
-        pSessionID);
-  }
+      USHORT *                   pSessionID);
 
   virtual ULONG OMADMSendSelection(
       ULONG                      selection,
-      USHORT                     sessionID) {
-    return ::OMADMSendSelection(
-        selection,
-        sessionID);
-  }
+      USHORT                     sessionID);
 
   virtual ULONG OMADMGetFeatureSettings(
       ULONG *                    pbProvisioning,
-      ULONG *                    pbPRLUpdate) {
-    return ::OMADMGetFeatureSettings(
-        pbProvisioning,
-        pbPRLUpdate);
-  }
+      ULONG *                    pbPRLUpdate);
 
   virtual ULONG OMADMSetProvisioningFeature(
-      ULONG                      bProvisioning) {
-    return ::OMADMSetProvisioningFeature(
-        bProvisioning);
-  }
+      ULONG                      bProvisioning);
 
   virtual ULONG OMADMSetPRLUpdateFeature(
-      ULONG                      bPRLUpdate) {
-    return ::OMADMSetPRLUpdateFeature(
-        bPRLUpdate);
-  }
+      ULONG                      bPRLUpdate);
 
-  virtual ULONG UpgradeFirmware(CHAR * pDestinationPath) {
-    return ::UpgradeFirmware(pDestinationPath);
-  }
+  virtual ULONG UpgradeFirmware(CHAR * pDestinationPath);
 
   virtual ULONG GetImageInfo(
       CHAR *                     pPath,
@@ -1230,124 +771,62 @@ class Sdk {
       ULONG *                    pTechnology,
       ULONG *                    pCarrier,
       ULONG *                    pRegion,
-      ULONG *                    pGPSCapability) {
-    return ::GetImageInfo(
-        pPath,
-        pFirmwareID,
-        pTechnology,
-        pCarrier,
-        pRegion,
-        pGPSCapability);
-  }
+      ULONG *                    pGPSCapability);
 
   virtual ULONG GetImageStore(
       WORD                       pathSize,
-      CHAR *                     pImageStorePath) {
-    return ::GetImageStore(
-        pathSize,
-        pImageStorePath);
-  }
+      CHAR *                     pImageStorePath);
 
-  virtual ULONG SetSessionStateCallback(tFNSessionState pCallback) {
-    return ::SetSessionStateCallback(pCallback);
-  }
+  virtual ULONG SetSessionStateCallback(tFNSessionState pCallback);
 
   virtual ULONG SetByteTotalsCallback(
       tFNByteTotals              pCallback,
-      BYTE                       interval) {
-    return ::SetByteTotalsCallback(
-        pCallback,
-        interval);
-  }
+      BYTE                       interval);
 
   virtual ULONG SetDataCapabilitiesCallback(
-      tFNDataCapabilities        pCallback) {
-    return ::SetDataCapabilitiesCallback(
-        pCallback);
-  }
+      tFNDataCapabilities        pCallback);
 
-  virtual ULONG SetDataBearerCallback(tFNDataBearer pCallback) {
-    return ::SetDataBearerCallback(pCallback);
-  }
+  virtual ULONG SetDataBearerCallback(tFNDataBearer pCallback);
 
   virtual ULONG SetDormancyStatusCallback(
-      tFNDormancyStatus          pCallback) {
-    return ::SetDormancyStatusCallback(
-        pCallback);
-  }
+      tFNDormancyStatus          pCallback);
 
   virtual ULONG SetMobileIPStatusCallback(
-      tFNMobileIPStatus          pCallback) {
-    return ::SetMobileIPStatusCallback(
-        pCallback);
-  }
+      tFNMobileIPStatus          pCallback);
 
   virtual ULONG SetActivationStatusCallback(
-      tFNActivationStatus        pCallback) {
-    return ::SetActivationStatusCallback(
-        pCallback);
-  }
+      tFNActivationStatus        pCallback);
 
-  virtual ULONG SetPowerCallback(tFNPower pCallback) {
-    return ::SetPowerCallback(pCallback);
-  }
+  virtual ULONG SetPowerCallback(tFNPower pCallback);
+
   virtual ULONG SetRoamingIndicatorCallback(
-      tFNRoamingIndicator        pCallback) {
-    return ::SetRoamingIndicatorCallback(
-        pCallback);
-  }
+      tFNRoamingIndicator        pCallback);
 
   virtual ULONG SetSignalStrengthCallback(
       tFNSignalStrength          pCallback,
       BYTE                       thresholdsSize,
-      INT8 *                     pThresholds) {
-    return ::SetSignalStrengthCallback(
-        pCallback,
-        thresholdsSize,
-        pThresholds);
-  }
+      INT8 *                     pThresholds);
 
-  virtual ULONG SetRFInfoCallback(tFNRFInfo pCallback) {
-    return ::SetRFInfoCallback(pCallback);
-  }
+  virtual ULONG SetRFInfoCallback(tFNRFInfo pCallback);
 
-  virtual ULONG SetLURejectCallback(tFNLUReject pCallback) {
-    return ::SetLURejectCallback(pCallback);
-  }
+  virtual ULONG SetLURejectCallback(tFNLUReject pCallback);
 
-  virtual ULONG SetNewSMSCallback(tFNNewSMS pCallback) {
-    return ::SetNewSMSCallback(pCallback);
-  }
+  virtual ULONG SetNewSMSCallback(tFNNewSMS pCallback);
 
-  virtual ULONG SetNMEACallback(tFNNewNMEA pCallback) {
-    return ::SetNMEACallback(pCallback);
-  }
+  virtual ULONG SetNMEACallback(tFNNewNMEA pCallback);
 
-  virtual ULONG SetNMEAPlusCallback(tFNNewNMEAPlus pCallback) {
-    return ::SetNMEAPlusCallback(pCallback);
-  }
+  virtual ULONG SetNMEAPlusCallback(tFNNewNMEAPlus pCallback);
 
-  virtual ULONG SetPDSStateCallback(tFNPDSState pCallback) {
-    return ::SetPDSStateCallback(pCallback);
-  }
+  virtual ULONG SetPDSStateCallback(tFNPDSState pCallback);
 
   virtual ULONG SetCATEventCallback(
       tFNCATEvent                pCallback,
       ULONG                      eventMask,
-      ULONG *                    pErrorMask) {
-    return ::SetCATEventCallback(
-        pCallback,
-        eventMask,
-        pErrorMask);
-  }
+      ULONG *                    pErrorMask);
 
-  virtual ULONG SetOMADMAlertCallback(tFNOMADMAlert pCallback) {
-    return ::SetOMADMAlertCallback(pCallback);
-  }
+  virtual ULONG SetOMADMAlertCallback(tFNOMADMAlert pCallback);
 
-  virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback) {
-    return ::SetOMADMStateCallback(pCallback);
-  }
+  virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
 };  // Class Sdk
 }   // Namespace Gobi
 
