@@ -14,25 +14,28 @@
 #include <cromo/modem_handler.h>
 #include "gobi_modem.h"
 
+class DeviceWatcher;
 
 class GobiModemHandler : public ModemHandler {
  public:
   explicit GobiModemHandler(CromoServer& server);
-  virtual ~GobiModemHandler() {};
+  virtual ~GobiModemHandler();
 
   virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
   virtual bool Initialize();
-
- protected:
-  std::vector<DEVICE_ELEMENT> GetAvailableDevices();
-  void HandleNewDeviceList(const std::vector<DEVICE_ELEMENT> &incoming);
+  void UpdateDeviceState();
+  void HandlePollEvent();
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(GobiModemHandler);
+  bool GetDeviceList();
+  void MonitorDevices();
   typedef std::map<std::string, GobiModem *> KeyToModem;
   KeyToModem key_to_modem_;
+  DeviceWatcher *device_watcher_;
 
   int scan_generation_;
+
+  DISALLOW_COPY_AND_ASSIGN(GobiModemHandler);
 };
 
 

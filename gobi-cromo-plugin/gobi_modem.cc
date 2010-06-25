@@ -179,9 +179,9 @@ GobiModem* GobiModem::connected_modem_(NULL);
 
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
-                     GobiModemHandler *handler,
-                     const DEVICE_ELEMENT &device,
-                     gobi::Sdk *sdk)
+                     GobiModemHandler* handler,
+                     const DEVICE_ELEMENT& device,
+                     gobi::Sdk* sdk)
     : DBus::ObjectAdaptor(connection, path),
       handler_(handler),
       sdk_(sdk),
@@ -208,8 +208,16 @@ GobiModem::GobiModem(DBus::Connection& connection,
   UnlockRequired = "";
 }
 
+GobiModem::~GobiModem() {
+  if (connected_modem_ == this) {
+    sdk_->QCWWANDisconnect();
+    connected_modem_ = NULL;
+  }
+}
+
 // DBUS Methods: Modem
 void GobiModem::Enable(const bool& enable, DBus::Error& error) {
+  LOG(INFO) << "Enable: " << Enabled() << " => " << enable;
   if (enable && !Enabled()) {
     ApiConnect(error);
     if (error.is_set())
@@ -237,6 +245,12 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       SetCarrier("Sprint", error);
     }
     Enabled = true;
+  } else if (!enable && Enabled()) {
+    if (connected_modem_ == this) {
+      sdk_->QCWWANDisconnect();
+      connected_modem_ = NULL;
+      Enabled = false;
+    }
   }
 }
 
@@ -247,7 +261,6 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
     return;
   }
 
-  // TODO(ers) check activation status and return error if not activated
   ULONG rc;
   SDKCALL(Connect,
   GetActivationState, &activation_state_)

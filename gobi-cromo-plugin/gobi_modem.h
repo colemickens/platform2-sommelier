@@ -42,7 +42,7 @@ class GobiModem
             const DEVICE_ELEMENT &device,
             gobi::Sdk *sdk);
 
-  virtual ~GobiModem() {}
+  virtual ~GobiModem();
 
   int last_seen() {return last_seen_;}
   void set_last_seen(int scan_count) {
@@ -160,7 +160,7 @@ class GobiModem
   void UpdateRegistrationState(ULONG data_bearer_technology,
                                ULONG roaming_state);
 
-  std::string FindNetworkDevice();
+  static std::string FindNetworkDevice();
 
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection

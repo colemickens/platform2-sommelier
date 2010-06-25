@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 PKG_CONFIG ?= pkg-config
-INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1)
+INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
 
 CXXFLAGS += -fPIC -I$(INCLUDE_DIRS) -Wall -Werror -g -O0
 LDLIBS += -lbase -lQCWWAN2k -lglog -lpthread -lrt -ludev
@@ -21,9 +21,10 @@ GLUE_HEADERS = modem_gobi_server_glue.h
 
 TESTS = gobi_modem_unittest
 
-SRCS = gobi_modem_handler.cc \
-	gobi_modem.cc \
-	gobi_sdk_wrapper.cc
+SRCS = device_watcher.cc \
+       gobi_modem_handler.cc \
+       gobi_modem.cc \
+       gobi_sdk_wrapper.cc
 
 OBJS = $(SRCS:.cc=.o)
 
