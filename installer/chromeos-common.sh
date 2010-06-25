@@ -119,8 +119,7 @@ install_gpt() {
   local pmbrcode=$5
   local esp_img=$6
   local force_full="${7:-}"
-  local recovery="${8:-}"
-  local rootfs_size="${9:-1024}"   # 1G
+  local rootfs_size="${8:-1024}"   # 1G
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -247,17 +246,6 @@ install_gpt() {
     NUM_OEM_SECTORS=$max_oem_sectors
     NUM_ESP_SECTORS=$(roundup $(numsectors $esp_img))
     NUM_RESERVED_SECTORS=1
-
-    # For recovery image, use max sizes and create both A & B images
-    if [ ${FLAGS_recovery} -eq $FLAGS_TRUE ]; then
-      NUM_KERN_SECTORS=$max_kern_sectors
-      num_kern_a_sectors=$NUM_KERN_SECTORS
-      num_kern_b_sectors=$NUM_KERN_SECTORS
-
-      NUM_ROOTFS_SECTORS=$max_rootfs_sectors
-      num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
-      num_rootfs_b_sectors=$NUM_ROOTFS_SECTORS
-    fi
 
     START_KERN_A=$start_useful
     START_ROOTFS_A=$(($START_KERN_A + $NUM_KERN_SECTORS))

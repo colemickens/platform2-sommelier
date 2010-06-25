@@ -24,6 +24,8 @@ DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
+DEFINE_boolean recovery ${FLAGS_FALSE} \
+  "Install from a recovery image. Default: False"
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable. \
@@ -241,6 +243,20 @@ sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
   seek=${START_KERN_A}
 sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
   seek=${START_KERN_B}
+
+# When install from recovery image, copy kernel verification blob from stateful
+# partition to HD so that reboot from HD can be verified
+VERIFY_BLOB="/mnt/stateful_partition/verification_blob.kernel"
+if [ "$FLAGS_recovery" -eq "$FLAGS_TRUE" ]; then
+  echo "Recovery, attempt to copy kernel verification blob from ${VERIFY_BLOB}"
+  if [ -s $VERIFY_BLOB ]; then
+    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
+      conv=notrunc bs=512 seek=${START_KERN_A}
+  else
+    echo "Error: kernel verification blob not found at ${VERIFY_BLOB}"
+    exit 1
+  fi
+fi
 
 echo "Copying rootfs..."
 install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
