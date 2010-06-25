@@ -20,23 +20,17 @@ class ModemHandler {
   // uniquely. The tag becomes part of the dbus path
   // used externally to name each modem object. 
   ModemHandler(CromoServer& server, const std::string& tag);
-  virtual ~ModemHandler();
+  virtual ~ModemHandler() {}
   virtual bool Initialize() = 0;
 
   virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error) = 0;
-
-  // Adds a modem to the list of modems managed by this modem manager.
-  // The modem must already have a unique path on the dbus.
-  void AddModem(DBus::ObjectAdaptor* modem);
-  void RemoveModem(DBus::ObjectAdaptor* modem);
-  void ClearModemList();
 
   std::string vendor_tag() const { return vendor_tag_; }
   CromoServer& server() const { return server_; }
 
  protected:
   // RegisterSelf() must be called by all subclasses to complete
-  // initialization and make the modem manager known to cromo.
+  // initialization and make the modem handler known to cromo.
   void RegisterSelf();
   std::string MakePath();
 
@@ -46,7 +40,6 @@ class ModemHandler {
   // for modem objects.
   std::string vendor_tag_;
   unsigned int instance_number_;
-  ModemMap modems_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemHandler);
 };

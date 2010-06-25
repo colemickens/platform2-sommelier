@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <syslog.h>
 
+#include <dbus-c++/glib-integration.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
@@ -14,10 +15,11 @@
 DEFINE_string(plugins, "",
               "comma-separated list of plugins to load at startup");
 
-DBus::BusDispatcher dispatcher;
+DBus::Glib::BusDispatcher dispatcher;
+GMainLoop *main_loop;
 
 void onsignal(int sig) {
-  dispatcher.leave();
+  g_main_loop_quit(main_loop);
 }
 
 
@@ -67,6 +69,7 @@ int main(int argc, char* argv[]) {
   signal(SIGINT, onsignal);
 
   DBus::default_dispatcher = &dispatcher;
+  dispatcher.attach(NULL);
 
   DBus::Connection conn = DBus::Connection::SystemBus();
   conn.request_name(CromoServer::kServiceName);
@@ -77,6 +80,8 @@ int main(int argc, char* argv[]) {
   PluginManager::LoadPlugins(&server, FLAGS_plugins);
 
   dispatcher.enter();
+  main_loop = g_main_loop_new(NULL, false);
+  g_main_loop_run(main_loop);
 
   return 0;
 }

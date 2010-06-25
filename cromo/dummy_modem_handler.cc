@@ -34,7 +34,6 @@ vector<DBus::Path> DummyModemHandler::EnumerateDevices(DBus::Error& error) {
 
   DummyModem* dummy = new DummyModem(server().conn(), MakePath());
   paths.push_back(dummy->path());
-  AddModem(dummy);
   return paths;
 }
 
