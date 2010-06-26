@@ -99,10 +99,6 @@ chown chronos:chronos /mnt/stateful_partition/var/log/metrics
 mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
 chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 
-# Default to Pacific timezone if we don't have one set
-! ln -s /usr/share/zoneinfo/US/Pacific /mnt/stateful_partition/etc/localtime \
-    > /dev/null 2>&1
-
 # Mount some /var directories and /home
 mount -n --bind /mnt/stateful_partition/var /var
 mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid vartmp /var/tmp
