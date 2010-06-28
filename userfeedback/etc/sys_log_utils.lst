@@ -13,6 +13,7 @@
 LOGDATE,/bin/date
 hostname,hostname
 cpu,uname -p
+hardware_class,/usr/bin/hardware_class
 hw_platform,uname -i
 dmesg,/bin/dmesg
 uname,/bin/uname -a
