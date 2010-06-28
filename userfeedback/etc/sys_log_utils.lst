@@ -26,4 +26,6 @@ ifconfig, /sbin/ifconfig -a
 ps,/bin/ps ux
 fontconfig.log,cat /var/log/fontconfig.log
 syslog,tail --bytes=30K /var/log/messages
-CLIENT_ID,cat /home/chronos/Consent\ To\ Send\ Stats
+# Have to use this crazy find rather than cat because the filename has
+# spaces, so sh fumbles it.
+CLIENT_ID,find /home/chronos/ -maxdepth 1 -regex .*Consent.To.Send.Stats -exec cat {} ;

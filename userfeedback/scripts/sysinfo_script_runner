@@ -37,8 +37,7 @@ simple_line_executor() {
       continue
     fi
    
-   local comment_check=`expr "${i}" : '[ \t]*#' || true`
-   if [ $? -gt 0 ]; then
+   if expr "${i}" : '[ \t]*#' >/dev/null; then
      continue
    fi
 
