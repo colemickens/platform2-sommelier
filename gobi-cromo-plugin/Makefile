@@ -28,7 +28,7 @@ SRCS = device_watcher.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
-all: $(GOBI_PLUGIN) $(TESTS)
+all: $(GOBI_PLUGIN) #$(TESTS)
 
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
@@ -45,8 +45,12 @@ install: $(GOBI_PLUGIN)
 	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
-# Temporary hack for dogfooding L13
+
+# Temporary hack for recording MEID.  Installed only for USE=dogfood 
+install-record-modem:
 	install -D record_modem $(DESTDIR)/usr/bin/record_modem
+	install -D --mode=644 \
+		record-modem.conf $(DESTDIR)/etc/init/record-modem.conf
 
 .PHONY: clean
 clean:

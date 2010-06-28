@@ -6,11 +6,14 @@
 # Stuff IMEI, MEID and other data into a spreadsheet form
 
 import json
+import logging
+import logging.handlers
 import os
 import sys
+import subprocess
+import time
 import urllib
 import urllib2
-
 
 # Hack: mm reads MMPROVIDER at load time.  CLs in the pipe to fix mm
 # to default to org.chromium
@@ -21,78 +24,102 @@ sys.path.append(os.environ.get('SYSROOT', '') + '/usr/local/lib/flimflam/test')
 sys.path.append(os.environ.get('SYSROOT', '') + '/usr/lib/flimflam/test')
 import mm
 
-FORMKEY = 'dG1KWmR4VWJ1amJ3c0xZM25tOW1HaVE6MQ'
+FORMKEY = 'dGllYTJlUE91NGFDUnZlN01WUzZEbkE6MQ'
 
-MANUAL = ('https://spreadsheets.google.com/a/google.com/viewform?formkey=' +
-          FORMKEY)
+# If this directory exists, we have already succeeded
+SUCCESS_LOCATION = '/mnt/stateful_partition/var/lib/record_modem_complete'
+
+def RecordSuccess():
+  rc = subprocess.call(['/usr/bin/sudo',
+                        'mkdir',
+                        '-p',
+                        SUCCESS_LOCATION])
+  if not rc:
+    logging.info('Successfully logged MEID')
+
+def AlreadySucceeded():
+  try:
+    os.stat(SUCCESS_LOCATION)
+    return True
+  except OSError:
+    return False
+
+def AttemptSubmit(output):
+  # The form submission uses fieldnames of 'entry.n.single' for the nth field.
+  request = dict([('entry.%d.single' % i, output[field])
+                  for (i, field) in
+                  enumerate(['serial', 'imei', 'meid'])])
+
+  request['submit'] = 'Submit'
+
+  url = ('https://spreadsheets.google.com/a/google.com/'
+         'formResponse?formkey=%s&ifq') % FORMKEY
+
+  try:
+    fetched = urllib2.urlopen(url, urllib.urlencode(request))
+  except urllib2.URLError, e:
+    logging.error('HTTP fetch failed: url %s error %s',url, e)
+    sys.exit(1)
+
+  reply = fetched.read()
+
+  if 'appear in my' in reply:
+    print 'Information successfully submitted'
+  else:
+    logging.error('Bad reply: ',reply)
+    sys.exit(2)
 
 
-def CurrentUserFromLocalState():
-  """Return first logged-in-user from the JSON in /home/chronos/Local State."""
-  local_state_path = os.getenv('DATA_DIR', '/home/chronos')
-  local_state = open(os.path.join(local_state_path,
-                                  'Local State'))
-  state = json.load(local_state)
-  return state['LoggedInUsers'][0]
+def GetModemInformation(output):
+  manager = mm.ModemManager()
+  path = mm.PickOneModem(manager, '')
+
+  modem = manager.Modem(path)
+  simple_modem = manager.SimpleModem(path)
+  modem.Enable(True)
+  sprops = simple_modem.GetStatus()
+
+  output['imei'] = str(sprops['imei'])
+  output['meid'] = str(sprops['meid'])
+  logging.info(output)
 
 
-def GetInputWithDefault(prompt, default):
-  value = None
-  while not value:
-    value = raw_input(prompt % default)
-    if not value:
-      value = default
-  return value
+def GetSerialNumber(output):
+  output['serial'] = subprocess.Popen(
+      ['sudo',
+       '/usr/local/sbin/dmidecode',
+       '--string',
+       'system-serial-number', ],
+      stdout=subprocess.PIPE).communicate()[0].rstrip()
 
-manager = mm.ModemManager()
-path = mm.PickOneModem(manager, '')
+def main():
+  if '--immediate' not in sys.argv:
+    # Another hack:
+    # We don't have an easy way to wait until cromo is
+    # up and running, so we just wait a while
+    time.sleep(60)
 
-simple_modem = manager.SimpleModem(path)
-sprops = simple_modem.GetStatus()
+  logger = logging.getLogger()
+  logger.setLevel(logging.INFO)
+  handler = logging.handlers.SysLogHandler('/dev/log')
+  handler.setFormatter(
+      logging.Formatter('%(filename)s: %(levelname)s %(message)s'))
+  logger.addHandler(handler)
 
-output = {}
+  if AlreadySucceeded():
+    logging.info('MEID already logged.  Exiting')
+    return
 
-output['imei'] = sprops['imei']
-output['meid'] = sprops['meid']
+  output = {}
+  GetSerialNumber(output)
+  GetModemInformation(output)
 
-print 'IMEI:', output['imei']
-print 'MEID:', output['meid']
+  AttemptSubmit(output)
+  RecordSuccess()
 
-try:
-  default_user = CurrentUserFromLocalState()
-except (AttributeError, IOError, KeyError, TypeError):
-  default_user = ''
-
-output['user'] = GetInputWithDefault('User [%s] (x for none): ', default_user)
-
-# %s will be empty
-output['asset_tag'] = GetInputWithDefault('%sAsset tag (six digits): ', '')
-
-# The form submission uses fieldnames of 'entry.n.single' for the nth field.
-request = dict([('entry.%d.single' % i, output[field])
-                for (i, field) in
-                enumerate(['user', 'imei', 'meid', 'asset_tag'])])
-
-request['submit'] = 'Submit'
-
-url = ('https://spreadsheets.google.com/a/google.com/'
-       'formResponse?formkey=%s&ifq') % FORMKEY
-
-try:
-  fetched = urllib2.urlopen(url, urllib.urlencode(request))
-except urllib2.URLError, e:
-  print 'HTTP fetch failed:', e
-  print 'URL was:', url
-  print 'You can fill out this information manually at\n\t', MANUAL
-  sys.exit(1)
-
-reply = fetched.read()
-
-if 'appear in my' in reply:
-  print 'Information successfully submitted'
-else:
-  print reply
-  print 'ERROR\n'
-  print 'Your information may not have been submitted.  Investigate'
-  print 'the above output or fill out the form manually at\n\t', MANUAL
-  sys.exit(2)
+if __name__ == '__main__':
+  try:
+    exit(main())
+  except Exception, e:
+    logging.error(e)
+    exit(1)
