@@ -201,11 +201,13 @@ GobiModem::GobiModem(DBus::Connection& connection,
   Device = FindNetworkDevice();
   Driver = "";
   Enabled = false;
+  EquipmentIdentifier = GetEquipmentIdentifier();
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
   MasterDevice = "TODO(rochberg)";
   // TODO(rochberg):  Gobi can be either
   Type = MM_MODEM_TYPE_CDMA;
   UnlockRequired = "";
+  UnlockRetries = 999;
 }
 
 GobiModem::~GobiModem() {
@@ -865,20 +867,7 @@ void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
 
 void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
   LOG(INFO) << "Activate(" << carrier_name << ")";
-  const Carrier *carrier = find_carrier(carrier_name.c_str());
-  if (carrier == NULL) {
-    LOG(WARNING) << "Unknown carrier: " << carrier_name;
-    error.set(kActivationError, "Unknown carrier");
-    return;
-  }
   ULONG rc;
-#if 0
-  // re-enable this when we know how to block until the
-  // firmware load operation is complete
-  EnsureFirmwareLoaded(carrier->name), error);
-  if (error.is_set())
-    return;
-#else
 
   // Check current firmware to see whether it's for the requested carrier
   ULONG firmware_id;
@@ -894,13 +883,28 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
                    &region,
                    &gps_capability)
 
-  if (carrier_id != carrier->carrier_id) {
-    LOG(WARNING) << "Current device firmware does not match the requested carrier.";
-    LOG(WARNING) << "SetCarrier operation must be done before activating.";
-    error.set(kActivationError, "Wrong carrier");
-    return;
+  const Carrier *carrier;
+  if (carrier_name.empty()) {
+    carrier = find_carrier(carrier_id);
+    if (carrier == NULL) {
+      LOG(WARNING) << "Unknown carrier id: " << carrier_id;
+      error.set(kActivationError, "Unknown carrier");
+      return;
+    }
+  } else {
+    carrier = find_carrier(carrier_name.c_str());
+    if (carrier == NULL) {
+      LOG(WARNING) << "Unknown carrier: " << carrier_name;
+      error.set(kActivationError, "Unknown carrier");
+      return;
+    }
+    if (carrier_id != carrier->carrier_id) {
+      LOG(WARNING) << "Current device firmware does not match the requested carrier.";
+      LOG(WARNING) << "SetCarrier operation must be done before activating.";
+      error.set(kActivationError, "Wrong carrier");
+      return;
+    }
   }
-#endif
 
   SDKCALL(Activation,
   GetActivationState, &activation_state_)
@@ -999,6 +1003,32 @@ void GobiModem::GetSignalStrengthDbm(int& output, DBus::Error& error) {
   }
   output = max_strength;
 }
+
+// pre-condition: Enabled == false
+std::string GobiModem::GetEquipmentIdentifier() {
+  DBus::Error connect_error;
+
+  ApiConnect(connect_error);
+  if (connect_error.is_set()) {
+    // Use a default identifier assuming a single GOBI is connected
+    return "GOBI";
+  }
+
+  SerialNumbers serials;
+  DBus::Error getserial_error;
+  GetSerialNumbers(&serials, getserial_error);
+  if (connected_modem_ == this) {
+    sdk_->QCWWANDisconnect();
+    connected_modem_ = NULL;
+  }
+  if (!getserial_error.is_set()) {
+    // TODO(jglasgow): if GSM return serials.imei
+    return serials.meid;
+  }
+  // Use a default identifier assuming a single GOBI is connected
+  return "GOBI";
+}
+
 
 // Event callbacks:
 
