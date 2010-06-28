@@ -21,6 +21,7 @@ using std::vector;
 DEFINE_int32(duration, 0, "run tests in a loop for at least this many seconds");
 DEFINE_string(tests, "", "colon-separated list of tests to run; "
               "all tests if omitted");
+DEFINE_bool(get_board_id, false, "return the board id for checksums");
 
 
 bool test_is_enabled(glbench::TestBase* test,
@@ -46,6 +47,13 @@ int main(int argc, char *argv[]) {
   if (!Init()) {
     printf("# Failed to initialize.\n");
     return 1;
+  }
+
+  if (FLAGS_get_board_id) {
+    InitContext();
+    printf("%s / %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+    DestroyContext();
+    return 0;
   }
 
   vector<string> enabled_tests;
