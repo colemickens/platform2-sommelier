@@ -46,7 +46,7 @@ void BacklightController::IncreaseBrightness() {
     // Give the user between 8 and 16 distinct brightness levels
     int64 offset = 1 + (max_ >> 4);
     int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
-    int64 new_brightness = clamp(lround(100. * new_val / max_));
+    int64 new_brightness = Clamp(lround(100. * new_val / max_));
     if (new_brightness != system_brightness_) {
       *brightness_offset_ += new_brightness - system_brightness_;
       WriteBrightness();
@@ -59,7 +59,7 @@ void BacklightController::DecreaseBrightness() {
     // Give the user between 8 and 16 distinct brightness levels
     int64 offset = 1 + (max_ >> 4);
     int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
-    int64 new_brightness = clamp(lround(100. * new_val / max_));
+    int64 new_brightness = Clamp(lround(100. * new_val / max_));
     if (new_brightness != system_brightness_) {
       *brightness_offset_ += new_brightness - system_brightness_;
       WriteBrightness();
@@ -110,8 +110,8 @@ bool BacklightController::ReadBrightness() {
   if (level != system_brightness_) {
     // Another program adjusted the brightness. Sync up.
     LOG(INFO) << "ReadBrightness: " << system_brightness_ << " -> " << level;
-    int64 brightness = clamp(als_brightness_level_ + *brightness_offset_);
-    int64 diff = clamp(brightness + level - system_brightness_) - brightness;
+    int64 brightness = Clamp(als_brightness_level_ + *brightness_offset_);
+    int64 diff = Clamp(brightness + level - system_brightness_) - brightness;
     *brightness_offset_ += diff;
     system_brightness_ = level;
     WritePrefs();
@@ -124,16 +124,20 @@ int64 BacklightController::WriteBrightness() {
   CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 old_brightness = system_brightness_;
   if (state_ == BACKLIGHT_ACTIVE)
-    system_brightness_ = clamp(als_brightness_level_ + *brightness_offset_);
+    system_brightness_ = Clamp(als_brightness_level_ + *brightness_offset_);
   else
     system_brightness_ = 0;
   int64 val = lround(max_ * system_brightness_ / 100.);
-  system_brightness_ = clamp(lround(100. * val / max_));
+  system_brightness_ = Clamp(lround(100. * val / max_));
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
             << system_brightness_;
   CHECK(backlight_->SetBrightness(val));
   WritePrefs();
   return system_brightness_;
+}
+
+int64 BacklightController::Clamp(int64 value) {
+  return std::min(100LL, std::max(0LL, value));
 }
 
 void BacklightController::ReadPrefs() {

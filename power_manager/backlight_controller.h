@@ -71,8 +71,8 @@ class BacklightController {
   }
 
  private:
-  // Clamp |x| to fit between 0 and 100.
-  int64 clamp(int64 x) { return std::min(100LL, std::max(0LL, x)); }
+  // Clamp |value| to fit between 0 and 100.
+  int64 Clamp(int64 value);
 
   void ReadPrefs();
   void WritePrefs();
