@@ -36,7 +36,12 @@ BusConnection GetSystemBusConnection() {
   glib::ScopedError error;
   ::DBusGConnection* result = ::dbus_g_bus_get(DBUS_BUS_SYSTEM,
                                                &Resetter(&error).lvalue());
-  CHECK(result) << (error->message ? error->message : "Unknown Error");
+  if (!result) {
+    LOG(ERROR) << "dbus_g_bus_get(DBUS_BUS_SYSTEM) failed: "
+               << ((error.get() && error->message) ?
+                   error->message : "Unknown Error");
+    return BusConnection(NULL);
+  }
   // Set to not exit when when system bus is disconnected.
   // This fixes the problem where when the dbus daemon is stopped, exit is
   // called which kills Chrome.
@@ -56,7 +61,12 @@ BusConnection GetPrivateBusConnection(const char* address) {
   // _dbus_g_value_types_init(), we might get "WARNING **: No demarshaller
   // registered for type xxxxx" error and might not be able to handle incoming
   // signals nor method calls.
-  GetSystemBusConnection();
+  {
+    BusConnection system_bus_connection = GetSystemBusConnection();
+    if (!system_bus_connection.HasConnection()) {
+      return system_bus_connection;  // returns NULL connection.
+    }
+  }
 
   ::DBusError error;
   ::dbus_error_init(&error);
