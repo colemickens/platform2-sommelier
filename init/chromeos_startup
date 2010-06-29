@@ -46,10 +46,8 @@ if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
 fi
 STATE_DEV=${ROOT_DEV%[0-9]*}1
 
-# For factory install shim and recovery image, we never want to write to
-# the SDCard.
-if [ -f /root/.factory_installer ] || \
-   [ -f /mnt/stateful_partition/.recovery ]; then
+# For factory install shim, we never want to write to the SDCard.
+if [ -f /root/.factory_installer ]; then
   mount -n -t tmpfs tmp /mnt/stateful_partition
 else
   mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
