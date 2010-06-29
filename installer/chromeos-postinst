@@ -9,15 +9,14 @@
 # the rootfs should be updated w/ the new bootloader config. If empty, the
 # rootfs is mounted-read only and should not be updated.
 
-# Load functions and constants for chromeos-install.
-. "$(dirname "$0")/chromeos-common.sh" || exit 1
-
 # Update /boot/extlinux.conf.
-INSTALL_ROOT=`dirname "$0"`
+INSTALL_ROOT=$(dirname "$0")
 INSTALL_DEV="$1"
 POSTCOMMIT="$2"
+# Load helper functions
+. "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh
 # Find whole disk device.
-ROOT_DEV=${INSTALL_DEV%%[0-9]*}
+ROOT_DEV=$(get_block_dev_from_partition_dev ${INSTALL_DEV})
 NEW_PART_NUM=${INSTALL_DEV##*/*[a-z]}
 
 case ${NEW_PART_NUM} in
@@ -42,26 +41,30 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
-  echo "Updating /boot/extlinux.conf target"
-  # If the mount-point is read-write, update the bootloader
-  # Only update extlinux.conf if $1 is non-empty
-  if [ -n "$INSTALL_DEV" ]; then
-    # Set default label to chromeos-hd.
-    sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' \
-        "$INSTALL_ROOT"/boot/extlinux.conf || true
-    sed -i "{ s:HDROOT:$INSTALL_DEV: }" \
-        "$INSTALL_ROOT"/boot/extlinux.conf || true
+  if [ -f /boot/extlinux.conf ]; then
+    echo "Updating /boot/extlinux.conf target"
+    # If the mount-point is read-write, update the bootloader
+    # Only update extlinux.conf if $1 is non-empty
+    if [ -n "$INSTALL_DEV" ]; then
+      # Set default label to chromeos-hd.
+      sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' \
+          "$INSTALL_ROOT"/boot/extlinux.conf || true
+      sed -i "{ s:HDROOT:$INSTALL_DEV: }" \
+          "$INSTALL_ROOT"/boot/extlinux.conf || true
+    fi
   fi
+
 
   echo "Updating grub target for EFI BIOS"
   # Set up grub.cfg
-  ${INSTALL_ROOT}/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+  "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
       --dst=${ROOT_DEV} --run_as_root
 
   # Set up gpt boot selection for legacy devices.
   # flush linux caches; seems to be necessary
   sync
   echo 3 > /proc/sys/vm/drop_caches
+
 
   echo "Updating gpt PMBR target for legacy BIOS"
   # Configure the PMBR to boot the new image.
