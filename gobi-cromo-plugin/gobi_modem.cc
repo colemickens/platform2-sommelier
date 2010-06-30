@@ -760,24 +760,17 @@ void GobiModem::ResetModem(DBus::Error& error) {
 }
 
 
-// pre-condition: activation_state_ == gobi::kNotActivated
+// pre-condition: activation_state_ == gobi::kConnecting
 void GobiModem::ActivateOmadm(DBus::Error& error) {
   ULONG rc;
   LOG(INFO) << "Activating OMA-DM";
 
-  SDKCALL(Activation,
-  OMADMStartSession, gobi::kConfigure)
-
-  // TODO(rochberg):  Factor out this pattern + add timeouts
-  pthread_mutex_lock(&activation_mutex_);
-  while (activation_state_ != gobi::kActivated) {
-    LOG(WARNING) << "Waiting...";
-    pthread_cond_wait(&activation_cond_, &activation_mutex_);
-    if (activation_state_ <= gobi::kOmadmMaxFinal) {
-      break;
-    }
+  rc = sdk_->OMADMStartSession(gobi::kConfigure);
+  if (rc != 0) {
+    activation_state_ = gobi::kNotActivated;
+    // No error set, caller will handle based on activation_state_
+    return;
   }
-  pthread_mutex_unlock(&activation_mutex_);
 }
 
 void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
@@ -785,18 +778,12 @@ void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
 
   LOG(INFO) << "Activating OTASP";
 
-  SDKCALL(Activation,
-  ActivateAutomatic, number.c_str())
-
-  LOG(INFO) << "Waiting for activation to complete";
-  // TODO(rochberg):  Timeout
-  pthread_mutex_lock(&activation_mutex_);
-  while (activation_state_ != gobi::kActivated) {
-    pthread_cond_wait(&activation_cond_, &activation_mutex_);
-  }
-  pthread_mutex_unlock(&activation_mutex_);
-
-  ResetModem(error);
+  rc = sdk_->ActivateAutomatic(number.c_str());
+  if (rc != 0) {
+    activation_state_ = gobi::kNotActivated;
+    // No error set, caller will handle based on activation_state_
+    return;
+   }
 }
 
 void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
@@ -922,6 +909,8 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
     return;
   }
 
+  activation_state_ = gobi::kActivationConnecting;
+
   switch (carrier->activation_method) {
     case kActMethodOmadm:    // OMA-DM
       ActivateOmadm(error);
@@ -930,6 +919,7 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
     case kActMethodOtasp:
       if (carrier->activation_code == NULL) {
         LOG(WARNING) << "Number was not supplied for OTASP activation";
+        activation_state_ = gobi::kNotActivated;
         error.set(kActivationError, "No number supplied for OTASP activation");
         return;
       }
@@ -939,9 +929,25 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
     default:
       LOG(WARNING) << "Unknown activation method: "
                    << carrier->activation_method;
+      activation_state_ = gobi::kNotActivated;
       error.set(kActivationError, "Unknown activation method");
       break;
   }
+
+  // Wait for activation to finish (success or failure)
+  pthread_mutex_lock(&activation_mutex_);
+  while ((activation_state_ != gobi::kActivated &&
+          activation_state_ != gobi::kNotActivated)) {
+    LOG(WARNING) << "Waiting...";
+    pthread_cond_wait(&activation_cond_, &activation_mutex_);
+  }
+  pthread_mutex_unlock(&activation_mutex_);
+  LOG(WARNING) << "Activation state: " << activation_state_;
+
+  if (activation_state_ == gobi::kActivated)
+    ResetModem(error);
+  else
+    error.set(kActivationError, "Activation failed");
 }
 
 void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
@@ -1048,8 +1054,16 @@ void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
   LOG(INFO) << "OMA-DM State Callback: "
             << session_state << " " << failure_reason;
   pthread_mutex_lock(&activation_mutex_);
-  activation_state_ = session_state;
-  pthread_cond_broadcast(&activation_cond_);
+  switch (session_state) {
+    case gobi::kOmadmComplete:
+      activation_state_ = gobi::kActivated;
+      pthread_cond_broadcast(&activation_cond_);
+      break;
+    case gobi::kOmadmFailed:
+      activation_state_ = gobi::kNotActivated;
+      pthread_cond_broadcast(&activation_cond_);
+      break;
+  }
   pthread_mutex_unlock(&activation_mutex_);
 }
 
