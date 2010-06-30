@@ -28,7 +28,7 @@ SRCS = device_watcher.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
-all: $(GOBI_PLUGIN) #$(TESTS)
+all: $(GOBI_PLUGIN) # $(TESTS)
 
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@

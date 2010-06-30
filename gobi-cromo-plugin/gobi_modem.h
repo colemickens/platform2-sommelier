@@ -8,6 +8,7 @@
 
 #include <pthread.h>
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 
 #include <cromo/modem_server_glue.h>
@@ -36,6 +37,8 @@ class GobiModem
       public DBus::PropertiesAdaptor,
       public DBus::ObjectAdaptor {
  public:
+  typedef std::map<ULONG, int> StrengthMap;
+
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
             GobiModemHandler *handler,
@@ -91,7 +94,9 @@ class GobiModem
   void ActivateOtasp(const std::string& number, DBus::Error& error);
   void ApiConnect(DBus::Error& error);
   void EnsureFirmwareLoaded(const char* carrier_name, DBus::Error& error);
-  void GetSignalStrengthDbm(int& strength, DBus::Error& error);
+  void GetSignalStrengthDbm(int& strength,
+                            StrengthMap *interface_to_strength,
+                            DBus::Error& error);
   void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
@@ -182,6 +187,7 @@ class GobiModem
   static GobiModem *connected_modem_;
 
   friend class GobiModemTest;
+  FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };

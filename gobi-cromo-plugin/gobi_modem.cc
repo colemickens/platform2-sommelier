@@ -4,6 +4,8 @@
 
 #include "gobi_modem.h"
 
+#include <stdio.h>
+
 #include <algorithm>
 
 #include <base/scoped_ptr.h>
@@ -385,9 +387,21 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   int32_t rssi;
   DBus::Error signal_strength_error;
 
-  GetSignalStrengthDbm(rssi, signal_strength_error);
-  if (!signal_strength_error.is_set())
+  StrengthMap interface_to_dbm;
+  GetSignalStrengthDbm(rssi, &interface_to_dbm, signal_strength_error);
+  if (!signal_strength_error.is_set()) {
     result["signal_strength_dbm"].writer().append_int32(rssi);
+    for (StrengthMap::iterator i = interface_to_dbm.begin();
+         i != interface_to_dbm.end();
+         ++i) {
+      char buf[30];
+      snprintf(buf,
+               sizeof(buf),
+               "interface_%u_dbm",
+               static_cast<unsigned int>(i->first));
+      result[buf].writer().append_int32(i->second);
+    }
+  }
 
   SerialNumbers serials;
   // Distinct error because it invalid to modify an error once it is set
@@ -495,7 +509,7 @@ uint32_t GobiModem::GetSignalQuality(DBus::Error& error) {
     error.set(kModeError, "Modem is disabled");
   } else {
     int32_t signal_strength_dbm;
-    GetSignalStrengthDbm(signal_strength_dbm, error);
+    GetSignalStrengthDbm(signal_strength_dbm, NULL, error);
     if (!error.is_set()) {
       uint32_t result = signal_strength_dbm_to_percent(signal_strength_dbm);
       LOG(INFO) << "GetSignalQuality => " << result << "%";
@@ -958,12 +972,9 @@ void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
 }
 
 
-void GobiModem::GetSignalStrengthDbm(int& output, DBus::Error& error) {
-  if (!Enabled()) {
-    LOG(WARNING) << "GetSignalQuality on disabled modem";
-    error.set(kModeError, "Modem is disabled");
-    return;
-  }
+void GobiModem::GetSignalStrengthDbm(int& output,
+                                     StrengthMap *interface_to_dbm,
+                                     DBus::Error& error) {
   ULONG rc;
   ULONG kSignals = 10;
   ULONG signals = kSignals;
@@ -974,6 +985,13 @@ void GobiModem::GetSignalStrengthDbm(int& output, DBus::Error& error) {
   GetSignalStrengths, &signals, strengths, interfaces)
 
   signals = std::min(kSignals, signals);
+
+  if (interface_to_dbm) {
+    for (ULONG i = 0; i < signals; ++i) {
+      (*interface_to_dbm)[interfaces[i]] = strengths[i];
+    }
+  }
+
   INT8 max_strength = -127;
   for (ULONG i = 0; i < signals; ++i) {
     LOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])

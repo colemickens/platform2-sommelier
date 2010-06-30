@@ -12,10 +12,12 @@
 #include "gobi_modem_handler.h"
 #include "mock_gobi_sdk_wrapper.h"
 
+using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using ::testing::SetArrayArgument;
 using ::testing::StrEq;
 using ::testing::_;
 
@@ -160,6 +162,36 @@ TEST_F(GobiModemTest, GetStatusWhenDisabled) {
   EXPECT_CALL(sdk_, GetSerialNumbers(_, _, _, _, _, _)).WillOnce(Return(1));
   map = modem_->GetStatus(*error_);
   ASSERT_FALSE(error_->is_set());
+}
+
+TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
+  ULONG interfaces[] = {1, 0, 9, 3};
+
+  INT8 dbms[] = {-60, -50, -70, -20};
+
+  EXPECT_CALL(sdk_, GetSignalStrengths(_, _, _)).WillOnce(DoAll(
+      SetArgumentPointee<0>(3),  // Caller should ignore 4th elements returned
+      SetArrayArgument<1>(dbms, dbms + 4),
+      SetArrayArgument<2>(interfaces, interfaces + 4),
+      Return(0)));
+
+  // Don't do the connected case in this test
+  EXPECT_CALL(sdk_, GetSessionState(_)).WillOnce(DoAll(
+      SetArgumentPointee<0>(gobi::kDisconnected),
+      Return(0)));
+
+  int master;
+  GobiModem::StrengthMap result;
+  modem_->GetSignalStrengthDbm(master, &result, *error_);
+
+  EXPECT_FALSE(error_->is_set());
+  EXPECT_EQ(-50, master);
+
+  GobiModem::StrengthMap correct;
+  correct[0] = -50;
+  correct[1] = -60;
+  correct[9] = -70;
+  EXPECT_THAT(result, ContainerEq(correct));
 }
 
 TEST_F(GobiModemTest, ResetModem) {
