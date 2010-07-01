@@ -10,22 +10,23 @@
 #
 # Arguments will be included
 
-LOGDATE,/bin/date
-hostname,hostname
-cpu,uname -p
-hardware_class,/usr/bin/hardware_class
-hw_platform,uname -i
-dmesg,/bin/dmesg
-uname,/bin/uname -a
-lsmod,/usr/sbin/lsmod
-lspci,/usr/sbin/lspci
-lsusb,/usr/sbin/lsusb
-cpuinfo,cat /proc/cpuinfo
-meminfo,cat /proc/meminfo
-ifconfig, /sbin/ifconfig -a
-ps,/bin/ps ux
-fontconfig.log,cat /var/log/fontconfig.log
-syslog,tail --bytes=30K /var/log/messages
 # Have to use this crazy find rather than cat because the filename has
 # spaces, so sh fumbles it.
 CLIENT_ID,find /home/chronos/ -maxdepth 1 -regex .*Consent.To.Send.Stats -exec cat {} ;
+LOGDATE,/bin/date
+cpu,uname -p
+cpuinfo,cat /proc/cpuinfo
+dmesg,/bin/dmesg
+fontconfig.log,cat /var/log/fontconfig.log
+hardware_class,/usr/bin/hardware_class
+hostname,hostname
+hw_platform,uname -i
+ifconfig, /sbin/ifconfig -a
+lsmod,/usr/sbin/lsmod
+lspci,/usr/sbin/lspci
+lsusb,/usr/sbin/lsusb
+meminfo,cat /proc/meminfo
+mm-status,/usr/lib/flimflam/test/mm-status
+ps,/bin/ps ux
+syslog,tail --bytes=30K /var/log/messages
+uname,/bin/uname -a
