@@ -9,6 +9,7 @@
     },
   },
   'WATCHLISTS': {
-    'all': ['davidjames@chromium.org', 'snanda@chromium.org']
+    'all': ['davidjames@chromium.org', 'snanda@chromium.org',
+            'bleung@chromium.org']
   },
 }
