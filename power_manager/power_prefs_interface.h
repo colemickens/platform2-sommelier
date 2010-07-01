@@ -5,9 +5,11 @@
 #ifndef POWER_MANAGER_POWER_PREFS_INTERFACE_H_
 #define POWER_MANAGER_POWER_PREFS_INTERFACE_H_
 
+#include "base/basictypes.h"
+
 namespace power_manager {
 
-// Prefs for power manager
+// Interface for reading and writing the preferences for power manager.
 class PowerPrefsInterface {
  public:
   // Read a setting from disk into |val|
