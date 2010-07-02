@@ -54,6 +54,9 @@ if [ $? -ne 0 ] ; then
   mount > /mnt/stateful_partition/var/log/shutdown_stateful_umount_failure
   mount > /var/log/shutdown_stateful_umount_failure
 fi
+if [ -d /mnt/partner_partition/lost+found ]; then
+  umount -n /mnt/partner_partition
+fi
 
 # Just in case something didn't unmount properly above.
 sync

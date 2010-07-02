@@ -114,6 +114,12 @@ mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs media /media
 
+# Mount OEM partner partition if OOBE has not yet been completed.
+if [ ! -e /mnt/stateful_partition/.oobe_completed ]; then
+  OEM_DEV=${ROOT_DEV%[0-9]*}8
+  mount -n -t ext3 "$OEM_DEV" /mnt/partner_partition
+fi
+
 # Some things freak out if no hostname is set.
 hostname localhost
 
