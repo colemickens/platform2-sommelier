@@ -175,5 +175,11 @@ ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9204", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Gobi 2000 Modem device
 ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9205", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+# Gobi 2000 QDL device
+ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9208", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Gobi 2000 Modem device
+ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920b", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 LABEL="mm_cromo_gobi_device_blacklist_end"
 
