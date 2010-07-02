@@ -8,7 +8,6 @@
 
 #include <algorithm>
 
-#include <base/scoped_ptr.h>
 #include <base/time.h>
 #include <glog/logging.h>
 extern "C" {
@@ -200,14 +199,10 @@ GobiModem::GobiModem(DBus::Connection& connection,
   pthread_cond_init(&activation_cond_, NULL);
 
   // Initialize DBus object properties
-  Device = FindNetworkDevice();
-  Driver = "";
+  SetDeviceProperties();
+  SetModemProperties();
   Enabled = false;
-  EquipmentIdentifier = GetEquipmentIdentifier();
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
-  MasterDevice = "TODO(rochberg)";
-  // TODO(rochberg):  Gobi can be either
-  Type = MM_MODEM_TYPE_CDMA;
   UnlockRequired = "";
   UnlockRetries = 999;
 }
@@ -614,17 +609,17 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
 
-  int num_thresholds = kSignalStrengthNumLevels - 1;
+  static int num_thresholds = kSignalStrengthNumLevels - 1;
   int interval =
       (kMaxSignalStrengthDbm - kMinSignalStrengthDbm) /
       (kSignalStrengthNumLevels - 1);
-  scoped_array<INT8> thresholds(new INT8[num_thresholds]);
+  INT8 thresholds[num_thresholds];
   for (int i = 0; i < num_thresholds; i++) {
     thresholds[i] = kMinSignalStrengthDbm + interval * i;
   }
   sdk_->SetSignalStrengthCallback(SignalStrengthCallbackTrampoline,
                                   num_thresholds,
-                                  thresholds.get());
+                                  thresholds);
 }
 
 void GobiModem::ApiConnect(DBus::Error& error) {
@@ -1033,29 +1028,53 @@ void GobiModem::GetSignalStrengthDbm(int& output,
   output = max_strength;
 }
 
+// Set properties for which a connection to the SDK is required
+// to obtain the needed information. Since this is called before
+// the modem is enabled, we connect to the SDK, get the properties
+// we need, and then disconnect from the SDK.
 // pre-condition: Enabled == false
-std::string GobiModem::GetEquipmentIdentifier() {
+void GobiModem::SetModemProperties() {
   DBus::Error connect_error;
 
   ApiConnect(connect_error);
   if (connect_error.is_set()) {
     // Use a default identifier assuming a single GOBI is connected
-    return "GOBI";
+    EquipmentIdentifier = "GOBI";
+    Type = MM_MODEM_TYPE_CDMA;
+    return;
   }
 
   SerialNumbers serials;
   DBus::Error getserial_error;
   GetSerialNumbers(&serials, getserial_error);
+  DBus::Error getdev_error;
+  ULONG u1, u2, u3, u4;
+  BYTE radioInterfaces[10];
+  ULONG numRadioInterfaces = sizeof(radioInterfaces)/sizeof(BYTE);
+  ULONG rc = sdk_->GetDeviceCapabilities(&u1, &u2, &u3, &u4,
+                                         &numRadioInterfaces,
+                                         radioInterfaces);
+  if (rc == 0) {
+    if (numRadioInterfaces != 0) {
+      if (radioInterfaces[0] == gobi::kRfiGsm ||
+          radioInterfaces[0] == gobi::kRfiUmts) {
+        Type = MM_MODEM_TYPE_GSM;
+      } else {
+        Type = MM_MODEM_TYPE_CDMA;
+      }
+    }
+  }
   if (connected_modem_ == this) {
     sdk_->QCWWANDisconnect();
     connected_modem_ = NULL;
   }
   if (!getserial_error.is_set()) {
     // TODO(jglasgow): if GSM return serials.imei
-    return serials.meid;
+    EquipmentIdentifier = serials.meid;
+  } else {
+    // Use a default identifier assuming a single GOBI is connected
+    EquipmentIdentifier = "GOBI";
   }
-  // Use a default identifier assuming a single GOBI is connected
-  return "GOBI";
 }
 
 
@@ -1156,14 +1175,15 @@ void GobiModem::RoamingIndicatorCallback(ULONG roaming) {
   UpdateRegistrationState(data_bearer_technology_, roaming);
 }
 
-std::string GobiModem::FindNetworkDevice()
+// Set DBus properties that pertain to the modem hardware device.
+// The properties set here are Device, MasterDevice, and Driver.
+void GobiModem::SetDeviceProperties()
 {
-  std::string network_device_name;
   struct udev *udev = udev_new();
 
   if (udev == NULL) {
     LOG(WARNING) << "udev == NULL";
-    return network_device_name;
+    return;
   }
 
   struct udev_list_entry *entry;
@@ -1171,10 +1191,10 @@ std::string GobiModem::FindNetworkDevice()
   if (udev_enumerate == NULL) {
     LOG(WARNING) << "udev_enumerate == NULL";
     udev_unref(udev);
-    return network_device_name;
+    return;
   }
 
-  for(entry = udev_enumerate_get_list_entry(udev_enumerate);
+  for (entry = udev_enumerate_get_list_entry(udev_enumerate);
       entry != NULL;
       entry = udev_list_entry_get_next(entry)) {
 
@@ -1189,26 +1209,31 @@ std::string GobiModem::FindNetworkDevice()
     struct udev_device *parent = udev_device_get_parent(udev_device);
     if (parent != NULL)
       driver = udev_device_get_driver(parent);
-    udev_device_unref(udev_device);
 
-    if (driver.compare(kNetworkDriver) != 0)
-      continue;
+    if (driver.compare(kNetworkDriver) == 0) {
+      // Extract last portion of syspath...
+      size_t found = syspath.find_last_of('/');
+      if (found != std::string::npos) {
+        Device = syspath.substr(found + 1);
+        struct udev_device *grandparent;
+        if (parent != NULL) {
+          grandparent = udev_device_get_parent(parent);
+          if (grandparent != NULL)
+            MasterDevice = udev_device_get_syspath(grandparent);
+        }
+        Driver = driver;
+        udev_device_unref(udev_device);
 
-    // Extract last portion of syspath...
-    size_t found = syspath.find_last_of('/');
-    if (found != std::string::npos) {
-      network_device_name = syspath.substr(found + 1);
-
-      // TODO(jglasgow): Support multiple devices.
-      // This functions returns the first network device whose
-      // driver is a qualcomm network device driver.  This will not
-      // work properly if a machine has multiple devices that use the
-      // Qualcomm network device driver.
-      break;
+        // TODO(jglasgow): Support multiple devices.
+        // This functions returns the first network device whose
+        // driver is a qualcomm network device driver.  This will not
+        // work properly if a machine has multiple devices that use the
+        // Qualcomm network device driver.
+        break;
+      }
     }
+    udev_device_unref(udev_device);
   }
   udev_enumerate_unref(udev_enumerate);
   udev_unref(udev);
-
-  return network_device_name;
 }

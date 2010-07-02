@@ -9,7 +9,6 @@ extern "C" {
 #include <libudev.h>
 }
 
-#include "base/scoped_ptr.h"
 #include "glog/logging.h"
 
 #include <cromo/cromo_server.h>

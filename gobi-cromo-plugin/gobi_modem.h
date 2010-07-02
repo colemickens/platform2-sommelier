@@ -107,7 +107,6 @@ class GobiModem
   };
   void GetSerialNumbers(SerialNumbers* out, DBus::Error &error);
   void LogGobiInformation();
-  std::string GetEquipmentIdentifier();
 
   static void ActivationStatusCallbackTrampoline(ULONG activation_status) {
     if (connected_modem_) {
@@ -166,7 +165,8 @@ class GobiModem
   void UpdateRegistrationState(ULONG data_bearer_technology,
                                ULONG roaming_state);
 
-  static std::string FindNetworkDevice();
+  void SetDeviceProperties();
+  void SetModemProperties();
 
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
