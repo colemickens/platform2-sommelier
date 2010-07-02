@@ -10,9 +10,7 @@
 #
 # Arguments will be included
 
-# Have to use this crazy find rather than cat because the filename has
-# spaces, so sh fumbles it.
-CLIENT_ID,find /home/chronos/ -maxdepth 1 -regex .*Consent.To.Send.Stats -exec cat {} ;
+CLIENT_ID,/usr/share/userfeedback/scripts/get_client_id
 LOGDATE,/bin/date
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo

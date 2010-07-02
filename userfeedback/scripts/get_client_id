@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script prints the client_id, if available, or nothing otherwise.
+
+readonly CLIENT_ID_FILE="/home/chronos/Consent To Send Stats"
+
+[ -r "$CLIENT_ID_FILE" ] && /bin/cat "$CLIENT_ID_FILE"
