@@ -243,9 +243,14 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
 
     LOG(INFO) << "Current carrier is " << carrier;
 
-    // TODO(rochberg):  Make this more general
-    if (carrier != 1  && // Generic
-        carrier < 101) {  // Defined carriers start at 101
+    // The machine boots and installs the generic UMTS carrier
+    // firmware (carrier == 1) based on the Options2k${oem}.txt file.
+    // Until we have tested and verified that we can change the
+    // options file, we want to use the Sprint firmware, so force that
+    // to happen.
+
+    // TODO(rochberg): Make this more general, or change Options2K${oem}.txt
+    if (carrier < 101) {  // Defined carriers start at 101
       SetCarrier("Sprint", error);
     }
     Enabled = true;
