@@ -9,17 +9,17 @@
 
 namespace power_manager {
 
-// Interface for getting and setting the level of the backlight
+// Interface for getting and setting the level of the backlight.
 class BacklightInterface {
  public:
-  // Set *level to the current brightness level of the backlight, and set
-  // *max to the max brightness level of the backlight. The minimum brightness
+  // Set |level| to the current brightness level of the backlight, and set
+  // |max| to the max brightness level of the backlight. The minimum brightness
   // level of the backlight is zero.
   //
   // On success, return true; otherwise return false.
   virtual bool GetBrightness(int64* level, int64* max) = 0;
 
-  // Set the backlight to the specified brightness level.
+  // Set the backlight to the specified brightness |level|.
   //
   // On success, return true; otherwise return false.
   virtual bool SetBrightness(int64 level) = 0;

@@ -25,19 +25,24 @@ namespace power_manager {
 class Backlight : public BacklightInterface {
  public:
   Backlight() {}
+  virtual ~Backlight() {}
 
   // Initialize the backlight object.
   //
   // On success, return true; otherwise return false.
   bool Init();
 
-  bool GetBrightness(int64* level, int64* max);
-  bool SetBrightness(int64 level);
+  // Overridden from BacklightInterface:
+  virtual bool GetBrightness(int64* level, int64* max);
+  virtual bool SetBrightness(int64 level);
 
  private:
   // Paths to the actual_brightness, brightness, and max_brightness files
-  // under /sys/class/backlight
-  FilePath actual_brightness_path_, brightness_path_, max_brightness_path_;
+  // under /sys/class/backlight.
+  FilePath actual_brightness_path_;
+  FilePath brightness_path_;
+  FilePath max_brightness_path_;
+
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };
 

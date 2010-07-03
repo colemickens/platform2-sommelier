@@ -10,19 +10,14 @@
 
 namespace power_manager {
 
-// Prefs for power manager
 class PowerPrefs : public PowerPrefsInterface {
  public:
   explicit PowerPrefs(const FilePath& base_path);
   virtual ~PowerPrefs() {}
 
-  // Read a setting from disk into |val|.
-  // Returns true if successful; otherwise returns false.
-  bool ReadSetting(const char* setting_name, int64* val);
-
-  // Write a setting to disk.
-  // Returns true if successful; otherwise returns false.
-  bool WriteSetting(const char* setting_name, int64 level);
+  // Overridden from PowerPrefsInterface:
+  virtual bool ReadSetting(const char* setting_name, int64* val);
+  virtual bool WriteSetting(const char* setting_name, int64 level);
 
  private:
   FilePath base_path_;

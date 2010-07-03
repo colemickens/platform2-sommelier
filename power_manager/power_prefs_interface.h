@@ -12,7 +12,7 @@ namespace power_manager {
 // Interface for reading and writing the preferences for power manager.
 class PowerPrefsInterface {
  public:
-  // Read a setting from disk into |val|
+  // Read a setting from disk into |val|.
   // Returns true if successful; otherwise returns false.
   virtual bool ReadSetting(const char* setting_name, int64* val) = 0;
 
