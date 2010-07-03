@@ -53,7 +53,6 @@ class Daemon : public XIdleMonitor {
   FRIEND_TEST(DaemonTest, SendMetric);
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
 
-  enum PluggedState { kPowerDisconnected, kPowerConnected, kPowerUnknown };
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
 

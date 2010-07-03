@@ -21,7 +21,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
       state_(BACKLIGHT_ACTIVE),
-      plugged_state_(POWER_UNKNOWN),
+      plugged_state_(kPowerUnknown),
       system_brightness_(0),
       min_(0),
       max_(-1) {}
@@ -94,10 +94,10 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
     return;
   if (is_plugged) {
     brightness_offset_ = &plugged_brightness_offset_;
-    plugged_state_ = POWER_CONNECTED;
+    plugged_state_ = kPowerConnected;
   } else {
     brightness_offset_ = &unplugged_brightness_offset_;
-    plugged_state_ = POWER_DISCONNECTED;
+    plugged_state_ = kPowerDisconnected;
   }
   WriteBrightness();
 }
@@ -152,10 +152,10 @@ void BacklightController::ReadPrefs() {
 }
 
 void BacklightController::WritePrefs() {
-  if (plugged_state_ == POWER_CONNECTED) {
+  if (plugged_state_ == kPowerConnected) {
     CHECK(prefs_->WriteSetting("plugged_brightness_offset",
                                plugged_brightness_offset_));
-  } else if (plugged_state_ == POWER_DISCONNECTED) {
+  } else if (plugged_state_ == kPowerDisconnected) {
     CHECK(prefs_->WriteSetting("unplugged_brightness_offset",
                                unplugged_brightness_offset_));
   }

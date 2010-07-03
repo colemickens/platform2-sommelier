@@ -20,6 +20,12 @@ enum PowerState {
   BACKLIGHT_OFF, BACKLIGHT_ON
 };
 
+enum PluggedState {
+  kPowerDisconnected,
+  kPowerConnected,
+  kPowerUnknown,
+};
+
 // Control the backlight.
 class BacklightController {
  public:
@@ -95,9 +101,7 @@ class BacklightController {
   DimState state_;
 
   // Whether the computer is plugged in.
-  enum {
-    POWER_DISCONNECTED, POWER_CONNECTED, POWER_UNKNOWN
-  } plugged_state_;
+  PluggedState plugged_state_;
 
   // Current system brightness.
   int64 system_brightness_;

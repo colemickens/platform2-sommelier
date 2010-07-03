@@ -139,7 +139,7 @@ TEST_F(DaemonTest, CheckMetricInterval) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
@@ -163,7 +163,7 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_energy_rate = 4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(status_,
                                                           /* now */ 0));
@@ -175,21 +175,21 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
-  EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
+  EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
 
   status_.battery_energy_rate = 4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
       status_, Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
       status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
       status_, Daemon::kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
@@ -201,7 +201,7 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_percentage = 10.4;
   ExpectBatteryRemainingChargeMetric(10);
   EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
@@ -225,7 +225,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_percentage = 13.0;
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(status_,
                                                             /* now */ 0));
@@ -237,21 +237,21 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
-  EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
+  EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
 
   status_.battery_percentage = 20.0;
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
       status_, Daemon::kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
-  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
       status_, 2 * Daemon::kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_time_to_empty = 90;
   ExpectBatteryTimeToEmptyMetric(2);
   EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
@@ -275,7 +275,7 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_time_to_empty = 100;
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(status_, /* now */ 0));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
@@ -285,21 +285,21 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
 }
 
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
-  EXPECT_EQ(Daemon::kPowerUnknown, daemon_.plugged_state_);
+  EXPECT_EQ(kPowerUnknown, daemon_.plugged_state_);
 
   status_.battery_time_to_empty = 120;
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
       status_, Daemon::kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 
-  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
       status_, 2 * Daemon::kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_energy_rate = 4.9;
   status_.battery_percentage = 32.5;
   status_.battery_time_to_empty = 10 * 60;
@@ -327,11 +327,11 @@ TEST_F(DaemonTest, SendMetric) {
 TEST_F(DaemonTest, SendMetricWithPowerState) {
   EXPECT_FALSE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
       /* min */ 1, /* max */ 100, /* buckets */ 50));
-  daemon_.plugged_state_ = daemon_.kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   ExpectMetric("Dummy.MetricOnBattery", 3, 1, 100, 50);
   EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
       /* min */ 1, /* max */ 100, /* buckets */ 50));
-  daemon_.plugged_state_ = daemon_.kPowerConnected;
+  daemon_.plugged_state_ = kPowerConnected;
   ExpectMetric("Dummy.MetricOnAC", 3, 1, 100, 50);
   EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
       /* min */ 1, /* max */ 100, /* buckets */ 50));
@@ -454,7 +454,7 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   daemon_.idle_state_ = Daemon::kIdleDim;
   daemon_.GenerateBacklightLevelMetric(&daemon_);
   daemon_.idle_state_ = Daemon::kIdleNormal;
-  daemon_.plugged_state_ = Daemon::kPowerDisconnected;
+  daemon_.plugged_state_ = kPowerDisconnected;
   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                       SetArgumentPointee<1>(kMaxBrightness),
@@ -462,7 +462,7 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   ExpectEnumMetric("Power.BacklightLevelOnBattery",
                    kDefaultBrightness, kMaxBrightness);
   daemon_.GenerateBacklightLevelMetric(&daemon_);
-  daemon_.plugged_state_ = Daemon::kPowerConnected;
+  daemon_.plugged_state_ = kPowerConnected;
   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                       SetArgumentPointee<1>(kMaxBrightness),
