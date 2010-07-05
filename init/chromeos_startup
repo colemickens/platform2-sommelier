@@ -34,17 +34,22 @@ if [ -x /usr/bin/ply-image ]; then
   fi
 fi
 
-mount -n -t tmpfs tmp /tmp
-mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
-mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+# If we are running from initramfs, the mountpoints
+# will already have been mounted from the initramfs init.  We also can't call
+# rootdev, since it isn't meaningful.
+if [ "$HAS_INITRAMFS" = "0" ]; then
+  mount -n -t tmpfs tmp /tmp
+  mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
+  mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
-# Mount our stateful partition. It's always partition 1.
-ROOT_DEV=$(rootdev)
-# On verified boot, we get the real root from the dm slaves.
-if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
-  ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
+  # Mount our stateful partition. It's always partition 1.
+  ROOT_DEV=$(rootdev)
+  # On verified boot, we get the real root from the dm slaves.
+  if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
+    ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
+  fi
+  STATE_DEV=${ROOT_DEV%[0-9]*}1
 fi
-STATE_DEV=${ROOT_DEV%[0-9]*}1
 
 # For factory install shim, we never want to write to the SDCard.
 if [ -f /root/.factory_installer ]; then
