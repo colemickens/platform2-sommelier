@@ -81,6 +81,15 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
     gpt -S boot -i $NEW_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
   fi
+
+
+  if [ -r "${INSTALL_ROOT}"/sbin/chromeos-firmwareupdate ]; then
+    # The chromeos-firmwareupdate will automatically verify if current firmware
+    # in system is identical to the image carried inside.
+    # If anything is different, it will rewrite the system firmware.
+    echo "Updating firmware"
+    sh "${INSTALL_ROOT}"/sbin/chromeos-firmwareupdate
+  fi
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
   # system, but returning an error here will cause the updater to try to
