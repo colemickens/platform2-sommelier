@@ -83,12 +83,12 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
   fi
 
 
-  if [ -r "${INSTALL_ROOT}"/sbin/chromeos-firmwareupdate ]; then
+  if [ -r "${INSTALL_ROOT}"/usr/sbin/chromeos-firmwareupdate ]; then
     # The chromeos-firmwareupdate will automatically verify if current firmware
     # in system is identical to the image carried inside.
     # If anything is different, it will rewrite the system firmware.
     echo "Updating firmware"
-    sh "${INSTALL_ROOT}"/sbin/chromeos-firmwareupdate
+    sh "${INSTALL_ROOT}"/usr/sbin/chromeos-firmwareupdate
   fi
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
