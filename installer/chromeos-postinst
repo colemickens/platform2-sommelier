@@ -95,6 +95,7 @@ else
   # system, but returning an error here will cause the updater to try to
   # not boot the installed system, instead keeping the existing system.
   echo -n  # this is a noop, required for 'sh'
+
+  # We are deprecating post-commit postinst, so do not put anything in here.
+
 fi
-
-
