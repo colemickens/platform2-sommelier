@@ -142,7 +142,7 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --apps-gallery-url="http://chrome.google.com/extensions/" \
             --disable-ipv6 \
             --enable-login-images \
-            --scroll-pixels=2 \
+            --scroll-pixels=4 \
             "${SKIP_OOBE}" \
             "${PROXY_ARGS}" \
 -- $WM_SCRIPT          
