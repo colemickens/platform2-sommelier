@@ -24,8 +24,8 @@ DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
-DEFINE_boolean skip_vblock ${FLAGS_FALSE} \
-  "Skip copying the HD vblock to install destination. Default: False"
+DEFINE_boolean skip_vblock ${FLAGS_TRUE} \
+  "Skip copying the HD vblock to install destination. Default: True"
 DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable. \
