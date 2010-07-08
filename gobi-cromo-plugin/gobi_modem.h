@@ -15,6 +15,7 @@
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
 
+#include "configuration.h"
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
 
@@ -174,7 +175,6 @@ class GobiModem
   DEVICE_ELEMENT device_;
   int last_seen_;  // Updated every scan where the modem is present
 
-  // TODO(rochberg):  Do we want these static?
   pthread_mutex_t activation_mutex_;
   pthread_cond_t activation_cond_;
   ULONG activation_state_;
@@ -183,6 +183,8 @@ class GobiModem
   ULONG data_bearer_technology_;
   ULONG roaming_state_;
   INT8  signal_strength_;
+
+  Configuration configuration_;
 
   static GobiModem *connected_modem_;
 

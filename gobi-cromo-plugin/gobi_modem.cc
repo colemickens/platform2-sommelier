@@ -5,14 +5,14 @@
 #include "gobi_modem.h"
 
 #include <stdio.h>
+extern "C" {
+#include <libudev.h>
+};
 
 #include <algorithm>
 
 #include <base/time.h>
 #include <glog/logging.h>
-extern "C" {
-#include <libudev.h>
-};
 #include <mm/mm-modem.h>
 
 static const size_t kDefaultBufferSize = 128;
@@ -198,6 +198,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
   pthread_mutex_init(&activation_mutex_, NULL);
   pthread_cond_init(&activation_cond_, NULL);
 
+  configuration_.Init(Configuration::kDefaultConfigFile);
+
   // Initialize DBus object properties
   SetDeviceProperties();
   SetModemProperties();
@@ -238,15 +240,15 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
 
     LOG(INFO) << "Current carrier is " << carrier;
 
-    // The machine boots and installs the generic UMTS carrier
-    // firmware (carrier == 1) based on the Options2k${oem}.txt file.
-    // Until we have tested and verified that we can change the
-    // options file, we want to use the Sprint firmware, so force that
-    // to happen.
-
-    // TODO(rochberg): Make this more general, or change Options2K${oem}.txt
-    if (carrier < 101) {  // Defined carriers start at 101
-      SetCarrier("Sprint", error);
+    // If there is a carrier configuration, use it.  Otherwise, use
+    // whatever has previously been set.
+    std::string goal_carrier =
+        configuration_.GetValueString(Configuration::kCarrierKey);
+    if (!goal_carrier.empty()) {
+      LOG(INFO) << "Setting carrier to " << goal_carrier;
+      SetCarrier(goal_carrier, error);
+    } else {
+      LOG(INFO) << "No configuration file value for carrier.";
     }
     Enabled = true;
   } else if (!enable && Enabled()) {
@@ -863,6 +865,7 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
 }
 
 void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
+  configuration_.SetValueString(Configuration::kCarrierKey, carrier.c_str());
   EnsureFirmwareLoaded(carrier.c_str(), error);
 }
 
@@ -926,7 +929,7 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
   activation_state_ = gobi::kActivationConnecting;
 
   switch (carrier->activation_method) {
-    case kActMethodOmadm:    // OMA-DM
+    case kActMethodOmadm:
       ActivateOmadm(error);
       break;
 
