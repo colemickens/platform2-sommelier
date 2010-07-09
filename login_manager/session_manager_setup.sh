@@ -130,7 +130,7 @@ cat /proc/uptime > /tmp/uptime-x-started
 
 exec /sbin/session_manager --uid=${USER_ID} --login -- \
     $CHROME --enable-gview \
-            --disable-sync \
+            --enable-sync \
             --log-level=0 \
             --enable-logging \
             --main-menu-url="http://welcome-cros.appspot.com/menu" \
