@@ -12,6 +12,10 @@
 
 CLIENT_ID,/usr/share/userfeedback/scripts/get_client_id
 LOGDATE,/bin/date
+Xorg.0.log,cat /var/log/Xorg.0.log
+chrome_log,cat /home/chronos/user/chrome_log
+chrome_system_log,cat /home/chronos/chrome_log
+chromeos-wm.LATEST,cat /home/chronos/user/log/chromeos-wm.LATEST
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
 dmesg,/bin/dmesg
@@ -19,12 +23,16 @@ fontconfig.log,cat /var/log/fontconfig.log
 hardware_class,/usr/bin/hardware_class
 hostname,hostname
 hw_platform,uname -i
-ifconfig, /sbin/ifconfig -a
+ifconfig,/sbin/ifconfig -a
 lsmod,/usr/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 meminfo,cat /proc/meminfo
 mm-status,/usr/lib/flimflam/test/mm-status
+powerd.LATEST,cat /var/log/power_manager/powerd.LATEST
+powerd.out,cat /var/log/power_manager/powerd.out
 ps,/bin/ps ux
+softwareupdate.log,cat /var/log/softwareupdate.log
 syslog,tail --bytes=30K /var/log/messages
 uname,/bin/uname -a
+update_engine.log,cat /var/log/update_engine.log
