@@ -41,7 +41,7 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
-  if [ -f /boot/extlinux.conf ]; then
+  if [ -f "${INSTALL_ROOT}"/boot/extlinux.conf ]; then
     echo "Updating /boot/extlinux.conf target"
     # If the mount-point is read-write, update the bootloader
     # Only update extlinux.conf if $1 is non-empty
