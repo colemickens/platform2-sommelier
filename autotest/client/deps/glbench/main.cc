@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
     glbench::GetClearTest(),
-#if defined(USE_OPENGL)
     glbench::GetFillRateTest(),
-    glbench::GetTriangleSetupTest(),
+#if defined(USE_OPENGL)
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
+    glbench::GetTriangleSetupTest(),
 #endif
     glbench::GetYuvToRgbTest(),
     glbench::GetReadPixelTest(),

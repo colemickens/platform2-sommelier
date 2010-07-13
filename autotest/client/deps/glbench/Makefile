@@ -6,13 +6,13 @@ SOURCES_COMMON = xlib_window.cc utils.cc
 SOURCES_GL_BENCH = main.cc swaptest.cc yuvtest.cc testbase.cc
 SOURCES_GL_BENCH += readpixeltest.cc
 SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
-SOURCES_GL_BENCH += textureupdatetest.cc
+SOURCES_GL_BENCH += textureupdatetest.cc fillratetest.cc
 
 GRAPHICS_BACKEND ?= OPENGL
 
 # TODO: port these to GLES
 ifeq ($(GRAPHICS_BACKEND),OPENGL)
-SOURCES_GL_BENCH += fillratetest.cc trianglesetuptest.cc
+SOURCES_GL_BENCH += trianglesetuptest.cc
 SOURCES_GL_BENCH += windowmanagercompositingtest.cc
 endif
 SOURCES_TEARTEST = teartest.cc

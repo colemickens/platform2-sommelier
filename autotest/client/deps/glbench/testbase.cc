@@ -128,7 +128,6 @@ void DrawArraysTestFunc::FillRateTestNormalSubWindow(const char* name,
 }
 
 
-#if defined(USE_OPENGL)
 void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   const int buffer_len = 64;
   char buffer[buffer_len];
@@ -148,7 +147,6 @@ void DrawArraysTestFunc::FillRateTestBlendDepth(const char *name) {
   RunTest(this, buffer, g_width * g_height, true);
   glDisable(GL_DEPTH_TEST);
 }
-#endif
 
 
 bool DrawElementsTestFunc::TestFunc(int iter) {

@@ -24,7 +24,7 @@ class TestBase;
 bool Bench(TestBase* test, float *slope, int64_t *bias);
 
 // Runs Bench on an instance of TestBase and prints out results.
-// 
+//
 // coefficient is multiplied (if inverse is false) or divided (if inverse is
 // true) by the slope and the result is printed.
 //
@@ -59,12 +59,10 @@ class DrawArraysTestFunc : public TestBase {
   // Runs the test and reports results in mpixels per second, assuming each
   // iteration updates a window of width by height pixels.
   void FillRateTestNormalSubWindow(const char* name, float width, float height);
-#if defined(USE_OPENGL)
   // Runs the test three times: with blending on; with depth test enabled and
   // depth function of GL_NOTEQUAL; with depth function GL_NEVER.  Results are
   // reported as in FillRateTestNormal.
   void FillRateTestBlendDepth(const char *name);
-#endif
 };
 
 // Helper class to time glDrawElements.
