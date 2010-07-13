@@ -14,6 +14,9 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
 /usr/bin/dbus-send --type=signal --system / \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
+# - stores the current power status
+/usr/bin/devkit-power -d > /tmp/power-status-on-suspend
+
 # - suspends the cryptohome device
 #CRYPTOHOME=/dev/mapper/cryptohome
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME

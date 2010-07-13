@@ -10,19 +10,95 @@
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
 
-F_SUSPEND_AT=/var/log/metrics/suspend-to-ram-time
-[ -r $F_SUSPEND_AT ] || exit
+# Sends to UMA the total time since going in suspend:
+#   Power.TimeInSuspendAtBoot
+#   Power.TimeInSuspendAtResume
+# Arguments:
+#   $1 - wake-up event: Boot or Resume
+send_time_in_suspend() {
+  [ -n "$1" ] || return
+  local time_in_suspend_name=Power.TimeInSuspendAt$1
 
-RESUME_AT=`cat /sys/class/rtc/rtc0/since_epoch`
-SUSPEND_AT=`cat $F_SUSPEND_AT`
+  # On suspend, powerd_suspend stores the current RTC value to a file.
+  local f_suspend_at=/var/log/metrics/suspend-to-ram-time
+  [ -r $f_suspend_at ] || return
 
-rm -f $F_SUSPEND_AT
+  local resume_at=$(/bin/cat /sys/class/rtc/rtc0/since_epoch)
+  local suspend_at=$(/bin/cat $f_suspend_at)
+  /bin/rm -f $f_suspend_at &
+  [ $resume_at -gt $suspend_at ] || return
 
-TIME_IN_SUSPEND_NAME=Power.TimeInSuspendAtResume
-[ "$1" = "-b" ] && TIME_IN_SUSPEND_NAME=Power.TimeInSuspendAtBoot
-
-if [ $RESUME_AT -gt $SUSPEND_AT ]; then
   # Converts seconds to minutes rounding to the nearest whole minute.
-  TIME_IN_SUSPEND=$((($RESUME_AT - $SUSPEND_AT + 30) / 60))
-  /usr/bin/metrics_client $TIME_IN_SUSPEND_NAME $TIME_IN_SUSPEND 1 10000 50
-fi
+  local time_in_suspend=$((($resume_at - $suspend_at + 30) / 60))
+  /usr/bin/metrics_client $time_in_suspend_name $time_in_suspend 1 10000 50 &
+}
+
+# Prints "OnAC" if the device is powered on AC, and "OnBattery" otherwise.
+# Arguments:
+#   $1 - command to use to read the power status
+get_ac_status() {
+  [ -n "$1" ] || return
+  $1 | /bin/grep -Eq '^[[:space:]]+on-battery:[[:space:]]+yes$'
+  if [ $? -eq 0 ]; then
+    echo OnBattery
+  else
+    echo OnAC
+  fi
+}
+
+# Prints the timestamp of the last occurrence of a specified string in
+# /var/log/messages, or nothing otherwise.
+# Arguments:
+#   $1 - string to look for
+get_last_message_timestamp() {
+  [ -n "$1" ] || return
+  /bin/grep -F "$1" /var/log/messages \
+    | /usr/bin/tail -n1 \
+    | /bin/sed 's/.*\[\s*\([0-9.]*\)].*/\1/'
+}
+
+# Sends to UMA the time it took to suspend and resume:
+#   Power.KernelResumeTimeOnAC
+#   Power.KernelResumeTimeOnBattery
+#   Power.KernelSuspendTimeOnAC
+#   Power.KernelSuspendTimeOnBattery
+send_suspend_resume_time() {
+  # On suspend, powerd_suspend stores the power status to a file.
+  local power_status_on_suspend=/tmp/power-status-on-suspend
+  [ -r $power_status_on_suspend ] || return
+
+  # Greps the timestamps.
+  local start_suspend_time=$(get_last_message_timestamp 'Freezing user space')
+  local end_suspend_time=$(get_last_message_timestamp 'Back to C!')
+  local end_resume_time=$(get_last_message_timestamp 'Finishing wakeup.')
+  [ -n "$start_suspend_time" ] && [ -n "$end_suspend_time" ] && \
+    [ -n "$end_resume_time" ] || return
+
+  # Calculates the time intervals in milliseconds.
+  local kernel_suspend_time=$(echo $start_suspend_time $end_suspend_time \
+    | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
+  local kernel_resume_time=$(echo $end_suspend_time $end_resume_time \
+    | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
+  [ -n "$kernel_suspend_time" ] && [ -n "$kernel_resume_time" ] || return
+
+  # Sends the metrics. Uses the pre-suspend AC status for both suspend
+  # and resume since this is the mode that most software is configured
+  # at at resume time.
+  local ac_status=$(get_ac_status "/bin/cat $power_status_on_suspend")
+  /usr/bin/metrics_client \
+    Power.KernelSuspendTime$ac_status $kernel_suspend_time 1 10000 50 &
+  /usr/bin/metrics_client \
+    Power.KernelResumeTime$ac_status $kernel_resume_time 1 10000 50 &
+
+  # Cleanup.
+  /bin/rm -f $power_status_on_suspend
+}
+
+main() {
+  local event="Resume"
+  [ "$1" = "-b" ] && event="Boot"
+  send_time_in_suspend $event
+  [ $event = "Resume" ] && send_suspend_resume_time
+}
+
+main $@
