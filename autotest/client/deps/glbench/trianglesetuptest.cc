@@ -23,6 +23,17 @@ class TriangleSetupTest : public DrawElementsTestFunc {
   DISALLOW_COPY_AND_ASSIGN(TriangleSetupTest);
 };
 
+const char* kVertexShader =
+    "attribute vec4 c;"
+    "void main() {"
+    "  gl_Position = c;"
+    "}";
+
+const char* kFragmentShader =
+    "uniform vec4 color;"
+    "void main() {"
+    "  gl_FragColor = color;"
+    "}";
 
 bool TriangleSetupTest::Run() {
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
@@ -37,14 +48,22 @@ bool TriangleSetupTest::Run() {
                 width, height);
   GLuint vertex_buffer = SetupVBO(GL_ARRAY_BUFFER,
                                   vertex_buffer_size, vertices);
-  glVertexPointer(2, GL_FLOAT, 0, 0);
-  glEnableClientState(GL_VERTEX_ARRAY);
+
+  GLuint program =
+    InitShaderProgram(kVertexShader, kFragmentShader);
+  GLint attribute_index = glGetAttribLocation(program, "c");
+  glVertexAttribPointer(attribute_index, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+  glEnableVertexAttribArray(attribute_index);
+
+  GLint color_uniform = glGetUniformLocation(program, "color");
 
   GLuint *indices = NULL;
   GLuint index_buffer = 0;
   GLsizeiptr index_buffer_size = 0;
 
   {
+    const GLfloat white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glUniform4fv(color_uniform, 1, white);
     count_ = CreateMesh(&indices, &index_buffer_size, width, height, 0);
 
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
@@ -59,7 +78,8 @@ bool TriangleSetupTest::Run() {
   }
 
   {
-    glColor4f(0.f, 1.f, 1.f, 1.f);
+    const GLfloat cyan[4] = {0.0f, 1.0f, 1.0f, 1.0f};
+    glUniform4fv(color_uniform, 1, cyan);
     count_ = CreateMesh(&indices, &index_buffer_size, width, height,
                         RAND_MAX / 2);
 
@@ -72,6 +92,7 @@ bool TriangleSetupTest::Run() {
     delete[] indices;
   }
 
+  glDeleteProgram(program);
   glDeleteBuffers(1, &vertex_buffer);
   delete[] vertices;
   return true;

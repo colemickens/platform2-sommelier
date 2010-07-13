@@ -66,8 +66,8 @@ int main(int argc, char *argv[]) {
 #if defined(USE_OPENGL)
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
-    glbench::GetTriangleSetupTest(),
 #endif
+    glbench::GetTriangleSetupTest(),
     glbench::GetYuvToRgbTest(),
     glbench::GetReadPixelTest(),
     glbench::GetAttributeFetchShaderTest(),
