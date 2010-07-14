@@ -14,18 +14,15 @@ PLUGINDEST ?= $(DESTDIR)/usr/lib/cromo/plugins
 UDEVRULES = 77-cromo-gobi-device-blacklist.rules \
 	77-cromo-gobi-device.rules
 UDEVRULES_DIR = $(DESTDIR)/lib/udev/rules.d
-CONFIG_DIR = $(DESTDIR)/var/run/cromo/
 
 GOBI_PLUGIN = gobi.so
 
 GLUE_HEADERS = modem_gobi_server_glue.h
 
 
-TESTS = configuration_unittest \
-    # gobi_modem_unittest # builds slower than rest of project put together
+TESTS = # gobi_modem_unittest # builds slower than rest of project put together
 
-SRCS = configuration.cc \
-	   device_watcher.cc \
+SRCS = device_watcher.cc \
        gobi_modem_handler.cc \
        gobi_modem.cc \
        gobi_sdk_wrapper.cc
@@ -41,21 +38,15 @@ $(GOBI_PLUGIN) : $(OBJS)
 	 dbus-1 dbus-glib-1 dbus-c++-1)
 
 gobi_modem_unittest : gobi_modem.o gobi_sdk_wrapper.o gobi_modem_unittest.o
-configuration_unittest : configuration.o configuration_unittest.o
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
 
-install: $(GOBI_PLUGIN) install-config-carrier
+install: $(GOBI_PLUGIN)
 	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
-
-install-config-carrier:
-ifdef CARRIER
-	install -d $(CONFIG_DIR)
-	echo "$(CARRIER)" > $(CONFIG_DIR)/gobi-carrier
-endif
+	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
 
 # Temporary hack for recording MEID.  Installed only for USE=dogfood
 install-record-modem:

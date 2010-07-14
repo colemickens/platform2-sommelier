@@ -198,8 +198,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
   pthread_mutex_init(&activation_mutex_, NULL);
   pthread_cond_init(&activation_cond_, NULL);
 
-  configuration_.Init(Configuration::kDefaultConfigFile);
-
   // Initialize DBus object properties
   SetDeviceProperties();
   SetModemProperties();
@@ -226,29 +224,26 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     LogGobiInformation();
     ULONG firmware_id;
     ULONG technology;
-    ULONG carrier;
+    ULONG carrier_id;
     ULONG region;
     ULONG gps_capability;
     ULONG rc;
 
     SDKCALL(Sdk,
-    GetFirmwareInfo, &firmware_id,
-                     &technology,
-                     &carrier,
-                     &region,
-                     &gps_capability)
+            GetFirmwareInfo, &firmware_id,
+                             &technology,
+                             &carrier_id,
+                             &region,
+                             &gps_capability);
 
-    LOG(INFO) << "Current carrier is " << carrier;
 
-    // If there is a carrier configuration, use it.  Otherwise, use
-    // whatever has previously been set.
-    std::string goal_carrier =
-        configuration_.GetValueString(Configuration::kCarrierKey);
-    if (!goal_carrier.empty()) {
-      LOG(INFO) << "Setting carrier to " << goal_carrier;
-      SetCarrier(goal_carrier, error);
+    const Carrier *carrier = find_carrier(carrier_id);
+
+    if (carrier) {
+      LOG(INFO) << "Current carrier is " << carrier->name
+                << " (" << carrier_id << ")";
     } else {
-      LOG(INFO) << "No configuration file value for carrier.";
+      LOG(INFO) << "Current carrier is " << carrier_id;
     }
     Enabled = true;
   } else if (!enable && Enabled()) {
@@ -812,6 +807,7 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
     return;
   }
 
+  LOG(INFO) << "Carrier image selection starting: " << carrier_name;
   ULONG rc;
   ULONG firmware_id;
   ULONG technology;
@@ -832,11 +828,12 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
     image_path += carrier->firmware_directory;
 
     LOG(INFO) << "Current Gobi carrier: " << modem_carrier_id
-              << ".  Upgrading Gobi firmware with "
+              << ".  Carrier image selection of "
               << image_path;
     rc = sdk_->UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
     if (rc != 0) {
-      LOG(WARNING) << "Firmware load from " << image_path << " failed: " << rc;
+      LOG(WARNING) << "Carrier image selection from: "
+                   << image_path << " failed: " << rc;
       error.set(kFirmwareLoadError, "UpgradeFirmware");
       return;
     }
@@ -853,11 +850,14 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
                      &gps_capability)
 
     if (modem_carrier_id != carrier->carrier_id) {
-      LOG(WARNING) << "After upgrade, expected carrier: " << carrier->carrier_id
+      LOG(WARNING) << "After carrier image selection, expected carrier: "
+                   << carrier->carrier_id
                    << ".  Instead got: " << modem_carrier_id;
       error.set(kFirmwareLoadError, "failed to switch carrier");
       return;
     }
+  } else {
+    LOG(INFO) << "Carrier image selection is no-op: " << carrier_name;
   }
 
   LOG(INFO) << "Carrier image selection complete: " << carrier_name;
@@ -865,7 +865,6 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
 }
 
 void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
-  configuration_.SetValueString(Configuration::kCarrierKey, carrier.c_str());
   EnsureFirmwareLoaded(carrier.c_str(), error);
 }
 

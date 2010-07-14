@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a bit brittle: We expect the first line with "object path"
+# to be a modem
+awk_first_modem='/object path/{gsub("\"","");print $3; exit;};'
+
+modem=$(dbus-send --system                          \
+    --print-reply                                   \
+    --dest=org.chromium.ModemManager                \
+    /org/chromium/ModemManager                      \
+    org.freedesktop.ModemManager.EnumerateDevices | \
+    awk "$awk_first_modem" )
+
+
+echo Setting carrier to "$*".  This could take up to two minutes.
+echo Using modem $modem
+
+
+time dbus-send                                      \
+    --reply-timeout=120000                          \
+    --system                                        \
+    --print-reply                                   \
+    --dest=org.chromium.ModemManager                \
+    "$modem"                                        \
+    org.chromium.ModemManager.Modem.Gobi.SetCarrier \
+    "string:$*"
+
+grep -i "Carrier image selection" /var/log/messages | tail -10
