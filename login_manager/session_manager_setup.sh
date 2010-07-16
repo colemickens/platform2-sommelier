@@ -71,8 +71,15 @@ chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 # temporary hack to tell cryptohome that we're doing chrome-login
 touch /tmp/doing-chrome-login
 
-# Read default_proxy file from etc.  Ok if not set.
-PROXY_ARGS=--proxy-pac-url="$(cat /etc/default_proxy)"
+# TODO: Remove auto_proxy environment variable when proxy settings
+# are exposed in the UI.
+if [ -f /home/chronos/var/default_proxy ] ; then
+  export auto_proxy=$(cat /home/chronos/var/default_proxy)
+else
+  if [ -f /etc/default_proxy ] ; then
+    export auto_proxy=$(cat /etc/default_proxy)
+  fi
+fi
 
 CHROME_DIR="/opt/google/chrome"
 CHROME="$CHROME_DIR/chrome"
@@ -144,5 +151,4 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --enable-login-images \
             --scroll-pixels=4 \
             "${SKIP_OOBE}" \
-            "${PROXY_ARGS}" \
 -- $WM_SCRIPT          
