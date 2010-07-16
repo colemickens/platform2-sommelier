@@ -337,14 +337,41 @@ if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
     $(($NUM_STATEFUL_SECTORS / 8))
 fi
 
+#
 # Install the stateful partition content
+#
+# In general, the system isn't allowed to depend on anything
+# being in the stateful partition at startup.  We make some
+# exceptions for dev images (only), as enumerated below:
+#
+# var/db/pkg
+# var/lib/portage
+#   These are included to support gmerge.
+#
+# dev_image
+#   This provides tools specifically chosen to be mounted at
+#   /usr/local as development only tools.
+#
+# Every exception added makes the dev image different from
+# the release image, which could mask bugs.  Make sure every
+# item you add here is well justified.
+#
 if [ -f /root/.dev_mode ] ; then
   mount_on_loop_dev readwrite
   trap my_cleanup EXIT
-  sudo cp -fpru /mnt/stateful_partition/var "$TMPMNT/var"
-  if [ -d /mnt/stateful_partition/dev_image ] ; then
-    sudo cp -fpru /mnt/stateful_partition/dev_image "$TMPMNT/dev_image"
-  fi
+  DIRLIST="
+      var/db/pkg
+      var/lib/portage
+      dev_image
+  "
+  for DIR in ${DIRLIST}; do
+    if [ ! -d /mnt/stateful_partition/${DIR} ] ; then
+      continue
+    fi
+    PARENT=$(dirname ${DIR})
+    sudo mkdir -p ${TMPMNT}/${PARENT}
+    sudo cp -fpru /mnt/stateful_partition/${DIR} ${TMPMNT}/${DIR}
+  done
   umount_from_loop_dev
   trap loop_offset_cleanup EXIT
 fi
