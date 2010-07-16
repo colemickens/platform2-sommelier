@@ -7,8 +7,12 @@
 
 # Load functions and constants for chromeos-install.
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
-. /usr/lib/shflags || exit 1
-
+if [ -e /usr/lib/shflags ]; then
+  . /usr/lib/shflags || exit 1
+else
+  # Try to find it relative to src/scripts
+  . ../third_party/shflags/files/src/shflags || exit 1
+fi
 
 # The default device is the one we booted from.
 ROOTDEV=$(rootdev)
@@ -16,8 +20,20 @@ ROOTDEV=$(rootdev)
 DEFAULT_DST=$(get_block_dev_from_partition_dev ${ROOTDEV})
 
 DEFINE_string dst "${DEFAULT_DST}" "Boot device to update"
+# Any time the verified boot flags change, this is needed
+# as well as a new grub.cfg.
+DEFINE_string update_syslinux_cfg "" \
+  "If specified, the path to a syslinux root.[A|B].cfg."
+DEFINE_string update_grub_cfg "" \
+  "If specified, the path to a new grub.cfg."
+DEFINE_string update_vmlinuz "" \
+  "If specified, the path to a vmlinuz to use as syslinux's vmlinuz.[A|B]"
 DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
+DEFINE_boolean verified_boot ${FLAGS_FALSE} \
+  "Use a verified boot target. Default: false"
+DEFINE_string esp_mounted_at "" \
+  "Specify a location if the esp has already been mounted"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -37,7 +53,6 @@ if [ -n "${@:-}" ]; then
   fi
 fi
 
-
 # Don't run this as root
 dont_run_as_root
 
@@ -49,24 +64,87 @@ then
 fi
 
 # Mount the EFI System Partition
-mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
+if [ -n "$FLAGS_esp_mounted_at" ]; then
+  mountpoint="$FLAGS_esp_mounted_at"
+else
+  mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
+  sudo mount $(make_partition_dev ${FLAGS_dst} 12) ${mountpoint}
+fi
 tempfile=$(mktemp /tmp/grubcfg_XXXXXXXXX)
-sudo mount ${FLAGS_dst}12 ${mountpoint}
+
+if [ -n "$FLAGS_update_syslinux_cfg" -a ! -r "$FLAGS_update_syslinux_cfg" ];
+then
+  echo "Specified syslinux root cfg file not found."
+  exit 1
+fi
 
 # Make the change
 if [ -n "${newimg:-}" ]; then
-  echo "Update boot default to menu item $newimg"
-  sed -e "s/^set default=.*/set default=${newimg}/" \
-    ${mountpoint}/efi/boot/grub.cfg > ${tempfile}
+  grubid=${newimg}
+  test ${FLAGS_verified_boot} -eq ${FLAGS_TRUE} && grubid=$((newimg+2))
+  if [ -z "$FLAGS_update_grub_cfg" ]; then
+    FLAGS_update_grub_cfg=${mountpoint}/efi/boot/grub.cfg
+  fi
+  echo "Update boot default to menu item $grubid"
+  sed -e "s/^set default=.*/set default=${grubid}/" \
+    $FLAGS_update_grub_cfg > ${tempfile}
   sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
 fi
 
-echo "Current boot default is:"
+echo "Current EFI boot default is:"
 # Print the [new] default choice
 grep -qs '^set default=0' ${mountpoint}/efi/boot/grub.cfg && echo "A"
 grep -qs '^set default=1' ${mountpoint}/efi/boot/grub.cfg && echo "B"
+grep -qs '^set default=2' ${mountpoint}/efi/boot/grub.cfg && echo "A (verified)"
+grep -qs '^set default=3' ${mountpoint}/efi/boot/grub.cfg && echo "B (verified)"
+
+# Rinse and repeat for the Legacy BIOS bootloader (syslinux)
+if [ -n "${newimg:-}" ]; then
+  echo "Updating default syslinux target to $newimg"
+  target_hd=chromeos-hd
+  test ${FLAGS_verified_boot} -eq ${FLAGS_TRUE} && target_hd=chromeos-vhd
+
+  if [ ${newimg} -eq 0 ]; then
+    echo "DEFAULT ${target_hd}.A" > ${mountpoint}/syslinux/default.cfg
+    vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.A
+    syslinux_root_cfg=${mountpoint}/syslinux/root.A.cfg
+  fi
+
+  if [ ${newimg} -eq 1 ]; then
+    echo "DEFAULT ${target_hd}.B" > ${mountpoint}/syslinux/default.cfg
+    vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.B
+    syslinux_root_cfg=${mountpoint}/syslinux/root.B.cfg
+  fi
+
+  # Update the root.X.cfg in place if none given.
+  if [ -z "$FLAGS_update_syslinux_cfg" ]; then
+      FLAGS_update_syslinux_cfg=$syslinux_root_cfg
+  fi
+
+  # 3 and 5 are the current rootfs a and b partitions
+  DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
+  DST_PART_B=$(make_partition_dev ${FLAGS_dst} 5)
+  sed -e "s|HDROOTA|${DST_PART_A}|g;s|HDROOTB|${DST_PART_B}|g" \
+    $FLAGS_update_syslinux_cfg > ${tempfile}
+  sudo cp ${tempfile} $syslinux_root_cfg
+
+  # We only need to do this for syslinux since grub can read the rootfs.
+  if [ -n "$FLAGS_update_vmlinuz" ]; then
+    echo "Updating vmlinuz..."
+    sudo cp -fL "$FLAGS_update_vmlinuz" "$vmlinuz_tgt"
+  fi
+fi
+
+echo "Current Legacy boot default is:"
+# Print the [new] default choice
+grep -qs 's-hd-A$' ${mountpoint}/syslinux/default.cfg && echo "A"
+grep -qs 's-hd-B$' ${mountpoint}/syslinux/default.cfg && echo "B"
+grep -qs 'vhd-A$' ${mountpoint}/syslinux/default.cfg && echo "A (verified)"
+grep -qs 'vhd-B$' ${mountpoint}/syslinux/default.cfg && echo "B (verified)"
 
 # Clean up
-sudo umount ${mountpoint}
 rm -f ${tempfile}
-rmdir ${mountpoint}
+if [ -z "$FLAGS_esp_mounted_at" ]; then
+  sudo umount ${mountpoint}
+  rmdir ${mountpoint}
+fi

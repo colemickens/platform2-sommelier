@@ -122,9 +122,14 @@ loop_offset_cleanup() {
 }
 
 # Mount the existing loop device at the mountpoint in $TMPMNT.
-# Args: none
+# Args: optional 'readwrite'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
-  sudo mount ${LOOP_DEV} ${TMPMNT}
+  local rw_flag=${1-readonly}
+  local mount_flags=""
+  if [ "${rw_flag}" != "readwrite" ]; then
+    mount_flags="-o ro"
+  fi
+  sudo mount ${mount_flags} ${LOOP_DEV} ${TMPMNT}
 }
 
 # Unmount loop-mounted device.
@@ -287,7 +292,7 @@ if [ $(uname -m) != "armv7l" ]; then
   trap loop_offset_cleanup EXIT
   mount_on_loop_dev
   trap my_cleanup EXIT
-  sudo ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 3)
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 3)
   umount_from_loop_dev
   trap loop_offset_cleanup EXIT
   loop_offset_cleanup
@@ -297,12 +302,31 @@ if [ $(uname -m) != "armv7l" ]; then
   trap loop_offset_cleanup EXIT
   mount_on_loop_dev
   trap my_cleanup EXIT
-  sudo ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 5)
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 5)
   umount_from_loop_dev
   trap loop_offset_cleanup EXIT
   loop_offset_cleanup
   trap - EXIT
 
+  # Is there a better x86 test?
+  IS_INTEL_ARCH=$(uname -m | grep "^i.86\$" | wc -l)
+  if [ "$IS_INTEL_ARCH" -eq "1" ]; then
+    # Update EFI partition. This doesn't happen in /postinst b/c we use loop
+    # device for mounting
+    loop_offset_setup ${FLAGS_dst} ${START_ESP}
+    trap loop_offset_cleanup EXIT
+    mount_on_loop_dev readwrite
+    trap my_cleanup EXIT
+    sudo /usr/sbin/chromeos-setimage B \
+        --dst=${FLAGS_dst} --run_as_root \
+        --update_syslinux_cfg="${TMPMNT}/syslinux/root.B.cfg" \
+        --esp_mounted_at="${TMPMNT}"
+    umount_from_loop_dev
+    trap loop_offset_cleanup EXIT
+    sudo syslinux ${LOOP_DEV}
+    loop_offset_cleanup
+    trap - EXIT
+  fi
 fi
 
 echo "Installing the stateful partition..."
@@ -315,7 +339,7 @@ fi
 
 # Install the stateful partition content
 if [ -f /root/.dev_mode ] ; then
-  mount_on_loop_dev
+  mount_on_loop_dev readwrite
   trap my_cleanup EXIT
   sudo cp -fpru /mnt/stateful_partition/var "$TMPMNT/var"
   if [ -d /mnt/stateful_partition/dev_image ] ; then

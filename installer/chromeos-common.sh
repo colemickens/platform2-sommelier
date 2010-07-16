@@ -321,8 +321,10 @@ install_gpt() {
   $sudo $GPT add -b ${START_ESP} -s ${NUM_ESP_SECTORS} \
     -t efi -l "EFI-SYSTEM" ${outdev}
 
-  # Create the PMBR and instruct it to boot ROOT-A
-  $sudo $GPT boot -p -b ${pmbrcode} -i 3 ${outdev}
+  # Create the PMBR and instruct it to boot off the EFI partition (12).
+  # The EFI partition contains both the EFI bootloader and the legacy
+  # BIOS loader.
+  $sudo $GPT boot -p -b ${pmbrcode} -i 12 ${outdev}
 
   # Display what we've got
   $sudo $GPT show ${outdev}

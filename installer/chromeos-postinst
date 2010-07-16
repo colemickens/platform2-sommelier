@@ -9,7 +9,7 @@
 # the rootfs should be updated w/ the new bootloader config. If empty, the
 # rootfs is mounted-read only and should not be updated.
 
-# Update /boot/extlinux.conf.
+# Update syslinux configuration file and install syslinux itself.
 INSTALL_ROOT=$(dirname "$0")
 INSTALL_DEV="$1"
 POSTCOMMIT="$2"
@@ -32,6 +32,8 @@ case ${NEW_PART_NUM} in
     exit 1
     ;;
 esac
+# For legacy and efi boot, we only have one boot-capable partition.
+LEGACY_PART_NUM=12
 
 if [ "$POSTCOMMIT" != "--postcommit" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
@@ -41,30 +43,56 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
-  if [ -f "${INSTALL_ROOT}"/boot/extlinux.conf ]; then
-    echo "Updating /boot/extlinux.conf target"
-    # If the mount-point is read-write, update the bootloader
-    # Only update extlinux.conf if $1 is non-empty
-    if [ -n "$INSTALL_DEV" ]; then
-      # Set default label to chromeos-hd.
-      sed -i 's/^DEFAULT .*/DEFAULT chromeos-hd/' \
-          "$INSTALL_ROOT"/boot/extlinux.conf || true
-      sed -i "{ s:HDROOT:$INSTALL_DEV: }" \
-          "$INSTALL_ROOT"/boot/extlinux.conf || true
+  IS_INTEL_ARCH=$(uname -m | grep "^i.86\$" | wc -l)
+  # Install syslinux files on EFI partition
+  if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
+    EFI_MNT=$(mktemp -d /tmp/EFI.XXXXXX)
+    EFI_PART=$(make_partition_dev "${ROOT_DEV}" "${LEGACY_PART_NUM}")
+    mount "${EFI_PART}" "${EFI_MNT}"
+    set +e
+    cp -R "${INSTALL_ROOT}"/boot/syslinux "${EFI_MNT}"
+    ERR=${?}
+    echo "Updating syslinux"
+    # Set up grub.cfg
+    if [ "${ERR}" -eq "0" ]; then
+      "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+          --dst=${ROOT_DEV} --run_as_root \
+          --update_syslinux_cfg="${EFI_MNT}/syslinux/root.${BOOT_SLOT}.cfg" \
+          --esp_mounted_at="${EFI_MNT}" \
+          --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
+      ERR=${?}
+    fi
+    umount "${EFI_MNT}"
+    rmdir "${EFI_MNT}"
+    if [ "${ERR}" -ne "0" ]; then
+      echo "Failed to copy syslinux files in and make them bootable."
+      exit 1
+    fi
+    set -e
+    mount -o bind /dev "${INSTALL_ROOT}"/dev
+    set +e
+    mount -o bind /proc "${INSTALL_ROOT}"/proc
+    ERR=${?}
+    if [ "${ERR}" -ne "0" ]; then
+      umount "${INSTALL_ROOT}"/dev
+      echo "Failed to bind mount /proc"
+      exit 1
+    fi
+    chroot "${INSTALL_ROOT}" /usr/bin/syslinux "${EFI_PART}"
+    ERR=${?}
+    umount "${INSTALL_ROOT}"/proc
+    umount "${INSTALL_ROOT}"/dev
+    set -e
+    if [ "${ERR}" -ne "0" ]; then
+      echo "Failed to run syslinux on: ${EFI_PART}"
+      exit 1
     fi
   fi
-
-
-  echo "Updating grub target for EFI BIOS"
-  # Set up grub.cfg
-  "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-      --dst=${ROOT_DEV} --run_as_root
 
   # Set up gpt boot selection for legacy devices.
   # flush linux caches; seems to be necessary
   sync
   echo 3 > /proc/sys/vm/drop_caches
-
 
   echo "Updating gpt PMBR target for legacy BIOS"
   # Configure the PMBR to boot the new image.
@@ -74,12 +102,14 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
   # with the old image's gpt binaries.
   #
   if [ -x /usr/bin/cgpt ]; then
-    cgpt boot -i $NEW_PART_NUM ${ROOT_DEV} 2>&1
+    echo "marking part $LEGACY_PART_NUM bootable (new)"
+    cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
   else
     # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
     # want to change the code, so we have to extract it, then put it back.
     dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
-    gpt -S boot -i $NEW_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
+    echo "marking part $LEGACY_PART_NUM bootable (old)"
+    gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
   fi
 
 
@@ -97,5 +127,30 @@ else
   echo -n  # this is a noop, required for 'sh'
 
   # We are deprecating post-commit postinst, so do not put anything in here.
+  
+  echo "Updating gpt PMBR target for legacy BIOS (post-commit)"
+  # I know we aren't supposed to put anything here, but here is the
+  # justification:
+  # The updater in 0.7.42.* sets the rootfs bootable after postinst (precommit)
+  # is run, and then runs postinst (postcommit). Later versions of the updater
+  # neither mark partitions bootable, nor run postinst (postcommit). In those
+  # newer versions, this code won't be run, but it won't need to be run.
+  # If we didn't care about clients as old as 0.7.42.*, we could leave this
+  # area empty. Unfortunately, we can't update old updaters.
+
+  # At some point, when we don't care about clients that old (0.7.42.*),
+  # We should remove this whole code path in this file.
+
+
+  if [ -x /usr/bin/cgpt ]; then
+    echo "marking part $LEGACY_PART_NUM bootable (new)"
+    cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
+  else
+    # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
+    # want to change the code, so we have to extract it, then put it back.
+    dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
+    echo "marking part $LEGACY_PART_NUM bootable (old)"
+    gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
+  fi
 
 fi
