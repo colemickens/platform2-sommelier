@@ -101,9 +101,10 @@ mkdir -p -m 0755 /mnt/stateful_partition/var/empty
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib
 mkdir -p -m 0755 /mnt/stateful_partition/var/lock
 mkdir -p -m 0755 /mnt/stateful_partition/var/log
-mkdir -p -m 0755 /mnt/stateful_partition/var/tmp
 mkdir -p -m 0755 /mnt/stateful_partition/var/run
 chmod 0755 /mnt/stateful_partition/var
+
+mkdir -p -m 1777 /mnt/stateful_partition/var/tmp
 
 # Directory for ChromeOS metrics collection
 mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
@@ -117,7 +118,6 @@ chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 
 # Mount some /var directories and /home
 mount -n --bind /mnt/stateful_partition/var /var
-mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid vartmp /var/tmp
 mount -n --bind /mnt/stateful_partition/home /home
 
 # Mount stateful partition for dev packages
