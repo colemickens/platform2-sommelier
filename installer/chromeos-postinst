@@ -40,6 +40,11 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
   # installed system.
 
   echo "Postinst running"
+
+  # If this FS was mounted read-write, we can't do deltas from it. Mark the
+  # FS as such
+  touch "${INSTALL_ROOT}/.nodelta" || true
+
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
