@@ -146,8 +146,7 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --login-profile=user \
             --in-chrome-auth \
             --apps-gallery-title="Web Store" \
-            --apps-gallery-url="http://chrome.google.com/extensions/" \
-            --disable-ipv6 \
+            --apps-gallery-url="https://chrome.google.com/extensions/" \
             --enable-login-images \
             --scroll-pixels=4 \
             "${SKIP_OOBE}" \
