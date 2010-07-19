@@ -83,8 +83,17 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       echo "Failed to bind mount /proc"
       exit 1
     fi
+    mount -o bind /tmp "${INSTALL_ROOT}"/tmp
+    ERR=${?}
+    if [ "${ERR}" -ne "0" ]; then
+      umount "${INSTALL_ROOT}"/dev
+      umount "${INSTALL_ROOT}"/proc
+      echo "Failed to bind mount /tmp"
+      exit 1
+    fi
     chroot "${INSTALL_ROOT}" /usr/bin/syslinux "${EFI_PART}"
     ERR=${?}
+    umount "${INSTALL_ROOT}"/tmp
     umount "${INSTALL_ROOT}"/proc
     umount "${INSTALL_ROOT}"/dev
     set -e
