@@ -24,6 +24,7 @@ hardware_class,/usr/bin/hardware_class
 hostname,hostname
 hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
+libcros_log,tail --bytes=10K /var/log/libcros_log
 lsmod,/usr/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
