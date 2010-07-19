@@ -33,16 +33,26 @@ int main(int argc, char **argv) {
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE);
 
-  cryptohome::Service service;
-  LOG_IF(FATAL, !service.Initialize()) << "Failed";
-
   // Allow the commands to be configurable.
   CommandLine *cl = CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
-  LOG_IF(FATAL, !service.Register(chromeos::dbus::GetSystemBusConnection()))
-    << "Failed";
-  LOG_IF(FATAL, !service.Run()) << "Failed";
+  cryptohome::Service service;
+  if (!service.Initialize()) {
+    LOG(FATAL) << "Service initialization failed";
+    return 1;
+  }
+
+  if (!service.Register(chromeos::dbus::GetSystemBusConnection())) {
+    LOG(FATAL) << "DBUS service registration failed";
+    return 1;
+  }
+
+  if (!service.Run()) {
+    LOG(FATAL) << "Service run failed.";
+    return 1;
+  }
+
   return 0;
 }

@@ -23,6 +23,7 @@
 #include "bindings/client.h"
 #include "crypto.h"
 #include "secure_blob.h"
+#include "tpm.h"
 #include "username_passkey.h"
 
 
@@ -50,6 +51,7 @@ namespace switches {
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
+  static const char kForceSwitch[] = "force";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
@@ -255,7 +257,7 @@ int main(int argc, char **argv) {
       return 1;
     }
 
-    if(!ConfirmRemove(user)) {
+    if(!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(user)) {
       return 1;
     }
 

@@ -21,9 +21,12 @@
 #include "crypto.h"
 #include "secure_blob.h"
 #include "username_passkey.h"
+#include "mock_user_session.h"
 
 namespace cryptohome {
 using std::string;
+using ::testing::Return;
+using ::testing::_;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
@@ -75,7 +78,25 @@ TEST_F(MountTest, BadInitTest) {
   EXPECT_EQ(false, mount.TestCredentials(up));
 }
 
-TEST_F(MountTest, GoodDecryptTest0) {
+TEST_F(MountTest, GoodDecryptTest) {
+  // create a Mount instance that points to a good shadow root, test that it
+  // properly authenticates against the first key.
+  // Note that the credentials used in this test are pre-created using an
+  // external script, and that script creates an old-style vault keyset.  So
+  // this test actually verifies that we can still use old vault keysets.
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("zero", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser, passkey);
+
+  EXPECT_EQ(true, mount.Init());
+  EXPECT_EQ(true, mount.TestCredentials(up));
+}
+
+TEST_F(MountTest, GoodReDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the first key
   Mount mount;
@@ -90,33 +111,30 @@ TEST_F(MountTest, GoodDecryptTest0) {
   EXPECT_EQ(true, mount.TestCredentials(up));
 }
 
-TEST_F(MountTest, GoodDecryptTest1) {
+TEST_F(MountTest, CurrentCredentialsTest) {
   // create a Mount instance that points to a good shadow root, test that it
-  // properly authenticates against the second key
+  // properly authenticates against the first key
   Mount mount;
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
 
   cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey("one", system_salt_, &passkey);
+  cryptohome::Crypto::PasswordToPasskey("zero", system_salt_, &passkey);
   UsernamePasskey up(kFakeUser, passkey);
 
   EXPECT_EQ(true, mount.Init());
-  EXPECT_EQ(true, mount.TestCredentials(up));
-}
 
-TEST_F(MountTest, GoodDecryptTest2) {
-  // create a Mount instance that points to a good shadow root, test that it
-  // properly authenticates against the third key
-  Mount mount;
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
+  MockUserSession user_session;
+  Crypto crypto;
+  user_session.Init(&crypto);
+  user_session.SetUser(up);
+  mount.set_current_user(&user_session);
 
-  cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey("two", system_salt_, &passkey);
-  UsernamePasskey up(kFakeUser, passkey);
+  EXPECT_CALL(user_session, CheckUser(_))
+      .WillOnce(Return(true));
+  EXPECT_CALL(user_session, Verify(_))
+      .WillOnce(Return(true));
 
-  EXPECT_EQ(true, mount.Init());
   EXPECT_EQ(true, mount.TestCredentials(up));
 }
 
@@ -147,7 +165,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   UsernamePasskey up(kFakeUser2, passkey);
 
   EXPECT_EQ(true, mount.Init());
-  EXPECT_EQ(true, mount.CreateCryptohome(up, 0));
+  EXPECT_EQ(true, mount.CreateCryptohome(up));
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
@@ -157,6 +175,20 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
   EXPECT_EQ(true, file_util::PathExists(key_path));
   EXPECT_EQ(true, file_util::PathExists(vault_path));
+}
+
+TEST_F(MountTest, TestNewCredentials) {
+  // Tests the newly-created cryptohome
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey("one", system_salt_, &passkey);
+  UsernamePasskey up(kFakeUser2, passkey);
+
+  EXPECT_EQ(true, mount.Init());
+  EXPECT_EQ(true, mount.TestCredentials(up));
 }
 
 TEST_F(MountTest, SystemSaltTest) {

@@ -42,5 +42,11 @@
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>
+    <signal name="MountStateChanged">
+      <arg type="s" name="username" />
+      <!-- mounted, unmounted, canceled, bad_auth, error -->
+      <arg type="s" name="state" />
+      <arg type="i" name="token" />
+    </signal>
   </interface>
 </node>

@@ -16,8 +16,12 @@
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
+#include "mock_tpm.h"
+
 namespace cryptohome {
 using std::string;
+using ::testing::Return;
+using ::testing::_;
 
 const char kImageDir[] = "test_image_dir";
 
@@ -82,7 +86,7 @@ TEST_F(CryptoTest, EncryptionTest) {
                                          &wrapped));
 
   SecureBlob original;
-  EXPECT_EQ(true, vault_keyset.ToBuffer(&original));
+  EXPECT_EQ(true, vault_keyset.ToKeysBlob(&original));
 
   EXPECT_EQ(false, CryptoTest::FindBlobInBlob(wrapped, original));
 }
@@ -105,13 +109,17 @@ TEST_F(CryptoTest, DecryptionTest) {
   EXPECT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
                                          &wrapped));
 
+  EXPECT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+
   VaultKeyset new_keyset;
-  EXPECT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &new_keyset));
+  bool tpm_wrapped = false;
+  EXPECT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &tpm_wrapped,
+                                           &new_keyset));
 
   SecureBlob original_data;
-  EXPECT_EQ(true, vault_keyset.ToBuffer(&original_data));
+  EXPECT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
   SecureBlob new_data;
-  EXPECT_EQ(true, new_keyset.ToBuffer(&new_data));
+  EXPECT_EQ(true, new_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
   EXPECT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
@@ -165,6 +173,51 @@ TEST_F(CryptoTest, AsciiEncodeTest) {
   std::string test_good(static_cast<char*>(blob_out.data()), blob_out.size());
 
   EXPECT_EQ(0, known_good.compare(test_good));
+}
+
+TEST_F(CryptoTest, TpmStepTest) {
+  // Check that the code path changes to support the TPM work
+  Crypto crypto;
+  MockTpm tpm;
+
+  crypto.set_tpm(&tpm);
+  crypto.set_use_tpm(true);
+
+  EXPECT_CALL(tpm, Init(_, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
+  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
+
+  crypto.Init();
+
+  VaultKeyset vault_keyset;
+  vault_keyset.CreateRandom(crypto);
+
+  SecureBlob wrapper(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
+                         wrapper.size());
+  SecureBlob salt(PKCS5_SALT_LEN);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
+                         salt.size());
+
+  SecureBlob wrapped;
+  EXPECT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
+                                         &wrapped));
+
+  EXPECT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+
+  VaultKeyset new_keyset;
+  bool tpm_wrapped = false;
+  EXPECT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &tpm_wrapped,
+                                           &new_keyset));
+
+  SecureBlob original_data;
+  EXPECT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
+  SecureBlob new_data;
+  EXPECT_EQ(true, new_keyset.ToKeysBlob(&new_data));
+
+  EXPECT_EQ(new_data.size(), original_data.size());
+  EXPECT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
 }
 
 } // namespace cryptohome

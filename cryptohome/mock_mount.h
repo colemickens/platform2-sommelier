@@ -17,7 +17,7 @@ class MockMount : public Mount {
   MockMount() {}
   ~MockMount() {}
   MOCK_METHOD0(Init, bool());
-  MOCK_METHOD1(TestCredentials, bool(const Credentials&));
+  MOCK_CONST_METHOD1(TestCredentials, bool(const Credentials&));
 };
 }  // namespace cryptohome
 

@@ -61,7 +61,7 @@ TEST_F(VaultKeysetTest, SerializeTest) {
   vault_keyset.CreateRandom(Crypto());
 
   SecureBlob blob;
-  EXPECT_EQ(true, vault_keyset.ToBuffer(&blob));
+  EXPECT_EQ(true, vault_keyset.ToKeysBlob(&blob));
 
   EXPECT_EQ(true, VaultKeysetTest::FindBlobInBlob(blob, vault_keyset.FEK()));
   EXPECT_EQ(true, VaultKeysetTest::FindBlobInBlob(blob,
@@ -82,10 +82,10 @@ TEST_F(VaultKeysetTest, DeserializeTest) {
   vault_keyset.CreateRandom(Crypto());
 
   SecureBlob blob;
-  EXPECT_EQ(true, vault_keyset.ToBuffer(&blob));
+  EXPECT_EQ(true, vault_keyset.ToKeysBlob(&blob));
 
   VaultKeyset new_vault_keyset;
-  new_vault_keyset.AssignBuffer(blob);
+  new_vault_keyset.FromKeysBlob(blob);
 
   EXPECT_EQ(vault_keyset.FEK().size(), new_vault_keyset.FEK().size());
   EXPECT_EQ(true, VaultKeysetTest::FindBlobInBlob(vault_keyset.FEK(),

@@ -7,24 +7,24 @@
 
 #include <base/basictypes.h>
 
+#include "cryptohome_common.h"
 #include "entropy_source.h"
 #include "secure_blob.h"
 
 namespace cryptohome {
-
-const char kVaultKeysetSignature[] = "ch";
-
-#define CRYPTOHOME_VAULT_KEYSET_VERSION_MAJOR 1
-#define CRYPTOHOME_VAULT_KEYSET_VERSION_MINOR 0
 
 // VaultKeyset holds the File Encryption Key (FEK) and File Name Encryption Key
 // (FNEK) and their corresponding signatures.
 class VaultKeyset {
  public:
   VaultKeyset();
+  virtual ~VaultKeyset();
 
-  bool AssignBuffer(const SecureBlob& buffer);
-  bool ToBuffer(SecureBlob* buffer) const;
+  void FromVaultKeyset(const VaultKeyset& vault_keyset);
+  void FromKeys(const VaultKeysetKeys& keys);
+  bool FromKeysBlob(const SecureBlob& keys_blob);
+  bool ToKeys(VaultKeysetKeys* keys) const;
+  bool ToKeysBlob(SecureBlob* keys_blob) const;
 
   void CreateRandom(const EntropySource& entropy_source);
 
@@ -35,8 +35,6 @@ class VaultKeyset {
   const SecureBlob& FNEK_SIG() const;
   const SecureBlob& FNEK_SALT() const;
 
-  static unsigned int SerializedSize();
-
  private:
 
   SecureBlob fek_;
@@ -45,8 +43,6 @@ class VaultKeyset {
   SecureBlob fnek_;
   SecureBlob fnek_sig_;
   SecureBlob fnek_salt_;
-  unsigned short major_version_;
-  unsigned short minor_version_;
 
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);
 };

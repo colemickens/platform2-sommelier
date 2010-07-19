@@ -16,6 +16,8 @@ using ::testing::_;
 
 TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
   MockMount mount;
+  EXPECT_CALL(mount, Init())
+      .WillOnce(Return(true));
   EXPECT_CALL(mount, TestCredentials(_))
       .WillOnce(Return(true));
 

@@ -138,7 +138,7 @@ gboolean Service::Mount(gchar *userid,
   // We only check key 0 because it is the only key that we use.  Other indexes
   // are only used in password migration.
   Mount::MountError local_error = Mount::MOUNT_ERROR_NONE;
-  *OUT_done = mount_->MountCryptohome(credentials, 0, &local_error);
+  *OUT_done = mount_->MountCryptohome(credentials, &local_error);
   *OUT_error = local_error;
   return TRUE;
 }

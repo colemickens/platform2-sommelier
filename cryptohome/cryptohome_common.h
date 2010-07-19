@@ -16,13 +16,6 @@ namespace cryptohome {
 #define CRYPTOHOME_DEFAULT_SALT_LENGTH 16
 #define CRYPTOHOME_PWNAME_BUF_LENGTH 1024
 
-struct VaultKeysetHeader {
-  char signature[2];
-  unsigned char major_version;
-  unsigned char minor_version;
-} __attribute__((__packed__));
-typedef struct VaultKeysetHeader VaultKeysetHeader;
-
 struct VaultKeysetKeys {
   unsigned char fek[CRYPTOHOME_DEFAULT_KEY_SIZE];
   unsigned char fek_sig[CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE];
