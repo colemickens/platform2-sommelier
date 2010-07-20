@@ -127,12 +127,21 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
   fi
 
 
-  if [ -r "${INSTALL_ROOT}"/usr/sbin/chromeos-firmwareupdate ]; then
-    # The chromeos-firmwareupdate will automatically verify if current firmware
-    # in system is identical to the image carried inside.
-    # If anything is different, it will rewrite the system firmware.
+  # See if we need to update firmware. NOTE: we must activate new firmware only
+  # after new kernel is actived (installed and made bootable), otherwise new
+  # firmware with all old kernels may lead to recovery screen (due to new key).
+  FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
+  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+    # The firmware update script is supposed to automatically identify current
+    # system state and decide the action to perform. "--background-update" tells
+    # it not to perform any dangerous things that would require/cause reboot,
+    # for example re-writing EC firmware. Those tasks will be done in next boot.
     echo "Updating firmware"
-    sh "${INSTALL_ROOT}"/usr/sbin/chromeos-firmwareupdate
+    "$FIRMWARE_UPDATE_SCRIPT" --background-update || exit 1
+    # Because next step after postinst may take a lot of time (eg, disk wiping)
+    # and people may confuse that as 'firmware update require a long wait',
+    # we explicitly prompt here.
+    echo "Firmware update complete."
   fi
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
