@@ -94,11 +94,12 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
 fi
 
 # Make sure stateful partition has some basic directories
-mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/etc
+mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/var/cache
 mkdir -p -m 0755 /mnt/stateful_partition/var/empty
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib
+mkdir -p -m 0755 /mnt/stateful_partition/var/lib/ureadahead
 mkdir -p -m 0755 /mnt/stateful_partition/var/lock
 mkdir -p -m 0755 /mnt/stateful_partition/var/log
 mkdir -p -m 0755 /mnt/stateful_partition/var/run
@@ -132,6 +133,8 @@ mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs media /media
 
+mount -n -t debugfs debugfs /sys/kernel/debug
+
 if [ -e /mnt/stateful_partition/.consider_oobe ]; then
   # Mount OEM partner partition if OOBE has not yet been completed.
   if [ ! -e /home/chronos/.oobe_completed ]; then
@@ -139,6 +142,14 @@ if [ -e /mnt/stateful_partition/.consider_oobe ]; then
     mount -n -t ext3 "$OEM_DEV" /mnt/partner_partition
   fi
 fi
+
+#
+# Note that ureadahead depends on some of the operations above.
+# Notably, the command requires /var to be mounted, because the pack
+# file is located in /var/lib/ureadahead, and ureadahead tracing
+# requires /sys/kernel/debug be mounted.
+#
+ureadahead &
 
 # Some things freak out if no hostname is set.
 hostname localhost
