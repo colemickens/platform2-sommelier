@@ -1,4 +1,4 @@
-#!/bin/sh -e
+#!/bin/sh
 
 # Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
@@ -9,12 +9,26 @@
 # the rootfs should be updated w/ the new bootloader config. If empty, the
 # rootfs is mounted-read only and should not be updated.
 
-# Update syslinux configuration file and install syslinux itself.
+# Setup INSTALL_ROOT
 INSTALL_ROOT=$(dirname "$0")
-INSTALL_DEV="$1"
-POSTCOMMIT="$2"
 # Load helper functions
 . "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh
+. "${INSTALL_ROOT}"/usr/lib/shflags
+
+# Process flags now, couldn't earlier since we needed INSTALL_ROOT
+# to know where to load shflags from
+DEFINE_string esp_part_file "" "File containing the ESP partition"
+DEFINE_boolean postcommit ${FLAGS_FALSE} "Run postcommit"
+
+# Parse command line
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+set -e
+
+
+# Update syslinux configuration file and install syslinux itself.
+INSTALL_DEV="$1"
+
 # Find whole disk device.
 ROOT_DEV=$(get_block_dev_from_partition_dev ${INSTALL_DEV})
 NEW_PART_NUM=${INSTALL_DEV##*/*[a-z]}
@@ -35,7 +49,7 @@ esac
 # For legacy and efi boot, we only have one boot-capable partition.
 LEGACY_PART_NUM=12
 
-if [ "$POSTCOMMIT" != "--postcommit" ]; then
+if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
   # installed system.
 
@@ -48,17 +62,29 @@ if [ "$POSTCOMMIT" != "--postcommit" ]; then
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
-  IS_INTEL_ARCH=$(uname -m | grep "^i.86\$" | wc -l)
+  # TODO(rkc): This is a bit of a hack - we're depending on the fact that our
+  # build machine will always be Intel based - if it isn't, VM builds will fail
+  IS_INTEL_ARCH=$(uname -m | grep "^i.86\|^x86_..\$" | wc -l)
   # Install syslinux files on EFI partition
   if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
     EFI_MNT=$(mktemp -d /tmp/EFI.XXXXXX)
-    EFI_PART=$(make_partition_dev "${ROOT_DEV}" "${LEGACY_PART_NUM}")
+    if [ -z "${FLAGS_esp_part_file}" ]; then
+      EFI_PART=$(make_partition_dev "${ROOT_DEV}" "${LEGACY_PART_NUM}")
+    else
+      EFI_PART=$(losetup -f)
+      if [ -z "${EFI_PART}" ]; then
+        # It's okay to die here; this parameter will never be given on live
+        # system - this is only in case of mounted image postinst runs
+        die "No free loop device. Free up a loop device or reboot. Exiting."
+      fi
+      losetup "${EFI_PART}" "${FLAGS_esp_part_file}"
+    fi
     mount "${EFI_PART}" "${EFI_MNT}"
     set +e
     cp -R "${INSTALL_ROOT}"/boot/syslinux "${EFI_MNT}"
     ERR=${?}
     echo "Updating syslinux"
-    # Set up grub.cfg
+    # Update all legacy bootloaders.
     if [ "${ERR}" -eq "0" ]; then
       "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
           --dst=${ROOT_DEV} --run_as_root \
@@ -96,6 +122,9 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     umount "${INSTALL_ROOT}"/tmp
     umount "${INSTALL_ROOT}"/proc
     umount "${INSTALL_ROOT}"/dev
+    if (expr match "${EFI_PART}" "/dev/loop*" >/dev/null); then
+      losetup -d "${EFI_PART}"
+    fi
     set -e
     if [ "${ERR}" -ne "0" ]; then
       echo "Failed to run syslinux on: ${EFI_PART}"
@@ -103,104 +132,110 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     fi
   fi
 
-  echo "Updating Partition Table Attributes..."
-  # Mark partition table to indicate an update has occurred.
-  # The updated partition should have the highest priority (priority=3) so it
-  # will be tried on the next reboot.
-  # The updated partition should have its success flag marked 0 and its tries
-  # flag marked as having 3 attempts remaining.
-  # The partition that has the highest priority before the update should have
-  # the highest priority after the updated kernel (priority=2).
-  # All other enabled kernel partitions are assigned priority=1.
-  # Kernel partitions that were disabled (priority=0) should remain disabled.
-  kern_parts=""
-  all_parts="$ROOT_DEV"*
-  NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
-  # Find all kernel partitions
-  for i in $all_parts
-  do
-      current_index=${i##*/*[a-z]}
-      # Necessary check on arm where device is formatted mmcblk[0-9]p[0-9]
-      if [ "$current_index" -eq 0 ]; then
-        continue
-      fi
-      # Get type string for current partition
-      type=`cgpt show -i $current_index -t $ROOT_DEV`
-      # Check if type string indicates that it is a kernel partition
-      if [ "$type" = "FE3A2A5D-4F32-41A7-B725-ACCC3285A309" ]; then
-        kern_parts="$current_index $kern_parts"
-      fi
-  done
-  highest_prio=0
-  highest_prio_index=-1
-  # Mark all kernel partitions low priority
-  # Kernels with priority zero should not be changed
-  for i in $kern_parts
-  do
-      # Get priority (a number) of the current partition
-      current_prio=`cgpt show -i $i -P $ROOT_DEV`
-      if [ $current_prio -eq 0 ]; then
-        continue
-      fi
-      if [ "$current_prio" -gt "$highest_prio" ]; then
-        if [ "$i" != $NEW_KERN_NUM ]; then
-          highest_prio=$current_prio
-          highest_prio_index=$i
+  # If we're working on a real machine, not a mounted image, only then
+  # run the gpt tool to manipulate the partitions - if we're touching
+  # the ESP from a file, it means we are not on the target hardware, making
+  # the GPT and firmware scripts inapplicable nor are we auto-updating
+  if [ -z "${FLAGS_esp_part_file}" ]; then
+    echo "Updating Partition Table Attributes..."
+    # Mark partition table to indicate an update has occurred.
+    # The updated partition should have the highest priority (priority=3) so it
+    # will be tried on the next reboot.
+    # The updated partition should have its success flag marked 0 and its tries
+    # flag marked as having 3 attempts remaining.
+    # The partition that has the highest priority before the update should have
+    # the highest priority after the updated kernel (priority=2).
+    # All other enabled kernel partitions are assigned priority=1.
+    # Kernel partitions that were disabled (priority=0) should remain disabled.
+    kern_parts=""
+    all_parts="$ROOT_DEV"*
+    NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
+    # Find all kernel partitions
+    for i in $all_parts
+    do
+        current_index=${i##*/*[a-z]}
+        # Necessary check on arm where device is formatted mmcblk[0-9]p[0-9]
+        if [ "$current_index" -eq 0 ]; then
+          continue
         fi
-      fi
-      cgpt add -i $i -P 1 $ROOT_DEV
-  done
-  # The kernel with the highest priority should retain its higher priority
-  if [ $highest_prio != 0 ]; then
-      cgpt add -i $highest_prio_index -P 2 $ROOT_DEV
-  fi
-  # Make updated partition highest priority for next reboot
-  sudo cgpt add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
+        # Get type string for current partition
+        type=`cgpt show -i $current_index -t $ROOT_DEV`
+        # Check if type string indicates that it is a kernel partition
+        if [ "$type" = "FE3A2A5D-4F32-41A7-B725-ACCC3285A309" ]; then
+          kern_parts="$current_index $kern_parts"
+        fi
+    done
+    highest_prio=0
+    highest_prio_index=-1
+    # Mark all kernel partitions low priority
+    # Kernels with priority zero should not be changed
+    for i in $kern_parts
+    do
+        # Get priority (a number) of the current partition
+        current_prio=`cgpt show -i $i -P $ROOT_DEV`
+        if [ $current_prio -eq 0 ]; then
+          continue
+        fi
+        if [ "$current_prio" -gt "$highest_prio" ]; then
+          if [ "$i" != $NEW_KERN_NUM ]; then
+            highest_prio=$current_prio
+            highest_prio_index=$i
+          fi
+        fi
+        cgpt add -i $i -P 1 $ROOT_DEV
+    done
+    # The kernel with the highest priority should retain its higher priority
+    if [ $highest_prio != 0 ]; then
+        cgpt add -i $highest_prio_index -P 2 $ROOT_DEV
+    fi
+    # Make updated partition highest priority for next reboot
+    sudo cgpt add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
 
-  echo "Updating grub target for EFI BIOS"
-  # Set up grub.cfg
-  "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-      --dst=${ROOT_DEV} --run_as_root
+    echo "Updating grub target for EFI BIOS"
+    # Set up grub.cfg
+    "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+        --dst=${ROOT_DEV} --run_as_root
 
-  # Set up gpt boot selection for legacy devices.
-  # flush linux caches; seems to be necessary
-  sync
-  echo 3 > /proc/sys/vm/drop_caches
+    # Set up gpt boot selection for legacy devices.
+    # flush linux caches; seems to be necessary
+    sync
+    echo 3 > /proc/sys/vm/drop_caches
 
-  echo "Updating gpt PMBR target for legacy BIOS"
-  # Configure the PMBR to boot the new image.
-  #
-  # IMPORTANT NOTE: postinst is run by the previoulsy installed image
-  # rather than the new image. So changes here need to be backwards compatible
-  # with the old image's gpt binaries.
-  #
-  if [ -x /usr/bin/cgpt ]; then
-    echo "marking part $LEGACY_PART_NUM bootable (new)"
-    cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
-  else
-    # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
-    # want to change the code, so we have to extract it, then put it back.
-    dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
-    echo "marking part $LEGACY_PART_NUM bootable (old)"
-    gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
-  fi
+    echo "Updating gpt PMBR target for legacy BIOS"
+    # Configure the PMBR to boot the new image.
+    #
+    # IMPORTANT NOTE: postinst is run by the previoulsy installed image
+    # rather than the new image. So changes here need to be backwards compatible
+    # with the old image's gpt binaries.
+    #
+    if [ -x /usr/bin/cgpt ]; then
+      echo "marking part $LEGACY_PART_NUM bootable (new)"
+      cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
+    else
+      # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
+      # want to change the code, so we have to extract it, then put it back.
+      dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
+      echo "marking part $LEGACY_PART_NUM bootable (old)"
+      gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
+    fi
 
 
-  # See if we need to update firmware. NOTE: we must activate new firmware only
-  # after new kernel is actived (installed and made bootable), otherwise new
-  # firmware with all old kernels may lead to recovery screen (due to new key).
-  FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
-  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-    # The firmware update script is supposed to automatically identify current
-    # system state and decide the action to perform. "--background-update" tells
-    # it not to perform any dangerous things that would require/cause reboot,
-    # for example re-writing EC firmware. Those tasks will be done in next boot.
-    echo "Updating firmware"
-    "$FIRMWARE_UPDATE_SCRIPT" --background-update || exit 1
-    # Because next step after postinst may take a lot of time (eg, disk wiping)
-    # and people may confuse that as 'firmware update require a long wait',
-    # we explicitly prompt here.
-    echo "Firmware update complete."
+    # See if we need to update firmware. NOTE: we must activate new firmware only
+    # after new kernel is actived (installed and made bootable), otherwise new
+    # firmware with all old kernels may lead to recovery screen (due to new key).
+    FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
+    if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+      # The firmware update script is supposed to automatically identify current
+      # system state and decide the action to perform. "--background-update" tells
+      # it not to perform any dangerous things that would require/cause reboot,
+      # for example re-writing EC firmware. Those tasks will be done in next boot.
+      echo "Updating firmware"
+      "$FIRMWARE_UPDATE_SCRIPT" --background-update || exit 1
+      # Because next step after postinst may take a lot of time (eg, disk wiping)
+      # and people may confuse that as 'firmware update require a long wait',
+      # we explicitly prompt here.
+      echo "Firmware update complete."
+    fi
   fi
 else
   # Post-commit. At this point an unexpected reboot may boot the installed
@@ -209,7 +244,7 @@ else
   echo -n  # this is a noop, required for 'sh'
 
   # We are deprecating post-commit postinst, so do not put anything in here.
-  
+
   echo "Updating gpt PMBR target for legacy BIOS (post-commit)"
   # I know we aren't supposed to put anything here, but here is the
   # justification:
@@ -224,9 +259,9 @@ else
   # We should remove this whole code path in this file.
 
 
-  if [ -x /usr/bin/cgpt ]; then
+  if [ -x "${INSTALL_ROOT}"/usr/bin/cgpt ]; then
     echo "marking part $LEGACY_PART_NUM bootable (new)"
-    cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
+    "${INSTALL_ROOT}"/usr/bin/cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
   else
     # The old gpt tool requires a -b arg to specify the PMBR bootcode. We don't
     # want to change the code, so we have to extract it, then put it back.
@@ -234,5 +269,4 @@ else
     echo "marking part $LEGACY_PART_NUM bootable (old)"
     gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
   fi
-
 fi

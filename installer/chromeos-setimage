@@ -10,16 +10,17 @@
 if [ -e /usr/lib/shflags ]; then
   . /usr/lib/shflags || exit 1
 else
-  # Try to find it relative to src/scripts
-  . ../third_party/shflags/files/src/shflags || exit 1
+  # In case we're being called from a mounted image.
+  if [ -e "$(dirname "$0")"/../../usr/lib/shflags ]; then
+    . "$(dirname "$0")"/../../usr/lib/shflags || exit 1
+  else
+    # Try to find it relative to src/scripts
+    . ../third_party/shflags/files/src/shflags || exit 1
+  fi
 fi
 
-# The default device is the one we booted from.
-ROOTDEV=$(rootdev)
-# From root partition to root block device.
-DEFAULT_DST=$(get_block_dev_from_partition_dev ${ROOTDEV})
 
-DEFINE_string dst "${DEFAULT_DST}" "Boot device to update"
+DEFINE_string dst "" "Boot device to update (Default: current root device)"
 # Any time the verified boot flags change, this is needed
 # as well as a new grub.cfg.
 DEFINE_string update_syslinux_cfg "" \
@@ -40,6 +41,17 @@ FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
 set -e
+
+# Hack to run the code to setup the default dst only if not provided since if
+# this is run from a mounted image on a different machine, rootdev will fail.
+if [ -z "${FLAGS_dst}" ]; then
+  # The default device is the one we booted from.
+  ROOTDEV=$(rootdev)
+  # From root partition to root block device.
+  DEFAULT_DST=$(get_block_dev_from_partition_dev ${ROOTDEV})
+
+  FLAGS_dst="${DEFAULT_DST}"
+fi
 
 # Validate args.
 if [ -n "${@:-}" ]; then
