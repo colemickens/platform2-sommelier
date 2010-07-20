@@ -103,6 +103,65 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     fi
   fi
 
+  echo "Updating Partition Table Attributes..."
+  # Mark partition table to indicate an update has occurred.
+  # The updated partition should have the highest priority (priority=3) so it
+  # will be tried on the next reboot.
+  # The updated partition should have its success flag marked 0 and its tries
+  # flag marked as having 3 attempts remaining.
+  # The partition that has the highest priority before the update should have
+  # the highest priority after the updated kernel (priority=2).
+  # All other enabled kernel partitions are assigned priority=1.
+  # Kernel partitions that were disabled (priority=0) should remain disabled.
+  kern_parts=""
+  all_parts="$ROOT_DEV"*
+  NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
+  # Find all kernel partitions
+  for i in $all_parts
+  do
+      current_index=${i##*/*[a-z]}
+      # Necessary check on arm where device is formatted mmcblk[0-9]p[0-9]
+      if [ "$current_index" -eq 0 ]; then
+        continue
+      fi
+      # Get type string for current partition
+      type=`cgpt show -i $current_index -t $ROOT_DEV`
+      # Check if type string indicates that it is a kernel partition
+      if [ "$type" = "FE3A2A5D-4F32-41A7-B725-ACCC3285A309" ]; then
+        kern_parts="$current_index $kern_parts"
+      fi
+  done
+  highest_prio=0
+  highest_prio_index=-1
+  # Mark all kernel partitions low priority
+  # Kernels with priority zero should not be changed
+  for i in $kern_parts
+  do
+      # Get priority (a number) of the current partition
+      current_prio=`cgpt show -i $i -P $ROOT_DEV`
+      if [ $current_prio -eq 0 ]; then
+        continue
+      fi
+      if [ "$current_prio" -gt "$highest_prio" ]; then
+        if [ "$i" != $NEW_KERN_NUM ]; then
+          highest_prio=$current_prio
+          highest_prio_index=$i
+        fi
+      fi
+      cgpt add -i $i -P 1 $ROOT_DEV
+  done
+  # The kernel with the highest priority should retain its higher priority
+  if [ $highest_prio != 0 ]; then
+      cgpt add -i $highest_prio_index -P 2 $ROOT_DEV
+  fi
+  # Make updated partition highest priority for next reboot
+  sudo cgpt add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
+
+  echo "Updating grub target for EFI BIOS"
+  # Set up grub.cfg
+  "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+      --dst=${ROOT_DEV} --run_as_root
+
   # Set up gpt boot selection for legacy devices.
   # flush linux caches; seems to be necessary
   sync
