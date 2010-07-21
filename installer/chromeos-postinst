@@ -155,7 +155,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     do
         current_index=${i##*/*[a-z]}
         # Necessary check on arm where device is formatted mmcblk[0-9]p[0-9]
-        if [ "$current_index" -eq 0 ]; then
+        if [ -z "$current_index" ] || [ "$current_index" -eq 0 ]; then
           continue
         fi
         # Get type string for current partition
