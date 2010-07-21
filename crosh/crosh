@@ -4,12 +4,16 @@
 # found in the LICENSE file.
 
 TRY_BASH=1
+if echo "$@" | grep -q -- "--dash"; then
+  TRY_BASH=0
+fi
+
 # NOTE: This script *almost* works in dash.  Unfortunately, dash is missing
 # the 'history' builtin and readline support is missing from the 'read'
 # builtin.
 #
-# Please test that any changes continue to work in dash (change TRY_BASH to 0),
-# just don't forget to change it back before pushing :)
+# Please test that any changes continue to work in dash by running
+# '/build/board-name/bin/dash crosh --dash' before checking them in.
 
 if type "history" 2>/dev/null | grep -q "shell builtin"; then
   IS_BASH=1
@@ -66,7 +70,7 @@ if [ -e "$(dirname $0)/crosh-workarounds" ]; then
 fi
 
 shell_read() {
-  if [ "$IS_BASH" = "1" ]; then
+  if [ "$IS_BASH" -eq "1" ]; then
     # In bash, -e gives readline support.
     read -p "crosh> " -e $@
   else
@@ -75,7 +79,7 @@ shell_read() {
 }
 
 shell_history() {
-  if [ "$IS_BASH" = "1" ]; then
+  if [ "$IS_BASH" -eq "1" ]; then
     # In bash, the history builtin can be used to manage readline history
     history $@
   fi
@@ -121,6 +125,29 @@ cmd_ssh() {
   ssh -p "$port" "$user@$host"
 }
 
+substr() {
+  local str="$1"
+  local start="$2"
+  local end="$3"
+
+  if [ "$IS_BASH" = "1" ]; then
+    if [ -z "$end" ]; then
+      echo ${str:$start}
+    else
+      echo ${str:$start:$end}
+    fi
+    return
+  fi
+
+  start=$(expr "$start" + 1)
+
+  if [ ! -z "$end" ]; then
+    end=$(expr "$end" - 1)
+  fi
+
+  echo "$str" | cut -c${start}-${end}
+}
+
 dispatch() {
   local line="$1"
   local command=""
@@ -131,8 +158,8 @@ dispatch() {
   if [ $space_pos = 0 ]; then
     command=$line
   else
-    command=${line:0:$((space_pos - 1))}
-    params=${line:$space_pos}
+    command=$(substr "$line" "0" "$space_pos")
+    params=$(substr "$line" "$space_pos")
   fi
 
   if ! type "cmd_$command" 2>/dev/null | head -1 | grep -q "function"; then
