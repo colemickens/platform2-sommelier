@@ -19,6 +19,7 @@
 #include "power_manager/power_prefs.h"
 #include "power_manager/screen_locker.h"
 #include "power_manager/suspender.h"
+#include "power_manager/video_detector.h"
 #include "power_manager/xidle.h"
 #include "power_manager/xidle_monitor.h"
 
@@ -27,7 +28,8 @@ namespace power_manager {
 class Daemon : public XIdleMonitor {
  public:
   Daemon(BacklightController* ctl, PowerPrefs* prefs,
-         MetricsLibraryInterface* metrics_lib);
+         MetricsLibraryInterface* metrics_lib,
+         VideoDetectorInterface* video_detector);
 
   void Init();
   void Run();
@@ -174,6 +176,7 @@ class Daemon : public XIdleMonitor {
   BacklightController* ctl_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
+  VideoDetectorInterface* video_detector_;
   XIdle idle_;
   int64 plugged_dim_ms_;
   int64 plugged_off_ms_;

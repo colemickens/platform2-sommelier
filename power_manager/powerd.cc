@@ -30,15 +30,18 @@ static const int64 kFuzzMS = 100;
 static const int64 kReactMS = 30000;
 
 // Daemon: Main power manager. Adjusts device status based on whether the
-//         user is idle. Currently, this daemon just adjusts the backlight,
-//         but in future it will handle other tasks such as turning off
-//         the screen and suspending to RAM.
+//         user is idle and on video activity indicator from the window manager.
+//         This daemon is responsible for dimming of the backlight, turning
+//         the screen off, and suspending to RAM. The daemon also has the
+//         capability of shutting the system down.
 
 Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
-               MetricsLibraryInterface* metrics_lib)
+               MetricsLibraryInterface* metrics_lib,
+               VideoDetectorInterface* video_detector)
     : ctl_(ctl),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
+      video_detector_(video_detector),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
       suspender_(&locker_),
@@ -184,6 +187,12 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
+  if (is_idle && kIdleNormal == idle_state_) {
+    bool video_is_playing = false;
+    CHECK(video_detector_->GetVideoActivity(&video_is_playing));
+    if (video_is_playing)
+      SetIdleOffset(idle_time_ms);
+  }
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)

@@ -7,9 +7,10 @@ Executable programs:
     Simple tool to get and set the brightness level of the display backlight.
   * powerd (powerd.cc)
     Main power manager. Adjusts device status based on whether the
-    user is idle. Currently, this daemon just adjusts the backlight,
-    but in future it will handle other tasks such as turning off
-    the screen and suspending to RAM.
+    user is idle and on video activity indicator from the window manager.
+    This daemon is responsible for dimming of the backlight, turning
+    the screen off, and suspending to RAM. The daemon also has the
+    capability of shutting the system down.
   * xidle-example (xidle-example.cc)
     Prints console notifications when the user is and is not idle.
 
@@ -18,6 +19,9 @@ Main Classes:
     Get and set the brightness level of the display backlight.
   * BacklightController (backlight_controller.{cc,h})
     Adjusts the backlight based on whether the user is idle.
+  * VideoDetector (video_detector.{cc,h})
+    Polls the root window for video activity timestamp posted by the window
+    manager. Allows powerd to defer idle when video has been playing recently.
   * XIdle (xidle.{cc,h})
     Receive notifications from the X Server when the user is marked as
     idle, or as no longer idle

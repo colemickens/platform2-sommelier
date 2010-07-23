@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/mock_backlight.h"
+#include "power_manager/mock_video_detector.h"
 #include "power_manager/powerd.h"
 
 namespace power_manager {
@@ -52,7 +53,7 @@ class DaemonTest : public Test {
   DaemonTest()
       : prefs_(FilePath(".")),
         backlight_ctl_(&backlight_, &prefs_),
-        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_) {}
+        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_) {}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
@@ -120,6 +121,7 @@ class DaemonTest : public Test {
   }
 
   StrictMock<MockBacklight> backlight_;
+  StrictMock<MockVideoDetector> video_detector_;
   PowerPrefs prefs_;
   chromeos::PowerStatus status_;
   BacklightController backlight_ctl_;
@@ -360,6 +362,11 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
     InSequence metrics;
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
         .WillOnce(Return(true));
+    // Mouse event 1 here. Idle -> Active transition
+    // Check Video state.
+    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+                        Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
@@ -378,7 +385,12 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
                         Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
         .WillOnce(Return(true));
-    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+    // Mouse event 2 here. Idle -> Active transition
+    // Check Video state.
+    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+                        Return(true)));
+   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
@@ -400,6 +412,11 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
         .WillOnce(Return(true));
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
         .WillOnce(Return(true));
+    // Mouse event 3 here. Idle -> Active transition
+    // Check Video state.
+    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+                        Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
@@ -418,6 +435,11 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
                         Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
         .WillOnce(Return(true));
+    // Mouse event 4 here. Idle -> Active transition
+    // Check Video state.
+    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+                        Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
