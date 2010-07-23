@@ -4,21 +4,21 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
-# This script executes each line in a flat file of commands. 
+# This script executes each line in a flat file of commands.
 #
-# If a filename is provided this script will execute only that file. 
+# If a filename is provided this script will execute only that file.
 #
-# If no argument is given then every .lst file in ../etc will 
-# be executed. 
+# If no argument is given then every .lst file in ../etc will
+# be executed.
 
 
 
 # Goes through a file line by line ignoring '#' style comments
-# and whitespace. 
+# and whitespace.
 #
 # Each line will be executed and the output will setup such that
-# our feedback mechanism will pick it up correctly. 
-# 
+# our feedback mechanism will pick it up correctly.
+#
 # The file format is key/value pairs delimited by a comma. The value will
 # be executed. We will use the command that is executed as the key if it is
 # not provided.
@@ -36,7 +36,7 @@ simple_line_executor() {
     if [ ${#i} -eq 0 ]; then
       continue
     fi
-   
+
    if expr "${i}" : '[ \t]*#' >/dev/null; then
      continue
    fi
@@ -48,7 +48,9 @@ simple_line_executor() {
       value=${i}
     fi
 
-    log=`${value} 2>/dev/null` && echo "${key}"='"""'"${log}"'"""'
+    echo "${key}"='"""'
+    eval ${value} 2> /dev/null
+    echo '"""'
   done < ${1}
 }
 
@@ -62,7 +64,7 @@ fi
 # Dump the key-val pairs from lsb-release.
 cat /etc/lsb-release
 
-for file in $(ls ${SCRIPTS_DIR}/*.lst) 
+for file in $(ls ${SCRIPTS_DIR}/*.lst)
 do
   simple_line_executor ${file}
 done
