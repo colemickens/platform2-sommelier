@@ -12,6 +12,8 @@
 
 namespace power_manager {
 
+class AmbientLightSensor;
+
 enum DimState {
   BACKLIGHT_ACTIVE, BACKLIGHT_DIM
 };
@@ -29,8 +31,8 @@ enum PluggedState {
 // Control the backlight.
 class BacklightController {
  public:
-  explicit BacklightController(BacklightInterface* backlight,
-                               PowerPrefsInterface* prefs);
+  BacklightController(BacklightInterface* backlight,
+                      PowerPrefsInterface* prefs);
   virtual ~BacklightController() {}
 
   // Initialize the object.
@@ -64,7 +66,9 @@ class BacklightController {
   // Write brightness based on current settings. Returns new brightness level.
   int64 WriteBrightness();
 
-  void set_als_brightness_level(int64 level) { als_brightness_level_ = level; }
+  void SetAlsBrightnessLevel(int64 level);
+
+  void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
 
   int64 plugged_brightness_offset() { return plugged_brightness_offset_; }
   void set_plugged_brightness_offset(int64 offset) {
@@ -89,12 +93,22 @@ class BacklightController {
   // Interface for saving preferences. Non-owned.
   PowerPrefsInterface* prefs_;
 
-  // Offsets used to calculate desired brightness.
+  // Light sensor we need to enable/disable on power events.  Non-owned.
+  AmbientLightSensor* light_sensor_;
+
+  // The brightness offset recommended by the light sensor.
   int64 als_brightness_level_;
+
+  // Prevent small light sensor changes from updating the backlight.
+  int64 als_hysteresis_level_;
+
+  // User adjustable brightness offset when AC plugged.
   int64 plugged_brightness_offset_;
+
+  // User adjustable brightness offset when AC unplugged.
   int64 unplugged_brightness_offset_;
 
-  // Pointer to currently in-use brightness offset
+  // Pointer to currently in-use user brightness offset.
   int64* brightness_offset_;
 
   // Whether backlight is active or dimmed

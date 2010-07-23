@@ -11,6 +11,8 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "cros/chromeos_cros_api.h"
+#include "power_manager/ambient_light_sensor.h"
+#include "power_manager/backlight.h"
 #include "power_manager/powerd.h"
 
 using std::string;
@@ -68,6 +70,9 @@ int main(int argc, char* argv[]) {
   CHECK(backlight.Init()) << "Cannot initialize backlight";
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
   CHECK(backlight_ctl.Init()) << "Cannot initialize backlight controller";
+  power_manager::AmbientLightSensor als(&backlight_ctl);
+  if (!als.Init())
+    LOG(WARNING) << "Cannot initialize light sensor";
   power_manager::VideoDetector video_detector;
   video_detector.Init();
   MetricsLibrary metrics_lib;

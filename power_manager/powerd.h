@@ -14,7 +14,6 @@
 #include "base/time.h"
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
-#include "power_manager/backlight.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/screen_locker.h"

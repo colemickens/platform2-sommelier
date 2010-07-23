@@ -43,7 +43,8 @@ xidle_example = xidle_env.Program('xidle-example', ['xidle-example.cc', xidle])
 Default(xidle_example)
 
 # Build backlight tool
-backlight = gdk_env.Library('backlight', ['backlight.cc'])
+backlight = gdk_env.Library('backlight',
+                            ['ambient_light_sensor.cc', 'backlight.cc'])
 backlight_env = gdk_env.Clone()
 backlight_env.Append(LIBS=Split('base rt gflags'))
 backlight_tool = backlight_env.Program('backlight-tool',
@@ -76,15 +77,15 @@ deps = [testrunner, 'xidle_unittest.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 dimmer_unittest_env = gdk_env.Clone()
 dimmer_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
-deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller,
+deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller, backlight,
         power_prefs]
 tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
-deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller,
+deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller, backlight,
         power_prefs]
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
-        backlight_controller, power_prefs]
+        backlight_controller, backlight, power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))

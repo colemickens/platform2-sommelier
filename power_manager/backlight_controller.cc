@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight_controller.h"
 
 #include <gdk/gdkx.h>
@@ -16,7 +17,9 @@ BacklightController::BacklightController(BacklightInterface* backlight,
                                          PowerPrefsInterface* prefs)
     : backlight_(backlight),
       prefs_(prefs),
+      light_sensor_(NULL),
       als_brightness_level_(0),
+      als_hysteresis_level_(0),
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
@@ -87,6 +90,9 @@ void BacklightController::SetPowerState(PowerState state) {
     else
       NOTREACHED();
   }
+
+  if (light_sensor_)
+    light_sensor_->EnableOrDisableSensor(state, state_);
 }
 
 void BacklightController::OnPlugEvent(bool is_plugged) {
@@ -127,6 +133,7 @@ int64 BacklightController::WriteBrightness() {
     system_brightness_ = Clamp(als_brightness_level_ + *brightness_offset_);
   else
     system_brightness_ = 0;
+  als_hysteresis_level_ = als_brightness_level_;
   int64 val = lround(max_ * system_brightness_ / 100.);
   system_brightness_ = Clamp(lround(100. * val / max_));
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
@@ -134,6 +141,17 @@ int64 BacklightController::WriteBrightness() {
   CHECK(backlight_->SetBrightness(val));
   WritePrefs();
   return system_brightness_;
+}
+
+void BacklightController::SetAlsBrightnessLevel(int64 level) {
+  als_brightness_level_ = level;
+
+  // Only a change of 5% of the brightness range will force a change.
+  int64 diff = level - als_hysteresis_level_;
+  if (diff < 0)
+    diff = -diff;
+  if (diff >= 5)
+    WriteBrightness();
 }
 
 int64 BacklightController::Clamp(int64 value) {
