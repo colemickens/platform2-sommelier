@@ -51,24 +51,21 @@ if [ "$HAS_INITRAMFS" = "0" ]; then
   STATE_DEV=${ROOT_DEV%[0-9]*}1
 fi
 
-# Check if we need to perform firmware update.
-NEED_FIRMWARE_UPDATE="/mnt/stateful_partition/.need_firmware_update"
-FIRMWARE_UPDATE_SCRIPT="/usr/sbin/chromeos-firmwareupdate"
-if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
-  rm -f "$NEED_FIRMWARE_UPDATE"
-  echo "Trying to update firmware..."
-  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-    "$FIRMWARE_UPDATE_SCRIPT"
-  else
-    echo "Missing firmware update script. Ignore."
-  fi
-fi
-
 # For factory install shim, we never want to write to the SDCard.
 if [ -f /root/.factory_installer ]; then
   mount -n -t tmpfs tmp /mnt/stateful_partition
 else
   mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+fi
+
+# Check if we need to perform firmware update.
+NEED_FIRMWARE_UPDATE="/mnt/stateful_partition/.need_firmware_update"
+FIRMWARE_UPDATE_SCRIPT="/usr/sbin/chromeos-firmwareupdate"
+if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
+  rm -f "$NEED_FIRMWARE_UPDATE"
+  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+    "$FIRMWARE_UPDATE_SCRIPT"
+  fi
 fi
 
 # Check if the stateful partition has requested self-destruction
