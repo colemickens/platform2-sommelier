@@ -29,30 +29,54 @@ bool Backlight::Init() {
   if (dir) {
     struct dirent dent_buf;
     struct dirent* dent;
+    int64 max = 0;
+    FilePath dir_path;
+
+    // Find the backlight interface with greatest granularity (highest max).
     while (readdir_r(dir, &dent_buf, &dent) == 0 && dent) {
       if (dent->d_name[0] && dent->d_name[0] != '.') {
-        FilePath dir_path = base_path.Append(dent->d_name);
-        brightness_path_ = dir_path.Append("brightness");
-        actual_brightness_path_ = dir_path.Append("actual_brightness");
-        max_brightness_path_ = dir_path.Append("max_brightness");
-        if (!file_util::PathExists(max_brightness_path_)) {
-          LOG(WARNING) << "Can't find " << max_brightness_path_.value();
-        } else if (!file_util::PathExists(actual_brightness_path_)) {
-          LOG(WARNING) << "Can't find " << actual_brightness_path_.value();
-        } else if (access(brightness_path_.value().c_str(), R_OK | W_OK)) {
-          LOG(WARNING) << "Can't write to " << brightness_path_.value();
-        } else {
-          closedir(dir);
-          return true;
+        FilePath check_path = base_path.Append(dent->d_name);
+        int64 check_max = CheckBacklightFiles(check_path);
+        if (check_max > max) {
+          max = check_max;
+          dir_path = check_path;
         }
       }
     }
     closedir(dir);
+
+    // Restore path names to those of the selected interface.
+    if (max > 0) {
+      brightness_path_ = dir_path.Append("brightness");
+      actual_brightness_path_ = dir_path.Append("actual_brightness");
+      max_brightness_path_ = dir_path.Append("max_brightness");
+      return true;
+    }
   } else {
     LOG(WARNING) << "Can't open " << base_path.value();
   }
+
   LOG(WARNING) << "Can't init backlight interface";
   return false;
+}
+
+int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
+  int64 level, max_level;
+  // Use members instead of locals so GetBrightness() can use them.
+  brightness_path_ = dir_path.Append("brightness");
+  actual_brightness_path_ = dir_path.Append("actual_brightness");
+  max_brightness_path_ = dir_path.Append("max_brightness");
+  if (!file_util::PathExists(max_brightness_path_)) {
+    LOG(WARNING) << "Can't find " << max_brightness_path_.value();
+  } else if (!file_util::PathExists(actual_brightness_path_)) {
+    LOG(WARNING) << "Can't find " << actual_brightness_path_.value();
+  } else if (access(brightness_path_.value().c_str(), R_OK | W_OK)) {
+    LOG(WARNING) << "Can't write to " << brightness_path_.value();
+  } else if (GetBrightness(&level, &max_level)) {
+    return max_level;
+  } // Else GetBrightness logs a warning for us.  No need to do it here.
+
+  return 0;
 }
 
 bool Backlight::GetBrightness(int64* level, int64* max_level) {

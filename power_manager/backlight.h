@@ -37,6 +37,10 @@ class Backlight : public BacklightInterface {
   virtual bool SetBrightness(int64 level);
 
  private:
+  // Look for the existence of required files and return the granularity of
+  // the given backlight interface directory path.
+  int64 CheckBacklightFiles(const FilePath& dir_path);
+
   // Paths to the actual_brightness, brightness, and max_brightness files
   // under /sys/class/backlight.
   FilePath actual_brightness_path_;
