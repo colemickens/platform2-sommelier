@@ -25,6 +25,7 @@ static const char *kNetworkDriver = "QCUSBNet2k";
     "org.freedesktop.ModemManager.Modem.Gsm." #name;
 
 DEFINE_ERROR(Activation)
+DEFINE_ERROR(Activated)
 DEFINE_ERROR(Connect)
 DEFINE_ERROR(Disconnect)
 DEFINE_ERROR(FirmwareLoad)
@@ -960,7 +961,7 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
   LOG(INFO) << "Current activation state: " << activation_state_;
   if (activation_state_ == gobi::kActivated) {
     LOG(WARNING) << "Nothing to do: device is already activated";
-    error.set(kActivationError, "Device is already activated");
+    error.set(kActivatedError, "Device is already activated");
     return;
   }
 
