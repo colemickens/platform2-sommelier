@@ -167,6 +167,7 @@ class GobiModem
 
   void SetDeviceProperties();
   void SetModemProperties();
+  ULONG get_data_bearer_technology();
 
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection

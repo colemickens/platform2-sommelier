@@ -31,6 +31,17 @@
         </tp:docstring>
       </arg>
     </method>
+
+  <signal name="ConnectionStateChanged">
+    <tp:docstring>
+      Send a notification that the modem connection state has changed.
+    </tp:docstring>
+    <arg name="connected" type="b">
+      <tp:docstring>
+        True if connected, false otherwise.
+      </tp:docstring>
+    </arg>
+  </signal>
+
   </interface>
 </node>
-

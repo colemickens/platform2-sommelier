@@ -217,6 +217,7 @@ enum ReturnCode {
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
   kNotSupportedByDevice = 1025,
+  kInformationElementUnavailable = 1074
 };
 
 typedef struct {
