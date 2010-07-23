@@ -19,6 +19,14 @@ else
   fi
 fi
 
+# Default to using a verified root filesystem if the installer
+# is verified.
+rootfs_verification_default=${FLAGS_FALSE}
+if type rootdev &> /dev/null; then
+  if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
+    rootfs_verification_default=${FLAGS_TRUE}
+  fi
+fi
 
 DEFINE_string dst "" "Boot device to update (Default: current root device)"
 # Any time the verified boot flags change, this is needed
@@ -31,10 +39,16 @@ DEFINE_string update_vmlinuz "" \
   "If specified, the path to a vmlinuz to use as syslinux's vmlinuz.[A|B]"
 DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
-DEFINE_boolean verified_boot ${FLAGS_FALSE} \
-  "Use a verified boot target. Default: false"
+DEFINE_boolean enable_rootfs_verification ${rootfs_verification_default} \
+  "Default all bootloaders to use kernel-based root fs integrity checking."
 DEFINE_string esp_mounted_at "" \
   "Specify a location if the esp has already been mounted"
+DEFINE_string kernel_image "" \
+  "Specifies a kernel image/partition to extract the configuration from. \
+By default, it uses the kernel partition for A or B as requested."
+DEFINE_string rootfs_image "" \
+  "Specifies a rootfs image/partition to hash and update for vboot.
+By default, it uses the current root device."
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -57,8 +71,10 @@ fi
 if [ -n "${@:-}" ]; then
   if [ "$1" = "0" ] || [ "$1" = "A" ] || [ "$1" = "a" ]; then
     newimg=0
+    newimg_letter=A
   elif [ "$1" = "1" ] || [ "$1" = "B" ] || [ "$1" = "b" ]; then
     newimg=1
+    newimg_letter=B
   else
     echo "Usage: $0 [A|B]" 1>&2
     exit 1
@@ -90,16 +106,70 @@ then
   exit 1
 fi
 
+# Re-hash the root filesystem and use the table for dm-verity.
+# We extract the parameters for verification from the kernel
+# partition, but we regenerate and reappend the hash tree to
+# keep the updater from needing to manage them explicitly.
+# Instead, rootfs integrity will be validated on next boot through
+# the verified kernel configuration.
+selected_kernel=$(( (newimg + 1) * 2))  # part 2 or 4
+kernel_image=$(make_partition_dev ${FLAGS_dst} ${selected_kernel})
+if [ -n "${FLAGS_kernel_image}" ]; then
+  kernel_image="${FLAGS_kernel_image}"
+fi
+
+# Grab the contents of dm="" and trim off the preamble.
+kernel_cfg="$(sudo dump_kernel_config ${kernel_image} |
+              sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
+              cut -f2- -d,)"
+rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
+verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
+verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
+
+selected_root=$((selected_kernel + 1))
+rootfs_image=$(make_partition_dev ${FLAGS_dst} ${selected_root})
+if [ -n "${FLAGS_rootfs_image}" ]; then
+  rootfs_image="${FLAGS_rootfs_image}"
+fi
+
+# Compute the rootfs hash tree and dump it in the tempfile.
+# TODO(wad) take preamble from dump_kernel_config.
+table="vroot none ro,"$(sudo verity create \
+        ${verity_depth} \
+        "${verity_algorithm}" \
+        "${rootfs_image}" \
+        $((rootfs_sectors / 8)) \
+        ${tempfile})
+
+if [ -n "${newimg:-}" ]; then
+  # This will usually be ${rootfs_image} except for cases where
+  # FLAGS_dst and FLAGS_rootfs_image diverge.
+  dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
+  # Replace the placeholders from the verity tool.
+  table="$(echo "$table" |
+           sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
+fi
+# Overwrite the appended hashes with the new ones.
+sudo dd if=${tempfile} of="${rootfs_image}" \
+        bs=512 seek=${rootfs_sectors} conv=notrunc
+
 # Make the change
 if [ -n "${newimg:-}" ]; then
   grubid=${newimg}
-  test ${FLAGS_verified_boot} -eq ${FLAGS_TRUE} && grubid=$((newimg+2))
+  test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
+    grubid=$((newimg+2))
   if [ -z "$FLAGS_update_grub_cfg" ]; then
     FLAGS_update_grub_cfg=${mountpoint}/efi/boot/grub.cfg
   fi
-  echo "Update boot default to menu item $grubid"
+  echo "Updating the verified boot config and grub boot default: $grubid"
   sed -e "s/^set default=.*/set default=${grubid}/" \
+      -e "s|DMTABLE${newimg_letter}|${table}|g" \
     $FLAGS_update_grub_cfg > ${tempfile}
+  # TODO(wad) Break grub.cfg into multiple files if possible.
+  #   Because grub.cfg is monolithic when we update from a templated
+  #   copy, the inactive image will be unpopulated since we do this
+  #   once per call to setimage.
+
   sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
 fi
 
@@ -114,21 +184,16 @@ grep -qs '^set default=3' ${mountpoint}/efi/boot/grub.cfg && echo "B (verified)"
 if [ -n "${newimg:-}" ]; then
   echo "Updating default syslinux target to $newimg"
   target_hd=chromeos-hd
-  test ${FLAGS_verified_boot} -eq ${FLAGS_TRUE} && target_hd=chromeos-vhd
+  test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
+    target_hd=chromeos-vhd
 
-  if [ ${newimg} -eq 0 ]; then
-    echo "DEFAULT ${target_hd}.A" > ${mountpoint}/syslinux/default.cfg
-    vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.A
-    syslinux_root_cfg=${mountpoint}/syslinux/root.A.cfg
-  fi
-
-  if [ ${newimg} -eq 1 ]; then
-    echo "DEFAULT ${target_hd}.B" > ${mountpoint}/syslinux/default.cfg
-    vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.B
-    syslinux_root_cfg=${mountpoint}/syslinux/root.B.cfg
-  fi
+  echo "DEFAULT ${target_hd}.${newimg_letter}" > \
+    ${mountpoint}/syslinux/default.cfg
+  vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.${newimg_letter}
+  syslinux_root_cfg=${mountpoint}/syslinux/root.${newimg_letter}.cfg
 
   # Update the root.X.cfg in place if none given.
+  # Note that the replacement variables may not be intact.
   if [ -z "$FLAGS_update_syslinux_cfg" ]; then
       FLAGS_update_syslinux_cfg=$syslinux_root_cfg
   fi
@@ -137,7 +202,11 @@ if [ -n "${newimg:-}" ]; then
   DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
   DST_PART_B=$(make_partition_dev ${FLAGS_dst} 5)
   sed -e "s|HDROOTA|${DST_PART_A}|g;s|HDROOTB|${DST_PART_B}|g" \
+      -e "s|DMTABLEA|${table}|g;s|DMTABLEB|${table}|g" \
     $FLAGS_update_syslinux_cfg > ${tempfile}
+  # Even though we replace both A and B, we're only updating the file
+  # that is relevant to the setimage request so we won't put an invalid
+  # value for the old root nor will the old root.cfg be broken.
   sudo cp ${tempfile} $syslinux_root_cfg
 
   # We only need to do this for syslinux since grub can read the rootfs.

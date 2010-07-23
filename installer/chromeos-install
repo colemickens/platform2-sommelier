@@ -42,6 +42,19 @@ dont_run_as_root
 
 # First find the root partition that we are installing from and verify it.
 ROOTDEV=$(rootdev)
+
+# If we're on a verified rootfs, the rootdev won't be meaningful.
+ON_DM=0
+if echo "${ROOTDEV}" | grep -q '^/dev/mapper/'; then
+  ON_DM=1
+fi
+if [ "${ROOTDEV}" = "/dev/dm-0" ]; then
+  ON_DM=1
+fi
+if [ "${ON_DM}" -eq "1" ]; then
+  ROOTDEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
+fi
+
 # From root partition to root block device.
 SRC=$(get_block_dev_from_partition_dev ${ROOTDEV})
 REMOVABLE=$(cat /sys/block/${SRC#/dev/}/removable)
@@ -143,73 +156,6 @@ my_cleanup() {
   loop_offset_cleanup
 }
 
-# Copy the SRC_PARTITION onto the DST_DEV device at START_OFFSET and label it,
-# assuming it's an ext2-based filesystem.
-# Invoke as: command
-# Args: SRC_PARTITION DST_DEV START_OFFSET LABEL
-install_rootfs() {
-  local src_partition=$1
-  local dst_dev=$2
-  local start_offset=$3
-  local label=$4
-
-  # Going to copy using a block size of 1MB which is ok because
-  # the partitions are aligned (to 2MB)
-  # Need to keep next three lines in step!
-  # first is blocksize to dd, second is the same in 512 byte sectors
-  # third is number of copy_bs needed to cover 2kB needed for label
-  local copy_bs=1M
-  local sec_per_copybs=2048
-  local tmp_count=1
-
-  # We copy the system image a bit strangely here because we have observed
-  # cases in installing to hard disk where people ctrl-c the operation and then
-  # are not longer able to properly boot a USB image. This is because when
-  # booting from USB we set the root device by label, so if you partially copy
-  # the FS here without updating the label then a subsequent USB boot may try
-  # to use the wrong device and fail.
-  sync
-
-  echo "image $label..."
-
-  # start_offset is in 512 byte sectors, but we will tell dd to use
-  # blocksize of copy_bs. Need to convert and check sanity
-  local start_off_incopybs=$((${start_offset} / ${sec_per_copybs}))
-
-  if [ $((${start_offset} % ${sec_per_copybs})) -ne 0 ]; then
-      echo Rootfs offset ${start_offset} not multiple of block size ${copy_bs}
-      echo Rootfs install FAILED
-      exit 1
-  fi
-
-
-  # Copy first 1MB of the root image to a temp file, set the label,
-  # and then copy it to the dest.
-  # (this was done using 2kB with bs=512 tmp_count=4
-  # but a 1MB file in tmp should be ok)
-  # NOTE: This hack won't work if we stop using an ext-based rootfs.
-  local superblock_offset=1024
-  local label_field_offset=120
-  local label_field_length=16
-  sudo dd if=${src_partition} of=${TMPFILE} bs=${copy_bs} count=${tmp_count}
-  sudo dd if=/dev/zero of=${TMPFILE} bs=1                \
-    seek=$((superblock_offset + label_field_offset)) \
-    count=$label_field_length conv=notrunc
-  echo -n "${label}" | sudo dd of=${TMPFILE} \
-    seek=$((superblock_offset + label_field_offset)) \
-    bs=1 count=$((label_field_length - 1)) conv=notrunc
-  # Copy the new label superblock to the dest.
-  sudo dd if=${TMPFILE} of=${dst_dev} bs=${copy_bs} \
-    seek=${start_off_incopybs} conv=notrunc
-
-  # Copy the rest of the source to the dest.
-  sudo dd if=${src_partition} of=${dst_dev} conv=notrunc \
-    bs=${copy_bs} skip=${tmp_count} \
-    seek=$((${start_off_incopybs} + ${tmp_count}))
-
-  sync
-}
-
 ##############################################################################
 
 # What do we expect & require to have on the source device?
@@ -267,8 +213,14 @@ if [ "$FLAGS_skip_vblock" -eq "$FLAGS_FALSE" ]; then
 fi
 
 echo "Copying rootfs..."
-install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_A} "H-ROOT-A"
-install_rootfs ${ROOTFS_IMG} ${FLAGS_dst} ${START_ROOTFS_B} "H-ROOT-B"
+# We can no longer update the label on the rootfs because that changes bits
+# that will break both the delta updater and verified boot.  We must do a
+# straight copy now.  The GPT labels and UUIDs are the only mutable naming
+# areas we have after a build.
+sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+        seek=${START_ROOTFS_A}
+sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+        seek=${START_ROOTFS_B}
 
 echo "Copying OEM customization..."
 sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM}
@@ -276,6 +228,8 @@ sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM}
 echo "Copying ESP..."
 sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP}
 
+# TODO: support arm during postinst so that we get partition selection and
+#       verified boot.
 if [ $(uname -m) != "armv7l" ]; then
 
   # We can't guarantee that the kernel will see the new partition table, so

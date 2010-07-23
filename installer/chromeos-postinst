@@ -86,9 +86,12 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     echo "Updating syslinux"
     # Update all legacy bootloaders.
     if [ "${ERR}" -eq "0" ]; then
+      syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
+      grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
       "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
           --dst=${ROOT_DEV} --run_as_root \
-          --update_syslinux_cfg="${EFI_MNT}/syslinux/root.${BOOT_SLOT}.cfg" \
+          --update_syslinux_cfg="${syslinux_cfg}" \
+          --update_grub_cfg="${grub_cfg}" \
           --esp_mounted_at="${EFI_MNT}" \
           --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
       ERR=${?}
@@ -191,10 +194,17 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     # Make updated partition highest priority for next reboot
     sudo cgpt add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
 
-    echo "Updating grub target for EFI BIOS"
-    # Set up grub.cfg
+    echo "Updating the legacy and efi bootloader configurations"
+    # Ensure we use a template from the INSTALL_ROOT for both grub
+    # and syslinux otherwise we can never update them with new rootfs
+    # vboot configuration data.
+    syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
+    grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
     "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root
+        --dst=${ROOT_DEV} --run_as_root \
+        --update_syslinux_cfg="${syslinux_cfg}" \
+        --update_grub_cfg="${grub_cfg}" \
+        --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
 
     # Set up gpt boot selection for legacy devices.
     # flush linux caches; seems to be necessary
