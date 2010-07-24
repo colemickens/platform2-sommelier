@@ -160,6 +160,13 @@ class GobiModem
   }
   void SignalStrengthCallback(INT8 signal_strength, ULONG radio_interface);
 
+  static void *NMEAThreadTrampoline(void *arg) {
+    if (connected_modem_)
+      return connected_modem_->NMEAThread();
+    else
+      return NULL;
+  }
+  void *NMEAThread(void);
 
  private:
   void UpdateRegistrationState(ULONG data_bearer_technology,
@@ -169,11 +176,16 @@ class GobiModem
   void SetModemProperties();
   ULONG get_data_bearer_technology();
 
+  void StartNMEAThread();
+
   GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
   DEVICE_ELEMENT device_;
   int last_seen_;  // Updated every scan where the modem is present
+  int nmea_fd; // fifo to write NMEA data to
+
+  pthread_t nmea_thread;
 
   pthread_mutex_t activation_mutex_;
   pthread_cond_t activation_cond_;

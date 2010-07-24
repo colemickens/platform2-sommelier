@@ -5,6 +5,10 @@
 #include "gobi_modem.h"
 
 #include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 extern "C" {
 #include <libudev.h>
 };
@@ -17,6 +21,7 @@ extern "C" {
 
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
+static const char *kFifoName = "/tmp/gobi-nmea";
 
 #define DEFINE_ERROR(name) \
   static const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
@@ -207,6 +212,7 @@ GobiModem::GobiModem(DBus::Connection& connection,
       handler_(handler),
       sdk_(sdk),
       last_seen_(-1),
+      nmea_fd(-1),
       activation_state_(0),
       session_state_(gobi::kDisconnected),
       session_id_(0),
@@ -265,6 +271,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     }
     Enabled = true;
     data_bearer_technology_ = get_data_bearer_technology();
+    StartNMEAThread();
   } else if (!enable && Enabled()) {
     if (connected_modem_ == this) {
       sdk_->QCWWANDisconnect();
@@ -1124,6 +1131,36 @@ void GobiModem::SetModemProperties() {
   }
 }
 
+void *GobiModem::NMEAThread(void) {
+  int fd;
+  ULONG gps_mask, cell_mask;
+
+  unlink(kFifoName);
+  mkfifo(kFifoName, 0700);
+
+  // This will wait for a reader to open before continuing
+  fd = open(kFifoName, O_WRONLY);
+
+  LOG(INFO) << "NMEA fifo running, GPS enabled";
+
+  // Enable GPS tracking
+  sdk_->SetServiceAutomaticTracking(1);
+
+  // Reset all GPS/Cell positioning fields at startup
+  gps_mask = 0x1fff;
+  cell_mask = 0x3ff;
+  sdk_->ResetPDSData(&gps_mask, &cell_mask);
+
+  nmea_fd = fd;
+
+  return NULL;
+}
+
+void GobiModem::StartNMEAThread() {
+  // Create thread to wait for fifo reader
+  pthread_create(&nmea_thread, NULL, NMEAThreadTrampoline, NULL);
+}
+
 
 // Event callbacks:
 
@@ -1136,7 +1173,25 @@ void GobiModem::ActivationStatusCallback(ULONG activation_state) {
 }
 
 void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
-  LOG(INFO) << "NMEA mode: " << mode << " " << nmea;
+  int ret;
+
+  if (nmea_fd == -1)
+    return;
+
+  ret = write(nmea_fd, nmea, strlen(nmea));
+  if (ret < 0) {
+    // Failed write means fifo reader went away
+    LOG(INFO) << "NMEA fifo stopped, GPS disabled";
+    unlink(kFifoName);
+    close(nmea_fd);
+    nmea_fd = -1;
+
+    // Disable GPS tracking until we have a listener again
+    sdk_->SetServiceAutomaticTracking(0);
+
+    // Re-start the fifo listener thread
+    StartNMEAThread();
+  }
 }
 
 void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
