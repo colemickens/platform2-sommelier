@@ -74,6 +74,12 @@ RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 if [ -f "$RESET_FILE" ]; then
   if [ $(stat -c%u "$RESET_FILE") -eq 0 ]; then
     echo "Erasing stateful partition..."
+    # Show a splash image to inform OPs it is wiping the disk.
+    if [ -x /usr/bin/ply-image ]; then
+      echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
+      cp -f /mnt/stateful_partition/wipe_splash.png /tmp/
+      /usr/bin/ply-image /tmp/wipe_splash.png &
+    fi
     exec /sbin/clobber-state
   fi
 fi
