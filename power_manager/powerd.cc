@@ -58,6 +58,11 @@ void Daemon::Init() {
     CHECK(DPMSEnable(GDK_DISPLAY()));
     CHECK(DPMSSetTimeouts(GDK_DISPLAY(), 0, 0, 0));
   }
+  CHECK(XSetScreenSaver(GDK_DISPLAY(),
+                        0,                 // 0 display timeout
+                        0,                 // 0 alteration timeout
+                        DefaultBlanking,
+                        DefaultExposures));
   key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
   key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
                                           XF86XK_MonBrightnessDown);
