@@ -9,16 +9,15 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <base/basictypes.h>
-#include <base/command_line.h>
+#include "base/basictypes.h"
+#include "base/command_line.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
-#include <base/logging.h>
-#include <base/scoped_ptr.h>
-#include <base/string_util.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/service_constants.h>
-
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
+#include "base/string_util.h"
+#include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/service_constants.h"
 #include "login_manager/bindings/client.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
@@ -64,14 +63,15 @@ class SessionManagerTest : public ::testing::Test {
   }
 
  protected:
-  // Creates the manager with the jobs. Mocks the file checker
-  void InitManager(MockChildJob* job1, MockChildJob* job2 = NULL) {
-    std::vector<ChildJob*> jobs;
-    EXPECT_CALL(*job1, name())
+  // Creates the manager with the jobs. Mocks the file checker.
+  // The second job can be NULL.
+  void InitManager(MockChildJob* job1, MockChildJob* job2) {
+    std::vector<ChildJobInterface*> jobs;
+    EXPECT_CALL(*job1, GetName())
         .WillRepeatedly(Return(std::string("job1")));
     jobs.push_back(job1);
     if (job2) {
-      EXPECT_CALL(*job2, name())
+      EXPECT_CALL(*job2, GetName())
           .WillRepeatedly(Return(std::string("job2")));
       jobs.push_back(job2);
     }
@@ -129,7 +129,7 @@ class SessionManagerTest : public ::testing::Test {
   // Creates one job and a manager for it, running it |child_runs| times.
   MockChildJob* CreateTrivialMockJob(ChildRuns child_runs) {
     MockChildJob* job = new MockChildJob();
-    InitManager(job);
+    InitManager(job, NULL);
     RunChildren(child_runs);
 
     return job;
@@ -317,7 +317,7 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
       .WillOnce(Return(true));
 
   std::string email_string(email);
-  EXPECT_CALL(*job, SetState(email_string))
+  EXPECT_CALL(*job, StartSession(email_string))
       .Times(1);
 
   manager_->StartSession(email, nothing, &out, NULL);
@@ -343,7 +343,7 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   gchar nothing[] = "";
 
   std::string email_string(email);
-  EXPECT_CALL(*job, SetState(email_string))
+  EXPECT_CALL(*job, StartSession(email_string))
       .Times(1);
 
   manager_->StartSession(email, nothing, &out, NULL);
@@ -365,7 +365,7 @@ TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
         .Times(1);
     ON_CALL(*job, Run())
         .WillByDefault(Invoke(Sleep));
-    EXPECT_CALL(*job, SetState(email_string))
+    EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
 
     manager_->StartSession(email, nothing, &out, NULL);
@@ -396,7 +396,7 @@ TEST_F(SessionManagerTest, StartSessionTest) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   std::string email_string(email);
-  EXPECT_CALL(*job, SetState(email_string))
+  EXPECT_CALL(*job, StartSession(email_string))
       .Times(1);
   manager_->StartSession(email, nothing, &out, NULL);
 }
@@ -431,7 +431,7 @@ TEST_F(SessionManagerTest, StatsRecorded) {
       .WillByDefault(Invoke(CleanExit));
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
-  ON_CALL(*job, name())
+  ON_CALL(*job, GetName())
       .WillByDefault(Invoke(name));
   Run();
   EXPECT_TRUE(file_util::PathExists(uptime));
@@ -461,12 +461,12 @@ TEST(SessionManagerTestStatic, EmailAddressTooMuchAtTest) {
 
 TEST(SessionManagerTestStatic, GetArgLists0) {
   std::vector<std::wstring> args;
-  std::vector<std::vector<std::wstring> > arg_lists =
+  std::vector<std::vector<std::string> > arg_lists =
       SessionManagerService::GetArgLists(args);
   EXPECT_EQ(0, arg_lists.size());
 }
 
-static std::vector<std::vector<std::wstring> > GetArgs(const wchar_t** c_args) {
+static std::vector<std::vector<std::string> > GetArgs(const wchar_t** c_args) {
   std::vector<std::wstring> args;
   while (*c_args) {
     args.push_back(*c_args);
@@ -477,14 +477,14 @@ static std::vector<std::vector<std::wstring> > GetArgs(const wchar_t** c_args) {
 
 TEST(SessionManagerTestStatic, GetArgLists1) {
   const wchar_t* c_args[] = {L"a", L"b", L"c", NULL};
-  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
 }
 
 TEST(SessionManagerTestStatic, GetArgLists2) {
   const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", L"d", NULL};
-  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(2, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
   EXPECT_EQ(1, arg_lists[1].size());
@@ -492,14 +492,14 @@ TEST(SessionManagerTestStatic, GetArgLists2) {
 
 TEST(SessionManagerTestStatic, GetArgLists_TrailingDashes) {
   const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", NULL};
-  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
 }
 
 TEST(SessionManagerTestStatic, GetArgLists3_InitialDashes) {
   const wchar_t* c_args[] = {L"--", L"a", L"b", L"c", NULL};
-  std::vector<std::vector<std::wstring> > arg_lists = GetArgs(c_args);
+  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
 }

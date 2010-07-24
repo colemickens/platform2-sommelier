@@ -135,9 +135,9 @@ wait
 /sbin/initctl emit x-started
 cat /proc/uptime > /tmp/uptime-x-started
 
-exec /sbin/session_manager --uid=${USER_ID} --login -- \
-    $CHROME --enable-gview \
-            --enable-sync \
+exec /sbin/session_manager --uid=${USER_ID} -- \
+    $CHROME --login-manager \
+            --enable-gview \
             --log-level=0 \
             --enable-logging \
             --main-menu-url="http://welcome-cros.appspot.com/menu" \
@@ -150,4 +150,4 @@ exec /sbin/session_manager --uid=${USER_ID} --login -- \
             --enable-login-images \
             --scroll-pixels=4 \
             "${SKIP_OOBE}" \
--- $WM_SCRIPT          
+-- $WM_SCRIPT

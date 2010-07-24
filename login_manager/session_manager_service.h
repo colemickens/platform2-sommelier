@@ -11,17 +11,16 @@
 #include <glib.h>
 #include <signal.h>
 #include <unistd.h>
+
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
 #include <base/scoped_ptr.h>
-#include <base/scoped_vector.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/system_utils.h"
 
@@ -32,7 +31,7 @@ namespace gobject {
 struct SessionManager;
 }  // namespace gobject
 
-class ChildJob;
+class ChildJobInterface;
 
 // Provides a wrapper for exporting SessionManagerInterface to
 // D-Bus and entering the glib run loop.
@@ -40,7 +39,7 @@ class ChildJob;
 // ::g_type_init() must be called before this class is used.
 class SessionManagerService : public chromeos::dbus::AbstractDbusService {
  public:
-  SessionManagerService(std::vector<ChildJob*> child_jobs);
+  SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
   virtual ~SessionManagerService();
 
   // If you want to call any of these setters, you should do so before calling
@@ -61,7 +60,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
     }
-     
+
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout) {
       session_manager_service_->CleanupChildren(timeout);
@@ -133,7 +132,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   void RunChildren();
 
   // Run one of the children.
-  int RunChild(ChildJob* child_job);
+  int RunChild(ChildJobInterface* child_job);
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -174,7 +173,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // ("a", "b", "c") => ("a", "b", "c")
   // ("a", "b", "c", "--", "d", "e", "f") =>
   //     ("a", "b", "c"), ("d", "e", "f").
-  static std::vector<std::vector<std::wstring> > GetArgLists(
+  // Converts args from wide to plain strings.
+  static std::vector<std::vector<std::string> > GetArgLists(
       std::vector<std::wstring> args);
 
  protected:
@@ -226,14 +226,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
-  bool ShouldStopChild(ChildJob* child_job);
+  bool ShouldStopChild(ChildJobInterface* child_job);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
 
-  ScopedVector<ChildJob> child_jobs_;
+  std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
   bool exit_on_child_done_;
 

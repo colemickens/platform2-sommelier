@@ -14,6 +14,10 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
@@ -21,142 +25,142 @@
 #include <base/string_util.h>
 
 namespace login_manager {
-// static
-const char SetUidExecJob::kLoginManagerFlag[] = "--login-manager";
-// static
-const char SetUidExecJob::kLoginUserFlag[] = "--login-user=";
-// static
-const char SetUidExecJob::kIncognitoFlag[] = "--incognito";
 
 // static
-const int SetUidExecJob::kCantSetuid = 127;
-const int SetUidExecJob::kCantSetgid = 128;
-const int SetUidExecJob::kCantSetgroups = 129;
-const int SetUidExecJob::kCantExec = 255;
+const int ChildJobInterface::kCantSetUid = 127;
+const int ChildJobInterface::kCantSetGid = 128;
+const int ChildJobInterface::kCantSetGroups = 129;
+const int ChildJobInterface::kCantExec = 255;
+const int ChildJobInterface::kBWSI = 1;
 
 // static
-const int SetUidExecJob::kRestartWindow = 1;
+const char ChildJob::kLoginManagerFlag[] = "--login-manager";
+// static
+const char ChildJob::kLoginUserFlag[] = "--login-user=";
+// static
+const char ChildJob::kBWSIFlag[] = "--bwsi";
 
-SetUidExecJob::SetUidExecJob(std::vector<std::wstring> loose_wide_args,
-                             const bool add_flag)
-      : argv_(NULL),
-        num_args_passed_in_(0),
+// static
+const int ChildJob::kRestartWindow = 1;
+
+ChildJob::ChildJob(const std::vector<std::string>& arguments)
+      : arguments_(arguments),
         desired_uid_(0),
-        include_login_flag_(add_flag),
-        user_flag_(kLoginUserFlag),
-        desired_uid_is_set_(false),
-        last_start_(0) {
-  PopulateArgv(loose_wide_args);
+        is_desired_uid_set_(false),
+        last_start_(0),
+        removed_login_manager_flag_(false) {
 }
 
-SetUidExecJob::~SetUidExecJob() {
-  if (argv_) {
-    // free the strings we copied from the passed-in args.
-    for (uint32 i = 0; i < num_args_passed_in_; i++) {
-      if (argv_[i])
-        delete [] argv_[i];
-    }
-    delete [] argv_;
-  }
+ChildJob::~ChildJob() {
 }
 
-void SetUidExecJob::PopulateArgv(std::vector<std::wstring> loose_wide_args) {
-  // Grab the loose args to use as the command line.
-  // We have to wstring->argv[][] manually. Ugh.
-  num_args_passed_in_ = loose_wide_args.size();
-
-  // We might need one extra for kLoginManagerFlag, and we'll always
-  // need one for NULL.
-  int total_args = num_args_passed_in_ + 2;
-  argv_ = new char const*[total_args];
-  std::vector<std::wstring>::const_iterator arg_it = loose_wide_args.begin();
-  char const* *argv_pointer = argv_;
-  for (; arg_it != loose_wide_args.end(); ++arg_it) {
-    std::string arg = WideToASCII(*arg_it);
-    int needed_space = arg.length() + 1;
-    char* space = new char[needed_space];
-    strncpy(space, arg.c_str(), needed_space);
-    *argv_pointer++ = space;
-  }
-  // Null out the rest of argv_.
-  for (int i = num_args_passed_in_; i < total_args; i++) {
-    *argv_pointer++ =NULL;
-  }
-}
-
-void SetUidExecJob::AppendNeededFlags() {
-  char const* *argv_pointer = argv_ + num_args_passed_in_;
-  *argv_pointer++ =
-      include_login_flag_ ? kLoginManagerFlag : user_flag_.c_str();
-  *argv_pointer = NULL;
-}
-
-std::vector<std::string> SetUidExecJob::ExtractArgvForTest() {
-  std::vector<std::string> to_return;
-  for (uint32 i = 0; argv_[i] != NULL; i++) {
-    to_return.push_back(argv_[i]);
-  }
-  return to_return;
-}
-
-int SetUidExecJob::SetIDs() {
-  int to_return = 0;
-  if (desired_uid_is_set_) {
-    struct passwd* entry = getpwuid(desired_uid_);
-    endpwent();
-    if (initgroups(entry->pw_name, entry->pw_gid) == -1)
-      to_return = kCantSetgroups;
-    if (setgid(entry->pw_gid) == -1)
-      to_return = kCantSetgid;
-    if (setuid(desired_uid_) == -1)
-      to_return = kCantSetuid;
-  }
-  if (setsid() == -1)
-    LOG(ERROR) << "can't setsid: " << strerror(errno);
-  return to_return;
-}
-
-bool SetUidExecJob::ShouldStop() {
+bool ChildJob::ShouldStop() const {
   return (time(NULL) - last_start_ < kRestartWindow);
 }
 
-void SetUidExecJob::RecordTime() {
+void ChildJob::RecordTime() {
   time(&last_start_);
 }
 
-void SetUidExecJob::Run() {
-  AppendNeededFlags();
+void ChildJob::Run() {
   // We try to set our UID/GID to the desired UID, and then exec
   // the command passed in.
   int exit_code = SetIDs();
   if (exit_code)
     exit(exit_code);
 
-  int ret = execv(argv_[0], const_cast<char * const*>(argv_));
+  char const** argv = CreateArgv();
+  int ret = execv(argv[0], const_cast<char* const*>(argv));
 
   // Should never get here, unless we couldn't exec the command.
   LOG(ERROR) <<
       StringPrintf(
-          "Error (%d) executing %s: %s", ret, argv_[0], strerror(errno));
+          "Error (%d) executing %s: %s", ret, argv[0], strerror(errno));
   exit(kCantExec);
 }
-void SetUidExecJob::SetSwitch(const bool new_value) {
-  if (!new_value)
-    user_flag_.assign(kLoginUserFlag);
-  include_login_flag_ = new_value;
+
+// When user logs in we want to restart chrome in browsing mode with user
+// signed in. Hence we remove --login-manager flag and add --login-user
+// flag. If it's BWSI mode, we add the corresponding flag as well.
+// TODO(avayvod): Flags for jobs that correspond to all processes but
+// Chromium should not be modified.
+void ChildJob::StartSession(const std::string& email) {
+  std::vector<std::string>::iterator to_erase =
+      std::remove(arguments_.begin(),
+                  arguments_.end(),
+                  kLoginManagerFlag);
+  if (to_erase != arguments_.end()) {
+    arguments_.erase(to_erase, arguments_.end());
+    removed_login_manager_flag_ = true;
+  }
+  if (email.empty()) {
+    arguments_.push_back(kBWSIFlag);
+  }
+  arguments_.push_back(kLoginUserFlag);
+  arguments_.back().append(email);
 }
 
-void SetUidExecJob::SetState(const std::string& state) {
-  SetSwitch(false);
-  if (!state.empty())
-    user_flag_.append(state);
-  else
-    user_flag_.assign(kIncognitoFlag);
+void ChildJob::StopSession() {
+  // The last element for started session is always login user flag.
+  arguments_.pop_back();
+  // If it was "Browse Without Sign In" session, we need to remove BWSI flag
+  // too.
+  if (arguments_.back() == kBWSIFlag)
+    arguments_.pop_back();
+  if (removed_login_manager_flag_) {
+    arguments_.push_back(kLoginManagerFlag);
+    removed_login_manager_flag_ = false;
+  }
 }
 
-const std::string SetUidExecJob::name() const {
-  FilePath exec_file(argv_[0]);
+uid_t ChildJob::GetDesiredUid() const {
+  DCHECK(IsDesiredUidSet());
+  return desired_uid_;
+}
+
+void ChildJob::SetDesiredUid(uid_t uid) {
+  is_desired_uid_set_ = true;
+  desired_uid_ = uid;
+}
+
+bool ChildJob::IsDesiredUidSet() const {
+  return is_desired_uid_set_;
+}
+
+const std::string ChildJob::GetName() const {
+  FilePath exec_file(arguments_[0]);
   return exec_file.BaseName().value();
+}
+
+char const** ChildJob::CreateArgv() const {
+  // Need to append NULL at the end.
+  char const** argv = new char const*[arguments_.size() + 1];
+  for (size_t i = 0; i < arguments_.size(); ++i) {
+    const std::string& arg = arguments_[i];
+    int needed_space = arg.length() + 1;
+    char* space = new char[needed_space];
+    strncpy(space, arg.c_str(), needed_space);
+    argv[i] = space;
+  }
+  argv[arguments_.size()] = NULL;
+  return argv;
+}
+
+int ChildJob::SetIDs() {
+  int to_return = 0;
+  if (IsDesiredUidSet()) {
+    struct passwd* entry = getpwuid(GetDesiredUid());
+    endpwent();
+    if (initgroups(entry->pw_name, entry->pw_gid) == -1)
+      to_return = kCantSetGroups;
+    if (setgid(entry->pw_gid) == -1)
+      to_return = kCantSetGid;
+    if (setuid(desired_uid_) == -1)
+      to_return = kCantSetUid;
+  }
+  if (setsid() == -1)
+    LOG(ERROR) << "can't setsid: " << strerror(errno);
+  return to_return;
 }
 
 }  // namespace login_manager

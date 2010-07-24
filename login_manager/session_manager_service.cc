@@ -15,14 +15,15 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <base/basictypes.h>
-#include <base/command_line.h>
+#include "base/basictypes.h"
+#include "base/command_line.h"
 #include "base/file_path.h"
-#include <base/file_util.h>
-#include <base/logging.h>
-#include <base/string_util.h>
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/dbus/service_constants.h>
+#include "base/file_util.h"
+#include "base/logging.h"
+#include "base/stl_util-inl.h"
+#include "base/string_util.h"
+#include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/service_constants.h"
 
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
@@ -107,10 +108,13 @@ const char SessionManagerService::kLegalCharacters[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890";
 //static
-const char SessionManagerService::kIncognitoUser[] = "incognito";
+const char SessionManagerService::kIncognitoUser[] = "";
 
-SessionManagerService::SessionManagerService(std::vector<ChildJob*> child_jobs)
-    : exit_on_child_done_(false),
+SessionManagerService::SessionManagerService(
+    std::vector<ChildJobInterface*> child_jobs)
+    : child_jobs_(child_jobs.begin(), child_jobs.end()),
+      child_pids_(child_jobs.size(), -1),
+      exit_on_child_done_(false),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
@@ -118,10 +122,6 @@ SessionManagerService::SessionManagerService(std::vector<ChildJob*> child_jobs)
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
-  for (size_t i_child = 0; i_child < child_jobs.size(); ++i_child) {
-    child_jobs_.push_back(child_jobs[i_child]);
-  }
-  child_pids_.resize(child_jobs.size(), -1);
   SetupHandlers();
 }
 
@@ -142,6 +142,8 @@ SessionManagerService::~SessionManagerService() {
   CHECK(sigaction(SIGTERM, &action, NULL) == 0);
   CHECK(sigaction(SIGINT, &action, NULL) == 0);
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
+
+  STLDeleteElements(&child_jobs_);
 }
 
 bool SessionManagerService::Initialize() {
@@ -221,7 +223,7 @@ bool SessionManagerService::ShouldRunChildren() {
   return !file_checker_.get() || !file_checker_->exists();
 }
 
-bool SessionManagerService::ShouldStopChild(ChildJob* child_job) {
+bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
   return child_job->ShouldStop();
 }
 
@@ -237,7 +239,7 @@ bool SessionManagerService::Shutdown() {
 }
 
 // Output uptime and disk stats to a file
-static void RecordStats(ChildJob* job) {
+static void RecordStats(ChildJobInterface* job) {
   // File uptime logs are located in.
   static const char kLogPath[] = "/tmp";
   // Prefix for the time measurement files.
@@ -250,7 +252,7 @@ static void RecordStats(ChildJob* job) {
   static const FilePath kDiskStat("/sys/block/sda/stat");
   // Suffix for both uptime and disk stats
   static const char kSuffix[] = "-exec";
-  std::string job_name = job->name();
+  std::string job_name = job->GetName();
   if (job_name.size()) {
     FilePath log_dir(kLogPath);
     FilePath uptime_file = log_dir.Append(kUptimePrefix + job_name + kSuffix);
@@ -272,15 +274,14 @@ static void RecordStats(ChildJob* job) {
 
 void SessionManagerService::RunChildren() {
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
-    ChildJob* child_job = child_jobs_[i_child];
-    LOG(INFO) << StringPrintf(
-        "Running child %s...", child_job->name().data());
+    ChildJobInterface* child_job = child_jobs_[i_child];
+    LOG(INFO) << "Running child " << child_job->GetName() << "...";
     RecordStats(child_job);
     child_pids_[i_child] = RunChild(child_job);
   }
 }
 
-int SessionManagerService::RunChild(ChildJob* child_job) {
+int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
   int pid = fork();
   if (pid == 0) {
@@ -337,10 +338,7 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   snprintf(email, sizeof(email), "%s", email_address);
   email[kMaxEmailSize] = '\0';  // Just to be sure.
   string email_string(email);
-  if (email_string == kIncognitoUser) {
-    // TODO(nkostylev): http://crosbug.com/3675 Disable screen lock.
-    email_string = "";
-  } else if (!ValidateEmail(email_string)) {
+  if (email_string != kIncognitoUser && !ValidateEmail(email_string)) {
     *OUT_done = FALSE;
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
@@ -364,8 +362,8 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
     for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
-      ChildJob* child_job = child_jobs_[i_child];
-      child_job->SetState(email_lower);
+      ChildJobInterface* child_job = child_jobs_[i_child];
+      child_job->StartSession(email_lower);
     }
     session_started_ = true;
 
@@ -390,7 +388,7 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
                   NULL);
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
-  // child_job_->SetSwitch(true);
+  // child_job_->StopSession();
   // session_started_ = false;
   return *OUT_done = TRUE;
 }
@@ -423,8 +421,8 @@ void SessionManagerService::HandleChildExit(GPid pid,
     DLOG(INFO) << "  Exited with signal " << WTERMSIG(status);
   } else if (WIFEXITED(status)) {
     DLOG(INFO) << "  Exited with exit code " << WEXITSTATUS(status);
-    CHECK(WEXITSTATUS(status) != SetUidExecJob::kCantSetuid);
-    CHECK(WEXITSTATUS(status) != SetUidExecJob::kCantExec);
+    CHECK(WEXITSTATUS(status) != ChildJobInterface::kCantSetUid);
+    CHECK(WEXITSTATUS(status) != ChildJobInterface::kCantExec);
   } else {
     DLOG(INFO) << "  Exited...somehow, without an exit code or a signal??";
   }
@@ -446,11 +444,13 @@ void SessionManagerService::HandleChildExit(GPid pid,
     }
   }
 
-  ChildJob* child_job = i_child >= 0 ? manager->child_jobs_[i_child] : NULL;
+  ChildJobInterface* child_job = i_child >= 0
+                                 ? manager->child_jobs_[i_child]
+                                 : NULL;
 
   LOG(ERROR) << StringPrintf(
       "Process %s(%d) exited.",
-      child_job ? child_job->name().data() : "",
+      child_job ? child_job->GetName().c_str() : "",
       pid);
   if (manager->screen_locked_) {
     LOG(ERROR) << "Screen locked, shutting down",
@@ -464,11 +464,11 @@ void SessionManagerService::HandleChildExit(GPid pid,
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()
       LOG(INFO) << StringPrintf(
-          "Running child %s again...", child_job->name().data());
+          "Running child %s again...", child_job->GetName().data());
       manager->child_pids_[i_child] = manager->RunChild(child_job);
     } else {
       LOG(INFO) << StringPrintf(
-          "Should NOT run %s again...", child_job->name().data());
+          "Should NOT run %s again...", child_job->GetName().data());
       manager->AllowGracefulExit();
     }
   } else {
@@ -568,13 +568,13 @@ void SessionManagerService::SendSignalToChromium(const char* signal_name) {
 }
 
 // static
-std::vector<std::vector<std::wstring> > SessionManagerService::GetArgLists(
+std::vector<std::vector<std::string> > SessionManagerService::GetArgLists(
     std::vector<std::wstring> args) {
-  std::vector<std::wstring> arg_list;
-  std::vector<std::vector<std::wstring> > arg_lists;
+  std::vector<std::string> arg_list;
+  std::vector<std::vector<std::string> > arg_lists;
   for (size_t i_arg = 0; i_arg < args.size(); ++i_arg) {
-   std::wstring arg = args[i_arg];
-   if (arg == L"--") {
+   std::string arg = WideToASCII(args[i_arg]);
+   if (arg == "--") {
      if (arg_list.size()) {
        arg_lists.push_back(arg_list);
        arg_list.clear();

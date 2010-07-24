@@ -7,9 +7,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
 
@@ -18,58 +22,59 @@
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
+using std::string;
 using std::vector;
 using std::wstring;
 
-// Watches a Chrome binary and restarts it when it crashes.
+// Watches a Chrome binary and restarts it when it crashes. Also watches
+// window manager binary as well. Actually supports watching several
+// processes specified as command line arguments separated with --.
 // Also listens over DBus for the commands specified in interface.h.
 // Usage:
 //   session_manager --uid=1000 --login --
-//     /path/to/command [arg1 [arg2 [ . . . ] ] ]
+//     /path/to/command1 [arg1 [arg2 [ . . . ] ] ]
+//   [-- /path/to/command2 [arg1 [arg2 [ ... ]]]]
 
 namespace switches {
+
+// Name of the flag that contains the path to the file which disables restart of
+// managed jobs upon exit or crash if the file is present.
 static const char kDisableChromeRestartFile[] = "disable-chrome-restart-file";
+// The default path to this file.
 static const char kDisableChromeRestartFileDefault[] =
     "/tmp/disable_chrome_restart";
 
+// Name of the flag specifying UID to be set for each managed job before
+// starting it.
 static const char kUid[] = "uid";
 
-static const char kLogin[] = "login";
-
+// Name of the flag that determines the path to log file.
 static const char kLogFile[] = "log-file";
+// The default path to the log file.
 static const char kDefaultLogFile[] = "/var/log/session_manager";
 
+// Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
+// The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --disable-chrome-restart-file=</path/to/file>\n"
 "    Magic file that causes this program to stop restarting the\n"
 "    chrome binary and exit. (default: /tmp/disable_chrome_restart)\n"
 "  --uid=[number]\n"
 "    Numeric uid to transition to prior to execution.\n"
-"  --login\n"
-"    session_manager will append --login-manager to the child's command line.\n"
 "  --log-file=</path/to/file>\n"
 "    Log file to use. (default: /var/log/session_manager)\n"
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
 "    Supplies the required program to execute and its arguments.\n"
 "    Multiple programs can be executed by delimiting them with addition --\n"
 "    as -- foo a b c -- bar d e f\n";
+
 }  // namespace switches
-
-
-static login_manager::SetUidExecJob* CreateJob(
-    vector<wstring> args, bool set_uid, uid_t uid, bool add_login_flag) {
-  login_manager::SetUidExecJob* child_job =
-      new login_manager::SetUidExecJob(args, add_login_flag);
-  if (set_uid)
-    child_job->set_desired_uid(uid);
-  return child_job;
-}
 
 int main(int argc, char* argv[]) {
   CommandLine::Init(argc, argv);
-  CommandLine *cl = CommandLine::ForCurrentProcess();
-  std::string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
+  string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
   if (log_file.empty())
     log_file.assign(switches::kDefaultLogFile);
   logging::InitLogging(log_file.c_str(),
@@ -79,37 +84,38 @@ int main(int argc, char* argv[]) {
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
-    exit(0);
+    return 0;
   }
 
+  // Parse UID if it's present, -1 means no UID should be set.
+  bool uid_set = false;
   uid_t uid = 0;
-  bool set_uid = false;
-  std::string uid_string = cl->GetSwitchValueASCII(switches::kUid);
-  if (!uid_string.empty()) {
-    errno = 0;
-    uid = static_cast<uid_t>(strtol(uid_string.c_str(), NULL, 0));
-    if (errno == 0)
-      set_uid = true;
-    else
+  if (cl->HasSwitch(switches::kUid)) {
+    string uid_flag = cl->GetSwitchValueASCII(switches::kUid);
+    int uid_value = 0;
+    if (StringToInt(uid_flag, &uid_value)) {
+      uid = static_cast<uid_t>(uid_value);
+      uid_set = true;
+    } else {
       DLOG(WARNING) << "failed to parse uid, defaulting to none.";
+    }
   }
 
-  bool add_login_flag = cl->HasSwitch(switches::kLogin);
-
+  // Parse jobs to be run with its args.
   vector<wstring> loose_args = cl->GetLooseValues();
-  vector<login_manager::ChildJob*> child_jobs;
-
-  vector<vector<wstring> > arg_lists =
+  vector<vector<string> > arg_lists =
       login_manager::SessionManagerService::GetArgLists(loose_args);
-  for (size_t i_list = 0; i_list < arg_lists.size(); i_list++) {
-    vector<wstring> arg_list = arg_lists[i_list];
-    child_jobs.push_back(CreateJob(arg_list, set_uid, uid, add_login_flag));
+  vector<login_manager::ChildJobInterface*> child_jobs;
+  for (size_t i = 0; i < arg_lists.size(); ++i) {
+    child_jobs.push_back(new login_manager::ChildJob(arg_lists[i]));
+    if (uid_set)
+      child_jobs.back()->SetDesiredUid(uid);
   }
 
   ::g_type_init();
   login_manager::SessionManagerService manager(child_jobs);
 
-  std::string magic_chrome_file =
+  string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);

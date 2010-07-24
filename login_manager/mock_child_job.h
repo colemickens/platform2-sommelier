@@ -11,16 +11,19 @@
 #include <string>
 
 namespace login_manager {
-class MockChildJob : public ChildJob {
+class MockChildJob : public ChildJobInterface {
  public:
   MockChildJob() { }
   ~MockChildJob() { }
-  MOCK_METHOD0(ShouldStop, bool());
+  MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
-  MOCK_CONST_METHOD0(name, const std::string());
-  MOCK_METHOD1(SetState, void(const std::string& state));
-  MOCK_METHOD1(SetSwitch, void(const bool new_value));
+  MOCK_METHOD1(StartSession, void(const std::string&));
+  MOCK_METHOD0(StopSession, void());
+  MOCK_CONST_METHOD0(GetDesiredUid, uid_t());
+  MOCK_METHOD1(SetDesiredUid, void(uid_t));
+  MOCK_CONST_METHOD0(IsDesiredUidSet, bool());
+  MOCK_CONST_METHOD0(GetName, const std::string());
 };
 }  // namespace login_manager
 

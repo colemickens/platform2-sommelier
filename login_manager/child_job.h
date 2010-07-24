@@ -9,98 +9,92 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <base/scoped_ptr.h>
 
 class CommandLine;
 
 namespace login_manager {
+
 // SessionManager takes a ChildJob object, forks and then calls the ChildJob's
-// Run() method.  I've created this interface so that I can create mocks for
+// Run() method. I've created this interface so that I can create mocks for
 // unittesting SessionManager.
-class ChildJob {
+class ChildJobInterface {
  public:
-  ChildJob() {}
-  virtual ~ChildJob() {}
+  virtual ~ChildJobInterface() {}
 
   // If ShouldStop() returns true, this means that the parent should tear
   // everything down.
-  virtual bool ShouldStop() = 0;
+  virtual bool ShouldStop() const = 0;
 
+  // Stores the current time as the time when the job was started.
   virtual void RecordTime() = 0;
 
-  // Wraps up all the logic of what the job is meant to do.  Should NOT return.
+  // Wraps up all the logic of what the job is meant to do. Should NOT return.
   virtual void Run() = 0;
 
-  // If the ChildJob contains a switch, set it to |new_value|.
-  virtual void SetSwitch(const bool new_value) = 0;
+  // Called when a session is started for a user with |email|.
+  virtual void StartSession(const std::string& email) = 0;
 
-  // If the ChildJob contains a settable piece of state, set it to |state|.
-  virtual void SetState(const std::string& state) = 0;
+  // Called when the session is ended.
+  virtual void StopSession() = 0;
 
-  virtual bool desired_uid_is_set() const {
-    return false;
-  }
+  // Returns the desired UID for the job. -1 means that UID wasn't set.
+  virtual uid_t GetDesiredUid() const = 0;
 
-  virtual uid_t desired_uid() const {
-    return -1;
-  }
+  // Sets the desired UID for the job. This UID (if not equal to -1)  is
+  // attempted to be set on job's process before job actually runs.
+  virtual void SetDesiredUid(uid_t uid) = 0;
 
-  virtual const std::string name() const {
-    return std::string();
-  }
+  // Indicates if UID was set for the job.
+  virtual bool IsDesiredUidSet() const = 0;
+
+  // Returns the name of the job.
+  virtual const std::string GetName() const = 0;
+
+  // Potential exit codes for Run().
+  static const int kCantSetUid;
+  static const int kCantSetGid;
+  static const int kCantSetGroups;
+  static const int kCantExec;
+  static const int kBWSI;
+
 };
 
-class SetUidExecJob : public ChildJob {
+
+class ChildJob : public ChildJobInterface {
  public:
-  SetUidExecJob(std::vector<std::wstring> loose_wide_args,
-                const bool add_flag);
-  virtual ~SetUidExecJob();
+  explicit ChildJob(const std::vector<std::string>& arguments);
+  virtual ~ChildJob();
+
+  // Overridden from ChildJob
+  virtual bool ShouldStop() const;
+  virtual void RecordTime();
+  virtual void Run();
+  virtual void StartSession(const std::string& email);
+  virtual void StopSession();
+  virtual uid_t GetDesiredUid() const;
+  virtual void SetDesiredUid(uid_t uid);
+  virtual bool IsDesiredUidSet() const;
+  virtual const std::string GetName() const;
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
   // The flag to pass to chrome to tell it which user has logged in.
   static const char kLoginUserFlag[];
-  // The flag to pass to chrome when starting browse without sign in mode.
-  static const char kIncognitoFlag[];
+  // The flag to pass to chrome when starting "Browse Without Sign In" mode.
+  static const char kBWSIFlag[];
 
-  // Potential exit codes for Run().
-  static const int kCantSetuid;
-  static const int kCantSetgid;
-  static const int kCantSetgroups;
-  static const int kCantExec;
-
+  // Minimum amount of time (in seconds) that should pass since the job was
+  // started for it to be restarted if it exits or crashes.
   static const int kRestartWindow;
 
-  // Overridden from ChildJob
-  bool ShouldStop();
-  void RecordTime();
-  void Run();
-  void SetSwitch(const bool new_value);
-  void SetState(const std::string& state);
-
-  bool desired_uid_is_set() const {
-    return desired_uid_is_set_;
-  }
-
-  uid_t desired_uid() const {
-    return desired_uid_is_set() ? desired_uid_ : -1;
-  }
-
-  void set_desired_uid(uid_t uid) {
-    desired_uid_ = uid;
-    desired_uid_is_set_ = true;
-  }
-
-  const std::string name() const;
-
- protected:
-  std::vector<std::string> ExtractArgvForTest();
-
-  // Pulls all loose args from |loose_wide_args|, converts them to ASCII, and
-  // puts them into an array that's ready to be used by exec().
-  void PopulateArgv(std::vector<std::wstring> loose_wide_args);
-  void AppendNeededFlags();
+ private:
+  // Allocates and populates array of C strings to pass to exec call.
+  char const** CreateArgv() const;
 
   // If the caller has provided a UID with set_desired_uid(), this method will:
   // 1) try to setgid to that uid
@@ -111,22 +105,32 @@ class SetUidExecJob : public ChildJob {
   // call fails.
   int SetIDs();
 
- private:
-  char const* *argv_;
-  uint32 num_args_passed_in_;
+  // Arguments to pass to exec.
+  std::vector<std::string> arguments_;
 
+  // UID to set for job's process before exec is called.
   uid_t desired_uid_;
-  bool include_login_flag_;  // This class' piece of toggleable state.
-  std::string user_flag_;  // This class' piece of settable state.
-  bool desired_uid_is_set_;
+
+  // Indicates if |desired_uid_| was initialized.
+  bool is_desired_uid_set_;
+
+  // The last time the job was run.
   time_t last_start_;
 
-  FRIEND_TEST(SetUidExecJobTest, FlagAppendTest);
-  FRIEND_TEST(SetUidExecJobTest, AppendUserFlagTest);
-  FRIEND_TEST(SetUidExecJobTest, PopulateArgvTest);
-  DISALLOW_COPY_AND_ASSIGN(SetUidExecJob);
+  // Indicates if we removed login manager flag when session started so we
+  // add it back when session stops.
+  bool removed_login_manager_flag_;
 
+  FRIEND_TEST(ChildJobTest, InitializationTest);
+  FRIEND_TEST(ChildJobTest, ShouldStopTest);
+  FRIEND_TEST(ChildJobTest, ShouldNotStopTest);
+  FRIEND_TEST(ChildJobTest, StartStopSessionTest);
+  FRIEND_TEST(ChildJobTest, StartStopBWSISessionTest);
+  FRIEND_TEST(ChildJobTest, StartStopSessionFromLoginTest);
+  DISALLOW_COPY_AND_ASSIGN(ChildJob);
 };
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHILD_JOB_H_
+
