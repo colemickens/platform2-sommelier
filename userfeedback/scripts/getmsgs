@@ -37,5 +37,9 @@ WHEN="now - $LAST"
 DATE=$(date -d "$WHEN" +'%FT%T.000000%:z')
 
 NLINES=$(tac $LOGFILES \
-  | awk -v DATE="$DATE" '$1 < DATE { print NR; exit } END { print NR } ')
-cat $LOGFILES | tail -n $NLINES | tail -c $MAXDATA
+  | awk -v DATE="$DATE" '$1 < DATE { print NR; exit }')
+(if [ -z "$NLINES" ]; then
+  cat $LOGFILES
+else
+  cat $LOGFILES | tail -n $NLINES
+fi) | tail -c $MAXDATA
