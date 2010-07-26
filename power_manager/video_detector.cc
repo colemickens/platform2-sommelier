@@ -50,6 +50,10 @@ bool VideoDetector::GetVideoActivity(bool* is_active) {
               << " Did not get _CHROME_VIDEO_TIME from root window.";
     *is_active = false;
   }
+  // Data may be a valid pointer even if GetRootWindowProperty returns false.
+  // If the property returned isn't the type we asked, free it as well.
+  if (data)
+    XFree(data);
   return true;
 }
 
