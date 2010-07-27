@@ -42,6 +42,9 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
+      low_battery_suspend_percent_(0),
+      low_battery_suspended_(false),
+      use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
       suspender_(&locker_),
@@ -97,6 +100,9 @@ void Daemon::Init() {
 void Daemon::ReadSettings() {
   int64 use_xscreensaver;
   int64 disable_idle_suspend;
+  int64 low_battery_suspend_percent;
+  CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
+                            &low_battery_suspend_percent));
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -110,6 +116,14 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Idle suspend feature disabled";
     plugged_suspend_ms_ = INT64_MAX;
     unplugged_suspend_ms_ = INT64_MAX;
+  }
+  if (low_battery_suspend_percent >= 0 && low_battery_suspend_percent <= 100) {
+    low_battery_suspend_percent_ = low_battery_suspend_percent;
+  } else {
+    LOG(INFO) << "Unreasonable low battery suspend percent threshold:"
+              << low_battery_suspend_percent;
+    LOG(INFO) << "Disabling low battery suspend.";
+    low_battery_suspend_percent_ = 0;
   }
   use_xscreensaver_ = use_xscreensaver;
 
@@ -234,6 +248,9 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
   Daemon* daemon = static_cast<Daemon*>(object);
   daemon->SetPlugged(info.line_power_on);
   daemon->GenerateMetricsOnPowerEvent(info);
+  // Do not emergency suspend if no battery exists.
+  if (info.battery_is_present)
+    daemon->SuspendOnLowBattery(info.battery_percentage);
 }
 
 GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
@@ -324,6 +341,25 @@ void Daemon::RegisterDBusMessageHandler() {
     CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                      NULL));
     LOG(INFO) << "DBus monitoring started";
+  }
+}
+
+void Daemon::SuspendOnLowBattery(double battery_percentage) {
+  if (kPowerDisconnected == plugged_state_ && !low_battery_suspended_ &&
+      battery_percentage <= low_battery_suspend_percent_) {
+    LOG(INFO) << "Low battery condition detected. Suspending immediately.";
+    low_battery_suspended_ = true;
+    suspender_.RequestSuspend();
+  } else if (kPowerConnected == plugged_state_ ||
+             battery_percentage > low_battery_suspend_percent_ ) {
+    low_battery_suspended_ = false;
+  } else {
+    // Either a spurious reading after we have requested suspend, or the user
+    // has woken the system up intentionally without rectifying the battery
+    // situation (ie. user woke the system without attaching AC.)
+    // User is on his own from here until the system dies. We will not try to
+    // resuspend.
+    LOG(INFO) << "Spurious low battery condition, or user living on the edge.";
   }
 }
 

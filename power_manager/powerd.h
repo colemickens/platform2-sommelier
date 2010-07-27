@@ -118,6 +118,9 @@ class Daemon : public XIdleMonitor {
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
+  // Check for extremely low battery condition and triggers suspend.
+  void SuspendOnLowBattery(double battery_percentage);
+
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 
@@ -177,6 +180,8 @@ class Daemon : public XIdleMonitor {
   MetricsLibraryInterface* metrics_lib_;
   VideoDetectorInterface* video_detector_;
   XIdle idle_;
+  double low_battery_suspend_percent_;
+  bool low_battery_suspended_;
   int64 plugged_dim_ms_;
   int64 plugged_off_ms_;
   int64 plugged_suspend_ms_;
