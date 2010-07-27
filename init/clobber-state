@@ -17,33 +17,27 @@ if [ $(id -u) -ne 0 ]; then
   exit 1
 fi
 
+# Run "clobber-state fast" to clobber the state quickly but unsecurely.
+FAST_WIPE="$1"
+
 wipedev() {
   DEV="$1"
-  SECTORS=$(numsectors ${DEV})
-  BLK_SIZE=$((4 * 1024 * 1024 / 512))  # 4MiB in 512-byte sectors
-  FULL_BLKS=$(($SECTORS / $BLK_SIZE))
-  REMAINDER_SECTORS=$(($SECTORS % $BLK_SIZE))
-  dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
-  dd if=/dev/zero of=${DEV} bs=512 count=${REMAINDER_SECTORS} \
-    seek=$(($FULL_BLKS * $BLK_SIZE))
-}
-
-copydev() {
-  SRC_DEV="$1"
-  DST_DEV="$2"
-  SRC_SECTORS=$(numsectors ${SRC_DEV})
-  DST_SECTORS=$(numsectors ${DST_DEV})
-  if [ "$SRC_SECTORS" != "$DST_SECTORS" ]; then 
-    echo "Parition size mismatch. Wiping $DST_DEV instead."
-    wipedev $DST_DEV
+  # Wipe the filesystem size if we can determine it. Full partition wipe
+  # takes a long time on 16G SSD or rotating media.
+  if dumpe2fs ${DEV} ; then
+    FS_BLOCKS=$(dumpe2fs -h ${DEV} | grep "Block count" | sed "s/^.*:\W*//")
+    FS_BLOCKSIZE=$(dumpe2fs -h ${DEV} | grep "Block size" | sed "s/^.*:\W*//")
   else
-    BLK_SIZE=$((4 * 1024 * 1024 / 512))  # 4MiB in 512-byte sectors
-    FULL_BLKS=$(($SECTORS / $BLK_SIZE))
-    REMAINDER_SECTORS=$(($SECTORS % $BLK_SIZE))
-    dd if=${SRC_DEV} of=${DST_DEV} bs=4M count=${FULL_BLKS}
-    dd if=${SRC_DEV} of=${DST_DEV} bs=512 count=${REMAINDER_SECTORS} \
-      seek=$(($FULL_BLKS * $BLK_SIZE)) skip=$(($FULL_BLKS * $BLK_SIZE))
+    FS_BLOCKS=$(numsectors ${DEV})
+    FS_BLOCKSIZE=512
   fi
+  BLOCKS_4M=$((4 * 1024 * 1024 / $FS_BLOCKSIZE))  # 4MiB in sectors
+  FULL_BLKS=$(($FS_BLOCKS / $BLOCKS_4M))
+  REMAINDER_SECTORS=$(($FS_BLOCKS % $BLOCKS_4M))
+
+  dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
+  dd if=/dev/zero of=${DEV} bs=${FS_BLOCKSIZE} count=${REMAINDER_SECTORS} \
+    seek=$(($FULL_BLKS * $BLOCKS_4M))
 }
 
 # Root devs are sda3, sda5. 
@@ -63,16 +57,25 @@ fi
 
 umount /mnt/stateful_partition
 
-# Wipe everything on the stateful partition.
-wipedev ${STATE_DEV}
+if [ "$FAST_WIPE" = "fast" ]; then
+  # Just wipe the start of the partition and remake the fs on
+  # the stateful partition.
+  dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
+  dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
+  dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
+  /sbin/mkfs.ext3 "$STATE_DEV"
+else
+  echo "Erasing rootfs on ${OTHER_ROOT_DEV}..."
+  wipedev ${OTHER_ROOT_DEV}
 
-/sbin/mkfs.ext3 "$STATE_DEV"
+  echo "Erasing kernelfs on ${OTHER_KERNEL_DEV}..."
+  wipedev ${OTHER_KERNEL_DEV}
 
-echo "Erasing rootfs on ${OTHER_ROOT_DEV}..."
-copydev ${ROOT_DEV} ${OTHER_ROOT_DEV}
+  # Wipe everything on the stateful partition.
+  wipedev ${STATE_DEV}
 
-echo "Erasing kernelfs on ${OTHER_KERNEL_DEV}..."
-copydev ${KERNEL_DEV} ${OTHER_KERNEL_DEV}
+  /sbin/mkfs.ext3 "$STATE_DEV"
+fi
 
 # Flush linux caches.
 sync

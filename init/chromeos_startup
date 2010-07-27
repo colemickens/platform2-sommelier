@@ -80,7 +80,12 @@ if [ -f "$RESET_FILE" ]; then
       cp -f /mnt/stateful_partition/wipe_splash.png /tmp/
       /usr/bin/ply-image /tmp/wipe_splash.png &
     fi
-    exec /sbin/clobber-state
+    FAST=$(cat $RESET_FILE)
+    if [ "$FAST" = "fast" ]; then
+      exec /sbin/clobber-state fast
+    else
+      exec /sbin/clobber-state
+    fi
   fi
 fi
 
