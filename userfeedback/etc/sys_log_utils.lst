@@ -37,6 +37,7 @@ powerd.out,cat /var/log/power_manager/powerd.out
 ps,/bin/ps ux
 softwareupdate.log,cat /var/log/softwareupdate.log
 syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
+trackpad,/usr/bin/synclient -l
 uname,/bin/uname -a
 update_engine.log,cat /var/log/update_engine.log
 wpa_supplicant,/usr/share/userfeedback/scripts/getmsgs --last '30 minutes' /var/log/hostap.log
