@@ -49,12 +49,16 @@ By default, it uses the kernel partition for A or B as requested."
 DEFINE_string rootfs_image "" \
   "Specifies a rootfs image/partition to hash and update for vboot.
 By default, it uses the current root device."
+DEFINE_string install_root "/" \
+  "Specifies the base location to find utilities in the new root"
 
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
 set -e
+
+INSTALL_ROOT="${FLAGS_install_root}"
 
 # Hack to run the code to setup the default dst only if not provided since if
 # this is run from a mounted image on a different machine, rootdev will fail.
@@ -119,7 +123,8 @@ if [ -n "${FLAGS_kernel_image}" ]; then
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
-kernel_cfg="$(sudo dump_kernel_config ${kernel_image} |
+DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
+kernel_cfg="$(sudo "${DUMP_KERNEL_CONFIG}" ${kernel_image} |
               sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
               cut -f2- -d,)"
 rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
@@ -134,7 +139,8 @@ fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
 # TODO(wad) take preamble from dump_kernel_config.
-table="vroot none ro,"$(sudo verity create \
+VERITY="${INSTALL_ROOT}"/bin/verity
+table="vroot none ro,"$(sudo "${VERITY}" create \
         ${verity_depth} \
         "${verity_algorithm}" \
         "${rootfs_image}" \

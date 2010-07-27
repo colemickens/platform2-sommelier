@@ -90,6 +90,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
       "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
           --dst=${ROOT_DEV} --run_as_root \
+          --install_root="${INSTALL_ROOT}" \
           --update_syslinux_cfg="${syslinux_cfg}" \
           --update_grub_cfg="${grub_cfg}" \
           --esp_mounted_at="${EFI_MNT}" \
@@ -202,6 +203,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
     "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
         --dst=${ROOT_DEV} --run_as_root \
+        --install_root="${INSTALL_ROOT}" \
         --update_syslinux_cfg="${syslinux_cfg}" \
         --update_grub_cfg="${grub_cfg}" \
         --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
