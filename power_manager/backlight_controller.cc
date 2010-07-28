@@ -51,7 +51,10 @@ void BacklightController::IncreaseBrightness() {
     int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
     int64 new_brightness = Clamp(lround(100. * new_val / max_));
     if (new_brightness != system_brightness_) {
-      *brightness_offset_ += new_brightness - system_brightness_;
+      // Allow large swing in brightness_offset for absolute brightness
+      // outside of clamped brightness region.
+      int64 absolute_brightness = als_brightness_level_ + *brightness_offset_;
+      *brightness_offset_ += new_brightness - absolute_brightness;
       WriteBrightness();
     }
   }
@@ -64,7 +67,10 @@ void BacklightController::DecreaseBrightness() {
     int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
     int64 new_brightness = Clamp(lround(100. * new_val / max_));
     if (new_brightness != system_brightness_) {
-      *brightness_offset_ += new_brightness - system_brightness_;
+      // Allow large swing in brightness_offset for absolute brightness
+      // outside of clamped brightness region.
+      int64 absolute_brightness = als_brightness_level_ + *brightness_offset_;
+      *brightness_offset_ += new_brightness - absolute_brightness;
       WriteBrightness();
     }
   }
