@@ -217,6 +217,13 @@ TEST_F(GobiModemTest, ResetModem) {
   ASSERT_FALSE(error_->is_set());
 }
 
+TEST_F(GobiModemTest, PowerCycle) {
+  InSequence s;
+  EXPECT_CALL(sdk_, SetPower(gobi::kPowerOff));
+  modem_->PowerCycle(*error_);
+  ASSERT_FALSE(error_->is_set());
+}
+
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);

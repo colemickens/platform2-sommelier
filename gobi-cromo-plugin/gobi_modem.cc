@@ -768,6 +768,12 @@ void GobiModem::SoftReset(DBus::Error& error) {
   ResetModem(error);
 }
 
+void GobiModem::PowerCycle(DBus::Error &error) {
+  LOG(INFO) << "Initiating modem powercycle";
+  ULONG rc = sdk_->SetPower(gobi::kPowerOff);
+  ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
+}
+
 void GobiModem::ResetModem(DBus::Error& error) {
   // TODO(rochberg):  Is this going to confuse connman?
   Enabled = false;

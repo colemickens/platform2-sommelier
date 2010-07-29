@@ -81,6 +81,7 @@ class GobiModem
   virtual void SoftReset(DBus::Error& error);
   virtual void Activate(const std::string& carrier_name,
                         DBus::Error& error);
+  virtual void PowerCycle(DBus::Error& error);
 
   // DBUS Property Getter
   virtual void on_get_property(DBus::InterfaceAdaptor& interface,

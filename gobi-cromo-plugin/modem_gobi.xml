@@ -21,6 +21,7 @@
           Tells the module to do a soft reset and waits for the reset to complete.
       </tp:docstring>
     </method>
+
     <method name="Activate">
       <tp:docstring>
         Activates the modem for use with a given carrier.
@@ -32,16 +33,22 @@
       </arg>
     </method>
 
-  <signal name="ConnectionStateChanged">
-    <tp:docstring>
-      Send a notification that the modem connection state has changed.
-    </tp:docstring>
-    <arg name="connected" type="b">
+    <method name="PowerCycle">
       <tp:docstring>
-        True if connected, false otherwise.
+        Tells the modem to power cycle itself.
       </tp:docstring>
-    </arg>
-  </signal>
+    </method>
+
+    <signal name="ConnectionStateChanged">
+      <tp:docstring>
+        Send a notification that the modem connection state has changed.
+      </tp:docstring>
+      <arg name="connected" type="b">
+        <tp:docstring>
+          True if connected, false otherwise.
+        </tp:docstring>
+      </arg>
+    </signal>
 
   </interface>
 </node>
