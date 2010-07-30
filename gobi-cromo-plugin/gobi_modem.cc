@@ -299,24 +299,36 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   }
 
   ULONG failure_reason;
-  LOG(INFO) << "Starting data session: ";
-  rc = sdk_->StartDataSession(NULL,  // technology
-                              NULL,  // APN Name
-                              NULL,  // Authentication
-                              NULL,  // Username
-                              NULL,  // Password
-                              &session_id_,  // OUT: session ID
-                              &failure_reason  // OUT: failure reason
-                        );
-  if (rc != 0) {
-    LOG(WARNING) << "StartDataSession failed: " << rc;
-    if (rc == gobi::kCallFailed)
-      LOG(WARNING) << "Failure Reason " <<  failure_reason;
-    error.set(kConnectError, "StartDataSession");
-    return;
+
+  for (int attempt = 0; attempt < 2; ++attempt) {
+    LOG(INFO) << "Starting data session attempt " << attempt;
+    rc = sdk_->StartDataSession(NULL,  // technology
+                                NULL,  // APN Name
+                                NULL,  // Authentication
+                                NULL,  // Username
+                                NULL,  // Password
+                                &session_id_,  // OUT: session ID
+                                &failure_reason  // OUT: failure reason
+                                );
+    if (rc == 0) {
+      LOG(INFO) << "Session ID " <<  session_id_;
+      // session_state_ will be set in SessionStateCallback
+      return;
+    } else {
+      LOG(WARNING) << "StartDataSession failed: " << rc;
+      if (rc == gobi::kCallFailed) {
+        LOG(WARNING) << "Failure Reason " <<  failure_reason;
+        if (failure_reason == gobi::kClientEndedCall) {
+          LOG(WARNING) <<
+              "Call ended by client.  Retrying";
+          continue;
+        }
+      }
+      error.set(kConnectError, "StartDataSession");
+      return;
+    }
   }
-  LOG(INFO) << "Session ID " <<  session_id_;
-  // session_state_ will be set in SessionStateCallback
+  LOG(WARNING) << "Connect retries expired.  Failing";
 }
 
 

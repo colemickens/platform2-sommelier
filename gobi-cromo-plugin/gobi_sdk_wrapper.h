@@ -220,6 +220,11 @@ enum ReturnCode {
   kInformationElementUnavailable = 1074
 };
 
+// Selected call failure reasons from table 2-4 "Call end reason codes"
+enum CallEndReason {
+  kClientEndedCall = 2,
+};
+
 typedef struct {
   ULONG radioInterface;
   ULONG activeBandClass;
