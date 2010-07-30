@@ -20,7 +20,7 @@ echo Setting carrier to "$*".  This could take up to two minutes.
 echo Using modem $modem
 
 
-time dbus-send                                      \
+dbus-send                                           \
     --reply-timeout=120000                          \
     --system                                        \
     --print-reply                                   \
