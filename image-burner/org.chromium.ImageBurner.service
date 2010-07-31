@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.chromium.ImageBurner
+Exec=/usr/sbin/image_burner
+User=root
