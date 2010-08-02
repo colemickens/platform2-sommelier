@@ -1,0 +1,27 @@
+Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+
+This is the Chromium OS 'bootstat' utility.  The utility is used
+to generate timestamps and other performance statistics during
+system boot.
+
+Usage:
+    bootstat <event-name>
+
+Summary:  The command gathers and records the contents of
+/proc/uptime and disk statistics for the boot disk (the full disk,
+not the boot partition), and associates the data with the passed
+in <event-name>.
+
+Implementation:  Uptime data are stored in a file named
+/tmp/uptime-<event-name>; disk statistics are stored in a file
+named /tmp/disk-<event-name>.  This file naming convention is a
+concession to existing code that depends on these files existing
+with these specific names, including the platform_BootPerf test in
+autotest, /etc/boot-complete.conf, and portions of Chrome.
+
+New code should treat the file names as an implementation detail,
+not as the interface.  You should not add new code that depends on
+the file names; instead, you should enhance the bootstat command
+and/or library to provide access to the data you need.
