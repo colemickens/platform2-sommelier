@@ -188,11 +188,13 @@ class Daemon : public XIdleMonitor {
   int64 unplugged_dim_ms_;
   int64 unplugged_off_ms_;
   int64 unplugged_suspend_ms_;
+  int64 default_lock_ms_;
   int64 dim_ms_;
   int64 off_ms_;
   int64 suspend_ms_;
   int64 lock_ms_;
   int64 offset_ms_;
+  bool enforce_lock_;
   bool use_xscreensaver_;
   PluggedState plugged_state_;
   IdleState idle_state_;

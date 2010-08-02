@@ -44,6 +44,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       video_detector_(video_detector),
       low_battery_suspend_percent_(0),
       low_battery_suspended_(false),
+      enforce_lock_(false),
       use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
@@ -98,7 +99,7 @@ void Daemon::Init() {
 }
 
 void Daemon::ReadSettings() {
-  int64 use_xscreensaver;
+  int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
   int64 low_battery_suspend_percent;
   CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
@@ -109,7 +110,8 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
   CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
-  CHECK(prefs_->ReadSetting("lock_ms", &lock_ms_));
+  CHECK(prefs_->ReadSetting("lock_ms", &default_lock_ms_));
+  CHECK(prefs_->ReadSetting("enforce_lock", &enforce_lock));
   CHECK(prefs_->ReadSetting("use_xscreensaver", &use_xscreensaver));
   if (prefs_->ReadSetting("disable_idle_suspend", &disable_idle_suspend) &&
       disable_idle_suspend) {
@@ -125,6 +127,8 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Disabling low battery suspend.";
     low_battery_suspend_percent_ = 0;
   }
+  lock_ms_ = default_lock_ms_;
+  enforce_lock_ = enforce_lock;
   use_xscreensaver_ = use_xscreensaver;
 
   // Check that timeouts are sane
@@ -135,8 +139,8 @@ void Daemon::ReadSettings() {
   CHECK(unplugged_dim_ms_ >= kReactMS);
   CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kReactMS);
   CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kReactMS);
-  CHECK(lock_ms_ >= unplugged_off_ms_ + kReactMS);
-  CHECK(lock_ms_ >= plugged_off_ms_ + kReactMS);
+  CHECK(default_lock_ms_ >= unplugged_off_ms_ + kReactMS);
+  CHECK(default_lock_ms_ >= plugged_off_ms_ + kReactMS);
 
   CHECK(idle_.Init(this));
 }
@@ -176,17 +180,22 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
     off_ms_ = unplugged_off_ms_;
     suspend_ms_ = unplugged_suspend_ms_;
   }
+  lock_ms_ = default_lock_ms_;
 
   // Protect against overflow
   dim_ms_ = max(dim_ms_ + offset_ms, dim_ms_);
   off_ms_ = max(off_ms_ + offset_ms, off_ms_);
   suspend_ms_ = max(suspend_ms_ + offset_ms, suspend_ms_);
 
-  // Make sure that the screen turns off before it locks, and dims before
-  // it turns off. This ensures the user gets a warning before we lock the
-  // screen.
-  off_ms_ = min(off_ms_, lock_ms_ - kReactMS);
-  dim_ms_ = min(dim_ms_, lock_ms_ - 2 * kReactMS);
+  if(enforce_lock_) {
+    // Make sure that the screen turns off before it locks, and dims before
+    // it turns off. This ensures the user gets a warning before we lock the
+    // screen.
+    off_ms_ = min(off_ms_, lock_ms_ - kReactMS);
+    dim_ms_ = min(dim_ms_, lock_ms_ - 2 * kReactMS);
+  } else {
+    lock_ms_ = max(lock_ms_ + offset_ms, lock_ms_);
+  }
 
   // Sync up idle state with new settings
   CHECK(idle_.ClearTimeouts());

@@ -456,7 +456,7 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   daemon_.unplugged_dim_ms_ = kUnpluggedDim;
   daemon_.unplugged_off_ms_ = kUnpluggedOff;
   daemon_.unplugged_suspend_ms_ = INT64_MAX;
-  daemon_.lock_ms_ = kLockMs;
+  daemon_.default_lock_ms_ = kLockMs;
   daemon_.idle_.Init(&daemon_);
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
