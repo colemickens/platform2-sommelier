@@ -9,6 +9,7 @@
 
 #include "main.h"
 
+#define DISABLE_SOME_TESTS_FOR_INTEL_DRIVER 1
 
 namespace glbench {
 

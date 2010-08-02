@@ -220,6 +220,7 @@ bool VaryingsAndDdxyShaderTest::Run() {
           "mpixels_sec_varyings_shader_8", g_width * g_height, true);
   glDeleteProgram(program);
 
+#if !defined(DISABLE_SOME_TESTS_FOR_INTEL_DRIVER)
   program = DdxDdyShaderProgram(true, vertex_buffer);
   RunTest(this,
           "mpixels_sec_ddx_shader", g_width * g_height, true);
@@ -229,6 +230,7 @@ bool VaryingsAndDdxyShaderTest::Run() {
   RunTest(this,
           "mpixels_sec_ddy_shader", g_width * g_height, true);
   glDeleteProgram(program);
+#endif
 
   glDeleteBuffers(1, &index_buffer);
   delete[] indices;
