@@ -23,6 +23,7 @@
 #include "platform.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
+#include "vault_keyset.pb.h"
 
 using std::string;
 
@@ -48,8 +49,9 @@ Mount::Mount()
       crypto_(default_crypto_.get()),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
-      use_tpm_(false),
-      process_config_(true),
+      fallback_to_scrypt_(true),
+      use_tpm_(true),
+      process_config_(false),
       default_current_user_(new UserSession()),
       current_user_(default_current_user_.get()) {
 }
@@ -61,30 +63,7 @@ bool Mount::Init() {
   bool result = true;
 
   if (process_config_) {
-    // Attempt to load configuration
-    string str_config;
-    if (LoadFileString(FilePath(StringPrintf("%s/cryptohome.json",
-                                             shadow_root_.c_str())),
-                       &str_config)) {
-      std::string json_error;
-      Value* json_config = base::JSONReader::ReadAndReturnError(str_config,
-                                                                true,
-                                                                &json_error);
-      if (json_config) {
-        if (json_config->GetType() == Value::TYPE_DICTIONARY) {
-          DictionaryValue* dict_config =
-              static_cast<DictionaryValue*>(json_config);
-          std::wstring key = L"use_tpm";
-          bool local_use_tpm = false;
-          if (dict_config->GetBoolean(key, &local_use_tpm)) {
-            use_tpm_ = local_use_tpm;
-          }
-        }
-        delete json_config;
-      } else {
-        LOG(ERROR) << "Malformed config JSON: " << json_error;
-      }
-    }
+    LoadConfigurationFile();
   }
 
   // Get the user id and group id of the default user
@@ -101,6 +80,7 @@ bool Mount::Init() {
   }
 
   crypto_->set_use_tpm(use_tpm_);
+  crypto_->set_fallback_to_scrypt(fallback_to_scrypt_);
 
   if (!crypto_->Init()) {
     result = false;
@@ -109,6 +89,38 @@ bool Mount::Init() {
   current_user_->Init(crypto_);
 
   return result;
+}
+
+void Mount::LoadConfigurationFile() {
+  // Attempt to load configuration
+  string str_config;
+  if (LoadFileString(FilePath(StringPrintf("%s/cryptohome.json",
+                                           shadow_root_.c_str())),
+                     &str_config)) {
+    std::string json_error;
+    Value* json_config = base::JSONReader::ReadAndReturnError(str_config,
+                                                              true,
+                                                              &json_error);
+    if (json_config) {
+      if (json_config->GetType() == Value::TYPE_DICTIONARY) {
+        DictionaryValue* dict_config =
+            static_cast<DictionaryValue*>(json_config);
+        std::wstring key = L"use_tpm";
+        bool local_use_tpm = false;
+        if (dict_config->GetBoolean(key, &local_use_tpm)) {
+          use_tpm_ = local_use_tpm;
+        }
+        key = L"fallback_to_scrypt";
+        bool local_fallback_to_scrypt = false;
+        if (dict_config->GetBoolean(key, &local_fallback_to_scrypt)) {
+          fallback_to_scrypt_ = local_fallback_to_scrypt;
+        }
+      }
+      delete json_config;
+    } else {
+      LOG(ERROR) << "Malformed config JSON: " << json_error;
+    }
+  }
 }
 
 bool Mount::EnsureCryptohome(const Credentials& credentials,
@@ -322,20 +334,8 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       return false;
     }
     if (migrate_if_needed) {
-      if (!RemoveOldFiles(credentials)) {
-        LOG(ERROR) << "Couldn't remove old key material.";
-        if (error) {
-          *error = MOUNT_ERROR_FATAL;
-        }
-        return false;
-      }
-      if (!SaveVaultKeyset(credentials, old_keyset)) {
-        LOG(ERROR) << "Couldn't save keyset.";
-        if (error) {
-          *error = MOUNT_ERROR_FATAL;
-        }
-        return false;
-      }
+      // TODO(fes): This is not (right now) a fatal error
+      ResaveVaultKeyset(credentials, old_keyset);
     }
     vault_keyset->FromVaultKeyset(old_keyset);
     return true;
@@ -360,8 +360,8 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
     }
 
     // Attempt to unwrap the master key with the passkey
-    bool tpm_wrapped = false;
-    if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey, &tpm_wrapped,
+    int wrap_flags = 0;
+    if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey, &wrap_flags,
                                     vault_keyset)) {
       if (error) {
         *error = Mount::MOUNT_ERROR_KEY_FAILURE;
@@ -369,26 +369,44 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       return false;
     }
 
+    // Calling EnsureTpm here handles the case where a user logged in while
+    // cryptohome was taking TPM ownership.  In that case, their vault keyset
+    // would be scrypt-wrapped and the TPM would not be connected.  If we're
+    // configured to use the TPM, calling EnsureTpm will try to connect, and if
+    // successful, the call to has_tpm() below will succeed, allowing
+    // re-wrapping (migration) using the TPM.
+    if (use_tpm_) {
+      crypto_->EnsureTpm();
+    }
+
     // If the vault keyset's TPM state is not the same as that configured for
     // the device, re-save the keyset (this will save in the device's default
     // method).
-    if (migrate_if_needed && crypto_->has_tpm()
-        && ((!use_tpm_ && tpm_wrapped) || (use_tpm_ && !tpm_wrapped))) {
-      if (!RemoveOldFiles(credentials)) {
-        LOG(ERROR) << "Couldn't remove old key material.";
-        if (error) {
-          *error = MOUNT_ERROR_FATAL;
-        }
-        return false;
-      }
-      if (!SaveVaultKeyset(credentials, *vault_keyset)) {
-        LOG(ERROR) << "Couldn't save keyset.";
-        if (error) {
-          *error = MOUNT_ERROR_FATAL;
-        }
-        return false;
-      }
-    }
+    //                      1   2   3   4   5   6   7   8   9  10  11  12
+    // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
+    //
+    // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
+    //
+    // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
+    //
+    // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
+    //
+    // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
+    bool tpm_wrapped = (wrap_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
+    bool scrypt_wrapped =
+        (wrap_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
+    bool should_tpm = (crypto_->has_tpm() && use_tpm_);
+    bool should_scrypt = fallback_to_scrypt_;
+    do {
+      if (tpm_wrapped && !scrypt_wrapped && should_tpm)
+        break; // 5, 8 (but remove scrypt if it is stacked)
+      if (scrypt_wrapped && should_scrypt && !should_tpm)
+        break; // 12
+      if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
+        break; // 1
+      // TODO(fes): This is not (right now) a fatal error
+      ResaveVaultKeyset(credentials, *vault_keyset);
+    } while(false);
 
     return true;
   }
@@ -424,6 +442,24 @@ bool Mount::SaveVaultKeyset(const Credentials& credentials,
   return true;
 }
 
+bool Mount::ResaveVaultKeyset(const Credentials& credentials,
+                              const VaultKeyset& vault_keyset) const {
+  std::vector<std::string> files(2);
+  files[0] = GetUserSaltFile(credentials);
+  files[1] = GetUserKeyFile(credentials);
+  if (!CacheOldFiles(credentials, files)) {
+    LOG(ERROR) << "Couldn't cache old key material.";
+    return false;
+  }
+  if (!SaveVaultKeyset(credentials, vault_keyset)) {
+    LOG(ERROR) << "Couldn't save keyset.";
+    RevertCacheFiles(credentials, files);
+    return false;
+  }
+  DeleteCacheFiles(credentials, files);
+  return true;
+}
+
 bool Mount::MigratePasskey(const Credentials& credentials,
                            const char* old_key) const {
   current_user_->Reset();
@@ -436,11 +472,7 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   VaultKeyset vault_keyset;
   if (UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
                         &mount_error)) {
-    if (!RemoveOldFiles(credentials)) {
-      LOG(ERROR) << "Couldn't remove old key material.";
-      return false;
-    }
-    if (!SaveVaultKeyset(credentials, vault_keyset)) {
+    if (!ResaveVaultKeyset(credentials, vault_keyset)) {
       LOG(ERROR) << "Couldn't save keyset.";
       return false;
     }
@@ -568,6 +600,53 @@ bool Mount::RemoveOldFiles(const Credentials& credentials) const {
   return true;
 }
 
+bool Mount::CacheOldFiles(const Credentials& credentials,
+                          std::vector<std::string>& files) const {
+  for (unsigned int index = 0; index < files.size(); index++) {
+    FilePath file(files[index]);
+    FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
+    if (file_util::PathExists(file_bak)) {
+      if (!file_util::Delete(file_bak, false)) {
+        return false;
+      }
+    }
+    if (file_util::PathExists(file)) {
+      if (!file_util::Move(file, file_bak)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool Mount::RevertCacheFiles(const Credentials& credentials,
+                             std::vector<std::string>& files) const {
+  for (unsigned int index = 0; index < files.size(); index++) {
+    FilePath file(files[index]);
+    FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
+    if (file_util::PathExists(file_bak)) {
+      if (!file_util::Move(file_bak, file)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool Mount::DeleteCacheFiles(const Credentials& credentials,
+                             std::vector<std::string>& files) const {
+  for (unsigned int index = 0; index < files.size(); index++) {
+    FilePath file(files[index]);
+    FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
+    if (file_util::PathExists(file_bak)) {
+      if (!file_util::Delete(file_bak, false)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 void Mount::GetSystemSalt(chromeos::Blob* salt) const {
   *salt = system_salt_;
 }
@@ -579,7 +658,7 @@ void Mount::GetUserSalt(const Credentials& credentials, bool force,
 }
 
 bool Mount::LoadFileBytes(const FilePath& path,
-                          SecureBlob* blob) const {
+                          SecureBlob* blob) {
   int64 file_size;
   if (!file_util::PathExists(path)) {
     return false;
@@ -605,7 +684,7 @@ bool Mount::LoadFileBytes(const FilePath& path,
 }
 
 bool Mount::LoadFileString(const FilePath& path,
-                           std::string* content) const {
+                           std::string* content) {
   if (!file_util::PathExists(path)) {
     return false;
   }

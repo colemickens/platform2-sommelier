@@ -12,6 +12,7 @@
 #include <chromeos/glib/object.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
+#include <tpm_init/tpm_init.h>
 
 #include "mount.h"
 
@@ -53,6 +54,11 @@ class Service : public chromeos::dbus::AbstractDbusService {
   }
   virtual void set_mount(Mount* mount)
     { mount_ = mount; }
+  virtual void set_tpm_init(tpm_init::TpmInit* tpm_init)
+    { tpm_init_ = tpm_init; }
+  virtual void set_initialize_tpm(bool value)
+    { initialize_tpm_ = value; }
+
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
@@ -80,16 +86,23 @@ class Service : public chromeos::dbus::AbstractDbusService {
                               GError **error);
   virtual gboolean Unmount(gboolean *OUT_done, GError **error);
 
+  virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
+  virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);
+  virtual gboolean TpmGetPassword(gchar** OUT_password, GError** error);
+
  protected:
   virtual GMainLoop *main_loop() { return loop_; }
 
  private:
-  GMainLoop *loop_;
+ GMainLoop *loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome *cryptohome_;
   chromeos::Blob system_salt_;
   scoped_ptr<cryptohome::Mount> default_mount_;
   cryptohome::Mount* mount_;
+  scoped_ptr<tpm_init::TpmInit> default_tpm_init_;
+  tpm_init::TpmInit *tpm_init_;
+  bool initialize_tpm_;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

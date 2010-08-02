@@ -15,6 +15,9 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/utility.h>
+extern "C" {
+#include <scrypt/scryptenc.h>
+}
 
 #include "cryptohome_common.h"
 #include "old_vault_keyset.h"
@@ -34,13 +37,18 @@ namespace cryptohome {
 const std::string kDefaultEntropySource = "/dev/urandom";
 const std::string kOpenSSLMagic = "Salted__";
 const int kWellKnownExponent = 65537;
+const int kScryptMaxMem = 32 * 1024 * 1024;
+const double kScryptMaxEncryptTime = 0.333;
+const double kScryptMaxDecryptTime = 1.0;
+const int kScryptHeaderLength = 128;
 
 Crypto::Crypto()
     : entropy_source_(kDefaultEntropySource),
       use_tpm_(false),
       load_tpm_(true),
       default_tpm_(new Tpm()),
-      tpm_(NULL) {
+      tpm_(NULL),
+      fallback_to_scrypt_(false) {
 }
 
 Crypto::~Crypto() {
@@ -168,8 +176,7 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
   int current_size = 0;
   int encrypt_size = 0;
   if (!EVP_EncryptUpdate(&e_ctx, &cipher_text[current_size], &encrypt_size,
-                         &unwrapped[start],
-                         count)) {
+                         &unwrapped[start], count)) {
     LOG(ERROR) << "EncryptUpdate failed";
     EVP_CIPHER_CTX_cleanup(&e_ctx);
     return false;
@@ -185,8 +192,7 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
     SHA1_Update(&sha_ctx, &unwrapped[start], count);
     SHA1_Final(md_value, &sha_ctx);
     if (!EVP_EncryptUpdate(&e_ctx, &cipher_text[current_size], &encrypt_size,
-                           md_value,
-                           sizeof(md_value))) {
+                           md_value, sizeof(md_value))) {
       LOG(ERROR) << "EncryptUpdate failed";
       EVP_CIPHER_CTX_cleanup(&e_ctx);
       return false;
@@ -196,8 +202,7 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
   }
 
   // Finish the encryption
-  if (!EVP_EncryptFinal_ex(&e_ctx, &cipher_text[current_size],
-                           &encrypt_size)) {
+  if (!EVP_EncryptFinal_ex(&e_ctx, &cipher_text[current_size], &encrypt_size)) {
     LOG(ERROR) << "EncryptFinal failed";
     EVP_CIPHER_CTX_cleanup(&e_ctx);
     return false;
@@ -208,6 +213,18 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
   wrapped->swap(cipher_text);
   EVP_CIPHER_CTX_cleanup(&e_ctx);
   return true;
+}
+
+void Crypto::GetSha1(const chromeos::Blob& data, int start, int count,
+                     SecureBlob* hash) const {
+  SHA_CTX sha_ctx;
+  unsigned char md_value[SHA_DIGEST_LENGTH];
+
+  SHA1_Init(&sha_ctx);
+  SHA1_Update(&sha_ctx, &data[start], count);
+  SHA1_Final(md_value, &sha_ctx);
+  hash->resize(sizeof(md_value));
+  memcpy(hash->data(), md_value, sizeof(md_value));
 }
 
 bool Crypto::UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
@@ -268,8 +285,7 @@ bool Crypto::UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
     EVP_CIPHER_CTX_set_padding(&d_ctx, 0);
   }
   if (!EVP_DecryptUpdate(&d_ctx, &plain_text[0], &decrypt_size,
-                        &wrapped[start],
-                        count)) {
+                         &wrapped[start], count)) {
     LOG(ERROR) << "DecryptUpdate failed";
     EVP_CIPHER_CTX_cleanup(&d_ctx);
     return false;
@@ -335,8 +351,12 @@ bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
   SecureBlob local_iv(EVP_CIPHER_iv_length(cipher));
 
   // Convert the passkey to a key
-  if (!EVP_BytesToKey(cipher, EVP_sha1(), &salt[0], &passkey[0],
-                      passkey.size(), 1,
+  if (!EVP_BytesToKey(cipher,
+                      EVP_sha1(),
+                      &salt[0],
+                      &passkey[0],
+                      passkey.size(),
+                      1,
                       static_cast<unsigned char*>(wrapper_key.data()),
                       static_cast<unsigned char*>(local_iv.data()))) {
     LOG(ERROR) << "Failure converting bytes to key";
@@ -491,7 +511,7 @@ bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                    const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
 
   if (ecryptfs_add_auth_tok_to_keyring(&auth_token,
-      const_cast<char*>(key_sig.c_str())) < 0) {
+          const_cast<char*>(key_sig.c_str())) < 0) {
     LOG(ERROR) << "PushVaultKey failed";
   }
 
@@ -538,10 +558,10 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
 
 bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
                                const chromeos::Blob& vault_wrapper,
-                               bool* tpm_wrapped,
+                               int* wrap_flags,
                                VaultKeyset* vault_keyset) const {
-  if (tpm_wrapped) {
-    *tpm_wrapped = false;
+  if (wrap_flags) {
+    *wrap_flags = 0;
   }
   SerializedVaultKeyset serialized;
   serialized.ParseFromArray(
@@ -557,11 +577,11 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
 
   SecureBlob local_vault_wrapper(vault_wrapper.begin(), vault_wrapper.end());
   // Check if the vault keyset was TPM-wrapped
-  if ((serialized.flags() && SerializedVaultKeyset::TPM_WRAPPED)
+  if ((serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED)
       && serialized.has_tpm_key()) {
     EnsureTpm();
-    if (tpm_wrapped) {
-      *tpm_wrapped = true;
+    if (wrap_flags) {
+      *wrap_flags |= SerializedVaultKeyset::TPM_WRAPPED;
     }
     if (tpm_ == NULL) {
       LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
@@ -578,18 +598,49 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     }
   }
 
-  SecureBlob wrapper_key;
-  SecureBlob iv;
-  if (!PasskeyToAesKey(local_vault_wrapper, salt, &wrapper_key, &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
   SecureBlob plain_text;
-  if (!UnwrapAes(local_wrapped_keyset, 0, local_wrapped_keyset.size(),
-                 wrapper_key, iv, PADDING_CRYPTOHOME_DEFAULT, &plain_text)) {
-    LOG(ERROR) << "AES decryption failed.";
-    return false;
+  if (serialized.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED) {
+    if (wrap_flags) {
+      *wrap_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
+    }
+    size_t out_len = wrapped_keyset.size();
+    SecureBlob decrypted(out_len);
+    if (scryptdec_buf(
+            static_cast<const uint8_t*>(local_wrapped_keyset.const_data()),
+            local_wrapped_keyset.size(),
+            static_cast<uint8_t*>(decrypted.data()),
+            &out_len,
+            static_cast<const uint8_t*>(&vault_wrapper[0]),
+            vault_wrapper.size(),
+            kScryptMaxMem,
+            100.0,
+            kScryptMaxDecryptTime)) {
+      LOG(ERROR) << "Scrypt decryption failed";
+      return false;
+    }
+    decrypted.resize(out_len);
+    SecureBlob hash;
+    int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
+    GetSha1(decrypted, 0, hash_offset, &hash);
+    if (memcmp(hash.data(), &decrypted[hash_offset], hash.size())) {
+      LOG(ERROR) << "Scrypt hash verification failed";
+      return false;
+    }
+    decrypted.resize(hash_offset);
+    plain_text.swap(decrypted);
+  } else {
+    SecureBlob wrapper_key;
+    SecureBlob iv;
+    if (!PasskeyToAesKey(local_vault_wrapper, salt, &wrapper_key, &iv)) {
+      LOG(ERROR) << "Failure converting passkey to key";
+      return false;
+    }
+
+    if (!UnwrapAes(local_wrapped_keyset, 0, local_wrapped_keyset.size(),
+                   wrapper_key, iv, PADDING_CRYPTOHOME_DEFAULT, &plain_text)) {
+      LOG(ERROR) << "AES decryption failed.";
+      return false;
+    }
   }
 
   vault_keyset->FromKeysBlob(plain_text);
@@ -632,19 +683,45 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     }
   }
 
-  SecureBlob wrapper_key;
-  SecureBlob iv;
-  if (!PasskeyToAesKey(local_vault_wrapper, vault_wrapper_salt, &wrapper_key,
-                       &iv)) {
-    LOG(ERROR) << "Failure converting passkey to key";
-    return false;
-  }
-
   SecureBlob cipher_text;
-  if (!WrapAes(keyset_blob, 0, keyset_blob.size(), wrapper_key, iv,
-               PADDING_CRYPTOHOME_DEFAULT, &cipher_text)) {
-    LOG(ERROR) << "AES encryption failed.";
-    return false;
+  bool scrypt_wrapped = false;
+  // If scrypt is enabled, and the keyset wasn't TPM wrapped, then we use scrypt
+  // to encrypt the keyset.  Otherwise, we use regular AES.
+  if (fallback_to_scrypt_ && !tpm_wrapped) {
+    // Append the SHA1 hash of the keyset blob
+    SecureBlob hash;
+    GetSha1(keyset_blob, 0, keyset_blob.size(), &hash);
+    SecureBlob local_keyset_blob(keyset_blob.size() + hash.size());
+    memcpy(&local_keyset_blob[0], keyset_blob.const_data(), keyset_blob.size());
+    memcpy(&local_keyset_blob[keyset_blob.size()], hash.data(), hash.size());
+    cipher_text.resize(local_keyset_blob.size() + kScryptHeaderLength);
+     if (scryptenc_buf(
+            static_cast<const uint8_t*>(local_keyset_blob.const_data()),
+            local_keyset_blob.size(),
+            static_cast<uint8_t*>(cipher_text.data()),
+            static_cast<const uint8_t*>(&vault_wrapper[0]),
+            vault_wrapper.size(),
+            kScryptMaxMem,
+            100.0,
+            kScryptMaxEncryptTime)) {
+      LOG(ERROR) << "Scrypt encryption failed";
+      return false;
+    }
+    scrypt_wrapped = true;
+  } else {
+    SecureBlob wrapper_key;
+    SecureBlob iv;
+    if (!PasskeyToAesKey(local_vault_wrapper, vault_wrapper_salt, &wrapper_key,
+                         &iv)) {
+      LOG(ERROR) << "Failure converting passkey to key";
+      return false;
+    }
+
+    if (!WrapAes(keyset_blob, 0, keyset_blob.size(), wrapper_key, iv,
+                 PADDING_CRYPTOHOME_DEFAULT, &cipher_text)) {
+      LOG(ERROR) << "AES encryption failed.";
+      return false;
+    }
   }
 
   SerializedVaultKeyset serialized;
@@ -654,6 +731,9 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     keyset_flags = SerializedVaultKeyset::TPM_WRAPPED;
     serialized.set_tpm_key(tpm_key.const_data(),
                            tpm_key.size());
+  }
+  if (scrypt_wrapped) {
+    keyset_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
   }
   serialized.set_flags(keyset_flags);
   serialized.set_salt(vault_wrapper_salt.const_data(),
@@ -691,9 +771,14 @@ bool Crypto::UnwrapVaultKeysetOld(const chromeos::Blob& wrapped_keyset,
   }
 
   SecureBlob plain_text;
-  if (!UnwrapAesSpecifyBlockMode(wrapped_keyset, header_size,
-      wrapped_keyset.size() - header_size, wrapper_key, iv,
-      PADDING_LIBRARY_DEFAULT, ECB, &plain_text)) {
+  if (!UnwrapAesSpecifyBlockMode(wrapped_keyset,
+                                 header_size,
+                                 wrapped_keyset.size() - header_size,
+                                 wrapper_key,
+                                 iv,
+                                 PADDING_LIBRARY_DEFAULT,
+                                 ECB,
+                                 &plain_text)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }

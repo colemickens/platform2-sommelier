@@ -97,6 +97,21 @@ gboolean cryptohome_unmount(Cryptohome *self,
                             GError **error) {
   CRYPTOHOME_WRAP_METHOD(Unmount, OUT_done);
 }
+gboolean cryptohome_tpm_is_ready(Cryptohome *self,
+                                 gboolean *OUT_ready,
+                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsReady, OUT_ready);
+}
+gboolean cryptohome_tpm_is_enabled(Cryptohome *self,
+                                   gboolean *OUT_enabled,
+                                   GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsEnabled, OUT_enabled);
+}
+gboolean cryptohome_tpm_get_password(Cryptohome *self,
+                                     gchar **OUT_password,
+                                     GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmGetPassword, OUT_password);
+}
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

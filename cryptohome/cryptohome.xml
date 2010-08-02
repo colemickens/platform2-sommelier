@@ -42,11 +42,14 @@
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
     </method>
-    <signal name="MountStateChanged">
-      <arg type="s" name="username" />
-      <!-- mounted, unmounted, canceled, bad_auth, error -->
-      <arg type="s" name="state" />
-      <arg type="i" name="token" />
-    </signal>
+    <method name="TpmIsReady">
+      <arg type="b" name="ready" direction="out" />
+    </method>
+    <method name="TpmIsEnabled">
+      <arg type="b" name="enabled" direction="out" />
+    </method>
+    <method name="TpmGetPassword">
+      <arg type="s" name="password" direction="out" />
+    </method>
   </interface>
 </node>

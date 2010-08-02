@@ -26,6 +26,8 @@ class SecureBlob : public chromeos::Blob {
   void resize(size_type sz);
   void resize(size_type sz, const SecureBlobElement& x);
 
+  void clear_contents();
+
   void* data();
   const void* const_data() const;
 };

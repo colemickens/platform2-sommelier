@@ -22,10 +22,13 @@
 
 #include "bindings/client.h"
 #include "crypto.h"
+#include "mount.h"
 #include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
+#include "vault_keyset.pb.h"
 
+using std::string;
 
 namespace switches {
   static const char kActionSwitch[] = "action";
@@ -38,6 +41,8 @@ namespace switches {
     "migrate_key",
     "remove",
     "obfuscate_user",
+    "dump_keyset",
+    "tpm_status",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -47,7 +52,9 @@ namespace switches {
     ACTION_TEST_AUTH,
     ACTION_MIGRATE_KEY,
     ACTION_REMOVE,
-    ACTION_OBFUSCATE_USER };
+    ACTION_OBFUSCATE_USER,
+    ACTION_DUMP_KEYSET,
+    ACTION_TPM_STATUS };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -57,10 +64,9 @@ namespace switches {
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   chromeos::glib::ScopedError error;
   GArray* salt;
-  GError **errptr = &chromeos::Resetter(&error).lvalue();
   if (!org_chromium_CryptohomeInterface_get_system_salt(proxy.gproxy(),
-                                                        &salt,
-                                                        errptr)) {
+      &salt,
+      &chromeos::Resetter(&error).lvalue())) {
     LOG(ERROR) << "GetSystemSalt failed: " << error->message;
     return chromeos::Blob();
   }
@@ -80,7 +86,7 @@ bool GetUsername(const CommandLine* cl, std::string* user_out) {
   *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
 
   if(user_out->length() == 0) {
-    LOG(ERROR) << "No user specified (--user=<user>)";
+    printf("No user specified (--user=<user>)\n");
     return false;
   }
   return true;
@@ -100,9 +106,10 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
     memcpy(&new_attr, &original_attr, sizeof(new_attr));
     new_attr.c_lflag &= ~(ECHO);
     tcsetattr(0, TCSANOW, &new_attr);
-    std::cout << prompt << ": ";
+    printf("%s: ", prompt.c_str());
+    fflush(stdout);
     std::cin >> password;
-    std::cout << std::endl;
+    printf("\n");
     tcsetattr(0, TCSANOW, &original_attr);
   }
 
@@ -118,19 +125,16 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
 }
 
 bool ConfirmRemove(const std::string& user) {
-  std::cout << "!!! Are you sure you want to remove the user's cryptohome?"
-            << std::endl
-            << "!!!"
-            << std::endl
-            << "!!! Re-enter the username at the prompt to remove the"
-            << std::endl
-            << "!!! cryptohome for the user."
-            << std::endl
-            << "Enter the username <" << user << ">: ";
+  printf("!!! Are you sure you want to remove the user's cryptohome?\n");
+  printf("!!!\n");
+  printf("!!! Re-enter the username at the prompt to remove the\n");
+  printf("!!! cryptohome for the user.\n");
+  printf("Enter the username <%s>: ", user.c_str());
+  fflush(stdout);
   std::string verification;
   std::cin >> verification;
   if(user != verification) {
-    LOG(ERROR) << "Usernames do not match.";
+    printf("Usernames do not match.\n");
     return false;
   }
   return true;
@@ -157,7 +161,7 @@ int main(int argc, char **argv) {
     std::string user, password;
 
     if (!GetUsername(cl, &user)) {
-      LOG(ERROR) << "No username specified";
+      printf("No username specified.\n");
       return 1;
     }
 
@@ -168,39 +172,43 @@ int main(int argc, char **argv) {
     gboolean done = false;
     gint mount_error = 0;
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
-                                                user.c_str(),
-                                                password.c_str(),
-                                                &mount_error,
-                                                &done,
-                                                errptr)) {
-      LOG(ERROR) << "Mount call failed: " << error->message
-                 << ", with reason code: " << mount_error;
+        user.c_str(),
+        password.c_str(),
+        &mount_error,
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("Mount call failed: %s, with reason code: %d.\n", error->message,
+             mount_error);
     }
-    LOG_IF(ERROR, !done) << "Mount did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Mount failed.\n");
+    } else {
+      printf("Mount succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_GUEST],
                 action.c_str())) {
     gboolean done = false;
     gint mount_error = 0;
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     if (!org_chromium_CryptohomeInterface_mount_guest(proxy.gproxy(),
-                                                      &mount_error,
-                                                      &done,
-                                                      errptr)) {
-      LOG(ERROR) << "MountGuest call failed: " << error->message
-                 << ", with reason code: " << mount_error;
+        &mount_error,
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("MountGuest call failed: %s, with reason code: %d.\n",
+             error->message, mount_error);
     }
-    LOG_IF(ERROR, !done) << "MountGuest did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Mount failed.\n");
+    } else {
+      printf("Mount succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_TEST_AUTH],
                      action.c_str())) {
     std::string user, password;
 
     if (!GetUsername(cl, &user)) {
-      LOG(ERROR) << "No username specified";
+      printf("No username specified.\n");
       return 1;
     }
 
@@ -210,22 +218,23 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
-                                                    user.c_str(),
-                                                    password.c_str(),
-                                                    &done,
-                                                    errptr)) {
-      LOG(ERROR) << "CheckKey call failed: " << error->message;
+        user.c_str(),
+        password.c_str(),
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("CheckKey call failed: %s.\n", error->message);
     }
-    LOG_IF(ERROR, !done) << "CheckKey did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Authentication failed.\n");
+    } else {
+      printf("Authentication succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_MIGRATE_KEY],
                      action.c_str())) {
     std::string user, password, old_password;
 
     if (!GetUsername(cl, &user)) {
-      LOG(ERROR) << "No username specified";
       return 1;
     }
 
@@ -238,17 +247,19 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
-                                                      user.c_str(),
-                                                      old_password.c_str(),
-                                                      password.c_str(),
-                                                      &done,
-                                                      errptr)) {
-      LOG(ERROR) << "MigrateKey call failed: " << error->message;
+        user.c_str(),
+        old_password.c_str(),
+        password.c_str(),
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("MigrateKey call failed: %s.\n", error->message);
     }
-    LOG_IF(ERROR, !done) << "MigrateKey did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Key migration failed.\n");
+    } else {
+      printf("Key migration succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     std::string user;
@@ -263,39 +274,45 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     if (!org_chromium_CryptohomeInterface_remove(proxy.gproxy(),
-                                                 user.c_str(),
-                                                 &done,
-                                                 errptr)) {
-      LOG(ERROR) << "Remove call failed: " << error->message;
+        user.c_str(),
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("Remove call failed: %s.\n", error->message);
     }
-    LOG_IF(ERROR, !done) << "Remove did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Remove failed.\n");
+    } else {
+      printf("Remove succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_UNMOUNT],
                      action.c_str())) {
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     gboolean done = false;
     if (!org_chromium_CryptohomeInterface_unmount(proxy.gproxy(),
-                                                  &done,
-                                                  errptr)) {
-      LOG(ERROR) << "Unmount call failed: " << error->message;
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("Unmount call failed: %s.\n", error->message);
     }
-    LOG_IF(ERROR, !done) << "Unmount did not complete?";
-    LOG_IF(INFO, done) << "Call completed";
+    if (!done) {
+      printf("Unmount failed.\n");
+    } else {
+      printf("Unmount succeeded.\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_MOUNTED],
                      action.c_str())) {
     chromeos::glib::ScopedError error;
-    GError **errptr = &chromeos::Resetter(&error).lvalue();
     gboolean done = false;
     if (!org_chromium_CryptohomeInterface_is_mounted(proxy.gproxy(),
-                                                     &done,
-                                                     errptr)) {
-      LOG(ERROR) << "IsMounted call failed: " << error->message;
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("IsMounted call failed: %s.\n", error->message);
     }
-    std::cout << done << std::endl;
-
+    if (done) {
+      printf("true\n");
+    } else {
+      printf("false\n");
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_OBFUSCATE_USER],
                      action.c_str())) {
     std::string user;
@@ -305,14 +322,93 @@ int main(int argc, char **argv) {
     }
 
     cryptohome::UsernamePasskey up(user.c_str(), cryptohome::SecureBlob());
-    LOG(INFO) << up.GetObfuscatedUsername(GetSystemSalt(proxy));
+    printf("%s\n", up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
+  } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
+                     action.c_str())) {
+    std::string user;
+
+    if(!GetUsername(cl, &user)) {
+      return 1;
+    }
+
+    cryptohome::UsernamePasskey up(user.c_str(), cryptohome::SecureBlob());
+
+    string vault_path = StringPrintf("/home/.shadow/%s/master.0",
+        up.GetObfuscatedUsername(GetSystemSalt(proxy)).c_str());
+
+    cryptohome::SecureBlob contents;
+    if (!cryptohome::Mount::LoadFileBytes(FilePath(vault_path), &contents)) {
+      printf("Couldn't load keyset contents: %s.\n", vault_path.c_str());
+      return 1;
+    }
+    cryptohome::SerializedVaultKeyset serialized;
+    if (!serialized.ParseFromArray(
+        static_cast<const unsigned char*>(&contents[0]), contents.size())) {
+      printf("Couldn't parse keyset contents: %s.\n", vault_path.c_str());
+      return 1;
+    }
+    printf("For keyset: %s\n", vault_path.c_str());
+    printf("  Flags:\n");
+    if ((serialized.flags() & cryptohome::SerializedVaultKeyset::TPM_WRAPPED)
+        && serialized.has_tpm_key()) {
+      printf("    TPM_WRAPPED\n");
+    }
+    if (serialized.flags()
+        & cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) {
+      printf("    SCRYPT_WRAPPED\n");
+    }
+    cryptohome::SecureBlob blob(serialized.salt().length());
+    serialized.salt().copy(static_cast<char*>(blob.data()),
+                           serialized.salt().length(), 0);
+    printf("  Salt:\n");
+    printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    blob.resize(serialized.wrapped_keyset().length());
+    serialized.wrapped_keyset().copy(static_cast<char*>(blob.data()),
+                                     serialized.wrapped_keyset().length(), 0);
+    printf("  Wrapped (Encrypted) Keyset:\n");
+    printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    if (serialized.has_tpm_key()) {
+      blob.resize(serialized.tpm_key().length());
+      serialized.tpm_key().copy(static_cast<char*>(blob.data()),
+                                serialized.tpm_key().length(), 0);
+      printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
+      printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
+                     action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean result = false;
+    if (!org_chromium_CryptohomeInterface_tpm_is_enabled(proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsEnabled call failed: %s.\n", error->message);
+    } else {
+      printf("TPM Enabled: %s\n", (result ? "true" : "false"));
+    }
+    result = false;
+    if (!org_chromium_CryptohomeInterface_tpm_is_ready(proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsReady call failed: %s.\n", error->message);
+    } else {
+      printf("TPM Ready: %s\n", (result ? "true" : "false"));
+    }
+    gchar* password;
+    if (!org_chromium_CryptohomeInterface_tpm_get_password(proxy.gproxy(),
+        &password,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmGetPassword call failed: %s.\n", error->message);
+    } else {
+      printf("TPM Password: %s\n", password);
+      g_free(password);
+    }
   } else {
-    LOG(ERROR) << "Unknown action or no action given.  Available actions: ";
+    printf("Unknown action or no action given.  Available actions:\n");
     for(int i = 0; /* loop forever */; i++) {
       if(!switches::kActions[i]) {
         break;
       }
-      LOG(ERROR) << "  --action=" << switches::kActions[i];
+      printf("  --action=%s\n", switches::kActions[i]);
     }
   }
   return 0;

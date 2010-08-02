@@ -103,6 +103,9 @@ class Mount : public EntropySource {
   // Gets the uid/gid of the default user and loads the system salt
   virtual bool Init();
 
+  // Loads the cryptohome configuration file
+  virtual void LoadConfigurationFile();
+
   // Attempts to mount the cryptohome for the given credentials
   //
   // Parameters
@@ -189,6 +192,12 @@ class Mount : public EntropySource {
     platform_ = value;
   }
 
+  // Override whether to use scrypt for added security when the TPM is off or
+  // disabled
+  void set_fallback_to_scrypt_(bool value) {
+    fallback_to_scrypt_ = value;
+  }
+
   // Override whether to use the TPM for added security
   void set_use_tpm(bool value) {
     use_tpm_ = value;
@@ -208,6 +217,20 @@ class Mount : public EntropySource {
   void reset_current_user_credentials() {
     current_user_->Reset();
   }
+
+  // Loads the contents of the specified file as a blob
+  //
+  // Parameters
+  //   path - The file path to read from
+  //   blob (OUT) - Where to store the loaded file bytes
+  static bool LoadFileBytes(const FilePath& path, SecureBlob* blob);
+
+  // Loads the contents of the specified file as a string
+  //
+  // Parameters
+  //   path - The file path to read from
+  //   content (OUT) - The string value
+  static bool LoadFileString(const FilePath& path, std::string* content);
 
  private:
   // Checks if the cryptohome vault exists for the given credentials and creates
@@ -286,20 +309,6 @@ class Mount : public EntropySource {
   void GetUserSalt(const Credentials& credentials, bool force_new,
                    SecureBlob* salt) const;
 
-  // Loads the contents of the specified file as a blob
-  //
-  // Parameters
-  //   path - The file path to read from
-  //   blob (OUT) - Where to store the loaded file bytes
-  bool LoadFileBytes(const FilePath& path, SecureBlob* blob) const;
-
-  // Loads the contents of the specified file as a string
-  //
-  // Parameters
-  //   path - The file path to read from
-  //   content (OUT) - The string value
-  bool LoadFileString(const FilePath& path, std::string* content) const;
-
   // Saves the VaultKeyset for the user
   //
   // Parameters
@@ -307,6 +316,14 @@ class Mount : public EntropySource {
   //   vault_keyset - The VaultKeyset to save
   bool SaveVaultKeyset(const Credentials& credentials,
                        const VaultKeyset& vault_keyset) const;
+
+  // Resaves the vault keyset, restoring on failure
+  //
+  // Parameters
+  //   credentials - The Credentials for the user
+  //   vault_keyset - The VaultKeyset to save
+  bool ResaveVaultKeyset(const Credentials& credentials,
+                         const VaultKeyset& vault_keyset) const;
 
   // Attempt to unwrap the keyset for the specified user
   //
@@ -340,6 +357,30 @@ class Mount : public EntropySource {
   // Parameters
   //   credentials - The user credentials to remove the files for
   bool RemoveOldFiles(const Credentials& credentials) const;
+
+  // Cache the old key file and salt file during migration
+  //
+  // Parameters
+  //   credentials - The user credentials to cache the files for
+  //   files - The file names to cache
+  bool CacheOldFiles(const Credentials& credentials,
+                     std::vector<std::string>& files) const;
+
+  // Move the cached files back to the original files
+  //
+  // Parameters
+  //   credentials - The user credentials to un-cache the files for
+  //   files - The file names to un-cache
+  bool RevertCacheFiles(const Credentials& credentials,
+                        std::vector<std::string>& files) const;
+
+  // Remove the cached files for the user
+  //
+  // Parameters
+  //   credentials - The user credentials to remove the files for
+  //   files - The file names to remove
+  bool DeleteCacheFiles(const Credentials& credentials,
+                        std::vector<std::string>& files) const;
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
@@ -375,6 +416,9 @@ class Mount : public EntropySource {
   // The platform-specific calls
   scoped_ptr<Platform> default_platform_;
   Platform *platform_;
+
+  // Whether to use scrypt for added security when use of the TPM is disabled
+  bool fallback_to_scrypt_;
 
   // Whether to use the TPM for added security
   bool use_tpm_;

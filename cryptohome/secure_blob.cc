@@ -47,6 +47,10 @@ void SecureBlob::resize(size_type sz, const SecureBlobElement& x) {
   chromeos::Blob::resize(sz, x);
 }
 
+void SecureBlob::clear_contents() {
+  chromeos::SecureMemset(this->data(), 0, size());
+}
+
 void* SecureBlob::data() {
   return &(this->front());
 }

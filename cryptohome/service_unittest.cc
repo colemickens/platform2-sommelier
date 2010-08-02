@@ -23,6 +23,7 @@ TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
 
   Service service;
   service.set_mount(&mount);
+  service.set_initialize_tpm(false);
   service.Initialize();
   gboolean out = FALSE;
   GError *error = NULL;

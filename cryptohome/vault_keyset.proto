@@ -8,6 +8,7 @@ message SerializedVaultKeyset {
   enum Flags {
     NONE = 0;
     TPM_WRAPPED = 1;
+    SCRYPT_WRAPPED = 2;
   }
   required int32 flags = 1;
   required bytes salt = 2;

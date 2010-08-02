@@ -8,6 +8,7 @@
 #include <stdlib.h>
 
 #include <base/logging.h>
+#include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 
 #include "interface.h"
@@ -25,11 +26,16 @@ namespace gobject {  // NOLINT
 
 namespace cryptohome {
 
-Service::Service() : loop_(NULL),
-                     cryptohome_(NULL),
-                     system_salt_(),
-                     default_mount_(new cryptohome::Mount()),
-                     mount_(default_mount_.get()) { }
+Service::Service()
+    : loop_(NULL),
+      cryptohome_(NULL),
+      system_salt_(),
+      default_mount_(new cryptohome::Mount()),
+      mount_(default_mount_.get()),
+      default_tpm_init_(new tpm_init::TpmInit()),
+      tpm_init_(default_tpm_init_.get()),
+      initialize_tpm_(true) {
+}
 
 Service::~Service() {
   if (loop_)
@@ -39,12 +45,24 @@ Service::~Service() {
 }
 
 bool Service::Initialize() {
+  bool result = true;
+
+  if (initialize_tpm_) {
+    if (!tpm_init_->StartInitializeTpm()) {
+      LOG(ERROR) << "Failed start initializing the TPM";
+      result = false;
+    }
+  }
+
   mount_->Init();
 
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
                                   &gobject::dbus_glib_cryptohome_object_info);
-  return Reset();
+  if (!Reset()) {
+    result = false;
+  }
+  return result;
 }
 
 bool Service::Reset() {
@@ -166,6 +184,27 @@ gboolean Service::Unmount(gboolean *OUT_done, GError **error) {
   } else {
     *OUT_done = true;
   }
+  return TRUE;
+}
+
+gboolean Service::TpmIsReady(gboolean* OUT_ready, GError** error) {
+  *OUT_ready = tpm_init_->IsTpmReady();
+  return TRUE;
+}
+
+gboolean Service::TpmIsEnabled(gboolean* OUT_enabled, GError** error) {
+  *OUT_enabled = tpm_init_->IsTpmEnabled();
+  return TRUE;
+}
+
+gboolean Service::TpmGetPassword(gchar** OUT_password, GError** error) {
+  SecureBlob password;
+  if (!tpm_init_->GetTpmPassword(&password)) {
+    *OUT_password = NULL;
+    return TRUE;
+  }
+  *OUT_password = g_strdup_printf("%.*s", password.size(),
+                                  static_cast<char*>(password.data()));
   return TRUE;
 }
 

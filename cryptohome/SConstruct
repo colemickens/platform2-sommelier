@@ -78,9 +78,10 @@ test_sources = env.Split("""crypto_unittest.cc
 
 env.Append(
     CPPPATH=['.', '..'],
-    CPPFLAGS=['-pie', '-fstack-protector-all',
+    CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
-    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'keyutils', 'tspi', 'protobuf'],
+    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'keyutils', 'tspi',
+            'pthread', 'protobuf', 'scrypt', 'tpm_init'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)

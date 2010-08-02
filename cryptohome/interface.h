@@ -65,6 +65,15 @@ gboolean cryptohome_mount_guest(Cryptohome *self,
 gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_done,
                             GError **error);
+gboolean cryptohome_tpm_is_ready(Cryptohome *self,
+                                 gboolean *OUT_ready,
+                                 GError **error);
+gboolean cryptohome_tpm_is_enabled(Cryptohome *self,
+                                   gboolean *OUT_enabled,
+                                   GError **error);
+gboolean cryptohome_tpm_get_password(Cryptohome *self,
+                                     gchar **OUT_password,
+                                     GError **error);
 
 }  // namespace gobject
 }  // namespace cryptohome
