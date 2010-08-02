@@ -31,6 +31,11 @@ class Crypto : public EntropySource {
     PADDING_CRYPTOHOME_DEFAULT = 2,
   };
 
+  enum BlockMode {
+    ECB = 1,
+    CBC = 2,
+  };
+
   // Default constructor, using the default entropy source
   Crypto();
 
@@ -78,6 +83,20 @@ class Crypto : public EntropySource {
   bool WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
                unsigned int count, const SecureBlob& key, const SecureBlob& iv,
                PaddingScheme padding, SecureBlob* wrapped) const;
+
+  // Same as UnwrapAes, but allows using either CBC or ECB
+  bool UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
+                                 unsigned int start, unsigned int count,
+                                 const SecureBlob& key, const SecureBlob& iv,
+                                 PaddingScheme padding, BlockMode block_mode,
+                                 SecureBlob* unwrapped) const;
+
+  // Same as WrapAes, but allows using either CBC or ECB
+  bool WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
+                               unsigned int start, unsigned int count,
+                               const SecureBlob& key, const SecureBlob& iv,
+                               PaddingScheme padding, BlockMode block_mode,
+                               SecureBlob* wrapped) const;
 
   // Creates a new RSA key
   //
@@ -250,17 +269,6 @@ class Crypto : public EntropySource {
   //   salt - The salt
   bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                            const SecureBlob& salt) const;
-
-  // Same as UnwrapAes, but allows migration from old keysets (which used ECB)
-  bool _UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
-                  unsigned int count, const SecureBlob& key,
-                  const SecureBlob& iv, PaddingScheme padding, bool use_ecb,
-                  SecureBlob* unwrapped) const;
-
-  // Same as WrapAes, but allows migration from old keysets (which used ECB)
-  bool _WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
-                unsigned int count, const SecureBlob& key, const SecureBlob& iv,
-                PaddingScheme padding, bool use_ecb, SecureBlob* wrapped) const;
 
   std::string entropy_source_;
   bool use_tpm_;

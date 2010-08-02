@@ -95,46 +95,83 @@ bool Crypto::WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
                      unsigned int count, const SecureBlob& key,
                      const SecureBlob& iv, PaddingScheme padding,
                      SecureBlob* wrapped) const {
-  return _WrapAes(unwrapped, start, count, key, iv, padding, false, wrapped);
+  return WrapAesSpecifyBlockMode(unwrapped, start, count, key, iv, padding,
+                                 CBC, wrapped);
 }
 
-bool Crypto::_WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
-                     unsigned int count, const SecureBlob& key,
-                     const SecureBlob& iv, PaddingScheme padding, bool use_ecb,
-                     SecureBlob* wrapped) const {
+bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
+                                     unsigned int start, unsigned int count,
+                                     const SecureBlob& key,
+                                     const SecureBlob& iv,
+                                     PaddingScheme padding,
+                                     BlockMode block_mode,
+                                     SecureBlob* wrapped) const {
   if ((start + count) > unwrapped.size()) {
     return false;
   }
   int block_size = GetAesBlockSize();
-  if ((padding == PADDING_NONE) && (count % block_size)) {
-    LOG(ERROR) << "Data size (" << count << ") was not a multiple "
-               << "of the block size (" << block_size << ")";
-    return false;
-  }
-  int needed_size = count + block_size;
-  if (padding == PADDING_CRYPTOHOME_DEFAULT) {
-    needed_size += SHA_DIGEST_LENGTH;
+  int needed_size = count;
+  switch (padding) {
+    case PADDING_CRYPTOHOME_DEFAULT:
+      needed_size += block_size + SHA_DIGEST_LENGTH;
+      break;
+    case PADDING_LIBRARY_DEFAULT:
+      needed_size += block_size;
+      break;
+    case PADDING_NONE:
+      if (count % block_size) {
+        LOG(ERROR) << "Data size (" << count << ") was not a multiple "
+                   << "of the block size (" << block_size << ")";
+        return false;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Invalid padding specified";
+      return false;
+      break;
   }
   SecureBlob cipher_text(needed_size);
 
-  int current_size = 0;
-  int encrypt_size = 0;
+  const EVP_CIPHER *cipher;
+  switch (block_mode) {
+    case CBC:
+      cipher = EVP_aes_256_cbc();
+      break;
+    case ECB:
+      cipher = EVP_aes_256_ecb();
+      break;
+    default:
+      LOG(ERROR) << "Invalid block mode specified";
+      return false;
+  }
+  if (key.size() != static_cast<unsigned int>(EVP_CIPHER_key_length(cipher))) {
+    LOG(ERROR) << "Invalid key length of " << key.size()
+               << ", expected " << EVP_CIPHER_key_length(cipher);
+    return false;
+  }
+  // ECB ignores the IV, so only check the IV length if we are using a different
+  // block mode.
+  if ((block_mode != ECB) &&
+      (iv.size() != static_cast<unsigned int>(EVP_CIPHER_iv_length(cipher)))) {
+    LOG(ERROR) << "Invalid iv length of " << iv.size()
+               << ", expected " << EVP_CIPHER_iv_length(cipher);
+    return false;
+  }
   EVP_CIPHER_CTX e_ctx;
   EVP_CIPHER_CTX_init(&e_ctx);
-  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
-  if (use_ecb) {
-    cipher = EVP_aes_256_ecb();
-  }
   EVP_EncryptInit_ex(&e_ctx, cipher, NULL,
                      static_cast<const unsigned char*>(key.const_data()),
                      static_cast<const unsigned char*>(iv.const_data()));
   if (padding == PADDING_NONE) {
     EVP_CIPHER_CTX_set_padding(&e_ctx, 0);
   }
+  int current_size = 0;
+  int encrypt_size = 0;
   if (!EVP_EncryptUpdate(&e_ctx, &cipher_text[current_size], &encrypt_size,
                          &unwrapped[start],
                          count)) {
     LOG(ERROR) << "EncryptUpdate failed";
+    EVP_CIPHER_CTX_cleanup(&e_ctx);
     return false;
   }
   current_size += encrypt_size;
@@ -151,6 +188,7 @@ bool Crypto::_WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
                            md_value,
                            sizeof(md_value))) {
       LOG(ERROR) << "EncryptUpdate failed";
+      EVP_CIPHER_CTX_cleanup(&e_ctx);
       return false;
     }
     current_size += encrypt_size;
@@ -161,12 +199,14 @@ bool Crypto::_WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
   if (!EVP_EncryptFinal_ex(&e_ctx, &cipher_text[current_size],
                            &encrypt_size)) {
     LOG(ERROR) << "EncryptFinal failed";
+    EVP_CIPHER_CTX_cleanup(&e_ctx);
     return false;
   }
   current_size += encrypt_size;
   cipher_text.resize(current_size);
 
   wrapped->swap(cipher_text);
+  EVP_CIPHER_CTX_cleanup(&e_ctx);
   return true;
 }
 
@@ -174,13 +214,17 @@ bool Crypto::UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
                        unsigned int count, const SecureBlob& key,
                        const SecureBlob& iv, PaddingScheme padding,
                        SecureBlob* unwrapped) const {
-  return _UnwrapAes(wrapped, start, count, key, iv, padding, false, unwrapped);
+  return UnwrapAesSpecifyBlockMode(wrapped, start, count, key, iv, padding,
+                                   CBC, unwrapped);
 }
 
-bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
-                       unsigned int count, const SecureBlob& key,
-                       const SecureBlob& iv, PaddingScheme padding,
-                       bool use_ecb, SecureBlob* unwrapped) const {
+bool Crypto::UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
+                                       unsigned int start, unsigned int count,
+                                       const SecureBlob& key,
+                                       const SecureBlob& iv,
+                                       PaddingScheme padding,
+                                       BlockMode block_mode,
+                                       SecureBlob* unwrapped) const {
   if ((start + count) > wrapped.size()) {
     return false;
   }
@@ -189,12 +233,34 @@ bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
   int final_size = 0;
   int decrypt_size = plain_text.size();
 
+  const EVP_CIPHER *cipher;
+  switch (block_mode) {
+    case CBC:
+      cipher = EVP_aes_256_cbc();
+      break;
+    case ECB:
+      cipher = EVP_aes_256_ecb();
+      break;
+    default:
+      LOG(ERROR) << "Invalid block mode specified: " << block_mode;
+      return false;
+  }
+  if (key.size() != static_cast<unsigned int>(EVP_CIPHER_key_length(cipher))) {
+    LOG(ERROR) << "Invalid key length of " << key.size()
+               << ", expected " << EVP_CIPHER_key_length(cipher);
+    return false;
+  }
+  // ECB ignores the IV, so only check the IV length if we are using a different
+  // block mode.
+  if ((block_mode != ECB) &&
+      (iv.size() != static_cast<unsigned int>(EVP_CIPHER_iv_length(cipher)))) {
+    LOG(ERROR) << "Invalid iv length of " << iv.size()
+               << ", expected " << EVP_CIPHER_iv_length(cipher);
+    return false;
+  }
+
   EVP_CIPHER_CTX d_ctx;
   EVP_CIPHER_CTX_init(&d_ctx);
-  const EVP_CIPHER *cipher = EVP_aes_256_cbc();
-  if (use_ecb) {
-    cipher = EVP_aes_256_ecb();
-  }
   EVP_DecryptInit_ex(&d_ctx, cipher, NULL,
                      static_cast<const unsigned char*>(key.const_data()),
                      static_cast<const unsigned char*>(iv.const_data()));
@@ -205,6 +271,7 @@ bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
                         &wrapped[start],
                         count)) {
     LOG(ERROR) << "DecryptUpdate failed";
+    EVP_CIPHER_CTX_cleanup(&d_ctx);
     return false;
   }
   if (!EVP_DecryptFinal_ex(&d_ctx, &plain_text[decrypt_size], &final_size)) {
@@ -217,6 +284,7 @@ bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
                << ", " << ERR_func_error_string(err)
                << ", " << ERR_reason_error_string(err);
 
+    EVP_CIPHER_CTX_cleanup(&d_ctx);
     return false;
   }
   final_size += decrypt_size;
@@ -224,6 +292,7 @@ bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
   if (padding == PADDING_CRYPTOHOME_DEFAULT) {
     if (final_size < SHA_DIGEST_LENGTH) {
       LOG(ERROR) << "Plain text was too small.";
+      EVP_CIPHER_CTX_cleanup(&d_ctx);
       return false;
     }
 
@@ -242,12 +311,14 @@ bool Crypto::_UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
     // TODO(fes): Port/use SafeMemcmp
     if (memcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
+      EVP_CIPHER_CTX_cleanup(&d_ctx);
       return false;
     }
   }
 
   plain_text.resize(final_size);
   unwrapped->swap(plain_text);
+  EVP_CIPHER_CTX_cleanup(&d_ctx);
   return true;
 }
 
@@ -620,9 +691,9 @@ bool Crypto::UnwrapVaultKeysetOld(const chromeos::Blob& wrapped_keyset,
   }
 
   SecureBlob plain_text;
-  if (!_UnwrapAes(wrapped_keyset, header_size,
-                  wrapped_keyset.size() - header_size, wrapper_key, iv,
-                  PADDING_LIBRARY_DEFAULT, true, &plain_text)) {
+  if (!UnwrapAesSpecifyBlockMode(wrapped_keyset, header_size,
+      wrapped_keyset.size() - header_size, wrapper_key, iv,
+      PADDING_LIBRARY_DEFAULT, ECB, &plain_text)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }
@@ -655,8 +726,9 @@ bool Crypto::WrapVaultKeysetOld(const VaultKeyset& vault_keyset,
   }
 
   SecureBlob cipher_text;
-  if (!_WrapAes(keyset_blob, 0, keyset_blob.size(), wrapper_key, iv,
-                PADDING_LIBRARY_DEFAULT, true, &cipher_text)) {
+  if (!WrapAesSpecifyBlockMode(keyset_blob, 0, keyset_blob.size(), wrapper_key,
+                               iv, PADDING_LIBRARY_DEFAULT, ECB,
+                               &cipher_text)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }

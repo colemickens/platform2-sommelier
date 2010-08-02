@@ -458,22 +458,25 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   unsigned int aes_block_size = crypto_->GetAesBlockSize();
-  unsigned int to_wrap = local_data.size()
-      - (local_data.size() % aes_block_size);
+  unsigned int offset = local_data.size() - aes_block_size;
+  if (offset < 0) {
+    LOG(ERROR) << "Encrypted data is too small.";
+    return false;
+  }
 
-  SecureBlob local_data_out;
-  if (!crypto_->WrapAes(local_data, 0, to_wrap, aes_key, iv,
-                        Crypto::PADDING_NONE, &local_data_out)) {
+  SecureBlob passkey_part;
+  if (!crypto_->WrapAesSpecifyBlockMode(local_data, offset, aes_block_size,
+                                        aes_key, iv, Crypto::PADDING_NONE,
+                                        Crypto::ECB, &passkey_part)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
-  if (local_data.size() > to_wrap) {
-    int additional = local_data.size() - to_wrap;
-    local_data_out.resize(local_data_out.size() + additional);
-    memcpy(&local_data_out[to_wrap], &local_data[to_wrap], additional);
-  }
+  PLOG_IF(FATAL, passkey_part.size() != aes_block_size)
+      << "Output block size error: " << passkey_part.size() << ", expected: "
+      << aes_block_size;
+  memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
 
-  data_out->swap(local_data_out);
+  data_out->swap(local_data);
   return true;
 }
 
@@ -489,18 +492,24 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   unsigned int aes_block_size = crypto_->GetAesBlockSize();
-  unsigned int to_unwrap = data.size() - (data.size() % aes_block_size);
+  unsigned int offset = data.size() - aes_block_size;
+  if (offset < 0) {
+    LOG(ERROR) << "Input data is too small.";
+    return false;
+  }
 
-  SecureBlob local_data;
-  if (!crypto_->UnwrapAes(data, 0, to_unwrap, aes_key, iv, Crypto::PADDING_NONE,
-                          &local_data)) {
+  SecureBlob passkey_part;
+  if (!crypto_->UnwrapAesSpecifyBlockMode(data, offset, aes_block_size, aes_key,
+                                          iv, Crypto::PADDING_NONE, Crypto::ECB,
+                                          &passkey_part)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }
-  if (data.size() > to_unwrap) {
-    local_data.resize(local_data.size() + (data.size() - to_unwrap));
-    memcpy(&local_data[to_unwrap], &data[to_unwrap], (data.size() - to_unwrap));
-  }
+  PLOG_IF(FATAL, passkey_part.size() != aes_block_size)
+      << "Output block size error: " << passkey_part.size() << ", expected: "
+      << aes_block_size;
+  SecureBlob local_data(data.begin(), data.end());
+  memcpy(&local_data[offset], passkey_part.data(), passkey_part.size());
 
   TSS_RESULT result;
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
