@@ -141,6 +141,11 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
   # the ESP from a file, it means we are not on the target hardware, making
   # the GPT and firmware scripts inapplicable nor are we auto-updating
   if [ -z "${FLAGS_esp_part_file}" ]; then
+    # This export is so that locate_gpt will look within this install
+    # partition to find that copy of the cgpt program.
+    export DEFAULT_CHROOT_DIR=$(dirname "$0")
+    locate_gpt  # sets $GPT to cgpt executable
+
     echo "Updating Partition Table Attributes..."
     # Mark partition table to indicate an update has occurred.
     # The updated partition should have the highest priority (priority=3) so it
@@ -163,7 +168,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
           continue
         fi
         # Get type string for current partition
-        type=`cgpt show -i $current_index -t $ROOT_DEV`
+        type=`"$GPT" show -i $current_index -t $ROOT_DEV`
         # Check if type string indicates that it is a kernel partition
         if [ "$type" = "FE3A2A5D-4F32-41A7-B725-ACCC3285A309" ]; then
           kern_parts="$current_index $kern_parts"
@@ -176,7 +181,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     for i in $kern_parts
     do
         # Get priority (a number) of the current partition
-        current_prio=`cgpt show -i $i -P $ROOT_DEV`
+        current_prio=`"$GPT" show -i $i -P $ROOT_DEV`
         if [ $current_prio -eq 0 ]; then
           continue
         fi
@@ -186,14 +191,14 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
             highest_prio_index=$i
           fi
         fi
-        cgpt add -i $i -P 1 $ROOT_DEV
+        "$GPT" add -i $i -P 1 $ROOT_DEV
     done
     # The kernel with the highest priority should retain its higher priority
     if [ $highest_prio != 0 ]; then
-        cgpt add -i $highest_prio_index -P 2 $ROOT_DEV
+        "$GPT" add -i $highest_prio_index -P 2 $ROOT_DEV
     fi
     # Make updated partition highest priority for next reboot
-    sudo cgpt add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
+    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
 
     echo "Updating the legacy and efi bootloader configurations"
     # Ensure we use a template from the INSTALL_ROOT for both grub
