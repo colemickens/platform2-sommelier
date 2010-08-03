@@ -1,9 +1,9 @@
-#!/bin/dash
+#!/bin/sh
 # Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# dev-mode functionality for chrosh
+# dev-mode functionality for crosh
 
 if [ "$(basename $0)" = "crosh-dev" ]; then
   exec "$(dirname $0)/crosh --dev"
@@ -17,5 +17,15 @@ DEV_HELP='
 HELP="$HELP$DEV_HELP"
 
 cmd_shell() {
-  bash
+  # Use a subshell so we can change the environment without
+  # affecting our caller
+  (
+  PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+  if [ -x /bin/bash ] ; then
+    SHELL=/bin/bash
+  else
+    SHELL=/bin/sh
+  fi
+  exec $SHELL
+  )
 }
