@@ -22,9 +22,11 @@ fi
 # Default to using a verified root filesystem if the installer
 # is verified.
 rootfs_verification_default=${FLAGS_FALSE}
+ignore_bad_verification_default=${FLAGS_TRUE}
 if type rootdev &> /dev/null; then
   if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
     rootfs_verification_default=${FLAGS_TRUE}
+    ignore_bad_verification_default=${FLAGS_FALSE}
   fi
 fi
 
@@ -51,6 +53,8 @@ DEFINE_string rootfs_image "" \
 By default, it uses the current root device."
 DEFINE_string install_root "/" \
   "Specifies the base location to find utilities in the new root"
+DEFINE_boolean ignore_bad_verification ${ignore_bad_verification_default} \
+  "Indicates if mismatched rootfs hashes will be ignored"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -146,6 +150,16 @@ table="vroot none ro,"$(sudo "${VERITY}" create \
         "${rootfs_image}" \
         $((rootfs_sectors / 8)) \
         ${tempfile})
+
+expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
+generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
+
+if [ "${expected_hash}" != "${generated_hash}" ]; then
+  echo "Root filesystem has been modified unexpectedly!" 1>&2
+  if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
+    exit 1
+  fi
+fi
 
 if [ -n "${newimg:-}" ]; then
   # This will usually be ${rootfs_image} except for cases where

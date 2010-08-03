@@ -136,15 +136,28 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     fi
   fi
 
+  # This export is so that locate_gpt will look within this install
+  # partition to find that copy of the cgpt program.
+  export DEFAULT_CHROOT_DIR=$(dirname "$0")
+  locate_gpt  # sets $GPT to cgpt executable
+
   # If we're working on a real machine, not a mounted image, only then
   # run the gpt tool to manipulate the partitions - if we're touching
   # the ESP from a file, it means we are not on the target hardware, making
   # the GPT and firmware scripts inapplicable nor are we auto-updating
   if [ -z "${FLAGS_esp_part_file}" ]; then
-    # This export is so that locate_gpt will look within this install
-    # partition to find that copy of the cgpt program.
-    export DEFAULT_CHROOT_DIR=$(dirname "$0")
-    locate_gpt  # sets $GPT to cgpt executable
+    echo "Updating the root filesystem hashes and legacy bootloaders"
+    # Ensure we use a template from the INSTALL_ROOT for both grub
+    # and syslinux otherwise we can never update them with new rootfs
+    # vboot configuration data.
+    syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
+    grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
+    "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+        --dst=${ROOT_DEV} --run_as_root \
+        --install_root="${INSTALL_ROOT}" \
+        --update_syslinux_cfg="${syslinux_cfg}" \
+        --update_grub_cfg="${grub_cfg}" \
+        --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
 
     echo "Updating Partition Table Attributes..."
     # Mark partition table to indicate an update has occurred.
@@ -200,19 +213,6 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     # Make updated partition highest priority for next reboot
     sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
 
-    echo "Updating the legacy and efi bootloader configurations"
-    # Ensure we use a template from the INSTALL_ROOT for both grub
-    # and syslinux otherwise we can never update them with new rootfs
-    # vboot configuration data.
-    syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
-    grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
-    "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root \
-        --install_root="${INSTALL_ROOT}" \
-        --update_syslinux_cfg="${syslinux_cfg}" \
-        --update_grub_cfg="${grub_cfg}" \
-        --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz
-
     # Set up gpt boot selection for legacy devices.
     # flush linux caches; seems to be necessary
     sync
@@ -235,7 +235,6 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       echo "marking part $LEGACY_PART_NUM bootable (old)"
       gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
     fi
-
 
     # See if we need to update firmware. NOTE: we must activate new firmware only
     # after new kernel is actived (installed and made bootable), otherwise new
