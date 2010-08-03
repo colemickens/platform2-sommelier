@@ -159,9 +159,6 @@ install_gpt() {
 
   # Here are the size limits that we're currently requiring
   local max_kern_sectors=32768        # 16M
-  # Verified boot adds 64KB of .vblock at the beginning of
-  # the kernel and ~20KB at the end.  Add some padding to handle this.
-  local num_vboot_sectors=512         # 256K
   local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 1G by default
   local max_oem_sectors=32768         # 16M
   local max_reserved_sectors=131072   # 64M
@@ -238,9 +235,7 @@ install_gpt() {
     # because we won't be able to upgrade this image in-place as it's only for
     # installation purposes.
     NUM_STATEFUL_SECTORS=$(roundup $(numsectors $stateful_img))
-    # Need to make room for kernel, key, preamble, added by key management.
-    NUM_KERN_SECTORS=$(roundup \
-         $(($num_vboot_sectors + $(numsectors $kernel_img))))
+    NUM_KERN_SECTORS=$max_kern_sectors
     local num_kern_a_sectors=$NUM_KERN_SECTORS
     local kern_a_priority=15
     local num_kern_b_sectors=1
