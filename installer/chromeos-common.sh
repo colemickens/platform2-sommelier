@@ -93,7 +93,7 @@ locate_gpt() {
 # components. If the target is a block device or the FORCE_FULL arg is "true"
 # we'll do a full install. Otherwise, it'll be just enough to boot.
 # Invoke as: command (not subshell)
-# Args: TARGET ROOTFS_IMG KERNEL_IMG STATEFUL_IMG PMBRCODE ESP_IMG FORCE_FULL
+# Args: TARGET ROOTFS_IMG STATEFUL_IMG PMBRCODE ESP_IMG FORCE_FULL
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all units are 512-byte sectors):
@@ -114,12 +114,11 @@ locate_gpt() {
 install_gpt() {
   local outdev=$1
   local rootfs_img=$2
-  local kernel_img=$3
-  local stateful_img=$4
-  local pmbrcode=$5
-  local esp_img=$6
-  local force_full="${7:-}"
-  local rootfs_size="${8:-1024}"   # 1G
+  local stateful_img=$3
+  local pmbrcode=$4
+  local esp_img=$5
+  local force_full="${6:-}"
+  local rootfs_size="${7:-1024}"   # 1G
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
