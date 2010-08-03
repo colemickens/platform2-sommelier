@@ -36,6 +36,7 @@ DEFINE_ERROR(Disconnect)
 DEFINE_ERROR(FirmwareLoad)
 DEFINE_ERROR(Sdk)
 DEFINE_ERROR(Mode)
+DEFINE_ERROR(OperationInitiated)
 DEFINE_MM_ERROR(NoNetwork)
 
 #define ENSURE_SDK_SUCCESS(function, rc, errtype)        \
@@ -312,6 +313,7 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
                                 );
     if (rc == 0) {
       LOG(INFO) << "Session ID " <<  session_id_;
+      error.set(kOperationInitiatedError, "");
       // session_state_ will be set in SessionStateCallback
       return;
     } else {
@@ -342,6 +344,7 @@ void GobiModem::Disconnect(DBus::Error& error) {
 
   ULONG rc = sdk_->StopDataSession(session_id_);
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
+  error.set(kOperationInitiatedError, "");
   // session_state_ will be set in SessionStateCallback
 }
 
