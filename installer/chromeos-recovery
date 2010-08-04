@@ -1,0 +1,122 @@
+#!/bin/sh -u
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A script to install recovery image from removable media to hard disk.
+
+# Load functions and constants for chromeos-install.
+. "$(dirname "$0")/chromeos-common.sh" || exit 1
+. /usr/lib/shflags || exit 1
+
+# TODO: replace debug output and auto-shutdown with a friendly UI
+# tracked in http://code.google.com/p/chromium-os/issues/detail?id=4769
+
+RECOVERY_LOG=/var/log/recovery.log
+TARGET_DEVICE=/dev/sda3
+
+# Timestamp log messages
+log() {
+  echo "$(date): $*" >> $RECOVERY_LOG
+}
+
+# Check if target device is ready for installation
+check_target_device() {
+  local target_device=$1
+  local dump_log=/tmp/dumpe2fs.log
+
+  dumpe2fs -h $target_device 2>$dump_log 1>/dev/null
+  log "dump content of dumpe2fs stdout"
+  log "==================================="
+  cat $dump_log >> $RECOVERY_LOG
+  log "==================================="
+
+  if grep "No such device" $dump_log 2>&1; then
+    log "$target_device not yet ready"
+    echo 0
+  else
+    log "$target_device is ready"
+    echo 1
+  fi
+}
+
+# Wait for target device to be ready before attempting installation
+wait_for_device() {
+  local count=0
+  local device_ready=0
+
+  while true
+  do
+    log "Waiting for target device to be ready. Sleep 1 second"
+    sleep 1
+    count=$(expr $count + 1)
+
+    if [ $(check_target_device $TARGET_DEVICE) -eq 1 ]; then
+      log "About to launch installer"
+      device_ready=1
+      break
+    fi
+
+    if [ $count -eq 10 ]; then
+      log "target device not ready after 10 seconds. Abort recovery"
+      break
+    fi
+  done
+  echo ${device_ready}
+}
+
+# Get state of developer switch at power-on time
+get_dev_switch_state() {
+  # See Firmware High-Level Spec for details on CHSW values
+  local chsw_value=$(cat /sys/devices/platform/chromeos_acpi/CHSW)
+  log "ACPI CHSW value is ${chsw_value}"
+  if [ $((chsw_value & 32)) -eq 32 ]; then
+    log "developer switch bit set to ON at startup"
+    echo 1
+  else
+    log "developer switch bit set to OFF at startup"
+    echo 0
+  fi
+}
+
+# Install Google payload from USB image
+install_google_payload() {
+  /usr/sbin/chromeos-install --run_as_root --yes >> $RECOVERY_LOG
+  log "Recovery installer completed"
+  # shut down and power off the device
+  log "Shut down device"
+  halt
+}
+
+# Launch script to install a new image onto the device
+launch_installer_script() {
+  if [ ! -e /mnt/stateful_partition/.dev_recovery ]; then
+    install_google_payload
+  fi
+  log "Developer recovery boot. Check developer switch position"
+
+  # Verify developer mode switch is ON. Otherwise, exit with an error
+  if [ $(get_dev_switch_state) -ne 1 ]; then
+    log "Developer switch OFF. Exit."
+    echo "Developer switch OFF. Please use a real recovery image to install \
+Chromium OS"
+    exit 1
+  fi
+
+  log "Developer switch ON. Install developer payload"
+  # TODO(tgao): launch custom install script here
+  log "TODO: launch custom install script"
+}
+
+# Main
+if [ ! -e /mnt/stateful_partition/.recovery ]; then
+  exit 0
+fi
+log "Recovery boot. Check if target device is ready"
+
+if [ $(wait_for_device) -eq 0 ]; then
+  log "Timed out waiting for target device. Exit."
+  exit 0
+fi
+
+launch_installer_script
