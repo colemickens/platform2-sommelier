@@ -89,6 +89,9 @@ class GobiModem
                                DBus::Variant& value,
                                DBus::Error& error);
 
+  void UpdateDataBearerTechnology();
+  void UpdateRegistrationState();
+
  protected:
   void ActivateOmadm(DBus::Error& error);
   // Verizon uses OTASP, code *22899
@@ -170,12 +173,8 @@ class GobiModem
   void *NMEAThread(void);
 
  private:
-  void UpdateRegistrationState(ULONG data_bearer_technology,
-                               ULONG roaming_state);
-
   void SetDeviceProperties();
   void SetModemProperties();
-  ULONG get_data_bearer_technology();
 
   void StartNMEAThread();
 
@@ -193,8 +192,6 @@ class GobiModem
   ULONG activation_state_;
   ULONG session_state_;
   ULONG session_id_;
-  ULONG data_bearer_technology_;
-  ULONG roaming_state_;
   INT8  signal_strength_;
 
   static GobiModem *connected_modem_;

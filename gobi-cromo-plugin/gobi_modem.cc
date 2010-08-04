@@ -4,10 +4,11 @@
 
 #include "gobi_modem.h"
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <glib.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 extern "C" {
 #include <libudev.h>
@@ -217,8 +218,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
       activation_state_(0),
       session_state_(gobi::kDisconnected),
       session_id_(0),
-      data_bearer_technology_(0),
-      roaming_state_(0),
       signal_strength_(-127) {
   memcpy(&device_, &device, sizeof(device_));
 
@@ -271,7 +270,6 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       LOG(INFO) << "Current carrier is " << carrier_id;
     }
     Enabled = true;
-    data_bearer_technology_ = get_data_bearer_technology();
     StartNMEAThread();
   } else if (!enable && Enabled()) {
     if (connected_modem_ == this) {
@@ -616,34 +614,17 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
   return result;
 }
 
-ULONG GobiModem::get_data_bearer_technology() {
-  uint32_t cdma_1x_state;
-  uint32_t evdo_state;
-  DBus::Error error;
-
-  GetRegistrationState(cdma_1x_state, evdo_state, error);
-  if (error.is_set())
-    return 0;
-
-  if (evdo_state != 0)
-    return gobi::kDataBearerCdmaEvdo;
-  else if (cdma_1x_state != 0)
-    return gobi::kDataBearerCdma1xRtt;
-  else
-    return 0;
-}
-
 void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
                                      uint32_t& evdo_state,
                                      DBus::Error &error) {
-  LOG(INFO) << "GetRegistrationState";
   ULONG reg_state;
   ULONG roaming_state;
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
 
-  cdma_1x_state = 0;
-  evdo_state = 0;
+  LOG(INFO) << "GetRegistrationState";
+  cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &num_radio_interfaces,
                                      radio_interfaces, &roaming_state);
@@ -661,13 +642,14 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   }
 
   for (int i = 0; i < num_radio_interfaces; i++) {
-    LOG(INFO) << "Registration state " << reg_state
-              << " for RFI " << (int)radio_interfaces[i];
+    LOG(INFO) << "Registration state " << reg_state << " (" << mm_reg_state
+              << ") for RFI " << (int)radio_interfaces[i];
     if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
       cdma_1x_state = mm_reg_state;
     else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
       evdo_state = mm_reg_state;
   }
+  LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }
 
 void GobiModem::RegisterCallbacks() {
@@ -1246,10 +1228,30 @@ void GobiModem::SignalStrengthCallback(INT8 signal_strength,
   // TODO(ers) mark radio interface technology as registered?
 }
 
+static gboolean data_bearer_trampoline(gpointer data) {
+  GobiModem* modem = static_cast<GobiModem*>(data);
+  modem->UpdateDataBearerTechnology();
+  return FALSE;
+}
+
+static gboolean reg_state_trampoline(gpointer data) {
+  GobiModem* modem = static_cast<GobiModem*>(data);
+  modem->UpdateRegistrationState();
+  return FALSE;
+}
+
+void GobiModem::UpdateDataBearerTechnology() {
+  ULONG data_bearer_technology;
+  sdk_->GetDataBearerTechnology(&data_bearer_technology);
+  // TODO(ers) send a signal or change a property to notify
+  // listeners about the change in data bearer technology
+}
+
 void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
   LOG(INFO) << "SessionStateCallback " << state;
   if (state == gobi::kConnected)
-    sdk_->GetDataBearerTechnology(&data_bearer_technology_);
+    g_idle_add(data_bearer_trampoline, this);
+
   session_state_ = state;
   if (state == gobi::kDisconnected)
     session_id_ = 0;
@@ -1257,49 +1259,27 @@ void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
   ConnectionStateChanged(is_connected);
 }
 
-void GobiModem::UpdateRegistrationState(ULONG data_bearer_technology,
-                                        ULONG roaming_state) {
+void GobiModem::UpdateRegistrationState() {
   uint32_t cdma_1x_state;
   uint32_t evdo_state;
-  uint32_t reg_state;
+  DBus::Error error;
 
-  if (roaming_state == gobi::kHome)
-    reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
-  else
-    reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
-
-  switch (data_bearer_technology) {
-    case gobi::kDataBearerCdma1xRtt:
-      cdma_1x_state = reg_state;
-      break;
-
-    case gobi::kDataBearerCdmaEvdo:
-    case gobi::kDataBearerCdmaEvdoRevA:
-      evdo_state = reg_state;
-      break;
-
-    default:
-      cdma_1x_state = 0;
-      evdo_state = 0;
-      break;
-  }
-  data_bearer_technology_ = data_bearer_technology;
-  roaming_state_ = roaming_state;
+  GetRegistrationState(cdma_1x_state, evdo_state, error);
+  if (error.is_set())
+    return;
   RegistrationStateChanged(cdma_1x_state, evdo_state);
 }
 
 void GobiModem::DataBearerCallback(ULONG data_bearer_technology) {
-  LOG(INFO) << "DataBearerCallback DBT: " << data_bearer_technology
-            << " R: " << roaming_state_;
-  UpdateRegistrationState(data_bearer_technology, roaming_state_);
+  LOG(INFO) << "DataBearerCallback, DBT = " << data_bearer_technology;
+  g_idle_add(reg_state_trampoline, this);
 }
 
 void GobiModem::RoamingIndicatorCallback(ULONG roaming) {
   // I'd like to query the current data bearer technology here, but
   // it's not safe to make SDK calls while in a callback function.
-  LOG(INFO) << "RoamingIndicatorCallback DBT: " << data_bearer_technology_
-            << " R: " << roaming;
-  UpdateRegistrationState(data_bearer_technology_, roaming);
+  LOG(INFO) << "RoamingIndicatorCallback, roaming = " << roaming;
+  g_idle_add(reg_state_trampoline, this);
 }
 
 // Set DBus properties that pertain to the modem hardware device.
