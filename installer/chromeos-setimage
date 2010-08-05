@@ -19,6 +19,12 @@ else
   fi
 fi
 
+# This export is so that locate_gpt will look within this install
+# partition to find that copy of the cgpt program.
+# TODO(wad,adlr) This duplicates the hack from postinst and should be fixed.
+export DEFAULT_CHROOT_DIR=$(dirname "$0")
+locate_gpt  # sets $GPT to cgpt executable
+
 # Default to using a verified root filesystem if the installer
 # is verified.
 rootfs_verification_default=${FLAGS_FALSE}
@@ -99,14 +105,65 @@ then
   exit 1
 fi
 
-# Mount the EFI System Partition
-if [ -n "$FLAGS_esp_mounted_at" ]; then
-  mountpoint="$FLAGS_esp_mounted_at"
-else
-  mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
-  sudo mount $(make_partition_dev ${FLAGS_dst} 12) ${mountpoint}
-fi
+# Setup loop devices so that we don't get burned by the kernel not knowing
+# about updated partition changes.
+ESP_LOOP=
+ROOT_LOOP=
+KERN_LOOP=
+
+cleanup_loop() {
+  local dev="$1"
+  if [ -z "$dev" ]; then
+    return 0
+  fi
+  (sudo umount "$dev" || true)
+  (sudo losetup -d "$dev" || true)
+}
+
+cleanup() {
+  cleanup_loop "${ESP_LOOP}"
+  ESP_LOOP=
+  cleanup_loop "${KERN_LOOP}"
+  KERN_LOOP=
+  cleanup_loop "${ROOT_LOOP}"
+  ROOT_LOOP=
+
+  # Failing to clean this up isn't the worst.
+  if [ -n "${ESP_TMP_DIR}" ]; then
+    rmdir "${ESP_TMP_DIR}" || true
+  fi
+
+  rm -f ${tempfile} || true
+}
+
+setup_dst_loop() {
+  local part="$1"
+  local dev=$(losetup -f)
+  if [ -z "$dev" ]; then
+    echo "No free loop devices." 1>&2
+    return 1
+  fi
+  local offset=$(partoffset ${FLAGS_dst} $part)
+  local size=$(partsize ${FLAGS_dst} $part)
+  sudo losetup -o $((512 * offset)) \
+               --sizelimit $((512 * size)) \
+               ${dev} \
+               ${FLAGS_dst}
+  echo $dev
+}
+
+ESP_TMP_DIR=
 tempfile=$(mktemp /tmp/grubcfg_XXXXXXXXX)
+trap cleanup EXIT
+
+# Mount the EFI System Partition
+mountpoint="${FLAGS_esp_mounted_at}"
+if [ -z "${mountpoint}" ]; then
+  mountpoint=$(mktemp -d  /tmp/mountesp_XXXXXXXXX)
+  ESP_TMP_DIR=${mountpoint}
+  ESP_LOOP=$(setup_dst_loop 12)
+  sudo mount ${ESP_LOOP} ${mountpoint}
+fi
 
 if [ -n "$FLAGS_update_syslinux_cfg" -a ! -r "$FLAGS_update_syslinux_cfg" ];
 then
@@ -121,9 +178,10 @@ fi
 # Instead, rootfs integrity will be validated on next boot through
 # the verified kernel configuration.
 selected_kernel=$(( (newimg + 1) * 2))  # part 2 or 4
-kernel_image=$(make_partition_dev ${FLAGS_dst} ${selected_kernel})
-if [ -n "${FLAGS_kernel_image}" ]; then
-  kernel_image="${FLAGS_kernel_image}"
+kernel_image="${FLAGS_kernel_image}"
+if [ -z "${FLAGS_kernel_image}" ]; then
+  KERN_LOOP=$(setup_dst_loop ${selected_kernel})
+  kernel_image="${KERN_LOOP}"
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
@@ -136,9 +194,10 @@ verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
 verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
 
 selected_root=$((selected_kernel + 1))
-rootfs_image=$(make_partition_dev ${FLAGS_dst} ${selected_root})
-if [ -n "${FLAGS_rootfs_image}" ]; then
-  rootfs_image="${FLAGS_rootfs_image}"
+rootfs_image="${FLAGS_rootfs_image}"
+if [ -z "${rootfs_image}" ]; then
+  ROOT_LOOP=$(setup_dst_loop ${selected_root})
+  rootfs_image="${ROOT_LOOP}"
 fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
@@ -193,13 +252,6 @@ if [ -n "${newimg:-}" ]; then
   sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
 fi
 
-echo "Current EFI boot default is:"
-# Print the [new] default choice
-grep -qs '^set default=0' ${mountpoint}/efi/boot/grub.cfg && echo "A"
-grep -qs '^set default=1' ${mountpoint}/efi/boot/grub.cfg && echo "B"
-grep -qs '^set default=2' ${mountpoint}/efi/boot/grub.cfg && echo "A (verified)"
-grep -qs '^set default=3' ${mountpoint}/efi/boot/grub.cfg && echo "B (verified)"
-
 # Rinse and repeat for the Legacy BIOS bootloader (syslinux)
 if [ -n "${newimg:-}" ]; then
   echo "Updating default syslinux target to $newimg"
@@ -236,16 +288,20 @@ if [ -n "${newimg:-}" ]; then
   fi
 fi
 
-echo "Current Legacy boot default is:"
-# Print the [new] default choice
-grep -qs 's-hd-A$' ${mountpoint}/syslinux/default.cfg && echo "A"
-grep -qs 's-hd-B$' ${mountpoint}/syslinux/default.cfg && echo "B"
-grep -qs 'vhd-A$' ${mountpoint}/syslinux/default.cfg && echo "A (verified)"
-grep -qs 'vhd-B$' ${mountpoint}/syslinux/default.cfg && echo "B (verified)"
+set +e  # just grep oneliners and cleanup from here on out.
 
-# Clean up
-rm -f ${tempfile}
-if [ -z "$FLAGS_esp_mounted_at" ]; then
-  sudo umount ${mountpoint}
-  rmdir ${mountpoint}
-fi
+echo "Current EFI boot default is:"
+# Print the [new] default choice
+grep -qs '^set default=0' ${mountpoint}/efi/boot/grub.cfg && echo "A"
+grep -qs '^set default=1' ${mountpoint}/efi/boot/grub.cfg && echo "B"
+grep -qs '^set default=2' ${mountpoint}/efi/boot/grub.cfg && echo "A (verified)"
+grep -qs '^set default=3' ${mountpoint}/efi/boot/grub.cfg && echo "B (verified)"
+
+echo "Current legacy boot default is:"
+# Print the [new] default choice
+grep -qs 's-hd\.A$' ${mountpoint}/syslinux/default.cfg && echo "A"
+grep -qs 's-hd\.B$' ${mountpoint}/syslinux/default.cfg && echo "B"
+grep -qs 'vhd\.A$' ${mountpoint}/syslinux/default.cfg && echo "A (verified)"
+grep -qs 'vhd\.B$' ${mountpoint}/syslinux/default.cfg && echo "B (verified)"
+
+exit 0
