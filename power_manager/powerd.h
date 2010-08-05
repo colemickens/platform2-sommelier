@@ -106,7 +106,7 @@ class Daemon : public XIdleMonitor {
     GdkEvent* gevent, gpointer data);
 
   // Tell X we are interested in the specified key/mask combination.
-  // Capslock is always ignored.
+  // Capslock and Numlock are always ignored.
   void GrabKey(KeyCode key, uint32 mask);
 
   // Standard handler for dbus messages. |data| contains a pointer to a

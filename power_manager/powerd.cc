@@ -152,6 +152,7 @@ void Daemon::Run() {
 
 void Daemon::SetPlugged(bool plugged) {
   if (plugged != plugged_state_) {
+    LOG(INFO) << "Daemon : SetPlugged = " << plugged;
     plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
     int64 idle_time_ms;
     CHECK(idle_.GetIdleTime(&idle_time_ms));
@@ -296,9 +297,15 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
 }
 
 void Daemon::GrabKey(KeyCode key, uint32 mask) {
+  uint32 NumLockMask = Mod2Mask;
+  uint32 CapsLockMask = LockMask;
   Window root = DefaultRootWindow(GDK_DISPLAY());
   XGrabKey(GDK_DISPLAY(), key, mask, root, True, GrabModeAsync, GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key, mask | LockMask, root, True,
+  XGrabKey(GDK_DISPLAY(), key, mask | CapsLockMask, root, True,
+           GrabModeAsync, GrabModeAsync);
+  XGrabKey(GDK_DISPLAY(), key, mask | NumLockMask, root, True,
+           GrabModeAsync, GrabModeAsync);
+  XGrabKey(GDK_DISPLAY(), key, mask | CapsLockMask | NumLockMask, root, True,
            GrabModeAsync, GrabModeAsync);
 }
 
