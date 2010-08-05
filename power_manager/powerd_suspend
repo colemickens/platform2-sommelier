@@ -15,7 +15,20 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
-/usr/bin/devkit-power -d > /tmp/power-status-on-suspend
+power_status_on_suspend=/tmp/power-status-on-suspend
+/usr/bin/devkit-power -d \
+  | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
+if [ $? -eq 0 ]; then
+    echo OnBattery > $power_status_on_suspend
+else
+    echo OnAC > $power_status_on_suspend
+    # - enables autosuspend for USB devices. This shaves about 300ms
+    #   from resume time.
+    for i in /sys/bus/usb/devices/*/power/level; do echo auto > $i; done
+fi
+
+# - deletes hwclock snapshot from previous resumes
+rm -f /tmp/hwclock-on-resume
 
 # - suspends the cryptohome device
 #CRYPTOHOME=/dev/mapper/cryptohome
@@ -24,16 +37,21 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
 # - suspends to ram
 echo -n mem > /sys/power/state
 
-# On lid open:
-# - has it such that you don't have to press a key to display lock screen
-xscreensaver-command -deactivate
+# On resume:
+# - records the hwclock time at resume
+/sbin/hwclock --utc --debug > /tmp/hwclock-on-resume &
 
 # - announces the event
 /usr/bin/dbus-send --type=signal --system / \
   org.chromium.PowerManager.PowerStateChanged string:on &
 
 # - sends UMA metrics on resume
-/usr/bin/send_metrics_on_resume
+/usr/bin/send_metrics_on_resume &
+
+#  - re-kicks laptop mode since AC<->Battery transition might've happened
+#    while the system was suspended. Sleep a bit, though, to take care of
+#    racing with USB stack coming up.
+sleep 10 && /usr/sbin/laptop_mode force &
 
 # - resumes cryptohome device
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME

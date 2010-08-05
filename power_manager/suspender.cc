@@ -42,7 +42,7 @@ gboolean Suspender::CheckSuspendTimeout(gpointer data) {
 }
 
 void Suspender::Suspend() {
-  util::Launch("powerd_suspend");
+  util::Launch("sudo powerd_suspend");
 }
 
 }  // namespace power_manager

@@ -33,19 +33,6 @@ send_time_in_suspend() {
   /usr/bin/metrics_client $time_in_suspend_name $time_in_suspend 1 10000 50 &
 }
 
-# Prints "OnAC" if the device is powered on AC, and "OnBattery" otherwise.
-# Arguments:
-#   $1 - command to use to read the power status
-get_ac_status() {
-  [ -n "$1" ] || return
-  $1 | /bin/grep -Eq '^[[:space:]]+on-battery:[[:space:]]+yes$'
-  if [ $? -eq 0 ]; then
-    echo OnBattery
-  else
-    echo OnAC
-  fi
-}
-
 # Prints the timestamp of the last occurrence of a specified string in
 # /var/log/messages, or nothing otherwise.
 # Arguments:
@@ -84,7 +71,7 @@ send_suspend_resume_time() {
   # Sends the metrics. Uses the pre-suspend AC status for both suspend
   # and resume since this is the mode that most software is configured
   # at at resume time.
-  local ac_status=$(get_ac_status "/bin/cat $power_status_on_suspend")
+  local ac_status=$(/bin/cat $power_status_on_suspend)
   /usr/bin/metrics_client \
     Power.KernelSuspendTime$ac_status $kernel_suspend_time 1 10000 50 &
   /usr/bin/metrics_client \
