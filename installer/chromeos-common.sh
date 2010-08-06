@@ -362,8 +362,8 @@ get_block_dev_from_partition_dev() {
     echo "Invalid partition name: $partition" >&2
     exit 1
   fi
-  # Remove the last digit.
-  local block=$(echo "$partition" | sed -e 's/\(.*\)[0-9]$/\1/')
+  # Removes any trailing digits.
+  local block=$(echo "$partition" | sed -e 's/[0-9]*$//')
   # If needed, strip the trailing 'p'.
   if (expr match "$block" ".*[0-9]p$" >/dev/null); then
     echo "${block%p}"
