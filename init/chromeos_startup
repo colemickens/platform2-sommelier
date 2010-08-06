@@ -4,16 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-HAS_INITRAMFS=0
-if [ -d /dev/.initramfs ]
-then
-  # The initrd will have mounted /sys, /proc, and /dev for us.
-  HAS_INITRAMFS=1
-else
-  mount -n -t sysfs -onodev,noexec,nosuid sysfs /sys
-  mount -n -t proc -onodev,noexec,nosuid proc /proc
-  mount -n -t tmpfs -omode=0755 udev /dev
-fi
+mount -n -t tmpfs -omode=0755 udev /dev
 
 PRE_UPTIME_STAT=$(cat /proc/uptime)
 PRE_DISK_STAT=$(cat /sys/block/sda/stat)
@@ -34,14 +25,14 @@ if [ -x /usr/bin/ply-image ]; then
   fi
 fi
 
-# If we are running from initramfs, the mountpoints
-# will already have been mounted from the initramfs init.  We also can't call
-# rootdev, since it isn't meaningful.
-if [ "$HAS_INITRAMFS" = "0" ]; then
-  mount -n -t tmpfs tmp /tmp
-  mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
-  mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+mount -n -t tmpfs tmp /tmp
+mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
+mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
+# For factory install shim, we never want to write to the SDCard.
+if [ -f /root/.factory_installer ]; then
+  mount -n -t tmpfs tmp /mnt/stateful_partition
+else
   # Mount our stateful partition. It's always partition 1.
   ROOT_DEV=$(rootdev)
   # On verified boot, we get the real root from the dm slaves.
@@ -49,12 +40,7 @@ if [ "$HAS_INITRAMFS" = "0" ]; then
     ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
   fi
   STATE_DEV=${ROOT_DEV%[0-9]*}1
-fi
 
-# For factory install shim, we never want to write to the SDCard.
-if [ -f /root/.factory_installer ]; then
-  mount -n -t tmpfs tmp /mnt/stateful_partition
-else
   mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
 fi
 
