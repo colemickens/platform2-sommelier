@@ -138,7 +138,7 @@ cleanup() {
 
 setup_dst_loop() {
   local part="$1"
-  local dev=$(losetup -f)
+  local dev=$(sudo losetup -f)
   if [ -z "$dev" ]; then
     echo "No free loop devices." 1>&2
     return 1
@@ -259,8 +259,9 @@ if [ -n "${newimg:-}" ]; then
   test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
     target_hd=chromeos-vhd
 
-  echo "DEFAULT ${target_hd}.${newimg_letter}" > \
-    ${mountpoint}/syslinux/default.cfg
+  echo "DEFAULT ${target_hd}.${newimg_letter}" > ${tempfile}
+  sudo cp ${tempfile} ${mountpoint}/syslinux/default.cfg
+
   vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.${newimg_letter}
   syslinux_root_cfg=${mountpoint}/syslinux/root.${newimg_letter}.cfg
 
