@@ -294,10 +294,11 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
 
   int timeout = 3;
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
-      .Times(2)
-      .WillRepeatedly(Return(0));
+      .WillOnce(Return(0));
   EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(false));
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
+      .WillOnce(Return(0));
 
   manager_->test_api().CleanupChildren(timeout);
 }
@@ -335,7 +336,7 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
       .WillOnce(Return(0));
   EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
       .WillOnce(Return(0));
 
   gboolean out;

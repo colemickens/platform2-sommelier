@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -545,7 +545,7 @@ void SessionManagerService::CleanupChildren(int timeout) {
     if (child_pid > 0) {
       system_->kill(child_pid, (session_started_ ? SIGTERM: SIGKILL));
       if (!system_->child_is_gone(child_pid, timeout))
-        system_->kill(child_pid, SIGKILL);
+        system_->kill(child_pid, SIGABRT);
     }
   }
 }
