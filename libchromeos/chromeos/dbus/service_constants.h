@@ -23,6 +23,9 @@ extern const char *kCryptohomeIsMounted;
 extern const char *kCryptohomeMount;
 extern const char *kCryptohomeMountGuest;
 extern const char *kCryptohomeUnmount;
+extern const char *kCryptohomeTpmIsReady;
+extern const char *kCryptohomeTpmIsEnabled;
+extern const char *kCryptohomeTpmGetPassword;
 }  // namespace cryptohome
 
 namespace login_manager {

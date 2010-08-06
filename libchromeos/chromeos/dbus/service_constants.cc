@@ -21,6 +21,9 @@ const char *kCryptohomeIsMounted = "IsMounted";
 const char *kCryptohomeMount = "Mount";
 const char *kCryptohomeMountGuest = "MountGuest";
 const char *kCryptohomeUnmount = "Unmount";
+const char *kCryptohomeTpmIsReady = "TpmIsReady";
+const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
+const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
 }  // namespace cryptohome
 
 namespace login_manager {
