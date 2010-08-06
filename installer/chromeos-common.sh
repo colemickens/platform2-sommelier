@@ -93,7 +93,13 @@ locate_gpt() {
 # components. If the target is a block device or the FORCE_FULL arg is "true"
 # we'll do a full install. Otherwise, it'll be just enough to boot.
 # Invoke as: command (not subshell)
-# Args: TARGET ROOTFS_IMG STATEFUL_IMG PMBRCODE ESP_IMG FORCE_FULL
+# Args:
+#   TARGET
+#   ROOTFS_IMG_SECTORS
+#   STATEFUL_IMG_SECTORS
+#   PMBRCODE
+#   ESP_IMG_SECTORS
+#   FORCE_FULL
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all units are 512-byte sectors):
@@ -113,10 +119,10 @@ locate_gpt() {
 #   START_STATEFUL
 install_gpt() {
   local outdev=$1
-  local rootfs_img=$2
-  local stateful_img=$3
+  local rootfs_img_sectors=$2
+  local stateful_img_sectors=$3
   local pmbrcode=$4
-  local esp_img=$5
+  local esp_img_sectors=$5
   local force_full="${6:-}"
   local rootfs_size="${7:-1024}"   # 1G
 
@@ -233,17 +239,17 @@ install_gpt() {
     # be present but as small as possible. The disk layout isn't crucial here,
     # because we won't be able to upgrade this image in-place as it's only for
     # installation purposes.
-    NUM_STATEFUL_SECTORS=$(roundup $(numsectors $stateful_img))
+    NUM_STATEFUL_SECTORS=$(roundup $stateful_img_sectors)
     NUM_KERN_SECTORS=$max_kern_sectors
     local num_kern_a_sectors=$NUM_KERN_SECTORS
     local kern_a_priority=15
     local num_kern_b_sectors=1
     local kern_b_priority=0
-    NUM_ROOTFS_SECTORS=$(roundup $(numsectors $rootfs_img))
+    NUM_ROOTFS_SECTORS=$(roundup $rootfs_img_sectors)
     local num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS
     local num_rootfs_b_sectors=1
     NUM_OEM_SECTORS=$max_oem_sectors
-    NUM_ESP_SECTORS=$(roundup $(numsectors $esp_img))
+    NUM_ESP_SECTORS=$(roundup $esp_img_sectors)
     NUM_RESERVED_SECTORS=1
 
     START_KERN_A=$start_useful

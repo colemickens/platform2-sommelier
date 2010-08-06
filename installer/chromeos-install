@@ -195,7 +195,8 @@ else
 fi
 
 # Create the GPT.
-install_gpt $FLAGS_dst $ROOTFS_IMG $STATEFUL_IMG $PMBRCODE $ESP_IMG
+install_gpt $FLAGS_dst $(numsectors $ROOTFS_IMG) $(numsectors $STATEFUL_IMG) \
+  $PMBRCODE $(numsectors $ESP_IMG)
 
 if [ "$MACHINE_NAME" = "armv7l" ]; then
   DEVICE=$(echo $FLAGS_dst | sed -e 's/^.*\([0-9]\)$/\1/')
