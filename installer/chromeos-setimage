@@ -22,7 +22,8 @@ fi
 # This export is so that locate_gpt will look within this install
 # partition to find that copy of the cgpt program.
 # TODO(wad,adlr) This duplicates the hack from postinst and should be fixed.
-export DEFAULT_CHROOT_DIR=$(dirname "$0")
+# TODO(wad): make this not be borked.
+export DEFAULT_CHROOT_DIR=$(dirname "$0")/../..
 locate_gpt  # sets $GPT to cgpt executable
 
 # Default to using a verified root filesystem if the installer
