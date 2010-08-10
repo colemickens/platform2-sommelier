@@ -27,6 +27,7 @@ namespace gobi {
 class MockSdk : public Sdk {
  public:
   virtual ~MockSdk() {}
+  void Init() {}
   MOCK_METHOD2(QCWWANEnumerateDevices,
       ULONG(BYTE * pDevicesSize, BYTE * pDevices));
   MOCK_METHOD2(QCWWANConnect,

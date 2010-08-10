@@ -19,8 +19,8 @@ GOBI_PLUGIN = gobi.so
 
 GLUE_HEADERS = modem_gobi_server_glue.h
 
-
-TESTS = # gobi_modem_unittest # builds slower than rest of project put together
+TESTS = gobi_sdk_wrapper_unittest \
+#	gobi_modem_unittest # builds slower than rest of project put together
 
 SRCS = device_watcher.cc \
        gobi_modem_handler.cc \
@@ -38,6 +38,8 @@ $(GOBI_PLUGIN) : $(OBJS)
 	 dbus-1 dbus-glib-1 dbus-c++-1)
 
 gobi_modem_unittest : gobi_modem.o gobi_sdk_wrapper.o gobi_modem_unittest.o
+
+gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@

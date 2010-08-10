@@ -23,6 +23,14 @@
   without the express written permission of QUALCOMM Incorporated.
   ==========================================================================*/
 
+#include <stdlib.h>
+#include <pthread.h>
+
+#include <base/basictypes.h> // for DISALLOW_COPY_AND_ASSIGN
+#include <gtest/gtest_prod.h>  // For FRIEND_TEST
+#include <map>
+#include <string>
+#include <vector>
 
 // Type Definitions
 typedef unsigned long      ULONG;
@@ -231,9 +239,15 @@ typedef struct {
   ULONG activeChannel;
 } RfInfoInstance;
 
+struct ReentrancyGroup;
+
 class Sdk {
  public:
+  Sdk(){};
   virtual ~Sdk() {}
+
+  virtual void Init();
+
   virtual ULONG QCWWANEnumerateDevices(
       BYTE *                     pDevicesSize,
       BYTE *                     pDevices);
@@ -833,6 +847,41 @@ class Sdk {
   virtual ULONG SetOMADMAlertCallback(tFNOMADMAlert pCallback);
 
   virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
+
+ protected:
+
+  // The CMAPI is split into groups.  Functions in multiple groups can
+  // be called simultaneously, but each group is nonreentrant against
+  // itself.  This machinery verifies that we don't violate these
+  // restrictions.
+
+  void EnterSdk(const char *function_name);
+  void LeaveSdk(const char *function_name);
+
+  void InitGetServiceFromName(const char *service_map[]);
+  int GetServiceFromName(const char *name);
+
+  // Given a starting service of begin, what services should we cover?
+  // Returns max service if supplied with kServiceBase, else begin + 1
+  int GetServiceBound(int begin);
+
+  std::map<int, const char*> index_to_service_name_;
+  std::map<std::string, int> name_to_service_;
+  int service_index_upper_bound_;
+
+  // mutex-protected mapping from a service index to the
+  // currently-executing function in that service.
+  pthread_mutex_t service_to_function_mutex_;
+  std::vector<const char*> service_to_function_;
+
+  friend class ReentrancyPreventer;
+  FRIEND_TEST(GobiSdkTest, BaseClosesAllDeathTest);
+  FRIEND_TEST(GobiSdkTest, EnterLeaveDeathTest);
+  FRIEND_TEST(GobiSdkTest, InitGetServiceFromNameDeathTest);
+  FRIEND_TEST(GobiSdkTest, InitGetServiceFromName);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Sdk);
 };  // Class Sdk
 }   // Namespace Gobi
 

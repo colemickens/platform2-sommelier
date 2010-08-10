@@ -45,6 +45,7 @@ GobiModemHandler::~GobiModemHandler() {
 }
 
 bool GobiModemHandler::Initialize() {
+  GOBI_SDK.Init();
   MonitorDevices();
   RegisterSelf();
   return true;
