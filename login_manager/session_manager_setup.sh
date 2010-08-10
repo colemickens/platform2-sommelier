@@ -4,29 +4,25 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-XAUTH=/usr/bin/xauth
+# Set up to start the X server ASAP, then let the startup run in the
+# background while we set up other stuff.
 XAUTH_FILE="/var/run/chromelogin.auth"
-
 MCOOKIE=$(head -c 8 /dev/urandom | openssl md5)  # speed this up?
-${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
+xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 
 # The X server sends SIGUSR1 to its parent once it's ready to accept
-# connections.  Fork a subshell here to start X and wait for that
-# signal.  The subshell terminates once X is ready.
-(
-  trap 'exit 0' USR1
-  /sbin/xstart.sh ${XAUTH_FILE} &
-  wait
-) &
+# connections.  The subshell here starts X, waits for the signal, then
+# terminates once X is ready.
+( trap 'exit 0' USR1 ; xstart.sh ${XAUTH_FILE} & wait ) &
+
 
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
 export LOGNAME=${USER}
-export SHELL=/bin/bash
+export SHELL=/bin/sh
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
-export PATH=/bin:/usr/bin:/usr/local/bin:/usr/bin/X11
 export GTK_IM_MODULE=ibus
 # By default, libdbus treats all warnings as fatal errors. That's too strict.
 export DBUS_FATAL_WARNINGS=0
@@ -55,13 +51,12 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_minidumps ] ; then
   fi
 fi
 
-XAUTH_FILE=${DATA_DIR}/.Xauthority
-export XAUTHORITY=${XAUTH_FILE}
+export XAUTHORITY=${DATA_DIR}/.Xauthority
 
 mkdir -p ${DATA_DIR} && chown ${USER}:${USER} ${DATA_DIR}
 mkdir -p ${HOME} && chown ${USER}:${USER} ${HOME}
-${XAUTH} -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE} && \
-  chown ${USER}:${USER} ${XAUTH_FILE}
+xauth -q -f ${XAUTHORITY} add :0 . ${MCOOKIE} &&
+  chown ${USER}:${USER} ${XAUTHORITY}
 
 # Old builds will have a ${LOGIN_PROFILE_DIR} that's owned by root; newer ones
 # won't have this directory at all.
@@ -81,8 +76,7 @@ else
   fi
 fi
 
-CHROME_DIR="/opt/google/chrome"
-CHROME="$CHROME_DIR/chrome"
+CHROME="/opt/google/chrome/chrome"
 WM_SCRIPT="/sbin/window-manager-session.sh"
 SEND_METRICS="/etc/send_metrics"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
@@ -91,7 +85,7 @@ CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 # It runs sensible-browser, which uses $BROWSER.
 export BROWSER=${CHROME}
 
-USER_ID=$(/usr/bin/id -u ${USER})
+USER_ID=$(id -u ${USER})
 
 SKIP_OOBE=
 # For test automation.  If file exists, do not remember last username and skip
@@ -124,17 +118,23 @@ fi
 
 # We need to delete these files as Chrome may have left them around from
 # its prior run (if it crashed).
-rm -f /home/$USER/SingletonLock
-rm -f /home/$USER/SingletonSocket
+rm -f ${DATA_DIR}/SingletonLock
+rm -f ${DATA_DIR}/SingletonSocket
 
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 wait
 
 # TODO: consider moving this when we start X in a different way.
-/sbin/initctl emit x-started
+initctl emit x-started
 cat /proc/uptime > /tmp/uptime-x-started
 
+#
+# Reset PATH to exclude directories unneeded by session_manager.
+# Save that until here, because many of the commands above depend
+# on the default PATH handed to us by init.
+#
+export PATH=/bin:/usr/bin:/usr/bin/X11
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
             --enable-gview \
@@ -142,7 +142,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-logging \
             --main-menu-url="http://welcome-cros.appspot.com/menu" \
             --no-first-run \
-            --user-data-dir=/home/$USER \
+            --user-data-dir="$DATA_DIR" \
             --login-profile=user \
             --in-chrome-auth \
             --apps-gallery-title="Web Store" \
@@ -151,4 +151,4 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-nacl \
             --scroll-pixels=4 \
             "${SKIP_OOBE}" \
--- $WM_SCRIPT
+-- "$WM_SCRIPT"
