@@ -127,7 +127,7 @@ wait
 
 # TODO: consider moving this when we start X in a different way.
 initctl emit x-started
-cat /proc/uptime > /tmp/uptime-x-started
+bootstat x-started
 
 #
 # Reset PATH to exclude directories unneeded by session_manager.
