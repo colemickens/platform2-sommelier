@@ -9,7 +9,6 @@
 #include <errno.h>
 
 #include <base/file_util.h>
-#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/platform_thread.h>
 #include <base/time.h>
@@ -51,7 +50,6 @@ Mount::Mount()
       platform_(default_platform_.get()),
       fallback_to_scrypt_(true),
       use_tpm_(true),
-      process_config_(false),
       default_current_user_(new UserSession()),
       current_user_(default_current_user_.get()) {
 }
@@ -61,10 +59,6 @@ Mount::~Mount() {
 
 bool Mount::Init() {
   bool result = true;
-
-  if (process_config_) {
-    LoadConfigurationFile();
-  }
 
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
@@ -89,38 +83,6 @@ bool Mount::Init() {
   current_user_->Init(crypto_);
 
   return result;
-}
-
-void Mount::LoadConfigurationFile() {
-  // Attempt to load configuration
-  string str_config;
-  if (LoadFileString(FilePath(StringPrintf("%s/cryptohome.json",
-                                           shadow_root_.c_str())),
-                     &str_config)) {
-    std::string json_error;
-    Value* json_config = base::JSONReader::ReadAndReturnError(str_config,
-                                                              true,
-                                                              &json_error);
-    if (json_config) {
-      if (json_config->GetType() == Value::TYPE_DICTIONARY) {
-        DictionaryValue* dict_config =
-            static_cast<DictionaryValue*>(json_config);
-        std::wstring key = L"use_tpm";
-        bool local_use_tpm = false;
-        if (dict_config->GetBoolean(key, &local_use_tpm)) {
-          use_tpm_ = local_use_tpm;
-        }
-        key = L"fallback_to_scrypt";
-        bool local_fallback_to_scrypt = false;
-        if (dict_config->GetBoolean(key, &local_fallback_to_scrypt)) {
-          fallback_to_scrypt_ = local_fallback_to_scrypt;
-        }
-      }
-      delete json_config;
-    } else {
-      LOG(ERROR) << "Malformed config JSON: " << json_error;
-    }
-  }
 }
 
 bool Mount::EnsureCryptohome(const Credentials& credentials,
@@ -150,6 +112,12 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
 
 bool Mount::MountCryptohome(const Credentials& credentials,
                             MountError* mount_error) const {
+  return MountCryptohomeInner(credentials, true, mount_error);
+}
+
+bool Mount::MountCryptohomeInner(const Credentials& credentials,
+                                 bool recreate_unwrap_fatal,
+                                 MountError* mount_error) const {
   current_user_->Reset();
 
   std::string username = credentials.GetFullUsernameString();
@@ -172,7 +140,30 @@ bool Mount::MountCryptohome(const Credentials& credentials,
 
   // Attempt to unwrap the vault keyset with the specified credentials
   VaultKeyset vault_keyset;
-  if (!UnwrapVaultKeyset(credentials, true, &vault_keyset, mount_error)) {
+  MountError local_mount_error = MOUNT_ERROR_NONE;
+  if (!UnwrapVaultKeyset(credentials, true, &vault_keyset,
+                         &local_mount_error)) {
+    if (mount_error) {
+      *mount_error = local_mount_error;
+    }
+    if (recreate_unwrap_fatal && (local_mount_error & MOUNT_ERROR_FATAL)) {
+      LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
+                 << "error.";
+      if (!RemoveCryptohome(credentials)) {
+        LOG(ERROR) << "Fatal decryption error, but unable to remove "
+                   << "cryptohome.";
+        return false;
+      }
+      // Allow one recursion into MountCryptohomeInner by blocking re-create on
+      // fatal.
+      bool local_result = MountCryptohomeInner(credentials, false, mount_error);
+      // If the mount was successful, set the status to indicate that the
+      // cryptohome was recreated.
+      if (local_result && mount_error) {
+        *mount_error = MOUNT_ERROR_RECREATED;
+      }
+      return local_result;
+    }
     return false;
   }
 
@@ -347,7 +338,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
     FilePath user_key_file(GetUserKeyFile(credentials));
     if (!file_util::PathExists(user_key_file)) {
       if (error) {
-        *error = MOUNT_ERROR_NO_SUCH_FILE;
+        *error = MOUNT_ERROR_FATAL;
       }
       return false;
     }
@@ -361,52 +352,63 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
 
     // Attempt to unwrap the master key with the passkey
     int wrap_flags = 0;
+    Crypto::CryptoError crypto_error = Crypto::CE_NONE;
     if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey, &wrap_flags,
-                                    vault_keyset)) {
+                                    &crypto_error, vault_keyset)) {
       if (error) {
-        *error = Mount::MOUNT_ERROR_KEY_FAILURE;
+        switch (crypto_error) {
+          case Crypto::CE_TPM_FATAL:
+          case Crypto::CE_OTHER_FATAL:
+            *error = Mount::MOUNT_ERROR_FATAL;
+            break;
+          default:
+            *error = Mount::MOUNT_ERROR_KEY_FAILURE;
+            break;
+        }
       }
       return false;
     }
 
-    // Calling EnsureTpm here handles the case where a user logged in while
-    // cryptohome was taking TPM ownership.  In that case, their vault keyset
-    // would be scrypt-wrapped and the TPM would not be connected.  If we're
-    // configured to use the TPM, calling EnsureTpm will try to connect, and if
-    // successful, the call to has_tpm() below will succeed, allowing
-    // re-wrapping (migration) using the TPM.
-    if (use_tpm_) {
-      crypto_->EnsureTpm();
-    }
+    if (migrate_if_needed) {
+      // Calling EnsureTpm here handles the case where a user logged in while
+      // cryptohome was taking TPM ownership.  In that case, their vault keyset
+      // would be scrypt-wrapped and the TPM would not be connected.  If we're
+      // configured to use the TPM, calling EnsureTpm will try to connect, and
+      // if successful, the call to has_tpm() below will succeed, allowing
+      // re-wrapping (migration) using the TPM.
+      if (use_tpm_) {
+        crypto_->EnsureTpm();
+      }
 
-    // If the vault keyset's TPM state is not the same as that configured for
-    // the device, re-save the keyset (this will save in the device's default
-    // method).
-    //                      1   2   3   4   5   6   7   8   9  10  11  12
-    // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
-    //
-    // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
-    //
-    // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
-    //
-    // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
-    //
-    // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
-    bool tpm_wrapped = (wrap_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
-    bool scrypt_wrapped =
-        (wrap_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
-    bool should_tpm = (crypto_->has_tpm() && use_tpm_);
-    bool should_scrypt = fallback_to_scrypt_;
-    do {
-      if (tpm_wrapped && !scrypt_wrapped && should_tpm)
-        break; // 5, 8 (but remove scrypt if it is stacked)
-      if (scrypt_wrapped && should_scrypt && !should_tpm)
-        break; // 12
-      if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
-        break; // 1
-      // TODO(fes): This is not (right now) a fatal error
-      ResaveVaultKeyset(credentials, *vault_keyset);
-    } while(false);
+      // If the vault keyset's TPM state is not the same as that configured for
+      // the device, re-save the keyset (this will save in the device's default
+      // method).
+      //                      1   2   3   4   5   6   7   8   9  10  11  12
+      // use_tpm              -   -   -   X   X   X   X   X   X   -   -   -
+      //
+      // fallback_to_scrypt   -   -   -   -   -   -   X   X   X   X   X   X
+      //
+      // tpm_wrapped          -   X   -   -   X   -   -   X   -   -   X   -
+      //
+      // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
+      //
+      // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
+      bool tpm_wrapped = (wrap_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
+      bool scrypt_wrapped =
+          (wrap_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
+      bool should_tpm = (crypto_->has_tpm() && use_tpm_);
+      bool should_scrypt = fallback_to_scrypt_;
+      do {
+        if (tpm_wrapped && should_tpm)
+          break; // 5, 8
+        if (scrypt_wrapped && should_scrypt && !should_tpm)
+          break; // 12
+        if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
+          break; // 1
+        // TODO(fes): This is not (right now) a fatal error
+        ResaveVaultKeyset(credentials, *vault_keyset);
+      } while(false);
+    }
 
     return true;
   }
@@ -752,7 +754,7 @@ bool Mount::UnwrapVaultKeysetOld(const Credentials& credentials,
   FilePath user_key_file(GetUserKeyFile(credentials));
   if (!file_util::PathExists(user_key_file)) {
     if (error) {
-      *error = MOUNT_ERROR_NO_SUCH_FILE;
+      *error = MOUNT_ERROR_FATAL;
     }
     return false;
   }

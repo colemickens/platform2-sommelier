@@ -21,6 +21,8 @@ namespace cryptohome {
 
 // Default entropy source is used to seed openssl's random number generator
 extern const std::string kDefaultEntropySource;
+// Default number of hash rounds to use when generating  key from a password
+extern const int kDefaultPasswordRounds;
 
 class Crypto : public EntropySource {
  public:
@@ -34,6 +36,16 @@ class Crypto : public EntropySource {
   enum BlockMode {
     ECB = 1,
     CBC = 2,
+  };
+
+  enum CryptoError {
+    CE_NONE = 0,
+    CE_TPM_FATAL = 1,
+    CE_TPM_NONFATAL = 2,
+    CE_TPM_CRYPTO = 3,
+    CE_SCRYPT_CRYPTO = 4,
+    CE_OTHER_FATAL = 5,
+    CE_OTHER_CRYPTO = 6,
   };
 
   // Default constructor, using the default entropy source
@@ -113,10 +125,12 @@ class Crypto : public EntropySource {
   //   wrapped_keyset - The blob containing the encrypted keyset
   //   vault_wrapper - The passkey wrapper used to unwrap the keyset
   //   wrap_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
+  //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The unwrapped vault keyset on success
   bool UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
                          const chromeos::Blob& vault_wrapper,
-                         int* wrap_flags, VaultKeyset* vault_keyset) const;
+                         int* wrap_flags, CryptoError* error,
+                         VaultKeyset* vault_keyset) const;
 
   // Wraps (encrypts) the vault keyset with the given wrapper
   //
@@ -160,10 +174,11 @@ class Crypto : public EntropySource {
   // Parameters
   //   passkey - The passkey (hash, currently) to create the key from
   //   salt - The salt used in creating the key
+  //   rounds - The number of SHA rounds to perform
   //   key (OUT) - The AES key
   //   iv (OUT) - The initialization vector
   bool PasskeyToAesKey(const chromeos::Blob& passkey,
-                       const chromeos::Blob& salt,
+                       const chromeos::Blob& salt, int rounds,
                        SecureBlob* key, SecureBlob* iv) const;
 
   // Converts the passkey to a symmetric key used to decrypt the user's

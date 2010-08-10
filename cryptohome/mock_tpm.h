@@ -22,9 +22,9 @@ class Crypto;
 class MockTpm : public Tpm {
  public:
   MockTpm() {
-    ON_CALL(*this, Encrypt(_, _, _, _))
+    ON_CALL(*this, Encrypt(_, _, _, _, _))
         .WillByDefault(Invoke(this, &MockTpm::Xor));
-    ON_CALL(*this, Decrypt(_, _, _, _))
+    ON_CALL(*this, Decrypt(_, _, _, _, _))
         .WillByDefault(Invoke(this, &MockTpm::Xor));
     ON_CALL(*this, IsConnected())
         .WillByDefault(Return(true));
@@ -36,13 +36,14 @@ class MockTpm : public Tpm {
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_METHOD0(Connect, bool());
   MOCK_METHOD0(Disconnect, void());
-  MOCK_CONST_METHOD4(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
-                                   const chromeos::Blob&, SecureBlob*));
-  MOCK_CONST_METHOD4(Decrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
-                                   const chromeos::Blob&, SecureBlob*));
+  MOCK_CONST_METHOD5(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
+                                   int, const chromeos::Blob&, SecureBlob*));
+  MOCK_CONST_METHOD5(Decrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
+                                   int, const chromeos::Blob&, SecureBlob*));
  private:
   bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,
-                const chromeos::Blob& salt, SecureBlob* data_out) {
+           int password_rounds, const chromeos::Blob& salt,
+           SecureBlob* data_out) {
     SecureBlob local_data_out(data.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {
       local_data_out[i] = data[i] ^ 0x1e;

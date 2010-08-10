@@ -69,7 +69,7 @@ TEST_F(SecureBlobTest, IteratorConstructorTest) {
   SecureBlob blob(from_blob.begin(), from_blob.end());
 
   EXPECT_EQ(from_blob.size(), blob.size());
-  EXPECT_EQ(true, SecureBlobTest::FindBlobInBlob(from_blob, blob));
+  EXPECT_TRUE(SecureBlobTest::FindBlobInBlob(from_blob, blob));
 }
 
 TEST_F(SecureBlobTest, ResizeTest) {

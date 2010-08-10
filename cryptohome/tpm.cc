@@ -103,10 +103,27 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
                                     TSS_HKEY* key_handle) const {
   TSS_RESULT result;
 
+  // Load the Storage Root Key
+  TSS_HKEY srk_handle;
+  if (!LoadSrk(context_handle, &srk_handle)) {
+    return false;
+  }
+
+  // Make sure we can get the public key for the SRK.  If not, then the TPM
+  // is not available.
+  unsigned int size_n;
+  BYTE *public_srk;
+  if ((result = Tspi_Key_GetPubKey(srk_handle, &size_n, &public_srk))) {
+    Tspi_Context_CloseObject(context_handle, srk_handle);
+    return false;
+  }
+  Tspi_Context_FreeMemory(context_handle, public_srk);
+
   // First try loading the key by the UUID
   if ((result = Tspi_Context_LoadKeyByUUID(context_handle, TSS_PS_TYPE_SYSTEM,
                                            key_uuid, key_handle))
       == TSS_SUCCESS) {
+    Tspi_Context_CloseObject(context_handle, srk_handle);
     return true;
   }
 
@@ -126,6 +143,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
         break;
       default:
         LOG(INFO) << "Key size is unknown.";
+        Tspi_Context_CloseObject(context_handle, srk_handle);
         return false;
     }
   }
@@ -134,6 +152,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
                                 TSS_OBJECT_TYPE_RSAKEY,
                                 init_flags, &local_key_handle))) {
     LOG(ERROR) << "Error calling Tspi_Context_CreateObject";
+    Tspi_Context_CloseObject(context_handle, srk_handle);
     return false;
   }
 
@@ -143,6 +162,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
                            TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                            sig_scheme))) {
     LOG(ERROR) << "Error calling Tspi_SetAttribUint32";
+    Tspi_Context_CloseObject(context_handle, srk_handle);
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
   }
@@ -152,13 +172,7 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
                            TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
                            enc_scheme))) {
     LOG(ERROR) << "Error calling Tspi_SetAttribUint32";
-    Tspi_Context_CloseObject(context_handle, local_key_handle);
-    return false;
-  }
-
-  // Load the Storage Root Key
-  TSS_HKEY srk_handle;
-  if (!LoadSrk(context_handle, &srk_handle)) {
+    Tspi_Context_CloseObject(context_handle, srk_handle);
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
   }
@@ -172,16 +186,6 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
       return false;
     }
   } else {
-    unsigned int size_n;
-    BYTE *public_srk;
-    if ((result = Tspi_Key_GetPubKey(srk_handle, &size_n, &public_srk))) {
-      LOG(ERROR) << "Error calling Tspi_Key_GetPubKey";
-      Tspi_Context_CloseObject(context_handle, srk_handle);
-      Tspi_Context_CloseObject(context_handle, local_key_handle);
-      return false;
-    }
-    Tspi_Context_FreeMemory(context_handle, public_srk);
-
     TSS_HPOLICY policy_handle;
     if ((result = Tspi_Context_CreateObject(context_handle,
                                             TSS_OBJECT_TYPE_POLICY,
@@ -351,23 +355,25 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle) const {
 }
 
 bool Tpm::Encrypt(const chromeos::Blob& data, const chromeos::Blob& password,
-                  const chromeos::Blob& salt, SecureBlob* data_out) const {
+                  int password_rounds, const chromeos::Blob& salt,
+                  SecureBlob* data_out) const {
   if (key_handle_ == 0 || context_handle_ == 0) {
     return false;
   }
 
-  return EncryptBlob(context_handle_, key_handle_, data, password, salt,
-                     data_out);
+  return EncryptBlob(context_handle_, key_handle_, data, password,
+                     password_rounds, salt, data_out);
 }
 
 bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
-                  const chromeos::Blob& salt, SecureBlob* data_out) const {
+                  int password_rounds, const chromeos::Blob& salt,
+                  SecureBlob* data_out) const {
   if (key_handle_ == 0 || context_handle_ == 0) {
     return false;
   }
 
-  return DecryptBlob(context_handle_, key_handle_, data, password, salt,
-                     data_out);
+  return DecryptBlob(context_handle_, key_handle_, data, password,
+                     password_rounds, salt, data_out);
 }
 
 bool Tpm::GetKey(SecureBlob* blob) const {
@@ -376,6 +382,14 @@ bool Tpm::GetKey(SecureBlob* blob) const {
   }
 
   return GetKeyBlob(context_handle_, key_handle_, blob);
+}
+
+bool Tpm::GetPublicKey(SecureBlob* blob) const {
+  if (key_handle_ == 0 || context_handle_ == 0) {
+    return false;
+  }
+
+  return GetPublicKeyBlob(context_handle_, key_handle_, blob);
 }
 
 bool Tpm::LoadKey(const SecureBlob& blob) {
@@ -414,7 +428,7 @@ bool Tpm::LoadKey(const SecureBlob& blob) {
 
 bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                       const chromeos::Blob& data,
-                      const chromeos::Blob& password,
+                      const chromeos::Blob& password, int password_rounds,
                       const chromeos::Blob& salt, SecureBlob* data_out) const {
   TSS_RESULT result;
 
@@ -452,7 +466,11 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
 
   SecureBlob aes_key;
   SecureBlob iv;
-  if (!crypto_->PasskeyToAesKey(password, salt, &aes_key, &iv)) {
+  if (!crypto_->PasskeyToAesKey(password,
+                                salt,
+                                password_rounds,
+                                &aes_key,
+                                &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }
@@ -482,11 +500,15 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
 
 bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                       const chromeos::Blob& data,
-                      const chromeos::Blob& password,
+                      const chromeos::Blob& password, int password_rounds,
                       const chromeos::Blob& salt, SecureBlob* data_out) const {
   SecureBlob aes_key;
   SecureBlob iv;
-  if (!crypto_->PasskeyToAesKey(password, salt, &aes_key, &iv)) {
+  if (!crypto_->PasskeyToAesKey(password,
+                                salt,
+                                password_rounds,
+                                &aes_key,
+                                &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }
@@ -538,6 +560,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;
   }
+
   data_out->resize(dec_data_length);
   memcpy(data_out->data(), dec_data, dec_data_length);
   chromeos::SecureMemset(dec_data, 0, dec_data_length);
@@ -557,6 +580,24 @@ bool Tpm::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                                    TSS_TSPATTRIB_KEYBLOB_BLOB,
                                    &blob_size, &blob))) {
     LOG(ERROR) << "Couldn't get key blob";
+    return false;
+  }
+
+  SecureBlob local_data(blob_size);
+  memcpy(local_data.data(), blob, blob_size);
+  chromeos::SecureMemset(blob, 0, blob_size);
+  Tspi_Context_FreeMemory(context_handle, blob);
+  data_out->swap(local_data);
+  return true;
+}
+
+bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+                           SecureBlob* data_out) const {
+  TSS_RESULT result;
+  BYTE *blob;
+  UINT32 blob_size;
+  if ((result = Tspi_Key_GetPubKey(key_handle, &blob_size, &blob))) {
+    LOG(ERROR) << "Error calling Tspi_Key_GetPubKey";
     return false;
   }
 

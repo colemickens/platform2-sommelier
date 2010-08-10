@@ -29,7 +29,7 @@ TEST(UserSessionTest, InitTest) {
   Crypto crypto;
   UserSession session;
   session.Init(&crypto);
-  EXPECT_EQ(true, session.SetUser(up));
+  EXPECT_TRUE(session.SetUser(up));
 }
 
 TEST(UserSessionTest, CheckUserTest) {
@@ -37,8 +37,8 @@ TEST(UserSessionTest, CheckUserTest) {
   Crypto crypto;
   UserSession session;
   session.Init(&crypto);
-  EXPECT_EQ(true, session.SetUser(up));
-  EXPECT_EQ(true, session.CheckUser(up));
+  EXPECT_TRUE(session.SetUser(up));
+  EXPECT_TRUE(session.CheckUser(up));
 }
 
 TEST(UserSessionTest, ReInitTest) {
@@ -47,10 +47,10 @@ TEST(UserSessionTest, ReInitTest) {
   Crypto crypto;
   UserSession session;
   session.Init(&crypto);
-  EXPECT_EQ(true, session.SetUser(up));
-  EXPECT_EQ(true, session.SetUser(up_new));
-  EXPECT_EQ(false, session.CheckUser(up));
-  EXPECT_EQ(true, session.CheckUser(up_new));
+  EXPECT_TRUE(session.SetUser(up));
+  EXPECT_TRUE(session.SetUser(up_new));
+  EXPECT_FALSE(session.CheckUser(up));
+  EXPECT_TRUE(session.CheckUser(up_new));
 }
 
 TEST(UserSessionTest, ResetTest) {
@@ -58,9 +58,9 @@ TEST(UserSessionTest, ResetTest) {
   Crypto crypto;
   UserSession session;
   session.Init(&crypto);
-  EXPECT_EQ(true, session.SetUser(up));
+  EXPECT_TRUE(session.SetUser(up));
   session.Reset();
-  EXPECT_EQ(false, session.CheckUser(up));
+  EXPECT_FALSE(session.CheckUser(up));
 }
 
 TEST(UserSessionTest, VerifyTest) {
@@ -68,8 +68,8 @@ TEST(UserSessionTest, VerifyTest) {
   Crypto crypto;
   UserSession session;
   session.Init(&crypto);
-  EXPECT_EQ(true, session.SetUser(up));
-  EXPECT_EQ(true, session.Verify(up));
+  EXPECT_TRUE(session.SetUser(up));
+  EXPECT_TRUE(session.Verify(up));
 }
 
 }  // namespace cryptohome

@@ -14,4 +14,6 @@ message SerializedVaultKeyset {
   required bytes salt = 2;
   required bytes wrapped_keyset = 3;
   optional bytes tpm_key = 4;
+  optional bytes tpm_public_key_hash = 5;
+  optional int32 password_rounds = 6;
 }

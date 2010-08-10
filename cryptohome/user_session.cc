@@ -48,7 +48,11 @@ bool UserSession::SetUser(const Credentials& credentials) {
 
   SecureBlob aes_key;
   SecureBlob aes_iv;
-  if (!crypto_->PasskeyToAesKey(passkey, key_salt_, &aes_key, &aes_iv)) {
+  if (!crypto_->PasskeyToAesKey(passkey,
+                                key_salt_,
+                                cryptohome::kDefaultPasswordRounds,
+                                &aes_key,
+                                &aes_iv)) {
     return false;
   }
 
@@ -79,7 +83,11 @@ bool UserSession::Verify(const Credentials& credentials) const {
 
   SecureBlob aes_key;
   SecureBlob aes_iv;
-  if (!crypto_->PasskeyToAesKey(passkey, key_salt_, &aes_key, &aes_iv)) {
+  if (!crypto_->PasskeyToAesKey(passkey,
+                                key_salt_,
+                                cryptohome::kDefaultPasswordRounds,
+                                &aes_key,
+                                &aes_iv)) {
     return false;
   }
 

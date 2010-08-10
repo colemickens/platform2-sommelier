@@ -8,52 +8,6 @@
 // and Chrome does a profile switch to that directory.  All user data in their
 // home directory is transparently encrypted, providing protection against
 // offline theft.  On logout, the mount point is removed.
-//
-// Cryptohome manages directories as follows:
-//
-// /home/.shadow                            : Location for the system salt and
-//                                            individual users' salt/key/vault
-// /home/.shadow/<salted_hash_of_username>  : Each Chrome OS user gets a
-//                                            directory in the shadow root where
-//                                            their salts, keys, and vault are
-//                                            stored.
-// /home/.shadow/<s_h_o_u>/vault            : The user's vault (the encrypted
-//                                            version of their home directory)
-// /home/.shadow/<s_h_o_u>/master.0         : Vault keyset for the user.  The
-//                                            vault keyset contains the
-//                                            encrypted file encryption key and
-//                                            encrypted filename encryption key.
-//                                            It also contains the salt used to
-//                                            convert the user's passkey to an
-//                                            AES key, and may contain the
-//                                            TPM-encrypted intermediate key
-//                                            when TPM protection is enabled
-//                                            (see tpm.h for details).
-// /home/chronos/user                       : On successful login, the user's
-//                                            vault directory is mounted here
-//                                            using the symmetric key decrypted
-//                                            from master.X by the user's
-//                                            passkey.
-//
-// Offline login and screen unlock is processed through cryptohome using a test
-// decryption of any of the user's master keys using the passkey provided.
-//
-// A user's cryptohome is automatically created when the vault directory for the
-// user does not exist and the cryptohome service gets a call to mount the
-// user's home directory.
-//
-// Passkey change is implemented through a call to MigratePasskey.
-//
-// TPM protection can currently be enabled/disabled through the configuration
-// file: /home/.shadow/cryptohome.json.  To enable TPM protection, the file
-// should have the following contents:
-// {
-//   "use_tpm": true
-// }
-// Cryptohome will automatically migrate credentials back and forth if this
-// value is changed and the user re-logs in.  TODO(fes): If we default to TPM
-// protection, this configuration item should go away so that the safety cannot
-// be downgraded via configuration on the stateful partition.
 
 #ifndef CRYPTOHOME_MOUNT_H_
 #define CRYPTOHOME_MOUNT_H_
@@ -92,7 +46,7 @@ class Mount : public EntropySource {
     MOUNT_ERROR_FATAL = 1 << 0,
     MOUNT_ERROR_KEY_FAILURE = 1 << 1,
     MOUNT_ERROR_MOUNT_POINT_BUSY = 1 << 2,
-    MOUNT_ERROR_NO_SUCH_FILE = 1 << 3,
+    MOUNT_ERROR_RECREATED = 1 << 31,
   };
 
   // Sets up Mount with the default locations, username, etc., as defined above.
@@ -103,16 +57,13 @@ class Mount : public EntropySource {
   // Gets the uid/gid of the default user and loads the system salt
   virtual bool Init();
 
-  // Loads the cryptohome configuration file
-  virtual void LoadConfigurationFile();
-
   // Attempts to mount the cryptohome for the given credentials
   //
   // Parameters
   //   credentials - The Credentials representing the user
   //   error - The specific error condition on failure
   virtual bool MountCryptohome(const Credentials& credentials,
-                               MountError* error = NULL) const;
+                               MountError* error) const;
 
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome() const;
@@ -129,6 +80,16 @@ class Mount : public EntropySource {
   // Parameters
   //   credentials - The Credentials for which to test the mount point
   virtual bool IsCryptohomeMountedForUser(const Credentials& credentials) const;
+
+  // Checks if the cryptohome vault exists for the given credentials and creates
+  // it if not (calls CreateCryptohome).
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be ensured.
+  //   created (OUT) - Whether the cryptohome was created
+  virtual bool EnsureCryptohome(const Credentials& credentials,
+                                bool* created) const;
 
   // Creates the cryptohome salt, key, and vault for the specified credentials
   //
@@ -194,7 +155,7 @@ class Mount : public EntropySource {
 
   // Override whether to use scrypt for added security when the TPM is off or
   // disabled
-  void set_fallback_to_scrypt_(bool value) {
+  void set_fallback_to_scrypt(bool value) {
     fallback_to_scrypt_ = value;
   }
 
@@ -231,83 +192,6 @@ class Mount : public EntropySource {
   //   path - The file path to read from
   //   content (OUT) - The string value
   static bool LoadFileString(const FilePath& path, std::string* content);
-
- private:
-  // Checks if the cryptohome vault exists for the given credentials and creates
-  // it if not (calls CreateCryptohome).
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user whose cryptohome
-  //     should be ensured.
-  //   created (OUT) - Whether the cryptohome was created
-  virtual bool EnsureCryptohome(const Credentials& credentials,
-                                bool* created) const;
-
-  // Gets the directory in the shadow root where the user's salt, key, and vault
-  // are stored.
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserDirectory(const Credentials& credentials) const;
-
-  // Gets the user's key file name
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserKeyFile(const Credentials& credentials) const;
-
-  // Gets the user's salt file name
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserSaltFile(const Credentials& credentials) const;
-
-  // Gets the user's vault directory
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserVaultPath(const Credentials& credentials) const;
-
-  // Recursively copies directory contents to the destination if the destination
-  // file does not exist.  Sets ownership to the default_user_
-  //
-  // Parameters
-  //   destination - Where to copy files to
-  //   source - Where to copy files from
-  void RecursiveCopy(const FilePath& destination, const FilePath& source) const;
-
-  // Copies the skeleton directory to the user's cryptohome if that user is
-  // currently mounted
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  void CopySkeletonForUser(const Credentials& credentials) const;
-
-  // Copies the skeleton directory to the cryptohome mount point
-  //
-  void CopySkeleton() const;
-
-  // Returns the specified number of random bytes
-  //
-  // Parameters
-  //   rand (IN/OUT) - Where to store the bytes, must be a least length bytes
-  //   length - The number of random bytes to return
-  void GetSecureRandom(unsigned char *rand, int length) const;
-
-  // Creates a new master key and stores it in the master key file for a user
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  bool CreateMasterKey(const Credentials& credentials) const;
-
-  // Returns the user's salt
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  //   force - Whether to force creation of a new salt
-  //   salt (OUT) - The user's salt
-  void GetUserSalt(const Credentials& credentials, bool force_new,
-                   SecureBlob* salt) const;
 
   // Saves the VaultKeyset for the user
   //
@@ -382,6 +266,85 @@ class Mount : public EntropySource {
   bool DeleteCacheFiles(const Credentials& credentials,
                         std::vector<std::string>& files) const;
 
+  // Gets the directory in the shadow root where the user's salt, key, and vault
+  // are stored.
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  std::string GetUserDirectory(const Credentials& credentials) const;
+
+  // Gets the user's key file name
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  std::string GetUserKeyFile(const Credentials& credentials) const;
+
+  // Gets the user's salt file name
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  std::string GetUserSaltFile(const Credentials& credentials) const;
+
+  // Gets the user's vault directory
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  std::string GetUserVaultPath(const Credentials& credentials) const;
+
+ private:
+  // Same as MountCryptohome but specifies if the cryptohome directory should be
+  // recreated on a fatal error
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  //   recreate_unwrap_fatal - Attempt to recreate the cryptohome directory on a
+  //                           fatal error (for example, TPM was cleared)
+  //   error - The specific error condition on failure
+  virtual bool MountCryptohomeInner(const Credentials& credentials,
+                                    bool recreate_unwrap_fatal,
+                                    MountError* error) const;
+
+  // Recursively copies directory contents to the destination if the destination
+  // file does not exist.  Sets ownership to the default_user_
+  //
+  // Parameters
+  //   destination - Where to copy files to
+  //   source - Where to copy files from
+  void RecursiveCopy(const FilePath& destination, const FilePath& source) const;
+
+  // Copies the skeleton directory to the user's cryptohome if that user is
+  // currently mounted
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  void CopySkeletonForUser(const Credentials& credentials) const;
+
+  // Copies the skeleton directory to the cryptohome mount point
+  //
+  void CopySkeleton() const;
+
+  // Returns the specified number of random bytes
+  //
+  // Parameters
+  //   rand (IN/OUT) - Where to store the bytes, must be a least length bytes
+  //   length - The number of random bytes to return
+  void GetSecureRandom(unsigned char *rand, int length) const;
+
+  // Creates a new master key and stores it in the master key file for a user
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  bool CreateMasterKey(const Credentials& credentials) const;
+
+  // Returns the user's salt
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  //   force - Whether to force creation of a new salt
+  //   salt (OUT) - The user's salt
+  void GetUserSalt(const Credentials& credentials, bool force_new,
+                   SecureBlob* salt) const;
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -422,9 +385,6 @@ class Mount : public EntropySource {
 
   // Whether to use the TPM for added security
   bool use_tpm_;
-
-  // Whether to process the configuration file
-  bool process_config_;
 
   // Used to keep track of the current logged-in user
   scoped_ptr<UserSession> default_current_user_;

@@ -30,8 +30,8 @@ TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
 
   char user[] = "chromeos-user";
   char key[] = "274146c6e8886a843ddfea373e2dc71b";
-  EXPECT_EQ(TRUE, service.CheckKey(user, key, &out, &error));
-  EXPECT_EQ(TRUE, out);
+  EXPECT_TRUE(service.CheckKey(user, key, &out, &error));
+  EXPECT_TRUE(out);
 }
 
 // TODO(wad) setup test fixture to create a temp dir

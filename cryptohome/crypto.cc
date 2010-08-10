@@ -41,6 +41,8 @@ const int kScryptMaxMem = 32 * 1024 * 1024;
 const double kScryptMaxEncryptTime = 0.333;
 const double kScryptMaxDecryptTime = 1.0;
 const int kScryptHeaderLength = 128;
+const int kDefaultLegacyPasswordRounds = 1;
+const int kDefaultPasswordRounds = 1337;
 
 Crypto::Crypto()
     : entropy_source_(kDefaultEntropySource),
@@ -339,7 +341,7 @@ bool Crypto::UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
 }
 
 bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
-                             const chromeos::Blob& salt,
+                             const chromeos::Blob& salt, int rounds,
                              SecureBlob* key, SecureBlob* iv) const {
   if (salt.size() != PKCS5_SALT_LEN) {
     LOG(ERROR) << "Bad salt size.";
@@ -356,7 +358,7 @@ bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
                       &salt[0],
                       &passkey[0],
                       passkey.size(),
-                      1,
+                      rounds,
                       static_cast<unsigned char*>(wrapper_key.data()),
                       static_cast<unsigned char*>(local_iv.data()))) {
     LOG(ERROR) << "Failure converting bytes to key";
@@ -558,15 +560,24 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
 
 bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
                                const chromeos::Blob& vault_wrapper,
-                               int* wrap_flags,
+                               int* wrap_flags, CryptoError* error,
                                VaultKeyset* vault_keyset) const {
   if (wrap_flags) {
     *wrap_flags = 0;
   }
+  if (error) {
+    *error = CE_NONE;
+  }
   SerializedVaultKeyset serialized;
-  serialized.ParseFromArray(
-      static_cast<const unsigned char*>(&wrapped_keyset[0]),
-      wrapped_keyset.size());
+  if (!serialized.ParseFromArray(
+           static_cast<const unsigned char*>(&wrapped_keyset[0]),
+           wrapped_keyset.size())) {
+    LOG(ERROR) << "Vault keyset deserialization failed, it must be corrupt.";
+    if (error) {
+      *error = CE_OTHER_FATAL;
+    }
+    return false;
+  }
   SecureBlob local_wrapped_keyset(serialized.wrapped_keyset().length());
   serialized.wrapped_keyset().copy(
       static_cast<char*>(local_wrapped_keyset.data()),
@@ -574,6 +585,15 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
   SecureBlob salt(serialized.salt().length());
   serialized.salt().copy(static_cast<char*>(salt.data()),
                          serialized.salt().length(), 0);
+
+  // On unwrap, default to the legacy password rounds, and use the value in the
+  // SerializedVaultKeyset if it exists
+  int rounds;
+  if (serialized.has_password_rounds()) {
+    rounds = serialized.password_rounds();
+  } else {
+    rounds = kDefaultLegacyPasswordRounds;
+  }
 
   SecureBlob local_vault_wrapper(vault_wrapper.begin(), vault_wrapper.end());
   // Check if the vault keyset was TPM-wrapped
@@ -586,14 +606,58 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     if (tpm_ == NULL) {
       LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                  << "unavailable";
+      // TODO(fes): Revisit the decision to make this a fatal error.  Having
+      // this be a fatal error means the user's crytpohome will be deleted and
+      // recreated.
+      if (error) {
+        *error = CE_TPM_FATAL;
+      }
       return false;
+    }
+    // Check if the public key for this keyset matches the public key on this
+    // TPM.  If not, we cannot recover.
+    if (serialized.has_tpm_public_key_hash()) {
+      SecureBlob serialized_pub_key_hash(
+          serialized.tpm_public_key_hash().length());
+      serialized.tpm_public_key_hash().copy(
+          static_cast<char*>(serialized_pub_key_hash.data()),
+          serialized.tpm_public_key_hash().length(),
+          0);
+      SecureBlob pub_key;
+      if (!tpm_->GetPublicKey(&pub_key)) {
+        LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
+        // TODO(fes): Revisit the decision to make this a fatal error.  Having
+        // this be a fatal error means the user's crytpohome will be deleted and
+        // recreated.
+        if (error) {
+          *error = CE_TPM_FATAL;
+        }
+        return false;
+      }
+      SecureBlob pub_key_hash;
+      GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
+      if ((serialized_pub_key_hash.size() != pub_key_hash.size()) ||
+          (memcmp(serialized_pub_key_hash.data(),
+                  pub_key_hash.data(),
+                  pub_key_hash.size()))) {
+        LOG(ERROR) << "Fatal key error--the cryptohome public key does not "
+                   << "match the one used to encrypt this keyset.";
+        if (error) {
+          *error = CE_TPM_FATAL;
+        }
+        return false;
+      }
     }
     SecureBlob tpm_key(serialized.tpm_key().length());
     serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
                               serialized.tpm_key().length(), 0);
-    if (!tpm_->Decrypt(tpm_key, vault_wrapper, salt, &local_vault_wrapper)) {
+    if (!tpm_->Decrypt(tpm_key, vault_wrapper, rounds, salt,
+                       &local_vault_wrapper)) {
       LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
                  << "supplied credentials";
+      if (error) {
+        *error = CE_TPM_CRYPTO;
+      }
       return false;
     }
   }
@@ -616,6 +680,9 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
             100.0,
             kScryptMaxDecryptTime)) {
       LOG(ERROR) << "Scrypt decryption failed";
+      if (error) {
+        *error = CE_SCRYPT_CRYPTO;
+      }
       return false;
     }
     decrypted.resize(out_len);
@@ -624,6 +691,9 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     GetSha1(decrypted, 0, hash_offset, &hash);
     if (memcmp(hash.data(), &decrypted[hash_offset], hash.size())) {
       LOG(ERROR) << "Scrypt hash verification failed";
+      if (error) {
+        *error = CE_SCRYPT_CRYPTO;
+      }
       return false;
     }
     decrypted.resize(hash_offset);
@@ -631,14 +701,24 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
   } else {
     SecureBlob wrapper_key;
     SecureBlob iv;
-    if (!PasskeyToAesKey(local_vault_wrapper, salt, &wrapper_key, &iv)) {
+    if (!PasskeyToAesKey(local_vault_wrapper,
+                         salt,
+                         rounds,
+                         &wrapper_key,
+                         &iv)) {
       LOG(ERROR) << "Failure converting passkey to key";
+      if (error) {
+        *error = CE_OTHER_FATAL;
+      }
       return false;
     }
 
     if (!UnwrapAes(local_wrapped_keyset, 0, local_wrapped_keyset.size(),
                    wrapper_key, iv, PADDING_CRYPTOHOME_DEFAULT, &plain_text)) {
       LOG(ERROR) << "AES decryption failed.";
+      if (error) {
+        *error = CE_OTHER_CRYPTO;
+      }
       return false;
     }
   }
@@ -657,6 +737,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     return false;
   }
 
+  int rounds = kDefaultPasswordRounds;
   bool tpm_wrapped = false;
   SecureBlob local_vault_wrapper(vault_wrapper.begin(), vault_wrapper.end());
   SecureBlob tpm_key;
@@ -670,8 +751,8 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   if (use_tpm_ && tpm_ != NULL) {
     GetSecureRandom(static_cast<unsigned char*>(local_vault_wrapper.data()),
                     local_vault_wrapper.size());
-    if (tpm_->Encrypt(local_vault_wrapper, vault_wrapper, vault_wrapper_salt,
-                     &tpm_key)) {
+    if (tpm_->Encrypt(local_vault_wrapper, vault_wrapper, rounds,
+                      vault_wrapper_salt, &tpm_key)) {
       tpm_wrapped = true;
     } else {
       local_vault_wrapper.resize(vault_wrapper.size());
@@ -711,8 +792,8 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   } else {
     SecureBlob wrapper_key;
     SecureBlob iv;
-    if (!PasskeyToAesKey(local_vault_wrapper, vault_wrapper_salt, &wrapper_key,
-                         &iv)) {
+    if (!PasskeyToAesKey(local_vault_wrapper, vault_wrapper_salt,
+                         rounds, &wrapper_key, &iv)) {
       LOG(ERROR) << "Failure converting passkey to key";
       return false;
     }
@@ -731,6 +812,14 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     keyset_flags = SerializedVaultKeyset::TPM_WRAPPED;
     serialized.set_tpm_key(tpm_key.const_data(),
                            tpm_key.size());
+    // Store the hash of the cryptohome public key
+    SecureBlob pub_key;
+    if (tpm_->GetPublicKey(&pub_key)) {
+      SecureBlob pub_key_hash;
+      GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
+      serialized.set_tpm_public_key_hash(pub_key_hash.const_data(),
+                                         pub_key_hash.size());
+    }
   }
   if (scrypt_wrapped) {
     keyset_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
@@ -739,6 +828,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   serialized.set_salt(vault_wrapper_salt.const_data(),
                       vault_wrapper_salt.size());
   serialized.set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  serialized.set_password_rounds(rounds);
 
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
@@ -765,7 +855,8 @@ bool Crypto::UnwrapVaultKeysetOld(const chromeos::Blob& wrapped_keyset,
 
   SecureBlob wrapper_key;
   SecureBlob iv;
-  if (!PasskeyToAesKey(vault_wrapper, salt, &wrapper_key, &iv)) {
+  if (!PasskeyToAesKey(vault_wrapper, salt, kDefaultLegacyPasswordRounds,
+                       &wrapper_key, &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }
@@ -805,7 +896,8 @@ bool Crypto::WrapVaultKeysetOld(const VaultKeyset& vault_keyset,
 
   SecureBlob wrapper_key;
   SecureBlob iv;
-  if (!PasskeyToAesKey(vault_wrapper, vault_wrapper_salt, &wrapper_key, &iv)) {
+  if (!PasskeyToAesKey(vault_wrapper, vault_wrapper_salt,
+                       kDefaultLegacyPasswordRounds, &wrapper_key, &iv)) {
     LOG(ERROR) << "Failure converting passkey to key";
     return false;
   }

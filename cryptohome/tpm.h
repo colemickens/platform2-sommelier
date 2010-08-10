@@ -6,51 +6,7 @@
 // the TPM may be used as a way to strenghten the security of the wrapped vault
 // keys stored on disk.  When the TPM is enabled, there is a system-wide
 // cryptohome RSA key that is used during the encryption/decryption of these
-// keys.  The method when TPM is enabled:
-//
-//   UP -
-//       |
-//       + AES (no padding) => IEVKK -
-//       |                            |
-// EVKK -                             |
-//                                    + RSA (in TPM) => VKK
-//                                    |
-//                                    |
-//                           TPM_CHK -
-//
-// Where:
-//   UP - User Passkey
-//   EVKK - Ecrypted vault keyset key (stored on disk)
-//   IEVKK - Intermediate vault keyset key
-//   TPM_CHK - TPM-wrapped system-wide Cryptohome Key
-//   VKK - Vault Keyset Key
-//
-// The end result, the Vault Keyset Key (VKK), is an AES key that is used to
-// decrypt the Vault Keyset, which holds the ecryptfs keys (filename encryption
-// key and file encryption key).
-//
-// The User Passkey (UP) is used as an AES key to do an initial decrypt of the
-// encrypted "tpm_key" field in the SerializedVaultKeyset (see
-// vault_keyset.proto).  This is done without padding as the decryption is done
-// in-place and the resulting buffer is fed into an RSA decrypt on the TPM as
-// the cipher text.  That RSA decrypt uses the system-wide TPM-wrapped
-// cryptohome key.  In this manner, we can use a randomly-created system-wide
-// key (the TPM has a limited number of key slots), but still require the user's
-// passkey during the decryption phase.  This also increases the brute-force
-// cost of attacking the SerializedVaultKeyset offline as it means that the
-// attacker would have to do a TPM cipher operation per password attempt
-// (assuming that the wrapped key could not be recovered).
-//
-// After obtaining the VKK, the method is:
-//
-// VKK -
-//      |
-//      + AES (PKCS#5 padding + SHA1 verification) => VK
-//      |
-// EVK -
-//
-// By comparison, when the TPM is not enabled, the UP is used as the VKK, and
-// the decryption of the Vault Keyset (VK) is merely the process above.
+// keys.
 
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
@@ -100,10 +56,12 @@ class Tpm {
   //   data - The data to encrypt (must be small enough to fit into a single RSA
   //          decrypt--Tpm does not do blocking)
   //   password - The password to use as the UP in the method described above
+  //   password_rounds - The number of hash rounds to use creating a key from
+  //                     the password
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The encrypted data
   virtual bool Encrypt(const chromeos::Blob& data,
-                       const chromeos::Blob& password,
+                       const chromeos::Blob& password, int password_rounds,
                        const chromeos::Blob& salt, SecureBlob* data_out) const;
 
   // Decrypts a data blob using the TPM cryptohome RSA key
@@ -111,10 +69,12 @@ class Tpm {
   // Parameters
   //   data - The encrypted data
   //   password - The password to use as the UP in the method described above
+  //   password_rounds - The number of hash rounds to use creating a key from
+  //                     the password
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The decrypted data
   virtual bool Decrypt(const chromeos::Blob& data,
-                       const chromeos::Blob& password,
+                       const chromeos::Blob& password, int password_rounds,
                        const chromeos::Blob& salt, SecureBlob* data_out) const;
 
   // Returns the maximum number of RSA keys that the TPM can hold simultaneously
@@ -122,6 +82,8 @@ class Tpm {
 
   // Retrieves the TPM-wrapped cryptohome RSA key
   bool GetKey(SecureBlob* blob) const;
+  // Retrieves the Public key component of the cryptohome RSA key
+  bool GetPublicKey(SecureBlob* blob) const;
   // Loads the cryptohome RSA key from the specified TPM-wrapped key
   bool LoadKey(const SecureBlob& blob);
 
@@ -158,14 +120,19 @@ class Tpm {
 
   bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
-                   const chromeos::Blob& salt, SecureBlob* data_out) const;
+                   int password_rounds, const chromeos::Blob& salt,
+                   SecureBlob* data_out) const;
 
   bool DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
-                   const chromeos::Blob& salt, SecureBlob* data_out) const;
+                   int password_rounds, const chromeos::Blob& salt,
+                   SecureBlob* data_out) const;
 
   bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                   SecureBlob* data_out) const;
+
+  bool GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+                        SecureBlob* data_out) const;
 
   bool LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
                    TSS_HKEY* key_handle) const;

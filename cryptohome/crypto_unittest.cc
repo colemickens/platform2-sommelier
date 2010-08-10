@@ -82,13 +82,12 @@ TEST_F(CryptoTest, EncryptionTest) {
                          salt.size());
 
   SecureBlob wrapped;
-  ASSERT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
-                                         &wrapped));
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
 
   SecureBlob original;
-  ASSERT_EQ(true, vault_keyset.ToKeysBlob(&original));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original));
 
-  ASSERT_EQ(false, CryptoTest::FindBlobInBlob(wrapped, original));
+  ASSERT_FALSE(CryptoTest::FindBlobInBlob(wrapped, original));
 }
 
 TEST_F(CryptoTest, DecryptionTest) {
@@ -106,23 +105,23 @@ TEST_F(CryptoTest, DecryptionTest) {
                          salt.size());
 
   SecureBlob wrapped;
-  ASSERT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
-                                         &wrapped));
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
 
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
   int wrap_flags = 0;
-  ASSERT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
-                                           &new_keyset));
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+                                       &crypto_error, &new_keyset));
 
   SecureBlob original_data;
-  ASSERT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
   SecureBlob new_data;
-  ASSERT_EQ(true, new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
 }
 
 TEST_F(CryptoTest, SaltCreateTest) {
@@ -133,22 +132,22 @@ TEST_F(CryptoTest, SaltCreateTest) {
 
   file_util::Delete(salt_path, false);
 
-  ASSERT_EQ(false, file_util::PathExists(salt_path));
+  ASSERT_FALSE(file_util::PathExists(salt_path));
 
   SecureBlob salt;
   crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
 
   ASSERT_EQ(32, salt.size());
-  ASSERT_EQ(true, file_util::PathExists(salt_path));
+  ASSERT_TRUE(file_util::PathExists(salt_path));
 
   SecureBlob new_salt;
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
 
   ASSERT_EQ(32, new_salt.size());
-  ASSERT_EQ(true, file_util::PathExists(salt_path));
+  ASSERT_TRUE(file_util::PathExists(salt_path));
 
   ASSERT_EQ(salt.size(), new_salt.size());
-  ASSERT_EQ(false, CryptoTest::FindBlobInBlob(salt, new_salt));
+  ASSERT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
 
   file_util::Delete(salt_path, false);
 }
@@ -185,8 +184,8 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   EXPECT_CALL(tpm, Init(_, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
+  EXPECT_CALL(tpm, Encrypt(_, _, _, _, _));
+  EXPECT_CALL(tpm, Decrypt(_, _, _, _, _));
 
   crypto.Init();
 
@@ -201,23 +200,23 @@ TEST_F(CryptoTest, TpmStepTest) {
                          salt.size());
 
   SecureBlob wrapped;
-  ASSERT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
-                                         &wrapped));
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
 
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
   int wrap_flags = 0;
-  ASSERT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
-                                           &new_keyset));
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+                                       &crypto_error, &new_keyset));
 
   SecureBlob original_data;
-  ASSERT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
   SecureBlob new_data;
-  ASSERT_EQ(true, new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
 }
 
 TEST_F(CryptoTest, ScryptStepTest) {
@@ -239,23 +238,23 @@ TEST_F(CryptoTest, ScryptStepTest) {
                          salt.size());
 
   SecureBlob wrapped;
-  ASSERT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
-                                         &wrapped));
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
 
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
   int wrap_flags = 0;
-  ASSERT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
-                                           &new_keyset));
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+                                       &crypto_error, &new_keyset));
 
   SecureBlob original_data;
-  ASSERT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
   SecureBlob new_data;
-  ASSERT_EQ(true, new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
 }
 
 TEST_F(CryptoTest, TpmScryptStepTest) {
@@ -268,10 +267,9 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.set_use_tpm(true);
   crypto.set_fallback_to_scrypt(true);
 
-  EXPECT_CALL(tpm, Init(_, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(tpm, Encrypt(_, _, _, _));
-  EXPECT_CALL(tpm, Decrypt(_, _, _, _));
+  EXPECT_CALL(tpm, Init(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(tpm, Encrypt(_, _, _, _, _));
+  EXPECT_CALL(tpm, Decrypt(_, _, _, _, _));
 
   crypto.Init();
 
@@ -286,23 +284,23 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
                          salt.size());
 
   SecureBlob wrapped;
-  ASSERT_EQ(true, crypto.WrapVaultKeyset(vault_keyset, wrapper, salt,
-                                         &wrapped));
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
 
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
   int wrap_flags = 0;
-  ASSERT_EQ(true, crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
-                                           &new_keyset));
+  Crypto::CryptoError crypto_error = Crypto::CE_NONE;
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+                                       &crypto_error, &new_keyset));
 
   SecureBlob original_data;
-  ASSERT_EQ(true, vault_keyset.ToKeysBlob(&original_data));
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
   SecureBlob new_data;
-  ASSERT_EQ(true, new_keyset.ToKeysBlob(&new_data));
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
 
   EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_EQ(true, CryptoTest::FindBlobInBlob(new_data, original_data));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
 }
 
 } // namespace cryptohome

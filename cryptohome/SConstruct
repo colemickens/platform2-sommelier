@@ -71,6 +71,7 @@ test_sources = env.Split("""crypto_unittest.cc
                             username_passkey_unittest.cc
                             vault_keyset_unittest.cc
                             user_session_unittest.cc
+                            make_tests.cc
                             cryptohome_testrunner.cc
                          """)
 

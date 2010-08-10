@@ -374,6 +374,17 @@ int main(int argc, char **argv) {
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
       printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
     }
+    if (serialized.has_tpm_public_key_hash()) {
+      blob.resize(serialized.tpm_public_key_hash().length());
+      serialized.tpm_public_key_hash().copy(static_cast<char*>(blob.data()),
+                                            serialized.tpm_key().length(), 0);
+      printf("  TPM Public Key Hash:\n");
+      printf("    %s\n", chromeos::AsciiEncode(blob).c_str());
+    }
+    if (serialized.has_password_rounds()) {
+      printf("  Password rounds:\n");
+      printf("    %d\n", serialized.password_rounds());
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {
     chromeos::glib::ScopedError error;

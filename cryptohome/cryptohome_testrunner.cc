@@ -5,7 +5,14 @@
 #include <chromeos/dbus/dbus.h>
 #include <gtest/gtest.h>
 
+#include "make_tests.h"
+
+const char* kDefaultImageDir = "test_image_dir";
+
 int main(int argc, char **argv) {
+  cryptohome::MakeTests make_tests;
+  make_tests.InitTestData(std::string(kDefaultImageDir));
+
   ::g_type_init();
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
