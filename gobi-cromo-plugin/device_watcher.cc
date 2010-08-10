@@ -24,8 +24,9 @@ static gboolean timeout_event(gpointer data) {
   return TRUE;
 }
 
-DeviceWatcher::DeviceWatcher()
-  : device_callback_(NULL),
+DeviceWatcher::DeviceWatcher(const char* subsystem)
+  : subsystem_(subsystem),
+    device_callback_(NULL),
     timeout_callback_(NULL),
     udev_(NULL),
     udev_monitor_(NULL),
@@ -34,17 +35,10 @@ DeviceWatcher::DeviceWatcher()
 }
 
 DeviceWatcher::~DeviceWatcher() {
-  if (udev_watch_id_ != 0)
-    g_source_remove(udev_watch_id_);
-  if (udev_monitor_ != NULL) {
-    udev_monitor_filter_remove(udev_monitor_);
-    udev_monitor_unref(udev_monitor_);
-  }
-  if (udev_ != NULL)
-    udev_unref(udev_);
+  StopMonitoring();
 }
 
-void DeviceWatcher::StartMonitoring(const char* subsystem) {
+void DeviceWatcher::StartMonitoring() {
   if (udev_ != NULL) {
     LOG(WARNING) << "StartMonitoring called with monitoring already in effect";
     return;
@@ -62,13 +56,14 @@ void DeviceWatcher::StartMonitoring(const char* subsystem) {
     return;
   }
   int rc = udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-                                                           subsystem,
+                                                           subsystem_.c_str(),
                                                            NULL);
   if (rc != 0) {
     LOG(WARNING) << "Failed to add udev_monitor subsystem filter: " << rc;
     udev_monitor_unref(udev_monitor_);
     udev_unref(udev_);
     udev_ = NULL;
+    udev_monitor_ = NULL;
   }
   rc = udev_monitor_enable_receiving(udev_monitor_);
   if (rc != 0) {
@@ -76,6 +71,7 @@ void DeviceWatcher::StartMonitoring(const char* subsystem) {
     udev_monitor_unref(udev_monitor_);
     udev_unref(udev_);
     udev_ = NULL;
+    udev_monitor_ = NULL;
   }
   int fd = udev_monitor_get_fd(udev_monitor_);
 
@@ -85,6 +81,22 @@ void DeviceWatcher::StartMonitoring(const char* subsystem) {
   g_io_channel_set_buffered(iochan, FALSE);
   udev_watch_id_ = g_io_add_watch(iochan, G_IO_IN, udev_event, this);
   g_io_channel_unref(iochan);
+}
+
+void DeviceWatcher::StopMonitoring() {
+  if (udev_watch_id_ != 0) {
+    g_source_remove(udev_watch_id_);
+    udev_watch_id_ = 0;
+  }
+  if (udev_monitor_ != NULL) {
+    udev_monitor_filter_remove(udev_monitor_);
+    udev_monitor_unref(udev_monitor_);
+    udev_monitor_ = NULL;
+  }
+  if (udev_ != NULL) {
+    udev_unref(udev_);
+    udev_ = NULL;
+  }
 }
 
 void DeviceWatcher::StartPolling(int interval_secs,

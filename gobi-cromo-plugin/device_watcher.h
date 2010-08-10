@@ -8,6 +8,8 @@
 
 #include <glib.h>
 
+#include <string>
+
 // Use udev to keep track of additions and removals of devices
 struct udev;
 struct udev_monitor;
@@ -18,10 +20,11 @@ typedef void (*TimeoutCallback)(void*);
 
 class DeviceWatcher {
  public:
-  DeviceWatcher();
+  DeviceWatcher(const char* subsystem);
   ~DeviceWatcher();
 
-  void StartMonitoring(const char* subsystem);
+  void StartMonitoring();
+  void StopMonitoring();
   void StartPolling(int interval_secs,
                     TimeoutCallback callback,
                     void* userdata);
@@ -32,6 +35,7 @@ class DeviceWatcher {
   void set_callback(DeviceCallback callback, void* userdata);
 
  private:
+  std::string subsystem_;
   DeviceCallback device_callback_;
   void* device_callback_arg_;
   TimeoutCallback timeout_callback_;

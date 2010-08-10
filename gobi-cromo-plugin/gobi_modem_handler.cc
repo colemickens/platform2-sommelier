@@ -46,6 +46,7 @@ GobiModemHandler::~GobiModemHandler() {
 
 bool GobiModemHandler::Initialize() {
   GOBI_SDK.Init();
+  GobiModem::set_handler(this);
   MonitorDevices();
   RegisterSelf();
   return true;
@@ -57,9 +58,9 @@ bool GobiModemHandler::Initialize() {
 // event is visible via EnumerateDevices. At that
 // point, we stop polling.
 void GobiModemHandler::MonitorDevices() {
-  device_watcher_ = new DeviceWatcher();
+  device_watcher_ = new DeviceWatcher(kQCDeviceName);
   device_watcher_->set_callback(udev_callback, this);
-  device_watcher_->StartMonitoring(kQCDeviceName);
+  device_watcher_->StartMonitoring();
   GetDeviceList();
 }
 
@@ -110,7 +111,6 @@ bool GobiModemHandler::GetDeviceList() {
       something_changed = true;
       GobiModem* m = new GobiModem(server().conn(),
                                    MakePath(),
-                                   this,
                                    devices[i],
                                    &GOBI_SDK);
       m->set_last_seen(scan_generation_);
@@ -147,6 +147,25 @@ vector<DBus::Path> GobiModemHandler::EnumerateDevices(DBus::Error& error) {
     to_return.push_back(p->second->path());
   }
   return to_return;
+}
+
+GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
+{
+  for (KeyToModem::iterator p = key_to_modem_.begin();
+       p != key_to_modem_.end(); ++p) {
+    GobiModem* m = p->second;
+    if (m->path() == path)
+      return m;
+  }
+  return NULL;
+}
+
+void GobiModemHandler::StartDeviceMonitor() {
+  device_watcher_->StartMonitoring();
+}
+
+void GobiModemHandler::StopDeviceMonitor() {
+  device_watcher_->StopMonitoring();
 }
 
 static void onload(CromoServer* server) {

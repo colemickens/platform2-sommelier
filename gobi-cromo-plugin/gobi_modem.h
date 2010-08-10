@@ -6,6 +6,7 @@
 #ifndef PLUGIN_GOBI_MODEM_H_
 #define PLUGIN_GOBI_MODEM_H_
 
+#include <glib.h>
 #include <pthread.h>
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
@@ -41,7 +42,6 @@ class GobiModem
 
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
-            GobiModemHandler *handler,
             const DEVICE_ELEMENT &device,
             gobi::Sdk *sdk);
 
@@ -89,15 +89,13 @@ class GobiModem
                                DBus::Variant& value,
                                DBus::Error& error);
 
-  void UpdateDataBearerTechnology();
-  void UpdateRegistrationState();
+  static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
 
  protected:
   void ActivateOmadm(DBus::Error& error);
   // Verizon uses OTASP, code *22899
   void ActivateOtasp(const std::string& number, DBus::Error& error);
   void ApiConnect(DBus::Error& error);
-  void EnsureFirmwareLoaded(const char* carrier_name, DBus::Error& error);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);
@@ -134,35 +132,73 @@ class GobiModem
   }
   void OmadmStateCallback(ULONG session_state, ULONG failure_reason);
 
+  struct CallbackArgs {
+    CallbackArgs(GobiModem* modem)
+     : path(new DBus::Path(modem->path())) { }
+    ~CallbackArgs() { delete path; }
+    DBus::Path* path;
+  };
+
+  struct SessionStateArgs : public CallbackArgs {
+    SessionStateArgs(GobiModem* modem,
+                     ULONG state,
+                     ULONG session_end_reason)
+      : CallbackArgs(modem),
+        state(state),
+        session_end_reason(session_end_reason) { }
+    ULONG state;
+    ULONG session_end_reason;
+  };
+
   static void SessionStateCallbackTrampoline(ULONG state,
                                              ULONG session_end_reason) {
     if (connected_modem_) {
-      connected_modem_->SessionStateCallback(state, session_end_reason);
+      SessionStateArgs* args =
+          new SessionStateArgs(connected_modem_,
+                               state,
+                               session_end_reason);
+      g_idle_add(SessionStateCallback, args);
     }
   }
-  void SessionStateCallback(ULONG state, ULONG session_end_reason);
+  static gboolean SessionStateCallback(gpointer data);
 
   static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
+    // ignore the supplied argument
     if (connected_modem_) {
-      connected_modem_->DataBearerCallback(data_bearer_technology);
+      g_idle_add(RegistrationStateCallback, new CallbackArgs(connected_modem_));
     }
   }
-  void DataBearerCallback(ULONG dataBearerTechnology);
 
   static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
+    // ignore the supplied argument
     if (connected_modem_) {
-      connected_modem_->RoamingIndicatorCallback(roaming);
+      g_idle_add(RegistrationStateCallback, new CallbackArgs(connected_modem_));
     }
   }
-  void RoamingIndicatorCallback(ULONG roaming);
+  static gboolean RegistrationStateCallback(gpointer data);
+
+  struct SignalStrengthArgs : public CallbackArgs {
+    SignalStrengthArgs(GobiModem* modem,
+                       INT8 signal_strength,
+                       ULONG radio_interface)
+      : CallbackArgs(modem),
+        signal_strength(signal_strength),
+        radio_interface(radio_interface) { }
+    INT8 signal_strength;
+    ULONG radio_interface;
+  };
 
   static void SignalStrengthCallbackTrampoline(INT8 signal_strength,
                                                ULONG radio_interface) {
     if (connected_modem_) {
-      connected_modem_->SignalStrengthCallback(signal_strength, radio_interface);
+      SignalStrengthArgs* args =
+          new SignalStrengthArgs(connected_modem_,
+                                 signal_strength,
+                                 radio_interface);
+      g_idle_add(SignalStrengthCallback, args);
     }
   }
-  void SignalStrengthCallback(INT8 signal_strength, ULONG radio_interface);
+  static gboolean SignalStrengthCallback(gpointer data);
 
   static void *NMEAThreadTrampoline(void *arg) {
     if (connected_modem_)
@@ -177,8 +213,13 @@ class GobiModem
   void SetModemProperties();
 
   void StartNMEAThread();
+  // Handlers for events delivered as callbacks by the SDK. These
+  // all run in the main thread.
+  void RegistrationStateHandler();
+  void SignalStrengthHandler(INT8 signal_strength, ULONG radio_interface);
+  void SessionStateHandler(ULONG state, ULONG session_end_reason);
 
-  GobiModemHandler *handler_;
+  static GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
   DEVICE_ELEMENT device_;
@@ -192,7 +233,6 @@ class GobiModem
   ULONG activation_state_;
   ULONG session_state_;
   ULONG session_id_;
-  INT8  signal_strength_;
 
   static GobiModem *connected_modem_;
 

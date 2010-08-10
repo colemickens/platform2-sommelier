@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include "gobi_modem.h"
+#include "gobi_modem_handler.h"
 
-#include <glib.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/stat.h>
@@ -204,21 +204,19 @@ static struct udev_enumerate *enumerate_net_devices(struct udev *udev)
 }
 
 GobiModem* GobiModem::connected_modem_(NULL);
+GobiModemHandler* GobiModem::handler_;
 
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
-                     GobiModemHandler* handler,
                      const DEVICE_ELEMENT& device,
                      gobi::Sdk* sdk)
     : DBus::ObjectAdaptor(connection, path),
-      handler_(handler),
       sdk_(sdk),
       last_seen_(-1),
       nmea_fd(-1),
       activation_state_(0),
       session_state_(gobi::kDisconnected),
-      session_id_(0),
-      signal_strength_(-127) {
+      session_id_(0) {
   memcpy(&device_, &device, sizeof(device_));
 
   pthread_mutex_init(&activation_mutex_, NULL);
@@ -335,7 +333,7 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
 void GobiModem::Disconnect(DBus::Error& error) {
   LOG(INFO) << "Disconnect(" << session_id_ << ")";
   if (session_state_ != gobi::kConnected) {
-    LOG(WARNING) << "Disconnect called when not connecting";
+    LOG(WARNING) << "Disconnect called when not connected";
     error.set(kDisconnectError, "Not connected");
     return;
   }
@@ -388,10 +386,6 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
 // DBUS Methods: ModemSimple
 void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   LOG(INFO) << "Simple.Connect";
-
-  if (!Enabled()) {
-    Enable(true, error);
-  }
   Connect("unused_number", error);
 }
 
@@ -776,6 +770,12 @@ void GobiModem::ResetModem(DBus::Error& error) {
   Enabled = false;
   LOG(INFO) << "Offline";
 
+  // Resetting the modem will cause it to disappear and reappear,
+  // but because both the reset and the handling of udev events
+  // happen in the main thread, we would not see either the Remove
+  // or the Add events until after the reset is finished. So
+  // we turn off monitoring while the reset is in progress
+  handler_->StopDeviceMonitor();
   ULONG rc = sdk_->SetPower(gobi::kOffline);
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 
@@ -802,6 +802,7 @@ void GobiModem::ResetModem(DBus::Error& error) {
   if (!tmperr.is_set()) {
     LOG(WARNING) << "Modem reset:  Modem never disconnected";
     error.set(kDisconnectError, "Modem never disconnected");
+    handler_->StartDeviceMonitor();
     return;
   }
   LOG(INFO) << "Modem reset:  Modem now unavailable";
@@ -820,11 +821,11 @@ void GobiModem::ResetModem(DBus::Error& error) {
     // TODO(rochberg):  Send DeviceRemoved
     LOG(WARNING) << "Modem did not come back after reset";
     error.set(kConnectError, "Modem did not come back after reset");
-    return;
   } else {
     LOG(INFO) << "Modem returned from reset";
+    Enabled = true;
   }
-  Enabled = true;
+  handler_->StartDeviceMonitor();
 }
 
 
@@ -854,9 +855,9 @@ void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
    }
 }
 
-void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
-                                     DBus::Error& error) {
-  const Carrier *carrier = find_carrier(carrier_name);
+void GobiModem::SetCarrier(const std::string& carrier_name,
+                           DBus::Error& error) {
+  const Carrier *carrier = find_carrier(carrier_name.c_str());
   if (!carrier) {
     // TODO(rochberg):  Do we need to sanitize this string?
     LOG(WARNING) << "Could not parse carrier: " << carrier_name;
@@ -919,10 +920,6 @@ void GobiModem::EnsureFirmwareLoaded(const char* carrier_name,
 
   LOG(INFO) << "Carrier image selection complete: " << carrier_name;
   LogGobiInformation();
-}
-
-void GobiModem::SetCarrier(const std::string& carrier, DBus::Error& error) {
-  EnsureFirmwareLoaded(carrier.c_str(), error);
 }
 
 void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
@@ -1076,7 +1073,6 @@ void GobiModem::GetSignalStrengthDbm(int& output,
     ULONG rfi_technology = get_rfi_technology(db_technology);
     for (ULONG i = 0; i < signals; ++i) {
       if (interfaces[i] == rfi_technology) {
-        signal_strength_ = strengths[i];
         output = strengths[i];
         return;
       }
@@ -1164,9 +1160,9 @@ void GobiModem::StartNMEAThread() {
   pthread_create(&nmea_thread, NULL, NMEAThreadTrampoline, NULL);
 }
 
-
 // Event callbacks:
 
+// Runs in the context of a callback thread (which is not the main thread)
 void GobiModem::ActivationStatusCallback(ULONG activation_state) {
   LOG(INFO) << "Activation status callback: " << activation_state;
   pthread_mutex_lock(&activation_mutex_);
@@ -1175,6 +1171,7 @@ void GobiModem::ActivationStatusCallback(ULONG activation_state) {
   pthread_mutex_unlock(&activation_mutex_);
 }
 
+// Runs in the context of a callback thread (which is not the main thread)
 void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
   int ret;
 
@@ -1197,6 +1194,7 @@ void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
   }
 }
 
+// Runs in the context of a callback thread (which is not the main thread)
 void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
   LOG(INFO) << "OMA-DM State Callback: "
             << session_state << " " << failure_reason;
@@ -1214,43 +1212,61 @@ void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
   pthread_mutex_unlock(&activation_mutex_);
 }
 
-void GobiModem::SignalStrengthCallback(INT8 signal_strength,
-                                       ULONG radio_interface) {
+// Runs in the context of the main thread
+gboolean GobiModem::SignalStrengthCallback(gpointer data) {
+  SignalStrengthArgs* args = static_cast<SignalStrengthArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL)
+    modem->SignalStrengthHandler(args->signal_strength, args->radio_interface);
+  delete args;
+  return FALSE;
+}
+
+// Runs in the context of the main thread
+gboolean GobiModem::SessionStateCallback(gpointer data) {
+  LOG(INFO) << "SessionStateCallback";
+  SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL)
+    modem->SessionStateHandler(args->state, args->session_end_reason);
+  delete args;
+  return FALSE;
+}
+
+// Runs in the context of the main thread
+gboolean GobiModem::RegistrationStateCallback(gpointer data) {
+  LOG(INFO) << "RegistrationStateCallback";
+  CallbackArgs* args = static_cast<CallbackArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  delete args;
+  if (modem != NULL)
+    modem->RegistrationStateHandler();
+  return FALSE;
+}
+
+// Runs in the context of the main thread
+void GobiModem::SignalStrengthHandler(INT8 signal_strength,
+                                      ULONG radio_interface) {
   // translate dBm into percent
   unsigned long ss_percent =
       signal_strength_dbm_to_percent(signal_strength);
-  signal_strength_ = signal_strength;
   // TODO(ers) only send DBus signal for "active" interface
   SignalQuality(ss_percent);
-  LOG(INFO) << "Signal strength " << static_cast<int>(signal_strength)
+  LOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
             << " dBm on radio interface " << radio_interface
             << " (" << ss_percent << "%)";
   // TODO(ers) mark radio interface technology as registered?
 }
 
-static gboolean data_bearer_trampoline(gpointer data) {
-  GobiModem* modem = static_cast<GobiModem*>(data);
-  modem->UpdateDataBearerTechnology();
-  return FALSE;
-}
-
-static gboolean reg_state_trampoline(gpointer data) {
-  GobiModem* modem = static_cast<GobiModem*>(data);
-  modem->UpdateRegistrationState();
-  return FALSE;
-}
-
-void GobiModem::UpdateDataBearerTechnology() {
-  ULONG data_bearer_technology;
-  sdk_->GetDataBearerTechnology(&data_bearer_technology);
-  // TODO(ers) send a signal or change a property to notify
-  // listeners about the change in data bearer technology
-}
-
-void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
-  LOG(INFO) << "SessionStateCallback " << state;
-  if (state == gobi::kConnected)
-    g_idle_add(data_bearer_trampoline, this);
+// Runs in the context of the main thread
+void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
+  LOG(INFO) << "SessionStateHandler " << state;
+  if (state == gobi::kConnected) {
+    ULONG data_bearer_technology;
+    sdk_->GetDataBearerTechnology(&data_bearer_technology);
+    // TODO(ers) send a signal or change a property to notify
+    // listeners about the change in data bearer technology
+  }
 
   session_state_ = state;
   if (state == gobi::kDisconnected)
@@ -1259,27 +1275,23 @@ void GobiModem::SessionStateCallback(ULONG state, ULONG session_end_reason) {
   ConnectionStateChanged(is_connected);
 }
 
-void GobiModem::UpdateRegistrationState() {
+// Runs in the context of the main thread
+void GobiModem::RegistrationStateHandler() {
   uint32_t cdma_1x_state;
   uint32_t evdo_state;
   DBus::Error error;
 
+  LOG(INFO) << "RegistrationStateHandler";
   GetRegistrationState(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
   RegistrationStateChanged(cdma_1x_state, evdo_state);
-}
-
-void GobiModem::DataBearerCallback(ULONG data_bearer_technology) {
-  LOG(INFO) << "DataBearerCallback, DBT = " << data_bearer_technology;
-  g_idle_add(reg_state_trampoline, this);
-}
-
-void GobiModem::RoamingIndicatorCallback(ULONG roaming) {
-  // I'd like to query the current data bearer technology here, but
-  // it's not safe to make SDK calls while in a callback function.
-  LOG(INFO) << "RoamingIndicatorCallback, roaming = " << roaming;
-  g_idle_add(reg_state_trampoline, this);
+  if (session_state_ == gobi::kConnected) {
+    ULONG data_bearer_technology;
+    sdk_->GetDataBearerTechnology(&data_bearer_technology);
+    // TODO(ers) send a signal or change a property to notify
+    // listeners about the change in data bearer technology
+  }
 }
 
 // Set DBus properties that pertain to the modem hardware device.
