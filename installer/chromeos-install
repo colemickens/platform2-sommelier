@@ -75,8 +75,7 @@ if [ -z "$FLAGS_payload_image" ]; then
   fi
 else
   if [ -f "$FLAGS_payload_image" ]; then
-    # TODO(tgao): unpack partitions from image and verify
-    echo "TODO(tgao): unpack partitions from image and verify"
+    SRC=$FLAGS_payload_image  # Needed to copy PMBR code off image
   else
     echo "Error: No payload image found at $FLAGS_payload_image"
     exit 1
@@ -177,6 +176,11 @@ my_cleanup() {
 
 ##############################################################################
 
+KERNEL_IMG_OFFSET=0
+ROOTFS_IMG_OFFSET=0
+OEM_IMG_OFFSET=0
+ESP_IMG_OFFSET=0
+
 # What do we expect & require to have on the source device?
 if [ -z "$FLAGS_payload_image" ]; then
   STATEFUL_IMG=$(make_partition_dev ${SRC} 1)
@@ -184,6 +188,29 @@ if [ -z "$FLAGS_payload_image" ]; then
   ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
   OEM_IMG=$(make_partition_dev ${SRC} 8)
   ESP_IMG=$(make_partition_dev ${SRC} 12)
+
+  STATEFUL_IMG_SECTORS=$(numsectors $STATEFUL_IMG)
+  KERNEL_IMG_SECTORS=$(numsectors $KERNEL_IMG)
+  ROOTFS_IMG_SECTORS=$(numsectors $ROOTFS_IMG)
+  OEM_IMG_SECTORS=$(numsectors $OEM_IMG)
+  ESP_IMG_SECTORS=$(numsectors $ESP_IMG)
+else
+  KERNEL_IMG=${FLAGS_payload_image}
+  ROOTFS_IMG=${FLAGS_payload_image}
+  OEM_IMG=${FLAGS_payload_image}
+  ESP_IMG=${FLAGS_payload_image}
+
+  locate_gpt
+  STATEFUL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 1)
+  KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 2)
+  ROOTFS_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 3)
+  OEM_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 8)
+  ESP_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 12)
+
+  KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 2)
+  ROOTFS_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 3)
+  OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 8)
+  ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 12)
 fi
 
 if [ "$MACHINE_NAME" = "armv7l" ]; then
@@ -195,9 +222,10 @@ else
 fi
 
 # Create the GPT.
-install_gpt $FLAGS_dst $(numsectors $ROOTFS_IMG) $(numsectors $STATEFUL_IMG) \
-  $PMBRCODE $(numsectors $ESP_IMG)
+install_gpt ${FLAGS_dst} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
+  ${PMBRCODE} ${ESP_IMG_SECTORS}
 
+# TODO(tgao): add support for arm recovery
 if [ "$MACHINE_NAME" = "armv7l" ]; then
   DEVICE=$(echo $FLAGS_dst | sed -e 's/^.*\([0-9]\)$/\1/')
   MBR_SCRIPT_UIMG=$(make_arm_mbr ${START_KERN_A} ${NUM_KERN_SECTORS} ${DEVICE} "")
@@ -213,23 +241,51 @@ fi
 # Install the content.
 echo "Copying kernel..."
 sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
-  seek=${START_KERN_A}
+  seek=${START_KERN_A} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
 sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
-  seek=${START_KERN_B}
+  seek=${START_KERN_B} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
+
+# Copy kernel verification block to target HD
+copy_kernel_vblock() {
+  local ret=0
+
+  if [ -s $VERIFY_BLOB ]; then
+    sudo dd if=${vblock} of=${FLAGS_dst} \
+      conv=notrunc bs=512 seek=${START_KERN_A}
+    sudo dd if=${vblock} of=${FLAGS_dst} \
+      conv=notrunc bs=512 seek=${START_KERN_B}
+    ret=1
+  fi
+  echo ${ret}
+}
 
 # The recovery image is signed with different keys from the hard-disk image. We
 # need to copy the hard disk verification block from the stateful partition so
 # that reboot from HD can be verified.
 VERIFY_BLOB="/mnt/stateful_partition/vmlinuz_hd.vblock"
 if [ "$FLAGS_skip_vblock" -eq "$FLAGS_FALSE" ]; then
-  echo "Copying kernel verification blob from ${VERIFY_BLOB}"
-  if [ -s $VERIFY_BLOB ]; then
-    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
-      conv=notrunc bs=512 seek=${START_KERN_A}
-    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
-      conv=notrunc bs=512 seek=${START_KERN_B}
+  if [ -z "$FLAGS_payload_image" ]; then
+    VBLOCK_RET=$(copy_kernel_vblock)
   else
-    echo "Error: kernel verification blob not found at ${VERIFY_BLOB}"
+    # Special handling of stateful partition, mount to loop device so that we
+    # can extract kernel vblock to copy to target HD
+    loop_offset_setup ${FLAGS_payload_image} \
+                      $(partoffset "${FLAGS_payload_image}" 1)
+    trap loop_offset_cleanup EXIT
+    mount_on_loop_dev
+    trap my_cleanup EXIT
+    VERIFY_BLOB=${TMPMNT}/vmlinuz_hd.vblock
+    VBLOCK_RET=$(copy_kernel_vblock)
+    umount_from_loop_dev
+    trap loop_offset_cleanup EXIT
+    loop_offset_cleanup
+    trap - EXIT
+  fi
+
+  if [ "${VBLOCK_RET}" -eq "1" ]; then
+    echo "Copied kernel verification blob from ${VERIFY_BLOB}"
+  else
+    echo "Error: kernel verification blob not found in stateful partition"
     exit 1
   fi
 fi
@@ -240,15 +296,18 @@ echo "Copying rootfs..."
 # straight copy now.  The GPT labels and UUIDs are the only mutable naming
 # areas we have after a build.
 sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
-        seek=${START_ROOTFS_A}
+        seek=${START_ROOTFS_A} skip=${ROOTFS_IMG_OFFSET} \
+        count=${ROOTFS_IMG_SECTORS}
 sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
-        seek=${START_ROOTFS_B}
+        seek=${START_ROOTFS_B} skip=${ROOTFS_IMG_OFFSET} \
+        count=${ROOTFS_IMG_SECTORS}
 
 echo "Copying OEM customization..."
-sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM}
-
+sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM} \
+        skip=${OEM_IMG_OFFSET} count=${OEM_IMG_SECTORS}
 echo "Copying ESP..."
-sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP}
+sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP} \
+        skip=${ESP_IMG_OFFSET} count=${ESP_IMG_SECTORS}
 
 # TODO: support arm during postinst so that we get partition selection and
 #       verified boot.
