@@ -163,11 +163,11 @@ static const char *kServiceMapping[] = {
   "CATSendTerminalResponse",
   "CATSendEnvelopeCommand",
 
-  "+RemoteManagement"
+  "+RemoteManagement",
   "GetSMSWake",
   "SetSMSWake",
 
-  "+OMADM"
+  "+OMADM",
   "OMADMStartSession",
   "OMADMCancelSession",
   "OMADMGetSessionInfo",
@@ -201,22 +201,14 @@ static const char *kServiceMapping[] = {
   NULL
 };
 
-// TODO(rochberg):  Fix the crasher that this code is masking
-static int CALL_COUNT = 0;
-
 struct ReentrancyPreventer {
   ReentrancyPreventer(Sdk *sdk, const char *name)
       : sdk_(sdk),
         function_name_(name) {
-    if ((CALL_COUNT++ % 16) == 0) {
-      LOG(WARNING) << "SDK reentrancy checking disabled: "
-                   << "mail rochberg@chromium.org if you see this message "
-                   << "after noon PDT 11 August 2010";
-    }
-    // sdk_->EnterSdk(function_name_);
+    sdk_->EnterSdk(function_name_);
   }
   ~ReentrancyPreventer() {
-    // sdk_->LeaveSdk(function_name_);
+    sdk_->LeaveSdk(function_name_);
   }
   Sdk *sdk_;
   const char *function_name_;

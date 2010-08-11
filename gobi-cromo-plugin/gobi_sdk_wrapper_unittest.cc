@@ -61,6 +61,9 @@ TEST_F(GobiSdkTest, BaseClosesAllDeathTest) {
 }
 
 TEST_F(GobiSdkTest, EnterLeaveDeathTest) {
+  sdk_.EnterSdk("OMADMStartSession");
+  SUCCEED() << "OMADMStartSession crash avoided";
+
   EXPECT_DEATH(sdk_.EnterSdk("unknown function"), "Invalid function");
 
   static int kWirelessData = 2;
