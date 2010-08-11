@@ -14,6 +14,9 @@
 
 RECOVERY_LOG=/var/log/recovery.log
 TARGET_DEVICE=/dev/sda3
+STATEFUL_MNT=/mnt/stateful_partition
+DEV_PAYLOAD=${STATEFUL_MNT}/dev_payload
+CUSTOM_INSTALL=custom_install
 
 # Timestamp log messages
 log() {
@@ -80,8 +83,9 @@ get_dev_switch_state() {
 }
 
 # Install Google payload from USB image
-install_google_payload() {
-  /usr/sbin/chromeos-install --run_as_root --yes >> $RECOVERY_LOG
+install_chromiumos_payload() {
+  /usr/sbin/chromeos-install --run_as_root --yes \
+      --payload_image=${1} >> $RECOVERY_LOG
   log "Recovery installer completed"
 
   # Reset TPM to support Google-A after reboot
@@ -97,10 +101,57 @@ install_google_payload() {
   halt
 }
 
+# Find a dev image in payload directory to be installed
+find_default_image() {
+  # Try a few common names, in descending order of precedence
+  local image_list="${DEV_PAYLOAD}/chromiumos_image.bin \
+                    ${DEV_PAYLOAD}/chromiumos_base_image.bin \
+                    ${DEV_PAYLOAD}/chromiumos_test_image.bin"
+  local image_path=
+
+  for img in $image_list
+  do
+    if [ -f "${img}" ]; then
+      image_path=${img}
+    fi
+  done
+
+  # Turn path into an absolute path
+  if [ -z ${image_path} ]; then
+    log "No default image found in ${DEV_PAYLOAD}"
+  else
+    image_path=$(eval readlink -f ${image_path})
+    log "Default image found at ${image_path}"
+  fi
+
+  echo ${image_path}
+}
+
+# Install custom payload from stateful partition "dev_payload" directory
+install_custom_payload() {
+  # Check if a custom install script is included in the payload directory
+  local custom_install="${DEV_PAYLOAD}/${CUSTOM_INSTALL}"
+
+  if [ -x ${custom_install} ]; then
+    log "Custom install script found at ${custom_install}. Executing ..."
+    # TODO(tgao): consider waiting period depending on signatures
+    exec $custom_install
+  else
+    log "No custom install script found at ${custom_install}. Assume dev image"
+    default_dev_image=$(find_default_image)
+    if [ -f ${default_dev_image} ]; then
+      log "Attempt to install dev image from ${default_dev_image}"
+      install_chromiumos_payload ${default_dev_image}
+    else
+      log "No default dev image found in \"${DEV_PAYLOAD}\". Abort install."
+    fi
+  fi
+}
+
 # Launch script to install a new image onto the device
 launch_installer_script() {
-  if [ ! -e /mnt/stateful_partition/.dev_recovery ]; then
-    install_google_payload
+  if [ ! -e ${STATEFUL_MNT}/.dev_recovery ]; then
+    install_chromiumos_payload ""
   fi
   log "Developer recovery boot. Check developer switch position"
 
@@ -113,12 +164,11 @@ Chromium OS"
   fi
 
   log "Developer switch ON. Install developer payload"
-  # TODO(tgao): launch custom install script here
-  log "TODO: launch custom install script"
+  install_custom_payload
 }
 
 # Main
-if [ ! -e /mnt/stateful_partition/.recovery ]; then
+if [ ! -e ${STATEFUL_MNT}/.recovery ]; then
   exit 0
 fi
 log "Recovery boot. Check if target device is ready"
