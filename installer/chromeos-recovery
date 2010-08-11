@@ -83,6 +83,15 @@ get_dev_switch_state() {
 install_google_payload() {
   /usr/sbin/chromeos-install --run_as_root --yes >> $RECOVERY_LOG
   log "Recovery installer completed"
+
+  # Reset TPM to support Google-A after reboot
+  stop tcsd
+  tpmc ppon
+  tpmc clear
+  # TODO(tgao): remove temp fix below when the functionality gets integrated
+  # into kernel
+  tpm_init_temp_fix
+
   # shut down and power off the device
   log "Shut down device"
   halt
