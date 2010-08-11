@@ -250,9 +250,9 @@ copy_kernel_vblock() {
   local ret=0
 
   if [ -s $VERIFY_BLOB ]; then
-    sudo dd if=${vblock} of=${FLAGS_dst} \
+    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
       conv=notrunc bs=512 seek=${START_KERN_A}
-    sudo dd if=${vblock} of=${FLAGS_dst} \
+    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
       conv=notrunc bs=512 seek=${START_KERN_B}
     ret=1
   fi
