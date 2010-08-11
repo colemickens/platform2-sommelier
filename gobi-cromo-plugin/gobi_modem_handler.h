@@ -25,8 +25,6 @@ class GobiModemHandler : public ModemHandler {
   virtual bool Initialize();
   void UpdateDeviceState();
   void HandlePollEvent();
-  void StartDeviceMonitor();
-  void StopDeviceMonitor();
   GobiModem* LookupByPath(const std::string& path);
 
  private:

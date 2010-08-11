@@ -50,5 +50,16 @@
       </arg>
     </signal>
 
+    <signal name="ActivationCompleted">
+      <tp:docstring>
+        Send a notification that activation of the modem has completed.
+      </tp:docstring>
+      <arg name="activated" type="b">
+        <tp:docstring>
+          True if succeeded, false if failed.
+        </tp:docstring>
+      </arg>
+    </signal>
+
   </interface>
 </node>

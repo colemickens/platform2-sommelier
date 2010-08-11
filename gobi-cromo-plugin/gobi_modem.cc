@@ -7,16 +7,11 @@
 
 #include <fcntl.h>
 #include <stdio.h>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 extern "C" {
 #include <libudev.h>
 };
 
-#include <algorithm>
-
-#include <base/time.h>
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
@@ -205,6 +200,7 @@ static struct udev_enumerate *enumerate_net_devices(struct udev *udev)
 
 GobiModem* GobiModem::connected_modem_(NULL);
 GobiModemHandler* GobiModem::handler_;
+GobiModem::mutex_wrapper_ GobiModem::modem_mutex_;
 
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
@@ -213,14 +209,11 @@ GobiModem::GobiModem(DBus::Connection& connection,
     : DBus::ObjectAdaptor(connection, path),
       sdk_(sdk),
       last_seen_(-1),
-      nmea_fd(-1),
+      nmea_fd_(-1),
       activation_state_(0),
       session_state_(gobi::kDisconnected),
       session_id_(0) {
   memcpy(&device_, &device, sizeof(device_));
-
-  pthread_mutex_init(&activation_mutex_, NULL);
-  pthread_cond_init(&activation_cond_, NULL);
 
   // Initialize DBus object properties
   SetDeviceProperties();
@@ -232,10 +225,13 @@ GobiModem::GobiModem(DBus::Connection& connection,
 }
 
 GobiModem::~GobiModem() {
+  pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
-    sdk_->QCWWANDisconnect();
     connected_modem_ = NULL;
-  }
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+    sdk_->QCWWANDisconnect();
+  } else
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
 }
 
 // DBUS Methods: Modem
@@ -268,13 +264,19 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       LOG(INFO) << "Current carrier is " << carrier_id;
     }
     Enabled = true;
-    StartNMEAThread();
+    // TODO(ers) disabling NMEA thread creation
+    // until issues are addressed, e.g., thread
+    // leakage and possible invalid pointer references.
+//    StartNMEAThread();
   } else if (!enable && Enabled()) {
+    pthread_mutex_lock(&modem_mutex_.mutex_);
     if (connected_modem_ == this) {
-      sdk_->QCWWANDisconnect();
       connected_modem_ = NULL;
+      pthread_mutex_unlock(&modem_mutex_.mutex_);
+      sdk_->QCWWANDisconnect();
       Enabled = false;
-    }
+    } else
+      pthread_mutex_unlock(&modem_mutex_.mutex_);
   }
 }
 
@@ -357,7 +359,7 @@ void GobiModem::FactoryReset(const std::string& code, DBus::Error& error) {
   LOG(INFO) << "ResetToFactoryDefaults";
   ULONG rc = sdk_->ResetToFactoryDefaults(const_cast<CHAR *>(code.c_str()));
   ENSURE_SDK_SUCCESS(ResetToFactoryDefaults, rc, kSdkError);
-  ResetModem(error);
+  LOG(INFO) << "FactoryReset succeeded. Device should disappear and reappear.";
 }
 
 DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
@@ -670,7 +672,9 @@ void GobiModem::RegisterCallbacks() {
 void GobiModem::ApiConnect(DBus::Error& error) {
   ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
   ENSURE_SDK_SUCCESS(QCWWANConnect, rc, kSdkError);
+  pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
+  pthread_mutex_unlock(&modem_mutex_.mutex_);
   RegisterCallbacks();
 }
 
@@ -775,7 +779,6 @@ void GobiModem::ResetModem(DBus::Error& error) {
   // happen in the main thread, we would not see either the Remove
   // or the Add events until after the reset is finished. So
   // we turn off monitoring while the reset is in progress
-  handler_->StopDeviceMonitor();
   ULONG rc = sdk_->SetPower(gobi::kOffline);
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 
@@ -783,51 +786,9 @@ void GobiModem::ResetModem(DBus::Error& error) {
   rc = sdk_->SetPower(gobi::kReset);
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 
-  const int kPollIntervalMs = 500;
-  base::Time::Time deadline = base::Time::NowFromSystemTime() +
-      base::TimeDelta::FromSeconds(60);
-
-  bool connected = false;
-  // Wait for modem to become unavailable, then available again.
-  DBus::Error tmperr;
-  while (base::Time::NowFromSystemTime() < deadline) {
-    rc = sdk_->QCWWANDisconnect();
-    ENSURE_SDK_SUCCESS(QCWWANDisconnect, rc, kSdkError);
-    ApiConnect(tmperr);
-    if (tmperr.is_set())
-      break;
-    usleep(kPollIntervalMs * 1000);
-  }
-
-  if (!tmperr.is_set()) {
-    LOG(WARNING) << "Modem reset:  Modem never disconnected";
-    error.set(kDisconnectError, "Modem never disconnected");
-    handler_->StartDeviceMonitor();
-    return;
-  }
-  LOG(INFO) << "Modem reset:  Modem now unavailable";
-
-  while (base::Time::NowFromSystemTime() < deadline) {
-    DBus::Error reconnect_error;
-    ApiConnect(reconnect_error);
-    if (!reconnect_error.is_set()) {
-      connected = true;
-      break;
-    };
-    usleep(kPollIntervalMs * 1000);
-  }
-
-  if (!connected) {
-    // TODO(rochberg):  Send DeviceRemoved
-    LOG(WARNING) << "Modem did not come back after reset";
-    error.set(kConnectError, "Modem did not come back after reset");
-  } else {
-    LOG(INFO) << "Modem returned from reset";
-    Enabled = true;
-  }
-  handler_->StartDeviceMonitor();
+  rc = sdk_->QCWWANDisconnect();
+  ENSURE_SDK_SUCCESS(QCWWanDisconnect, rc, kSdkError);
 }
-
 
 // pre-condition: activation_state_ == gobi::kConnecting
 void GobiModem::ActivateOmadm(DBus::Error& error) {
@@ -893,33 +854,8 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
       LOG(WARNING) << "Carrier image selection from: "
                    << image_path << " failed: " << rc;
       error.set(kFirmwareLoadError, "UpgradeFirmware");
-      return;
     }
-
-    ResetModem(error);
-    if (error.is_set())
-      return;
-
-    rc = sdk_->GetFirmwareInfo(&firmware_id,
-                               &technology,
-                               &modem_carrier_id,
-                               &region,
-                               &gps_capability);
-    ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kFirmwareLoadError);
-
-    if (modem_carrier_id != carrier->carrier_id) {
-      LOG(WARNING) << "After carrier image selection, expected carrier: "
-                   << carrier->carrier_id
-                   << ".  Instead got: " << modem_carrier_id;
-      error.set(kFirmwareLoadError, "failed to switch carrier");
-      return;
-    }
-  } else {
-    LOG(INFO) << "Carrier image selection is no-op: " << carrier_name;
   }
-
-  LOG(INFO) << "Carrier image selection complete: " << carrier_name;
-  LogGobiInformation();
 }
 
 void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
@@ -1002,21 +938,8 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
       error.set(kActivationError, "Unknown activation method");
       break;
   }
-
-  // Wait for activation to finish (success or failure)
-  pthread_mutex_lock(&activation_mutex_);
-  while ((activation_state_ != gobi::kActivated &&
-          activation_state_ != gobi::kNotActivated)) {
-    LOG(WARNING) << "Waiting...";
-    pthread_cond_wait(&activation_cond_, &activation_mutex_);
-  }
-  pthread_mutex_unlock(&activation_mutex_);
-  LOG(WARNING) << "Activation state: " << activation_state_;
-
-  if (activation_state_ == gobi::kActivated)
-    ResetModem(error);
-  else
-    error.set(kActivationError, "Activation failed");
+  if (!error.is_set())
+    error.set(kOperationInitiatedError, "");
 }
 
 void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
@@ -1117,10 +1040,13 @@ void GobiModem::SetModemProperties() {
       }
     }
   }
+  pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
-    sdk_->QCWWANDisconnect();
     connected_modem_ = NULL;
-  }
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+    sdk_->QCWWANDisconnect();
+  } else
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
   if (!getserial_error.is_set()) {
     // TODO(jglasgow): if GSM return serials.imei
     EquipmentIdentifier = serials.meid;
@@ -1150,7 +1076,7 @@ void *GobiModem::NMEAThread(void) {
   cell_mask = 0x3ff;
   sdk_->ResetPDSData(&gps_mask, &cell_mask);
 
-  nmea_fd = fd;
+  nmea_fd_ = fd;
 
   return NULL;
 }
@@ -1160,56 +1086,69 @@ void GobiModem::StartNMEAThread() {
   pthread_create(&nmea_thread, NULL, NMEAThreadTrampoline, NULL);
 }
 
-// Event callbacks:
+// Event callbacks run in the context of the main thread
 
-// Runs in the context of a callback thread (which is not the main thread)
-void GobiModem::ActivationStatusCallback(ULONG activation_state) {
-  LOG(INFO) << "Activation status callback: " << activation_state;
-  pthread_mutex_lock(&activation_mutex_);
-  activation_state_ = activation_state;
-  pthread_cond_broadcast(&activation_cond_);
-  pthread_mutex_unlock(&activation_mutex_);
-}
+gboolean GobiModem::NmeaPlusCallback(gpointer data) {
+  NmeaPlusArgs *args = static_cast<NmeaPlusArgs*>(data);
+  LOG(INFO) << "NMEA Plus State Callback: "
+            << args->nmea << " " << args->mode;
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL && modem->nmea_fd_ != -1) {
+    int ret = write(modem->nmea_fd_, args->nmea.c_str(), args->nmea.length());
+    if (ret < 0) {
+      // Failed write means fifo reader went away
+      LOG(INFO) << "NMEA fifo stopped, GPS disabled";
+      unlink(kFifoName);
+      close(modem->nmea_fd_);
+      modem->nmea_fd_ = -1;
 
-// Runs in the context of a callback thread (which is not the main thread)
-void GobiModem::NmeaPlusCallback(const char *nmea, ULONG mode) {
-  int ret;
+      // Disable GPS tracking until we have a listener again
+      modem->sdk_->SetServiceAutomaticTracking(0);
 
-  if (nmea_fd == -1)
-    return;
-
-  ret = write(nmea_fd, nmea, strlen(nmea));
-  if (ret < 0) {
-    // Failed write means fifo reader went away
-    LOG(INFO) << "NMEA fifo stopped, GPS disabled";
-    unlink(kFifoName);
-    close(nmea_fd);
-    nmea_fd = -1;
-
-    // Disable GPS tracking until we have a listener again
-    sdk_->SetServiceAutomaticTracking(0);
-
-    // Re-start the fifo listener thread
-    StartNMEAThread();
+      // Re-start the fifo listener thread
+      modem->StartNMEAThread();
+    }
   }
+  delete args;
+  return FALSE;
 }
 
-// Runs in the context of a callback thread (which is not the main thread)
-void GobiModem::OmadmStateCallback(ULONG session_state, ULONG failure_reason) {
+gboolean GobiModem::OmadmStateCallback(gpointer data) {
+  OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
   LOG(INFO) << "OMA-DM State Callback: "
-            << session_state << " " << failure_reason;
-  pthread_mutex_lock(&activation_mutex_);
-  switch (session_state) {
-    case gobi::kOmadmComplete:
-      activation_state_ = gobi::kActivated;
-      pthread_cond_broadcast(&activation_cond_);
-      break;
-    case gobi::kOmadmFailed:
-      activation_state_ = gobi::kNotActivated;
-      pthread_cond_broadcast(&activation_cond_);
-      break;
+            << args->session_state << " " << args->failure_reason;
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL) {
+    switch (args->session_state) {
+      case gobi::kOmadmComplete:
+        modem->activation_state_ = gobi::kActivated;
+        modem->ActivationCompleted(true);
+        break;
+      case gobi::kOmadmFailed:
+        modem->activation_state_ = gobi::kNotActivated;
+        modem->ActivationCompleted(false);
+        break;
+    }
   }
-  pthread_mutex_unlock(&activation_mutex_);
+  delete args;
+  return FALSE;
+}
+
+gboolean GobiModem::ActivationStatusCallback(gpointer data) {
+  ActivationStatusArgs* args = static_cast<ActivationStatusArgs*>(data);
+  LOG(INFO) << "Activation status callback: " << args->activation_state;
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL) {
+    modem->activation_state_ = args->activation_state;
+    if (args->activation_state == gobi::kActivated ||
+        args->activation_state == gobi::kNotActivated)
+      modem->ActivationCompleted(args->activation_state == gobi::kActivated);
+  }
+  // TODO(ers) The SDK documentation says that before we can signal that
+  // activation is complete, we need to power off the device and call
+  // QCWWANDisconnect().
+  delete args;
+  return FALSE;
 }
 
 // Runs in the context of the main thread
@@ -1222,7 +1161,6 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   return FALSE;
 }
 
-// Runs in the context of the main thread
 gboolean GobiModem::SessionStateCallback(gpointer data) {
   LOG(INFO) << "SessionStateCallback";
   SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
@@ -1233,7 +1171,6 @@ gboolean GobiModem::SessionStateCallback(gpointer data) {
   return FALSE;
 }
 
-// Runs in the context of the main thread
 gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   LOG(INFO) << "RegistrationStateCallback";
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
@@ -1244,7 +1181,6 @@ gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   return FALSE;
 }
 
-// Runs in the context of the main thread
 void GobiModem::SignalStrengthHandler(INT8 signal_strength,
                                       ULONG radio_interface) {
   // translate dBm into percent
@@ -1258,7 +1194,6 @@ void GobiModem::SignalStrengthHandler(INT8 signal_strength,
   // TODO(ers) mark radio interface technology as registered?
 }
 
-// Runs in the context of the main thread
 void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   LOG(INFO) << "SessionStateHandler " << state;
   if (state == gobi::kConnected) {
@@ -1275,7 +1210,6 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   ConnectionStateChanged(is_connected);
 }
 
-// Runs in the context of the main thread
 void GobiModem::RegistrationStateHandler() {
   uint32_t cdma_1x_state;
   uint32_t evdo_state;

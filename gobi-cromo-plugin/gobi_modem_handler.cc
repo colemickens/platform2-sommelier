@@ -160,14 +160,6 @@ GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
   return NULL;
 }
 
-void GobiModemHandler::StartDeviceMonitor() {
-  device_watcher_->StartMonitoring();
-}
-
-void GobiModemHandler::StopDeviceMonitor() {
-  device_watcher_->StopMonitoring();
-}
-
 static void onload(CromoServer* server) {
   ModemHandler* mm = new GobiModemHandler(*server);
   if (!mm->Initialize())

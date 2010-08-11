@@ -19,7 +19,6 @@
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
 
-
 typedef std::map<std::string, DBus::Variant> DBusPropertyMap;
 
 // Qualcomm device element, capitalized to their naming conventions
@@ -110,41 +109,71 @@ class GobiModem
   void GetSerialNumbers(SerialNumbers* out, DBus::Error &error);
   void LogGobiInformation();
 
-  static void ActivationStatusCallbackTrampoline(ULONG activation_status) {
-    if (connected_modem_) {
-      connected_modem_->ActivationStatusCallback(activation_status);
-    }
-  }
-  void ActivationStatusCallback(ULONG activation_status);
-
-  static void NmeaPlusCallbackTrampoline(LPCSTR nmea, ULONG mode) {
-    if (connected_modem_) {
-      connected_modem_->NmeaPlusCallback(nmea, mode);
-    }
-  }
-  void NmeaPlusCallback(const char *nmea, ULONG mode);
-
-  static void OmadmStateCallbackTrampoline(ULONG session_state,
-                                           ULONG failure_reason) {
-    if (connected_modem_) {
-      connected_modem_->OmadmStateCallback(session_state, failure_reason);
-    }
-  }
-  void OmadmStateCallback(ULONG session_state, ULONG failure_reason);
-
   struct CallbackArgs {
-    CallbackArgs(GobiModem* modem)
-     : path(new DBus::Path(modem->path())) { }
+    CallbackArgs()
+     : path(NULL) { }
     ~CallbackArgs() { delete path; }
     DBus::Path* path;
   };
 
+  static void PostCallbackRequest(GSourceFunc callback,
+                                  CallbackArgs* args) {
+    pthread_mutex_lock(&modem_mutex_.mutex_);
+    if (connected_modem_) {
+      args->path = new DBus::Path(connected_modem_->path());
+      g_idle_add(callback, args);
+    } else
+      delete args;
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+  }
+
+  struct NmeaPlusArgs : public CallbackArgs {
+    NmeaPlusArgs(LPCSTR nmea, ULONG mode)
+      : nmea(nmea),
+        mode(mode) { }
+    std::string nmea;
+    ULONG mode;
+  };
+
+  static void NmeaPlusCallbackTrampoline(LPCSTR nmea, ULONG mode) {
+    PostCallbackRequest(NmeaPlusCallback,
+                        new NmeaPlusArgs(nmea, mode));
+  }
+  static gboolean NmeaPlusCallback(gpointer data);
+
+  struct ActivationStatusArgs : public CallbackArgs {
+    ActivationStatusArgs(ULONG activation_state)
+      : activation_state(activation_state) { }
+    ULONG activation_state;
+  };
+
+  static void ActivationStatusCallbackTrampoline(ULONG activation_state) {
+      PostCallbackRequest(ActivationStatusCallback,
+                          new ActivationStatusArgs(activation_state));
+  }
+  static gboolean ActivationStatusCallback(gpointer data);
+
+  struct OmadmStateArgs : public CallbackArgs {
+    OmadmStateArgs(ULONG session_state,
+                   ULONG failure_reason)
+      : session_state(session_state),
+        failure_reason(failure_reason) { }
+    ULONG session_state;
+    ULONG failure_reason;
+  };
+
+  static void OmadmStateCallbackTrampoline(ULONG session_state,
+                                           ULONG failure_reason) {
+    PostCallbackRequest(OmadmStateCallback,
+                        new OmadmStateArgs(session_state,
+                                           failure_reason));
+  }
+  static gboolean OmadmStateCallback(gpointer data);
+
   struct SessionStateArgs : public CallbackArgs {
-    SessionStateArgs(GobiModem* modem,
-                     ULONG state,
+    SessionStateArgs(ULONG state,
                      ULONG session_end_reason)
-      : CallbackArgs(modem),
-        state(state),
+      : state(state),
         session_end_reason(session_end_reason) { }
     ULONG state;
     ULONG session_end_reason;
@@ -152,37 +181,27 @@ class GobiModem
 
   static void SessionStateCallbackTrampoline(ULONG state,
                                              ULONG session_end_reason) {
-    if (connected_modem_) {
-      SessionStateArgs* args =
-          new SessionStateArgs(connected_modem_,
-                               state,
-                               session_end_reason);
-      g_idle_add(SessionStateCallback, args);
-    }
+    PostCallbackRequest(SessionStateCallback,
+                        new SessionStateArgs(state,
+                                             session_end_reason));
   }
   static gboolean SessionStateCallback(gpointer data);
 
   static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
     // ignore the supplied argument
-    if (connected_modem_) {
-      g_idle_add(RegistrationStateCallback, new CallbackArgs(connected_modem_));
-    }
+    PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
 
   static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
     // ignore the supplied argument
-    if (connected_modem_) {
-      g_idle_add(RegistrationStateCallback, new CallbackArgs(connected_modem_));
-    }
+    PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
   static gboolean RegistrationStateCallback(gpointer data);
 
   struct SignalStrengthArgs : public CallbackArgs {
-    SignalStrengthArgs(GobiModem* modem,
-                       INT8 signal_strength,
+    SignalStrengthArgs(INT8 signal_strength,
                        ULONG radio_interface)
-      : CallbackArgs(modem),
-        signal_strength(signal_strength),
+      : signal_strength(signal_strength),
         radio_interface(radio_interface) { }
     INT8 signal_strength;
     ULONG radio_interface;
@@ -190,13 +209,9 @@ class GobiModem
 
   static void SignalStrengthCallbackTrampoline(INT8 signal_strength,
                                                ULONG radio_interface) {
-    if (connected_modem_) {
-      SignalStrengthArgs* args =
-          new SignalStrengthArgs(connected_modem_,
-                                 signal_strength,
-                                 radio_interface);
-      g_idle_add(SignalStrengthCallback, args);
-    }
+    PostCallbackRequest(SignalStrengthCallback,
+                        new SignalStrengthArgs(signal_strength,
+                                               radio_interface));
   }
   static gboolean SignalStrengthCallback(gpointer data);
 
@@ -224,17 +239,20 @@ class GobiModem
   gobi::Sdk *sdk_;
   DEVICE_ELEMENT device_;
   int last_seen_;  // Updated every scan where the modem is present
-  int nmea_fd; // fifo to write NMEA data to
+  int nmea_fd_; // fifo to write NMEA data to
 
   pthread_t nmea_thread;
 
-  pthread_mutex_t activation_mutex_;
-  pthread_cond_t activation_cond_;
   ULONG activation_state_;
   ULONG session_state_;
   ULONG session_id_;
 
+  struct mutex_wrapper_ {
+    mutex_wrapper_() { pthread_mutex_init(&mutex_, NULL); }
+    pthread_mutex_t mutex_;
+  };
   static GobiModem *connected_modem_;
+  static mutex_wrapper_ modem_mutex_;
 
   friend class GobiModemTest;
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
