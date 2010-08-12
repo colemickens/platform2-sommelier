@@ -1115,8 +1115,7 @@ gboolean GobiModem::NmeaPlusCallback(gpointer data) {
 
 gboolean GobiModem::OmadmStateCallback(gpointer data) {
   OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
-  LOG(INFO) << "OMA-DM State Callback: "
-            << args->session_state << " " << args->failure_reason;
+  LOG(INFO) << "OMA-DM State Callback: " << args->session_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL) {
     switch (args->session_state) {
@@ -1125,6 +1124,9 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
         modem->ActivationCompleted(true);
         break;
       case gobi::kOmadmFailed:
+        LOG(INFO) << "OMA-DM failure reason: " << args->failure_reason;
+        // fall through
+      case gobi::kOmadmUpdateInformationUnavailable:
         modem->activation_state_ = gobi::kNotActivated;
         modem->ActivationCompleted(false);
         break;
