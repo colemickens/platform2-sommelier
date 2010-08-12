@@ -569,19 +569,18 @@ void SessionManagerService::SendSignalToChromium(const char* signal_name) {
 
 // static
 std::vector<std::vector<std::string> > SessionManagerService::GetArgLists(
-    std::vector<std::wstring> args) {
+    std::vector<std::string> args) {
   std::vector<std::string> arg_list;
   std::vector<std::vector<std::string> > arg_lists;
   for (size_t i_arg = 0; i_arg < args.size(); ++i_arg) {
-   std::string arg = WideToASCII(args[i_arg]);
-   if (arg == "--") {
-     if (arg_list.size()) {
-       arg_lists.push_back(arg_list);
-       arg_list.clear();
-     }
-   } else {
-     arg_list.push_back(arg);
-   }
+    if (args[i_arg] == "--") {
+      if (arg_list.size()) {
+        arg_lists.push_back(arg_list);
+        arg_list.clear();
+      }
+    } else {
+      arg_list.push_back(args[i_arg]);
+    }
   }
   if (arg_list.size()) {
     arg_lists.push_back(arg_list);

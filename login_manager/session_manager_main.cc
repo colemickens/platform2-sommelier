@@ -13,6 +13,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
@@ -93,7 +94,7 @@ int main(int argc, char* argv[]) {
   if (cl->HasSwitch(switches::kUid)) {
     string uid_flag = cl->GetSwitchValueASCII(switches::kUid);
     int uid_value = 0;
-    if (StringToInt(uid_flag, &uid_value)) {
+    if (base::StringToInt(uid_flag, &uid_value)) {
       uid = static_cast<uid_t>(uid_value);
       uid_set = true;
     } else {
@@ -102,7 +103,7 @@ int main(int argc, char* argv[]) {
   }
 
   // Parse jobs to be run with its args.
-  vector<wstring> loose_args = cl->GetLooseValues();
+  vector<string> loose_args = cl->args();
   vector<vector<string> > arg_lists =
       login_manager::SessionManagerService::GetArgLists(loose_args);
   vector<login_manager::ChildJobInterface*> child_jobs;

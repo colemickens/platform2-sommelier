@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -175,7 +175,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   //     ("a", "b", "c"), ("d", "e", "f").
   // Converts args from wide to plain strings.
   static std::vector<std::vector<std::string> > GetArgLists(
-      std::vector<std::wstring> args);
+      std::vector<std::string> args);
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
