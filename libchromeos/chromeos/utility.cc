@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "chromeos/obsolete_logging.h"
+#include "base/logging.h"
 
 namespace chromeos {
 
