@@ -4,6 +4,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 
 #include "main.h"
@@ -131,7 +132,7 @@ bool TextureUpdateTest::Run() {
     int sizes[] = {32, 128, 256, 512, 768, 1024, 1536, 2048};
     for (unsigned int i = 0; i < arraysize(sizes); i++) {
       std::string name = "mtexel_sec_" + flavor_names[f] + "_" +
-          IntToString(sizes[i]);
+          base::IntToString(sizes[i]);
       width_ = height_ = sizes[i];
       for (int i = 0; i < kNumberOfTextures; ++i) {
         pixels_[i].reset(new char[width_ * height_]);
