@@ -152,6 +152,7 @@ install_custom_payload() {
 launch_installer_script() {
   if [ ! -e ${STATEFUL_MNT}/.dev_recovery ]; then
     install_chromiumos_payload ""
+    exit 0
   fi
   log "Developer recovery boot. Check developer switch position"
 
