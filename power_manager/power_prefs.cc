@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 #include "base/file_util.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 
 using std::string;
@@ -23,12 +24,12 @@ bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
   if (!file_util::ReadFileToString(path, &buf))
     return false;
   TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-  return StringToInt64(buf, val);
+  return base::StringToInt64(buf, val);
 }
 
 bool PowerPrefs::WriteSetting(const char* setting_name, int64 val) {
   FilePath path = base_path_.Append(setting_name);
-  string buf = Int64ToString(val);
+  string buf = base::Int64ToString(val);
   return -1 != file_util::WriteFile(path, buf.data(), buf.size());
 }
 

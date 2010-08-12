@@ -13,6 +13,7 @@
 
 #include "base/logging.h"
 #include "base/file_util.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 
 namespace power_manager {
@@ -88,15 +89,15 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
   if (ok) {
     TrimWhitespaceASCII(level_buf, TRIM_TRAILING, &level_buf);
     TrimWhitespaceASCII(max_level_buf, TRIM_TRAILING, &max_level_buf);
-    ok = StringToInt64(level_buf, level) &&
-         StringToInt64(max_level_buf, max_level);
+    ok = base::StringToInt64(level_buf, level) &&
+         base::StringToInt64(max_level_buf, max_level);
   }
   LOG_IF(WARNING, !ok) << "Can't get brightness";
   return ok;
 }
 
 bool Backlight::SetBrightness(int64 level) {
-  std::string buf = Int64ToString(level);
+  std::string buf = base::Int64ToString(level);
   bool ok =
       -1 != file_util::WriteFile(brightness_path_, buf.data(), buf.size());
   LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
