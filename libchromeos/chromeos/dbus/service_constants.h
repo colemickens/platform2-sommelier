@@ -44,9 +44,10 @@ extern const char *kSessionManagerSessionStateChanged;
 
 // Also, conforming to GError conventions
 typedef enum {
-  CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,  // email address is illegal.
-  CHROMEOS_LOGIN_ERROR_EMIT_FAILED,    // could not emit upstart signal.
-  CHROMEOS_LOGIN_ERROR_SESSION_EXISTS  // session already exists for this user.
+  CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,   // email address is illegal.
+  CHROMEOS_LOGIN_ERROR_EMIT_FAILED,     // could not emit upstart signal.
+  CHROMEOS_LOGIN_ERROR_SESSION_EXISTS,  // session already exists for this user.
+  CHROMEOS_LOGIN_ERROR_UNKNOWN_PID      // pid specified is unknown.
 } ChromeOSLoginError;
 
 }  // namespace login_manager
