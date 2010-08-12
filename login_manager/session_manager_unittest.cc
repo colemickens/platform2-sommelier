@@ -461,14 +461,14 @@ TEST(SessionManagerTestStatic, EmailAddressTooMuchAtTest) {
 }
 
 TEST(SessionManagerTestStatic, GetArgLists0) {
-  std::vector<std::wstring> args;
+  std::vector<std::string> args;
   std::vector<std::vector<std::string> > arg_lists =
       SessionManagerService::GetArgLists(args);
   EXPECT_EQ(0, arg_lists.size());
 }
 
-static std::vector<std::vector<std::string> > GetArgs(const wchar_t** c_args) {
-  std::vector<std::wstring> args;
+static std::vector<std::vector<std::string> > GetArgs(const char** c_args) {
+  std::vector<std::string> args;
   while (*c_args) {
     args.push_back(*c_args);
     c_args++;
@@ -477,14 +477,14 @@ static std::vector<std::vector<std::string> > GetArgs(const wchar_t** c_args) {
 }
 
 TEST(SessionManagerTestStatic, GetArgLists1) {
-  const wchar_t* c_args[] = {L"a", L"b", L"c", NULL};
+  const char* c_args[] = {"a", "b", "c", NULL};
   std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
 }
 
 TEST(SessionManagerTestStatic, GetArgLists2) {
-  const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", L"d", NULL};
+  const char* c_args[] = {"a", "b", "c", "--", "d", NULL};
   std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(2, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
@@ -492,14 +492,14 @@ TEST(SessionManagerTestStatic, GetArgLists2) {
 }
 
 TEST(SessionManagerTestStatic, GetArgLists_TrailingDashes) {
-  const wchar_t* c_args[] = {L"a", L"b", L"c", L"--", NULL};
+  const char* c_args[] = {"a", "b", "c", "--", NULL};
   std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
 }
 
 TEST(SessionManagerTestStatic, GetArgLists3_InitialDashes) {
-  const wchar_t* c_args[] = {L"--", L"a", L"b", L"c", NULL};
+  const char* c_args[] = {"--", "a", "b", "c", NULL};
   std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
   EXPECT_EQ(1, arg_lists.size());
   EXPECT_EQ(3, arg_lists[0].size());
