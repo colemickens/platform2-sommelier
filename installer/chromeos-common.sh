@@ -165,6 +165,9 @@ install_gpt() {
   # Here are the size limits that we're currently requiring
   local max_kern_sectors=32768        # 16M
   local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 1G by default
+  if [ "$rootfs_img_sectors" -gt "$max_rootfs_sectors" ]; then
+    max_rootfs_sectors=$(roundup $rootfs_img_sectors)
+  fi
   local max_oem_sectors=32768         # 16M
   local max_reserved_sectors=131072   # 64M
   local max_esp_sectors=32768         # 16M
