@@ -50,7 +50,7 @@ class SessionManagerTest : public ::testing::Test {
     file_checker_ = new MockFileChecker(kCheckedFile);
   }
 
-  ~SessionManagerTest() {
+  virtual ~SessionManagerTest() {
     delete manager_;
     FilePath uptime1(kUptimeFile1);
     FilePath disk1(kDiskFile1);
