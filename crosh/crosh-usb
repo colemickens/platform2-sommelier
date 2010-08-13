@@ -16,6 +16,9 @@ USB_HELP='
 
  upgrade [<dev>]
   Upgrade an existing ChromeOS installation, saving existing user data.
+
+ update_firmware
+  Update system firmware, if applicable.
 '
 
 HELP="$HELP$USB_HELP"
@@ -33,6 +36,16 @@ do_install() {
     $CHROMEOS_INSTALL --dst="$dst" "$@"
   else
     $CHROMEOS_INSTALL "$@"
+  fi
+}
+
+cmd_update_firmware() {
+  local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
+
+  if [ -s $CHROMEOS_FIRMWARE_UPDATE ]; then
+    $CHROMEOS_FIRMWARE_UPDATE
+  else
+    echo "There is no firmware update in this Chrome OS image."
   fi
 }
 
