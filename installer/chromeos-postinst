@@ -19,6 +19,7 @@ INSTALL_ROOT=$(dirname "$0")
 # to know where to load shflags from
 DEFINE_string esp_part_file "" "File containing the ESP partition"
 DEFINE_boolean postcommit ${FLAGS_FALSE} "Run postcommit"
+DEFINE_boolean update_firmware ${FLAGS_FALSE} "Enable firmware update"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -240,7 +241,8 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     # after new kernel is actived (installed and made bootable), otherwise new
     # firmware with all old kernels may lead to recovery screen (due to new key).
     FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
-    if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+    if [ ${FLAGS_update_firmware} -eq "${FLAGS_TRUE}" -a \
+         -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
       # The firmware update script is supposed to automatically identify current
       # system state and decide the action to perform. "--background-update" tells
       # it not to perform any dangerous things that would require/cause reboot,
