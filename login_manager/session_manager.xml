@@ -36,5 +36,12 @@
     <method name="UnlockScreen">
       <!-- Unlock screen -->
     </method>
+    <method name="RestartJob">
+      <!-- PID of the job to restart -->
+      <arg type="i" name="pid" direction="in" />
+      <!-- Command line arguments to restart the job with -->
+      <arg type="s" name="command_line" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
   </interface>
 </node>

@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/string_util.h>
@@ -93,9 +92,7 @@ void ChildJob::StartSession(const std::string& email) {
     arguments_.erase(to_erase, arguments_.end());
     removed_login_manager_flag_ = true;
   }
-  if (email.empty()) {
-    arguments_.push_back(kBWSIFlag);
-  }
+
   arguments_.push_back(kLoginUserFlag);
   arguments_.back().append(email);
 }
@@ -103,10 +100,6 @@ void ChildJob::StartSession(const std::string& email) {
 void ChildJob::StopSession() {
   // The last element for started session is always login user flag.
   arguments_.pop_back();
-  // If it was "Browse Without Sign In" session, we need to remove BWSI flag
-  // too.
-  if (arguments_.back() == kBWSIFlag)
-    arguments_.pop_back();
   if (removed_login_manager_flag_) {
     arguments_.push_back(kLoginManagerFlag);
     removed_login_manager_flag_ = false;
@@ -130,6 +123,11 @@ bool ChildJob::IsDesiredUidSet() const {
 const std::string ChildJob::GetName() const {
   FilePath exec_file(arguments_[0]);
   return exec_file.BaseName().value();
+}
+
+void ChildJob::SetArguments(const std::string& arguments) {
+  arguments_.clear();
+  SplitString(arguments, ' ', &arguments_);
 }
 
 char const** ChildJob::CreateArgv() const {

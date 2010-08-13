@@ -439,6 +439,40 @@ TEST_F(SessionManagerTest, StatsRecorded) {
   EXPECT_TRUE(file_util::PathExists(disk));
 }
 
+TEST_F(SessionManagerTest, RestartJobUnknownPid) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  SessionManagerService::TestApi test_api = manager_->test_api();
+  test_api.set_child_pid(0, kDummyPid);
+
+  gboolean out;
+  gint pid = kDummyPid + 1;
+  gchar arguments[] = "";
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->RestartJob(pid, arguments, &out, &error));
+  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, error->code);
+  EXPECT_EQ(FALSE, out);
+}
+
+TEST_F(SessionManagerTest, RestartJob) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+  SessionManagerService::TestApi test_api = manager_->test_api();
+  test_api.set_child_pid(0, kDummyPid);
+
+  EXPECT_CALL(*job, SetArguments("dummy"))
+      .Times(1);
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
+
+  gboolean out;
+  gint pid = kDummyPid;
+  gchar arguments[] = "dummy";
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->RestartJob(pid, arguments, &out, &error));
+  EXPECT_EQ(TRUE, out);
+}
+
 TEST(SessionManagerTestStatic, EmailAddressTest) {
   const char valid[] = "user@somewhere";
   EXPECT_TRUE(login_manager::SessionManagerService::ValidateEmail(valid));

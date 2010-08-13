@@ -145,14 +145,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
-  // also call child_job_->SetState(email_address).
+  // also call child_job_->StartSession(email_address).
   gboolean StartSession(gchar* email_address,
                         gchar* unique_identifier,
                         gboolean* OUT_done,
                         GError** error);
 
   // In addition to emitting "stop-user-session", this function will
-  // also call child_job_->SetSwitch(true).
+  // also call child_job_->StopSession().
   gboolean StopSession(gchar* unique_identifier,
                        gboolean* OUT_done,
                        GError** error);
@@ -164,6 +164,13 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Handles UnlockScreen request from PowerManager. It switches itself to
   // unlock mode, and emit UnlockScreen signal to Chromium Browser.
   gboolean UnlockScreen(GError** error);
+
+  // Restarts job with specified pid replacing its command line arguments
+  // with provided.
+  gboolean RestartJob(gint pid,
+                      gchar* arguments,
+                      gboolean* OUT_done,
+                      GError** error);
 
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);

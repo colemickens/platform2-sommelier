@@ -87,6 +87,13 @@ gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error) {
   SESSION_MANAGER_WRAP_METHOD0(UnlockScreen);
 }
+gboolean session_manager_restart_job(SessionManager* self,
+                                     gint pid,
+                                     gchar* arguments,
+                                     gboolean* OUT_done,
+                                     GError** error) {
+  SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done);
+}
 
 #undef SESSION_MANAGER_WRAP_METHOD
 

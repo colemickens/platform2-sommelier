@@ -24,6 +24,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_METHOD1(SetDesiredUid, void(uid_t));
   MOCK_CONST_METHOD0(IsDesiredUidSet, bool());
   MOCK_CONST_METHOD0(GetName, const std::string());
+  MOCK_METHOD1(SetArguments, void(const std::string&));
 };
 }  // namespace login_manager
 

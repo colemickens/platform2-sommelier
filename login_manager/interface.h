@@ -48,6 +48,11 @@ gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error);
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error);
+gboolean session_manager_restart_job(SessionManager *self,
+                                     gint pid,
+                                     gchar *arguments,
+                                     gboolean *OUT_done,
+                                     GError **error);
 }  // namespace gobject
 }  // namespace login_manager
 #endif  // LOGIN_MANAGER_INTERFACE_H_

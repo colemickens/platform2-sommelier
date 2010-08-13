@@ -15,6 +15,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <algorithm>
+
 #include "base/basictypes.h"
 #include "base/command_line.h"
 #include "base/file_path.h"
@@ -109,6 +111,14 @@ const char SessionManagerService::kLegalCharacters[] =
     ".@1234567890";
 //static
 const char SessionManagerService::kIncognitoUser[] = "";
+
+namespace {
+
+// Time we wait for child job to die (in seconds).
+const int kKillTimeout = 3;
+const int kMaxArgumentsSize = 512;
+
+}  // namespace
 
 SessionManagerService::SessionManagerService(
     std::vector<ChildJobInterface*> child_jobs)
@@ -407,6 +417,35 @@ gboolean SessionManagerService::UnlockScreen(GError **error) {
   return TRUE;
 }
 
+gboolean SessionManagerService::RestartJob(gint pid,
+                                           gchar* arguments,
+                                           gboolean* OUT_done,
+                                           GError** error) {
+  int child_pid = pid;
+  std::vector<int>::iterator child_pid_it =
+      std::find(child_pids_.begin(), child_pids_.end(), child_pid);
+  if (child_pid_it == child_pids_.end()) {
+    *OUT_done = FALSE;
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_UNKNOWN_PID,
+              "Provided pid is unknown.");
+    return FALSE;
+  }
+
+  kill(-child_pid, SIGKILL);
+
+  char arguments_buffer[kMaxArgumentsSize + 1];
+  snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
+  arguments_buffer[kMaxArgumentsSize] = '\0';
+  string arguments_string(arguments_buffer);
+
+  size_t child_index = child_pid_it - child_pids_.begin();
+  child_jobs_[child_index]->SetArguments(arguments_string);
+  child_pids_[child_index] = RunChild(child_jobs_[child_index]);
+
+  return *OUT_done = TRUE;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
 
@@ -480,7 +519,7 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
                                            GIOCondition condition,
                                            gpointer data) {
   // We only get called if there's data on the pipe.  If there's data, we're
-  // supposed to exit,.  So, don't even bother to read it.
+  // supposed to exit.  So, don't even bother to read it.
   return ServiceShutdown(data);
 }
 

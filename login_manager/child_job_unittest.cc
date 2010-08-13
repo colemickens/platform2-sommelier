@@ -31,9 +31,6 @@ const char* kArgv[] = {
 // Normal username to test session for.
 const char kUser[] = "test@gmail.com";
 
-// Username which BWSI session is started for.
-const char kBWSIUser[] = "";
-
 }  // namespace
 
 TEST(ChildJobTest, InitializationTest) {
@@ -93,26 +90,6 @@ TEST(ChildJobTest, StartStopSessionTest) {
     EXPECT_EQ(kArgv[i], job.arguments_[i]);
 }
 
-TEST(ChildJobTest, StartStopBWSISessionTest) {
-  vector<string> argv(kArgv, kArgv + arraysize(kArgv));
-  ChildJob job(argv);
-
-  job.StartSession(kBWSIUser);
-  EXPECT_FALSE(job.removed_login_manager_flag_);
-  ASSERT_EQ(arraysize(kArgv) + 2, job.arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job.arguments_[i]);
-  EXPECT_EQ(ChildJob::kBWSIFlag, job.arguments_[arraysize(kArgv)]);
-  EXPECT_EQ(StringPrintf("%s%s", ChildJob::kLoginUserFlag, kBWSIUser),
-            job.arguments_[arraysize(kArgv) + 1]);
-
-  // Should remove bwsi login user flag and bwsi flag.
-  job.StopSession();
-  ASSERT_EQ(arraysize(kArgv), job.arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job.arguments_[i]);
-}
-
 TEST(ChildJobTest, StartStopSessionFromLoginTest) {
   const char* kArgvWithLoginFlag[] = {
       "zero",
@@ -138,6 +115,24 @@ TEST(ChildJobTest, StartStopSessionFromLoginTest) {
   ASSERT_EQ(arraysize(kArgvWithLoginFlag), job.arguments_.size());
   for (size_t i = 0; i < arraysize(kArgvWithLoginFlag); ++i)
     EXPECT_EQ(kArgvWithLoginFlag[i], job.arguments_[i]);
+}
+
+TEST(ChildJobTest, SetArguments) {
+  vector<string> argv(kArgv, kArgv + arraysize(kArgv));
+  ChildJob job(argv);
+
+  const char kNewArgsString[] = "ichi ni san";
+  const char* kNewArgsArray[] = {
+    "ichi",
+    "ni",
+    "san"
+  };
+  job.SetArguments(kNewArgsString);
+
+  ASSERT_EQ(arraysize(kNewArgsArray), job.arguments_.size());
+  for (size_t i = 0; i < arraysize(kNewArgsArray); ++i) {
+    EXPECT_EQ(kNewArgsArray[i], job.arguments_[i]);
+  }
 }
 
 }  // namespace login_manager

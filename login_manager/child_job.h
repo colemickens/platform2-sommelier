@@ -55,6 +55,9 @@ class ChildJobInterface {
   // Returns the name of the job.
   virtual const std::string GetName() const = 0;
 
+  // Sets command line arguments for the job from string.
+  virtual void SetArguments(const std::string& arguments) = 0;
+
   // Potential exit codes for Run().
   static const int kCantSetUid;
   static const int kCantSetGid;
@@ -80,6 +83,7 @@ class ChildJob : public ChildJobInterface {
   virtual void SetDesiredUid(uid_t uid);
   virtual bool IsDesiredUidSet() const;
   virtual const std::string GetName() const;
+  virtual void SetArguments(const std::string& arguments);
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
@@ -125,8 +129,8 @@ class ChildJob : public ChildJobInterface {
   FRIEND_TEST(ChildJobTest, ShouldStopTest);
   FRIEND_TEST(ChildJobTest, ShouldNotStopTest);
   FRIEND_TEST(ChildJobTest, StartStopSessionTest);
-  FRIEND_TEST(ChildJobTest, StartStopBWSISessionTest);
   FRIEND_TEST(ChildJobTest, StartStopSessionFromLoginTest);
+  FRIEND_TEST(ChildJobTest, SetArguments);
   DISALLOW_COPY_AND_ASSIGN(ChildJob);
 };
 
