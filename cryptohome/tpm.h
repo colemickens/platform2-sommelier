@@ -92,16 +92,16 @@ class Tpm {
     memcpy(srk_auth_.data(), value.const_data(), srk_auth_.size());
   }
 
-  void set_well_known_uuid(const TSS_UUID& value) {
-    memcpy(&well_known_uuid_, &value, sizeof(TSS_UUID));
-  }
-
   void set_crypto(Crypto* value) {
     crypto_ = value;
   }
 
   void set_rsa_key_bits(int value) {
     rsa_key_bits_ = value;
+  }
+
+  void set_key_file(const std::string& value) {
+    key_file_ = value;
   }
 
  private:
@@ -111,12 +111,10 @@ class Tpm {
 
   int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) const;
 
-  bool RemoveCryptohomeKey(TSS_HCONTEXT context_handle,
-                           const TSS_UUID& key_uuid) const;
-
   bool LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                 const TSS_UUID& key_uuid, bool create_in_tpm,
-                                 bool register_key, TSS_HKEY* key_handle) const;
+                                 bool create_in_tpm,
+                                 bool register_key,
+                                 TSS_HKEY* key_handle);
 
   bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
@@ -139,10 +137,10 @@ class Tpm {
 
   int rsa_key_bits_;
   SecureBlob srk_auth_;
-  TSS_UUID well_known_uuid_;
   Crypto* crypto_;
   TSS_HCONTEXT context_handle_;
   TSS_HKEY key_handle_;
+  std::string key_file_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };

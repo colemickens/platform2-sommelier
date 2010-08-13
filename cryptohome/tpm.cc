@@ -6,6 +6,7 @@
 
 #include "tpm.h"
 
+#include <base/file_util.h>
 #include <base/platform_thread.h>
 #include <base/time.h>
 #include <openssl/rsa.h>
@@ -16,22 +17,23 @@
 #include <trousers/trousers.h>
 
 #include "crypto.h"
+#include "mount.h"
+#include "platform.h"
 
 namespace cryptohome {
 
 const unsigned char kDefaultSrkAuth[] = { };
-const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
-                                            {0, 9, 8, 1, 0, 3}};
 const int kDefaultTpmRsaKeyBits = 2048;
 const int kDefaultDiscardableWrapPasswordLength = 32;
+const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
 
 Tpm::Tpm()
     : rsa_key_bits_(kDefaultTpmRsaKeyBits),
       srk_auth_(kDefaultSrkAuth, sizeof(kDefaultSrkAuth)),
       crypto_(NULL),
       context_handle_(0),
-      key_handle_(0) {
-  set_well_known_uuid(kCryptohomeWellKnownUuid);
+      key_handle_(0),
+      key_file_(kDefaultCryptohomeKeyFile) {
 }
 
 Tpm::~Tpm() {
@@ -56,8 +58,7 @@ bool Tpm::Connect() {
     }
 
     TSS_HKEY key_handle;
-    if (!LoadOrCreateCryptohomeKey(context_handle, well_known_uuid_, false,
-                                   true, &key_handle)) {
+    if (!LoadOrCreateCryptohomeKey(context_handle, false, true, &key_handle)) {
       Tspi_Context_Close(context_handle);
       return false;
     }
@@ -84,23 +85,10 @@ void Tpm::Disconnect() {
   }
 }
 
-bool Tpm::RemoveCryptohomeKey(TSS_HCONTEXT context_handle,
-                              const TSS_UUID& key_uuid) const {
-  TSS_RESULT result;
-  TSS_HKEY key_handle;
-  if ((result = Tspi_Context_UnregisterKey(context_handle, TSS_PS_TYPE_SYSTEM,
-                                           key_uuid, &key_handle))) {
-    LOG(ERROR) << "Error calling Tspi_UnregisterKey: " << result;
-    return false;
-  }
-  Tspi_Context_CloseObject(context_handle, key_handle);
-  return true;
-}
-
 bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
-                                    const TSS_UUID& key_uuid,
-                                    bool create_in_tpm, bool register_key,
-                                    TSS_HKEY* key_handle) const {
+                                    bool create_in_tpm,
+                                    bool register_key,
+                                    TSS_HKEY* key_handle) {
   TSS_RESULT result;
 
   // Load the Storage Root Key
@@ -119,12 +107,17 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   }
   Tspi_Context_FreeMemory(context_handle, public_srk);
 
-  // First try loading the key by the UUID
-  if ((result = Tspi_Context_LoadKeyByUUID(context_handle, TSS_PS_TYPE_SYSTEM,
-                                           key_uuid, key_handle))
-      == TSS_SUCCESS) {
-    Tspi_Context_CloseObject(context_handle, srk_handle);
-    return true;
+  // First, try loading the key from the key file
+  SecureBlob raw_key;
+  if (Mount::LoadFileBytes(FilePath(key_file_), &raw_key)) {
+    if ((result = Tspi_Context_LoadKeyByBlob(context_handle,
+        srk_handle,
+        raw_key.size(),
+        const_cast<BYTE*>(static_cast<const BYTE*>(raw_key.const_data())),
+        key_handle)) == TSS_SUCCESS) {
+      Tspi_Context_CloseObject(context_handle, srk_handle);
+      return true;
+    }
   }
 
   // Otherwise, we need to create the key.  First, create an object.
@@ -263,12 +256,22 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   }
 
   if (register_key) {
-    // Register the key so we can look it up by UUID
-    TSS_UUID SRK_UUID = TSS_UUID_SRK;
-    if ((result = Tspi_Context_RegisterKey(context_handle, local_key_handle,
-                                           TSS_PS_TYPE_SYSTEM, key_uuid,
-                                           TSS_PS_TYPE_SYSTEM, SRK_UUID))) {
-      LOG(ERROR) << "Error calling Tspi_RegisterKey: " << result;
+    SecureBlob raw_key;
+    if (!GetKeyBlob(context_handle, local_key_handle, &raw_key)) {
+      LOG(ERROR) << "Error getting key blob";
+      Tspi_Context_CloseObject(context_handle, srk_handle);
+      Tspi_Context_CloseObject(context_handle, local_key_handle);
+      return false;
+    }
+    Platform platform;
+    int previous_mask = platform.SetMask(cryptohome::kDefaultUmask);
+    unsigned int data_written = file_util::WriteFile(
+        FilePath(key_file_),
+        static_cast<const char*>(raw_key.const_data()),
+        raw_key.size());
+    platform.SetMask(previous_mask);
+    if (data_written != raw_key.size()) {
+      LOG(ERROR) << "Error writing key file";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -403,26 +406,7 @@ bool Tpm::LoadKey(const SecureBlob& blob) {
     return false;
   }
 
-  TSS_HKEY srk_handle;
-  if (!LoadSrk(context_handle_, &srk_handle)) {
-    Tspi_Context_CloseObject(context_handle_, local_key_handle);
-    return false;
-  }
-
-  TSS_RESULT result;
-  if ((result = Tspi_Key_LoadKey(local_key_handle, srk_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Key_LoadKey: " << result;
-    Tspi_Context_CloseObject(context_handle_, local_key_handle);
-    Tspi_Context_CloseObject(context_handle_, srk_handle);
-    return false;
-  }
-  Tspi_Context_CloseObject(context_handle_, srk_handle);
-
-  if (key_handle_ != 0) {
-    Tspi_Context_CloseObject(context_handle_, key_handle_);
-  }
   key_handle_ = local_key_handle;
-
   return true;
 }
 
@@ -611,43 +595,33 @@ bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
 
 bool Tpm::LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
                       TSS_HKEY* key_handle) const {
+  TSS_HKEY srk_handle;
+  if (!LoadSrk(context_handle, &srk_handle)) {
+    return false;
+  }
+
+  TSS_HKEY local_key_handle = 0;
   TSS_RESULT result;
-  TSS_HKEY local_key_handle;
-  TSS_FLAG init_flags = TSS_KEY_TYPE_LEGACY | TSS_KEY_VOLATILE;
-  if ((result = Tspi_Context_CreateObject(context_handle,
-                                TSS_OBJECT_TYPE_RSAKEY,
-                                init_flags, &local_key_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject";
-    return false;
-  }
-
-  // Set the attributes
-  UINT32 sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-  if ((result = Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                           TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
-                           sig_scheme))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribUint32";
-    Tspi_Context_CloseObject(context_handle, local_key_handle);
-    return false;
-  }
-
-  UINT32 enc_scheme = TSS_ES_RSAESPKCSV15;
-  if ((result = Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
-                           TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
-                           enc_scheme))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribUint32";
-    Tspi_Context_CloseObject(context_handle, local_key_handle);
-    return false;
-  }
-
-  if ((result = Tspi_SetAttribData(local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
-      TSS_TSPATTRIB_KEYBLOB_BLOB,
+  if ((result = Tspi_Context_LoadKeyByBlob(context_handle,
+      srk_handle,
       blob.size(),
-      static_cast<BYTE*>(const_cast<void*>(blob.const_data()))))) {
-    LOG(ERROR) << "Couldn't set key blob";
+      const_cast<BYTE*>(static_cast<const BYTE*>(blob.const_data())),
+      &local_key_handle))) {
+    LOG(ERROR) << "Error calling Tspi_Context_LoadKeyByBlob";
+    Tspi_Context_CloseObject(context_handle, srk_handle);
+    return false;
+  }
+
+  Tspi_Context_CloseObject(context_handle, srk_handle);
+
+  unsigned int size_n;
+  BYTE *public_key;
+  if ((result = Tspi_Key_GetPubKey(local_key_handle, &size_n, &public_key))) {
+    LOG(ERROR) << "Error calling Tspi_Key_GetPubKey: " << result;
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
   }
+  Tspi_Context_FreeMemory(context_handle, public_key);
 
   *key_handle = local_key_handle;
   return true;
