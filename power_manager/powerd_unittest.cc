@@ -458,6 +458,7 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   daemon_.unplugged_suspend_ms_ = INT64_MAX;
   daemon_.default_lock_ms_ = kLockMs;
   daemon_.idle_.Init(&daemon_);
+  daemon_.locker_.Init(false);
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());

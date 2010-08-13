@@ -216,7 +216,7 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
-  if (is_idle && kIdleNormal == idle_state_) {
+  if (is_idle && kIdleNormal == idle_state_ && !locker_.is_locked()) {
     bool video_is_playing = false;
     CHECK(video_detector_->GetVideoActivity(&video_is_playing));
     if (video_is_playing)
