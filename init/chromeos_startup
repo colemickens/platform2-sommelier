@@ -131,9 +131,11 @@ mount -n -t debugfs debugfs /sys/kernel/debug
 
 if [ -e /mnt/stateful_partition/.consider_oobe ]; then
   # Mount OEM partner partition if OOBE has not yet been completed.
+  # Also create /tmp/machine-info.
   if [ ! -e /home/chronos/.oobe_completed ]; then
     OEM_DEV=${ROOT_DEV%[0-9]*}8
     mount -n -t ext3 "$OEM_DEV" /mnt/partner_partition
+    mosys -k smbios info system > /tmp/machine-info
   fi
 fi
 
