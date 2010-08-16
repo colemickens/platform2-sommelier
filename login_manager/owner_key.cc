@@ -1,0 +1,83 @@
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "login_manager/owner_key.h"
+
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+
+#include "login_manager/system_utils.h"
+
+namespace login_manager {
+
+OwnerKey::OwnerKey(const FilePath& key_file)
+    : key_file_(key_file),
+      have_checked_disk_(false) {
+}
+
+OwnerKey::~OwnerKey() {}
+
+bool OwnerKey::HaveCheckedDisk() { return have_checked_disk_; }
+
+bool OwnerKey::IsPopulated() { return !key_.empty(); }
+
+bool OwnerKey::PopulateFromDiskIfPossible() {
+  have_checked_disk_ = true;
+  if (!file_util::PathExists(key_file_)) {
+    LOG(INFO) << "No owner key on disk.";
+    return true;
+  }
+
+  SystemUtils utils;
+  int32 safe_file_size = 0;
+  if (!utils.EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
+    LOG(ERROR) << key_file_.value() << " is too large!";
+    return false;
+  }
+
+  key_.resize(safe_file_size);
+  int data_read = file_util::ReadFile(key_file_,
+                                      reinterpret_cast<char*>(&key_[0]),
+                                      safe_file_size);
+  if (data_read != safe_file_size) {
+    PLOG(ERROR) << key_file_.value() << " could not be read in its entirety!";
+    key_.resize(0);
+    return false;
+  }
+  return true;
+}
+
+bool OwnerKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
+  if (!HaveCheckedDisk()) {
+    LOG(WARNING) << "Haven't checked disk for owner key yet!";
+    return false;
+  }
+  // Only get here if we've checked disk already.
+  if (IsPopulated()) {
+    LOG(ERROR) << "Already have an owner key!";
+    return false;
+  }
+  key_ = public_key_der;
+  return true;
+}
+
+bool OwnerKey::Persist() {
+  // It is a programming error to call this before checking for the key on disk.
+  CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
+  if (file_util::PathExists(key_file_)) {
+    LOG(ERROR) << "Tried to overwrite owner key!";
+    return false;
+  }
+
+  if (key_.size() != file_util::WriteFile(key_file_,
+                                          reinterpret_cast<char*>(&key_[0]),
+                                          key_.size())) {
+    PLOG(ERROR) << "Could not write data to " << key_file_.value();
+    return false;
+  }
+  return true;
+}
+
+}  // namespace login_manager
