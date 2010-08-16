@@ -88,13 +88,12 @@ install_chromiumos_payload() {
       --payload_image=${1} >> $RECOVERY_LOG
   log "Recovery installer completed"
 
-  # Reset TPM to support Google-A after reboot
+  # Reset TPM
   stop tcsd
   tpmc ppon
   tpmc clear
-  # TODO(tgao): remove temp fix below when the functionality gets integrated
-  # into kernel
-  tpm_init_temp_fix
+  tpmc enable
+  tpmc activate
 
   # shut down and power off the device
   log "Shut down device"
