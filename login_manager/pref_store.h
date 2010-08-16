@@ -93,6 +93,8 @@ class PrefStore {
   // Remove the record for |key| from |prefs_| and return in |out|.
   // Returns false upon failure.
   bool RemoveOneString(const std::string& key, std::string* out);
+
+  DISALLOW_COPY_AND_ASSIGN(PrefStore);
 };
 
 }  // namespace login_manager

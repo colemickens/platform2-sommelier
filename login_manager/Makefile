@@ -10,11 +10,11 @@ BASE_LIBS = -lbase -lpthread -lrt -lchromeos
 LIBS = $(BASE_LIBS) -lcrash
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
-	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
-LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1)
+	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1 nss)
+LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 nss)
 
 SESSION_COMMON_OBJS = session_manager_service.o child_job.o interface.o \
-	pref_store.o
+	nss_util.o pref_store.o system_utils.o
 
 DBUS_SOURCE = session_manager.xml
 DBUS_SERVER = bindings/server.h
@@ -28,7 +28,8 @@ SIGNALLER_OBJS = signaller.o
 
 TEST_BIN = session_manager_unittest
 TEST_OBJS = $(SESSION_COMMON_OBJS) session_manager_testrunner.o \
-	session_manager_unittest.o child_job_unittest.o pref_store_unittest.o
+	session_manager_unittest.o child_job_unittest.o pref_store_unittest.o \
+	nss_util_unittest.o
 
 BINDINGS_DIR = bindings
 

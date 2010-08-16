@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
@@ -73,6 +74,7 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 }  // namespace switches
 
 int main(int argc, char* argv[]) {
+  base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
   string log_file = cl->GetSwitchValueASCII(switches::kLogFile);

@@ -281,7 +281,7 @@ TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
   int timeout = 3;
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
 
   manager_->test_api().CleanupChildren(timeout);
@@ -295,7 +295,7 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
   int timeout = 3;
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
       .WillOnce(Return(0));
@@ -314,7 +314,7 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
   int timeout = 3;
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
 
   std::string email_string(email);
@@ -334,7 +334,7 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   int timeout = 3;
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, child_is_gone(kDummyPid, timeout))
+  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
   EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
       .WillOnce(Return(0));
@@ -459,11 +459,15 @@ TEST_F(SessionManagerTest, RestartJob) {
   MockUtils();
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
+  EXPECT_CALL(*utils_, kill(-kDummyPid, SIGKILL))
+      .WillOnce(Return(0));
 
   EXPECT_CALL(*job, SetArguments("dummy"))
       .Times(1);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
+  ON_CALL(*job, Run())
+      .WillByDefault(Invoke(CleanExit));
 
   gboolean out;
   gint pid = kDummyPid;

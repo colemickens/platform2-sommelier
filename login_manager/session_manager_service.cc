@@ -432,7 +432,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
     return FALSE;
   }
 
-  kill(-child_pid, SIGKILL);
+  system_->kill(-child_pid, SIGKILL);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
@@ -583,7 +583,7 @@ void SessionManagerService::CleanupChildren(int timeout) {
     int child_pid = child_pids_[i_child];
     if (child_pid > 0) {
       system_->kill(child_pid, (session_started_ ? SIGTERM: SIGKILL));
-      if (!system_->child_is_gone(child_pid, timeout))
+      if (!system_->ChildIsGone(child_pid, timeout))
         system_->kill(child_pid, SIGABRT);
     }
   }
