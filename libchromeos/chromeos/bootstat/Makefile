@@ -5,19 +5,42 @@
 # Makefile for bootstat utilities
 #
 
-OPT_FLAGS = -O
-CFLAGS += -Wall -Werror -fPIC -fno-exceptions $(OPT_FLAGS)
+# OPT_CFLAGS is here to allow adding options for manual, host-side
+# builds.
+OPT_CFLAGS =
+CFLAGS += -Wall -Werror -fPIC -fno-exceptions $(OPT_CFLAGS)
 
-OBJS = \
-	bootstat.o \
-	bootstat_log.o
+LIB_OBJS = bootstat_log.o
 
+COMMAND_OBJS = bootstat.o
+COMMAND_LDFLAGS = $(LDFLAGS)
+
+TEST_OBJS = log_unit_tests.o
+TEST_LDFLAGS = $(LDFLAGS) -lgtest
+
+OBJS = $(LIB_OBJS) $(TEST_OBJS) $(COMMAND_OBJS)
+
+LIB = libbootstat.a
 COMMAND = bootstat
+TEST = log_unit_test
 
-all: $(COMMAND)
+%.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
 
-$(COMMAND): $(OBJS)
-	$(CC) -o $@ $(LDFLAGS) $(OBJS)
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
+
+all: $(COMMAND) $(LIB)
+tests: $(TEST)
+
+$(COMMAND): $(COMMAND_OBJS) $(LIB)
+	$(CC) -o $@ $(COMMAND_LDFLAGS) $^
+
+$(LIB): $(LIB_OBJS)
+	$(AR) rcs $@ $^
+
+$(TEST): $(TEST_OBJS) $(LIB)
+	$(CXX) $(TEST_LDFLAGS) -o $@ $^
 
 clean:
-	rm -f $(COMMAND) $(OBJS)
+	rm -f $(COMMAND) $(LIB) $(OBJS) $(TEST)

@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Implementation of bootstat_log(), part of the Chromium OS 'bootstat'
+// facility.
+
+#include "bootstat.h"
+
 #include <stdio.h>
 #include <stddef.h>
 
@@ -10,54 +15,44 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 
-#include "bootstat.h"
-
 //
 // Paths to the statistics files we snapshot as part of the data to
 // be logged.
 //
-#define UPTIME    "/proc/uptime"
+static const char kUptimeStatisticsFileName[] = "/proc/uptime";
 
-#if defined (__amd64__) || defined (__x86_64__)
-#define ROOTDEV   "sda"
+#if defined (__amd64__) || defined (__x86_64__) || defined (__i386__)
+static const char kDiskStatisticsFileName[] = "/sys/block/sda/stat";
+#elif defined (__arm__)
+static const char kDiskStatisticsFileName[] = "/sys/block/mmcblk0/stat";
+#else
+#error "unknown processor type?"
 #endif
 
-#if defined (__arm__)
-#define ROOTDEV   "mmcblk0"
-#endif
-
-#ifdef ROOTDEV
-#define ROOTSTAT  "/sys/block/" ROOTDEV "/stat"
-#endif
-
-//
-// Length of the longest valid string naming an event, not counting
-// the terminating NUL character.  Arbitrarily chosen, but intended
-// to be somewhat shorter than any valid file or path name.
-//
-#define MAX_EVENT_LEN  63
 
 //
 // Maximum length of any pathname for storing event statistics.
-// Also arbitrarily chosen, but see the comment below about
-// truncation.
+// Arbitrarily chosen, but see the comment below about truncation.
 //
 #define MAX_STAT_PATH  128
 
 //
 // Output file creation mode:  0666, a.k.a. rw-rw-rw-.
 //
-#define OFMODE  (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)
+static const int kFileCreationMode =
+    (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
 
-static void append_logdata(const char *ifname,
-                           const char *ofprefix, const char *event_id)
+
+static void append_logdata(const char* input_path,
+                           const char* output_name_prefix,
+                           const char* event_name)
 {
-  char      ofpath[MAX_STAT_PATH];
-  char      buffer[256];
-  ssize_t   nbytes;
-  int       ifd, ofd;
+  char output_path[MAX_STAT_PATH];
+  char buffer[256];
+  ssize_t num_read;
+  int ifd, ofd;
 
-  ifd = open(ifname, O_RDONLY);
+  ifd = open(input_path, O_RDONLY);
   if (ifd < 0) {
     return;
   }
@@ -65,25 +60,24 @@ static void append_logdata(const char *ifname,
   //
   // We don't want the file name "/tmp/uptime-..." truncated
   // differently from the the name "/tmp/disk-...", so we truncate
-  // event_id separately using the "%.*s" format.
+  // event_name separately using the "%.*s" format.
   //
-  // We expect that MAX_STAT_LEN is enough smaller than
-  // MAX_STAT_PATH that ofpath will never be truncated.  However,
-  // to be safe, we also stuff our own terminating '\0', since
-  // snprintf() won't put it there in the case of truncation.
+  // We expect that BOOTSTAT_MAX_EVENT_LEN is enough smaller than
+  // MAX_STAT_PATH that output_path will never be truncated.
   //
-  (void) snprintf(ofpath, sizeof (ofpath) - 1, "/tmp/%s-%.*s",
-                  ofprefix, MAX_EVENT_LEN, event_id);
-  ofpath[sizeof (ofpath) - 1] = '\0';
-  ofd = open(ofpath, O_WRONLY | O_APPEND | O_CREAT, OFMODE);
+  (void) snprintf(output_path, sizeof(output_path), "/tmp/%s-%.*s",
+                  output_name_prefix,
+                  BOOTSTAT_MAX_EVENT_LEN - 1, event_name);
+  ofd = open(output_path, O_WRONLY | O_APPEND | O_CREAT,
+             kFileCreationMode);
   if (ofd < 0) {
     (void) close(ifd);
     return;
   }
 
-  while ((nbytes = read(ifd, buffer, sizeof (buffer))) > 0) {
-    ssize_t wnbytes = write(ofd, buffer, nbytes);
-    if (wnbytes != nbytes)
+  while ((num_read = read(ifd, buffer, sizeof(buffer))) > 0) {
+    ssize_t num_written = write(ofd, buffer, num_read);
+    if (num_written != num_read)
       break;
   }
   (void) close(ofd);
@@ -91,10 +85,8 @@ static void append_logdata(const char *ifname,
 }
 
 
-void bootstat_log(const char *event_id)
+void bootstat_log(const char* event_name)
 {
-  append_logdata(UPTIME, "uptime", event_id);
-#ifdef ROOTSTAT
-  append_logdata(ROOTSTAT, "disk", event_id);
-#endif
+  append_logdata(kUptimeStatisticsFileName, "uptime", event_name);
+  append_logdata(kDiskStatisticsFileName, "disk", event_name);
 }
