@@ -1,0 +1,30 @@
+#!/bin/bash
+#
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Script to install usbsrv components for which we do not have rights
+# to redistribute.
+#
+set -e
+set -u
+
+ROOTDIR=/usr/local
+
+tmpdir=/tmp/usbsrv.$$
+mkdir -p ${tmpdir}
+
+trap "rm -rf ${tmpdir}; exit 1" 1 2 13 15
+
+cd ${tmpdir}
+wget http://incentivespro.com/usb-server.tar.gz
+tar -xzf usb-server.tar.gz
+
+cd usb-server
+cp usbsrv ${ROOTDIR}/bin
+cp usbsrvd ${ROOTDIR}/bin
+cp usbsrvd-cl ${ROOTDIR}/bin
+cd /
+
+rm -rf ${tmpdir}

@@ -49,6 +49,8 @@ install: $(GOBI_PLUGIN)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
 	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
+	install -m 0644 -D usbsrvd.conf $(DESTDIR)/etc/init/usbsrvd.conf
+	install -D install-usbsrv $(DESTDIR)/usr/bin/install-usbsrv
 
 # Temporary hack for recording MEID.  Installed only for USE=dogfood
 install-record-modem:
