@@ -95,6 +95,13 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen=login"
 fi
 
+# For recovery image, do NOT display OOBE or login window
+if [ -f /mnt/stateful_partition/.recovery ]; then
+  # the magic string "test:nowindow" comes from
+  # src/chrome/browser/chromeos/login/wizard_controller.cc
+  SKIP_OOBE="--login-screen=test:nowindow"
+fi
+
 # Enables gathering of chrome dumps.  In stateful partition so testers
 # can enable getting core dumps after build time.
 if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
