@@ -342,26 +342,6 @@ if [ "$MACHINE_NAME" != "armv7l" ]; then
   trap loop_offset_cleanup EXIT
   loop_offset_cleanup
   trap - EXIT
-
-  # Is there a better x86 test?
-  IS_INTEL_ARCH=$(MACHINE_NAME | grep "^i.86\$" | wc -l)
-  if [ "$IS_INTEL_ARCH" -eq "1" ]; then
-    # Update EFI partition. This doesn't happen in /postinst b/c we use loop
-    # device for mounting
-    loop_offset_setup ${FLAGS_dst} ${START_ESP}
-    trap loop_offset_cleanup EXIT
-    mount_on_loop_dev readwrite
-    trap my_cleanup EXIT
-    sudo /usr/sbin/chromeos-setimage B \
-        --dst=${FLAGS_dst} --run_as_root \
-        --update_syslinux_cfg="${TMPMNT}/syslinux/root.B.cfg" \
-        --esp_mounted_at="${TMPMNT}"
-    umount_from_loop_dev
-    trap loop_offset_cleanup EXIT
-    sudo syslinux ${LOOP_DEV}
-    loop_offset_cleanup
-    trap - EXIT
-  fi
 fi
 
 echo "Installing the stateful partition..."

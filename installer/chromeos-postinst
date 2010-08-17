@@ -82,7 +82,9 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     fi
     mount "${EFI_PART}" "${EFI_MNT}"
     set +e
-    cp -R "${INSTALL_ROOT}"/boot/syslinux "${EFI_MNT}"
+    # Copy over the templates, but don't clobber anything.
+    # Clobbering is boot_slot specific and handled by setimage below.
+    cp -nR "${INSTALL_ROOT}"/boot/syslinux "${EFI_MNT}"
     ERR=${?}
     echo "Updating syslinux"
     # Update all legacy bootloaders.
@@ -139,6 +141,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
   # This export is so that locate_gpt will look within this install
   # partition to find that copy of the cgpt program.
+  # Note, this only works when running $INSTALL_ROOT/postinst.
   export DEFAULT_CHROOT_DIR=$(dirname "$0")
   locate_gpt  # sets $GPT to cgpt executable
 
