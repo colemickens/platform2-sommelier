@@ -247,6 +247,32 @@ class MonitorConnection<void (A1, A2)> {
 
 };
 
+template <typename A1, typename A2, typename A3>
+class MonitorConnection<void (A1, A2, A3)> {
+ public:
+  MonitorConnection(const Proxy& proxy, const char* name,
+                    void (*monitor)(void*, A1, A2, A3), void* object)
+      : proxy_(proxy), name_(name), monitor_(monitor), object_(object) {
+  }
+
+  static void Run(::DBusGProxy*, A1 x, A2 y, A3 z, MonitorConnection* self) {
+    self->monitor_(self->object_, x, y, z);
+  }
+  const Proxy& proxy() const {
+    return proxy_;
+  }
+  const std::string& name() const {
+    return name_;
+  }
+
+ private:
+  Proxy proxy_;
+  std::string name_;
+  void (*monitor_)(void*, A1, A2, A3);
+  void* object_;
+
+};
+
 template <typename A1>
 MonitorConnection<void (A1)>* Monitor(const Proxy& proxy, const char* name,
                                       void (*monitor)(void*, A1),
@@ -274,6 +300,26 @@ MonitorConnection<void (A1, A2)>* Monitor(const Proxy& proxy, const char* name,
   ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
                             glib::type_to_gtypeid<A1>(),
                             glib::type_to_gtypeid<A2>(),
+                            G_TYPE_INVALID);
+  ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
+                                G_CALLBACK(&ConnectionType::Run),
+                                result, NULL);
+  return result;
+}
+
+template <typename A1, typename A2, typename A3>
+MonitorConnection<void (A1, A2, A3)>* Monitor(const Proxy& proxy,
+                                          const char* name,
+                                          void (*monitor)(void*, A1, A2, A3),
+                                          void* object) {
+  typedef MonitorConnection<void (A1, A2, A3)> ConnectionType;
+
+  ConnectionType* result = new ConnectionType(proxy, name, monitor, object);
+
+  ::dbus_g_proxy_add_signal(proxy.gproxy(), name,
+                            glib::type_to_gtypeid<A1>(),
+                            glib::type_to_gtypeid<A2>(),
+                            glib::type_to_gtypeid<A3>(),
                             G_TYPE_INVALID);
   ::dbus_g_proxy_connect_signal(proxy.gproxy(), name,
                                 G_CALLBACK(&ConnectionType::Run),

@@ -28,6 +28,17 @@ extern const char *kCryptohomeTpmIsEnabled;
 extern const char *kCryptohomeTpmGetPassword;
 }  // namespace cryptohome
 
+namespace imageburn {
+extern const char *kImageBurnServiceName;
+extern const char *kImageBurnServicePath;
+extern const char *kImageBurnServiceInterface;
+//Methods
+extern const char *kBurnImage;
+//Signals
+extern const char *kSignalBurnFinishedName;
+extern const char *kSignalBurnUpdateName;
+} // namespace imageburn
+
 namespace login_manager {
 extern const char *kSessionManagerInterface;
 extern const char *kSessionManagerServicePath;

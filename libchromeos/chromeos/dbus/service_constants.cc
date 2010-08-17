@@ -26,6 +26,17 @@ const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
 const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
 }  // namespace cryptohome
 
+namespace imageburn{
+const char *kImageBurnServiceName = "org.chromium.ImageBurner";
+const char *kImageBurnServicePath = "/org/chromium/ImageBurner";
+const char *kImageBurnServiceInterface = "org.chromium.ImageBurnerInterface";
+//Methods
+const char *kBurnImage = "BurnImage";
+//Signals
+const char *kSignalBurnFinishedName = "burn_finished";
+const char *kSignalBurnUpdateName = "burn_progress_update";
+} // namespace imageburn
+
 namespace login_manager {
 const char *kSessionManagerInterface = "org.chromium.SessionManagerInterface";
 const char *kSessionManagerServiceName = "org.chromium.SessionManager";
