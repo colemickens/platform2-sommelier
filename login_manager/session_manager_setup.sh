@@ -156,6 +156,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --apps-gallery-url="https://chrome.google.com/extensions/" \
             --enable-login-images \
             --enable-nacl \
+            --enable-tabbed-options \
             --scroll-pixels=4 \
             "${SKIP_OOBE}" \
 -- "$WM_SCRIPT"
