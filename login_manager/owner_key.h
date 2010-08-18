@@ -5,9 +5,15 @@
 #ifndef LOGIN_MANAGER_NSS_UTIL_H_
 #define LOGIN_MANAGER_NSS_UTIL_H_
 
-#include <base/basictypes.h>
-#include <base/file_path.h>
 #include <vector>
+
+#include <base/basictypes.h>
+#include <base/crypto/signature_verifier.h>
+#include <base/file_path.h>
+
+namespace base {
+class SignatureVerifier;
+}  // namespace base
 
 namespace login_manager {
 
@@ -21,7 +27,7 @@ namespace login_manager {
 class OwnerKey {
  public:
   OwnerKey(const FilePath& key_file);
-  ~OwnerKey();
+  virtual ~OwnerKey();
 
   virtual bool HaveCheckedDisk();
   virtual bool IsPopulated();
@@ -43,10 +49,21 @@ class OwnerKey {
   // Returns false if |key_file_| already exists, or if there's an error while
   // writing data.
   virtual bool Persist();
+
+  // Verify that |signature| is a valid sha1 w/ RSA signature over the data in
+  // |data| with |key_|.
+  // Returns false if the sig is invalid, or there's an error.
+  virtual bool Verify(const char* data,
+                      uint32 data_len,
+                      const char* signature,
+                      uint32 sig_len);
  private:
+  static const uint8 kAlgorithm[];
+
   const FilePath key_file_;
   bool have_checked_disk_;
   std::vector<uint8> key_;
+  base::SignatureVerifier verifier_;
 
   DISALLOW_COPY_AND_ASSIGN(OwnerKey);
 };
