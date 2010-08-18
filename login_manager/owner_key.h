@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LOGIN_MANAGER_NSS_UTIL_H_
-#define LOGIN_MANAGER_NSS_UTIL_H_
+#ifndef LOGIN_MANAGER_OWNER_KEY_H_
+#define LOGIN_MANAGER_OWNER_KEY_H_
 
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/crypto/signature_verifier.h>
 #include <base/file_path.h>
 
 namespace base {
@@ -63,10 +62,9 @@ class OwnerKey {
   const FilePath key_file_;
   bool have_checked_disk_;
   std::vector<uint8> key_;
-  base::SignatureVerifier verifier_;
 
   DISALLOW_COPY_AND_ASSIGN(OwnerKey);
 };
 }  // namespace login_manager
 
-#endif  // LOGIN_MANAGER_NSS_UTIL_H_
+#endif  // LOGIN_MANAGER_OWNER_KEY_H_

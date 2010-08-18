@@ -41,6 +41,15 @@ class NssUtil {
 
   virtual FilePath GetOwnerKeyFilePath() = 0;
 
+  virtual bool Verify(const uint8* signature_algorithm,
+                      int signature_algorithm_len,
+                      const uint8* signature,
+                      int signature_len,
+                      const uint8* data,
+                      int data_len,
+                      const uint8* public_key_info,
+                      int public_key_info_len) = 0;
+
  private:
   static Factory* factory_;
   DISALLOW_COPY_AND_ASSIGN(NssUtil);

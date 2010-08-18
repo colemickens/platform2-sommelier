@@ -7,8 +7,9 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/crypto/signature_verifier.h>
+#include <base/scoped_ptr.h>
 
+#include "login_manager/nss_util.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -95,18 +96,20 @@ bool OwnerKey::Verify(const char* data,
                       uint32 data_len,
                       const char* signature,
                       uint32 sig_len) {
-  if (!verifier_.VerifyInit(kAlgorithm,
-                            sizeof(kAlgorithm),
-                            reinterpret_cast<const uint8*>(signature),
-                            sig_len,
-                            &key_[0],
-                            key_.size())) {
-    LOG(ERROR) << "Could not initialize verifier";
+  scoped_ptr<NssUtil> util(NssUtil::Create());
+
+  if (!util->Verify(kAlgorithm,
+                    sizeof(kAlgorithm),
+                    reinterpret_cast<const uint8*>(signature),
+                    sig_len,
+                    reinterpret_cast<const uint8*>(data),
+                    data_len,
+                    &key_[0],
+                    key_.size())) {
+    LOG(ERROR) << "Signature verification of " << data << " failed";
     return false;
   }
-
-  verifier_.VerifyUpdate(reinterpret_cast<const uint8*>(data), data_len);
-  return (verifier_.VerifyFinal());
+  return true;
 }
 
 }  // namespace login_manager
