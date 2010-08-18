@@ -15,22 +15,40 @@ using std::string;
 
 namespace power_manager {
 
-PowerPrefs::PowerPrefs(const FilePath& base_path)
-    : base_path_(base_path) {}
+PowerPrefs::PowerPrefs(const FilePath& pref_path, const FilePath& default_path)
+    : pref_path_(pref_path),
+      default_path_(default_path) {}
 
 bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
-  FilePath path = base_path_.Append(setting_name);
+  FilePath path = pref_path_.Append(setting_name);
   string buf;
-  if (!file_util::ReadFileToString(path, &buf))
-    return false;
-  TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-  return base::StringToInt64(buf, val);
+  if (file_util::ReadFileToString(path, &buf)) {
+    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    if (base::StringToInt64(buf, val))
+      return true;
+    else
+      LOG(ERROR) << "Garbage found in " << path.value();
+  }
+  path = default_path_.Append(setting_name);
+  buf.clear();
+  if (file_util::ReadFileToString(path, &buf)) {
+    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    if (base::StringToInt64(buf, val))
+      return true;
+    else
+      LOG(ERROR) << "Garbage found in " << path.value();
+  }
+  LOG(INFO) << "Could not read " << path.value();
+  return false;
 }
 
 bool PowerPrefs::WriteSetting(const char* setting_name, int64 val) {
-  FilePath path = base_path_.Append(setting_name);
+  int status;
+  FilePath path = pref_path_.Append(setting_name);
   string buf = base::Int64ToString(val);
-  return -1 != file_util::WriteFile(path, buf.data(), buf.size());
+  status = file_util::WriteFile(path, buf.data(), buf.size());
+  LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
+  return -1 != status;
 }
 
 }  // namespace power_manager

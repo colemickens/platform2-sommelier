@@ -51,7 +51,7 @@ static gboolean FakeMotionEvent(gpointer data) {
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      : prefs_(FilePath(".")),
+      : prefs_(FilePath("."), FilePath(".")),
         backlight_ctl_(&backlight_, &prefs_),
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_) {}
 

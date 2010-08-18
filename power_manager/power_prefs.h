@@ -12,7 +12,7 @@ namespace power_manager {
 
 class PowerPrefs : public PowerPrefsInterface {
  public:
-  explicit PowerPrefs(const FilePath& base_path);
+  explicit PowerPrefs(const FilePath& pref_path, const FilePath& default_path);
   virtual ~PowerPrefs() {}
 
   // Overridden from PowerPrefsInterface:
@@ -20,7 +20,8 @@ class PowerPrefs : public PowerPrefsInterface {
   virtual bool WriteSetting(const char* setting_name, int64 level);
 
  private:
-  FilePath base_path_;
+  FilePath pref_path_;
+  FilePath default_path_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerPrefs);
 };

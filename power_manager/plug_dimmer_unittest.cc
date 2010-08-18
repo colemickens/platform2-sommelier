@@ -28,7 +28,7 @@ static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 10;
 class PlugDimmerTest : public Test {
  public:
   PlugDimmerTest()
-      : prefs_(FilePath("/tmp")),
+      : prefs_(FilePath("/tmp"), FilePath("/tmp")),
         backlight_ctl_(&backlight_, &prefs_) {
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),

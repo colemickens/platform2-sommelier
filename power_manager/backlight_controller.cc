@@ -177,11 +177,11 @@ void BacklightController::ReadPrefs() {
 
 void BacklightController::WritePrefs() {
   if (plugged_state_ == kPowerConnected) {
-    CHECK(prefs_->WriteSetting("plugged_brightness_offset",
-                               plugged_brightness_offset_));
+    prefs_->WriteSetting("plugged_brightness_offset",
+                         plugged_brightness_offset_);
   } else if (plugged_state_ == kPowerDisconnected) {
-    CHECK(prefs_->WriteSetting("unplugged_brightness_offset",
-                               unplugged_brightness_offset_));
+    prefs_->WriteSetting("unplugged_brightness_offset",
+                         unplugged_brightness_offset_);
   }
 }
 
