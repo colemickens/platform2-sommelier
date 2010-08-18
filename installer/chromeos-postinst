@@ -19,7 +19,7 @@ INSTALL_ROOT=$(dirname "$0")
 # to know where to load shflags from
 DEFINE_string esp_part_file "" "File containing the ESP partition"
 DEFINE_boolean postcommit ${FLAGS_FALSE} "Run postcommit"
-DEFINE_boolean update_firmware ${FLAGS_FALSE} "Enable firmware update"
+DEFINE_boolean update_firmware ${FLAGS_TRUE} "Enable firmware update"
 
 # Parse command line
 FLAGS "$@" || exit 1
