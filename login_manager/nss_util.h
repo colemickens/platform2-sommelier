@@ -35,20 +35,18 @@ class NssUtil {
   // Factory (the default) this creates and returns a new NssUtil.
   static NssUtil* Create();
 
+  static void KeyFromBuffer(const char* data, int len, std::vector<uint8>* out);
+
   virtual bool OpenUserDB() = 0;
 
   virtual bool CheckOwnerKey(const std::vector<uint8>& public_key_der) = 0;
 
   virtual FilePath GetOwnerKeyFilePath() = 0;
 
-  virtual bool Verify(const uint8* signature_algorithm,
-                      int signature_algorithm_len,
-                      const uint8* signature,
-                      int signature_len,
-                      const uint8* data,
-                      int data_len,
-                      const uint8* public_key_info,
-                      int public_key_info_len) = 0;
+  virtual bool Verify(const uint8* algorithm, int algorithm_len,
+                      const uint8* signature, int signature_len,
+                      const uint8* data, int data_len,
+                      const uint8* public_key, int public_key_len) = 0;
 
  private:
   static Factory* factory_;

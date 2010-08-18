@@ -44,6 +44,29 @@ gboolean session_manager_stop_session(SessionManager *self,
                                       gchar *unique_identifier,
                                       gboolean *OUT_done,
                                       GError **error);
+
+gboolean session_manager_set_owner_key(SessionManager *self,
+                                       gchar *public_key_der,
+                                       GError **error);
+gboolean session_manager_check_whitelist(SessionManager *self,
+                                         gchar *email_address,
+                                         gchar *OUT_signature,
+                                         GError **error);
+gboolean session_manager_whitelist(SessionManager *self,
+                                   gchar *email_address,
+                                   gchar *signature,
+                                   GError **error);
+gboolean session_manager_store_property(SessionManager *self,
+                                        gchar *name,
+                                        gchar *value,
+                                        gchar *signature,
+                                        GError **error);
+gboolean session_manager_retrieve_property(SessionManager *self,
+                                           gchar *name,
+                                           gchar *OUT_value,
+                                           gchar *OUT_signature,
+                                           GError **error);
+
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error);
 gboolean session_manager_lock_screen(SessionManager *self,

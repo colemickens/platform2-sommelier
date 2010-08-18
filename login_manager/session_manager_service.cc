@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <grp.h>
+#include <secder.h>
 #include <signal.h>
 #include <stdio.h>
 #include <sys/errno.h>
@@ -16,6 +17,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <vector>
 
 #include "base/basictypes.h"
 #include "base/command_line.h"
@@ -24,11 +26,14 @@
 #include "base/logging.h"
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
+#include "base/scoped_ptr.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
+#include "login_manager/nss_util.h"
+#include "login_manager/owner_key.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -128,6 +133,8 @@ SessionManagerService::SessionManagerService(
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
+      nss_(NssUtil::Create()),
+      key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
       session_started_(false),
       screen_locked_(false),
       set_uid_(false),
@@ -221,6 +228,10 @@ bool SessionManagerService::Run() {
   } else {
     AllowGracefulExit();
   }
+
+  // TODO(cmasone): A corrupted owner key means that the user needs to go
+  //                to recovery mode.  How to tell them that from here?
+  DCHECK(key_->PopulateFromDiskIfPossible());
 
   g_main_loop_run(main_loop_);
 
@@ -319,8 +330,8 @@ void SessionManagerService::AllowGracefulExit() {
 ///////////////////////////////////////////////////////////////////////////////
 // SessionManagerService commands
 
-gboolean SessionManagerService::EmitLoginPromptReady(gboolean *OUT_emitted,
-                                                     GError **error) {
+gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
+                                                     GError** error) {
   DLOG(INFO) << "emitting login-prompt-ready ";
   *OUT_emitted = system("/sbin/initctl emit login-prompt-ready &") == 0;
   if (*OUT_emitted) {
@@ -331,10 +342,10 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean *OUT_emitted,
   return *OUT_emitted;
 }
 
-gboolean SessionManagerService::StartSession(gchar *email_address,
-                                             gchar *unique_identifier,
-                                             gboolean *OUT_done,
-                                             GError **error) {
+gboolean SessionManagerService::StartSession(gchar* email_address,
+                                             gchar* unique_identifier,
+                                             gboolean* OUT_done,
+                                             GError** error) {
   if (session_started_) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_SESSION_EXISTS,
@@ -389,9 +400,9 @@ gboolean SessionManagerService::StartSession(gchar *email_address,
   return *OUT_done;
 }
 
-gboolean SessionManagerService::StopSession(gchar *unique_identifier,
-                                            gboolean *OUT_done,
-                                            GError **error) {
+gboolean SessionManagerService::StopSession(gchar* unique_identifier,
+                                            gboolean* OUT_done,
+                                            GError** error) {
   g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
                   ServiceShutdown,
                   this,
@@ -403,14 +414,84 @@ gboolean SessionManagerService::StopSession(gchar *unique_identifier,
   return *OUT_done = TRUE;
 }
 
-gboolean SessionManagerService::LockScreen(GError **error) {
+gboolean SessionManagerService::SetOwnerKey(gchar* public_key_der,
+                                            GError** error) {
+  // Ensure the size of the data passed can fit in a 32-bit int.
+  int32 key_der_len;
+  if (!system_->EnsureAndReturnSafeSize(strlen(public_key_der), &key_der_len)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Public key data was too large.");
+    return FALSE;
+  }
+
+  if (!nss_->OpenUserDB()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,
+              "Could not open the current user's NSS database.");
+    return FALSE;
+  }
+
+  std::vector<uint8> pub_key;
+  NssUtil::KeyFromBuffer(public_key_der, key_der_len, &pub_key);
+
+  if (!nss_->CheckOwnerKey(pub_key)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Could not verify that public key belongs to the owner.");
+    return FALSE;
+  }
+
+  if (!key_->PopulateFromBuffer(pub_key)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Illegal attempt to set the owner's public key.");
+    return FALSE;
+  }
+  // TODO(cmasone): schedule persisting it to disk later.
+  if (!key_->Persist()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_KEY_WRITE,
+              "Could not write owner key to disk.");
+    return FALSE;
+  }
+  return TRUE;
+}
+
+gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
+                                               gchar* OUT_signature,
+                                               GError** error) {
+  return TRUE;
+}
+
+gboolean SessionManagerService::Whitelist(gchar* email_address,
+                                          gchar* signature,
+                                          GError** error) {
+  return TRUE;
+}
+
+gboolean SessionManagerService::StoreProperty(gchar* name,
+                                              gchar* value,
+                                              gchar* signature,
+                                              GError** error) {
+  return TRUE;
+}
+
+gboolean SessionManagerService::RetrieveProperty(gchar* name,
+                                                 gchar* OUT_value,
+                                                 gchar* OUT_signature,
+                                                 GError** error) {
+  return TRUE;
+}
+
+gboolean SessionManagerService::LockScreen(GError** error) {
   screen_locked_ = TRUE;
   SendSignalToChromium(chromium::kLockScreenSignal);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
-gboolean SessionManagerService::UnlockScreen(GError **error) {
+gboolean SessionManagerService::UnlockScreen(GError** error) {
   screen_locked_ = FALSE;
   SendSignalToChromium(chromium::kUnlockScreenSignal);
   LOG(INFO) << "UnlockScreen";

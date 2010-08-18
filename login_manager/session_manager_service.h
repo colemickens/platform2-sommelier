@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/file_checker.h"
+#include "login_manager/owner_key.h"
 #include "login_manager/system_utils.h"
 
 class CommandLine;
@@ -32,6 +33,7 @@ struct SessionManager;
 }  // namespace gobject
 
 class ChildJobInterface;
+class NssUtil;
 
 // Provides a wrapper for exporting SessionManagerInterface to
 // D-Bus and entering the glib run loop.
@@ -54,6 +56,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     // Set the SystemUtils used by the manager. Useful for mocking.
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_.reset(utils);
+    }
+
+    // Set the OwnerKey object used by the manager. Useful for mocking.
+    void set_ownerkey(OwnerKey* key) {
+      session_manager_service_->key_.reset(key);
     }
 
     // Sets whether the the manager exits when a child finishes.
@@ -82,6 +89,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // TestApi exposes internal routines for testing purposes.
   TestApi test_api() { return TestApi(this); }
+
   ////////////////////////////////////////////////////////////////////////////
   // Implementing chromeos::dbus::AbstractDbusService
   virtual bool Initialize();
@@ -156,6 +164,32 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   gboolean StopSession(gchar* unique_identifier,
                        gboolean* OUT_done,
                        GError** error);
+
+  // If no owner key is currently set, uses the DER-encoded public key
+  // provided in |public_key_der| as the key belonging to the owner of
+  // this device.  All future requests to Whitelist an email address
+  // or to store a property MUST be digitally signed by the private
+  // key associated with this public key.
+  // Returns TRUE if the key is accepted and successfully recorded.
+  // If the key is rejected, because we already have one or for any other
+  // reason, we return FALSE and set |error| appropriately.
+  gboolean SetOwnerKey(gchar* public_key_der, GError** error);
+
+  gboolean CheckWhitelist(gchar* email_address,
+                          gchar* OUT_signature,
+                          GError** error);
+
+  gboolean Whitelist(gchar* email_address, gchar* signature, GError** error);
+
+  gboolean StoreProperty(gchar* name,
+                         gchar* value,
+                         gchar* signature,
+                         GError** error);
+
+  gboolean RetrieveProperty(gchar* name,
+                            gchar* OUT_value,
+                            gchar* OUT_signature,
+                            GError** error);
 
   // Handles LockScreen request from PowerManager. It switches itself to
   // lock mode, and emit LockScreen signal to Chromium Browser.
@@ -248,6 +282,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   GMainLoop* main_loop_;
 
   scoped_ptr<SystemUtils> system_;
+  scoped_ptr<NssUtil> nss_;
+  scoped_ptr<OwnerKey> key_;
 
   bool session_started_;
 

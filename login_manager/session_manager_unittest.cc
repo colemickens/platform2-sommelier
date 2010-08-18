@@ -23,16 +23,20 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_nss_util.h"
+#include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
 
+using ::testing::AnyNumber;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::InSequence;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
 using ::testing::_;
-using ::testing::AnyNumber;
 
 static const char kCheckedFile[] = "/tmp/checked_file";
 static const char kUptimeFile1[] = "/tmp/uptime-job1-exec";
@@ -44,10 +48,10 @@ static const char kDiskFile2[] = "/tmp/disk-job2-exec";
 // Gives useful shared functionality.
 class SessionManagerTest : public ::testing::Test {
  public:
-  SessionManagerTest() {
-    manager_ = NULL;
-    utils_ = new MockSystemUtils;
-    file_checker_ = new MockFileChecker(kCheckedFile);
+  SessionManagerTest()
+      : manager_(NULL),
+        utils_(new MockSystemUtils),
+        file_checker_(new MockFileChecker(kCheckedFile)) {
   }
 
   virtual ~SessionManagerTest() {
@@ -60,6 +64,11 @@ class SessionManagerTest : public ::testing::Test {
     file_util::Delete(disk1, false);
     file_util::Delete(uptime2, false);
     file_util::Delete(disk2, false);
+  }
+
+  virtual void TearDown() {
+    // just to be sure...
+    NssUtil::set_factory(NULL);
   }
 
  protected:
@@ -80,12 +89,8 @@ class SessionManagerTest : public ::testing::Test {
     manager_->test_api().set_exit_on_child_done(true);
   }
 
-  void Run() {
-    manager_->Run();
-  }
-
   void MockUtils() {
-    manager_->test_api().set_systemutils(utils_);
+    manager_->test_api().set_systemutils(utils_.release());
   }
 
   enum ChildRuns {
@@ -136,7 +141,7 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   SessionManagerService* manager_;
-  MockSystemUtils* utils_;
+  scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
 };
 
@@ -148,7 +153,7 @@ static void CleanExit() { _exit(0); }
 
 TEST_F(SessionManagerTest, NoLoopTest) {
   MockChildJob* job = CreateTrivialMockJob(NEVER);
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, BadExitChild) {
@@ -161,7 +166,7 @@ TEST_F(SessionManagerTest, BadExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, BadExitChild1) {
@@ -181,7 +186,7 @@ TEST_F(SessionManagerTest, BadExitChild1) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, BadExitChild2) {
@@ -201,7 +206,7 @@ TEST_F(SessionManagerTest, BadExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(BadExitAfterSleep));
 
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild) {
@@ -211,7 +216,7 @@ TEST_F(SessionManagerTest, CleanExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild2) {
@@ -231,7 +236,23 @@ TEST_F(SessionManagerTest, CleanExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  Run();
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, LoadOwnerKey) {
+  MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
+  EXPECT_CALL(*job, RecordTime())
+      .Times(1);
+  ON_CALL(*job, Run())
+      .WillByDefault(Invoke(CleanExit));
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_ownerkey(key);
+
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, LockedExit) {
@@ -256,7 +277,7 @@ TEST_F(SessionManagerTest, LockedExit) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  Run();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, MustStopChild) {
@@ -269,53 +290,53 @@ TEST_F(SessionManagerTest, MustStopChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  Run();
+  manager_->Run();
 }
 
 static const pid_t kDummyPid = 4;
 TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
+  MockUtils();
 
   manager_->test_api().CleanupChildren(timeout);
 }
 
 TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGABRT))
       .WillOnce(Return(0));
+  MockUtils();
 
   manager_->test_api().CleanupChildren(timeout);
 }
 
 TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   int timeout = 3;
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
+  MockUtils();
 
   std::string email_string(email);
   EXPECT_CALL(*job, StartSession(email_string))
@@ -327,17 +348,17 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
 
 TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*utils_, ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*utils_, kill(kDummyPid, SIGABRT))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGABRT))
       .WillOnce(Return(0));
+  MockUtils();
 
   gboolean out;
   gchar email[] = "user@somewhere";
@@ -370,7 +391,7 @@ TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
         .Times(1);
 
     manager_->StartSession(email, nothing, &out, NULL);
-    Run();
+    manager_->Run();
     delete manager_;
     manager_ = NULL;
     exit(0);
@@ -434,9 +455,135 @@ TEST_F(SessionManagerTest, StatsRecorded) {
       .Times(1);
   ON_CALL(*job, GetName())
       .WillByDefault(Invoke(name));
-  Run();
+  manager_->Run();
   EXPECT_TRUE(file_util::PathExists(uptime));
   EXPECT_TRUE(file_util::PathExists(disk));
+}
+
+TEST_F(SessionManagerTest, SetOwnerKeyTooBig) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
+      .WillOnce(Return(false));
+  MockUtils();
+
+  gchar key[] = "dummy";
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
+}
+
+class SadNssUtil : public MockNssUtil {
+ public:
+  SadNssUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(false));
+  }
+  virtual ~SadNssUtil() {}
+};
+
+TEST_F(SessionManagerTest, SetOwnerKeyNssDbFail) {
+  MockFactory<SadNssUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(32),
+                      Return(true)));
+  MockUtils();
+
+  gchar key[] = "dummy";
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
+}
+
+class KeyFailUtil : public MockNssUtil {
+ public:
+  KeyFailUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*this, CheckOwnerKey(_))
+        .WillOnce(Return(false));
+  }
+  virtual ~KeyFailUtil() {}
+};
+
+TEST_F(SessionManagerTest, SetOwnerKeyCheckFail) {
+  MockFactory<KeyFailUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(32),
+                      Return(true)));
+  MockUtils();
+
+  gchar key[] = "dummy";
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
+}
+
+class KeyCheckUtil : public MockNssUtil {
+ public:
+  KeyCheckUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*this, CheckOwnerKey(_))
+        .WillOnce(Return(true));
+  }
+  virtual ~KeyCheckUtil() {}
+};
+
+TEST_F(SessionManagerTest, SetOwnerKeyPopulateFail) {
+  MockFactory<KeyCheckUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  gchar fake_key[] = "dummy";
+  int fake_key_len = strlen(fake_key);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(fake_key_len),
+                      Return(true)));
+  MockUtils();
+
+  std::vector<uint8> pub_key;
+  NssUtil::KeyFromBuffer(fake_key, fake_key_len, &pub_key);
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
+      .WillOnce(Return(false));
+
+  manager_->test_api().set_ownerkey(key);
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key, &error));
+}
+
+TEST_F(SessionManagerTest, SetOwnerKey) {
+  MockFactory<KeyCheckUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  gchar fake_key[] = "dummy";
+  int fake_key_len = strlen(fake_key);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(fake_key_len),
+                      Return(true)));
+  MockUtils();
+
+  std::vector<uint8> pub_key;
+  NssUtil::KeyFromBuffer(fake_key, fake_key_len, &pub_key);
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Persist())
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_ownerkey(key);
+
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key, &error));
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {
@@ -456,11 +603,11 @@ TEST_F(SessionManagerTest, RestartJobUnknownPid) {
 
 TEST_F(SessionManagerTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
-  EXPECT_CALL(*utils_, kill(-kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, SIGKILL))
       .WillOnce(Return(0));
+  MockUtils();
 
   EXPECT_CALL(*job, SetArguments("dummy"))
       .Times(1);

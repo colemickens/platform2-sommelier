@@ -38,25 +38,30 @@ class NssUtilImpl : public NssUtil {
 
   FilePath GetOwnerKeyFilePath();
 
-  bool Verify(const uint8* signature_algorithm,
-              int signature_algorithm_len,
-              const uint8* signature,
-              int signature_len,
-              const uint8* data,
-              int data_len,
-              const uint8* public_key_info,
-              int public_key_info_len);
+  bool Verify(const uint8* algorithm, int algorithm_len,
+              const uint8* signature, int signature_len,
+              const uint8* data, int data_len,
+              const uint8* public_key, int public_key_len);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
 
 // Defined here, instead of up above, because we need NssUtilImpl.
+// static
 NssUtil* NssUtil::Create() {
   if (!factory_)
     return new NssUtilImpl;
   else
     return factory_->CreateNssUtil();
+}
+
+// static
+void NssUtil::KeyFromBuffer(const char* data,
+                            int len,
+                            std::vector<uint8>* out) {
+  out->resize(len);
+  memcpy(&(out->at(0)), data, len);
 }
 
 NssUtilImpl::NssUtilImpl() {}
@@ -80,22 +85,15 @@ FilePath NssUtilImpl::GetOwnerKeyFilePath() {
 
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
-bool NssUtilImpl::Verify(const uint8* signature_algorithm,
-                         int signature_algorithm_len,
-                         const uint8* signature,
-                         int signature_len,
-                         const uint8* data,
-                         int data_len,
-                         const uint8* public_key_info,
-                         int public_key_info_len) {
+bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
+                         const uint8* signature, int signature_len,
+                         const uint8* data, int data_len,
+                         const uint8* public_key, int public_key_len) {
   base::SignatureVerifier verifier_;
 
-  if (!verifier_.VerifyInit(signature_algorithm,
-                            signature_algorithm_len,
-                            signature,
-                            signature_len,
-                            public_key_info,
-                            public_key_info_len)) {
+  if (!verifier_.VerifyInit(algorithm, algorithm_len,
+                            signature, signature_len,
+                            public_key, public_key_len)) {
     LOG(ERROR) << "Could not initialize verifier";
     return false;
   }

@@ -26,6 +26,27 @@
       <arg type="s" name="unique_identifier" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="SetOwnerKey">
+      <arg type="s" name="public_key_der" direction="in" />
+    </method>
+    <method name="CheckWhitelist">
+      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="signature" direction="out" />
+    </method>
+    <method name="Whitelist">
+      <arg type="s" name="email_address" direction="in" />
+      <arg type="s" name="signature" direction="in" />
+    </method>
+    <method name="StoreProperty">
+      <arg type="s" name="name" direction="in" />
+      <arg type="s" name="value" direction="in" />
+      <arg type="s" name="signature" direction="in" />
+    </method>
+    <method name="RetrieveProperty">
+      <arg type="s" name="name" direction="in" />
+      <arg type="s" name="value" direction="out" />
+      <arg type="s" name="signature" direction="out" />
+    </method>
     <signal name="SessionStateChanged">
       <!-- started, stopped -->
       <arg type="s" name="state" />
