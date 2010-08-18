@@ -46,9 +46,11 @@ const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
 const char *kSessionManagerRestartJob = "RestartJob";
-const char *kSessionManagerTpmIsReady = "TpmIsReady";
-const char *kSessionManagerTpmIsEnabled = "TpmIsEnabled";
-const char *kSessionManagerGetTpmPassword = "GetTpmPassword";
+const char *kSessionManagerSetOwnerKey = "SetOwnerKey";
+const char *kSessionManagerCheckWhitelist = "CheckWhitelist";
+const char *kSessionManagerWhitelist = "Whitelist";
+const char *kSessionManagerStoreProperty = "StoreProperty";
+const char *kSessionManagerRetrieveProperty = "RetrieveProperty";
 // Signals
 const char *kSessionManagerSessionStateChanged = "SessionStateChanged";
 }  // namespace login_manager
@@ -67,6 +69,9 @@ const char* kUnlockScreenSignal = "UnlockScreen";
 const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
 const char* kTTSReadySignal = "TTSReady";
 const char* kTTSFailedSignal = "TTSFailed";
+const char* kSetOwnerKeyComplete = "SetOwnerKeyComplete";
+const char* kSettingChangeComplete = "SettingChangeComplete";
+const char* kWhitelistChangeComplete = "WhitelistChangeComplete";
 }  // namespace chromium
 
 namespace power_manager {

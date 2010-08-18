@@ -48,9 +48,11 @@ extern const char *kSessionManagerEmitLoginPromptReady;
 extern const char *kSessionManagerStartSession;
 extern const char *kSessionManagerStopSession;
 extern const char *kSessionManagerRestartJob;
-extern const char *kSessionManagerTpmIsReady;
-extern const char *kSessionManagerTpmIsEnabled;
-extern const char *kSessionManagerGetTpmPassword;
+extern const char *kSessionManagerSetOwnerKey;
+extern const char *kSessionManagerCheckWhitelist;
+extern const char *kSessionManagerWhitelist;
+extern const char *kSessionManagerStoreProperty;
+extern const char *kSessionManagerRetrieveProperty;
 // Signals
 extern const char *kSessionManagerSessionStateChanged;
 
@@ -59,7 +61,10 @@ typedef enum {
   CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,   // email address is illegal.
   CHROMEOS_LOGIN_ERROR_EMIT_FAILED,     // could not emit upstart signal.
   CHROMEOS_LOGIN_ERROR_SESSION_EXISTS,  // session already exists for this user.
-  CHROMEOS_LOGIN_ERROR_UNKNOWN_PID      // pid specified is unknown.
+  CHROMEOS_LOGIN_ERROR_UNKNOWN_PID,     // pid specified is unknown.
+  CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,   // error finding/opening NSS DB.
+  CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,  // attempt to set key is illegal.
+  CHROMEOS_LOGIN_ERROR_KEY_WRITE,       // can't write owner key to disk.
 } ChromeOSLoginError;
 
 }  // namespace login_manager
