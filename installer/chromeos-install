@@ -9,16 +9,11 @@
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
 . /usr/lib/shflags || exit 1
 
-MACHINE_NAME=$(uname -m)
-if [ "${MACHINE_NAME}" = "armv7l" ]; then
-  DEFAULT_DST=/dev/mmcblk0
-else
-  DEFAULT_DST=/dev/sda
-fi
-
-DEFINE_string dst "${DEFAULT_DST}" "Destination device"
+DEFINE_string dst "" "Destination device"
 DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
   "Skip check to ensure source is removable"
+DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
+  "Skip check to ensure destination is not removable"
 DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
   "Skip installing the rootfs; Only set up partition table"
 DEFINE_boolean run_as_root ${FLAGS_FALSE} \
@@ -31,6 +26,9 @@ DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable. \
 Default: False."
+DEFINE_string arch "" \
+  "Architecture for this image, must be one of \"ARM\" or \"INTEL\".  If
+unset auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive. Default: (empty)."
 
@@ -43,6 +41,25 @@ set -e
 
 # Don't run this as root
 dont_run_as_root
+
+# Determine our architecture
+if [ -z "$FLAGS_arch" ]; then
+  # Is there a better x86 test?
+  if uname -m | grep -q "^i.86\$"; then
+    ARCH="INTEL"
+  elif [ $(uname -m ) = "armv7l" ]; then
+    ARCH="ARM"
+  else
+    echo "Error: Failed to auto detect architecture" >&2
+    exit 1
+  fi
+else
+  if ! echo "$FLAGS_arch" | grep -qE '^(INTEL|ARM)$'; then
+    echo "Error: Unknown architecture '$FLAGS_arch'." >& 2
+    exit 1
+  fi
+  ARCH="$FLAGS_arch"
+fi
 
 # Find root partition of the block device that we are installing from
 get_root_device() {
@@ -66,6 +83,7 @@ get_root_device() {
 if [ -z "$FLAGS_payload_image" ]; then
   # Find root partition of the root block device
   SRC=$(get_block_dev_from_partition_dev $(get_root_device))
+  ROOT=""
 
   if [ "$FLAGS_skip_src_removable" -eq "${FLAGS_FALSE}" ]; then
     if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
@@ -74,42 +92,57 @@ if [ -z "$FLAGS_payload_image" ]; then
     fi
   fi
 else
-  if [ -f "$FLAGS_payload_image" ]; then
-    SRC=$FLAGS_payload_image  # Needed to copy PMBR code off image
-  else
+  if [ ! -f "$FLAGS_payload_image" ]; then
     echo "Error: No payload image found at $FLAGS_payload_image"
+    exit 1
+  fi
+
+  # Needed to copy PMBR code off image
+  SRC="$FLAGS_payload_image"
+  ROOT="$(mktemp -d)"
+fi
+
+# Find our destination device
+if [ -z "$FLAGS_dst" ]; then
+  if [ "$ARCH" = "INTEL" ]; then
+    DST=/dev/sda
+  else
+    DST=/dev/mmcblk0
+  fi
+else
+  DST="$FLAGS_dst"
+fi
+
+# Check out the dst device.
+if [ ! -b "$DST" ]; then
+  echo "Error: Unable to find destination block device: $DST"
+  exit 1
+fi
+
+DST_REMOVABLE=$(cat /sys/block/${DST#/dev/}/removable)
+if [ $? -ne 0 ]; then
+  echo "Error: Invalid destination device (must be whole device): $DST"
+  exit 1
+fi
+
+if [ "$FLAGS_skip_dst_removable" -eq "${FLAGS_FALSE}" ]; then
+  if [ "$DST_REMOVABLE" != "0" ]; then
+    echo "Error: Attempt to install to a removeable device: $DST"
     exit 1
   fi
 fi
 
-# Check out the dst device.
-if [ ! -b "$FLAGS_dst" ]; then
-  echo "Error: Unable to find destination block device: $FLAGS_dst"
-  exit 1
-fi
-
-DST_REMOVABLE=$(cat /sys/block/${FLAGS_dst#/dev/}/removable)
-if [ $? -ne 0 ]; then
-  echo "Error: Invalid destination device (must be whole device): $FLAGS_dst"
-  exit 1
-fi
-
-if [ "$DST_REMOVABLE" != "0" ]; then
-  echo "Error: Attempt to install to a removeable device: $FLAGS_dst"
-  exit 1
-fi
-
-if [ "$FLAGS_dst" = "$SRC" ]; then
-  echo "Error: src and dst the same: $SRC = $FLAGS_dst"
+if [ "$DST" = "$SRC" ]; then
+  echo "Error: src and dst the same: $SRC = $DST"
   exit 1
 fi
 
 # Ask for root password to be sure.
-echo "This will install from '$SRC' to '$FLAGS_dst'. If you are sure this is"
+echo "This will install from '$SRC' to '$DST'. If you are sure this is"
 echo "what you want then feel free to enter the root password to proceed."
 sudo -K
 
-echo "This will erase all data at this destination: $FLAGS_dst"
+echo "This will erase all data at this destination: $DST"
 if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
   read -p "Are you sure (y/N)? " SURE
   if [ "$SURE" != "y" ]; then
@@ -126,6 +159,29 @@ TMPFILE=/tmp/install-temp-file
 TMPMNT=/tmp/install-mount-point
 mkdir -p ${TMPMNT}
 
+# Like mount but keeps track of the current mounts so that they can be cleaned
+# up automatically.
+tracked_mount() {
+  local last_arg
+  eval last_arg=\$$#
+  MOUNTS="${last_arg}${MOUNTS:+ }${MOUNTS:-}"
+  sudo mount "$@"
+}
+
+# Unmount with tracking.
+tracked_umount() {
+  # dash doesnt support ${//} expansions
+  local new_mounts
+  for mount in $MOUNTS; do
+    if [ "$mount" != "$1" ]; then
+      new_mounts="${new_mounts:-}${new_mounts+ }$mount"
+    fi
+  done
+  MOUNTS=${new_mounts:-}
+
+  sudo umount "$1"
+}
+
 # Create a loop device on the given file at a specified (sector) offset.
 # Remember the loop device using the global variable LOOP_DEV.
 # Invoke as: command
@@ -141,11 +197,21 @@ loop_offset_setup() {
     exit 1
   fi
 
+  LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
   sudo losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
 }
 
 # Delete the current loop device.
 loop_offset_cleanup() {
+  # dash doesnt support ${//} expansions
+  local new_loops
+  for loop in $LOOPS; do
+    if [ "$loop" != "$LOOP_DEV" ]; then
+      new_loops="${new_loops:-}${new_loops+ }$loop"
+    fi
+  done
+  LOOPS=${new_loops:-}
+
   # losetup -a doesn't always show every active device, so we'll always try to
   # delete what we think is the active one without checking first. Report
   # success no matter what.
@@ -160,19 +226,35 @@ mount_on_loop_dev() {
   if [ "${rw_flag}" != "readwrite" ]; then
     mount_flags="-o ro"
   fi
-  sudo mount ${mount_flags} ${LOOP_DEV} ${TMPMNT}
+  tracked_mount ${mount_flags} ${LOOP_DEV} ${TMPMNT}
 }
 
 # Unmount loop-mounted device.
 umount_from_loop_dev() {
-  mount | grep -q " on ${TMPMNT} " && sudo umount ${TMPMNT}
+  mount | grep -q " on ${TMPMNT} " && tracked_umount ${TMPMNT}
 }
 
-# Undo both mount and loop.
-my_cleanup() {
-  umount_from_loop_dev
-  loop_offset_cleanup
+# Undo all mounts and loops.
+cleanup() {
+  set +e
+
+  local mount_point
+  for mount_point in ${MOUNTS:-}; do
+    sudo umount "$mount_point" || /bin/true
+  done
+  MOUNTS=""
+
+  local loop_dev
+  for loop_dev in ${LOOPS:-}; do
+    sudo losetup -d "$loop_dev" || /bin/true
+  done
+  LOOPS=""
+
+  if [ ! -z "$ROOT" ]; then
+    rmdir "$ROOT"
+  fi
 }
+trap cleanup EXIT
 
 ##############################################################################
 
@@ -207,13 +289,24 @@ else
   OEM_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 8)
   ESP_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 12)
 
+  STATEFUL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 1)
   KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 2)
   ROOTFS_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 3)
   OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 8)
   ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 12)
+
+  # Mount the src image
+  loop_offset_setup "${FLAGS_payload_image}" $STATEFUL_IMG_OFFSET
+  STATEFUL_IMG_LOOP=$LOOP_DEV
+  loop_offset_setup "${FLAGS_payload_image}" $ROOTFS_IMG_OFFSET
+  ROOTFS_IMG_LOOP=$LOOP_DEV
+
+  tracked_mount -o ro "$ROOTFS_IMG_LOOP" "$ROOT"
+  tracked_mount -o ro "$STATEFUL_IMG_LOOP" "$ROOT"/mnt/stateful_partition
+  tracked_mount --bind "$ROOT"/mnt/stateful_partition/var "$ROOT"/var
 fi
 
-if [ "$MACHINE_NAME" = "armv7l" ]; then
+if [ "$ARCH" = "ARM" ]; then
   PMBRCODE=/dev/zero
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
@@ -222,15 +315,15 @@ else
 fi
 
 # Create the GPT.
-install_gpt ${FLAGS_dst} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
+install_gpt ${DST} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
   ${PMBRCODE} ${ESP_IMG_SECTORS}
 
 # TODO(tgao): add support for arm recovery
-if [ "$MACHINE_NAME" = "armv7l" ]; then
-  DEVICE=$(echo $FLAGS_dst | sed -e 's/^.*\([0-9]\)$/\1/')
+if [ "$ARCH" = "ARM" ]; then
+  DEVICE=$(echo $DST | sed -e 's/^.*\([0-9]\)$/\1/')
   MBR_SCRIPT_UIMG=$(make_arm_mbr ${START_KERN_A} ${NUM_KERN_SECTORS} ${DEVICE} "")
   sudo dd bs=1 count=`stat --printf="%s" ${MBR_SCRIPT_UIMG}` \
-     if="$MBR_SCRIPT_UIMG" of=${FLAGS_dst} conv=notrunc
+     if="$MBR_SCRIPT_UIMG" of=${DST} conv=notrunc
 fi
 
 if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
@@ -240,9 +333,9 @@ fi
 
 # Install the content.
 echo "Copying kernel..."
-sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 \
   seek=${START_KERN_A} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
-sudo dd if=${KERNEL_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 \
   seek=${START_KERN_B} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
 
 # Copy kernel verification block to target HD
@@ -250,9 +343,9 @@ copy_kernel_vblock() {
   local ret=0
 
   if [ -s $VERIFY_BLOB ]; then
-    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
+    sudo dd if=${VERIFY_BLOB} of=${DST} \
       conv=notrunc bs=512 seek=${START_KERN_A}
-    sudo dd if=${VERIFY_BLOB} of=${FLAGS_dst} \
+    sudo dd if=${VERIFY_BLOB} of=${DST} \
       conv=notrunc bs=512 seek=${START_KERN_B}
     ret=1
   fi
@@ -262,25 +355,9 @@ copy_kernel_vblock() {
 # The recovery image is signed with different keys from the hard-disk image. We
 # need to copy the hard disk verification block from the stateful partition so
 # that reboot from HD can be verified.
-VERIFY_BLOB="/mnt/stateful_partition/vmlinuz_hd.vblock"
+VERIFY_BLOB="${ROOT}/mnt/stateful_partition/vmlinuz_hd.vblock"
 if [ "$FLAGS_skip_vblock" -eq "$FLAGS_FALSE" ]; then
-  if [ -z "$FLAGS_payload_image" ]; then
-    VBLOCK_RET=$(copy_kernel_vblock)
-  else
-    # Special handling of stateful partition, mount to loop device so that we
-    # can extract kernel vblock to copy to target HD
-    loop_offset_setup ${FLAGS_payload_image} \
-                      $(partoffset "${FLAGS_payload_image}" 1)
-    trap loop_offset_cleanup EXIT
-    mount_on_loop_dev
-    trap my_cleanup EXIT
-    VERIFY_BLOB=${TMPMNT}/vmlinuz_hd.vblock
-    VBLOCK_RET=$(copy_kernel_vblock)
-    umount_from_loop_dev
-    trap loop_offset_cleanup EXIT
-    loop_offset_cleanup
-    trap - EXIT
-  fi
+  VBLOCK_RET=$(copy_kernel_vblock)
 
   if [ "${VBLOCK_RET}" -eq "1" ]; then
     echo "Copied kernel verification blob from ${VERIFY_BLOB}"
@@ -295,24 +372,23 @@ echo "Copying rootfs..."
 # that will break both the delta updater and verified boot.  We must do a
 # straight copy now.  The GPT labels and UUIDs are the only mutable naming
 # areas we have after a build.
-sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+sudo dd if=${ROOTFS_IMG} of=${DST} conv=notrunc bs=512 \
         seek=${START_ROOTFS_A} skip=${ROOTFS_IMG_OFFSET} \
         count=${ROOTFS_IMG_SECTORS}
-sudo dd if=${ROOTFS_IMG} of=${FLAGS_dst} conv=notrunc bs=512 \
+sudo dd if=${ROOTFS_IMG} of=${DST} conv=notrunc bs=512 \
         seek=${START_ROOTFS_B} skip=${ROOTFS_IMG_OFFSET} \
         count=${ROOTFS_IMG_SECTORS}
 
 echo "Copying OEM customization..."
-sudo dd if=${OEM_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_OEM} \
+sudo dd if=${OEM_IMG} of=${DST} conv=notrunc bs=512 seek=${START_OEM} \
         skip=${OEM_IMG_OFFSET} count=${OEM_IMG_SECTORS}
 echo "Copying ESP..."
-sudo dd if=${ESP_IMG} of=${FLAGS_dst} conv=notrunc bs=512 seek=${START_ESP} \
+sudo dd if=${ESP_IMG} of=${DST} conv=notrunc bs=512 seek=${START_ESP} \
         skip=${ESP_IMG_OFFSET} count=${ESP_IMG_SECTORS}
 
 # TODO: support arm during postinst so that we get partition selection and
 #       verified boot.
-if [ "$MACHINE_NAME" != "armv7l" ]; then
-
+if [ "$ARCH" != "ARM" ]; then
   # We can't guarantee that the kernel will see the new partition table, so
   # we can't use it directly. We could force the kernel to reload it with an
   # ioctl, but then we might have the UI mounting and displaying any old
@@ -323,30 +399,21 @@ if [ "$MACHINE_NAME" != "armv7l" ]; then
   # Now run the postinstall script in each new rootfs. Note that even though
   # we're passing the new destination partition number as an arg, the postinst
   # script had better not try to access it, for the reasons we just gave.
-  loop_offset_setup ${FLAGS_dst} ${START_ROOTFS_A}
-  trap loop_offset_cleanup EXIT
+  loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
-  trap my_cleanup EXIT
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 3)
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3)
   umount_from_loop_dev
-  trap loop_offset_cleanup EXIT
   loop_offset_cleanup
-  trap - EXIT
 
-  loop_offset_setup ${FLAGS_dst} ${START_ROOTFS_B}
-  trap loop_offset_cleanup EXIT
+  loop_offset_setup ${DST} ${START_ROOTFS_B}
   mount_on_loop_dev
-  trap my_cleanup EXIT
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${FLAGS_dst} 5)
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 5)
   umount_from_loop_dev
-  trap loop_offset_cleanup EXIT
   loop_offset_cleanup
-  trap - EXIT
 fi
 
 echo "Installing the stateful partition..."
-loop_offset_setup $FLAGS_dst $START_STATEFUL
-trap loop_offset_cleanup EXIT
+loop_offset_setup $DST $START_STATEFUL
 if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
     $(($NUM_STATEFUL_SECTORS / 8))
@@ -371,29 +438,26 @@ fi
 # the release image, which could mask bugs.  Make sure every
 # item you add here is well justified.
 #
-if [ -f /root/.dev_mode ]; then
+if [ -f "${ROOT}"/root/.dev_mode ]; then
   mount_on_loop_dev readwrite
-  trap my_cleanup EXIT
   DIRLIST="
       var/db/pkg
       var/lib/portage
       dev_image
   "
   for DIR in ${DIRLIST}; do
-    if [ ! -d /mnt/stateful_partition/${DIR} ]; then
+    if [ ! -d "${ROOT}/mnt/stateful_partition/${DIR}" ]; then
       continue
     fi
     PARENT=$(dirname ${DIR})
     sudo mkdir -p ${TMPMNT}/${PARENT}
-    sudo cp -fpru /mnt/stateful_partition/${DIR} ${TMPMNT}/${DIR}
+    sudo cp -fpru "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
   done
   umount_from_loop_dev
-  trap loop_offset_cleanup EXIT
 fi
 loop_offset_cleanup
-trap - EXIT
 
-if grep "vogue" /etc/lsb-release > /dev/null; then
+if grep "vogue" "$ROOT"/etc/lsb-release > /dev/null; then
    sudo uboot-env.py -f /dev/mtdblock0 -o 0x7c000 -s 0x4000 \
     --set bootcmd="mmc read 0 C0008000 0 1; autoscr C0008000"
 fi
@@ -403,5 +467,5 @@ sync
 
 echo "------------------------------------------------------------"
 echo ""
-echo "Installation to '$FLAGS_dst' complete."
+echo "Installation to '$DST' complete."
 echo "Please shutdown, remove the USB device, cross your fingers, and reboot."
