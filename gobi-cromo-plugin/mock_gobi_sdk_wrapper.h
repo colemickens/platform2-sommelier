@@ -24,7 +24,7 @@
 
 namespace gobi {
 
-class MockSdk : public Sdk {
+class MockSdk : public gobi::Sdk {
  public:
   virtual ~MockSdk() {}
   void Init() {}
@@ -94,8 +94,8 @@ class MockSdk : public Sdk {
       ULONG(ULONG regType, WORD mcc, WORD mnc, ULONG rat));
   MOCK_METHOD1(InitiateDomainAttach,
       ULONG(ULONG action));
-  MOCK_METHOD4(GetServingNetwork,
-      ULONG(ULONG * pRegistrationState, BYTE * pRadioIfacesSize, BYTE * pRadioIfaces, ULONG * pRoaming));
+  MOCK_METHOD7(GetServingNetwork,
+      ULONG(ULONG * pRegistrationState, ULONG * pRAN, BYTE * pRadioIfacesSize, BYTE * pRadioIfaces, ULONG * pRoaming, WORD *pMCC, WORD * pMNC));
   MOCK_METHOD2(GetServingNetworkCapabilities,
       ULONG(BYTE * pDataCapsSize, BYTE * pDataCaps));
   MOCK_METHOD1(GetDataBearerTechnology,

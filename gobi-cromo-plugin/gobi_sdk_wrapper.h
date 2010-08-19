@@ -415,9 +415,12 @@ class Sdk {
 
   virtual ULONG GetServingNetwork(
       ULONG *                    pRegistrationState,
+      ULONG *                    pRAN,
       BYTE *                     pRadioIfacesSize,
       BYTE *                     pRadioIfaces,
-      ULONG *                    pRoaming);
+      ULONG *                    pRoaming,
+      WORD *                     pMCC,
+      WORD *                     pMNC);
 
   virtual ULONG GetServingNetworkCapabilities(
       BYTE *                     pDataCapsSize,

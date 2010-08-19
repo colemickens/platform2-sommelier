@@ -661,26 +661,27 @@ ULONG Sdk::InitiateDomainAttach(ULONG action) {
 
 ULONG Sdk::GetServingNetwork(
     ULONG *                    pRegistrationState,
+    ULONG *                    pRAN,
     BYTE *                     pRadioIfacesSize,
     BYTE *                     pRadioIfaces,
-    ULONG *                    pRoaming) {
+    ULONG *                    pRoaming,
+    WORD *                     pMCC,
+    WORD *                     pMNC) {
   CHAR netName[32];
-  ULONG l1, l2, l3;
-  WORD w4, w5;
+  ULONG l1, l2;
   ReentrancyPreventer rp(this, "GetServingNetwork");
   return ::GetServingNetwork(
       pRegistrationState,
       &l1,              // CS domain
       &l2,              // PS domain
-      &l3,              // radio access network type
+      pRAN,
       pRadioIfacesSize,
       pRadioIfaces,
       pRoaming,
-      &w4,              // mobile country code
-      &w5,              // mobile network code
+      pMCC,
+      pMNC,
       sizeof(netName),  // size of name array
-      netName           // network name
-                             );
+      netName);         // network name
 }
 
 ULONG Sdk::GetServingNetworkCapabilities(

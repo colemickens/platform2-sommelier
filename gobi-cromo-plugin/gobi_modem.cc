@@ -446,9 +446,13 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
       result["imei"].writer().append_string(serials.imei.c_str());
     }
   }
+  char imsi[kDefaultBufferSize];
+  ULONG rc = sdk_->GetIMSI(kDefaultBufferSize, imsi);
+  if (rc == 0 && strlen(imsi) != 0)
+    result["imsi"].writer().append_string(imsi);
 
   ULONG activation_state;
-  ULONG rc = sdk_->GetActivationState(&activation_state);
+  rc = sdk_->GetActivationState(&activation_state);
   if (rc == 0)
     result["activation_state"].writer().append_uint32(activation_state);
 
@@ -497,13 +501,11 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
       case gobi::kDisconnected:
       default:
         ULONG reg_state;
-        ULONG dc1;      // don't care
-        BYTE dc3[10];
-        BYTE dc2 = sizeof(dc3)/sizeof(BYTE);
-        rc = sdk_->GetServingNetwork(&reg_state,
-                                     &dc2,
-                                     dc3,
-                                     &dc1);
+        ULONG l1, l2;      // don't care
+        WORD w1, w2;
+        BYTE b3[10];
+        BYTE b2 = sizeof(b3)/sizeof(BYTE);
+        rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2);
         if (rc == 0) {
           if (reg_state == gobi::kRegistered) {
             mm_modem_state = MM_MODEM_STATE_REGISTERED;
@@ -558,12 +560,14 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
   CHAR netname[32];
   ULONG reg_state;
   ULONG roaming_state;
+  ULONG l1;
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
   LOG(INFO) << "GetServingSystem";
 
-  ULONG rc = sdk_->GetServingNetwork(&reg_state, &num_radio_interfaces,
-                                     radio_interfaces, &roaming_state);
+  ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
+                                     radio_interfaces, &roaming_state,
+                                     &mcc, &mnc);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetServingNetwork, rc, kSdkError, result);
   if (reg_state != gobi::kRegistered) {
     error.set(kNoNetworkError, "No network service is available");
@@ -571,7 +575,7 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
   }
 
   rc = sdk_->GetHomeNetwork(&mcc, &mnc,
-                                  sizeof(netname), netname, &sid, &nid);
+                            sizeof(netname), netname, &sid, &nid);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
 
   gobi::RfInfoInstance rf_info[10];
@@ -615,6 +619,8 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
                                      DBus::Error &error) {
   ULONG reg_state;
   ULONG roaming_state;
+  ULONG l1;
+  WORD w1, w2;
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
 
@@ -622,8 +628,9 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 
-  ULONG rc = sdk_->GetServingNetwork(&reg_state, &num_radio_interfaces,
-                                     radio_interfaces, &roaming_state);
+  ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
+                                     radio_interfaces, &roaming_state,
+                                     &w1, &w2);
   ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
 
   uint32_t mm_reg_state;
@@ -1050,6 +1057,7 @@ void GobiModem::SetModemProperties() {
   if (!getserial_error.is_set()) {
     // TODO(jglasgow): if GSM return serials.imei
     EquipmentIdentifier = serials.meid;
+    MEID = serials.meid;
   } else {
     // Use a default identifier assuming a single GOBI is connected
     EquipmentIdentifier = "GOBI";
