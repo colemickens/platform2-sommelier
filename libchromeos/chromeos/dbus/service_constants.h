@@ -84,6 +84,10 @@ extern const char* kUnlockScreenFailedSignal;
 // Text-to-speech service signals
 extern const char* kTTSReadySignal;
 extern const char* kTTSFailedSignal;
+// Ownership API signals
+extern const char* kOwnerKeySetSignal;
+extern const char* kSettingChangeCompleteSignal;
+extern const char* kWhitelistChangeCompleteSignal;
 }  // namespace chromium
 
 namespace power_manager {

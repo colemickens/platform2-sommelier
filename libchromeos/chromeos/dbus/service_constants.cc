@@ -69,9 +69,9 @@ const char* kUnlockScreenSignal = "UnlockScreen";
 const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
 const char* kTTSReadySignal = "TTSReady";
 const char* kTTSFailedSignal = "TTSFailed";
-const char* kSetOwnerKeyComplete = "SetOwnerKeyComplete";
-const char* kSettingChangeComplete = "SettingChangeComplete";
-const char* kWhitelistChangeComplete = "WhitelistChangeComplete";
+const char* kOwnerKeySetSignal = "SetOwnerKeyComplete";
+const char* kSettingChangeCompleteSignal = "SettingChangeComplete";
+const char* kWhitelistChangeCompleteSignal = "WhitelistChangeComplete";
 }  // namespace chromium
 
 namespace power_manager {
