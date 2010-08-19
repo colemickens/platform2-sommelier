@@ -19,11 +19,21 @@ else
   fi
 fi
 
-# Default to using a verified root filesystem if the installer
-# is verified.
-rootfs_verification_default=${FLAGS_FALSE}
-ignore_bad_verification_default=${FLAGS_TRUE}
+# Default rootfs verification to ON
+rootfs_verification_default=${FLAGS_TRUE}
+ignore_bad_verification_default=${FLAGS_FALSE}
+DEV_BUILD_FILE=/root/.dev_mode
+
+# If a developer build, rootfs verification is default OFF
+if [ -e ${DEV_BUILD_FILE} ]; then
+  info "Developer image detected."
+  rootfs_verification_default=${FLAGS_FALSE}
+  ignore_bad_verification_default=${FLAGS_TRUE}
+fi
+
+# Any build that is verified will stay verified.
 if type rootdev &> /dev/null; then
+  # Enable verification, but don't force a check for dev builds.
   if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
     rootfs_verification_default=${FLAGS_TRUE}
     ignore_bad_verification_default=${FLAGS_FALSE}
