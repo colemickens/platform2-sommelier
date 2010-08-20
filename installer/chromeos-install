@@ -47,6 +47,8 @@ if [ -z "$FLAGS_arch" ]; then
   # Is there a better x86 test?
   if uname -m | grep -q "^i.86\$"; then
     ARCH="INTEL"
+  elif [ $(uname -m ) = "x86_64" ]; then
+    ARCH="INTEL"
   elif [ $(uname -m ) = "armv7l" ]; then
     ARCH="ARM"
   else
