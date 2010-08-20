@@ -1,0 +1,28 @@
+#!/bin/sh -ue
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# A script to mark the current kernel partition as successfully booted.
+
+# Load functions and constants for chromeos-install.
+. "$(dirname "$0")/chromeos-common.sh" || exit 1
+
+if [ "0" = $(id -u) ]; then
+  local sudo=""
+else
+  local sudo=sudo
+fi
+
+# Extract the kernel partition's UniqueGuid from the command line.
+guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+
+# Look through all the known devices to find that one partition.
+kern_dev=$($sudo cgpt find -1 -u $guid)
+
+# Split the kernel device in the base device and paritition number.
+base_dev=$(get_block_dev_from_partition_dev $kern_dev)
+kern_num=$(get_partition_number $kern_dev)
+
+# Mark the kernel as successfully booted (success=1, tries=0).
+$sudo cgpt add $base_dev -i $kern_num -S1 -T0
