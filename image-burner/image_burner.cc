@@ -1,13 +1,12 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
-// Author: tbarzic@google.com (Toni Barzic)
+// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
-
-#include "image_burner/interface.h"
+#include "image-burner/image_burner.h"
 
 namespace imageburn {
-namespace gobject {
 
-// Register with the glib type system.
+// Register with the glib type system. 
 // This macro automatically defines a number of functions and variables
 // which are required to make session_manager functional as a GObject:
 // - image_burner_parent_class
@@ -52,7 +51,5 @@ gboolean image_burner_burn_image(ImageBurner* self,
     return false;
   return self->service->BurnImage(from_path, to_path, error);
 }
-
-}  // namespace gobject
 
 }  // namespace imageburn

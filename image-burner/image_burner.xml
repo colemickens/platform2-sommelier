@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!-- COPYRIGHT HERE
-     dbus-binding-tool -mode=glib-server -prefix=cryptohome cryptohome.xml
+<!--  
+  Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+     
+     dbus-binding-tool -mode=glib-server -prefix=image_burner image_burner.xml
                         &gt; bindings/server.h
 -->
 <node name="/org/chromium/">
@@ -8,18 +12,18 @@
     <annotation name="org.freedesktop.DBus.GLib.CSymbol"
                 value="image_burner"/>
     <method name="BurnImage">
-      <arg type="s" name="from_path" direction="in" />
-      <arg type="s" name="to_path" direction="in" />   
+      <arg type="s" name="from_path" direction="in"/>
+      <arg type="s" name="to_path" direction="in"/>   
     </method>
     <signal name="burn_finished">
-      <arg type="s" name="target_path" />
-      <arg type="b" name="success" />
-      <arg type="s" name="error" />
+      <arg type="s" name="target_path"/>
+      <arg type="b" name="success"/>
+      <arg type="s" name="error"/>
     </signal>
     <signal name="burn_progress_update">
-      <arg type="s" name="target_path" />
-      <arg type="x" name="amount_burnt" />
-      <arg type="x" name="total_size" />
+      <arg type="s" name="target_path"/>
+      <arg type="x" name="amount_burnt"/>
+      <arg type="x" name="total_size"/>
     </signal>
   </interface>
 </node>

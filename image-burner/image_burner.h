@@ -1,21 +1,20 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
-// Author: tbarzic@google.com (Toni Barzic)
+// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file. 
 
+#ifndef IMAGE_BURNER_INTERFACE_H_
+#define IMAGE_BURNER_INTERFACE_H_
 
-#ifndef BURNIMAGE_INTERFACE_H_
-#define BURNIMAGE_INTERFACE_H_
-
-#include "image_burner/service.h"
-
+#include "image-burner/image_burn_service.h"
 
 // Helpers for using GObjects until we can get a C++ wrapper going.
 namespace imageburn {
-namespace gobject {  // Namespace hiding the GObject type data.
 
 struct ImageBurner {
   GObject parent_instance;
   ImageBurnService *service;  // pointer to implementing service.
 };
+
 struct ImageBurnerClass { GObjectClass parent_class; };
 
 // image_burner_get_type() is defined in interface.cc by the
@@ -30,9 +29,7 @@ gboolean image_burner_burn_image(ImageBurner *self,
                                  gchar *to_path,
                                  GError **error);
 
-}  // namespace gobject
-
 }  // namespace image_burner
 
-#endif  // BURNIMAGE_INTERFACE_H_
+#endif  // IMAGE_BURNER_INTERFACE_H_
 
