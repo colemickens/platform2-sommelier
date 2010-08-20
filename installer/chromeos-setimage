@@ -26,7 +26,7 @@ DEV_BUILD_FILE=/root/.dev_mode
 
 # If a developer build, rootfs verification is default OFF
 if [ -e ${DEV_BUILD_FILE} ]; then
-  info "Developer image detected."
+  echo "Developer image detected."
   rootfs_verification_default=${FLAGS_FALSE}
   ignore_bad_verification_default=${FLAGS_TRUE}
 fi
