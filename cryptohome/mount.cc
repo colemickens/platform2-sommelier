@@ -399,12 +399,16 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       bool should_tpm = (crypto_->has_tpm() && use_tpm_);
       bool should_scrypt = fallback_to_scrypt_;
       do {
-        if (tpm_wrapped && should_tpm)
-          break; // 5, 8
-        if (scrypt_wrapped && should_scrypt && !should_tpm)
-          break; // 12
-        if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
-          break; // 1
+        // If the keyset was TPM-wrapped, but there was no public key hash,
+        // always re-save.  Otherwise, check the table.
+        if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
+          if (tpm_wrapped && should_tpm)
+            break; // 5, 8
+          if (scrypt_wrapped && should_scrypt && !should_tpm)
+            break; // 12
+          if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
+            break; // 1
+        }
         // TODO(fes): This is not (right now) a fatal error
         ResaveVaultKeyset(credentials, *vault_keyset);
       } while(false);

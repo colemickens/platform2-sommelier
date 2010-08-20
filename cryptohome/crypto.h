@@ -46,6 +46,7 @@ class Crypto : public EntropySource {
     CE_SCRYPT_CRYPTO = 4,
     CE_OTHER_FATAL = 5,
     CE_OTHER_CRYPTO = 6,
+    CE_NO_PUBLIC_KEY_HASH = 7,
   };
 
   // Default constructor, using the default entropy source

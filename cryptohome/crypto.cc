@@ -724,6 +724,12 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
   }
 
   vault_keyset->FromKeysBlob(plain_text);
+  // Check if the public key hash was stored
+  if (!serialized.has_tpm_public_key_hash() && serialized.has_tpm_key()) {
+    if (error) {
+      *error = CE_NO_PUBLIC_KEY_HASH;
+    }
+  }
   return true;
 }
 

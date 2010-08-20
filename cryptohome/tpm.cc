@@ -26,6 +26,8 @@ const unsigned char kDefaultSrkAuth[] = { };
 const int kDefaultTpmRsaKeyBits = 2048;
 const int kDefaultDiscardableWrapPasswordLength = 32;
 const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
+const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
+                                           {0, 9, 8, 1, 0, 3}};
 
 Tpm::Tpm()
     : rsa_key_bits_(kDefaultTpmRsaKeyBits),
@@ -118,6 +120,22 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
       Tspi_Context_CloseObject(context_handle, srk_handle);
       return true;
     }
+  }
+
+  // Then try loading the key by the UUID (this is a legacy upgrade path)
+  if ((result = Tspi_Context_LoadKeyByUUID(context_handle,
+                                           TSS_PS_TYPE_SYSTEM,
+                                           kCryptohomeWellKnownUuid,
+                                           key_handle)) == TSS_SUCCESS) {
+    Tspi_Context_CloseObject(context_handle, srk_handle);
+    // Save the cryptohome key to the well-known location
+    if (register_key) {
+      if (!SaveCryptohomeKey(context_handle, *key_handle)) {
+        LOG(ERROR) << "Couldn't save cryptohome key";
+        return false;
+      }
+    }
+    return true;
   }
 
   // Otherwise, we need to create the key.  First, create an object.
@@ -256,22 +274,8 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   }
 
   if (register_key) {
-    SecureBlob raw_key;
-    if (!GetKeyBlob(context_handle, local_key_handle, &raw_key)) {
-      LOG(ERROR) << "Error getting key blob";
-      Tspi_Context_CloseObject(context_handle, srk_handle);
-      Tspi_Context_CloseObject(context_handle, local_key_handle);
-      return false;
-    }
-    Platform platform;
-    int previous_mask = platform.SetMask(cryptohome::kDefaultUmask);
-    unsigned int data_written = file_util::WriteFile(
-        FilePath(key_file_),
-        static_cast<const char*>(raw_key.const_data()),
-        raw_key.size());
-    platform.SetMask(previous_mask);
-    if (data_written != raw_key.size()) {
-      LOG(ERROR) << "Error writing key file";
+    if (!SaveCryptohomeKey(context_handle, local_key_handle)) {
+      LOG(ERROR) << "Couldn't save cryptohome key";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -288,6 +292,27 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   Tspi_Context_CloseObject(context_handle, srk_handle);
 
   *key_handle = local_key_handle;
+  return true;
+}
+
+bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle,
+                            TSS_HKEY key_handle) const {
+  SecureBlob raw_key;
+  if (!GetKeyBlob(context_handle, key_handle, &raw_key)) {
+    LOG(ERROR) << "Error getting key blob";
+    return false;
+  }
+  Platform platform;
+  int previous_mask = platform.SetMask(cryptohome::kDefaultUmask);
+  unsigned int data_written = file_util::WriteFile(
+      FilePath(key_file_),
+      static_cast<const char*>(raw_key.const_data()),
+      raw_key.size());
+  platform.SetMask(previous_mask);
+  if (data_written != raw_key.size()) {
+    LOG(ERROR) << "Error writing key file";
+    return false;
+  }
   return true;
 }
 

@@ -105,6 +105,9 @@ class Tpm {
   }
 
  private:
+  bool SaveCryptohomeKey(TSS_HCONTEXT context_handle,
+                         TSS_HKEY key_handle) const;
+
   bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) const;
 
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle) const;
