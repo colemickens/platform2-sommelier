@@ -147,7 +147,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-gview \
             --log-level=0 \
             --enable-logging \
-            --main-menu-url="http://welcome-cros.appspot.com/menu" \
             --no-first-run \
             --user-data-dir="$DATA_DIR" \
             --login-profile=user \
