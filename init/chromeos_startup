@@ -31,19 +31,35 @@ fi
 mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
 mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
-# For factory install shim, we never want to write to the SDCard.
-if [ -f /root/.factory_installer ]; then
-  mount -n -t tmpfs tmp /mnt/stateful_partition
-else
-  # Mount our stateful partition. It's always partition 1.
-  ROOT_DEV=$(rootdev)
+# Check if we are booted on physical media. rootdev will fail if we are in
+# an initramfs or tmpfs rootfs.
+ROOT_DEV=$(rootdev)
+ROOTDEV_RET_CODE=$?
+if [ "$ROOTDEV_RET_CODE" = "0" ]; then
+  # Find our stateful partition. It's always partition 1.
   # On verified boot, we get the real root from the dm slaves.
   if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
     ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
   fi
   STATE_DEV=${ROOT_DEV%[0-9]*}1
 
-  mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+  # For factory install shim, we never want to write to the SDCard.
+  if [ -f /root/.factory_installer ]; then
+    mount -n -t tmpfs -omode=0755 tmp /mnt/stateful_partition
+    # Fetch our writeable lsb-release from the stateful
+    # partition if available.
+    TMP_STATEFUL="$(mktemp -d)"
+    mkdir -p /mnt/stateful_partition/etc
+    mount -n -t ext3 "$STATE_DEV" "$TMP_STATEFUL"
+    if [ -f "${TMP_STATEFUL}/etc/lsb-release" ]; then
+      cp -a "${TMP_STATEFUL}/etc/lsb-release" \
+          /mnt/stateful_partition/etc/lsb-release
+    fi
+    umount "$TMP_STATEFUL"
+    rmdir "$TMP_STATEFUL"
+  else
+    mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+  fi
 fi
 
 # Check if we need to perform firmware update.
@@ -131,7 +147,9 @@ mount -n -t tmpfs media /media
 
 mount -n -t debugfs debugfs /sys/kernel/debug
 
-if [ -e /mnt/stateful_partition/.consider_oobe ]; then
+# NOTE: ensure that a rootdev has been found.
+if [ -e /mnt/stateful_partition/.consider_oobe ] && \
+   [ "$ROOTDEV_RET_CODE" = "0" ]; then
   # Mount OEM partner partition if OOBE has not yet been completed.
   # Also create /tmp/machine-info.
   if [ ! -e /home/chronos/.oobe_completed ]; then
