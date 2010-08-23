@@ -80,33 +80,33 @@ gboolean session_manager_stop_session(SessionManager* self,
   SESSION_MANAGER_WRAP_METHOD(StopSession, unique_identifier, OUT_done);
 }
 gboolean session_manager_set_owner_key(SessionManager *self,
-                                       gchar *public_key_der,
+                                       GArray *public_key_der,
                                        GError **error) {
   SESSION_MANAGER_WRAP_METHOD(SetOwnerKey, public_key_der);
 }
 gboolean session_manager_check_whitelist(SessionManager *self,
                                          gchar *email_address,
-                                         gchar *OUT_signature,
+                                         GArray **OUT_signature,
                                          GError **error) {
   SESSION_MANAGER_WRAP_METHOD(CheckWhitelist, email_address, OUT_signature);
 }
 gboolean session_manager_whitelist(SessionManager *self,
                                    gchar *email_address,
-                                   gchar *signature,
+                                   GArray *signature,
                                    GError **error) {
   SESSION_MANAGER_WRAP_METHOD(Whitelist, email_address, signature);
 }
 gboolean session_manager_store_property(SessionManager *self,
                                         gchar *name,
                                         gchar *value,
-                                        gchar *signature,
+                                        GArray *signature,
                                         GError **error) {
   SESSION_MANAGER_WRAP_METHOD(StoreProperty, name, value, signature);
 }
 gboolean session_manager_retrieve_property(SessionManager *self,
                                            gchar *name,
                                            gchar *OUT_value,
-                                           gchar *OUT_signature,
+                                           GArray **OUT_signature,
                                            GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RetrieveProperty, name, OUT_value, OUT_signature);
 }

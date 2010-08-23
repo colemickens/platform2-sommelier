@@ -151,6 +151,9 @@ SessionManagerService::~SessionManagerService() {
   // Remove this in case it was added by StopSession().
   g_idle_remove_by_data(this);
 
+  // Remove this in case it was added by SetOwnerKey().
+  g_idle_remove_by_data(key_.get());
+
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   action.sa_handler = SIG_DFL;
@@ -414,16 +417,9 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   return *OUT_done = TRUE;
 }
 
-gboolean SessionManagerService::SetOwnerKey(gchar* public_key_der,
+gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
                                             GError** error) {
-  // Ensure the size of the data passed can fit in a 32-bit int.
-  int32 key_der_len;
-  if (!system_->EnsureAndReturnSafeSize(strlen(public_key_der), &key_der_len)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Public key data was too large.");
-    return FALSE;
-  }
+  LOG(INFO) << "key size is " << public_key_der->len;
 
   if (!nss_->OpenUserDB()) {
     SetGError(error,
@@ -433,7 +429,7 @@ gboolean SessionManagerService::SetOwnerKey(gchar* public_key_der,
   }
 
   std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(public_key_der, key_der_len, &pub_key);
+  NssUtil::KeyFromBuffer(public_key_der, &pub_key);
 
   if (!nss_->CheckOwnerKey(pub_key)) {
     SetGError(error,
@@ -448,52 +444,49 @@ gboolean SessionManagerService::SetOwnerKey(gchar* public_key_der,
               "Illegal attempt to set the owner's public key.");
     return FALSE;
   }
-  // TODO(cmasone): schedule persisting it to disk later.
-  if (!key_->Persist()) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_KEY_WRITE,
-              "Could not write owner key to disk.");
-    return FALSE;
-  }
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistKey,
+                  key_.get(),
+                  NULL);
   return TRUE;
 }
 
 gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
-                                               gchar* OUT_signature,
+                                               GArray** OUT_signature,
                                                GError** error) {
   return TRUE;
 }
 
 gboolean SessionManagerService::Whitelist(gchar* email_address,
-                                          gchar* signature,
+                                          GArray* signature,
                                           GError** error) {
   return TRUE;
 }
 
 gboolean SessionManagerService::StoreProperty(gchar* name,
                                               gchar* value,
-                                              gchar* signature,
+                                              GArray* signature,
                                               GError** error) {
   return TRUE;
 }
 
 gboolean SessionManagerService::RetrieveProperty(gchar* name,
                                                  gchar* OUT_value,
-                                                 gchar* OUT_signature,
+                                                 GArray** OUT_signature,
                                                  GError** error) {
   return TRUE;
 }
 
 gboolean SessionManagerService::LockScreen(GError** error) {
   screen_locked_ = TRUE;
-  SendSignalToChromium(chromium::kLockScreenSignal);
+  SendSignalToChromium(chromium::kLockScreenSignal, NULL);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
 gboolean SessionManagerService::UnlockScreen(GError** error) {
   screen_locked_ = FALSE;
-  SendSignalToChromium(chromium::kUnlockScreenSignal);
+  SendSignalToChromium(chromium::kUnlockScreenSignal, NULL);
   LOG(INFO) << "UnlockScreen";
   return TRUE;
 }
@@ -611,6 +604,15 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
   return FALSE;  // So that the event source that called this gets removed.
 }
 
+gboolean SessionManagerService::PersistKey(gpointer data) {
+  OwnerKey* key = static_cast<OwnerKey*>(data);
+  LOG(INFO) << "Persisting Owner key to disk." << data;
+  if (key->Persist())
+    SendSignalToChromium(chromium::kOwnerKeySetSignal, "success");
+  else
+    SendSignalToChromium(chromium::kOwnerKeySetSignal, "failure");
+  return FALSE;  // So that the event source that called this gets removed.
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -676,13 +678,24 @@ void SessionManagerService::SetGError(GError** error,
   g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
 }
 
-void SessionManagerService::SendSignalToChromium(const char* signal_name) {
+// static
+void SessionManagerService::SendSignalToChromium(const char* signal_name,
+                                                 const char* payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",
                               chromium::kChromiumInterface);
+  if (!proxy) {
+    LOG(ERROR) << "No proxy; can't signal chrome";
+    return;
+  }
   DBusMessage* signal = ::dbus_message_new_signal("/",
                                                   chromium::kChromiumInterface,
                                                   signal_name);
+  if (payload) {
+    dbus_message_append_args(signal,
+                             DBUS_TYPE_STRING, &payload,
+                             DBUS_TYPE_INVALID);
+  }
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
 }

@@ -12,6 +12,7 @@
 #include <base/nss_util.h>
 #include <base/scoped_ptr.h>
 #include <cros/chromeos_login.h>
+#include <glib/garray.h>
 
 namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
@@ -57,11 +58,9 @@ NssUtil* NssUtil::Create() {
 }
 
 // static
-void NssUtil::KeyFromBuffer(const char* data,
-                            int len,
-                            std::vector<uint8>* out) {
-  out->resize(len);
-  memcpy(&(out->at(0)), data, len);
+void NssUtil::KeyFromBuffer(const GArray* buf, std::vector<uint8>* out) {
+  out->resize(buf->len);
+  memcpy(&(out->at(0)), buf->data, buf->len);
 }
 
 NssUtilImpl::NssUtilImpl() {}

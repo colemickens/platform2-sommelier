@@ -51,7 +51,8 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerTest()
       : manager_(NULL),
         utils_(new MockSystemUtils),
-        file_checker_(new MockFileChecker(kCheckedFile)) {
+        file_checker_(new MockFileChecker(kCheckedFile)),
+        fake_key_(CreateArray("dummy")) {
   }
 
   virtual ~SessionManagerTest() {
@@ -64,6 +65,8 @@ class SessionManagerTest : public ::testing::Test {
     file_util::Delete(disk1, false);
     file_util::Delete(uptime2, false);
     file_util::Delete(disk2, false);
+
+    g_array_free(fake_key_, TRUE);
   }
 
   virtual void TearDown() {
@@ -140,9 +143,17 @@ class SessionManagerTest : public ::testing::Test {
     return job;
   }
 
+  // Caller takes ownership.
+  GArray* CreateArray(const char* input) {
+    GArray* output = g_array_new(FALSE, FALSE, 1);
+    g_array_append_vals(output, input, strlen(input));
+    return output;
+  }
+
   SessionManagerService* manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
+  GArray* fake_key_;
 };
 
 // compatible with void Run()
@@ -460,17 +471,6 @@ TEST_F(SessionManagerTest, StatsRecorded) {
   EXPECT_TRUE(file_util::PathExists(disk));
 }
 
-TEST_F(SessionManagerTest, SetOwnerKeyTooBig) {
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
-      .WillOnce(Return(false));
-  MockUtils();
-
-  gchar key[] = "dummy";
-  GError* error = NULL;
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
-}
-
 class SadNssUtil : public MockNssUtil {
  public:
   SadNssUtil() : MockNssUtil() {
@@ -485,14 +485,10 @@ TEST_F(SessionManagerTest, SetOwnerKeyNssDbFail) {
   NssUtil::set_factory(&factory);
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
-      .WillOnce(DoAll(SetArgumentPointee<1>(32),
-                      Return(true)));
   MockUtils();
 
-  gchar key[] = "dummy";
   GError* error = NULL;
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
 }
 
 class KeyFailUtil : public MockNssUtil {
@@ -511,14 +507,10 @@ TEST_F(SessionManagerTest, SetOwnerKeyCheckFail) {
   NssUtil::set_factory(&factory);
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
-      .WillOnce(DoAll(SetArgumentPointee<1>(32),
-                      Return(true)));
   MockUtils();
 
-  gchar key[] = "dummy";
   GError* error = NULL;
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(key, &error));
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
 }
 
 class KeyCheckUtil : public MockNssUtil {
@@ -536,17 +528,11 @@ TEST_F(SessionManagerTest, SetOwnerKeyPopulateFail) {
   MockFactory<KeyCheckUtil> factory;
   NssUtil::set_factory(&factory);
 
-  gchar fake_key[] = "dummy";
-  int fake_key_len = strlen(fake_key);
-
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
-      .WillOnce(DoAll(SetArgumentPointee<1>(fake_key_len),
-                      Return(true)));
   MockUtils();
 
   std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(fake_key, fake_key_len, &pub_key);
+  NssUtil::KeyFromBuffer(fake_key_, &pub_key);
 
   MockOwnerKey* key = new MockOwnerKey;
   EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
@@ -555,26 +541,42 @@ TEST_F(SessionManagerTest, SetOwnerKeyPopulateFail) {
   manager_->test_api().set_ownerkey(key);
 
   GError* error = NULL;
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key, &error));
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
+}
+
+TEST_F(SessionManagerTest, InitiateSetOwnerKey) {
+  MockFactory<KeyCheckUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  std::vector<uint8> pub_key;
+  NssUtil::KeyFromBuffer(fake_key_, &pub_key);
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_ownerkey(key);
+
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
 }
 
 TEST_F(SessionManagerTest, SetOwnerKey) {
   MockFactory<KeyCheckUtil> factory;
   NssUtil::set_factory(&factory);
 
-  gchar fake_key[] = "dummy";
-  int fake_key_len = strlen(fake_key);
-
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), EnsureAndReturnSafeSize(_,_))
-      .WillOnce(DoAll(SetArgumentPointee<1>(fake_key_len),
-                      Return(true)));
   MockUtils();
 
   std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(fake_key, fake_key_len, &pub_key);
+  NssUtil::KeyFromBuffer(fake_key_, &pub_key);
 
   MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
   EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
       .WillOnce(Return(true));
   EXPECT_CALL(*key, Persist())
@@ -583,7 +585,11 @@ TEST_F(SessionManagerTest, SetOwnerKey) {
   manager_->test_api().set_ownerkey(key);
 
   GError* error = NULL;
-  EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key, &error));
+  EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
+
+  manager_->Run();
+
+  LOG(INFO) << "exiting";
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {

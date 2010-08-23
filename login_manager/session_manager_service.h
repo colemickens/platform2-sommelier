@@ -173,22 +173,22 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Returns TRUE if the key is accepted and successfully recorded.
   // If the key is rejected, because we already have one or for any other
   // reason, we return FALSE and set |error| appropriately.
-  gboolean SetOwnerKey(gchar* public_key_der, GError** error);
+  gboolean SetOwnerKey(GArray* public_key_der, GError** error);
 
   gboolean CheckWhitelist(gchar* email_address,
-                          gchar* OUT_signature,
+                          GArray** OUT_signature,
                           GError** error);
 
-  gboolean Whitelist(gchar* email_address, gchar* signature, GError** error);
+  gboolean Whitelist(gchar* email_address, GArray* signature, GError** error);
 
   gboolean StoreProperty(gchar* name,
                          gchar* value,
-                         gchar* signature,
+                         GArray* signature,
                          GError** error);
 
   gboolean RetrieveProperty(gchar* name,
                             gchar* OUT_value,
-                            gchar* OUT_signature,
+                            GArray** OUT_signature,
                             GError** error);
 
   // Handles LockScreen request from PowerManager. It switches itself to
@@ -252,6 +252,18 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
+  // |data| is an OwnerKey*, which is persisted to disk.
+  static gboolean PersistKey(gpointer data);
+
+  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
+  //                API out of the session_manager.
+  // http://code.google.com/p/chromium-os/issues/detail?id=5929
+  //
+  // Sends |signal_name| to Chromium browser, optionally adding |payload|
+  // as an arg if it is not NULL.
+  static void SendSignalToChromium(const char* signal_name,
+                                   const char* payload);
+
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
@@ -259,9 +271,6 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   void CleanupChildren(int timeout);
 
   void SetGError(GError** error, ChromeOSLoginError, const char* message);
-
-  // Sends a given signal to Chromium browser.
-  void SendSignalToChromium(const char* signal_name);
 
   bool ShouldRunChildren();
   // Returns true if |child_job| believes it should be stopped.
