@@ -4,6 +4,7 @@
 
 CXX ?= g++
 CXXFLAGS ?= -Wall -Werror -g
+CXXFLAGS += -DOS_CHROMEOS
 PKG_CONFIG ?= pkg-config
 
 BASE_LIBS = -lbase -lpthread -lrt -lchromeos

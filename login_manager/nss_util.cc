@@ -70,6 +70,10 @@ NssUtilImpl::~NssUtilImpl() {}
 
 bool NssUtilImpl::OpenUserDB() {
   base::EnsureNSSInit();
+  // TODO(cmasone): If we ever try to keep the session_manager alive across
+  // user sessions, we'll need to deal with the fact that we have no way to
+  // close this persistent DB.
+  base::OpenPersistentNSSDB();
   return true;
 }
 
