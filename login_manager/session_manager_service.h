@@ -23,6 +23,7 @@
 
 #include "login_manager/file_checker.h"
 #include "login_manager/owner_key.h"
+#include "login_manager/pref_store.h"
 #include "login_manager/system_utils.h"
 
 class CommandLine;
@@ -61,6 +62,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     // Set the OwnerKey object used by the manager. Useful for mocking.
     void set_ownerkey(OwnerKey* key) {
       session_manager_service_->key_.reset(key);
+    }
+
+    // Set the PrefStore object used by the manager. Useful for mocking.
+    void set_prefstore(PrefStore* key) {
+      session_manager_service_->store_.reset(key);
     }
 
     // Sets whether the the manager exits when a child finishes.
@@ -187,7 +193,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
                          GError** error);
 
   gboolean RetrieveProperty(gchar* name,
-                            gchar* OUT_value,
+                            gchar** OUT_value,
                             GArray** OUT_signature,
                             GError** error);
 
@@ -255,6 +261,12 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is an OwnerKey*, which is persisted to disk.
   static gboolean PersistKey(gpointer data);
 
+  // |data| is a PrefStore*, which is persisted to disk.
+  static gboolean PersistWhitelist(gpointer data);
+
+  // |data| is a PrefStore*, which is persisted to disk.
+  static gboolean PersistStore(gpointer data);
+
   // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
   //                API out of the session_manager.
   // http://code.google.com/p/chromium-os/issues/detail?id=5929
@@ -293,6 +305,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   scoped_ptr<SystemUtils> system_;
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<OwnerKey> key_;
+  scoped_ptr<PrefStore> store_;
 
   bool session_started_;
 

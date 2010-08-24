@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include "base/base64.h"
 #include "base/basictypes.h"
 #include "base/command_line.h"
 #include "base/file_path.h"
@@ -25,6 +26,7 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_pref_store.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/system_utils.h"
 
@@ -33,7 +35,7 @@ namespace login_manager {
 using ::testing::AnyNumber;
 using ::testing::DoAll;
 using ::testing::Invoke;
-using ::testing::InSequence;
+using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::_;
@@ -52,7 +54,7 @@ class SessionManagerTest : public ::testing::Test {
       : manager_(NULL),
         utils_(new MockSystemUtils),
         file_checker_(new MockFileChecker(kCheckedFile)),
-        fake_key_(CreateArray("dummy")) {
+        fake_key_(CreateArray("dummy", strlen("dummy"))) {
   }
 
   virtual ~SessionManagerTest() {
@@ -69,12 +71,29 @@ class SessionManagerTest : public ::testing::Test {
     g_array_free(fake_key_, TRUE);
   }
 
+  virtual void SetUp() {
+    property_ = StringPrintf("%s=%s", kPropName, kPropValue);
+    char sig[] = "signature";
+    int len = strlen(sig);
+    sig[2] = '\0';  // to make sure we can handle NULL inside a signature.
+    fake_sig_ = CreateArray(sig, len);
+    ASSERT_TRUE(base::Base64Encode(std::string(fake_sig_->data, fake_sig_->len),
+                                   &fake_sig_encoded_));
+  }
+
   virtual void TearDown() {
     // just to be sure...
     NssUtil::set_factory(NULL);
+    g_array_free(fake_sig_, TRUE);
   }
 
  protected:
+  // NOT const so that they can be passed to methods that implement dbus calls,
+  // which (of necessity) take bare gchar*.
+  static char kFakeEmail[];
+  static char kPropName[];
+  static char kPropValue[];
+
   // Creates the manager with the jobs. Mocks the file checker.
   // The second job can be NULL.
   void InitManager(MockChildJob* job1, MockChildJob* job2) {
@@ -144,17 +163,26 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   // Caller takes ownership.
-  GArray* CreateArray(const char* input) {
+  GArray* CreateArray(const char* input, const int len) {
     GArray* output = g_array_new(FALSE, FALSE, 1);
-    g_array_append_vals(output, input, strlen(input));
+    g_array_append_vals(output, input, len);
     return output;
   }
 
   SessionManagerService* manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
+  std::string property_;
   GArray* fake_key_;
+  GArray* fake_sig_;
+  std::string fake_sig_encoded_;
 };
+
+// static
+char SessionManagerTest::kFakeEmail[] = "cmasone@whaaat.org";
+char SessionManagerTest::kPropName[] = "name";
+char SessionManagerTest::kPropValue[] = "value";
+
 
 // compatible with void Run()
 static void BadExit() { _exit(1); }
@@ -588,8 +616,262 @@ TEST_F(SessionManagerTest, SetOwnerKey) {
   EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
 
   manager_->Run();
+}
 
-  LOG(INFO) << "exiting";
+TEST_F(SessionManagerTest, WhitelistNoKey) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
+
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, WhitelistVerifyFail) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+                           fake_sig_->data, fake_sig_->len))
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
+
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, Whitelist) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+                           fake_sig_->data, fake_sig_->len))
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, Whitelist(kFakeEmail, _))
+      .Times(1);
+  EXPECT_CALL(*store, Persist())
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
+
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, CheckWhitelistFail) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, GetFromWhitelist(kFakeEmail, _))
+      .WillOnce(Return(false));
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  GArray* out_sig = NULL;
+  EXPECT_EQ(FALSE, manager_->CheckWhitelist(kFakeEmail, &out_sig, &error));
+
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, CheckWhitelist) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, GetFromWhitelist(kFakeEmail, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(fake_sig_encoded_),
+                      Return(true)))
+      .RetiresOnSaturation();
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  GArray* out_sig = NULL;
+  ASSERT_EQ(TRUE, manager_->CheckWhitelist(kFakeEmail, &out_sig, &error));
+
+  int i = 0;
+  for (i = 0; i < fake_sig_->len; i++) {
+    EXPECT_EQ(g_array_index(fake_sig_, uint8, i),
+              g_array_index(out_sig, uint8, i));
+  }
+  EXPECT_EQ(i, fake_sig_->len);
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, StorePropertyNoKey) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->StoreProperty(kPropName,
+                                           kPropValue,
+                                           fake_sig_,
+                                           &error));
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(Eq(property_), property_.length(),
+                           fake_sig_->data, fake_sig_->len))
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->StoreProperty(kPropName,
+                                           kPropValue,
+                                           fake_sig_,
+                                           &error));
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, StoreProperty) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(Eq(property_), property_.length(),
+                           fake_sig_->data, fake_sig_->len))
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, Set(kPropName, kPropValue, _))
+      .Times(1);
+  EXPECT_CALL(*store, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->StoreProperty(kPropName,
+                                          kPropValue,
+                                          fake_sig_,
+                                          &error));
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, RetrievePropertyFail) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, Get(kPropName, _, _))
+      .WillOnce(Return(false));
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  GArray* out_sig = NULL;
+  gchar* out_value = NULL;
+  EXPECT_EQ(FALSE, manager_->RetrieveProperty(kPropName,
+                                              &out_value,
+                                              &out_sig,
+                                              &error));
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, RetrieveProperty) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  std::string value(kPropValue);
+  EXPECT_CALL(*store, Get(kPropName, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(value),
+                      SetArgumentPointee<2>(fake_sig_encoded_),
+                      Return(true)))
+      .RetiresOnSaturation();
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  GArray* out_sig = NULL;
+  gchar* out_value = NULL;
+  EXPECT_EQ(TRUE, manager_->RetrieveProperty(kPropName,
+                                             &out_value,
+                                             &out_sig,
+                                             &error));
+  int i = 0;
+  for (i = 0; i < fake_sig_->len; i++) {
+    EXPECT_EQ(g_array_index(fake_sig_, uint8, i),
+              g_array_index(out_sig, uint8, i));
+  }
+  EXPECT_EQ(i, fake_sig_->len);
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {

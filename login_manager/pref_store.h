@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/json/json_reader.h"
-#include "base/file_path.h"
-#include "base/scoped_ptr.h"
+#ifndef LOGIN_MANAGER_PREF_STORE_H_
+#define LOGIN_MANAGER_PREF_STORE_H_
+
+#include <base/json/json_reader.h>
+#include <base/file_path.h>
+#include <base/scoped_ptr.h>
 
 #include <string>
 
@@ -98,3 +101,5 @@ class PrefStore {
 };
 
 }  // namespace login_manager
+
+#endif  // LOGIN_MANAGER_PREF_STORE_H_

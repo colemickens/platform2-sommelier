@@ -63,7 +63,7 @@ gboolean session_manager_store_property(SessionManager *self,
                                         GError **error);
 gboolean session_manager_retrieve_property(SessionManager *self,
                                            gchar *name,
-                                           gchar *OUT_value,
+                                           gchar **OUT_value,
                                            GArray **OUT_signature,
                                            GError **error);
 

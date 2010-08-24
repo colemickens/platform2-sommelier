@@ -105,7 +105,7 @@ gboolean session_manager_store_property(SessionManager *self,
 }
 gboolean session_manager_retrieve_property(SessionManager *self,
                                            gchar *name,
-                                           gchar *OUT_value,
+                                           gchar **OUT_value,
                                            GArray **OUT_signature,
                                            GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RetrieveProperty, name, OUT_value, OUT_signature);

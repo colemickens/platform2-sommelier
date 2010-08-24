@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "base/base64.h"
 #include "base/basictypes.h"
 #include "base/command_line.h"
 #include "base/file_path.h"
@@ -454,12 +455,58 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
 gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
                                                GArray** OUT_signature,
                                                GError** error) {
+  std::string encoded;
+  if (!store_->GetFromWhitelist(email_address, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_USER,
+              "The user is not whitelisted.");
+    return FALSE;
+  }
+  std::string decoded;
+  if (!base::Base64Decode(encoded, &decoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
+              "Signature could not be decoded.");
+    return FALSE;
+  }
+
+  *OUT_signature = g_array_sized_new(FALSE, FALSE, 1, decoded.length());
+  g_array_append_vals(*OUT_signature, decoded.c_str(), decoded.length());
   return TRUE;
 }
 
 gboolean SessionManagerService::Whitelist(gchar* email_address,
                                           GArray* signature,
                                           GError** error) {
+  LOG(INFO) << "Whitelisting " << email_address;
+  if (!key_->IsPopulated()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,
+              "Attempt to whitelist before owner's key is set.");
+    return FALSE;
+  }
+  if (!key_->Verify(email_address,
+                    strlen(email_address),
+                    signature->data,
+                    signature->len)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
+              "Signature could not be verified.");
+    return FALSE;
+  }
+  std::string data(signature->data, signature->len);
+  std::string encoded;
+  if (!base::Base64Encode(data, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
+              "Signature could not be encoded.");
+    return FALSE;
+  }
+  store_->Whitelist(email_address, encoded);
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistWhitelist,
+                  store_.get(),
+                  NULL);
   return TRUE;
 }
 
@@ -467,13 +514,63 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
                                               gchar* value,
                                               GArray* signature,
                                               GError** error) {
+  LOG(INFO) << "Setting pref " << name << "=" << value;
+  if (!key_->IsPopulated()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,
+              "Attempt to whitelist before owner's key is set.");
+    return FALSE;
+  }
+  std::string was_signed = base::StringPrintf("%s=%s", name, value);
+  if (!key_->Verify(was_signed.c_str(),
+                    was_signed.length(),
+                    signature->data,
+                    signature->len)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
+              "Signature could not be verified.");
+    return FALSE;
+  }
+  std::string data(signature->data, signature->len);
+  std::string encoded;
+  if (!base::Base64Encode(data, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
+              "Signature could not be verified.");
+    return FALSE;
+  }
+  store_->Set(name, value, encoded);
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistStore,
+                  store_.get(),
+                  NULL);
   return TRUE;
 }
 
 gboolean SessionManagerService::RetrieveProperty(gchar* name,
-                                                 gchar* OUT_value,
+                                                 gchar** OUT_value,
                                                  GArray** OUT_signature,
                                                  GError** error) {
+  std::string encoded;
+  std::string value;
+  if (!store_->Get(name, &value, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,
+              "The user is not whitelisted.");
+    return FALSE;
+  }
+  *OUT_value = g_strdup_printf("%.*s", value.length(), value.c_str());
+
+  std::string decoded;
+  if (!base::Base64Decode(encoded, &decoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
+              "Signature could not be decoded.");
+    return FALSE;
+  }
+  *OUT_signature = g_array_sized_new(FALSE, FALSE, 1, decoded.length());
+  g_array_append_vals(*OUT_signature, decoded.c_str(), decoded.length());
+
   return TRUE;
 }
 
@@ -606,11 +703,31 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
 
 gboolean SessionManagerService::PersistKey(gpointer data) {
   OwnerKey* key = static_cast<OwnerKey*>(data);
-  LOG(INFO) << "Persisting Owner key to disk." << data;
+  LOG(INFO) << "Persisting Owner key to disk.";
   if (key->Persist())
     SendSignalToChromium(chromium::kOwnerKeySetSignal, "success");
   else
     SendSignalToChromium(chromium::kOwnerKeySetSignal, "failure");
+  return FALSE;  // So that the event source that called this gets removed.
+}
+
+gboolean SessionManagerService::PersistWhitelist(gpointer data) {
+  PrefStore* store = static_cast<PrefStore*>(data);
+  LOG(INFO) << "Persisting Whitelist to disk.";
+  if (store->Persist())
+    SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal, "success");
+  else
+    SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal, "failure");
+  return FALSE;  // So that the event source that called this gets removed.
+}
+
+gboolean SessionManagerService::PersistStore(gpointer data) {
+  PrefStore* store = static_cast<PrefStore*>(data);
+  LOG(INFO) << "Persisting Store to disk.";
+  if (store->Persist())
+    SendSignalToChromium(chromium::kPropertyChangeCompleteSignal, "success");
+  else
+    SendSignalToChromium(chromium::kPropertyChangeCompleteSignal, "failure");
   return FALSE;  // So that the event source that called this gets removed.
 }
 
