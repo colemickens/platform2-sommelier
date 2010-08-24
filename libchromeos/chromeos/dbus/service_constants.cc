@@ -70,7 +70,7 @@ const char* kUnlockScreenFailedSignal = "UnlockScreenFailed";
 const char* kTTSReadySignal = "TTSReady";
 const char* kTTSFailedSignal = "TTSFailed";
 const char* kOwnerKeySetSignal = "SetOwnerKeyComplete";
-const char* kSettingChangeCompleteSignal = "SettingChangeComplete";
+const char* kPropertyChangeCompleteSignal = "PropertyChangeComplete";
 const char* kWhitelistChangeCompleteSignal = "WhitelistChangeComplete";
 }  // namespace chromium
 

@@ -64,7 +64,13 @@ typedef enum {
   CHROMEOS_LOGIN_ERROR_UNKNOWN_PID,     // pid specified is unknown.
   CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,   // error finding/opening NSS DB.
   CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,  // attempt to set key is illegal.
-  CHROMEOS_LOGIN_ERROR_KEY_WRITE,       // can't write owner key to disk.
+  CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,    // attempt to set prefs before key.
+  CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,     // Signature on update request failed.
+  CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,     // Encoding signature for writing to
+                                        // disk failed.
+  CHROMEOS_LOGIN_ERROR_DECODE_FAIL,     // Decoding signature failed.
+  CHROMEOS_LOGIN_ERROR_ILLEGAL_USER,    // The user is not on the whitelist.
+  CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,// No value set for given property.
 } ChromeOSLoginError;
 
 }  // namespace login_manager
@@ -86,7 +92,7 @@ extern const char* kTTSReadySignal;
 extern const char* kTTSFailedSignal;
 // Ownership API signals
 extern const char* kOwnerKeySetSignal;
-extern const char* kSettingChangeCompleteSignal;
+extern const char* kPropertyChangeCompleteSignal;
 extern const char* kWhitelistChangeCompleteSignal;
 }  // namespace chromium
 
