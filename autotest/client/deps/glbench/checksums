@@ -1,5 +1,5 @@
 {
-'Tungsten Graphics, Inc / Mesa DRI Mobile Intel® GM45 Express Chipset GEM 20091221 2009Q4' : {
+'Tungsten Graphics, Inc - Mesa DRI Mobile Intel® GM45 Express Chipset GEM 20091221 2009Q4' : {
 '1280x768_fps_compositing':                  '7d002a16a70ac15cd60cbbc5c7086f01',
 '1280x768_fps_no_fill_compositing':          '642537874c2920ca7ddf48d08c17f74a',
 'mpixels_sec_clear_color':                   'e3609de1022a164fe240a562c69367de',
@@ -55,7 +55,7 @@
 'mvtx_sec_attribute_fetch_shader_8_attr':    '20dbc406b95e214a799a6a7f9c700d2f',
 'us_swap_swap':                              '20dbc406b95e214a799a6a7f9c700d2f',
 },
-'Tungsten Graphics, Inc / Mesa DRI Intel(R) IGD GEM 20091221 2009Q4': {
+'Tungsten Graphics, Inc - Mesa DRI Intel(R) IGD GEM 20091221 2009Q4': {
 '1280x768_fps_compositing':                  '7d002a16a70ac15cd60cbbc5c7086f01',
 '1280x768_fps_no_fill_compositing':          '642537874c2920ca7ddf48d08c17f74a',
 'mpixels_sec_clear_color':                   'e3609de1022a164fe240a562c69367de',

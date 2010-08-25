@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
   }
 
   InitContext();
-  printf("# board_id: %s / %s\n",
+  printf("# board_id: %s - %s\n",
          glGetString(GL_VENDOR), glGetString(GL_RENDERER));
   DestroyContext();
 
