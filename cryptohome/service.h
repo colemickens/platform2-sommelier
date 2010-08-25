@@ -39,6 +39,7 @@ class Service : public chromeos::dbus::AbstractDbusService {
   // From chromeos::dbus::AbstractDbusService
   // Setup the wrapped GObject and the GMainLoop
   virtual bool Initialize();
+  virtual bool SeedUrandom();
   virtual bool Reset();
 
   // Used internally during registration to set the

@@ -7,11 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 
 #include "interface.h"
+#include "crypto.h"
 #include "mount.h"
 #include "secure_blob.h"
 #include "username_passkey.h"
@@ -25,6 +27,8 @@ namespace gobject {  // NOLINT
 }  // namespace cryptohome
 
 namespace cryptohome {
+
+const int kDefaultRandomSeedLength = 64;
 
 Service::Service()
     : loop_(NULL),
@@ -48,6 +52,9 @@ bool Service::Initialize() {
   bool result = true;
 
   if (initialize_tpm_) {
+    if (!SeedUrandom()) {
+      LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
+    }
     if (!tpm_init_->StartInitializeTpm()) {
       LOG(ERROR) << "Failed start initializing the TPM";
       result = false;
@@ -63,6 +70,21 @@ bool Service::Initialize() {
     result = false;
   }
   return result;
+}
+
+bool Service::SeedUrandom() {
+  SecureBlob random;
+  if (!tpm_init_->GetRandomData(kDefaultRandomSeedLength, &random)) {
+    LOG(ERROR) << "Could not get random data from the TPM";
+    return false;
+  }
+  size_t written = file_util::WriteFile(FilePath(kDefaultEntropySource),
+      static_cast<const char*>(random.const_data()), random.size());
+  if (written != random.size()) {
+    LOG(ERROR) << "Error writing data to /dev/urandom";
+    return false;
+  }
+  return true;
 }
 
 bool Service::Reset() {

@@ -66,19 +66,30 @@ bool Mount::Init() {
     result = false;
   }
 
-  // One-time load of the global system salt (used in generating username
-  // hashes)
-  if (!LoadFileBytes(FilePath(StringPrintf("%s/salt", shadow_root_.c_str())),
-                       &system_salt_)) {
-    result = false;
-  }
-
   crypto_->set_use_tpm(use_tpm_);
   crypto_->set_fallback_to_scrypt(fallback_to_scrypt_);
 
   if (!crypto_->Init()) {
     result = false;
   }
+
+  int original_mask = platform_->SetMask(kDefaultUmask);
+  // Create the shadow root if it doesn't exist
+  FilePath shadow_root(shadow_root_);
+  if (!file_util::DirectoryExists(shadow_root)) {
+    file_util::CreateDirectory(shadow_root);
+  }
+
+  // One-time load of the global system salt (used in generating username
+  // hashes)
+  FilePath system_salt_file(StringPrintf("%s/salt", shadow_root_.c_str()));
+  if (!crypto_->GetOrCreateSalt(system_salt_file,
+                                CRYPTOHOME_DEFAULT_SALT_LENGTH, false,
+                                &system_salt_)) {
+    LOG(ERROR) << "Failed to load or create the system salt";
+    result = false;
+  }
+  platform_->SetMask(original_mask);
 
   current_user_->Init(crypto_);
 
