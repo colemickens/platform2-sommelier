@@ -84,6 +84,7 @@ class PrefStore {
   virtual void Delete(const std::string& name);
 
   static const char kWhitelistPrefix[];
+  static const char kPropertiesPrefix[];
   static const char kValueField[];
   static const char kSignatureField[];
   static const char kDefaultPath[];
@@ -91,6 +92,8 @@ class PrefStore {
  private:
   base::JSONReader reader_;
   scoped_ptr<DictionaryValue> prefs_;
+  DictionaryValue* whitelist_;
+  DictionaryValue* properties_;
   const FilePath prefs_path_;
 
   // Remove the record for |key| from |prefs_| and return in |out|.

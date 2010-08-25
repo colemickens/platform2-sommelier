@@ -84,6 +84,12 @@ gboolean session_manager_set_owner_key(SessionManager *self,
                                        GError **error) {
   SESSION_MANAGER_WRAP_METHOD(SetOwnerKey, public_key_der);
 }
+gboolean session_manager_unwhitelist(SessionManager *self,
+                                     gchar *email_address,
+                                     GArray *signature,
+                                     GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(Unwhitelist, email_address, signature);
+}
 gboolean session_manager_check_whitelist(SessionManager *self,
                                          gchar *email_address,
                                          GArray **OUT_signature,

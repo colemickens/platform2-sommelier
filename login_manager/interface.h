@@ -48,6 +48,10 @@ gboolean session_manager_stop_session(SessionManager *self,
 gboolean session_manager_set_owner_key(SessionManager *self,
                                        GArray *public_key_der,
                                        GError **error);
+gboolean session_manager_unwhitelist(SessionManager *self,
+                                     gchar *email_address,
+                                     GArray *signature,
+                                     GError **error);
 gboolean session_manager_check_whitelist(SessionManager *self,
                                          gchar *email_address,
                                          GArray **OUT_signature,

@@ -40,6 +40,9 @@ class NssUtil;
 // D-Bus and entering the glib run loop.
 //
 // ::g_type_init() must be called before this class is used.
+//
+// All signatures used in the methods of the ownership API are
+// SHA1 with RSA encryption.
 class SessionManagerService : public chromeos::dbus::AbstractDbusService {
  public:
   SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
@@ -181,17 +184,39 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // reason, we return FALSE and set |error| appropriately.
   gboolean SetOwnerKey(GArray* public_key_der, GError** error);
 
+  // Remove the user |email_address| from the whitelist.  |signature| must
+  // be a signature over |email_address| that validates with |key_|.
+  // |signature| is a binary blob representing a sha1WithRSAEncryption sig.
+  gboolean Unwhitelist(gchar* email_address, GArray* signature, GError** error);
+
+  // If |email_address| is whitelisted, return true and put the signature blob
+  // in |OUT_signature|.  Otherwise, return false and set |error|.
   gboolean CheckWhitelist(gchar* email_address,
                           GArray** OUT_signature,
                           GError** error);
 
+  // Add the user |email_address| to the whitelist.  |signature| must
+  // be a signature over |email_address| that validates with |key_|.
+  // |signature| should a binary blob representing a sha1WithRSAEncryption sig.
   gboolean Whitelist(gchar* email_address, GArray* signature, GError** error);
 
+  // Store |name| = |value,signature| in |store_|.  Passing '.' characters in
+  // the name is fine and will create nested Dictionaries in the underlying
+  // representation, though there's no way to get those dictionaries out right
+  // now.
+  //
+  // |signature| is a SAH1 with RSA signature over the concatenation
+  // of name and value, verifiable with |key_|.
+  //
+  // Returns TRUE if the signature checks out and the data is inserted,
+  // FALSE otherwise.
   gboolean StoreProperty(gchar* name,
                          gchar* value,
                          GArray* signature,
                          GError** error);
 
+  // Get the value and signature associated with |name| out of |store|.
+  // Returns TRUE if the data is can be fetched, FALSE otherwise.
   gboolean RetrieveProperty(gchar* name,
                             gchar** OUT_value,
                             GArray** OUT_signature,

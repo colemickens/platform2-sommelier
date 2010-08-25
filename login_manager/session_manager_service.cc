@@ -452,6 +452,33 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   return TRUE;
 }
 
+gboolean SessionManagerService::Unwhitelist(gchar* email_address,
+                                            GArray* signature,
+                                            GError** error) {
+  LOG(INFO) << "Unwhitelisting " << email_address;
+  if (!key_->IsPopulated()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,
+              "Attempt to unwhitelist before owner's key is set.");
+    return FALSE;
+  }
+  if (!key_->Verify(email_address,
+                    strlen(email_address),
+                    signature->data,
+                    signature->len)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
+              "Signature could not be verified.");
+    return FALSE;
+  }
+  store_->Unwhitelist(email_address);
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistWhitelist,
+                  store_.get(),
+                  NULL);
+  return TRUE;
+}
+
 gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
                                                GArray** OUT_signature,
                                                GError** error) {

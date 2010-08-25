@@ -690,6 +690,35 @@ TEST_F(SessionManagerTest, Whitelist) {
   manager_->Run();
 }
 
+TEST_F(SessionManagerTest, Unwhitelist) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  MockOwnerKey* key = new MockOwnerKey;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+                           fake_sig_->data, fake_sig_->len))
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_ownerkey(key);
+
+  MockPrefStore* store = new MockPrefStore;
+  EXPECT_CALL(*store, Unwhitelist(kFakeEmail))
+      .Times(1);
+  EXPECT_CALL(*store, Persist())
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_prefstore(store);
+
+  GError* error = NULL;
+  EXPECT_EQ(TRUE, manager_->Unwhitelist(kFakeEmail, fake_sig_, &error));
+
+  manager_->Run();
+}
+
 TEST_F(SessionManagerTest, CheckWhitelistFail) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
