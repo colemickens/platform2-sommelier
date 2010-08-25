@@ -170,11 +170,6 @@ ureadahead &
 # Some things freak out if no hostname is set.
 hostname localhost
 
-# create salt for user data dir crypto
-mkdir -p /home/.shadow
-SALT=/home/.shadow/salt
-(test -f "$SALT" || head -c 16 /dev/urandom > "$SALT") &
-
 bootstat post-startup
 
 # Always return success to avoid killing init
