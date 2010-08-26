@@ -136,6 +136,7 @@ SessionManagerService::SessionManagerService(
       system_(new SystemUtils),
       nss_(NssUtil::Create()),
       key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
+      store_(new PrefStore(FilePath(PrefStore::kDefaultPath))),
       session_started_(false),
       screen_locked_(false),
       set_uid_(false),
@@ -183,6 +184,8 @@ bool SessionManagerService::Initialize() {
                    g_cclosure_marshal_VOID__STRING,
                    G_TYPE_NONE, 1, G_TYPE_STRING);
 
+  if (!store_->LoadOrCreate())
+    LOG(ERROR) << "Could not load existing settings.  Continuing anyway...";
   return Reset();
 }
 
@@ -259,6 +262,9 @@ bool SessionManagerService::Shutdown() {
                   signals_[kSignalSessionStateChanged],
                   0, "stopped");
   }
+
+  // Even if we haven't gotten around to processing a persist task.
+  store_->Persist();
 
   return chromeos::dbus::AbstractDbusService::Shutdown();
 }
