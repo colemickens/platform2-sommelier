@@ -24,6 +24,13 @@ UsernamePasskey::UsernamePasskey(const char *username,
 UsernamePasskey::~UsernamePasskey() {
 }
 
+void UsernamePasskey::Assign(const Credentials& rhs) {
+  username_.assign(rhs.GetFullUsernameString());
+  SecureBlob passkey;
+  rhs.GetPasskey(&passkey);
+  passkey_.assign(passkey.begin(), passkey.end());
+}
+
 void UsernamePasskey::GetFullUsername(char *name_buffer, int length) const {
   strncpy(name_buffer, username_.c_str(), length);
 }

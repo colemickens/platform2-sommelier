@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/at_exit.h>
 #include <chromeos/dbus/dbus.h>
 #include <gtest/gtest.h>
 
@@ -10,6 +11,7 @@
 const char* kDefaultImageDir = "test_image_dir";
 
 int main(int argc, char **argv) {
+  base::AtExitManager exit_manager;
   cryptohome::MakeTests make_tests;
   make_tests.InitTestData(std::string(kDefaultImageDir));
 

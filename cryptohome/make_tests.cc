@@ -20,6 +20,12 @@
 
 namespace cryptohome {
 
+// struct TestUserInfo {
+//   const char* username;
+//   const char* password;
+//   bool create;
+//   bool use_old_format;
+// };
 const TestUserInfo kDefaultUsers[] = {
   {"testuser0@invalid.domain", "zero", true, false},
   {"testuser1@invalid.domain", "one", true, false},
@@ -29,6 +35,7 @@ const TestUserInfo kDefaultUsers[] = {
   {"testuser5@invalid.domain", "five", false, false},
   {"testuser6@invalid.domain", "six", true, false},
   {"testuser7@invalid.domain", "seven", true, true},
+  {"testuser8@invalid.domain", "eight", true, false},
 };
 const unsigned int kDefaultUserCount =
     sizeof(kDefaultUsers) / sizeof(kDefaultUsers[0]);

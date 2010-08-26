@@ -46,12 +46,55 @@ env = Environment()
 # define generic dbus server/client bindings builders
 dbus_server_builder = Builder(action = 'dbus-binding-tool --mode=glib-server --prefix=`basename $SOURCE .xml` $SOURCE > $TARGET')
 dbus_client_builder = Builder(action = 'dbus-binding-tool --mode=glib-client --prefix=`basename $SOURCE .xml` $SOURCE > $TARGET')
+def GlibMarshalEmitter(target, source, env):
+  """ Inputs:
+          target: unused
+          source: list containing the source .list file
+          env: the scons environment in which we are compiling
+      Outputs:
+          target: the list of targets we'll emit
+          source: the list of sources we'll process"""
+  output = str(source[0])
+  output = output[0:output.rfind('.list')]
+  target = [
+    output + '.glibmarshal.c',
+    output + '.glibmarshal.h'
+  ]
+  return target, source
+
+def GlibMarshalGenerator(source, target, env, for_signature):
+  """ Inputs:
+          source: list of sources to process
+          target: list of targets to generate
+          env: scons environment in which we are working
+          for_signature: unused
+      Outputs: a list of commands to execute to generate the targets from
+               the sources."""
+  commands = []
+  for target_file in target:
+    if str(target_file).endswith('.glibmarshal.h'):
+      mode_flag = '--header '
+    else:
+      mode_flag = '--body '
+    cmd = '/usr/bin/glib-genmarshal %s --prefix=cryptohome ' \
+          '%s > %s' % (mode_flag, str(source[0]), str(target_file))
+    commands.append(cmd)
+  return commands
+
+glib_marshal_builder = Builder(generator = GlibMarshalGenerator,
+                               emitter = GlibMarshalEmitter,
+                               single_source = 1,
+                               suffix = 'glibmarshal.c')
 env.Append(BUILDERS = { 'DbusServerBindings' : dbus_server_builder,
-                        'DbusClientBindings' : dbus_client_builder})
+                        'DbusClientBindings' : dbus_client_builder,
+                        'GlibMarshal' : glib_marshal_builder})
 # setup sources
 commonlib_sources = env.Split("""crypto.cc
+                                 cryptohome_event_source.cc
                                  interface.cc
+                                 marshal.glibmarshal.c
                                  mount.cc
+                                 mount_task.cc
                                  old_vault_keyset.cc
                                  platform.cc
                                  secure_blob.cc
@@ -64,8 +107,10 @@ commonlib_sources = env.Split("""crypto.cc
                               """)
 server_sources = env.Split("""cryptohomed.cc""")
 client_sources = env.Split("""cryptohome.cc""")
-test_sources = env.Split("""crypto_unittest.cc
+test_sources = env.Split("""cryptohome_event_source_unittest.cc
+                            crypto_unittest.cc
                             service_unittest.cc
+                            mount_task_unittest.cc
                             mount_unittest.cc
                             secure_blob_unittest.cc
                             username_passkey_unittest.cc
@@ -81,8 +126,8 @@ env.Append(
     CPPPATH=['.', '..'],
     CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
-    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'keyutils', 'tspi',
-            'pthread', 'protobuf', 'scrypt', 'tpm_init'],
+    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
+            'tspi', 'pthread', 'protobuf', 'scrypt', 'tpm_init'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)
@@ -97,8 +142,10 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
 env['BUILDERS']['ProtocolBuffer'] = proto_builder
 
 env.Append(LIBPATH = ['.'])
-env.ParseConfig('pkg-config --cflags --libs gobject-2.0 dbus-1 dbus-glib-1')
+env.ParseConfig('pkg-config --cflags --libs gdk-2.0 gobject-2.0 gtk+-2.0 ' \
+                'dbus-1 dbus-glib-1')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
+env.GlibMarshal('marshal.glibmarshal.c', 'marshal.list')
 
 env_commonlib = env.Clone()
 env_commonlib.SharedLibrary('cryptohome', commonlib_sources)

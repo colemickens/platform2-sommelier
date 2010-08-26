@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 
@@ -27,6 +28,7 @@ static const char *kNoCloseOnDaemonize = "noclose";
 
 int main(int argc, char **argv) {
   ::g_type_init();
+  base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   logging::InitLogging("/var/log/cryptohomed.log",
                        logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,

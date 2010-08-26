@@ -15,11 +15,22 @@
       <arg type="s" name="key" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <method name="AsyncCheckKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
     <method name="MigrateKey">
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="from_key" direction="in" />
       <arg type="s" name="to_key" direction="in" />
       <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="AsyncMigrateKey">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="from_key" direction="in" />
+      <arg type="s" name="to_key" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="Remove">
       <arg type="s" name="username" direction="in" />
@@ -29,15 +40,22 @@
       <arg type="ay" name="salt" direction="out" />
     </method>
     <method name="Mount">
-      <!-- long term, this should just be the hash -->
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
       <arg type="i" name="error" direction="out" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="AsyncMount">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="key" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
     <method name="MountGuest">
       <arg type="i" name="error" direction="out" />
       <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="AsyncMountGuest">
+      <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="Unmount">
       <arg type="b" name="done" direction="out" />
@@ -51,5 +69,10 @@
     <method name="TpmGetPassword">
       <arg type="s" name="password" direction="out" />
     </method>
+    <signal name="AsyncCallStatus">
+      <arg type="i" name="async_id" />
+      <arg type="b" name="return_status" />
+      <arg type="i" name="return_code" />
+    </signal>
   </interface>
 </node>

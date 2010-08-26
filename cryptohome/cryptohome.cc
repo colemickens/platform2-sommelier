@@ -21,6 +21,7 @@
 #include <iostream>
 
 #include "bindings/client.h"
+#include "cryptohome/marshal.glibmarshal.h"
 #include "crypto.h"
 #include "mount.h"
 #include "secure_blob.h"
@@ -59,6 +60,7 @@ namespace switches {
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
   static const char kForceSwitch[] = "force";
+  static const char kAsyncSwitch[] = "async";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
@@ -140,6 +142,72 @@ bool ConfirmRemove(const std::string& user) {
   return true;
 }
 
+class ClientLoop {
+ public:
+  ClientLoop()
+      : loop_(NULL),
+        async_call_id_(0),
+        return_status_(false),
+        return_code_(0) { }
+
+  virtual ~ClientLoop() {
+    if (loop_) {
+      g_main_loop_unref(loop_);
+    }
+  }
+
+  void Initialize(chromeos::dbus::Proxy& proxy) {
+    dbus_g_object_register_marshaller(cryptohome_VOID__INT_BOOLEAN_INT,
+                                      G_TYPE_NONE,
+                                      G_TYPE_INT,
+                                      G_TYPE_BOOLEAN,
+                                      G_TYPE_INT,
+                                      G_TYPE_INVALID);
+    dbus_g_proxy_add_signal(proxy.gproxy(), "AsyncCallStatus",
+                            G_TYPE_INT, G_TYPE_BOOLEAN, G_TYPE_INT,
+                            G_TYPE_INVALID);
+    dbus_g_proxy_connect_signal(proxy.gproxy(), "AsyncCallStatus",
+                                G_CALLBACK(ClientLoop::CallbackThunk),
+                                this, NULL);
+    loop_ = g_main_loop_new(NULL, TRUE);
+  }
+
+  void Run(int async_call_id) {
+    async_call_id_ = async_call_id;
+    g_main_loop_run(loop_);
+  }
+
+  bool get_return_status() {
+    return return_status_;
+  }
+
+  int get_return_code() {
+    return return_code_;
+  }
+
+ private:
+  void Callback(int async_call_id, bool return_status, int return_code) {
+    if (async_call_id == async_call_id_) {
+      return_status_ = return_status;
+      return_code_ = return_code;
+      g_main_loop_quit(loop_);
+    }
+  }
+
+  static void CallbackThunk(DBusGProxy* proxy,
+                            int async_call_id, bool return_status,
+                            int return_code, gpointer userdata) {
+    reinterpret_cast<ClientLoop*>(userdata)->Callback(async_call_id,
+                                                      return_status,
+                                                      return_code);
+  }
+
+  GMainLoop *loop_;
+  int async_call_id_;
+  bool return_status_;
+  int return_code_;
+};
+
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
   logging::InitLogging(NULL,
@@ -172,14 +240,31 @@ int main(int argc, char **argv) {
     gboolean done = false;
     gint mount_error = 0;
     chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
-        user.c_str(),
-        password.c_str(),
-        &mount_error,
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("Mount call failed: %s, with reason code: %d.\n", error->message,
-             mount_error);
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_mount(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               &mount_error,
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("Mount call failed: %s, with reason code: %d.\n", error->message,
+               mount_error);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_mount(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("Mount call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+      }
     }
     if (!done) {
       printf("Mount failed.\n");
@@ -191,12 +276,27 @@ int main(int argc, char **argv) {
     gboolean done = false;
     gint mount_error = 0;
     chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_mount_guest(proxy.gproxy(),
-        &mount_error,
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("MountGuest call failed: %s, with reason code: %d.\n",
-             error->message, mount_error);
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_mount_guest(proxy.gproxy(),
+               &mount_error,
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("MountGuest call failed: %s, with reason code: %d.\n",
+               error->message, mount_error);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_mount_guest(proxy.gproxy(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("Mount call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+      }
     }
     if (!done) {
       printf("Mount failed.\n");
@@ -218,12 +318,29 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
-        user.c_str(),
-        password.c_str(),
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("CheckKey call failed: %s.\n", error->message);
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_check_key(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("CheckKey call failed: %s.\n", error->message);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_check_key(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("CheckKey call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+      }
     }
     if (!done) {
       printf("Authentication failed.\n");
@@ -247,13 +364,31 @@ int main(int argc, char **argv) {
 
     gboolean done = false;
     chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
-        user.c_str(),
-        old_password.c_str(),
-        password.c_str(),
-        &done,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("MigrateKey call failed: %s.\n", error->message);
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_migrate_key(proxy.gproxy(),
+               user.c_str(),
+               old_password.c_str(),
+               password.c_str(),
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("MigrateKey call failed: %s.\n", error->message);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_migrate_key(proxy.gproxy(),
+               user.c_str(),
+               old_password.c_str(),
+               password.c_str(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("MigrateKey call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+      }
     }
     if (!done) {
       printf("Key migration failed.\n");

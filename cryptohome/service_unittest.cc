@@ -6,15 +6,67 @@
 
 #include "service.h"
 
+#include <base/at_exit.h>
+#include <base/platform_thread.h>
+#include <base/file_util.h>
 #include <gtest/gtest.h>
 
+#include "crypto.h"
+#include "make_tests.h"
 #include "mock_mount.h"
+#include "secure_blob.h"
+#include "username_passkey.h"
 
 namespace cryptohome {
 using ::testing::Return;
 using ::testing::_;
 
-TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
+const char kImageDir[] = "test_image_dir";
+const char kSkelDir[] = "test_image_dir/skel";
+class ServiceInterfaceTest : public ::testing::Test {
+ public:
+  ServiceInterfaceTest() { }
+  virtual ~ServiceInterfaceTest() { }
+
+  void SetUp() {
+    FilePath image_dir(kImageDir);
+    FilePath path = image_dir.Append("salt");
+    ASSERT_TRUE(file_util::PathExists(path)) << path.value()
+                                             << " does not exist!";
+
+    int64 file_size;
+    ASSERT_TRUE(file_util::GetFileSize(path, &file_size))
+                << "Could not get size of "
+                << path.value();
+
+    char* buf = new char[file_size];
+    int data_read = file_util::ReadFile(path, buf, file_size);
+    system_salt_.assign(buf, buf + data_read);
+    delete buf;
+  }
+
+ protected:
+  // Protected for trivial access
+  chromeos::Blob system_salt_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ServiceInterfaceTest);
+};
+
+class ServiceSubclass : public Service {
+ public:
+  ServiceSubclass()
+      : completed_tasks_() { }
+  virtual ~ServiceSubclass() { }
+
+  virtual void MountTaskObserve(const MountTaskResult& result) {
+    completed_tasks_.push_back(result);
+  }
+
+  std::vector<MountTaskResult> completed_tasks_;
+};
+
+TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   MockMount mount;
   EXPECT_CALL(mount, Init())
       .WillOnce(Return(true));
@@ -34,8 +86,47 @@ TEST(ServiceInterfaceTests, CheckKeySuccessTest) {
   EXPECT_TRUE(out);
 }
 
-// TODO(wad) setup test fixture to create a temp dir
-//           touch files on Mount/Unmount/IsMounted and
-//           check for goodness.
+TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
+  Mount mount;
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  mount.set_fallback_to_scrypt(true);
+
+  ServiceSubclass service;
+  service.set_mount(&mount);
+  service.set_initialize_tpm(false);
+  service.Initialize();
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[7].password,
+                                        system_salt_, &passkey);
+  std::string passkey_string(static_cast<const char*>(passkey.const_data()),
+                             passkey.size());
+
+  gboolean out = FALSE;
+  GError *error = NULL;
+  gint async_id = -1;
+  EXPECT_TRUE(service.AsyncCheckKey(
+      const_cast<gchar*>(static_cast<const gchar*>(kDefaultUsers[7].username)),
+      const_cast<gchar*>(static_cast<const gchar*>(passkey_string.c_str())),
+      &async_id,
+      &error));
+  EXPECT_NE(-1, async_id);
+  for (unsigned int i = 0; i < 64; i++) {
+    bool found = false;
+    for (unsigned int j = 0; j < service.completed_tasks_.size(); j++) {
+      if (service.completed_tasks_[j].sequence_id() == async_id) {
+        out = service.completed_tasks_[j].return_status();
+        found = true;
+      }
+    }
+    if (found) {
+      break;
+    }
+    PlatformThread::Sleep(100);
+  }
+  EXPECT_TRUE(out);
+}
 
 }  // namespace cryptohome

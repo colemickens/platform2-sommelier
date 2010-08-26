@@ -17,10 +17,14 @@ namespace cryptohome {
 
 class UsernamePasskey : public Credentials {
  public:
+  UsernamePasskey() { }
+
   // Constructs UsernamePasskey from username strings and passkeys and passwords
   UsernamePasskey(const char* username, const chromeos::Blob& passkey);
 
   ~UsernamePasskey();
+
+  void Assign(const Credentials& rhs);
 
   // Overridden from cryptohome::Credentials
   void GetFullUsername(char *name_buffer, int length) const;

@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
+#include <base/thread.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -14,7 +15,9 @@
 #include <glib-object.h>
 #include <tpm_init/tpm_init.h>
 
+#include "cryptohome_event_source.h"
 #include "mount.h"
+#include "mount_task.h"
 
 namespace cryptohome {
 namespace gobject {
@@ -31,7 +34,9 @@ struct Cryptohome;
 // TODO(wad) make an AbstractDbusService class which wraps a placeholder
 //           GObject struct that references the service. Then subclass to
 //           implement and push the abstract to common/chromeos/dbus/
-class Service : public chromeos::dbus::AbstractDbusService {
+class Service : public chromeos::dbus::AbstractDbusService,
+                public MountTaskObserver,
+                public CryptohomeEventSourceSink {
  public:
   Service();
   virtual ~Service();
@@ -61,31 +66,52 @@ class Service : public chromeos::dbus::AbstractDbusService {
     { initialize_tpm_ = value; }
 
 
+  // MountTaskObserver
+  virtual void MountTaskObserve(const MountTaskResult& result);
+
+  // CryptohomeEventSourceSink
+  virtual void NotifyComplete(const MountTaskResult& result);
+
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
   virtual gboolean CheckKey(gchar *user,
                             gchar *key,
-                            gboolean *OUT_success,
+                            gboolean *OUT_result,
                             GError **error);
+  virtual gboolean AsyncCheckKey(gchar *user,
+                                 gchar *key,
+                                 gint *OUT_async_id,
+                                 GError **error);
   virtual gboolean MigrateKey(gchar *user,
                               gchar *from_key,
                               gchar *to_key,
-                              gboolean *OUT_success,
+                              gboolean *OUT_result,
                               GError **error);
+  virtual gboolean AsyncMigrateKey(gchar *user,
+                                   gchar *from_key,
+                                   gchar *to_key,
+                                   gint *OUT_async_id,
+                                   GError **error);
   virtual gboolean Remove(gchar *user,
-                          gboolean *OUT_success,
+                          gboolean *OUT_result,
                           GError **error);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,
-                         gint *OUT_error,
-                         gboolean *OUT_done,
+                         gint *OUT_error_code,
+                         gboolean *OUT_result,
                          GError **error);
-  virtual gboolean MountGuest(gint *OUT_error,
-                              gboolean *OUT_done,
+  virtual gboolean AsyncMount(gchar *user,
+                              gchar *key,
+                              gint *OUT_async_id,
                               GError **error);
-  virtual gboolean Unmount(gboolean *OUT_done, GError **error);
+  virtual gboolean MountGuest(gint *OUT_error_code,
+                              gboolean *OUT_result,
+                              GError **error);
+  virtual gboolean AsyncMountGuest(gint *OUT_async_id,
+                                   GError **error);
+  virtual gboolean Unmount(gboolean *OUT_result, GError **error);
 
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);
@@ -95,7 +121,7 @@ class Service : public chromeos::dbus::AbstractDbusService {
   virtual GMainLoop *main_loop() { return loop_; }
 
  private:
- GMainLoop *loop_;
+  GMainLoop *loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome *cryptohome_;
   chromeos::Blob system_salt_;
@@ -104,6 +130,9 @@ class Service : public chromeos::dbus::AbstractDbusService {
   scoped_ptr<tpm_init::TpmInit> default_tpm_init_;
   tpm_init::TpmInit *tpm_init_;
   bool initialize_tpm_;
+  base::Thread mount_thread_;
+  guint async_complete_signal_;
+  CryptohomeEventSource event_source_;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

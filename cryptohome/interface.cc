@@ -50,27 +50,43 @@ void cryptohome_init(Cryptohome *self) { }
 gboolean cryptohome_check_key(Cryptohome *self,
                               gchar *userid,
                               gchar *key,
-                              gboolean *OUT_success,
+                              gboolean *OUT_result,
                               GError **error) {
-  CRYPTOHOME_WRAP_METHOD(CheckKey, userid, key, OUT_success);
+  CRYPTOHOME_WRAP_METHOD(CheckKey, userid, key, OUT_result);
+}
+gboolean cryptohome_async_check_key(Cryptohome *self,
+                                    gchar *userid,
+                                    gchar *key,
+                                    gint *OUT_async_id,
+                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncCheckKey, userid, key, OUT_async_id);
 }
 gboolean cryptohome_migrate_key(Cryptohome *self,
                                 gchar *userid,
                                 gchar *from_key,
                                 gchar *to_key,
-                                gboolean *OUT_success,
+                                gboolean *OUT_result,
                                 GError **error) {
-  CRYPTOHOME_WRAP_METHOD(MigrateKey, userid, from_key, to_key, OUT_success);
+  CRYPTOHOME_WRAP_METHOD(MigrateKey, userid, from_key, to_key, OUT_result);
+}
+gboolean cryptohome_async_migrate_key(Cryptohome *self,
+                                      gchar *userid,
+                                      gchar *from_key,
+                                      gchar *to_key,
+                                      gint *OUT_async_id,
+                                      GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncMigrateKey, userid, from_key, to_key,
+                         OUT_async_id);
 }
 gboolean cryptohome_remove(Cryptohome *self,
                            gchar *userid,
-                           gboolean *OUT_success,
+                           gboolean *OUT_result,
                            GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Remove, userid, OUT_success);
+  CRYPTOHOME_WRAP_METHOD(Remove, userid, OUT_result);
 }
 gboolean cryptohome_get_system_salt(Cryptohome *self,
-                               GArray **OUT_salt,
-                               GError **error) {
+                                    GArray **OUT_salt,
+                                    GError **error) {
   CRYPTOHOME_WRAP_METHOD(GetSystemSalt, OUT_salt);
 }
 gboolean cryptohome_is_mounted(Cryptohome *self,
@@ -81,21 +97,33 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,
-                          gint *OUT_error,
-                          gboolean *OUT_done,
+                          gint *OUT_error_code,
+                          gboolean *OUT_result,
                           GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_error, OUT_done);
+  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_error_code, OUT_result);
+}
+gboolean cryptohome_async_mount(Cryptohome *self,
+                                gchar *userid,
+                                gchar *key,
+                                gint *OUT_async_id,
+                                GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, OUT_async_id);
 }
 gboolean cryptohome_mount_guest(Cryptohome *self,
-                                gint *OUT_error,
-                                gboolean *OUT_done,
+                                gint *OUT_error_code,
+                                gboolean *OUT_result,
                                 GError **error) {
-  CRYPTOHOME_WRAP_METHOD(MountGuest, OUT_error, OUT_done);
+  CRYPTOHOME_WRAP_METHOD(MountGuest, OUT_error_code, OUT_result);
+}
+gboolean cryptohome_async_mount_guest(Cryptohome *self,
+                                      gint *OUT_async_id,
+                                      GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncMountGuest, OUT_async_id);
 }
 gboolean cryptohome_unmount(Cryptohome *self,
-                            gboolean *OUT_done,
+                            gboolean *OUT_result,
                             GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Unmount, OUT_done);
+  CRYPTOHOME_WRAP_METHOD(Unmount, OUT_result);
 }
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,

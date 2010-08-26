@@ -18,6 +18,10 @@ class MockMount : public Mount {
   ~MockMount() {}
   MOCK_METHOD0(Init, bool());
   MOCK_CONST_METHOD1(TestCredentials, bool(const Credentials&));
+  MOCK_CONST_METHOD2(MountCryptohome, bool(const Credentials&, MountError*));
+  MOCK_CONST_METHOD0(UnmountCryptohome, bool());
+  MOCK_CONST_METHOD0(MountGuestCryptohome, bool());
+  MOCK_CONST_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
 };
 }  // namespace cryptohome
 
