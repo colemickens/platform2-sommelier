@@ -27,15 +27,10 @@ export GTK_IM_MODULE=ibus
 # By default, libdbus treats all warnings as fatal errors. That's too strict.
 export DBUS_FATAL_WARNINGS=0
 
-# Forces Chrome to put its log into the home directory.
-# Release versions do this already, but not Debug ones.
-# Note that $CHROME_LOG and $CHROME_OLD_LOGS are defined in ui.conf
-export CHROME_LOG_FILE=${CHROME_LOG}
-
-# Clean up old chrome logs.
-mkdir -p $CHROME_OLD_LOGS
-chown $USER $CHROME_OLD_LOGS
-mv ${CHROME_LOG}_* $CHROME_OLD_LOGS
+# Tell Chrome where to write logging messages.
+# $CHROME_LOG_DIR and $CHROME_LOG_PREFIX are defined in ui.conf,
+# and the directory is created there as well.
+export CHROME_LOG_FILE="${CHROME_LOG_DIR}/${CHROME_LOG_PREFIX}"
 
 # Forces Chrome mini dumps that are sent to the crash server to also be written
 # locally.  Chrome by default will create these mini dump files in
