@@ -63,6 +63,43 @@ else
   ARCH="$FLAGS_arch"
 fi
 
+fast_dd() {
+  # Usage: fast_dd <block size> <count> <seek> <skip> other dd args
+  local user_block_size="$1"
+  shift
+  local user_count="$1"
+  shift
+  local user_seek="$1"
+  shift
+  local user_skip="$1"
+  shift
+  local ideal_block_size=$((2 * 1024 * 1024))  # 2 MiB
+  if [ $(($ideal_block_size % $user_block_size)) -eq 0 ]; then
+    local factor=$(($ideal_block_size / $user_block_size))
+    if [ $(($user_count % $factor)) -eq 0 -a \
+         $(($user_seek % $factor)) -eq 0 -a \
+         $(($user_skip % $factor)) -eq 0 ]; then
+      local count_arg=""
+      if [ "$user_count" -ne 0 ]; then
+        count_arg="count=$(($user_count / $factor))"
+      fi
+      sudo dd $* bs="$ideal_block_size" seek=$(($user_seek / $factor)) \
+          skip=$(($user_skip / $factor)) $count_arg
+      return
+    fi
+  fi
+  # Give up and do the user's slow dd
+  echo
+  echo WARNING: DOING A SLOW dd OPERATION. PLEASE FIX
+  echo
+  local count_arg=""
+  if [ "$user_count" -ne 0 ]; then
+    count_arg="count=$user_count"
+  fi
+  sudo dd $* bs="$user_block_size" seek="$user_seek" skip="$user_skip" \
+    $count_arg
+}
+
 # Find root partition of the block device that we are installing from
 get_root_device() {
   local root_dev=$(rootdev)
@@ -313,7 +350,7 @@ if [ "$ARCH" = "ARM" ]; then
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
   # on legacy-BIOS devices.
-  sudo dd if=$SRC of=$PMBRCODE bs=512 count=1
+  fast_dd 512 1 0 0 if=$SRC of=$PMBRCODE
 fi
 
 # Create the GPT.
@@ -324,7 +361,7 @@ install_gpt ${DST} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
 if [ "$ARCH" = "ARM" ]; then
   DEVICE=$(echo $DST | sed -e 's/^.*\([0-9]\)$/\1/')
   MBR_SCRIPT_UIMG=$(make_arm_mbr ${START_KERN_A} ${NUM_KERN_SECTORS} ${DEVICE} "")
-  sudo dd bs=1 count=`stat --printf="%s" ${MBR_SCRIPT_UIMG}` \
+  fast_dd 1 `stat --printf="%s" ${MBR_SCRIPT_UIMG}` 0 0 \
      if="$MBR_SCRIPT_UIMG" of=${DST} conv=notrunc
 fi
 
@@ -335,20 +372,19 @@ fi
 
 # Install the content.
 echo "Copying kernel..."
-sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 \
-  seek=${START_KERN_A} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
-sudo dd if=${KERNEL_IMG} of=${DST} conv=notrunc bs=512 \
-  seek=${START_KERN_B} skip=${KERNEL_IMG_OFFSET} count=${KERNEL_IMG_SECTORS}
+fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_A} ${KERNEL_IMG_OFFSET} \
+  if=${KERNEL_IMG} of=${DST} conv=notrunc
+  
+fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_B} ${KERNEL_IMG_OFFSET} \
+  if=${KERNEL_IMG} of=${DST} conv=notrunc
 
 # Copy kernel verification block to target HD
 copy_kernel_vblock() {
   local ret=0
 
   if [ -s $VERIFY_BLOB ]; then
-    sudo dd if=${VERIFY_BLOB} of=${DST} \
-      conv=notrunc bs=512 seek=${START_KERN_A}
-    sudo dd if=${VERIFY_BLOB} of=${DST} \
-      conv=notrunc bs=512 seek=${START_KERN_B}
+    fast_dd 512 0 ${START_KERN_A} 0 if=${VERIFY_BLOB} of=${DST} conv=notrunc
+    fast_dd 512 0 ${START_KERN_B} 0 if=${VERIFY_BLOB} of=${DST} conv=notrunc
     ret=1
   fi
   echo ${ret}
@@ -374,19 +410,17 @@ echo "Copying rootfs..."
 # that will break both the delta updater and verified boot.  We must do a
 # straight copy now.  The GPT labels and UUIDs are the only mutable naming
 # areas we have after a build.
-sudo dd if=${ROOTFS_IMG} of=${DST} conv=notrunc bs=512 \
-        seek=${START_ROOTFS_A} skip=${ROOTFS_IMG_OFFSET} \
-        count=${ROOTFS_IMG_SECTORS}
-sudo dd if=${ROOTFS_IMG} of=${DST} conv=notrunc bs=512 \
-        seek=${START_ROOTFS_B} skip=${ROOTFS_IMG_OFFSET} \
-        count=${ROOTFS_IMG_SECTORS}
+fast_dd 512 ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} ${ROOTFS_IMG_OFFSET} \
+  if=${ROOTFS_IMG} of=${DST} conv=notrunc
+fast_dd 512 ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_B} ${ROOTFS_IMG_OFFSET} \
+  if=${ROOTFS_IMG} of=${DST} conv=notrunc
 
 echo "Copying OEM customization..."
-sudo dd if=${OEM_IMG} of=${DST} conv=notrunc bs=512 seek=${START_OEM} \
-        skip=${OEM_IMG_OFFSET} count=${OEM_IMG_SECTORS}
+fast_dd 512 ${OEM_IMG_SECTORS} ${START_OEM} ${OEM_IMG_OFFSET} \
+  if=${OEM_IMG} of=${DST} conv=notrunc
 echo "Copying ESP..."
-sudo dd if=${ESP_IMG} of=${DST} conv=notrunc bs=512 seek=${START_ESP} \
-        skip=${ESP_IMG_OFFSET} count=${ESP_IMG_SECTORS}
+fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
+  if=${ESP_IMG} of=${DST} conv=notrunc
 
 # TODO: support arm during postinst so that we get partition selection and
 #       verified boot.
