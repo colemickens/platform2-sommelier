@@ -27,6 +27,12 @@ extern const TSS_UUID kCryptohomeWellKnownUuid;
 
 class Tpm {
  public:
+  enum TpmRetryAction {
+    RetryNone,
+    RetryCommFailure,
+    RetryDefendLock,
+    Fatal
+  };
 
   // Default constructor
   Tpm();
@@ -42,10 +48,10 @@ class Tpm {
   virtual bool Init(Crypto* crypto, bool open_key);
 
   // Tries to connect to the TPM
-  virtual bool Connect();
+  virtual bool Connect(TpmRetryAction* retry_action);
 
   // Returns true if this instance is connected to the TPM
-  virtual bool IsConnected() const;
+  virtual bool IsConnected();
 
   // Disconnects from the TPM
   virtual void Disconnect();
@@ -62,7 +68,8 @@ class Tpm {
   //   data_out (OUT) - The encrypted data
   virtual bool Encrypt(const chromeos::Blob& data,
                        const chromeos::Blob& password, int password_rounds,
-                       const chromeos::Blob& salt, SecureBlob* data_out) const;
+                       const chromeos::Blob& salt, SecureBlob* data_out,
+                       TpmRetryAction* retry_action);
 
   // Decrypts a data blob using the TPM cryptohome RSA key
   //
@@ -75,17 +82,18 @@ class Tpm {
   //   data_out (OUT) - The decrypted data
   virtual bool Decrypt(const chromeos::Blob& data,
                        const chromeos::Blob& password, int password_rounds,
-                       const chromeos::Blob& salt, SecureBlob* data_out) const;
+                       const chromeos::Blob& salt, SecureBlob* data_out,
+                       TpmRetryAction* retry_action);
 
   // Returns the maximum number of RSA keys that the TPM can hold simultaneously
-  int GetMaxRsaKeyCount() const;
+  int GetMaxRsaKeyCount();
 
   // Retrieves the TPM-wrapped cryptohome RSA key
-  bool GetKey(SecureBlob* blob) const;
+  bool GetKey(SecureBlob* blob, TpmRetryAction* retry_action);
   // Retrieves the Public key component of the cryptohome RSA key
-  bool GetPublicKey(SecureBlob* blob) const;
+  bool GetPublicKey(SecureBlob* blob, TpmRetryAction* retry_action);
   // Loads the cryptohome RSA key from the specified TPM-wrapped key
-  bool LoadKey(const SecureBlob& blob);
+  bool LoadKey(const SecureBlob& blob, TpmRetryAction* retry_action);
 
   void set_srk_auth(const SecureBlob& value) {
     srk_auth_.resize(value.size());
@@ -105,38 +113,49 @@ class Tpm {
   }
 
  private:
-  bool SaveCryptohomeKey(TSS_HCONTEXT context_handle,
-                         TSS_HKEY key_handle) const;
+  bool IsTransient(TSS_RESULT result);
 
-  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle) const;
+  TpmRetryAction HandleError(TSS_RESULT result);
 
-  bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle) const;
+  bool SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+                         TSS_RESULT* result);
 
-  int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) const;
+  bool LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
+               TSS_RESULT* result);
+
+  bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
+
+  int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle);
+
+  bool CreateCryptohomeKey(TSS_HCONTEXT context_handle,
+                           bool create_in_tpm, TSS_RESULT* result);
+
+  bool LoadCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY* key_handle,
+                         TSS_RESULT* result);
 
   bool LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
                                  bool create_in_tpm,
-                                 bool register_key,
-                                 TSS_HKEY* key_handle);
+                                 TSS_HKEY* key_handle,
+                                 TSS_RESULT* result);
 
   bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
                    int password_rounds, const chromeos::Blob& salt,
-                   SecureBlob* data_out) const;
+                   SecureBlob* data_out, TSS_RESULT* result);
 
   bool DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
                    int password_rounds, const chromeos::Blob& salt,
-                   SecureBlob* data_out) const;
+                   SecureBlob* data_out, TSS_RESULT* result);
 
   bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                  SecureBlob* data_out) const;
+                  SecureBlob* data_out, TSS_RESULT* result);
 
   bool GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
-                        SecureBlob* data_out) const;
+                        SecureBlob* data_out, TSS_RESULT* result);
 
   bool LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
-                   TSS_HKEY* key_handle) const;
+                   TSS_HKEY* key_handle, TSS_RESULT* result);
 
   int rsa_key_bits_;
   SecureBlob srk_auth_;

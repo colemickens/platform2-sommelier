@@ -40,13 +40,14 @@ class Crypto : public EntropySource {
 
   enum CryptoError {
     CE_NONE = 0,
-    CE_TPM_FATAL = 1,
-    CE_TPM_NONFATAL = 2,
-    CE_TPM_CRYPTO = 3,
-    CE_SCRYPT_CRYPTO = 4,
-    CE_OTHER_FATAL = 5,
-    CE_OTHER_CRYPTO = 6,
-    CE_NO_PUBLIC_KEY_HASH = 7,
+    CE_TPM_FATAL,
+    CE_TPM_COMM_ERROR,
+    CE_TPM_DEFEND_LOCK,
+    CE_TPM_CRYPTO,
+    CE_SCRYPT_CRYPTO,
+    CE_OTHER_FATAL,
+    CE_OTHER_CRYPTO,
+    CE_NO_PUBLIC_KEY_HASH,
   };
 
   // Default constructor, using the default entropy source
@@ -245,7 +246,7 @@ class Crypto : public EntropySource {
                                 SecureBlob* passkey);
 
   // Ensures that the TPM is connected
-  void EnsureTpm() const;
+  CryptoError EnsureTpm() const;
 
   // Overrides the default the entropy source
   void set_entropy_source(const std::string& entropy_source) {
@@ -287,6 +288,9 @@ class Crypto : public EntropySource {
   }
 
  private:
+  // Converts a TPM error to a Crypto error
+  CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;
+
   // Adds the specified key to the user keyring
   //
   // Parameters

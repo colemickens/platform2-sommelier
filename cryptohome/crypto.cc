@@ -69,17 +69,21 @@ bool Crypto::Init() {
   return true;
 }
 
-void Crypto::EnsureTpm() const {
+Crypto::CryptoError Crypto::EnsureTpm() const {
+  Crypto::CryptoError result = Crypto::CE_NONE;
   if (tpm_ == NULL) {
     const_cast<Crypto*>(this)->tpm_ = default_tpm_.get();
   }
   if (tpm_) {
     if (!tpm_->IsConnected()) {
-      if (!tpm_->Connect()) {
+      Tpm::TpmRetryAction retry_action;
+      if (!tpm_->Connect(&retry_action)) {
         const_cast<Crypto*>(this)->tpm_ = NULL;
+        result = TpmErrorToCrypto(retry_action);
       }
     }
   }
+  return result;
 }
 
 void Crypto::SeedRng() const {
@@ -500,6 +504,18 @@ void Crypto::ClearKeyset() const {
   Platform::ClearUserKeyring();
 }
 
+Crypto::CryptoError Crypto::TpmErrorToCrypto(
+    Tpm::TpmRetryAction retry_action) const {
+  switch (retry_action) {
+    case Tpm::RetryCommFailure:
+      return Crypto::CE_TPM_COMM_ERROR;
+    case Tpm::RetryDefendLock:
+      return Crypto::CE_TPM_DEFEND_LOCK;
+    default:
+      return Crypto::CE_TPM_FATAL;
+  }
+}
+
 bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                           const SecureBlob& salt) const {
   DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
@@ -599,23 +615,21 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
   // Check if the vault keyset was TPM-wrapped
   if ((serialized.flags() & SerializedVaultKeyset::TPM_WRAPPED)
       && serialized.has_tpm_key()) {
-    EnsureTpm();
     if (wrap_flags) {
       *wrap_flags |= SerializedVaultKeyset::TPM_WRAPPED;
     }
+    Crypto::CryptoError local_error = EnsureTpm();
     if (tpm_ == NULL) {
       LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                  << "unavailable";
-      // TODO(fes): Revisit the decision to make this a fatal error.  Having
-      // this be a fatal error means the user's crytpohome will be deleted and
-      // recreated.
       if (error) {
-        *error = CE_TPM_FATAL;
+        *error = local_error;
       }
       return false;
     }
     // Check if the public key for this keyset matches the public key on this
     // TPM.  If not, we cannot recover.
+    Tpm::TpmRetryAction retry_action;
     if (serialized.has_tpm_public_key_hash()) {
       SecureBlob serialized_pub_key_hash(
           serialized.tpm_public_key_hash().length());
@@ -624,13 +638,11 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
           serialized.tpm_public_key_hash().length(),
           0);
       SecureBlob pub_key;
-      if (!tpm_->GetPublicKey(&pub_key)) {
+      if (!tpm_->GetPublicKey(&pub_key, &retry_action)) {
         LOG(ERROR) << "Unable to get the cryptohome public key from the TPM.";
-        // TODO(fes): Revisit the decision to make this a fatal error.  Having
-        // this be a fatal error means the user's crytpohome will be deleted and
-        // recreated.
         if (error) {
-          *error = CE_TPM_FATAL;
+          // This is a fatal error only if we don't get a transient error code.
+          *error = TpmErrorToCrypto(retry_action);
         }
         return false;
       }
@@ -652,11 +664,12 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     serialized.tpm_key().copy(static_cast<char*>(tpm_key.data()),
                               serialized.tpm_key().length(), 0);
     if (!tpm_->Decrypt(tpm_key, vault_wrapper, rounds, salt,
-                       &local_vault_wrapper)) {
+                       &local_vault_wrapper, &retry_action)) {
       LOG(ERROR) << "The TPM failed to unwrap the intermediate key with the "
                  << "supplied credentials";
       if (error) {
-        *error = CE_TPM_CRYPTO;
+        // This is a fatal error only if we don't get a transient error code.
+        *error = TpmErrorToCrypto(retry_action);
       }
       return false;
     }
@@ -749,16 +762,17 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   SecureBlob tpm_key;
   // Check if the vault keyset was TPM-wrapped
   if (use_tpm_) {
+    // Ignore the status here.  When the TPM is not available, we merely fall
+    // back to scrypt.
     EnsureTpm();
   }
-  // TODO(fes): For now, we allow fall-through to non-TPM-wrapped if tpm_ is
-  // NULL.  If/when we make TPM-wrapped the default, we'll want to fail
-  // appropriately if the TPM is not available.
+  // For now, we allow fall-through to non-TPM-wrapped if tpm_ is NULL.
   if (use_tpm_ && tpm_ != NULL) {
     GetSecureRandom(static_cast<unsigned char*>(local_vault_wrapper.data()),
                     local_vault_wrapper.size());
+    Tpm::TpmRetryAction retry_action;
     if (tpm_->Encrypt(local_vault_wrapper, vault_wrapper, rounds,
-                      vault_wrapper_salt, &tpm_key)) {
+                      vault_wrapper_salt, &tpm_key, &retry_action)) {
       tpm_wrapped = true;
     } else {
       local_vault_wrapper.resize(vault_wrapper.size());
@@ -820,7 +834,11 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
                            tpm_key.size());
     // Store the hash of the cryptohome public key
     SecureBlob pub_key;
-    if (tpm_->GetPublicKey(&pub_key)) {
+    Tpm::TpmRetryAction retry_action;
+    // Allow this to fail.  It is not absolutely necessary; it allows us to
+    // detect a TPM clear.  If this fails due to a transient issue, then on next
+    // successful login, the vault keyset will be re-saved anyway.
+    if (tpm_->GetPublicKey(&pub_key, &retry_action)) {
       SecureBlob pub_key_hash;
       GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
       serialized.set_tpm_public_key_hash(pub_key_hash.const_data(),

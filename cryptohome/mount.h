@@ -46,6 +46,8 @@ class Mount : public EntropySource {
     MOUNT_ERROR_FATAL = 1 << 0,
     MOUNT_ERROR_KEY_FAILURE = 1 << 1,
     MOUNT_ERROR_MOUNT_POINT_BUSY = 1 << 2,
+    MOUNT_ERROR_TPM_COMM_ERROR = 1 << 3,
+    MOUNT_ERROR_TPM_DEFEND_LOCK = 1 << 4,
     MOUNT_ERROR_RECREATED = 1 << 31,
   };
 

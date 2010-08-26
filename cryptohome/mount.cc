@@ -321,6 +321,7 @@ bool Mount::TestCredentials(const Credentials& credentials) const {
   }
   MountError mount_error;
   VaultKeyset vault_keyset;
+  // TODO(fes): Handle TPM errors here
   return UnwrapVaultKeyset(credentials, false, &vault_keyset, &mount_error);
 }
 
@@ -371,6 +372,12 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
           case Crypto::CE_TPM_FATAL:
           case Crypto::CE_OTHER_FATAL:
             *error = Mount::MOUNT_ERROR_FATAL;
+            break;
+          case Crypto::CE_TPM_COMM_ERROR:
+            *error = Mount::MOUNT_ERROR_TPM_COMM_ERROR;
+            break;
+          case Crypto::CE_TPM_DEFEND_LOCK:
+            *error = Mount::MOUNT_ERROR_TPM_DEFEND_LOCK;
             break;
           default:
             *error = Mount::MOUNT_ERROR_KEY_FAILURE;
@@ -487,6 +494,7 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   // Attempt to unwrap the vault keyset with the specified credentials
   MountError mount_error;
   VaultKeyset vault_keyset;
+  // TODO(fes): Handle TPM errors here
   if (UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
                         &mount_error)) {
     if (!ResaveVaultKeyset(credentials, vault_keyset)) {
