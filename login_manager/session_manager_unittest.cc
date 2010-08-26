@@ -54,6 +54,7 @@ class SessionManagerTest : public ::testing::Test {
       : manager_(NULL),
         utils_(new MockSystemUtils),
         file_checker_(new MockFileChecker(kCheckedFile)),
+        store_(new MockPrefStore),
         fake_key_(CreateArray("dummy", strlen("dummy"))) {
   }
 
@@ -109,6 +110,9 @@ class SessionManagerTest : public ::testing::Test {
     manager_ = new SessionManagerService(jobs);
     manager_->set_file_checker(file_checker_);
     manager_->test_api().set_exit_on_child_done(true);
+    manager_->test_api().set_prefstore(store_);
+    ON_CALL(*store_, Persist())
+        .WillByDefault(Return(true));
   }
 
   void MockUtils() {
@@ -172,6 +176,7 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerService* manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
+  MockPrefStore* store_;
   std::string property_;
   GArray* fake_key_;
   GArray* fake_sig_;
@@ -629,9 +634,6 @@ TEST_F(SessionManagerTest, WhitelistNoKey) {
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  manager_->test_api().set_prefstore(store);
-
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
 
@@ -651,9 +653,6 @@ TEST_F(SessionManagerTest, WhitelistVerifyFail) {
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
-
-  MockPrefStore* store = new MockPrefStore;
-  manager_->test_api().set_prefstore(store);
 
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
@@ -676,13 +675,13 @@ TEST_F(SessionManagerTest, Whitelist) {
 
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, Whitelist(kFakeEmail, _))
+  EXPECT_CALL(*store_, Whitelist(kFakeEmail, _))
       .Times(1);
-  EXPECT_CALL(*store, Persist())
+  EXPECT_CALL(*store_, Persist())
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
 
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
@@ -705,13 +704,13 @@ TEST_F(SessionManagerTest, Unwhitelist) {
 
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, Unwhitelist(kFakeEmail))
+  EXPECT_CALL(*store_, Unwhitelist(kFakeEmail))
       .Times(1);
-  EXPECT_CALL(*store, Persist())
+  EXPECT_CALL(*store_, Persist())
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
 
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->Unwhitelist(kFakeEmail, fake_sig_, &error));
@@ -728,10 +727,9 @@ TEST_F(SessionManagerTest, CheckWhitelistFail) {
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, GetFromWhitelist(kFakeEmail, _))
+  EXPECT_CALL(*store_, GetFromWhitelist(kFakeEmail, _))
       .WillOnce(Return(false));
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   GArray* out_sig = NULL;
@@ -750,11 +748,11 @@ TEST_F(SessionManagerTest, CheckWhitelist) {
   manager_->test_api().set_ownerkey(key);
 
   MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, GetFromWhitelist(kFakeEmail, _))
+  EXPECT_CALL(*store_, GetFromWhitelist(kFakeEmail, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(fake_sig_encoded_),
                       Return(true)))
       .RetiresOnSaturation();
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   GArray* out_sig = NULL;
@@ -780,9 +778,6 @@ TEST_F(SessionManagerTest, StorePropertyNoKey) {
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  manager_->test_api().set_prefstore(store);
-
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->StoreProperty(kPropName,
                                            kPropValue,
@@ -804,9 +799,6 @@ TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
-
-  MockPrefStore* store = new MockPrefStore;
-  manager_->test_api().set_prefstore(store);
 
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->StoreProperty(kPropName,
@@ -830,12 +822,12 @@ TEST_F(SessionManagerTest, StoreProperty) {
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, Set(kPropName, kPropValue, _))
+  EXPECT_CALL(*store_, Set(kPropName, kPropValue, _))
       .Times(1);
-  EXPECT_CALL(*store, Persist())
+  EXPECT_CALL(*store_, Persist())
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->StoreProperty(kPropName,
@@ -854,10 +846,9 @@ TEST_F(SessionManagerTest, RetrievePropertyFail) {
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
-  EXPECT_CALL(*store, Get(kPropName, _, _))
+  EXPECT_CALL(*store_, Get(kPropName, _, _))
       .WillOnce(Return(false));
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   GArray* out_sig = NULL;
@@ -878,14 +869,13 @@ TEST_F(SessionManagerTest, RetrieveProperty) {
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
   std::string value(kPropValue);
-  EXPECT_CALL(*store, Get(kPropName, _, _))
+  EXPECT_CALL(*store_, Get(kPropName, _, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(value),
                       SetArgumentPointee<2>(fake_sig_encoded_),
                       Return(true)))
       .RetiresOnSaturation();
-  manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_prefstore(store_);
 
   GError* error = NULL;
   GArray* out_sig = NULL;
