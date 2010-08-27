@@ -43,5 +43,8 @@ remove_old_dated_files /home/chronos/user/log chromeos-wm.*-*
 # Remove old screen locker logs
 remove_old_dated_files /home/chronos/user/log screen-locker.*-*
 
+# Remove old miscellaneous UI logs
+remove_old_dated_files /var/log/ui ui.*-*
+
 # Rotate other logs
 rotate_logs
