@@ -7,7 +7,7 @@
 # Helper script that mounts chromium os image from a device or directory
 # and creates mount points for /var and /usr/local (if in dev_mode).
 
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 # For functions related to gpt images.
 . "/usr/lib/installer/chromeos-common.sh"

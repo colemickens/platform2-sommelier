@@ -7,7 +7,7 @@
 # Script to create a Chrome OS dev recovery image using a dev install shim
 
 # Source constants and utility functions
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 . "/usr/lib/installer/chromeos-common.sh"
 
 get_default_board
