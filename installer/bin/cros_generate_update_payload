@@ -9,7 +9,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "/usr/lib/crosutils/common.sh"
+. "$(dirname "$0")/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -100,8 +100,6 @@ DEFINE_string src_image "" "Optional: a source image. If specified, this makes\
  a delta update."
 DEFINE_boolean old_style "$FLAGS_TRUE" "Generate an old-style .gz full update."
 DEFINE_string output "" "Output file"
-DEFINE_boolean patch_kernel "$FLAGS_FALSE" "Whether or not to patch the kernel \
-with the patch from the stateful partition (default: false)"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -133,9 +131,7 @@ if [ "$DELTA" -eq "$FLAGS_TRUE" ]; then
 
   trap cleanup INT TERM EXIT
   SRC_KERNEL=$(extract_partition_to_temp_file "$FLAGS_src_image" 2)
-  if [ "$FLAGS_patch_kernel" -eq "$FLAGS_TRUE" ]; then
-    patch_kernel "$FLAGS_src_image" "$SRC_KERNEL"
-  fi
+  patch_kernel "$FLAGS_src_image" "$SRC_KERNEL"
   SRC_ROOT=$(extract_partition_to_temp_file "$FLAGS_src_image" 3)
 
   echo md5sum of src kernel:
@@ -144,9 +140,7 @@ if [ "$DELTA" -eq "$FLAGS_TRUE" ]; then
   md5sum "$SRC_ROOT"
 
   DST_KERNEL=$(extract_partition_to_temp_file "$FLAGS_image" 2)
-  if [ "$FLAGS_patch_kernel" -eq "$FLAGS_TRUE" ]; then
-    patch_kernel "$FLAGS_image" "$DST_KERNEL"
-  fi
+  patch_kernel "$FLAGS_image" "$DST_KERNEL"
   DST_ROOT=$(extract_partition_to_temp_file "$FLAGS_image" 3)
 
   SRC_MNT=$(mktemp -d /tmp/src_root.XXXXXX)
@@ -168,12 +162,10 @@ else
 
   trap cleanup INT TERM EXIT
   DST_KERNEL=$(extract_partition_to_temp_file "$FLAGS_image" 2)
-  if [ "$FLAGS_patch_kernel" -eq "$FLAGS_TRUE" ]; then
-    patch_kernel "$FLAGS_image" "$DST_KERNEL"
-  fi
+  patch_kernel "$FLAGS_image" "$DST_KERNEL"
   DST_ROOT=$(extract_partition_to_temp_file "$FLAGS_image" 3)
 
-  GENERATOR="/usr/bin/cros_mk_memento_images.sh"
+  GENERATOR="/usr/lib/installer/bin/cros_mk_memento_images.sh"
 
   CROS_GENERATE_UPDATE_PAYLOAD_CALLED=1 "$GENERATOR" "$DST_KERNEL" "$DST_ROOT"
   mv "$(dirname "$DST_KERNEL")/update.gz" "$FLAGS_output"

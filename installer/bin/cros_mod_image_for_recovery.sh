@@ -6,7 +6,7 @@
 
 # Script to modify a pristine/dev Chrome OS image to be used for recovery
 
-. "/usr/lib/crosutils/common.sh"
+. "$(dirname "$0")/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"

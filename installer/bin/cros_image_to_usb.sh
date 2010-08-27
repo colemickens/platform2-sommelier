@@ -8,7 +8,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "/usr/lib/crosutils/common.sh"
+. "$(dirname "$0")/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -153,7 +153,7 @@ if [ ${FLAGS_test_image} -eq ${FLAGS_TRUE} ] ; then
     # Modify it. Pass --yes so that cros_mod_image_for_test.sh won't ask us if
     # we really want to modify the image; the user gave their assent already
     # with --test-image and the original image is going to be preserved.
-    "/usr/bin/cros_mod_image_for_test.sh" --image \
+    "/usr/lib/installer/bin/cros_mod_image_for_test.sh" --image \
       "${FLAGS_from}/chromiumos_test_image.bin" --board=${FLAGS_board} \
       ${EXTRA_ARGS} --yes
     echo "Done with cros_mod_image_for_test."

@@ -12,7 +12,7 @@
 # Setup INSTALL_ROOT
 INSTALL_ROOT=$(dirname "$0")
 # Load helper functions
-. "${INSTALL_ROOT}"/usr/lib/installer/chromeos-common.sh
+. "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh
 . "${INSTALL_ROOT}"/usr/lib/shflags
 
 # Process flags now, couldn't earlier since we needed INSTALL_ROOT

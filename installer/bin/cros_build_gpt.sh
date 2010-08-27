@@ -6,7 +6,7 @@
 #
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "/usr/lib/crosutils/common.sh"
+. "$(dirname "$0")/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -135,7 +135,7 @@ if [[ "$ARCH" = "arm" ]]; then
 fi
 
 # Emit helpful scripts for testers, etc.
-/usr/bin/cros_emit_gpt_scripts.sh "${OUTDEV}" "${IMAGEDIR}"
+/usr/lib/installer/bin/cros_emit_gpt_scripts.sh "${OUTDEV}" "${IMAGEDIR}"
 
 sudo=
 if [ ! -w "$OUTDEV" ] ; then

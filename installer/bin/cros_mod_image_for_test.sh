@@ -8,7 +8,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "/usr/lib/crosutils/common.sh"
+. "$(dirname "$0")/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -101,8 +101,8 @@ cleanup_mounts() {
 }
 
 cleanup() {
-  "/usr/bin/cros_mount_gpt_image.sh" -u -r "$ROOT_FS_DIR" \
-                                        -s "$STATEFUL_DIR"
+  "/usr/lib/installer/bin/cros_mount_gpt_image.sh" -u -r "$ROOT_FS_DIR" \
+      -s "$STATEFUL_DIR"
 }
 
 # Emerges chromeos-test onto the image.
@@ -177,7 +177,7 @@ STATEFUL_DIR="$IMAGE_DIR/stateful_partition"
 trap cleanup EXIT
 
 # Mounts gpt image and sets up var, /usr/local and symlinks.
-"/usr/bin/cros_mount_gpt_image.sh" -i "$IMAGE_NAME" \
+"/usr/lib/installer/bin/cros_mount_gpt_image.sh" -i "$IMAGE_NAME" \
     -f "$IMAGE_DIR" -r "$ROOT_FS_DIR" -s "$STATEFUL_DIR"
 
 if [ ${FLAGS_factory_install} -eq ${FLAGS_TRUE} ]; then
@@ -224,8 +224,8 @@ fi
 cleanup
 
 # Now make it bootable with the flags from build_image
-/usr/bin/cros_make_image_bootable $(dirname "${FLAGS_image}") \
-                                  $(basename "${FLAGS_image}")
+/usr/lib/installer/bin/cros_make_image_bootable $(dirname "${FLAGS_image}") \
+                                                $(basename "${FLAGS_image}")
 
 print_time_elapsed
 
