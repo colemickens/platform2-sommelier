@@ -176,8 +176,7 @@ fi
 
 if [ -n "$FLAGS_update_syslinux_cfg" -a ! -r "$FLAGS_update_syslinux_cfg" ];
 then
-  echo "Specified syslinux root cfg file not found."
-  exit 1
+  echo "Warning: Specified syslinux root cfg file not found.  Skipping"
 fi
 
 # Re-hash the root filesystem and use the table for dm-verity.
@@ -194,61 +193,65 @@ if [ -z "${FLAGS_kernel_image}" ]; then
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
+# TODO(kwaters): dump_kernel_config segaults on ARM.  We use this fact to skip
+# the verified rootfs update.  This needs to be cleaned up once verified root
+# works on the ARM kernel.
 DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
-kernel_cfg="$(sudo "${DUMP_KERNEL_CONFIG}" ${kernel_image} |
-              sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
-              cut -f2- -d,)"
-rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
-verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
-verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
+if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
+  kernel_cfg="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
+                cut -f2- -d,)"
+  rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
+  verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
+  verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
 
-selected_root=$((selected_kernel + 1))
-rootfs_image="${FLAGS_rootfs_image}"
-if [ -z "${rootfs_image}" ]; then
-  ROOT_LOOP=$(setup_dst_loop ${selected_root})
-  rootfs_image="${ROOT_LOOP}"
-fi
-
-# Compute the rootfs hash tree and dump it in the tempfile.
-# TODO(wad) take preamble from dump_kernel_config.
-VERITY="${INSTALL_ROOT}"/bin/verity
-table="vroot none ro,"$(sudo "${VERITY}" create \
-        ${verity_depth} \
-        "${verity_algorithm}" \
-        "${rootfs_image}" \
-        $((rootfs_sectors / 8)) \
-        ${tempfile})
-
-expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
-generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
-
-if [ "${expected_hash}" != "${generated_hash}" ]; then
-  echo "Root filesystem has been modified unexpectedly!" 1>&2
-  if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
-    exit 1
+  rootfs_image="${FLAGS_rootfs_image}"
+  selected_root=$((selected_kernel + 1))
+  if [ -z "${rootfs_image}" ]; then
+    ROOT_LOOP=$(setup_dst_loop ${selected_root})
+    rootfs_image="${ROOT_LOOP}"
   fi
-fi
 
-if [ -n "${newimg:-}" ]; then
-  # This will usually be ${rootfs_image} except for cases where
-  # FLAGS_dst and FLAGS_rootfs_image diverge.
-  dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
-  # Replace the placeholders from the verity tool.
-  table="$(echo "$table" |
-           sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
+  # Compute the rootfs hash tree and dump it in the tempfile.
+  # TODO(wad) take preamble from dump_kernel_config.
+  VERITY="${INSTALL_ROOT}"/bin/verity
+  table="vroot none ro,"$(sudo "${VERITY}" create \
+          ${verity_depth} \
+          "${verity_algorithm}" \
+          "${rootfs_image}" \
+          $((rootfs_sectors / 8)) \
+          ${tempfile})
+
+  expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
+  generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
+
+  if [ "${expected_hash}" != "${generated_hash}" ]; then
+    echo "Root filesystem has been modified unexpectedly!" 1>&2
+    if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
+      exit 1
+    fi
+  fi
+
+  if [ -n "${newimg:-}" ]; then
+    # This will usually be ${rootfs_image} except for cases where
+    # FLAGS_dst and FLAGS_rootfs_image diverge.
+    dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
+    # Replace the placeholders from the verity tool.
+    table="$(echo "$table" |
+             sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
+  fi
+  # Overwrite the appended hashes with the new ones.
+  sudo dd if=${tempfile} of="${rootfs_image}" \
+          bs=512 seek=${rootfs_sectors} conv=notrunc
 fi
-# Overwrite the appended hashes with the new ones.
-sudo dd if=${tempfile} of="${rootfs_image}" \
-        bs=512 seek=${rootfs_sectors} conv=notrunc
 
 # Make the change
-if [ -n "${newimg:-}" ]; then
+if [ -z "$FLAGS_update_grub_cfg" ]; then
+  FLAGS_update_grub_cfg=${mountpoint}/efi/boot/grub.cfg
+fi
+if [ -n "${newimg:-}" -a -s "$FLAGS_update_grub_cfg" ]; then
   grubid=${newimg}
   test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
     grubid=$((newimg+2))
-  if [ -z "$FLAGS_update_grub_cfg" ]; then
-    FLAGS_update_grub_cfg=${mountpoint}/efi/boot/grub.cfg
-  fi
   echo "Updating the verified boot config and grub boot default: $grubid"
   sed -e "s/^set default=.*/set default=${grubid}/" \
       -e "s|DMTABLE${newimg_letter}|${table}|g" \
@@ -262,7 +265,12 @@ if [ -n "${newimg:-}" ]; then
 fi
 
 # Rinse and repeat for the Legacy BIOS bootloader (syslinux)
-if [ -n "${newimg:-}" ]; then
+if [ -z "$FLAGS_update_syslinux_cfg" ]; then
+  # Update the root.X.cfg in place if none given.
+  # Note that the replacement variables may not be intact.
+  FLAGS_update_syslinux_cfg=$syslinux_root_cfg
+fi
+if [ -n "${newimg:-}" -a -s "$FLAGS_update_syslinux_cfg" ]; then
   echo "Updating default syslinux target to $newimg"
   target_hd=chromeos-hd
   test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
@@ -273,12 +281,6 @@ if [ -n "${newimg:-}" ]; then
 
   vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.${newimg_letter}
   syslinux_root_cfg=${mountpoint}/syslinux/root.${newimg_letter}.cfg
-
-  # Update the root.X.cfg in place if none given.
-  # Note that the replacement variables may not be intact.
-  if [ -z "$FLAGS_update_syslinux_cfg" ]; then
-      FLAGS_update_syslinux_cfg=$syslinux_root_cfg
-  fi
 
   # 3 and 5 are the current rootfs a and b partitions
   DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
@@ -296,6 +298,12 @@ if [ -n "${newimg:-}" ]; then
     echo "Updating vmlinuz..."
     sudo cp -fL "$FLAGS_update_vmlinuz" "$vmlinuz_tgt"
   fi
+fi
+
+# Lather, rinse and repeat for Das U-Boot
+if [ -s "${INSTALL_ROOT}/boot/boot-A.scr.uimg" ]; then
+  cp "${INSTALL_ROOT}/boot/boot-${newimg_letter}.scr.uimg" \
+    "${mountpoint}/u-boot/boot.scr.uimg"
 fi
 
 set +e  # just grep oneliners and cleanup from here on out.
