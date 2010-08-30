@@ -36,6 +36,21 @@ ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a001", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Novatel Gobi QDL device
 ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a008", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+# Novatel Gobi Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a010", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Novatel Gobi Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a011", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Novatel Gobi Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a012", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Novatel Gobi Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a013", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Novatel Gobi QDL device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a014", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 # Asus Gobi Modem device
 ATTRS{idVendor}=="0b05", ATTRS{idProduct}=="1776", ENV{ID_MM_DEVICE_IGNORE}="1"
 
