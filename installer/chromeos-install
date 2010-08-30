@@ -31,7 +31,9 @@ DEFINE_string arch "" \
 unset auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive. Default: (empty)."
-
+DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
+layout. Default: (empty)."
+DEFINE_string pmbr_code "" "Path to PMBR code to be installed. Default: (empty)"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -119,7 +121,11 @@ get_root_device() {
 }
 
 # Check for optional payload image
-if [ -z "$FLAGS_payload_image" ]; then
+if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" -a -s "$FLAGS_gpt_layout" ]; then
+  # Usually this is used for partition setup.
+  SRC=""
+  ROOT=""
+elif [ -z "$FLAGS_payload_image" ]; then
   # Find root partition of the root block device
   SRC=$(get_block_dev_from_partition_dev $(get_root_device))
   ROOT=""
@@ -273,6 +279,17 @@ umount_from_loop_dev() {
   mount | grep -q " on ${TMPMNT} " && tracked_umount ${TMPMNT}
 }
 
+# Check if all arguments are non-empty values
+check_non_empty_values() {
+  local value
+  for value in "$@"; do
+    if [ -z "$value" ]; then
+      return ${FLAGS_FALSE}
+    fi
+  done
+  return ${FLAGS_TRUE}
+}
+
 # Undo all mounts and loops.
 cleanup() {
   set +e
@@ -303,7 +320,16 @@ OEM_IMG_OFFSET=0
 ESP_IMG_OFFSET=0
 
 # What do we expect & require to have on the source device?
-if [ -z "$FLAGS_payload_image" ]; then
+if [ -r "$FLAGS_gpt_layout" ]; then
+  . $FLAGS_gpt_layout
+  # verify all values are loaded
+  if ! check_non_empty_values "$STATEFUL_IMG_SECTORS" \
+    "$KERNEL_IMG_SECTORS" "$ROOTFS_IMG_SECTORS" \
+    "$OEM_IMG_SECTORS" "$ESP_IMG_SECTORS"; then
+      echo "Error: invalid GPT layout in ${FLAGS_gpt_layout}."
+      exit 1
+  fi
+elif [ -z "$FLAGS_payload_image" ]; then
   STATEFUL_IMG=$(make_partition_dev ${SRC} 1)
   KERNEL_IMG=$(make_partition_dev ${SRC} 2)
   ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
@@ -345,7 +371,9 @@ else
   tracked_mount --bind "$ROOT"/mnt/stateful_partition/var "$ROOT"/var
 fi
 
-if [ "$ARCH" = "ARM" ]; then
+if [ -n "${FLAGS_pmbr_code}" ]; then
+  PMBRCODE="${FLAGS_pmbr_code}"
+elif [ "$ARCH" = "ARM" ]; then
   PMBRCODE=/dev/zero
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
@@ -374,7 +402,7 @@ fi
 echo "Copying kernel..."
 fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_A} ${KERNEL_IMG_OFFSET} \
   if=${KERNEL_IMG} of=${DST} conv=notrunc
-  
+
 fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_B} ${KERNEL_IMG_OFFSET} \
   if=${KERNEL_IMG} of=${DST} conv=notrunc
 
