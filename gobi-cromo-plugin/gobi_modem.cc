@@ -248,11 +248,13 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ULONG region;
     ULONG gps_capability;
 
-    ULONG rc = sdk_->GetFirmwareInfo(&firmware_id,
-                                     &technology,
-                                     &carrier_id,
-                                     &region,
-                                     &gps_capability);
+    ULONG rc = sdk_->SetPower(gobi::kOnline);
+    ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
+    rc = sdk_->GetFirmwareInfo(&firmware_id,
+                               &technology,
+                               &carrier_id,
+                               &region,
+                               &gps_capability);
     ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kSdkError);
 
     const Carrier *carrier = find_carrier(carrier_id);
@@ -271,6 +273,13 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
   } else if (!enable && Enabled()) {
     pthread_mutex_lock(&modem_mutex_.mutex_);
     if (connected_modem_ == this) {
+      ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
+      if (rc != 0) {
+        error.set(kSdkError, "SetPower");
+        LOG(WARNING) << "SetPower failed : " << rc;
+        pthread_mutex_unlock(&modem_mutex_.mutex_);
+        return;
+      }
       connected_modem_ = NULL;
       pthread_mutex_unlock(&modem_mutex_.mutex_);
       sdk_->QCWWANDisconnect();
