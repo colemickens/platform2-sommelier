@@ -24,6 +24,12 @@ const char *kCryptohomeUnmount = "Unmount";
 const char *kCryptohomeTpmIsReady = "TpmIsReady";
 const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
 const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
+const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
+const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
+const char *kCryptohomeAsyncMount = "AsyncMount";
+const char *kCryptohomeAsyncMountGuest = "AsyncMountGuest";
+// Signals
+const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 }  // namespace cryptohome
 
 namespace imageburn{
