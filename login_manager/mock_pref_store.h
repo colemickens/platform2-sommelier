@@ -20,6 +20,7 @@ class MockPrefStore : public PrefStore {
   MOCK_METHOD2(Whitelist, void(const std::string&, const std::string&));
   MOCK_METHOD1(Unwhitelist, void(const std::string&));
   MOCK_METHOD2(GetFromWhitelist, bool(const std::string&, std::string*));
+  MOCK_METHOD1(EnumerateWhitelisted, void(std::vector<std::string>*));
   MOCK_METHOD3(Set, void(const std::string&,
                          const std::string&,
                          const std::string&));

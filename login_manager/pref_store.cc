@@ -101,7 +101,16 @@ void PrefStore::Unwhitelist(const std::string& name) {
 
 bool PrefStore::GetFromWhitelist(const std::string& name,
                                  std::string* signature_out) {
+  CHECK(signature_out);
   return whitelist_->GetStringWithoutPathExpansion(name, signature_out);
+}
+
+void PrefStore::EnumerateWhitelisted(std::vector<std::string>* list_out) {
+  CHECK(list_out) << "OUT_list cannot be NULL";
+  for (DictionaryValue::key_iterator key(whitelist_->begin_keys());
+       key != whitelist_->end_keys(); ++key) {
+    list_out->push_back(*key);
+  }
 }
 
 void PrefStore::Set(const std::string& name,
@@ -144,6 +153,7 @@ void PrefStore::Delete(const std::string& name) {
 }
 
 bool PrefStore::RemoveOneString(const std::string& key, std::string* out) {
+  CHECK(out);
   Value* tmp;
   if (!properties_->Remove(key, &tmp))
     return false;

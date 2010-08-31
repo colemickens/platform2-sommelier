@@ -88,6 +88,12 @@ class SessionManagerTest : public ::testing::Test {
     g_array_free(fake_sig_, TRUE);
   }
 
+  void SimpleRunManager() {
+    EXPECT_CALL(*store_, Persist())
+        .WillOnce(Return(true));
+    manager_->Run();
+  }
+
  protected:
   // NOT const so that they can be passed to methods that implement dbus calls,
   // which (of necessity) take bare gchar*.
@@ -111,8 +117,6 @@ class SessionManagerTest : public ::testing::Test {
     manager_->set_file_checker(file_checker_);
     manager_->test_api().set_exit_on_child_done(true);
     manager_->test_api().set_prefstore(store_);
-    ON_CALL(*store_, Persist())
-        .WillByDefault(Return(true));
   }
 
   void MockUtils() {
@@ -197,7 +201,7 @@ static void CleanExit() { _exit(0); }
 
 TEST_F(SessionManagerTest, NoLoopTest) {
   MockChildJob* job = CreateTrivialMockJob(NEVER);
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild) {
@@ -210,7 +214,7 @@ TEST_F(SessionManagerTest, BadExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild1) {
@@ -230,7 +234,7 @@ TEST_F(SessionManagerTest, BadExitChild1) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild2) {
@@ -250,7 +254,7 @@ TEST_F(SessionManagerTest, BadExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(BadExitAfterSleep));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild) {
@@ -260,7 +264,7 @@ TEST_F(SessionManagerTest, CleanExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild2) {
@@ -280,7 +284,7 @@ TEST_F(SessionManagerTest, CleanExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, LoadOwnerKey) {
@@ -296,7 +300,7 @@ TEST_F(SessionManagerTest, LoadOwnerKey) {
 
   manager_->test_api().set_ownerkey(key);
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, LockedExit) {
@@ -321,7 +325,7 @@ TEST_F(SessionManagerTest, LockedExit) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, MustStopChild) {
@@ -334,7 +338,7 @@ TEST_F(SessionManagerTest, MustStopChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 static const pid_t kDummyPid = 4;
@@ -435,7 +439,7 @@ TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
         .Times(1);
 
     manager_->StartSession(email, nothing, &out, NULL);
-    manager_->Run();
+    SimpleRunManager();
     delete manager_;
     manager_ = NULL;
     exit(0);
@@ -499,7 +503,7 @@ TEST_F(SessionManagerTest, StatsRecorded) {
       .Times(1);
   ON_CALL(*job, GetName())
       .WillByDefault(Invoke(name));
-  manager_->Run();
+  SimpleRunManager();
   EXPECT_TRUE(file_util::PathExists(uptime));
   EXPECT_TRUE(file_util::PathExists(disk));
 }
@@ -620,7 +624,7 @@ TEST_F(SessionManagerTest, SetOwnerKey) {
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, WhitelistNoKey) {
@@ -637,7 +641,7 @@ TEST_F(SessionManagerTest, WhitelistNoKey) {
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, WhitelistVerifyFail) {
@@ -657,7 +661,7 @@ TEST_F(SessionManagerTest, WhitelistVerifyFail) {
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, Whitelist) {
@@ -735,7 +739,7 @@ TEST_F(SessionManagerTest, CheckWhitelistFail) {
   GArray* out_sig = NULL;
   EXPECT_EQ(FALSE, manager_->CheckWhitelist(kFakeEmail, &out_sig, &error));
 
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, CheckWhitelist) {
@@ -764,7 +768,7 @@ TEST_F(SessionManagerTest, CheckWhitelist) {
               g_array_index(out_sig, uint8, i));
   }
   EXPECT_EQ(i, fake_sig_->len);
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, StorePropertyNoKey) {
@@ -783,7 +787,7 @@ TEST_F(SessionManagerTest, StorePropertyNoKey) {
                                            kPropValue,
                                            fake_sig_,
                                            &error));
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
@@ -805,7 +809,7 @@ TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
                                            kPropValue,
                                            fake_sig_,
                                            &error));
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, StoreProperty) {
@@ -857,7 +861,7 @@ TEST_F(SessionManagerTest, RetrievePropertyFail) {
                                               &out_value,
                                               &out_sig,
                                               &error));
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, RetrieveProperty) {
@@ -890,7 +894,7 @@ TEST_F(SessionManagerTest, RetrieveProperty) {
               g_array_index(out_sig, uint8, i));
   }
   EXPECT_EQ(i, fake_sig_->len);
-  manager_->Run();
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {

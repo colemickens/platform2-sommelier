@@ -10,6 +10,7 @@
 #include <base/scoped_ptr.h>
 
 #include <string>
+#include <vector>
 
 class DictionaryValue;
 
@@ -48,6 +49,9 @@ class PrefStore {
   // |name| should be an email address.
   virtual bool GetFromWhitelist(const std::string& name,
                                 std::string* signature_out);
+
+  // Enumerate all whitelisted email addresses and store them in |list_out|
+  virtual void EnumerateWhitelisted(std::vector<std::string>* list_out);
 
   // Set |name| = |value|, associating them with |signature|.
   // Creates the preference if it didn't exist.

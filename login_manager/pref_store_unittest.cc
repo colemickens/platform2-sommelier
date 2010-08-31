@@ -102,6 +102,8 @@ class PrefStoreTest : public ::testing::Test {
 
     EXPECT_TRUE(store->GetFromWhitelist(kDefaultUsers[1].email, &tmp_sig));
     EXPECT_EQ(kDefaultUsers[1].signature, tmp_sig);
+
+    EXPECT_FALSE(store->GetFromWhitelist(kDefaultUsers[2].email, &tmp_sig));
   }
 
   ScopedTempDir tmpdir_;
@@ -177,6 +179,25 @@ TEST_F(PrefStoreTest, VerifyUnwhitelist) {
 
   tmp_sig.clear();
   ASSERT_FALSE(store_->GetFromWhitelist(kDefaultUsers[0].email, &tmp_sig));
+}
+
+TEST_F(PrefStoreTest, EnumerateWhitelisted) {
+  store_->Whitelist(kDefaultUsers[2].email, kDefaultUsers[2].signature);
+  std::vector<std::string> whitelist;
+  store_->EnumerateWhitelisted(&whitelist);
+  EXPECT_EQ(sizeof(kDefaultUsers)/sizeof(TestWhitelistData), whitelist.size());
+  for (int i = 0; i < whitelist.size(); ++i)
+    EXPECT_EQ(whitelist[i], kDefaultUsers[i].email);
+}
+
+TEST_F(PrefStoreTest, WhitelistingIsIdempotent) {
+  store_->Whitelist(kDefaultUsers[2].email, kDefaultUsers[2].signature);
+  store_->Whitelist(kDefaultUsers[2].email, kDefaultUsers[2].signature);
+  std::vector<std::string> whitelist;
+  store_->EnumerateWhitelisted(&whitelist);
+  EXPECT_EQ(sizeof(kDefaultUsers)/sizeof(TestWhitelistData), whitelist.size());
+  for (int i = 0; i < whitelist.size(); ++i)
+    EXPECT_EQ(whitelist[i], kDefaultUsers[i].email);
 }
 
 TEST_F(PrefStoreTest, LoadStoreFromDisk) {
