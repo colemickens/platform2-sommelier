@@ -15,6 +15,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/time.h>
 
 namespace login_manager {
 
@@ -27,9 +28,18 @@ int SystemUtils::kill(pid_t pid, int signal) {
 }
 
 bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
+  base::Time start = base::Time::Now();
+  base::TimeDelta max_elapsed = base::TimeDelta::FromSeconds(timeout);
+  base::TimeDelta elapsed;
+  int ret;
+
   alarm(timeout);
-  while (::waitpid(child_spec, NULL, 0) > 0)
-    ;
+  do {
+    errno = 0;
+    ret = ::waitpid(child_spec, NULL, 0);
+    elapsed = base::Time::Now() - start;
+  } while (ret > 0 || (errno == EINTR && elapsed < max_elapsed));
+
   // Once we exit the loop, we know there was an error.
   alarm(0);
   return errno == ECHILD;  // EINTR means we timed out.
