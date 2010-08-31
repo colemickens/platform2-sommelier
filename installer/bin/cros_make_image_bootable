@@ -9,12 +9,12 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-COMMON_PATH="$(dirname "$0")/../common.sh"
+COMMON_PATH="/usr/lib/crosutils/common.sh"
 if [ ! -r "${COMMON_PATH}" ]; then
   echo "ERROR! Cannot find common.sh: ${COMMON_PATH}" 1>&2
   exit 1
 fi
-. "$(dirname "$0")/../common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 set -e
 . "/usr/lib/installer/chromeos-common.sh"  # for partoffset and partsize
@@ -114,7 +114,7 @@ mount_gpt_cleanup() {
   local rootfs="${1-$FLAGS_rootfs_mountpoint}"
   local statefs="${2-$FLAGS_statefulfs_mountpoint}"
   local espfs="${3-$FLAGS_espfs_mountpoint}"
-  "/usr/lib/installer/bin/cros_mount_gpt_image.sh" \
+  "/usr/bin/cros_mount_gpt_image.sh" \
     -u -r "${rootfs}" -s "${statefs}" -e "${espfs}"
 }
 
@@ -132,7 +132,7 @@ make_image_bootable() {
   fi
 
   trap "mount_gpt_cleanup" EXIT
-  /usr/lib/installer/bin/cros_mount_gpt_image.sh --from "$(dirname ${image})" \
+  /usr/bin/cros_mount_gpt_image.sh --from "$(dirname ${image})" \
     --image "$(basename ${image})" -r "${FLAGS_rootfs_mountpoint}" \
     -s "${FLAGS_statefulfs_mountpoint}"
 
@@ -148,7 +148,7 @@ make_image_bootable() {
 
   # Builds the kernel partition image.  The temporary files are kept around
   # so that we can perform a load_kernel_test later on the final image.
-  /usr/lib/installer/bin/cros_build_kernel_image.sh \
+  /usr/bin/cros_build_kernel_image.sh \
     --arch="${FLAGS_arch}" \
     --to="${FLAGS_output_dir}/vmlinuz.image" \
     --hd_vblock="${FLAGS_output_dir}/vmlinuz_hd.vblock" \
@@ -233,7 +233,7 @@ make_image_bootable() {
   fi
 
   # Update partition 12
-  /usr/lib/installer/bin/cros_update_bootloaders.sh \
+  /usr/bin/cros_update_bootloaders.sh \
     --arch=${FLAGS_arch} \
     --to="${bootloader_to}" \
     --from="${FLAGS_rootfs_mountpoint}"/boot \
@@ -243,8 +243,8 @@ make_image_bootable() {
     $kernel_part
 
   trap - EXIT
-  /usr/lib/installer/bin/cros_mount_gpt_image.sh -u -r \
-      "${FLAGS_rootfs_mountpoint}" -s "${FLAGS_statefulfs_mountpoint}"
+  /usr/bin/cros_mount_gpt_image.sh -u -r "${FLAGS_rootfs_mountpoint}" \
+                                      -s "${FLAGS_statefulfs_mountpoint}"
 }
 
 # Create the directories if they don't exist.

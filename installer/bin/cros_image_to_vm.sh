@@ -9,7 +9,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 . "/usr/lib/installer/chromeos-common.sh"
 
 get_default_board
@@ -220,9 +220,9 @@ dd if="${TEMP_ESP}"    of="${TEMP_IMG}" conv=notrunc bs=512 \
 # uses /dev/sda instead of /dev/sdb3.
 # NOTE: The TEMP_IMG must live in the same image dir as the original image
 #       to operate automatically below.
-${SCRIPTS_DIR}/bin/cros_make_image_bootable $(dirname "${TEMP_IMG}") \
-                                            $(basename "${TEMP_IMG}") \
-                                            --usb_disk /dev/sda3
+/usr/bin/cros_make_image_bootable $(dirname "${TEMP_IMG}") \
+                                  $(basename "${TEMP_IMG}") \
+                                  --usb_disk /dev/sda3
 
 echo Creating final image
 # Convert image to output format

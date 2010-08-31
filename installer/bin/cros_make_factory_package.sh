@@ -13,7 +13,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -99,7 +99,7 @@ echo "Output omaha config to ${OMAHA_DIR}/miniomaha.conf"
 prepare_dir
 
 sudo ./unpack_partitions.sh ${RELEASE_IMAGE} &> /dev/null
-release_hash=`sudo /usr/lib/installer/bin/cros_mk_memento_images.sh part_2 \
+release_hash=`sudo /usr/bin/cros_mk_memento_images.sh part_2 \
     part_3 | grep hash | awk '{print $4}'`
 sudo chmod a+rw update.gz
 mv update.gz rootfs-release.gz
@@ -124,7 +124,7 @@ prepare_dir
 
 
 sudo ./unpack_partitions.sh ${FACTORY_IMAGE} &> /dev/null
-test_hash=`sudo /usr/lib/installer/bin/cros_mk_memento_images.sh part_2 part_3 \
+test_hash=`sudo /usr/bin/cros_mk_memento_images.sh part_2 part_3 \
     | grep hash | awk '{print $4}'`
 sudo chmod a+rw update.gz
 mv update.gz rootfs-test.gz

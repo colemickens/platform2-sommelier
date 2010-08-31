@@ -7,7 +7,7 @@
 # Helper script that generates the legacy/efi bootloader partitions.
 # It does not populate the templates, but can update a loop device.
 
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 . "/usr/lib/installer/chromeos-common.sh"  # installer
 
 get_default_board

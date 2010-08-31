@@ -9,7 +9,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "$(dirname "$0")/../common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 . "/usr/lib/installer/chromeos-common.sh"  # for partoffset and partsize
 

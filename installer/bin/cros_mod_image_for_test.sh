@@ -8,7 +8,7 @@
 
 # Load common constants.  This should be the first executable line.
 # The path to common.sh should be relative to your script's location.
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 # Load functions and constants for chromeos-install
 . "/usr/lib/installer/chromeos-common.sh"
@@ -101,8 +101,8 @@ cleanup_mounts() {
 }
 
 cleanup() {
-  "/usr/lib/installer/bin/cros_mount_gpt_image.sh" -u -r "$ROOT_FS_DIR" \
-      -s "$STATEFUL_DIR"
+  "/usr/bin/cros_mount_gpt_image.sh" -u -r "$ROOT_FS_DIR" \
+                                        -s "$STATEFUL_DIR"
 }
 
 # Emerges chromeos-test onto the image.
@@ -137,7 +137,7 @@ install_autotest() {
     sudo rm -rf "${stateful_root}/autotest-pkgs" || true
     sudo rm -rf "${stateful_root}/lib/icedtea6" || true
 
-    sudo rsync --delete --delete-excluded -auvq \
+    sudo rsync --delete --delete-excluded -auv \
       --exclude=deps/realtimecomm_playground \
       --exclude=tests/ltp \
       --exclude=site_tests/graphics_O3DSelenium \
@@ -177,7 +177,7 @@ STATEFUL_DIR="$IMAGE_DIR/stateful_partition"
 trap cleanup EXIT
 
 # Mounts gpt image and sets up var, /usr/local and symlinks.
-"/usr/lib/installer/bin/cros_mount_gpt_image.sh" -i "$IMAGE_NAME" \
+"/usr/bin/cros_mount_gpt_image.sh" -i "$IMAGE_NAME" \
     -f "$IMAGE_DIR" -r "$ROOT_FS_DIR" -s "$STATEFUL_DIR"
 
 if [ ${FLAGS_factory_install} -eq ${FLAGS_TRUE} ]; then
@@ -224,8 +224,8 @@ fi
 cleanup
 
 # Now make it bootable with the flags from build_image
-/usr/lib/installer/bin/cros_make_image_bootable $(dirname "${FLAGS_image}") \
-                                                $(basename "${FLAGS_image}")
+/usr/bin/cros_make_image_bootable $(dirname "${FLAGS_image}") \
+                                  $(basename "${FLAGS_image}")
 
 print_time_elapsed
 

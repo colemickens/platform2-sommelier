@@ -6,7 +6,7 @@
 
 # Helper script that generates the signed kernel image
 
-. "$(dirname "$0")/common.sh"
+. "/usr/lib/crosutils/common.sh"
 
 get_default_board
 
