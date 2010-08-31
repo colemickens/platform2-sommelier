@@ -55,6 +55,7 @@ const char *kSessionManagerRestartJob = "RestartJob";
 const char *kSessionManagerSetOwnerKey = "SetOwnerKey";
 const char *kSessionManagerUnwhitelist = "Unwhitelist";
 const char *kSessionManagerCheckWhitelist = "CheckWhitelist";
+const char *kSessionManagerEnumerateWhitelisted = "EnumerateWhitelisted";
 const char *kSessionManagerWhitelist = "Whitelist";
 const char *kSessionManagerStoreProperty = "StoreProperty";
 const char *kSessionManagerRetrieveProperty = "RetrieveProperty";
