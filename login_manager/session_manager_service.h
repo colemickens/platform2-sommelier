@@ -195,6 +195,10 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
                           GArray** OUT_signature,
                           GError** error);
 
+  // Return all email addresses on the whitelist in |OUT_whitelist| and return
+  // true.
+  gboolean EnumerateWhitelisted(gchar*** OUT_whitelist, GError** error);
+
   // Add the user |email_address| to the whitelist.  |signature| must
   // be a signature over |email_address| that validates with |key_|.
   // |signature| should a binary blob representing a sha1WithRSAEncryption sig.

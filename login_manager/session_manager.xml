@@ -33,6 +33,9 @@
       <arg type="s" name="email_address" direction="in" />
       <arg type="ay" name="signature" direction="out" />
     </method>
+    <method name="EnumerateWhitelisted">
+      <arg type="as" name="whitelist" direction="out" />
+    </method>
     <method name="Unwhitelist">
       <arg type="s" name="email_address" direction="in" />
       <arg type="ay" name="signature" direction="in" />

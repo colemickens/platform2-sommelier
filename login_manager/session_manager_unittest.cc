@@ -751,7 +751,6 @@ TEST_F(SessionManagerTest, CheckWhitelist) {
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
-  MockPrefStore* store = new MockPrefStore;
   EXPECT_CALL(*store_, GetFromWhitelist(kFakeEmail, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(fake_sig_encoded_),
                       Return(true)))
@@ -769,6 +768,55 @@ TEST_F(SessionManagerTest, CheckWhitelist) {
   }
   EXPECT_EQ(i, fake_sig_->len);
   SimpleRunManager();
+}
+
+TEST_F(SessionManagerTest, EnumerateWhitelisted) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  std::vector<std::string> fake_whitelisted;
+  fake_whitelisted.push_back("who.am.i@youface.com");
+  fake_whitelisted.push_back("i.am.you@youface.net");
+  fake_whitelisted.push_back("you.are.me@youface.org");
+
+  EXPECT_CALL(*store_, EnumerateWhitelisted(_))
+      .WillOnce(SetArgumentPointee<0>(fake_whitelisted))
+      .RetiresOnSaturation();
+  manager_->test_api().set_prefstore(store_);
+
+  GError* error = NULL;
+  char** out_list = NULL;
+  ASSERT_EQ(TRUE, manager_->EnumerateWhitelisted(&out_list, &error));
+
+  int i;
+  for (i = 0; out_list[i] != NULL; ++i) {
+    EXPECT_EQ(fake_whitelisted[i], out_list[i]);
+  }
+  EXPECT_EQ(fake_whitelisted.size(), i);
+  g_strfreev(out_list);
+}
+
+TEST_F(SessionManagerTest, EnumerateEmptyWhitelist) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  std::vector<std::string> fake_whitelisted;
+
+  EXPECT_CALL(*store_, EnumerateWhitelisted(_))
+      .WillOnce(SetArgumentPointee<0>(fake_whitelisted))
+      .RetiresOnSaturation();
+  manager_->test_api().set_prefstore(store_);
+
+  GError* error = NULL;
+  char** out_list = NULL;
+  ASSERT_EQ(TRUE, manager_->EnumerateWhitelisted(&out_list, &error));
+
+  int i;
+  for (i = 0; out_list[i] != NULL; ++i) {
+    EXPECT_EQ(fake_whitelisted[i], out_list[i]);
+  }
+  EXPECT_EQ(fake_whitelisted.size(), i);
+  g_strfreev(out_list);
 }
 
 TEST_F(SessionManagerTest, StorePropertyNoKey) {

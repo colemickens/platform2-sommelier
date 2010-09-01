@@ -96,6 +96,11 @@ gboolean session_manager_check_whitelist(SessionManager *self,
                                          GError **error) {
   SESSION_MANAGER_WRAP_METHOD(CheckWhitelist, email_address, OUT_signature);
 }
+gboolean session_manager_enumerate_whitelisted(SessionManager *self,
+                                               gchar ***OUT_whitelist,
+                                               GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(EnumerateWhitelisted, OUT_whitelist);
+}
 gboolean session_manager_whitelist(SessionManager *self,
                                    gchar *email_address,
                                    GArray *signature,

@@ -56,6 +56,9 @@ gboolean session_manager_check_whitelist(SessionManager *self,
                                          gchar *email_address,
                                          GArray **OUT_signature,
                                          GError **error);
+gboolean session_manager_enumerate_whitelisted(SessionManager *self,
+                                               gchar ***OUT_whitelist,
+                                               GError **error);
 gboolean session_manager_whitelist(SessionManager *self,
                                    gchar *email_address,
                                    GArray *signature,

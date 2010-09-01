@@ -508,6 +508,21 @@ gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
   return TRUE;
 }
 
+gboolean SessionManagerService::EnumerateWhitelisted(gchar*** OUT_whitelist,
+                                                     GError** error) {
+  std::vector<std::string> the_whitelisted;
+  store_->EnumerateWhitelisted(&the_whitelisted);
+  uint num_whitelisted = the_whitelisted.size();
+  *OUT_whitelist = g_new(gchar*, num_whitelisted + 1);
+  (*OUT_whitelist)[num_whitelisted] = NULL;
+
+  for (uint i = 0; i < num_whitelisted; ++i) {
+    (*OUT_whitelist)[i] = g_strndup(the_whitelisted[i].c_str(),
+                                    the_whitelisted[i].length());
+  }
+  return TRUE;
+}
+
 gboolean SessionManagerService::Whitelist(gchar* email_address,
                                           GArray* signature,
                                           GError** error) {
