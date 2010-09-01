@@ -45,6 +45,7 @@ class DummyModem
       DBus::Error& error);
   void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state,
                             DBus::Error& error);
+  void Activate(const std::string &carrier, DBus::Error &error);
 
   DISALLOW_COPY_AND_ASSIGN(DummyModem);
 };
