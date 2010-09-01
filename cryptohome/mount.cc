@@ -229,31 +229,14 @@ bool Mount::UnmountCryptohome() const {
   // Try an immediate unmount
   bool was_busy;
   if (!platform_->Unmount(home_dir_, false, &was_busy)) {
+    LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
     if (was_busy) {
-      // Signal processes to close
-      if (platform_->TerminatePidsWithOpenFiles(home_dir_, false)) {
-        // Then we had to send a SIGINT to some processes with open files.  Give
-        // a "grace" period before killing with a SIGKILL.
-        // TODO(fes): This isn't ideal, nor is it accurate (a static sleep can't
-        // guarantee that processes will clean up in time).  If we switch to VFS
-        // namespace-based mounts, then we can get away from this construct.
-        PlatformThread::Sleep(100);
-        sync();
-        if (platform_->TerminatePidsWithOpenFiles(home_dir_, true)) {
-          PlatformThread::Sleep(100);
-        }
-      }
+      sync();
     }
     // Failed to unmount immediately, do a lazy unmount
     platform_->Unmount(home_dir_, true, NULL);
     sync();
-    // TODO(fes): This should return an error condition if it is still mounted.
-    // Right now it doesn't, since it should get cleaned up outside of
-    // cryptohome since we failed over to a lazy unmount
   }
-
-  // TODO(fes): Do we need to keep this behavior?
-  //TerminatePidsForUser(default_user_, true);
 
   // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
