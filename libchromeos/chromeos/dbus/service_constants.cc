@@ -23,11 +23,14 @@ const char *kCryptohomeMountGuest = "MountGuest";
 const char *kCryptohomeUnmount = "Unmount";
 const char *kCryptohomeTpmIsReady = "TpmIsReady";
 const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
+const char *kCryptohomeTpmIsOwned = "TpmIsOwned";
+const char *kCryptohomeTpmIsBeingOwned = "TpmIsBeingOwned";
 const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
 const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
 const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
 const char *kCryptohomeAsyncMount = "AsyncMount";
 const char *kCryptohomeAsyncMountGuest = "AsyncMountGuest";
+const char *kCryptohomeGetStatusString = "GetStatusString";
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 }  // namespace cryptohome

@@ -25,11 +25,14 @@ extern const char *kCryptohomeMountGuest;
 extern const char *kCryptohomeUnmount;
 extern const char *kCryptohomeTpmIsReady;
 extern const char *kCryptohomeTpmIsEnabled;
+extern const char *kCryptohomeTpmIsOwned;
+extern const char *kCryptohomeTpmIsBeingOwned;
 extern const char *kCryptohomeTpmGetPassword;
 extern const char *kCryptohomeAsyncCheckKey;
 extern const char *kCryptohomeAsyncMigrateKey;
 extern const char *kCryptohomeAsyncMount;
 extern const char *kCryptohomeAsyncMountGuest;
+extern const char *kCryptohomeGetStatusString;
 // Signals
 extern const char *kSignalAsyncCallStatus;
 }  // namespace cryptohome
