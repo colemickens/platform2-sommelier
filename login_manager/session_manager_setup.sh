@@ -131,6 +131,11 @@ wait
 initctl emit x-started
 bootstat x-started
 
+# When X starts, it copies the contents of the framebuffer to the root
+# window.  We clear the framebuffer here to make sure that it doesn't flash
+# back onscreen when X exits later.
+/usr/bin/ply-image --clear &
+
 #
 # Reset PATH to exclude directories unneeded by session_manager.
 # Save that until here, because many of the commands above depend
