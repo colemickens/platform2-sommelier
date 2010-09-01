@@ -74,12 +74,12 @@ class GobiModem
       DBus::Error& error);
   virtual void GetRegistrationState(
       uint32_t& cdma_1x_state, uint32_t& evdo_state, DBus::Error& error);
+  virtual void Activate(const std::string& carrier_name,
+                        DBus::Error& error);
 
   // DBUS Methods: ModemGobi
   virtual void SetCarrier(const std::string& image, DBus::Error& error);
   virtual void SoftReset(DBus::Error& error);
-  virtual void Activate(const std::string& carrier_name,
-                        DBus::Error& error);
   virtual void PowerCycle(DBus::Error& error);
 
   // DBUS Property Getter

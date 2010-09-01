@@ -22,17 +22,6 @@
       </tp:docstring>
     </method>
 
-    <method name="Activate">
-      <tp:docstring>
-        Activates the modem for use with a given carrier.
-      </tp:docstring>
-      <arg name="carrier" type="s" direction="in">
-        <tp:docstring>
-          Name of carrier.
-        </tp:docstring>
-      </arg>
-    </method>
-
     <method name="PowerCycle">
       <tp:docstring>
         Tells the modem to power cycle itself.
