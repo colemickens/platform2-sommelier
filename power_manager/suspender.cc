@@ -6,6 +6,7 @@
 
 #include "power_manager/util.h"
 #include "base/logging.h"
+#include "chromeos/dbus/service_constants.h"
 
 namespace power_manager {
 
@@ -18,9 +19,9 @@ void Suspender::RequestSuspend() {
     locker_->LockScreen();
     g_timeout_add(3000, CheckSuspendTimeout, this);
   } else {
-    // TODO(davidjames): Switch to using the reboot.2 system call when we
-    // have CAP_SYS_BOOT permissions.
-    util::Launch("sudo shutdown -P now");
+    LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
+    util::SendSignalToPowerM(util::kShutdownSignal);
+
   }
 }
 
@@ -29,6 +30,12 @@ void Suspender::CheckSuspend() {
     suspend_requested_ = false;
     Suspend();
   }
+}
+
+void Suspender::CancelSuspend() {
+  if (suspend_requested_)
+    LOG(INFO) << "Suspend canceled mid flight.";
+  suspend_requested_ = false;
 }
 
 gboolean Suspender::CheckSuspendTimeout(gpointer data) {
@@ -42,7 +49,7 @@ gboolean Suspender::CheckSuspendTimeout(gpointer data) {
 }
 
 void Suspender::Suspend() {
-  util::Launch("sudo powerd_suspend");
+  util::SendSignalToPowerM(util::kSuspendSignal);
 }
 
 }  // namespace power_manager

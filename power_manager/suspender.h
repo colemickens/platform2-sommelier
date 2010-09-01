@@ -22,6 +22,9 @@ class Suspender {
   // method, the screen should be locked.
   void CheckSuspend();
 
+  // Cancel Suspend in progress.
+  void CancelSuspend();
+
  private:
   // Suspend the computer. Before calling this method, the screen should
   // be locked.

@@ -61,12 +61,22 @@ powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
 powerd_sources = ['powerd.cc', 'powerd_metrics.cc', 'screen_locker.cc',
-                  'suspender.cc', 'util.cc', 'video_detector.cc']
+                  'suspender.cc', 'video_detector.cc']
+util_lib = powerd_env.Library('util_lib', ['util.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,
-                             power_prefs, backlight_controller])
+                             power_prefs, backlight_controller, util_lib])
 Default(powerd)
+
+# Build privileged power daemon
+powerman_env = powerd_env.Clone()
+powerman_sources = ['powerman.cc', 'input.cc']
+powerman_lib = powerman_env.Library('powerman_lib', powerman_sources)
+powerman = powerman_env.Program('powerm', ['powerman_main.cc', powerman_lib,
+                                           util_lib])
+
+Default(powerman)
 
 # Build unit tests
 tests = []
@@ -85,7 +95,7 @@ deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller, backlight,
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
-deps = [testrunner, 'powerd_unittest.cc', powerd_lib, xidle,
+deps = [testrunner, 'powerd_unittest.cc', powerd_lib, util_lib, xidle,
         backlight_controller, backlight, power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))

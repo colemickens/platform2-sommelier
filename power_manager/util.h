@@ -9,9 +9,28 @@ namespace power_manager {
 
 namespace util {
 
+// powerd -> powerm constants
+extern const char* kLowerPowerManagerInterface;
+extern const char* kSuspendSignal;
+extern const char* kShutdownSignal;
+
+// powerm -> powerd constants
+extern const char* kLidClosed;
+extern const char* kLidOpened;
+extern const char* kPowerButtonDown;
+extern const char* kPowerButtonUp;
+
 bool LoggedIn();
 void Launch(const char* cmd);
+
+// Send a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
+
+// Send a message |signal| to the privileged power daemon.
+void SendSignalToPowerM(const char* signal);
+
+// Send a message |signal| to the unprivileged power daemon.
+void SendSignalToPowerD(const char* signal);
 
 }  // namespace util
 

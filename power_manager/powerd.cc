@@ -70,7 +70,6 @@ void Daemon::Init() {
   key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
   key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
                                           XF86XK_MonBrightnessDown);
-  key_power_off_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_PowerOff);
   key_f6_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F6);
   key_f7_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F7);
   CHECK(key_f6_ != 0);
@@ -87,11 +86,6 @@ void Daemon::Init() {
   GrabKey(key_brightness_down_, 0);
   GrabKey(key_f6_, 0);
   GrabKey(key_f7_, 0);
-  if (key_power_off_ != 0) {
-    GrabKey(key_power_off_, 0);
-  } else {
-    LOG(ERROR) << "No power off keycode found.";
-  }
   gdk_window_add_filter(NULL, gdk_event_filter, this);
   locker_.Init(use_xscreensaver_);
   RegisterDBusMessageHandler();
@@ -269,13 +263,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   if (xevent->type == KeyPress) {
     int keycode = xevent->xkey.keycode;
-    if (keycode == daemon->key_power_off_ &&
-        (daemon->idle_state_ == kIdleNormal ||
-         daemon->idle_state_ == kIdleDim)) {
-      // TODO(davidjames): Switch to using the reboot.2 system call when we
-      // have CAP_SYS_BOOT permissions.
-      util::Launch("sudo shutdown -P now");
-    } else if (keycode == daemon->key_brightness_up_ ||
+    if (keycode == daemon->key_brightness_up_ ||
                keycode == daemon->key_f7_) {
       if (keycode == daemon->key_brightness_up_) {
         LOG(INFO) << "Key press: Brightness up";
@@ -318,7 +306,6 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     daemon->locker_.LockScreen();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestUnlockScreenSignal)) {
-    // TODO(davidjames): Check lid state
     LOG(INFO) << "RequestUnlockScreen event";
     util::SendSignalToSessionManager("UnlockScreen");
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
@@ -334,6 +321,31 @@ DBusHandlerResult Daemon::DBusMessageHandler(
                                     kRequestSuspendSignal)) {
     LOG(INFO) << "RequestSuspend event";
     daemon->suspender_.RequestSuspend();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestShutdownSignal)) {
+    LOG(INFO) << "RequestShutdown event";
+    util::SendSignalToPowerM(util::kShutdownSignal);
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    util::kLidClosed)) {
+    LOG(INFO) << "Lid Closed event";
+    daemon->suspender_.RequestSuspend();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    util::kLidOpened)) {
+    LOG(INFO) << "Lid Opened event";
+    daemon->suspender_.CancelSuspend();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    util::kPowerButtonDown)) {
+    LOG(INFO) << "Button Down event";
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    util::kPowerButtonUp)) {
+    LOG(INFO) << "Button Up event";
+    if (daemon->idle_state_ == kIdleNormal ||
+        daemon->idle_state_ == kIdleDim) {
+      LOG(INFO) << "Shutting down";
+      util::SendSignalToPowerM(util::kShutdownSignal);
+    } else {
+      LOG(INFO) << "Power button struck while screen off.";
+    }
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
