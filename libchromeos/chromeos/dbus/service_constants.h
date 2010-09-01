@@ -108,6 +108,7 @@ namespace power_manager {
 extern const char* kPowerManagerInterface;
 extern const char* kRequestLockScreenSignal;
 extern const char* kRequestSuspendSignal;
+extern const char* kRequestShutdownSignal;
 extern const char* kRequestUnlockScreenSignal;
 extern const char* kScreenIsLockedSignal;
 extern const char* kScreenIsUnlockedSignal;

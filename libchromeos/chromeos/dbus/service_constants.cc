@@ -86,7 +86,8 @@ namespace power_manager {
 const char* kPowerManagerInterface = "org.chromium.PowerManager";
 const char* kRequestLockScreenSignal = "RequestLockScreen";
 const char* kRequestSuspendSignal = "RequestSuspend";
+const char* kRequestShutdownSignal = "RequestShutdown";
 const char* kRequestUnlockScreenSignal = "RequestUnlockScreen";
 const char* kScreenIsLockedSignal = "ScreenIsLocked";
 const char* kScreenIsUnlockedSignal = "ScreenIsUnlocked";
-}  // namespace screen_lock
+}  // namespace power_manager
