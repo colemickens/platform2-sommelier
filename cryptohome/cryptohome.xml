@@ -69,6 +69,15 @@
     <method name="TpmGetPassword">
       <arg type="s" name="password" direction="out" />
     </method>
+    <method name="TpmIsOwned">
+      <arg type="b" name="owned" direction="out" />
+    </method>
+    <method name="TpmIsBeingOwned">
+      <arg type="b" name="owning" direction="out" />
+    </method>
+    <method name="GetStatusString">
+      <arg type="s" name="status" direction="out" />
+    </method>
     <signal name="AsyncCallStatus">
       <arg type="i" name="async_id" />
       <arg type="b" name="return_status" />

@@ -44,6 +44,7 @@ namespace switches {
     "obfuscate_user",
     "dump_keyset",
     "tpm_status",
+    "status",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -55,7 +56,8 @@ namespace switches {
     ACTION_REMOVE,
     ACTION_OBFUSCATE_USER,
     ACTION_DUMP_KEYSET,
-    ACTION_TPM_STATUS };
+    ACTION_TPM_STATUS,
+    ACTION_STATUS };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -532,6 +534,20 @@ int main(int argc, char **argv) {
       printf("TPM Enabled: %s\n", (result ? "true" : "false"));
     }
     result = false;
+    if (!org_chromium_CryptohomeInterface_tpm_is_owned(proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsOwned call failed: %s.\n", error->message);
+    } else {
+      printf("TPM Owned: %s\n", (result ? "true" : "false"));
+    }
+    if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsBeingOwned call failed: %s.\n", error->message);
+    } else {
+      printf("TPM Being Owned: %s\n", (result ? "true" : "false"));
+    }
     if (!org_chromium_CryptohomeInterface_tpm_is_ready(proxy.gproxy(),
         &result,
         &chromeos::Resetter(&error).lvalue())) {
@@ -547,6 +563,18 @@ int main(int argc, char **argv) {
     } else {
       printf("TPM Password: %s\n", password);
       g_free(password);
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
+                     action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gchar* status;
+    if (!org_chromium_CryptohomeInterface_get_status_string(proxy.gproxy(),
+        &status,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("GetStatusString call failed: %s.\n", error->message);
+    } else {
+      printf("%s\n", status);
+      g_free(status);
     }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");

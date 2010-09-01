@@ -32,7 +32,8 @@ class UserSession {
   //
   // Parameters
   //   username - The user credentials to initialize this session with.
-  virtual void Init(Crypto* crypto);
+  //   salt - The salt to use for the username
+  virtual void Init(Crypto* crypto, const SecureBlob& salt);
 
   // Assigns a user to the UserSession object.  The random blob is created and
   // encrypted with the supplied credentials.
@@ -57,6 +58,12 @@ class UserSession {
   // Parameters
   //   credentials - The user credentials to attempt decryption with
   virtual bool Verify(const Credentials& credentials) const;
+
+  // Get the obfuscated username of this session
+  //
+  // Parameters
+  //   username (OUT) - the username
+  virtual void GetObfuscatedUsername(std::string* username) const;
 
  private:
   std::string username_;

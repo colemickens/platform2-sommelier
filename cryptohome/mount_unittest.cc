@@ -155,7 +155,7 @@ TEST_F(MountTest, CurrentCredentialsTest) {
 
   MockUserSession user_session;
   Crypto crypto;
-  user_session.Init(&crypto);
+  user_session.Init(&crypto, SecureBlob());
   user_session.SetUser(up);
   mount.set_current_user(&user_session);
 

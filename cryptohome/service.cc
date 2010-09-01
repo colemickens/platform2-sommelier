@@ -9,6 +9,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/string_util.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 
@@ -18,7 +19,9 @@
 #include "crypto.h"
 #include "mount.h"
 #include "secure_blob.h"
+#include "tpm.h"
 #include "username_passkey.h"
+#include "vault_keyset.pb.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -375,6 +378,113 @@ gboolean Service::TpmGetPassword(gchar** OUT_password, GError** error) {
   }
   *OUT_password = g_strdup_printf("%.*s", password.size(),
                                   static_cast<char*>(password.data()));
+  return TRUE;
+}
+
+gboolean Service::TpmIsOwned(gboolean* OUT_owned, GError** error) {
+  *OUT_owned = tpm_init_->IsTpmOwned();
+  return TRUE;
+}
+
+gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
+  *OUT_owning = tpm_init_->IsTpmBeingOwned();
+  return TRUE;
+}
+
+gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
+  Tpm::TpmStatus tpm_status;
+  mount_->get_crypto()->EnsureTpm();
+  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
+
+  if (tpm) {
+    tpm->GetStatus(true, &tpm_status);
+  } else {
+    Tpm temp_tpm;
+    temp_tpm.Init(mount_->get_crypto(), false);
+    temp_tpm.GetStatus(true, &tpm_status);
+  }
+
+  if (tpm_init_) {
+    tpm_status.Enabled = tpm_init_->IsTpmEnabled();
+    tpm_status.BeingOwned = tpm_init_->IsTpmBeingOwned();
+    tpm_status.Owned = tpm_init_->IsTpmOwned();
+  }
+
+  std::string user_data;
+  UserSession* session = mount_->get_current_user();
+  if (session) {
+    do {
+      std::string obfuscated_user;
+      session->GetObfuscatedUsername(&obfuscated_user);
+      if (!obfuscated_user.length()) {
+        break;
+      }
+      std::string vault_path = StringPrintf("%s/%s/master.0",
+                                            mount_->get_shadow_root().c_str(),
+                                            obfuscated_user.c_str());
+      FilePath vault_file(vault_path);
+      file_util::FileInfo file_info;
+      if(!file_util::GetFileInfo(vault_file, &file_info)) {
+        break;
+      }
+      SecureBlob contents;
+      if (!Mount::LoadFileBytes(vault_file, &contents)) {
+        break;
+      }
+      cryptohome::SerializedVaultKeyset serialized;
+      if (!serialized.ParseFromArray(
+          static_cast<const unsigned char*>(&contents[0]), contents.size())) {
+        break;
+      }
+      base::Time::Exploded exploded;
+      file_info.last_modified.UTCExplode(&exploded);
+      user_data = StringPrintf(
+          "User Session:\n"
+          "  Keyset Was TPM Wrapped..........: %s\n"
+          "  Keyset Was Scrypt Wrapped.......: %s\n"
+          "  Keyset Last Modified............: %02d-%02d-%04d %02d:%02d:%02d"
+          " (UTC)\n",
+          ((serialized.flags() &
+            cryptohome::SerializedVaultKeyset::TPM_WRAPPED) ? "1" : "0"),
+          ((serialized.flags() &
+            cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED) ? "1" : "0"),
+          exploded.month, exploded.day_of_month, exploded.year,
+          exploded.hour, exploded.minute, exploded.second);
+
+    } while(false);
+  }
+
+  *OUT_status = g_strdup_printf(
+      "TPM Status:\n"
+      "  Enabled.........................: %s\n"
+      "  Owned...........................: %s\n"
+      "  Being Owned.....................: %s\n"
+      "  Can Connect.....................: %s\n"
+      "  Can Load SRK....................: %s\n"
+      "  Can Load SRK Public.............: %s\n"
+      "  Has Cryptohome Key..............: %s\n"
+      "  Can Encrypt.....................: %s\n"
+      "  Can Decrypt.....................: %s\n"
+      "  Instance Context................: %s\n"
+      "  Instance Key Handle.............: %s\n"
+      "  Last Error......................: %08x\n"
+      "%s"
+      "Mount Status:\n"
+      "  Vault Is Mounted................: %s\n",
+      (tpm_status.Enabled ? "1" : "0"),
+      (tpm_status.Owned ? "1" : "0"),
+      (tpm_status.BeingOwned ? "1" : "0"),
+      (tpm_status.CanConnect ? "1" : "0"),
+      (tpm_status.CanLoadSrk ? "1" : "0"),
+      (tpm_status.CanLoadSrkPublicKey ? "1" : "0"),
+      (tpm_status.HasCryptohomeKey ? "1" : "0"),
+      (tpm_status.CanEncrypt ? "1" : "0"),
+      (tpm_status.CanDecrypt ? "1" : "0"),
+      (tpm_status.ThisInstanceHasContext ? "1" : "0"),
+      (tpm_status.ThisInstanceHasKeyHandle ? "1" : "0"),
+      tpm_status.LastTpmError,
+      user_data.c_str(),
+      (mount_->IsCryptohomeMounted() ? "1" : "0"));
   return TRUE;
 }
 

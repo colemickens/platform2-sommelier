@@ -116,6 +116,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);
   virtual gboolean TpmGetPassword(gchar** OUT_password, GError** error);
+  virtual gboolean TpmIsOwned(gboolean* OUT_owned, GError** error);
+  virtual gboolean TpmIsBeingOwned(gboolean* OUT_owning, GError** error);
+  virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
  protected:
   virtual GMainLoop *main_loop() { return loop_; }

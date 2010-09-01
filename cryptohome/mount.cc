@@ -91,7 +91,7 @@ bool Mount::Init() {
   }
   platform_->SetMask(original_mask);
 
-  current_user_->Init(crypto_);
+  current_user_->Init(crypto_, system_salt_);
 
   return result;
 }

@@ -135,6 +135,11 @@ class Mount : public EntropySource {
     shadow_root_ = value;
   }
 
+  // Get the shadow root
+  std::string get_shadow_root() {
+    return shadow_root_;
+  }
+
   // Used to override the default shared username
   void set_shared_user(const std::string& value) {
     default_username_ = value;
@@ -148,6 +153,11 @@ class Mount : public EntropySource {
   // Used to override the default Crypto handler (does not take ownership)
   void set_crypto(Crypto* value) {
     crypto_ = value;
+  }
+
+  // Get the Crypto instance
+  Crypto* get_crypto() {
+    return crypto_;
   }
 
   // Used to override the default Platform handler (does not take ownership)
@@ -169,6 +179,11 @@ class Mount : public EntropySource {
   // Manually set the logged in user
   void set_current_user(UserSession* value) {
     current_user_ = value;
+  }
+
+  // Get the user session
+  UserSession* get_current_user() {
+    return current_user_;
   }
 
   // Manually set the logged in user

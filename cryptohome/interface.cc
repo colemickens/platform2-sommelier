@@ -140,6 +140,21 @@ gboolean cryptohome_tpm_get_password(Cryptohome *self,
                                      GError **error) {
   CRYPTOHOME_WRAP_METHOD(TpmGetPassword, OUT_password);
 }
+gboolean cryptohome_tpm_is_owned(Cryptohome *self,
+                                 gboolean *OUT_owned,
+                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsOwned, OUT_owned);
+}
+gboolean cryptohome_tpm_is_being_owned(Cryptohome *self,
+                                       gboolean *OUT_owning,
+                                       GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmIsBeingOwned, OUT_owning);
+}
+gboolean cryptohome_get_status_string(Cryptohome *self,
+                                      gchar **OUT_status,
+                                      GError **error) {
+  CRYPTOHOME_WRAP_METHOD(GetStatusString, OUT_status);
+}
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

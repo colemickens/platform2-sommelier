@@ -93,6 +93,15 @@ gboolean cryptohome_tpm_is_enabled(Cryptohome *self,
 gboolean cryptohome_tpm_get_password(Cryptohome *self,
                                      gchar **OUT_password,
                                      GError **error);
+gboolean cryptohome_tpm_is_owned(Cryptohome *self,
+                                 gboolean *OUT_owned,
+                                 GError **error);
+gboolean cryptohome_tpm_is_being_owned(Cryptohome *self,
+                                       gboolean *OUT_owning,
+                                       GError **error);
+gboolean cryptohome_get_status_string(Cryptohome *self,
+                                      gchar **OUT_status,
+                                      GError **error);
 
 }  // namespace gobject
 }  // namespace cryptohome

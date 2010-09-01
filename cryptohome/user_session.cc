@@ -26,14 +26,12 @@ UserSession::UserSession()
 UserSession::~UserSession() {
 }
 
-void UserSession::Init(Crypto* crypto) {
+void UserSession::Init(Crypto* crypto, const SecureBlob& salt) {
   crypto_ = crypto;
+  username_salt_.assign(salt.begin(), salt.end());
 }
 
 bool UserSession::SetUser(const Credentials& credentials) {
-  username_salt_.resize(kUserSessionSaltLength);
-  crypto_->GetSecureRandom(static_cast<unsigned char*>(username_salt_.data()),
-                           username_salt_.size());
   username_ = credentials.GetObfuscatedUsername(username_salt_);
 
   key_salt_.resize(PKCS5_SALT_LEN);
@@ -62,7 +60,6 @@ bool UserSession::SetUser(const Credentials& credentials) {
 
 void UserSession::Reset() {
   username_ = "";
-  username_salt_.resize(0);
   key_salt_.resize(0);
   cipher_.resize(0);
 }
@@ -94,6 +91,10 @@ bool UserSession::Verify(const Credentials& credentials) const {
   SecureBlob plaintext;
   return crypto_->UnwrapAes(cipher_, 0, cipher_.size(), aes_key, aes_iv,
                             Crypto::PADDING_CRYPTOHOME_DEFAULT, &plaintext);
+}
+
+void UserSession::GetObfuscatedUsername(std::string* username) const {
+  username->assign(username_);
 }
 
 }  // namespace cryptohome

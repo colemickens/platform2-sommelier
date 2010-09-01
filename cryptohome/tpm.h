@@ -34,6 +34,21 @@ class Tpm {
     Fatal
   };
 
+  struct TpmStatus {
+    bool Enabled;
+    bool BeingOwned;
+    bool Owned;
+    TSS_RESULT LastTpmError;
+    bool CanConnect;
+    bool CanLoadSrk;
+    bool CanLoadSrkPublicKey;
+    bool HasCryptohomeKey;
+    bool CanEncrypt;
+    bool CanDecrypt;
+    bool ThisInstanceHasContext;
+    bool ThisInstanceHasKeyHandle;
+  };
+
   // Default constructor
   Tpm();
 
@@ -94,6 +109,14 @@ class Tpm {
   bool GetPublicKey(SecureBlob* blob, TpmRetryAction* retry_action);
   // Loads the cryptohome RSA key from the specified TPM-wrapped key
   bool LoadKey(const SecureBlob& blob, TpmRetryAction* retry_action);
+
+  // Gets the TPM status information
+  //
+  // Parameters
+  //   check_crypto - Whether to check if encrypt/decrypt works (may take
+  //                  longer)
+  //   status (OUT) - The TpmStatus structure containing the results
+  void GetStatus(bool check_crypto, Tpm::TpmStatus* status);
 
   void set_srk_auth(const SecureBlob& value) {
     srk_auth_.resize(value.size());

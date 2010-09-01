@@ -283,8 +283,8 @@ class Crypto : public EntropySource {
   }
 
   // Gets the TPM implementation
-  const Tpm& get_tpm() {
-    return *tpm_;
+  const Tpm* get_tpm() {
+    return tpm_;
   }
 
  private:

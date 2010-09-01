@@ -97,6 +97,85 @@ void Tpm::Disconnect() {
   }
 }
 
+void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatus* status) {
+  memset(status, 0, sizeof(Tpm::TpmStatus));
+  status->ThisInstanceHasContext = (context_handle_ != 0);
+  status->ThisInstanceHasKeyHandle = (key_handle_ != 0);
+  TSS_HCONTEXT context_handle = 0;
+  do {
+    // Check if we can connect
+    TSS_RESULT result;
+    if (!OpenAndConnectTpm(&context_handle, &result)) {
+      status->LastTpmError = result;
+      break;
+    }
+    status->CanConnect = true;
+
+    // Check the Storage Root Key
+    TSS_HKEY srk_handle;
+    if (!LoadSrk(context_handle, &srk_handle, &result)) {
+      status->LastTpmError = result;
+      break;
+    }
+    status->CanLoadSrk = true;
+
+    // Check the SRK public key
+    unsigned int size_n;
+    BYTE *public_srk;
+    if ((result = Tspi_Key_GetPubKey(srk_handle, &size_n, &public_srk))) {
+      Tspi_Context_CloseObject(context_handle, srk_handle);
+      status->LastTpmError = result;
+      break;
+    }
+    Tspi_Context_FreeMemory(context_handle, public_srk);
+    Tspi_Context_CloseObject(context_handle, srk_handle);
+    status->CanLoadSrkPublicKey = true;
+
+    // Check the Cryptohome key
+    TSS_HKEY key_handle;
+    if (!LoadCryptohomeKey(context_handle, &key_handle, &result)) {
+      status->LastTpmError = result;
+      break;
+    }
+    status->HasCryptohomeKey = true;
+
+    if (check_crypto) {
+      // Check encryption (we don't care about the contents, just whether or not
+      // there was an error)
+      SecureBlob data(16);
+      SecureBlob password(16);
+      SecureBlob salt(8);
+      SecureBlob data_out(16);
+      memset(data.data(), 'A', data.size());
+      memset(password.data(), 'B', password.size());
+      memset(salt.data(), 'C', salt.size());
+      memset(data_out.data(), 'D', data_out.size());
+      if (!EncryptBlob(context_handle, key_handle, data, password,
+                       13, salt, &data_out, &result)) {
+        Tspi_Context_CloseObject(context_handle, key_handle);
+        status->LastTpmError = result;
+        break;
+      }
+      status->CanEncrypt = true;
+
+      // Check decryption (we don't care about the contents, just whether or not
+      // there was an error)
+      if (!DecryptBlob(context_handle, key_handle, data_out, password,
+                       13, salt, &data, &result)) {
+        Tspi_Context_CloseObject(context_handle, key_handle);
+        status->LastTpmError = result;
+        break;
+      }
+      status->CanDecrypt = true;
+    }
+    Tspi_Context_CloseObject(context_handle, key_handle);
+  } while (false);
+
+  if (context_handle) {
+    Tspi_Context_Close(context_handle);
+  }
+}
+
 bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
                               TSS_RESULT* result) {
   *result = TSS_SUCCESS;
