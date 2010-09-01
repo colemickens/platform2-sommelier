@@ -92,9 +92,15 @@ fi
 
 # For recovery image, do NOT display OOBE or login window
 if [ -f /mnt/stateful_partition/.recovery ]; then
-  # the magic string "test:nowindow" comes from
-  # src/chrome/browser/chromeos/login/wizard_controller.cc
-  SKIP_OOBE="--login-screen=test:nowindow"
+  # Verify recovery UI HTML file exists
+  if [ -f /usr/share/misc/recovery_ui.html ]; then
+    SKIP_OOBE="--login-screen=html file:///usr/share/misc/recovery_ui.html"
+  else
+    # Fall back to displaying a blank screen
+    # the magic string "test:nowindow" comes from
+    # src/chrome/browser/chromeos/login/wizard_controller.cc
+    SKIP_OOBE="--login-screen=test:nowindow"
+  fi
 fi
 
 # Enables gathering of chrome dumps.  In stateful partition so testers
@@ -157,5 +163,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-nacl \
             --enable-tabbed-options \
             --scroll-pixels=4 \
-            "${SKIP_OOBE}" \
+            ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
