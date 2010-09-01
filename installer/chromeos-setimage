@@ -265,6 +265,7 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_grub_cfg" ]; then
 fi
 
 # Rinse and repeat for the Legacy BIOS bootloader (syslinux)
+syslinux_root_cfg=${mountpoint}/syslinux/root.${newimg_letter}.cfg
 if [ -z "$FLAGS_update_syslinux_cfg" ]; then
   # Update the root.X.cfg in place if none given.
   # Note that the replacement variables may not be intact.
@@ -280,7 +281,6 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_syslinux_cfg" ]; then
   sudo cp ${tempfile} ${mountpoint}/syslinux/default.cfg
 
   vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.${newimg_letter}
-  syslinux_root_cfg=${mountpoint}/syslinux/root.${newimg_letter}.cfg
 
   # 3 and 5 are the current rootfs a and b partitions
   DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
