@@ -60,6 +60,15 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # FS as such
   touch "${INSTALL_ROOT}/.nodelta" || true
 
+  # TODO(zelidrag): http://crosbug/6367 - Remove this before the product is
+  # released. For now, this should recover users that reimaged their machine.
+  if [ -f /home/chronos/.oobe_completed ]; then
+    CONSENT_FILE="/home/chronos/Consent To Send Stats"
+    if [ ! -f "$CONSENT_FILE" ]; then
+      "${INSTALL_ROOT}/usr/bin/uuidgen" > "$CONSENT_FILE"
+    fi
+  fi
+
   echo " Set boot target to ${INSTALL_DEV}: \
 Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
