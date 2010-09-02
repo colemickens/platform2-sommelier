@@ -60,6 +60,8 @@ NssUtil* NssUtil::Create() {
 // static
 void NssUtil::KeyFromBuffer(const GArray* buf, std::vector<uint8>* out) {
   out->resize(buf->len);
+  if (buf->len == 0)
+    return;
   memcpy(&(out->at(0)), buf->data, buf->len);
 }
 
@@ -77,6 +79,10 @@ bool NssUtilImpl::OpenUserDB() {
 }
 
 bool NssUtilImpl::CheckOwnerKey(const std::vector<uint8>& public_key_der) {
+  if (public_key_der.size() == 0) {
+    LOG(ERROR) << "Not checking key because size is 0";
+    return false;
+  }
   scoped_ptr<base::RSAPrivateKey> pair(
       base::RSAPrivateKey::FindFromPublicKeyInfo(public_key_der));
   return pair.get() != NULL;
