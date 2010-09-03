@@ -14,8 +14,8 @@ CLIENT_ID,/usr/share/userfeedback/scripts/get_client_id
 LOGDATE,/bin/date
 Xorg.0.log,cat /var/log/Xorg.0.log
 boot_times,cat /tmp/boot-times-sent
-chrome_log,cat /home/chronos/user/chrome_log,ascii
-chrome_system_log,cat /home/chronos/chrome_log,ascii
+chrome_log,cat /home/chronos/user/chrome,ascii
+chrome_system_log,cat /var/log/chrome/chrome,ascii
 chromeos-wm.LATEST,cat /home/chronos/user/log/chromeos-wm.LATEST
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
@@ -25,7 +25,6 @@ hardware_class,/usr/bin/hardware_class
 hostname,hostname
 hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
-libcros_log,tail --bytes=10K /var/log/libcros_log
 login_times,cat /tmp/login-times-sent
 lsmod,/usr/sbin/lsmod
 lspci,/usr/sbin/lspci
@@ -38,6 +37,7 @@ ps,/bin/ps ux
 softwareupdate.log,cat /var/log/softwareupdate.log
 syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
 trackpad,/usr/bin/synclient -l
+ui_log,tail --bytes=10K /var/log/ui/ui.LATEST
 uname,/bin/uname -a
 update_engine.log,cat /var/log/update_engine.log
 wpa_supplicant,/usr/share/userfeedback/scripts/getmsgs --last '30 minutes' /var/log/hostap.log
