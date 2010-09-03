@@ -30,7 +30,7 @@ SIGNALLER_OBJS = signaller.o
 TEST_BIN = session_manager_unittest
 TEST_OBJS = $(SESSION_COMMON_OBJS) session_manager_testrunner.o \
 	session_manager_unittest.o child_job_unittest.o pref_store_unittest.o \
-	nss_util_unittest.o owner_key_unittest.o
+	nss_util_unittest.o owner_key_unittest.o system_utils_unittest.o
 
 BINDINGS_DIR = bindings
 

@@ -25,7 +25,8 @@ const uint8 OwnerKey::kAlgorithm[15] = {
 
 OwnerKey::OwnerKey(const FilePath& key_file)
     : key_file_(key_file),
-      have_checked_disk_(false) {
+      have_checked_disk_(false),
+      utils_(new SystemUtils) {
 }
 
 OwnerKey::~OwnerKey() {}
@@ -41,9 +42,8 @@ bool OwnerKey::PopulateFromDiskIfPossible() {
     return true;
   }
 
-  SystemUtils utils;
   int32 safe_file_size = 0;
-  if (!utils.EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
+  if (!utils_->EnsureAndReturnSafeFileSize(key_file_, &safe_file_size)) {
     LOG(ERROR) << key_file_.value() << " is too large!";
     return false;
   }
@@ -83,9 +83,9 @@ bool OwnerKey::Persist() {
     return false;
   }
 
-  if (key_.size() != file_util::WriteFile(key_file_,
-                                          reinterpret_cast<char*>(&key_[0]),
-                                          key_.size())) {
+  if (key_.size() != utils_->AtomicFileWrite(key_file_,
+                                             reinterpret_cast<char*>(&key_[0]),
+                                             key_.size())) {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }

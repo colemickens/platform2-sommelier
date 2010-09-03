@@ -9,12 +9,14 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
+#include <base/scoped_ptr.h>
 
 namespace base {
 class SignatureVerifier;
 }  // namespace base
 
 namespace login_manager {
+class SystemUtils;
 
 // This class holds the device owner's public key.
 //
@@ -62,6 +64,7 @@ class OwnerKey {
   const FilePath key_file_;
   bool have_checked_disk_;
   std::vector<uint8> key_;
+  scoped_ptr<SystemUtils> utils_;
 
   DISALLOW_COPY_AND_ASSIGN(OwnerKey);
 };

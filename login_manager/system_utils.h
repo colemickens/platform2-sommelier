@@ -28,6 +28,13 @@ class SystemUtils {
 
   virtual bool EnsureAndReturnSafeSize(int64 size_64, int32* size_32);
 
+  // Atomically writes the given buffer into the file, overwriting any
+  // data that was previously there.  Returns the number of bytes
+  // written, or -1 on error.
+  virtual bool AtomicFileWrite(const FilePath& filename,
+                               const char* data,
+                               int size);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };

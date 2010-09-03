@@ -15,6 +15,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include "base/scoped_temp_dir.h"
 #include <base/time.h>
 
 namespace login_manager {
@@ -67,6 +68,21 @@ bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
     return false;
   *size_32 = static_cast<int32>(size_64);
   return true;
+}
+
+bool SystemUtils::AtomicFileWrite(const FilePath& filename,
+                                  const char* data,
+                                  int size) {
+  ScopedTempDir tmpdir;
+  FilePath scratch_file;
+  if (!tmpdir.CreateUniqueTempDir())
+    return false;
+  if (!file_util::CreateTemporaryFileInDir(tmpdir.path(), &scratch_file))
+    return false;
+  if (file_util::WriteFile(scratch_file, data, size) != size)
+    return false;
+
+  return file_util::ReplaceFile(scratch_file, filename);
 }
 
 }  // namespace login_manager

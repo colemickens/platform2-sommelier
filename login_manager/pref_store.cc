@@ -9,6 +9,7 @@
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <login_manager/system_utils.h>
 
 namespace login_manager {
 
@@ -82,10 +83,8 @@ bool PrefStore::Persist() {
   base::JSONWriter::Write(prefs_.get(),
                           true /* pretty print, for now */,
                           &json);
-  int data_written = file_util::WriteFile(prefs_path_,
-                                          json.c_str(),
-                                          json.length());
-  return (data_written == json.length());
+  SystemUtils utils;
+  return utils.AtomicFileWrite(prefs_path_, json.c_str(), json.length());
 }
 
 void PrefStore::Whitelist(const std::string& name,
