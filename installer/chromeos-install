@@ -403,9 +403,6 @@ echo "Copying kernel..."
 fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_A} ${KERNEL_IMG_OFFSET} \
   if=${KERNEL_IMG} of=${DST} conv=notrunc
 
-fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_B} ${KERNEL_IMG_OFFSET} \
-  if=${KERNEL_IMG} of=${DST} conv=notrunc
-
 # Copy kernel verification block to target HD
 copy_kernel_vblock() {
   local ret=0
@@ -440,8 +437,6 @@ echo "Copying rootfs..."
 # areas we have after a build.
 fast_dd 512 ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} ${ROOTFS_IMG_OFFSET} \
   if=${ROOTFS_IMG} of=${DST} conv=notrunc
-fast_dd 512 ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_B} ${ROOTFS_IMG_OFFSET} \
-  if=${ROOTFS_IMG} of=${DST} conv=notrunc
 
 echo "Copying OEM customization..."
 fast_dd 512 ${OEM_IMG_SECTORS} ${START_OEM} ${OEM_IMG_OFFSET} \
@@ -460,18 +455,12 @@ if [ "$ARCH" != "ARM" ]; then
   # So any access that we need to do to the destination partitions will have
   # to go through loop devices.
 
-  # Now run the postinstall script in each new rootfs. Note that even though
+  # Now run the postinstall script on one new rootfs. Note that even though
   # we're passing the new destination partition number as an arg, the postinst
   # script had better not try to access it, for the reasons we just gave.
   loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
   sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3)
-  umount_from_loop_dev
-  loop_offset_cleanup
-
-  loop_offset_setup ${DST} ${START_ROOTFS_B}
-  mount_on_loop_dev
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 5)
   umount_from_loop_dev
   loop_offset_cleanup
 fi
