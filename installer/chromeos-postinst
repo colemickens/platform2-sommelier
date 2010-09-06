@@ -252,20 +252,35 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
     fi
 
-    # See if we need to update firmware. NOTE: we must activate new firmware only
-    # after new kernel is actived (installed and made bootable), otherwise new
-    # firmware with all old kernels may lead to recovery screen (due to new key).
+    # See if we need to update firmware. NOTE: we must activate new firmware
+    # only after new kernel is actived (installed and made bootable),
+    # otherwise new firmware with all old kernels may lead to recovery screen
+    # (due to new key).
     FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
     if [ ${FLAGS_update_firmware} -eq "${FLAGS_TRUE}" -a \
-         -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-      # The firmware update script is supposed to automatically identify current
-      # system state and decide the action to perform. "--background-update" tells
-      # it not to perform any dangerous things that would require/cause reboot,
-      # for example re-writing EC firmware. Those tasks will be done in next boot.
-      echo "Updating firmware"
-      "$FIRMWARE_UPDATE_SCRIPT" --background-update || exit 1
-      # Because next step after postinst may take a lot of time (eg, disk wiping)
-      # and people may confuse that as 'firmware update require a long wait',
+         -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
+      FIRMWARE_UPDATE_MODE=""
+      if [ -n "${IS_FACTORY_INSTALL}" ]; then
+        # factory-mode
+        FIRMWARE_UPDATE_MODE="--factory"
+      elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
+        # recovery-mode
+        FIRMWARE_UPDATE_MODE="--rw-ab-together"
+      elif [ -n "${IS_INSTALL}" ]; then
+        # installation from chromeos-install
+        FIRMWARE_UPDATE_MODE="--rw-ab-together"
+      else
+        # Default: background update by Update Engine.
+        # "--background-update" tells it not to perform any dangerous
+        # thing that would require/cause reboot, for example re-writing
+        # EC firmware. Those tasks will be done in next boot.
+        FIRMWARE_UPDATE_MODE="--background-update"
+      fi
+      FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
+      echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
+      "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS} || exit 1
+      # Next step after postinst may take a lot of time (eg, disk wiping)
+      # and people may confuse that as 'firmware update takes a long wait',
       # we explicitly prompt here.
       echo "Firmware update complete."
     fi

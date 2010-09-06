@@ -84,7 +84,7 @@ get_dev_switch_state() {
 
 # Install Google payload from USB image
 install_chromiumos_payload() {
-  /usr/sbin/chromeos-install --run_as_root --yes \
+  IS_RECOVERY_INSTALL=1 /usr/sbin/chromeos-install --run_as_root --yes \
       --payload_image=${1} >> $RECOVERY_LOG
   log "Recovery installer completed"
 
