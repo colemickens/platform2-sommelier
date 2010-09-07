@@ -442,9 +442,11 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
 bool Tpm::IsTransient(TSS_RESULT result) {
   bool transient = false;
   switch (ERROR_CODE(result)) {
-    case TSS_E_COMM_FAILURE:
-    case TSS_E_INVALID_HANDLE:
-    case TPM_E_DEFEND_LOCK_RUNNING:
+    case ERROR_CODE(TSS_E_COMM_FAILURE):
+    case ERROR_CODE(TSS_E_INVALID_HANDLE):
+    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
+    // TODO(fes): We're considering this a transient failure for now
+    case ERROR_CODE(TCS_E_KM_LOADFAILED):
       transient = true;
       break;
     default:
@@ -456,20 +458,30 @@ bool Tpm::IsTransient(TSS_RESULT result) {
 Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
   Tpm::TpmRetryAction status = Tpm::RetryNone;
   switch (ERROR_CODE(result)) {
-    case TSS_E_COMM_FAILURE:
+    case ERROR_CODE(TSS_E_COMM_FAILURE):
       LOG(ERROR) << "Communications failure with the TPM.";
       Disconnect();
       status = Tpm::RetryCommFailure;
       break;
-    case TSS_E_INVALID_HANDLE:
+    case ERROR_CODE(TSS_E_INVALID_HANDLE):
       LOG(ERROR) << "Invalid handle to the TPM.";
       Disconnect();
       status = Tpm::RetryCommFailure;
       break;
-    case TPM_E_DEFEND_LOCK_RUNNING:
+    // TODO(fes): We're considering this a communication failure for now.
+    case ERROR_CODE(TCS_E_KM_LOADFAILED):
+      LOG(ERROR) << "Key load failed; problem with parent key authorization.";
+      Disconnect();
+      status = Tpm::RetryCommFailure;
+      break;
+    case ERROR_CODE(TPM_E_DEFEND_LOCK_RUNNING):
       LOG(ERROR) << "The TPM is defending itself against possible dictionary "
                  << "attacks.";
       status = Tpm::RetryDefendLock;
+      break;
+      // This error occurs on bad password
+    case ERROR_CODE(TPM_E_DECRYPT_ERROR):
+      status = Tpm::RetryNone;
       break;
     default:
       break;
@@ -675,6 +687,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   // TODO(fes): Check RSA key modulus size, return an error or block input
+
   if ((*result = Tspi_Data_Bind(enc_handle, key_handle, data.size(),
       const_cast<BYTE *>(&data[0])))) {
     LOG(ERROR) << "Error calling Tspi_Data_Bind: " << *result;
@@ -790,7 +803,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   unsigned char* dec_data = NULL;
   UINT32 dec_data_length = 0;
   if ((*result = Tspi_Data_Unbind(enc_handle, key_handle, &dec_data_length,
-                                 &dec_data))) {
+                                  &dec_data))) {
     LOG(ERROR) << "Error calling Tspi_Data_Unbind: " << *result;
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;

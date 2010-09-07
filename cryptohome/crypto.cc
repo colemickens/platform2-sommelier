@@ -507,12 +507,14 @@ void Crypto::ClearKeyset() const {
 Crypto::CryptoError Crypto::TpmErrorToCrypto(
     Tpm::TpmRetryAction retry_action) const {
   switch (retry_action) {
+    case Tpm::Fatal:
+      return Crypto::CE_TPM_FATAL;
     case Tpm::RetryCommFailure:
       return Crypto::CE_TPM_COMM_ERROR;
     case Tpm::RetryDefendLock:
       return Crypto::CE_TPM_DEFEND_LOCK;
     default:
-      return Crypto::CE_TPM_FATAL;
+      return Crypto::CE_NONE;
   }
 }
 
