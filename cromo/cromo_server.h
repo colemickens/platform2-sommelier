@@ -10,6 +10,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "manager_server_glue.h"
+#include "hooktable.h"
 
 class ModemHandler;
 
@@ -32,9 +33,14 @@ class CromoServer
   static const char* kServiceName;
   static const char* kServicePath;
 
+  HookTable& start_exit_hooks() { return start_exit_hooks_; }
+  HookTable& exit_ok_hooks() { return exit_ok_hooks_; }
+
  private:
   // The modem handlers that we are managing.
   std::vector<ModemHandler*> modem_handlers_;
+  HookTable start_exit_hooks_;
+  HookTable exit_ok_hooks_;
 
   DISALLOW_COPY_AND_ASSIGN(CromoServer);
 };

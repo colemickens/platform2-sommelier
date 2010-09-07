@@ -44,7 +44,8 @@ GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 SRCS = main.cc \
        cromo_server.cc \
        modem_handler.cc \
-       plugin_manager.cc
+       plugin_manager.cc \
+       hooktable.cc
 OBJS = $(SRCS:.cc=.o)
 
 dummy_SRCS = dummy_modem_handler.cc \
@@ -68,11 +69,17 @@ dummy_modem.so: $(dummy_OBJS)
 # Plugins, which are built and loaded separately from the main
 # executable, must subclass ModemHandler, so we must export
 # the symbols defined by that class.
-$(SYMFILE): modem_handler.o
-	@nm --defined-only $< | grep 'T _ZN12ModemHandler' | \
-	    awk 'BEGIN {print "{"} {print "  " $$3";"} END {print "};"}' >$@
+KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable"
+$(SYMFILE): modem_handler.o hooktable.o
+	@echo '{' >$@
+	@for sym in "$(KEEP_SYMS)"; do \
+	  nm --defined-only $^ | grep "T $${sym}" \
+            | awk '{print "  "$$3";"}' >>$@ ; \
+	 done
+	@echo '};' >>$@
 
-EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h
+EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
+                               hooktable.h
 
 install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo
