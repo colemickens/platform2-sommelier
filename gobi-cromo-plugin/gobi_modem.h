@@ -9,6 +9,8 @@
 #include <glib.h>
 #include <pthread.h>
 #include <base/basictypes.h>
+// TODO(ers) remove following #include once logging spew is resolved
+#include <glog/logging.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 
@@ -188,11 +190,15 @@ class GobiModem
   static gboolean SessionStateCallback(gpointer data);
 
   static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
+    // TODO(ers) remove following log statement after logging spew is resolved
+    LOG(INFO) << "DataBearerCallback: " << data_bearer_technology;
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
 
   static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
+    // TODO(ers) remove following log statement after logging spew is resolved
+    LOG(INFO) << "RoamingIndicatorCallback: " << roaming;
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }

@@ -1181,7 +1181,6 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
 }
 
 gboolean GobiModem::SessionStateCallback(gpointer data) {
-  LOG(INFO) << "SessionStateCallback";
   SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL)
@@ -1191,7 +1190,6 @@ gboolean GobiModem::SessionStateCallback(gpointer data) {
 }
 
 gboolean GobiModem::RegistrationStateCallback(gpointer data) {
-  LOG(INFO) << "RegistrationStateCallback";
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
   delete args;
