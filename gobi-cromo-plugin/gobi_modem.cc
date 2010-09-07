@@ -12,6 +12,8 @@ extern "C" {
 #include <libudev.h>
 };
 
+#include <cromo/cromo_server.h>
+
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
@@ -202,6 +204,16 @@ GobiModem* GobiModem::connected_modem_(NULL);
 GobiModemHandler* GobiModem::handler_;
 GobiModem::mutex_wrapper_ GobiModem::modem_mutex_;
 
+bool StartExitTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  return modem->StartExit();
+}
+
+bool ExitOkTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  return modem->ExitOk();
+}
+
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
                      const DEVICE_ELEMENT& device,
@@ -222,6 +234,12 @@ GobiModem::GobiModem(DBus::Connection& connection,
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
   UnlockRequired = "";
   UnlockRetries = 999;
+
+  char name[64];
+  snprintf(name, sizeof(name), "gobi-start-exit-%p", static_cast<void*>(this));
+  handler_->server().start_exit_hooks().Add(name, StartExitTrampoline, this);
+  snprintf(name, sizeof(name), "gobi-exit-ok-%p", static_cast<void*>(this));
+  handler_->server().exit_ok_hooks().Add(name, ExitOkTrampoline, this);
 }
 
 GobiModem::~GobiModem() {
@@ -1306,4 +1324,14 @@ void GobiModem::SetDeviceProperties()
   }
   udev_enumerate_unref(udev_enumerate);
   udev_unref(udev);
+}
+
+bool GobiModem::StartExit() {
+  if (session_id_)
+    sdk_->StopDataSession(session_id_);
+  return true;
+}
+
+bool GobiModem::ExitOk() {
+  return session_id_ == 0;
 }

@@ -263,6 +263,12 @@ class GobiModem
   friend class GobiModemTest;
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
 
+  bool StartExit();
+  bool ExitOk();
+
+  friend bool StartExitTrampoline(void *arg);
+  friend bool ExitOkTrampoline(void *arg);
+
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
 
