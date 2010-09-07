@@ -83,9 +83,9 @@ bool OwnerKey::Persist() {
     return false;
   }
 
-  if (key_.size() != utils_->AtomicFileWrite(key_file_,
-                                             reinterpret_cast<char*>(&key_[0]),
-                                             key_.size())) {
+  if (!utils_->AtomicFileWrite(key_file_,
+                               reinterpret_cast<char*>(&key_[0]),
+                               key_.size())) {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }

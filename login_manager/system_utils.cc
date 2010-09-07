@@ -73,16 +73,14 @@ bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
 bool SystemUtils::AtomicFileWrite(const FilePath& filename,
                                   const char* data,
                                   int size) {
-  ScopedTempDir tmpdir;
   FilePath scratch_file;
-  if (!tmpdir.CreateUniqueTempDir())
-    return false;
-  if (!file_util::CreateTemporaryFileInDir(tmpdir.path(), &scratch_file))
+  if (!file_util::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
     return false;
   if (file_util::WriteFile(scratch_file, data, size) != size)
     return false;
 
-  return file_util::ReplaceFile(scratch_file, filename);
+  return (file_util::ReplaceFile(scratch_file, filename) &&
+          chmod(filename.value().c_str(), (S_IRUSR | S_IWUSR | S_IROTH)) == 0);
 }
 
 }  // namespace login_manager

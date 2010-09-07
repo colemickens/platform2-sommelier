@@ -51,10 +51,12 @@ class NssUtilImpl : public NssUtil {
 // Defined here, instead of up above, because we need NssUtilImpl.
 // static
 NssUtil* NssUtil::Create() {
-  if (!factory_)
+  if (!factory_) {
     return new NssUtilImpl;
-  else
+    base::EnsureNSSInit();
+  } else {
     return factory_->CreateNssUtil();
+  }
 }
 
 // static
@@ -70,7 +72,6 @@ NssUtilImpl::NssUtilImpl() {}
 NssUtilImpl::~NssUtilImpl() {}
 
 bool NssUtilImpl::OpenUserDB() {
-  base::EnsureNSSInit();
   // TODO(cmasone): If we ever try to keep the session_manager alive across
   // user sessions, we'll need to deal with the fact that we have no way to
   // close this persistent DB.
