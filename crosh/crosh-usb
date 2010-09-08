@@ -42,8 +42,14 @@ do_install() {
 cmd_update_firmware() {
   local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
 
+  # The firmware updater needs same permission as chromeos-install (the command
+  # invoked by do_install). chromeos-install is now running as normal user and
+  # then 'sudo' internally to invoke as root, so we also use sudo here.
+  # TODO(hungte) if some day we have better security jail / sandbox, change the
+  # sudo to follow new magic for granting root permission.
+
   if [ -s $CHROMEOS_FIRMWARE_UPDATE ]; then
-    $CHROMEOS_FIRMWARE_UPDATE
+    sudo $CHROMEOS_FIRMWARE_UPDATE
   else
     echo "There is no firmware update in this Chrome OS image."
   fi
