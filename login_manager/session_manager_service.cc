@@ -242,7 +242,7 @@ bool SessionManagerService::Run() {
 
   g_main_loop_run(main_loop_);
 
-  CleanupChildren(3);
+  CleanupChildren(kKillTimeout);
 
   return true;
 }
@@ -651,7 +651,9 @@ gboolean SessionManagerService::RestartJob(gint pid,
     return FALSE;
   }
 
-  system_->kill(-child_pid, SIGKILL);
+  system_->kill(child_pid, SIGTERM);
+  if (!system_->ChildIsGone(child_pid, kKillTimeout))
+    system_->kill(child_pid, SIGABRT);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
@@ -662,7 +664,9 @@ gboolean SessionManagerService::RestartJob(gint pid,
   child_jobs_[child_index]->SetArguments(arguments_string);
   child_pids_[child_index] = RunChild(child_jobs_[child_index]);
 
-  return *OUT_done = TRUE;
+  // To set "logged-in" state for BWSI mode.
+  return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
+                      OUT_done, error);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
