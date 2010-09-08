@@ -14,15 +14,9 @@ Suspender::Suspender(ScreenLocker* locker)
     : locker_(locker), suspend_requested_(false) {}
 
 void Suspender::RequestSuspend() {
-  if (util::LoggedIn()) {
-    suspend_requested_ = true;
-    locker_->LockScreen();
-    g_timeout_add(3000, CheckSuspendTimeout, this);
-  } else {
-    LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
-    util::SendSignalToPowerM(util::kShutdownSignal);
-
-  }
+  suspend_requested_ = true;
+  locker_->LockScreen();
+  g_timeout_add(3000, CheckSuspendTimeout, this);
 }
 
 void Suspender::CheckSuspend() {

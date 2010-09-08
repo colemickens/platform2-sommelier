@@ -34,12 +34,14 @@ class PowerManDaemon {
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
+  // Shutdown and suspend the system.
   void Shutdown();
   void Suspend();
 
   GMainLoop* loop_;
   Input input_;
-  bool use_input_for_lid_, use_input_for_key_power_;
+  bool use_input_for_lid_;
+  bool use_input_for_key_power_;
   bool lidstate_;
   int power_button_state_;
 };

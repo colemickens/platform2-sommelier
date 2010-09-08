@@ -11,6 +11,7 @@ namespace util {
 
 // powerd -> powerm constants
 extern const char* kLowerPowerManagerInterface;
+extern const char* kRequestCleanShutdown;
 extern const char* kSuspendSignal;
 extern const char* kShutdownSignal;
 

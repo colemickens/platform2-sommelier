@@ -132,6 +132,11 @@ class Daemon : public XIdleMonitor {
   // Always returns true.
   static gboolean GenerateBacklightLevelMetric(gpointer data);
 
+  // Timeout handler for clean shutdown. If we don't hear back from
+  // clean shutdown because the stopping is taking too long or hung,
+  // go through with the shutdown now.
+  static gboolean CleanShutdownTimedOut(gpointer data);
+
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryDischargeRateMetric(const chromeos::PowerStatus& info,
@@ -175,13 +180,19 @@ class Daemon : public XIdleMonitor {
   bool SendEnumMetricWithPowerState(const std::string& name, int sample,
                                     int max);
 
+  void StartCleanShutdown();
+  void Shutdown();
+  void Suspend();
+
   BacklightController* ctl_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   VideoDetectorInterface* video_detector_;
   XIdle idle_;
   double low_battery_suspend_percent_;
+  bool clean_shutdown_initiated_;
   bool low_battery_suspended_;
+  int64 clean_shutdown_timeout_ms_;
   int64 plugged_dim_ms_;
   int64 plugged_off_ms_;
   int64 plugged_suspend_ms_;

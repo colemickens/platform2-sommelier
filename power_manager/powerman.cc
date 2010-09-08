@@ -12,6 +12,7 @@
 
 namespace power_manager {
 
+
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
                                bool use_input_for_key_power)
   : loop_(NULL),
@@ -78,6 +79,10 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     LOG(INFO) << "power button is "
               << (0 < daemon->power_button_state_?"down.":"up.");
     daemon->Shutdown();
+  } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
+                                    util::kRequestCleanShutdown)) {
+    LOG(INFO) << "Request Clean Shutdown";
+    util::Launch("initctl emit power-manager-clean-shutdown");
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }

@@ -43,6 +43,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
       low_battery_suspend_percent_(0),
+      clean_shutdown_initiated_(false),
       low_battery_suspended_(false),
       enforce_lock_(false),
       use_xscreensaver_(false),
@@ -98,6 +99,8 @@ void Daemon::ReadSettings() {
   int64 low_battery_suspend_percent;
   CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
                             &low_battery_suspend_percent));
+  CHECK(prefs_->ReadSetting("clean_shutdown_timeout_ms",
+                            &clean_shutdown_timeout_ms_));
   CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
   CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
   CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
@@ -226,7 +229,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
     idle_state_ = kIdleSuspend;
-    suspender_.RequestSuspend();
+    Suspend();
   } else if (idle_time_ms >= off_ms_) {
     LOG(INFO) << "state = kIdleScreenOff";
     ctl_->SetPowerState(BACKLIGHT_OFF);
@@ -320,15 +323,15 @@ DBusHandlerResult Daemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestSuspendSignal)) {
     LOG(INFO) << "RequestSuspend event";
-    daemon->suspender_.RequestSuspend();
+    daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestShutdownSignal)) {
     LOG(INFO) << "RequestShutdown event";
-    util::SendSignalToPowerM(util::kShutdownSignal);
+    daemon->StartCleanShutdown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidClosed)) {
     LOG(INFO) << "Lid Closed event";
-    daemon->suspender_.RequestSuspend();
+    daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidOpened)) {
     LOG(INFO) << "Lid Opened event";
@@ -341,10 +344,20 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     LOG(INFO) << "Button Up event";
     if (daemon->idle_state_ == kIdleNormal ||
         daemon->idle_state_ == kIdleDim) {
-      LOG(INFO) << "Shutting down";
-      util::SendSignalToPowerM(util::kShutdownSignal);
+      LOG(INFO) << "Starting Clean Shutdown";
+      daemon->StartCleanShutdown();
     } else {
       LOG(INFO) << "Power button struck while screen off.";
+    }
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kCleanShutdown)) {
+    LOG(INFO) << "Clean shutdown event";
+    if (daemon->clean_shutdown_initiated_) {
+      daemon->clean_shutdown_initiated_ = false;
+      LOG(INFO) << "Shutting down";
+      daemon->Shutdown();
+    } else {
+      LOG(INFO) << "Received clean shutdown signal, but never asked for it.";
     }
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -377,7 +390,7 @@ void Daemon::SuspendOnLowBattery(double battery_percentage) {
       battery_percentage <= low_battery_suspend_percent_) {
     LOG(INFO) << "Low battery condition detected. Suspending immediately.";
     low_battery_suspended_ = true;
-    suspender_.RequestSuspend();
+    Suspend();
   } else if (kPowerConnected == plugged_state_ ||
              battery_percentage > low_battery_suspend_percent_ ) {
     low_battery_suspended_ = false;
@@ -388,6 +401,44 @@ void Daemon::SuspendOnLowBattery(double battery_percentage) {
     // User is on his own from here until the system dies. We will not try to
     // resuspend.
     LOG(INFO) << "Spurious low battery condition, or user living on the edge.";
+  }
+}
+
+gboolean Daemon::CleanShutdownTimedOut(gpointer data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  if (daemon->clean_shutdown_initiated_) {
+    daemon->clean_shutdown_initiated_ = false;
+    LOG(INFO) << "Timed out waiting for clean shutdown. Shutting down.";
+    daemon->Shutdown();
+  } else {
+    LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
+  }
+  return false;
+}
+
+void Daemon::StartCleanShutdown() {
+  clean_shutdown_initiated_ = true;
+  // Cancel any outstanding suspend in flight.
+  suspender_.CancelSuspend();
+  util::SendSignalToPowerM(util::kRequestCleanShutdown);
+  g_timeout_add(clean_shutdown_timeout_ms_, Daemon::CleanShutdownTimedOut,
+                this);
+}
+
+void Daemon::Shutdown() {
+  util::SendSignalToPowerM(util::kShutdownSignal);
+}
+
+void Daemon::Suspend() {
+  if (clean_shutdown_initiated_) {
+    LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
+    return;
+  }
+  if (util::LoggedIn()) {
+    suspender_.RequestSuspend();
+  } else {
+    LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
+    StartCleanShutdown();
   }
 }
 
