@@ -93,4 +93,5 @@ const char* kRequestShutdownSignal = "RequestShutdown";
 const char* kRequestUnlockScreenSignal = "RequestUnlockScreen";
 const char* kScreenIsLockedSignal = "ScreenIsLocked";
 const char* kScreenIsUnlockedSignal = "ScreenIsUnlocked";
+const char* kCleanShutdown = "CleanShutdown";
 }  // namespace power_manager

@@ -115,6 +115,7 @@ extern const char* kRequestShutdownSignal;
 extern const char* kRequestUnlockScreenSignal;
 extern const char* kScreenIsLockedSignal;
 extern const char* kScreenIsUnlockedSignal;
+extern const char* kCleanShutdown;
 }  // namespace power_manager
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
