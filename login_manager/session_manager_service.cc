@@ -685,7 +685,6 @@ void SessionManagerService::HandleChildExit(GPid pid,
     DLOG(INFO) << "  Exited...somehow, without an exit code or a signal??";
   }
 
-  bool exited_clean = WIFEXITED(status) && WEXITSTATUS(status) == 0;
   // If the child _ever_ exits uncleanly, we want to start it up again.
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
 
@@ -717,7 +716,7 @@ void SessionManagerService::HandleChildExit(GPid pid,
   }
 
   if (child_job) {
-    if (exited_clean || manager->ShouldStopChild(child_job)) {
+    if (manager->ShouldStopChild(child_job)) {
       ServiceShutdown(data);
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()

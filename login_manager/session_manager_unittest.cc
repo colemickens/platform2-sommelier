@@ -132,26 +132,31 @@ class SessionManagerTest : public ::testing::Test {
     switch (child_runs) {
     case ALWAYS:
       EXPECT_CALL(*file_checker_, exists())
-          .WillRepeatedly(Return(false));
+          .WillRepeatedly(Return(false))
+          .RetiresOnSaturation();
       break;
     case NEVER:
       EXPECT_CALL(*file_checker_, exists())
-          .WillOnce(Return(true));
+          .WillOnce(Return(true))
+          .RetiresOnSaturation();
       break;
     case ONCE:
       EXPECT_CALL(*file_checker_, exists())
           .WillOnce(Return(false))
-          .WillOnce(Return(true));
+          .WillOnce(Return(true))
+          .RetiresOnSaturation();
       break;
     case EXACTLY_ONCE:
       EXPECT_CALL(*file_checker_, exists())
-          .WillOnce(Return(false));
+          .WillOnce(Return(false))
+          .RetiresOnSaturation();
       break;
     case TWICE:
       EXPECT_CALL(*file_checker_, exists())
           .WillOnce(Return(false))
           .WillOnce(Return(false))
-          .WillOnce(Return(true));
+          .WillOnce(Return(true))
+          .RetiresOnSaturation();
       break;
     case MAYBE_NEVER:
       // If it's called, don't run.
@@ -261,6 +266,8 @@ TEST_F(SessionManagerTest, CleanExitChild) {
   MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
+  EXPECT_CALL(*job, ShouldStop())
+      .WillOnce(Return(true));
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
@@ -283,12 +290,14 @@ TEST_F(SessionManagerTest, CleanExitChild2) {
       .WillByDefault(Invoke(RunAndSleep));
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(CleanExit));
+  EXPECT_CALL(*job2, ShouldStop())
+      .WillOnce(Return(true));
 
   SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, LoadOwnerKey) {
-  MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
+  MockChildJob* job = CreateTrivialMockJob(ONCE);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
   ON_CALL(*job, Run())
@@ -496,11 +505,13 @@ TEST_F(SessionManagerTest, StatsRecorded) {
   FilePath disk(kDiskFile1);
   file_util::Delete(uptime, false);
   file_util::Delete(disk, false);
-  MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
+  MockChildJob* job = CreateTrivialMockJob(ONCE);
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
+  EXPECT_CALL(*job, ShouldStop())
+      .WillOnce(Return(false));
   ON_CALL(*job, GetName())
       .WillByDefault(Invoke(name));
   SimpleRunManager();
