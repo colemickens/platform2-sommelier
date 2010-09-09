@@ -88,6 +88,8 @@ if [ -f "$RESET_FILE" ]; then
     FAST=$(cat $RESET_FILE)
     if [ "$FAST" = "fast" ]; then
       exec /sbin/clobber-state fast
+    elif [ "$FAST" = "fast test" ]; then
+      exec /sbin/clobber-state fast test
     else
       exec /sbin/clobber-state
     fi

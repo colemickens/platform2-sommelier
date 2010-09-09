@@ -19,6 +19,7 @@ fi
 
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
 FAST_WIPE="$1"
+FAST_TEST="$2"
 
 wipedev() {
   DEV="$1"
@@ -40,9 +41,14 @@ wipedev() {
     seek=$(($FULL_BLKS * $BLOCKS_4M))
 }
 
-# Root devs are sda3, sda5. 
+# Root devs are sda3, sda5.
 # Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev)
+# Find our stateful partition. It's always partition 1.
+# On verified boot, we get the real root from the dm slaves.
+if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
+  ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
+fi
 STATE_DEV=${ROOT_DEV%[0-9]*}1
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
@@ -53,6 +59,11 @@ if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
 then
   echo "Invalid partition to wipe, $WIPE_PART_NUM (${OTHER_ROOT_DEV})"
   exit 1
+fi
+
+# Save dev_image in tmp as a stow-away.
+if [ "${FAST_TEST}" = "test" -a -d /mnt/stateful_partition/dev_image ]; then
+  cp -af /mnt/stateful_partition/dev_image /tmp
 fi
 
 umount /mnt/stateful_partition
@@ -75,6 +86,12 @@ else
   wipedev ${STATE_DEV}
 
   /sbin/mkfs.ext3 "$STATE_DEV"
+fi
+
+# Restore dev_image from tmp.
+if [ "${FAST_TEST}" = "test" -a -d /tmp/dev_image ]; then
+  mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
+  cp -af /tmp/dev_image /mnt/stateful_partition
 fi
 
 # Flush linux caches.
