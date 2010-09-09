@@ -49,11 +49,12 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     # Fetch our writeable lsb-release from the stateful
     # partition if available.
     TMP_STATEFUL="$(mktemp -d)"
-    mkdir -p /mnt/stateful_partition/etc
+    FACTORY_LSB_REL="dev_image/etc/lsb-factory"
+    mkdir -p /mnt/stateful_partition/dev_image/etc
     mount -n -t ext3 "$STATE_DEV" "$TMP_STATEFUL"
-    if [ -f "${TMP_STATEFUL}/etc/lsb-release" ]; then
-      cp -a "${TMP_STATEFUL}/etc/lsb-release" \
-          /mnt/stateful_partition/etc/lsb-release
+    if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
+      cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
+          /mnt/stateful_partition/${FACTORY_LSB_REL}
     fi
     umount "$TMP_STATEFUL"
     rmdir "$TMP_STATEFUL"
