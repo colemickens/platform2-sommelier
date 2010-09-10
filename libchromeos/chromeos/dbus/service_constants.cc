@@ -30,6 +30,7 @@ const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
 const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
 const char *kCryptohomeAsyncMount = "AsyncMount";
 const char *kCryptohomeAsyncMountGuest = "AsyncMountGuest";
+const char *kCryptohomeAsyncRemove = "AsyncRemove";
 const char *kCryptohomeGetStatusString = "GetStatusString";
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";

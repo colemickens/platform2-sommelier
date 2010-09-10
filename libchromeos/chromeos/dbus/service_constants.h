@@ -32,6 +32,7 @@ extern const char *kCryptohomeAsyncCheckKey;
 extern const char *kCryptohomeAsyncMigrateKey;
 extern const char *kCryptohomeAsyncMount;
 extern const char *kCryptohomeAsyncMountGuest;
+extern const char *kCryptohomeAsyncRemove;
 extern const char *kCryptohomeGetStatusString;
 // Signals
 extern const char *kSignalAsyncCallStatus;
