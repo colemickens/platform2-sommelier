@@ -19,7 +19,7 @@ VideoDetector::VideoDetector()
       root_window_(NULL) {}
 
 void VideoDetector::Init() {
-  video_time_atom_ = XInternAtom(GDK_DISPLAY(), "_CHROME_VIDEO_TIME", true);
+  video_time_atom_ = XInternAtom(GDK_DISPLAY(), "_CHROME_VIDEO_TIME", false);
   DCHECK(None != video_time_atom_);
   root_window_ = DefaultRootWindow(GDK_DISPLAY());
   DCHECK(root_window_);
