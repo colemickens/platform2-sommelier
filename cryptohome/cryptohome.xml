@@ -36,6 +36,10 @@
       <arg type="s" name="username" direction="in" />
       <arg type="b" name="success" direction="out" />
     </method>
+    <method name="AsyncRemove">
+      <arg type="s" name="username" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
     <method name="GetSystemSalt">
       <arg type="ay" name="salt" direction="out" />
     </method>

@@ -90,4 +90,12 @@ void MountTaskTestCredentials::Run() {
   MountTask::Notify();
 }
 
+void MountTaskRemove::Run() {
+  if (mount_) {
+    bool status = mount_->RemoveCryptohome(credentials_);
+    result()->set_return_status(status);
+  }
+  MountTask::Notify();
+}
+
 }  // namespace cryptohome

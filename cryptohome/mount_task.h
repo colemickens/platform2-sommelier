@@ -275,6 +275,22 @@ class MountTaskTestCredentials : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskTestCredentials);
 };
 
+// Implements asychronous calls to Mount::RemoveCryptohome()
+class MountTaskRemove : public MountTask {
+ public:
+  MountTaskRemove(MountTaskObserver* observer,
+                  Mount* mount,
+                  const UsernamePasskey& credentials)
+      : MountTask(observer, mount, credentials) {
+  }
+  virtual ~MountTaskRemove() { }
+
+  virtual void Run();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountTaskRemove);
+};
+
 }  // namespace cryptohome
 
 #endif // CRYPTOHOME_MOUNT_TASK_H_

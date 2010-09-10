@@ -200,4 +200,17 @@ TEST_F(MountTaskTest, TestCredentailsTest) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
+TEST_F(MountTaskTest, RemoveTest) {
+  EXPECT_CALL(mount_, RemoveCryptohome(_))
+      .WillOnce(Return(true));
+
+  ASSERT_FALSE(event_.IsSignaled());
+  MountTask* mount_task = new MountTaskRemove(NULL, &mount_, UsernamePasskey());
+  mount_task->set_complete_event(&event_);
+  mount_task->set_result(&result_);
+  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event_.TimedWait(wait_time_);
+  ASSERT_TRUE(event_.IsSignaled());
+}
+
 } // namespace cryptohome

@@ -217,7 +217,27 @@ gboolean Service::Remove(gchar *userid,
                          GError **error) {
   UsernamePasskey credentials(userid, chromeos::Blob());
 
-  *OUT_result = mount_->RemoveCryptohome(credentials);
+  MountTaskResult result;
+  base::WaitableEvent event(true, false);
+  MountTaskRemove* mount_task =
+      new MountTaskRemove(this, mount_, credentials);
+  mount_task->set_result(&result);
+  mount_task->set_complete_event(&event);
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event.Wait();
+  *OUT_result = result.return_status();
+  return TRUE;
+}
+
+gboolean Service::AsyncRemove(gchar *userid,
+                              gint *OUT_async_id,
+                              GError **error) {
+  UsernamePasskey credentials(userid, chromeos::Blob());
+
+  MountTaskRemove* mount_task =
+      new MountTaskRemove(this, mount_, credentials);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
 }
 

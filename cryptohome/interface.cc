@@ -84,6 +84,12 @@ gboolean cryptohome_remove(Cryptohome *self,
                            GError **error) {
   CRYPTOHOME_WRAP_METHOD(Remove, userid, OUT_result);
 }
+gboolean cryptohome_async_remove(Cryptohome *self,
+                                 gchar *userid,
+                                 gint *OUT_async_id,
+                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncRemove, userid, OUT_async_id);
+}
 gboolean cryptohome_get_system_salt(Cryptohome *self,
                                     GArray **OUT_salt,
                                     GError **error) {

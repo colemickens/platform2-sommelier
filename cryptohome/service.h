@@ -95,6 +95,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean Remove(gchar *user,
                           gboolean *OUT_result,
                           GError **error);
+  virtual gboolean AsyncRemove(gchar *user,
+                               gint *OUT_async_id,
+                               GError **error);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,

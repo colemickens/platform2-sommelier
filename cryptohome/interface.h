@@ -57,6 +57,10 @@ gboolean cryptohome_remove(Cryptohome *self,
                            gchar *userid,
                            gboolean *OUT_result,
                            GError **error);
+gboolean cryptohome_async_remove(Cryptohome *self,
+                                 gchar *userid,
+                                 gint *OUT_async_id,
+                                 GError **error);
 gboolean cryptohome_get_system_salt(Cryptohome *self,
                                     GArray **OUT_salt,
                                     GError **error);
