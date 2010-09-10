@@ -100,6 +100,20 @@ TEST_F(GobiSdkTest, EnterLeaveDeathTest) {
   EXPECT_STREQ(last_function,
                sdk_.service_to_function_[kLastService]);
 }
+
+TEST_F(GobiSdkTest, TemporaryCopier) {
+  Sdk::TemporaryCopier a(NULL);
+  EXPECT_EQ(NULL, a.get());
+
+  Sdk::TemporaryCopier b("");
+  EXPECT_NE(static_cast<const char *>(NULL), b.get());
+  EXPECT_STREQ("", b.get());
+
+  const char *hello="hello";
+  Sdk::TemporaryCopier c(hello);
+  EXPECT_STREQ(hello, c.get());
+  EXPECT_NE(hello, c.get());
+}
 }  // namespace gobi
 
 int main(int argc, char *argv[]) {

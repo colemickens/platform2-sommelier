@@ -27,6 +27,7 @@
 #include <pthread.h>
 
 #include <base/basictypes.h> // for DISALLOW_COPY_AND_ASSIGN
+#include <base/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 #include <string>
@@ -546,18 +547,17 @@ class Sdk {
       ULONG *                    pFileSize,
       BYTE *                     pFile);
 
-  // NB: CHROMIUM: modified this to const after investigating QC code
   virtual ULONG ActivateAutomatic(const CHAR * pActivationCode);
 
   virtual ULONG ActivateManual(
-      CHAR *                     pSPC,
+      const CHAR *               pSPC,
       WORD                       sid,
-      CHAR *                     pMDN,
-      CHAR *                     pMIN,
+      const CHAR *               pMDN,
+      const CHAR *               pMIN,
       ULONG                      prlSize,
       BYTE *                     pPRL,
-      CHAR *                     pMNHA,
-      CHAR *                     pMNAAA);
+      const CHAR *               pMNHA,
+      const CHAR *               pMNAAA);
 
   virtual ULONG ResetToFactoryDefaults(CHAR * pSPC);
 
@@ -853,6 +853,25 @@ class Sdk {
 
  protected:
 
+  // Make a temporary copy of a char *, preserving the NULL-ness of the
+  // input.
+  struct TemporaryCopier {
+   public:
+    explicit TemporaryCopier(const char *in) {
+      if (!in) {
+        str_.reset(NULL);
+      } else {
+        str_.reset(strdup(in));
+      }
+    }
+    char *get() {
+      return str_.get();
+    }
+   private:
+    scoped_ptr<char> str_;
+    DISALLOW_COPY_AND_ASSIGN(TemporaryCopier);
+  };
+
   // The CMAPI is split into groups.  Functions in multiple groups can
   // be called simultaneously, but each group is nonreentrant against
   // itself.  This machinery verifies that we don't violate these
@@ -882,6 +901,7 @@ class Sdk {
   FRIEND_TEST(GobiSdkTest, EnterLeaveDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromNameDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromName);
+  FRIEND_TEST(GobiSdkTest, TemporaryCopier);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Sdk);

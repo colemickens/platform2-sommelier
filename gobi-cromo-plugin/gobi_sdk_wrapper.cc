@@ -956,31 +956,37 @@ ULONG Sdk::GetERIFile(
       pFile);
 }
 
-// NB: CHROMIUM: modified this to const after investigating QC code
 ULONG Sdk::ActivateAutomatic(const CHAR * pActivationCode) {
+  TemporaryCopier mutableActivationCode(pActivationCode);
   ReentrancyPreventer rp(this, "ActivateAutomatic");
-  return ::ActivateAutomatic(const_cast<CHAR *>(pActivationCode));
+  return ::ActivateAutomatic(mutableActivationCode.get());
 }
 
 ULONG Sdk::ActivateManual(
-    CHAR *                     pSPC,
-    WORD                       sid,
-    CHAR *                     pMDN,
-    CHAR *                     pMIN,
-    ULONG                      prlSize,
-    BYTE *                     pPRL,
-    CHAR *                     pMNHA,
-    CHAR *                     pMNAAA) {
+    const CHAR *                pSPC,
+    WORD                        sid,
+    const CHAR *                pMDN,
+    const CHAR *                pMIN,
+    ULONG                       prlSize,
+    BYTE *                      pPRL,
+    const CHAR *                pMNHA,
+    const CHAR *                pMNAAA) {
+  TemporaryCopier mutableSPC(pSPC);
+  TemporaryCopier mutableMDN(pMDN);
+  TemporaryCopier mutableMIN(pMIN);
+  TemporaryCopier mutableMNHA(pMNHA);
+  TemporaryCopier mutableMNAAA(pMNAAA);
+
   ReentrancyPreventer rp(this, "ActivateManual");
   return ::ActivateManual(
-      pSPC,
+      mutableSPC.get(),
       sid,
-      pMDN,
-      pMIN,
+      mutableMDN.get(),
+      mutableMIN.get(),
       prlSize,
       pPRL,
-      pMNHA,
-      pMNAAA);
+      mutableMNHA.get(),
+      mutableMNAAA.get());
 }
 
 ULONG Sdk::ResetToFactoryDefaults(CHAR * pSPC) {
