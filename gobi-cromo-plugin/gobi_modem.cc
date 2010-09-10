@@ -243,6 +243,12 @@ GobiModem::GobiModem(DBus::Connection& connection,
 }
 
 GobiModem::~GobiModem() {
+  char name[64];
+  snprintf(name, sizeof(name), "gobi-start-exit-%p", static_cast<void*>(this));
+  handler_->server().start_exit_hooks().Del(name);
+  snprintf(name, sizeof(name), "gobi-exit-ok-%p", static_cast<void*>(this));
+  handler_->server().exit_ok_hooks().Del(name);
+
   pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
     connected_modem_ = NULL;
