@@ -875,10 +875,9 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
 
   if (modem_carrier_id != carrier->carrier_id) {
 
-    // N.B. All but basename of image_path is ignored, by the
-    // UpgradeFirmware call
-    std::string image_path = "/opt/Qualcomm/Images2k/HP/";
-    image_path += carrier->firmware_directory;
+    // UpgradeFirmware doesn't pay attention to anything before the
+    // last /, so we don't supply it
+    std::string image_path = std::string("/") + carrier->firmware_directory;
 
     LOG(INFO) << "Current Gobi carrier: " << modem_carrier_id
               << ".  Carrier image selection of "
