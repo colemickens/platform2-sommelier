@@ -682,7 +682,70 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }
 
+static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
+  LOG(INFO) << "ByteTotalsCallback: tx " << tx << " rx " << rx;
+}
+
+static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
+  ULONG *ucaps = reinterpret_cast<ULONG*>(caps);
+  LOG(INFO) << "DataCapabiliesHandler: " << size << " caps";
+  for (int i = 0; i < size; i++) {
+    LOG(INFO) << "Cap: " << ucaps[i];
+  }
+}
+
+static void DormancyStatusCallback(ULONG status) {
+  LOG(INFO) << "DormancyStatusCallback: " << status;
+}
+
+static void MobileIPStatusCallback(ULONG status) {
+  LOG(INFO) << "MobileIPStatusCallback: " << status;
+}
+
+static void PowerCallback(ULONG mode) {
+  LOG(INFO) << "PowerCallback: " << mode;
+}
+
+static void RFInfoCallback(ULONG iface, ULONG bandclass, ULONG channel) {
+  LOG(INFO) << "RFInfoCallback: iface " << iface
+            << " bandclass " << bandclass
+            << " channel " << channel;
+}
+
+static void LURejectCallback(ULONG domain, ULONG cause) {
+  LOG(INFO) << "LURejectCallback: domain " << domain << " cause " << cause;
+}
+
+static void NewSMSCallback(ULONG type, ULONG index) {
+  LOG(INFO) << "NewSMSCallback: type " << type << " index " << index;
+}
+
+static void NMEACallback(LPCSTR nmea) {
+  LOG(INFO) << "NMEACallback: " << nmea;
+}
+
+static void PDSStateCallback(ULONG enabled, ULONG tracking) {
+  LOG(INFO) << "PDSStateCallback: enabled " << enabled
+            << " tracking " << tracking;
+}
+
+static void OMADMAlertCallback(ULONG type, USHORT id) {
+  LOG(INFO) << "OMDADMAlertCallback type " << type << " id " << id;
+}
+
 void GobiModem::RegisterCallbacks() {
+  sdk_->SetByteTotalsCallback(ByteTotalsCallback, 1);
+  sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallback);
+  sdk_->SetDormancyStatusCallback(DormancyStatusCallback);
+  sdk_->SetMobileIPStatusCallback(MobileIPStatusCallback);
+  sdk_->SetPowerCallback(PowerCallback);
+  sdk_->SetRFInfoCallback(RFInfoCallback);
+  sdk_->SetLURejectCallback(LURejectCallback);
+  sdk_->SetNewSMSCallback(NewSMSCallback);
+  sdk_->SetNMEACallback(NMEACallback);
+  sdk_->SetPDSStateCallback(PDSStateCallback);
+  sdk_->SetOMADMAlertCallback(OMADMAlertCallback);
+
   sdk_->SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
   sdk_->SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
   sdk_->SetOMADMStateCallback(OmadmStateCallbackTrampoline);
