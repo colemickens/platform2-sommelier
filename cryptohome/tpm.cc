@@ -23,8 +23,8 @@
 namespace cryptohome {
 
 const unsigned char kDefaultSrkAuth[] = { };
-const int kDefaultTpmRsaKeyBits = 2048;
-const int kDefaultDiscardableWrapPasswordLength = 32;
+const unsigned int kDefaultTpmRsaKeyBits = 2048;
+const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
 const char kDefaultCryptohomeKeyFile[] = "/home/.shadow/cryptohome.key";
 const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0, 0, 0,
                                            {0, 9, 8, 1, 0, 3}};
@@ -512,7 +512,7 @@ bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   return true;
 }
 
-int Tpm::GetMaxRsaKeyCount() {
+unsigned int Tpm::GetMaxRsaKeyCount() {
   if (context_handle_ == 0) {
     return -1;
   }
@@ -520,8 +520,8 @@ int Tpm::GetMaxRsaKeyCount() {
   return GetMaxRsaKeyCountForContext(context_handle_);
 }
 
-int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
-  int count = -1;
+unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
+  unsigned int count = 0;
   TSS_RESULT result;
   TSS_HTPM tpm_handle;
   if ((result = Tspi_Context_GetTpmObject(context_handle, &tpm_handle))) {
@@ -539,8 +539,8 @@ int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
     LOG(ERROR) << "Error calling Tspi_TPM_GetCapability: " << result;
     return count;
   }
-  if (cap_length == sizeof(int)) {
-    count = *(reinterpret_cast<int*>(cap));
+  if (cap_length == sizeof(unsigned int)) {
+    count = *(reinterpret_cast<unsigned int*>(cap));
   }
   Tspi_Context_FreeMemory(context_handle, cap);
   return count;
@@ -553,7 +553,7 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
     return false;
   }
 
-  for (int i = 0; i < 5; i++) {
+  for (unsigned int i = 0; i < 5; i++) {
     if ((*result = Tspi_Context_Connect(local_context_handle, NULL))) {
       // If there was a communications failure, try sleeping a bit here--it may
       // be that tcsd is still starting
@@ -580,7 +580,7 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
 }
 
 bool Tpm::Encrypt(const chromeos::Blob& data, const chromeos::Blob& password,
-                  int password_rounds, const chromeos::Blob& salt,
+                  unsigned int password_rounds, const chromeos::Blob& salt,
                   SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
@@ -599,7 +599,7 @@ bool Tpm::Encrypt(const chromeos::Blob& data, const chromeos::Blob& password,
 }
 
 bool Tpm::Decrypt(const chromeos::Blob& data, const chromeos::Blob& password,
-                  int password_rounds, const chromeos::Blob& salt,
+                  unsigned int password_rounds, const chromeos::Blob& salt,
                   SecureBlob* data_out, Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
@@ -670,10 +670,13 @@ bool Tpm::LoadKey(const SecureBlob& blob, Tpm::TpmRetryAction* retry_action) {
 }
 
 // Begin private methods
-bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
+                      TSS_HKEY key_handle,
                       const chromeos::Blob& data,
-                      const chromeos::Blob& password, int password_rounds,
-                      const chromeos::Blob& salt, SecureBlob* data_out,
+                      const chromeos::Blob& password,
+                      unsigned int password_rounds,
+                      const chromeos::Blob& salt,
+                      SecureBlob* data_out,
                       TSS_RESULT* result) {
   *result = TSS_SUCCESS;
 
@@ -722,11 +725,11 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   unsigned int aes_block_size = crypto_->GetAesBlockSize();
-  unsigned int offset = local_data.size() - aes_block_size;
-  if (offset < 0) {
+  if (aes_block_size > local_data.size()) {
     LOG(ERROR) << "Encrypted data is too small.";
     return false;
   }
+  unsigned int offset = local_data.size() - aes_block_size;
 
   SecureBlob passkey_part;
   if (!crypto_->WrapAesSpecifyBlockMode(local_data, offset, aes_block_size,
@@ -744,10 +747,13 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   return true;
 }
 
-bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
+bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
+                      TSS_HKEY key_handle,
                       const chromeos::Blob& data,
-                      const chromeos::Blob& password, int password_rounds,
-                      const chromeos::Blob& salt, SecureBlob* data_out,
+                      const chromeos::Blob& password,
+                      unsigned int password_rounds,
+                      const chromeos::Blob& salt,
+                      SecureBlob* data_out,
                       TSS_RESULT* result) {
   *result = TSS_SUCCESS;
 
@@ -763,11 +769,11 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   unsigned int aes_block_size = crypto_->GetAesBlockSize();
-  unsigned int offset = data.size() - aes_block_size;
-  if (offset < 0) {
+  if (aes_block_size > data.size()) {
     LOG(ERROR) << "Input data is too small.";
     return false;
   }
+  unsigned int offset = data.size() - aes_block_size;
 
   SecureBlob passkey_part;
   if (!crypto_->UnwrapAesSpecifyBlockMode(data, offset, aes_block_size, aes_key,

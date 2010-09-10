@@ -6,6 +6,7 @@
 
 #include "crypto.h"
 
+#include <limits>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -36,13 +37,13 @@ namespace cryptohome {
 
 const std::string kDefaultEntropySource = "/dev/urandom";
 const std::string kOpenSSLMagic = "Salted__";
-const int kWellKnownExponent = 65537;
-const int kScryptMaxMem = 32 * 1024 * 1024;
+const unsigned int kWellKnownExponent = 65537;
+const unsigned int kScryptMaxMem = 32 * 1024 * 1024;
 const double kScryptMaxEncryptTime = 0.333;
 const double kScryptMaxDecryptTime = 1.0;
-const int kScryptHeaderLength = 128;
-const int kDefaultLegacyPasswordRounds = 1;
-const int kDefaultPasswordRounds = 1337;
+const unsigned int kScryptHeaderLength = 128;
+const unsigned int kDefaultLegacyPasswordRounds = 1;
+const unsigned int kDefaultPasswordRounds = 1337;
 
 Crypto::Crypto()
     : entropy_source_(kDefaultEntropySource),
@@ -95,9 +96,13 @@ void Crypto::SeedRng() const {
   }
 }
 
-void Crypto::GetSecureRandom(unsigned char *rand, int length) const {
+void Crypto::GetSecureRandom(unsigned char *rand, unsigned int length) const {
   SeedRng();
-  // Have OpenSSL generate the random bytes
+  // OpenSSL takes a signed integer.  On the off chance that the user requests
+  // somethign too large, truncate it.
+  if (length > static_cast<unsigned int>(std::numeric_limits<int>::max())) {
+    length = std::numeric_limits<int>::max();
+  }
   RAND_bytes(rand, length);
 }
 
@@ -120,16 +125,29 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
                                      PaddingScheme padding,
                                      BlockMode block_mode,
                                      SecureBlob* wrapped) const {
-  if ((start + count) > unwrapped.size()) {
+  if ((start > unwrapped.size()) ||
+      ((start + count) > unwrapped.size()) ||
+      ((start + count) < start)) {
     return false;
   }
-  int block_size = GetAesBlockSize();
-  int needed_size = count;
+  if (count > static_cast<unsigned int>(std::numeric_limits<int>::max())) {
+    // EVP_EncryptUpdate takes a signed int
+    return false;
+  }
+  unsigned int block_size = GetAesBlockSize();
+  unsigned int needed_size = count;
   switch (padding) {
     case PADDING_CRYPTOHOME_DEFAULT:
+      // The AES block size and SHA digest length are not enough for this to
+      // overflow, as needed_size is initialized to count, which must be <=
+      // INT_MAX, but needed_size is itself an unsigned.  The block size and
+      // digest length are fixed by the algorithm.
       needed_size += block_size + SHA_DIGEST_LENGTH;
       break;
     case PADDING_LIBRARY_DEFAULT:
+      // The AES block size is not enough for this to overflow, as needed_size
+      // is initialized to count, which must be <= INT_MAX, but needed_size is
+      // itself an unsigned.  The block size is fixed by the algorithm.
       needed_size += block_size;
       break;
     case PADDING_NONE:
@@ -179,7 +197,7 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
   if (padding == PADDING_NONE) {
     EVP_CIPHER_CTX_set_padding(&e_ctx, 0);
   }
-  int current_size = 0;
+  unsigned int current_size = 0;
   int encrypt_size = 0;
   if (!EVP_EncryptUpdate(&e_ctx, &cipher_text[current_size], &encrypt_size,
                          &unwrapped[start], count)) {
@@ -221,8 +239,13 @@ bool Crypto::WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
   return true;
 }
 
-void Crypto::GetSha1(const chromeos::Blob& data, int start, int count,
-                     SecureBlob* hash) const {
+void Crypto::GetSha1(const chromeos::Blob& data, unsigned int start,
+                     unsigned int count, SecureBlob* hash) const {
+  if (start > data.size() ||
+      ((start + count) > data.size()) ||
+      ((start + count) < start)) {
+    return;
+  }
   SHA_CTX sha_ctx;
   unsigned char md_value[SHA_DIGEST_LENGTH];
 
@@ -248,11 +271,18 @@ bool Crypto::UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
                                        PaddingScheme padding,
                                        BlockMode block_mode,
                                        SecureBlob* unwrapped) const {
-  if ((start + count) > wrapped.size()) {
+  if ((start > wrapped.size()) ||
+      ((start + count) > wrapped.size()) ||
+      ((start + count) < start)) {
     return false;
   }
   SecureBlob plain_text(count);
 
+  if (plain_text.size() >
+      static_cast<unsigned int>(std::numeric_limits<int>::max())) {
+    // EVP_DecryptUpdate takes a signed int
+    return false;
+  }
   int final_size = 0;
   int decrypt_size = plain_text.size();
 
@@ -345,7 +375,7 @@ bool Crypto::UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
 }
 
 bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
-                             const chromeos::Blob& salt, int rounds,
+                             const chromeos::Blob& salt, unsigned int rounds,
                              SecureBlob* key, SecureBlob* iv) const {
   if (salt.size() != PKCS5_SALT_LEN) {
     LOG(ERROR) << "Bad salt size.";
@@ -377,7 +407,9 @@ bool Crypto::PasskeyToAesKey(const chromeos::Blob& passkey,
   return true;
 }
 
-bool Crypto::CreateRsaKey(int key_bits, SecureBlob* n, SecureBlob* p) const {
+bool Crypto::CreateRsaKey(unsigned int key_bits,
+                          SecureBlob* n,
+                          SecureBlob* p) const {
   SeedRng();
 
   RSA* rsa = RSA_generate_key(key_bits, kWellKnownExponent, NULL, NULL);
@@ -408,10 +440,10 @@ bool Crypto::CreateRsaKey(int key_bits, SecureBlob* n, SecureBlob* p) const {
 }
 
 void Crypto::PasskeyToWrapper(const chromeos::Blob& passkey,
-                              const chromeos::Blob& salt, int iters,
+                              const chromeos::Blob& salt, unsigned int iters,
                               SecureBlob* wrapper) const {
-  int update_length = passkey.size();
-  int holder_size = SHA_DIGEST_LENGTH;
+  unsigned int update_length = passkey.size();
+  unsigned int holder_size = SHA_DIGEST_LENGTH;
   if (update_length > SHA_DIGEST_LENGTH) {
     holder_size = update_length;
   }
@@ -419,7 +451,7 @@ void Crypto::PasskeyToWrapper(const chromeos::Blob& passkey,
   memcpy(&holder[0], &passkey[0], update_length);
 
   // Repeatedly hash the user passkey and salt to generate the wrapper
-  for (int i = 0; i < iters; ++i) {
+  for (unsigned int i = 0; i < iters; ++i) {
     SHA_CTX ctx;
     unsigned char md_value[SHA_DIGEST_LENGTH];
 
@@ -439,15 +471,15 @@ void Crypto::PasskeyToWrapper(const chromeos::Blob& passkey,
   wrapper->swap(local_wrapper);
 }
 
-bool Crypto::GetOrCreateSalt(const FilePath& path, int length, bool force,
-                             SecureBlob* salt) const {
+bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
+                             bool force, SecureBlob* salt) const {
   SecureBlob local_salt;
   if (force || !file_util::PathExists(path)) {
     // If this salt doesn't exist, automatically create it
     local_salt.resize(length);
     GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
                     local_salt.size());
-    int data_written = file_util::WriteFile(path,
+    unsigned int data_written = file_util::WriteFile(path,
         static_cast<const char*>(local_salt.const_data()),
         length);
     if (data_written != length) {
@@ -461,12 +493,13 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, int length, bool force,
       LOG(ERROR) << "Could not get size of " << path.value();
       return false;
     }
-    if (file_size > INT_MAX) {
+    // Compare to the max of a 32-bit signed integer
+    if (file_size > static_cast<int64>(std::numeric_limits<int>::max())) {
       LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
       return false;
     }
     local_salt.resize(file_size);
-    int data_read = file_util::ReadFile(path,
+    unsigned int data_read = file_util::ReadFile(path,
                                         static_cast<char*>(local_salt.data()),
                                         local_salt.size());
     if (data_read != file_size) {
@@ -563,9 +596,9 @@ void Crypto::PasswordToPasskey(const char *password,
 }
 
 void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                                 int buffer_length) {
+                                 unsigned int buffer_length) {
   const char hex_chars[] = "0123456789abcdef";
-  int i = 0;
+  unsigned int i = 0;
   for (chromeos::Blob::const_iterator it = blob.begin();
       it < blob.end() && (i + 1) < buffer_length; ++it) {
     buffer[i++] = hex_chars[((*it) >> 4) & 0x0f];
@@ -578,7 +611,7 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
 
 bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
                                const chromeos::Blob& vault_wrapper,
-                               int* wrap_flags, CryptoError* error,
+                               unsigned int* wrap_flags, CryptoError* error,
                                VaultKeyset* vault_keyset) const {
   if (wrap_flags) {
     *wrap_flags = 0;
@@ -606,7 +639,7 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
 
   // On unwrap, default to the legacy password rounds, and use the value in the
   // SerializedVaultKeyset if it exists
-  int rounds;
+  unsigned int rounds;
   if (serialized.has_password_rounds()) {
     rounds = serialized.password_rounds();
   } else {
@@ -702,7 +735,7 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     }
     decrypted.resize(out_len);
     SecureBlob hash;
-    int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
+    unsigned int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
     GetSha1(decrypted, 0, hash_offset, &hash);
     if (memcmp(hash.data(), &decrypted[hash_offset], hash.size())) {
       LOG(ERROR) << "Scrypt hash verification failed";
@@ -758,7 +791,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     return false;
   }
 
-  int rounds = kDefaultPasswordRounds;
+  unsigned int rounds = kDefaultPasswordRounds;
   bool tpm_wrapped = false;
   SecureBlob local_vault_wrapper(vault_wrapper.begin(), vault_wrapper.end());
   SecureBlob tpm_key;
@@ -828,7 +861,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   }
 
   SerializedVaultKeyset serialized;
-  int keyset_flags = SerializedVaultKeyset::NONE;
+  unsigned int keyset_flags = SerializedVaultKeyset::NONE;
   if (tpm_wrapped) {
     // Store the TPM-encrypted key
     keyset_flags = SerializedVaultKeyset::TPM_WRAPPED;

@@ -22,7 +22,7 @@ namespace cryptohome {
 // Default entropy source is used to seed openssl's random number generator
 extern const std::string kDefaultEntropySource;
 // Default number of hash rounds to use when generating  key from a password
-extern const int kDefaultPasswordRounds;
+extern const unsigned int kDefaultPasswordRounds;
 
 class Crypto : public EntropySource {
  public:
@@ -66,7 +66,7 @@ class Crypto : public EntropySource {
   // Parameters
   //   rand (OUT) - Where to store the random bytes
   //   length - The number of random bytes to store in rand
-  void GetSecureRandom(unsigned char *rand, int length) const;
+  void GetSecureRandom(unsigned char *rand, unsigned int length) const;
 
   // Gets the AES block size
   unsigned int GetAesBlockSize() const;
@@ -118,7 +118,7 @@ class Crypto : public EntropySource {
   //   key_bits - The key size to generate
   //   n (OUT) - the modulus
   //   p (OUT) - the private key
-  bool CreateRsaKey(int key_bits, SecureBlob* n, SecureBlob *p) const;
+  bool CreateRsaKey(unsigned int key_bits, SecureBlob* n, SecureBlob *p) const;
 
   // Unwraps an encrypted vault keyset.  The vault keyset should be the output
   // of WrapVaultKeyset().
@@ -131,7 +131,7 @@ class Crypto : public EntropySource {
   //   vault_keyset (OUT) - The unwrapped vault keyset on success
   bool UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
                          const chromeos::Blob& vault_wrapper,
-                         int* wrap_flags, CryptoError* error,
+                         unsigned int* wrap_flags, CryptoError* error,
                          VaultKeyset* vault_keyset) const;
 
   // Wraps (encrypts) the vault keyset with the given wrapper
@@ -180,7 +180,7 @@ class Crypto : public EntropySource {
   //   key (OUT) - The AES key
   //   iv (OUT) - The initialization vector
   bool PasskeyToAesKey(const chromeos::Blob& passkey,
-                       const chromeos::Blob& salt, int rounds,
+                       const chromeos::Blob& salt, unsigned int rounds,
                        SecureBlob* key, SecureBlob* iv) const;
 
   // Converts the passkey to a symmetric key used to decrypt the user's
@@ -192,7 +192,7 @@ class Crypto : public EntropySource {
   //   iters - The hash iterations to use in generating the key
   //   wrapper (OUT) - The wrapper
   void PasskeyToWrapper(const chromeos::Blob& passkey,
-                        const chromeos::Blob& salt, int iters,
+                        const chromeos::Blob& salt, unsigned int iters,
                         SecureBlob* wrapper) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
@@ -202,7 +202,7 @@ class Crypto : public EntropySource {
   //   length - The length of the new salt if it needs to be created
   //   force - If true, forces creation of a new salt even if the file exists
   //   salt (OUT) - The salt
-  bool GetOrCreateSalt(const FilePath& path, int length, bool force,
+  bool GetOrCreateSalt(const FilePath& path, unsigned int length, bool force,
                        SecureBlob* salt) const;
 
   // Adds the specified key to the ecryptfs keyring so that the cryptohome can
@@ -222,8 +222,8 @@ class Crypto : public EntropySource {
   void ClearKeyset() const;
 
   // Gets the SHA1 hash of the data provided
-  void GetSha1(const chromeos::Blob& data, int start, int count,
-               SecureBlob* hash) const;
+  void GetSha1(const chromeos::Blob& data, unsigned int start,
+               unsigned int count, SecureBlob* hash) const;
 
   // Encodes a binary blob to hex-ascii
   //
@@ -232,7 +232,7 @@ class Crypto : public EntropySource {
   //   buffer (IN/OUT) - Where to store the converted blob
   //   buffer_length - The size of the buffer
   static void AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
-                                  int buffer_length);
+                                  unsigned int buffer_length);
 
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA1 hash of the password).

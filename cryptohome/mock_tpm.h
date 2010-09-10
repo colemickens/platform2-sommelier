@@ -39,16 +39,16 @@ class MockTpm : public Tpm {
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD6(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
-                                   int, const chromeos::Blob&, SecureBlob*,
-                                   TpmRetryAction*));
+                                   unsigned int, const chromeos::Blob&,
+                                   SecureBlob*, TpmRetryAction*));
   MOCK_METHOD6(Decrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
-                                   int, const chromeos::Blob&, SecureBlob*,
-                                   TpmRetryAction*));
+                                   unsigned int, const chromeos::Blob&,
+                                   SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(SecureBlob*, TpmRetryAction*));
 
  private:
   bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,
-           int password_rounds, const chromeos::Blob& salt,
+           unsigned int password_rounds, const chromeos::Blob& salt,
            SecureBlob* data_out, TpmRetryAction* retry_action) {
     SecureBlob local_data_out(data.size());
     for (unsigned int i = 0; i < local_data_out.size(); i++) {

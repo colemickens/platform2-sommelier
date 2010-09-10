@@ -29,22 +29,12 @@ class UsernamePasskeyTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(UsernamePasskeyTest);
 };
 
-TEST(UsernamePasskeyTest, GetFullUsernameTest) {
+TEST(UsernamePasskeyTest, GetFullUsernameStringTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
   UsernamePasskey up(username, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
-  char full_username[80];
-  up.GetFullUsername(full_username, sizeof(full_username));
-  EXPECT_EQ(0, strcmp(username, full_username));
-}
-
-TEST(UsernamePasskeyTest, GetPartialUsernameTest) {
-  char username[80];
-  snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
-  UsernamePasskey up(username, SecureBlob(kFakePasskey, strlen(kFakePasskey)));
-  char partial_username[80];
-  up.GetPartialUsername(partial_username, sizeof(partial_username));
-  EXPECT_EQ(0, strcmp(kFakeUser, partial_username));
+  std::string full_username = up.GetFullUsernameString();
+  EXPECT_EQ(0, strcmp(username, full_username.c_str()));
 }
 
 TEST(UsernamePasskeyTest, GetObfuscatedUsernameTest) {

@@ -82,8 +82,10 @@ class Tpm {
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The encrypted data
   virtual bool Encrypt(const chromeos::Blob& data,
-                       const chromeos::Blob& password, int password_rounds,
-                       const chromeos::Blob& salt, SecureBlob* data_out,
+                       const chromeos::Blob& password,
+                       unsigned int password_rounds,
+                       const chromeos::Blob& salt,
+                       SecureBlob* data_out,
                        TpmRetryAction* retry_action);
 
   // Decrypts a data blob using the TPM cryptohome RSA key
@@ -96,12 +98,14 @@ class Tpm {
   //   salt - The salt used in converting the password to the UP
   //   data_out (OUT) - The decrypted data
   virtual bool Decrypt(const chromeos::Blob& data,
-                       const chromeos::Blob& password, int password_rounds,
-                       const chromeos::Blob& salt, SecureBlob* data_out,
+                       const chromeos::Blob& password,
+                       unsigned int password_rounds,
+                       const chromeos::Blob& salt,
+                       SecureBlob* data_out,
                        TpmRetryAction* retry_action);
 
   // Returns the maximum number of RSA keys that the TPM can hold simultaneously
-  int GetMaxRsaKeyCount();
+  unsigned int GetMaxRsaKeyCount();
 
   // Retrieves the TPM-wrapped cryptohome RSA key
   bool GetKey(SecureBlob* blob, TpmRetryAction* retry_action);
@@ -127,7 +131,7 @@ class Tpm {
     crypto_ = value;
   }
 
-  void set_rsa_key_bits(int value) {
+  void set_rsa_key_bits(unsigned int value) {
     rsa_key_bits_ = value;
   }
 
@@ -148,7 +152,7 @@ class Tpm {
 
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
 
-  int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle);
+  unsigned int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle);
 
   bool CreateCryptohomeKey(TSS_HCONTEXT context_handle,
                            bool create_in_tpm, TSS_RESULT* result);
@@ -163,12 +167,12 @@ class Tpm {
 
   bool EncryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
-                   int password_rounds, const chromeos::Blob& salt,
+                   unsigned int password_rounds, const chromeos::Blob& salt,
                    SecureBlob* data_out, TSS_RESULT* result);
 
   bool DecryptBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
                    const chromeos::Blob& data, const chromeos::Blob& password,
-                   int password_rounds, const chromeos::Blob& salt,
+                   unsigned int password_rounds, const chromeos::Blob& salt,
                    SecureBlob* data_out, TSS_RESULT* result);
 
   bool GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
@@ -180,7 +184,7 @@ class Tpm {
   bool LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
                    TSS_HKEY* key_handle, TSS_RESULT* result);
 
-  int rsa_key_bits_;
+  unsigned int rsa_key_bits_;
   SecureBlob srk_auth_;
   Crypto* crypto_;
   TSS_HCONTEXT context_handle_;

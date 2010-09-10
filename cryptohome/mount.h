@@ -345,7 +345,7 @@ class Mount : public EntropySource {
   // Parameters
   //   rand (IN/OUT) - Where to store the bytes, must be a least length bytes
   //   length - The number of random bytes to return
-  void GetSecureRandom(unsigned char *rand, int length) const;
+  void GetSecureRandom(unsigned char *rand, unsigned int length) const;
 
   // Creates a new master key and stores it in the master key file for a user
   //

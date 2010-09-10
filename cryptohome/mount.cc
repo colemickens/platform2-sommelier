@@ -346,7 +346,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
     }
 
     // Attempt to unwrap the master key with the passkey
-    int wrap_flags = 0;
+    unsigned int wrap_flags = 0;
     Crypto::CryptoError crypto_error = Crypto::CE_NONE;
     if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey, &wrap_flags,
                                     &crypto_error, vault_keyset)) {
@@ -582,7 +582,7 @@ void Mount::CopySkeleton() const {
   RecursiveCopy(FilePath(home_dir_), FilePath(skel_source_));
 }
 
-void Mount::GetSecureRandom(unsigned char *rand, int length) const {
+void Mount::GetSecureRandom(unsigned char *rand, unsigned int length) const {
   crypto_->GetSecureRandom(rand, length);
 }
 
@@ -675,7 +675,8 @@ bool Mount::LoadFileBytes(const FilePath& path,
     LOG(ERROR) << "Could not get size of " << path.value();
     return false;
   }
-  if (file_size > INT_MAX) {
+  // Compare to the max of a 32-bit signed integer
+  if (file_size > static_cast<int64>(INT_MAX)) {
     LOG(ERROR) << "File " << path.value() << " is too large: " << file_size;
     return false;
   }

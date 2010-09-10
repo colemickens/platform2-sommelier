@@ -14,7 +14,8 @@ class EntropySource {
   EntropySource() {}
   virtual ~EntropySource() {}
 
-  virtual void GetSecureRandom(unsigned char *rand, int length) const = 0;
+  virtual void GetSecureRandom(unsigned char *rand,
+                               unsigned int length) const = 0;
 };
 
 }  // namespace cryptohome

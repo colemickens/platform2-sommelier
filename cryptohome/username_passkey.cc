@@ -31,18 +31,8 @@ void UsernamePasskey::Assign(const Credentials& rhs) {
   passkey_.assign(passkey.begin(), passkey.end());
 }
 
-void UsernamePasskey::GetFullUsername(char *name_buffer, int length) const {
-  strncpy(name_buffer, username_.c_str(), length);
-}
-
 std::string UsernamePasskey::GetFullUsernameString() const {
   return username_;
-}
-
-void UsernamePasskey::GetPartialUsername(char *name_buffer, int length) const {
-  size_t at_index = username_.find('@');
-  string partial = username_.substr(0, at_index);
-  strncpy(name_buffer, partial.c_str(), length);
 }
 
 string UsernamePasskey::GetObfuscatedUsername(

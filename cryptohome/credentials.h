@@ -17,27 +17,11 @@ class Credentials {
   Credentials() {}
   virtual ~Credentials() {}
 
-  // Returns the full user name, including any '@' sign or domain name.
-  //
-  // Parameters
-  //  name_buffer - Output buffer.
-  //  length - Amount of space in name_buffer
-  //
-  virtual void GetFullUsername(char *name_buffer, int length) const = 0;
-
   // Returns the full user name as a std::string
   //
   // Parameters
   //
   virtual std::string GetFullUsernameString() const = 0;
-
-  // Returns the part of the username before the '@'
-  //
-  // Parameters
-  //  name_buffer - Output buffer.
-  //  length - Amount of space in name_buffer
-  //
-  virtual void GetPartialUsername(char *name_buffer, int length) const = 0;
 
   // Returns the obfuscated username, used as the name of the directory
   // containing the user's stateful data (and maybe used for other reasons

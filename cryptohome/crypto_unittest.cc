@@ -110,7 +110,7 @@ TEST_F(CryptoTest, DecryptionTest) {
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
-  int wrap_flags = 0;
+  unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
@@ -205,7 +205,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
-  int wrap_flags = 0;
+  unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
@@ -243,7 +243,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
-  int wrap_flags = 0;
+  unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
@@ -289,7 +289,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
 
   VaultKeyset new_keyset;
-  int wrap_flags = 0;
+  unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
