@@ -43,12 +43,7 @@ wipedev() {
 
 # Root devs are sda3, sda5.
 # Kernel devs to go along with these are sda2, sda4 respectively.
-ROOT_DEV=$(rootdev)
-# Find our stateful partition. It's always partition 1.
-# On verified boot, we get the real root from the dm slaves.
-if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
-  ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
-fi
+ROOT_DEV=$(rootdev -s)
 STATE_DEV=${ROOT_DEV%[0-9]*}1
 OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')

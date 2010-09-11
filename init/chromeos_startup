@@ -33,14 +33,10 @@ mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs.
-ROOT_DEV=$(rootdev)
+ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
 if [ "$ROOTDEV_RET_CODE" = "0" ]; then
   # Find our stateful partition. It's always partition 1.
-  # On verified boot, we get the real root from the dm slaves.
-  if [ "$ROOT_DEV" = "/dev/dm-0" ]; then
-    ROOT_DEV="/dev/$(basename /sys/block/dm-0/slaves/*)"
-  fi
   STATE_DEV=${ROOT_DEV%[0-9]*}1
 
   # For factory install shim, we never want to write to the SDCard.
