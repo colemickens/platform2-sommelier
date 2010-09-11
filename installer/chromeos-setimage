@@ -32,11 +32,16 @@ if [ -e ${DEV_BUILD_FILE} ]; then
 fi
 
 # Any build that is verified will stay verified.
-if type rootdev &> /dev/null; then
-  # Enable verification, but don't force a check for dev builds.
-  if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
-    rootfs_verification_default=${FLAGS_TRUE}
-    ignore_bad_verification_default=${FLAGS_FALSE}
+# We need to check that there is a root device,
+# factory install runs from tmpfs and rootdev does not
+# return a meaningful result in that case.
+if rootdev -s &> /dev/null; then
+  if type rootdev &> /dev/null; then
+    # Enable verification, but don't force a check for dev builds.
+    if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
+      rootfs_verification_default=${FLAGS_TRUE}
+      ignore_bad_verification_default=${FLAGS_FALSE}
+    fi
   fi
 fi
 
@@ -83,7 +88,7 @@ locate_gpt  # sets $GPT to cgpt executable
 # this is run from a mounted image on a different machine, rootdev will fail.
 if [ -z "${FLAGS_dst}" ]; then
   # The default device is the one we booted from.
-  ROOTDEV=$(rootdev)
+  ROOTDEV=$(rootdev -s)
   # From root partition to root block device.
   DEFAULT_DST=$(get_block_dev_from_partition_dev ${ROOTDEV})
 
