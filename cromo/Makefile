@@ -10,6 +10,7 @@ CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
 	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl
 LDFLAGS = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
+LDFLAGS_UNITTEST = $(LDLIBS) -lgtest
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 SYMFILE=symfile
@@ -41,12 +42,16 @@ XMLFILES = mm-manager.xml \
 
 GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 
-SRCS = main.cc \
+SRCS = cellular.cc \
        cromo_server.cc \
+       hooktable.cc \
+       main.cc \
        modem_handler.cc \
-       plugin_manager.cc \
-       hooktable.cc
+       plugin_manager.cc
+
 OBJS = $(SRCS:.cc=.o)
+
+TESTS = cellular_unittest
 
 dummy_SRCS = dummy_modem_handler.cc \
 	     dummy_modem.cc
@@ -63,13 +68,16 @@ $(dummy_OBJS): $(GLUE_HEADERS)
 $(CROMO): $(OBJS) $(SYMFILE)
 	$(CXX) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
+cellular_unittest: cellular_unittest.o cellular.o
+	$(CXX) $(LDFLAGS_UNITTEST) $^ -o $@
+
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
 
 # Plugins, which are built and loaded separately from the main
 # executable, must subclass ModemHandler, so we must export
-# the symbols defined by that class.
-KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable"
+# the symbols defined by that class.  We also export cellular utilities:
+KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable _ZN8Cellular"
 $(SYMFILE): modem_handler.o hooktable.o
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
@@ -79,7 +87,7 @@ $(SYMFILE): modem_handler.o hooktable.o
 	@echo '};' >>$@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
-                               hooktable.h
+                               hooktable.h cellular.h
 
 install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo
