@@ -266,6 +266,7 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_grub_cfg" ]; then
   #   copy, the inactive image will be unpopulated since we do this
   #   once per call to setimage.
 
+  sudo mkdir -p "${mountpoint}/efi/boot"
   sudo cp ${tempfile} ${mountpoint}/efi/boot/grub.cfg
 fi
 

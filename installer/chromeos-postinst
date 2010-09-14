@@ -97,6 +97,17 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       fi
       losetup "${EFI_PART}" "${FLAGS_esp_part_file}"
     fi
+    # TODO: scary hack to work around disk corruption
+    # Note, we mean to run fsck.vfat twice, fsck.vfat returns status 1 for
+    # "Recoverable errors have been detected or dosfsck has discovered an
+    # internal inconsistency."  If the first fsck fixes errors the first time,
+    # the second fsck will succeed.  Otherwise, nuke it from orbit.
+    if ! "${INSTALL_ROOT}/sbin/fsck.vfat" -a "${EFI_PART}"; then
+      if ! "${INSTALL_ROOT}/sbin/fsck.vfat" -a "${EFI_PART}"; then
+        echo "Rebuilding FAT filessytem."
+        "${INSTALL_ROOT}/usr/sbin/mkfs.vfat" "${EFI_PART}"
+      fi
+    fi
     mount "${EFI_PART}" "${EFI_MNT}"
     set +e
     # Copy over the templates, but don't clobber anything.
