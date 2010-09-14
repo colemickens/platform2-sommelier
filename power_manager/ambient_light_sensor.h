@@ -48,6 +48,7 @@ class AmbientLightSensor {
 
  private:
   static gboolean ReadAls(gpointer data);
+  static bool DeferredInit(AmbientLightSensor* self);
 
   // Return a luma level normalized to 100 based on the tsl2563 lux value.
   // The luma level will modify the controller's brightness calculation.
@@ -65,6 +66,9 @@ class AmbientLightSensor {
   // These flags are used to turn on and off polling.
   bool is_polling_;
   bool disable_polling_;
+
+  // Issue reasonable diagnostics about the deferred lux file open.
+  bool still_deferring_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };

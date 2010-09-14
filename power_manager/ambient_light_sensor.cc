@@ -20,20 +20,32 @@ AmbientLightSensor::AmbientLightSensor(BacklightController* controller)
       als_fd_(-1),
       last_level_(0),
       is_polling_(false),
-      disable_polling_(false) {}
+      disable_polling_(false),
+      still_deferring_(false) {}
 
 AmbientLightSensor::~AmbientLightSensor() {
   if (als_fd_ >= 0)
     close(als_fd_);
 }
 
-bool AmbientLightSensor::Init() {
+bool AmbientLightSensor::DeferredInit(AmbientLightSensor* self) {
   // tsl2561 is currently the only supported light sensor.
-  als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
-  if (als_fd_ == -1) {
-    LOG(WARNING) << "lux: " << strerror(errno);
+  // If the lux file is not immediately found, issue a deferral
+  // message and try again later.
+  self->als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
+  if (self->als_fd_ == -1) {
+    if (self->still_deferring_)
+      return false;
+    LOG(WARNING) << "Deferring lux: " << strerror(errno);
+    self->still_deferring_ = true;
     return false;
   }
+  if (self->still_deferring_)
+    LOG(INFO) << "Finally found the lux file";
+  return true;
+}
+
+bool AmbientLightSensor::Init() {
   if (controller_)
     controller_->set_light_sensor(this);
   return true;
@@ -68,6 +80,13 @@ gboolean AmbientLightSensor::ReadAls(gpointer data) {
   if (self->disable_polling_) {
     self->is_polling_ = false;
     return false; // Returning false removes the timeout.
+  }
+
+  // We really want to read the ambient light level.
+  // Complete the deferred lux file open if necessary.
+  if (self->als_fd_ < 0) {
+    if (!DeferredInit(self))
+      return true; // Return true to try again later.
   }
 
   char buffer[10];
