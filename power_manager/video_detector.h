@@ -23,7 +23,9 @@ class VideoDetector : public VideoDetectorInterface {
   // sets |is_active| to false.
   //
   // On success, returns true; otherwise return false.
-  bool GetVideoActivity(bool* is_active);
+  bool GetVideoActivity(int64 activity_threshold_ms,
+                        int64* time_since_activity_ms,
+                        bool* is_active);
 
  private:
   bool GetRootWindowProperty(Atom property, unsigned char** data);

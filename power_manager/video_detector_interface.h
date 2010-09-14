@@ -16,7 +16,9 @@ class VideoDetectorInterface {
   // sets |is_active| to false.
   //
   // On success, returns true; otherwise return false.
-  virtual bool GetVideoActivity(bool* is_active) = 0;
+  virtual bool GetVideoActivity(int64 activity_threshold_ms,
+                                int64* time_since_activity_ms,
+                                bool* is_active) = 0;
 
  protected:
   ~VideoDetectorInterface() {}

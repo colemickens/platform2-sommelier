@@ -363,9 +363,12 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
     EXPECT_CALL(backlight_, SetBrightness(kUnpluggedBrightness))
         .WillOnce(Return(true));
     // Mouse event 1 here. Idle -> Active transition
+    // First idle event now, timeout later. Active -> Idle.
     // Check Video state.
-    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+    EXPECT_CALL(video_detector_, GetVideoActivity(kUnpluggedDim,
+                                                  NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<1>(0),
+                        SetArgumentPointee<2>(false),
                         Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
@@ -387,10 +390,12 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
         .WillOnce(Return(true));
     // Mouse event 2 here. Idle -> Active transition
     // Check Video state.
-    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+    EXPECT_CALL(video_detector_, GetVideoActivity(kUnpluggedDim,
+                                                  NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<1>(0),
+                        SetArgumentPointee<2>(false),
                         Return(true)));
-   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
+    EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kUnpluggedBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
@@ -414,8 +419,10 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
         .WillOnce(Return(true));
     // Mouse event 3 here. Idle -> Active transition
     // Check Video state.
-    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+    EXPECT_CALL(video_detector_, GetVideoActivity(kPluggedDim,
+                                                  NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<1>(0),
+                        SetArgumentPointee<2>(false),
                         Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),
@@ -437,8 +444,10 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
         .WillOnce(Return(true));
     // Mouse event 4 here. Idle -> Active transition
     // Check Video state.
-    EXPECT_CALL(video_detector_, GetVideoActivity(NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(false),
+    EXPECT_CALL(video_detector_, GetVideoActivity(kPluggedDim,
+                                                  NotNull(), NotNull()))
+        .WillOnce(DoAll(SetArgumentPointee<1>(0),
+                        SetArgumentPointee<2>(false),
                         Return(true)));
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
         .WillOnce(DoAll(SetArgumentPointee<0>(kPluggedBrightness),

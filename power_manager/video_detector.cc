@@ -9,11 +9,6 @@
 
 namespace power_manager {
 
-// The maximum interval between the last time of video activity, and the time
-// of idle event. If a video event occurs within this threshold of an idle
-// event, defer the idle.
-static const time_t kVideoTimeThresholdS = 10;
-
 VideoDetector::VideoDetector()
     : video_time_atom_(None),
       root_window_(NULL) {}
@@ -25,7 +20,9 @@ void VideoDetector::Init() {
   DCHECK(root_window_);
 }
 
-bool VideoDetector::GetVideoActivity(bool* is_active) {
+bool VideoDetector::GetVideoActivity(int64 activity_threshold_ms,
+                                     int64* time_since_activity_ms,
+                                     bool* is_active) {
   time_t* data = NULL;
   CHECK(NULL != is_active);
   if (GetRootWindowProperty(video_time_atom_, (unsigned char**)&data)) {
@@ -34,9 +31,11 @@ bool VideoDetector::GetVideoActivity(bool* is_active) {
     DCHECK(NULL != data);
     video_time = data[0];
     if (seconds >= video_time)  {
-      *is_active = seconds - video_time < kVideoTimeThresholdS;
+      time_t time_since_activity = seconds - video_time;
+      *time_since_activity_ms = time_since_activity * 1000;
+      *is_active = *time_since_activity_ms < activity_threshold_ms;
       LOG(INFO) << "Video activity " << (*is_active ? "found." : "not found.")
-                << " Last timestamp: " << seconds - video_time << "s ago.";
+                << " Last timestamp: " << time_since_activity << "s ago.";
     } else {
       *is_active = false;
       LOG(WARNING) << "_CHROME_VIDEO_TIME is ahead of time(NULL)."

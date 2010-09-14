@@ -185,7 +185,7 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
   off_ms_ = max(off_ms_ + offset_ms, off_ms_);
   suspend_ms_ = max(suspend_ms_ + offset_ms, suspend_ms_);
 
-  if(enforce_lock_) {
+  if (enforce_lock_) {
     // Make sure that the screen turns off before it locks, and dims before
     // it turns off. This ensures the user gets a warning before we lock the
     // screen.
@@ -214,10 +214,15 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
   if (is_idle && kIdleNormal == idle_state_ && !locker_.is_locked()) {
+    int64 video_time_ms = 0;
     bool video_is_playing = false;
-    CHECK(video_detector_->GetVideoActivity(&video_is_playing));
+    int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
+                                                            unplugged_dim_ms_;
+    CHECK(video_detector_->GetVideoActivity(dim_timeout,
+                                            &video_time_ms,
+                                            &video_is_playing));
     if (video_is_playing)
-      SetIdleOffset(idle_time_ms);
+      SetIdleOffset(idle_time_ms - video_time_ms);
   }
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   SetIdleState(idle_time_ms);
