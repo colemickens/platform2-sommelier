@@ -147,8 +147,7 @@ mount -n -t tmpfs media /media
 mount -n -t debugfs debugfs /sys/kernel/debug
 
 # NOTE: ensure that a rootdev has been found.
-if [ -e /mnt/stateful_partition/.consider_oobe ] && \
-   [ "$ROOTDEV_RET_CODE" = "0" ]; then
+if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
   # Mount OEM partner partition if OOBE has not yet been completed.
   # Also create /tmp/machine-info.
   if [ ! -e /home/chronos/.oobe_completed ]; then
