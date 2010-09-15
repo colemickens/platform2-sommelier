@@ -6,7 +6,7 @@ XXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
 BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lz -lcrosapi -ldl
-LIBS = $(BASE_LIBS) -lcrash
+LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
 	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
