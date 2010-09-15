@@ -1310,7 +1310,7 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   if (state == gobi::kDisconnected)
     session_id_ = 0;
   bool is_connected = (state == gobi::kConnected);
-  ConnectionStateChanged(is_connected);
+  ConnectionStateChanged(is_connected, QMIReasonToMMReason(session_end_reason));
 }
 
 void GobiModem::RegistrationStateHandler() {
@@ -1402,4 +1402,13 @@ bool GobiModem::StartExit() {
 
 bool GobiModem::ExitOk() {
   return session_id_ == 0;
+}
+
+unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
+  switch (qmireason) {
+    case gobi::kClientEndedCall:
+      return MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED;
+    default:
+      return MM_MODEM_CONNECTION_STATE_CHANGE_REASON_UNKNOWN;
+  }
 }

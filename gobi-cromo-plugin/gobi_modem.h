@@ -230,6 +230,7 @@ class GobiModem
   void *NMEAThread(void);
 
  private:
+  static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   void SetDeviceProperties();
   void SetModemProperties();
 
