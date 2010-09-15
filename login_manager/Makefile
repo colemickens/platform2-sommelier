@@ -8,7 +8,7 @@ CXXFLAGS += -DOS_CHROMEOS
 PKG_CONFIG ?= pkg-config
 
 BASE_LIBS = -lbase -lpthread -lrt -lchromeos
-LIBS = $(BASE_LIBS) -lcrash
+LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
 	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1 nss)
