@@ -34,12 +34,19 @@ the device's hard drive. Default: (empty)."
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
 layout. Default: (empty)."
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed. Default: (empty)"
+DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
 set -e
+
+SUB_CMD_DEBUG_FLAG=""
+if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
+  set -x
+  SUB_CMD_DEBUG_FLAG="--debug"
+fi
 
 # Don't run this as root
 dont_run_as_root
@@ -378,7 +385,7 @@ elif [ "$ARCH" = "ARM" ]; then
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
   # on legacy-BIOS devices.
-  fast_dd 512 1 0 0 if=$SRC of=$PMBRCODE
+  sudo dd bs=512 count=1 if=$SRC of=$PMBRCODE
 fi
 
 # Create the GPT.
@@ -460,7 +467,8 @@ if [ "$ARCH" != "ARM" ]; then
   # script had better not try to access it, for the reasons we just gave.
   loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3)
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3) \
+    ${SUB_CMD_DEBUG_FLAG}
   umount_from_loop_dev
   loop_offset_cleanup
 fi

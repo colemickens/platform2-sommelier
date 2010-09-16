@@ -70,12 +70,16 @@ DEFINE_string install_root "/" \
   "Specifies the base location to find utilities in the new root"
 DEFINE_boolean ignore_bad_verification ${ignore_bad_verification_default} \
   "Indicates if mismatched rootfs hashes will be ignored"
+DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
 
 set -e
+if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
+  set -x
+fi
 
 INSTALL_ROOT="${FLAGS_install_root}"
 # This export is so that locate_gpt will look within this install
@@ -83,6 +87,12 @@ INSTALL_ROOT="${FLAGS_install_root}"
 # TODO(wad,adlr) This duplicates the hack from postinst and should be fixed.
 export DEFAULT_CHROOT_DIR="${INSTALL_ROOT}"
 locate_gpt  # sets $GPT to cgpt executable
+
+if [ "$PATH" != "/" ]; then
+  local ir="${FLAGS_install_root}"
+  PATH="$ir/bin:$ir/sbin:$ir/usr/bin:$ir/usr/sbin:${PATH}"
+  unset ir
+fi
 
 # Hack to run the code to setup the default dst only if not provided since if
 # this is run from a mounted image on a different machine, rootdev will fail.
