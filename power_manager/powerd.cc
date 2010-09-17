@@ -213,7 +213,8 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
-  if (is_idle && kIdleNormal == idle_state_ && !locker_.is_locked()) {
+  if (is_idle && kIdleNormal == idle_state_ &&
+      dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
     int64 video_time_ms = 0;
     bool video_is_playing = false;
     int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
