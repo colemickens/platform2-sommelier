@@ -44,6 +44,7 @@ const double kScryptMaxDecryptTime = 1.0;
 const unsigned int kScryptHeaderLength = 128;
 const unsigned int kDefaultLegacyPasswordRounds = 1;
 const unsigned int kDefaultPasswordRounds = 1337;
+const unsigned int kDefaultAesKeySize = 32;
 
 Crypto::Crypto()
     : entropy_source_(kDefaultEntropySource),
@@ -51,7 +52,7 @@ Crypto::Crypto()
       load_tpm_(true),
       default_tpm_(new Tpm()),
       tpm_(NULL),
-      fallback_to_scrypt_(false) {
+      fallback_to_scrypt_(true) {
 }
 
 Crypto::~Crypto() {
@@ -88,7 +89,6 @@ Crypto::CryptoError Crypto::EnsureTpm() const {
 }
 
 void Crypto::SeedRng() const {
-  // TODO(fes): Get assistance from the TPM when it is available
   while (!RAND_status()) {
     char buffer[256];
     file_util::ReadFile(FilePath(entropy_source_), buffer, sizeof(buffer));
@@ -793,23 +793,42 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
 
   unsigned int rounds = kDefaultPasswordRounds;
   bool tpm_wrapped = false;
+  // The local_vault_wrapper is used as the AES key to wrap the user's vault
+  // keyset (vault keyset key, or VKK).  We initialize it to the passed-in
+  // vault_wrapper, which is the user's passkey.
   SecureBlob local_vault_wrapper(vault_wrapper.begin(), vault_wrapper.end());
   SecureBlob tpm_key;
-  // Check if the vault keyset was TPM-wrapped
+  // Check if the vault keyset should be TPM-wrapped
   if (use_tpm_) {
     // Ignore the status here.  When the TPM is not available, we merely fall
     // back to scrypt.
     EnsureTpm();
   }
-  // For now, we allow fall-through to non-TPM-wrapped if tpm_ is NULL.
+  // If the TPM is available, then instead of using the user's passkey as the
+  // local_vault_wrapper, we generate a random string of bytes to use as the VKK
+  // instead.  In this case, the user's passkey is used with the TPM to store
+  // the encrypted VKK in the serialized keyset.  To decrypt the vault keyset,
+  // the VKK must be decrypted using the TPM+user passkey, and then the VKK is
+  // used to decrypt the vault keyset. For now, we allow fall-through to
+  // non-TPM-wrapped if tpm_ is NULL.  When this happens, it uses Scrypt to
+  // protect the vault keyset.
   if (use_tpm_ && tpm_ != NULL) {
+    // If we are using the TPM, the local_vault_wrapper becomes a
+    // randomly-generated AES key.  It is this random key that actually encrypts
+    // the vault keyset, and itself is wrapped by the TPM.
+    local_vault_wrapper.resize(kDefaultAesKeySize);
     GetSecureRandom(static_cast<unsigned char*>(local_vault_wrapper.data()),
                     local_vault_wrapper.size());
     Tpm::TpmRetryAction retry_action;
+    // Encrypt the VKK using the TPM and the user's passkey.  The output is an
+    // encrypted blob in tpm_key, which is stored in the serialized vault
+    // keyset.
     if (tpm_->Encrypt(local_vault_wrapper, vault_wrapper, rounds,
                       vault_wrapper_salt, &tpm_key, &retry_action)) {
       tpm_wrapped = true;
     } else {
+      // Re-place the user's passkey into the VKK.  This allows fallback to
+      // Scrypt-based protection when the TPM didn't work for any reason.
       local_vault_wrapper.resize(vault_wrapper.size());
       memcpy(local_vault_wrapper.data(), vault_wrapper.const_data(),
              vault_wrapper.size());
@@ -821,8 +840,10 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
 
   SecureBlob cipher_text;
   bool scrypt_wrapped = false;
-  // If scrypt is enabled, and the keyset wasn't TPM wrapped, then we use scrypt
-  // to encrypt the keyset.  Otherwise, we use regular AES.
+  // If scrypt is enabled (it is by default, but it can be disabled for unit
+  // tests), and the TPM wasn't used, then we use scrypt to encrypt the keyset.
+  // Otherwise, we use AES with whatever the VKK is.  When the TPM is available,
+  // the VKK is a random key (see above).
   if (fallback_to_scrypt_ && !tpm_wrapped) {
     // Append the SHA1 hash of the keyset blob
     SecureBlob hash;
@@ -831,7 +852,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     memcpy(&local_keyset_blob[0], keyset_blob.const_data(), keyset_blob.size());
     memcpy(&local_keyset_blob[keyset_blob.size()], hash.data(), hash.size());
     cipher_text.resize(local_keyset_blob.size() + kScryptHeaderLength);
-     if (scryptenc_buf(
+    if (scryptenc_buf(
             static_cast<const uint8_t*>(local_keyset_blob.const_data()),
             local_keyset_blob.size(),
             static_cast<uint8_t*>(cipher_text.data()),

@@ -14,7 +14,7 @@ Cryptohome manages directories as follows:
 /home/.shadow/<salted_hash_of_username>  : Each Chrome OS user gets a
                                            directory in the shadow root where
                                            their salts, keys, and vault are
-                                           stored.
+                                           stored (s_h_o_u).
 /home/.shadow/<s_h_o_u>/vault            : The user's vault (the encrypted
                                            version of their home directory)
 /home/.shadow/<s_h_o_u>/master.0         : Vault keyset for the user.  The
@@ -37,13 +37,31 @@ Offline login and screen unlock is processed through cryptohome using a test
 decryption of the user's master key using the passkey provided.  If the user
 currently has their cryptohome mounted, then the credentials may be verified
 against their session object instead, which provides quick credentials
-verification without access to the key material.
+verification without access to the key material.  This latter method uses the
+UserSession object in user_session.cc.  A user session is established on
+successful completion of MountCryptohome() in mount.cc.  The user session is
+torn down when a call to UnmmountCryptohome, MountCryptohome,
+MountGuestCryptohome, or MigratePasskey is made (regardless of success status).
+If no user session exists for the Mount instance, offline credential test falls
+back to attempting to decrypt the user's stored vault keyset.  The session
+method is preferred because it does not attempt to decrypt key material, and
+because it does not require a round-trip to the TPM when the TPM is used for
+further protecting the keyset (which can be ~.7s, or close to 3s if the RSA
+key was evicted from the TPM key slot it occupies).
 
 A user's cryptohome is automatically created when the vault directory for the
 user does not exist and the cryptohome service gets a call to mount the
-user's home directory.
+user's home directory.  This assumes that the call to MountCryptohome contains
+the correct user password--no verification can be done if the vault keyset for
+the user does not exist.  TestCredentials should be used if implicit creation is
+not desired (an of course, explicit mount).
 
-Passkey change is implemented through a call to MigratePasskey.
+Passkey change is implemented through a call to MigratePasskey.  MigratePasskey
+will attempt to decrypt the vault keyset using the old credentials supplied, and
+if successful, will re-save the vault keyset using the new credentials.
+MigratePasskey can be called regardless of whether a user's (any user)
+cryptohome is mounted.  However, it will always clear the current user's session
+as described above.
 
 Typical Mount Flow
 
@@ -67,25 +85,32 @@ Typical Mount Flow
          and re-owned, then the user's cryptohome vault is removed and
          re-created.  This is because it is not possible to recover a keyset
          that is TPM-protected if the TPM has been cleared.  A status code
-         is returned in this case, but the Mount() call returns success.
+         is returned in this case, but the Mount() call returns success.  This
+         is the only case where cryptohome will automatically re-create a user's
+         home.
       ii. If the blob was protected using the TPM, and the TPM is unavailable,
-          for example, it has been disabled, then the user's cryptohome vault is
-          removed and re-created.  This should only occur on systems where the
-          TPM can be disabled by the user, and only if they expressly disable
-          it.  In this case, it would not be possible to decrypt the blob until
-          the TPM is re-enabled.  Since cryptohome cannot control whether it
-          is enabled, it errs towards immediate usability and the idea that a
-          Chromium OS device is stateless, and removes the user's directory and
-          re-creates it.  *May be revisited.
-      iii. If the blob was protected uwing the TPM, and there is a failure in
-           the TSS API (couldn't load the cryptohome TPM key, etc.), the
-           cryptohome vault must be re-created.
-      iv. If there is a disk failure, specifically:
-          - The vault keyset file is corrupt
+          for example, it has been disabled, then the call returns an error code
+          indicating that either there was a failure communicating with the TPM
+          or that the TPM is in defend lock (a state where the TPM believes
+          that a brute-force attack is happening, and so it temporarily blocks
+          most API calls).  Communications failures are usually transient, and
+          can be fixed by calling the API a second time.  (For example, some
+          chips on resume from S3 require us to re-establish our long-lived
+          session.)  If the device allows manual disabling of the TPM, this
+          error would not be transient, and the user would have to re-enable the
+          TPM.  Defend lock errors are always transient, but the back-off period
+          is variable.  While sometimes it may be seconds, other times it is
+          best to reboot the system to clear this state.
+      iii. If the blob was protected using the TPM, and there is a failure in
+           the TSS API (couldn't load the cryptohome TPM key, etc.) that
+           doesn't correspond to a TPM clear, then a communications failure
+           error is returned as decribed in (ii).
+      iv. If there is a disk failure, specifically, the vault keyset file is
+          corrupt, there is undefined behavior.
       v. If the following errors occur on creation, cryptohome returns an error
          and cannot remedy the problem:
          - If the TPM is unavailable, cryptohome falls back to Scrypt-based
-           protection, and the call to cryptenc_buf fails for any reason.
+           protection, and the call to scryptenc_buf fails for any reason.
          - If writing the encrypted vault keyset to disk fails for any reason
          - If creating the user's vault path fails for any reason
          - If setting the ownership of the user's vault path fails for any
@@ -103,35 +128,39 @@ Typical Mount Flow
          - If adding the decrypted keyset to the kernel keyring before ecryptfs
            mount fails, it is assumed that the key material was decrytped
            properly but some other problem exists outside of the control of
-           cryptohome. *May be revisited.
+           cryptohome.
          - If the call to mount the user's cryptohome fails, it is assumed that
            some other problem exists outside of the control of cryptohome.
-           *May be revisited.
-         - If the user's cryptohome must be re-created due to any of i-iv above,
+         - If the user's cryptohome must be re-created due to condition (i),
            and the cryptohome cannot be removed, then some other problem exists
            outside of the control of cryptohome.
 
 
 Protection Mechanisms
 
-Cryptohome may use either the TPM or Scrypt to protect the user's vault keyset.
-If the TPM is available, cryptohome will prefer to use it.  If the TPM is not
-available, or it is in the middle of being owned (or not owned by Chromium OS),
-cryptohome will fall back to using scrypt-based protection of the vault keyset.
-If the TPM becomes available at a later login, cryptohome will transparently
-migrate a user's keyset to TPM-based protection.
+The vault keyset (vault_keyset.cc/h) contains the file encryption key and file
+name encryption key used by ecryptfs.  This keyset encrypted and persisted to
+disk.  Cryptohome may use either the TPM or Scrypt as the encryption/protection
+mechanism.
 
-The method when TPM is enabled:
+If the TPM is available, cryptohome will prefer to use it.  If the TPM is not
+available (either not present, not enabled, owned by another OS, or it is in the
+middle of being owned), cryptohome will fall back to using scrypt-based
+protection of the vault keyset.  If the TPM becomes available at a later login,
+cryptohome will transparently migrate a user's keyset to TPM-based protection.
+
+The method when the TPM is enabled can be described using the decryption
+workflow as an example:
 
   UP -
       |
-      + AES (no padding) => IEVKK -
-      |                            |
-EVKK -                             |
-                                   + RSA (in TPM) => VKK
-                                   |
-                                   |
-                          TPM_CHK -
+      + AES decrypt (no padding) => IEVKK -
+      |                                    |
+EVKK -                                     |
+                                           + RSA decrypt (in TPM) => VKK
+                                           |
+                                           |
+                                  TPM_CHK -
 
 Where:
   UP - User Passkey
@@ -142,13 +171,15 @@ Where:
 
 The end result, the Vault Keyset Key (VKK), is an AES key that is used to
 decrypt the Vault Keyset, which holds the ecryptfs keys (filename encryption
-key and file encryption key).
+key and file encryption key).  The VKK, when using the TPM for protection, is
+a randomly-generated key.
 
 The User Passkey (UP) is used as an AES key to do an initial decrypt of the
-encrypted "tpm_key" field in the SerializedVaultKeyset (see
-vault_keyset.proto).  This is done without padding as the decryption is done
-in-place and the resulting buffer is fed into an RSA decrypt on the TPM as
-the cipher text.  That RSA decrypt uses the system-wide TPM-wrapped
+Encrypted Vault Keyset Key (EVKK, or the "tpm_key" field in the
+SerializedVaultKeyset, see vault_keyset.proto).  This is done without padding as
+the decryption is done in-place and the resulting buffer is the Intermediate
+Vault Keyset Key (IEVKK), which is fed into an RSA decrypt on the TPM as the
+cipher text.  That RSA decrypt uses the system-wide TPM-wrapped
 cryptohome key.  In this manner, we can use a randomly-created system-wide
 key (the TPM has a limited number of key slots), but still require the user's
 passkey during the decryption phase.  This also increases the brute-force
@@ -156,7 +187,9 @@ cost of attacking the SerializedVaultKeyset offline as it means that the
 attacker would have to do a TPM cipher operation per password attempt
 (assuming that the wrapped key could not be recovered).
 
-After obtaining the VKK, the method is:
+After obtaining the VKK, it is used to recover the vault keyset by using it as
+an AES key to decrypt the Encrypted Vault Keyset (EVK, or the "wrapped_keyset"
+field in the SerializedVaultKeyset):
 
 VKK -
      |
@@ -164,6 +197,91 @@ VKK -
      |
 EVK -
 
-By comparison, when the TPM is not enabled, the UP is used as the VKK, and
-the decryption of the Vault Keyset (VK) is merely the process above.
+Where:
+  EVK - Encrypted vault keyset
+  VK - Vault keyset
 
+Presented another way:
+
++----------------------------------+
+| EVKK (persisted as "tpm_key")    |
++----------------------------------+
+                              \   /
+                               \ /   Final 128-bits decrypted     +----------+
+                                +--- in-place using the user's ---+ UP (mem) |
+                               / \   passkey                      +----------+
+                              /   \
++----------------------------------+
+| IEVKK (mem)                      |
++----------------------------------+
+ \                                 /
+  \                               /
+   \                             /
+    -----------      ------------
+                \   /
+                 \ /                       +---------------------+
+                  +--- Decrypted on-TPM ---+ TPM_CHK (persisted, |
+                 / \                       | sealed by the TPM)  |
+                /   \                      +---------------------+
+               /     \
+              /       \
+             /         \            +-------------------------------------+
+            /           \           | EVK (persisted as "wrapped_keyset") |
+           /             \          +-------------------------------------+
+          /               \          \                                   /
+         /                 \          ----------------   ----------------
+        +-------------------+                         \ /
+        | VKK (mem)         +--- AES decrypt ----------+
+        +-------------------+                         / \
+                                      ----------------   ----------------
+                                     /                                   \
+                                    +-------------------------------------+
+                                    | VK (mem)                            |
+                                    +-------------------------------------+
+
+Encryption of the Vault Keyset (VK) is the reverse method (see WrapVaultKeyset
+in crypto.cc).
+
+By comparison, when the TPM is not enabled, the UP is used as the password
+supplied to scryptbuf_enc, which will use memory-bound key strengthening and AES
+to encrypt the VK.  The Scrypt method is simpler because of the high-level API
+that Scrypt exposes for key strengthening and encryption in one function call.
+
+TPM Initialization
+
+Cryptohomed is responsible for initialization of the TPM once it has been
+enabled and activated.  Ownership creates a Storage Root Key (SRK) on the TPM,
+which is necessary to seal user keys (the system-wide cryptohome key and keys
+used by opencryptoki+tpm are ultimately sealed by the SRK; see
+http://trousers.sourceforge.net/pkcs11.html for more details on how opencryptoki
+uses the SRK).  The ownership process is in the tpm_init library, separate from
+cryptohome, but the basic process is as follows:
+
+1. If /sys/class/misc/tpm0/device/owned is 0
+   and
+   /sys/class/misc/tpm0/device/enabled is 1
+   then the initialize thread will attempt to initialize the TPM.
+2. An Endorsement Key (EK) will be created if it doesn't exist (some vendors do
+   not create one at the factory, as it is not required by the spec).
+3. Tspi_TPM_TakeOwnership will be called with the Trousers default well-known
+   ownership password, and the Chromium OS well-known SRK password.  This may
+   take between 10s and 150s.
+4. If successful, the SRK's password is reset to a NULL string, and its use is
+   unrestricted (in other words, code using the SRK does not need to know the
+   owner password).
+5. Finally, the owner password is changed to a randomly-generated string that is
+   available to the user for the duration of that boot.
+
+Cryptohome uses the TPM merely for secure key storage to help protect the user
+from data loss should their device be lost or compromised.  Keys sealed by the
+TPM can only be used on the TPM itself, meaning that offline or brute-force
+attacks are difficult.
+
+DBUS API
+
+Other programs communicate with cryptohomed using its DBUS API.  This API
+exposes both synchronous and asychronous methods for mounting, unmounting,
+removing, and changing passwords.  It also gives status information about the
+TPM.  See cryptohome.xml for a brief listing of the APIs available.  Note that
+the asyncrhonous APIs complete using a signal (AsyncCallStatus).  The completion
+signals are guaranteed to be in-order.
