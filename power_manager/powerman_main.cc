@@ -5,6 +5,8 @@
 #include <gflags/gflags.h>
 #include <time.h>
 
+#include <string>
+
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -13,6 +15,10 @@
 
 using std::string;
 
+DEFINE_string(prefs_dir, "",
+              "Directory to store settings.");
+DEFINE_string(default_prefs_dir, "",
+              "Directory to read default settings (Read Only).");
 DEFINE_string(log_dir, "",
               "Directory to store logs.");
 
@@ -53,7 +59,12 @@ int main(int argc, char* argv[]) {
                        logging::LOG_ONLY_TO_FILE,
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE);
-  power_manager::PowerManDaemon daemon(true, true);
+  FilePath prefs_dir(FLAGS_prefs_dir);
+  FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
+                             "/usr/share/power_manager" :
+                             FLAGS_default_prefs_dir);
+  power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
+  power_manager::PowerManDaemon daemon(true, true, &prefs);
   daemon.Init();
   daemon.Run();
   return 0;

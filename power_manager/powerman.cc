@@ -10,18 +10,30 @@
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
 
+
 namespace power_manager {
 
-
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
-                               bool use_input_for_key_power)
+                               bool use_input_for_key_power,
+                               PowerPrefs* prefs)
   : loop_(NULL),
     use_input_for_lid_(use_input_for_lid),
     use_input_for_key_power_(use_input_for_key_power),
+    prefs_(prefs),
     lidstate_(false),
-    power_button_state_(false) {}
+    power_button_state_(false),
+    retry_suspend_count_(0),
+    retry_suspend_event_id_(0) {}
 
 void PowerManDaemon::Init() {
+  CHECK(prefs_->ReadSetting("retry_suspend_ms", &retry_suspend_ms_));
+  CHECK(prefs_->ReadSetting("retry_suspend_attempts",
+                            &retry_suspend_attempts_));
+  // retrys will occur no more than once a minute
+  CHECK(retry_suspend_ms_ >= 60000);
+  // only 1-10 retries prior to just shutting down
+  CHECK(retry_suspend_attempts_ > 0);
+  CHECK(retry_suspend_attempts_ <= 10);
   loop_ = g_main_loop_new(NULL, false);
   CHECK(input_.Init(use_input_for_lid_, use_input_for_key_power_))
     <<"Cannot initialize input interface";
@@ -33,25 +45,46 @@ void PowerManDaemon::Run() {
   g_main_loop_run(loop_);
 }
 
+gboolean PowerManDaemon::RetrySuspend(void* object) {
+  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(object);
+  if(daemon->lidstate_ == kLidClosed) {
+    daemon->retry_suspend_count_++;
+    if (daemon->retry_suspend_count_ > daemon->retry_suspend_attempts_) {
+      LOG(ERROR) << "retry suspend attempts failed ... shutting down";
+      daemon->Shutdown();
+    } else {
+      LOG(WARNING) << "retry suspend " << daemon->retry_suspend_count_;
+      daemon->Suspend();
+    }
+    return true;
+  } else {
+    daemon->retry_suspend_event_id_ = 0;
+    LOG(INFO) << "retry suspend cancelled ... lid is open";
+    return false;
+  }
+}
+
 void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(object);
   switch(type) {
     case LID: {
-      // value == 0 is open. value == 1 is closed.
-      LOG(INFO) << "PowerM Daemon - lid " << (1 == value?"closed.":"opened.");
-      daemon->lidstate_ = (value == 1);
-      if (value)
+      daemon->lidstate_ = daemon->GetLidState(value);
+      LOG(INFO) << "PowerM Daemon - lid "
+                << (daemon->lidstate_ == kLidClosed?"closed.":"opened.");
+      if (daemon->lidstate_ == kLidClosed) {
         util::SendSignalToPowerD(util::kLidClosed);
-      else
+      } else {
+        daemon->retry_suspend_count_ = 0;
         util::SendSignalToPowerD(util::kLidOpened);
+      }
       break;
     }
     case PWRBUTTON: {
-      // value == 0 is button up. value == 1 is button down.
-      // value == 2 is key repeat.
-      LOG(INFO) << "PowerM Daemon - power button " << (0 < value?"down.":"up.");
-      daemon->power_button_state_ = value;
-      if (0 < value)
+      daemon->power_button_state_ = daemon->GetPowerButtonState(value);
+      LOG(INFO) << "PowerM Daemon - power button "
+                << (daemon->power_button_state_ == kPowerButtonDown?
+                    "down.":"up.");
+      if (daemon->power_button_state_ == kPowerButtonDown)
         util::SendSignalToPowerD(util::kPowerButtonDown);
       else
         util::SendSignalToPowerD(util::kPowerButtonUp);
@@ -71,13 +104,15 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                              util::kSuspendSignal)) {
     LOG(INFO) << "Suspend event";
-    LOG(INFO) << "lid is " << (1 == daemon->lidstate_?"closed.":"opened.");
+    LOG(INFO) << "lid is "
+              << (daemon->lidstate_ == kLidClosed?"closed.":"opened.");
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                                     util::kShutdownSignal)) {
     LOG(INFO) << "Shutdown event";
     LOG(INFO) << "power button is "
-              << (0 < daemon->power_button_state_?"down.":"up.");
+              << (daemon->power_button_state_ == kPowerButtonDown?
+                  "down.":"up.");
     daemon->Shutdown();
   } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                                     util::kRequestCleanShutdown)) {
@@ -114,6 +149,10 @@ void PowerManDaemon::Shutdown() {
 
 void PowerManDaemon::Suspend() {
   util::Launch("powerd_suspend");
+  if (!retry_suspend_event_id_) {
+    retry_suspend_event_id_ = g_timeout_add_seconds(
+        retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend), this);
+  }
 }
 
 }

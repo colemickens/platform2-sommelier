@@ -74,7 +74,7 @@ powerman_env = powerd_env.Clone()
 powerman_sources = ['powerman.cc', 'input.cc']
 powerman_lib = powerman_env.Library('powerman_lib', powerman_sources)
 powerman = powerman_env.Program('powerm', ['powerman_main.cc', powerman_lib,
-                                           util_lib])
+                                           power_prefs, util_lib])
 
 Default(powerman)
 
