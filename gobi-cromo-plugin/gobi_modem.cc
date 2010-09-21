@@ -896,25 +896,32 @@ void GobiModem::ResetModem(DBus::Error& error) {
 // pre-condition: activation_state_ == gobi::kConnecting
 void GobiModem::ActivateOmadm(DBus::Error& error) {
   ULONG rc;
+  char errmsg[64];
+
   LOG(INFO) << "Activating OMA-DM";
 
   rc = sdk_->OMADMStartSession(gobi::kConfigure);
   if (rc != 0) {
     activation_state_ = gobi::kNotActivated;
-    // No error set, caller will handle based on activation_state_
+    snprintf(errmsg, sizeof(errmsg), "OMA-DM returned: %ld", rc);
+    error.set(kActivationError, errmsg);
+    LOG(ERROR) << "OMA-DM activation failed: " << rc;
     return;
   }
 }
 
 void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
   ULONG rc;
+  char errmsg[64];
 
   LOG(INFO) << "Activating OTASP";
 
   rc = sdk_->ActivateAutomatic(number.c_str());
   if (rc != 0) {
     activation_state_ = gobi::kNotActivated;
-    // No error set, caller will handle based on activation_state_
+    snprintf(errmsg, sizeof(errmsg), "OTASP returned: %ld", rc);
+    error.set(kActivationError, errmsg);
+    LOG(ERROR) << "OTASP activation failed: " << rc;
     return;
    }
 }
