@@ -148,6 +148,11 @@ bootstat x-started
 # on the default PATH handed to us by init.
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
+
+# Set an environment variable to prevent Flash asserts from crashing the plugin
+# process.
+export DONT_CRASH_ON_ASSERT=1
+
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
             --enable-gview \
