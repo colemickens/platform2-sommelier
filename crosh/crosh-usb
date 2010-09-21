@@ -17,8 +17,9 @@ USB_HELP='
  upgrade [<dev>]
   Upgrade an existing ChromeOS installation, saving existing user data.
 
- update_firmware
-  Update system firmware, if applicable.
+ update_firmware [--factory]
+  Update system firmware, if applicable. This command will update only the RW
+  region by default. To rewrite RO and everything, add option --factory.
 '
 
 HELP="$HELP$USB_HELP"
@@ -41,6 +42,20 @@ do_install() {
 
 cmd_update_firmware() {
   local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
+  local UPDATE_OPTION="--rw-ab-together"
+
+  case "$1" in
+    --factory* )
+      UPDATE_OPTION="--factory"
+      ;;
+    "" )
+      # default option.
+      ;;
+    * )
+      echo "Sorry, unsupported option: $1"
+      return 1
+      ;;
+  esac
 
   # The firmware updater needs same permission as chromeos-install (the command
   # invoked by do_install). chromeos-install is now running as normal user and
@@ -49,9 +64,9 @@ cmd_update_firmware() {
   # sudo to follow new magic for granting root permission.
 
   if [ -s $CHROMEOS_FIRMWARE_UPDATE ]; then
-    sudo $CHROMEOS_FIRMWARE_UPDATE
+    sudo $CHROMEOS_FIRMWARE_UPDATE $UPDATE_OPTION
   else
-    echo "There is no firmware update in this Chrome OS image."
+    echo "There is no firmware update in current system."
   fi
 }
 
