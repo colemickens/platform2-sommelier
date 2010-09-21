@@ -604,7 +604,7 @@ gboolean SessionManagerService::RetrieveProperty(gchar* name,
   if (!store_->Get(name, &value, &encoded)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,
-              "The user is not whitelisted.");
+              "The requested property is unknown.");
     return FALSE;
   }
   *OUT_value = g_strdup_printf("%.*s", value.length(), value.c_str());
