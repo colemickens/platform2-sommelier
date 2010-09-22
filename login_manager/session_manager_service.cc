@@ -651,9 +651,11 @@ gboolean SessionManagerService::RestartJob(gint pid,
     return FALSE;
   }
 
-  system_->kill(child_pid, SIGTERM);
-  if (!system_->ChildIsGone(child_pid, kKillTimeout))
-    system_->kill(child_pid, SIGABRT);
+  // Waiting for Chrome to shutdown takes too much time.
+  // We're killing it immediately hoping that data Chrome uses before
+  // logging in is not corrupted.
+  // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
+  kill(-child_pid, SIGKILL);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
