@@ -29,7 +29,7 @@ static const int64 kDefaultBrightness = 50;
 static const int64 kMaxBrightness = 100;
 static const int64 kPluggedBrightness = 70;
 static const int64 kUnpluggedBrightness = 30;
-static const int64 kSmallInterval = 250;
+static const int64 kSmallInterval = 500;
 static const int64 kBigInterval = kSmallInterval * 4;
 static const int64 kPluggedDim = kBigInterval;
 static const int64 kPluggedOff = 2 * kBigInterval;
@@ -471,14 +471,26 @@ TEST_F(DaemonTest, GenerateMetricsOnIdleEvent) {
   daemon_.SetPlugged(false);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(kBigInterval + kSmallInterval, FakeMotionEvent, GDK_DISPLAY());
+  // Mouse event occurs at 1.25 big intervals (5 small intervals)
+  // Expected : backlight dim at 2.25 big intervals
+  // Expected : screen off at 3.25 big intervals.
   g_timeout_add(4 * kBigInterval, FakeMotionEvent, GDK_DISPLAY());
+  // Another mouse event at 4.00 big intervals. transition from Off -> Active.
   g_timeout_add(4 * kBigInterval + 2 * kSmallInterval, SetPlugged, &daemon_);
+  // User plugs power at 4.50 big intervals. Stay in active.
   g_timeout_add(5 * kBigInterval + kSmallInterval, FakeMotionEvent,
                 GDK_DISPLAY());
+  // User mouse motion at 5.25 big intervals. Stay in active.
   g_timeout_add(5 * kBigInterval + 2 * kSmallInterval, SetUnplugged, &daemon_);
+  // User unplugs power at 5.50 big intervals. Stay in active.
+  // Expected : backlight dim at 6.50 big intervals.
   g_timeout_add(6 * kBigInterval + 3 * kSmallInterval, FakeMotionEvent,
                 GDK_DISPLAY());
+  // Another mouse event at 6.75 big intervals. Dim -> Active.
+  // Expected : backlight dim at 7.75 big intervals.
+  // Expected : screen off at 8.75 big intervals.
   g_timeout_add(9 * kBigInterval, QuitLoop, loop);
+  // Test Done at 9.00 big intervals.
   g_main_loop_run(loop);
 }
 
