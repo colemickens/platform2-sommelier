@@ -655,7 +655,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  kill(-child_pid, SIGKILL);
+  system_->kill(-child_pid, SIGKILL);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);

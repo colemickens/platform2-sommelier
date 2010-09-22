@@ -975,6 +975,9 @@ TEST_F(SessionManagerTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
+  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, SIGKILL))
+      .WillOnce(Return(0));
+  MockUtils();
 
   EXPECT_CALL(*job, SetArguments("dummy"))
       .Times(1);
