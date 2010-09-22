@@ -111,20 +111,7 @@ fast_dd() {
 
 # Find root partition of the block device that we are installing from
 get_root_device() {
-  local root_dev=$(rootdev)
-  local on_dm=0
-
-  # If we're on a verified rootfs, the rootdev won't be meaningful.
-  if echo "${root_dev}" | grep -q '^/dev/mapper/'; then
-    on_dm=1
-  fi
-  if [ "${root_dev}" = "/dev/dm-0" ]; then
-    on_dm=1
-  fi
-  if [ "${on_dm}" -eq "1" ]; then
-    root_dev="/dev/$(basename /sys/block/dm-0/slaves/*)"
-  fi
-  echo $root_dev
+  rootdev -s
 }
 
 # Check for optional payload image
