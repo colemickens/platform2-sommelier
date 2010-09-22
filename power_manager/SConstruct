@@ -70,13 +70,30 @@ powerd = powerd_env.Program('powerd',
 Default(powerd)
 
 # Build privileged power daemon
-powerman_env = powerd_env.Clone()
+powerman_env = gdk_env.Clone()
+powerman_env.Append(LIBS=Split('base chromeos gflags'))
+powerman_env.ParseConfig(
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+)
 powerman_sources = ['powerman.cc', 'input.cc']
 powerman_lib = powerman_env.Library('powerman_lib', powerman_sources)
 powerman = powerman_env.Program('powerm', ['powerman_main.cc', powerman_lib,
                                            power_prefs, util_lib])
 
 Default(powerman)
+
+# Build sample suspend delay client
+suspend_delay_sample_env = powerman_env.Clone()
+suspend_delay_sample_env.Append(LIBS=Split('base chromeos gflags'))
+suspend_delay_sample_env.ParseConfig(
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
+)
+suspend_delay_sample_sources = ['suspend_delay_sample.cc']
+suspend_delay_sample = suspend_delay_sample_env.Program('suspend_delay_sample',
+                                  suspend_delay_sample_sources)
+
+Default(suspend_delay_sample)
+
 
 # Build unit tests
 tests = []

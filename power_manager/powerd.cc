@@ -90,6 +90,7 @@ void Daemon::Init() {
   gdk_window_add_filter(NULL, gdk_event_filter, this);
   locker_.Init(use_xscreensaver_);
   RegisterDBusMessageHandler();
+  suspender_.Init();
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
 }
 
