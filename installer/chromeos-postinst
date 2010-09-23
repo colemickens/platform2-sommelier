@@ -72,7 +72,7 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
 
   # If this FS was mounted read-write, we can't do deltas from it. Mark the
   # FS as such
-  touch "${INSTALL_ROOT}/.nodelta" || true 2>&1 > /dev/null
+  (touch "${INSTALL_ROOT}/.nodelta" || true) > /dev/null 2>&1
 
   # TODO(zelidrag): http://crosbug/6367 - Remove this before the product is
   # released. For now, this should recover users that reimaged their machine.

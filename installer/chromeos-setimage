@@ -35,8 +35,8 @@ fi
 # We need to check that there is a root device,
 # factory install runs from tmpfs and rootdev does not
 # return a meaningful result in that case.
-if rootdev -s 2>&1 > /dev/null; then
-  if type rootdev 2>&1 > /dev/null; then
+if rootdev -s > /dev/null 2>&1 ; then
+  if type rootdev > /dev/null 2>&1 ; then
     # Enable verification, but don't force a check for dev builds.
     if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
       rootfs_verification_default=${FLAGS_TRUE}
