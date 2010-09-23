@@ -238,7 +238,7 @@ bool SessionManagerService::Run() {
 
   // TODO(cmasone): A corrupted owner key means that the user needs to go
   //                to recovery mode.  How to tell them that from here?
-  DCHECK(key_->PopulateFromDiskIfPossible());
+  CHECK(key_->PopulateFromDiskIfPossible());
 
   g_main_loop_run(main_loop_);
 
