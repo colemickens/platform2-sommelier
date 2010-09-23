@@ -246,7 +246,7 @@ class Crypto : public EntropySource {
                                 SecureBlob* passkey);
 
   // Ensures that the TPM is connected
-  CryptoError EnsureTpm() const;
+  CryptoError EnsureTpm(bool disconnect_first) const;
 
   // Overrides the default the entropy source
   void set_entropy_source(const std::string& entropy_source) {

@@ -340,6 +340,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   Tspi_Context_CloseObject(context_handle, srk_handle);
   Tspi_Context_CloseObject(context_handle, local_key_handle);
 
+  LOG(INFO) << "Created new cryptohome key.";
   return true;
 }
 
@@ -375,8 +376,18 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
         return false;
       }
     } else {
-      Tspi_Context_CloseObject(context_handle, srk_handle);
-      return true;
+      SecureBlob pub_key;
+      // Make sure that we can get the public key
+      if (GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
+        Tspi_Context_CloseObject(context_handle, srk_handle);
+        return true;
+      }
+      // Otherwise, close the key and fall through
+      Tspi_Context_CloseObject(context_handle, *key_handle);
+      if (IsTransient(*result)) {
+        Tspi_Context_CloseObject(context_handle, srk_handle);
+        return false;
+      }
     }
   }
 
@@ -391,13 +402,20 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
       return false;
     }
   } else {
-    Tspi_Context_CloseObject(context_handle, srk_handle);
-    // Save the cryptohome key to the well-known location
-    if (!SaveCryptohomeKey(context_handle, *key_handle, result)) {
-      LOG(ERROR) << "Couldn't save cryptohome key";
-      return false;
+    SecureBlob pub_key;
+    // Make sure that we can get the public key
+    if (GetPublicKeyBlob(context_handle, *key_handle, &pub_key, result)) {
+      // Save the cryptohome key to the well-known location
+      if (!SaveCryptohomeKey(context_handle, *key_handle, result)) {
+        LOG(ERROR) << "Couldn't save cryptohome key";
+        Tspi_Context_CloseObject(context_handle, *key_handle);
+        Tspi_Context_CloseObject(context_handle, srk_handle);
+        return false;
+      }
+      Tspi_Context_CloseObject(context_handle, srk_handle);
+      return true;
     }
-    return true;
+    Tspi_Context_CloseObject(context_handle, *key_handle);
   }
 
   Tspi_Context_CloseObject(context_handle, srk_handle);
@@ -423,16 +441,9 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
   // Otherwise, the key couldn't be loaded, and it wasn't due to a transient
   // error, so we must create the key.
   if (CreateCryptohomeKey(context_handle, create_in_tpm, result)) {
-    return true;
-  }
-
-  // If the error is expected to be transient, return now.
-  if (IsTransient(*result)) {
-    return false;
-  }
-
-  if (LoadCryptohomeKey(context_handle, key_handle, result)) {
-    return true;
+    if (LoadCryptohomeKey(context_handle, key_handle, result)) {
+      return true;
+    }
   }
 
   // Don't check the retry status, since we are returning false here anyway

@@ -64,6 +64,7 @@ bool Service::Initialize() {
   bool result = true;
 
   if (initialize_tpm_) {
+    tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
@@ -143,6 +144,19 @@ void Service::MountTaskObserve(const MountTaskResult& result) {
 void Service::NotifyComplete(const MountTaskResult& result) {
   g_signal_emit(cryptohome_, async_complete_signal_, 0, result.sequence_id(),
                 result.return_status(), result.return_code());
+}
+
+void Service::InitializeTpmComplete(bool status, bool took_ownership) {
+  if (took_ownership) {
+    MountTaskResult ignored_result;
+    base::WaitableEvent event(true, false);
+    MountTaskResetTpmContext* mount_task =
+        new MountTaskResetTpmContext(NULL, mount_);
+    mount_task->set_result(&ignored_result);
+    mount_task->set_complete_event(&event);
+    mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+    event.Wait();
+  }
 }
 
 gboolean Service::CheckKey(gchar *userid,
@@ -413,7 +427,7 @@ gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   Tpm::TpmStatus tpm_status;
-  mount_->get_crypto()->EnsureTpm();
+  mount_->get_crypto()->EnsureTpm(false);
   Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
 
   if (tpm) {

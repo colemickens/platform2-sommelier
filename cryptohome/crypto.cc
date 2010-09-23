@@ -71,12 +71,15 @@ bool Crypto::Init() {
   return true;
 }
 
-Crypto::CryptoError Crypto::EnsureTpm() const {
+Crypto::CryptoError Crypto::EnsureTpm(bool disconnect_first) const {
   Crypto::CryptoError result = Crypto::CE_NONE;
   if (tpm_ == NULL) {
     const_cast<Crypto*>(this)->tpm_ = default_tpm_.get();
   }
   if (tpm_) {
+    if (disconnect_first) {
+      tpm_->Disconnect();
+    }
     if (!tpm_->IsConnected()) {
       Tpm::TpmRetryAction retry_action;
       if (!tpm_->Connect(&retry_action)) {
@@ -653,7 +656,7 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     if (wrap_flags) {
       *wrap_flags |= SerializedVaultKeyset::TPM_WRAPPED;
     }
-    Crypto::CryptoError local_error = EnsureTpm();
+    Crypto::CryptoError local_error = EnsureTpm(false);
     if (tpm_ == NULL) {
       LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                  << "unavailable";
@@ -802,7 +805,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   if (use_tpm_) {
     // Ignore the status here.  When the TPM is not available, we merely fall
     // back to scrypt.
-    EnsureTpm();
+    EnsureTpm(false);
   }
   // If the TPM is available, then instead of using the user's passkey as the
   // local_vault_wrapper, we generate a random string of bytes to use as the VKK

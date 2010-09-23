@@ -291,6 +291,20 @@ class MountTaskRemove : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskRemove);
 };
 
+// Implements asychronous reset of the TPM context
+class MountTaskResetTpmContext : public MountTask {
+ public:
+  MountTaskResetTpmContext(MountTaskObserver* observer, Mount* mount)
+      : MountTask(observer, mount, UsernamePasskey()) {
+  }
+  virtual ~MountTaskResetTpmContext() { }
+
+  virtual void Run();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
+};
+
 }  // namespace cryptohome
 
 #endif // CRYPTOHOME_MOUNT_TASK_H_

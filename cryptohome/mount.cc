@@ -123,7 +123,16 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
 
 bool Mount::MountCryptohome(const Credentials& credentials,
                             MountError* mount_error) const {
-  return MountCryptohomeInner(credentials, true, mount_error);
+  MountError local_mount_error = MOUNT_ERROR_NONE;
+  bool result = MountCryptohomeInner(credentials, true, &local_mount_error);
+  // Retry once if there is a TPM communications failure
+  if (!result && local_mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
+    result = MountCryptohomeInner(credentials, true, &local_mount_error);
+  }
+  if (mount_error) {
+    *mount_error = local_mount_error;
+  }
+  return result;
 }
 
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
@@ -304,8 +313,14 @@ bool Mount::TestCredentials(const Credentials& credentials) const {
   }
   MountError mount_error;
   VaultKeyset vault_keyset;
-  // TODO(fes): Handle TPM errors here
-  return UnwrapVaultKeyset(credentials, false, &vault_keyset, &mount_error);
+  bool result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
+                                  &mount_error);
+  // Retry once if there is a TPM communications failure
+  if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
+    result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
+                               &mount_error);
+  }
+  return result;
 }
 
 bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
@@ -378,7 +393,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       // if successful, the call to has_tpm() below will succeed, allowing
       // re-wrapping (migration) using the TPM.
       if (use_tpm_) {
-        crypto_->EnsureTpm();
+        crypto_->EnsureTpm(false);
       }
 
       // If the vault keyset's TPM state is not the same as that configured for
@@ -477,9 +492,14 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   // Attempt to unwrap the vault keyset with the specified credentials
   MountError mount_error;
   VaultKeyset vault_keyset;
-  // TODO(fes): Handle TPM errors here
-  if (UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
-                        &mount_error)) {
+  bool result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
+                                  &mount_error);
+  // Retry once if there is a TPM communications failure
+  if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
+    result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
+                               &mount_error);
+  }
+  if (result) {
     if (!ResaveVaultKeyset(credentials, vault_keyset)) {
       LOG(ERROR) << "Couldn't save keyset.";
       return false;

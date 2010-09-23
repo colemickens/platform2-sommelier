@@ -98,4 +98,14 @@ void MountTaskRemove::Run() {
   MountTask::Notify();
 }
 
+void MountTaskResetTpmContext::Run() {
+  if (mount_) {
+    Crypto* crypto = mount_->get_crypto();
+    if (crypto) {
+      crypto->EnsureTpm(true);
+    }
+  }
+  MountTask::Notify();
+}
+
 }  // namespace cryptohome

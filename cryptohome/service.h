@@ -30,13 +30,10 @@ struct Cryptohome;
 // D-Bus and entering the glib run loop.
 //
 // ::g_type_init() must be called before this class is used.
-//
-// TODO(wad) make an AbstractDbusService class which wraps a placeholder
-//           GObject struct that references the service. Then subclass to
-//           implement and push the abstract to common/chromeos/dbus/
 class Service : public chromeos::dbus::AbstractDbusService,
                 public MountTaskObserver,
-                public CryptohomeEventSourceSink {
+                public CryptohomeEventSourceSink,
+                public tpm_init::TpmInit::TpmInitCallback {
  public:
   Service();
   virtual ~Service();
@@ -71,6 +68,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   // CryptohomeEventSourceSink
   virtual void NotifyComplete(const MountTaskResult& result);
+
+  // TpmInitCallback
+  virtual void InitializeTpmComplete(bool status, bool took_ownership);
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
