@@ -155,6 +155,13 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
     mount -n -t ext3 "$OEM_DEV" /mnt/partner_partition
     mosys -k smbios info system > /tmp/machine-info
   fi
+  # Log BIOS and EC information for about:system to help debug
+  if [ -x /usr/sbin/mosys ]; then
+    mosys -l smbios info bios > /var/log/bios_info.txt
+  else
+    # message not blank on systems without mosys (ARM mosys is not done)
+    echo "Unable to get bios information" > /var/log/bios_info.txt
+  fi
 fi
 
 #
