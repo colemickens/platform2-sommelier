@@ -72,7 +72,7 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
 
   # If this FS was mounted read-write, we can't do deltas from it. Mark the
   # FS as such
-  touch "${INSTALL_ROOT}/.nodelta" || true
+  touch "${INSTALL_ROOT}/.nodelta" || true 2>&1 > /dev/null
 
   # TODO(zelidrag): http://crosbug/6367 - Remove this before the product is
   # released. For now, this should recover users that reimaged their machine.
@@ -276,6 +276,11 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       echo "marking part $LEGACY_PART_NUM bootable (old)"
       gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
     fi
+
+    # At this point in the script, the new partition has been marked bootable
+    # and a reboot will boot into it. Thus, it's important that any future
+    # errors in this script do not cause this script to return failure.
+    set +e
 
     # See if we need to update firmware. NOTE: we must activate new firmware
     # only after new kernel is actived (installed and made bootable),
