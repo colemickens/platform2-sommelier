@@ -97,6 +97,7 @@ class GobiModem
   // Verizon uses OTASP, code *22899
   void ActivateOtasp(const std::string& number, DBus::Error& error);
   void ApiConnect(DBus::Error& error);
+  ULONG ApiDisconnect(void);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);

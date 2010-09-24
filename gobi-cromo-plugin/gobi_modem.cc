@@ -36,6 +36,7 @@ DEFINE_ERROR(Sdk)
 DEFINE_ERROR(Mode)
 DEFINE_ERROR(OperationInitiated)
 DEFINE_MM_ERROR(NoNetwork)
+DEFINE_MM_ERROR(OperationNotAllowed)
 
 #define ENSURE_SDK_SUCCESS(function, rc, errtype)        \
     do {                                                 \
@@ -249,13 +250,7 @@ GobiModem::~GobiModem() {
   snprintf(name, sizeof(name), "gobi-exit-ok-%p", static_cast<void*>(this));
   handler_->server().exit_ok_hooks().Del(name);
 
-  pthread_mutex_lock(&modem_mutex_.mutex_);
-  if (connected_modem_ == this) {
-    connected_modem_ = NULL;
-    pthread_mutex_unlock(&modem_mutex_.mutex_);
-    sdk_->QCWWANDisconnect();
-  } else
-    pthread_mutex_unlock(&modem_mutex_.mutex_);
+  ApiDisconnect();
 }
 
 // DBUS Methods: Modem
@@ -295,21 +290,14 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     // leakage and possible invalid pointer references.
 //    StartNMEAThread();
   } else if (!enable && Enabled()) {
-    pthread_mutex_lock(&modem_mutex_.mutex_);
-    if (connected_modem_ == this) {
-      ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
-      if (rc != 0) {
-        error.set(kSdkError, "SetPower");
-        LOG(WARNING) << "SetPower failed : " << rc;
-        pthread_mutex_unlock(&modem_mutex_.mutex_);
-        return;
-      }
-      connected_modem_ = NULL;
-      pthread_mutex_unlock(&modem_mutex_.mutex_);
-      sdk_->QCWWANDisconnect();
-      Enabled = false;
-    } else
-      pthread_mutex_unlock(&modem_mutex_.mutex_);
+    ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
+    if (rc != 0) {
+      error.set(kSdkError, "SetPower");
+      LOG(WARNING) << "SetPower failed : " << rc;
+      return;
+    }
+    ApiDisconnect();
+    Enabled = false;
   }
 }
 
@@ -773,12 +761,42 @@ void GobiModem::RegisterCallbacks() {
 }
 
 void GobiModem::ApiConnect(DBus::Error& error) {
+
+  // It is safe to test for NULL outside of a lock because ApiConnect
+  // is only called by the main thread, and only the main thread can
+  // modify connected_modem_.
+  if (connected_modem_ != NULL) {
+    LOG(INFO) << "ApiAlready connected: connected_modem_=0x" << connected_modem_
+              << "this=0x" << this;
+    error.set(kOperationNotAllowedError,
+              "Only one modem can be connected via Api");
+    return;
+  }
   ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
   ENSURE_SDK_SUCCESS(QCWWANConnect, rc, kSdkError);
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
   RegisterCallbacks();
+}
+
+
+ULONG GobiModem::ApiDisconnect(void) {
+
+  ULONG rc = 0;
+
+  pthread_mutex_lock(&modem_mutex_.mutex_);
+  if (connected_modem_ == this) {
+    LOG(INFO) << "Disconnecting from QCWWAN.  this_=0x" << this;
+    connected_modem_ = NULL;
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+    rc = sdk_->QCWWANDisconnect();
+  } else {
+    LOG(INFO) << "Not connected.  this_=0x" << this;
+    pthread_mutex_unlock(&modem_mutex_.mutex_);
+  }
+
+  return rc;
 }
 
 void GobiModem::LogGobiInformation() {
@@ -877,11 +895,7 @@ void GobiModem::ResetModem(DBus::Error& error) {
   Enabled = false;
   LOG(INFO) << "Offline";
 
-  // Resetting the modem will cause it to disappear and reappear,
-  // but because both the reset and the handling of udev events
-  // happen in the main thread, we would not see either the Remove
-  // or the Add events until after the reset is finished. So
-  // we turn off monitoring while the reset is in progress
+  // Resetting the modem will cause it to disappear and reappear.
   ULONG rc = sdk_->SetPower(gobi::kOffline);
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 
@@ -889,7 +903,7 @@ void GobiModem::ResetModem(DBus::Error& error) {
   rc = sdk_->SetPower(gobi::kReset);
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 
-  rc = sdk_->QCWWANDisconnect();
+  rc = ApiDisconnect();
   ENSURE_SDK_SUCCESS(QCWWanDisconnect, rc, kSdkError);
 }
 
@@ -963,6 +977,8 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
       LOG(WARNING) << "Carrier image selection from: "
                    << image_path << " failed: " << rc;
       error.set(kFirmwareLoadError, "UpgradeFirmware");
+    } else {
+      ApiDisconnect();
     }
   }
 }
@@ -1149,13 +1165,7 @@ void GobiModem::SetModemProperties() {
       }
     }
   }
-  pthread_mutex_lock(&modem_mutex_.mutex_);
-  if (connected_modem_ == this) {
-    connected_modem_ = NULL;
-    pthread_mutex_unlock(&modem_mutex_.mutex_);
-    sdk_->QCWWANDisconnect();
-  } else
-    pthread_mutex_unlock(&modem_mutex_.mutex_);
+  ApiDisconnect();
   if (!getserial_error.is_set()) {
     // TODO(jglasgow): if GSM return serials.imei
     EquipmentIdentifier = serials.meid;
