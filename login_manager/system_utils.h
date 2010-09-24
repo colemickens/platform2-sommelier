@@ -17,7 +17,10 @@ class SystemUtils {
   SystemUtils();
   virtual ~SystemUtils();
 
-  virtual int kill(pid_t pid, int signal);
+  // Sends |signal| to |pid|, with uid and euid set to |owner|.
+  // NOTE: Your saved UID is kept unchanged.  If you expect to drop and regain
+  // root privs, MAKE SURE YOUR suid == 0.
+  virtual int kill(pid_t pid, uid_t owner, int signal);
 
   // Returns: true if child specified by |child_spec| exited,
   //          false if we time out.

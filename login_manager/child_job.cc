@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -126,8 +126,15 @@ const std::string ChildJob::GetName() const {
 }
 
 void ChildJob::SetArguments(const std::string& arguments) {
+  std::string argv0;
+  if (!arguments_.empty())
+    argv0 = arguments_[0];
+
   arguments_.clear();
   SplitString(arguments, ' ', &arguments_);
+
+  if (!argv0.empty())
+    arguments_[0] = argv0;
 }
 
 char const** ChildJob::CreateArgv() const {

@@ -130,7 +130,8 @@ TEST(ChildJobTest, SetArguments) {
   job.SetArguments(kNewArgsString);
 
   ASSERT_EQ(arraysize(kNewArgsArray), job.arguments_.size());
-  for (size_t i = 0; i < arraysize(kNewArgsArray); ++i) {
+  EXPECT_EQ(argv[0], job.arguments_[0]);
+  for (size_t i = 1; i < arraysize(kNewArgsArray); ++i) {
     EXPECT_EQ(kNewArgsArray[i], job.arguments_[i]);
   }
 }

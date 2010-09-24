@@ -23,9 +23,20 @@ namespace login_manager {
 SystemUtils::SystemUtils() {}
 SystemUtils::~SystemUtils() {}
 
-int SystemUtils::kill(pid_t pid, int signal) {
-  LOG(INFO) << "Sending " << signal << " to " << pid;
-  return ::kill(pid, signal);
+int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
+  LOG(INFO) << "Sending " << signal << " to " << pid << " as " << owner;
+  uid_t uid, euid, suid;
+  getresuid(&uid, &euid, &suid);
+  if (setresuid(owner, owner, -1)) {
+    PLOG(ERROR) << "Couldn't assume uid " << owner;
+    return -1;
+  }
+  int ret = ::kill(pid, signal);
+  if (setresuid(uid, euid, -1)) {
+    PLOG(ERROR) << "Couldn't return to root";
+    return -1;
+  }
+  return ret;
 }
 
 bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {

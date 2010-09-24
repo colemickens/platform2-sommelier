@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -73,7 +73,7 @@ class ChildJob : public ChildJobInterface {
   explicit ChildJob(const std::vector<std::string>& arguments);
   virtual ~ChildJob();
 
-  // Overridden from ChildJob
+  // Overridden from ChildJobInterface
   virtual bool ShouldStop() const;
   virtual void RecordTime();
   virtual void Run();
@@ -137,4 +137,3 @@ class ChildJob : public ChildJobInterface {
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_CHILD_JOB_H_
-

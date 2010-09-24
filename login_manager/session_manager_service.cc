@@ -643,7 +643,11 @@ gboolean SessionManagerService::RestartJob(gint pid,
   int child_pid = pid;
   std::vector<int>::iterator child_pid_it =
       std::find(child_pids_.begin(), child_pids_.end(), child_pid);
-  if (child_pid_it == child_pids_.end()) {
+  size_t child_index = child_pid_it - child_pids_.begin();
+
+  if (child_pid_it == child_pids_.end() ||
+      child_jobs_[child_index]->GetName() != "chrome") {
+    // If we didn't find the pid, or we don't think that job was chrome...
     *OUT_done = FALSE;
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_UNKNOWN_PID,
@@ -655,14 +659,16 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  system_->kill(-child_pid, SIGKILL);
+  uid_t to_kill_as = getuid();
+  if (child_jobs_[child_index]->IsDesiredUidSet())
+    to_kill_as = child_jobs_[child_index]->GetDesiredUid();
+  system_->kill(-child_pid, to_kill_as, SIGKILL);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
   arguments_buffer[kMaxArgumentsSize] = '\0';
   string arguments_string(arguments_buffer);
 
-  size_t child_index = child_pid_it - child_pids_.begin();
   child_jobs_[child_index]->SetArguments(arguments_string);
   child_pids_[child_index] = RunChild(child_jobs_[child_index]);
 
@@ -835,9 +841,13 @@ void SessionManagerService::CleanupChildren(int timeout) {
   for (size_t i_child = 0; i_child < child_pids_.size(); ++i_child) {
     int child_pid = child_pids_[i_child];
     if (child_pid > 0) {
-      system_->kill(child_pid, (session_started_ ? SIGTERM: SIGKILL));
+      uid_t uid = getuid();
+      if (child_jobs_[i_child]->IsDesiredUidSet())
+        uid = child_jobs_[i_child]->GetDesiredUid();
+
+      system_->kill(child_pid, uid, (session_started_ ? SIGTERM: SIGKILL));
       if (!system_->ChildIsGone(child_pid, timeout))
-        system_->kill(child_pid, SIGABRT);
+        system_->kill(child_pid, uid, SIGABRT);
     }
   }
 }

@@ -107,10 +107,14 @@ class SessionManagerTest : public ::testing::Test {
     std::vector<ChildJobInterface*> jobs;
     EXPECT_CALL(*job1, GetName())
         .WillRepeatedly(Return(std::string("job1")));
+    EXPECT_CALL(*job1, IsDesiredUidSet())
+        .WillRepeatedly(Return(false));
     jobs.push_back(job1);
     if (job2) {
       EXPECT_CALL(*job2, GetName())
           .WillRepeatedly(Return(std::string("job2")));
+      EXPECT_CALL(*job2, IsDesiredUidSet())
+          .WillRepeatedly(Return(false));
       jobs.push_back(job2);
     }
     manager_ = new SessionManagerService(jobs);
@@ -356,7 +360,7 @@ TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
@@ -370,11 +374,11 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGABRT))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
   MockUtils();
 
@@ -389,7 +393,7 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
@@ -409,11 +413,11 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   test_api.set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGTERM))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, SIGABRT))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
   MockUtils();
 
@@ -975,10 +979,12 @@ TEST_F(SessionManagerTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
-  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
   MockUtils();
 
+  EXPECT_CALL(*job, GetName())
+      .WillRepeatedly(Return(std::string("chrome")));
   EXPECT_CALL(*job, SetArguments("dummy"))
       .Times(1);
   EXPECT_CALL(*job, RecordTime())
@@ -995,6 +1001,19 @@ TEST_F(SessionManagerTest, RestartJob) {
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->RestartJob(pid, arguments, &out, &error));
   EXPECT_EQ(TRUE, out);
+}
+
+TEST_F(SessionManagerTest, RestartJobWrongPid) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  SessionManagerService::TestApi test_api = manager_->test_api();
+  test_api.set_child_pid(0, kDummyPid);
+
+  gboolean out;
+  gint pid = kDummyPid;
+  gchar arguments[] = "dummy";
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->RestartJob(pid, arguments, &out, &error));
+  EXPECT_EQ(FALSE, out);
 }
 
 TEST(SessionManagerTestStatic, EmailAddressTest) {
