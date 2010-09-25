@@ -152,6 +152,10 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 # Set an environment variable to prevent Flash asserts from crashing the plugin
 # process.
 export DONT_CRASH_ON_ASSERT=1
+PEPPER_FLASH_PLUGIN=/opt/google/chrome/pepper/libpepflashplayer.so
+if [ -f $PEPPER_FLASH_PLUGIN ]; then
+    PEPPER_FLASH_FLAG="--register-pepper-plugins=${PEPPER_FLASH_PLUGIN}#Shockwave Flash#Shockwave Flash 10.1 r53;application/x-shockwave-flash"
+fi
 
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
@@ -168,5 +172,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-nacl \
             --enable-tabbed-options \
             --scroll-pixels=4 \
+            "$PEPPER_FLASH_FLAG" \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
