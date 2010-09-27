@@ -204,7 +204,8 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     # The updated partition should have the highest priority (priority=3) so it
     # will be tried on the next reboot.
     # The updated partition should have its success flag marked 0 and its tries
-    # flag marked as having 3 attempts remaining.
+    # flag marked as having 3 attempts remaining unless in factory installation
+    # or recovery (USB) mode (nothing to fallback for these modes)
     # The partition that has the highest priority before the update should have
     # the highest priority after the updated kernel (priority=2).
     # All other enabled kernel partitions are assigned priority=1.
@@ -250,8 +251,15 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
     if [ $highest_prio != 0 ]; then
         "$GPT" add -i $highest_prio_index -P 2 $ROOT_DEV
     fi
+    # set kernel as successful=1 except when autoupdating
+    new_as_successful=0
+    if [ -n "${IS_FACTORY_INSTALL}" -o \
+         -n "${IS_RECOVERY_INSTALL}" -o \
+         -n "${IS_INSTALL}" ]; then
+      new_as_successful=1
+    fi
     # Make updated partition highest priority for next reboot
-    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S 0 -T 3 $ROOT_DEV
+    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S $new_as_successful -T 3 $ROOT_DEV
 
     # Set up gpt boot selection for legacy devices.
     # flush linux caches; seems to be necessary
