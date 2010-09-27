@@ -264,14 +264,25 @@ class GobiModem
   static GobiModem *connected_modem_;
   static mutex_wrapper_ modem_mutex_;
 
+  bool suspending_;
+
   friend class GobiModemTest;
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
 
+  bool is_disconnected() { return session_id_ == 0; }
+
   bool StartExit();
   bool ExitOk();
+  bool StartSuspend();
+  bool SuspendOk();
+  void RegisterStartSuspend(const std::string& name);
+
+  std::string hooks_name_;
 
   friend bool StartExitTrampoline(void *arg);
   friend bool ExitOkTrampoline(void *arg);
+  friend bool StartSuspendTrampoline(void *arg);
+  friend bool SuspendOkTrampoline(void *arg);
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };

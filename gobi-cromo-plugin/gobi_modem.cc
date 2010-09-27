@@ -5,6 +5,7 @@
 #include "gobi_modem.h"
 #include "gobi_modem_handler.h"
 
+#include <dbus/dbus.h>
 #include <fcntl.h>
 #include <stdio.h>
 
@@ -168,7 +169,12 @@ bool StartExitTrampoline(void *arg) {
 
 bool ExitOkTrampoline(void *arg) {
   GobiModem *modem = static_cast<GobiModem*>(arg);
-  return modem->ExitOk();
+  return modem->is_disconnected();
+}
+
+bool SuspendOkTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  return modem->is_disconnected();
 }
 
 GobiModem::GobiModem(DBus::Connection& connection,
@@ -181,7 +187,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
       nmea_fd_(-1),
       activation_state_(0),
       session_state_(gobi::kDisconnected),
-      session_id_(0) {
+      session_id_(0),
+      suspending_(false) {
   memcpy(&device_, &device, sizeof(device_));
 
   // Initialize DBus object properties
@@ -193,18 +200,23 @@ GobiModem::GobiModem(DBus::Connection& connection,
   UnlockRetries = 999;
 
   char name[64];
-  snprintf(name, sizeof(name), "gobi-start-exit-%p", static_cast<void*>(this));
-  handler_->server().start_exit_hooks().Add(name, StartExitTrampoline, this);
-  snprintf(name, sizeof(name), "gobi-exit-ok-%p", static_cast<void*>(this));
-  handler_->server().exit_ok_hooks().Add(name, ExitOkTrampoline, this);
+  void *thisp = static_cast<void*>(this);
+  snprintf(name, sizeof(name), "gobi-%p", thisp);
+  hooks_name_ = name;
+
+  handler_->server().start_exit_hooks().Add(hooks_name_, StartExitTrampoline,
+                                            this);
+  handler_->server().exit_ok_hooks().Add(hooks_name_, ExitOkTrampoline, this);
+  RegisterStartSuspend(hooks_name_);
+  handler_->server().suspend_ok_hooks().Add(hooks_name_, SuspendOkTrampoline,
+                                            this);
 }
 
 GobiModem::~GobiModem() {
-  char name[64];
-  snprintf(name, sizeof(name), "gobi-start-exit-%p", static_cast<void*>(this));
-  handler_->server().start_exit_hooks().Del(name);
-  snprintf(name, sizeof(name), "gobi-exit-ok-%p", static_cast<void*>(this));
-  handler_->server().exit_ok_hooks().Del(name);
+  handler_->server().start_exit_hooks().Del(hooks_name_);
+  handler_->server().exit_ok_hooks().Del(hooks_name_);
+  handler_->server().UnregisterStartSuspend(hooks_name_);
+  handler_->server().suspend_ok_hooks().Del(hooks_name_);
 
   ApiDisconnect();
 }
@@ -1284,10 +1296,16 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   }
 
   session_state_ = state;
-  if (state == gobi::kDisconnected)
+  if (state == gobi::kDisconnected) {
     session_id_ = 0;
+  } else if (state == gobi::kConnected) {
+    suspending_ = false;
+  }
   bool is_connected = (state == gobi::kConnected);
-  ConnectionStateChanged(is_connected, QMIReasonToMMReason(session_end_reason));
+  unsigned int reason = QMIReasonToMMReason(session_end_reason);
+  if (reason == MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED && suspending_)
+    reason = MM_MODEM_CONNECTION_STATE_CHANGE_REASON_SUSPEND;
+  ConnectionStateChanged(is_connected, reason);
 }
 
 void GobiModem::RegistrationStateHandler() {
@@ -1374,11 +1392,8 @@ void GobiModem::SetDeviceProperties()
 bool GobiModem::StartExit() {
   if (session_id_)
     sdk_->StopDataSession(session_id_);
+  LOG(INFO) << "StartExit: session id " << session_id_;
   return true;
-}
-
-bool GobiModem::ExitOk() {
-  return session_id_ == 0;
 }
 
 unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
@@ -1388,4 +1403,24 @@ unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
     default:
       return MM_MODEM_CONNECTION_STATE_CHANGE_REASON_UNKNOWN;
   }
+}
+
+bool GobiModem::StartSuspend() {
+  LOG(INFO) << "StartSuspend";
+  suspending_ = true;
+  if (session_id_)
+    sdk_->StopDataSession(session_id_);
+  return true;
+}
+
+bool StartSuspendTrampoline(void *arg) {
+  GobiModem *modem = static_cast<GobiModem*>(arg);
+  return modem->StartSuspend();
+}
+
+void GobiModem::RegisterStartSuspend(const std::string &name) {
+  // TODO(ellyjones): Get maxdelay_ms from the carrier plugin
+  static const int maxdelay_ms = 10000;
+  handler_->server().RegisterStartSuspend(name, StartSuspendTrampoline, this,
+                                          maxdelay_ms);
 }
