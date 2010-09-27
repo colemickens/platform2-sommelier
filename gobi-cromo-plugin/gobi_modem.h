@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
 
+#include <cromo/cromo_server.h>
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
@@ -29,6 +30,7 @@ struct DEVICE_ELEMENT {
   char deviceKey[16];
 };
 
+class CromoServer;
 class GobiModemHandler;
 class GobiModem
     : public org::freedesktop::ModemManager::Modem_adaptor,

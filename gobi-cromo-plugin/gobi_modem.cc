@@ -12,6 +12,7 @@ extern "C" {
 #include <libudev.h>
 };
 
+#include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
 
 #include <glog/logging.h>
@@ -133,51 +134,6 @@ static ULONG get_rfi_technology(ULONG data_bearer_technology) {
   }
 }
 
-enum ActivationMethod {
-  kActMethodOmadm,
-  kActMethodOtasp,
-  kActMethodNone
-};
-
-// TODO(rochberg):  Make this into a class, add dBM -> % maps,
-// activation routines
-struct Carrier {
-  const char* name;
-  const char* firmware_directory;
-  ULONG carrier_id;
-  int   carrier_type;
-  int   activation_method;
-  const char* activation_code;
-};
-
-static const Carrier kCarrierList[] = {
-  // This is only a subset of the available carriers
-  {"Vodafone", "0", 202, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {"Verizon Wireless", "1", 101, MM_MODEM_TYPE_CDMA, kActMethodOtasp, "*22899"},
-  {"AT&T", "2", 201, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {"Sprint", "3", 102, MM_MODEM_TYPE_CDMA, kActMethodOmadm, NULL},
-  {"T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, kActMethodNone, NULL},
-  {NULL, NULL, -1, -1},
-};
-
-static const Carrier *find_carrier(const char* carrier_name) {
-  for (size_t i = 0; kCarrierList[i].name; ++i) {
-    if (strcasecmp(carrier_name, kCarrierList[i].name) == 0) {
-      return &kCarrierList[i];
-    }
-  }
-  return NULL;
-}
-
-static const Carrier *find_carrier(ULONG carrier_id) {
-  for (size_t i = 0; kCarrierList[i].name; ++i) {
-    if (kCarrierList[i].carrier_id == carrier_id) {
-      return &kCarrierList[i];
-    }
-  }
-  return NULL;
-}
-
 static struct udev_enumerate *enumerate_net_devices(struct udev *udev)
 {
   int rc;
@@ -276,11 +232,12 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
                                &gps_capability);
     ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kSdkError);
 
-    const Carrier *carrier = find_carrier(carrier_id);
+    const Carrier *carrier =
+        handler_->server().FindCarrierByCarrierId(carrier_id);
 
-    if (carrier) {
-      LOG(INFO) << "Current carrier is " << carrier->name
-                << " (" << carrier_id << ")";
+    if (carrier != NULL) {
+      LOG(INFO) << "Current carrier is " << carrier->name()
+                << " (" << carrier->carrier_id() << ")";
     } else {
       LOG(INFO) << "Current carrier is " << carrier_id;
     }
@@ -288,7 +245,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     // TODO(ers) disabling NMEA thread creation
     // until issues are addressed, e.g., thread
     // leakage and possible invalid pointer references.
-//    StartNMEAThread();
+    //    StartNMEAThread();
   } else if (!enable && Enabled()) {
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
@@ -488,12 +445,14 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
                              &region,
                              &gps_capability);
   if (rc == 0) {
-    const Carrier *carrier = find_carrier(carrier_id);
+    const Carrier *carrier =
+        handler_->server().FindCarrierByCarrierId(carrier_id);
     const char* name;
-    if (carrier != NULL)
-      name = carrier->name;
-    else
+    if (carrier != NULL) {
+      name = carrier->name();
+    } else {
       name = "unknown";
+    }
     result["carrier"].writer().append_string(name);
     // TODO(ers) we'd like to return "operator_name", but the
     // SDK provides no apparent means of determining it.
@@ -942,8 +901,8 @@ void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
                            DBus::Error& error) {
-  const Carrier *carrier = find_carrier(carrier_name.c_str());
-  if (!carrier) {
+  const Carrier *carrier = handler_->server().FindCarrierByName(carrier_name);
+  if (carrier == NULL) {
     // TODO(rochberg):  Do we need to sanitize this string?
     LOG(WARNING) << "Could not parse carrier: " << carrier_name;
     error.set(kFirmwareLoadError, "Unknown carrier name");
@@ -963,14 +922,14 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
                                    &gps_capability);
   ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kFirmwareLoadError);
 
-  if (modem_carrier_id != carrier->carrier_id) {
+  if (modem_carrier_id != carrier->carrier_id()) {
 
     // UpgradeFirmware doesn't pay attention to anything before the
     // last /, so we don't supply it
-    std::string image_path = std::string("/") + carrier->firmware_directory;
+    std::string image_path = std::string("/") + carrier->firmware_directory();
 
     LOG(INFO) << "Current Gobi carrier: " << modem_carrier_id
-              << ".  Carrier image selection of "
+              << ".  Carrier image selection "
               << image_path;
     rc = sdk_->UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
     if (rc != 0) {
@@ -1002,21 +961,22 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
 
   const Carrier *carrier;
   if (carrier_name.empty()) {
-    carrier = find_carrier(carrier_id);
+    carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
     if (carrier == NULL) {
       LOG(WARNING) << "Unknown carrier id: " << carrier_id;
       error.set(kActivationError, "Unknown carrier");
       return;
     }
   } else {
-    carrier = find_carrier(carrier_name.c_str());
+    carrier = handler_->server().FindCarrierByName(carrier_name);
     if (carrier == NULL) {
       LOG(WARNING) << "Unknown carrier: " << carrier_name;
       error.set(kActivationError, "Unknown carrier");
       return;
     }
-    if (carrier_id != carrier->carrier_id) {
-      LOG(WARNING) << "Current device firmware does not match the requested carrier.";
+    if (carrier_id != carrier->carrier_id()) {
+      LOG(WARNING) << "Current device firmware does not match the requested"
+          "carrier.";
       LOG(WARNING) << "SetCarrier operation must be done before activating.";
       error.set(kActivationError, "Wrong carrier");
       return;
@@ -1041,24 +1001,24 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
 
   activation_state_ = gobi::kActivationConnecting;
 
-  switch (carrier->activation_method) {
-    case kActMethodOmadm:
+  switch (carrier->activation_method()) {
+    case Carrier::kOmadm:
       ActivateOmadm(error);
       break;
 
-    case kActMethodOtasp:
-      if (carrier->activation_code == NULL) {
+    case Carrier::kOtasp:
+      if (carrier->activation_code() == NULL) {
         LOG(WARNING) << "Number was not supplied for OTASP activation";
         activation_state_ = gobi::kNotActivated;
         error.set(kActivationError, "No number supplied for OTASP activation");
         return;
       }
-      ActivateOtasp(carrier->activation_code, error);
+      ActivateOtasp(carrier->activation_code(), error);
       break;
 
     default:
       LOG(WARNING) << "Unknown activation method: "
-                   << carrier->activation_method;
+                   << carrier->activation_method();
       activation_state_ = gobi::kNotActivated;
       error.set(kActivationError, "Unknown activation method");
       break;
