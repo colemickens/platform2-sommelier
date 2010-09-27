@@ -1,0 +1,4 @@
+cros_boot_mode
+
+cros_boot_mode is a utility which provides centralized logic for deciding, at
+runtime, what mode a Chrome OS hardware has booted in.
