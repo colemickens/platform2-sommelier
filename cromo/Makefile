@@ -8,7 +8,7 @@ INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags gobject-2.0 \
 CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
-	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl
+	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos
 LDFLAGS = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
 LDFLAGS_UNITTEST = $(LDLIBS) -lgtest
 
@@ -77,8 +77,8 @@ dummy_modem.so: $(dummy_OBJS)
 # Plugins, which are built and loaded separately from the main
 # executable, must subclass ModemHandler, so we must export
 # the symbols defined by that class.  We also export cellular utilities:
-KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable _ZN8Cellular"
-$(SYMFILE): modem_handler.o hooktable.o
+KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable _ZN8Cellular _ZN11CromoServer"
+$(SYMFILE): modem_handler.o hooktable.o cromo_server.o
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
 	  nm --defined-only $^ | grep "T $${sym}" \

@@ -3,15 +3,21 @@
 // found in the LICENSE file.
 
 #include <signal.h>
+#include <stdio.h>
 #include <syslog.h>
 #include <sys/signalfd.h>
 
+#include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/glib-integration.h>
+#include <dbus-c++/util.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
 #include "cromo_server.h"
 #include "plugin_manager.h"
+
+static const char *kDBusInterface = "org.freedesktop.DBus";
+static const char *kDBusNameOwnerChanged = "NameOwnerChanged";
 
 DEFINE_string(plugins, "",
               "comma-separated list of plugins to load at startup");
@@ -120,6 +126,54 @@ class LogSinkSyslog : public google::LogSink {
 };
 }  // namespace google
 
+class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
+  public:
+    MessageHandler(CromoServer *srv) : srv_(srv) { }
+
+    bool NameOwnerChanged(const DBus::Message& param) const {
+      DBus::MessageIter iter;
+      const char *name;
+      const char *oldowner;
+      const char *newowner;
+      iter = param.reader();
+      name = iter.get_string();
+      iter++;
+      oldowner = iter.get_string();
+      iter++;
+      newowner = iter.get_string();
+      if (name && strcmp(name, power_manager::kPowerManagerInterface) == 0) {
+        if (strlen(oldowner) && !strlen(newowner)) {
+          srv_->PowerDaemonDown();
+        } else if (!strlen(oldowner) && strlen(newowner)) {
+          srv_->PowerDaemonUp();
+        }
+      }
+      return true;
+    }
+
+    bool SuspendDelay(const DBus::Message& param) const {
+      unsigned int seqnum;
+      DBus::MessageIter iter;
+      iter = param.reader();
+      seqnum = iter.get_uint32();
+      srv_->SuspendDelay(seqnum);
+      return true;
+    }
+
+    bool call(const DBus::Message& param) const {
+      if (param.is_signal(kDBusInterface, kDBusNameOwnerChanged)) {
+        return NameOwnerChanged(param);
+      }
+      if (param.is_signal(power_manager::kPowerManagerInterface,
+                          power_manager::kSuspendDelay)) {
+        return SuspendDelay(param);
+      }
+      return false;
+    }
+  private:
+    CromoServer *srv_;
+};
+
 int main(int argc, char* argv[]) {
   google::LogSinkSyslog syslogger;
 
@@ -143,9 +197,26 @@ int main(int argc, char* argv[]) {
   conn.request_name(CromoServer::kServiceName);
 
   server = new CromoServer(conn);
+  MessageHandler m(server);
+  char buf[256];
+  snprintf(buf, sizeof(buf), "type='signal',interface='%s',member='%s'",
+           kDBusInterface, kDBusNameOwnerChanged);
+  conn.add_match(buf);
+  snprintf(buf, sizeof(buf), "type='signal',interface='%s',member='%s'",
+           power_manager::kPowerManagerInterface,
+           power_manager::kSuspendDelay);
+  conn.add_match(buf);
+  DBus::MessageSlot mslot;
+  mslot = &m;
+  if (!conn.add_filter(mslot)) {
+    LOG(ERROR) << "Can't add filter";
+  } else {
+    LOG(INFO) << "Registered filter.";
+  }
 
   // Instantiate modem handlers for each type of hardware supported
   PluginManager::LoadPlugins(server, FLAGS_plugins);
+  server->CheckForPowerDaemon();
 
   dispatcher.enter();
   g_thread_init(NULL);
