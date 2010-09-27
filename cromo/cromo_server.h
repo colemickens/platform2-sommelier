@@ -5,6 +5,9 @@
 #ifndef CROMO_SERVER_H_
 #define CROMO_SERVER_H_
 
+#include <map>
+#include <string>
+#include <vector>
 #include "base/basictypes.h"
 
 #include <dbus-c++/glib-integration.h>
@@ -14,6 +17,7 @@
 #include "hooktable.h"
 
 class ModemHandler;
+class Carrier;
 
 // Implements the ModemManager DBus API, and manages the
 // modem manager instances that handle specific types of
@@ -28,6 +32,11 @@ class CromoServer
 
   void AddModemHandler(ModemHandler* handler);
   void CheckForPowerDaemon();
+
+  // .*Carrier.* are exported to plugins.  See Makefile for details
+  void AddCarrier(Carrier *carrier);
+  Carrier *FindCarrierByName(const std::string &carrier_name);
+  Carrier *FindCarrierByCarrierId(unsigned long carrier_id);
 
   // ModemManager DBUS API methods.
   std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
@@ -46,10 +55,17 @@ class CromoServer
   void UnregisterStartSuspend(const std::string& name);
 
  private:
+  typedef std::map<std::string, Carrier*> CarrierMap;
+  typedef std::vector<ModemHandler*> ModemHandlers;
+
   // The modem handlers that we are managing.
-  std::vector<ModemHandler*> modem_handlers_;
+  ModemHandlers modem_handlers_;
+
+  CarrierMap carriers_;
+
   HookTable start_exit_hooks_;
   HookTable exit_ok_hooks_;
+
   HookTable start_suspend_hooks_;
   HookTable suspend_ok_hooks_;
 

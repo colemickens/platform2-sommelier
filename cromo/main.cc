@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cromo_server.h"
+
 #include <signal.h>
 #include <stdio.h>
 #include <syslog.h>
@@ -13,7 +15,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "cromo_server.h"
+#include "carrier.h"
 #include "plugin_manager.h"
 
 static const char *kDBusInterface = "org.freedesktop.DBus";
@@ -213,6 +215,9 @@ int main(int argc, char* argv[]) {
   } else {
     LOG(INFO) << "Registered filter.";
   }
+
+  // Add carriers before plugins so that they can be overidden
+  AddBaselineCarriers(server);
 
   // Instantiate modem handlers for each type of hardware supported
   PluginManager::LoadPlugins(server, FLAGS_plugins);

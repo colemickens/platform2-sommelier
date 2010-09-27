@@ -9,8 +9,9 @@ CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
 	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos
-LDFLAGS = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
-LDFLAGS_UNITTEST = $(LDLIBS) -lgtest
+LDLIBS_UNITTEST = $(LDLIBS) -lgtest
+
+LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 SYMFILE=symfile
@@ -42,7 +43,8 @@ XMLFILES = mm-manager.xml \
 
 GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 
-SRCS = cellular.cc \
+SRCS = carrier.cc \
+	   cellular.cc \
        cromo_server.cc \
        hooktable.cc \
        main.cc \
@@ -51,13 +53,25 @@ SRCS = cellular.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
-TESTS = cellular_unittest
+TARGETS = $(CROMO) $(PLUGINS)
+TESTS = cellular_unittest cromo_server_unittest
+
+INSTALL_TARGETS = install-programs install-headers
+
+ifdef INSTALL_TESTS
+	TARGETS += $(TESTS)
+	INSTALL_TARGETS += install-tests
+endif
+
 
 dummy_SRCS = dummy_modem_handler.cc \
 	     dummy_modem.cc
 dummy_OBJS = $(dummy_SRCS:.cc=.o)
 
-all: $(CROMO) $(PLUGINS)
+all : $(TARGETS)
+
+%unittest :
+	$(CXX) $(LDLIBS_UNITTEST) $^ -o $@
 
 %_server_glue.h: $(ROOT)/usr/lib/mm/mm-%.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
@@ -66,19 +80,21 @@ $(OBJS): $(GLUE_HEADERS)
 $(dummy_OBJS): $(GLUE_HEADERS)
 
 $(CROMO): $(OBJS) $(SYMFILE)
-	$(CXX) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
+	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
-cellular_unittest: cellular_unittest.o cellular.o
-	$(CXX) $(LDFLAGS_UNITTEST) $^ -o $@
+cellular_unittest: cellular.o cellular_unittest.o
+cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
 
-# Plugins, which are built and loaded separately from the main
-# executable, must subclass ModemHandler, so we must export
-# the symbols defined by that class.  We also export cellular utilities:
-KEEP_SYMS:="_ZN12ModemHandler _ZN9HookTable _ZN8Cellular _ZN11CromoServer"
-$(SYMFILE): modem_handler.o hooktable.o cromo_server.o
+# Export symbols used by plugins
+KEEP_SYMS:= "_ZN8Cellular                       \
+    _ZN11CromoServer.*Carrier                   \
+    _ZN9HookTable                               \
+    _ZN12ModemHandler"
+
+$(SYMFILE): cellular.o cromo_server.o hooktable.o modem_handler.o
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
 	  nm --defined-only $^ | grep "T $${sym}" \
@@ -87,7 +103,7 @@ $(SYMFILE): modem_handler.o hooktable.o cromo_server.o
 	@echo '};' >>$@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
-                               hooktable.h cellular.h
+                               hooktable.h cellular.h carrier.h
 
 install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo
@@ -99,7 +115,11 @@ install-programs:
 	install -t $(DESTDIR)/usr/sbin $(CROMO)
 	install -t $(DESTDIR)$(DBUSDATADIR) -m 0644 $(DBUSCONFIGFILE)
 
-install: install-headers install-programs
+install-tests: $(TESTS)
+	install -d $(DESTDIR)/usr/bin
+	install -t $(DESTDIR)/usr/bin $^
+
+install: $(INSTALL_TARGETS)
 
 .PHONY: clean
 clean:

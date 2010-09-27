@@ -10,6 +10,7 @@
 #include <dbus/dbus.h>
 #include <glog/logging.h>
 
+#include "carrier.h"
 #include "modem_handler.h"
 #include "plugin_manager.h"
 
@@ -30,11 +31,17 @@ CromoServer::CromoServer(DBus::Connection& connection)
 }
 
 CromoServer::~CromoServer() {
-  for (vector<ModemHandler*>::iterator it = modem_handlers_.begin();
-       it != modem_handlers_.end(); it++) {
+  for (ModemHandlers::iterator it = modem_handlers_.begin();
+       it != modem_handlers_.end(); ++it) {
     delete *it;
   }
   modem_handlers_.clear();
+
+  for (CarrierMap::iterator it = carriers_.begin();
+       it != carriers_.end(); ++it) {
+    delete it->second;
+  }
+  carriers_.clear();
 }
 
 vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
@@ -164,4 +171,25 @@ unsigned int CromoServer::MaxSuspendDelay() {
       max = it->second;
   }
   return max;
+}
+
+void CromoServer::AddCarrier(Carrier *carrier) {
+  delete carriers_[carrier->name()];
+  carriers_[carrier->name()] = carrier;
+}
+
+Carrier* CromoServer::FindCarrierByName(const std::string &name) {
+  return carriers_[name];
+}
+
+Carrier* CromoServer::FindCarrierByCarrierId(unsigned long id) {
+  for (CarrierMap::iterator i = carriers_.begin();
+       i != carriers_.end();
+       ++i) {
+    if (i->second &&
+        i->second->carrier_id() == id) {
+      return i->second;
+    }
+  }
+  return NULL;
 }
