@@ -196,14 +196,18 @@ class MountTaskMount : public MountTask {
  public:
   MountTaskMount(MountTaskObserver* observer,
                  Mount* mount,
-                 const UsernamePasskey& credentials)
+                 const UsernamePasskey& credentials,
+                 const Mount::MountArgs& mount_args)
       : MountTask(observer, mount, credentials) {
+    mount_args_.CopyFrom(mount_args);
   }
   virtual ~MountTaskMount() { }
 
   virtual void Run();
 
  private:
+  Mount::MountArgs mount_args_;
+
   DISALLOW_COPY_AND_ASSIGN(MountTaskMount);
 };
 
@@ -303,6 +307,21 @@ class MountTaskResetTpmContext : public MountTask {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskResetTpmContext);
+};
+
+// Implements asychronous removal of tracked subdirectories
+class MountTaskRemoveTrackedSubdirectories : public MountTask {
+ public:
+  MountTaskRemoveTrackedSubdirectories(MountTaskObserver* observer,
+                                       Mount* mount)
+      : MountTask(observer, mount, UsernamePasskey()) {
+  }
+  virtual ~MountTaskRemoveTrackedSubdirectories() { }
+
+  virtual void Run();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountTaskRemoveTrackedSubdirectories);
 };
 
 }  // namespace cryptohome

@@ -272,6 +272,9 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
 
 gboolean Service::Mount(gchar *userid,
                         gchar *key,
+                        gboolean create_if_missing,
+                        gboolean replace_tracked_subdirectories,
+                        gchar** tracked_subdirectories,
                         gint *OUT_error_code,
                         gboolean *OUT_result,
                         GError **error) {
@@ -295,7 +298,17 @@ gboolean Service::Mount(gchar *userid,
 
   MountTaskResult result;
   base::WaitableEvent event(true, false);
-  MountTaskMount* mount_task = new MountTaskMount(NULL, mount_, credentials);
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = create_if_missing;
+  mount_args.replace_tracked_subdirectories = replace_tracked_subdirectories;
+  if (tracked_subdirectories) {
+    mount_args.AssignSubdirsNullTerminatedList(
+        const_cast<const char**>(tracked_subdirectories));
+  }
+  MountTaskMount* mount_task = new MountTaskMount(NULL,
+                                                  mount_,
+                                                  credentials,
+                                                  mount_args);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -307,6 +320,9 @@ gboolean Service::Mount(gchar *userid,
 
 gboolean Service::AsyncMount(gchar *userid,
                              gchar *key,
+                             gboolean create_if_missing,
+                             gboolean replace_tracked_subdirectories,
+                             gchar** tracked_subdirectories,
                              gint *OUT_async_id,
                              GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
@@ -334,7 +350,17 @@ gboolean Service::AsyncMount(gchar *userid,
     }
   }
 
-  MountTaskMount* mount_task = new MountTaskMount(this, mount_, credentials);
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = create_if_missing;
+  mount_args.replace_tracked_subdirectories = replace_tracked_subdirectories;
+  if (tracked_subdirectories) {
+    mount_args.AssignSubdirsNullTerminatedList(
+        const_cast<const char**>(tracked_subdirectories));
+  }
+  MountTaskMount* mount_task = new MountTaskMount(this,
+                                                  mount_,
+                                                  credentials,
+                                                  mount_args);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
@@ -391,6 +417,29 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   } else {
     *OUT_result = true;
   }
+  return TRUE;
+}
+
+gboolean Service::RemoveTrackedSubdirectories(gboolean *OUT_result,
+                                              GError **error) {
+  MountTaskResult result;
+  base::WaitableEvent event(true, false);
+  MountTaskRemoveTrackedSubdirectories* mount_task =
+      new MountTaskRemoveTrackedSubdirectories(this, mount_);
+  mount_task->set_result(&result);
+  mount_task->set_complete_event(&event);
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event.Wait();
+  *OUT_result = result.return_status();
+  return TRUE;
+}
+
+gboolean Service::AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
+                                                   GError **error) {
+  MountTaskRemoveTrackedSubdirectories* mount_task =
+      new MountTaskRemoveTrackedSubdirectories(this, mount_);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   return TRUE;
 }
 

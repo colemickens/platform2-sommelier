@@ -103,17 +103,27 @@ gboolean cryptohome_is_mounted(Cryptohome *self,
 gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,
+                          gboolean create_if_missing,
+                          gboolean replace_tracked_directories,
+                          gchar **tracked_directories,
                           gint *OUT_error_code,
                           gboolean *OUT_result,
                           GError **error) {
-  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, OUT_error_code, OUT_result);
+  CRYPTOHOME_WRAP_METHOD(Mount, userid, key, create_if_missing,
+                         replace_tracked_directories, tracked_directories,
+                         OUT_error_code, OUT_result);
 }
 gboolean cryptohome_async_mount(Cryptohome *self,
                                 gchar *userid,
                                 gchar *key,
+                                gboolean create_if_missing,
+                                gboolean replace_tracked_directories,
+                                gchar **tracked_directories,
                                 gint *OUT_async_id,
                                 GError **error) {
-  CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, OUT_async_id);
+  CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, create_if_missing,
+                         replace_tracked_directories, tracked_directories,
+                         OUT_async_id);
 }
 gboolean cryptohome_mount_guest(Cryptohome *self,
                                 gint *OUT_error_code,
@@ -130,6 +140,16 @@ gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_result,
                             GError **error) {
   CRYPTOHOME_WRAP_METHOD(Unmount, OUT_result);
+}
+gboolean cryptohome_remove_tracked_subdirectories(Cryptohome *self,
+                           gboolean *OUT_result,
+                           GError **error) {
+  CRYPTOHOME_WRAP_METHOD(RemoveTrackedSubdirectories, OUT_result);
+}
+gboolean cryptohome_async_remove_tracked_subdirectories(Cryptohome *self,
+                                 gint *OUT_async_id,
+                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncRemoveTrackedSubdirectories, OUT_async_id);
 }
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,

@@ -14,12 +14,14 @@
 #include "crypto.h"
 #include "make_tests.h"
 #include "mock_mount.h"
+#include "mock_tpm.h"
 #include "secure_blob.h"
 #include "username_passkey.h"
 
 namespace cryptohome {
 using ::testing::Return;
 using ::testing::_;
+using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
@@ -88,6 +90,8 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
 
 TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);

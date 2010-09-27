@@ -32,6 +32,8 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetPublicKey(_, _))
         .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
+    ON_CALL(*this, Init(_, _))
+        .WillByDefault(Return(true));
   }
   ~MockTpm() {}
   MOCK_METHOD2(Init, bool(Crypto*, bool));

@@ -134,11 +134,13 @@ TEST_F(MountTaskTest, NopTest) {
 }
 
 TEST_F(MountTaskTest, MountTest) {
-  EXPECT_CALL(mount_, MountCryptohome(_, _))
+  EXPECT_CALL(mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
-  MountTask* mount_task = new MountTaskMount(NULL, &mount_, UsernamePasskey());
+  Mount::MountArgs mount_args;
+  MountTask* mount_task = new MountTaskMount(NULL, &mount_, UsernamePasskey(),
+                                             mount_args);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE, mount_task);
@@ -206,6 +208,27 @@ TEST_F(MountTaskTest, RemoveTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   MountTask* mount_task = new MountTaskRemove(NULL, &mount_, UsernamePasskey());
+  mount_task->set_complete_event(&event_);
+  mount_task->set_result(&result_);
+  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event_.TimedWait(wait_time_);
+  ASSERT_TRUE(event_.IsSignaled());
+}
+
+TEST_F(MountTaskTest, ResetTpmContext) {
+  ASSERT_FALSE(event_.IsSignaled());
+  MountTask* mount_task = new MountTaskResetTpmContext(NULL, NULL);
+  mount_task->set_complete_event(&event_);
+  mount_task->set_result(&result_);
+  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event_.TimedWait(wait_time_);
+  ASSERT_TRUE(event_.IsSignaled());
+}
+
+TEST_F(MountTaskTest, RemoveTrackedSubdirectories) {
+  ASSERT_FALSE(event_.IsSignaled());
+  MountTask* mount_task = new MountTaskRemoveTrackedSubdirectories(NULL,
+                                                                   &mount_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE, mount_task);

@@ -16,6 +16,7 @@
 #include "secure_blob.h"
 #include "tpm.h"
 #include "vault_keyset.h"
+#include "vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -129,7 +130,7 @@ class Crypto : public EntropySource {
   //   wrap_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
   //   error (OUT) - The specific error code on failure
   //   vault_keyset (OUT) - The unwrapped vault keyset on success
-  bool UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
+  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                          const chromeos::Blob& vault_wrapper,
                          unsigned int* wrap_flags, CryptoError* error,
                          VaultKeyset* vault_keyset) const;
@@ -145,7 +146,7 @@ class Crypto : public EntropySource {
   bool WrapVaultKeyset(const VaultKeyset& vault_keyset,
                        const SecureBlob& vault_wrapper,
                        const SecureBlob& vault_wrapper_salt,
-                       SecureBlob* wrapped_keyset) const;
+                       SerializedVaultKeyset* serialized) const;
 
   // Unwraps an encrypted vault keyset in the old method
   //

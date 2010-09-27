@@ -15,6 +15,7 @@
 #include <base/string_util.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
+#include <set>
 
 #include "crypto.h"
 #include "cryptohome_common.h"
@@ -69,15 +70,15 @@ bool Mount::Init() {
   crypto_->set_use_tpm(use_tpm_);
   crypto_->set_fallback_to_scrypt(fallback_to_scrypt_);
 
-  if (!crypto_->Init()) {
-    result = false;
-  }
-
   int original_mask = platform_->SetMask(kDefaultUmask);
   // Create the shadow root if it doesn't exist
   FilePath shadow_root(shadow_root_);
   if (!file_util::DirectoryExists(shadow_root)) {
     file_util::CreateDirectory(shadow_root);
+  }
+
+  if (!crypto_->Init()) {
+    result = false;
   }
 
   // One-time load of the global system salt (used in generating username
@@ -97,6 +98,7 @@ bool Mount::Init() {
 }
 
 bool Mount::EnsureCryptohome(const Credentials& credentials,
+                             const Mount::MountArgs& mount_args,
                              bool* created) const {
   // If the user has an old-style cryptohome, delete it
   FilePath old_image_path(StringPrintf("%s/image",
@@ -109,7 +111,7 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   if (!file_util::DirectoryExists(vault_path)) {
     // If the vault directory doesn't exist, then create the cryptohome from
     // scratch
-    bool result = CreateCryptohome(credentials);
+    bool result = CreateCryptohome(credentials, mount_args);
     if (created) {
       *created = result;
     }
@@ -121,13 +123,26 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
   return true;
 }
 
+bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
+  // Check for the presence of a vault directory
+  FilePath vault_path(GetUserVaultPath(credentials));
+  return file_util::DirectoryExists(vault_path);
+}
+
 bool Mount::MountCryptohome(const Credentials& credentials,
+                            const Mount::MountArgs& mount_args,
                             MountError* mount_error) const {
   MountError local_mount_error = MOUNT_ERROR_NONE;
-  bool result = MountCryptohomeInner(credentials, true, &local_mount_error);
+  bool result = MountCryptohomeInner(credentials,
+                                     mount_args,
+                                     true,
+                                     &local_mount_error);
   // Retry once if there is a TPM communications failure
   if (!result && local_mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = MountCryptohomeInner(credentials, true, &local_mount_error);
+    result = MountCryptohomeInner(credentials,
+                                  mount_args,
+                                  true,
+                                  &local_mount_error);
   }
   if (mount_error) {
     *mount_error = local_mount_error;
@@ -136,6 +151,7 @@ bool Mount::MountCryptohome(const Credentials& credentials,
 }
 
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
+                                 const Mount::MountArgs& mount_args,
                                  bool recreate_unwrap_fatal,
                                  MountError* mount_error) const {
   current_user_->Reset();
@@ -149,8 +165,15 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return MountGuestCryptohome();
   }
 
+  if (!mount_args.create_if_missing && !DoesCryptohomeExist(credentials)) {
+    if (mount_error) {
+      *mount_error = MOUNT_ERROR_USER_DOES_NOT_EXIST;
+    }
+    return false;
+  }
+
   bool created = false;
-  if (!EnsureCryptohome(credentials, &created)) {
+  if (!EnsureCryptohome(credentials, mount_args, &created)) {
     LOG(ERROR) << "Error creating cryptohome.";
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
@@ -160,8 +183,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // Attempt to unwrap the vault keyset with the specified credentials
   VaultKeyset vault_keyset;
+  SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
-  if (!UnwrapVaultKeyset(credentials, true, &vault_keyset,
+  if (!UnwrapVaultKeyset(credentials, true, &vault_keyset, &serialized,
                          &local_mount_error)) {
     if (mount_error) {
       *mount_error = local_mount_error;
@@ -176,7 +200,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       }
       // Allow one recursion into MountCryptohomeInner by blocking re-create on
       // fatal.
-      bool local_result = MountCryptohomeInner(credentials, false, mount_error);
+      bool local_result = MountCryptohomeInner(credentials,
+                                               mount_args,
+                                               false,
+                                               mount_error);
       // If the mount was successful, set the status to indicate that the
       // cryptohome was recreated.
       if (local_result && mount_error) {
@@ -186,6 +213,17 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
     return false;
   }
+
+  if (mount_args.replace_tracked_subdirectories) {
+    if (ReplaceTrackedSubdirectories(mount_args.tracked_subdirectories,
+                                     &serialized)) {
+      // If the tracked subdirectories changed, re-save the vault keyset
+      StoreVaultKeyset(credentials, serialized);
+    }
+  }
+
+  // Ensure that the tracked subdirectories exist
+  CreateTrackedSubdirectories(credentials, serialized);
 
   crypto_->ClearKeyset();
 
@@ -212,7 +250,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // Mount cryptohome
   string vault_path = GetUserVaultPath(credentials);
   if (!platform_->Mount(vault_path, home_dir_, "ecryptfs", ecryptfs_options)) {
-    LOG(INFO) << "Cryptohome mount failed: " << errno << " for vault: "
+    LOG(INFO) << "Cryptohome mount failed: " << errno << ", for vault: "
                << vault_path;
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
@@ -269,15 +307,24 @@ bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) const {
                                            GetUserVaultPath(credentials));
 }
 
-bool Mount::CreateCryptohome(const Credentials& credentials) const {
+bool Mount::CreateCryptohome(const Credentials& credentials,
+                             const Mount::MountArgs& mount_args) const {
   int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Create the user's entry in the shadow root
   FilePath user_dir(GetUserDirectory(credentials));
   file_util::CreateDirectory(user_dir);
 
-  // Generates a new master key
-  if (!CreateMasterKey(credentials)) {
+  // Generat a new master key
+  VaultKeyset vault_keyset;
+  vault_keyset.CreateRandom(*this);
+  SerializedVaultKeyset serialized;
+  ReplaceTrackedSubdirectories(mount_args.tracked_subdirectories, &serialized);
+  if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
+    platform_->SetMask(original_mask);
+    return false;
+  }
+  if (!StoreVaultKeyset(credentials, serialized)) {
     platform_->SetMask(original_mask);
     return false;
   }
@@ -299,9 +346,91 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
     }
   }
 
+  CreateTrackedSubdirectories(credentials, serialized);
+
   // Restore the umask
   platform_->SetMask(original_mask);
   return true;
+}
+
+bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
+      const SerializedVaultKeyset& serialized) const {
+  if (serialized.tracked_subdirectories_size() == 0) {
+    return true;
+  }
+
+  int original_mask = platform_->SetMask(kDefaultUmask);
+
+  // Add the subdirectories if they do not exist
+  FilePath vault_path = FilePath(GetUserVaultPath(credentials));
+  if (!file_util::DirectoryExists(vault_path)) {
+    LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
+    platform_->SetMask(original_mask);
+    return false;
+  }
+
+  // The call is allowed to partially fail if directory creation fails, but we
+  // want to have as many of the specified tracked directories created as
+  // possible.
+  bool result = true;
+  for (int index = 0; index < serialized.tracked_subdirectories_size();
+       index++) {
+    const std::string& subdir = serialized.tracked_subdirectories(index);
+    if (subdir.find("..") != std::string::npos) {
+      result = false;
+      continue;
+    }
+    FilePath directory = vault_path.Append(subdir);
+    if (!file_util::DirectoryExists(directory)) {
+      file_util::CreateDirectory(directory);
+      if (set_vault_ownership_) {
+        if (!platform_->SetOwnership(directory.value(), default_user_,
+                                     default_group_)) {
+          LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                     << default_group_ << ") of tracked directory path: "
+                     << directory.value();
+          file_util::Delete(directory, true);
+          result = false;
+        }
+      }
+    }
+  }
+
+  // Restore the umask
+  platform_->SetMask(original_mask);
+  return result;
+}
+
+bool Mount::ReplaceTrackedSubdirectories(
+      const std::vector<std::string>& tracked_subdirectories,
+      SerializedVaultKeyset* serialized) const {
+  std::set<std::string> existing;
+  for (int index = 0; index < serialized->tracked_subdirectories_size();
+       index++) {
+    existing.insert(serialized->tracked_subdirectories(index));
+  }
+  bool new_exists = false;
+  for (std::vector<std::string>::const_iterator itr =
+       tracked_subdirectories.begin();
+       itr != tracked_subdirectories.end();
+       itr++) {
+    if (!existing.erase(*itr)) {
+      new_exists = true;
+    }
+  }
+  // If there are any subdirectories that were in one set but not the other,
+  // then we need to replace
+  if (existing.size() || new_exists) {
+    serialized->clear_tracked_subdirectories();
+    for (std::vector<std::string>::const_iterator itr =
+         tracked_subdirectories.begin();
+         itr != tracked_subdirectories.end();
+         itr++) {
+      serialized->add_tracked_subdirectories(*itr);
+    }
+    return true;
+  }
+  return false;
 }
 
 bool Mount::TestCredentials(const Credentials& credentials) const {
@@ -313,19 +442,56 @@ bool Mount::TestCredentials(const Credentials& credentials) const {
   }
   MountError mount_error;
   VaultKeyset vault_keyset;
+  SerializedVaultKeyset serialized;
   bool result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
-                                  &mount_error);
+                                  &serialized, &mount_error);
   // Retry once if there is a TPM communications failure
   if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
     result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
-                               &mount_error);
+                               &serialized, &mount_error);
   }
   return result;
+}
+
+bool Mount::LoadVaultKeyset(const Credentials& credentials,
+                            SerializedVaultKeyset* serialized) const {
+  // Load the encrypted keyset
+  FilePath user_key_file(GetUserKeyFile(credentials));
+  if (!file_util::PathExists(user_key_file)) {
+    return false;
+  }
+  SecureBlob cipher_text;
+  if (!LoadFileBytes(user_key_file, &cipher_text)) {
+    return false;
+  }
+  if (!serialized->ParseFromArray(
+           static_cast<const unsigned char*>(cipher_text.data()),
+           cipher_text.size())) {
+    return false;
+  }
+  return true;
+}
+
+bool Mount::StoreVaultKeyset(const Credentials& credentials,
+    const SerializedVaultKeyset& serialized) const {
+  SecureBlob final_blob(serialized.ByteSize());
+  serialized.SerializeWithCachedSizesToArray(
+      static_cast<google::protobuf::uint8*>(final_blob.data()));
+  unsigned int data_written = file_util::WriteFile(
+      FilePath(GetUserKeyFile(credentials)),
+      static_cast<const char*>(final_blob.const_data()),
+      final_blob.size());
+
+  if (data_written != final_blob.size()) {
+    return false;
+  }
+  return true;
 }
 
 bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
                               bool migrate_if_needed,
                               VaultKeyset* vault_keyset,
+                              SerializedVaultKeyset* serialized,
                               MountError* error) const {
   FilePath salt_path(GetUserSaltFile(credentials));
   // If a separate salt file exists, it is the old-style keyset
@@ -335,8 +501,9 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       return false;
     }
     if (migrate_if_needed) {
-      // TODO(fes): This is not (right now) a fatal error
-      ResaveVaultKeyset(credentials, old_keyset);
+      // This is not considered a fatal error.  Re-saving with the desired
+      // protection is ideal, but not required.
+      RewrapVaultKeyset(credentials, old_keyset, serialized);
     }
     vault_keyset->FromVaultKeyset(old_keyset);
     return true;
@@ -345,15 +512,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
     credentials.GetPasskey(&passkey);
 
     // Load the encrypted keyset
-    FilePath user_key_file(GetUserKeyFile(credentials));
-    if (!file_util::PathExists(user_key_file)) {
-      if (error) {
-        *error = MOUNT_ERROR_FATAL;
-      }
-      return false;
-    }
-    SecureBlob cipher_text;
-    if (!LoadFileBytes(user_key_file, &cipher_text)) {
+    if (!LoadVaultKeyset(credentials, serialized)) {
       if (error) {
         *error = MOUNT_ERROR_FATAL;
       }
@@ -363,7 +522,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
     // Attempt to unwrap the master key with the passkey
     unsigned int wrap_flags = 0;
     Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-    if (!crypto_->UnwrapVaultKeyset(cipher_text, passkey, &wrap_flags,
+    if (!crypto_->UnwrapVaultKeyset(*serialized, passkey, &wrap_flags,
                                     &crypto_error, vault_keyset)) {
       if (error) {
         switch (crypto_error) {
@@ -425,8 +584,13 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
           if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
             break; // 1
         }
-        // TODO(fes): This is not (right now) a fatal error
-        ResaveVaultKeyset(credentials, *vault_keyset);
+        // This is not considered a fatal error.  Re-saving with the desired
+        // protection is ideal, but not required.
+        SerializedVaultKeyset new_serialized;
+        new_serialized.CopyFrom(*serialized);
+        if (RewrapVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
+          serialized->CopyFrom(new_serialized);
+        }
       } while(false);
     }
 
@@ -434,8 +598,9 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
   }
 }
 
-bool Mount::SaveVaultKeyset(const Credentials& credentials,
-                            const VaultKeyset& vault_keyset) const {
+bool Mount::AddVaultKeyset(const Credentials& credentials,
+                           const VaultKeyset& vault_keyset,
+                           SerializedVaultKeyset* serialized) const {
   // We don't do passkey to wrapper conversion because it is salted during save
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
@@ -445,27 +610,17 @@ bool Mount::SaveVaultKeyset(const Credentials& credentials,
   crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                            salt.size());
 
-  SecureBlob cipher_text;
-  if (!crypto_->WrapVaultKeyset(vault_keyset, passkey, salt, &cipher_text)) {
+  if (!crypto_->WrapVaultKeyset(vault_keyset, passkey, salt, serialized)) {
     LOG(ERROR) << "Wrapping vault keyset failed";
     return false;
   }
 
-  // Save the master key
-  unsigned int data_written = file_util::WriteFile(
-      FilePath(GetUserKeyFile(credentials)),
-      static_cast<const char*>(cipher_text.const_data()),
-      cipher_text.size());
-
-  if (data_written != cipher_text.size()) {
-    LOG(ERROR) << "Write to master key failed";
-    return false;
-  }
   return true;
 }
 
-bool Mount::ResaveVaultKeyset(const Credentials& credentials,
-                              const VaultKeyset& vault_keyset) const {
+bool Mount::RewrapVaultKeyset(const Credentials& credentials,
+                              const VaultKeyset& vault_keyset,
+                              SerializedVaultKeyset* serialized) const {
   std::vector<std::string> files(2);
   files[0] = GetUserSaltFile(credentials);
   files[1] = GetUserKeyFile(credentials);
@@ -473,8 +628,13 @@ bool Mount::ResaveVaultKeyset(const Credentials& credentials,
     LOG(ERROR) << "Couldn't cache old key material.";
     return false;
   }
-  if (!SaveVaultKeyset(credentials, vault_keyset)) {
-    LOG(ERROR) << "Couldn't save keyset.";
+  if (!AddVaultKeyset(credentials, vault_keyset, serialized)) {
+    LOG(ERROR) << "Couldn't add keyset.";
+    RevertCacheFiles(credentials, files);
+    return false;
+  }
+  if (!StoreVaultKeyset(credentials, *serialized)) {
+    LOG(ERROR) << "Write to master key failed";
     RevertCacheFiles(credentials, files);
     return false;
   }
@@ -484,7 +644,6 @@ bool Mount::ResaveVaultKeyset(const Credentials& credentials,
 
 bool Mount::MigratePasskey(const Credentials& credentials,
                            const char* old_key) const {
-  current_user_->Reset();
 
   std::string username = credentials.GetFullUsernameString();
   UsernamePasskey old_credentials(username.c_str(),
@@ -492,21 +651,24 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   // Attempt to unwrap the vault keyset with the specified credentials
   MountError mount_error;
   VaultKeyset vault_keyset;
+  SerializedVaultKeyset serialized;
   bool result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
-                                  &mount_error);
+                                  &serialized, &mount_error);
   // Retry once if there is a TPM communications failure
   if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
     result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
-                               &mount_error);
+                               &serialized, &mount_error);
   }
   if (result) {
-    if (!ResaveVaultKeyset(credentials, vault_keyset)) {
+    if (!RewrapVaultKeyset(credentials, vault_keyset, &serialized)) {
       LOG(ERROR) << "Couldn't save keyset.";
+      current_user_->Reset();
       return false;
     }
     current_user_->SetUser(credentials);
     return true;
   }
+  current_user_->Reset();
   return false;
 }
 
@@ -604,12 +766,6 @@ void Mount::CopySkeleton() const {
 
 void Mount::GetSecureRandom(unsigned char *rand, unsigned int length) const {
   crypto_->GetSecureRandom(rand, length);
-}
-
-bool Mount::CreateMasterKey(const Credentials& credentials) const {
-  VaultKeyset vault_keyset;
-  vault_keyset.CreateRandom(*this);
-  return SaveVaultKeyset(credentials, vault_keyset);
 }
 
 bool Mount::RemoveOldFiles(const Credentials& credentials) const {

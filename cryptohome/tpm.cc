@@ -517,7 +517,8 @@ bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
       raw_key.size());
   platform.SetMask(previous_mask);
   if (data_written != raw_key.size()) {
-    LOG(ERROR) << "Error writing key file";
+    LOG(ERROR) << "Error writing key file.  Wrote: " << data_written
+               << ", expected: " << raw_key.size();
     return false;
   }
   return true;

@@ -22,6 +22,7 @@ namespace cryptohome {
 using std::string;
 using ::testing::Return;
 using ::testing::_;
+using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 
@@ -42,6 +43,21 @@ class CryptoTest : public ::testing::Test {
       }
     }
     return false;
+  }
+
+  static void GetSerializedBlob(const SerializedVaultKeyset& serialized,
+                                SecureBlob* blob) {
+    SecureBlob final_blob(serialized.ByteSize());
+    serialized.SerializeWithCachedSizesToArray(
+        static_cast<google::protobuf::uint8*>(final_blob.data()));
+    blob->swap(final_blob);
+  }
+
+  static bool FromSerializedBlob(const SecureBlob& blob,
+                                 SerializedVaultKeyset* serialized) {
+    return serialized->ParseFromArray(
+        static_cast<const unsigned char*>(blob.const_data()),
+        blob.size());
   }
 
  private:
@@ -81,12 +97,15 @@ TEST_F(CryptoTest, EncryptionTest) {
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
-  SecureBlob wrapped;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
 
   SecureBlob original;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original));
+  SecureBlob wrapped;
+  GetSerializedBlob(serialized, &wrapped);
 
+  ASSERT_TRUE(wrapped.size() > 0);
   ASSERT_FALSE(CryptoTest::FindBlobInBlob(wrapped, original));
 }
 
@@ -104,15 +123,19 @@ TEST_F(CryptoTest, DecryptionTest) {
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
   SecureBlob wrapped;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
+  GetSerializedBlob(serialized, &wrapped);
 
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
 
   VaultKeyset new_keyset;
   unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
@@ -177,7 +200,7 @@ TEST_F(CryptoTest, AsciiEncodeTest) {
 TEST_F(CryptoTest, TpmStepTest) {
   // Check that the code path changes to support the TPM work
   Crypto crypto;
-  MockTpm tpm;
+  NiceMock<MockTpm> tpm;
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
@@ -199,15 +222,19 @@ TEST_F(CryptoTest, TpmStepTest) {
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
   SecureBlob wrapped;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
+  GetSerializedBlob(serialized, &wrapped);
 
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
 
   VaultKeyset new_keyset;
   unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
@@ -237,15 +264,19 @@ TEST_F(CryptoTest, ScryptStepTest) {
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
   SecureBlob wrapped;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
+  GetSerializedBlob(serialized, &wrapped);
 
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
 
   VaultKeyset new_keyset;
   unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
@@ -261,7 +292,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   // Check that the code path changes to support when TPM + scrypt fallback are
   // enabled
   Crypto crypto;
-  MockTpm tpm;
+  NiceMock<MockTpm> tpm;
 
   crypto.set_tpm(&tpm);
   crypto.set_use_tpm(true);
@@ -283,15 +314,19 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
+  SerializedVaultKeyset serialized;
+  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
   SecureBlob wrapped;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &wrapped));
+  GetSerializedBlob(serialized, &wrapped);
 
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
 
   VaultKeyset new_keyset;
   unsigned int wrap_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(wrapped, wrapper, &wrap_flags,
+  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;

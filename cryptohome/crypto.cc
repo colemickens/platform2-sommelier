@@ -24,7 +24,6 @@ extern "C" {
 #include "old_vault_keyset.h"
 #include "platform.h"
 #include "username_passkey.h"
-#include "vault_keyset.pb.h"
 
 // Included last because it has conflicting defines
 extern "C" {
@@ -612,7 +611,7 @@ void Crypto::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
   }
 }
 
-bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
+bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                                const chromeos::Blob& vault_wrapper,
                                unsigned int* wrap_flags, CryptoError* error,
                                VaultKeyset* vault_keyset) const {
@@ -621,16 +620,6 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
   }
   if (error) {
     *error = CE_NONE;
-  }
-  SerializedVaultKeyset serialized;
-  if (!serialized.ParseFromArray(
-           static_cast<const unsigned char*>(&wrapped_keyset[0]),
-           wrapped_keyset.size())) {
-    LOG(ERROR) << "Vault keyset deserialization failed, it must be corrupt.";
-    if (error) {
-      *error = CE_OTHER_FATAL;
-    }
-    return false;
   }
   SecureBlob local_wrapped_keyset(serialized.wrapped_keyset().length());
   serialized.wrapped_keyset().copy(
@@ -718,7 +707,7 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
     if (wrap_flags) {
       *wrap_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
     }
-    size_t out_len = wrapped_keyset.size();
+    size_t out_len = serialized.wrapped_keyset().length();
     SecureBlob decrypted(out_len);
     if (scryptdec_buf(
             static_cast<const uint8_t*>(local_wrapped_keyset.const_data()),
@@ -787,7 +776,7 @@ bool Crypto::UnwrapVaultKeyset(const chromeos::Blob& wrapped_keyset,
 bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
                              const SecureBlob& vault_wrapper,
                              const SecureBlob& vault_wrapper_salt,
-                             SecureBlob* wrapped_keyset) const {
+                             SerializedVaultKeyset* serialized) const {
   SecureBlob keyset_blob;
   if (!vault_keyset.ToKeysBlob(&keyset_blob)) {
     LOG(ERROR) << "Failure serializing keyset to buffer";
@@ -884,12 +873,11 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     }
   }
 
-  SerializedVaultKeyset serialized;
   unsigned int keyset_flags = SerializedVaultKeyset::NONE;
   if (tpm_wrapped) {
     // Store the TPM-encrypted key
     keyset_flags = SerializedVaultKeyset::TPM_WRAPPED;
-    serialized.set_tpm_key(tpm_key.const_data(),
+    serialized->set_tpm_key(tpm_key.const_data(),
                            tpm_key.size());
     // Store the hash of the cryptohome public key
     SecureBlob pub_key;
@@ -900,23 +888,18 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     if (tpm_->GetPublicKey(&pub_key, &retry_action)) {
       SecureBlob pub_key_hash;
       GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
-      serialized.set_tpm_public_key_hash(pub_key_hash.const_data(),
+      serialized->set_tpm_public_key_hash(pub_key_hash.const_data(),
                                          pub_key_hash.size());
     }
   }
   if (scrypt_wrapped) {
     keyset_flags |= SerializedVaultKeyset::SCRYPT_WRAPPED;
   }
-  serialized.set_flags(keyset_flags);
-  serialized.set_salt(vault_wrapper_salt.const_data(),
+  serialized->set_flags(keyset_flags);
+  serialized->set_salt(vault_wrapper_salt.const_data(),
                       vault_wrapper_salt.size());
-  serialized.set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
-  serialized.set_password_rounds(rounds);
-
-  SecureBlob final_blob(serialized.ByteSize());
-  serialized.SerializeWithCachedSizesToArray(
-      static_cast<google::protobuf::uint8*>(final_blob.data()));
-  wrapped_keyset->swap(final_blob);
+  serialized->set_wrapped_keyset(cipher_text.const_data(), cipher_text.size());
+  serialized->set_password_rounds(rounds);
   return true;
 }
 

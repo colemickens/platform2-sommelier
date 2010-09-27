@@ -22,6 +22,7 @@
 #include "secure_blob.h"
 #include "user_session.h"
 #include "vault_keyset.h"
+#include "vault_keyset.pb.h"
 
 namespace cryptohome {
 
@@ -48,7 +49,37 @@ class Mount : public EntropySource {
     MOUNT_ERROR_MOUNT_POINT_BUSY = 1 << 2,
     MOUNT_ERROR_TPM_COMM_ERROR = 1 << 3,
     MOUNT_ERROR_TPM_DEFEND_LOCK = 1 << 4,
+    MOUNT_ERROR_USER_DOES_NOT_EXIST = 1 << 5,
     MOUNT_ERROR_RECREATED = 1 << 31,
+  };
+
+  struct MountArgs {
+    bool create_if_missing;
+    bool replace_tracked_subdirectories;
+    std::vector<std::string> tracked_subdirectories;
+
+    MountArgs()
+        : create_if_missing(false),
+          replace_tracked_subdirectories(false) {
+    }
+
+    void AssignSubdirsNullTerminatedList(const char** tracked_subdirectories) {
+      while (*tracked_subdirectories != NULL) {
+        this->tracked_subdirectories.push_back(*tracked_subdirectories);
+        tracked_subdirectories++;
+      }
+    }
+
+    void CopyFrom(const MountArgs& rhs) {
+      this->create_if_missing = rhs.create_if_missing;
+      this->replace_tracked_subdirectories = rhs.replace_tracked_subdirectories;
+      for (std::vector<std::string>::const_iterator itr =
+           rhs.tracked_subdirectories.begin();
+           itr != rhs.tracked_subdirectories.end();
+           itr++) {
+        this->tracked_subdirectories.push_back(*itr);
+      }
+    }
   };
 
   // Sets up Mount with the default locations, username, etc., as defined above.
@@ -63,8 +94,12 @@ class Mount : public EntropySource {
   //
   // Parameters
   //   credentials - The Credentials representing the user
+  //   mount_args - The options for the call to mount: whether to create the
+  //                cryptohome if it doesn't exist and any tracked directories
+  //                to create
   //   error - The specific error condition on failure
   virtual bool MountCryptohome(const Credentials& credentials,
+                               const MountArgs& mount_args,
                                MountError* error) const;
 
   // Unmounts any mount at the cryptohome mount point
@@ -91,14 +126,39 @@ class Mount : public EntropySource {
   //     should be ensured.
   //   created (OUT) - Whether the cryptohome was created
   virtual bool EnsureCryptohome(const Credentials& credentials,
+                                const MountArgs& mount_args,
                                 bool* created) const;
+
+  // Checks if the cryptohome vault exists for the given credentials
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user whose cryptohome
+  //     should be checked.
+  virtual bool DoesCryptohomeExist(const Credentials& credentials) const;
 
   // Creates the cryptohome salt, key, and vault for the specified credentials
   //
   // Parameters
   //   credentials - The Credentials representing the user whose cryptohome
   //     should be created.
-  virtual bool CreateCryptohome(const Credentials& credentials) const;
+  virtual bool CreateCryptohome(const Credentials& credentials,
+                                const MountArgs& mount_args) const;
+
+  // Creates the the tracked subdirectories in a user's cryptohome
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  //   tracked_subdirectories - The tracked passthrough directories to create
+  virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
+      const SerializedVaultKeyset& serialized) const;
+
+  // Replaces the tracked subdirectories, returning true if a substition was
+  // made, or false if the set was the same
+  //
+  // Parameters
+  virtual bool ReplaceTrackedSubdirectories(
+      const std::vector<std::string>& tracked_subdirectories,
+      SerializedVaultKeyset* serialized) const;
 
   // Tests if the given credentials would unwrap the user's cryptohome key
   //
@@ -119,6 +179,12 @@ class Mount : public EntropySource {
 
   // Returns the system salt
   virtual void GetSystemSalt(chromeos::Blob* salt) const;
+
+  virtual bool LoadVaultKeyset(const Credentials& credentials,
+                               SerializedVaultKeyset* wrapped_keyset) const;
+
+  virtual bool StoreVaultKeyset(const Credentials& credentials,
+      const SerializedVaultKeyset& wrapped_keyset) const;
 
   // Used to disable setting vault ownership
   void set_set_vault_ownership(bool value) {
@@ -156,7 +222,7 @@ class Mount : public EntropySource {
   }
 
   // Get the Crypto instance
-  Crypto* get_crypto() {
+  virtual Crypto* get_crypto() {
     return crypto_;
   }
 
@@ -210,30 +276,42 @@ class Mount : public EntropySource {
   //   content (OUT) - The string value
   static bool LoadFileString(const FilePath& path, std::string* content);
 
-  // Saves the VaultKeyset for the user
+  // Wraps and adds the VaultKeyset to the serialized store
   //
   // Parameters
   //   credentials - The Credentials for the user
   //   vault_keyset - The VaultKeyset to save
-  bool SaveVaultKeyset(const Credentials& credentials,
-                       const VaultKeyset& vault_keyset) const;
+  //   serialized (IN/OUT) - The SerializedVaultKeyset to add the wrapped
+  //                         VaultKeyset to
+  bool AddVaultKeyset(const Credentials& credentials,
+                      const VaultKeyset& vault_keyset,
+                      SerializedVaultKeyset* serialized) const;
 
-  // Resaves the vault keyset, restoring on failure
+  // Resaves the vault keyset, restoring on failure.  The vault_keyset supplied
+  // is wrapped (encrypted) and stored in the wrapped_keyset parameter of
+  // serialized, which is then saved to disk.
   //
   // Parameters
   //   credentials - The Credentials for the user
   //   vault_keyset - The VaultKeyset to save
-  bool ResaveVaultKeyset(const Credentials& credentials,
-                         const VaultKeyset& vault_keyset) const;
+  //   serialized (IN/OUT) - The serialized container to be saved
+  bool RewrapVaultKeyset(const Credentials& credentials,
+                         const VaultKeyset& vault_keyset,
+                         SerializedVaultKeyset* serialized) const;
 
-  // Attempt to unwrap the keyset for the specified user
+  // Attempt to unwrap the keyset for the specified user.  The method both
+  // deserializes the SerializedVaultKeyset from disk and unwraps (decrypts) the
+  // encrypted vault keyset, returning it in vault_keyset.
   //
   // Parameters
   //   credentials - The user credentials to use
   //   vault_keyset (OUT) - The unencrypted vault keyset on success
+  //   serialized (OUT) - The keyset container as deserialized from disk
   //   error (OUT) - The specific error when unwrapping
-  bool UnwrapVaultKeyset(const Credentials& credentials, bool migrate_if_needed,
+  bool UnwrapVaultKeyset(const Credentials& credentials,
+                         bool migrate_if_needed,
                          VaultKeyset* vault_keyset,
+                         SerializedVaultKeyset* serialized,
                          MountError* error) const;
 
   // Saves the VaultKeyset for the user in the old method
@@ -314,10 +392,14 @@ class Mount : public EntropySource {
   //
   // Parameters
   //   credentials - The Credentials representing the user
+  //   mount_args - The options for the call to mount: whether to create the
+  //                cryptohome if it doesn't exist and any tracked directories
+  //                to create
   //   recreate_unwrap_fatal - Attempt to recreate the cryptohome directory on a
   //                           fatal error (for example, TPM was cleared)
   //   error - The specific error condition on failure
   virtual bool MountCryptohomeInner(const Credentials& credentials,
+                                    const MountArgs& mount_args,
                                     bool recreate_unwrap_fatal,
                                     MountError* error) const;
 
@@ -346,12 +428,6 @@ class Mount : public EntropySource {
   //   rand (IN/OUT) - Where to store the bytes, must be a least length bytes
   //   length - The number of random bytes to return
   void GetSecureRandom(unsigned char *rand, unsigned int length) const;
-
-  // Creates a new master key and stores it in the master key file for a user
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  bool CreateMasterKey(const Credentials& credentials) const;
 
   // Returns the user's salt
   //

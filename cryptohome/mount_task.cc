@@ -49,7 +49,9 @@ void MountTask::Signal()
 void MountTaskMount::Run() {
   if (mount_) {
     Mount::MountError code = Mount::MOUNT_ERROR_NONE;
-    bool status = mount_->MountCryptohome(credentials_, &code);
+    bool status = mount_->MountCryptohome(credentials_,
+                                          mount_args_,
+                                          &code);
     result()->set_return_status(status);
     result()->set_return_code(code);
   }
@@ -104,6 +106,13 @@ void MountTaskResetTpmContext::Run() {
     if (crypto) {
       crypto->EnsureTpm(true);
     }
+  }
+  MountTask::Notify();
+}
+
+void MountTaskRemoveTrackedSubdirectories::Run() {
+  result()->set_return_status(false);
+  if (mount_) {
   }
   MountTask::Notify();
 }

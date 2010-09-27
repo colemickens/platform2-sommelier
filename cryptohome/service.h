@@ -102,11 +102,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean IsMounted(gboolean *OUT_is_mounted, GError **error);
   virtual gboolean Mount(gchar *user,
                          gchar *key,
+                         gboolean create_if_missing,
+                         gboolean replace_tracked_subdirectories,
+                         gchar** tracked_subdirectories,
                          gint *OUT_error_code,
                          gboolean *OUT_result,
                          GError **error);
   virtual gboolean AsyncMount(gchar *user,
                               gchar *key,
+                              gboolean create_if_missing,
+                              gboolean replace_tracked_subdirectories,
+                              gchar** tracked_subdirectories,
                               gint *OUT_async_id,
                               GError **error);
   virtual gboolean MountGuest(gint *OUT_error_code,
@@ -115,6 +121,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
+  virtual gboolean RemoveTrackedSubdirectories(gboolean *OUT_result,
+                                               GError **error);
+  virtual gboolean AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
+                                                    GError **error);
 
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);

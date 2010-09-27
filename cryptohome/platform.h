@@ -38,8 +38,8 @@ class Platform {
   //   to - The node to mount to
   //   type - The fs type
   //   mount_options - The mount options to pass to mount()
-  bool Mount(const std::string& from, const std::string& to,
-             const std::string& type, const std::string& mount_options);
+  virtual bool Mount(const std::string& from, const std::string& to,
+                     const std::string& type, const std::string& mount_options);
 
   // Calls the platform unmount
   //
@@ -47,13 +47,13 @@ class Platform {
   //   path - The path to unmount
   //   lazy - Whether to call a lazy unmount
   //   was_busy (OUT) - Set to true on return if the mount point was busy
-  bool Unmount(const std::string& path, bool lazy, bool* was_busy);
+  virtual bool Unmount(const std::string& path, bool lazy, bool* was_busy);
 
   // Returns true if the directory is in the mtab
   //
   // Parameters
   //   directory - The directory to check
-  bool IsDirectoryMounted(const std::string& directory);
+  virtual bool IsDirectoryMounted(const std::string& directory);
 
   // Returns true if the directory is in the mtab mounted with the specified
   // source
@@ -61,8 +61,8 @@ class Platform {
   // Parameters
   //   directory - The directory to check
   //   from - The source node
-  bool IsDirectoryMountedWith(const std::string& directory,
-                              const std::string& from);
+  virtual bool IsDirectoryMountedWith(const std::string& directory,
+                                      const std::string& from);
 
   // Terminates or kills processes (except the current) that have files open on
   // the specified path.  Returns true if it tried to kill any processes.
@@ -70,7 +70,7 @@ class Platform {
   // Parameters
   //   path - The path to check if the process has open files on
   //   hard - If true, send a SIGKILL instead of SIGTERM
-  bool TerminatePidsWithOpenFiles(const std::string& path, bool hard);
+  virtual bool TerminatePidsWithOpenFiles(const std::string& path, bool hard);
 
   // Returns a vector of PIDs that have files open on the given path
   //
@@ -85,7 +85,7 @@ class Platform {
   // Parameters
   //   path - The path to check if the process has open files on
   //   hard - If true, send a SIGKILL instead of SIGTERM
-  bool TerminatePidsForUser(const uid_t uid, bool hard);
+  virtual bool TerminatePidsForUser(const uid_t uid, bool hard);
 
   // Returns a vector of PIDs whose Real, Effective, Saved, or File UID is equal
   // to that requested
@@ -101,14 +101,14 @@ class Platform {
   //   directory - The directory to set ownership on
   //   user_id - The user_id to assign ownership to
   //   group_id - The group_id to assign ownership to
-  bool SetOwnership(const std::string& directory, uid_t user_id,
-                    gid_t group_id);
+  virtual bool SetOwnership(const std::string& directory, uid_t user_id,
+                            gid_t group_id);
 
   // Sets the current umask, returning the old mask
   //
   // Parameters
   //   new_mask - The mask to set
-  int SetMask(int new_mask);
+  virtual int SetMask(int new_mask);
 
   // Returns the user and group ids for a user
   //
@@ -116,7 +116,8 @@ class Platform {
   //   user - The username to query for
   //   user_id (OUT) - The user ID on success
   //   group_id (OUT) - The group ID on success
-  bool GetUserId(const std::string& user, uid_t* user_id, gid_t* group_id);
+  virtual bool GetUserId(const std::string& user, uid_t* user_id,
+                         gid_t* group_id);
 
   // Clears the user keyring
   static void ClearUserKeyring();
