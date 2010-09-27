@@ -90,7 +90,7 @@ dummy_modem.so: $(dummy_OBJS)
 
 # Export symbols used by plugins
 KEEP_SYMS:= "_ZN8Cellular                       \
-    _ZN11CromoServer.*Carrier                   \
+    _ZN11CromoServer                            \
     _ZN9HookTable                               \
     _ZN12ModemHandler"
 
