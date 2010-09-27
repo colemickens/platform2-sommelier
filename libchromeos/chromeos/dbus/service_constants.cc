@@ -32,6 +32,10 @@ const char *kCryptohomeAsyncMount = "AsyncMount";
 const char *kCryptohomeAsyncMountGuest = "AsyncMountGuest";
 const char *kCryptohomeAsyncRemove = "AsyncRemove";
 const char *kCryptohomeGetStatusString = "GetStatusString";
+const char *kCryptohomeRemoveTrackedSubdirectories =
+    "RemoveTrackedSubdirectories";
+const char *kCryptohomeAsyncRemoveTrackedSubdirectories =
+    "AsyncRemoveTrackedSubdirectories";
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 }  // namespace cryptohome

@@ -34,6 +34,8 @@ extern const char *kCryptohomeAsyncMount;
 extern const char *kCryptohomeAsyncMountGuest;
 extern const char *kCryptohomeAsyncRemove;
 extern const char *kCryptohomeGetStatusString;
+extern const char *kCryptohomeRemoveTrackedSubdirectories;
+extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
 // Signals
 extern const char *kSignalAsyncCallStatus;
 }  // namespace cryptohome
