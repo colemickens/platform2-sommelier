@@ -48,7 +48,6 @@ class Daemon : public XIdleMonitor {
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
-  FRIEND_TEST(DaemonTest, GenerateMetricsOnIdleEvent);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
