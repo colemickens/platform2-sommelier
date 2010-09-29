@@ -89,7 +89,7 @@ dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
 
 # Export symbols used by plugins
-KEEP_SYMS:= "_ZN8Cellular                       \
+KEEP_SYMS:= "_ZN8cellular                       \
     _ZN11CromoServer                            \
     _ZN9HookTable                               \
     _ZN12ModemHandler"

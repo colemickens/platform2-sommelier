@@ -61,7 +61,7 @@ static gboolean do_signal(void *arg) {
   int sig = reinterpret_cast<int>(arg);
   LOG(INFO) << "Signal: " << sig;
 
-  if (sig == SIGTERM) {
+  if (sig == SIGTERM || sig == SIGINT) {
     exit_main_loop();
   }
 
@@ -76,7 +76,7 @@ static void *handle_signals(void *arg) {
   sigaddset(&sigs, SIGTERM);
   sigaddset(&sigs, SIGINT);
   LOG(INFO) << "waiting for signals";
-  while (info.si_signo != SIGTERM) {
+  while (info.si_signo != SIGTERM && info.si_signo != SIGINT) {
     sigwaitinfo(&sigs, &info);
     g_idle_add(do_signal, reinterpret_cast<void*>(info.si_signo));
   }
@@ -199,7 +199,6 @@ int main(int argc, char* argv[]) {
   conn.request_name(CromoServer::kServiceName);
 
   server = new CromoServer(conn);
-  MessageHandler m(server);
   char buf[256];
   snprintf(buf, sizeof(buf), "type='signal',interface='%s',member='%s'",
            kDBusInterface, kDBusNameOwnerChanged);
@@ -209,7 +208,7 @@ int main(int argc, char* argv[]) {
            power_manager::kSuspendDelay);
   conn.add_match(buf);
   DBus::MessageSlot mslot;
-  mslot = &m;
+  mslot = new MessageHandler(server);
   if (!conn.add_filter(mslot)) {
     LOG(ERROR) << "Can't add filter";
   } else {
