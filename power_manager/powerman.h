@@ -63,7 +63,7 @@ class PowerManDaemon {
   bool use_input_for_lid_;
   bool use_input_for_key_power_;
   PowerPrefs* prefs_;
-  bool lidstate_;
+  LidState lidstate_;
   int power_button_state_;
   int64 retry_suspend_ms_;
   int64 retry_suspend_attempts_;

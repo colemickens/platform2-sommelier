@@ -31,6 +31,9 @@ class Input {
   void RegisterHandler(InputHandler handler,
                        void* data);
 
+  // |lid_state| is 1 for closed lid. 0 for opened lid.
+  bool QueryLidState(int* lid_state);
+
  private:
   // For every "event" in /dev/input/, open a file handle, and
   // RegisterInputEvent on it.

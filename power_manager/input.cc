@@ -41,6 +41,26 @@ bool Input::Init(bool enable_lid, bool enable_power_button) {
 #define LONG(x) ((x)/BITS_PER_LONG)
 #define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
+bool Input::QueryLidState(int* lid_state) {
+  unsigned long sw[NBITS(SW_LID + 1)];
+  if (!enable_lid_ || 0 > lid_fd_) {
+    LOG(ERROR) << "No lid found on system.";
+    return false;
+  }
+  memset(sw, 0, sizeof(sw));
+  if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
+    LOG(ERROR) << "Error in GetLidState ioctl";
+    return false;
+  }
+  if (IS_BIT_SET(SW_LID, sw)) {
+    ioctl(lid_fd_, EVIOCGSW(sizeof(sw)), sw);
+    *lid_state = IS_BIT_SET(SW_LID, sw);
+    return true;
+  } else {
+    return false;
+  }
+}
+
 bool Input::RegisterInputDevices() {
   FilePath input_path("/dev/input");
   DIR* dir = opendir(input_path.value().c_str());
@@ -138,9 +158,9 @@ bool Input::RegisterInputEvent(int fd) {
     }
   }
   if (enable_lid_ && IS_BIT_SET(EV_SW, events)) {
-    unsigned long sw[NBITS(SW_LID+1)];
+    unsigned long sw[NBITS(SW_LID + 1)];
     memset(sw, 0, sizeof(sw));
-    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID+1), sw) < 0) {
+    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
       LOG(ERROR) << "Error in powerm ioctl - sw";
     }
     if (IS_BIT_SET(SW_LID, sw)) {
