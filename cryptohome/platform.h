@@ -26,6 +26,10 @@ extern const std::string kProcDir;
 // TODO(fes): Description
 class Platform {
  public:
+  struct ProcessInformation {
+    std::string cmd_line;
+    int process_id;
+  };
 
   Platform();
 
@@ -71,6 +75,14 @@ class Platform {
   //   path - The path to check if the process has open files on
   //   hard - If true, send a SIGKILL instead of SIGTERM
   virtual bool TerminatePidsWithOpenFiles(const std::string& path, bool hard);
+
+  // GetProcessesWithOpenFiles
+  //
+  // Parameters
+  //   path - The path to check if the process has open files on
+  //   pids (OUT) - The PIDs found
+  void GetProcessesWithOpenFiles(const std::string& path_in,
+                                 std::vector<ProcessInformation>* processes);
 
   // Returns a vector of PIDs that have files open on the given path
   //

@@ -122,6 +122,24 @@ bool Platform::TerminatePidsWithOpenFiles(const std::string& path, bool hard) {
   return (pids.size() != 0);
 }
 
+void Platform::GetProcessesWithOpenFiles(
+    const std::string& path,
+    std::vector<ProcessInformation>* processes) {
+  std::vector<pid_t> pids;
+  LookForOpenFiles(path, &pids);
+  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
+    pid_t pid = static_cast<pid_t>(*it);
+    processes->push_back(ProcessInformation());
+    processes->at(processes->size() - 1).process_id = pid;
+    FilePath cmdline_file(StringPrintf("/proc/%d/cmdline", pid));
+    string contents;
+    if (!file_util::ReadFileToString(cmdline_file, &contents)) {
+      continue;
+    }
+    processes->at(processes->size() - 1).cmd_line.swap(contents);
+  }
+}
+
 void Platform::LookForOpenFiles(const std::string& path_in,
                                 std::vector<pid_t>* pids) {
   // Make sure that if we get a directory, it has a trailing separator

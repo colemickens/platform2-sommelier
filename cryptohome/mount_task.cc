@@ -111,8 +111,9 @@ void MountTaskResetTpmContext::Run() {
 }
 
 void MountTaskRemoveTrackedSubdirectories::Run() {
-  result()->set_return_status(false);
+  result()->set_return_status(true);
   if (mount_) {
+    mount_->CleanUnmountedTrackedSubdirectories();
   }
   MountTask::Notify();
 }

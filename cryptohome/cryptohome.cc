@@ -45,6 +45,7 @@ namespace switches {
     "dump_keyset",
     "tpm_status",
     "status",
+    "remove_tracked_subdirs",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -57,7 +58,8 @@ namespace switches {
     ACTION_OBFUSCATE_USER,
     ACTION_DUMP_KEYSET,
     ACTION_TPM_STATUS,
-    ACTION_STATUS };
+    ACTION_STATUS,
+    ACTION_REMOVE_TRACKED_SUBDIRS };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -242,8 +244,10 @@ int main(int argc, char **argv) {
                 &password);
 
     const char** tracked_subdirectories = NULL;
+    // Defined outside to keep the values in-scope for use in the functions
+    // below
+    std::vector<std::string> tracked_dirs;
     if (cl->HasSwitch(switches::kTrackedDirsSwitch)) {
-      std::vector<std::string> tracked_dirs;
       SplitString(cl->GetSwitchValueASCII(switches::kTrackedDirsSwitch), ',',
                   &tracked_dirs);
       tracked_subdirectories = new const char*[tracked_dirs.size() + 1];
@@ -607,6 +611,23 @@ int main(int argc, char **argv) {
     } else {
       printf("%s\n", status);
       g_free(status);
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_REMOVE_TRACKED_SUBDIRS],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean done;
+    if (!org_chromium_CryptohomeInterface_remove_tracked_subdirectories(
+        proxy.gproxy(),
+        &done,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("RemoveTrackedSubdirectories call failed: %s.\n", error->message);
+    } else {
+      if (done) {
+        printf("true\n");
+      } else {
+        printf("false\n");
+      }
     }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");

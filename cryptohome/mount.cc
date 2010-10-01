@@ -35,6 +35,13 @@ const std::string kDefaultSharedUser = "chronos";
 const std::string kDefaultSkeletonSource = "/etc/skel";
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const std::string kIncognitoUser = "incognito";
+// The length of a user's directory name in the shadow root (equal to the length
+// of the ascii version of a SHA1 hash)
+const unsigned int kUserDirNameLength = 40;
+// Encrypted files/directories in ecryptfs have file names that start with the
+// following constant.  When clearing tracked subdirectories, we ignore these
+// and only delete the pass-through directories.
+const std::string kEncryptedFilePrefix = "ECRYPTFS_FNEK_ENCRYPTED.";
 
 Mount::Mount()
     : default_user_(-1),
@@ -278,6 +285,13 @@ bool Mount::UnmountCryptohome() const {
   if (!platform_->Unmount(home_dir_, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
     if (was_busy) {
+      std::vector<Platform::ProcessInformation> processes;
+      platform_->GetProcessesWithOpenFiles(home_dir_, &processes);
+      for (unsigned int i = 0; i < processes.size(); ++i) {
+        LOG(ERROR) << "Process " << processes[i].process_id
+                   << " had open files.  Command line: "
+                   << processes[i].cmd_line;
+      }
       sync();
     }
     // Failed to unmount immediately, do a lazy unmount
@@ -374,7 +388,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // possible.
   bool result = true;
   for (int index = 0; index < serialized.tracked_subdirectories_size();
-       index++) {
+       ++index) {
     const std::string& subdir = serialized.tracked_subdirectories(index);
     if (subdir.find("..") != std::string::npos) {
       result = false;
@@ -406,14 +420,14 @@ bool Mount::ReplaceTrackedSubdirectories(
       SerializedVaultKeyset* serialized) const {
   std::set<std::string> existing;
   for (int index = 0; index < serialized->tracked_subdirectories_size();
-       index++) {
+       ++index) {
     existing.insert(serialized->tracked_subdirectories(index));
   }
   bool new_exists = false;
   for (std::vector<std::string>::const_iterator itr =
        tracked_subdirectories.begin();
        itr != tracked_subdirectories.end();
-       itr++) {
+       ++itr) {
     if (!existing.erase(*itr)) {
       new_exists = true;
     }
@@ -425,12 +439,60 @@ bool Mount::ReplaceTrackedSubdirectories(
     for (std::vector<std::string>::const_iterator itr =
          tracked_subdirectories.begin();
          itr != tracked_subdirectories.end();
-         itr++) {
+         ++itr) {
       serialized->add_tracked_subdirectories(*itr);
     }
     return true;
   }
   return false;
+}
+
+void Mount::CleanUnmountedTrackedSubdirectories() const {
+  FilePath shadow_root(shadow_root_);
+  file_util::FileEnumerator dir_enumerator(shadow_root, false,
+      file_util::FileEnumerator::DIRECTORIES);
+  for (FilePath next_path = dir_enumerator.Next(); !next_path.empty();
+       next_path = dir_enumerator.Next()) {
+    FilePath dir_name = next_path.BaseName();
+    string str_dir_name = dir_name.value();
+    if (str_dir_name.length() != kUserDirNameLength) {
+      continue;
+    }
+    bool valid_name = true;
+    for (string::const_iterator itr = str_dir_name.begin();
+          itr < str_dir_name.end(); ++itr) {
+      if (!isxdigit(*itr)) {
+        valid_name = false;
+        break;
+      }
+    }
+    if (!valid_name) {
+      continue;
+    }
+    FilePath vault_path = next_path.Append("vault");
+    if (!file_util::DirectoryExists(vault_path)) {
+      continue;
+    }
+    if (platform_->IsDirectoryMountedWith(home_dir_, vault_path.value())) {
+      continue;
+    }
+    file_util::FileEnumerator subdir_enumerator(
+        vault_path,
+        false,
+        file_util::FileEnumerator::DIRECTORIES);
+    for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
+         subdir_path = subdir_enumerator.Next()) {
+      FilePath subdir_name = subdir_path.BaseName();
+      if (subdir_name.value().find(kEncryptedFilePrefix) == 0) {
+        continue;
+      }
+      if (subdir_name.value().compare(".") == 0 ||
+          subdir_name.value().compare("..") == 0) {
+        continue;
+      }
+      file_util::Delete(subdir_path, true);
+    }
+  }
 }
 
 bool Mount::TestCredentials(const Credentials& credentials) const {
@@ -786,7 +848,7 @@ bool Mount::RemoveOldFiles(const Credentials& credentials) const {
 
 bool Mount::CacheOldFiles(const Credentials& credentials,
                           std::vector<std::string>& files) const {
-  for (unsigned int index = 0; index < files.size(); index++) {
+  for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
     if (file_util::PathExists(file_bak)) {
@@ -805,7 +867,7 @@ bool Mount::CacheOldFiles(const Credentials& credentials,
 
 bool Mount::RevertCacheFiles(const Credentials& credentials,
                              std::vector<std::string>& files) const {
-  for (unsigned int index = 0; index < files.size(); index++) {
+  for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
     if (file_util::PathExists(file_bak)) {
@@ -819,7 +881,7 @@ bool Mount::RevertCacheFiles(const Credentials& credentials,
 
 bool Mount::DeleteCacheFiles(const Credentials& credentials,
                              std::vector<std::string>& files) const {
-  for (unsigned int index = 0; index < files.size(); index++) {
+  for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
     if (file_util::PathExists(file_bak)) {

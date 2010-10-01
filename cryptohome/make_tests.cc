@@ -46,13 +46,21 @@ const TestUserInfo kDefaultUsers[] = {
   {"testuser11@invalid.domain", "eleven", true, false, {"DIR0", NULL}},
   {"testuser12@invalid.domain", "twelve", false, false, {"DIR0", NULL}},
 };
-const unsigned int kDefaultUserCount =
+const size_t kDefaultUserCount =
     sizeof(kDefaultUsers) / sizeof(kDefaultUsers[0]);
+
+const TestUserInfo kAlternateUsers[] = {
+  {"altuser0@invalid.domain", "zero", true, false, {"DIR0", NULL}},
+};
+const size_t kAlternateUserCount =
+    sizeof(kAlternateUsers) / sizeof(kAlternateUsers[0]);
 
 MakeTests::MakeTests() {
 }
 
-void MakeTests::InitTestData(const std::string& image_dir) {
+void MakeTests::InitTestData(const std::string& image_dir,
+                             const TestUserInfo* test_users,
+                             size_t test_user_count) {
   if (file_util::PathExists(FilePath(image_dir))) {
     file_util::Delete(FilePath(image_dir), true);
   }
@@ -72,8 +80,8 @@ void MakeTests::InitTestData(const std::string& image_dir) {
   crypto.GetOrCreateSalt(salt_path, 16, true, &salt);
 
   // Create the user credentials
-  for (unsigned int i = 0; i < kDefaultUserCount; i++) {
-    if (kDefaultUsers[i].create) {
+  for (unsigned int i = 0; i < test_user_count; i++) {
+    if (test_users[i].create) {
       Mount mount;
       NiceMock<MockPlatform> platform;
       mount.set_platform(&platform);
@@ -87,19 +95,19 @@ void MakeTests::InitTestData(const std::string& image_dir) {
       mount.Init();
 
       cryptohome::SecureBlob passkey;
-      cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[i].password,
+      cryptohome::Crypto::PasswordToPasskey(test_users[i].password,
                                             salt,
                                             &passkey);
-      UsernamePasskey up(kDefaultUsers[i].username, passkey);
+      UsernamePasskey up(test_users[i].username, passkey);
       bool created;
       Mount::MountArgs mount_args;
-      if (kDefaultUsers[i].tracked_dirs[0] != NULL) {
+      if (test_users[i].tracked_dirs[0] != NULL) {
         mount_args.AssignSubdirsNullTerminatedList(
-            const_cast<const char**>(kDefaultUsers[i].tracked_dirs));
+            const_cast<const char**>(test_users[i].tracked_dirs));
       }
       mount.EnsureCryptohome(up, mount_args, &created);
 
-      if (kDefaultUsers[i].use_old_format) {
+      if (test_users[i].use_old_format) {
         VaultKeyset vault_keyset;
         SerializedVaultKeyset serialized;
         cryptohome::Mount::MountError error;

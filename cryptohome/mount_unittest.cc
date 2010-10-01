@@ -36,6 +36,7 @@ using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
+const char kAltImageDir[] = "alt_test_image_dir";
 
 class MountTest : public ::testing::Test {
  public:
@@ -43,7 +44,11 @@ class MountTest : public ::testing::Test {
   virtual ~MountTest() { }
 
   void SetUp() {
-    FilePath image_dir(kImageDir);
+    LoadSystemSalt(kImageDir);
+  }
+
+  void LoadSystemSalt(const char* str_image_path) {
+    FilePath image_dir(str_image_path);
     FilePath path = image_dir.Append("salt");
     ASSERT_TRUE(file_util::PathExists(path)) << path.value()
                                              << " does not exist!";
@@ -579,6 +584,77 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   FilePath subdir_path = vault_path.Append("DIR0");
   ASSERT_TRUE(file_util::PathExists(subdir_path));
+}
+
+TEST_F(MountTest, RemoveSubdirectories) {
+  // checks that cryptohome can delete tracked subdirectories
+  LoadSystemSalt(kAltImageDir);
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kAltImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
+
+  EXPECT_TRUE(mount.Init());
+
+  // Alternate test user at index 0 has a tracked dir "DIR0"
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[0].password,
+                                        system_salt_, &passkey);
+  UsernamePasskey up(kAlternateUsers[0].username, passkey);
+
+  EXPECT_CALL(platform, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, Unmount(_, _, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  Mount::MountError error;
+  EXPECT_TRUE(mount.MountCryptohome(up, mount_args, &error));
+
+  FilePath image_dir(kAltImageDir);
+  FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
+  FilePath vault_path = user_path.Append("vault");
+  FilePath subdir_path = vault_path.Append("DIR0");
+  ASSERT_TRUE(file_util::PathExists(subdir_path));
+
+  NiceMock<MockPlatform> platform_mounted;
+  mount.set_platform(&platform_mounted);
+  // Make sure the directory is not deleted if the vault is mounted
+  EXPECT_CALL(platform_mounted, IsDirectoryMounted(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_mounted, IsDirectoryMountedWith(_, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_mounted, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_mounted, Unmount(_, _, _))
+      .WillRepeatedly(Return(true));
+
+  mount.CleanUnmountedTrackedSubdirectories();
+
+  ASSERT_TRUE(file_util::PathExists(subdir_path));
+
+  mount.UnmountCryptohome();
+
+  NiceMock<MockPlatform> platform_unmounted;
+  mount.set_platform(&platform_unmounted);
+  // Make sure the directory is not deleted if the vault is mounted
+  EXPECT_CALL(platform_unmounted, IsDirectoryMounted(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_unmounted, IsDirectoryMountedWith(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_unmounted, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_unmounted, Unmount(_, _, _))
+      .WillRepeatedly(Return(true));
+
+  mount.CleanUnmountedTrackedSubdirectories();
+
+  ASSERT_FALSE(file_util::PathExists(subdir_path));
 }
 
 } // namespace cryptohome

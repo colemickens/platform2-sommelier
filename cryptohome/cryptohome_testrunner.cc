@@ -9,11 +9,17 @@
 #include "make_tests.h"
 
 const char* kDefaultImageDir = "test_image_dir";
+const char* kAltImageDir = "alt_test_image_dir";
 
 int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
   cryptohome::MakeTests make_tests;
-  make_tests.InitTestData(std::string(kDefaultImageDir));
+  make_tests.InitTestData(std::string(kDefaultImageDir),
+                          cryptohome::kDefaultUsers,
+                          cryptohome::kDefaultUserCount);
+  make_tests.InitTestData(std::string(kAltImageDir),
+                          cryptohome::kAlternateUsers,
+                          cryptohome::kAlternateUserCount);
 
   ::g_type_init();
   ::testing::InitGoogleTest(&argc, argv);

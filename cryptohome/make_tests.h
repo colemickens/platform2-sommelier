@@ -22,7 +22,9 @@ struct TestUserInfo {
 };
 
 extern const TestUserInfo kDefaultUsers[];
-extern const unsigned int kDefaultUserCount;
+extern const size_t kDefaultUserCount;
+extern const TestUserInfo kAlternateUsers[];
+extern const size_t kAlternateUserCount;
 
 class MakeTests {
  public:
@@ -30,7 +32,9 @@ class MakeTests {
 
   virtual ~MakeTests() { }
 
-  void InitTestData(const std::string& image_dir);
+  void InitTestData(const std::string& image_dir,
+                    const TestUserInfo* test_users,
+                    size_t test_user_count);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MakeTests);

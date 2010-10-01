@@ -160,6 +160,9 @@ class Mount : public EntropySource {
       const std::vector<std::string>& tracked_subdirectories,
       SerializedVaultKeyset* serialized) const;
 
+  // Cleans (removes) content from unmounted tracked subdirectories
+  virtual void CleanUnmountedTrackedSubdirectories() const;
+
   // Tests if the given credentials would unwrap the user's cryptohome key
   //
   // Parameters
