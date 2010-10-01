@@ -1,0 +1,67 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Called on startup as part of the init scripts. This calls forks off
+# a task which will wait some time and then checks disk space and
+# cleans up if necessary by sending a dbus message.
+
+# Exit immediately if it's a factory install machine -- we don't want
+# to clean up disk space on a factory install machine (there's no need)
+FACTORY_INSTALL=$(grep ^FACTORY_INSTALL /etc/lsb-release | cut -d = -f 2-)
+if [ -n "$FACTORY_INSTALL" ]; then
+  exit 0
+fi
+
+SCRIPT_NAME="$(basename $0)"
+STATEFUL="/mnt/stateful_partition"
+
+# Clean up (remove caches) if we go over MAX_DISK_USAGE percent on the
+# stateful partition.
+MAX_DISK_USAGE="90"
+
+# If we were started during boot, then wait for two minutes before
+# running disk cleanup once.
+INIT_PAUSE="2m"
+
+log() {
+  /usr/bin/logger -p local0.info -t $SCRIPT_NAME "$@"
+}
+
+# Get the percentage of space used on the stateful partition.
+get_stateful_space() {
+  local stateful_space="$(/bin/df $STATEFUL | /bin/grep -m 1 $STATEFUL)"
+  # Remove everything after and including the "%"
+  stateful_space="${stateful_space%%%*}"
+  # Remove all fields except the last one.
+  stateful_space="${stateful_space##* }"
+  echo $stateful_space
+}
+
+cleanup_caches() {
+  # This will empty the caches in all non-mounted cryptohome
+  # partitions.
+  /usr/sbin/cryptohome --action=remove_tracked_subdirs 2>&1
+}
+
+do_disk_cleanup() {
+  local stateful_space="$(get_stateful_space)"
+
+  # Return if there's plenty of space.
+  if [ "$stateful_space" -lt "$MAX_DISK_USAGE" ]; then
+    return 0
+  fi
+
+  # OK, so we're low on space: go and nuke the cache directories of
+  # users that are not currently logged in.
+  log "Cleaning caches: $(cleanup_caches)"
+  log "Done. Disk usage went from ${stateful_space}% to $(get_stateful_space)%"
+}
+
+if [ "$1" = "boot" ]; then
+  sleep $INIT_PAUSE
+fi
+
+do_disk_cleanup
