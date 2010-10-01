@@ -129,6 +129,55 @@ fi
 rm -f ${DATA_DIR}/SingletonLock
 rm -f ${DATA_DIR}/SingletonSocket
 
+# Set up bios information for chrome://system and userfeedback
+# Need to do this before user can request in chrome
+# moved here to keep out of critical boot path
+
+# Function for showing switch info (CHSW in Firmware High-Level Spec)
+swstate () { 
+  if [ $(($1 & $2)) -ne 0 ]; then 
+    echo "$3 $4"; else echo "$3 $5" 
+  fi 
+}
+
+# Function for showing boot reason (BINF in Firmware High-Level Spec)
+bootreason () {
+  echo -n "Boot reason ($1): "
+  case $1 in
+  1) echo "Normal";;
+  2) echo "Developer mode";;
+  3) echo "Recovery, button pressed";;
+  4) echo "Recovery, from developer mode";;
+  5) echo "Recovery, no valid RW firmware";;
+  6) echo "Recovery, no OS";;
+  7) echo "Recovery, bad kernel signature";;
+  8) echo "Recovery, requested by OS";;
+  9) echo "OS-initiated s3 debug mode";;
+  10) echo "S3 resume failed";;
+  11) echo "Recovery, TPM error";;
+  esac
+}
+
+if [ -x /usr/sbin/mosys ]; then
+  mosys -l smbios info bios > /var/log/bios_info.txt
+else
+  # message not blank on systems without mosys (ARM mosys is not done)
+  echo "Unable to get bios information" > /var/log/bios_info.txt
+fi
+if [ -f /sys/devices/platform/chromeos_acpi/CHSW ]; then
+  chsw=`cat /sys/devices/platform/chromeos_acpi/CHSW`
+  echo "Boot switch status:"
+  swstate $chsw 2 "  Recovery button" pressed released
+  swstate $chsw 32 "  Developer mode:" selected "not enabled"
+  swstate $chsw 512 "  RO firmware:" writeable protected
+  bootreason `cat /sys/devices/platform/chromeos_acpi/BINF.0`
+  echo "Boot firmware " `cat /sys/devices/platform/chromeos_acpi/BINF.1`
+  echo "Active EC code: " `cat /sys/devices/platform/chromeos_acpi/BINF.2`
+else
+  echo "Non-Chrome OS firmware: no chromeos_acpi switch device was found"
+fi >> /var/log/bios_info.txt
+
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 wait
