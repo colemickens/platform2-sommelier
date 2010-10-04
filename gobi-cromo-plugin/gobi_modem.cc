@@ -954,7 +954,26 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
   }
 }
 
+gboolean GobiModem::ActivationTimeoutCallback(gpointer data) {
+  CallbackArgs* args = static_cast<CallbackArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem == NULL)
+    return FALSE;
+  LOG(INFO) << "ActivationTimeout: state is now " << modem->activation_state_;
+  modem->ActivationCompleted(false);
+  return FALSE;
+}
+
+void GobiModem::CleanupActivationTimeoutCallback(gpointer data) {
+  CallbackArgs *args = static_cast<CallbackArgs*>(data);
+  delete args;
+}
+
 void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
+  // TODO(ellyjones): This is a guess based on empirical observations; someone
+  // must know a real reasonable value for it. Find out what such a value is and
+  // insert it here.
+  static const int kActivationTimeoutSec = 5;
   LOG(INFO) << "Activate(" << carrier_name << ")";
 
   // Check current firmware to see whether it's for the requested carrier
@@ -1035,8 +1054,19 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
       error.set(kActivationError, "Unknown activation method");
       break;
   }
-  if (!error.is_set())
+  if (!error.is_set()) {
     error.set(kOperationInitiatedError, "");
+    if (activation_callback_id_) {
+      g_source_remove(activation_callback_id_);
+      activation_callback_id_ = 0;
+    }
+    activation_callback_id_ = g_timeout_add_seconds_full(
+                             G_PRIORITY_DEFAULT,
+                             kActivationTimeoutSec,
+                             ActivationTimeoutCallback,
+                             new CallbackArgs(),
+                             CleanupActivationTimeoutCallback);
+  }
 }
 
 void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
@@ -1233,6 +1263,10 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
   LOG(INFO) << "Activation status callback: " << args->activation_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL) {
+    if (modem->activation_callback_id_) {
+      g_source_remove(modem->activation_callback_id_);
+      modem->activation_callback_id_ = NULL;
+    }
     modem->activation_state_ = args->activation_state;
     if (args->activation_state == gobi::kActivated ||
         args->activation_state == gobi::kNotActivated)

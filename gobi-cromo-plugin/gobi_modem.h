@@ -224,6 +224,8 @@ class GobiModem
   }
   static gboolean SignalStrengthCallback(gpointer data);
 
+  static gboolean ActivationTimeoutCallback(gpointer data);
+
   static void *NMEAThreadTrampoline(void *arg) {
     if (connected_modem_)
       return connected_modem_->NMEAThread();
@@ -263,6 +265,9 @@ class GobiModem
   };
   static GobiModem *connected_modem_;
   static mutex_wrapper_ modem_mutex_;
+
+  static void CleanupActivationTimeoutCallback(gpointer data);
+  guint32 activation_callback_id_;
 
   bool suspending_;
 
