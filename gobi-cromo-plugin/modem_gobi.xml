@@ -5,6 +5,39 @@
     <tp:docstring>
       Gobi-specific features for use in test and debugging.  
     </tp:docstring>
+
+    <method name="ActivateManual">
+      <tp:docstring> 
+        Sets modem configuration data.  Unlike regular Activate(), this does
+        not contact the carrier.  It does, however, reset the modem.
+      </tp:docstring>
+      <arg name="properties" type="a{sv}" direction="in">
+        <tp:docstring>
+          A dictionary of properties to set on the modem.  Keys include 'mdn', 'min'
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="ActivateManualDebug">
+      <tp:docstring> 
+        Workaround for the fact that dbus-send cannot send
+        dictionaries of variants.  Calls ActivateManual, with
+        system_id converted to int.
+      </tp:docstring>
+      <arg name="properties" type="a{ss}" direction="in">
+        <tp:docstring>
+          A dictionary of properties to set on the modem.  Keys include MDN, MIN, and others
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="PowerCycle">
+      <tp:docstring>
+        Tells the modem to power cycle itself.
+      </tp:docstring>
+    </method>
+
+
     <method name="SetCarrier">
       <tp:docstring>
           Prepares the modem to use the given carrier. Modem will
@@ -19,12 +52,6 @@
     <method name="SoftReset">
       <tp:docstring>
           Tells the module to do a soft reset and waits for the reset to complete.
-      </tp:docstring>
-    </method>
-
-    <method name="PowerCycle">
-      <tp:docstring>
-        Tells the modem to power cycle itself.
       </tp:docstring>
     </method>
   </interface>

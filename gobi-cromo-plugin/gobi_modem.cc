@@ -4,8 +4,10 @@
 
 #include "gobi_modem.h"
 #include "gobi_modem_handler.h"
+#include <sstream>
 
 #include <dbus/dbus.h>
+
 #include <fcntl.h>
 #include <stdio.h>
 
@@ -15,6 +17,7 @@ extern "C" {
 
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
+#include <cromo/utilities.h>
 
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
@@ -22,6 +25,8 @@ extern "C" {
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
 static const char *kFifoName = "/tmp/gobi-nmea";
+
+using utilities::DBusPropertyMap;
 
 #define DEFINE_ERROR(name) \
   static const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
@@ -199,6 +204,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
   UnlockRequired = "";
   UnlockRetries = 999;
 
+  carrier_ = handler_->server().FindCarrierNoOp();
+
   char name[64];
   void *thisp = static_cast<void*>(this);
   snprintf(name, sizeof(name), "gobi-%p", thisp);
@@ -250,8 +257,9 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     if (carrier != NULL) {
       LOG(INFO) << "Current carrier is " << carrier->name()
                 << " (" << carrier->carrier_id() << ")";
+      carrier_ = carrier;
     } else {
-      LOG(INFO) << "Current carrier is " << carrier_id;
+      LOG(WARNING) << "Unknown carrier, id=" << carrier_id;
     }
     Enabled = true;
     // TODO(ers) disabling NMEA thread creation
@@ -276,19 +284,8 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
     error.set(kConnectError, "Modem is disabled");
     return;
   }
-
-  ULONG rc = sdk_->GetActivationState(&activation_state_);
-  ENSURE_SDK_SUCCESS(GetActivationState, rc, kConnectError);
-
-  LOG(INFO) << "Activation state: " << activation_state_;
-  if (activation_state_ != gobi::kActivated) {
-    LOG(WARNING) << "Connect failed because modem is not activated";
-    error.set(kConnectError, "Modem is not activated");
-    return;
-  }
-
   ULONG failure_reason;
-
+  ULONG rc;
   for (int attempt = 0; attempt < 2; ++attempt) {
     LOG(INFO) << "Starting data session attempt " << attempt;
     rc = sdk_->StartDataSession(NULL,  // technology
@@ -457,15 +454,15 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
                              &region,
                              &gps_capability);
   if (rc == 0) {
-    const Carrier *carrier =
-        handler_->server().FindCarrierByCarrierId(carrier_id);
-    const char* name;
-    if (carrier != NULL) {
-      name = carrier->name();
+    if (carrier_id != carrier_->carrier_id()) {
+      LOG(ERROR) << "Inconsistent carrier: id = " << carrier_id;
+      std::ostringstream s;
+      s << "inconsistent: " << carrier_id << " vs. " << carrier_->carrier_id();
+      result["carrier"].writer().append_string(s.str().c_str());
     } else {
-      name = "unknown";
+      result["carrier"].writer().append_string(carrier_->name());
     }
-    result["carrier"].writer().append_string(name);
+
     // TODO(ers) we'd like to return "operator_name", but the
     // SDK provides no apparent means of determining it.
 
@@ -478,6 +475,8 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
       technology = "unknown";
     result["technology"].writer().append_string(technology);
   }
+
+
   ULONG session_state;
   ULONG mm_modem_state;
   rc = sdk_->GetSessionState(&session_state);
@@ -511,6 +510,30 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
     }
     result["state"].writer().append_uint32(mm_modem_state);
   }
+
+  char mdn[kDefaultBufferSize], min[kDefaultBufferSize];
+  rc = sdk_->GetVoiceNumber(kDefaultBufferSize, mdn,
+                            kDefaultBufferSize, min);
+  if (rc == 0) {
+    result["mdn"].writer().append_string(mdn);
+    result["min"].writer().append_string(min);
+  } else if (rc != gobi::kNotProvisioned) {
+    LOG(WARNING) << "GetVoiceNumber failed: " << rc;
+  }
+
+  char firmware_revision[kDefaultBufferSize];
+  rc = sdk_->GetFirmwareRevision(sizeof(firmware_revision), firmware_revision);
+  if (rc == 0 && strlen(firmware_revision) != 0) {
+    result["firmware_revision"].writer().append_string(firmware_revision);
+  }
+
+  WORD prl_version;
+  rc = sdk_->GetPRLVersion(&prl_version);
+  if (rc == 0) {
+    result["prl_version"].writer().append_uint16(prl_version);
+  }
+
+  carrier_-> ModifyModemStatusReturn(&result);
 
   return result;
 }
@@ -861,6 +884,77 @@ void GobiModem::PowerCycle(DBus::Error &error) {
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 }
 
+void GobiModem::ActivateManual(const DBusPropertyMap& const_properties,
+                               DBus::Error &error) {
+  using utilities::ExtractString;
+  DBusPropertyMap properties(const_properties);
+
+  // TODO(rochberg): Does it make sense to set defaults from the
+  // modem's current state?
+  const char *spc = NULL;
+  uint16_t system_id = 65535;
+  const char *mdn = NULL;
+  const char *min = NULL;
+  const char *mnha = NULL;
+  const char *mnaaa = NULL;
+
+  DBusPropertyMap::const_iterator p;
+  try {
+    spc = ExtractString(properties, "spc", "000000", error);
+    p = properties.find("system_id");
+    if (p != properties.end()) {
+      system_id = p->second.reader().get_uint16();
+    }
+    mdn = ExtractString(properties, "mdn", "",  error);
+    min = ExtractString(properties, "min", "", error);
+    mnha = ExtractString(properties, "mnha", NULL, error);
+    mnaaa = ExtractString(properties, "mnhaaa", NULL, error);
+  } catch (DBus::Error e) {
+    // Type errors on the incoming dbus message would end up here
+    error = e;
+    return;
+  }
+
+  ULONG rc = sdk_->ActivateManual(spc,
+                                  system_id,
+                                  mdn,
+                                  min,
+                                  0,          // PRL size
+                                  NULL,       // PRL contents
+                                  mnha,
+                                  mnaaa);
+  ENSURE_SDK_SUCCESS(ActivateManual, rc, kActivationError);
+}
+
+void GobiModem::ActivateManualDebug(
+    const std::map<std::string, std::string>& properties,
+    DBus::Error &error) {
+
+  DBusPropertyMap output;
+
+  for (std::map<std::string, std::string>::const_iterator i =
+           properties.begin();
+       i != properties.end();
+       ++i) {
+    if (i->first != "system_id") {
+      output[i->first].writer().append_string(i->second.c_str());
+    } else {
+      const std::string& value = i->second;
+      char *end;
+      errno = 0;
+      uint16_t system_id = static_cast<uint16_t>(
+          strtoul(value.c_str(), &end, 10));
+      if (errno != 0 || *end != '\0') {
+        LOG(ERROR) << "Bad system_id: " << value;
+        error.set(kSdkError, "Bad system_id");
+        return;
+      }
+      output[i->first].writer().append_uint16(system_id);
+    }
+  }
+  ActivateManual(output, error);
+}
+
 void GobiModem::ResetModem(DBus::Error& error) {
   // TODO(rochberg):  Is this going to confuse connman?
   Enabled = false;
@@ -1075,7 +1169,6 @@ void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
                                 DBus::Error& error) {
   LOG(INFO) << "GetProperty called for " << property;
 }
-
 
 void GobiModem::GetSignalStrengthDbm(int& output,
                                      StrengthMap *interface_to_dbm,

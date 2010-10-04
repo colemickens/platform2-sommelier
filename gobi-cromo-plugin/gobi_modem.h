@@ -13,16 +13,16 @@
 #include <glog/logging.h>
 #include <gtest/gtest_prod.h>  // For FRIEND_TEST
 #include <map>
+#include <string>
 
 #include <cromo/cromo_server.h>
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
+#include <cromo/utilities.h>
 
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
-
-typedef std::map<std::string, DBus::Variant> DBusPropertyMap;
 
 // Qualcomm device element, capitalized to their naming conventions
 struct DEVICE_ELEMENT {
@@ -30,8 +30,10 @@ struct DEVICE_ELEMENT {
   char deviceKey[16];
 };
 
+class Carrier;
 class CromoServer;
 class GobiModemHandler;
+
 class GobiModem
     : public org::freedesktop::ModemManager::Modem_adaptor,
       public org::freedesktop::ModemManager::Modem::Simple_adaptor,
@@ -68,8 +70,9 @@ class GobiModem
     std::string, std::string, std::string> GetInfo(DBus::Error& error);
 
   // DBUS Methods: ModemSimple
-  virtual void Connect(const DBusPropertyMap& properties, DBus::Error& error);
-  virtual DBusPropertyMap GetStatus(DBus::Error& error);
+  virtual void Connect(const utilities::DBusPropertyMap& properties,
+                       DBus::Error& error);
+  virtual utilities::DBusPropertyMap GetStatus(DBus::Error& error);
 
   // DBUS Methods: ModemCDMA
   virtual uint32_t GetSignalQuality(DBus::Error& error);
@@ -85,6 +88,11 @@ class GobiModem
   virtual void SetCarrier(const std::string& image, DBus::Error& error);
   virtual void SoftReset(DBus::Error& error);
   virtual void PowerCycle(DBus::Error& error);
+  virtual void ActivateManual(const utilities::DBusPropertyMap& properties,
+                              DBus::Error& error);
+  virtual void ActivateManualDebug(
+      const std::map<std::string, std::string>& properties,
+      DBus::Error &error);
 
   // DBUS Property Getter
   virtual void on_get_property(DBus::InterfaceAdaptor& interface,
@@ -103,6 +111,8 @@ class GobiModem
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);
+  // Fills in "min" and "mdn" entries in result
+  void FillMinMdn(utilities::DBusPropertyMap *result);
   void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
@@ -270,6 +280,7 @@ class GobiModem
   guint32 activation_callback_id_;
 
   bool suspending_;
+  const Carrier *carrier_;
 
   friend class GobiModemTest;
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
