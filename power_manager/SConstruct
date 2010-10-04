@@ -71,11 +71,11 @@ Default(powerd)
 
 # Build privileged power daemon
 powerman_env = gdk_env.Clone()
-powerman_env.Append(LIBS=Split('base chromeos gflags'))
+powerman_env.Append(LIBS=Split('base chromeos gflags metrics'))
 powerman_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
-powerman_sources = ['powerman.cc', 'input.cc']
+powerman_sources = ['powerman.cc', 'input.cc', 'powerman_metrics.cc']
 powerman_lib = powerman_env.Library('powerman_lib', powerman_sources)
 powerman = powerman_env.Program('powerm', ['powerman_main.cc', powerman_lib,
                                            power_prefs, util_lib])
@@ -115,4 +115,8 @@ powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'powerd_unittest.cc', powerd_lib, util_lib, xidle,
         backlight_controller, backlight, power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
+powerman_unittest_env = powerman_env.Clone()
+powerman_unittest_env.Append(LIBS=Split('gtest gmock'))
+deps = [testrunner, 'powerman_unittest.cc', powerman_lib, util_lib, power_prefs]
+tests.append(powerman_unittest_env.Program('powerman_unittest', deps))
 AlwaysBuild(base_env.Alias('tests', tests))

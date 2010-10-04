@@ -15,8 +15,11 @@ namespace power_manager {
 
 namespace util {
 
-// powerd -> powerm signals
+// interface names
+const char* kPowerManagerInterface = "org.chromium.PowerManager";
 const char* kLowerPowerManagerInterface = "org.chromium.LowerPowerManager";
+
+// powerd -> powerm signals
 const char* kRequestCleanShutdown = "RequestCleanShutdown";
 const char* kSuspendSignal = "SuspendSignal";
 const char* kShutdownSignal = "ShutdownSignal";
@@ -26,6 +29,9 @@ const char* kLidClosed = "LidClosed";
 const char* kLidOpened = "LidOpened";
 const char* kPowerButtonDown = "PowerButtonDown";
 const char* kPowerButtonUp = "PowerButtonUp";
+
+// broadcast signals
+const char* kPowerStateChanged = "PowerStateChanged";
 
 bool LoggedIn() {
   return access("/var/run/state/logged-in", F_OK) == 0;

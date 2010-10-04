@@ -9,8 +9,11 @@ namespace power_manager {
 
 namespace util {
 
-// powerd -> powerm constants
+// interface names
 extern const char* kLowerPowerManagerInterface;
+extern const char* kPowerManagerInterface;
+
+// powerd -> powerm constants
 extern const char* kRequestCleanShutdown;
 extern const char* kSuspendSignal;
 extern const char* kShutdownSignal;
@@ -20,6 +23,9 @@ extern const char* kLidClosed;
 extern const char* kLidOpened;
 extern const char* kPowerButtonDown;
 extern const char* kPowerButtonUp;
+
+// broadcast signals
+extern const char* kPowerStateChanged;
 
 bool LoggedIn();
 void Launch(const char* cmd);

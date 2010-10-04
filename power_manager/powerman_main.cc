@@ -64,7 +64,9 @@ int main(int argc, char* argv[]) {
                              "/usr/share/power_manager" :
                              FLAGS_default_prefs_dir);
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
-  power_manager::PowerManDaemon daemon(true, true, &prefs);
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  power_manager::PowerManDaemon daemon(true, true, &prefs, &metrics_lib);
   daemon.Init();
   daemon.Run();
   return 0;
