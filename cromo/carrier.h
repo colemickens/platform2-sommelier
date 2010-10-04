@@ -10,7 +10,7 @@
 #include <dbus-c++/dbus.h>
 #include <map>
 
-typedef std::map<std::string, DBus::Variant> DBusPropertyMap;
+#include "utilities.h"
 
 class Carrier {
  public:
@@ -37,12 +37,8 @@ class Carrier {
 
   // Called after Modem.Simple.Status has filled the property map, but
   // before the property map has been returned.
-  virtual void ModifyModemStatusReturn(DBusPropertyMap *properties) const {}
-
-  // Called with the arguments of ActivateManual before modem-specific
-  // code is called.
-  virtual void ModifyActivateManualArgs(DBusPropertyMap *properties) const {
-  }
+  virtual void ModifyModemStatusReturn(
+      utilities::DBusPropertyMap *properties) const {}
 
   const char *name() const {return name_;}
   const char *firmware_directory() const {return firmware_directory_;}

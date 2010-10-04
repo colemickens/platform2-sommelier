@@ -2,14 +2,37 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cellular.h"
+#include "utilities.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-TEST(Cellular, HexEsnToDecimal) {
-  using cellular::HexEsnToDecimal;
+TEST(Utilities, ExtractString) {
+  using utilities::ExtractString;
+  using utilities::DBusPropertyMap;
+
+  DBusPropertyMap m;
+
+  m["string"].writer().append_string("string");
+  m["int32"].writer().append_int32(1);
+
+  DBus::Error e_string;
+  ASSERT_STREQ("string", ExtractString(m, "string", NULL,  e_string));
+  ASSERT_FALSE(e_string.is_set());
+
+  DBus::Error e_int32;
+  ASSERT_EQ(NULL, ExtractString(m, "int32", NULL, e_int32));
+  ASSERT_TRUE(e_int32.is_set());
+
+  DBus::Error e_missing;
+  ASSERT_STREQ("default",
+               ExtractString(m, "not present", "default", e_missing));
+  ASSERT_FALSE(e_missing.is_set());
+}
+
+TEST(Utilities, HexEsnToDecimal) {
+  using utilities::HexEsnToDecimal;
 
   std::string out;
   EXPECT_TRUE(HexEsnToDecimal("ffffffff", &out));

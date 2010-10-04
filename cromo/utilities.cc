@@ -2,18 +2,35 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cellular.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <sstream>
+#include "utilities.h"
 
 #include <glog/logging.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 
-namespace cellular {
+namespace utilities {
+const char *ExtractString(const DBusPropertyMap properties,
+                          const char *key,
+                          const char *not_found_response,
+                          DBus::Error &error) {
+  DBusPropertyMap::const_iterator p;
+  const char *to_return = not_found_response;
+
+  try {
+    p = properties.find(key);
+    if (p != properties.end()) {
+      to_return = p->second.reader().get_string();
+    }
+  } catch (const DBus::Error &e) {
+    LOG(ERROR)<<"Bad type for: " << key;
+
+    // NB: the copy constructor for DBus::Error causes a template to
+    // be instantiated that kills our -Werror build
+    error.set(e.name(), e.message());
+  }
+  return to_return;
+}
 
 bool HexEsnToDecimal(const std::string &esn_hex, std::string *out) {
   size_t length = esn_hex.length();
@@ -21,7 +38,6 @@ bool HexEsnToDecimal(const std::string &esn_hex, std::string *out) {
     LOG(ERROR) << "Long ESN: " << esn_hex;
     return false;
   }
-
   errno = 0;
   const char *start = esn_hex.c_str();
   char *end;
@@ -46,4 +62,4 @@ bool HexEsnToDecimal(const std::string &esn_hex, std::string *out) {
   }
   return true;
 }
-}  // namespace celluar
+}  // namespace utilities

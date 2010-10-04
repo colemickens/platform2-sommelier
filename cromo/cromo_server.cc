@@ -9,6 +9,7 @@
 #include <dbus-c++/glib-integration.h>
 #include <dbus/dbus.h>
 #include <glog/logging.h>
+#include <mm/mm-modem.h>
 
 #include "carrier.h"
 #include "modem_handler.h"
@@ -192,4 +193,12 @@ Carrier* CromoServer::FindCarrierByCarrierId(unsigned long id) {
     }
   }
   return NULL;
+}
+
+Carrier* CromoServer::FindCarrierNoOp() {
+  if (carrier_no_op_.get() == NULL) {
+    carrier_no_op_.reset(new Carrier(
+        "no_op_name", "invalid", -1, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+  }
+  return carrier_no_op_.get();
 }

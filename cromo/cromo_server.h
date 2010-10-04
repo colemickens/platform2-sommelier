@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/dbus.h>
@@ -35,8 +36,11 @@ class CromoServer
 
   // .*Carrier.* are exported to plugins.  See Makefile for details
   void AddCarrier(Carrier *carrier);
-  Carrier *FindCarrierByName(const std::string &carrier_name);
   Carrier *FindCarrierByCarrierId(unsigned long carrier_id);
+  Carrier *FindCarrierByName(const std::string &carrier_name);
+  // Returns a carrier for a modem class to use before it's figured
+  // out a real carrier
+  Carrier *FindCarrierNoOp();
 
   // ModemManager DBUS API methods.
   std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
@@ -62,6 +66,7 @@ class CromoServer
   ModemHandlers modem_handlers_;
 
   CarrierMap carriers_;
+  scoped_ptr<Carrier> carrier_no_op_;
 
   HookTable start_exit_hooks_;
   HookTable exit_ok_hooks_;

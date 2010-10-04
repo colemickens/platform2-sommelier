@@ -44,17 +44,17 @@ XMLFILES = mm-manager.xml \
 GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 
 SRCS = carrier.cc \
-	   cellular.cc \
        cromo_server.cc \
        hooktable.cc \
        main.cc \
        modem_handler.cc \
-       plugin_manager.cc
+       plugin_manager.cc \
+       utilities.cc
 
 OBJS = $(SRCS:.cc=.o)
 
 TARGETS = $(CROMO) $(PLUGINS)
-TESTS = cellular_unittest cromo_server_unittest
+TESTS = cromo_server_unittest utilities_unittest
 
 INSTALL_TARGETS = install-programs install-headers
 
@@ -71,7 +71,7 @@ dummy_OBJS = $(dummy_SRCS:.cc=.o)
 all : $(TARGETS)
 
 %unittest :
-	$(CXX) $(LDLIBS_UNITTEST) $^ -o $@
+	$(CXX) $^ $(LDLIBS_UNITTEST) -o $@
 
 %_server_glue.h: $(ROOT)/usr/lib/mm/mm-%.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
@@ -82,28 +82,30 @@ $(dummy_OBJS): $(GLUE_HEADERS)
 $(CROMO): $(OBJS) $(SYMFILE)
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
-cellular_unittest: cellular.o cellular_unittest.o
 cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
+utilities_unittest: utilities.o utilities_unittest.o
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
 
 # Export symbols used by plugins
-KEEP_SYMS:= "_ZN8cellular                       \
-    _ZN11CromoServer                            \
-    _ZN9HookTable                               \
-    _ZN12ModemHandler"
+KEEP_SYMS:= "_ZN11CromoServer \
+    _ZN9HookTable \
+    _ZN12ModemHandler \
+    _ZN9utilities"
 
-$(SYMFILE): cellular.o cromo_server.o hooktable.o modem_handler.o
+$(SYMFILE): cromo_server.o hooktable.o modem_handler.o utilities.o
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
 	  nm --defined-only $^ | grep "T $${sym}" \
             | awk '{print "  "$$3";"}' >>$@ ; \
 	 done
 	@echo '};' >>$@
+	@echo Exported symbols
+	@cat $@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
-                               hooktable.h cellular.h carrier.h
+                               hooktable.h carrier.h utilities.h
 
 install-headers: $(GLUE_HEADERS)
 	install -d $(DESTDIR)/usr/include/cromo
