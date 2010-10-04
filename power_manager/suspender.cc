@@ -38,15 +38,19 @@ void Suspender::Init() {
 void Suspender::RequestSuspend() {
   unsigned int timeout_ms;
   suspend_requested_ = true;
-  locker_->LockScreen();
-  // TODO(bleung) : change locker to use the new delayed suspend method
   suspend_delays_outstanding_ = suspend_delays_.size();
   // Use current time for sequence number.
   suspend_sequence_number_ = TimeTicks::Now().ToInternalValue() / 1000;
-  timeout_ms = max(kScreenLockerTimeoutMS, suspend_delay_timeout_ms_);
-  timeout_ms = min(kMaximumDelayTimeoutMS, timeout_ms);
   BroadcastSignalToClients(kSuspendDelay, suspend_sequence_number_);
-  suspend_delays_outstanding_++; // one for the locker. TODO : remove this.
+  // TODO(bleung) : change locker to use the new delayed suspend method
+  if (locker_->lock_on_suspend_enabled()) {
+    locker_->LockScreen();
+    suspend_delays_outstanding_++; // one for the locker. TODO : remove this.
+    timeout_ms = max(kScreenLockerTimeoutMS, suspend_delay_timeout_ms_);
+  } else {
+    timeout_ms = suspend_delay_timeout_ms_;
+  }
+  timeout_ms = min(kMaximumDelayTimeoutMS, timeout_ms);
   LOG(INFO) << "Request Suspend #" << suspend_sequence_number_
             << " Delay Timeout = " << timeout_ms;
   CheckSuspendTimeoutPayload* payload = new CheckSuspendTimeoutPayload;

@@ -88,7 +88,7 @@ void Daemon::Init() {
   GrabKey(key_f6_, 0);
   GrabKey(key_f7_, 0);
   gdk_window_add_filter(NULL, gdk_event_filter, this);
-  locker_.Init(use_xscreensaver_);
+  locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterDBusMessageHandler();
   suspender_.Init();
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
@@ -98,6 +98,7 @@ void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
   int64 low_battery_suspend_percent;
+  int64 lock_on_idle_suspend;
   CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
                             &low_battery_suspend_percent));
   CHECK(prefs_->ReadSetting("clean_shutdown_timeout_ms",
@@ -117,6 +118,11 @@ void Daemon::ReadSettings() {
     plugged_suspend_ms_ = INT64_MAX;
     unplugged_suspend_ms_ = INT64_MAX;
   }
+  if (prefs_->ReadSetting("lock_on_idle_suspend", &lock_on_idle_suspend) &&
+      0 == lock_on_idle_suspend) {
+    LOG(INFO) << "Disabling screen lock on idle and suspend";
+    default_lock_ms_ = INT64_MAX;
+  }
   if (low_battery_suspend_percent >= 0 && low_battery_suspend_percent <= 100) {
     low_battery_suspend_percent_ = low_battery_suspend_percent;
   } else {
@@ -125,6 +131,7 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Disabling low battery suspend.";
     low_battery_suspend_percent_ = 0;
   }
+  lock_on_idle_suspend_ = lock_on_idle_suspend;
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
   use_xscreensaver_ = use_xscreensaver;

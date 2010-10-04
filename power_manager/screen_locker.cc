@@ -18,9 +18,10 @@ void ScreenLocker::LockScreen() {
   }
 }
 
-void ScreenLocker::Init(bool use_xscreensaver) {
+void ScreenLocker::Init(bool use_xscreensaver, bool lock_on_suspend) {
   locked_ = false;
   use_xscreensaver_ = use_xscreensaver;
+  lock_on_suspend_ = lock_on_suspend;
 }
 
 }  // namespace power_manager
