@@ -28,6 +28,8 @@ extern const char *kCryptohomeTpmIsEnabled;
 extern const char *kCryptohomeTpmIsOwned;
 extern const char *kCryptohomeTpmIsBeingOwned;
 extern const char *kCryptohomeTpmGetPassword;
+extern const char *kCryptohomeTpmCanAttemptOwnership;
+extern const char *kCryptohomeTpmClearStoredPassword;
 extern const char *kCryptohomeAsyncCheckKey;
 extern const char *kCryptohomeAsyncMigrateKey;
 extern const char *kCryptohomeAsyncMount;
@@ -38,6 +40,7 @@ extern const char *kCryptohomeRemoveTrackedSubdirectories;
 extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
 // Signals
 extern const char *kSignalAsyncCallStatus;
+extern const char *kSignalTpmInitStatus;
 }  // namespace cryptohome
 
 namespace imageburn {

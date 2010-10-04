@@ -26,6 +26,8 @@ const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
 const char *kCryptohomeTpmIsOwned = "TpmIsOwned";
 const char *kCryptohomeTpmIsBeingOwned = "TpmIsBeingOwned";
 const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
+const char *kCryptohomeTpmCanAttemptOwnership = "TpmCanAttemptOwnership";
+const char *kCryptohomeTpmClearStoredPassword = "TpmClearStoredPassword";
 const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
 const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
 const char *kCryptohomeAsyncMount = "AsyncMount";
@@ -38,6 +40,7 @@ const char *kCryptohomeAsyncRemoveTrackedSubdirectories =
     "AsyncRemoveTrackedSubdirectories";
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";
+const char *kSignalTpmInitStatus = "TpmInitStatus";
 }  // namespace cryptohome
 
 namespace imageburn{
