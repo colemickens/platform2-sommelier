@@ -7,6 +7,7 @@
 #include "platform.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <pwd.h>
 #include <signal.h>
 #include <sys/mount.h>
@@ -130,14 +131,64 @@ void Platform::GetProcessesWithOpenFiles(
   for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
     pid_t pid = static_cast<pid_t>(*it);
     processes->push_back(ProcessInformation());
-    processes->at(processes->size() - 1).process_id = pid;
-    FilePath cmdline_file(StringPrintf("/proc/%d/cmdline", pid));
-    string contents;
-    if (!file_util::ReadFileToString(cmdline_file, &contents)) {
-      continue;
-    }
-    processes->at(processes->size() - 1).cmd_line.swap(contents);
+    GetProcessOpenFileInformation(pid, path,
+                                  &processes->at(processes->size() - 1));
   }
+}
+
+std::string Platform::ReadLink(const std::string& link_path) {
+  char link_buf[PATH_MAX];
+  ssize_t link_length = readlink(link_path.c_str(), link_buf, sizeof(link_buf));
+  if (link_length > 0) {
+    return std::string(link_buf, link_length);
+  }
+  return std::string();
+}
+
+void Platform::GetProcessOpenFileInformation(pid_t pid,
+                                             const std::string& path_in,
+                                             ProcessInformation* process_info) {
+  process_info->set_process_id(pid);
+  FilePath pid_path(StringPrintf("/proc/%d", pid));
+  FilePath cmdline_file = pid_path.Append("cmdline");
+  string contents;
+  std::vector<std::string> cmd_line;
+  if (file_util::ReadFileToString(cmdline_file, &contents)) {
+    SplitString(contents, '\0', &cmd_line);
+  }
+  process_info->set_cmd_line(&cmd_line);
+
+  // Make sure that if we get a directory, it has a trailing separator
+  FilePath file_path(path_in);
+  file_util::EnsureEndsWithSeparator(&file_path);
+  std::string path = file_path.value();
+
+  FilePath cwd_path = pid_path.Append("cwd");
+  std::string link_val = ReadLink(cwd_path.value());
+  if (IsPathChild(path, link_val)) {
+    process_info->set_cwd(&link_val);
+  } else {
+    link_val.clear();
+    process_info->set_cwd(&link_val);
+  }
+
+  // Open /proc/<pid>/fd
+  FilePath fd_dirpath = pid_path.Append("fd");
+
+  file_util::FileEnumerator fd_dir_enum(fd_dirpath, false,
+                                        file_util::FileEnumerator::FILES);
+
+  std::set<std::string> open_files;
+  // List open file descriptors
+  for (FilePath fd_path = fd_dir_enum.Next();
+       !fd_path.empty();
+       fd_path = fd_dir_enum.Next()) {
+    link_val = ReadLink(fd_path.value());
+    if (IsPathChild(path, link_val)) {
+      open_files.insert(link_val);
+    }
+  }
+  process_info->set_open_files(&open_files);
 }
 
 void Platform::LookForOpenFiles(const std::string& path_in,
@@ -146,10 +197,6 @@ void Platform::LookForOpenFiles(const std::string& path_in,
   FilePath file_path(path_in);
   file_util::EnsureEndsWithSeparator(&file_path);
   std::string path = file_path.value();
-  bool is_directory = file_util::EndsWithSeparator(file_path);
-  std::string dir_path = (is_directory
-                          ? path.substr(0, path.length() - 1)
-                          : "");
 
   // Open /proc
   file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
@@ -159,13 +206,27 @@ void Platform::LookForOpenFiles(const std::string& path_in,
   std::vector<char> linkbuf(linkbuf_length);
 
   // List PIDs in /proc
-  FilePath pid_path;
-  while (!(pid_path = proc_dir_enum.Next()).empty()) {
+  for (FilePath pid_path = proc_dir_enum.Next();
+       !pid_path.empty();
+       pid_path = proc_dir_enum.Next()) {
     pid_t pid = static_cast<pid_t>(atoi(pid_path.BaseName().value().c_str()));
     // Ignore PID 1 and errors
     if (pid <= 1) {
       continue;
     }
+
+    FilePath cwd_path = pid_path.Append("cwd");
+    ssize_t link_length = readlink(cwd_path.value().c_str(),
+                                   &linkbuf[0],
+                                   linkbuf.size());
+    if (link_length > 0) {
+      std::string open_file(&linkbuf[0], link_length);
+      if (IsPathChild(path, open_file)) {
+        pids->push_back(pid);
+        continue;
+      }
+    }
+
     // Open /proc/<pid>/fd
     FilePath fd_dirpath = pid_path.Append("fd");
 
@@ -173,26 +234,38 @@ void Platform::LookForOpenFiles(const std::string& path_in,
                                           file_util::FileEnumerator::FILES);
 
     // List open file descriptors
-    FilePath fd_path;
-    while (!(fd_path = fd_dir_enum.Next()).empty()) {
-      ssize_t link_length = readlink(fd_path.value().c_str(), &linkbuf[0],
+    for (FilePath fd_path = fd_dir_enum.Next();
+         !fd_path.empty();
+         fd_path = fd_dir_enum.Next()) {
+      link_length = readlink(fd_path.value().c_str(), &linkbuf[0],
                                      linkbuf.size());
       if (link_length > 0) {
         std::string open_file(&linkbuf[0], link_length);
-        if (open_file.length() >= path.length()) {
-          if (open_file.substr(0, path.length()).compare(path) == 0) {
-            pids->push_back(pid);
-            break;
-          }
-        } else if (is_directory && open_file.length() == dir_path.length()) {
-          if (open_file.compare(dir_path) == 0) {
-            pids->push_back(pid);
-            break;
-          }
+        if (IsPathChild(path, open_file)) {
+          pids->push_back(pid);
+          break;
         }
       }
     }
   }
+}
+
+bool Platform::IsPathChild(const std::string& parent,
+                           const std::string& child) {
+  if (parent.length() == 0 || child.length() == 0) {
+    return false;
+  }
+  if (child.length() >= parent.length()) {
+    if (child.compare(0, parent.length(), parent, 0, parent.length()) == 0) {
+      return true;
+    }
+  } else if ((parent[parent.length() - 1] == '/') &&
+             (child.length() == (parent.length() - 1))) {
+    if (child.compare(0, child.length(), parent, 0, parent.length() - 1) == 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool Platform::TerminatePidsForUser(const uid_t uid, bool hard) {

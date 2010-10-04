@@ -47,6 +47,12 @@ void cryptohome_init(Cryptohome *self) { }
   } \
   return self->service->_NAME(args, error);
 
+#define CRYPTOHOME_WRAP_METHOD_NO_ARGS(_NAME) \
+  if (!self->service) { \
+    return FALSE; \
+  } \
+  return self->service->_NAME(error);
+
 gboolean cryptohome_check_key(Cryptohome *self,
                               gchar *userid,
                               gchar *key,
@@ -175,6 +181,14 @@ gboolean cryptohome_tpm_is_being_owned(Cryptohome *self,
                                        gboolean *OUT_owning,
                                        GError **error) {
   CRYPTOHOME_WRAP_METHOD(TpmIsBeingOwned, OUT_owning);
+}
+gboolean cryptohome_tpm_can_attempt_ownership(Cryptohome *self,
+                                              GError **error) {
+  CRYPTOHOME_WRAP_METHOD_NO_ARGS(TpmCanAttemptOwnership);
+}
+gboolean cryptohome_tpm_clear_stored_password(Cryptohome *self,
+                                              GError **error) {
+  CRYPTOHOME_WRAP_METHOD_NO_ARGS(TpmClearStoredPassword);
 }
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,

@@ -35,6 +35,39 @@ namespace cryptohome {
 
 const int kDefaultRandomSeedLength = 64;
 const char* kMountThreadName = "MountThread";
+const char* kTpmInitStatusEventType = "TpmInitStatus";
+
+class TpmInitStatus : public CryptohomeEventBase {
+ public:
+  TpmInitStatus()
+      : took_ownership_(false),
+        status_(false) { }
+  virtual ~TpmInitStatus() { }
+
+  virtual const char* GetEventName() {
+    return kTpmInitStatusEventType;
+  }
+
+  void set_took_ownership(bool value) {
+    took_ownership_ = value;
+  }
+
+  bool get_took_ownership() {
+    return took_ownership_;
+  }
+
+  void set_status(bool value) {
+    status_ = value;
+  }
+
+  bool get_status() {
+    return status_;
+  }
+
+ private:
+  bool took_ownership_;
+  bool status_;
+};
 
 Service::Service()
     : loop_(NULL),
@@ -47,6 +80,7 @@ Service::Service()
       initialize_tpm_(true),
       mount_thread_(kMountThreadName),
       async_complete_signal_(-1),
+      tpm_init_signal_(-1),
       event_source_() {
 }
 
@@ -67,10 +101,6 @@ bool Service::Initialize() {
     tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
-    }
-    if (!tpm_init_->StartInitializeTpm()) {
-      LOG(ERROR) << "Failed start initializing the TPM";
-      result = false;
     }
   }
 
@@ -95,6 +125,19 @@ bool Service::Initialize() {
                                         G_TYPE_INT,
                                         G_TYPE_BOOLEAN,
                                         G_TYPE_INT);
+
+  tpm_init_signal_ = g_signal_new("tpm_init_status",
+                                  gobject::cryptohome_get_type(),
+                                  G_SIGNAL_RUN_LAST,
+                                  0,
+                                  NULL,
+                                  NULL,
+                                  cryptohome_VOID__BOOLEAN_BOOLEAN_BOOLEAN,
+                                  G_TYPE_NONE,
+                                  3,
+                                  G_TYPE_BOOLEAN,
+                                  G_TYPE_BOOLEAN,
+                                  G_TYPE_BOOLEAN);
 
   mount_thread_.Start();
 
@@ -138,12 +181,20 @@ bool Service::Reset() {
 }
 
 void Service::MountTaskObserve(const MountTaskResult& result) {
-  event_source_.AddEvent(result);
+  // The event source will free this object
+  event_source_.AddEvent(new MountTaskResult(result));
 }
 
-void Service::NotifyComplete(const MountTaskResult& result) {
-  g_signal_emit(cryptohome_, async_complete_signal_, 0, result.sequence_id(),
-                result.return_status(), result.return_code());
+void Service::NotifyEvent(CryptohomeEventBase* event) {
+  if (!strcmp(event->GetEventName(), kMountTaskResultEventType)) {
+    MountTaskResult* result = static_cast<MountTaskResult*>(event);
+    g_signal_emit(cryptohome_, async_complete_signal_, 0, result->sequence_id(),
+                  result->return_status(), result->return_code());
+  } else if (!strcmp(event->GetEventName(), kTpmInitStatusEventType)) {
+    TpmInitStatus* result = static_cast<TpmInitStatus*>(event);
+    g_signal_emit(cryptohome_, tpm_init_signal_, 0, tpm_init_->IsTpmReady(),
+                  tpm_init_->IsTpmEnabled(), result->get_took_ownership());
+  }
 }
 
 void Service::InitializeTpmComplete(bool status, bool took_ownership) {
@@ -157,6 +208,11 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
     event.Wait();
   }
+  // The event source will free this object
+  TpmInitStatus* tpm_init_status = new TpmInitStatus();
+  tpm_init_status->set_status(status);
+  tpm_init_status->set_took_ownership(took_ownership);
+  event_source_.AddEvent(tpm_init_status);
 }
 
 gboolean Service::CheckKey(gchar *userid,
@@ -471,6 +527,18 @@ gboolean Service::TpmIsOwned(gboolean* OUT_owned, GError** error) {
 
 gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
   *OUT_owning = tpm_init_->IsTpmBeingOwned();
+  return TRUE;
+}
+
+gboolean Service::TpmCanAttemptOwnership(GError** error) {
+  if (!tpm_init_->HasInitializeBeenCalled()) {
+    tpm_init_->StartInitializeTpm();
+  }
+  return TRUE;
+}
+
+gboolean Service::TpmClearStoredPassword(GError** error) {
+  tpm_init_->ClearStoredTpmPassword();
   return TRUE;
 }
 

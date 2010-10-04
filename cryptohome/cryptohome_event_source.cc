@@ -32,10 +32,11 @@ CryptohomeEventSource::~CryptohomeEventSource() {
     g_source_destroy(source_);
     g_source_unref(source_);
   }
+  Clear();
 }
 
 void CryptohomeEventSource::Reset(CryptohomeEventSourceSink* sink,
-                                       GMainContext* main_context) {
+                                  GMainContext* main_context) {
   sink_ = sink;
   if (source_) {
     g_source_destroy(source_);
@@ -49,6 +50,8 @@ void CryptohomeEventSource::Reset(CryptohomeEventSourceSink* sink,
       pipe_fds_[i] = -1;
     }
   }
+
+  Clear();
 
   if (!pipe(pipe_fds_)) {
     poll_fd_.fd = pipe_fds_[0];
@@ -99,13 +102,14 @@ void CryptohomeEventSource::HandleDispatch() {
   do {
     events_lock_.Acquire();
     if (!events_.empty()) {
-      MountTaskResult task_result = events_[0];
+      CryptohomeEventBase* event = events_[0];
       events_.erase(events_.begin());
       more = !events_.empty();
       events_lock_.Release();
       if (sink_) {
-        sink_->NotifyComplete(task_result);
+        sink_->NotifyEvent(event);
       }
+      delete event;
     } else {
       more = false;
       events_lock_.Release();
@@ -113,9 +117,9 @@ void CryptohomeEventSource::HandleDispatch() {
   } while (more);
 }
 
-void CryptohomeEventSource::AddEvent(const MountTaskResult& task_result) {
+void CryptohomeEventSource::AddEvent(CryptohomeEventBase* event) {
   events_lock_.Acquire();
-  events_.push_back(task_result);
+  events_.push_back(event);
   if (write(pipe_fds_[1], "G", 1) != 1) {
     LOG(INFO) << "Couldn't notify of pending events through the message pipe."
               << "  Events will be cleared on next call to Prepare().";
@@ -124,9 +128,15 @@ void CryptohomeEventSource::AddEvent(const MountTaskResult& task_result) {
 }
 
 void CryptohomeEventSource::Clear() {
+  std::vector<CryptohomeEventBase*> events;
   events_lock_.Acquire();
-  events_.clear();
+  events_.swap(events);
   events_lock_.Release();
+  for (std::vector<CryptohomeEventBase*>::const_iterator itr = events.begin();
+       itr != events.end();
+       ++itr) {
+    delete (*itr);
+  }
 }
 
 gboolean CryptohomeEventSource::Prepare(GSource* source, gint* timeout_ms) {

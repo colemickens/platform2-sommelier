@@ -29,12 +29,15 @@
 #include <base/waitable_event.h>
 #include <chromeos/utility.h>
 
+#include "cryptohome_event_source.h"
 #include "mount.h"
 #include "username_passkey.h"
 
 namespace cryptohome {
 
-class MountTaskResult {
+extern const char* kMountTaskResultEventType;
+
+class MountTaskResult : public CryptohomeEventBase {
  public:
   MountTaskResult()
       : sequence_id_(-1),
@@ -86,6 +89,10 @@ class MountTaskResult {
     return_status_ = rhs.return_status_;
     return_code_ = rhs.return_code_;
     return *this;
+  }
+
+  virtual const char* GetEventName() {
+    return kMountTaskResultEventType;
   }
 
  private:

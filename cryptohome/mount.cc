@@ -285,12 +285,26 @@ bool Mount::UnmountCryptohome() const {
   if (!platform_->Unmount(home_dir_, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
     if (was_busy) {
-      std::vector<Platform::ProcessInformation> processes;
+      std::vector<ProcessInformation> processes;
       platform_->GetProcessesWithOpenFiles(home_dir_, &processes);
-      for (unsigned int i = 0; i < processes.size(); ++i) {
-        LOG(ERROR) << "Process " << processes[i].process_id
+      for (std::vector<ProcessInformation>::iterator proc_itr =
+             processes.begin();
+           proc_itr != processes.end();
+           proc_itr++) {
+        LOG(ERROR) << "Process " << proc_itr->get_process_id()
                    << " had open files.  Command line: "
-                   << processes[i].cmd_line;
+                   << proc_itr->GetCommandLine();
+        if (proc_itr->get_cwd().length()) {
+          LOG(ERROR) << "  (" << proc_itr->get_process_id() << ") CWD: "
+                     << proc_itr->get_cwd();
+        }
+        for (std::set<std::string>::iterator file_itr =
+               proc_itr->get_open_files().begin();
+             file_itr != proc_itr->get_open_files().end();
+             file_itr++) {
+          LOG(ERROR) << "  (" << proc_itr->get_process_id() << ") Open File: "
+                     << (*file_itr);
+        }
       }
       sync();
     }

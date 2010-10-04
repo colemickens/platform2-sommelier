@@ -6,6 +6,8 @@
 
 namespace cryptohome {
 
+const char* kMountTaskResultEventType = "MountTaskResult";
+
 base::AtomicSequenceNumber MountTask::sequence_holder_;
 
 MountTask::MountTask(MountTaskObserver* observer,

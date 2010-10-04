@@ -28,10 +28,9 @@
 #include <glib-object.h>
 #include <vector>
 
-#include "mount_task.h"
-
 namespace cryptohome {
 
+class CryptohomeEventBase;
 class CryptohomeEventSourceSink;
 
 class CryptohomeEventSource {
@@ -52,11 +51,12 @@ class CryptohomeEventSource {
   // Processes pending events in the queue
   void HandleDispatch();
 
-  // Adds an event to the queue for processing
+  // Adds an event to the queue for processing.
+  // This method DOES take ownership of the |event| pointer.
   //
   // Parameters
   //   task_result - The event to add
-  void AddEvent(const MountTaskResult& task_result);
+  void AddEvent(CryptohomeEventBase* event);
 
   // Clears all pending events from the queue
   void Clear();
@@ -87,7 +87,7 @@ class CryptohomeEventSource {
   Source* source_;
 
   // Pending events vector
-  std::vector<MountTaskResult> events_;
+  std::vector<CryptohomeEventBase*> events_;
 
   // Used to provide thread-safe access to events_
   Lock events_lock_;
@@ -102,9 +102,17 @@ class CryptohomeEventSource {
   DISALLOW_COPY_AND_ASSIGN(CryptohomeEventSource);
 };
 
+class CryptohomeEventBase {
+ public:
+  CryptohomeEventBase() { }
+  virtual ~CryptohomeEventBase() { }
+
+  virtual const char* GetEventName() = 0;
+};
+
 class CryptohomeEventSourceSink {
  public:
-  virtual void NotifyComplete(const MountTaskResult& task_result) = 0;
+  virtual void NotifyEvent(CryptohomeEventBase* event) = 0;
 };
 
 }  // namespace cryptohome

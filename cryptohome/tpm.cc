@@ -22,6 +22,10 @@
 
 namespace cryptohome {
 
+#define TPM_LOG(severity, result) \
+  LOG(severity) << "TPM error 0x" << std::hex << result \
+                << " (" << Trspi_Error_String(result) << "): "
+
 const unsigned char kDefaultSrkAuth[] = { };
 const unsigned int kDefaultTpmRsaKeyBits = 2048;
 const unsigned int kDefaultDiscardableWrapPasswordLength = 32;
@@ -62,6 +66,7 @@ bool Tpm::Connect(TpmRetryAction* retry_action) {
       context_handle_ = 0;
       key_handle_ = 0;
       *retry_action = HandleError(result);
+      TPM_LOG(ERROR, result) << "Error connecting to the TPM";
       return false;
     }
 
@@ -72,6 +77,7 @@ bool Tpm::Connect(TpmRetryAction* retry_action) {
       key_handle_ = 0;
       *retry_action = HandleError(result);
       Tspi_Context_Close(context_handle);
+      TPM_LOG(ERROR, result) << "Error loading the cryptohome TPM key";
       return false;
     }
 
@@ -220,7 +226,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   if ((*result = Tspi_Context_CreateObject(context_handle,
                                            TSS_OBJECT_TYPE_RSAKEY,
                                            init_flags, &local_key_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
     Tspi_Context_CloseObject(context_handle, srk_handle);
     return false;
   }
@@ -230,7 +236,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   if ((*result = Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                                       TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                       sig_scheme))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribUint32: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribUint32";
     Tspi_Context_CloseObject(context_handle, srk_handle);
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
@@ -240,7 +246,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   if ((*result = Tspi_SetAttribUint32(local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                                       TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
                                       enc_scheme))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribUint32: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribUint32";
     Tspi_Context_CloseObject(context_handle, srk_handle);
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
@@ -249,7 +255,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   // Create a new system-wide key for cryptohome
   if (create_in_tpm) {
     if ((*result = Tspi_Key_CreateKey(local_key_handle, srk_handle, 0))) {
-      LOG(ERROR) << "Error calling Tspi_Key_CreateKey: " << *result;
+      TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_CreateKey";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -260,7 +266,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
                                              TSS_OBJECT_TYPE_POLICY,
                                              TSS_POLICY_MIGRATION,
                                              &policy_handle))) {
-      LOG(ERROR) << "Error creating policy object: " << *result;
+      TPM_LOG(ERROR, *result) << "Error creating policy object";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -276,7 +282,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
     if ((*result = Tspi_Policy_SetSecret(policy_handle, TSS_SECRET_MODE_PLAIN,
                        migration_password.size(),
                        static_cast<BYTE*>(migration_password.data())))) {
-      LOG(ERROR) << "Error setting migration policy password: " << *result;
+      TPM_LOG(ERROR, *result) << "Error setting migration policy password";
       Tspi_Context_CloseObject(context_handle, policy_handle);
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
@@ -285,7 +291,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
 
     if ((*result = Tspi_Policy_AssignToObject(policy_handle,
                                               local_key_handle))) {
-      LOG(ERROR) << "Error assigning migration policy: " << *result;
+      TPM_LOG(ERROR, *result) << "Error assigning migration policy";
       Tspi_Context_CloseObject(context_handle, policy_handle);
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
@@ -306,7 +312,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
                                       TSS_TSPATTRIB_KEYINFO_RSA_MODULUS,
                                       n.size(),
                                       static_cast<BYTE *>(n.data())))) {
-      LOG(ERROR) << "Error setting RSA modulus: " << *result;
+      TPM_LOG(ERROR, *result) << "Error setting RSA modulus";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -316,14 +322,14 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
                                       TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY,
                                       p.size(),
                                       static_cast<BYTE *>(p.data())))) {
-      LOG(ERROR) << "Error setting private key: " << *result;
+      TPM_LOG(ERROR, *result) << "Error setting private key";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
     }
 
     if ((*result = Tspi_Key_WrapKey(local_key_handle, srk_handle, 0))) {
-      LOG(ERROR) << "Error wrapping RSA key: " << *result;
+      TPM_LOG(ERROR, *result) << "Error wrapping RSA key";
       Tspi_Context_CloseObject(context_handle, srk_handle);
       Tspi_Context_CloseObject(context_handle, local_key_handle);
       return false;
@@ -537,7 +543,7 @@ unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
   TSS_RESULT result;
   TSS_HTPM tpm_handle;
   if ((result = Tspi_Context_GetTpmObject(context_handle, &tpm_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_GetTpmObject: " << result;
+    TPM_LOG(ERROR, result) << "Error calling Tspi_Context_GetTpmObject";
     return count;
   }
 
@@ -548,7 +554,7 @@ unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
                                        sizeof(subcap),
                                        reinterpret_cast<BYTE*>(&subcap),
                                        &cap_length, &cap))) {
-    LOG(ERROR) << "Error calling Tspi_TPM_GetCapability: " << result;
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
     return count;
   }
   if (cap_length == sizeof(unsigned int)) {
@@ -561,7 +567,7 @@ unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
 bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   TSS_HCONTEXT local_context_handle;
   if ((*result = Tspi_Context_Create(&local_context_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_Create: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_Create";
     return false;
   }
 
@@ -572,7 +578,7 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
       if (ERROR_CODE(*result) == TSS_E_COMM_FAILURE) {
         PlatformThread::Sleep(100);
       } else {
-        LOG(ERROR) << "Error calling Tspi_Context_Connect: " << *result;
+        TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_Connect";
         Tspi_Context_Close(local_context_handle);
         return false;
       }
@@ -582,7 +588,7 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   }
 
   if (*result) {
-    LOG(ERROR) << "Error calling Tspi_Context_Connect: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_Connect";
     Tspi_Context_Close(local_context_handle);
     return false;
   }
@@ -697,7 +703,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   if ((*result = Tspi_Context_CreateObject(context_handle,
                                           TSS_OBJECT_TYPE_ENCDATA,
                                           init_flags, &enc_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
 
@@ -705,7 +711,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
 
   if ((*result = Tspi_Data_Bind(enc_handle, key_handle, data.size(),
       const_cast<BYTE *>(&data[0])))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Bind: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Data_Bind";
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;
   }
@@ -715,7 +721,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   if ((*result = Tspi_GetAttribData(enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                                    TSS_TSPATTRIB_ENCDATABLOB_BLOB,
                                    &enc_data_length, &enc_data))) {
-    LOG(ERROR) << "Error calling Tspi_GetAttribData: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_GetAttribData";
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;
   }
@@ -805,7 +811,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   if ((*result = Tspi_Context_CreateObject(context_handle,
                                           TSS_OBJECT_TYPE_ENCDATA,
                                           init_flags, &enc_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_CreateObject: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_CreateObject";
     return false;
   }
 
@@ -813,7 +819,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
       TSS_TSPATTRIB_ENCDATA_BLOB, TSS_TSPATTRIB_ENCDATABLOB_BLOB,
       local_data.size(),
       static_cast<BYTE *>(const_cast<void*>(local_data.const_data()))))) {
-    LOG(ERROR) << "Error calling Tspi_SetAttribData: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_SetAttribData";
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;
   }
@@ -822,7 +828,7 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   UINT32 dec_data_length = 0;
   if ((*result = Tspi_Data_Unbind(enc_handle, key_handle, &dec_data_length,
                                   &dec_data))) {
-    LOG(ERROR) << "Error calling Tspi_Data_Unbind: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Data_Unbind";
     Tspi_Context_CloseObject(context_handle, enc_handle);
     return false;
   }
@@ -846,7 +852,7 @@ bool Tpm::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   if ((*result = Tspi_GetAttribData(key_handle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_BLOB,
                                    &blob_size, &blob))) {
-    LOG(ERROR) << "Couldn't get key blob: " << *result;
+    TPM_LOG(ERROR, *result) << "Couldn't get key blob";
     return false;
   }
 
@@ -865,7 +871,7 @@ bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   BYTE *blob;
   UINT32 blob_size;
   if ((*result = Tspi_Key_GetPubKey(key_handle, &blob_size, &blob))) {
-    LOG(ERROR) << "Error calling Tspi_Key_GetPubKey: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_GetPubKey";
     return false;
   }
 
@@ -892,7 +898,7 @@ bool Tpm::LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
       blob.size(),
       const_cast<BYTE*>(static_cast<const BYTE*>(blob.const_data())),
       &local_key_handle))) {
-    LOG(ERROR) << "Error calling Tspi_Context_LoadKeyByBlob: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Context_LoadKeyByBlob";
     Tspi_Context_CloseObject(context_handle, srk_handle);
     return false;
   }
@@ -902,7 +908,7 @@ bool Tpm::LoadKeyBlob(TSS_HCONTEXT context_handle, const SecureBlob& blob,
   unsigned int size_n;
   BYTE *public_key;
   if ((*result = Tspi_Key_GetPubKey(local_key_handle, &size_n, &public_key))) {
-    LOG(ERROR) << "Error calling Tspi_Key_GetPubKey: " << *result;
+    TPM_LOG(ERROR, *result) << "Error calling Tspi_Key_GetPubKey";
     Tspi_Context_CloseObject(context_handle, local_key_handle);
     return false;
   }

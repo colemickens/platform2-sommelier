@@ -91,9 +91,18 @@
     <method name="TpmIsBeingOwned">
       <arg type="b" name="owning" direction="out" />
     </method>
+    <method name="TpmCanAttemptOwnership">
+    </method>
+    <method name="TpmClearStoredPassword">
+    </method>
     <method name="GetStatusString">
       <arg type="s" name="status" direction="out" />
     </method>
+    <signal name="TpmInitStatus">
+      <arg type="b" name="ready" />
+      <arg type="b" name="owned" />
+      <arg type="b" name="was_owned_this_boot" />
+    </signal>
     <signal name="AsyncCallStatus">
       <arg type="i" name="async_id" />
       <arg type="b" name="return_status" />

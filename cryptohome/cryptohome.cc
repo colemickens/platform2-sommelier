@@ -46,6 +46,9 @@ namespace switches {
     "tpm_status",
     "status",
     "remove_tracked_subdirs",
+    "tpm_take_ownership",
+    "tpm_clear_stored_password",
+    "tpm_wait_ownership",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -59,7 +62,10 @@ namespace switches {
     ACTION_DUMP_KEYSET,
     ACTION_TPM_STATUS,
     ACTION_STATUS,
-    ACTION_REMOVE_TRACKED_SUBDIRS };
+    ACTION_REMOVE_TRACKED_SUBDIRS,
+    ACTION_TPM_TAKE_OWNERSHIP,
+    ACTION_TPM_CLEAR_STORED_PASSWORD,
+    ACTION_TPM_WAIT_OWNERSHIP };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -214,6 +220,49 @@ class ClientLoop {
   int return_code_;
 };
 
+class TpmWaitLoop {
+ public:
+  TpmWaitLoop()
+      : loop_(NULL) { }
+
+  virtual ~TpmWaitLoop() {
+    if (loop_) {
+      g_main_loop_unref(loop_);
+    }
+  }
+
+  void Initialize(chromeos::dbus::Proxy& proxy) {
+    dbus_g_object_register_marshaller(cryptohome_VOID__BOOLEAN_BOOLEAN_BOOLEAN,
+                                      G_TYPE_NONE,
+                                      G_TYPE_BOOLEAN,
+                                      G_TYPE_BOOLEAN,
+                                      G_TYPE_BOOLEAN,
+                                      G_TYPE_INVALID);
+    dbus_g_proxy_add_signal(proxy.gproxy(), "TpmInitStatus",
+                            G_TYPE_BOOLEAN, G_TYPE_BOOLEAN, G_TYPE_BOOLEAN,
+                            G_TYPE_INVALID);
+    dbus_g_proxy_connect_signal(proxy.gproxy(), "TpmInitStatus",
+                                G_CALLBACK(TpmWaitLoop::CallbackThunk),
+                                this, NULL);
+    loop_ = g_main_loop_new(NULL, TRUE);
+  }
+
+  void Run() {
+    g_main_loop_run(loop_);
+  }
+
+ private:
+  static void CallbackThunk(DBusGProxy* proxy, bool ready, bool is_owned,
+                            bool took_ownership, gpointer userdata) {
+    printf("TPM ready: %s\n", (ready ? "true" : "false"));
+    printf("TPM owned: %s\n", (is_owned ? "true" : "false"));
+    printf("TPM took_ownership: %s\n", (took_ownership ? "true" : "false"));
+    g_main_loop_quit(reinterpret_cast<TpmWaitLoop*>(userdata)->loop_);
+  }
+
+  GMainLoop *loop_;
+};
+
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
   logging::InitLogging(NULL,
@@ -254,7 +303,7 @@ int main(int argc, char **argv) {
       int i = 0;
       for (std::vector<std::string>::const_iterator itr = tracked_dirs.begin();
            itr != tracked_dirs.end(); itr++, i++) {
-        tracked_subdirectories[i] = (*itr).c_str();
+        tracked_subdirectories[i] = itr->c_str();
       }
       tracked_subdirectories[i] = NULL;
     }
@@ -627,6 +676,42 @@ int main(int argc, char **argv) {
         printf("true\n");
       } else {
         printf("false\n");
+      }
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_TPM_TAKE_OWNERSHIP],
+                     action.c_str())) {
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_can_attempt_ownership(
+        proxy.gproxy(),
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmCanAttemptOwnership call failed: %s.\n", error->message);
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_CLEAR_STORED_PASSWORD],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_clear_stored_password(
+        proxy.gproxy(),
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmClearStoredPassword call failed: %s.\n", error->message);
+    }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
+      action.c_str())) {
+    TpmWaitLoop client_loop;
+    client_loop.Initialize(proxy);
+    gboolean result;
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmIsBeingOwned call failed: %s.\n", error->message);
+    } else {
+      if (result) {
+        printf("Waiting for TPM to be owned...\n");
+        client_loop.Run();
+      } else {
+        printf("TPM is not currently being owned.\n");
       }
     }
   } else {

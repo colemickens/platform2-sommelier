@@ -6,6 +6,7 @@
 #define CRYPTOHOME_PLATFORM_H_
 
 #include <base/basictypes.h>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -23,13 +24,11 @@ extern const std::string kMtab;
 // The procfs dir
 extern const std::string kProcDir;
 
+class ProcessInformation;
+
 // TODO(fes): Description
 class Platform {
  public:
-  struct ProcessInformation {
-    std::string cmd_line;
-    int process_id;
-  };
 
   Platform();
 
@@ -90,6 +89,30 @@ class Platform {
   //   path - The path to check if the process has open files on
   //   pids (OUT) - The PIDs found
   void LookForOpenFiles(const std::string& path_in, std::vector<pid_t>* pids);
+
+  // Returns true if child is a file or folder below or equal to parent.  If
+  // parent is a directory, it should end with a '/' character.
+  //
+  // Parameters
+  //   parent - The parent directory
+  //   child - The child directory/file
+  bool IsPathChild(const std::string& parent, const std::string& child);
+
+  // Returns the target of the specified link
+  //
+  // Parameters
+  //   link_path - The link to check
+  std::string ReadLink(const std::string& link_path);
+
+  // Returns the process and open file information for the specified process id
+  // with files open on the given path
+  //
+  // Parameters
+  //   pid - The process to check
+  //   path_in - The file path to check for
+  //   process_info (OUT) - The ProcessInformation to store the results in
+  void GetProcessOpenFileInformation(pid_t pid, const std::string& path_in,
+                                     ProcessInformation* process_info);
 
   // Terminates or kills processes (except the current) that have the user ID
   // specified.  Returns true if it tried to kill any processes.
@@ -156,6 +179,74 @@ class Platform {
   std::string proc_dir_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
+};
+
+class ProcessInformation {
+ public:
+  ProcessInformation()
+      : cmd_line_(),
+      process_id_(-1) { }
+  virtual ~ProcessInformation() { }
+
+  std::string GetCommandLine() {
+    std::string result;
+    for (std::vector<std::string>::iterator cmd_itr = cmd_line_.begin();
+         cmd_itr != cmd_line_.end();
+         cmd_itr++) {
+      if (result.length()) {
+        result.append(" ");
+      }
+      result.append((*cmd_itr));
+    }
+    return result;
+  }
+
+  // Set the command line array.  This method DOES swap out the contents of
+  // |value|.  The caller should expect an empty vector on return.
+  void set_cmd_line(std::vector<std::string>* value) {
+    cmd_line_.clear();
+    cmd_line_.swap(*value);
+  }
+
+  const std::vector<std::string>& get_cmd_line() {
+    return cmd_line_;
+  }
+
+  // Set the command line array.  This method DOES swap out the contents of
+  // |value|.  The caller should expect an empty set on return.
+  void set_open_files(std::set<std::string>* value) {
+    open_files_.clear();
+    open_files_.swap(*value);
+  }
+
+  const std::set<std::string>& get_open_files() {
+    return open_files_;
+  }
+
+  // Set the command line array.  This method DOES swap out the contents of
+  // |value|.  The caller should expect an empty string on return.
+  void set_cwd(std::string* value) {
+    cwd_.clear();
+    cwd_.swap(*value);
+  }
+
+  const std::string& get_cwd() {
+    return cwd_;
+  }
+
+  void set_process_id(int value) {
+    process_id_ = value;
+  }
+
+  int get_process_id() {
+    return process_id_;
+  }
+
+ private:
+  std::vector<std::string> cmd_line_;
+  std::set<std::string> open_files_;
+  std::string cwd_;
+  int process_id_;
 };
 
 }  // namespace cryptohome

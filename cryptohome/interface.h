@@ -115,6 +115,10 @@ gboolean cryptohome_tpm_is_owned(Cryptohome *self,
 gboolean cryptohome_tpm_is_being_owned(Cryptohome *self,
                                        gboolean *OUT_owning,
                                        GError **error);
+gboolean cryptohome_tpm_can_attempt_ownership(Cryptohome *self,
+                                              GError **error);
+gboolean cryptohome_tpm_clear_stored_password(Cryptohome *self,
+                                              GError **error);
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,
                                       GError **error);

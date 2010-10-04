@@ -67,7 +67,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void MountTaskObserve(const MountTaskResult& result);
 
   // CryptohomeEventSourceSink
-  virtual void NotifyComplete(const MountTaskResult& result);
+  virtual void NotifyEvent(CryptohomeEventBase* event);
 
   // TpmInitCallback
   virtual void InitializeTpmComplete(bool status, bool took_ownership);
@@ -131,6 +131,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmGetPassword(gchar** OUT_password, GError** error);
   virtual gboolean TpmIsOwned(gboolean* OUT_owned, GError** error);
   virtual gboolean TpmIsBeingOwned(gboolean* OUT_owning, GError** error);
+  virtual gboolean TpmCanAttemptOwnership(GError** error);
+  virtual gboolean TpmClearStoredPassword(GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
  protected:
@@ -148,6 +150,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool initialize_tpm_;
   base::Thread mount_thread_;
   guint async_complete_signal_;
+  guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
