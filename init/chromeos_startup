@@ -23,8 +23,8 @@ if [ -x /usr/bin/ply-image ]; then
     # Moblin trick: Disable blinking cursor. Without this a splash screen
     # will show a distinct cursor shape even when the cursor is set to none.
     echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-
-    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png &
+    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png & \
+      boot_splash_pid="$!"
   fi
 fi
 
@@ -76,10 +76,15 @@ if [ -f "$RESET_FILE" ]; then
   if [ $(stat -c%u "$RESET_FILE") -eq 0 ]; then
     echo "Erasing stateful partition..."
     # Show a splash image to inform OPs it is wiping the disk.
-    if [ -x /usr/bin/ply-image ]; then
-      echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-      cp -f /mnt/stateful_partition/wipe_splash.png /tmp/
-      /usr/bin/ply-image /tmp/wipe_splash.png &
+    WIPE_SPLASH_FILE="/mnt/stateful_partition/wipe_splash.png"
+    if [ -n "$boot_splash_pid" -a -r "$WIPE_SPLASH_FILE" ]; then
+      # When the RESET_FILE exist, the rootdev is the release image without
+      # /root/.factory_* so boot_splash is already displayed. Having
+      # $boot_splash_pid implies the existence of /usr/bin/ply-image and the
+      # cursor is already made hidden.
+      wait "$boot_splash_pid"
+      # Do not use background execution because this file is going to be wiped.
+      /usr/bin/ply-image "$WIPE_SPLASH_FILE"
     fi
     FAST=$(cat $RESET_FILE)
     if [ "$FAST" = "fast" ]; then
