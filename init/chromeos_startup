@@ -69,39 +69,71 @@ if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
   fi
 fi
 
+# File used to trigger a stateful reset
+RESET_FILE="/mnt/stateful_partition/factory_install_reset"
+
+# If we've switched from verified mode to developer mode, clobber the state.
+# The reverse is not possible to detect reliably, but we try.
+# Ignores the bootloader detection and just checks the switch state.
+# In addition, normal and unsupported are treated are equivalent otherwise
+# booting the first time on a legacy device would clobber state for no reason.
+# (NOTE, this will not be triggered in recovery mode.)
+/bin/cros_boot_mode -b -s -m developer
+DEVMODE=$((!$?))
+# File defined by clobber-state
+DEVMODE_FILE="/mnt/stateful_partition/.developer_mode"
+
+# Transition to devmode
+if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
+  # Delay the first developer mode boot by 5 minutes unless the images is a
+  # developer image.  We check the dev image here to avoid a stat(2) on normal
+  # boots
+  # TODO(wad) just have the dev_mode build stamp the stateful.
+  if [ ! -f /root/.dev_mode ]; then
+    # TODO(wad) Throw up a splash.
+    sleep $((60 * 5))
+    touch ${RESET_FILE}
+  fi
+
+  # Transition from devmode
+elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
+  # When coming back from developer mode, we don't need to clobber
+  # as aggressively. Fast will do the trick.
+  if [ ! -f /root/.dev_mode ]; then
+    echo "fast" > ${RESET_FILE}
+  fi
+fi
+
 # Check if the stateful partition has requested self-destruction
 # This is used for the factory install process
-RESET_FILE="/mnt/stateful_partition/factory_install_reset"
-if [ -f "$RESET_FILE" ]; then
-  if [ $(stat -c%u "$RESET_FILE") -eq 0 ]; then
-    # Light up screen in case you can't see our splash image.
-    LIGHTUP_SCREEN=/usr/sbin/lightup_screen
-    if [ -x ${LIGHTUP_SCREEN} ]; then
-      ${LIGHTUP_SCREEN}
-    else
-      echo "${LIGHTUP_SCREEN} does not exist or not executable"
-    fi
+if [ -O "$RESET_FILE" ]; then
+  # Light up screen in case you can't see our splash image.
+  LIGHTUP_SCREEN=/usr/sbin/lightup_screen
+  if [ -x ${LIGHTUP_SCREEN} ]; then
+    ${LIGHTUP_SCREEN}
+  else
+    echo "${LIGHTUP_SCREEN} does not exist or not executable"
+  fi
 
-    echo "Erasing stateful partition..."
-    # Show a splash image to inform OPs it is wiping the disk.
-    WIPE_SPLASH_FILE="/mnt/stateful_partition/wipe_splash.png"
-    if [ -n "$boot_splash_pid" -a -r "$WIPE_SPLASH_FILE" ]; then
-      # When the RESET_FILE exist, the rootdev is the release image without
-      # /root/.factory_* so boot_splash is already displayed. Having
-      # $boot_splash_pid implies the existence of /usr/bin/ply-image and the
-      # cursor is already made hidden.
-      wait "$boot_splash_pid"
-      # Do not use background execution because this file is going to be wiped.
-      /usr/bin/ply-image "$WIPE_SPLASH_FILE"
-    fi
-    FAST=$(cat $RESET_FILE)
-    if [ "$FAST" = "fast" ]; then
-      exec /sbin/clobber-state fast
-    elif [ "$FAST" = "fast test" ]; then
-      exec /sbin/clobber-state fast test
-    else
-      exec /sbin/clobber-state
-    fi
+  echo "Erasing stateful partition..."
+  # Show a splash image to inform OPs it is wiping the disk.
+  WIPE_SPLASH_FILE="/mnt/stateful_partition/wipe_splash.png"
+  if [ -n "$boot_splash_pid" -a -r "$WIPE_SPLASH_FILE" ]; then
+    # When the RESET_FILE exist, the rootdev is the release image without
+    # /root/.factory_* so boot_splash is already displayed. Having
+    # $boot_splash_pid implies the existence of /usr/bin/ply-image and the
+    # cursor is already made hidden.
+    wait "$boot_splash_pid"
+    # Do not use background execution because this file is going to be wiped.
+    /usr/bin/ply-image "$WIPE_SPLASH_FILE"
+  fi
+  FAST=$(cat $RESET_FILE)
+  if [ "$FAST" = "fast" ]; then
+    exec /sbin/clobber-state fast
+  elif [ "$FAST" = "fast test" ]; then
+    exec /sbin/clobber-state fast test
+  else
+    exec /sbin/clobber-state
   fi
 fi
 
@@ -146,7 +178,7 @@ mount -n --bind /mnt/stateful_partition/var /var
 mount -n --bind /mnt/stateful_partition/home /home
 
 # Mount stateful partition for dev packages
-# TODO(sosa@chromium.org) - Use kernel flag
+# TODO(sosa@chromium.org) - Use $DEVMODE value?
 if [ -f /root/.dev_mode ] ; then
   mount -n --bind /mnt/stateful_partition/dev_image /usr/local
 fi

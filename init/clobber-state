@@ -83,10 +83,17 @@ else
   /sbin/mkfs.ext3 "$STATE_DEV"
 fi
 
+# Mount the fresh image for last minute additions.
+mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
+
 # Restore dev_image from tmp.
 if [ "${FAST_TEST}" = "test" -a -d /tmp/dev_image ]; then
-  mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
   cp -af /tmp/dev_image /mnt/stateful_partition
+fi
+
+# Tag that we're in developer mode otherwise we may get wiped again.
+if /bin/cros_boot_mode -m developer; then
+  touch /mnt/stateful_partition/.developer_mode
 fi
 
 # Flush linux caches.
