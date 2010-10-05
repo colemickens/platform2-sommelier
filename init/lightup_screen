@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Always exit with 0
+trap "exit 0" EXIT
+set -e
+
+for INTERFACE in "acpi_video0" "i915_backlight"; do
+	BRIGHTNESS="/sys/class/backlight/${INTERFACE}/brightness"
+	MAX_BRIGHTNESS="/sys/class/backlight/${INTERFACE}/max_brightness"
+	[ ! -f "${BRIGHTNESS}" -o ! -f "${MAX_BRIGHTNESS}" ] && continue
+	cp "${MAX_BRIGHTNESS}" "${BRIGHTNESS}"
+	break
+done

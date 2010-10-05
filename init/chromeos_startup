@@ -74,6 +74,14 @@ fi
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 if [ -f "$RESET_FILE" ]; then
   if [ $(stat -c%u "$RESET_FILE") -eq 0 ]; then
+    # Light up screen in case you can't see our splash image.
+    LIGHTUP_SCREEN=/usr/sbin/lightup_screen
+    if [ -x ${LIGHTUP_SCREEN} ]; then
+      ${LIGHTUP_SCREEN}
+    else
+      echo "${LIGHTUP_SCREEN} does not exist or not executable"
+    fi
+
     echo "Erasing stateful partition..."
     # Show a splash image to inform OPs it is wiping the disk.
     WIPE_SPLASH_FILE="/mnt/stateful_partition/wipe_splash.png"
