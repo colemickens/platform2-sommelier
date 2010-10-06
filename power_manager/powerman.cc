@@ -14,7 +14,6 @@
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
 
-
 namespace power_manager {
 
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
@@ -29,7 +28,7 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
     metrics_lib_(metrics_lib),
     power_button_state_(false),
     retry_suspend_count_(0),
-    retry_suspend_event_id_(0),
+    suspend_sequence_number_(0),
     suspend_pid_(0) {}
 
 void PowerManDaemon::Init() {
@@ -59,24 +58,28 @@ void PowerManDaemon::Run() {
   g_main_loop_run(loop_);
 }
 
-gboolean PowerManDaemon::RetrySuspend(void* object) {
-  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(object);
+gboolean PowerManDaemon::RetrySuspend(gpointer object) {
+  RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
+  PowerManDaemon* daemon = payload->daemon;
   if (daemon->lidstate_ == kLidClosed) {
-    daemon->retry_suspend_count_++;
-    if (daemon->retry_suspend_count_ > daemon->retry_suspend_attempts_) {
-      LOG(ERROR) << "retry suspend attempts failed ... shutting down";
-      daemon->Shutdown();
+    if (daemon->suspend_sequence_number_ == payload->suspend_sequence_number) {
+      daemon->retry_suspend_count_++;
+      if (daemon->retry_suspend_count_ > daemon->retry_suspend_attempts_) {
+        LOG(ERROR) << "Retry suspend attempts failed ... shutting down";
+        daemon->Shutdown();
+      } else {
+        LOG(WARNING) << "Retry suspend " << daemon->retry_suspend_count_;
+        daemon->Suspend();
+      }
     } else {
-      LOG(WARNING) << "retry suspend " << daemon->retry_suspend_count_;
-      daemon->Suspend();
+      LOG(INFO) << "Retry suspend sequence number changed, retry delayed";
     }
-    return true;
   } else {
-    daemon->retry_suspend_event_id_ = 0;
     daemon->CleanupSuspendRetry();
-    LOG(INFO) << "retry suspend cancelled ... lid is open";
-    return false;
+    LOG(INFO) << "Retry suspend cancelled ... lid is open";
   }
+  delete(payload);
+  return false;
 }
 
 void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
@@ -84,6 +87,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
   switch (type) {
     case LID: {
       daemon->lidstate_ = daemon->GetLidState(value);
+      daemon->suspend_sequence_number_++;
       LOG(INFO) << "PowerM Daemon - lid "
                 << (daemon->lidstate_ == kLidClosed?"closed.":"opened.");
       if (daemon->lidstate_ == kLidClosed) {
@@ -208,6 +212,14 @@ void PowerManDaemon::Suspend() {
 
   CleanupSuspendRetry();
 
+  RetrySuspendPayload* payload = new RetrySuspendPayload;
+  payload->daemon = this;
+  payload->suspend_sequence_number = suspend_sequence_number_;
+
+  g_timeout_add_seconds(
+      retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend),
+      payload);
+
   // Detach to allow suspend to be retried and metrics gathered
   pid_t pid = fork();
   if (pid == 0) {
@@ -216,15 +228,9 @@ void PowerManDaemon::Suspend() {
   } else if (pid > 0) {
     suspend_pid_ = pid;
     waitpid(pid, NULL, 0);
-    if (!retry_suspend_event_id_) {
-      retry_suspend_event_id_ = g_timeout_add_seconds(
-          retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend),
-          this);
-    }
   } else {
     LOG(ERROR) << "Fork for suspend failed";
   }
 }
 
-} // namespace power_manager
-
+}  // namespace power_manager
