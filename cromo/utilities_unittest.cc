@@ -19,24 +19,25 @@ TEST(Utilities, ExtractString) {
   m["int32"].writer().append_int32(1);
 
   DBus::Error e_string;
-  ASSERT_STREQ("string", ExtractString(m, "string", NULL,  e_string));
-  ASSERT_FALSE(e_string.is_set());
+  EXPECT_STREQ("string", ExtractString(m, "string", NULL,  e_string));
+  EXPECT_FALSE(e_string.is_set());
 
   DBus::Error e_int32;
-  ASSERT_EQ(NULL, ExtractString(m, "int32", NULL, e_int32));
-  ASSERT_TRUE(e_int32.is_set());
+  EXPECT_EQ(NULL, ExtractString(m, "int32", NULL, e_int32));
+  EXPECT_TRUE(e_int32.is_set());
 
   DBus::Error e_missing;
-  ASSERT_STREQ("default",
+  EXPECT_STREQ("default",
                ExtractString(m, "not present", "default", e_missing));
-  ASSERT_FALSE(e_missing.is_set());
+  EXPECT_FALSE(e_missing.is_set());
 
   DBus::Error e_repeated_errors;
-  ASSERT_STREQ("default",
+  EXPECT_STREQ("default",
                ExtractString(m, "int32", "default", e_repeated_errors));
-  ASSERT_STREQ("default",
+  EXPECT_TRUE(e_repeated_errors.is_set());
+  EXPECT_STREQ("default",
                ExtractString(m, "int32", "default", e_repeated_errors));
-  ASSERT_TRUE(e_repeated_errors.is_set());
+  EXPECT_TRUE(e_repeated_errors.is_set());
 }
 
 TEST(Utilities, HexEsnToDecimal) {

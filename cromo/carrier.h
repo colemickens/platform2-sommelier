@@ -52,7 +52,8 @@ class Carrier {
   // activation should proceed as normal.  We are going to need a
   // more general solution if non-CDMA carriers require this.
   virtual bool CdmaCarrierSpecificActivate (
-      const utilities::DBusPropertyMap &status,
+      const utilities::DBusPropertyMap &status,  // Result of
+                                                 // Modem.Simple.GetStatus()
       org::freedesktop::ModemManager::Modem::Cdma_adaptor *modem,
       DBus::Error &error) const {
     return false;
