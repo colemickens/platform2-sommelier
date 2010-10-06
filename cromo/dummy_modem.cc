@@ -89,6 +89,17 @@ void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state,
   cout << "GetRegistrationState" << endl;
 }
 
-void DummyModem::Activate(const std::string &carrier, DBus::Error &error) {
+void DummyModem::Activate(const std::string& carrier, DBus::Error &error) {
   cout << "Activate" << endl;
+}
+
+void DummyModem::ActivateManual(const PropertyMap& properties,
+                                DBus::Error &error) {
+  cout << "ActivateManual" << endl;
+}
+
+void DummyModem::ActivateManualDebug(
+    const std::map<std::string, std::string> &properties,
+    DBus::Error &error) {
+  cout << "ActivateManualDebug" << endl;
 }

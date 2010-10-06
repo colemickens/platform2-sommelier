@@ -2,21 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Plugin tests link against this file, but not against the rest of
+// cromo.  Therefore this file should not have dependencies on the
+// rest of cromo.
 #include "utilities.h"
 
 #include <glog/logging.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-
 namespace utilities {
+
 const char *ExtractString(const DBusPropertyMap properties,
                           const char *key,
                           const char *not_found_response,
                           DBus::Error &error) {
   DBusPropertyMap::const_iterator p;
   const char *to_return = not_found_response;
-
   try {
     p = properties.find(key);
     if (p != properties.end()) {
@@ -24,10 +26,12 @@ const char *ExtractString(const DBusPropertyMap properties,
     }
   } catch (const DBus::Error &e) {
     LOG(ERROR)<<"Bad type for: " << key;
-
+    // Setting an already-set error causes an assert fail inside dbus-c++.
+    if (!error.is_set()) {
     // NB: the copy constructor for DBus::Error causes a template to
     // be instantiated that kills our -Werror build
-    error.set(e.name(), e.message());
+      error.set(e.name(), e.message());
+    }
   }
   return to_return;
 }

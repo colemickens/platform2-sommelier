@@ -12,12 +12,19 @@
 
 #include "utilities.h"
 
+namespace org {
+namespace freedesktop {
+namespace ModemManager {
+namespace Modem {
+class Cdma_adaptor;
+}}}}
+
 class Carrier {
  public:
   enum ActivationMethod {
     kOmadm,
     kOtasp,
-    kNone
+    kNone,
   };
 
   Carrier(const char* name,
@@ -39,6 +46,17 @@ class Carrier {
   // before the property map has been returned.
   virtual void ModifyModemStatusReturn(
       utilities::DBusPropertyMap *properties) const {}
+
+  // Carrier-specific activation code can run here; returns true if
+  // this code completely consumed the activation event, false if
+  // activation should proceed as normal.  We are going to need a
+  // more general solution if non-CDMA carriers require this.
+  virtual bool CdmaCarrierSpecificActivate (
+      const utilities::DBusPropertyMap &status,
+      org::freedesktop::ModemManager::Modem::Cdma_adaptor *modem,
+      DBus::Error &error) const {
+    return false;
+  }
 
   const char *name() const {return name_;}
   const char *firmware_directory() const {return firmware_directory_;}

@@ -1,6 +1,7 @@
 // Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+// Utilities for the cromo modem manager
 
 #include "utilities.h"
 
@@ -29,6 +30,13 @@ TEST(Utilities, ExtractString) {
   ASSERT_STREQ("default",
                ExtractString(m, "not present", "default", e_missing));
   ASSERT_FALSE(e_missing.is_set());
+
+  DBus::Error e_repeated_errors;
+  ASSERT_STREQ("default",
+               ExtractString(m, "int32", "default", e_repeated_errors));
+  ASSERT_STREQ("default",
+               ExtractString(m, "int32", "default", e_repeated_errors));
+  ASSERT_TRUE(e_repeated_errors.is_set());
 }
 
 TEST(Utilities, HexEsnToDecimal) {

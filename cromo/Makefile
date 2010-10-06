@@ -17,6 +17,10 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 SYMFILE=symfile
 
 CROMO = cromo
+
+# We keep utility functions in libcromo so plugin tests can use them
+# without pulling in all of cromo
+LIBCROMO = libcromo.a
 PLUGINS = dummy_modem.so
 PLUGINDIR ?= /usr/lib/cromo/plugins
 DBUSDATADIR ?= /etc/dbus-1/system.d
@@ -43,6 +47,14 @@ XMLFILES = mm-manager.xml \
 
 GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
 
+# TODO(rochberg):
+
+# Double-hack alert: The first hack is the existence of libcromo.a The
+# second hack is that if we link against libcromo.a, our current
+# method for exporting symbols does not export symbols for libraries.
+# So we link against utilities.o, but external tests link against
+# libcromo (which is currently just utilities.o)
+
 SRCS = carrier.cc \
        cromo_server.cc \
        hooktable.cc \
@@ -53,10 +65,10 @@ SRCS = carrier.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
-TARGETS = $(CROMO) $(PLUGINS)
+TARGETS = $(CROMO) $(LIBCROMO) $(PLUGINS)
 TESTS = cromo_server_unittest utilities_unittest
 
-INSTALL_TARGETS = install-programs install-headers
+INSTALL_TARGETS = install-programs install-libs install-headers
 
 ifdef INSTALL_TESTS
 	TARGETS += $(TESTS)
@@ -79,11 +91,14 @@ all : $(TARGETS)
 $(OBJS): $(GLUE_HEADERS)
 $(dummy_OBJS): $(GLUE_HEADERS)
 
-$(CROMO): $(OBJS) $(SYMFILE)
+$(CROMO): $(OBJS) $(SYMFILE) $(LIBCROMO)
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
+$(LIBCROMO): utilities.o
+	$(AR) q $@ $^
+
 cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
-utilities_unittest: utilities.o utilities_unittest.o
+utilities_unittest: utilities_unittest.o $(LIBCROMO)
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
@@ -94,7 +109,7 @@ KEEP_SYMS:= "_ZN11CromoServer \
     _ZN12ModemHandler \
     _ZN9utilities"
 
-$(SYMFILE): cromo_server.o hooktable.o modem_handler.o utilities.o
+$(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@echo '{' >$@
 	@for sym in "$(KEEP_SYMS)"; do \
 	  nm --defined-only $^ | grep "T $${sym}" \
@@ -120,6 +135,10 @@ install-programs:
 install-tests: $(TESTS)
 	install -d $(DESTDIR)/usr/bin
 	install -t $(DESTDIR)/usr/bin $^
+
+install-libs: $(LIBCROMO)
+	install -d $(DESTDIR)/usr/lib
+	install -t $(DESTDIR)/usr/lib $(LIBCROMO)
 
 install: $(INSTALL_TARGETS)
 
