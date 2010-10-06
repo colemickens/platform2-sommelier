@@ -37,7 +37,7 @@ gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
 
 # Build example xidle program
 xidle_env = gdk_env.Clone()
-xidle_env.Append(LIBS=Split('base rt X11 Xext'))
+xidle_env.Append(LIBS=Split('base rt X11 pthread Xext'))
 xidle = xidle_env.Library('xidle', ['xidle.cc'])
 xidle_example = xidle_env.Program('xidle-example', ['xidle-example.cc', xidle])
 Default(xidle_example)
@@ -46,7 +46,7 @@ Default(xidle_example)
 backlight = gdk_env.Library('backlight',
                             ['ambient_light_sensor.cc', 'backlight.cc'])
 backlight_env = gdk_env.Clone()
-backlight_env.Append(LIBS=Split('base rt gflags'))
+backlight_env.Append(LIBS=Split('base rt pthread gflags'))
 backlight_tool = backlight_env.Program('backlight-tool',
                                        ['backlight-tool.cc', backlight])
 Default(backlight_tool)
@@ -56,7 +56,7 @@ backlight_controller = gdk_env.Library('backlight_controller',
                                        ['backlight_controller.cc'])
 power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
-powerd_env.Append(LIBS=Split('chromeos crosapi gflags metrics'))
+powerd_env.Append(LIBS=Split('chromeos crosapi gflags pthread dl metrics'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
@@ -71,7 +71,7 @@ Default(powerd)
 
 # Build privileged power daemon
 powerman_env = gdk_env.Clone()
-powerman_env.Append(LIBS=Split('base chromeos gflags metrics'))
+powerman_env.Append(LIBS=Split('base chromeos gflags pthread metrics'))
 powerman_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
@@ -84,7 +84,7 @@ Default(powerman)
 
 # Build sample suspend delay client
 suspend_delay_sample_env = powerman_env.Clone()
-suspend_delay_sample_env.Append(LIBS=Split('base chromeos gflags'))
+suspend_delay_sample_env.Append(LIBS=Split('base chromeos pthread gflags'))
 suspend_delay_sample_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
@@ -103,7 +103,7 @@ xidle_unittest_env.Append(LIBS=['gtest', 'Xtst'])
 deps = [testrunner, 'xidle_unittest.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 dimmer_unittest_env = gdk_env.Clone()
-dimmer_unittest_env.Append(LIBS=Split('base rt gtest gmock'))
+dimmer_unittest_env.Append(LIBS=Split('base rt gtest pthread gmock'))
 deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller, backlight,
         power_prefs]
 tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
