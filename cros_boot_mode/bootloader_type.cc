@@ -15,10 +15,10 @@
 namespace cros_boot_mode {
 
 const char *BootloaderType::kBootloaderTypeText[] = {
+ "debug",  // cros_debug (cros_fw with developer override)
  "chromeos",  // cros_fw (any platform)
  "efi",  // cros_efi
  "legacy",  // cros_legacy
- "debug",  // cros_debug (cros_fw with developer override)
 };
 const size_t BootloaderType::kBootloaderTypeCount =
   sizeof(kBootloaderTypeText) / sizeof(*kBootloaderTypeText);
@@ -26,10 +26,10 @@ const size_t BootloaderType::kBootloaderTypeCount =
 // or '\0' word boundaries.  The ordering of this array must correspond to
 // the array above and the defined enum.
 const char *BootloaderType::kSupportedBootloaders[] = {
+  "cros_debug",
   "cros_secure",
   "cros_efi",
   "cros_legacy",
-  "cros_debug",
 };
 
 const int BootloaderType::kMaxKernelCmdlineSize = 4096;  // one page.

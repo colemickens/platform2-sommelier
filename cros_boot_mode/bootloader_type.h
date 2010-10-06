@@ -24,10 +24,10 @@ class BootloaderType : public PlatformReader {
  public:
   static const char *kBootloaderTypePath;
   enum {
-    kChromeOS = 0,
+    kDebug = 0,
+    kChromeOS,
     kEFI,
     kLegacy,
-    kDebug,
   };
   // API-exposed names
   static const char *kBootloaderTypeText[];

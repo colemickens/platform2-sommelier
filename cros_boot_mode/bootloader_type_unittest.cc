@@ -99,16 +99,17 @@ TEST_F(BootloaderTypeTest, NoTrailingBoundary) {
   ExpectType(cros_boot_mode::BootloaderType::kUnsupported);
 }
 
-TEST_F(BootloaderTypeTest, FirstMatchIsUsed) {
+TEST_F(BootloaderTypeTest, FirstMatchInEnumOrderIsUsed) {
   std::string contents = StringPrintf(" %s %s ",
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
       cros_boot_mode::BootloaderType::kChromeOS],
     cros_boot_mode::BootloaderType::kSupportedBootloaders[
-      cros_boot_mode::BootloaderType::kEFI]);
+      cros_boot_mode::BootloaderType::kDebug]);
 
   EXPECT_EQ(file_util::WriteFile(FilePath(type_file_path_),
                                  contents.c_str(), contents.length()),
             contents.length());
   type_.Initialize();
-  ExpectType(cros_boot_mode::BootloaderType::kChromeOS);
+  ExpectType(cros_boot_mode::BootloaderType::kDebug);
 }
+
