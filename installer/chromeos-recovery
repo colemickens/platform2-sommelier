@@ -84,6 +84,7 @@ get_dev_switch_state() {
 
 # Install Google payload from USB image
 install_chromiumos_payload() {
+  log "About to invoke chromeos-install script"
   IS_RECOVERY_INSTALL=1 /usr/sbin/chromeos-install --run_as_root --yes \
       --payload_image=${1} >> $RECOVERY_LOG 2>&1
   log "Recovery installer completed"
@@ -131,18 +132,24 @@ install_custom_payload() {
   # Check if a custom install script is included in the payload directory
   local custom_install="${DEV_PAYLOAD}/${CUSTOM_INSTALL}"
 
-  if [ -x ${custom_install} ]; then
-    log "Custom install script found at ${custom_install}. Executing ..."
-    # TODO(tgao): consider waiting period depending on signatures
-    exec $custom_install
-  else
+  if [ ! -e ${custom_install} ]; then
     log "No custom install script found at ${custom_install}. Assume dev image"
     default_dev_image=$(find_default_image)
-    if [ -f ${default_dev_image} ]; then
+    if [ ${default_dev_image} ] && [ -f ${default_dev_image} ]; then
       log "Attempt to install dev image from ${default_dev_image}"
       install_chromiumos_payload ${default_dev_image}
     else
       log "No default dev image found in \"${DEV_PAYLOAD}\". Abort install."
+    fi
+  else
+    log "Custom install script found at ${custom_install}. Checking permission"
+    if [ -x ${custom_install} ]; then
+      # TODO(tgao): consider waiting period depending on signatures
+      log "Executing custom install script"
+      exec $custom_install
+    else
+      log "Error: custom install script is not executable: \
+           $(ls -lt $custom_install)"
     fi
   fi
 }
@@ -163,8 +170,9 @@ Chromium OS"
     exit 1
   fi
 
-  log "Developer switch ON. Install developer payload"
+  log "Developer switch ON. Attempt to install developer payload"
   install_custom_payload
+  log "Done processing developer payload"
 }
 
 # Main
