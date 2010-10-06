@@ -35,7 +35,6 @@ using utilities::DBusPropertyMap;
     "org.freedesktop.ModemManager.Modem.Gsm." #name;
 
 DEFINE_ERROR(Activation)
-DEFINE_ERROR(Activated)
 DEFINE_ERROR(Connect)
 DEFINE_ERROR(Disconnect)
 DEFINE_ERROR(FirmwareLoad)
@@ -190,7 +189,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
       sdk_(sdk),
       last_seen_(-1),
       nmea_fd_(-1),
-      activation_state_(0),
       session_state_(gobi::kDisconnected),
       session_id_(0),
       suspending_(false) {
@@ -396,6 +394,54 @@ void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
   out->meid = meid;
 }
 
+int GobiModem::GetMmActivationState() {
+  ULONG device_activation_state;
+  ULONG rc;
+  rc = sdk_->GetActivationState(&device_activation_state);
+  if (rc != 0) {
+    LOG(ERROR) << "GetActivationState: " << rc;
+    return -1;
+  }
+  LOG(INFO) << "device activation state: " << device_activation_state;
+  if (device_activation_state == 1) {
+    return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  }
+
+  // Is the modem de-activated, or is there an activation in flight?
+  switch (carrier_->activation_method()) {
+    case Carrier::kOmadm: {
+        ULONG session_state;
+        ULONG session_type;
+        ULONG failure_reason;
+        BYTE retry_count;
+        WORD session_pause;
+        WORD time_remaining;  // For session pause
+        rc = sdk_->OMADMGetSessionInfo(
+            &session_state, &session_type, &failure_reason, &retry_count,
+            &session_pause, & time_remaining);
+        if (rc != 0) {
+          // kNoTrackingSessionHasBeenStarted -> modem has never tried
+          // to run OMADM; this is not an error condition.
+          if (rc != gobi::kNoTrackingSessionHasBeenStarted) {
+            LOG(ERROR) << "Could not get omadm state: " << rc;
+          }
+          return MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+        }
+        return (session_state <= gobi::kOmadmMaxFinal) ?
+            MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED :
+            MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+      }
+      break;
+    case Carrier::kOtasp:
+      return (device_activation_state == gobi::kNotActivated) ?
+          MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED :
+          MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+      break;
+    default:  // This is a UMTS carrier; we count it as activated
+      return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  }
+}
+
 DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   DBusPropertyMap result;
 
@@ -441,11 +487,6 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   ULONG rc = sdk_->GetIMSI(kDefaultBufferSize, imsi);
   if (rc == 0 && strlen(imsi) != 0)
     result["imsi"].writer().append_string(imsi);
-
-  ULONG activation_state;
-  rc = sdk_->GetActivationState(&activation_state);
-  if (rc == 0)
-    result["activation_state"].writer().append_uint32(activation_state);
 
   ULONG firmware_id;
   ULONG technology_id;
@@ -537,6 +578,10 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
     result["prl_version"].writer().append_uint16(prl_version);
   }
 
+  int activation_state = GetMmActivationState();
+  if (activation_state >= 0) {
+    result["activation_state"].writer().append_uint32(activation_state);
+  }
   carrier_-> ModifyModemStatusReturn(&result);
 
   return result;
@@ -980,7 +1025,6 @@ void GobiModem::ResetModem(DBus::Error& error) {
   ENSURE_SDK_SUCCESS(QCWWanDisconnect, rc, kSdkError);
 }
 
-// pre-condition: activation_state_ == gobi::kConnecting
 void GobiModem::ActivateOmadm(DBus::Error& error) {
   ULONG rc;
   char errmsg[64];
@@ -989,7 +1033,6 @@ void GobiModem::ActivateOmadm(DBus::Error& error) {
 
   rc = sdk_->OMADMStartSession(gobi::kConfigure);
   if (rc != 0) {
-    activation_state_ = gobi::kNotActivated;
     snprintf(errmsg, sizeof(errmsg), "OMA-DM returned: %ld", rc);
     error.set(kActivationError, errmsg);
     LOG(ERROR) << "OMA-DM activation failed: " << rc;
@@ -1005,7 +1048,6 @@ void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
 
   rc = sdk_->ActivateAutomatic(number.c_str());
   if (rc != 0) {
-    activation_state_ = gobi::kNotActivated;
     snprintf(errmsg, sizeof(errmsg), "OTASP returned: %ld", rc);
     error.set(kActivationError, errmsg);
     LOG(ERROR) << "OTASP activation failed: " << rc;
@@ -1061,7 +1103,8 @@ gboolean GobiModem::ActivationTimeoutCallback(gpointer data) {
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem == NULL)
     return FALSE;
-  LOG(INFO) << "ActivationTimeout: state is now " << modem->activation_state_;
+  LOG(INFO) << "ActivationTimeout: state is now "
+            << modem->GetMmActivationState();
   modem->ActivationCompleted(false);
   return FALSE;
 }
@@ -1116,33 +1159,37 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
     }
   }
 
-  rc = sdk_->GetActivationState(&activation_state_);
-  ENSURE_SDK_SUCCESS(GetActivationState, rc, kActivationError);
-
-  LOG(INFO) << "Current activation state: " << activation_state_;
-  if (activation_state_ == gobi::kActivated) {
-    LOG(WARNING) << "Nothing to do: device is already activated";
-    error.set(kActivatedError, "Device is already activated");
-    return;
+  DBusPropertyMap status = GetStatus(error);
+  if (error.is_set()) {
+    LOG(ERROR) << error;
   }
 
-  if (activation_state_ != gobi::kNotActivated) {
-    LOG(WARNING) << "Unexpected activation state: " << activation_state_;
-    error.set(kActivationError, "Unexpected activation state");
-    return;
+  DBusPropertyMap::const_iterator p;
+  p = status.find("activation_state");
+  if (p != status.end()) {
+    try {
+      LOG(INFO) << "Current activation state: "
+                << p->second.reader().get_uint32();
+    } catch (const DBus::Error &e) {
+      error.set(e.name(), e.message());
+      return;
+    }
   }
-
-  activation_state_ = gobi::kActivationConnecting;
 
   switch (carrier->activation_method()) {
     case Carrier::kOmadm:
       ActivateOmadm(error);
       break;
 
-    case Carrier::kOtasp:
+    case Carrier::kOtasp: {
+        using org::freedesktop::ModemManager::Modem::Cdma_adaptor;
+        Cdma_adaptor *cdma_this = static_cast<Cdma_adaptor *>(this);
+        if (carrier->CdmaCarrierSpecificActivate(status, cdma_this, error)) {
+          return;
+        }
+      }
       if (carrier->activation_code() == NULL) {
         LOG(WARNING) << "Number was not supplied for OTASP activation";
-        activation_state_ = gobi::kNotActivated;
         error.set(kActivationError, "No number supplied for OTASP activation");
         return;
       }
@@ -1152,7 +1199,6 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
     default:
       LOG(WARNING) << "Unknown activation method: "
                    << carrier->activation_method();
-      activation_state_ = gobi::kNotActivated;
       error.set(kActivationError, "Unknown activation method");
       break;
   }
@@ -1162,11 +1208,13 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
       g_source_remove(activation_callback_id_);
       activation_callback_id_ = 0;
     }
+
     activation_callback_id_ = g_timeout_add_seconds_full(
                              G_PRIORITY_DEFAULT,
                              kActivationTimeoutSec,
                              ActivationTimeoutCallback,
-                             new CallbackArgs(),
+                             new CallbackArgs(
+                                 new DBus::Path(connected_modem_->path())),
                              CleanupActivationTimeoutCallback);
   }
 }
@@ -1340,17 +1388,16 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
   OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
   LOG(INFO) << "OMA-DM State Callback: " << args->session_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
+
   if (modem != NULL) {
     switch (args->session_state) {
       case gobi::kOmadmComplete:
-        modem->activation_state_ = gobi::kActivated;
         modem->ActivationCompleted(true);
         break;
       case gobi::kOmadmFailed:
         LOG(INFO) << "OMA-DM failure reason: " << args->failure_reason;
         // fall through
       case gobi::kOmadmUpdateInformationUnavailable:
-        modem->activation_state_ = gobi::kNotActivated;
         modem->ActivationCompleted(false);
         break;
     }
@@ -1361,14 +1408,13 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
 
 gboolean GobiModem::ActivationStatusCallback(gpointer data) {
   ActivationStatusArgs* args = static_cast<ActivationStatusArgs*>(data);
-  LOG(INFO) << "Activation status callback: " << args->activation_state;
+  LOG(INFO) << "OTASP status callback: " << args->activation_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL) {
     if (modem->activation_callback_id_) {
       g_source_remove(modem->activation_callback_id_);
       modem->activation_callback_id_ = NULL;
     }
-    modem->activation_state_ = args->activation_state;
     if (args->activation_state == gobi::kActivated ||
         args->activation_state == gobi::kNotActivated)
       modem->ActivationCompleted(args->activation_state == gobi::kActivated);

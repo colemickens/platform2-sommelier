@@ -85,36 +85,34 @@ class GobiModem
       uint32_t& cdma_1x_state, uint32_t& evdo_state, DBus::Error& error);
   virtual void Activate(const std::string& carrier_name,
                         DBus::Error& error);
-
-  // DBUS Methods: ModemGobi
-  virtual void SetCarrier(const std::string& image, DBus::Error& error);
-  virtual void SoftReset(DBus::Error& error);
-  virtual void PowerCycle(DBus::Error& error);
   virtual void ActivateManual(const utilities::DBusPropertyMap& properties,
                               DBus::Error& error);
   virtual void ActivateManualDebug(
       const std::map<std::string, std::string>& properties,
       DBus::Error &error);
 
+  // DBUS Methods: ModemGobi
+  virtual void SetCarrier(const std::string& image, DBus::Error& error);
+  virtual void SoftReset(DBus::Error& error);
+  virtual void PowerCycle(DBus::Error& error);
+
   // DBUS Property Getter
   virtual void on_get_property(DBus::InterfaceAdaptor& interface,
                                const std::string& property,
                                DBus::Variant& value,
                                DBus::Error& error);
-
   static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
 
  protected:
   void ActivateOmadm(DBus::Error& error);
   // Verizon uses OTASP, code *22899
   void ActivateOtasp(const std::string& number, DBus::Error& error);
+
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);
-  // Fills in "min" and "mdn" entries in result
-  void FillMinMdn(utilities::DBusPropertyMap *result);
   void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
@@ -127,10 +125,12 @@ class GobiModem
   void LogGobiInformation();
 
   struct CallbackArgs {
-    CallbackArgs()
-     : path(NULL) { }
+    CallbackArgs() : path(NULL) { }
+    explicit CallbackArgs(DBus::Path *path) : path(path) { }
     ~CallbackArgs() { delete path; }
     DBus::Path* path;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CallbackArgs);
   };
 
   static void PostCallbackRequest(GSourceFunc callback,
@@ -139,8 +139,9 @@ class GobiModem
     if (connected_modem_) {
       args->path = new DBus::Path(connected_modem_->path());
       g_idle_add(callback, args);
-    } else
+    } else {
       delete args;
+    }
     pthread_mutex_unlock(&modem_mutex_.mutex_);
   }
 
@@ -248,8 +249,13 @@ class GobiModem
 
  private:
   static unsigned int QMIReasonToMMReason(unsigned int qmireason);
+  // Set DBus-exported properties
   void SetDeviceProperties();
   void SetModemProperties();
+
+  // Returns the modem activation state as an enum from
+  // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error
+  int32_t GetMmActivationState();
 
   void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These
@@ -267,7 +273,6 @@ class GobiModem
 
   pthread_t nmea_thread;
 
-  ULONG activation_state_;
   ULONG session_state_;
   ULONG session_id_;
 
