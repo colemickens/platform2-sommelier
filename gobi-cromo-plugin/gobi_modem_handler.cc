@@ -7,6 +7,7 @@
 #include <glib.h>
 extern "C" {
 #include <libudev.h>
+#include <stdio.h>
 }
 
 #include "glog/logging.h"
@@ -23,6 +24,7 @@ static gobi::Sdk GOBI_SDK;
 
 static const int kDevicePollIntervalSecs = 1;
 static const char* kQCDeviceName = "QCQMI";
+static const char* kUSBDeviceListFile = "/var/run/cromo/usb-devices";
 
 static void udev_callback(void* data) {
   GobiModemHandler* handler = static_cast<GobiModemHandler*>(data);
@@ -134,6 +136,17 @@ bool GobiModemHandler::GetDeviceList() {
       ++p;
     }
   }
+
+  FILE *dev_list_file = fopen(kUSBDeviceListFile, "w");
+  if (dev_list_file) {
+    for (KeyToModem::iterator p = key_to_modem_.begin();
+         p != key_to_modem_.end(); p++) {
+      GobiModem *m = p->second;
+      fprintf(dev_list_file, "%s\n", m->GetUSBAddress().c_str());
+    }
+    fclose(dev_list_file);
+  }
+
   return something_changed;
 }
 

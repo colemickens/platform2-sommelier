@@ -333,6 +333,10 @@ void GobiModem::Disconnect(DBus::Error& error) {
   // session_state_ will be set in SessionStateCallback
 }
 
+std::string GobiModem::GetUSBAddress() {
+  return sysfs_path_.substr(sysfs_path_.find_last_of('/') + 1);
+}
+
 DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> GobiModem::GetIP4Config(
     DBus::Error& error) {
   DBus::Struct<uint32_t, uint32_t, uint32_t, uint32_t> result;
@@ -767,7 +771,11 @@ void GobiModem::ApiConnect(DBus::Error& error) {
     return;
   }
   ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
-  ENSURE_SDK_SUCCESS(QCWWANConnect, rc, kSdkError);
+  if (rc != 0) {
+    // Can't use assert() - this should happen even in production builds (!)
+    LOG(ERROR) << "QCWWANConnect() failed: " << rc;
+    abort();
+  }
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
@@ -1496,8 +1504,11 @@ void GobiModem::SetDeviceProperties()
         struct udev_device *grandparent;
         if (parent != NULL) {
           grandparent = udev_device_get_parent(parent);
-          if (grandparent != NULL)
-            MasterDevice = udev_device_get_syspath(grandparent);
+          if (grandparent != NULL) {
+            sysfs_path_ = udev_device_get_syspath(grandparent);
+            LOG(INFO) << "sysfs path: " << sysfs_path_;
+            MasterDevice = sysfs_path_;
+          }
         }
         Driver = driver;
         udev_device_unref(udev_device);

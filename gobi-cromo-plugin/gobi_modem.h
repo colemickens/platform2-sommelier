@@ -57,6 +57,8 @@ class GobiModem
     last_seen_ = scan_count;
   }
 
+  std::string GetUSBAddress();
+
   // DBUS Methods: Modem
   virtual void Enable(const bool& enable, DBus::Error& error);
   virtual void Connect(const std::string& number, DBus::Error& error);
@@ -268,6 +270,8 @@ class GobiModem
   ULONG activation_state_;
   ULONG session_state_;
   ULONG session_id_;
+
+  std::string sysfs_path_;
 
   struct mutex_wrapper_ {
     mutex_wrapper_() { pthread_mutex_init(&mutex_, NULL); }
