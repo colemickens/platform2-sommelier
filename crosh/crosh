@@ -61,7 +61,15 @@ if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
 fi
 
 # TODO(rginda): Switch to the "real" dev mode file when we have one.
-if [ "$(echo "$@" | grep -- "--dev")" -o -f "/root/.dev_mode" ]; then
+/bin/cros_boot_mode -s -m developer
+DEVMODE=$((!$?))
+# Force dev behavior on dev images
+# TODO(wad) replace with a cros_boot_mode arg once supported.
+if [ -f "/root/.dev_mode" ]; then
+  DEVMODE=1
+fi
+
+if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
   . "$(dirname "$0")/crosh-dev"
 fi
 
