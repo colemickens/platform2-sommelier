@@ -13,7 +13,7 @@
 # tracked in http://code.google.com/p/chromium-os/issues/detail?id=4769
 
 RECOVERY_LOG=/var/log/recovery.log
-TARGET_DEVICE=/dev/sda3
+TARGET_DEVICE=/dev/sda
 STATEFUL_MNT=/mnt/stateful_partition
 DEV_PAYLOAD=$STATEFUL_MNT/dev_payload
 CUSTOM_INSTALL=$DEV_PAYLOAD/custom_install
@@ -25,21 +25,12 @@ log() {
 
 # Check if target device is ready for installation
 check_target_device() {
-  local target_device=$1
-  local dump_log=/tmp/dumpe2fs.log
-
-  dumpe2fs -h $target_device 2>$dump_log 1>/dev/null
-  log "dump content of dumpe2fs stdout"
-  log "==================================="
-  cat $dump_log >>$RECOVERY_LOG
-  log "==================================="
-
-  if grep "No such device" $dump_log 2>&1; then
-    log "$target_device not yet ready"
-    return 1
-  else
+  if dd if="$1" of=/dev/null bs=512 count=1 2>/dev/null; then
     log "$target_device is ready"
     return 0
+  else
+    log "$target_device not yet ready"
+    return 1
   fi
 }
 
