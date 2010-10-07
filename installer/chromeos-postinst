@@ -22,7 +22,7 @@ DEFINE_boolean postcommit ${FLAGS_FALSE} "Run postcommit"
 
 # WARNING: do NOT change this default value without consulting adlr/nsanders.
 # If you want to temporary enable firmware update for testing, create a
-# tag file in ${INSTALL_ROOT}/root/.force_update_firmrware
+# tag file in ${INSTALL_ROOT}/root/.force_update_firmware
 FLAGS_firmware_default=${FLAGS_FALSE}
 if [ -f "${INSTALL_ROOT}/root/.force_update_firmware" ]; then
   FLAGS_firmware_default=${FLAGS_TRUE}
