@@ -15,12 +15,12 @@
 RECOVERY_LOG=/var/log/recovery.log
 TARGET_DEVICE=/dev/sda3
 STATEFUL_MNT=/mnt/stateful_partition
-DEV_PAYLOAD=${STATEFUL_MNT}/dev_payload
-CUSTOM_INSTALL=custom_install
+DEV_PAYLOAD=$STATEFUL_MNT/dev_payload
+CUSTOM_INSTALL=$DEV_PAYLOAD/custom_install
 
 # Timestamp log messages
 log() {
-  echo "$(date): $*" >> $RECOVERY_LOG
+  echo "$(date): $*" >>$RECOVERY_LOG
 }
 
 # Check if target device is ready for installation
@@ -31,62 +31,59 @@ check_target_device() {
   dumpe2fs -h $target_device 2>$dump_log 1>/dev/null
   log "dump content of dumpe2fs stdout"
   log "==================================="
-  cat $dump_log >> $RECOVERY_LOG
+  cat $dump_log >>$RECOVERY_LOG
   log "==================================="
 
   if grep "No such device" $dump_log 2>&1; then
     log "$target_device not yet ready"
-    echo 0
+    return 1
   else
     log "$target_device is ready"
-    echo 1
+    return 0
   fi
 }
 
 # Wait for target device to be ready before attempting installation
 wait_for_device() {
+  local target_device=$1
   local count=0
-  local device_ready=0
 
-  while true
-  do
-    log "Waiting for target device to be ready. Sleep 1 second"
-    sleep 1
-    count=$(expr $count + 1)
-
-    if [ $(check_target_device $TARGET_DEVICE) -eq 1 ]; then
+  while true; do
+    if check_target_device $target_device; then
       log "About to launch installer"
-      device_ready=1
-      break
+      return 0
     fi
 
     if [ $count -eq 10 ]; then
-      log "target device not ready after 10 seconds. Abort recovery"
-      break
+      log "Target device not ready after 10 seconds. Abort recovery"
+      return 1
     fi
+
+    log "Waiting for target device to be ready. Sleep 1 second"
+    sleep 1
+    count=$((count + 1))
   done
-  echo ${device_ready}
 }
 
 # Get state of developer switch at power-on time
 get_dev_switch_state() {
   # See Firmware High-Level Spec for details on CHSW values
   local chsw_value=$(cat /sys/devices/platform/chromeos_acpi/CHSW)
-  log "ACPI CHSW value is ${chsw_value}"
+  log "ACPI CHSW value is $chsw_value"
   if [ $((chsw_value & 32)) -eq 32 ]; then
     log "developer switch bit set to ON at startup"
-    echo 1
+    echo on
   else
     log "developer switch bit set to OFF at startup"
-    echo 0
+    echo off
   fi
 }
 
 # Install Google payload from USB image
 install_chromiumos_payload() {
   log "About to invoke chromeos-install script"
-  IS_RECOVERY_INSTALL=1 /usr/sbin/chromeos-install --run_as_root --yes \
-      --payload_image=${1} >> $RECOVERY_LOG 2>&1
+  IS_RECOVERY_INSTALL=1 chromeos-install --run_as_root --yes \
+      --payload_image="$1" >>$RECOVERY_LOG 2>&1
   log "Recovery installer completed"
 
   # Reset TPM
@@ -104,67 +101,66 @@ install_chromiumos_payload() {
 # Find a dev image in payload directory to be installed
 find_default_image() {
   # Try a few common names, in descending order of precedence
-  local image_list="${DEV_PAYLOAD}/chromiumos_image.bin \
-                    ${DEV_PAYLOAD}/chromiumos_base_image.bin \
-                    ${DEV_PAYLOAD}/chromiumos_test_image.bin"
+  local image_list="$DEV_PAYLOAD/chromiumos_image.bin \
+                    $DEV_PAYLOAD/chromiumos_base_image.bin \
+                    $DEV_PAYLOAD/chromiumos_test_image.bin"
   local image_path=
 
-  for img in $image_list
-  do
-    if [ -f "${img}" ]; then
-      image_path=${img}
+  for img in $image_list; do
+    if [ -f "$img" ]; then
+      image_path=$img
+      break
     fi
   done
 
   # Turn path into an absolute path
-  if [ -z ${image_path} ]; then
-    log "No default image found in ${DEV_PAYLOAD}"
+  if [ -z "$image_path" ]; then
+    log "No default image found in $DEV_PAYLOAD"
   else
-    image_path=$(eval readlink -f ${image_path})
-    log "Default image found at ${image_path}"
+    image_path="$(readlink -f $image_path)"
+    log "Default image found at $image_path"
   fi
 
-  echo ${image_path}
+  echo "$image_path"
 }
 
 # Install custom payload from stateful partition "dev_payload" directory
 install_custom_payload() {
   # Check if a custom install script is included in the payload directory
-  local custom_install="${DEV_PAYLOAD}/${CUSTOM_INSTALL}"
 
-  if [ ! -e ${custom_install} ]; then
-    log "No custom install script found at ${custom_install}. Assume dev image"
-    default_dev_image=$(find_default_image)
-    if [ ${default_dev_image} ] && [ -f ${default_dev_image} ]; then
-      log "Attempt to install dev image from ${default_dev_image}"
-      install_chromiumos_payload ${default_dev_image}
+  if [ ! -e "$CUSTOM_INSTALL" ]; then
+    log "No custom install script found at $CUSTOM_INSTALL. Assume dev image"
+    local default_dev_image="$(find_default_image)"
+    if [ -f "$default_dev_image" ]; then
+      log "Attempt to install dev image from $default_dev_image"
+      install_chromiumos_payload "$default_dev_image"
     else
-      log "No default dev image found in \"${DEV_PAYLOAD}\". Abort install."
+      log "No default dev image found in \"$DEV_PAYLOAD\". Abort install."
     fi
   else
-    log "Custom install script found at ${custom_install}. Checking permission"
-    if [ -x ${custom_install} ]; then
+    log "Custom install script found at $CUSTOM_INSTALL. Checking permission"
+    if [ -x "$CUSTOM_INSTALL" ]; then
       # TODO(tgao): consider waiting period depending on signatures
       log "Executing custom install script"
-      exec $custom_install
+      exec $CUSTOM_INSTALL
     else
-      log "Error: custom install script is not executable: \
-           $(ls -lt $custom_install)"
+      log "Error: custom install script is not executable:"
+      log "$(ls -lt $CUSTOM_INSTALL)"
     fi
   fi
 }
 
 # Launch script to install a new image onto the device
 launch_installer_script() {
-  if [ ! -e ${STATEFUL_MNT}/.dev_recovery ]; then
+  if [ ! -e "$STATEFUL_MNT/.dev_recovery" ]; then
     install_chromiumos_payload ""
     exit 0
   fi
   log "Developer recovery boot. Check developer switch position"
 
   # Verify developer mode switch is ON. Otherwise, exit with an error
-  if [ $(get_dev_switch_state) -ne 1 ]; then
-    log "Developer switch OFF. Exit."
+  if [ "$(get_dev_switch_state)" = "off" ]; then
+    log "Developer switch is OFF. Exit."
     echo "Developer switch OFF. Please use a real recovery image to install \
 Chromium OS"
     exit 1
@@ -176,14 +172,14 @@ Chromium OS"
 }
 
 # Main
-if [ ! -e ${STATEFUL_MNT}/.recovery ]; then
+if [ ! -e "$STATEFUL_MNT/.recovery" ]; then
   exit 0
 fi
 log "Recovery boot. Check if target device is ready"
 
-if [ $(wait_for_device) -eq 0 ]; then
-  log "Timed out waiting for target device. Exit."
-  exit 0
+if ! wait_for_device $TARGET_DEVICE; then
+  log "Timed out waiting for target device $TARGET_DEVICE. Exit."
+  exit 1
 fi
 
 launch_installer_script
