@@ -9,13 +9,15 @@ Doing so will destroy any saved data on the system.
 
 In developer mode, it is possible to
 - login and sudo as user 'chronos'
-- disable logins in this console by running:
-  sudo touch /mnt/stateful_partition/etc/nologin
-- disable sudo by running:
-  sudo touch /mnt/stateful_partition/etc/nosudo
+- require a password for sudo and login(*)
 - disable power management behavior (screen dimming):
   sudo initctl stop powerd
 - install your own operating system image!
+
+* To set a password for 'chronos', run the following as root:
+
+echo "chronos:$(openssl passwd -1)" > /mnt/stateful_partition/etc/devmode.passwd
+
 
 Have fun and send patches!
 
