@@ -50,12 +50,6 @@ install: $(GOBI_PLUGIN)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
 	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
 
-# Temporary hack for recording MEID.  Installed only for USE=dogfood
-install-record-modem:
-	install -D record_modem $(DESTDIR)/usr/bin/record_modem
-	install -D --mode=644 \
-		record-modem.conf $(DESTDIR)/etc/init/record-modem.conf
-
 .PHONY: clean
 clean:
 	$(RM) $(GOBI_PLUGIN) *.o .*.d core a.out
