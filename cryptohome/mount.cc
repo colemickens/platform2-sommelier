@@ -323,6 +323,12 @@ bool Mount::RemoveCryptohome(const Credentials& credentials) const {
   std::string user_dir = GetUserDirectory(credentials);
   CHECK(user_dir.length() > (shadow_root_.length() + 1));
 
+  if (IsCryptohomeMountedForUser(credentials)) {
+    if (!UnmountCryptohome()) {
+      return false;
+    }
+  }
+
   return file_util::Delete(FilePath(user_dir), true);
 }
 

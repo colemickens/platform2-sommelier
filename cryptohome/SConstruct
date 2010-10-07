@@ -127,7 +127,7 @@ env.Append(
     CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
     LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
-            'tspi', 'pthread', 'protobuf', 'scrypt', 'tpm_init'],
+            'protobuf', 'pthread', 'scrypt', 'tpm_init', 'tspi'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)
@@ -143,7 +143,7 @@ env['BUILDERS']['ProtocolBuffer'] = proto_builder
 
 env.Append(LIBPATH = ['.'])
 env.ParseConfig('pkg-config --cflags --libs ' \
-                'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0')
+                'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
 env.GlibMarshal('marshal.glibmarshal.c', 'marshal.list')
 
