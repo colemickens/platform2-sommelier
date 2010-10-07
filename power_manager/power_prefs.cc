@@ -4,6 +4,7 @@
 
 #include "power_manager/power_prefs.h"
 
+#include <sys/inotify.h>
 #include <string>
 
 #include "base/logging.h"
@@ -15,9 +16,22 @@ using std::string;
 
 namespace power_manager {
 
+static const int kFileWatchMask = IN_MODIFY | IN_CREATE | IN_DELETE;
+
 PowerPrefs::PowerPrefs(const FilePath& pref_path, const FilePath& default_path)
     : pref_path_(pref_path),
       default_path_(default_path) {}
+
+bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
+                                   gpointer data) {
+  LOG(INFO) << "Starting to watch pref directory.";
+  if (!notifier_.Init(callback, data))
+    return false;
+  if (0 > notifier_.AddWatch(pref_path_.value().c_str(), kFileWatchMask))
+    return false;
+  notifier_.Start();
+  return true;
+}
 
 bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
   FilePath path = pref_path_.Append(setting_name);

@@ -54,7 +54,7 @@ Default(backlight_tool)
 # Build power daemon
 backlight_controller = gdk_env.Library('backlight_controller',
                                        ['backlight_controller.cc'])
-power_prefs = base_env.Library('power_prefs', ['power_prefs.cc'])
+power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('chromeos crosapi gflags pthread dl metrics'))
 powerd_env.ParseConfig(
@@ -62,7 +62,7 @@ powerd_env.ParseConfig(
 )
 powerd_sources = ['powerd.cc', 'powerd_metrics.cc', 'screen_locker.cc',
                   'suspender.cc', 'video_detector.cc']
-util_lib = powerd_env.Library('util_lib', ['util.cc']);
+util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
 powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,
@@ -105,10 +105,10 @@ tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 dimmer_unittest_env = gdk_env.Clone()
 dimmer_unittest_env.Append(LIBS=Split('base rt gtest pthread gmock'))
 deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller, backlight,
-        power_prefs]
+        power_prefs, util_lib]
 tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
 deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller, backlight,
-        power_prefs]
+        power_prefs, util_lib]
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))

@@ -5,7 +5,9 @@
 #ifndef POWER_MANAGER_INPUT_H_
 #define POWER_MANAGER_INPUT_H_
 
-#include <gdk/gdk.h>
+#include <glib.h>
+
+#include "base/basictypes.h"
 
 namespace power_manager {
 
@@ -58,6 +60,8 @@ class Input {
   bool enable_power_button_;
   int num_power_key_events_;
   int num_lid_events_;
+
+  DISALLOW_COPY_AND_ASSIGN(Input);
 };
 
 } // namespace power_manager

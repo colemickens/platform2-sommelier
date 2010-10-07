@@ -56,6 +56,8 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
 
 void Daemon::Init() {
   ReadSettings();
+  CHECK(idle_.Init(this));
+  prefs_->StartPrefWatching(&(PrefChangeHandler), this);
   MetricInit();
   if (!DPMSCapable(GDK_DISPLAY())) {
     LOG(WARNING) << "X Server not DPMS capable";
@@ -98,7 +100,6 @@ void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
   int64 low_battery_suspend_percent;
-  int64 lock_on_idle_suspend;
   CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
                             &low_battery_suspend_percent));
   CHECK(prefs_->ReadSetting("clean_shutdown_timeout_ms",
@@ -109,7 +110,6 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
   CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
   CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
-  CHECK(prefs_->ReadSetting("lock_ms", &default_lock_ms_));
   CHECK(prefs_->ReadSetting("enforce_lock", &enforce_lock));
   CHECK(prefs_->ReadSetting("use_xscreensaver", &use_xscreensaver));
   if (prefs_->ReadSetting("disable_idle_suspend", &disable_idle_suspend) &&
@@ -118,11 +118,7 @@ void Daemon::ReadSettings() {
     plugged_suspend_ms_ = INT64_MAX;
     unplugged_suspend_ms_ = INT64_MAX;
   }
-  if (prefs_->ReadSetting("lock_on_idle_suspend", &lock_on_idle_suspend) &&
-      0 == lock_on_idle_suspend) {
-    LOG(INFO) << "Disabling screen lock on idle and suspend";
-    default_lock_ms_ = INT64_MAX;
-  }
+  ReadLockScreenSettings();
   if (low_battery_suspend_percent >= 0 && low_battery_suspend_percent <= 100) {
     low_battery_suspend_percent_ = low_battery_suspend_percent;
   } else {
@@ -131,7 +127,6 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Disabling low battery suspend.";
     low_battery_suspend_percent_ = 0;
   }
-  lock_on_idle_suspend_ = lock_on_idle_suspend;
   lock_ms_ = default_lock_ms_;
   enforce_lock_ = enforce_lock;
   use_xscreensaver_ = use_xscreensaver;
@@ -146,8 +141,19 @@ void Daemon::ReadSettings() {
   CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kReactMS);
   CHECK(default_lock_ms_ >= unplugged_off_ms_ + kReactMS);
   CHECK(default_lock_ms_ >= plugged_off_ms_ + kReactMS);
+}
 
-  CHECK(idle_.Init(this));
+void Daemon::ReadLockScreenSettings() {
+  int64 lock_on_idle_suspend;
+  if (prefs_->ReadSetting("lock_on_idle_suspend", &lock_on_idle_suspend) &&
+      0 == lock_on_idle_suspend) {
+    LOG(INFO) << "Disabling screen lock on idle and suspend";
+    default_lock_ms_ = INT64_MAX;
+  } else {
+    CHECK(prefs_->ReadSetting("lock_ms", &default_lock_ms_));
+    LOG(INFO) << "Enabling screen lock on idle and suspend";
+  }
+  lock_on_idle_suspend_ = lock_on_idle_suspend;
 }
 
 void Daemon::Run() {
@@ -259,7 +265,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     ctl_->SetPowerState(BACKLIGHT_ON);
     idle_state_ = kIdleNormal;
   }
-
   if (idle_time_ms >= lock_ms_ && util::LoggedIn()) {
     locker_.LockScreen();
   }
@@ -454,6 +459,20 @@ void Daemon::Suspend() {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
     StartCleanShutdown();
   }
+}
+
+gboolean Daemon::PrefChangeHandler(const char* name,
+                                   int,               // watch handle
+                                   unsigned int,      // mask
+                                   gpointer data) {
+  Daemon* daemon = static_cast<Daemon*>(data);
+  if (!strcmp(name, "lock_on_idle_suspend")) {
+    daemon->ReadLockScreenSettings();
+    daemon->locker_.Init(daemon->use_xscreensaver_,
+                         daemon->lock_on_idle_suspend_);
+    daemon->SetIdleOffset(0);
+  }
+  return true;
 }
 
 }  // namespace power_manager

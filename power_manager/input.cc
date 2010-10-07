@@ -2,13 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/input.h"
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <gdk/gdk.h>
 #include <linux/input.h>
 
-#include "base/file_util.h"
-#include "power_manager/input.h"
+#include "base/file_path.h"
+#include "base/logging.h"
 
 namespace power_manager {
 

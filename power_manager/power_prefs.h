@@ -5,7 +5,10 @@
 #ifndef POWER_MANAGER_POWER_PREFS_H_
 #define POWER_MANAGER_POWER_PREFS_H_
 
+#include <glib.h>
+
 #include "base/file_path.h"
+#include "power_manager/inotify.h"
 #include "power_manager/power_prefs_interface.h"
 
 namespace power_manager {
@@ -15,6 +18,8 @@ class PowerPrefs : public PowerPrefsInterface {
   explicit PowerPrefs(const FilePath& pref_path, const FilePath& default_path);
   virtual ~PowerPrefs() {}
 
+  bool StartPrefWatching(Inotify::InotifyCallback callback, gpointer data);
+
   // Overridden from PowerPrefsInterface:
   virtual bool ReadSetting(const char* setting_name, int64* val);
   virtual bool WriteSetting(const char* setting_name, int64 level);
@@ -22,6 +27,7 @@ class PowerPrefs : public PowerPrefsInterface {
  private:
   FilePath pref_path_;
   FilePath default_path_;
+  Inotify notifier_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerPrefs);
 };

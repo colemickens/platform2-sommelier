@@ -89,6 +89,9 @@ class Daemon : public XIdleMonitor {
   // Read settings from disk
   void ReadSettings();
 
+  // Read lock screen settings
+  void ReadLockScreenSettings();
+
   // Initialize metrics
   void MetricInit();
 
@@ -120,6 +123,20 @@ class Daemon : public XIdleMonitor {
   // Check for extremely low battery condition and triggers suspend.
   void SuspendOnLowBattery(double battery_percentage);
 
+  // Timeout handler for clean shutdown. If we don't hear back from
+  // clean shutdown because the stopping is taking too long or hung,
+  // go through with the shutdown now.
+  static gboolean CleanShutdownTimedOut(gpointer data);
+
+  void StartCleanShutdown();
+  void Shutdown();
+  void Suspend();
+
+  // Callback for Inotify of Preference directory changes.
+  static gboolean PrefChangeHandler(const char* name, int wd,
+                                    unsigned int mask,
+                                    gpointer data);
+
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 
@@ -130,11 +147,6 @@ class Daemon : public XIdleMonitor {
   // Generates UMA metrics about the current backlight level.
   // Always returns true.
   static gboolean GenerateBacklightLevelMetric(gpointer data);
-
-  // Timeout handler for clean shutdown. If we don't hear back from
-  // clean shutdown because the stopping is taking too long or hung,
-  // go through with the shutdown now.
-  static gboolean CleanShutdownTimedOut(gpointer data);
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
@@ -178,10 +190,6 @@ class Daemon : public XIdleMonitor {
   // metrics/metrics_library.h for a description of the arguments.
   bool SendEnumMetricWithPowerState(const std::string& name, int sample,
                                     int max);
-
-  void StartCleanShutdown();
-  void Shutdown();
-  void Suspend();
 
   BacklightController* ctl_;
   PowerPrefs* prefs_;
