@@ -19,32 +19,6 @@ else
   fi
 fi
 
-# Default rootfs verification to ON
-rootfs_verification_default=${FLAGS_TRUE}
-ignore_bad_verification_default=${FLAGS_FALSE}
-DEV_BUILD_FILE=/root/.dev_mode
-
-# If a developer build, rootfs verification is default OFF
-if [ -e ${DEV_BUILD_FILE} ]; then
-  echo "Developer image detected."
-  rootfs_verification_default=${FLAGS_FALSE}
-  ignore_bad_verification_default=${FLAGS_TRUE}
-fi
-
-# Any build that is verified will stay verified.
-# We need to check that there is a root device,
-# factory install runs from tmpfs and rootdev does not
-# return a meaningful result in that case.
-if rootdev -s > /dev/null 2>&1 ; then
-  if type rootdev > /dev/null 2>&1 ; then
-    # Enable verification, but don't force a check for dev builds.
-    if rootdev | grep -qE '^/dev/(dm-|mapper/)'; then
-      rootfs_verification_default=${FLAGS_TRUE}
-      ignore_bad_verification_default=${FLAGS_FALSE}
-    fi
-  fi
-fi
-
 DEFINE_string dst "" "Boot device to update (Default: current root device)"
 # Any time the verified boot flags change, this is needed
 # as well as a new grub.cfg.
@@ -56,8 +30,11 @@ DEFINE_string update_vmlinuz "" \
   "If specified, the path to a vmlinuz to use as syslinux's vmlinuz.[A|B]"
 DEFINE_boolean run_as_root ${FLAGS_FALSE} \
   "Allow root to run this script (Careful, it won't prompt for a password!)"
-DEFINE_boolean enable_rootfs_verification ${rootfs_verification_default} \
-  "Default all bootloaders to use kernel-based root fs integrity checking."
+DEFINE_boolean enable_rootfs_verification ${FLAGS_TRUE} \
+  "With override_kernel_options, will toggle verified rootfs for legacy \
+bootloaders"
+DEFINE_boolean override_kernel_options ${FLAGS_FALSE} \
+  "If given, setimage will ignore the configuration in the new kernel for vboot"
 DEFINE_string esp_mounted_at "" \
   "Specify a location if the esp has already been mounted"
 DEFINE_string kernel_image "" \
@@ -68,8 +45,8 @@ DEFINE_string rootfs_image "" \
 By default, it uses the current root device."
 DEFINE_string install_root "/" \
   "Specifies the base location to find utilities in the new root"
-DEFINE_boolean ignore_bad_verification ${ignore_bad_verification_default} \
-  "Indicates if mismatched rootfs hashes will be ignored"
+DEFINE_boolean ignore_bad_verification ${FLAGS_FALSE} \
+  "With override_kernel_options, will ignore rootfs integrity errors"
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 
 # Parse command line
@@ -208,13 +185,31 @@ if [ -z "${FLAGS_kernel_image}" ]; then
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
-# TODO(kwaters): dump_kernel_config segaults on ARM.  We use this fact to skip
+# TODO(kwaters): dump_kernel_config segfaults on ARM.  We use this fact to skip
 # the verified rootfs update.  This needs to be cleaned up once verified root
 # works on the ARM kernel.
 DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
 if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
+  # Use the root to determine if verification should be happening.
+  kernel_root="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*root=\([^ ]*\).*/\1/g')"
+  # Unless specified, the kernel root should dictate whether we are verified
+  # or not.
+  if [ ${FLAGS_override_kernel_options} -eq ${FLAGS_FALSE} ]; then
+    if [ "${kernel_root}" != "/dev/dm-0" ]; then
+      FLAGS_enable_rootfs_verification=${FLAGS_FALSE}
+      FLAGS_ignore_bad_verification=${FLAGS_TRUE}
+    else
+      FLAGS_enable_rootfs_verification=${FLAGS_TRUE}
+      FLAGS_ignore_bad_verification=${FLAGS_FALSE}
+    fi
+  fi
+
+  # Extract the dm-verity target options.
   kernel_cfg="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
                 cut -f2- -d,)"
+  verity_preamble="$(echo "${KERNEL_CONFIG}" |
+                     sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
+                     cut -f1 -d,)"
   rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
   verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
   verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
@@ -229,7 +224,7 @@ if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
   # Compute the rootfs hash tree and dump it in the tempfile.
   # TODO(wad) take preamble from dump_kernel_config.
   VERITY="${INSTALL_ROOT}"/bin/verity
-  table="vroot none ro,"$(sudo "${VERITY}" create \
+  table="${verity_preamble},"$(sudo "${VERITY}" create \
           ${verity_depth} \
           "${verity_algorithm}" \
           "${rootfs_image}" \
