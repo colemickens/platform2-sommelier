@@ -16,6 +16,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/power_button_handler.h"
 #include "power_manager/util.h"
 
 using std::max;
@@ -50,9 +51,12 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
       suspender_(&locker_),
+      power_button_handler_(new PowerButtonHandler(this)),
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
       battery_time_to_empty_metric_last_(0) {}
+
+Daemon::~Daemon() {}
 
 void Daemon::Init() {
   ReadSettings();
@@ -177,6 +181,15 @@ void Daemon::SetPlugged(bool plugged) {
     ctl_->OnPlugEvent(plugged);
     SetIdleState(idle_time_ms);
   }
+}
+
+void Daemon::StartCleanShutdown() {
+  clean_shutdown_initiated_ = true;
+  // Cancel any outstanding suspend in flight.
+  suspender_.CancelSuspend();
+  util::SendSignalToPowerM(util::kRequestCleanShutdown);
+  g_timeout_add(clean_shutdown_timeout_ms_, Daemon::CleanShutdownTimedOut,
+                this);
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms) {
@@ -358,16 +371,11 @@ DBusHandlerResult Daemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kPowerButtonDown)) {
     LOG(INFO) << "Button Down event";
+    daemon->power_button_handler_->HandleButtonDown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kPowerButtonUp)) {
     LOG(INFO) << "Button Up event";
-    if (daemon->idle_state_ == kIdleNormal ||
-        daemon->idle_state_ == kIdleDim) {
-      LOG(INFO) << "Starting Clean Shutdown";
-      daemon->StartCleanShutdown();
-    } else {
-      LOG(INFO) << "Power button struck while screen off.";
-    }
+    daemon->power_button_handler_->HandleButtonUp();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kCleanShutdown)) {
     LOG(INFO) << "Clean shutdown event";
@@ -433,15 +441,6 @@ gboolean Daemon::CleanShutdownTimedOut(gpointer data) {
     LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
   }
   return false;
-}
-
-void Daemon::StartCleanShutdown() {
-  clean_shutdown_initiated_ = true;
-  // Cancel any outstanding suspend in flight.
-  suspender_.CancelSuspend();
-  util::SendSignalToPowerM(util::kRequestCleanShutdown);
-  g_timeout_add(clean_shutdown_timeout_ms_, Daemon::CleanShutdownTimedOut,
-                this);
 }
 
 void Daemon::Shutdown() {

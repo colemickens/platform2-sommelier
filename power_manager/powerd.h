@@ -24,16 +24,22 @@
 
 namespace power_manager {
 
+class PowerButtonHandler;
+
 class Daemon : public XIdleMonitor {
  public:
   Daemon(BacklightController* ctl, PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
          VideoDetectorInterface* video_detector);
+  ~Daemon();
+
+  ScreenLocker* locker() { return &locker_; }
 
   void Init();
   void Run();
   void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
+  void StartCleanShutdown();
 
  private:
   friend class DaemonTest;
@@ -128,7 +134,6 @@ class Daemon : public XIdleMonitor {
   // go through with the shutdown now.
   static gboolean CleanShutdownTimedOut(gpointer data);
 
-  void StartCleanShutdown();
   void Shutdown();
   void Suspend();
 
@@ -219,6 +224,7 @@ class Daemon : public XIdleMonitor {
   IdleState idle_state_;
   ScreenLocker locker_;
   Suspender suspender_;
+  scoped_ptr<PowerButtonHandler> power_button_handler_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

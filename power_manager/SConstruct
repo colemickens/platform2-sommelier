@@ -60,8 +60,10 @@ powerd_env.Append(LIBS=Split('chromeos crosapi gflags pthread dl metrics'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
-powerd_sources = ['powerd.cc', 'powerd_metrics.cc', 'screen_locker.cc',
-                  'suspender.cc', 'video_detector.cc']
+powerd_sources = Split('''\
+  power_button_handler.cc powerd.cc powerd_metrics.cc screen_locker.cc
+  suspender.cc video_detector.cc
+''')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
 powerd = powerd_env.Program('powerd',
