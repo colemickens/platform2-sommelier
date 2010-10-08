@@ -49,6 +49,18 @@ class PowerButtonHandler {
   }
   void HandleShutdownTimeout();
 
+  // Dim the backlight.
+  static gboolean HandleDimBacklightTimeoutThunk(gpointer data) {
+    reinterpret_cast<PowerButtonHandler*>(data)->HandleDimBacklightTimeout();
+    return FALSE;
+  }
+  void HandleDimBacklightTimeout();
+
+  // Send an X ClientEvent message to the window manager notifying it that the
+  // system is being shut down.  Returns false if we were unable to send the
+  // message.
+  bool NotifyWindowManagerAboutShutdown();
+
   Daemon* daemon_;  // not owned
 
   // The state that we're currently in.

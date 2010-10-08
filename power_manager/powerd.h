@@ -34,6 +34,7 @@ class Daemon : public XIdleMonitor {
   ~Daemon();
 
   ScreenLocker* locker() { return &locker_; }
+  BacklightController* backlight_controller() { return ctl_; }
 
   void Init();
   void Run();
