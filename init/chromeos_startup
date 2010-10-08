@@ -8,12 +8,12 @@
 # to starting init.
 
 # Mount /tmp first, so that bootstat can record output right away.
-mount -n -t tmpfs tmp /tmp
+mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
 bootstat pre-startup
 
 # Since we defer udev until later in the boot process, we pre-populate /dev
 # with the set of devices needed for X and other early services to run.
-mount -n -t tmpfs -omode=0755 udev /dev
+mount -n -t tmpfs -o noexec,nosuid,mode=0755 udev /dev
 cp -a -f /lib/chromiumos/devices/* /dev
 
 # Splash screen! Unless we are in noninteractive mode.
@@ -28,8 +28,8 @@ if [ -x /usr/bin/ply-image ]; then
   fi
 fi
 
-mount -n -t tmpfs -onosuid,nodev shmfs /dev/shm
-mount -n -t devpts -onoexec,nosuid,gid=5,mode=0620 devpts /dev/pts
+mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
+mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs.
@@ -41,13 +41,14 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
 
   # For factory install shim, we never want to write to the SDCard.
   if [ -f /root/.factory_installer ]; then
-    mount -n -t tmpfs -omode=0755 tmp /mnt/stateful_partition
+    mount -n -t tmpfs -o nodev,noexec,nosuid,mode=0755 tmp \
+      /mnt/stateful_partition
     # Fetch our writeable lsb-release from the stateful
     # partition if available.
     TMP_STATEFUL="$(mktemp -d)"
     FACTORY_LSB_REL="dev_image/etc/lsb-factory"
     mkdir -p /mnt/stateful_partition/dev_image/etc
-    mount -n -t ext3 "$STATE_DEV" "$TMP_STATEFUL"
+    mount -n -t ext3 -o nodev,noexec,nosuid "$STATE_DEV" "$TMP_STATEFUL"
     if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
       cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
           /mnt/stateful_partition/${FACTORY_LSB_REL}
@@ -55,7 +56,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     umount "$TMP_STATEFUL"
     rmdir "$TMP_STATEFUL"
   else
-    mount -n -t ext3 "$STATE_DEV" /mnt/stateful_partition
+    mount -n -t ext3 -o nodev,noexec,nosuid "$STATE_DEV" /mnt/stateful_partition
   fi
 fi
 
@@ -173,21 +174,26 @@ chown chronos:chronos /mnt/stateful_partition/var/log/metrics
 mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
 chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 
-# Mount some /var directories and /home
+# Mount some /var directories and /home.  These mounts inherit
+# nodev,noexec,nosuid from /mnt/stateful_partition above.
 mount -n --bind /mnt/stateful_partition/var /var
 mount -n --bind /mnt/stateful_partition/home /home
+# If we're mod_for_test, /home needs to be mounted without noexec
+#mod_for_test# mount -n -o remount,exec,suid /home
 
 # Mount stateful partition for dev packages
 # TODO(sosa@chromium.org) - Use $DEVMODE value?
 if [ -f /root/.dev_mode ] ; then
+  # Mount and then remount to enable exec/suid
   mount -n --bind /mnt/stateful_partition/dev_image /usr/local
+  mount -n -o remount,exec,suid /usr/local
 fi
 
-mount -n -t tmpfs -omode=0755,nosuid varrun /var/run
+mount -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?
-mount -n -t tmpfs -omode=1777,nodev,noexec,nosuid varlock /var/lock
+mount -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
-mount -n -t tmpfs media /media
+mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 mount -n -t debugfs debugfs /sys/kernel/debug
 
@@ -197,7 +203,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
   # Also create /tmp/machine-info.
   if [ ! -e /home/chronos/.oobe_completed ]; then
     OEM_DEV=${ROOT_DEV%[0-9]*}8
-    mount -n -t ext3 "$OEM_DEV" /mnt/partner_partition
+    mount -n -t ext3 "$OEM_DEV" -o nodev,noexec,nosuid /mnt/partner_partition
     mosys -k smbios info system > /tmp/machine-info
   fi
 fi
