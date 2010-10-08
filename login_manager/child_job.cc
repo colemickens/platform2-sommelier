@@ -133,8 +133,12 @@ void ChildJob::SetArguments(const std::string& arguments) {
   arguments_.clear();
   SplitString(arguments, ' ', &arguments_);
 
-  if (!argv0.empty())
-    arguments_[0] = argv0;
+  if (!argv0.empty()) {
+    if (arguments_.size())
+      arguments_[0] = argv0;
+    else
+      arguments_.push_back(argv0);
+  }
 }
 
 char const** ChildJob::CreateArgv() const {
