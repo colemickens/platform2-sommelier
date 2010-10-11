@@ -33,6 +33,20 @@ send_time_in_suspend() {
   /usr/bin/metrics_client $time_in_suspend_name $time_in_suspend 1 10000 50 &
 }
 
+# Prints the firmware (just BIOS, not including EC) resume time
+calculate_firmware_resume_time() {
+  local f_processor_mhz=/tmp/processor-mhz
+  [ -r $f_processor_mhz ] || return
+
+  # Not double quoting variables here since they contain numbers.
+  local mhz=$(cat $f_processor_mhz)
+  local tsc=$(grep "TSC at resume" /var/log/messages \
+            | tail -1 \
+            | sed 's/.*TSC at resume: \([0-9]*\)/\1/')
+
+  echo $mhz $tsc | /usr/bin/awk '{ if (NF == 2) print int($2 / ($1 * 1000)) }'
+}
+
 # Prints the timestamp of the last occurrence of a specified string in
 # /var/log/messages, or nothing otherwise.
 # Arguments:
@@ -49,6 +63,8 @@ get_last_message_timestamp() {
 #   Power.KernelResumeTimeOnBattery
 #   Power.KernelSuspendTimeOnAC
 #   Power.KernelSuspendTimeOnBattery
+#   Power.FirmwareResumeTimeOnAC
+#   Power.FirmwareResumeTimeOnBattery
 send_suspend_resume_time() {
   # On suspend, powerd_suspend stores the power status to a file.
   local power_status_on_suspend=/tmp/power-status-on-suspend
@@ -66,7 +82,9 @@ send_suspend_resume_time() {
     | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
   local kernel_resume_time=$(echo $end_suspend_time $end_resume_time \
     | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
-  [ -n "$kernel_suspend_time" ] && [ -n "$kernel_resume_time" ] || return
+  local firmware_resume_time=$(calculate_firmware_resume_time)
+  [ -n "$kernel_suspend_time" ] && [ -n "$kernel_resume_time" ] &&
+    [ -n "$firmware_resume_time" ] || return
 
   # Sends the metrics. Uses the pre-suspend AC status for both suspend
   # and resume since this is the mode that most software is configured
@@ -76,6 +94,8 @@ send_suspend_resume_time() {
     Power.KernelSuspendTime$ac_status $kernel_suspend_time 1 10000 50 &
   /usr/bin/metrics_client \
     Power.KernelResumeTime$ac_status $kernel_resume_time 1 10000 50 &
+  /usr/bin/metrics_client \
+    Power.FirmwareResumeTime$ac_status $firmware_resume_time 1 10000 50 &
 
   # Cleanup.
   /bin/rm -f $power_status_on_suspend
