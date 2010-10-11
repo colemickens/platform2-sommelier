@@ -49,13 +49,14 @@ class Carrier {
 
   // Carrier-specific activation code can run here; returns true if
   // this code completely consumed the activation event, false if
-  // activation should proceed as normal.  We are going to need a
-  // more general solution if non-CDMA carriers require this.
+  // activation should proceed as normal.  immediate_return gives an
+  // enum from MM_MODEM_CDMA_ACTIVATION_ERROR which is meaningful only
+  // if true is returned.
   virtual bool CdmaCarrierSpecificActivate (
       const utilities::DBusPropertyMap &status,  // Result of
                                                  // Modem.Simple.GetStatus()
       org::freedesktop::ModemManager::Modem::Cdma_adaptor *modem,
-      DBus::Error &error) const {
+      uint32_t *immediate_return) const {
     return false;
   }
 

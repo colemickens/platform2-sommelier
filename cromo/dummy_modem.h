@@ -45,7 +45,7 @@ class DummyModem
       DBus::Error& error);
   void GetRegistrationState(uint32_t& cdma_1x_state, uint32_t& evdo_state,
                             DBus::Error& error);
-  void Activate(const std::string &carrier, DBus::Error &error);
+  uint32_t Activate(const std::string &carrier, DBus::Error &error);
   void ActivateManual(const PropertyMap &properties, DBus::Error &error);
   void ActivateManualDebug(const std::map<std::string, std::string> &properties,
                            DBus::Error &error);

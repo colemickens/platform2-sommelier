@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "dummy_modem.h"
-
+#include <mm/mm-modem.h>
 #include <iostream>
 
 using std::cout;
@@ -89,8 +89,9 @@ void DummyModem::GetRegistrationState(uint32_t& cdma_1x_state,
   cout << "GetRegistrationState" << endl;
 }
 
-void DummyModem::Activate(const std::string& carrier, DBus::Error &error) {
+uint32_t DummyModem::Activate(const std::string& carrier, DBus::Error &error) {
   cout << "Activate" << endl;
+  return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
 void DummyModem::ActivateManual(const PropertyMap& properties,
