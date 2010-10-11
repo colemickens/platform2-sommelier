@@ -866,11 +866,18 @@ class Sdk {
         str_.reset(strdup(in));
       }
     }
+    ~TemporaryCopier() {
+      // We sometimes pass sensitive information
+      if (str_.get()) {
+        memset(str_.get(), '\0', strlen(str_.get()));
+      }
+    }
     char *get() {
       return str_.get();
     }
+
    private:
-    scoped_ptr<char> str_;
+    scoped_ptr_malloc<char> str_;
     DISALLOW_COPY_AND_ASSIGN(TemporaryCopier);
   };
 

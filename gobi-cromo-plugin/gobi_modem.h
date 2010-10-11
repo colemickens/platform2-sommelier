@@ -75,6 +75,9 @@ class GobiModem
   // DBUS Methods: ModemSimple
   virtual void Connect(const utilities::DBusPropertyMap& properties,
                        DBus::Error& error);
+
+  // Contract addition: GetStatus never fails, it simply does not set
+  // properties it cannot determine.
   virtual utilities::DBusPropertyMap GetStatus(DBus::Error& error);
 
   // DBUS Methods: ModemCDMA
@@ -84,8 +87,8 @@ class GobiModem
       DBus::Error& error);
   virtual void GetRegistrationState(
       uint32_t& cdma_1x_state, uint32_t& evdo_state, DBus::Error& error);
-  virtual void Activate(const std::string& carrier_name,
-                        DBus::Error& error);
+  virtual uint32_t Activate(const std::string& carrier_name,
+                            DBus::Error& error);
   virtual void ActivateManual(const utilities::DBusPropertyMap& properties,
                               DBus::Error& error);
   virtual void ActivateManualDebug(
@@ -97,17 +100,13 @@ class GobiModem
   virtual void SoftReset(DBus::Error& error);
   virtual void PowerCycle(DBus::Error& error);
 
-  // DBUS Property Getter
-  virtual void on_get_property(DBus::InterfaceAdaptor& interface,
-                               const std::string& property,
-                               DBus::Variant& value,
-                               DBus::Error& error);
   static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
 
  protected:
-  void ActivateOmadm(DBus::Error& error);
-  // Verizon uses OTASP, code *22899
-  void ActivateOtasp(const std::string& number, DBus::Error& error);
+  // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
+  uint32_t ActivateOmadm();
+  // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
+  uint32_t ActivateOtasp(const std::string& number);
 
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
@@ -161,9 +160,9 @@ class GobiModem
   static gboolean NmeaPlusCallback(gpointer data);
 
   struct ActivationStatusArgs : public CallbackArgs {
-    ActivationStatusArgs(ULONG activation_state)
-      : activation_state(activation_state) { }
-    ULONG activation_state;
+    ActivationStatusArgs(ULONG device_activation_state)
+      : device_activation_state(device_activation_state) { }
+    ULONG device_activation_state;
   };
 
   static void ActivationStatusCallbackTrampoline(ULONG activation_state) {
@@ -254,9 +253,17 @@ class GobiModem
   void SetDeviceProperties();
   void SetModemProperties();
 
-  // Returns the modem activation state as an enum from
-  // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error
+  // Returns the modem activation state as an enum value from
+  // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error.  This state
+  // may be further overridden by ModifyModemStatusReturn()
   int32_t GetMmActivationState();
+
+  // Computes arguments for an ActivationStateChanged signal and sends
+  // it.  Overrides MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT if device
+  // is in fact activated.
+  void SendActivationStateChanged(uint32_t mm_activation_error);
+  // Helper that sends failure
+  void SendActivationStateCompletionFailed();
 
   void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These

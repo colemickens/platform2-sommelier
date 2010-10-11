@@ -110,9 +110,11 @@ TEST_F(GobiSdkTest, TemporaryCopier) {
   EXPECT_STREQ("", b.get());
 
   const char *hello="hello";
-  Sdk::TemporaryCopier c(hello);
-  EXPECT_STREQ(hello, c.get());
-  EXPECT_NE(hello, c.get());
+  for (int i = 0; i < (1 << 24); ++i) {
+    Sdk::TemporaryCopier c(hello);
+    EXPECT_STREQ(hello, c.get());
+    EXPECT_NE(hello, c.get());
+  }
 }
 }  // namespace gobi
 

@@ -15,6 +15,7 @@ extern "C" {
 #include <libudev.h>
 };
 
+#include <base/stringprintf.h>
 #include <cromo/carrier.h>
 #include <cromo/cromo_server.h>
 #include <cromo/utilities.h>
@@ -461,18 +462,20 @@ int GobiModem::GetMmActivationState() {
   }
 }
 
-DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
+// if we get SDK errors while trying to retrieve information,
+// we ignore them, and just don't set the corresponding properties
+DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   DBusPropertyMap result;
 
-  // TODO(rochberg):  More mandatory properties expected
-  // if we get SDK errors while trying to retrieve information,
-  // we ignore them, and just don't set the corresponding properties
   int32_t rssi;
   DBus::Error signal_strength_error;
 
   StrengthMap interface_to_dbm;
   GetSignalStrengthDbm(rssi, &interface_to_dbm, signal_strength_error);
-  if (!signal_strength_error.is_set()) {
+  if (signal_strength_error.is_set()) {
+    // Activate() looks for this key and does not even try if present
+    result["no_signal"].writer().append_bool(true);
+  } else {
     result["signal_strength_dbm"].writer().append_int32(rssi);
     for (StrengthMap::iterator i = interface_to_dbm.begin();
          i != interface_to_dbm.end();
@@ -487,9 +490,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error) {
   }
 
   SerialNumbers serials;
-  // Distinct error because it invalid to modify an error once it is set
   DBus::Error serial_numbers_error;
-
   this->GetSerialNumbers(&serials, serial_numbers_error);
   if (!serial_numbers_error.is_set()) {
     if (serials.esn.length()) {
@@ -971,7 +972,9 @@ void GobiModem::ActivateManual(const DBusPropertyMap& const_properties,
   const char *mnaaa = NULL;
 
   DBusPropertyMap::const_iterator p;
-  try {
+  // try/catch required to cope with dbus-c++'s handling of type
+  // mismatches
+  try {  // Style guide violation forced by dbus-c++
     spc = ExtractString(properties, "spc", "000000", error);
     p = properties.find("system_id");
     if (p != properties.end()) {
@@ -982,11 +985,9 @@ void GobiModem::ActivateManual(const DBusPropertyMap& const_properties,
     mnha = ExtractString(properties, "mnha", NULL, error);
     mnaaa = ExtractString(properties, "mnhaaa", NULL, error);
   } catch (DBus::Error e) {
-    // Type errors on the incoming dbus message would end up here
     error = e;
     return;
   }
-
   ULONG rc = sdk_->ActivateManual(spc,
                                   system_id,
                                   mdn,
@@ -1044,34 +1045,28 @@ void GobiModem::ResetModem(DBus::Error& error) {
   ENSURE_SDK_SUCCESS(QCWWanDisconnect, rc, kSdkError);
 }
 
-void GobiModem::ActivateOmadm(DBus::Error& error) {
+uint32_t GobiModem::ActivateOmadm() {
   ULONG rc;
-  char errmsg[64];
-
   LOG(INFO) << "Activating OMA-DM";
 
   rc = sdk_->OMADMStartSession(gobi::kConfigure);
   if (rc != 0) {
-    snprintf(errmsg, sizeof(errmsg), "OMA-DM returned: %ld", rc);
-    error.set(kActivationError, errmsg);
     LOG(ERROR) << "OMA-DM activation failed: " << rc;
-    return;
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
   }
+  return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
-void GobiModem::ActivateOtasp(const std::string& number, DBus::Error& error) {
+uint32_t GobiModem::ActivateOtasp(const std::string& number) {
   ULONG rc;
-  char errmsg[64];
-
   LOG(INFO) << "Activating OTASP";
 
   rc = sdk_->ActivateAutomatic(number.c_str());
   if (rc != 0) {
-    snprintf(errmsg, sizeof(errmsg), "OTASP returned: %ld", rc);
-    error.set(kActivationError, errmsg);
     LOG(ERROR) << "OTASP activation failed: " << rc;
-    return;
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
    }
+  return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
@@ -1117,14 +1112,15 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
   }
 }
 
+
 gboolean GobiModem::ActivationTimeoutCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem == NULL)
     return FALSE;
-  LOG(INFO) << "ActivationTimeout: state is now "
-            << modem->GetMmActivationState();
-  modem->ActivationCompleted(false);
+
+  LOG(ERROR) << "ActivationTimeout";
+  modem->SendActivationStateChanged(MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT);
   return FALSE;
 }
 
@@ -1133,7 +1129,12 @@ void GobiModem::CleanupActivationTimeoutCallback(gpointer data) {
   delete args;
 }
 
-void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
+
+// NB: This function only uses the DBus::Error field to return
+// kOperationInitiatedError.  Other errors are returned as uint32_t
+// values from MM_MODEM_CDMA_ACTIVATION_ERROR
+uint32_t GobiModem::Activate(const std::string& carrier_name,
+                             DBus::Error& activation_started_error) {
   // TODO(ellyjones): This is a guess based on empirical observations; someone
   // must know a real reasonable value for it. Find out what such a value is and
   // insert it here.
@@ -1152,97 +1153,101 @@ void GobiModem::Activate(const std::string& carrier_name, DBus::Error& error) {
                                    &carrier_id,
                                    &region,
                                    &gps_capability);
-  ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kFirmwareLoadError);
 
+  if (0 != rc) {
+    LOG(ERROR) << "GetFirmwareInfo: " << rc;
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
+  }
   const Carrier *carrier;
   if (carrier_name.empty()) {
     carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
     if (carrier == NULL) {
-      LOG(WARNING) << "Unknown carrier id: " << carrier_id;
-      error.set(kActivationError, "Unknown carrier");
-      return;
+      LOG(ERROR) << "Unknown carrier id: " << carrier_id;
+      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
   } else {
     carrier = handler_->server().FindCarrierByName(carrier_name);
     if (carrier == NULL) {
       LOG(WARNING) << "Unknown carrier: " << carrier_name;
-      error.set(kActivationError, "Unknown carrier");
-      return;
+      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
     if (carrier_id != carrier->carrier_id()) {
       LOG(WARNING) << "Current device firmware does not match the requested"
           "carrier.";
       LOG(WARNING) << "SetCarrier operation must be done before activating.";
-      error.set(kActivationError, "Wrong carrier");
-      return;
+      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
   }
 
-  DBusPropertyMap status = GetStatus(error);
-  if (error.is_set()) {
-    LOG(ERROR) << error;
+  DBus::Error internal_error;
+  DBusPropertyMap status = GetStatus(internal_error);
+  if (internal_error.is_set()) {
+    LOG(ERROR) << internal_error;
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
   }
 
   DBusPropertyMap::const_iterator p;
+  p = status.find("no_signal");
+  if (p != status.end()) {
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL;
+  }
+
   p = status.find("activation_state");
   if (p != status.end()) {
-    try {
+    try {  // Style guide violation forced by dbus-c++
       LOG(INFO) << "Current activation state: "
                 << p->second.reader().get_uint32();
     } catch (const DBus::Error &e) {
-      error.set(e.name(), e.message());
-      return;
+      LOG(ERROR) << e;
+      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
     }
   }
 
   switch (carrier->activation_method()) {
     case Carrier::kOmadm:
-      ActivateOmadm(error);
+      return ActivateOmadm();
       break;
 
     case Carrier::kOtasp: {
         using org::freedesktop::ModemManager::Modem::Cdma_adaptor;
         Cdma_adaptor *cdma_this = static_cast<Cdma_adaptor *>(this);
-        if (carrier->CdmaCarrierSpecificActivate(status, cdma_this, error)) {
-          return;
+        uint32_t immediate_return;
+        if (carrier->CdmaCarrierSpecificActivate(
+                status, cdma_this, &immediate_return)) {
+          return immediate_return;
         }
       }
       if (carrier->activation_code() == NULL) {
-        LOG(WARNING) << "Number was not supplied for OTASP activation";
-        error.set(kActivationError, "No number supplied for OTASP activation");
-        return;
+        LOG(ERROR) << "Number was not supplied for OTASP activation";
+        return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
       }
-      ActivateOtasp(carrier->activation_code(), error);
+      return ActivateOtasp(carrier->activation_code());
       break;
 
     default:
-      LOG(WARNING) << "Unknown activation method: "
+      LOG(ERROR) << "Unknown activation method: "
                    << carrier->activation_method();
-      error.set(kActivationError, "Unknown activation method");
+      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
       break;
   }
-  if (!error.is_set()) {
-    error.set(kOperationInitiatedError, "");
-    if (activation_callback_id_) {
-      g_source_remove(activation_callback_id_);
-      activation_callback_id_ = 0;
-    }
 
-    activation_callback_id_ = g_timeout_add_seconds_full(
-                             G_PRIORITY_DEFAULT,
-                             kActivationTimeoutSec,
-                             ActivationTimeoutCallback,
-                             new CallbackArgs(
-                                 new DBus::Path(connected_modem_->path())),
-                             CleanupActivationTimeoutCallback);
+  if (activation_callback_id_) {
+    g_source_remove(activation_callback_id_);
+    activation_callback_id_ = 0;
   }
-}
 
-void GobiModem::on_get_property(DBus::InterfaceAdaptor& interface,
-                                const std::string& property,
-                                DBus::Variant& value,
-                                DBus::Error& error) {
-  LOG(INFO) << "GetProperty called for " << property;
+  activation_callback_id_ = g_timeout_add_seconds_full(
+      G_PRIORITY_DEFAULT,
+      kActivationTimeoutSec,
+      ActivationTimeoutCallback,
+      new CallbackArgs(
+          new DBus::Path(connected_modem_->path())),
+      CleanupActivationTimeoutCallback);
+  // We've successfully fired off an activation attempt, so we return
+  // the "error" of saying so.
+  activation_started_error.set(kOperationInitiatedError, "");
+  // Return will be ignored; DBus Error sent insteaad
+  return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
 void GobiModem::GetSignalStrengthDbm(int& output,
@@ -1403,6 +1408,62 @@ gboolean GobiModem::NmeaPlusCallback(gpointer data) {
   return FALSE;
 }
 
+void GobiModem::SendActivationStateCompletionFailed() {
+  DBusPropertyMap empty;
+  ActivationStateChanged(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+                         MM_MODEM_CDMA_ACTIVATION_ERROR_COMPLETION_FAILED,
+                         empty);
+}
+
+void GobiModem::SendActivationStateChanged(uint32_t mm_activation_error) {
+  DBusPropertyMap status;
+  DBusPropertyMap to_send;
+  DBus::Error internal_error;
+  status = GetStatus(internal_error);
+  if (internal_error.is_set()) {
+    // GetStatus should never fail;  we are punting here.
+    SendActivationStateCompletionFailed();
+    return;
+  }
+
+  DBusPropertyMap::const_iterator p;
+  uint32_t mm_activation_state;
+
+  if ((p = status.find("activation_state")) == status.end()) {
+    LOG(ERROR);
+    SendActivationStateCompletionFailed();
+    return;
+  }
+  try {  // Style guide violation forced by dbus-c++
+    mm_activation_state = p->second.reader().get_uint32();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR);
+    SendActivationStateCompletionFailed();
+  }
+
+  if (mm_activation_error == MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT &&
+      mm_activation_state == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED) {
+    mm_activation_error = MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
+  }
+
+  // TODO(rochberg):  Table drive
+  if ((p = status.find("mdn")) != status.end()) {
+    to_send["mdn"] = p->second;
+  }
+  if ((p = status.find("min")) != status.end()) {
+    to_send["min"] = p->second;
+  }
+  if ((p = status.find("payment_url")) != status.end()) {
+    to_send["payment_url"] = p->second;
+  }
+
+  ActivationStateChanged(mm_activation_state,
+                         mm_activation_error,
+                         to_send);
+}
+
+
+
 gboolean GobiModem::OmadmStateCallback(gpointer data) {
   OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
   LOG(INFO) << "OMA-DM State Callback: " << args->session_state;
@@ -1411,13 +1472,15 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
   if (modem != NULL) {
     switch (args->session_state) {
       case gobi::kOmadmComplete:
-        modem->ActivationCompleted(true);
+        modem->SendActivationStateChanged(
+            MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
         break;
       case gobi::kOmadmFailed:
         LOG(INFO) << "OMA-DM failure reason: " << args->failure_reason;
         // fall through
       case gobi::kOmadmUpdateInformationUnavailable:
-        modem->ActivationCompleted(false);
+        modem->SendActivationStateChanged(
+            MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
         break;
     }
   }
@@ -1427,16 +1490,21 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
 
 gboolean GobiModem::ActivationStatusCallback(gpointer data) {
   ActivationStatusArgs* args = static_cast<ActivationStatusArgs*>(data);
-  LOG(INFO) << "OTASP status callback: " << args->activation_state;
+  LOG(INFO) << "OTASP status callback: " << args->device_activation_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
+
   if (modem != NULL) {
     if (modem->activation_callback_id_) {
       g_source_remove(modem->activation_callback_id_);
       modem->activation_callback_id_ = NULL;
     }
-    if (args->activation_state == gobi::kActivated ||
-        args->activation_state == gobi::kNotActivated)
-      modem->ActivationCompleted(args->activation_state == gobi::kActivated);
+    if (args->device_activation_state == gobi::kActivated) {
+      modem->SendActivationStateChanged(
+          MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
+    } else if (args->device_activation_state == gobi::kNotActivated) {
+      modem->SendActivationStateChanged(
+          MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
+    }
   }
   // TODO(ers) The SDK documentation says that before we can signal that
   // activation is complete, we need to power off the device and call
