@@ -263,7 +263,7 @@ class GobiModem
   // is in fact activated.
   void SendActivationStateChanged(uint32_t mm_activation_error);
   // Helper that sends failure
-  void SendActivationStateCompletionFailed();
+  void SendActivationStateFailed();
 
   void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These

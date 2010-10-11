@@ -384,8 +384,8 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
   rc = sdk_->GetModelID(sizeof(buffer), buffer);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetModelID, rc, kSdkError, result);
   result._2 = buffer;
-  rc = sdk_->GetFirmwareRevision(sizeof(buffer), buffer);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetFirmwareRevision, rc, kSdkError, result);
+  rc = sdk_->GetHardwareRevision(sizeof(buffer), buffer);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetHardwareRevision, rc, kSdkError, result);
   result._3 = buffer;
 
   LOG(INFO) << "Manufacturer: " << result._1;
@@ -1408,10 +1408,10 @@ gboolean GobiModem::NmeaPlusCallback(gpointer data) {
   return FALSE;
 }
 
-void GobiModem::SendActivationStateCompletionFailed() {
+void GobiModem::SendActivationStateFailed() {
   DBusPropertyMap empty;
   ActivationStateChanged(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
-                         MM_MODEM_CDMA_ACTIVATION_ERROR_COMPLETION_FAILED,
+                         MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN,
                          empty);
 }
 
@@ -1422,7 +1422,7 @@ void GobiModem::SendActivationStateChanged(uint32_t mm_activation_error) {
   status = GetStatus(internal_error);
   if (internal_error.is_set()) {
     // GetStatus should never fail;  we are punting here.
-    SendActivationStateCompletionFailed();
+    SendActivationStateFailed();
     return;
   }
 
@@ -1431,14 +1431,14 @@ void GobiModem::SendActivationStateChanged(uint32_t mm_activation_error) {
 
   if ((p = status.find("activation_state")) == status.end()) {
     LOG(ERROR);
-    SendActivationStateCompletionFailed();
+    SendActivationStateFailed();
     return;
   }
   try {  // Style guide violation forced by dbus-c++
     mm_activation_state = p->second.reader().get_uint32();
   } catch (const DBus::Error &e) {
     LOG(ERROR);
-    SendActivationStateCompletionFailed();
+    SendActivationStateFailed();
   }
 
   if (mm_activation_error == MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT &&
