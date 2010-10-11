@@ -130,6 +130,15 @@ bool Input::RegisterInputEvent(int fd) {
     LOG(INFO) << "Device topo phys : " << phys;
   }
 
+#ifdef NEW_POWER_BUTTON
+  // Skip input events from the ACPI power button (identified as LNXPWRBN) if
+  // a new power button is present. In that case, don't skip the built in
+  // keyboard, which starts with isa in its topo phys path.
+  if (0 == strncmp("LNXPWRBN", phys, 8) || 0 == strncmp("usb", phys, 3)) {
+    LOG(INFO) << "Skipping interface : " << phys;
+    return false;
+}
+#else
   // Skip input events that are either on a usb bus or on the built in keyboard.
   // Many of these devices advertise a power key but do not physically have one.
   // Skipping will reduce the wasteful waking of powerm due to keyboard events.
@@ -137,6 +146,7 @@ bool Input::RegisterInputEvent(int fd) {
     LOG(INFO) << "Skipping interface : " << phys;
     return false;
   }
+#endif
 
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {

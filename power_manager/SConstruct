@@ -26,6 +26,14 @@ base_env['CFLAGS'].extend(Split(extra_flags))
 base_env['CXXFLAGS'].extend(Split(extra_flags))
 base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 
+# Switch between new and legacy power button behavior.
+# Legacy : power button doesn't send release signal at the right time.
+# First button push enables lock screen. Second button push shuts down.
+# New : power button supports proper release signal. Long button press to shut
+# down.
+if ARGUMENTS.get('POWER_BUTTON', '').lower() == 'new':
+  base_env.Append(CPPDEFINES=['NEW_POWER_BUTTON'])
+
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):
   if key in os.environ:

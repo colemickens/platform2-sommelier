@@ -47,16 +47,18 @@ void PowerButtonHandler::HandleButtonDown() {
 
   state_ = kStateWaitingForRelease;
 
-// TODO(derat): Once we have boards that report power button releases correctly
-// (as opposed to just sending them immediately after the press event), define
-// this appropriately in the SConstruct file.
-#ifdef POWER_BUTTON_RELEASES_ARE_REPORTED
+#ifdef NEW_POWER_BUTTON
+  // Power button release supported. This allows us to schedule events based
+  // on how long the button was held down.
   DCHECK(!shutdown_timeout_id_);
   shutdown_timeout_id_ =
       g_timeout_add(kShutdownTimeoutMs,
                     PowerButtonHandler::HandleShutdownTimeoutThunk,
                     this);
 #else
+  // Legacy behavior for x86 systems because the ACPI button driver sends both
+  // down and release events at the time the acpi notify occurs for power
+  // button.
   if (!util::LoggedIn() || daemon_->locker()->is_locked())
     HandleShutdownTimeout();
   else
