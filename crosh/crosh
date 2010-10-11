@@ -40,6 +40,18 @@ HELP='
  ssh <user> <host> [<port>]
   Open an ssh connection to the given <host>, as <user>.  The <port> parameter
   is optional and defaults to 22.
+
+ enterprise_ca_approve [--allow-self-signed] <url>
+  Approve an enterprise certificate authority.  The <url> option should be
+  an http or https url to your enterprise Certificate Authority in PEM
+  format.  This CA will be used to validate the signature of an enterprise
+  policy extension.
+
+  If the --allow-self-signed option is provided, then you may provide a self
+  signed CA.  Use this only if you are certain of the source of the CA.
+
+ enterprise_ca_disapprove
+  Remove a previously approved enterprise certificate authority.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -131,6 +143,21 @@ cmd_ssh() {
 
   echo "open: host: $host, user: $user, port: $port"
   ssh -p "$port" "$user@$host"
+}
+
+cmd_enterprise_ca_approve() {
+  local option=""
+
+  if [ "$1" = "--allow-self-signed" ]; then
+    option="--allow_self_signed"
+    shift
+  fi
+
+  /usr/sbin/entdwife.sh -c approve "$option" -C "$1"
+}
+
+cmd_enterprise_ca_disapprove() {
+  /usr/sbin/entdwife.sh -c disapprove
 }
 
 substr() {
