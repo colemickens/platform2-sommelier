@@ -228,6 +228,7 @@ enum ReturnCode {
   kNotSupportedByDevice = 1025,
   kNoTrackingSessionHasBeenStarted = 1065,
   kInformationElementUnavailable = 1074,
+  kQMIHardwareRestricted = 1083
 };
 
 // Selected call failure reasons from table 2-4 "Call end reason codes"

@@ -22,6 +22,8 @@ extern "C" {
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
+#include <metrics/c_metrics_library.h>
+
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
 static const char *kFifoName = "/tmp/gobi-nmea";
@@ -215,6 +217,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
   RegisterStartSuspend(hooks_name_);
   handler_->server().suspend_ok_hooks().Add(hooks_name_, SuspendOkTrampoline,
                                             this);
+  metrics_lib_.reset(new MetricsLibrary());
+  metrics_lib_->Init();
 }
 
 GobiModem::~GobiModem() {
@@ -224,6 +228,18 @@ GobiModem::~GobiModem() {
   handler_->server().suspend_ok_hooks().Del(hooks_name_);
 
   ApiDisconnect();
+}
+
+enum {
+  METRIC_INDEX_NONE = 0,
+  METRIC_INDEX_QMI_HARDWARE_RESTRICTED,
+  METRIC_INDEX_MAX
+};
+
+static unsigned int QCErrorToMetricIndex(unsigned int error) {
+  if (error == gobi::kQMIHardwareRestricted)
+    return METRIC_INDEX_QMI_HARDWARE_RESTRICTED;
+  return METRIC_INDEX_NONE;
 }
 
 // DBUS Methods: Modem
@@ -241,6 +257,9 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ULONG gps_capability;
 
     ULONG rc = sdk_->SetPower(gobi::kOnline);
+    metrics_lib_->SendEnumToUMA("Network.3G.Gobi.SetPower",
+                                QCErrorToMetricIndex(rc),
+                                METRIC_INDEX_MAX);
     ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
     rc = sdk_->GetFirmwareInfo(&firmware_id,
                                &technology,

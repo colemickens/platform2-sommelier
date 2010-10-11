@@ -20,6 +20,7 @@
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/modem-cdma_server_glue.h>
 #include <cromo/utilities.h>
+#include <metrics/metrics_library.h>
 
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
@@ -308,6 +309,8 @@ class GobiModem
   friend bool ExitOkTrampoline(void *arg);
   friend bool StartSuspendTrampoline(void *arg);
   friend bool SuspendOkTrampoline(void *arg);
+
+  scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
