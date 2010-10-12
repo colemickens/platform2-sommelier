@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <dbus/dbus-shared.h>
 #include <errno.h>
 #include <sys/wait.h>
 #include <gdk/gdkx.h>
@@ -15,6 +16,8 @@
 #include "power_manager/util.h"
 
 namespace power_manager {
+
+static const int kCheckLidClosedSeconds = 10;
 
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
                                bool use_input_for_key_power,
@@ -28,8 +31,10 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
     metrics_lib_(metrics_lib),
     power_button_state_(false),
     retry_suspend_count_(0),
-    suspend_sequence_number_(0),
-    suspend_pid_(0) {}
+    suspend_pid_(0),
+    lid_id_(0),
+    powerd_id_(0),
+    powerd_state_(kPowerManagerUnknown) {}
 
 void PowerManDaemon::Init() {
   int lid_state = 0;
@@ -58,11 +63,27 @@ void PowerManDaemon::Run() {
   g_main_loop_run(loop_);
 }
 
+gboolean PowerManDaemon::CheckLidClosed(gpointer object) {
+  RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
+  PowerManDaemon* daemon = payload->daemon;
+  // same lid closed event and powerd state has changed
+  if ((daemon->lidstate_ == kLidClosed) &&
+      (daemon->lid_id_ == payload->lid_id) &&
+      ((daemon->powerd_state_ != kPowerManagerAlive) ||
+       (daemon->powerd_id_ != payload->powerd_id))) {
+    LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
+    daemon->Suspend();
+  }
+  // lid closed events will re-trigger if necessary so always false return
+  delete(payload);
+  return false;
+}
+
 gboolean PowerManDaemon::RetrySuspend(gpointer object) {
   RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
   PowerManDaemon* daemon = payload->daemon;
   if (daemon->lidstate_ == kLidClosed) {
-    if (daemon->suspend_sequence_number_ == payload->suspend_sequence_number) {
+    if (daemon->lid_id_ == payload->lid_id) {
       daemon->retry_suspend_count_++;
       if (daemon->retry_suspend_count_ > daemon->retry_suspend_attempts_) {
         LOG(ERROR) << "Retry suspend attempts failed ... shutting down";
@@ -75,7 +96,7 @@ gboolean PowerManDaemon::RetrySuspend(gpointer object) {
       LOG(INFO) << "Retry suspend sequence number changed, retry delayed";
     }
   } else {
-    daemon->CleanupSuspendRetry();
+    daemon->CleanupRetrySuspend();
     LOG(INFO) << "Retry suspend cancelled ... lid is open";
   }
   delete(payload);
@@ -87,11 +108,26 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
   switch (type) {
     case LID: {
       daemon->lidstate_ = daemon->GetLidState(value);
-      daemon->suspend_sequence_number_++;
+      daemon->lid_id_++;
       LOG(INFO) << "PowerM Daemon - lid "
-                << (daemon->lidstate_ == kLidClosed?"closed.":"opened.");
+                << (daemon->lidstate_ == kLidClosed?"closed.":"opened.")
+                << " powerd "
+                << (daemon->powerd_state_ == kPowerManagerDead?
+                    "dead":(daemon->powerd_state_ == kPowerManagerAlive?
+                            "alive":"unknown"));
       if (daemon->lidstate_ == kLidClosed) {
-        util::SendSignalToPowerD(util::kLidClosed);
+        if (daemon->powerd_state_ != kPowerManagerAlive) {
+          // powerd is not alive so act on its behalf
+          LOG(INFO) << "Forced suspend, powerd is not alive";
+          daemon->Suspend();
+        } else {
+          util::SendSignalToPowerD(util::kLidClosed);
+          // Check that powerd stuck around to act on  this event.  If not,
+          // callback will assume suspend responsibilities
+          RetrySuspendPayload* payload = daemon->CreateRetrySuspendPayload();
+          g_timeout_add_seconds(kCheckLidClosedSeconds,
+                                &(PowerManDaemon::CheckLidClosed), payload);
+        }
       } else {
         util::SendSignalToPowerD(util::kLidOpened);
       }
@@ -167,6 +203,27 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   return DBUS_HANDLER_RESULT_HANDLED;
 }
 
+void PowerManDaemon::DBusNameOwnerChangedHandler(
+    DBusGProxy*, const gchar* name, const gchar* old_owner,
+    const gchar* new_owner, void *data) {
+  PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
+  if (strcmp(name, util::kPowerManagerInterface) == 0) {
+    DLOG(INFO) << "name:" << name << " old_owner:" << old_owner
+               << " new_owner:" << new_owner;
+    daemon->powerd_id_++;
+    if (strlen(new_owner) == 0) {
+      daemon->powerd_state_ = kPowerManagerDead;
+      LOG(WARNING) << "Powerd has stopped";
+    } else if (strlen(old_owner) == 0) {
+      daemon->powerd_state_ = kPowerManagerAlive;
+      LOG(INFO) << "Powerd has started";
+    } else {
+      daemon->powerd_state_ = kPowerManagerUnknown;
+      LOG(WARNING) << "Unrecognized DBus NameOwnerChanged transition of powerd";
+    }
+  }
+}
+
 void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
                                    const char *interface) {
   DBusError error;
@@ -188,6 +245,20 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   AddDBusMatch(connection, util::kPowerManagerInterface);
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));
+
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
+      chromeos::dbus::GetSystemBusConnection().g_connection(),
+      DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
+
+  if (NULL == proxy) {
+    LOG(ERROR) << "Failed to connect to freedesktop dbus server.";
+    NOTREACHED();
+  }
+  dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",G_TYPE_STRING,
+                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
+                              G_CALLBACK(DBusNameOwnerChangedHandler),
+                              this, NULL);
   LOG(INFO) << "DBus monitoring started";
 }
 
@@ -195,7 +266,7 @@ void PowerManDaemon::Shutdown() {
   util::Launch("shutdown -P now");
 }
 
-void PowerManDaemon::CleanupSuspendRetry() {
+void PowerManDaemon::CleanupRetrySuspend() {
   // kill any previously attempted suspend thats hanging around
   if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
     if (kill(-suspend_pid_, SIGTERM)) {
@@ -207,15 +278,20 @@ void PowerManDaemon::CleanupSuspendRetry() {
   }
 }
 
+PowerManDaemon::RetrySuspendPayload* PowerManDaemon::CreateRetrySuspendPayload() {
+  RetrySuspendPayload* payload = new RetrySuspendPayload;
+  payload->lid_id = lid_id_;
+  payload->powerd_id = powerd_id_;
+  payload->daemon = this;
+  return payload;
+}
+
 void PowerManDaemon::Suspend() {
   LOG(INFO) << "Launching Suspend";
 
-  CleanupSuspendRetry();
+  CleanupRetrySuspend();
 
-  RetrySuspendPayload* payload = new RetrySuspendPayload;
-  payload->daemon = this;
-  payload->suspend_sequence_number = suspend_sequence_number_;
-
+  RetrySuspendPayload* payload = CreateRetrySuspendPayload();
   g_timeout_add_seconds(
       retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend),
       payload);
