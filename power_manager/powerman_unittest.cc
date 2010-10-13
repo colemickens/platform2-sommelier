@@ -33,7 +33,7 @@ class PowerManDaemonTest : public Test {
     EXPECT_EQ(1, daemon_.lidstate_);
     EXPECT_EQ(false, daemon_.power_button_state_);
     EXPECT_EQ(0, daemon_.retry_suspend_count_);
-    EXPECT_EQ(0, daemon_.suspend_sequence_number_);
+    EXPECT_EQ(0, daemon_.lid_id_);
     EXPECT_EQ(0, daemon_.suspend_pid_);
   }
 
