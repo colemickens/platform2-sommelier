@@ -227,7 +227,6 @@ repl() {
     echo "Sorry, line editing and command history disabled due to" \
       "shell limitations."
   fi
-  echo
 
   while [ 1 ]; do
     if shell_read LINE_; then
@@ -242,6 +241,7 @@ repl() {
   done
 }
 
+INPUTRC="$(dirname "$0")/inputrc.crosh"
 HISTFILE="$HOME/.crosh_history"
 shell_history -r $HISTFILE
 
