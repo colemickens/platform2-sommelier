@@ -25,6 +25,13 @@ extern "C" {
 
 #include <metrics/c_metrics_library.h>
 
+// This ought to be in a header file somewhere, but if it is, I can't find it.
+#ifndef NDEBUG
+static const int DEBUG = 1;
+#else
+static const int DEBUG = 0;
+#endif
+
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
 static const char *kFifoName = "/tmp/gobi-nmea";
@@ -708,7 +715,6 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
 
-  LOG(INFO) << "GetRegistrationState";
   cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 
@@ -729,20 +735,23 @@ void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
   }
 
   for (int i = 0; i < num_radio_interfaces; i++) {
-    LOG(INFO) << "Registration state " << reg_state << " (" << mm_reg_state
-              << ") for RFI " << (int)radio_interfaces[i];
+    DLOG(INFO) << "Registration state " << reg_state << " (" << mm_reg_state
+               << ") for RFI " << (int)radio_interfaces[i];
     if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
       cdma_1x_state = mm_reg_state;
     else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
       evdo_state = mm_reg_state;
   }
-  LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }
 
+// This is only in debug builds; if you add actual code here, see
+// RegisterCallbacks().
 static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
   LOG(INFO) << "ByteTotalsCallback: tx " << tx << " rx " << rx;
 }
 
+// This is only in debug builds; if you add actual code here, see
+// RegisterCallbacks().
 static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
   ULONG *ucaps = reinterpret_cast<ULONG*>(caps);
   LOG(INFO) << "DataCapabiliesHandler: " << size << " caps";
@@ -751,6 +760,8 @@ static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
   }
 }
 
+// This is only in debug builds; if you add actual code here, see
+// RegisterCallbacks().
 static void DormancyStatusCallback(ULONG status) {
   LOG(INFO) << "DormancyStatusCallback: " << status;
 }
@@ -791,9 +802,6 @@ static void OMADMAlertCallback(ULONG type, USHORT id) {
 }
 
 void GobiModem::RegisterCallbacks() {
-  sdk_->SetByteTotalsCallback(ByteTotalsCallback, 1);
-  sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallback);
-  sdk_->SetDormancyStatusCallback(DormancyStatusCallback);
   sdk_->SetMobileIPStatusCallback(MobileIPStatusCallback);
   sdk_->SetPowerCallback(PowerCallback);
   sdk_->SetRFInfoCallback(RFInfoCallback);
@@ -809,6 +817,13 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);
   sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
+
+  if (DEBUG) {
+    // These are only used for logging.
+    sdk_->SetByteTotalsCallback(ByteTotalsCallback, 60);
+    sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallback);
+    sdk_->SetDormancyStatusCallback(DormancyStatusCallback);
+  }
 
   static int num_thresholds = kSignalStrengthNumLevels - 1;
   int interval =
@@ -921,9 +936,9 @@ void GobiModem::LogGobiInformation() {
   DBus::Error error;
   GetSerialNumbers(&serials, error);
   if (!error.is_set()) {
-    LOG(INFO) << "ESN: " << serials.esn;
-    LOG(INFO) << "IMEI: " << serials.imei;
-    LOG(INFO) << "MEID: " << serials.meid;
+    LOG(INFO) << "ESN " << serials.esn
+              << " IMEI " << serials.imei
+              << " MEID " << serials.meid;
   } else {
     LOG(WARNING) << "Cannot get serial numbers: " << error;
   }
@@ -1271,8 +1286,8 @@ void GobiModem::GetSignalStrengthDbm(int& output,
 
   INT8 max_strength = -127;
   for (ULONG i = 0; i < signals; ++i) {
-    LOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
-              << " dBM technology: " << interfaces[i];
+    DLOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
+               << " dBM technology: " << interfaces[i];
     // TODO(ers) mark radio interface technology as registered?
     if (strengths[i] > max_strength) {
       max_strength = strengths[i];
@@ -1548,9 +1563,9 @@ void GobiModem::SignalStrengthHandler(INT8 signal_strength,
       signal_strength_dbm_to_percent(signal_strength);
   // TODO(ers) only send DBus signal for "active" interface
   SignalQuality(ss_percent);
-  LOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
-            << " dBm on radio interface " << radio_interface
-            << " (" << ss_percent << "%)";
+  DLOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
+             << " dBm on radio interface " << radio_interface
+             << " (" << ss_percent << "%)";
   // TODO(ers) mark radio interface technology as registered?
 }
 
@@ -1581,7 +1596,6 @@ void GobiModem::RegistrationStateHandler() {
   uint32_t evdo_state;
   DBus::Error error;
 
-  LOG(INFO) << "RegistrationStateHandler";
   GetRegistrationState(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
@@ -1592,6 +1606,8 @@ void GobiModem::RegistrationStateHandler() {
     // TODO(ers) send a signal or change a property to notify
     // listeners about the change in data bearer technology
   }
+
+  LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }
 
 // Set DBus properties that pertain to the modem hardware device.

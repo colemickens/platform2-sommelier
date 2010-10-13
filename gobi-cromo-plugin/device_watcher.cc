@@ -125,16 +125,16 @@ void DeviceWatcher::HandleUdevEvent() {
     LOG(WARNING) << "No device from receive_device";
     return;
   }
-  LOG(INFO) << "Device Event";
-  LOG(INFO) << "  Driver: " << udev_device_get_driver(device);
-  LOG(INFO) << "  Node: " << udev_device_get_devnode(device);
-  LOG(INFO) << "  Subsystem: " << udev_device_get_subsystem(device);
-  LOG(INFO) << "  Devtype: " << udev_device_get_devtype(device);
-  LOG(INFO) << "  Action: " << udev_device_get_action(device);
+  LOG(INFO) << "Device Event: "
+            << "  Driver: " << udev_device_get_driver(device)
+            << "  Node: " << udev_device_get_devnode(device)
+            << "  Subsystem: " << udev_device_get_subsystem(device)
+            << "  Devtype: " << udev_device_get_devtype(device)
+            << "  Action: " << udev_device_get_action(device);
   struct udev_list_entry* entry = udev_device_get_properties_list_entry(device);
   while (entry != NULL) {
-    LOG(INFO) << "    prop " << udev_list_entry_get_name(entry) << " = "
-              << udev_list_entry_get_value(entry);
+    DLOG(INFO) << "    prop " << udev_list_entry_get_name(entry) << " = "
+               << udev_list_entry_get_value(entry);
     entry = udev_list_entry_get_next(entry);
   }
   if (device_callback_ != NULL)

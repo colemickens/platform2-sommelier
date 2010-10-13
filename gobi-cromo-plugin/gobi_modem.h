@@ -206,15 +206,11 @@ class GobiModem
   static gboolean SessionStateCallback(gpointer data);
 
   static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
-    // TODO(ers) remove following log statement after logging spew is resolved
-    LOG(INFO) << "DataBearerCallback: " << data_bearer_technology;
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
 
   static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
-    // TODO(ers) remove following log statement after logging spew is resolved
-    LOG(INFO) << "RoamingIndicatorCallback: " << roaming;
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
