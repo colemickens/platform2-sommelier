@@ -117,6 +117,8 @@ const char SessionManagerService::kLegalCharacters[] =
     ".@1234567890";
 //static
 const char SessionManagerService::kIncognitoUser[] = "";
+//static
+const char SessionManagerService::kDeviceOwnerProperty[] = "cros.device.owner";
 
 namespace {
 
@@ -397,6 +399,8 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
       child_job->StartSession(email_lower);
     }
     session_started_ = true;
+    current_user_.assign(email_lower);
+    StoreOwnerProperties(error);
 
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
     g_signal_emit(session_manager_,
@@ -428,6 +432,13 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
                                             GError** error) {
   LOG(INFO) << "key size is " << public_key_der->len;
 
+  if (!session_started_) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Illegal attempt to set the owner's public key.");
+    return FALSE;
+  }
+
   if (!nss_->OpenUserDB()) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,
@@ -438,7 +449,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   std::vector<uint8> pub_key;
   NssUtil::KeyFromBuffer(public_key_der, &pub_key);
 
-  if (!nss_->CheckOwnerKey(pub_key)) {
+  if (!nss_->GetPrivateKey(pub_key)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
               "Could not verify that public key belongs to the owner.");
@@ -455,7 +466,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
                   PersistKey,
                   key_.get(),
                   NULL);
-  return TRUE;
+  return StoreOwnerProperties(error);
 }
 
 gboolean SessionManagerService::Unwhitelist(gchar* email_address,
@@ -543,19 +554,7 @@ gboolean SessionManagerService::Whitelist(gchar* email_address,
     return FALSE;
   }
   std::string data(signature->data, signature->len);
-  std::string encoded;
-  if (!base::Base64Encode(data, &encoded)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
-              "Signature could not be encoded.");
-    return FALSE;
-  }
-  store_->Whitelist(email_address, encoded);
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistWhitelist,
-                  store_.get(),
-                  NULL);
-  return TRUE;
+  return WhitelistHelper(email_address, data, error);
 }
 
 gboolean SessionManagerService::StoreProperty(gchar* name,
@@ -580,19 +579,7 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
     return FALSE;
   }
   std::string data(signature->data, signature->len);
-  std::string encoded;
-  if (!base::Base64Encode(data, &encoded)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
-              "Signature could not be verified.");
-    return FALSE;
-  }
-  store_->Set(name, value, encoded);
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistStore,
-                  store_.get(),
-                  NULL);
-  return TRUE;
+  return SetPropertyHelper(name, value, data, error);
 }
 
 gboolean SessionManagerService::RetrieveProperty(gchar* name,
@@ -856,6 +843,76 @@ void SessionManagerService::SetGError(GError** error,
                                       ChromeOSLoginError code,
                                       const char* message) {
   g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
+}
+
+gboolean SessionManagerService::StoreOwnerProperties(GError** error) {
+  std::vector<uint8> signature;
+  std::string to_sign = base::StringPrintf("%s=%s",
+                                           kDeviceOwnerProperty,
+                                           current_user_.c_str());
+  if (!key_->Sign(to_sign.c_str(), to_sign.length(), &signature)) {
+    LOG(INFO) << "Could not sign owner property";
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Could not add owner property.");
+    return FALSE;
+  }
+  std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
+                               signature.size());
+  if (!SetPropertyHelper(kDeviceOwnerProperty,
+                         current_user_.c_str(),
+                         signature_string,
+                         error)) {
+    return FALSE;
+  }
+  signature.clear();
+  if (!key_->Sign(current_user_.c_str(), current_user_.length(), &signature)) {
+    LOG(INFO) << "Could not sign owner whitelist attempt";
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Could not whitelist owner.");
+    return FALSE;
+  }
+  signature_string.assign(reinterpret_cast<const char*>(&signature[0]),
+                          signature.size());
+  return WhitelistHelper(current_user_, signature_string, error);
+}
+
+gboolean SessionManagerService::SetPropertyHelper(const char* name,
+                                                  const char* value,
+                                                  const std::string& signature,
+                                                  GError** error) {
+  std::string encoded;
+  if (!base::Base64Encode(signature, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
+              "Signature could not be verified.");
+    return FALSE;
+  }
+  store_->Set(name, value, encoded);
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistStore,
+                  store_.get(),
+                  NULL);
+  return TRUE;
+}
+
+gboolean SessionManagerService::WhitelistHelper(const std::string& email,
+                                                const std::string& signature,
+                                                GError** error) {
+  std::string encoded;
+  if (!base::Base64Encode(signature, &encoded)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
+              "Signature could not be encoded.");
+    return FALSE;
+  }
+  store_->Whitelist(email, encoded);
+  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
+                  PersistWhitelist,
+                  store_.get(),
+                  NULL);
+  return TRUE;
 }
 
 // static

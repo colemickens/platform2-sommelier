@@ -11,6 +11,10 @@
 #include <base/file_path.h>
 #include <gmock/gmock.h>
 
+namespace base {
+class RSAPrivateKey;
+}
+
 namespace login_manager {
 using ::testing::Return;
 
@@ -23,12 +27,15 @@ class MockNssUtil : public NssUtil {
   virtual ~MockNssUtil() {}
 
   MOCK_METHOD0(OpenUserDB, bool());
-  MOCK_METHOD1(CheckOwnerKey, bool(const std::vector<uint8>&));
+  MOCK_METHOD1(GetPrivateKey, base::RSAPrivateKey*(const std::vector<uint8>&));
   MOCK_METHOD0(GetOwnerKeyFilePath, FilePath());
   MOCK_METHOD8(Verify, bool(const uint8* algorithm, int algorithm_len,
                             const uint8* signature, int signature_len,
                             const uint8* data, int data_len,
                             const uint8* public_key, int public_key_len));
+  MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
+                          std::vector<uint8>* OUT_signature,
+                          base::RSAPrivateKey* key));
 };
 
 template<typename T>

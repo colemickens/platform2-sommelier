@@ -33,7 +33,8 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
   std::vector<uint8> public_key;
   ASSERT_TRUE(key_pair->ExportPublicKey(&public_key));
 
-  EXPECT_TRUE(util_->CheckOwnerKey(public_key));
+  EXPECT_NE(util_->GetPrivateKey(public_key),
+            reinterpret_cast<base::RSAPrivateKey*>(NULL));
 }
 
 }  // namespace login_manager

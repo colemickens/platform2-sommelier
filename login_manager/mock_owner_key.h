@@ -21,6 +21,7 @@ class MockOwnerKey : public OwnerKey {
   MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8>&));
   MOCK_METHOD0(Persist, bool());
   MOCK_METHOD4(Verify, bool(const char*, uint32, const char*, uint32));
+  MOCK_METHOD3(Sign, bool(const char*, uint32, std::vector<uint8>*));
 };
 }  // namespace login_manager
 

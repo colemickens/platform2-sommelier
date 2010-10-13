@@ -6,6 +6,7 @@
 
 #include <base/basictypes.h>
 #include <base/crypto/rsa_private_key.h>
+#include <base/crypto/signature_creator.h>
 #include <base/crypto/signature_verifier.h>
 #include <base/file_path.h>
 #include <base/logging.h>
@@ -35,7 +36,7 @@ class NssUtilImpl : public NssUtil {
 
   bool OpenUserDB();
 
-  bool CheckOwnerKey(const std::vector<uint8>& public_key_der);
+  base::RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
 
   FilePath GetOwnerKeyFilePath();
 
@@ -44,6 +45,9 @@ class NssUtilImpl : public NssUtil {
               const uint8* data, int data_len,
               const uint8* public_key, int public_key_len);
 
+  bool Sign(const uint8* data, int data_len,
+            std::vector<uint8>* OUT_signature,
+            base::RSAPrivateKey* key);
  private:
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
@@ -79,14 +83,13 @@ bool NssUtilImpl::OpenUserDB() {
   return true;
 }
 
-bool NssUtilImpl::CheckOwnerKey(const std::vector<uint8>& public_key_der) {
+base::RSAPrivateKey* NssUtilImpl::GetPrivateKey(
+    const std::vector<uint8>& public_key_der) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
     return false;
   }
-  scoped_ptr<base::RSAPrivateKey> pair(
-      base::RSAPrivateKey::FindFromPublicKeyInfo(public_key_der));
-  return pair.get() != NULL;
+  return base::RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
 }
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {
@@ -110,6 +113,18 @@ bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
 
   verifier_.VerifyUpdate(data, data_len);
   return (verifier_.VerifyFinal());
+}
+
+// This is pretty much just a blind passthrough, so I won't test it
+// in the NssUtil unit tests.  I'll test it from a class that uses this API.
+bool NssUtilImpl::Sign(const uint8* data, int data_len,
+                       std::vector<uint8>* OUT_signature,
+                       base::RSAPrivateKey* key) {
+  scoped_ptr<base::SignatureCreator> signer(
+      base::SignatureCreator::Create(key));
+  if (!signer->Update(data, data_len))
+    return false;
+  return signer->Final(OUT_signature);
 }
 
 }  // namespace login_manager

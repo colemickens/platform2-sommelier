@@ -58,6 +58,13 @@ class OwnerKey {
                       uint32 data_len,
                       const char* signature,
                       uint32 sig_len);
+
+  // Generate |OUT_signature|, a valid sha1 w/ RSA signature over the data in
+  // |data| that can be verified with |key_|.
+  // Returns false if the sig is invalid, or there's an error.
+  virtual bool Sign(const char* data,
+                    uint32 data_len,
+                    std::vector<uint8>* OUT_signature);
  private:
   static const uint8 kAlgorithm[];
 

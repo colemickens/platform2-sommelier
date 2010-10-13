@@ -12,6 +12,7 @@
 #include "base/base64.h"
 #include "base/basictypes.h"
 #include "base/command_line.h"
+#include "base/crypto/rsa_private_key.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
@@ -125,6 +126,19 @@ class SessionManagerTest : public ::testing::Test {
 
   void MockUtils() {
     manager_->test_api().set_systemutils(utils_.release());
+  }
+
+  void ExpectStartSession(const std::string& email_string, MockChildJob* job) {
+    EXPECT_CALL(*job, StartSession(email_string))
+        .Times(1);
+    MockOwnerKey* key = new MockOwnerKey;
+    EXPECT_CALL(*key, Sign(_, _, _))
+        .WillOnce(Return(false));
+    manager_->test_api().set_ownerkey(key);
+  }
+
+  void StartFakeSession() {
+    manager_->test_api().set_session_started(true, kFakeEmail);
   }
 
   enum ChildRuns {
@@ -399,10 +413,7 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
       .WillOnce(Return(true));
   MockUtils();
 
-  std::string email_string(email);
-  EXPECT_CALL(*job, StartSession(email_string))
-      .Times(1);
-
+  ExpectStartSession(email, job);
   manager_->StartSession(email, nothing, &out, NULL);
   manager_->test_api().CleanupChildren(timeout);
 }
@@ -425,10 +436,7 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
 
-  std::string email_string(email);
-  EXPECT_CALL(*job, StartSession(email_string))
-      .Times(1);
-
+  ExpectStartSession(email, job);
   manager_->StartSession(email, nothing, &out, NULL);
   test_api.CleanupChildren(timeout);
 }
@@ -478,9 +486,7 @@ TEST_F(SessionManagerTest, StartSessionTest) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
-  std::string email_string(email);
-  EXPECT_CALL(*job, StartSession(email_string))
-      .Times(1);
+  ExpectStartSession(email, job);
   manager_->StartSession(email, nothing, &out, NULL);
 }
 
@@ -532,12 +538,21 @@ class SadNssUtil : public MockNssUtil {
   virtual ~SadNssUtil() {}
 };
 
+TEST_F(SessionManagerTest, SetOwnerKeyNoSession) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  MockUtils();
+
+  GError* error = NULL;
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
+}
+
 TEST_F(SessionManagerTest, SetOwnerKeyNssDbFail) {
   MockFactory<SadNssUtil> factory;
   NssUtil::set_factory(&factory);
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
+  StartFakeSession();
 
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
@@ -548,8 +563,8 @@ class KeyFailUtil : public MockNssUtil {
   KeyFailUtil() : MockNssUtil() {
     EXPECT_CALL(*this, OpenUserDB())
         .WillOnce(Return(true));
-    EXPECT_CALL(*this, CheckOwnerKey(_))
-        .WillOnce(Return(false));
+    EXPECT_CALL(*this, GetPrivateKey(_))
+        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(NULL)));
   }
   virtual ~KeyFailUtil() {}
 };
@@ -560,6 +575,7 @@ TEST_F(SessionManagerTest, SetOwnerKeyCheckFail) {
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
+  StartFakeSession();
 
   GError* error = NULL;
   EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
@@ -570,8 +586,8 @@ class KeyCheckUtil : public MockNssUtil {
   KeyCheckUtil() : MockNssUtil() {
     EXPECT_CALL(*this, OpenUserDB())
         .WillOnce(Return(true));
-    EXPECT_CALL(*this, CheckOwnerKey(_))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*this, GetPrivateKey(_))
+        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(7)));
   }
   virtual ~KeyCheckUtil() {}
 };
@@ -582,6 +598,7 @@ TEST_F(SessionManagerTest, SetOwnerKeyPopulateFail) {
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
+  StartFakeSession();
 
   std::vector<uint8> pub_key;
   NssUtil::KeyFromBuffer(fake_key_, &pub_key);
@@ -596,32 +613,13 @@ TEST_F(SessionManagerTest, SetOwnerKeyPopulateFail) {
   EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key_, &error));
 }
 
-TEST_F(SessionManagerTest, InitiateSetOwnerKey) {
-  MockFactory<KeyCheckUtil> factory;
-  NssUtil::set_factory(&factory);
-
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockUtils();
-
-  std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(fake_key_, &pub_key);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
-      .WillOnce(Return(true));
-
-  manager_->test_api().set_ownerkey(key);
-
-  GError* error = NULL;
-  EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
-}
-
 TEST_F(SessionManagerTest, SetOwnerKey) {
   MockFactory<KeyCheckUtil> factory;
   NssUtil::set_factory(&factory);
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
+  StartFakeSession();
 
   std::vector<uint8> pub_key;
   NssUtil::KeyFromBuffer(fake_key_, &pub_key);
@@ -631,15 +629,29 @@ TEST_F(SessionManagerTest, SetOwnerKey) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
       .WillOnce(Return(true));
+  EXPECT_CALL(*key, Sign(_, _, _))
+      .WillOnce(Return(true))
+      .WillOnce(Return(true));
   EXPECT_CALL(*key, Persist())
       .WillOnce(Return(true));
 
   manager_->test_api().set_ownerkey(key);
 
+  EXPECT_CALL(*store_, Whitelist(kFakeEmail, _))
+      .Times(1);
+  EXPECT_CALL(*store_, Set(_, kFakeEmail, _))
+      .Times(1);
+  EXPECT_CALL(*store_, Persist())
+      .WillOnce(Return(true))
+      .WillOnce(Return(true))
+      .WillOnce(Return(true));
+
+  manager_->test_api().set_prefstore(store_);
+
   GError* error = NULL;
   EXPECT_EQ(TRUE, manager_->SetOwnerKey(fake_key_, &error));
 
-  SimpleRunManager();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, WhitelistNoKey) {

@@ -82,6 +82,13 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
       session_manager_service_->CleanupChildren(timeout);
     }
 
+    // Set whether a session has been started.
+    void set_session_started(bool started, const std::string& email) {
+      session_manager_service_->session_started_ = started;
+      if (started)
+        session_manager_service_->current_user_ = email;
+    }
+
     // Sets whether the screen is locked.
     // TODO(davemoore) Need to come up with a way to mock dbus so we can
     // better test this functionality.
@@ -313,6 +320,28 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   void SetGError(GError** error, ChromeOSLoginError, const char* message);
 
+  // If the current user has access to the owner private key
+  // (read: is the owner), this call whitelists |current_user_|, sets a
+  // property indicating |current_user_| is the owner, and schedules both
+  // a PersistWhitelist() and a PersistStore().
+  // Returns false on failure, with |error| set appropriately.
+  gboolean StoreOwnerProperties(GError** error);
+
+  // Encodes |signature| for writing to disk, stores |name|=|value|, and
+  // schedules a PersistStore().
+  // Returns false on failure, with |error| set appropriately.
+  gboolean SetPropertyHelper(const char* name,
+                             const char* value,
+                             const std::string& signature,
+                             GError** error);
+
+  // Encodes |signature| for writing to disk, whitelists |email|, and
+  // schedules a PersistWhitelist().
+  // Returns false on failure, with |error| set appropriately.
+  gboolean WhitelistHelper(const std::string& email,
+                           const std::string& signature,
+                           GError** error);
+
   bool ShouldRunChildren();
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)
@@ -323,6 +352,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
+  static const char kDeviceOwnerProperty[];
 
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
@@ -337,6 +367,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   scoped_ptr<PrefStore> store_;
 
   bool session_started_;
+  std::string current_user_;
 
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];

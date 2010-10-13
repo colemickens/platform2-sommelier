@@ -11,6 +11,10 @@
 
 class FilePath;
 
+namespace base {
+class RSAPrivateKey;
+}
+
 namespace login_manager {
 
 // An interface to wrap the usage of base/nss_util.h and allow for mocking.
@@ -40,7 +44,9 @@ class NssUtil {
 
   virtual bool OpenUserDB() = 0;
 
-  virtual bool CheckOwnerKey(const std::vector<uint8>& public_key_der) = 0;
+  // Caller takes ownership of returned key.
+  virtual base::RSAPrivateKey* GetPrivateKey(
+      const std::vector<uint8>& public_key_der) = 0;
 
   virtual FilePath GetOwnerKeyFilePath() = 0;
 
@@ -48,6 +54,10 @@ class NssUtil {
                       const uint8* signature, int signature_len,
                       const uint8* data, int data_len,
                       const uint8* public_key, int public_key_len) = 0;
+
+  virtual bool Sign(const uint8* data, int data_len,
+                    std::vector<uint8>* OUT_signature,
+                    base::RSAPrivateKey* key) = 0;
 
  private:
   static Factory* factory_;

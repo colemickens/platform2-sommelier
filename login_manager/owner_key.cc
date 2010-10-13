@@ -4,6 +4,7 @@
 
 #include "login_manager/owner_key.h"
 
+#include <base/crypto/rsa_private_key.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -107,6 +108,23 @@ bool OwnerKey::Verify(const char* data,
                     &key_[0],
                     key_.size())) {
     LOG(ERROR) << "Signature verification of " << data << " failed";
+    return false;
+  }
+  return true;
+}
+
+bool OwnerKey::Sign(const char* data,
+                    uint32 data_len,
+                    std::vector<uint8>* OUT_signature) {
+  scoped_ptr<NssUtil> util(NssUtil::Create());
+  scoped_ptr<base::RSAPrivateKey> private_key(util->GetPrivateKey(key_));
+  if (!private_key.get())
+    return false;
+  if (!util->Sign(reinterpret_cast<const uint8*>(data),
+                  data_len,
+                  OUT_signature,
+                  private_key.get())) {
+    LOG(ERROR) << "Signing of " << data << " failed";
     return false;
   }
   return true;
