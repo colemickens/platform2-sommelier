@@ -100,6 +100,8 @@ commonlib_sources = env.Split("""crypto.cc
                                  secure_blob.cc
                                  service.cc
                                  tpm.cc
+                                 tpm_init.cc
+                                 tpm_status.pb.cc
                                  user_session.cc
                                  username_passkey.cc
                                  vault_keyset.cc
@@ -127,7 +129,7 @@ env.Append(
     CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
     LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
-            'protobuf', 'pthread', 'scrypt', 'tpm_init', 'tspi'],
+            'protobuf', 'pthread', 'scrypt', 'tspi'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)
@@ -145,6 +147,7 @@ env.Append(LIBPATH = ['.'])
 env.ParseConfig('pkg-config --cflags --libs ' \
                 'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
+env.ProtocolBuffer('tpm_status.pb.cc', 'tpm_status.proto')
 env.GlibMarshal('marshal.glibmarshal.c', 'marshal.list')
 
 env_commonlib = env.Clone()

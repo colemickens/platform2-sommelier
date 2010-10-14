@@ -49,7 +49,6 @@ Crypto::Crypto()
     : entropy_source_(kDefaultEntropySource),
       use_tpm_(false),
       load_tpm_(true),
-      default_tpm_(new Tpm()),
       tpm_(NULL),
       fallback_to_scrypt_(true) {
 }
@@ -60,21 +59,16 @@ Crypto::~Crypto() {
 bool Crypto::Init() {
   SeedRng();
   if ((use_tpm_ || load_tpm_) && tpm_ == NULL) {
-    tpm_ = default_tpm_.get();
+    tpm_ = Tpm::GetSingleton();
   }
   if (tpm_) {
-    if (!tpm_->Init(this, true)) {
-      tpm_ = NULL;
-    }
+    tpm_->Init(this, true);
   }
   return true;
 }
 
 Crypto::CryptoError Crypto::EnsureTpm(bool disconnect_first) const {
   Crypto::CryptoError result = Crypto::CE_NONE;
-  if (tpm_ == NULL) {
-    const_cast<Crypto*>(this)->tpm_ = default_tpm_.get();
-  }
   if (tpm_) {
     if (disconnect_first) {
       tpm_->Disconnect();
@@ -82,7 +76,6 @@ Crypto::CryptoError Crypto::EnsureTpm(bool disconnect_first) const {
     if (!tpm_->IsConnected()) {
       Tpm::TpmRetryAction retry_action;
       if (!tpm_->Connect(&retry_action)) {
-        const_cast<Crypto*>(this)->tpm_ = NULL;
         result = TpmErrorToCrypto(retry_action);
       }
     }
@@ -645,8 +638,21 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
     if (wrap_flags) {
       *wrap_flags |= SerializedVaultKeyset::TPM_WRAPPED;
     }
+    // If the TPM is enabled but not owned, and the keyset is TPM wrapped, then
+    // it means the TPM has been cleared since the last login, and is not
+    // re-owned.  In this case, the SRK is cleared and we cannot recover the
+    // keyset.
+    if (tpm_->IsEnabled() && !tpm_->IsOwned()) {
+      LOG(ERROR) << "Fatal error--the TPM is enabled but not owned, and this "
+                 << "keyset was wrapped by the TPM.  It is impossible to "
+                 << "recover this keyset.";
+      if (error) {
+        *error = CE_TPM_FATAL;
+      }
+      return false;
+    }
     Crypto::CryptoError local_error = EnsureTpm(false);
-    if (tpm_ == NULL) {
+    if (!tpm_->IsConnected()) {
       LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                  << "unavailable";
       if (error) {
@@ -804,7 +810,7 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
   // used to decrypt the vault keyset. For now, we allow fall-through to
   // non-TPM-wrapped if tpm_ is NULL.  When this happens, it uses Scrypt to
   // protect the vault keyset.
-  if (use_tpm_ && tpm_ != NULL) {
+  if (use_tpm_ && tpm_ != NULL && tpm_->IsConnected()) {
     // If we are using the TPM, the local_vault_wrapper becomes a
     // randomly-generated AES key.  It is this random key that actually encrypts
     // the vault keyset, and itself is wrapped by the TPM.

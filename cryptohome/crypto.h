@@ -313,7 +313,6 @@ class Crypto : public EntropySource {
   bool load_tpm_;
 
   // The TPM implementation
-  scoped_ptr<Tpm> default_tpm_;
   Tpm *tpm_;
 
   // If set, Crypto will use scrypt to protect the vault keyset when the TPM is

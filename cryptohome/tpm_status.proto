@@ -1,0 +1,17 @@
+// Copyright (c) 2009 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package cryptohome;
+
+message TpmStatus {
+  enum Flags {
+    NONE = 0;
+    OWNED_BY_THIS_INSTALL = 1;
+    USES_WELL_KNOWN_OWNER = 2;
+    USES_RANDOM_OWNER = 4;
+  }
+  required int32 flags = 1;
+  optional bytes delegation_credentials = 2;
+  optional bytes owner_password = 3;
+}

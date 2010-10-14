@@ -13,11 +13,11 @@
 #include <chromeos/glib/object.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <tpm_init/tpm_init.h>
 
 #include "cryptohome_event_source.h"
 #include "mount.h"
 #include "mount_task.h"
+#include "tpm_init.h"
 
 namespace cryptohome {
 namespace gobject {
@@ -33,7 +33,7 @@ struct Cryptohome;
 class Service : public chromeos::dbus::AbstractDbusService,
                 public MountTaskObserver,
                 public CryptohomeEventSourceSink,
-                public tpm_init::TpmInit::TpmInitCallback {
+                public TpmInit::TpmInitCallback {
  public:
   Service();
   virtual ~Service();
@@ -57,7 +57,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
   virtual void set_mount(Mount* mount)
     { mount_ = mount; }
-  virtual void set_tpm_init(tpm_init::TpmInit* tpm_init)
+  virtual void set_tpm_init(TpmInit* tpm_init)
     { tpm_init_ = tpm_init; }
   virtual void set_initialize_tpm(bool value)
     { initialize_tpm_ = value; }
@@ -145,8 +145,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   chromeos::Blob system_salt_;
   scoped_ptr<cryptohome::Mount> default_mount_;
   cryptohome::Mount* mount_;
-  scoped_ptr<tpm_init::TpmInit> default_tpm_init_;
-  tpm_init::TpmInit *tpm_init_;
+  scoped_ptr<TpmInit> default_tpm_init_;
+  TpmInit *tpm_init_;
   bool initialize_tpm_;
   base::Thread mount_thread_;
   guint async_complete_signal_;

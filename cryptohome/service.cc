@@ -75,7 +75,7 @@ Service::Service()
       system_salt_(),
       default_mount_(new cryptohome::Mount()),
       mount_(default_mount_.get()),
-      default_tpm_init_(new tpm_init::TpmInit()),
+      default_tpm_init_(new TpmInit()),
       tpm_init_(default_tpm_init_.get()),
       initialize_tpm_(true),
       mount_thread_(kMountThreadName),
@@ -97,14 +97,15 @@ Service::~Service() {
 bool Service::Initialize() {
   bool result = true;
 
-  if (initialize_tpm_) {
+  mount_->Init();
+  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
+  if (tpm && initialize_tpm_) {
+    tpm_init_->set_tpm(tpm);
     tpm_init_->Init(this);
     if (!SeedUrandom()) {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
   }
-
-  mount_->Init();
 
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
@@ -543,16 +544,14 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
 }
 
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
-  Tpm::TpmStatus tpm_status;
+  Tpm::TpmStatusInfo tpm_status;
   mount_->get_crypto()->EnsureTpm(false);
   Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
 
   if (tpm) {
     tpm->GetStatus(true, &tpm_status);
   } else {
-    Tpm temp_tpm;
-    temp_tpm.Init(mount_->get_crypto(), false);
-    temp_tpm.GetStatus(true, &tpm_status);
+    Tpm::GetSingleton()->GetStatus(true, &tpm_status);
   }
 
   if (tpm_init_) {
