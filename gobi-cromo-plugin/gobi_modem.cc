@@ -24,8 +24,6 @@ extern "C" {
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
 
-#include <metrics/c_metrics_library.h>
-
 // This ought to be in a header file somewhere, but if it is, I can't find it.
 #ifndef NDEBUG
 static const int DEBUG = 1;
