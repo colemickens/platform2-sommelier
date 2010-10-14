@@ -5,4 +5,6 @@
 # found in the LICENSE file.
 
 trap '' USR1 TTOU TTIN
-exec /usr/bin/X11/X -nolisten tcp vt01 -auth $1 2> /dev/null
+# The '-noreset' works around an apparent bug in the X server that
+# makes us fail to boot sometimes; see http://crosbug.com/7578.
+exec /usr/bin/X11/X -noreset -nolisten tcp vt01 -auth $1 2> /dev/null
