@@ -215,6 +215,10 @@ mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
 mount -n -t debugfs debugfs /sys/kernel/debug
 
+# Enable crash reporting for all future exec'd processes, even those that have
+# gone through setuid.
+echo 2 > /proc/sys/fs/suid_dumpable
+
 # NOTE: ensure that a rootdev has been found.
 if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
   # Mount OEM partner partition if OOBE has not yet been completed.
