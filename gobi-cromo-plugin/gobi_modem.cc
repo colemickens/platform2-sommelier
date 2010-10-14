@@ -13,6 +13,7 @@
 
 extern "C" {
 #include <libudev.h>
+#include <time.h>
 };
 
 #include <base/stringprintf.h>
@@ -115,6 +116,18 @@ static const int kMinSignalStrengthDbm = -113;
 // 0 bars to kSignalStrengthNumLevels-1 bars.
 static const int kSignalStrengthNumLevels = 6;
 
+// Returns the current time, in milliseconds, from an unspecified epoch.
+static unsigned long long time_ms(void) {
+  struct timespec ts;
+  unsigned long long rv;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  rv = ts.tv_sec;
+  rv *= 1000;
+  rv += ts.tv_nsec / 1000000;
+  return rv;
+}
+
 static unsigned long signal_strength_dbm_to_percent(INT8 signal_strength_dbm) {
   unsigned long signal_strength_percent;
 
@@ -204,6 +217,9 @@ GobiModem::GobiModem(DBus::Connection& connection,
       suspending_(false) {
   memcpy(&device_, &device, sizeof(device_));
 
+  metrics_lib_.reset(new MetricsLibrary());
+  metrics_lib_->Init();
+
   // Initialize DBus object properties
   SetDeviceProperties();
   SetModemProperties();
@@ -225,8 +241,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
   RegisterStartSuspend(hooks_name_);
   handler_->server().suspend_ok_hooks().Add(hooks_name_, SuspendOkTrampoline,
                                             this);
-  metrics_lib_.reset(new MetricsLibrary());
-  metrics_lib_->Init();
 }
 
 GobiModem::~GobiModem() {
@@ -287,6 +301,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       LOG(WARNING) << "Unknown carrier, id=" << carrier_id;
     }
     Enabled = true;
+    registration_start_time_ = time_ms();
     // TODO(ers) disabling NMEA thread creation
     // until issues are addressed, e.g., thread
     // leakage and possible invalid pointer references.
@@ -313,6 +328,7 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   ULONG rc;
   for (int attempt = 0; attempt < 2; ++attempt) {
     LOG(INFO) << "Starting data session attempt " << attempt;
+    connect_start_time_ = time_ms();
     rc = sdk_->StartDataSession(NULL,  // technology
                                 NULL,  // APN Name
                                 NULL,  // Authentication
@@ -352,7 +368,10 @@ void GobiModem::Disconnect(DBus::Error& error) {
     return;
   }
 
+  disconnect_start_time_ = time_ms();
   ULONG rc = sdk_->StopDataSession(session_id_);
+  if (rc != 0)
+    disconnect_start_time_ = 0;
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
   error.set(kOperationInitiatedError, "");
   // session_state_ will be set in SessionStateCallback
@@ -1218,6 +1237,7 @@ uint32_t GobiModem::Activate(const std::string& carrier_name,
     }
   }
 
+  activation_start_time_ = time_ms();
   switch (carrier->activation_method()) {
     case Carrier::kOmadm:
       return ActivateOmadm();
@@ -1483,7 +1503,7 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
   OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
   LOG(INFO) << "OMA-DM State Callback: " << args->session_state;
   GobiModem* modem = handler_->LookupByPath(*args->path);
-
+  bool activation_done = true;
   if (modem != NULL) {
     switch (args->session_state) {
       case gobi::kOmadmComplete:
@@ -1497,8 +1517,17 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
         modem->SendActivationStateChanged(
             MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
         break;
+      default:
+        activation_done = false;
     }
   }
+
+  if (activation_done) {
+    ULONG duration = time_ms() - modem->activation_start_time_;
+    modem->metrics_lib_->SendToUMA("Network.3G.Gobi.Activation", duration,
+                                   0, 150000, 20);
+  }
+
   delete args;
   return FALSE;
 }
@@ -1512,6 +1541,12 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
     if (modem->activation_callback_id_) {
       g_source_remove(modem->activation_callback_id_);
       modem->activation_callback_id_ = NULL;
+    }
+    if (args->device_activation_state == gobi::kActivated ||
+        args->device_activation_state == gobi::kNotActivated) {
+      ULONG duration = time_ms() - modem->activation_start_time_;
+      modem->metrics_lib_->SendToUMA("Network.3G.Gobi.Activation", duration, 0,
+                                     150000, 20);
     }
     if (args->device_activation_state == gobi::kActivated) {
       modem->SendActivationStateChanged(
@@ -1580,8 +1615,16 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
 
   session_state_ = state;
   if (state == gobi::kDisconnected) {
+    if (disconnect_start_time_) {
+      ULONG duration = time_ms() - disconnect_start_time_;
+      metrics_lib_->SendToUMA("Network.3G.Gobi.Disconnect", duration, 0, 150000,
+                              20);
+      disconnect_start_time_ = 0;
+    }
     session_id_ = 0;
   } else if (state == gobi::kConnected) {
+    ULONG duration = time_ms() - connect_start_time_;
+    metrics_lib_->SendToUMA("Network.3G.Gobi.Connect", duration, 0, 150000, 20);
     suspending_ = false;
   }
   bool is_connected = (state == gobi::kConnected);
@@ -1599,6 +1642,12 @@ void GobiModem::RegistrationStateHandler() {
   GetRegistrationState(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
+  if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
+      evdo_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+    ULONG duration = time_ms() - registration_start_time_;
+    metrics_lib_->SendToUMA("Network.3G.Gobi.Registration", duration, 0, 150000,
+                            20);
+  }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
   if (session_state_ == gobi::kConnected) {
     ULONG data_bearer_technology;

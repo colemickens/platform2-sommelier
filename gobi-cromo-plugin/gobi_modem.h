@@ -315,6 +315,11 @@ class GobiModem
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
+  unsigned long long activation_start_time_;
+  unsigned long long connect_start_time_;
+  unsigned long long disconnect_start_time_;
+  unsigned long long registration_start_time_;
+
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
 
