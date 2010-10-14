@@ -24,11 +24,26 @@ static const char* kDBusInterface = "org.freedesktop.DBus";
 static const char* kDBusPath = "/org/freedesktop/DBus";
 static const char* kDBusListNames = "ListNames";
 
+// Returns the current time, in milliseconds, from an unspecified epoch.
+// TODO(ellyjones): duplicated in some plugins. Figure out how to refactor that.
+static unsigned long long time_ms(void) {
+  struct timespec ts;
+  unsigned long long rv;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  rv = ts.tv_sec;
+  rv *= 1000;
+  rv += ts.tv_nsec / 1000000;
+  return rv;
+}
+
 CromoServer::CromoServer(DBus::Connection& connection)
     : DBus::ObjectAdaptor(connection, kServicePath),
       conn_(connection),
       powerd_up_(false),
-      max_suspend_delay_(0) {
+      max_suspend_delay_(0),
+      metrics_lib_(new MetricsLibrary()) {
+  metrics_lib_->Init();
 }
 
 CromoServer::~CromoServer() {
@@ -98,6 +113,8 @@ void CromoServer::CheckForPowerDaemon() {
 }
 
 void CromoServer::SuspendReady() {
+  unsigned long duration = time_ms() - suspend_start_time_;
+  metrics_lib_->SendToUMA("Network.3G.SuspendTime", duration, 0, 10000, 20);
   DBus::SignalMessage msg("/", power_manager::kPowerManagerInterface,
                           power_manager::kSuspendReady);
   LOG(INFO) << "SuspendReady: " << suspend_nonce_;
@@ -124,6 +141,7 @@ gboolean test_for_suspend(void *arg) {
 void CromoServer::SuspendDelay(unsigned int nonce) {
   LOG(INFO) << "SuspendDelay: " << nonce;
   suspend_nonce_ = nonce;
+  suspend_start_time_ = time_ms();
   start_suspend_hooks_.Run();
   if (CheckSuspendReady()) {
     return;

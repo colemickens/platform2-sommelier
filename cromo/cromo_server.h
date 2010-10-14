@@ -13,6 +13,7 @@
 
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/dbus.h>
+#include <metrics/metrics_library.h>
 
 #include "manager_server_glue.h"
 #include "hooktable.h"
@@ -94,6 +95,9 @@ class CromoServer
 
   unsigned int max_suspend_delay_;
   unsigned int suspend_nonce_;
+
+  scoped_ptr<MetricsLibraryInterface> metrics_lib_;
+  unsigned long long suspend_start_time_;
 
   DISALLOW_COPY_AND_ASSIGN(CromoServer);
 
