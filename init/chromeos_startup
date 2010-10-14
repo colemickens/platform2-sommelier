@@ -16,15 +16,20 @@ bootstat pre-startup
 mount -n -t tmpfs -o noexec,nosuid,mode=0755 udev /dev
 cp -a -f /lib/chromiumos/devices/* /dev
 
+IS_FACTORY_MODE=
+if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
+  IS_FACTORY_MODE=1
+fi
+
 # Splash screen! Unless we are in noninteractive mode.
 # TODO(sosa@chromium.org) - Use kernel flag
 if [ -x /usr/bin/ply-image ]; then
-  if [ ! -f /root/.factory_test ] && [ ! -f /root/.factory_installer ]; then
+  if [ -z "$IS_FACTORY_MODE" ]; then
     # Moblin trick: Disable blinking cursor. Without this a splash screen
     # will show a distinct cursor shape even when the cursor is set to none.
     echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png & \
-      boot_splash_pid="$!"
+    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png &
+    boot_splash_pid="$!"
   fi
 fi
 
@@ -79,10 +84,16 @@ RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 # In addition, normal and unsupported are treated are equivalent otherwise
 # booting the first time on a legacy device would clobber state for no reason.
 # (NOTE, this will not be triggered in recovery mode.)
+# DEVMODE values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
 /bin/cros_boot_mode -b -s -m developer
 DEVMODE=$((!$?))
 # File defined by clobber-state
 DEVMODE_FILE="/mnt/stateful_partition/.developer_mode"
+
+if [ -n "$IS_FACTORY_MODE" -o -O "$RESET_FILE" ]; then
+  # If in factory mode or a wipe process is already scheduled, don't change it.
+  DEVMODE=2
+fi
 
 # Transition to devmode
 if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
