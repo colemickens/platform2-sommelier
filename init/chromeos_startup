@@ -103,6 +103,9 @@ if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
   # TODO(wad) just have the dev_mode build stamp the stateful.
   if [ ! -f /root/.dev_mode ]; then
     # TODO(wad) Throw up a splash.
+    echo "Preparing your system for developer mode." >/dev/tty1
+    echo "Please wait 5 - 10 minutes . . ." >/dev/tty1
+    # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
     sleep $((60 * 5))
     touch ${RESET_FILE}
   fi
@@ -112,6 +115,9 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
   # When coming back from developer mode, we don't need to clobber
   # as aggressively. Fast will do the trick.
   if [ ! -f /root/.dev_mode ]; then
+    echo "Your system last booted in developer mode." >/dev/tty1
+    echo "Attempting to return to normal." >/dev/tty1
+    echo "Upon completion, the machine will reboot." >/dev/tty1
     echo "fast" > ${RESET_FILE}
   fi
 fi
