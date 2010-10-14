@@ -38,6 +38,7 @@ class Daemon : public XIdleMonitor {
 
   void Init();
   void Run();
+  void SetActive();
   void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
   void StartCleanShutdown();

@@ -238,6 +238,15 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
   }
 }
 
+// SetActive will transition to Normal state. Used for transitioning on events
+// that do not result in activity monitored by X, i.e. lid open.
+void Daemon::SetActive() {
+  int64 idle_time_ms;
+  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  SetIdleOffset(idle_time_ms);
+  SetIdleState(idle_time_ms);
+}
+
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
   if (is_idle && kIdleNormal == idle_state_ &&
@@ -363,10 +372,12 @@ DBusHandlerResult Daemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidClosed)) {
     LOG(INFO) << "Lid Closed event";
+    daemon->SetActive();
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidOpened)) {
     LOG(INFO) << "Lid Opened event";
+    daemon->SetActive();
     daemon->suspender_.CancelSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kPowerButtonDown)) {
@@ -386,6 +397,30 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     } else {
       LOG(INFO) << "Received clean shutdown signal, but never asked for it.";
     }
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    util::kPowerStateChanged)) {
+    LOG(INFO) << "Power state change event";
+    const char *state = '\0';
+    DBusError error;
+    dbus_error_init(&error);
+
+    if (dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &state,
+                              DBUS_TYPE_INVALID) == FALSE) {
+      LOG(WARNING) << "Trouble reading args of PowerStateChange event "
+                   << state;
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+
+    // on == resume via powerd_suspend
+    if (g_str_equal(state, "on") == TRUE) {
+      LOG(INFO) << "Resuming has commenced";
+      daemon->SetActive();
+    } else {
+      DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
+    }
+
+    // other dbus clients may be interested in consuming this signal
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
