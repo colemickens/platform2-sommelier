@@ -118,7 +118,7 @@ const char SessionManagerService::kLegalCharacters[] =
 //static
 const char SessionManagerService::kIncognitoUser[] = "";
 //static
-const char SessionManagerService::kDeviceOwnerProperty[] = "cros.device.owner";
+const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 
 namespace {
 
@@ -378,30 +378,42 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
               "Provided email address is not valid.  ASCII only.");
     return FALSE;
   }
-  string email_lower = StringToLowerASCII(email_string);
-  DLOG(INFO) << "emitting start-user-session for " << email_lower;
+  current_user_ = StringToLowerASCII(email_string);
+
+  // If the current user is the owner, and isn't whitelisted or set
+  // as the cros.device.owner pref, then do so.  This attempt only succeeds
+  // if the current user has access to the private half of the owner's
+  // registered public key.
+  StoreOwnerProperties(error);
+  // Now, the flip side...if we believe the current user to be the owner
+  // based on the cros.owner.device setting, and he DOESN'T have the private
+  // half of the public key, we must mitigate.
+  if (CurrentUserIsOwner(error) &&
+      !CurrentUserHasOwnerKey(key_->public_key_der(), error)) {
+    system_->TouchResetFile();
+    system_->SendSignalToPowerManager(power_manager::kRequestShutdownSignal);
+    return FALSE;
+  }
+
+  DLOG(INFO) << "emitting start-user-session for " << current_user_;
   string command;
   if (set_uid_) {
     command = StringPrintf("/sbin/initctl emit start-user-session "
                            "CHROMEOS_USER=%s USER_ID=%d &",
-                           email_lower.c_str(), uid_);
+                           current_user_.c_str(), uid_);
   } else {
     command = StringPrintf("/sbin/initctl emit start-user-session "
                            "CHROMEOS_USER=%s &",
-                           email_lower.c_str());
+                           current_user_.c_str());
   }
-  // TODO(yusukes,cmasone): set DATA_DIR variable as well?
 
   *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
     for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
       ChildJobInterface* child_job = child_jobs_[i_child];
-      child_job->StartSession(email_lower);
+      child_job->StartSession(current_user_);
     }
     session_started_ = true;
-    current_user_.assign(email_lower);
-    StoreOwnerProperties(error);
-
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
     g_signal_emit(session_manager_,
                   signals_[kSignalSessionStateChanged],
@@ -411,6 +423,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
               CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
               "Can't emit start-session.");
   }
+
   return *OUT_done;
 }
 
@@ -439,21 +452,11 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
     return FALSE;
   }
 
-  if (!nss_->OpenUserDB()) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,
-              "Could not open the current user's NSS database.");
-    return FALSE;
-  }
-
   std::vector<uint8> pub_key;
   NssUtil::KeyFromBuffer(public_key_der, &pub_key);
 
-  if (!nss_->GetPrivateKey(pub_key)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Could not verify that public key belongs to the owner.");
-    return FALSE;
+  if (!CurrentUserHasOwnerKey(pub_key, error)) {
+    return FALSE;  // error set by CurrentUserHasOwnerKey()
   }
 
   if (!key_->PopulateFromBuffer(pub_key)) {
@@ -464,7 +467,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   }
   g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                   PersistKey,
-                  key_.get(),
+                  new PersistKeyData(system_.get(), key_.get()),
                   NULL);
   return StoreOwnerProperties(error);
 }
@@ -491,7 +494,7 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
   store_->Unwhitelist(email_address);
   g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                   PersistWhitelist,
-                  store_.get(),
+                  new PersistStoreData(system_.get(), store_.get()),
                   NULL);
   return TRUE;
 }
@@ -565,7 +568,7 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
   if (!key_->IsPopulated()) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,
-              "Attempt to whitelist before owner's key is set.");
+              "Attempt to store property before owner's key is set.");
     return FALSE;
   }
   std::string was_signed = base::StringPrintf("%s=%s", name, value);
@@ -586,39 +589,27 @@ gboolean SessionManagerService::RetrieveProperty(gchar* name,
                                                  gchar** OUT_value,
                                                  GArray** OUT_signature,
                                                  GError** error) {
-  std::string encoded;
   std::string value;
-  if (!store_->Get(name, &value, &encoded)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,
-              "The requested property is unknown.");
-    return FALSE;
-  }
-  *OUT_value = g_strdup_printf("%.*s", value.length(), value.c_str());
-
   std::string decoded;
-  if (!base::Base64Decode(encoded, &decoded)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
-              "Signature could not be decoded.");
+  if (!GetPropertyHelper(name, &value, &decoded, error))
     return FALSE;
-  }
+
+  *OUT_value = g_strdup_printf("%.*s", value.length(), value.c_str());
   *OUT_signature = g_array_sized_new(FALSE, FALSE, 1, decoded.length());
   g_array_append_vals(*OUT_signature, decoded.c_str(), decoded.length());
-
   return TRUE;
 }
 
 gboolean SessionManagerService::LockScreen(GError** error) {
   screen_locked_ = TRUE;
-  SendSignalToChromium(chromium::kLockScreenSignal, NULL);
+  system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
 gboolean SessionManagerService::UnlockScreen(GError** error) {
   screen_locked_ = FALSE;
-  SendSignalToChromium(chromium::kUnlockScreenSignal, NULL);
+  system_->SendSignalToChromium(chromium::kUnlockScreenSignal, NULL);
   LOG(INFO) << "UnlockScreen";
   return TRUE;
 }
@@ -748,32 +739,47 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
 }
 
 gboolean SessionManagerService::PersistKey(gpointer data) {
-  OwnerKey* key = static_cast<OwnerKey*>(data);
+  PersistKeyData* key_data = static_cast<PersistKeyData*>(data);
   LOG(INFO) << "Persisting Owner key to disk.";
-  if (key->Persist())
-    SendSignalToChromium(chromium::kOwnerKeySetSignal, "success");
+  if (key_data->to_persist->Persist())
+    key_data->signaler->SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                             "success");
   else
-    SendSignalToChromium(chromium::kOwnerKeySetSignal, "failure");
+    key_data->signaler->SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                             "failure");
+  delete key_data;
   return FALSE;  // So that the event source that called this gets removed.
 }
 
 gboolean SessionManagerService::PersistWhitelist(gpointer data) {
-  PrefStore* store = static_cast<PrefStore*>(data);
+  PersistStoreData* store_data = static_cast<PersistStoreData*>(data);
   LOG(INFO) << "Persisting Whitelist to disk.";
-  if (store->Persist())
-    SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal, "success");
-  else
-    SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal, "failure");
+  if (store_data->to_persist->Persist()) {
+    store_data->signaler->SendSignalToChromium(
+        chromium::kWhitelistChangeCompleteSignal,
+        "success");
+  } else {
+    store_data->signaler->SendSignalToChromium(
+        chromium::kWhitelistChangeCompleteSignal,
+        "failure");
+  }
+  delete store_data;
   return FALSE;  // So that the event source that called this gets removed.
 }
 
 gboolean SessionManagerService::PersistStore(gpointer data) {
-  PrefStore* store = static_cast<PrefStore*>(data);
+  PersistStoreData* store_data = static_cast<PersistStoreData*>(data);
   LOG(INFO) << "Persisting Store to disk.";
-  if (store->Persist())
-    SendSignalToChromium(chromium::kPropertyChangeCompleteSignal, "success");
-  else
-    SendSignalToChromium(chromium::kPropertyChangeCompleteSignal, "failure");
+  if (store_data->to_persist->Persist()) {
+    store_data->signaler->SendSignalToChromium(
+        chromium::kPropertyChangeCompleteSignal,
+        "success");
+  } else {
+    store_data->signaler->SendSignalToChromium(
+        chromium::kPropertyChangeCompleteSignal,
+        "failure");
+  }
+  delete store_data;
   return FALSE;  // So that the event source that called this gets removed.
 }
 
@@ -824,6 +830,44 @@ void SessionManagerService::SetupHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
+gboolean SessionManagerService::CurrentUserIsOwner(GError** error) {
+  std::string value;
+  std::string decoded;
+  if (!GetPropertyHelper(kDeviceOwnerPref, &value, &decoded, error))
+    return FALSE;
+  std::string was_signed = base::StringPrintf("%s=%s",
+                                              kDeviceOwnerPref,
+                                              value.c_str());
+  if (!key_->Verify(was_signed.c_str(),
+                    was_signed.length(),
+                    decoded.c_str(),
+                    decoded.length())) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
+              "Owner pref signature could not be verified.");
+    return FALSE;
+  }
+  return value == current_user_;
+}
+
+gboolean SessionManagerService::CurrentUserHasOwnerKey(
+    const std::vector<uint8>& pub_key,
+    GError** error) {
+  if (!nss_->OpenUserDB()) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,
+              "Could not open the current user's NSS database.");
+    return FALSE;
+  }
+  if (!nss_->GetPrivateKey(pub_key)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+              "Could not verify that public key belongs to the owner.");
+    return FALSE;
+  }
+  return TRUE;
+}
+
 void SessionManagerService::CleanupChildren(int timeout) {
   for (size_t i_child = 0; i_child < child_pids_.size(); ++i_child) {
     int child_pid = child_pids_[i_child];
@@ -848,19 +892,19 @@ void SessionManagerService::SetGError(GError** error,
 gboolean SessionManagerService::StoreOwnerProperties(GError** error) {
   std::vector<uint8> signature;
   std::string to_sign = base::StringPrintf("%s=%s",
-                                           kDeviceOwnerProperty,
+                                           kDeviceOwnerPref,
                                            current_user_.c_str());
   if (!key_->Sign(to_sign.c_str(), to_sign.length(), &signature)) {
-    LOG(INFO) << "Could not sign owner property";
+    DLOG(INFO) << "Could not sign owner property";
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Could not add owner property.");
+              "Could not sign owner property.");
     return FALSE;
   }
   std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
                                signature.size());
-  if (!SetPropertyHelper(kDeviceOwnerProperty,
-                         current_user_.c_str(),
+  if (!SetPropertyHelper(kDeviceOwnerPref,
+                         current_user_,
                          signature_string,
                          error)) {
     return FALSE;
@@ -878,8 +922,8 @@ gboolean SessionManagerService::StoreOwnerProperties(GError** error) {
   return WhitelistHelper(current_user_, signature_string, error);
 }
 
-gboolean SessionManagerService::SetPropertyHelper(const char* name,
-                                                  const char* value,
+gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
+                                                  const std::string& value,
                                                   const std::string& signature,
                                                   GError** error) {
   std::string encoded;
@@ -892,7 +936,7 @@ gboolean SessionManagerService::SetPropertyHelper(const char* name,
   store_->Set(name, value, encoded);
   g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                   PersistStore,
-                  store_.get(),
+                  new PersistStoreData(system_.get(), store_.get()),
                   NULL);
   return TRUE;
 }
@@ -910,31 +954,33 @@ gboolean SessionManagerService::WhitelistHelper(const std::string& email,
   store_->Whitelist(email, encoded);
   g_idle_add_full(G_PRIORITY_HIGH_IDLE,
                   PersistWhitelist,
-                  store_.get(),
+                  new PersistStoreData(system_.get(), store_.get()),
                   NULL);
   return TRUE;
 }
 
-// static
-void SessionManagerService::SendSignalToChromium(const char* signal_name,
-                                                 const char* payload) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
-                              chromium::kChromiumInterface);
-  if (!proxy) {
-    LOG(ERROR) << "No proxy; can't signal chrome";
-    return;
+gboolean SessionManagerService::GetPropertyHelper(const std::string& name,
+                                                  std::string* OUT_value,
+                                                  std::string* OUT_signature,
+                                                  GError** error) {
+  std::string encoded;
+  if (!store_->Get(name, OUT_value, &encoded)) {
+    std::string error_string =
+        base::StringPrintf("The requested property %s is unknown.",
+                           name.c_str());
+    LOG(INFO) << error_string;
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,
+              error_string.c_str());
+    return FALSE;
   }
-  DBusMessage* signal = ::dbus_message_new_signal("/",
-                                                  chromium::kChromiumInterface,
-                                                  signal_name);
-  if (payload) {
-    dbus_message_append_args(signal,
-                             DBUS_TYPE_STRING, &payload,
-                             DBUS_TYPE_INVALID);
+  if (!base::Base64Decode(encoded, OUT_signature)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
+              "Signature could not be decoded.");
+    return FALSE;
   }
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
+  return TRUE;
 }
 
 // static

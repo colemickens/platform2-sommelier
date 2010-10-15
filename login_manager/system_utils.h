@@ -38,7 +38,34 @@ class SystemUtils {
                                const char* data,
                                int size);
 
+  virtual bool TouchResetFile();
+
+  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
+  //                API out of the session_manager.
+  // http://code.google.com/p/chromium-os/issues/detail?id=5929
+  //
+  // Sends |signal_name| to Chromium browser, optionally adding |payload|
+  // as an arg if it is not NULL.
+  virtual void SendSignalToChromium(const char* signal_name,
+                                    const char* payload);
+
+  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
+  //                API out of the session_manager.
+  // http://code.google.com/p/chromium-os/issues/detail?id=5929
+  //
+  // Sends |signal_name| to power manager.
+  virtual void SendSignalToPowerManager(const char* signal_name);
+
  private:
+  // If this file exists on the next boot, the stateful partition will be wiped.
+  static const char kResetFile[];
+
+  // Sends |signal_name| to |interface, optionally adding |payload|
+  // as an arg if it is not NULL.
+  static void SendSignalTo(const char* interface,
+                           const char* signal_name,
+                           const char* payload);
+
   DISALLOW_COPY_AND_ASSIGN(SystemUtils);
 };
 }  // namespace login_manager

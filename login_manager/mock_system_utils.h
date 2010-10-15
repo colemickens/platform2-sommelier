@@ -21,6 +21,9 @@ class MockSystemUtils : public SystemUtils {
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
+  MOCK_METHOD0(TouchResetFile, bool(void));
+  MOCK_METHOD2(SendSignalToChromium, void(const char*, const char*));
+  MOCK_METHOD1(SendSignalToPowerManager, void(const char*));
 };
 }  // namespace login_manager
 

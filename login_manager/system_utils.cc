@@ -4,7 +4,9 @@
 
 #include "login_manager/system_utils.h"
 
+#include <dbus/dbus-glib-lowlevel.h>
 #include <errno.h>
+#include <glib.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -15,10 +17,15 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include "base/scoped_temp_dir.h"
+#include <base/scoped_temp_dir.h>
 #include <base/time.h>
+#include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
 
 namespace login_manager {
+//static
+const char SystemUtils::kResetFile[] =
+    "/mnt/stateful_partition/factory_install_reset";
 
 SystemUtils::SystemUtils() {}
 SystemUtils::~SystemUtils() {}
@@ -92,6 +99,44 @@ bool SystemUtils::AtomicFileWrite(const FilePath& filename,
 
   return (file_util::ReplaceFile(scratch_file, filename) &&
           chmod(filename.value().c_str(), (S_IRUSR | S_IWUSR | S_IROTH)) == 0);
+}
+
+bool SystemUtils::TouchResetFile() {
+  FilePath reset_file(kResetFile);
+  const char fast[] = "fast";
+  if (file_util::WriteFile(reset_file, fast, strlen(fast)) != strlen(fast)) {
+    LOG(FATAL) << "Can't write reset file to disk!!!!";
+  }
+  return true;
+}
+
+void SystemUtils::SendSignalToChromium(const char* signal_name,
+                                       const char* payload) {
+  SendSignalTo(chromium::kChromiumInterface, signal_name, payload);
+}
+
+void SystemUtils::SendSignalToPowerManager(const char* signal_name) {
+  SendSignalTo(power_manager::kPowerManagerInterface, signal_name, NULL);
+}
+
+void SystemUtils::SendSignalTo(const char* interface,
+                               const char* signal_name,
+                               const char* payload) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              "/",
+                              interface);
+  if (!proxy) {
+    LOG(ERROR) << "No proxy; can't signal " << interface;
+    return;
+  }
+  DBusMessage* signal = ::dbus_message_new_signal("/", interface, signal_name);
+  if (payload) {
+    dbus_message_append_args(signal,
+                             DBUS_TYPE_STRING, &payload,
+                             DBUS_TYPE_INVALID);
+  }
+  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  ::dbus_message_unref(signal);
 }
 
 }  // namespace login_manager

@@ -17,6 +17,7 @@ class RSAPrivateKey;
 
 namespace login_manager {
 using ::testing::Return;
+using ::testing::_;
 
 class MockNssUtil : public NssUtil {
  public:
@@ -49,6 +50,38 @@ class MockFactory : public NssUtil::Factory {
  private:
   DISALLOW_COPY_AND_ASSIGN(MockFactory);
 };
+
+class KeyCheckUtil : public MockNssUtil {
+ public:
+  KeyCheckUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*this, GetPrivateKey(_))
+        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(7)));
+  }
+  virtual ~KeyCheckUtil() {}
+};
+
+class KeyFailUtil : public MockNssUtil {
+ public:
+  KeyFailUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*this, GetPrivateKey(_))
+        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(NULL)));
+  }
+  virtual ~KeyFailUtil() {}
+};
+
+class SadNssUtil : public MockNssUtil {
+ public:
+  SadNssUtil() : MockNssUtil() {
+    EXPECT_CALL(*this, OpenUserDB())
+        .WillOnce(Return(false));
+  }
+  virtual ~SadNssUtil() {}
+};
+
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_MOCK_NSS_UTIL_H_

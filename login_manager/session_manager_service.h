@@ -45,6 +45,28 @@ class NssUtil;
 // SHA1 with RSA encryption.
 class SessionManagerService : public chromeos::dbus::AbstractDbusService {
  public:
+  struct PersistKeyData {
+   public:
+    PersistKeyData(SystemUtils* utils, OwnerKey* key)
+        : signaler(utils),
+          to_persist(key) {
+    }
+    ~PersistKeyData() {}
+    SystemUtils* signaler;
+    OwnerKey* to_persist;
+  };
+
+  struct PersistStoreData {
+   public:
+    PersistStoreData(SystemUtils* utils, PrefStore* store)
+        : signaler(utils),
+          to_persist(store) {
+    }
+    ~PersistStoreData() {}
+    SystemUtils* signaler;
+    PrefStore* to_persist;
+  };
+
   SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
   virtual ~SessionManagerService();
 
@@ -294,26 +316,34 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
-  // |data| is an OwnerKey*, which is persisted to disk.
+  // |data| is a PersistKeyData*
+  // data->to_persist is persisted to disk, and then
+  // data->signaler is used to signal Chromium that this has occurred.
   static gboolean PersistKey(gpointer data);
 
-  // |data| is a PrefStore*, which is persisted to disk.
+  // |data| is a PersistStoreData*
+  // data->to_persist is persisted to disk, and then
+  // data->signaler is used to signal Chromium that this has occurred.
   static gboolean PersistWhitelist(gpointer data);
 
-  // |data| is a PrefStore*, which is persisted to disk.
+  // |data| is a PersistStoreData*
+  // data->to_persist is persisted to disk, and then
+  // data->signaler is used to signal Chromium that this has occurred.
   static gboolean PersistStore(gpointer data);
-
-  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
-  //                API out of the session_manager.
-  // http://code.google.com/p/chromium-os/issues/detail?id=5929
-  //
-  // Sends |signal_name| to Chromium browser, optionally adding |payload|
-  // as an arg if it is not NULL.
-  static void SendSignalToChromium(const char* signal_name,
-                                   const char* payload);
 
   // Setup any necessary signal handlers.
   void SetupHandlers();
+
+  // Returns true if the current user is listed in |store_| as the
+  // kDeviceOwner.  Returns false if not, or if that cannot be determined.
+  // |error| is set appropriately on failure.
+  gboolean CurrentUserIsOwner(GError** error);
+
+  // Returns true if the current user has the private half of |pub_key|
+  // in his nssdb.  Returns false if not, or if that cannot be determined.
+  // |error| is set appropriately on failure.
+  gboolean CurrentUserHasOwnerKey(const std::vector<uint8>& pub_key,
+                                  GError** error);
 
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
@@ -330,8 +360,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Encodes |signature| for writing to disk, stores |name|=|value|, and
   // schedules a PersistStore().
   // Returns false on failure, with |error| set appropriately.
-  gboolean SetPropertyHelper(const char* name,
-                             const char* value,
+  gboolean SetPropertyHelper(const std::string& name,
+                             const std::string& value,
                              const std::string& signature,
                              GError** error);
 
@@ -341,6 +371,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   gboolean WhitelistHelper(const std::string& email,
                            const std::string& signature,
                            GError** error);
+
+  // Looks for |name| in |store_|.  If there, returns the associated value
+  // and the (base64-decoded) signature in the associated OUT_ params.
+  // Upon failure, FALSE is returned and error is set appropriately.
+  gboolean GetPropertyHelper(const std::string& name,
+                             std::string* OUT_value,
+                             std::string* OUT_signature,
+                             GError** error);
 
   bool ShouldRunChildren();
   // Returns true if |child_job| believes it should be stopped.
@@ -352,7 +390,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
-  static const char kDeviceOwnerProperty[];
+  // The name of the pref that Chrome sets to track who the owner is.
+  static const char kDeviceOwnerPref[];
 
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
