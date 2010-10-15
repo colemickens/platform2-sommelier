@@ -41,6 +41,10 @@ HELP='
   Open an ssh connection to the given <host>, as <user>.  The <port> parameter
   is optional and defaults to 22.
 
+ ssh_forget_host
+  Remove a host from the list of known ssh hosts.  This command displays
+  a menu of known hosts and prompts for the host to forget.
+
  enterprise_ca_approve [--allow-self-signed] <url>
   Approve an enterprise certificate authority.  The <url> option should be
   an http or https url to your enterprise Certificate Authority in PEM
@@ -90,11 +94,14 @@ if [ -e "$(dirname $0)/crosh-workarounds" ]; then
 fi
 
 shell_read() {
+  local prompt="$1"
+  shift
+
   if [ "$IS_BASH" -eq "1" ]; then
     # In bash, -e gives readline support.
-    read -p "crosh> " -e $@
+    read -p "$prompt" -e $@
   else
-    read -p "crosh> " $@
+    read -p "$prompt" $@
   fi
 }
 
@@ -143,6 +150,56 @@ cmd_ssh() {
 
   echo "open: host: $host, user: $user, port: $port"
   ssh -p "$port" "$user@$host"
+}
+
+cmd_ssh_forget_host() {
+  # Ssh consults /etc/passwd for the home directory, rather than trusting
+  # $HOME.  This is a problem for us because $HOME is /home/chronos/user, while
+  # /etc/passwd lists /home/chronos.  We work around it by reading /etc/passwd
+  # too.
+  local home="$(getent passwd "$USER" | cut -f6 -d':')"
+  local known_hosts="$(readlink -f $home/.ssh/known_hosts)"
+
+  # Test that the known_hosts is a regular file and is not 0 length.
+  if [ ! -f "$known_hosts" -o ! -s "$known_hosts" ]; then
+    echo "No known hosts."
+    return
+  fi
+
+  local count="$(cat "$known_hosts" | wc -l)"
+
+  # Print an indexed list of the known hosts.
+  echo "Known hosts:"
+  awk '{ print " " NR ") " $1; }' "$known_hosts"
+
+  local hostno
+
+  while true; do
+    LINE_=""
+    shell_read "Please select a host to forget [1-$count]: " LINE_
+    if [ -z "$LINE_" ]; then
+      echo "Aborting."
+      return
+    fi
+
+    # Extract the numbers from the user input.
+    hostno="$(echo $LINE_ | sed 's/[^[:digit:]]*//g')"
+
+    # If they typed a number...
+    if [ -n "$hostno" ]; then
+      # And it was in the proper range...
+      if [ $hostno -gt 0 -a $hostno -le $count ]; then
+        # Then we can stop asking for input.
+        break
+      fi
+    fi
+
+    echo "Invalid selection.  Please enter a number between 1 and $count."
+  done
+
+  local trimmed="$(awk -v I="$hostno" 'NR != I { print }' "$known_hosts")"
+  echo "$trimmed" > "$known_hosts"
+  chmod 644 "$known_hosts"
 }
 
 cmd_enterprise_ca_approve() {
@@ -229,7 +286,7 @@ repl() {
   fi
 
   while [ 1 ]; do
-    if shell_read LINE_; then
+    if shell_read "crosh> " LINE_; then
       if [ ! -z "$LINE_" ]; then
         shell_history -s "$LINE_"
         dispatch "$LINE_"
