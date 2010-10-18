@@ -6,7 +6,7 @@ PKG_CONFIG ?= pkg-config
 INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags gobject-2.0 \
 	       dbus-1 dbus-glib-1 dbus-c++-1)
 CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
-CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
+CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS) -DVCSID=\"$(VCSID)\"
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
 	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos \
 	 -lmetrics

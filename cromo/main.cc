@@ -179,6 +179,12 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
 int main(int argc, char* argv[]) {
   google::LogSinkSyslog syslogger;
 
+  // Can't use LOG here, unfortunately :( we don't want it to be an error but we
+  // do want it logged regardless of priority level.
+  openlog("cromo", LOG_PID, LOG_LOCAL3);
+  syslog(LOG_NOTICE, "vcsid %s", VCSID);
+  closelog();
+
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::SetCommandLineOptionWithMode("log_dir",
                                        "/tmp",
