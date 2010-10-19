@@ -305,6 +305,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
                                          gpointer data) {
   Daemon* daemon = static_cast<Daemon*>(data);
   XEvent* xevent = static_cast<XEvent*>(gxevent);
+  bool changed_brightness = false;
   if (xevent->type == KeyPress) {
     int keycode = xevent->xkey.keycode;
     if (keycode == daemon->key_brightness_up_ ||
@@ -315,6 +316,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F7";
       }
       daemon->ctl_->IncreaseBrightness();
+      changed_brightness = true;
     } else if (keycode == daemon->key_brightness_down_ ||
                keycode == daemon->key_f6_) {
       if (keycode == daemon->key_brightness_down_) {
@@ -323,8 +325,16 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F6";
       }
       daemon->ctl_->DecreaseBrightness();
+      changed_brightness = true;
     }
   }
+
+  if (changed_brightness) {
+    int64 brightness = 0;
+    daemon->ctl_->GetBrightness(&brightness);
+    daemon->SendBrightnessChangedSignal(static_cast<int>(brightness));
+  }
+
   return GDK_FILTER_CONTINUE;
 }
 
@@ -507,6 +517,21 @@ gboolean Daemon::PrefChangeHandler(const char* name,
     daemon->SetIdleOffset(0);
   }
   return true;
+}
+
+void Daemon::SendBrightnessChangedSignal(int level) {
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              "/",
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal("/",
+                                                kPowerManagerInterface,
+                                                kBrightnessChangedSignal);
+  CHECK(signal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_INT32, &level,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 }  // namespace power_manager

@@ -16,7 +16,6 @@ namespace power_manager {
 namespace util {
 
 // interface names
-const char* kPowerManagerInterface = "org.chromium.PowerManager";
 const char* kLowerPowerManagerInterface = "org.chromium.LowerPowerManager";
 
 // powerd -> powerm signals
@@ -88,10 +87,10 @@ void SendSignalToPowerD(const char* signal_name) {
   LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager:";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",
-                              power_manager::kPowerManagerInterface);
+                              kPowerManagerInterface);
   DBusMessage* signal = ::dbus_message_new_signal(
       "/",
-      power_manager::kPowerManagerInterface,
+      kPowerManagerInterface,
       signal_name);
   CHECK(signal);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);

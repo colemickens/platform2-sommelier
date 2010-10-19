@@ -144,6 +144,10 @@ class Daemon : public XIdleMonitor {
                                     unsigned int mask,
                                     gpointer data);
 
+  // Send a D-Bus signal announcing that the screen brightness has been set to
+  // |level| (a percentage between 0 and 100).
+  void SendBrightnessChangedSignal(int level);
+
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 

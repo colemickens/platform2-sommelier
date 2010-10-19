@@ -11,7 +11,6 @@ namespace util {
 
 // interface names
 extern const char* kLowerPowerManagerInterface;
-extern const char* kPowerManagerInterface;
 
 // powerd -> powerm constants
 extern const char* kRequestCleanShutdown;

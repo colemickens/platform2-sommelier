@@ -172,7 +172,7 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
                                     util::kRequestCleanShutdown)) {
     LOG(INFO) << "Request Clean Shutdown";
     util::Launch("initctl emit power-manager-clean-shutdown");
-  } else if (dbus_message_is_signal(message, util::kPowerManagerInterface,
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kPowerStateChanged)) {
     LOG(INFO) << "Power state change event";
     const char *state = '\0';
@@ -207,7 +207,7 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
     DBusGProxy*, const gchar* name, const gchar* old_owner,
     const gchar* new_owner, void *data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
-  if (strcmp(name, util::kPowerManagerInterface) == 0) {
+  if (strcmp(name, kPowerManagerInterface) == 0) {
     DLOG(INFO) << "name:" << name << " old_owner:" << old_owner
                << " new_owner:" << new_owner;
     daemon->powerd_id_++;
@@ -242,7 +242,7 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   AddDBusMatch(connection, util::kLowerPowerManagerInterface);
-  AddDBusMatch(connection, util::kPowerManagerInterface);
+  AddDBusMatch(connection, kPowerManagerInterface);
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));
 
