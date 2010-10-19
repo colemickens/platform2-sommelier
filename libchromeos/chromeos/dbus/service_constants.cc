@@ -106,4 +106,5 @@ const char* kRegisterSuspendDelay = "RegisterSuspendDelay";
 const char* kUnregisterSuspendDelay = "UnregisterSuspendDelay";
 const char* kSuspendDelay = "SuspendDelay";
 const char* kSuspendReady = "SuspendReady";
+const char* kBrightnessChangedSignal = "BrightnessChanged";
 }  // namespace power_manager

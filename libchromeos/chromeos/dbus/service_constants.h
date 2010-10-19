@@ -126,6 +126,7 @@ extern const char* kRegisterSuspendDelay;
 extern const char* kUnregisterSuspendDelay;
 extern const char* kSuspendDelay;
 extern const char* kSuspendReady;
+extern const char* kBrightnessChangedSignal;
 }  // namespace power_manager
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
