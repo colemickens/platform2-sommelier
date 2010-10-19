@@ -311,11 +311,19 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
       echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
       env INSTALL_ROOT="${INSTALL_ROOT}" \
-        "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS} || exit 1
+        "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS}
       # Next step after postinst may take a lot of time (eg, disk wiping)
       # and people may confuse that as 'firmware update takes a long wait',
       # we explicitly prompt here.
-      echo "Firmware update complete."
+      if [ "$?" -eq 0 ]; then
+        echo "Firmware update complete."
+      else
+        echo "Firmware update failed."
+        if [ -n "${IS_FACTORY_INSTALL}" ];
+          echo "Aborting on firmware update failure during factory install"
+          exit 1
+        fi
+      fi
     fi
   fi
 else
