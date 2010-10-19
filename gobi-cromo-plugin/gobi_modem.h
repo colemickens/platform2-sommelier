@@ -214,6 +214,12 @@ class GobiModem
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
+
+  static void RFInfoCallbackTrampoline(ULONG iface, ULONG bandclass,
+                                       ULONG channel) {
+    // ignore the supplied arguments
+    PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
+  }
   static gboolean RegistrationStateCallback(gpointer data);
 
   struct SignalStrengthArgs : public CallbackArgs {

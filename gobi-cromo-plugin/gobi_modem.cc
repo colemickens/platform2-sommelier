@@ -791,12 +791,6 @@ static void PowerCallback(ULONG mode) {
   LOG(INFO) << "PowerCallback: " << mode;
 }
 
-static void RFInfoCallback(ULONG iface, ULONG bandclass, ULONG channel) {
-  LOG(INFO) << "RFInfoCallback: iface " << iface
-            << " bandclass " << bandclass
-            << " channel " << channel;
-}
-
 static void LURejectCallback(ULONG domain, ULONG cause) {
   LOG(INFO) << "LURejectCallback: domain " << domain << " cause " << cause;
 }
@@ -821,7 +815,7 @@ static void OMADMAlertCallback(ULONG type, USHORT id) {
 void GobiModem::RegisterCallbacks() {
   sdk_->SetMobileIPStatusCallback(MobileIPStatusCallback);
   sdk_->SetPowerCallback(PowerCallback);
-  sdk_->SetRFInfoCallback(RFInfoCallback);
+  sdk_->SetRFInfoCallback(RFInfoCallbackTrampoline);
   sdk_->SetLURejectCallback(LURejectCallback);
   sdk_->SetNewSMSCallback(NewSMSCallback);
   sdk_->SetNMEACallback(NMEACallback);
