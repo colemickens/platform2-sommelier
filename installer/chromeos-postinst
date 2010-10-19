@@ -319,7 +319,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
         echo "Firmware update complete."
       else
         echo "Firmware update failed."
-        if [ -n "${IS_FACTORY_INSTALL}" ];
+        if [ -n "${IS_FACTORY_INSTALL}" ]; then
           echo "Aborting on firmware update failure during factory install"
           exit 1
         fi
