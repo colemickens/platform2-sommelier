@@ -62,7 +62,8 @@ Default(backlight_tool)
 # Build power daemon
 backlight_controller = gdk_env.Library('backlight_controller',
                                        ['backlight_controller.cc'])
-power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc'])
+power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
+                                              'power_constants.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split('chromeos crosapi gflags pthread dl metrics'))
 powerd_env.ParseConfig(

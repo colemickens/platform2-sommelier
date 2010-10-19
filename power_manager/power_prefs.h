@@ -21,8 +21,8 @@ class PowerPrefs : public PowerPrefsInterface {
   bool StartPrefWatching(Inotify::InotifyCallback callback, gpointer data);
 
   // Overridden from PowerPrefsInterface:
-  virtual bool ReadSetting(const char* setting_name, int64* val);
-  virtual bool WriteSetting(const char* setting_name, int64 level);
+  virtual bool GetInt64(const char* name, int64* value);
+  virtual bool SetInt64(const char* name, int64 value);
 
  private:
   FilePath pref_path_;

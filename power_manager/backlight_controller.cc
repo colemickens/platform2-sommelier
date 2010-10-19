@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight_controller.h"
 
 #include <gdk/gdkx.h>
@@ -10,6 +9,8 @@
 #include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
+#include "power_manager/ambient_light_sensor.h"
+#include "power_manager/power_constants.h"
 
 namespace power_manager {
 
@@ -165,10 +166,10 @@ int64 BacklightController::Clamp(int64 value) {
 }
 
 void BacklightController::ReadPrefs() {
-  CHECK(prefs_->ReadSetting("plugged_brightness_offset",
-                            &plugged_brightness_offset_));
-  CHECK(prefs_->ReadSetting("unplugged_brightness_offset",
-                            &unplugged_brightness_offset_));
+  CHECK(prefs_->GetInt64(kPluggedBrightnessOffset,
+                         &plugged_brightness_offset_));
+  CHECK(prefs_->GetInt64(kUnpluggedBrightnessOffset,
+                         &unplugged_brightness_offset_));
   CHECK(plugged_brightness_offset_ >= -100);
   CHECK(plugged_brightness_offset_ <= 100);
   CHECK(unplugged_brightness_offset_ >= -100);
@@ -177,11 +178,11 @@ void BacklightController::ReadPrefs() {
 
 void BacklightController::WritePrefs() {
   if (plugged_state_ == kPowerConnected) {
-    prefs_->WriteSetting("plugged_brightness_offset",
-                         plugged_brightness_offset_);
+    prefs_->SetInt64(kPluggedBrightnessOffset,
+                     plugged_brightness_offset_);
   } else if (plugged_state_ == kPowerDisconnected) {
-    prefs_->WriteSetting("unplugged_brightness_offset",
-                         unplugged_brightness_offset_);
+    prefs_->SetInt64(kUnpluggedBrightnessOffset,
+                     unplugged_brightness_offset_);
   }
 }
 

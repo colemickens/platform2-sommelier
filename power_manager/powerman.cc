@@ -12,6 +12,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/power_constants.h"
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
 
@@ -38,12 +39,11 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
 
 void PowerManDaemon::Init() {
   int lid_state = 0;
-  CHECK(prefs_->ReadSetting("retry_suspend_ms", &retry_suspend_ms_));
-  CHECK(prefs_->ReadSetting("retry_suspend_attempts",
-                            &retry_suspend_attempts_));
-  // retrys will occur no more than once a minute
+  CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
+  CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
+  // Retrys will occur no more than once a minute.
   CHECK_GE(retry_suspend_ms_, 60000);
-  // only 1-10 retries prior to just shutting down
+  // Only 1-10 retries prior to just shutting down.
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
   loop_ = g_main_loop_new(NULL, false);

@@ -12,6 +12,7 @@
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_video_detector.h"
+#include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 
 namespace power_manager {
@@ -37,7 +38,6 @@ static const int64 kPluggedSuspend = 3 * kBigInterval;
 static const int64 kUnpluggedDim = kPluggedDim;
 static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
-static const int64 kLockMs = 60 * 10 * 1000;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -57,8 +57,8 @@ class DaemonTest : public Test {
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
-    prefs_.WriteSetting("plugged_brightness_offset", kPluggedBrightness);
-    prefs_.WriteSetting("unplugged_brightness_offset", kUnpluggedBrightness);
+    prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
+    prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
     CHECK(backlight_ctl_.Init());
     ResetPowerStatus(status_);
   }

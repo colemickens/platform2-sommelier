@@ -33,21 +33,21 @@ bool PowerPrefs::StartPrefWatching(Inotify::InotifyCallback callback,
   return true;
 }
 
-bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
-  FilePath path = pref_path_.Append(setting_name);
+bool PowerPrefs::GetInt64(const char* name, int64* value) {
+  FilePath path = pref_path_.Append(name);
   string buf;
   if (file_util::ReadFileToString(path, &buf)) {
     TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToInt64(buf, val))
+    if (base::StringToInt64(buf, value))
       return true;
     else
       LOG(ERROR) << "Garbage found in " << path.value();
   }
-  path = default_path_.Append(setting_name);
+  path = default_path_.Append(name);
   buf.clear();
   if (file_util::ReadFileToString(path, &buf)) {
     TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToInt64(buf, val))
+    if (base::StringToInt64(buf, value))
       return true;
     else
       LOG(ERROR) << "Garbage found in " << path.value();
@@ -56,10 +56,10 @@ bool PowerPrefs::ReadSetting(const char* setting_name, int64* val) {
   return false;
 }
 
-bool PowerPrefs::WriteSetting(const char* setting_name, int64 val) {
+bool PowerPrefs::SetInt64(const char* name, int64 value) {
   int status;
-  FilePath path = pref_path_.Append(setting_name);
-  string buf = base::Int64ToString(val);
+  FilePath path = pref_path_.Append(name);
+  string buf = base::Int64ToString(value);
   status = file_util::WriteFile(path, buf.data(), buf.size());
   LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
   return -1 != status;

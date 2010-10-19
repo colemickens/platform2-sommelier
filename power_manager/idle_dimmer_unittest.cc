@@ -8,6 +8,7 @@
 #include "base/logging.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/mock_backlight.h"
+#include "power_manager/power_constants.h"
 #include "power_manager/power_prefs.h"
 
 using ::testing::_;
@@ -36,8 +37,8 @@ class IdleDimmerTest : public Test {
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
-    prefs_.WriteSetting("plugged_brightness_offset", kPluggedBrightnessP);
-    prefs_.WriteSetting("unplugged_brightness_offset", kUnpluggedBrightnessP);
+    prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightnessP);
+    prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightnessP);
     EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
         .WillOnce(Return(true));
     CHECK(backlight_ctl_.Init());

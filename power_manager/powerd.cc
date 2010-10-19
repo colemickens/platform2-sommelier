@@ -17,6 +17,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/power_button_handler.h"
+#include "power_manager/power_constants.h"
 #include "power_manager/util.h"
 
 using std::max;
@@ -104,19 +105,19 @@ void Daemon::ReadSettings() {
   int64 use_xscreensaver, enforce_lock;
   int64 disable_idle_suspend;
   int64 low_battery_suspend_percent;
-  CHECK(prefs_->ReadSetting("low_battery_suspend_percent",
-                            &low_battery_suspend_percent));
-  CHECK(prefs_->ReadSetting("clean_shutdown_timeout_ms",
-                            &clean_shutdown_timeout_ms_));
-  CHECK(prefs_->ReadSetting("plugged_dim_ms", &plugged_dim_ms_));
-  CHECK(prefs_->ReadSetting("plugged_off_ms", &plugged_off_ms_));
-  CHECK(prefs_->ReadSetting("plugged_suspend_ms", &plugged_suspend_ms_));
-  CHECK(prefs_->ReadSetting("unplugged_dim_ms", &unplugged_dim_ms_));
-  CHECK(prefs_->ReadSetting("unplugged_off_ms", &unplugged_off_ms_));
-  CHECK(prefs_->ReadSetting("unplugged_suspend_ms", &unplugged_suspend_ms_));
-  CHECK(prefs_->ReadSetting("enforce_lock", &enforce_lock));
-  CHECK(prefs_->ReadSetting("use_xscreensaver", &use_xscreensaver));
-  if (prefs_->ReadSetting("disable_idle_suspend", &disable_idle_suspend) &&
+  CHECK(prefs_->GetInt64(kLowBatterySuspendPercent,
+                         &low_battery_suspend_percent));
+  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMs,
+                         &clean_shutdown_timeout_ms_));
+  CHECK(prefs_->GetInt64(kPluggedDimMs, &plugged_dim_ms_));
+  CHECK(prefs_->GetInt64(kPluggedOffMs, &plugged_off_ms_));
+  CHECK(prefs_->GetInt64(kPluggedSuspendMs, &plugged_suspend_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedDimMs, &unplugged_dim_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedOffMs, &unplugged_off_ms_));
+  CHECK(prefs_->GetInt64(kUnpluggedSuspendMs, &unplugged_suspend_ms_));
+  CHECK(prefs_->GetInt64(kEnforceLock, &enforce_lock));
+  CHECK(prefs_->GetInt64(kUseXScreenSaver, &use_xscreensaver));
+  if (prefs_->GetInt64(kDisableIdleSuspend, &disable_idle_suspend) &&
       disable_idle_suspend) {
     LOG(INFO) << "Idle suspend feature disabled";
     plugged_suspend_ms_ = INT64_MAX;
@@ -149,12 +150,12 @@ void Daemon::ReadSettings() {
 
 void Daemon::ReadLockScreenSettings() {
   int64 lock_on_idle_suspend;
-  if (prefs_->ReadSetting("lock_on_idle_suspend", &lock_on_idle_suspend) &&
+  if (prefs_->GetInt64(kLockOnIdleSuspend, &lock_on_idle_suspend) &&
       0 == lock_on_idle_suspend) {
     LOG(INFO) << "Disabling screen lock on idle and suspend";
     default_lock_ms_ = INT64_MAX;
   } else {
-    CHECK(prefs_->ReadSetting("lock_ms", &default_lock_ms_));
+    CHECK(prefs_->GetInt64(kLockMs, &default_lock_ms_));
     LOG(INFO) << "Enabling screen lock on idle and suspend";
   }
   lock_on_idle_suspend_ = lock_on_idle_suspend;
