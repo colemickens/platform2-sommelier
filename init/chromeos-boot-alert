@@ -1,0 +1,127 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Provides alert messages in boot stage, called by chromeos_startup.
+
+# Since this script only provides messages, never abort.
+set +e
+
+# Ignore user interrupts
+trap "" INT QUIT
+
+usage_help() {
+  # Prints usage help for commands supports
+  echo "Usage: $0 mode [arg ...]
+
+  enter_dev: Message for entering developer mode from non-dev.
+             Arg #1: Countdown in minutes before starting to wipe (default=5)
+
+  leave_dev: Message when leaving developer mode.
+             Arg:    None.
+
+  update_firmware: Message before starting firmware update.
+             Arg: None.
+
+  wipe:      Message when starting to wipe stateful partition.
+             Arg #1: (optional) Image file to show.
+"
+}
+
+mode_enter_dev() {
+  # Message for enter developer mode
+  # Argument: time to countdown (in minutes, default=5)
+  local delay_mins="${1:-5}"
+  echo "
+    Your system is transitioning to Developer Mode.
+
+    If you do not want to enter Developer Mode, turn your computer off now
+    and toggle the developer switch back to Normal (Verified) Mode.
+  "
+
+  local echo_opt='-n'
+  if [ -n "$BASH_VERSION" ]; then
+    # bash needs -e to interpret \r, but dash does not.
+    echo_opt='-n -e'
+  fi
+  for dev_count_down in $(seq $(($delay_mins * 60)) -1 1); do
+    # Trailing spaces must exist to clear previous message when the printed
+    # counter width changed (ex, 100->99).
+    echo $echo_opt "\r    Starting in ${dev_count_down} seconds...   "
+    sleep 1
+  done
+
+  echo ""
+  # Count-down
+  echo "
+    Preparing your system for developer mode.
+    Please wait 5 - 10 minutes and DO NOT POWER OFF . . .
+    The system will reboot when complete.
+  "
+}
+
+mode_leave_dev() {
+  # Message when leaving developer mode
+  echo "
+    Your system last booted in developer mode.
+    Attempting to return to normal...
+    Upon completion, the machine will reboot.
+  "
+}
+
+mode_update_firmware() {
+  # Message before starting firmware update
+  echo "
+    Your system is updating firmware, please DO NOT POWER OFF.
+    Upon completion, the machine may reboot or continue for login.
+  "
+}
+
+mode_wipe() {
+  # Message before starting to wipe
+  # Argument: (optional) file for splash image
+  local splash_file="$1"
+
+  if [ -s "$splash_file" ] && type ply-image >/dev/null 2>&1; then
+    # Do not use background execution because this file is going to be wiped.
+    ply-image "$splash_file"
+  else
+    echo "Erasing stateful partition..."
+  fi
+}
+
+main() {
+  local mode="$1"
+
+  if [ $# -gt 0 ]; then
+    shift
+  fi
+
+  # light-up the screen if possible
+  if [ -x /usr/sbin/lightup_screen ]; then
+    /usr/sbin/lightup_screen >/dev/null 2>&1
+  fi
+
+  case "$mode" in
+    "enter_dev" )
+      mode_enter_dev "$@"
+      ;;
+    "leave_dev" )
+      mode_leave_dev "$@"
+      ;;
+    "update_firmware" )
+      mode_update_firmware "$@"
+      ;;
+    "wipe" )
+      mode_wipe "$@"
+      ;;
+    * )
+      usage_help
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

@@ -23,13 +23,14 @@ fi
 
 # Splash screen! Unless we are in noninteractive mode.
 # TODO(sosa@chromium.org) - Use kernel flag
+BOOT_SPLASH_PID=
 if [ -x /usr/bin/ply-image ]; then
   if [ -z "$IS_FACTORY_MODE" ]; then
     # Moblin trick: Disable blinking cursor. Without this a splash screen
     # will show a distinct cursor shape even when the cursor is set to none.
     echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
     /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png &
-    boot_splash_pid="$!"
+    BOOT_SPLASH_PID="$!"
   fi
 fi
 
@@ -66,12 +67,16 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
 fi
 
 # Check if we need to perform firmware update.
-NEED_FIRMWARE_UPDATE="/mnt/stateful_partition/.need_firmware_update"
-FIRMWARE_UPDATE_SCRIPT="/usr/sbin/chromeos-firmwareupdate"
+NEED_FIRMWARE_UPDATE='/mnt/stateful_partition/.need_firmware_update'
 if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
   rm -f "$NEED_FIRMWARE_UPDATE"
+  FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
   if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-    "$FIRMWARE_UPDATE_SCRIPT"
+    mkdir -p /mnt/stateful_partition/var/log
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert update_firmware >/dev/tty1
+    "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
+      tee /dev/tty1 /mnt/stateful_partition/var/log/update_firmware.log
   fi
 fi
 
@@ -103,10 +108,9 @@ if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
   # TODO(wad) just have the dev_mode build stamp the stateful.
   if [ ! -f /root/.dev_mode ]; then
     # TODO(wad) Throw up a splash.
-    echo "Preparing your system for developer mode." >/dev/tty1
-    echo "Please wait 5 - 10 minutes . . ." >/dev/tty1
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert enter_dev 5 >/dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
-    sleep $((60 * 5))
     touch ${RESET_FILE}
   fi
 
@@ -115,9 +119,8 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
   # When coming back from developer mode, we don't need to clobber
   # as aggressively. Fast will do the trick.
   if [ ! -f /root/.dev_mode ]; then
-    echo "Your system last booted in developer mode." >/dev/tty1
-    echo "Attempting to return to normal." >/dev/tty1
-    echo "Upon completion, the machine will reboot." >/dev/tty1
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert leave_dev >/dev/tty1
     echo "fast" > ${RESET_FILE}
   fi
 fi
@@ -125,33 +128,16 @@ fi
 # Check if the stateful partition has requested self-destruction
 # This is used for the factory install process
 if [ -O "$RESET_FILE" ]; then
-  # Light up screen in case you can't see our splash image.
-  LIGHTUP_SCREEN=/usr/sbin/lightup_screen
-  if [ -x ${LIGHTUP_SCREEN} ]; then
-    ${LIGHTUP_SCREEN}
-  else
-    echo "${LIGHTUP_SCREEN} does not exist or not executable"
-  fi
-
-  echo "Erasing stateful partition..."
-  # Show a splash image to inform OPs it is wiping the disk.
-  WIPE_SPLASH_FILE="/mnt/stateful_partition/wipe_splash.png"
-  if [ -n "$boot_splash_pid" -a -r "$WIPE_SPLASH_FILE" ]; then
-    # When the RESET_FILE exist, the rootdev is the release image without
-    # /root/.factory_* so boot_splash is already displayed. Having
-    # $boot_splash_pid implies the existence of /usr/bin/ply-image and the
-    # cursor is already made hidden.
-    wait "$boot_splash_pid"
-    # Do not use background execution because this file is going to be wiped.
-    /usr/bin/ply-image "$WIPE_SPLASH_FILE"
-  fi
+  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+  chromeos-boot-alert wipe \
+    /mnt/stateful_partition/wipe_splash.png >/dev/tty1
   FAST=$(cat $RESET_FILE)
   if [ "$FAST" = "fast" ]; then
-    exec /sbin/clobber-state fast
+    exec clobber-state fast
   elif [ "$FAST" = "fast test" ]; then
-    exec /sbin/clobber-state fast test
+    exec clobber-state fast test
   else
-    exec /sbin/clobber-state
+    exec clobber-state
   fi
 fi
 
