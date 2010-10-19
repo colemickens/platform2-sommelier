@@ -867,6 +867,21 @@ void GobiModem::ApiConnect(DBus::Error& error) {
     LOG(ERROR) << "QCWWANConnect() failed: " << rc;
     abort();
   }
+
+  // The Gobi has been observed (at least once - see chromium-os:7172) to get
+  // into a state where we can set up a QMI channel to it (so QCWWANConnect()
+  // succeeds) but not actually invoke any functions. We'll force the issue here
+  // by calling GetSerialNumbers so we can detect this failure mode early.
+  char esn[kDefaultBufferSize];
+  char imei[kDefaultBufferSize];
+  char meid[kDefaultBufferSize];
+  rc = sdk_->GetSerialNumbers(sizeof(esn), esn, sizeof(imei), imei,
+                              sizeof(meid), meid);
+  if (rc != 0) {
+    LOG(ERROR) << "GetSerialNumbers() failed: " << rc;
+    abort();
+  }
+
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
