@@ -96,8 +96,7 @@ gboolean PowerManDaemon::RetrySuspend(gpointer object) {
       LOG(INFO) << "Retry suspend sequence number changed, retry delayed";
     }
   } else {
-    daemon->CleanupRetrySuspend();
-    LOG(INFO) << "Retry suspend cancelled ... lid is open";
+    DLOG(INFO) << "Retry suspend  ... lid is open";
   }
   delete(payload);
   return false;
@@ -266,18 +265,6 @@ void PowerManDaemon::Shutdown() {
   util::Launch("shutdown -P now");
 }
 
-void PowerManDaemon::CleanupRetrySuspend() {
-  // kill any previously attempted suspend thats hanging around
-  if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
-    if (kill(-suspend_pid_, SIGTERM)) {
-      LOG(ERROR) << "Error trying to kill previous suspend. pid:"
-                 << suspend_pid_ << " error:" << errno;
-    }
-    waitpid(suspend_pid_, NULL, 0);
-    suspend_pid_ = 0;
-  }
-}
-
 PowerManDaemon::RetrySuspendPayload* PowerManDaemon::CreateRetrySuspendPayload() {
   RetrySuspendPayload* payload = new RetrySuspendPayload;
   payload->lid_id = lid_id_;
@@ -289,7 +276,10 @@ PowerManDaemon::RetrySuspendPayload* PowerManDaemon::CreateRetrySuspendPayload()
 void PowerManDaemon::Suspend() {
   LOG(INFO) << "Launching Suspend";
 
-  CleanupRetrySuspend();
+  if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
+    LOG(ERROR) << "Previous retry suspend pid:"
+               << suspend_pid_ << " is still running";
+  }
 
   RetrySuspendPayload* payload = CreateRetrySuspendPayload();
   g_timeout_add_seconds(
