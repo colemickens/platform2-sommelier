@@ -409,6 +409,13 @@ BusConnection GetSystemBusConnection();
 
 BusConnection GetPrivateBusConnection(const char* address);
 
+// \brief Sends a signal named |signal_name| with no arguments to the
+// system bus per the given |path| and |interface_name|.
+
+void SendSignalWithNoArgumentsToSystemBus(const char* path,
+                                          const char* interface_name,
+                                          const char* signal_name);
+
 }  // namespace dbus
 }  // namespace chromeos
 
