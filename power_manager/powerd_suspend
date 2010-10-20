@@ -16,12 +16,14 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
 
 # - stores the current power status
 power_status_on_suspend=/tmp/power-status-on-suspend
+on_ac=0
 /usr/bin/devkit-power -d \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend
 else
     echo OnAC > $power_status_on_suspend
+    on_ac=1
     # - enables autosuspend for USB devices. This shaves about 300ms
     #   from resume time.
     for i in /sys/bus/usb/devices/*/power/level; do echo auto > $i; done
@@ -47,6 +49,11 @@ echo -n mem > /sys/power/state
 
 # - sends UMA metrics on resume
 /usr/bin/send_metrics_on_resume &
+
+if [ $on_ac -eq 1 ]; then
+    # disable autosuspend for USB devices if we set it before suspend.
+    for i in /sys/bus/usb/devices/*/power/level; do echo on > $i; done
+fi
 
 #  - re-kicks laptop mode since AC<->Battery transition might've happened
 #    while the system was suspended. Sleep a bit, though, to take care of
