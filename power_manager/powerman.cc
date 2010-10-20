@@ -38,7 +38,7 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
     powerd_state_(kPowerManagerUnknown) {}
 
 void PowerManDaemon::Init() {
-  int lid_state = 0;
+  int input_lidstate = 0;
   CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
   CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
   // Retrys will occur no more than once a minute.
@@ -47,15 +47,19 @@ void PowerManDaemon::Init() {
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
   loop_ = g_main_loop_new(NULL, false);
+  input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   CHECK(input_.Init(use_input_for_lid_, use_input_for_key_power_))
     <<"Cannot initialize input interface";
   if (use_input_for_lid_) {
-    input_.QueryLidState(&lid_state);
-    lidstate_ = GetLidState(lid_state);
+    input_.QueryLidState(&input_lidstate);
+    lidstate_ = GetLidState(input_lidstate);
     LOG(INFO) << "PowerM Daemon Init - lid "
               << (lidstate_ == kLidClosed?"closed.":"opened.");
+    if (kLidClosed == lidstate_) {
+      LOG(INFO) << "PowerM Daemon Init - lid is closed; generating event";
+      OnInputEvent(this, LID, input_lidstate);
+    }
   }
-  input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   RegisterDBusMessageHandler();
 }
 
