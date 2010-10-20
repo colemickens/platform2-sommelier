@@ -31,7 +31,7 @@ lsmod,/usr/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 meminfo,cat /proc/meminfo
-mm-status,/usr/lib/flimflam/test/mm-status
+mm-status,/usr/share/userfeedback/scripts/mm-status
 powerd.LATEST,cat /var/log/power_manager/powerd.LATEST
 powerd.out,cat /var/log/power_manager/powerd.out
 ps,/bin/ps ux
