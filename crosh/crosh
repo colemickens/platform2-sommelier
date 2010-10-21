@@ -205,9 +205,26 @@ cmd_ssh_forget_host() {
 cmd_enterprise_ca_approve() {
   local option=""
 
-  if [ "$1" = "--allow-self-signed" ]; then
-    option="--allow_self_signed"
+  while [ "$(echo "$1" | cut -c1-2)" = "--" ]; do
+    if [ "$1" = "--allow-self-signed" ]; then
+      option="$option --allow_self_signed"
+    elif [ "$1" = "--allow-chaining" ]; then
+      # This option allows enterprise extensions which are signed by
+      # certificates that chain to this one.  Because we're not currently
+      # doing any key usage checks, this can be pretty risky.  If you're not
+      # sure that you need this, don't use it.
+      option="$option --allow_chaining"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
     shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: url"
+    return 1
   fi
 
   /usr/sbin/entdwife.sh -c approve "$option" -C "$1"
