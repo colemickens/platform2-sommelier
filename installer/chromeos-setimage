@@ -66,7 +66,7 @@ export DEFAULT_CHROOT_DIR="${INSTALL_ROOT}"
 locate_gpt  # sets $GPT to cgpt executable
 
 if [ "$PATH" != "/" ]; then
-  local ir="${FLAGS_install_root}"
+  ir="${FLAGS_install_root}"
   PATH="$ir/bin:$ir/sbin:$ir/usr/bin:$ir/usr/sbin:${PATH}"
   unset ir
 fi
@@ -153,6 +153,19 @@ setup_dst_loop() {
   echo $dev
 }
 
+# For details, see crosutils.git/common.sh
+enable_rw_mount() {
+  local rootfs="$1"
+  local offset="${2-0}"
+  local ro_compat_offset=$((0x464 + 3))  # Set 'highest' byte
+  # Dash can't do echo -ne, but it can do printf "\NNN"
+  # We could use /dev/zero here, but this matches what would be
+  # needed for disable_rw_mount (printf '\377').
+  printf '\000' |
+    sudo dd of="$rootfs" seek=$((offset + ro_compat_offset)) \
+            conv=notrunc count=1 bs=1
+}
+
 ESP_TMP_DIR=
 tempfile=$(mktemp /tmp/grubcfg_XXXXXXXXX)
 trap cleanup EXIT
@@ -189,6 +202,7 @@ fi
 # the verified rootfs update.  This needs to be cleaned up once verified root
 # works on the ARM kernel.
 DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
+table=
 if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
   # Use the root to determine if verification should be happening.
   kernel_root="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*root=\([^ ]*\).*/\1/g')"
@@ -219,6 +233,13 @@ if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
   if [ -z "${rootfs_image}" ]; then
     ROOT_LOOP=$(setup_dst_loop ${selected_root})
     rootfs_image="${ROOT_LOOP}"
+  fi
+
+  # Update the root filesystem to ensure it can be mounted if rw access is
+  # expected.  We never disable it going back to verification here since
+  # we don't want to change a pre-created image at all if it is verified.
+  if [ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_FALSE} ]; then
+    enable_rw_mount "${rootfs_image}"
   fi
 
   # Compute the rootfs hash tree and dump it in the tempfile.
