@@ -7,7 +7,6 @@
 #include <gdk/gdkx.h>
 
 #include "base/logging.h"
-#include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/powerd.h"
 #include "power_manager/screen_locker.h"
@@ -15,12 +14,22 @@
 
 namespace power_manager {
 
-// Amount of time that the power button needs to be held before we shut down.
-static const guint kShutdownTimeoutMs = 1000;
+// Amount of time that the power button needs to be held before we lock the
+// screen.
+static const guint kLockTimeoutMs = 400;
 
-// Amount of time that we wait for the window manager to display the shutdown
-// animation before dimming the backlight.
-static const guint kDimBacklightTimeoutMs = 150;
+// Amount of time that the power button needs to be held before we shut down.
+static const guint kShutdownTimeoutMs = 400;
+
+// When the button has been held continuously from the unlocked state, amount of
+// time that we wait after locking the screen before starting the pre-shutdown
+// animation.
+static const guint kLockToShutdownTimeoutMs = 600;
+
+// Amount of time that we give the window manager to display the shutdown
+// animation before we dim the screen and start actually shutting down the
+// system.
+static const guint kShutdownAnimationMs = 150;
 
 // Name of the X selection that the window manager takes ownership of.  This
 // comes from ICCCM 4.3; see http://tronche.com/gui/x/icccm/sec-4.html#s-4.3.
@@ -31,83 +40,140 @@ static const char kWindowManagerSelectionName[] = "WM_S0";
 // manager.
 static const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
 
+// If the ID pointed to by |timeout_id| is non-zero, remove the timeout and set
+// the memory to 0.
+static void RemoveTimeoutIfSet(guint* timeout_id) {
+  if (timeout_id) {
+    g_source_remove(*timeout_id);
+    *timeout_id = 0;
+  }
+}
+
 PowerButtonHandler::PowerButtonHandler(Daemon* daemon)
     : daemon_(daemon),
-      state_(kStateUnpressed),
-      shutdown_timeout_id_(0) {
+      lock_timeout_id_(0),
+      lock_to_shutdown_timeout_id_(0),
+      shutdown_timeout_id_(0),
+      real_shutdown_timeout_id_(0),
+      shutting_down_(false) {
 }
 
 PowerButtonHandler::~PowerButtonHandler() {
-  CancelShutdownTimeout();
+  RemoveTimeoutIfSet(&lock_timeout_id_);
+  RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
+  RemoveTimeoutIfSet(&shutdown_timeout_id_);
+  RemoveTimeoutIfSet(&real_shutdown_timeout_id_);
 }
 
 void PowerButtonHandler::HandleButtonDown() {
-  if (state_ != kStateUnpressed)
+  if (shutting_down_)
     return;
-
-  state_ = kStateWaitingForRelease;
 
 #ifdef NEW_POWER_BUTTON
   // Power button release supported. This allows us to schedule events based
   // on how long the button was held down.
-  DCHECK(!shutdown_timeout_id_);
-  shutdown_timeout_id_ =
-      g_timeout_add(kShutdownTimeoutMs,
-                    PowerButtonHandler::HandleShutdownTimeoutThunk,
-                    this);
+  if (util::LoggedIn() && !daemon_->locker()->is_locked()) {
+    NotifyWindowManagerAboutPowerButtonState(
+        chromeos::WM_IPC_POWER_BUTTON_PRE_LOCK);
+    RemoveTimeoutIfSet(&lock_timeout_id_);
+    lock_timeout_id_ =
+        g_timeout_add(kLockTimeoutMs,
+                      PowerButtonHandler::HandleLockTimeoutThunk,
+                      this);
+  } else {
+    AddShutdownTimeout();
+  }
 #else
   // Legacy behavior for x86 systems because the ACPI button driver sends both
   // down and release events at the time the acpi notify occurs for power
   // button.
-  if (!util::LoggedIn() || daemon_->locker()->is_locked())
-    HandleShutdownTimeout();
-  else
+  if (util::LoggedIn() && !daemon_->locker()->is_locked())
     daemon_->locker()->LockScreen();
+  else
+    HandleShutdownTimeout();
 #endif
 }
 
 void PowerButtonHandler::HandleButtonUp() {
-  if (state_ != kStateWaitingForRelease)
+  if (shutting_down_)
     return;
 
-  CancelShutdownTimeout();
-  state_ = kStateUnpressed;
-
-  if (!util::LoggedIn() || daemon_->locker()->is_locked())
-    return;
-
-  daemon_->locker()->LockScreen();
+#ifdef NEW_POWER_BUTTON
+  if (lock_timeout_id_) {
+    RemoveTimeoutIfSet(&lock_timeout_id_);
+    NotifyWindowManagerAboutPowerButtonState(
+        chromeos::WM_IPC_POWER_BUTTON_ABORTED_LOCK);
+  }
+  if (shutdown_timeout_id_) {
+    RemoveTimeoutIfSet(&shutdown_timeout_id_);
+    NotifyWindowManagerAboutPowerButtonState(
+        chromeos::WM_IPC_POWER_BUTTON_ABORTED_SHUTDOWN);
+  }
+  RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
+#endif
 }
 
-void PowerButtonHandler::CancelShutdownTimeout() {
-  if (shutdown_timeout_id_) {
-    g_source_remove(shutdown_timeout_id_);
-    shutdown_timeout_id_ = 0;
-  }
+void PowerButtonHandler::HandleLockTimeout() {
+  lock_timeout_id_ = 0;
+  daemon_->locker()->LockScreen();
+  RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
+  lock_to_shutdown_timeout_id_ =
+      g_timeout_add(kLockToShutdownTimeoutMs,
+                    PowerButtonHandler::HandleLockToShutdownTimeoutThunk,
+                    this);
+}
+
+void PowerButtonHandler::HandleLockToShutdownTimeout() {
+  lock_to_shutdown_timeout_id_ = 0;
+  AddShutdownTimeout();
 }
 
 void PowerButtonHandler::HandleShutdownTimeout() {
-  DCHECK_EQ(state_, kStateWaitingForRelease);
-  state_ = kStateShuttingDown;
-  bool notified_wm = NotifyWindowManagerAboutShutdown();
-  daemon_->StartCleanShutdown();
-  if (notified_wm) {
-    // TODO: Ideally, we'd use the backlight controller to turn off the display
-    // after the window manager has had enough time to display the shutdown
-    // animation.  Using DPMS for this is pretty ugly, though -- the backlight
-    // turns back on when X exits or if the user moves the mouse or hits a key.
-    // We just dim it instead for now.
-    g_timeout_add(kDimBacklightTimeoutMs,
-                  PowerButtonHandler::HandleDimBacklightTimeoutThunk,
-                  this);
-  }
+  shutdown_timeout_id_ = 0;
+  shutting_down_ = true;
+  NotifyWindowManagerAboutShutdown();
+  DCHECK(real_shutdown_timeout_id_ == 0) << "Shutdown already in-progress";
+  real_shutdown_timeout_id_ =
+      g_timeout_add(kShutdownAnimationMs,
+                    PowerButtonHandler::HandleRealShutdownTimeoutThunk,
+                    this);
 }
 
-void PowerButtonHandler::HandleDimBacklightTimeout() {
+void PowerButtonHandler::HandleRealShutdownTimeout() {
+  real_shutdown_timeout_id_ = 0;
+  // TODO: Ideally, we'd use the backlight controller to turn off the display
+  // after the window manager has had enough time to display the shutdown
+  // animation.  Using DPMS for this is pretty ugly, though -- the backlight
+  // turns back on when X exits or if the user moves the mouse or hits a key.
+  // We just dim it instead for now.
   daemon_->backlight_controller()->SetDimState(BACKLIGHT_DIM);
+  daemon_->StartCleanShutdown();
+}
+
+void PowerButtonHandler::AddShutdownTimeout() {
+  NotifyWindowManagerAboutPowerButtonState(
+      chromeos::WM_IPC_POWER_BUTTON_PRE_SHUTDOWN);
+  RemoveTimeoutIfSet(&shutdown_timeout_id_);
+  shutdown_timeout_id_ =
+      g_timeout_add(kShutdownTimeoutMs,
+                    PowerButtonHandler::HandleShutdownTimeoutThunk,
+                    this);
+}
+
+bool PowerButtonHandler::NotifyWindowManagerAboutPowerButtonState(
+    chromeos::WmIpcPowerButtonState button_state) {
+  return SendMessageToWindowManager(
+             chromeos::WM_IPC_MESSAGE_WM_NOTIFY_POWER_BUTTON_STATE,
+             button_state);
 }
 
 bool PowerButtonHandler::NotifyWindowManagerAboutShutdown() {
+  return SendMessageToWindowManager(
+             chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
+}
+
+bool PowerButtonHandler::SendMessageToWindowManager(
+    chromeos::WmIpcMessageType type, int first_param) {
   // Ensure that we won't crash if we get an error from the X server.
   gdk_error_trap_push();
 
@@ -128,8 +194,9 @@ bool PowerButtonHandler::NotifyWindowManagerAboutShutdown() {
   event.xclient.message_type =
       XInternAtom(display, kWindowManagerMessageTypeName, True);
   event.xclient.format = 32;  // 32-bit values
-  event.xclient.data.l[0] = chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN;
-  for (int i = 1; i < 5; ++i)
+  event.xclient.data.l[0] = type;
+  event.xclient.data.l[1] = first_param;
+  for (int i = 2; i < 5; ++i)
     event.xclient.data.l[i] = 0;
   XSendEvent(display,
              wm_window,
@@ -139,7 +206,7 @@ bool PowerButtonHandler::NotifyWindowManagerAboutShutdown() {
 
   gdk_flush();
   if (gdk_error_trap_pop()) {
-    LOG(WARNING) << "Got error while notifying window manager about shutdown";
+    LOG(WARNING) << "Got error while sending message to window manager";
     return false;
   }
   return true;

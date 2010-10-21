@@ -8,6 +8,7 @@
 #include <glib.h>
 
 #include "base/basictypes.h"
+#include "cros/chromeos_wm_ipc_enums.h"
 
 namespace power_manager {
 
@@ -25,49 +26,69 @@ class PowerButtonHandler {
   void HandleButtonUp();
 
  private:
-  // Different states that we can be in due to the state of the power
-  // button.  These are listed in the order in which we transition through
-  // them if the user holds down the power button from an unlocked state.
-  enum State {
-    // The power button is up (the screen may be either locked or unlocked).
-    kStateUnpressed = 0,
+  // Lock the screen and add a timeout for HandleLockToShutdownTimeout().
+  static gboolean HandleLockTimeoutThunk(gpointer data) {
+    reinterpret_cast<PowerButtonHandler*>(data)->HandleLockTimeout();
+    return FALSE;
+  }
+  void HandleLockTimeout();
 
-    // The power button is down but hasn't been held long enough to shut down.
-    kStateWaitingForRelease,
+  // The power button has been held continuously through the unlocked and locked
+  // states, and has been down for long enough that we're considering shutting
+  // down the machine.  Starts the shutdown timeout.
+  static gboolean HandleLockToShutdownTimeoutThunk(gpointer data) {
+    reinterpret_cast<PowerButtonHandler*>(data)->HandleLockToShutdownTimeout();
+    return FALSE;
+  }
+  void HandleLockToShutdownTimeout();
 
-    // We're shutting down the system.
-    kStateShuttingDown,
-  };
-
-  // Cancel |shutdown_timeout_id_| if it's in-progress.
-  void CancelShutdownTimeout();
-
-  // Shut down the machine.
+  // Tell the window manager to start playing the shutdown animation and add a
+  // timeout for HandleRealShutdownTimeout() to fire after the animation is
+  // done.
   static gboolean HandleShutdownTimeoutThunk(gpointer data) {
     reinterpret_cast<PowerButtonHandler*>(data)->HandleShutdownTimeout();
     return FALSE;
   }
   void HandleShutdownTimeout();
 
-  // Dim the backlight.
-  static gboolean HandleDimBacklightTimeoutThunk(gpointer data) {
-    reinterpret_cast<PowerButtonHandler*>(data)->HandleDimBacklightTimeout();
+  // Dim the backlight and actually shut down the machine.
+  static gboolean HandleRealShutdownTimeoutThunk(gpointer data) {
+    reinterpret_cast<PowerButtonHandler*>(data)->HandleRealShutdownTimeout();
     return FALSE;
   }
-  void HandleDimBacklightTimeout();
+  void HandleRealShutdownTimeout();
+
+  // Tell the window manager to start the pre-shutdown animation and add a
+  // timeout for HandleShutdownTimeout().
+  void AddShutdownTimeout();
+
+  // Send an X ClientEvent message to the window manager notifying it about the
+  // state of the power button.  Returns false if we were unable to send the
+  // message.
+  bool NotifyWindowManagerAboutPowerButtonState(
+      chromeos::WmIpcPowerButtonState button_state);
 
   // Send an X ClientEvent message to the window manager notifying it that the
   // system is being shut down.  Returns false if we were unable to send the
   // message.
   bool NotifyWindowManagerAboutShutdown();
 
+  // Helper method used by NotifyWindowManagerAboutPowerButtonState() and
+  // NotifyWindowManagerAboutShutdown().
+  bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
+                                  int first_param);
+
   Daemon* daemon_;  // not owned
 
-  // The state that we're currently in.
-  State state_;
-
-  // Timeout for calling HandleShutdownTimeoutThunk(), or 0 if not running.
+  // Timeouts for calling the corresponding Handle*TimeoutThunk() methods.
+  // 0 if unregistered.
+  guint lock_timeout_id_;
+  guint lock_to_shutdown_timeout_id_;
   guint shutdown_timeout_id_;
+  guint real_shutdown_timeout_id_;
+
+  // Are we in the process of shutting down the system?
+  bool shutting_down_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerButtonHandler);
 };
