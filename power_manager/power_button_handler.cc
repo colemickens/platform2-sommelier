@@ -43,7 +43,7 @@ static const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
 // If the ID pointed to by |timeout_id| is non-zero, remove the timeout and set
 // the memory to 0.
 static void RemoveTimeoutIfSet(guint* timeout_id) {
-  if (timeout_id) {
+  if (timeout_id && *timeout_id > 0) {
     g_source_remove(*timeout_id);
     *timeout_id = 0;
   }
