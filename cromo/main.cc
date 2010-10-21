@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <syslog.h>
 #include <sys/signalfd.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/glib-integration.h>
@@ -105,7 +107,7 @@ class LogSinkSyslog : public google::LogSink {
  public:
   LogSinkSyslog() {
     openlog("cromo",
-            0,  // Options
+            LOG_PID,  // Options
             LOG_LOCAL3);  // 5,6,7 are taken
   }
 
@@ -234,5 +236,7 @@ int main(int argc, char* argv[]) {
   g_idle_add(setup_signals, NULL);
   g_main_loop_run(main_loop);
 
+  PluginManager::UnloadPlugins(false);
+  LOG(INFO) << "Exit";
   return 0;
 }

@@ -16,7 +16,7 @@ class CromoServer;
 class PluginManager {
  public:
   static void LoadPlugins(CromoServer* server, std::string& plugins);
-  static void UnloadPlugins();
+  static void UnloadPlugins(bool dlclose_plugins);
 
  private:
   struct Plugin {

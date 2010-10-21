@@ -73,7 +73,7 @@ void PluginManager::LoadPlugins(CromoServer* server,
   }
 }
 
-void PluginManager::UnloadPlugins() {
+void PluginManager::UnloadPlugins(bool dlclose_plugins) {
   vector<Plugin*>::const_iterator it;
   for (it = loaded_plugins_.begin(); it != loaded_plugins_.end(); ++it) {
     Plugin* pl = *it;
@@ -81,9 +81,15 @@ void PluginManager::UnloadPlugins() {
       pl->descriptor->onunload();
     }
   }
-  for (it = loaded_plugins_.begin(); it != loaded_plugins_.end(); ++it) {
-    Plugin* pl = *it;
-    dlclose(pl->handle);
+
+  // We do not always dlclose plugins if the process is about to exit
+  // anyway.  Critical cleanup has already happpened by calling the
+  // onunload functions.
+  if (dlclose_plugins) {
+    for (it = loaded_plugins_.begin(); it != loaded_plugins_.end(); ++it) {
+      Plugin* pl = *it;
+      dlclose(pl->handle);
+    }
   }
   loaded_plugins_.erase(loaded_plugins_.begin(), loaded_plugins_.end());
 }
