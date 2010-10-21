@@ -1,14 +1,14 @@
 // Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
+// found in the LICENSE file.
 
-
-#ifndef IMAGE_BURNER_SERVICE_H_
-#define IMAGE_BURNER_SERVICE_H_
+#ifndef IMAGE_BURN_SERVICE_H_
+#define IMAGE_BURN_SERVICE_H_
 
 #include <base/basictypes.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
+#include <string>
 
 namespace imageburn {
 
@@ -25,7 +25,7 @@ struct BurnArguments {
 
 const int kNumSignals = 2;
 
-enum BurnSignals{
+enum BurnSignals {
   kSignalBurnFinished,
   kSignalBurnUpdate
 };
@@ -35,7 +35,6 @@ enum BurnSignals{
 //
 // ::g_type_init() must be called before this class is used.
 class ImageBurnService : public chromeos::dbus::AbstractDbusService {
-
  public:
   ImageBurnService();
   virtual ~ImageBurnService();
@@ -43,15 +42,13 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService {
   // chromeos::dbus::AbstractDbusService implementation.
   virtual bool Initialize();
   virtual bool Reset();
-  virtual bool Shutdown();  
+  virtual bool Shutdown();
   virtual const char *service_name() const;
   virtual const char *service_path() const;
   virtual const char *service_interface() const;
   virtual GObject *service_object() const;
 
   gboolean BurnImage(gchar* from_path, gchar* to_path, GError** error);
-  
-  static gboolean BurnImageTimeoutCallback(gpointer data);
 
  protected:
   virtual GMainLoop *main_loop() {
@@ -60,20 +57,22 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService {
 
  private:
   static bool LoadLibcros();
+  static gboolean BurnImageTimeoutCallback(gpointer data);
   void Cleanup();
   void InitiateBurning(const char* from_path, const char* to_path);
-  bool UnmountDevice(const char* device_path);
+  bool UnmountAndValidateDevice(const char* device_path);
   bool DoBurn(const char* from_path, const char* to_path, std::string* err);
-  void SendProgressSignal(int64 amount_burnt, 
+  void SendProgressSignal(int64 amount_burnt,
                           int64 total_size,
                           const char* target_path);
-  void SendFinishedSignal(const char* target_path, 
+  void SendFinishedSignal(const char* target_path,
                           bool success,
                           const char* error);
 
   // Reads last 4 bytes from gzip file (which hold uncompressed content size)
   // maximum content size supported is 4GB.
   int64 GetTotalImageSize(const char* from_path);
+  bool IsBootPath(const char* device_path);
 
   ImageBurner* image_burner_;
   GMainLoop* main_loop_;
@@ -83,5 +82,6 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService {
 };
 
 }  // namespace imageburn
-#endif  // IMAGE_BURNER_SERVICE_H_
+
+#endif  // IMAGE_BURN_SERVICE_H_
 

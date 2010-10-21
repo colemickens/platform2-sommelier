@@ -5,7 +5,7 @@
 XXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lz -lcrosapi -ldl
+BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lz -lcrosapi -ldl -lrootdev
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
@@ -16,7 +16,7 @@ IMAGEBURN_COMMON_OBJS = image_burn_service.o  image_burner.o
 
 DBUS_SOURCE = image_burner.xml
 DBUS_SOURCE_BASENAME = image_burner
-DBUS_SERVER = bindings/server.h 
+DBUS_SERVER = bindings/server.h
 
 DBUS_MARSHAL_LIST = marshal.list
 DBUS_MARSHAL_HEADER = marshal.h
@@ -26,7 +26,7 @@ IMAGEBURN_OBJS = $(IMAGEBURN_COMMON_OBJS) image_burner_main.o
 
 BINDINGS_DIR = bindings
 
-all: $(IMAGEBURN_BIN) 
+all: $(IMAGEBURN_BIN)
 
 $(IMAGEBURN_OBJS) : $(DBUS_SERVER) $(DBUS_MARSHAL_HEADER)
 
@@ -52,14 +52,14 @@ clean:
 	rm -rf *.o $(BINDINGS_DIR) $(DBUS_MARSHAL_HEADER)
 
 
-#to be removed 
+#to be removed
 DBUS_CLIENT = bindings/client.h
 
 TESTER_BIN = image_burner_tester
 
 TESTER_OBJS = image_burner_tester.o
 
-$(TESTER_OBJS) : $(DBUS_CLIENT) $(DBUS_MARSHAL_SOURCE) 
+$(TESTER_OBJS) : $(DBUS_CLIENT) $(DBUS_MARSHAL_SOURCE)
 
 $(TESTER_BIN): $(TESTER_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(TESTER_OBJS) \
