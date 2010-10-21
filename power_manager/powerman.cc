@@ -167,10 +167,11 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                                     util::kShutdownSignal)) {
     LOG(INFO) << "Shutdown event";
-    LOG(INFO) << "power button is "
-              << (daemon->power_button_state_ == kPowerButtonDown?
-                  "down.":"up.");
     daemon->Shutdown();
+  } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
+                                    util::kRestartSignal)) {
+    LOG(INFO) << "Restart event";
+    daemon->Restart();
   } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                                     util::kRequestCleanShutdown)) {
     LOG(INFO) << "Request Clean Shutdown";
@@ -267,6 +268,10 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
 
 void PowerManDaemon::Shutdown() {
   util::Launch("shutdown -P now");
+}
+
+void PowerManDaemon::Restart() {
+  util::Launch("shutdown -r now");
 }
 
 PowerManDaemon::RetrySuspendPayload* PowerManDaemon::CreateRetrySuspendPayload() {

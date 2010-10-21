@@ -41,7 +41,9 @@ class Daemon : public XIdleMonitor {
   void SetActive();
   void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
-  void StartCleanShutdown();
+
+  void OnRequestRestart();
+  void OnRequestShutdown();
 
  private:
   friend class DaemonTest;
@@ -63,6 +65,9 @@ class Daemon : public XIdleMonitor {
 
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
+
+  enum SystemState { kSystemOn, kSystemSuspend, kSystemRestarting,
+                     kSystemShuttingDown };
 
   // UMA metrics parameters.
   static const char kMetricBacklightLevelName[];
@@ -136,6 +141,11 @@ class Daemon : public XIdleMonitor {
   // go through with the shutdown now.
   static gboolean CleanShutdownTimedOut(gpointer data);
 
+  // Handle power state changes from powerd_suspend.
+  // |state| is "on" when resuming from suspend.
+  void OnPowerStateChange(const char* state);
+
+  void StartCleanShutdown();
   void Shutdown();
   void Suspend();
 
@@ -228,6 +238,7 @@ class Daemon : public XIdleMonitor {
   bool use_xscreensaver_;
   PluggedState plugged_state_;
   IdleState idle_state_;
+  SystemState system_state_;
   ScreenLocker locker_;
   Suspender suspender_;
   scoped_ptr<PowerButtonHandler> power_button_handler_;

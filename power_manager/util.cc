@@ -19,6 +19,7 @@ namespace util {
 const char* kLowerPowerManagerInterface = "org.chromium.LowerPowerManager";
 
 // powerd -> powerm signals
+const char* kRestartSignal = "RestartSignal";
 const char* kRequestCleanShutdown = "RequestCleanShutdown";
 const char* kSuspendSignal = "SuspendSignal";
 const char* kShutdownSignal = "ShutdownSignal";

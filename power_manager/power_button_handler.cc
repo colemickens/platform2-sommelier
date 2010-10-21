@@ -147,7 +147,7 @@ void PowerButtonHandler::HandleRealShutdownTimeout() {
   // turns back on when X exits or if the user moves the mouse or hits a key.
   // We just dim it instead for now.
   daemon_->backlight_controller()->SetDimState(BACKLIGHT_DIM);
-  daemon_->StartCleanShutdown();
+  daemon_->OnRequestShutdown();
 }
 
 void PowerButtonHandler::AddShutdownTimeout() {

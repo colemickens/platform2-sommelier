@@ -51,6 +51,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
+      system_state_(kSystemOn),
       suspender_(&locker_),
       power_button_handler_(new PowerButtonHandler(this)),
       battery_discharge_rate_metric_last_(0),
@@ -181,6 +182,20 @@ void Daemon::SetPlugged(bool plugged) {
 
     ctl_->OnPlugEvent(plugged);
     SetIdleState(idle_time_ms);
+  }
+}
+
+void Daemon::OnRequestRestart() {
+  if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+    system_state_ = kSystemRestarting;
+    StartCleanShutdown();
+  }
+}
+
+void Daemon::OnRequestShutdown() {
+  if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+    system_state_ = kSystemShuttingDown;
+    StartCleanShutdown();
   }
 }
 
@@ -377,9 +392,13 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     LOG(INFO) << "RequestSuspend event";
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kRequestRestartSignal)) {
+    LOG(INFO) << "RequestRestart event";
+    daemon->OnRequestRestart();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestShutdownSignal)) {
     LOG(INFO) << "RequestShutdown event";
-    daemon->StartCleanShutdown();
+    daemon->OnRequestShutdown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidClosed)) {
     LOG(INFO) << "Lid Closed event";
@@ -400,10 +419,9 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     daemon->power_button_handler_->HandleButtonUp();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kCleanShutdown)) {
-    LOG(INFO) << "Clean shutdown event";
+    LOG(INFO) << "Clean shutdown/restart event";
     if (daemon->clean_shutdown_initiated_) {
       daemon->clean_shutdown_initiated_ = false;
-      LOG(INFO) << "Shutting down";
       daemon->Shutdown();
     } else {
       LOG(INFO) << "Received clean shutdown signal, but never asked for it.";
@@ -414,22 +432,13 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     const char *state = '\0';
     DBusError error;
     dbus_error_init(&error);
-
     if (dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &state,
                               DBUS_TYPE_INVALID) == FALSE) {
       LOG(WARNING) << "Trouble reading args of PowerStateChange event "
                    << state;
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
-
-    // on == resume via powerd_suspend
-    if (g_str_equal(state, "on") == TRUE) {
-      LOG(INFO) << "Resuming has commenced";
-      daemon->SetActive();
-    } else {
-      DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
-    }
-
+    daemon->OnPowerStateChange(state);
     // other dbus clients may be interested in consuming this signal
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else {
@@ -481,7 +490,7 @@ gboolean Daemon::CleanShutdownTimedOut(gpointer data) {
   Daemon* daemon = static_cast<Daemon*>(data);
   if (daemon->clean_shutdown_initiated_) {
     daemon->clean_shutdown_initiated_ = false;
-    LOG(INFO) << "Timed out waiting for clean shutdown. Shutting down.";
+    LOG(INFO) << "Timed out waiting for clean shutdown/restart.";
     daemon->Shutdown();
   } else {
     LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
@@ -489,20 +498,40 @@ gboolean Daemon::CleanShutdownTimedOut(gpointer data) {
   return false;
 }
 
+void Daemon::OnPowerStateChange(const char* state) {
+ // on == resume via powerd_suspend
+  if (g_str_equal(state, "on") == TRUE) {
+    LOG(INFO) << "Resuming has commenced";
+    system_state_ = kSystemOn;
+    SetActive();
+  } else {
+    DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
+  }
+}
+
 void Daemon::Shutdown() {
-  util::SendSignalToPowerM(util::kShutdownSignal);
+  if (system_state_ == kSystemShuttingDown) {
+    LOG(INFO) << "Shutting down";
+    util::SendSignalToPowerM(util::kShutdownSignal);
+  } else if (system_state_ == kSystemRestarting) {
+    LOG(INFO) << "Restarting";
+    util::SendSignalToPowerM(util::kRestartSignal);
+  } else {
+    LOG(ERROR) << "Shutdown : Improper System State!";
+  }
 }
 
 void Daemon::Suspend() {
-  if (clean_shutdown_initiated_) {
+  if (system_state_ == kSystemRestarting || system_state_ == kSystemShuttingDown) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }
   if (util::LoggedIn()) {
+    system_state_ = kSystemSuspend;
     suspender_.RequestSuspend();
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
-    StartCleanShutdown();
+    OnRequestShutdown();
   }
 }
 

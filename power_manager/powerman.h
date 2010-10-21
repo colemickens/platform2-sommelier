@@ -99,7 +99,8 @@ class PowerManDaemon {
   bool SendMetric(const std::string& name, int sample,
                   int min, int max, int nbuckets);
 
-  // Shutdown and suspend the system.
+  // Restart, shutdown, and suspend the system.
+  void Restart();
   void Shutdown();
   void Suspend();
 
