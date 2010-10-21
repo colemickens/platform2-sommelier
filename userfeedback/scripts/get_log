@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This script looks to see if a log file is zero length, or non
+# existent before writing something to stdout, so that we don't end up
+# with empty entries that just look broken.
+
+max_lines=${2:-1000}
+
+if [ -r "$1" -a -f "$1" ]; then
+  # get first field.
+  size=$(/bin/ls -s "$1")
+  size=${size%% *}
+  if [ $size -gt 0 ]; then
+    /usr/bin/tail --lines=$max_lines "$1"
+  else
+    echo "<empty>"
+  fi
+else
+  echo "<not available>"
+fi

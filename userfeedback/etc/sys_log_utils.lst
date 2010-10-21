@@ -10,35 +10,34 @@
 #
 # Arguments will be included
 
-CLIENT_ID,/usr/share/userfeedback/scripts/get_client_id
+CLIENT_ID,/usr/share/userfeedback/scripts/get_log "/home/chronos/Consent To Send Stats"
 LOGDATE,/bin/date
-Xorg.0.log,cat /var/log/Xorg.0.log
-bios_info,cat /var/log/bios_info.txt
-boot_times,cat /tmp/boot-times-sent
-chrome_log,cat /home/chronos/user/chrome,ascii
-chrome_system_log,cat /var/log/chrome/chrome,ascii
-chromeos-wm.LATEST,cat /home/chronos/user/log/chromeos-wm.LATEST
+Xorg.0.log,/usr/share/userfeedback/scripts/get_log /var/log/Xorg.0.log
+bios_info,/usr/share/userfeedback/scripts/get_log /var/log/bios_info.txt
+boot_times,/usr/share/userfeedback/scripts/get_log /tmp/boot-times-sent
+chrome_log,/usr/share/userfeedback/scripts/get_log /home/chronos/user/chrome,ascii
+chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome,ascii
+chromeos-wm.LATEST,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chromeos-wm.LATEST
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
 dmesg,/bin/dmesg
-fontconfig.log,cat /var/log/fontconfig.log
 hardware_class,/usr/bin/hardware_class
 hostname,hostname
 hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
-login_times,cat /tmp/login-times-sent
-lsmod,/usr/sbin/lsmod
+login_times,/usr/share/userfeedback/scripts/get_log /tmp/login-times-sent
+lsmod,/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 meminfo,cat /proc/meminfo
 mm-status,/usr/share/userfeedback/scripts/mm-status
-powerd.LATEST,cat /var/log/power_manager/powerd.LATEST
-powerd.out,cat /var/log/power_manager/powerd.out
+powerd.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.LATEST
+powerd.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.out
 ps,/bin/ps ux
-softwareupdate.log,cat /var/log/softwareupdate.log
+softwareupdate.log,/usr/share/userfeedback/scripts/get_log /var/log/softwareupdate.log
 syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/messages
 touchpad,/opt/google/touchpad/tpcontrol status
-ui_log,tail --bytes=10K /var/log/ui/ui.LATEST
+ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
 uname,/bin/uname -a
-update_engine.log,cat /var/log/update_engine.log
+update_engine.log,/usr/share/userfeedback/scripts/get_log /var/log/update_engine.log
 wpa_supplicant,/usr/share/userfeedback/scripts/getmsgs --last '30 minutes' /var/log/hostap.log
