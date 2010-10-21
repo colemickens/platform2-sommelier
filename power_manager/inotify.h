@@ -42,6 +42,7 @@ class Inotify {
   GIOChannel* channel_;
   InotifyCallback callback_;
   gpointer callback_data_;
+  guint gio_watch_id_;
 
   DISALLOW_COPY_AND_ASSIGN(Inotify);
 };

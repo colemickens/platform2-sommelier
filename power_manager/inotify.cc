@@ -17,13 +17,17 @@ static const int64 kInotifyBufferSize = 32768;
 Inotify::Inotify()
     : channel_(NULL),
       callback_(NULL),
-      callback_data_(NULL) {}
+      callback_data_(NULL),
+      gio_watch_id_(0) {}
 
 Inotify::~Inotify() {
   if (channel_) {
     LOG(INFO) << "cleaning inotify";
+    if (gio_watch_id_ > 0)
+      g_source_remove(gio_watch_id_);
     int fd = g_io_channel_unix_get_fd(channel_);
     g_io_channel_shutdown(channel_, true, NULL);
+    g_io_channel_unref(channel_);
     close(fd);
     LOG(INFO) << "done!";
   }
@@ -60,7 +64,8 @@ int Inotify::AddWatch(const char* name, int mask) {
 
 void Inotify::Start() {
   LOG(INFO) << "Starting Inotify Monitoring!";
-  g_io_add_watch(channel_, G_IO_IN, &(Inotify::CallbackHandler), this);
+  gio_watch_id_ = g_io_add_watch(channel_, G_IO_IN, &(Inotify::CallbackHandler),
+                                 this);
 }
 
 gboolean Inotify::CallbackHandler(GIOChannel* source,
