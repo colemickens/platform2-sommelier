@@ -109,9 +109,9 @@ if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
   if [ ! -f /root/.dev_mode ]; then
     # TODO(wad) Throw up a splash.
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert enter_dev 5 >/dev/tty1
+    chromeos-boot-alert enter_dev 30 >/dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
-    touch ${RESET_FILE}
+    echo "keepimg" > ${RESET_FILE}
   fi
 
   # Transition from devmode
@@ -121,7 +121,7 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
   if [ ! -f /root/.dev_mode ]; then
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert leave_dev >/dev/tty1
-    echo "fast" > ${RESET_FILE}
+    echo "fast keepimg" > ${RESET_FILE}
   fi
 fi
 
@@ -131,14 +131,8 @@ if [ -O "$RESET_FILE" ]; then
   [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
   chromeos-boot-alert wipe \
     /mnt/stateful_partition/wipe_splash.png >/dev/tty1
-  FAST=$(cat $RESET_FILE)
-  if [ "$FAST" = "fast" ]; then
-    exec clobber-state fast
-  elif [ "$FAST" = "fast test" ]; then
-    exec clobber-state fast test
-  else
-    exec clobber-state
-  fi
+  ARGS="$(cat ${RESET_FILE})"
+  exec clobber-state "$ARGS"
 fi
 
 # Check if we have an update to stateful pending.  This is used for dev_mode.

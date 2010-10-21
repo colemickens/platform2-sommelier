@@ -18,8 +18,9 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
-FAST_WIPE="$1"
-FAST_TEST="$2"
+FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
+FAST_TEST=$(echo "$@" | grep -sq test && echo "test")
+KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
 
 wipedev() {
   DEV="$1"
@@ -36,7 +37,12 @@ wipedev() {
   FULL_BLKS=$(($FS_BLOCKS / $BLOCKS_4M))
   REMAINDER_SECTORS=$(($FS_BLOCKS % $BLOCKS_4M))
 
-  dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
+  if [ -x /usr/bin/pv ]; then
+    pv -etp -s $((4 * 1024 * 1024 * ${FULL_BLKS})) </dev/zero 2>/dev/tty1 | \
+      dd of=${DEV} bs=4M count=${FULL_BLKS} iflag=fullblock
+  else
+    dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
+  fi
   dd if=/dev/zero of=${DEV} bs=${FS_BLOCKSIZE} count=${REMAINDER_SECTORS} \
     seek=$(($FULL_BLKS * $BLOCKS_4M))
 }
@@ -67,15 +73,17 @@ if [ "$FAST_WIPE" = "fast" ]; then
   # Just wipe the start of the partition and remake the fs on
   # the stateful partition.
   dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
-  dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
-  dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
+  if [ -z "${KEEPIMG}" ]; then
+    dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
+    dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
+  fi
   /sbin/mkfs.ext3 "$STATE_DEV"
 else
-  echo "Erasing rootfs on ${OTHER_ROOT_DEV}..."
-  wipedev ${OTHER_ROOT_DEV}
 
-  echo "Erasing kernelfs on ${OTHER_KERNEL_DEV}..."
-  wipedev ${OTHER_KERNEL_DEV}
+  if [ -z "${KEEPIMG}" ]; then
+    wipedev ${OTHER_ROOT_DEV}
+    wipedev ${OTHER_KERNEL_DEV}
+  fi
 
   # Wipe everything on the stateful partition.
   wipedev ${STATE_DEV}

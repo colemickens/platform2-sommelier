@@ -32,8 +32,8 @@ usage_help() {
 
 mode_enter_dev() {
   # Message for enter developer mode
-  # Argument: time to countdown (in minutes, default=5)
-  local delay_mins="${1:-5}"
+  # Argument: time to countdown (in seconds, default=30)
+  local delay_secs="${1:-30}"
   echo "
     Your system is transitioning to Developer Mode.
 
@@ -46,7 +46,7 @@ mode_enter_dev() {
     # bash needs -e to interpret \r, but dash does not.
     echo_opt='-n -e'
   fi
-  for dev_count_down in $(seq $(($delay_mins * 60)) -1 1); do
+  for dev_count_down in $(seq $delay_secs -1 1); do
     # Trailing spaces must exist to clear previous message when the printed
     # counter width changed (ex, 100->99).
     echo $echo_opt "\r    Starting in ${dev_count_down} seconds...   "
