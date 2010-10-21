@@ -299,6 +299,7 @@ class GobiModem
   guint32 activation_callback_id_;
 
   bool suspending_;
+  bool exiting_;
   const Carrier *carrier_;
 
   friend class GobiModemTest;

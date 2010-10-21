@@ -28,9 +28,17 @@ class GobiModemHandler : public ModemHandler {
   GobiModem* LookupByPath(const std::string& path);
 
  private:
+  typedef std::map<std::string, GobiModem *> KeyToModem;
+
+  // On clean exit clear the list of devices that need to be reset
+  void ClearDeviceListFile();
+
+  // Write a list of devices to a file so that upstart can reset the
+  // devices if we exit unexpectedly.
+  void WriteDeviceListFile(const KeyToModem &modems);
+
   bool GetDeviceList();
   void MonitorDevices();
-  typedef std::map<std::string, GobiModem *> KeyToModem;
   KeyToModem key_to_modem_;
   DeviceWatcher *device_watcher_;
 

@@ -212,7 +212,8 @@ GobiModem::GobiModem(DBus::Connection& connection,
       nmea_fd_(-1),
       session_state_(gobi::kDisconnected),
       session_id_(0),
-      suspending_(false) {
+      suspending_(false),
+      exiting_(false) {
   memcpy(&device_, &device, sizeof(device_));
 
   metrics_lib_.reset(new MetricsLibrary());
@@ -320,6 +321,11 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   if (!Enabled()) {
     LOG(WARNING) << "Connect on disabled modem";
     error.set(kConnectError, "Modem is disabled");
+    return;
+  }
+  if (exiting_) {
+    LOG(WARNING) << "Connect when exiting";
+    error.set(kConnectError, "Cromo is exiting");
     return;
   }
   ULONG failure_reason;
@@ -1612,7 +1618,9 @@ void GobiModem::SignalStrengthHandler(INT8 signal_strength,
 }
 
 void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
-  LOG(INFO) << "SessionStateHandler " << state;
+  LOG(INFO) << "SessionStateHandler state: " << state
+            << " reason: "
+            << (state == gobi::kConnected?0:session_end_reason);
   if (state == gobi::kConnected) {
     ULONG data_bearer_technology;
     sdk_->GetDataBearerTechnology(&data_bearer_technology);
@@ -1733,8 +1741,10 @@ void GobiModem::SetDeviceProperties()
 }
 
 bool GobiModem::StartExit() {
+  exiting_ = true;
   if (session_id_)
     sdk_->StopDataSession(session_id_);
+
   LOG(INFO) << "StartExit: session id " << session_id_;
   return true;
 }

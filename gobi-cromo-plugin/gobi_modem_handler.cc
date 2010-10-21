@@ -22,6 +22,8 @@ using std::vector;
 
 static gobi::Sdk GOBI_SDK;
 
+static ModemHandler* mm;
+
 static const int kDevicePollIntervalSecs = 1;
 static const char* kQCDeviceName = "QCQMI";
 static const char* kUSBDeviceListFile = "/var/run/cromo/usb-devices";
@@ -43,6 +45,7 @@ GobiModemHandler::GobiModemHandler(CromoServer& server)
 }
 
 GobiModemHandler::~GobiModemHandler() {
+  ClearDeviceListFile();
   delete device_watcher_;
 }
 
@@ -137,17 +140,26 @@ bool GobiModemHandler::GetDeviceList() {
     }
   }
 
+  WriteDeviceListFile(key_to_modem_);
+
+  return something_changed;
+}
+
+void GobiModemHandler::ClearDeviceListFile() {
+  KeyToModem no_modems;
+  WriteDeviceListFile(no_modems);
+}
+
+void GobiModemHandler::WriteDeviceListFile(const KeyToModem &modems) {
   FILE *dev_list_file = fopen(kUSBDeviceListFile, "w");
   if (dev_list_file) {
-    for (KeyToModem::iterator p = key_to_modem_.begin();
-         p != key_to_modem_.end(); p++) {
+    for (KeyToModem::const_iterator p = modems.begin();
+         p != modems.end(); p++) {
       GobiModem *m = p->second;
       fprintf(dev_list_file, "%s\n", m->GetUSBAddress().c_str());
     }
     fclose(dev_list_file);
   }
-
-  return something_changed;
 }
 
 // Enumerate the existing devices, and add them to the list of devices
@@ -174,13 +186,13 @@ GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
 }
 
 static void onload(CromoServer* server) {
-  ModemHandler* mm = new GobiModemHandler(*server);
+  mm = new GobiModemHandler(*server);
   if (!mm->Initialize())
     LOG(ERROR) << "Failed to initialize GobiModemHandler";
 }
 
 static void onunload() {
-  // TODO(rochberg):  Disconnect once for good measure?
+  delete mm;
 }
 
 CROMO_DEFINE_PLUGIN(gobi, onload, onunload)
