@@ -13,9 +13,13 @@
 namespace login_manager {
 class MockChildJob : public ChildJobInterface {
  public:
-  MockChildJob() { }
+  MockChildJob() {
+    EXPECT_CALL(*this, ShouldNeverKill())
+        .WillRepeatedly(::testing::Return(false));
+  }
   ~MockChildJob() { }
   MOCK_CONST_METHOD0(ShouldStop, bool());
+  MOCK_CONST_METHOD0(ShouldNeverKill, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
   MOCK_METHOD1(StartSession, void(const std::string&));

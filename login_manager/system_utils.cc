@@ -47,7 +47,7 @@ int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
 }
 
 bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
-  base::Time start = base::Time::Now();
+  base::TimeTicks start = base::TimeTicks::Now();
   base::TimeDelta max_elapsed = base::TimeDelta::FromSeconds(timeout);
   base::TimeDelta elapsed;
   int ret;
@@ -56,7 +56,7 @@ bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
   do {
     errno = 0;
     ret = ::waitpid(child_spec, NULL, 0);
-    elapsed = base::Time::Now() - start;
+    elapsed = base::TimeTicks::Now() - start;
   } while (ret > 0 || (errno == EINTR && elapsed < max_elapsed));
 
   // Once we exit the loop, we know there was an error.

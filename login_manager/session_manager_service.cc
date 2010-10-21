@@ -17,6 +17,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "base/base64.h"
@@ -46,6 +47,8 @@ namespace gobject {  // NOLINT
 
 namespace login_manager {
 
+using std::make_pair;
+using std::pair;
 using std::string;
 using std::vector;
 
@@ -124,6 +127,7 @@ namespace {
 
 // Time we wait for child job to die (in seconds).
 const int kKillTimeout = 3;
+
 const int kMaxArgumentsSize = 512;
 
 }  // namespace
@@ -869,17 +873,28 @@ gboolean SessionManagerService::CurrentUserHasOwnerKey(
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
-  for (size_t i_child = 0; i_child < child_pids_.size(); ++i_child) {
-    int child_pid = child_pids_[i_child];
-    if (child_pid > 0) {
-      uid_t uid = getuid();
-      if (child_jobs_[i_child]->IsDesiredUidSet())
-        uid = child_jobs_[i_child]->GetDesiredUid();
+  vector<pair<int, uid_t> > pids_to_kill;
 
-      system_->kill(child_pid, uid, (session_started_ ? SIGTERM: SIGKILL));
-      if (!system_->ChildIsGone(child_pid, timeout))
-        system_->kill(child_pid, uid, SIGABRT);
-    }
+  for (size_t i = 0; i < child_pids_.size(); ++i) {
+    const int pid = child_pids_[i];
+    if (pid < 0)
+      continue;
+
+    ChildJobInterface* job = child_jobs_[i];
+    if (job->ShouldNeverKill())
+      continue;
+
+    const uid_t uid = job->IsDesiredUidSet() ? job->GetDesiredUid() : getuid();
+    pids_to_kill.push_back(make_pair(pid, uid));
+    system_->kill(pid, uid, (session_started_ ? SIGTERM : SIGKILL));
+  }
+
+  for (vector<pair<int, uid_t> >::const_iterator it = pids_to_kill.begin();
+       it != pids_to_kill.end(); ++it) {
+    const int pid = it->first;
+    const uid_t uid = it->second;
+    if (!system_->ChildIsGone(pid, timeout))
+      system_->kill(pid, uid, SIGABRT);
   }
 }
 

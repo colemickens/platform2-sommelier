@@ -30,6 +30,11 @@ class ChildJobInterface {
   // everything down.
   virtual bool ShouldStop() const = 0;
 
+  // Should we avoid ever killing the process?  This is set for e.g. the window
+  // manager, which needs to keep running until X dies since other clients'
+  // windows will become visible onscreen when it exits.
+  virtual bool ShouldNeverKill() const = 0;
+
   // Stores the current time as the time when the job was started.
   virtual void RecordTime() = 0;
 
@@ -75,6 +80,7 @@ class ChildJob : public ChildJobInterface {
 
   // Overridden from ChildJobInterface
   virtual bool ShouldStop() const;
+  virtual bool ShouldNeverKill() const;
   virtual void RecordTime();
   virtual void Run();
   virtual void StartSession(const std::string& email);
@@ -91,6 +97,9 @@ class ChildJob : public ChildJobInterface {
   static const char kLoginUserFlag[];
   // The flag to pass to chrome when starting "Browse Without Sign In" mode.
   static const char kBWSIFlag[];
+  // Suffix matched against each job's argv[0] to determine if it's the window
+  // manager.
+  static const char kWindowManagerSuffix[];
 
   // Minimum amount of time (in seconds) that should pass since the job was
   // started for it to be restarted if it exits or crashes.

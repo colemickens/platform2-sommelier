@@ -72,6 +72,8 @@ else
 fi
 
 CHROME="/opt/google/chrome/chrome"
+# Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
+# updated to contain the new name.  See http://crosbug.com/7901 for more info.
 WM_SCRIPT="/sbin/window-manager-session.sh"
 SEND_METRICS="/etc/send_metrics"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
@@ -134,10 +136,10 @@ rm -f ${DATA_DIR}/SingletonSocket
 # moved here to keep out of critical boot path
 
 # Function for showing switch info (CHSW in Firmware High-Level Spec)
-swstate () { 
-  if [ $(($1 & $2)) -ne 0 ]; then 
-    echo "$3 $4"; else echo "$3 $5" 
-  fi 
+swstate () {
+  if [ $(($1 & $2)) -ne 0 ]; then
+    echo "$3 $4"; else echo "$3 $5"
+  fi
 }
 
 # Function for showing boot reason (BINF in Firmware High-Level Spec)

@@ -38,6 +38,8 @@ const char ChildJob::kLoginManagerFlag[] = "--login-manager";
 const char ChildJob::kLoginUserFlag[] = "--login-user=";
 // static
 const char ChildJob::kBWSIFlag[] = "--bwsi";
+// static
+const char ChildJob::kWindowManagerSuffix[] = "window-manager-session.sh";
 
 // static
 const int ChildJob::kRestartWindow = 1;
@@ -55,6 +57,14 @@ ChildJob::~ChildJob() {
 
 bool ChildJob::ShouldStop() const {
   return (time(NULL) - last_start_ < kRestartWindow);
+}
+
+bool ChildJob::ShouldNeverKill() const {
+  if (arguments_.empty())
+    return false;
+
+  // Avoid killing the window manager process -- see http://crosbug.com/7901.
+  return EndsWith(arguments_[0], kWindowManagerSuffix, true);
 }
 
 void ChildJob::RecordTime() {

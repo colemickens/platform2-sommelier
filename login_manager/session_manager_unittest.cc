@@ -494,6 +494,43 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
   test_api.CleanupChildren(timeout);
 }
 
+// Test that we avoid killing jobs that return true from their ShouldNeverKill()
+// methods.
+TEST_F(SessionManagerTest, HonorShouldNeverKill) {
+  const int kNormalPid = 100;
+  const int kShouldNeverKillPid = 101;
+  const int kTimeout = 3;
+
+  MockChildJob* normal_job = new MockChildJob;
+  MockChildJob* should_never_kill_job = new MockChildJob;
+  InitManager(normal_job, should_never_kill_job);
+
+  manager_->test_api().set_child_pid(0, kNormalPid);
+  manager_->test_api().set_child_pid(1, kShouldNeverKillPid);
+  manager_->test_api().set_session_started(true, kFakeEmail);
+
+  EXPECT_CALL(*should_never_kill_job, ShouldNeverKill())
+      .WillRepeatedly(Return(true));
+
+  // Say that the normal job died after the TERM signal.
+  EXPECT_CALL(*(utils_.get()), ChildIsGone(kNormalPid, kTimeout))
+      .WillRepeatedly(Return(true));
+
+  // We should just see a TERM signal for the normal job.
+  EXPECT_CALL(*(utils_.get()), kill(kNormalPid, getuid(), SIGTERM))
+      .Times(1)
+      .WillOnce(Return(0));
+  EXPECT_CALL(*(utils_.get()), kill(kNormalPid, getuid(), SIGABRT))
+      .Times(0);
+  EXPECT_CALL(*(utils_.get()), kill(kShouldNeverKillPid, getuid(), SIGTERM))
+      .Times(0);
+  EXPECT_CALL(*(utils_.get()), kill(kShouldNeverKillPid, getuid(), SIGABRT))
+      .Times(0);
+
+  MockUtils();
+  manager_->test_api().CleanupChildren(kTimeout);
+}
+
 static void Sleep() { execl("/bin/sleep", "sleep", "10000", NULL); }
 TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
   int pid = fork();
