@@ -318,11 +318,15 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       if [ "$?" -eq 0 ]; then
         echo "Firmware update complete."
       else
+        # Note: This will only rollback the ChromeOS verified boot target.
+        # The assumption is that systems running firmware autoupdate
+        # are running H2C Bios. If the firmware updater crashes or writes
+        # corrupt data rather than gracefully failing, we'll probably need
+        # to recover with a recovery image.
         echo "Firmware update failed."
-        if [ -n "${IS_FACTORY_INSTALL}" ]; then
-          echo "Aborting on firmware update failure during factory install"
-          exit 1
-        fi
+        echo "Rolling back update due to failure installing required firmware."
+        sudo "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
+        exit 1
       fi
     fi
   fi
