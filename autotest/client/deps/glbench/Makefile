@@ -22,7 +22,7 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_WINDOWMANAGERTEST)
 
 CXXFLAGS = -g -Wall -Werror
-LDFLAGS = -lbase -lrt -lgflags -lglib-2.0
+LDFLAGS = -lbase -lrt -lgflags -lglib-2.0 -pthread
 # To compile outside of chroot, use the following two lines:
 #CXXFLAGS += -I../../../../../../chrome/files
 #LDFLAGS += -L../../../../../../chrome
