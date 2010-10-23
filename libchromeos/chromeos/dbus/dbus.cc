@@ -136,9 +136,9 @@ Proxy::value_type Proxy::GetGProxy(const BusConnection& connection,
                                                interface,
                                                &Resetter(&error).lvalue());
     if (!result) {
-      LOG(ERROR) << "Failed to construct proxy: "
-                 << (error->message ? error->message : "Unknown Error")
-                 << ": " << path;
+      DLOG(ERROR) << "Failed to construct proxy: "
+                  << (error->message ? error->message : "Unknown Error")
+                  << ": " << path;
     }
   } else {
     result = ::dbus_g_proxy_new_for_name(connection.object_,
