@@ -215,10 +215,10 @@ install_gpt() {
     # Where do things go?
     START_KERN_A=$start_useful
     local num_kern_a_sectors=$NUM_KERN_SECTORS
-    local kern_a_priority=15
+    local kern_a_priority=0
     START_KERN_B=$(($START_KERN_A + $NUM_KERN_SECTORS))
     local num_kern_b_sectors=$NUM_KERN_SECTORS
-    local kern_b_priority=15
+    local kern_b_priority=0
     START_OEM=$(($START_KERN_B + $NUM_KERN_SECTORS))
     START_RESERVED=$(($START_OEM + $NUM_OEM_SECTORS))
     START_ESP=$(($START_RESERVED + $NUM_RESERVED_SECTORS))
