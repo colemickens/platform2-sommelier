@@ -6,9 +6,13 @@
 #include <stdio.h>
 #include <dbus/dbus-shared.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <linux/vt.h>
+#include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <gdk/gdkx.h>
 
+#include "base/file_util.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
@@ -35,7 +39,14 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
     suspend_pid_(0),
     lid_id_(0),
     powerd_id_(0),
-    powerd_state_(kPowerManagerUnknown) {}
+    powerd_state_(kPowerManagerUnknown),
+    console_fd_(-1) {}
+
+PowerManDaemon::~PowerManDaemon() {
+  if (console_fd_ >= 0) {
+    close(console_fd_);
+  }
+}
 
 void PowerManDaemon::Init() {
   int input_lidstate = 0;
@@ -61,6 +72,8 @@ void PowerManDaemon::Init() {
     }
   }
   RegisterDBusMessageHandler();
+  // Attempt to acquire a handle to the console.
+  CHECK(GetConsole());
 }
 
 void PowerManDaemon::Run() {
@@ -70,7 +83,7 @@ void PowerManDaemon::Run() {
 gboolean PowerManDaemon::CheckLidClosed(gpointer object) {
   RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
   PowerManDaemon* daemon = payload->daemon;
-  // same lid closed event and powerd state has changed
+  // same lid closed event and powerd state has changed.
   if ((daemon->lidstate_ == kLidClosed) &&
       (daemon->lid_id_ == payload->lid_id) &&
       ((daemon->powerd_state_ != kPowerManagerAlive) ||
@@ -78,7 +91,7 @@ gboolean PowerManDaemon::CheckLidClosed(gpointer object) {
     LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
     daemon->Suspend();
   }
-  // lid closed events will re-trigger if necessary so always false return
+  // lid closed events will re-trigger if necessary so always false return.
   delete(payload);
   return false;
 }
@@ -120,13 +133,13 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                             "alive":"unknown"));
       if (daemon->lidstate_ == kLidClosed) {
         if (daemon->powerd_state_ != kPowerManagerAlive) {
-          // powerd is not alive so act on its behalf
+          // powerd is not alive so act on its behalf.
           LOG(INFO) << "Forced suspend, powerd is not alive";
           daemon->Suspend();
         } else {
           util::SendSignalToPowerD(util::kLidClosed);
           // Check that powerd stuck around to act on  this event.  If not,
-          // callback will assume suspend responsibilities
+          // callback will assume suspend responsibilities.
           RetrySuspendPayload* payload = daemon->CreateRetrySuspendPayload();
           g_timeout_add_seconds(kCheckLidClosedSeconds,
                                 &(PowerManDaemon::CheckLidClosed), payload);
@@ -195,11 +208,14 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
       LOG(INFO) << "Resuming has commenced";
       daemon->GenerateMetricsOnResumeEvent();
       daemon->retry_suspend_count_ = 0;
+#ifdef SUSPEND_LOCK_VT
+      daemon->UnlockVTSwitch();     // Allow virtual terminal switching again.
+#endif
     } else {
       DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
     }
 
-    // other dbus clients may be interested in consuming this signal
+    // Other dbus clients may be interested in consuming this signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -295,7 +311,11 @@ void PowerManDaemon::Suspend() {
       retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend),
       payload);
 
-  // Detach to allow suspend to be retried and metrics gathered
+#ifdef SUSPEND_LOCK_VT
+  LockVTSwitch();     // Do not let suspend change the console terminal.
+#endif
+
+  // Detach to allow suspend to be retried and metrics gathered.
   pid_t pid = fork();
   if (pid == 0) {
     setsid();
@@ -306,6 +326,37 @@ void PowerManDaemon::Suspend() {
   } else {
     LOG(ERROR) << "Fork for suspend failed";
   }
+}
+
+void PowerManDaemon::LockVTSwitch() {
+  CHECK(console_fd_ >= 0);
+  if (ioctl(console_fd_, VT_LOCKSWITCH))
+    LOG(ERROR) << "Error in ioctl(VT_LOCKSWITCH): " << errno;
+  else
+    LOG(INFO) << "Invoked ioctl(VT_LOCKSWITCH)";
+}
+
+void PowerManDaemon::UnlockVTSwitch() {
+  CHECK(console_fd_ >= 0);
+  if (ioctl(console_fd_, VT_UNLOCKSWITCH))
+    LOG(ERROR) << "Error in ioctl(VT_UNLOCKSWITCH): " << errno;
+  else
+    LOG(INFO) << "Invoked ioctl(VT_UNLOCKSWITCH)";
+}
+
+bool PowerManDaemon::GetConsole() {
+  bool retval = true;
+  FilePath file_path("/dev/tty0");
+  if ((console_fd_ = open(file_path.value().c_str(), O_RDWR)) < 0) {
+    LOG(ERROR) << "Failed to open " << file_path.value().c_str()
+               << ", errno = " << errno;
+    retval = false;
+  }
+  else {
+    LOG(INFO) << "Opened console " << file_path.value().c_str()
+              << " with file id = " << console_fd_;
+  }
+  return retval;
 }
 
 }  // namespace power_manager

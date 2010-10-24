@@ -33,6 +33,9 @@ base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 # down.
 if ARGUMENTS.get('POWER_BUTTON', '').lower() == 'new':
   base_env.Append(CPPDEFINES=['NEW_POWER_BUTTON'])
+lockvt = ARGUMENTS.get('lockvt', 0)
+if int(lockvt):
+  base_env.Append(CPPDEFINES=['SUSPEND_LOCK_VT'])
 
 # Fix issue with scons not passing some vars through the environment.
 for key in Split('SYSROOT'):

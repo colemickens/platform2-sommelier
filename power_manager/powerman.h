@@ -20,6 +20,7 @@ class PowerManDaemon {
  public:
   PowerManDaemon(bool use_input_for_lid, bool use_input_for_key_power,
                  PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib);
+  virtual ~PowerManDaemon();
 
   void Init();
   void Run();
@@ -104,6 +105,13 @@ class PowerManDaemon {
   void Shutdown();
   void Suspend();
 
+  // Lock and unlock virtual terminal switching.
+  void LockVTSwitch();
+  void UnlockVTSwitch();
+
+  // Acquire the console file handle.
+  bool GetConsole();
+
   GMainLoop* loop_;
   Input input_;
   bool use_input_for_lid_;
@@ -119,6 +127,7 @@ class PowerManDaemon {
   unsigned int lid_id_;                 // incremented on lid event
   unsigned int powerd_id_;              // incremented when powerd spawns/dies
   PowerManagerState powerd_state_;      // alive | dead | unknown
+  int console_fd_;
 };
 
 }  // namespace power_manager
