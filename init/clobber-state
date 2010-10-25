@@ -37,9 +37,9 @@ wipedev() {
   FULL_BLKS=$(($FS_BLOCKS / $BLOCKS_4M))
   REMAINDER_SECTORS=$(($FS_BLOCKS % $BLOCKS_4M))
 
-  if [ -x /usr/bin/pv ]; then
-    pv -etp -s $((4 * 1024 * 1024 * ${FULL_BLKS})) </dev/zero 2>/dev/tty1 | \
-      dd of=${DEV} bs=4M count=${FULL_BLKS} iflag=fullblock
+  if type pv; then
+    pv -etp -s $((4 * 1024 * 1024 * ${FULL_BLKS})) </dev/zero 2>/dev/tty1 |
+      dd of=${DEV} bs=4M count=${FULL_BLKS} iflag=fullblock oflag=sync
   else
     dd if=/dev/zero of=${DEV} bs=4M count=${FULL_BLKS}
   fi

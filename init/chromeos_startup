@@ -74,7 +74,7 @@ if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
   if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
     mkdir -p /mnt/stateful_partition/var/log
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert update_firmware >/dev/tty1
+    chromeos-boot-alert update_firmware /dev/tty1
     "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
       tee /dev/tty1 /mnt/stateful_partition/var/log/update_firmware.log
   fi
@@ -109,7 +109,7 @@ if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
   if [ ! -f /root/.dev_mode ]; then
     # TODO(wad) Throw up a splash.
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert enter_dev 30 >/dev/tty1
+    chromeos-boot-alert enter_dev /dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
     echo "keepimg" > ${RESET_FILE}
   fi
@@ -120,7 +120,7 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
   # as aggressively. Fast will do the trick.
   if [ ! -f /root/.dev_mode ]; then
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert leave_dev >/dev/tty1
+    chromeos-boot-alert leave_dev /dev/tty1
     echo "fast keepimg" > ${RESET_FILE}
   fi
 fi
@@ -129,8 +129,8 @@ fi
 # This is used for the factory install process
 if [ -O "$RESET_FILE" ]; then
   [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-  chromeos-boot-alert wipe \
-    /mnt/stateful_partition/wipe_splash.png >/dev/tty1
+  chromeos-boot-alert wipe /dev/tty1 \
+    /mnt/stateful_partition/wipe_splash.png
   ARGS="$(cat ${RESET_FILE})"
   exec clobber-state "$ARGS"
 fi

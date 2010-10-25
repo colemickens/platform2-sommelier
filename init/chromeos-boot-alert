@@ -9,21 +9,18 @@
 # Since this script only provides messages, never abort.
 set +e
 
-# Ignore user interrupts
-trap "" INT QUIT
-
 # Prints usage help for commands supports
 usage_help() {
-  echo "Usage: $0 mode [arg ...]
+  echo "Usage: $0 mode terminal [arg ...]
 
   enter_dev: Message for entering developer mode from non-dev.
              Arg #1: (optional, default=30) Countdown in seconds before continue
 
   leave_dev: Message when leaving developer mode.
-             Arg:    None.
+             Arg: none
 
   update_firmware: Message before starting firmware update.
-             Arg:    None.
+             Arg: none
 
   wipe:      Message when starting to erase stateful partition.
              Arg #1: (optional) Image file to show.
@@ -39,7 +36,7 @@ mode_enter_dev() {
 
     If you do not want to enter Developer Mode, turn your computer off now
     and toggle the developer switch back to Normal (Verified) Mode.
-  "
+  " >"$STDOUT"
 
   local echo_opt='-n'
   if [ -n "$BASH_VERSION" ]; then
@@ -49,17 +46,17 @@ mode_enter_dev() {
   for dev_count_down in $(seq $delay_secs -1 1); do
     # Trailing spaces must exist to clear previous message when the printed
     # counter width changed (ex, 100->99).
-    echo $echo_opt "\r    Starting in $dev_count_down seconds...   "
+    echo $echo_opt "\r    Starting in $dev_count_down seconds...   " >"$STDOUT"
     sleep 1
   done
 
-  echo ""
+  echo $echo_opt "\r                                               " >"$STDOUT"
   # Count-down
   echo "
     Preparing your system for developer mode.
     Please wait 5 - 10 minutes and DO NOT POWER OFF . . .
     The system will reboot when complete.
-  "
+  " >"$STDOUT"
 }
 
 # Prints message when leaving developer mode
@@ -68,7 +65,7 @@ mode_leave_dev() {
     Your system last booted in developer mode.
     Attempting to return to normal...
     Upon completion, the machine will reboot.
-  "
+  " >"$STDOUT"
 }
 
 # Prints messages before starting firmware update
@@ -76,7 +73,7 @@ mode_update_firmware() {
   echo "
     Your system is updating firmware, please DO NOT POWER OFF.
     Upon completion, the machine may reboot or continue for login.
-  "
+  " >"$STDOUT"
 }
 
 # Prints message before starting to erase stateful partition (wipe).
@@ -88,17 +85,22 @@ mode_wipe() {
     # Do not use background execution because this file is going to be wiped.
     ply-image "$splash_file"
   else
-    echo "    Erasing stateful partition..."
+    echo "    Erasing stateful partition..." >"$STDOUT"
   fi
 }
 
 # Main initialization and dispatcher
 main() {
-  local mode="$1"
-
-  if [ $# -gt 0 ]; then
-    shift
+  # process args
+  if [ $# -lt 2 ]; then
+    usage_help
+    exit 1
   fi
+  local mode="$1"
+  # global
+  STDOUT="$2"
+  shift
+  shift
 
   # light-up the screen if possible
   if [ -x /usr/sbin/lightup_screen ]; then
