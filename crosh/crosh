@@ -125,6 +125,13 @@ cmd_ssh() {
   local host="$2"
   local port="${3:-22}"
 
+  # Ssh consults /etc/passwd for the home directory, rather than trusting
+  # $HOME.  This is a problem for us because $HOME is /home/chronos/user, while
+  # /etc/passwd lists /home/chronos.  We work around it by reading /etc/passwd
+  # too.
+  local home="$(getent passwd "$USER" | cut -f6 -d':')"
+  rm -rf $home/.ssh
+
   if [ -z "$user" ]; then
     echo "Missing required parameter: user"
     return
@@ -153,12 +160,7 @@ cmd_ssh() {
 }
 
 cmd_ssh_forget_host() {
-  # Ssh consults /etc/passwd for the home directory, rather than trusting
-  # $HOME.  This is a problem for us because $HOME is /home/chronos/user, while
-  # /etc/passwd lists /home/chronos.  We work around it by reading /etc/passwd
-  # too.
-  local home="$(getent passwd "$USER" | cut -f6 -d':')"
-  local known_hosts="$(readlink -f $home/.ssh/known_hosts)"
+  local known_hosts="$(readlink -f $HOME/.ssh/known_hosts)"
 
   # Test that the known_hosts is a regular file and is not 0 length.
   if [ ! -f "$known_hosts" -o ! -s "$known_hosts" ]; then
