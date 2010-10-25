@@ -20,6 +20,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "chromeos/glib/object.h"
 #include "login_manager/bindings/client.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
@@ -156,6 +157,25 @@ class SessionManagerTest : public ::testing::Test {
                         Return(true)));
     EXPECT_CALL(*key, Verify(_, _, _, _))
         .WillOnce(Return(true));
+  }
+
+  void ExpectStartSessionUnowned(const std::string& email_string,
+                                 MockChildJob* job,
+                                 MockPrefStore* store) {
+    EXPECT_CALL(*job, StartSession(email_string))
+        .Times(1);
+    MockOwnerKey* key = new MockOwnerKey;
+    EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+        .WillRepeatedly(Return(true));
+    // First, expect an attempt to set the device owner property, but
+    // act like this user isn't the owner.
+    EXPECT_CALL(*key, Sign(_, _, _))
+        .WillOnce(Return(false));
+    manager_->test_api().set_ownerkey(key);
+    // Now, expect an attempt to check whether this user is the owner; respond
+    // as though there isn't one.
+    EXPECT_CALL(*store, Get(_, _, _))
+        .WillOnce(Return(false));
   }
 
   void ExpectStartSessionForOwner(const std::string& email_string,
@@ -581,6 +601,22 @@ TEST_F(SessionManagerTest, StartSessionTest) {
   ExpectStartSession(email, job, store);
   manager_->test_api().set_prefstore(store);
   manager_->StartSession(email, nothing, &out, NULL);
+}
+
+TEST_F(SessionManagerTest, StartSessionNewTest) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  MockPrefStore* store = new MockPrefStore;
+  ExpectStartSessionUnowned(email, job, store);
+  manager_->test_api().set_prefstore(store);
+  chromeos::glib::ScopedError error;
+  EXPECT_EQ(TRUE, manager_->StartSession(email,
+                                         nothing,
+                                         &out,
+                                         &chromeos::Resetter(&error).lvalue()));
 }
 
 TEST_F(SessionManagerTest, StartOwnerSessionTest) {
@@ -1091,17 +1127,19 @@ TEST_F(SessionManagerTest, RetrievePropertyFail) {
       .WillOnce(Return(false));
   manager_->test_api().set_prefstore(store);
 
-  GError* error = NULL;
+  chromeos::glib::ScopedError error;
   GArray* out_sig = NULL;
   gchar* out_value = NULL;
-  EXPECT_EQ(FALSE, manager_->RetrieveProperty(kPropName,
-                                              &out_value,
-                                              &out_sig,
-                                              &error));
+  EXPECT_EQ(FALSE,
+            manager_->RetrieveProperty(kPropName,
+                                       &out_value,
+                                       &out_sig,
+                                       &chromeos::Resetter(&error).lvalue()));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  g_error_free(error);
-  g_array_free(out_sig, false);
-  g_free(out_value);
+  if (out_sig)
+    g_array_free(out_sig, false);
+  if (out_value)
+    g_free(out_value);
   SimpleRunManager(store);
 }
 
@@ -1136,8 +1174,10 @@ TEST_F(SessionManagerTest, RetrieveProperty) {
   }
   EXPECT_EQ(i, fake_sig_->len);
   EXPECT_EQ(value, std::string(out_value));
-  g_array_free(out_sig, false);
-  g_free(out_value);
+  if (out_sig)
+    g_array_free(out_sig, false);
+  if (out_value)
+    g_free(out_value);
   SimpleRunManager(store);
 }
 

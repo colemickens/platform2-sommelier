@@ -388,7 +388,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // as the cros.device.owner pref, then do so.  This attempt only succeeds
   // if the current user has access to the private half of the owner's
   // registered public key.
-  StoreOwnerProperties(error);
+  StoreOwnerProperties(NULL);
   // Now, the flip side...if we believe the current user to be the owner
   // based on the cros.owner.device setting, and he DOESN'T have the private
   // half of the public key, we must mitigate.
