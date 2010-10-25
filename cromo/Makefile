@@ -128,10 +128,13 @@ install-headers: $(GLUE_HEADERS)
 	install -t $(DESTDIR)/usr/include/cromo $(EXPORT_HEADERS)
 
 install-programs:
-	install -d $(DESTDIR)$(PLUGINDIR) $(DESTDIR)$(DBUSDATADIR) \
-		$(DESTDIR)/usr/sbin
+	install -d $(DESTDIR)$(PLUGINDIR) \
+			   $(DESTDIR)$(DBUSDATADIR) \
+			   $(DESTDIR)/usr/sbin \
+			   $(DESTDIR)/usr/bin
 	install -t $(DESTDIR)/usr/sbin $(CROMO)
 	install -t $(DESTDIR)$(DBUSDATADIR) -m 0644 $(DBUSCONFIGFILE)
+	install -t $(DESTDIR)/usr/bin mm-cromo-command
 
 install-tests: $(TESTS)
 	install -d $(DESTDIR)/usr/bin

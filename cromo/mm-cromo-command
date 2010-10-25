@@ -1,0 +1,41 @@
+#!/bin/sh
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+usage () {
+  cat >&2 <<EOF
+$0: Convenience wrapper around dbus-send specialized for calling
+cromo interfaces.
+
+Usage:
+  $0: [modem id] [command] [remaining arguments]
+
+Examples:
+  $0 Fictitious/0 Simple.GetStatus
+    will get status from modem /org/chromium/ModemManager/Fictitious/0
+
+  $0 Gobi/2 Gobi.SetCarrier string:'Ficticious Carrier'
+    will set modem /org/chromium/ModemManager/Gobi/2 to use 'Fictitious Carrier'
+EOF
+}
+
+log_and_execute () {
+  echo >&2 Running "$@"
+  "$@"
+}
+
+if [ -z "$1" -o -z "$2" ] ; then
+  usage
+  exit 1
+fi
+
+MODEM="$1"
+COMMAND="$2"
+shift 2
+
+log_and_execute dbus-send --system --print-reply --fixed    \
+          --dest=org.chromium.ModemManager                  \
+          /org/chromium/ModemManager/"$MODEM"               \
+          org.freedesktop.ModemManager.Modem."$COMMAND"     \
+          "$@"
