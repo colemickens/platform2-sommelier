@@ -27,7 +27,8 @@ static const int kCheckLidClosedSeconds = 10;
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
                                bool use_input_for_key_power,
                                PowerPrefs* prefs,
-                               MetricsLibraryInterface* metrics_lib)
+                               MetricsLibraryInterface* metrics_lib,
+                               const FilePath& run_dir)
   : loop_(NULL),
     use_input_for_lid_(use_input_for_lid),
     use_input_for_key_power_(use_input_for_key_power),
@@ -40,6 +41,7 @@ PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
     lid_id_(0),
     powerd_id_(0),
     powerd_state_(kPowerManagerUnknown),
+    run_dir_(run_dir),
     console_fd_(-1) {}
 
 PowerManDaemon::~PowerManDaemon() {
@@ -61,6 +63,7 @@ void PowerManDaemon::Init() {
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   CHECK(input_.Init(use_input_for_lid_, use_input_for_key_power_))
     <<"Cannot initialize input interface";
+  lid_open_file_ = FilePath(run_dir_).Append(util::kLidOpenFile);
   if (use_input_for_lid_) {
     input_.QueryLidState(&input_lidstate);
     lidstate_ = GetLidState(input_lidstate);
@@ -145,6 +148,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                                 &(PowerManDaemon::CheckLidClosed), payload);
         }
       } else {
+        util::CreateStatusFile(daemon->lid_open_file_);
         util::SendSignalToPowerD(util::kLidOpened);
       }
       break;
@@ -274,7 +278,7 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
     LOG(ERROR) << "Failed to connect to freedesktop dbus server.";
     NOTREACHED();
   }
-  dbus_g_proxy_add_signal(proxy, "NameOwnerChanged",G_TYPE_STRING,
+  dbus_g_proxy_add_signal(proxy, "NameOwnerChanged", G_TYPE_STRING,
                           G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
   dbus_g_proxy_connect_signal(proxy, "NameOwnerChanged",
                               G_CALLBACK(DBusNameOwnerChangedHandler),
@@ -315,7 +319,10 @@ void PowerManDaemon::Suspend() {
   LockVTSwitch();     // Do not let suspend change the console terminal.
 #endif
 
-  // Detach to allow suspend to be retried and metrics gathered.
+  // Remove lid opened flag, so suspend will occur providing the lid isn't
+  // re-opened prior to completing powerd_suspend
+  util::RemoveStatusFile(lid_open_file_);
+  // Detach to allow suspend to be retried and metrics gathered
   pid_t pid = fork();
   if (pid == 0) {
     setsid();

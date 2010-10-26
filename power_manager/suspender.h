@@ -12,6 +12,7 @@
 #include <dbus/dbus.h>
 
 #include "power_manager/screen_locker.h"
+#include "base/file_path.h"
 
 namespace power_manager {
 
@@ -19,7 +20,7 @@ class Suspender {
  public:
   explicit Suspender(ScreenLocker* locker);
 
-  void Init();
+  void Init(const FilePath& run_dir);
 
   // Suspend the computer, locking the screen first.
   void RequestSuspend();
@@ -88,6 +89,9 @@ class Suspender {
   unsigned int suspend_delays_outstanding_;
   bool suspend_requested_;
   unsigned int suspend_sequence_number_;
+
+  // Identify user activity to cancel suspend in progress
+  FilePath user_active_file_;
 
   // suspend_delays_ : map from dbus unique identifiers to expected ms delays.
   typedef std::map<std::string, uint32> SuspendList;

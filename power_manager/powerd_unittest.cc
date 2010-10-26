@@ -46,7 +46,8 @@ class DaemonTest : public Test {
   DaemonTest()
       : prefs_(FilePath("."), FilePath(".")),
         backlight_ctl_(&backlight_, &prefs_),
-        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_) {}
+        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
+                FilePath(".")) {}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.

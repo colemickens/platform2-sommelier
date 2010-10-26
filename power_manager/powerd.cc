@@ -12,6 +12,7 @@
 
 #include <algorithm>
 
+#include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
@@ -39,7 +40,8 @@ static const int64 kReactMS = 30000;
 
 Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
-               VideoDetectorInterface* video_detector)
+               VideoDetectorInterface* video_detector,
+               const FilePath& run_dir)
     : ctl_(ctl),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
@@ -53,6 +55,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       idle_state_(kIdleUnknown),
       system_state_(kSystemOn),
       suspender_(&locker_),
+      run_dir_(run_dir),
       power_button_handler_(new PowerButtonHandler(this)),
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
@@ -98,7 +101,7 @@ void Daemon::Init() {
   gdk_window_add_filter(NULL, gdk_event_filter, this);
   locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterDBusMessageHandler();
-  suspender_.Init();
+  suspender_.Init(run_dir_);
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
 }
 
@@ -301,6 +304,10 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     LOG(INFO) << "state = kIdleNormal";
     ctl_->SetDimState(BACKLIGHT_ACTIVE);
     ctl_->SetPowerState(BACKLIGHT_ON);
+    if (idle_state_ == kIdleSuspend) {
+      util::CreateStatusFile(FilePath(run_dir_).Append(util::kUserActiveFile));
+      suspender_.CancelSuspend();
+    }
     idle_state_ = kIdleNormal;
   }
   if (idle_time_ms >= lock_ms_ && util::LoggedIn()) {

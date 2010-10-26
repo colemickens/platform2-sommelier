@@ -21,6 +21,8 @@ DEFINE_string(default_prefs_dir, "",
               "Directory to read default settings (Read Only).");
 DEFINE_string(log_dir, "",
               "Directory to store logs.");
+DEFINE_string(run_dir, "",
+              "Directory to store stateful data for daemon.");
 
 // Returns true on success.
 static bool SetUpLogSymlink(const string& symlink_path,
@@ -46,6 +48,7 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
+  CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
   CHECK(argc == 1) << "Unexpected arguments. Try --help";
   CommandLine::Init(argc, argv);
 
@@ -66,7 +69,9 @@ int main(int argc, char* argv[]) {
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
-  power_manager::PowerManDaemon daemon(true, true, &prefs, &metrics_lib);
+  FilePath run_dir(FLAGS_run_dir);
+  power_manager::PowerManDaemon daemon(true, true, &prefs, &metrics_lib,
+                                       run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

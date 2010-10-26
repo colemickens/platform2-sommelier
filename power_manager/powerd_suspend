@@ -4,7 +4,32 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-logger -t powerd_suspend "Going to suspend-to-RAM state"
+log_msg() {
+    logger -t "powerd_suspend[${PPID}]" $1
+}
+
+# these files are created by powerm | powerd and there existence means
+# event has occurred which should cancel suspend
+suspend_cancel() {
+    if [ $cancel -eq 1 ] || [ -e "/var/run/power_manager/lid_opened" ] ||
+        [ -e "/var/run/power_manager/user_active" ]; then
+	cancel=1
+        return 0
+    else
+        return 1
+    fi
+}
+
+cleanup_for_resume() {
+    if [ $force_usb_autosuspend -eq 1 ]; then
+        # disable autosuspend for USB devices if we set it before suspend.
+        for i in /sys/bus/usb/devices/*/power/level; do echo on > $i; done
+    fi
+    rm -f "/var/run/power_manager/lid_opened"
+    rm -f "/var/run/power_manager/user_active"
+}
+
+log_msg "Going to suspend-to-RAM state"
 
 # - logs the time going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
@@ -15,18 +40,23 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
+cancel=0
 power_status_on_suspend=/tmp/power-status-on-suspend
-on_ac=0
+force_usb_autosuspend=0
 /usr/bin/devkit-power -d \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend
 else
     echo OnAC > $power_status_on_suspend
-    on_ac=1
-    # - enables autosuspend for USB devices. This shaves about 300ms
-    #   from resume time.
-    for i in /sys/bus/usb/devices/*/power/level; do echo auto > $i; done
+    if suspend_cancel; then
+        log_msg "Cancel suspend at USB autosuspend"
+    else
+        # - enables autosuspend for USB devices. This shaves about 300ms
+        #   from resume time.
+        force_usb_autosuspend=1
+        for i in /sys/bus/usb/devices/*/power/level; do echo auto > $i; done
+    fi
 fi
 
 # - deletes hwclock snapshot from previous resumes
@@ -36,24 +66,30 @@ rm -f /tmp/hwclock-on-resume
 #CRYPTOHOME=/dev/mapper/cryptohome
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME
 
-# - suspends to ram
-echo -n mem > /sys/power/state
+log_msg "Explicit sync"
+sync
 
-# On resume:
-# - records the hwclock time at resume
-/sbin/hwclock --utc --debug > /tmp/hwclock-on-resume &
+if suspend_cancel; then
+    log_msg "Cancel suspend at kernel"
+else
+    log_msg "Finalizing suspend"
+    # - suspends to ram
+    echo -n mem > /sys/power/state
+fi
+
+if [ $cancel -eq 0 ]; then
+    # On resume:
+    # - records the hwclock time at resume
+    /sbin/hwclock --utc --debug > /tmp/hwclock-on-resume &
+
+    # - sends UMA metrics on resume
+    /usr/bin/send_metrics_on_resume &
+fi
+cleanup_for_resume
 
 # - announces the event
 /usr/bin/dbus-send --type=signal --system / \
-  org.chromium.PowerManager.PowerStateChanged string:on &
-
-# - sends UMA metrics on resume
-/usr/bin/send_metrics_on_resume &
-
-if [ $on_ac -eq 1 ]; then
-    # disable autosuspend for USB devices if we set it before suspend.
-    for i in /sys/bus/usb/devices/*/power/level; do echo on > $i; done
-fi
+    org.chromium.PowerManager.PowerStateChanged string:on &
 
 #  - re-kicks laptop mode since AC<->Battery transition might've happened
 #    while the system was suspended. Sleep a bit, though, to take care of
@@ -62,3 +98,5 @@ sleep 10 && /usr/sbin/laptop_mode force &
 
 # - resumes cryptohome device
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
+
+log_msg "Resume finished"

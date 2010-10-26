@@ -7,6 +7,7 @@
 #include "power_manager/suspender.h"
 
 #include "power_manager/util.h"
+#include "base/file_path.h"
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/time.h"
@@ -31,7 +32,8 @@ Suspender::Suspender(ScreenLocker* locker)
       suspend_requested_(false),
       suspend_sequence_number_(0) {}
 
-void Suspender::Init() {
+void Suspender::Init(const FilePath& run_dir) {
+  user_active_file_ = run_dir.Append(util::kUserActiveFile);
   RegisterDBusMessageHandler();
 }
 
@@ -227,6 +229,7 @@ void Suspender::RegisterDBusMessageHandler() {
 }
 
 void Suspender::Suspend() {
+  util::RemoveStatusFile(user_active_file_);
   util::SendSignalToPowerM(util::kSuspendSignal);
 }
 

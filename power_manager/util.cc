@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include "base/file_util.h"
 #include "base/logging.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
@@ -32,6 +33,10 @@ const char* kPowerButtonUp = "PowerButtonUp";
 
 // broadcast signals
 const char* kPowerStateChanged = "PowerStateChanged";
+
+// files to signal powerd_suspend whether suspend should be cancelled
+const char* kLidOpenFile = "lid_opened";
+const char* kUserActiveFile = "user_active";
 
 bool LoggedIn() {
   return access("/var/run/state/logged-in", F_OK) == 0;
@@ -96,6 +101,24 @@ void SendSignalToPowerD(const char* signal_name) {
   CHECK(signal);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
+}
+
+void CreateStatusFile(FilePath file) {
+  if (!file_util::WriteFile(file, NULL, 0) == -1) {
+    LOG(ERROR) << "Unable to create " << file.value();
+  } else {
+    LOG(INFO) << "Created " << file.value();
+  }
+}
+
+void RemoveStatusFile(FilePath file) {
+  if (file_util::PathExists(file)) {
+    if (!file_util::Delete(file, FALSE)) {
+      LOG(ERROR) << "Unable to remove " << file.value();
+    } else {
+      LOG(INFO) << "Removed " << file.value();
+    }
+  }
 }
 
 }  // namespace util

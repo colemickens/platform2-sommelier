@@ -9,6 +9,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdk.h>
 
+#include "base/file_path.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/input.h"
 #include "power_manager/power_prefs.h"
@@ -19,7 +20,8 @@ namespace power_manager {
 class PowerManDaemon {
  public:
   PowerManDaemon(bool use_input_for_lid, bool use_input_for_key_power,
-                 PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib);
+                 PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib,
+                 const FilePath& run_dir);
   virtual ~PowerManDaemon();
 
   void Init();
@@ -72,7 +74,7 @@ class PowerManDaemon {
                            kPowerManagerDead };
   // Handler for NameOwnerChanged dbus messages.  See dbus-specification
   // at dbus.freedesktop.org for complete details of arguments
-  void static DBusNameOwnerChangedHandler(
+  static void DBusNameOwnerChangedHandler(
       DBusGProxy*, const gchar* name, const gchar* old_owner,
       const gchar* new_owner, void*);
 
@@ -124,9 +126,11 @@ class PowerManDaemon {
   int64 retry_suspend_attempts_;
   int retry_suspend_count_;
   pid_t suspend_pid_;
-  unsigned int lid_id_;                 // incremented on lid event
-  unsigned int powerd_id_;              // incremented when powerd spawns/dies
-  PowerManagerState powerd_state_;      // alive | dead | unknown
+  unsigned int lid_id_;              // incremented on lid event
+  unsigned int powerd_id_;           // incremented when powerd spawns/dies
+  PowerManagerState powerd_state_;   // alive | dead | unknown
+  FilePath run_dir_;                 // --run_dir /var/run/power_manager
+  FilePath lid_open_file_;           // touch when suspend should be cancelled
   int console_fd_;
 };
 

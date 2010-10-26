@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
 
+#include "base/file_path.h"
+
 namespace power_manager {
 
 namespace util {
@@ -27,6 +29,10 @@ extern const char* kPowerButtonUp;
 // broadcast signals
 extern const char* kPowerStateChanged;
 
+// files to signal powerd_suspend whether suspend should be cancelled
+extern const char* kLidOpenFile;
+extern const char* kUserActiveFile;
+
 bool LoggedIn();
 void Launch(const char* cmd);
 
@@ -38,6 +44,10 @@ void SendSignalToPowerM(const char* signal);
 
 // Send a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);
+
+// Status file creation and removal
+void CreateStatusFile(FilePath file);
+void RemoveStatusFile(FilePath file);
 
 }  // namespace util
 

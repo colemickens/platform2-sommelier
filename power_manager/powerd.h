@@ -10,6 +10,7 @@
 
 #include <ctime>
 
+#include "base/file_path.h"
 #include "base/scoped_ptr.h"
 #include "base/time.h"
 #include "cros/chromeos_power.h"
@@ -30,7 +31,8 @@ class Daemon : public XIdleMonitor {
  public:
   Daemon(BacklightController* ctl, PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
-         VideoDetectorInterface* video_detector);
+         VideoDetectorInterface* video_detector,
+         const FilePath& run_dir);
   ~Daemon();
 
   ScreenLocker* locker() { return &locker_; }
@@ -241,6 +243,7 @@ class Daemon : public XIdleMonitor {
   SystemState system_state_;
   ScreenLocker locker_;
   Suspender suspender_;
+  FilePath run_dir_;
   scoped_ptr<PowerButtonHandler> power_button_handler_;
 
   // Timestamp the last generated battery discharge rate metric.
