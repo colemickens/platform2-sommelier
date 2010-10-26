@@ -284,6 +284,11 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       set +e
     fi
 
+    # We have a new image, making the ureadahead pack files
+    # out-of-date.  Delete the files so that ureadahead will
+    # regenerate them on the next reboot.
+    rm -f /var/lib/ureadahead/*
+
     # See if we need to update firmware. NOTE: we must activate new firmware
     # only after new kernel is actived (installed and made bootable),
     # otherwise new firmware with all old kernels may lead to recovery screen
