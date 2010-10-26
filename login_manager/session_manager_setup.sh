@@ -105,6 +105,18 @@ if [ -f /mnt/stateful_partition/.recovery ]; then
   fi
 fi
 
+# Enables gathering of chrome dumps.  In stateful partition so testers
+# can enable getting core dumps after build time.
+if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
+  mkdir -p /mnt/stateful_partition/var/coredumps/
+  # Chrome runs and chronos so we need to change the permissions of this folder
+  # so it can write there when it crashes
+  chown chronos /mnt/stateful_partition/var/coredumps/
+  ulimit -c unlimited
+  echo "/mnt/stateful_partition/var/coredumps/core.%e.%p" > \
+    /proc/sys/kernel/core_pattern
+fi
+
 if [ -f "$SEND_METRICS" ]; then
   if [ ! -f "$CONSENT_FILE" ]; then
     # Automatically opt-in to Chrome OS stats collecting.  This does
