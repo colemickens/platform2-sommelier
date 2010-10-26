@@ -75,7 +75,7 @@ if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
     mkdir -p /mnt/stateful_partition/var/log
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert update_firmware /dev/tty1
-    "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
+    IS_CHROMEOS_STARTUP=1 "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
       tee /dev/tty1 /mnt/stateful_partition/var/log/update_firmware.log
   fi
 fi
