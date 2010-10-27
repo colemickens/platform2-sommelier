@@ -60,6 +60,8 @@ void PowerManDaemon::Init() {
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
   loop_ = g_main_loop_new(NULL, false);
+  // Acquire a handle to the console for VT switch locking ioctl.
+  CHECK(GetConsole());
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   CHECK(input_.Init(use_input_for_lid_, use_input_for_key_power_))
     <<"Cannot initialize input interface";
@@ -75,8 +77,6 @@ void PowerManDaemon::Init() {
     }
   }
   RegisterDBusMessageHandler();
-  // Attempt to acquire a handle to the console.
-  CHECK(GetConsole());
 }
 
 void PowerManDaemon::Run() {
