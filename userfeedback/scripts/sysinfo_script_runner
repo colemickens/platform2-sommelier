@@ -5,14 +5,13 @@
 # found in the LICENSE file.
 #
 # This script executes each line in a flat file of commands.
+# The first parameter to this script needs to be either 'feedback' or
+# 'sysinfo'; this indicates the context the script was called in. This value
+# will be set in the environment variable SYSLOG_CONTEXT which can be picked
+# up by the scripts that are run from the list file. The list files need to
+# have the extension .lst
 #
-# If a filename is provided this script will execute only that file.
 #
-# If no argument is given then every .lst file in ../etc will
-# be executed.
-
-
-
 # Goes through a file line by line ignoring '#' style comments
 # and whitespace.
 #
@@ -26,8 +25,11 @@
 # Example -> cpuinfo,cat /proc/cpuinfo
 # In this case the output of cat /proc/cpuinfo will be logged as "cpuinfo"
 #
-# Args
-#  $1 - The file to iterate over
+# Arguments:
+#  $1 - Context this script was called in (defaults to 'sysinfo')
+#       This context is put in an environment variable called SYSLOG_CONTEXT
+#       and can be examined by any script
+#  $2 - The directory to pick up the scripts from (defaults to ../etc)
 #
 simple_line_executor() {
   # Do not exit in case a script wasn't found or threw an error.
@@ -53,27 +55,34 @@ simple_line_executor() {
     if [ "${format}" = "ascii" ]; then
       # Replace non printable ascii characters (^\n,\r,\t,' '-'~') with "~"
       # and make sure we don't mess up our quoting.
-      eval ${value} 2> /dev/null | tr -c '\n\r\t\40-\176' '~' | \
+      eval "${value}" 2> /dev/null | tr -c '\n\r\t\40-\176' '~' | \
         sed -e "s/\"\"\"/'''/g"
     else
-      eval ${value} 2> /dev/null | sed -e "s/\"\"\"/'''/g"
+      eval "${value}" 2> /dev/null | sed -e "s/\"\"\"/'''/g"
     fi
     echo '"""'
 
   done < ${1}
 }
 
-SCRIPTS_DIR="$(dirname "$0")/../etc"
+SYSLOG_CONTEXT=${1}
+if [ "${CONTEXT}" != "feedback" ] && [ "${CONTEXT}" != "sysinfo" ]; then
+  SYSLOG_CONTEXT="sysinfo"
+fi
+export SYSLOG_CONTEXT
 
-if [ -f "${1}" ]; then
-  simple_line_executor ${1}
-  exit 0
+if [ -f "${2}" ]; then
+  SCRIPTS_DIR=${2}
+else
+  SCRIPTS_DIR="$(dirname "$0")/../etc"
 fi
 
 # Dump the key-val pairs from lsb-release.
 cat /etc/lsb-release
 
+# Run the listing scripts
 for file in $(ls ${SCRIPTS_DIR}/*.lst)
 do
   simple_line_executor ${file}
 done
+
