@@ -229,7 +229,7 @@ cmd_enterprise_ca_approve() {
     return 1
   fi
 
-  /usr/sbin/entdwife.sh -c approve "$option" -C "$1"
+  /usr/sbin/entdwife.sh -c approve $option -C "$1"
 }
 
 cmd_enterprise_ca_disapprove() {
