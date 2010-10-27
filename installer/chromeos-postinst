@@ -250,7 +250,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       new_as_successful=1
     fi
     # Make updated partition highest priority for next reboot
-    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S $new_as_successful -T 3 $ROOT_DEV
+    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S $new_as_successful -T 6 $ROOT_DEV
 
     # Set up gpt boot selection for legacy devices.
     # flush linux caches; seems to be necessary
