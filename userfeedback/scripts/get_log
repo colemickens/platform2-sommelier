@@ -10,12 +10,17 @@
 
 max_lines=${2:-1000}
 
-if [ -r "$1" -a -f "$1" ]; then
-  # get first field.
-  size=$(/bin/ls -s "$1")
+file=$1
+if [ -h "$file" ]; then
+  file="$(readlink $file)"
+fi
+
+if [ -r "$file" -a -f "$file" ]; then
+  size=$(/bin/ls -s "$file")
+  # Get the first field.
   size=${size%% *}
   if [ $size -gt 0 ]; then
-    /usr/bin/tail --lines=$max_lines "$1"
+    /usr/bin/tail --lines=$max_lines "$file"
   else
     echo "<empty>"
   fi
