@@ -21,7 +21,7 @@ chromeos-wm.LATEST,/usr/share/userfeedback/scripts/get_log /home/chronos/user/lo
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
 dmesg,/bin/dmesg
-font_version,fc-list : family style fontversion
+font_version,fc-list : family style fontversion | sort -f
 hardware_class,/usr/bin/hardware_class
 hostname,hostname
 hw_platform,uname -i
