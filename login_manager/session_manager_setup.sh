@@ -219,10 +219,10 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --login-profile=user \
             --in-chrome-auth \
             --apps-gallery-title="Web Store" \
-            --apps-gallery-url="https://chrome.google.com/extensions/" \
+            --apps-gallery-url="https://chrome.google.com/webstore/" \
             --enable-login-images \
-            --enable-nacl \
             --enable-tabbed-options \
+            --disable-domui-menu \
             --scroll-pixels=4 \
             "$PEPPER_FLASH_FLAG" \
             ${SKIP_OOBE} \
