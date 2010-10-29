@@ -42,6 +42,10 @@ bool LoggedIn() {
   return access("/var/run/state/logged-in", F_OK) == 0;
 }
 
+bool OOBECompleted() {
+  return access("/home/chronos/.oobe_completed", F_OK) == 0;
+}
+
 void Launch(const char* cmd) {
   LOG(INFO) << "Launching " << cmd;
   pid_t pid = fork();

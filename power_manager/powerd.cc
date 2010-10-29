@@ -178,10 +178,11 @@ void Daemon::SetPlugged(bool plugged) {
     CHECK(idle_.GetIdleTime(&idle_time_ms));
     // If the screen is on, and the user plugged or unplugged the computer,
     // we should wait a bit before turning off the screen.
+    // If the screen is off, don't immediately suspend.
     if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
-      SetIdleOffset(idle_time_ms);
-    else
-      SetIdleOffset(0);
+      SetIdleOffset(idle_time_ms, kIdleNormal);
+    else if (idle_state_ == kIdleScreenOff)
+      SetIdleOffset(idle_time_ms, kIdleSuspend);
 
     ctl_->OnPlugEvent(plugged);
     SetIdleState(idle_time_ms);
@@ -211,7 +212,9 @@ void Daemon::StartCleanShutdown() {
                 this);
 }
 
-void Daemon::SetIdleOffset(int64 offset_ms) {
+void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
+  int64 prev_dim_ms = dim_ms_;
+  int64 prev_off_ms = off_ms_;
   LOG(INFO) << "offset_ms_ = " << offset_ms;
   offset_ms_ = offset_ms;
   if (plugged_state_ == kPowerConnected) {
@@ -241,6 +244,22 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
     lock_ms_ = max(lock_ms_ + offset_ms, lock_ms_);
   }
 
+  // Only offset timeouts for states starting with idle state provided.
+  switch (state) {
+    case kIdleSuspend:
+      off_ms_ = prev_off_ms;
+    case kIdleScreenOff:
+      dim_ms_ = prev_dim_ms;
+    case kIdleDim:
+    case kIdleNormal:
+      break;
+    case kIdleUnknown:
+    default: {
+      LOG(ERROR) << "SetIdleOffset : Improper Idle State";
+      break;
+    }
+  }
+
   // Sync up idle state with new settings
   CHECK(idle_.ClearTimeouts());
   if (offset_ms > kFuzzMS)
@@ -262,7 +281,7 @@ void Daemon::SetIdleOffset(int64 offset_ms) {
 void Daemon::SetActive() {
   int64 idle_time_ms;
   CHECK(idle_.GetIdleTime(&idle_time_ms));
-  SetIdleOffset(idle_time_ms);
+  SetIdleOffset(idle_time_ms, kIdleNormal);
   SetIdleState(idle_time_ms);
 }
 
@@ -278,12 +297,16 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
                                             &video_time_ms,
                                             &video_is_playing));
     if (video_is_playing)
-      SetIdleOffset(idle_time_ms - video_time_ms);
+      SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
+  }
+  if (is_idle && kIdleDim == idle_state_ && !util::OOBECompleted()) {
+    LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
+    SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
-    SetIdleOffset(0);
+    SetIdleOffset(0, kIdleNormal);
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
@@ -551,7 +574,7 @@ gboolean Daemon::PrefChangeHandler(const char* name,
     daemon->ReadLockScreenSettings();
     daemon->locker_.Init(daemon->use_xscreensaver_,
                          daemon->lock_on_idle_suspend_);
-    daemon->SetIdleOffset(0);
+    daemon->SetIdleOffset(0, kIdleNormal);
   }
   return true;
 }

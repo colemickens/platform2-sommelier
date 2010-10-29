@@ -34,6 +34,9 @@ extern const char* kLidOpenFile;
 extern const char* kUserActiveFile;
 
 bool LoggedIn();
+bool OOBECompleted();
+
+// Issue command asynchronously.
 void Launch(const char* cmd);
 
 // Send a message |signal| to the session manager.

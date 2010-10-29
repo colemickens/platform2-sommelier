@@ -114,8 +114,8 @@ class Daemon : public XIdleMonitor {
   void SetIdleState(int64 idle_time_ms);
 
   // Setup idle timers, adding the provided offset to all timeouts
-  // except the locking timeout.
-  void SetIdleOffset(int64 offset_ms);
+  // starting with the state provided except the locking timeout.
+  void SetIdleOffset(int64 offset_ms, IdleState state);
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
