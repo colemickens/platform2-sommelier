@@ -653,7 +653,8 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       bool tpm_wrapped = (wrap_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
       bool scrypt_wrapped =
           (wrap_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
-      bool should_tpm = (crypto_->has_tpm() && use_tpm_);
+      bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
+                         crypto_->is_tpm_connected());
       bool should_scrypt = fallback_to_scrypt_;
       do {
         // If the keyset was TPM-wrapped, but there was no public key hash,

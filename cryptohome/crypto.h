@@ -288,6 +288,14 @@ class Crypto : public EntropySource {
     return tpm_;
   }
 
+  // Checks if the TPM is connected
+  bool is_tpm_connected() {
+    if (tpm_ == NULL) {
+      return false;
+    }
+    return tpm_->IsConnected();
+  }
+
  private:
   // Converts a TPM error to a Crypto error
   CryptoError TpmErrorToCrypto(Tpm::TpmRetryAction retry_action) const;

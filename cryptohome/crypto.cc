@@ -715,7 +715,8 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
     }
     size_t out_len = serialized.wrapped_keyset().length();
     SecureBlob decrypted(out_len);
-    if (scryptdec_buf(
+    int scrypt_rc;
+    if ((scrypt_rc = scryptdec_buf(
             static_cast<const uint8_t*>(local_wrapped_keyset.const_data()),
             local_wrapped_keyset.size(),
             static_cast<uint8_t*>(decrypted.data()),
@@ -724,8 +725,8 @@ bool Crypto::UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
             vault_wrapper.size(),
             kScryptMaxMem,
             100.0,
-            kScryptMaxDecryptTime)) {
-      LOG(ERROR) << "Scrypt decryption failed";
+            kScryptMaxDecryptTime))) {
+      LOG(ERROR) << "Scrypt decryption failed: " << scrypt_rc;
       if (error) {
         *error = CE_SCRYPT_CRYPTO;
       }
@@ -850,7 +851,8 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
     memcpy(&local_keyset_blob[0], keyset_blob.const_data(), keyset_blob.size());
     memcpy(&local_keyset_blob[keyset_blob.size()], hash.data(), hash.size());
     cipher_text.resize(local_keyset_blob.size() + kScryptHeaderLength);
-    if (scryptenc_buf(
+    int scrypt_rc;
+    if ((scrypt_rc = scryptenc_buf(
             static_cast<const uint8_t*>(local_keyset_blob.const_data()),
             local_keyset_blob.size(),
             static_cast<uint8_t*>(cipher_text.data()),
@@ -858,8 +860,8 @@ bool Crypto::WrapVaultKeyset(const VaultKeyset& vault_keyset,
             vault_wrapper.size(),
             kScryptMaxMem,
             100.0,
-            kScryptMaxEncryptTime)) {
-      LOG(ERROR) << "Scrypt encryption failed";
+            kScryptMaxEncryptTime))) {
+      LOG(ERROR) << "Scrypt encryption failed: " << scrypt_rc;
       return false;
     }
     scrypt_wrapped = true;
