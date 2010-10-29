@@ -213,7 +213,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-gview \
             --log-level=0 \
             --enable-logging \
-            --enable-seccomp-sandbox \
+            --disable-seccomp-sandbox \
             --no-first-run \
             --user-data-dir="$DATA_DIR" \
             --login-profile=user \
