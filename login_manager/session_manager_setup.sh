@@ -32,6 +32,11 @@ export DBUS_FATAL_WARNINGS=0
 # and the directory is created there as well.
 export CHROME_LOG_FILE="${CHROME_LOG_DIR}/${CHROME_LOG_PREFIX}"
 
+# Log directory for this session.  Note that ${HOME} might not be
+# mounted until later (when the cryptohome is mounted), so we don't
+# mkdir CHROMEOS_SESSION_LOG_DIR immediately.
+export CHROMEOS_SESSION_LOG_DIR="${HOME}/log"
+
 # Forces Chrome mini dumps that are sent to the crash server to also be written
 # locally.  Chrome by default will create these mini dump files in
 # ~/.config/google-chrome/Crash Reports/
