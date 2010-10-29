@@ -42,3 +42,4 @@ ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
 uname,/bin/uname -a
 update_engine.log,/usr/share/userfeedback/scripts/get_log /var/log/update_engine.log
 wpa_supplicant,/usr/share/userfeedback/scripts/getmsgs --last '30 minutes' /var/log/hostap.log
+verified boot,/usr/share/userfeedback/scripts/get_log /tmp/debug_vboot/noisy.log
