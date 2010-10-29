@@ -56,6 +56,16 @@ HELP='
 
  enterprise_ca_disapprove
   Remove a previously approved enterprise certificate authority.
+ 
+ ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
+  Add and remove flimflam debugging tags
+
+ wpa_debug [<wpa_level>] [--help] [--list_valid_level] [--reset]
+  Add and remove flimflam debugging tags
+
+ network_logging <wifi | cellular | ethernet>
+  A function that enables a predefined set of tags useful for 
+  debugging the specified device
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -234,6 +244,41 @@ cmd_enterprise_ca_approve() {
 
 cmd_enterprise_ca_disapprove() {
   /usr/sbin/entdwife.sh -c disapprove
+}
+
+cmd_ff_debug(){
+  /usr/bin/ff_debug "$@"
+}
+
+cmd_wpa_debug(){
+  /usr/bin/wpa_debug "$@"
+}
+
+cmd_network_logging(){
+  if [ -n "$1" ]; then
+    case "$1" in
+      "wifi")
+        echo; /usr/bin/ff_debug service+wifi+inet+device+manager
+        echo; /usr/bin/wpa_debug msgdump
+        ;;
+      "cellular")
+        echo; /usr/bin/ff_debug service+modem+device+manager  
+        echo; /usr/bin/wpa_debug info 
+        ;;
+      "ethernet")
+        echo; /usr/bin/ff_debug service+ethernet+device+manager  
+        echo; /usr/bin/wpa_debug info
+        ;;
+      "--help")
+        echo "Usage: network_logging <wifi | cellular | ethernet>"
+        ;;
+      *)
+        echo "Invalid parameter $1"
+        ;;
+    esac
+  else
+    echo "Missing parameter wifi | cellular | ethernet"
+  fi
 }
 
 substr() {
