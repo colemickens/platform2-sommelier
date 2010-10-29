@@ -66,6 +66,16 @@ HELP='
  network_logging <wifi | cellular | ethernet>
   A function that enables a predefined set of tags useful for 
   debugging the specified device
+
+ ping [-c count] [-i interval] [-n] [-s packet-size] [-W wait-time] <destination>
+  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
+  then the next hop gateway for the default route is used.
+
+ route [-n]
+  Display the routing tables.
+
+ tracepath [-n] <destination>[/port]
+  Trace the path/route to a network host.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -281,16 +291,104 @@ cmd_network_logging(){
   fi
 }
 
+cmd_ping() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    # Do just enough parsing to filter/map options; we
+    # depend on ping to handle final validation
+    if [ "$1" = "-i" ]; then
+      shift; option="$option -i $1"
+    elif [ "$1" = "-c" ]; then
+      shift; option="$option -c $1"
+    elif [ "$1" = "-W" ]; then
+      shift; option="$option -W $1"
+    elif [ "$1" = "-s" ]; then
+      shift; option="$option -s $1"
+    elif [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  local dest="$1"
+  if [ "$dest" = "gw" ]; then
+    # Convenient shorthand for the next-hop gateway attached
+    # to the default route; this means if you have a host named
+    # "gw" then you'll need to specify a FQDN or IP address.
+    dest=$(/sbin/route -n | awk '$1 == "0.0.0.0" { print $2; }')
+    if [ -z "$dest" ]; then
+      echo "Cannot determine primary gateway; routing table is:"
+      cmd_route -n
+      return 1
+    fi
+  fi
+
+  /bin/ping $option "$dest"
+}
+
+cmd_route() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  /sbin/route $option
+}
+
+cmd_tracepath() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  /usr/sbin/tracepath $option "$1"
+}
+
 substr() {
   local str="$1"
   local start="$2"
   local end="$3"
 
   if [ "$IS_BASH" = "1" ]; then
+    # NB: use printf to avoid echo interpreting -n
     if [ -z "$end" ]; then
-      echo ${str:$start}
+      printf '%s\n' ${str:$start}
     else
-      echo ${str:$start:$end}
+      printf '%s\n' ${str:$start:$end}
     fi
     return
   fi
