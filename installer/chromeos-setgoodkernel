@@ -26,3 +26,8 @@ kern_num=$(get_partition_number $kern_dev)
 
 # Mark the kernel as successfully booted (success=1, tries=0).
 $sudo cgpt add $base_dev -i $kern_num -S1 -T0
+
+# Run the verified boot debugging tool now, because we won't be able to run it
+# manually if there's a problem (no root shell). It leaves a log file that we
+# can look at.
+$sudo dev_debug_vboot --cleanup
