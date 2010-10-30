@@ -183,6 +183,8 @@ void Daemon::SetPlugged(bool plugged) {
       SetIdleOffset(idle_time_ms, kIdleNormal);
     else if (idle_state_ == kIdleScreenOff)
       SetIdleOffset(idle_time_ms, kIdleSuspend);
+    else
+      SetIdleOffset(0, kIdleNormal);
 
     ctl_->OnPlugEvent(plugged);
     SetIdleState(idle_time_ms);
