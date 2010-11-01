@@ -87,6 +87,7 @@ class CromoServer
 
   void SuspendReady();
   bool CheckSuspendReady();
+  static gboolean RegisterSuspendDelayCallback(void *arg);
   void RegisterSuspendDelay();
 
   unsigned int MaxSuspendDelay();

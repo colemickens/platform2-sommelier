@@ -160,19 +160,26 @@ void CromoServer::RegisterStartSuspend(const std::string& name,
     RegisterSuspendDelay();
 }
 
-void CromoServer::RegisterSuspendDelay() {
+gboolean CromoServer::RegisterSuspendDelayCallback(gpointer arg) {
+  CromoServer* srv = static_cast<CromoServer*>(arg);
   DBus::CallMessage* call = new DBus::CallMessage();
   call->destination(power_manager::kPowerManagerInterface);
   call->interface(power_manager::kPowerManagerInterface);
   call->path("/");
   call->member(power_manager::kRegisterSuspendDelay);
-  call->append(DBUS_TYPE_UINT32, &max_suspend_delay_, DBUS_TYPE_INVALID);
+  call->append(DBUS_TYPE_UINT32, &srv->max_suspend_delay_, DBUS_TYPE_INVALID);
   call->terminate();
-  DBus::Message reply = conn_.send_blocking(*call, -1);
+  DBus::Message reply = srv->conn_.send_blocking(*call, -1);
   if (reply.is_error())
-    LOG(WARNING) << "Can't register for suspend delay: " << max_suspend_delay_;
+    LOG(WARNING) << "Can't register for suspend delay: "
+                 << srv->max_suspend_delay_;
   else
-    LOG(INFO) << "Registered for suspend delay: " << max_suspend_delay_;
+    LOG(INFO) << "Registered for suspend delay: " << srv->max_suspend_delay_;
+  return FALSE;
+}
+
+void CromoServer::RegisterSuspendDelay() {
+  g_idle_add(RegisterSuspendDelayCallback, this);
 }
 
 void CromoServer::UnregisterStartSuspend(const std::string& name) {
