@@ -238,7 +238,7 @@ install_gpt() {
     # Just a local file.
     local sudo=
 
-    # We're just going to fill partitions 1, 2, 3, 8, and 12. The others will
+    # We're just going to fill partitions 1, 2, 3, 4, 8, and 12. The others will
     # be present but as small as possible. The disk layout isn't crucial here,
     # because we won't be able to upgrade this image in-place as it's only for
     # installation purposes.
@@ -246,7 +246,8 @@ install_gpt() {
     NUM_KERN_SECTORS=$max_kern_sectors
     local num_kern_a_sectors=$NUM_KERN_SECTORS
     local kern_a_priority=15
-    local num_kern_b_sectors=1
+    # Make sure we keep space for a second kernel as it is used during recovery.
+    local num_kern_b_sectors=$NUM_KERN_SECTORS
     local kern_b_priority=0
     NUM_ROOTFS_SECTORS=$(roundup $rootfs_img_sectors)
     local num_rootfs_a_sectors=$NUM_ROOTFS_SECTORS

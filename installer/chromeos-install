@@ -31,6 +31,8 @@ DEFINE_string arch "" \
 unset auto-detect."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive. Default: (empty)."
+DEFINE_boolean use_payload_kern_b ${FLAGS_FALSE} \
+  "Copy KERN-B instead of KERN-A from payload_image."
 DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
 layout. Default: (empty)."
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed. Default: (empty)"
@@ -131,7 +133,7 @@ elif [ -z "$FLAGS_payload_image" ]; then
     fi
   fi
 else
-  if [ ! -f "$FLAGS_payload_image" ]; then
+  if [ ! -e "$FLAGS_payload_image" ]; then
     echo "Error: No payload image found at $FLAGS_payload_image"
     exit 1
   fi
@@ -354,6 +356,11 @@ else
   OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 8)
   ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 12)
 
+  if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_TRUE} ]; then
+    KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 4)
+    KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 4)
+  fi
+
   # Mount the src image
   loop_offset_setup "${FLAGS_payload_image}" $STATEFUL_IMG_OFFSET
   STATEFUL_IMG_LOOP=$LOOP_DEV
@@ -395,7 +402,7 @@ fi
 # Install the content.
 echo "Copying kernel..."
 fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_A} ${KERNEL_IMG_OFFSET} \
-  if=${KERNEL_IMG} of=${DST} conv=notrunc
+  if=${KERNEL_IMG} of=${DST} conv=notrunc,fsync
 
 # Copy kernel verification block to target HD
 copy_kernel_vblock() {
@@ -439,6 +446,15 @@ echo "Copying ESP..."
 fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
   if=${ESP_IMG} of=${DST} conv=notrunc
 
+# If postinst fails, we should still clear stateful.
+if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
+  echo "Clearing the stateful partition..."
+  loop_offset_setup $DST $START_STATEFUL
+  sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+    $(($NUM_STATEFUL_SECTORS / 8))
+  loop_offset_cleanup
+fi
+
 # TODO: support arm during postinst so that we get partition selection and
 #       verified boot.
 if [ "$ARCH" != "ARM" ]; then
@@ -460,13 +476,6 @@ if [ "$ARCH" != "ARM" ]; then
   loop_offset_cleanup
 fi
 
-echo "Installing the stateful partition..."
-loop_offset_setup $DST $START_STATEFUL
-if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
-  sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
-    $(($NUM_STATEFUL_SECTORS / 8))
-fi
-
 #
 # Install the stateful partition content
 #
@@ -486,6 +495,8 @@ fi
 # the release image, which could mask bugs.  Make sure every
 # item you add here is well justified.
 #
+echo "Installing the stateful partition..."
+loop_offset_setup $DST $START_STATEFUL
 if [ -f "${ROOT}"/root/.dev_mode ]; then
   mount_on_loop_dev readwrite
   DIRLIST="

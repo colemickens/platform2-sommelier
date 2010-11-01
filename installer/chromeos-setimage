@@ -58,6 +58,7 @@ if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
   set -x
 fi
 
+EXIT_CODE=0  # To be made non-zero in case of a non-terminal error case
 INSTALL_ROOT="${FLAGS_install_root}"
 # This export is so that locate_gpt will look within this install
 # partition to find that copy of the cgpt program.
@@ -255,10 +256,13 @@ if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
   expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
   generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
 
-  if [ "${expected_hash}" != "${generated_hash}" ]; then
-    echo "Root filesystem has been modified unexpectedly!" 1>&2
-    if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
-      exit 1
+  if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
+    if [ "${expected_hash}" != "${generated_hash}" ]; then
+      echo "Root filesystem has been modified unexpectedly!" 1>&2
+      echo "Expected ${expected_hash} != ${generated_hash}" 1>&2
+      # It doesn't make sense to exit here since the root filesystem
+      # is already in place.  Might as well get everything in sync.
+      EXIT_CODE=1
     fi
   fi
 
@@ -354,4 +358,4 @@ grep -qs 's-hd\.B$' ${mountpoint}/syslinux/default.cfg && echo "B"
 grep -qs 'vhd\.A$' ${mountpoint}/syslinux/default.cfg && echo "A (verified)"
 grep -qs 'vhd\.B$' ${mountpoint}/syslinux/default.cfg && echo "B (verified)"
 
-exit 0
+exit $EXIT_CODE
