@@ -124,7 +124,7 @@ install_gpt() {
   local pmbrcode=$4
   local esp_img_sectors=$5
   local force_full="${6:-}"
-  local rootfs_size="${7:-1024}"   # 1G
+  local rootfs_size="${7:-2048}"   # 2GiB
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -134,7 +134,7 @@ install_gpt() {
   #
   #   PMBR (512 bytes)
   #   Primary GPT Header (512 bytes)
-  #   Primary GPT Table (16K)
+  #   Primary GPT Table (16KiB)
   #     Kernel C (placeholder for future use only)    partition 6
   #     Rootfs C (placeholder for future use only)    partition 7
   #     future use                                    partition 9
@@ -142,13 +142,13 @@ install_gpt() {
   #     future use                                    partition 11
   #   Kernel A                                        partition 2
   #   Kernel B                                        partition 4
-  #   OEM Customization (16M)                         partition 8
-  #     reserved space (64M)
+  #   OEM Customization (16MiB)                       partition 8
+  #     reserved space (64MiB)
   #   EFI System Partition (temporary)                partition 12
   #   Stateful partition (as large as possible)       partition 1
   #   Rootfs B                                        partition 5
   #   Rootfs A                                        partition 3
-  #   Secondary GPT Table (16K)
+  #   Secondary GPT Table (16KiB)
   #   Secondary GPT Header (512 bytes)
   #
   # Please refer to the official ChromeOS documentation for the details and
@@ -163,19 +163,19 @@ install_gpt() {
   # in size, and non-overlapping.
 
   # Here are the size limits that we're currently requiring
-  local max_kern_sectors=32768        # 16M
-  local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 1G by default
+  local max_kern_sectors=32768        # 16MiB
+  local max_rootfs_sectors=$((${rootfs_size} * 2 * 1024))  # 2GiB by default
   if [ "$rootfs_img_sectors" -gt "$max_rootfs_sectors" ]; then
     max_rootfs_sectors=$(roundup $rootfs_img_sectors)
   fi
-  local max_oem_sectors=32768         # 16M
-  local max_reserved_sectors=131072   # 64M
-  local max_esp_sectors=32768         # 16M
-  local min_stateful_sectors=262144   # 128M, expands to fill available space
+  local max_oem_sectors=32768         # 16MiB
+  local max_reserved_sectors=131072   # 64MiB
+  local max_esp_sectors=32768         # 16MiB
+  local min_stateful_sectors=262144   # 128MiB, expands to fill available space
 
   local num_pmbr_sectors=1
   local num_gpt_hdr_sectors=1
-  local num_gpt_table_sectors=32      # 16K
+  local num_gpt_table_sectors=32      # 16KiB
   local num_footer_sectors=$(($num_gpt_hdr_sectors + $num_gpt_table_sectors))
   local num_header_sectors=$(($num_pmbr_sectors + $num_footer_sectors))
 
