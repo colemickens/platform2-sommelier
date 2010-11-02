@@ -188,13 +188,11 @@ int main(int argc, char* argv[]) {
   closelog();
 
   google::ParseCommandLineFlags(&argc, &argv, true);
-  google::SetCommandLineOptionWithMode("log_dir",
-                                       "/tmp",
-                                       google::SET_FLAG_IF_DEFAULT);
   google::SetCommandLineOptionWithMode("min_log_level",
                                        "0",
                                        google::SET_FLAG_IF_DEFAULT);
   google::InitGoogleLogging(argv[0]);
+  google::LogToStderr();
   google::AddLogSink(&syslogger);
   google::InstallFailureSignalHandler();
 
