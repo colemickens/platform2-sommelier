@@ -229,6 +229,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-tabbed-options \
             --disable-domui-menu \
             --scroll-pixels=4 \
+            --compress-sys-feedback \
             "$PEPPER_FLASH_FLAG" \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
