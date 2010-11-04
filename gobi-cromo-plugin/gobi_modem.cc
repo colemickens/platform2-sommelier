@@ -968,9 +968,9 @@ void GobiModem::LogGobiInformation() {
   DBus::Error error;
   GetSerialNumbers(&serials, error);
   if (!error.is_set()) {
-    LOG(INFO) << "ESN " << serials.esn
-              << " IMEI " << serials.imei
-              << " MEID " << serials.meid;
+    DLOG(INFO) << "ESN " << serials.esn
+               << " IMEI " << serials.imei
+               << " MEID " << serials.meid;
   } else {
     LOG(WARNING) << "Cannot get serial numbers: " << error;
   }
@@ -979,8 +979,16 @@ void GobiModem::LogGobiInformation() {
   rc = sdk_->GetVoiceNumber(kDefaultBufferSize, number,
                             kDefaultBufferSize, min_array);
   if (rc == 0) {
-    LOG(INFO) << "Voice: " << number
-              << " MIN: " << min_array;
+    char masked_min[kDefaultBufferSize + 1];
+    strncpy(masked_min, min_array, sizeof(masked_min));
+    if (strlen(masked_min) >= 4)
+      strcpy(masked_min + strlen(masked_min) - 4, "XXXX");
+    char masked_voice[kDefaultBufferSize + 1];
+    strncpy(masked_voice, number, sizeof(masked_voice));
+    if (strlen(masked_voice) >= 4)
+      strcpy(masked_voice + strlen(masked_voice) - 4, "XXXX");
+    LOG(INFO) << "Voice: " << masked_voice
+              << " MIN: " << masked_min;
   } else if (rc != gobi::kNotProvisioned) {
     LOG(WARNING) << "GetVoiceNumber failed: " << rc;
   }
