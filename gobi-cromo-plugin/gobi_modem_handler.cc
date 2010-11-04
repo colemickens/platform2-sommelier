@@ -8,6 +8,7 @@
 extern "C" {
 #include <libudev.h>
 #include <stdio.h>
+#include <syslog.h>
 }
 
 #include "glog/logging.h"
@@ -50,6 +51,10 @@ GobiModemHandler::~GobiModemHandler() {
 }
 
 bool GobiModemHandler::Initialize() {
+  // Can't use LOG here: we want this to be always logged, but we don't want it
+  // to be an error. Fortunately syslog declares both openlog() and closelog()
+  // 'optional', so...
+  syslog(LOG_NOTICE, "gobi-cromo-plugin vcsid %s", VCSID);
   GOBI_SDK.Init();
   GobiModem::set_handler(this);
   MonitorDevices();
