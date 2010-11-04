@@ -66,7 +66,9 @@ simple_line_executor() {
 }
 
 SYSLOG_CONTEXT=${1}
-if [ "${CONTEXT}" != "feedback" ] && [ "${CONTEXT}" != "sysinfo" ]; then
+if [ "${SYSLOG_CONTEXT}" = "feedback" ] ; then
+  logger -t user_feedback "User invoked user feedback"
+elif [ "${SYSLOG_CONTEXT}" != "sysinfo" ]; then
   SYSLOG_CONTEXT="sysinfo"
 fi
 export SYSLOG_CONTEXT
