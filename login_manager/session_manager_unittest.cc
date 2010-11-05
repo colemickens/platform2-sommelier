@@ -43,10 +43,8 @@ using ::testing::SetArgumentPointee;
 using ::testing::_;
 
 static const char kCheckedFile[] = "/tmp/checked_file";
-static const char kUptimeFile1[] = "/tmp/uptime-job1-exec";
-static const char kDiskFile1[] = "/tmp/disk-job1-exec";
-static const char kUptimeFile2[] = "/tmp/uptime-job2-exec";
-static const char kDiskFile2[] = "/tmp/disk-job2-exec";
+static const char kUptimeFile[] = "/tmp/uptime-chrome-exec";
+static const char kDiskFile[] = "/tmp/disk-chrome-exec";
 
 // Used as a base class for the tests in this file.
 // Gives useful shared functionality.
@@ -62,14 +60,10 @@ class SessionManagerTest : public ::testing::Test {
   virtual ~SessionManagerTest() {
     if (manager_)
       delete manager_;
-    FilePath uptime1(kUptimeFile1);
-    FilePath disk1(kDiskFile1);
-    FilePath uptime2(kUptimeFile2);
-    FilePath disk2(kDiskFile2);
-    file_util::Delete(uptime1, false);
-    file_util::Delete(disk1, false);
-    file_util::Delete(uptime2, false);
-    file_util::Delete(disk2, false);
+    FilePath uptime(kUptimeFile);
+    FilePath disk(kDiskFile);
+    file_util::Delete(uptime, false);
+    file_util::Delete(disk, false);
 
     g_array_free(fake_key_, TRUE);
   }
@@ -705,8 +699,8 @@ TEST_F(SessionManagerTest, StopSessionTest) {
 }
 
 TEST_F(SessionManagerTest, StatsRecorded) {
-  FilePath uptime(kUptimeFile1);
-  FilePath disk(kDiskFile1);
+  FilePath uptime(kUptimeFile);
+  FilePath disk(kDiskFile);
   file_util::Delete(uptime, false);
   file_util::Delete(disk, false);
   MockChildJob* job = CreateTrivialMockJob(ONCE);

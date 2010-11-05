@@ -7,7 +7,7 @@ CXXFLAGS ?= -Wall -Werror -g
 CXXFLAGS += -DOS_CHROMEOS
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lbase -lpthread -lrt -lchromeos
+BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lbootstat
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \

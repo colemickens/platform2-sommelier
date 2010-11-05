@@ -26,11 +26,12 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
-#include "base/scoped_ptr.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "metrics/bootstat.h"
 
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
@@ -275,45 +276,11 @@ bool SessionManagerService::Shutdown() {
   return chromeos::dbus::AbstractDbusService::Shutdown();
 }
 
-// Output uptime and disk stats to a file
-static void RecordStats(ChildJobInterface* job) {
-  // File uptime logs are located in.
-  static const char kLogPath[] = "/tmp";
-  // Prefix for the time measurement files.
-  static const char kUptimePrefix[] = "uptime-";
-  // Prefix for the disk usage files.
-  static const char kDiskPrefix[] = "disk-";
-  // The location of the current uptime stats.
-  static const FilePath kProcUptime("/proc/uptime");
-  // The location the the current disk stats.
-  static const FilePath kDiskStat("/sys/block/sda/stat");
-  // Suffix for both uptime and disk stats
-  static const char kSuffix[] = "-exec";
-  std::string job_name = job->GetName();
-  if (job_name.size()) {
-    FilePath log_dir(kLogPath);
-    FilePath uptime_file = log_dir.Append(kUptimePrefix + job_name + kSuffix);
-    if (!file_util::PathExists(uptime_file)) {
-      std::string uptime;
-
-      file_util::ReadFileToString(kProcUptime, &uptime);
-      file_util::WriteFile(uptime_file, uptime.data(), uptime.size());
-    }
-    FilePath disk_file = log_dir.Append(kDiskPrefix + job_name + kSuffix);
-    if (!file_util::PathExists(disk_file)) {
-      std::string disk;
-
-      file_util::ReadFileToString(kDiskStat, &disk);
-      file_util::WriteFile(disk_file, disk.data(), disk.size());
-    }
-  }
-}
-
 void SessionManagerService::RunChildren() {
+  bootstat_log("chrome-exec");
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
     LOG(INFO) << "Running child " << child_job->GetName() << "...";
-    RecordStats(child_job);
     child_pids_[i_child] = RunChild(child_job);
   }
 }
