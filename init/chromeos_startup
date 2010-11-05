@@ -66,37 +66,45 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
   fi
 fi
 
+# DEVMODE is used to determine if we're booted in developer mode,
+# by ignoring the bootloader detection and just checks the switch state.
+# Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
+cros_boot_mode -b -s -m developer
+DEVMODE=$((!$?))
+
 # Check if we need to perform firmware update.
 NEED_FIRMWARE_UPDATE='/mnt/stateful_partition/.need_firmware_update'
 if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
   rm -f "$NEED_FIRMWARE_UPDATE"
   FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
+  FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
   if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+    if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
+      # More message on console for developer mode and dev builds
+      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
+    fi
     mkdir -p /mnt/stateful_partition/var/log
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert update_firmware /dev/tty1
     IS_CHROMEOS_STARTUP=1 "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
-      tee /dev/tty1 /mnt/stateful_partition/var/log/update_firmware.log
+      tee $FIRMWARE_UPDATE_LOGS
   fi
 fi
+
+# If we've switched from verified mode to developer mode, clobber the state.
+# The reverse is not possible to detect reliably, but we try.
+# In addition, normal and unsupported are treated are equivalent otherwise
+# booting the first time on a legacy device would clobber state for no reason.
+# (NOTE, this will not be triggered in recovery mode.)
 
 # File used to trigger a stateful reset
 RESET_FILE="/mnt/stateful_partition/factory_install_reset"
 
-# If we've switched from verified mode to developer mode, clobber the state.
-# The reverse is not possible to detect reliably, but we try.
-# Ignores the bootloader detection and just checks the switch state.
-# In addition, normal and unsupported are treated are equivalent otherwise
-# booting the first time on a legacy device would clobber state for no reason.
-# (NOTE, this will not be triggered in recovery mode.)
-# DEVMODE values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
-/bin/cros_boot_mode -b -s -m developer
-DEVMODE=$((!$?))
 # File defined by clobber-state
 DEVMODE_FILE="/mnt/stateful_partition/.developer_mode"
 
+# If in factory mode or a wipe process is already scheduled, don't change it.
 if [ -n "$IS_FACTORY_MODE" -o -O "$RESET_FILE" ]; then
-  # If in factory mode or a wipe process is already scheduled, don't change it.
   DEVMODE=2
 fi
 
