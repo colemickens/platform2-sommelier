@@ -76,6 +76,9 @@ HELP='
 
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
+
+ top
+  Run top (in secure mode).
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -376,6 +379,12 @@ cmd_tracepath() {
   fi
 
   /usr/sbin/tracepath $option "$1"
+}
+
+cmd_top() {
+  # -s is "secure" mode, which disables kill, renice, and change display/sleep
+  # interval.
+  top -s
 }
 
 substr() {
