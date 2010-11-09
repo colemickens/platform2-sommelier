@@ -69,10 +69,14 @@ void PowerButtonHandler::HandleButtonDown() {
   if (shutting_down_)
     return;
 
+  const bool should_lock = util::LoggedIn() &&
+                           !daemon_->current_user().empty() &&
+                           !daemon_->locker()->is_locked();
+
 #ifdef NEW_POWER_BUTTON
   // Power button release supported. This allows us to schedule events based
   // on how long the button was held down.
-  if (util::LoggedIn() && !daemon_->locker()->is_locked()) {
+  if (should_lock) {
     NotifyWindowManagerAboutPowerButtonState(
         chromeos::WM_IPC_POWER_BUTTON_PRE_LOCK);
     RemoveTimeoutIfSet(&lock_timeout_id_);
@@ -87,7 +91,7 @@ void PowerButtonHandler::HandleButtonDown() {
   // Legacy behavior for x86 systems because the ACPI button driver sends both
   // down and release events at the time the acpi notify occurs for power
   // button.
-  if (util::LoggedIn() && !daemon_->locker()->is_locked())
+  if (should_lock)
     daemon_->locker()->LockScreen();
   else
     HandleShutdownTimeout();

@@ -11,6 +11,8 @@
 #include <X11/XF86keysym.h>
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #include "base/file_util.h"
 #include "base/logging.h"
@@ -23,6 +25,8 @@
 
 using std::max;
 using std::min;
+using std::string;
+using std::vector;
 
 namespace power_manager {
 
@@ -461,7 +465,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kPowerStateChanged)) {
     LOG(INFO) << "Power state change event";
-    const char *state = '\0';
+    const char* state = '\0';
     DBusError error;
     dbus_error_init(&error);
     if (dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &state,
@@ -473,6 +477,25 @@ DBusHandlerResult Daemon::DBusMessageHandler(
     daemon->OnPowerStateChange(state);
     // other dbus clients may be interested in consuming this signal
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  } else if (dbus_message_is_signal(
+                 message,
+                 login_manager::kSessionManagerInterface,
+                 login_manager::kSessionManagerSessionStateChanged)) {
+    DBusError error;
+    dbus_error_init(&error);
+    const char* state = NULL;
+    const char* user = NULL;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_STRING, &state,
+                              DBUS_TYPE_STRING, &user,
+                              DBUS_TYPE_INVALID)) {
+      daemon->OnSessionStateChange(state, user);
+    } else {
+      LOG(WARNING) << "Unable to read arguments from "
+                   << login_manager::kSessionManagerSessionStateChanged
+                   << " signal";
+    }
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
@@ -480,23 +503,32 @@ DBusHandlerResult Daemon::DBusMessageHandler(
 }
 
 void Daemon::RegisterDBusMessageHandler() {
-  const std::string filter = StringPrintf("type='signal', interface='%s'",
-                                          kPowerManagerInterface);
-
-  DBusError error;
-  dbus_error_init(&error);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
-  dbus_bus_add_match(connection, filter.c_str(), &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to add a filter:" << error.name << ", message="
-               << error.message;
-    NOTREACHED();
-  } else {
-    CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
-                                     NULL));
-    LOG(INFO) << "DBus monitoring started";
+  CHECK(connection);
+
+  vector<string> matches;
+  matches.push_back(
+      StringPrintf("type='signal', interface='%s'", kPowerManagerInterface));
+  matches.push_back(
+      StringPrintf("type='signal', interface='%s', member='%s'",
+                   login_manager::kSessionManagerInterface,
+                   login_manager::kSessionManagerSessionStateChanged));
+
+  for (vector<string>::const_iterator it = matches.begin();
+       it != matches.end(); ++it) {
+    DBusError error;
+    dbus_error_init(&error);
+    dbus_bus_add_match(connection, it->c_str(), &error);
+    if (dbus_error_is_set(&error)) {
+      LOG(DFATAL) << "Failed to add match \"" << *it << "\": "
+                  << error.name << ", message=" << error.message;
+    }
   }
+
+  CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
+                                   NULL));
+  LOG(INFO) << "D-Bus monitoring started";
 }
 
 void Daemon::SuspendOnLowBattery(double battery_percentage) {
@@ -538,6 +570,25 @@ void Daemon::OnPowerStateChange(const char* state) {
     SetActive();
   } else {
     DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
+  }
+}
+
+void Daemon::OnSessionStateChange(const char* state, const char* user) {
+  if (!state || !user) {
+    LOG(DFATAL) << "Got session state change signal with missing state or user";
+    return;
+  }
+
+  if (strcmp(state, "started") == 0) {
+    current_user_ = user;
+    DLOG(INFO) << "Session started for "
+               << (current_user_.empty() ? "guest" : current_user_.c_str());
+  } else if (strcmp(state, "stopped") == 0) {
+    current_user_.clear();
+    DLOG(INFO) << "Session stopped";
+  } else {
+    LOG(WARNING) << "Got unexpected state in session state change signal: "
+                 << state;
   }
 }
 

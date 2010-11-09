@@ -8,6 +8,8 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include <string>
+
 #include <ctime>
 
 #include "base/file_path.h"
@@ -37,6 +39,8 @@ class Daemon : public XIdleMonitor {
 
   ScreenLocker* locker() { return &locker_; }
   BacklightController* backlight_controller() { return ctl_; }
+
+  const std::string& current_user() const { return current_user_; }
 
   void Init();
   void Run();
@@ -146,6 +150,10 @@ class Daemon : public XIdleMonitor {
   // Handle power state changes from powerd_suspend.
   // |state| is "on" when resuming from suspend.
   void OnPowerStateChange(const char* state);
+
+  // Handle a D-Bus signal from the session manager telling us that the
+  // session state has changed.
+  void OnSessionStateChange(const char* state, const char* user);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -268,6 +276,10 @@ class Daemon : public XIdleMonitor {
   KeyCode key_power_off_;
   KeyCode key_f6_;
   KeyCode key_f7_;
+
+  // User whose session is currently active, or empty if no session is
+  // active or we're in guest mode.
+  std::string current_user_;
 };
 
 }  // namespace power_manager
