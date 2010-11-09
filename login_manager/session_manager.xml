@@ -57,6 +57,8 @@
     <signal name="SessionStateChanged">
       <!-- started, stopped -->
       <arg type="s" name="state" />
+      <!-- user whose session is starting or stopping (empty for guest) -->
+      <arg type="s" name="user" />
     </signal>
     <method name="LockScreen">
       <!-- Lock screen -->

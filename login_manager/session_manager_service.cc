@@ -186,10 +186,18 @@ bool SessionManagerService::Initialize() {
       g_signal_new("session_state_changed",
                    gobject::session_manager_get_type(),
                    G_SIGNAL_RUN_LAST,
-                   0,
-                   NULL, NULL,
+                   0,               // class offset
+                   NULL, NULL,      // accumulator and data
+                   // TODO: This is wrong.  If you need to use it at some point
+                   // (probably only if you need to listen to this GLib signal
+                   // instead of to the D-Bus signal), you should generate an
+                   // appropriate marshaller that takes two string arguments.
+                   // See e.g. http://goo.gl/vEGT4.
                    g_cclosure_marshal_VOID__STRING,
-                   G_TYPE_NONE, 1, G_TYPE_STRING);
+                   G_TYPE_NONE,     // return type
+                   2,               // num params
+                   G_TYPE_STRING,   // state ("started" or "stopped")
+                   G_TYPE_STRING);  // current user
 
   if (!store_->LoadOrCreate())
     LOG(ERROR) << "Could not load existing settings.  Continuing anyway...";
@@ -267,7 +275,7 @@ bool SessionManagerService::Shutdown() {
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:stopped";
     g_signal_emit(session_manager_,
                   signals_[kSignalSessionStateChanged],
-                  0, "stopped");
+                  0, "stopped", current_user_.c_str());
   }
 
   // Even if we haven't gotten around to processing a persist task.
@@ -388,7 +396,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
     g_signal_emit(session_manager_,
                   signals_[kSignalSessionStateChanged],
-                  0, "started");
+                  0, "started", current_user_.c_str());
   } else {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
