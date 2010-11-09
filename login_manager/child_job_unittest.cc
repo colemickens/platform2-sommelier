@@ -121,11 +121,11 @@ TEST(ChildJobTest, SetArguments) {
   vector<string> argv(kArgv, kArgv + arraysize(kArgv));
   ChildJob job(argv);
 
-  const char kNewArgsString[] = "ichi ni san";
+  const char kNewArgsString[] = "--ichi \"--ni dfs\" --san";
   const char* kNewArgsArray[] = {
-    "ichi",
-    "ni",
-    "san"
+    "--ichi",
+    "--ni dfs",
+    "--san"
   };
   job.SetArguments(kNewArgsString);
 

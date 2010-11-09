@@ -7,6 +7,7 @@
 #include "login_manager/child_job.h"
 
 #include <errno.h>
+#include <glib.h>
 #include <grp.h>
 #include <pwd.h>
 #include <signal.h>
@@ -19,6 +20,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/string_util.h>
@@ -141,7 +143,22 @@ void ChildJob::SetArguments(const std::string& arguments) {
     argv0 = arguments_[0];
 
   arguments_.clear();
-  SplitString(arguments, ' ', &arguments_);
+
+  GError *error = NULL;
+  gchar **argv = NULL;
+  gint argc = 0;
+  if (!g_shell_parse_argv(arguments.c_str(), &argc, &argv, &error)) {
+    LOG(ERROR) << "Could not parse command: " << error->message;
+    g_error_free(error);
+    g_strfreev(argv);
+    if (!argv0.empty())
+      arguments_.push_back(argv0);
+    return;
+  }
+  CommandLine new_command_line(argc, argv);
+  arguments_.assign(new_command_line.argv().begin(),
+                    new_command_line.argv().end());
+  g_strfreev(argv);
 
   if (!argv0.empty()) {
     if (arguments_.size())
