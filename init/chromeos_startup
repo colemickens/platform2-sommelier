@@ -144,15 +144,26 @@ if [ -O "$RESET_FILE" ]; then
 fi
 
 # Check if we have an update to stateful pending.  This is used for dev_mode.
-VAR_NEW="/mnt/stateful_partition/var_new"
-DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
+STATEFUL_UPDATE_WORK_DIR="/mnt/stateful_partition/stateful_update"
 if [ -f "$STATEFUL_UPDATE" ] ; then
-  sudo rm -rf /mnt/stateful_partition/dev_image
-  sudo rm -rf /mnt/stateful_partition/var
-  sudo mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image
-  sudo mv "$VAR_NEW" /mnt/stateful_partition/var
-  sudo rm "$STATEFUL_UPDATE"
+  # Remove old state in case this process got interrupted by a reset, this is
+  # usually a no-op.
+  rm -rf /mnt/stateful_partition/dev_image.old \
+    /mnt/stateful_partition/var.old
+  # The moves can fail if they were previously interrupted mid-op.
+  mv /mnt/stateful_partition/dev_image \
+    /mnt/stateful_partition/dev_image.old || true
+  mv /mnt/stateful_partition/var /mnt/stateful_partition/var.old || true
+  mv "$STATEFUL_UPDATE_WORK_DIR/dev_image" /mnt/stateful_partition/dev_image \
+    || true
+  mv "$STATEFUL_UPDATE_WORK_DIR/var" /mnt/stateful_partition/var \
+    || true
+  # Backgrounded to take off boot path.
+  rm -rf "$STATEFUL_UPDATE" \
+    /mnt/stateful_partition/dev_image.old \
+    /mnt/stateful_partition/var.old \
+    "$STATEFUL_UPDATE_WORK_DIR" &
 fi
 
 # Make sure stateful partition has some basic directories
