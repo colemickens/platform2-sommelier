@@ -31,7 +31,7 @@ rotate_logs() {
   for x in messages secure faillog; do
     rotate_file "/var/log/${x}"
   done
-  sudo initctl restart syslog
+  sudo pkill -HUP rsyslogd
 }
 
 # Remove old window manager logs (not logged in)
