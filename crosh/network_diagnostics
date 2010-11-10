@@ -1,0 +1,625 @@
+#!/bin/bash
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Cheesy option parsing until there's more than one option
+anonymize_macs=${ANONYMIZE_MACS-yes}
+if [ "${1}" = "--show-macs" ]; then
+    anonymize_macs=no
+    shift
+fi
+
+test_host=${1-www.google.com}
+fail_count=0
+declare -A fn_entry
+
+# Annotate function entry.
+fn_enter () {
+  local fn=${1}
+  fn_entry[${fn}]=1
+  echo "Entering $*"
+}
+
+# Annotate function entry.  Also, return non-zero if function has
+# been called more than once
+fn_enter_once () {
+  local fn=${1}
+  [ -n "${fn_entry[${fn}]}" ] && return 1
+  fn_enter "$@"
+}
+
+# Output pass/fail reports
+pass () {
+    echo "PASS: $*"
+}
+fail () {
+    echo "FAIL: $*"
+    fail_count=$[fail_count+1]
+}
+
+# Create a unique filename -- this is a "non secure" implementation (we would
+# have used mktemp if that was the concern), but instead we want to create an
+# easy way to tell which file is more recent.  Also, make a symlink to the most
+# recent file
+unique_file () {
+    local out_template=$1
+    out_file=$(echo "${out_template}" | \
+      sed -e 's/\*/'$(date +'%Y-%m-%d.%H:%M:%S')'/')
+    link_file=$(echo "${out_template}" | sed -e 's/\*/latest/')
+    rm -f ${out_file} ${link_file}
+    ln -s $(basename $out_file) ${link_file}
+    echo $out_file
+}
+
+# Split a dotted decimal string
+do_address_parts () {
+  (IFS=" ."; echo $1)
+}
+
+# Perform a mask (binary "&") between two dotted-decimal strings
+do_netmask () {
+  local -a ip=($(do_address_parts $1))
+  local -a mask=($(do_address_parts $2))
+  local -a ret
+  for part in ${!ip[@]}; do
+    ret+=($[ip[part] & mask[part]])
+  done
+  (IFS=.; echo "${ret[*]}")
+}
+
+# Search an entry from the routing table, given the destination IP address
+# @ip: Destination IP address
+# @route_flags: Search for this value in the "Flags" column
+# @part: Column from the netstat output to return
+get_route () {
+  local ip=$1
+  local route_flags=$2
+  local part=$3
+  netstat -nr | while read line; do
+    local -a netstat=(${line})
+    if [ ${netstat[3]} = "${route_flags}" -a \
+      $(do_netmask ${ip} ${netstat[2]}) = ${netstat[0]} ] ; then
+      echo ${netstat[${part}]}
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Return the interface through which traffic to given neigbor IP should go
+get_if_route () {
+  get_route $1 U 7
+}
+
+# Return the gateway IP to which traffic to given remote IP should be forwarded
+get_gw_route () {
+  get_route $1 UG 1
+}
+
+# Trace down a symbolic link until we reach a dead-end (or a real file)
+get_tracelink () {
+  local file=$1
+  local link_count=0
+  while [ -h ${file} -o -e ${file} ] ; do
+    ls -ld ${file}
+    new_file=$(readlink -f ${file})
+    [ "${new_file}" = "${file}" ] && return
+    if [ ${link_count} -ge 10 ] ; then
+      fail "Gave up after ${link_count} steps"
+      return
+    fi
+    link_count=$[link_count + 1]
+    file=${new_file}
+  done
+  fail "${file} does not exist"
+}
+
+# Return the IP addresses of the currently configured nameservers
+get_nameservers () {
+  awk '/^nameserver/ {print $2}' /etc/resolv.conf
+}
+
+# Return list of interface names
+get_iflist () {
+  ls /sys/class/net/ | egrep -v '^(lo|sit)'
+}
+
+# Return the interface name that has the default route
+get_default_if () {
+  route -n | awk '/^0.0.0.0/ { print $2; exit 0 }'
+}
+
+# Return IP address of a given network interface
+get_if_addr () {
+  ifc=$1
+  ifconfig ${ifc} | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
+}
+
+# Super-gross method for looking up IP address of a given hostname
+get_host_addr () {
+  # TODO(pstew): super gross -- but there's no host/dig/nslookup/dnsquery
+  local host=$1
+  ping -c1 ${host} | head -1 | awk -v FS='[()]' '{print $2}'
+}
+
+# Find a the device name of a device given the driver's name
+get_class_driver () {
+  local find_pat=$1
+  local find_driver=$2
+  for device in /sys/class/${find_pat}*; do
+    local driver=$(basename $(readlink ${device}/device/driver))
+    if [ "${driver}" = "${find_driver}" ] ; then
+      echo $(basename ${device})
+      return 0
+    fi
+  done
+}
+
+# The "status" command can't be run as non-root, so we fake it here
+get_status () {
+  pid=$(pgrep ${1})
+  if [ -n "${pid}" ] ; then
+    pass "${1} is running, pid ${pid}"
+  else
+    fail "${1} is stopped"
+  fi
+}
+
+# Anonymize MAC addresses so they are not transmitted
+mac_anonymize () {
+  if [ "${anonymize_macs}" != "yes" ]; then
+    cat
+    return
+  fi
+  sed -e \
+    's/\([0-9A-Fa-f][0-9A-Fa-f]\):\([0-9A-Fa-f][0-9A-Fa-f]\):\([0-9A-Fa-f][0-9A-Fa-f]\):[0-9A-Fa-f][0-9A-Fa-f]:[0-9A-Fa-f][0-9A-Fa-f]:[0-9A-Fa-f][0-9A-Fa-f]/\1:\2:\3:##:##:##/' \
+      -e 's/\([^0-9a-fA-F][0-9a-fA-F]\{8,11\}\)[0-9a-fA-F]\{4\}$/\1####/' \
+      -e 's/\([^0-9a-fA-F][0-9a-fA-F]\{8\}\)[0-9a-fA-F]\{4\}\([^0-9a-fA-F]\)/\1####\2/' \
+      -e 's/\(\/[0-9a-fA-F]\{8\}\)[0-9a-fA-F]\{4\}\([^0-9a-fA-F]\)/\1####\2/'
+}
+
+# Read the logs
+tail_logs () {
+  files=$(for f in /var/log/messages{.2,.1,} ; do
+    [ -f ${f} ] && echo ${f};
+    done)
+  if [ -n "$*" ] ; then
+    tail $* ${files} | mac_anonymize
+  else
+    cat ${files} | mac_anonymize
+  fi
+}
+
+# List all ethernet devices and their unique manufacturer strings
+get_device_list () {
+  fn_enter_once ${FUNCNAME} || return
+  echo "Device list:"
+  for ifc in $(get_iflist); do
+    dir=$(readlink -f /sys/class/net/${ifc}/device)
+    driver=$(basename $(readlink ${dir}/driver))
+    if expr ${dir} : '.*usb' > /dev/null; then
+      type=usb
+      vendor=$(cat < ${dir}/../idVendor)
+      device=$(cat ${dir}/../idProduct)
+    elif expr ${dir} : '.*pci' > /dev/null; then
+      type=pci
+      vendor=$(sed -e 's/0x//' < ${dir}/vendor)
+      device=$(sed -e 's/0x//' < ${dir}/device)
+    else
+      type=unknown
+    fi
+    echo -e "${ifc}\t${type}:${device}:${vendor}\t${driver}"
+  done
+}
+
+# List all USB and PCI devices
+diag_devs () {
+  fn_enter_once ${FUNCNAME} || return
+  lsusb
+  lspci
+}
+
+# Check whether we are in sync with the time server
+diag_date () {
+  local host=$1
+  fn_enter ${FUNCNAME} $*
+  echo "Local time of day: $(date)"
+  date_error=$(htpdate -q ${host} 2>&1 >/dev/null)
+  offset=$(htpdate -q ${host} 2>&1 | awk -v 'FS=[. ]' '{print $2}')
+  if [ -n "${date_error}" ]; then
+    fail "Unable to get date via htpdate from ${host}"
+  elif [ "${offset}" = time ] ; then
+    pass "Time appears to be correct"
+  elif [ ${offset} -lt -3600 -o ${offset} -gt 3600 ] ; then
+    fail "Time offset = ${offset}"
+  fi
+}
+
+# Try to detect IP address collisions
+diag_ip_collision () {
+  fn_enter ${FUNCNAME} $*
+  local ifc=$1
+  ip=$(get_if_addr ${ifc})
+  if [ -z "${ip}" ]; then
+    fail "${ifc} does not have IP address"
+    return 1
+  fi
+  if arping -c 3 -I ${ifc} -D ${ip}; then
+    fail "IP Address Collision Detected!"
+    return 1
+  fi
+  return 0
+}
+
+# Make sure we have an ARP table entry for $ip through $ifc
+diag_arp () {
+  fn_enter ${FUNCNAME} $*
+  local ip=$1
+  local ifc=$2
+
+  if [ -n "${ip}" ] ; then
+    arp=$(arp -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')
+    if [ -z "${arp}" ]; then
+      fail "Arp table does not contain entry for ${ip}"
+    elif [ "${arp}" = "<incomplete>" ] ; then
+      fail "Can't arp for ${ip}"
+      diag_ip_collision ${ifc}
+    else
+      pass "ARP for ${ip} is ${arp}" | mac_anonymize
+    fi
+  fi
+
+  fn_enter_once ${FUNCNAME}_table && arp -an | mac_anonymize
+
+  return 1
+}
+
+# Make sure we have a route to each host
+diag_route () {
+  fn_enter ${FUNCNAME} $*
+  failures=0
+  for ip in $*; do
+    ifinfo=$(get_if_route ${ip})
+    gwinfo=$(get_gw_route ${ip})
+    if [ -n "${ifinfo}" ]; then
+      diag_arp ${ip} ${ifinfo} || failures=$[failures + 1]
+    elif [ -n "${gwinfo}" ]; then
+      diag_arp ${gwinfo} || failures=$[failures + 1]
+    else
+      fail "No route to host ${ip}"
+      diag_ifall || failures=$[failures + 1]
+    fi
+  done
+
+  fn_enter_once ${FUNCNAME}_table && netstat -nr
+
+  return ${failures}
+}
+
+# Figure whether we have IP connectivity to each host
+diag_ping () {
+  fn_enter ${FUNCNAME} $*
+  local failures=0
+  for ip in $*; do
+    if ping -c 3 ${ip} | grep -q '0 received'; then
+      diag_route ${ip}
+      failures=$[failures + 1]
+    else
+      pass "address ${ip}: ping OK"
+    fi
+  done
+
+  return ${failures}
+}
+
+# Report the last DHCP interaction for a given network interface
+diag_dhcp () {
+  fn_enter_once ${FUNCNAME} || return
+  local ifc=$1
+  shift
+
+  local -a dhcp_event=($(tail_logs $* | \
+    grep "dhcpcd.*event.*on interface ${ifc}" | \
+    sed -e 's/^\([^ ]*\).*event \([A-Z]*\).*/\1 \2/' | tail -1))
+
+  last_dhcpcd_event_time=${dhcp_event[0]}
+  last_dhcpcd_event_type=${dhcp_event[1]}
+  case ${last_dhcpcd_event_type} in
+    RENEW|BOUND|REBOOT)
+      pass "${ifc}: last dhcp event was successful:" \
+        "${last_dhcpcd_event_type} at ${last_dhcpcd_event_time}"
+      ;;
+    *)
+      fail "${ifc}: last dhcp event was" \
+        "${last_dhcpd_event_type} at ${last_dhcpcd_event_time}"
+      ;;
+  esac
+}
+
+# Perform diagnostics on an 802.11 interface
+diag_link_wifi () {
+  fn_enter ${FUNCNAME} $*
+  ifc=$1
+
+  echo -n "${ifc}: "
+  iw dev ${ifc} link
+  iw dev ${ifc} station dump
+  iw dev ${ifc} survey dump
+
+  last_connect=$(grep -n "${ifc}: connect SSID" /var/log/messages{.1,})
+  if [ -z "${last_connect}" ] ; then
+    fail "${ifc}: no recent 802.11 connection attempts"
+    return 1
+  fi
+
+  local -a lastconn_info=($(IFS=" :"; echo ${last_connect}))
+  file=${lastconn_info[0]}
+  line=${lastconn_info[1]}
+  size=$(wc -l ${file} | awk '{print $1}')
+  tail=$[size - line + 1]
+  state_changes=$(tail -${tail} ${file} | grep 'state change')
+  last_state_change=$(grep 'state change' ${file} | tail -1 | \
+                      sed -e 's/.*state change //')
+  echo "${ifc}: last flimflam state change: ${last_state_change}"
+  if echo "${state_changes}" | grep -q ' -> COMPLETED'; then
+    pass "${ifc}: last connection attempt appears successful"
+    return 0
+  elif echo "${state_changes}" | \
+    grep -q '4WAY_HANDSHAKE -> DISCONNECTED'; then
+    fail "${ifc}: It appears that the wrong WPA PSK was used"
+  fi
+
+  echo "wpa_supplicant network blocks:"
+  wpa_cli list_networks
+
+  diag_dhcp ${ifc} -${tail} ${file}
+}
+
+# Perform diagnostics on a WAN interface
+diag_link_cellular () {
+  fn_enter ${FUNCNAME} $*
+  diag_cellular_dbus
+  diag_devs
+  qcdev=$(get_class_driver tty/ttyUSB qcserial)
+  if [ -n "${qcdev}" ] ; then
+    echo "QCSerial device is ${qcdev}"
+  fi
+  tail_logs | grep "QDL unable" | tail -3
+}
+
+diag_link_wired () {
+  fn_enter ${FUNCNAME} $*
+  # No tests yet
+  return 0
+}
+
+# Tests to check to see if this is a modem.  Very abstract adaptation
+# from flimflam's tests
+is_modem () {
+  local ifc=$1
+  driver=$(basename $(readlink /sys/class/net/${ifc}/device/driver))
+  # Whitelist certain device types
+  [ "${driver}" = "QCUSBNet2k" ] && return 0
+
+  # See if there is a TTY device that is associated the same USB device
+  dev_root=$(readlink -f /sys/class/net/${ifc}/device)
+  if expr "${dev_root}" : '.*usb' > /dev/null; then
+    local -a tty_devs=($(echo $(dirname ${dev_root})/*/*/tty))
+    [ -e "${tty_devs[0]}" ] && return 0
+  fi
+
+  return 1
+}
+
+# Perform type-specific link diagnostics on a network interface
+diag_link () {
+  fn_enter ${FUNCNAME} $*
+  ifc=$1
+
+  if [ "$(cat /sys/class/net/${ifc}/carrier)" -eq 1 ]; then
+    pass "${ifc}: link detected"
+  else
+    pass "${ifc}: link not detected"
+  fi
+
+  if expr ${ifc} : wlan > /dev/null || \
+     [ -e /sys/class/net/${ifc}/phy80211 ] ; then
+    diag_link_wifi ${ifc}
+  elif is_modem ${ifc}; then
+    diag_link_cellular ${ifc}
+  else
+    diag_link_wired ${ifc}
+  fi
+
+  echo "Last 10 kernel messages for ${ifc}:"
+  tail_logs | grep "kernel:.*${ifc}" | tail -10
+}
+
+# Perform generic diagonostics on a network interface
+diag_if () {
+  fn_enter ${FUNCNAME} $*
+  ifc=$1
+  config=$(ifconfig ${ifc})
+  ret=0
+  ifconfig ${ifc} | mac_anonymize
+  if ! echo "${config}" | grep -q ' UP '; then
+    fail "${ifc} is not listed as up"
+    ret=1
+  elif ! echo "${config}" | grep -q ' RUNNING '; then
+    fail "${ifc} is not listed as running"
+    ret=1
+  fi
+
+  addr=$(get_if_addr ${ifc})
+  if [ -n "${addr}" ]; then
+    pass "${ifc} assigned IP address ${addr}"
+    diag_dhcp ${ifc}
+  else
+    fail "${ifc} is not assigned an IP address"
+    ret=1
+  fi
+  diag_link ${ifc}
+  return ${ret}
+}
+
+# Query interface status on all network interfaces, and return an error if
+# none of them appear to be up
+diag_ifall () {
+  fn_enter_once ${FUNCNAME} || return
+
+  local good_ifs=0
+  for ifc in $(get_iflist); do
+    diag_if ${ifc} && good_ifs=$[good_ifs + 1]
+  done
+  if [ ${good_ifs} -eq 0 ] ; then
+    fail "No good interfaces found"
+    get_status flimflam
+    get_status wpa_supplicant
+    get_status cromo
+    return 1
+  fi
+  diag_flimflam
+  return 0
+}
+
+# Diagnose nameserver connectivity
+diag_nameservers () {
+  fn_enter_once ${FUNCNAME} || return
+  nameservers=$(get_nameservers)
+  if [ -z "${nameservers}" ] ; then
+    fail "No nameservers"
+    get_tracelink /etc/resolv.conf
+    diag_ifall
+  else
+    echo "Testing connectivity to nameservers"
+    diag_ping $(get_nameservers)
+  fi
+}
+
+# See if we can connect to a given host
+diag_connectivity () {
+  fn_enter_once ${FUNCNAME} $* || exit 0
+  local ip=$(get_host_addr $1)
+  if [ -z "${ip}" ] ; then
+    fail "Could not lookup host ${host}"
+    diag_nameservers
+    return 1
+  fi
+
+  if diag_ping ${ip}; then
+    echo "TODO: We were able to ping gateway.  What next?"
+  fi
+}
+
+# Get information from flimflam about its state over D-Bus.
+diag_flimflam_dbus () {
+  fn_enter_once ${FUNCNAME} $*
+  local ff="org.chromium.flimflam"
+  if [ -z "$1" ] ; then
+    echo "Flimflam Manager:"
+    dbus-send --fixed --system --dest="${ff}" --print-reply / \
+      ${ff}.Manager.GetProperties | mac_anonymize
+    # For each Service defined on the Manager, list its properties
+    diag_flimflam_dbus Manager Service
+    # For each Device defined in the Manager, list its properties
+    diag_flimflam_dbus Manager Device
+  else
+    local parent=$1
+    local child=$2
+    local parent_path=${3-/}
+    for path in $(dbus-send --fixed --system --dest="${ff}" --print-reply \
+      ${parent_path} ${ff}.${parent}.GetProperties | \
+      awk '/^\/[0-9]*\/'${child}'s\// { print $2 }'); do
+      echo "${child} ${path}" | mac_anonymize
+      dbus-send --fixed --system --dest="${ff}" --print-reply ${path} \
+        ${ff}.${child}.GetProperties | mac_anonymize
+      if [ "${child}" = Device ] ; then
+        # For each Network defined in each Device, list its properties
+        diag_flimflam_dbus Device Network ${path}
+      fi
+    done
+  fi
+}
+
+# Get information from ModemManager about its state over D-Bus
+diag_cellular_dbus () {
+  fn_enter ${FUNCNAME} $*
+  dbus-send --fixed --system --print-reply --dest=org.chromium.ModemManager \
+    /org/chromium/ModemManager \
+    org.freedesktop.ModemManager.EnumerateDevices || \
+    fail "Could not contact ModemManager!"
+}
+
+# Probe process status of flimflam and its process descendants
+diag_flimflam () {
+  fn_enter_once ${FUNCNAME} || return
+  local status=$(get_status flimflam)
+  echo "${status}"
+  if ! echo ${status} | fgrep -q 'running'; then
+    return
+  fi
+  local pid=$(echo ${status} | awk '{print $4}')
+  ps jx | awk '/^ *'${pid}'/ {print $10,$11,$12}' | sort | uniq -c
+  echo "Listing of /var/run/flimflam"
+  ls -al /var/run/flimflam
+  diag_flimflam_dbus
+}
+
+# Try to connect to a host
+diag_webget () {
+  local host=${1}
+  echo "Trying to contact ${host} ... "
+  curl -s https://${host}/ > /dev/null
+  local err=$?
+
+  case ${err} in
+    0)
+      pass "We can get to https://www.google.com/ just fine"
+      ;;
+
+    6)
+      # DNS resolution error
+      fail "Got DNS resolution error -- trying to debug nameservers"
+      diag_nameservers
+      ;;
+
+    7)
+      # Failed to connect to host
+      fail "Got connection error -- trying to debug connection to host"
+      diag_connectivity ${host}
+      ;;
+
+    60)
+      # Peer certificate cannot be authenticated with known CA certificates
+      fail "Peer cert not authenticated -- probably a hotspot!"
+      ;;
+
+    *)
+      fail "Encountered unhandled curl error ${err}"
+      ;;
+  esac
+  if [ ${err} -ne 0 ] ; then
+      get_device_list
+      diag_flimflam
+  fi
+  return $err
+}
+
+# Do standard run of tests
+diag_run () {
+  local host=$1
+  diag_webget ${host}
+  diag_date ${host}
+}
+
+if [ -d /home/${USER}/user/Downloads ] ; then
+  # Log this output to somewhere the user can upload from
+  diag_run ${test_host} 2>&1 | \
+    tee $(unique_file /home/${USER}/user/Downloads/network_diagnostics_\*.txt)
+else
+  diag_run ${test_host}
+fi
+
+exit ${fail_count}

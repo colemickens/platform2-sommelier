@@ -67,6 +67,10 @@ HELP='
   A function that enables a predefined set of tags useful for 
   debugging the specified device
 
+ network_diag
+  A function that performs a suite of network diagnostics.  Saves a copy
+  of the output to your download directory.
+
  ping [-c count] [-i interval] [-n] [-s packet-size] [-W wait-time] <destination>
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
@@ -292,6 +296,10 @@ cmd_network_logging(){
   else
     echo "Missing parameter wifi | cellular | ethernet"
   fi
+}
+
+cmd_network_diag(){
+  /usr/bin/network_diagnostics
 }
 
 cmd_ping() {
