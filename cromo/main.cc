@@ -20,6 +20,10 @@
 #include "carrier.h"
 #include "plugin_manager.h"
 
+#ifndef VCSID
+#define VCSID "<not set>"
+#endif
+
 static const char *kDBusInterface = "org.freedesktop.DBus";
 static const char *kDBusNameOwnerChanged = "NameOwnerChanged";
 
