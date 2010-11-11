@@ -19,10 +19,6 @@ extern "C" {
 #include "device_watcher.h"
 #include "gobi_modem.h"
 
-#ifndef VCSID
-#define VCSID "<not set>"
-#endif
-
 using std::vector;
 
 static gobi::Sdk GOBI_SDK;
