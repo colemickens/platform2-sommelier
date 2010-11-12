@@ -6,6 +6,11 @@
 #include <gflags/gflags.h>
 
 #include <string>
+#include <syslog.h>
+
+// Defines from syslog.h that conflict with base/logging.h. Ugh.
+#undef LOG_INFO
+#undef LOG_WARNING
 
 #include "base/command_line.h"
 #include "base/logging.h"
@@ -14,6 +19,10 @@
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight.h"
 #include "power_manager/powerd.h"
+
+#ifndef VCSID
+#define VCSID "<not set>"
+#endif
 
 using std::string;
 
@@ -47,6 +56,11 @@ static string GetTimeAsString(time_t utime) {
 }
 
 int main(int argc, char* argv[]) {
+  // Sadly we can't use LOG() here - we always want this message logged, even
+  // when other logging is turned off.
+  openlog("powerd", LOG_PID, LOG_DAEMON);
+  syslog(LOG_NOTICE, "vcsid %s", VCSID);
+  closelog();
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
