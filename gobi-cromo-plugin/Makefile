@@ -49,6 +49,8 @@ install: $(GOBI_PLUGIN)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
 	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
+	install -D mm.sh $(DESTDIR)/usr/lib/mm.sh
+	install -D modem $(DESTDIR)/usr/bin/modem
 
 .PHONY: clean
 clean:
