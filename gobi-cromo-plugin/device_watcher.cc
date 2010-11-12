@@ -118,6 +118,10 @@ void DeviceWatcher::StopPolling() {
   }
 }
 
+static const char *NullFilter(const char *p) {
+  return p ? p : "";
+}
+
 void DeviceWatcher::HandleUdevEvent() {
   struct udev_device* device = udev_monitor_receive_device(udev_monitor_);
 
@@ -125,18 +129,12 @@ void DeviceWatcher::HandleUdevEvent() {
     LOG(WARNING) << "No device from receive_device";
     return;
   }
-  LOG(INFO) << "Device Event: "
-            << "  Driver: " << udev_device_get_driver(device)
-            << "  Node: " << udev_device_get_devnode(device)
-            << "  Subsystem: " << udev_device_get_subsystem(device)
-            << "  Devtype: " << udev_device_get_devtype(device)
-            << "  Action: " << udev_device_get_action(device);
-  struct udev_list_entry* entry = udev_device_get_properties_list_entry(device);
-  while (entry != NULL) {
-    DLOG(INFO) << "    prop " << udev_list_entry_get_name(entry) << " = "
-               << udev_list_entry_get_value(entry);
-    entry = udev_list_entry_get_next(entry);
-  }
+  LOG(INFO) << "udev: "
+            << "  Action: " << NullFilter(udev_device_get_action(device))
+            << "  Node: " << NullFilter(udev_device_get_devnode(device))
+            << "  Subsystem: " << NullFilter(udev_device_get_subsystem(device))
+            << "  Devtype: " << NullFilter(udev_device_get_devtype(device))
+            << "  Driver: " << NullFilter(udev_device_get_driver(device));
   if (device_callback_ != NULL)
     device_callback_(device_callback_arg_);
   udev_device_unref(device);
