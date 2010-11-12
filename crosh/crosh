@@ -83,6 +83,9 @@ HELP='
 
  top
   Run top (in secure mode).
+
+ modem <command> [args...]
+  Interact with the 3G modem. Run "modem help" for detailed help.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -393,6 +396,10 @@ cmd_top() {
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
   # interval.
   top -s
+}
+
+cmd_modem() {
+  /usr/bin/modem "$@"
 }
 
 substr() {
