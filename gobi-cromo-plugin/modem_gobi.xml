@@ -18,15 +18,44 @@
           reset after this is called.
       </tp:docstring>
       <arg name="image" type="s" direction="in">
-	    <tp:docstring>
+        <tp:docstring>
           Name of carrier.
         </tp:docstring>
       </arg>
     </method>
+
     <method name="SoftReset">
       <tp:docstring>
           Tells the module to do a soft reset and waits for the reset to complete.
       </tp:docstring>
     </method>
+
+    <method name="RequestEvents">
+      <tp:docstring>
+        Requests notification (or not) of a particular event occuring. Multiple
+        notifications may be enabled at the same time.
+      </tp:docstring>
+      <arg name="events" type="s" direction="in">
+        <tp:docstring>
+          A string describing which events are to be enabled or disabled. This
+          string contains zero or more directives of the form '[+-]event', like
+          '+foo-bar+baz'.
+          Allowable events are currently:
+            dormancy
+            *, meaning all events
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <signal name="DormancyStatus">
+      <tp:docstring>
+        Indicates that the dormancy status of the modem changed.
+      </tp:docstring>
+      <arg name="dormant" type="b">
+        <tp:docstring>
+          True if the modem is dormant; false otherwise.
+        </tp:docstring>
+      </arg>
+    </signal>
   </interface>
 </node>

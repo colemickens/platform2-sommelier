@@ -99,6 +99,7 @@ class GobiModem
   virtual void SetCarrier(const std::string& image, DBus::Error& error);
   virtual void SoftReset(DBus::Error& error);
   virtual void PowerCycle(DBus::Error& error);
+  virtual void RequestEvents(const std::string& events, DBus::Error& error);
 
   static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
 
@@ -239,6 +240,18 @@ class GobiModem
   }
   static gboolean SignalStrengthCallback(gpointer data);
 
+  struct DormancyStatusArgs : public CallbackArgs {
+    DormancyStatusArgs(ULONG status) : status(status) { }
+    ULONG status;
+  };
+
+  static void DormancyStatusCallbackTrampoline(ULONG status) {
+    PostCallbackRequest(DormancyStatusCallback,
+                        new DormancyStatusArgs(status));
+  }
+
+  static gboolean DormancyStatusCallback(gpointer data);
+
   static gboolean ActivationTimeoutCallback(gpointer data);
 
   static void *NMEAThreadTrampoline(void *arg) {
@@ -326,6 +339,18 @@ class GobiModem
   unsigned long long connect_start_time_;
   unsigned long long disconnect_start_time_;
   unsigned long long registration_start_time_;
+
+  // This ought to go on the gobi modem XML interface, but dbus-c++ can't handle
+  // enums, and all the ways of hacking around it seem worse than just using
+  // strings and translating to the enum when we get the DBus call.
+  enum {
+    GOBI_EVENT_DORMANCY = 0,
+    GOBI_EVENT_MAX
+  };
+
+  static int EventKeyToIndex(const char *key);
+  void RequestEvent(const std::string req, DBus::Error& error);
+  bool event_enabled[GOBI_EVENT_MAX];
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };

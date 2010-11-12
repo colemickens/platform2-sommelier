@@ -231,6 +231,11 @@ enum ReturnCode {
   kQMIHardwareRestricted = 1083
 };
 
+enum DormancyStatus {
+  kDormant = 1,
+  kNotDormant = 2
+};
+
 // Selected call failure reasons from table 2-4 "Call end reason codes"
 enum CallEndReason {
   kClientEndedCall = 2,

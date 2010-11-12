@@ -50,6 +50,7 @@ DEFINE_ERROR(FirmwareLoad)
 DEFINE_ERROR(Sdk)
 DEFINE_ERROR(Mode)
 DEFINE_ERROR(OperationInitiated)
+DEFINE_ERROR(InvalidArgument)
 DEFINE_MM_ERROR(NoNetwork)
 DEFINE_MM_ERROR(OperationNotAllowed)
 
@@ -228,6 +229,10 @@ GobiModem::GobiModem(DBus::Connection& connection,
   UnlockRetries = 999;
 
   carrier_ = handler_->server().FindCarrierNoOp();
+
+  for (int i = 0; i < GOBI_EVENT_MAX; i++) {
+    event_enabled[i] = false;
+  }
 
   char name[64];
   void *thisp = static_cast<void*>(this);
@@ -785,8 +790,14 @@ static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
 
 // This is only in debug builds; if you add actual code here, see
 // RegisterCallbacks().
-static void DormancyStatusCallback(ULONG status) {
-  LOG(INFO) << "DormancyStatusCallback: " << status;
+gboolean GobiModem::DormancyStatusCallback(gpointer data) {
+  DormancyStatusArgs *args = reinterpret_cast<DormancyStatusArgs*>(data);
+  GobiModem *modem = handler_->LookupByPath(*args->path);
+  LOG(INFO) << "DormancyStatusCallback: " << args->status;
+  if (modem->event_enabled[GOBI_EVENT_DORMANCY]) {
+    modem->DormancyStatus(args->status == gobi::kDormant);
+  }
+  return FALSE;
 }
 
 static void MobileIPStatusCallback(ULONG status) {
@@ -836,10 +847,11 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
 
   if (DEBUG) {
-    // These are only used for logging.
+    // These are only used for logging. If you make one of these a non-debug
+    // callback, see EventKeyToIndex() below, which will need to be updated.
     sdk_->SetByteTotalsCallback(ByteTotalsCallback, 60);
     sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallback);
-    sdk_->SetDormancyStatusCallback(DormancyStatusCallback);
+    sdk_->SetDormancyStatusCallback(DormancyStatusCallbackTrampoline);
   }
 
   static int num_thresholds = kSignalStrengthNumLevels - 1;
@@ -1784,4 +1796,59 @@ void GobiModem::RegisterStartSuspend(const std::string &name) {
   static const int maxdelay_ms = 10000;
   handler_->server().RegisterStartSuspend(name, StartSuspendTrampoline, this,
                                           maxdelay_ms);
+}
+
+// Tokenizes a string of the form (<[+-]ident>)* into a list of strings of the
+// form [+-]ident.
+static std::vector<std::string> TokenizeRequest(const std::string& req) {
+  std::vector<std::string> tokens;
+  std::string token;
+  size_t start, end;
+
+  start = req.find_first_of("+-");
+  while (start != req.npos) {
+    end = req.find_first_of("+-", start + 1);
+    if (end == req.npos)
+      token = req.substr(start);
+    else
+      token = req.substr(start, end - start);
+    tokens.push_back(token);
+    start = end;
+  }
+
+  return tokens;
+}
+
+int GobiModem::EventKeyToIndex(const char *key) {
+  if (DEBUG && !strcmp(key, "dormancy"))
+    return GOBI_EVENT_DORMANCY;
+  return -1;
+}
+
+void GobiModem::RequestEvent(const std::string request, DBus::Error& error) {
+  const char *req = request.c_str();
+  const char *key = req + 1;
+
+  if (!strcmp(key, "*")) {
+    for (int i = 0; i < GOBI_EVENT_MAX; i++) {
+      event_enabled[i] = (req[0] == '+');
+    }
+    return;
+  }
+
+  int idx = EventKeyToIndex(key);
+  if (idx < 0) {
+    error.set(kInvalidArgumentError, "Unknown event requested.");
+    return;
+  }
+
+  event_enabled[idx] = (req[0] == '+');
+}
+
+void GobiModem::RequestEvents(const std::string& events, DBus::Error& error) {
+  std::vector<std::string> requests = TokenizeRequest(events);
+  std::vector<std::string>::iterator it;
+  for (it = requests.begin(); it != requests.end(); it++) {
+    RequestEvent(*it, error);
+  }
 }
