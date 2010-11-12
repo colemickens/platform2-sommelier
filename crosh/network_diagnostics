@@ -4,6 +4,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+IFCONFIG=/sbin/ifconfig
+LSUSB=/usr/sbin/lsusb
+LSPCI=/usr/sbin/lspci
+IW=/usr/sbin/iw
+
 # Cheesy option parsing until there's more than one option
 anonymize_macs=${ANONYMIZE_MACS-yes}
 if [ "${1}" = "--show-macs" ]; then
@@ -134,7 +139,7 @@ get_default_if () {
 # Return IP address of a given network interface
 get_if_addr () {
   ifc=$1
-  ifconfig ${ifc} | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
+  ${IFCONFIG} ${ifc} | grep "inet addr" | sed  -e 's/.*addr://; s/ .*//'
 }
 
 # Super-gross method for looking up IP address of a given hostname
@@ -217,8 +222,8 @@ get_device_list () {
 # List all USB and PCI devices
 diag_devs () {
   fn_enter_once ${FUNCNAME} || return
-  lsusb
-  lspci
+  ${LSUSB}
+  ${LSPCI}
 }
 
 # Check whether we are in sync with the time server
@@ -344,9 +349,9 @@ diag_link_wifi () {
   ifc=$1
 
   echo -n "${ifc}: "
-  iw dev ${ifc} link
-  iw dev ${ifc} station dump
-  iw dev ${ifc} survey dump
+  ${IW} dev ${ifc} link
+  ${IW} dev ${ifc} station dump
+  ${IW} dev ${ifc} survey dump
 
   last_connect=$(grep -n "${ifc}: connect SSID" /var/log/messages{.1,})
   if [ -z "${last_connect}" ] ; then
@@ -441,9 +446,9 @@ diag_link () {
 diag_if () {
   fn_enter ${FUNCNAME} $*
   ifc=$1
-  config=$(ifconfig ${ifc})
+  config=$(${IFCONFIG} ${ifc})
   ret=0
-  ifconfig ${ifc} | mac_anonymize
+  ${IFCONFIG} ${ifc} | mac_anonymize
   if ! echo "${config}" | grep -q ' UP '; then
     fail "${ifc} is not listed as up"
     ret=1
