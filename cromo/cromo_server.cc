@@ -100,6 +100,10 @@ void CromoServer::CheckForPowerDaemon() {
   msg.interface(kDBusInterface);
   msg.member(kDBusListNames);
   msg.path(kDBusPath);
+  // In RegisterSuspendDelayCallback, we catch any exceptions send_blocking()
+  // throws, since that is how it announces that the target of your message is
+  // gone. Here the target is the dbus bus itself - if this fails, we're
+  // completely hosed and should just abort, which the exception will do for us.
   DBus::Message ret = conn_.send_blocking(msg, -1);
   iter = ret.reader();
   iter = iter.recurse();
@@ -169,13 +173,22 @@ gboolean CromoServer::RegisterSuspendDelayCallback(gpointer arg) {
   call->member(power_manager::kRegisterSuspendDelay);
   call->append(DBUS_TYPE_UINT32, &srv->max_suspend_delay_, DBUS_TYPE_INVALID);
   call->terminate();
-  DBus::Message reply = srv->conn_.send_blocking(*call, -1);
-  if (reply.is_error())
-    LOG(WARNING) << "Can't register for suspend delay: "
-                 << srv->max_suspend_delay_;
-  else
-    LOG(INFO) << "Registered for suspend delay: " << srv->max_suspend_delay_;
-  return FALSE;
+  // dbus-c++ rudely throws an exception here if the target of the call is gone.
+  // It doesn't cause problems for us that powerd is gone, but we have to
+  // violate the style guide a bit and catch the exception or it'll abort() the
+  // program.
+  try {
+    DBus::Message reply = srv->conn_.send_blocking(*call, -1);
+    if (reply.is_error())
+      LOG(WARNING) << "Can't register for suspend delay: "
+                   << srv->max_suspend_delay_;
+    else
+      LOG(INFO) << "Registered for suspend delay: " << srv->max_suspend_delay_;
+    return FALSE;
+  } catch (DBus::Error e) {
+    LOG(ERROR) << "dbus error " << e;
+    return FALSE;
+  }
 }
 
 void CromoServer::RegisterSuspendDelay() {
