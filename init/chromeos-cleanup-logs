@@ -52,5 +52,8 @@ remove_old_dated_files /home/chronos/user/log screen-locker.*-*
 # Remove old miscellaneous UI logs
 remove_old_dated_files /var/log/ui ui.*-*
 
+# Remove old update engine logs
+remove_old_dated_files /var/log/update_engine update_engine.*-*
+
 # Rotate other logs
 rotate_logs
