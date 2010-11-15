@@ -1584,14 +1584,14 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
     if (args->device_activation_state == gobi::kActivated) {
       modem->SendActivationStateChanged(
           MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
+      DBus::Error error;
+      // Reset modem as per SDK documentation
+      modem->ResetModem(error);
     } else if (args->device_activation_state == gobi::kNotActivated) {
       modem->SendActivationStateChanged(
           MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
     }
   }
-  // TODO(ers) The SDK documentation says that before we can signal that
-  // activation is complete, we need to power off the device and call
-  // QCWWANDisconnect().
   delete args;
   return FALSE;
 }
