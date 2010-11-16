@@ -733,43 +733,57 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiModem::GetServingSystem(
   return result;
 }
 
-void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
-                                     uint32_t& evdo_state,
-                                     DBus::Error &error) {
+void GobiModem::GetGobiRegistrationState(ULONG* cdma_1x_state,
+                                         ULONG* cdma_evdo_state,
+                                         ULONG* roaming_state,
+                                         DBus::Error& error) {
   ULONG reg_state;
-  ULONG roaming_state;
   ULONG l1;
   WORD w1, w2;
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
 
-  cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
-  evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
-
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
-                                     radio_interfaces, &roaming_state,
+                                     radio_interfaces, roaming_state,
                                      &w1, &w2);
   ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
 
+  for (int i = 0; i < num_radio_interfaces; i++) {
+    DLOG(INFO) << "Registration state " << reg_state
+               << " for RFI " << (int)radio_interfaces[i];
+    if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
+      *cdma_1x_state = reg_state;
+    else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
+      *cdma_evdo_state = reg_state;
+  }
+}
+
+void GobiModem::GetRegistrationState(uint32_t& cdma_1x_state,
+                                     uint32_t& cdma_evdo_state,
+                                     DBus::Error& error) {
+  ULONG reg_state_evdo;
+  ULONG reg_state_1x;
+  ULONG roaming_state;
+
+  cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  cdma_evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+
+  GetGobiRegistrationState(&reg_state_1x, &reg_state_evdo,
+                           &roaming_state, error);
+  if (error.is_set())
+    return;
+
   uint32_t mm_reg_state;
 
-  if (reg_state == gobi::kRegistered) {
-    if (roaming_state == gobi::kHome)
-      mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
-    else
-      mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
-  } else {
-    mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
-  }
+  if (roaming_state == gobi::kHome)
+    mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  else
+    mm_reg_state = MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
 
-  for (int i = 0; i < num_radio_interfaces; i++) {
-    DLOG(INFO) << "Registration state " << reg_state << " (" << mm_reg_state
-               << ") for RFI " << (int)radio_interfaces[i];
-    if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
-      cdma_1x_state = mm_reg_state;
-    else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
-      evdo_state = mm_reg_state;
-  }
+  if (reg_state_1x == gobi::kRegistered)
+    cdma_1x_state = mm_reg_state;
+  if (reg_state_evdo == gobi::kRegistered)
+    cdma_evdo_state = mm_reg_state;
 }
 
 // This is only in debug builds; if you add actual code here, see
@@ -782,9 +796,9 @@ static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
 // RegisterCallbacks().
 static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
   ULONG *ucaps = reinterpret_cast<ULONG*>(caps);
-  LOG(INFO) << "DataCapabiliesHandler: " << size << " caps";
+  LOG(INFO) << "DataCapabilitiesHandler:";
   for (int i = 0; i < size; i++) {
-    LOG(INFO) << "Cap: " << ucaps[i];
+    LOG(INFO) << "  Cap: " << static_cast<int>(ucaps[i]);
   }
 }
 
@@ -1361,6 +1375,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
       error.set(kSdkError, "GetDataBearerTechnology");
       return;
     }
+    DLOG(INFO) << "data bearer technology " << db_technology;
     ULONG rfi_technology = get_rfi_technology(db_technology);
     for (ULONG i = 0; i < signals; ++i) {
       if (interfaces[i] == rfi_technology) {
@@ -1629,11 +1644,24 @@ void GobiModem::SignalStrengthHandler(INT8 signal_strength,
   // translate dBm into percent
   unsigned long ss_percent =
       signal_strength_dbm_to_percent(signal_strength);
-  // TODO(ers) only send DBus signal for "active" interface
-  SignalQuality(ss_percent);
+
+  ULONG cdma_evdo_state;
+  ULONG cdma_1x_state;
+  ULONG roaming_state;
+  DBus::Error error;
+
   DLOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
              << " dBm on radio interface " << radio_interface
              << " (" << ss_percent << "%)";
+
+  GetGobiRegistrationState(&cdma_1x_state, &cdma_evdo_state,
+                           &roaming_state, error);
+  if ((radio_interface == gobi::kRfiCdma1xRtt &&
+       cdma_1x_state == gobi::kRegistered) ||
+      (radio_interface == gobi::kRfiCdmaEvdo &&
+       cdma_evdo_state == gobi::kRegistered)) {
+    SignalQuality(ss_percent);
+  }
   // TODO(ers) mark radio interface technology as registered?
 }
 

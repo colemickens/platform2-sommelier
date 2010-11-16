@@ -280,6 +280,9 @@ class GobiModem
   // Helper that sends failure
   void SendActivationStateFailed();
 
+  void GetGobiRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
+                                ULONG* roaming_state, DBus::Error& error);
+
   void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.
