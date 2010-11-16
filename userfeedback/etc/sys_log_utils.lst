@@ -20,6 +20,7 @@ chrome_system_log,/usr/share/userfeedback/scripts/get_log /var/log/chrome/chrome
 chromeos-wm.LATEST,/usr/share/userfeedback/scripts/get_log /home/chronos/user/log/chromeos-wm.LATEST
 cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
+devkit-power,devkit-power -d
 dmesg,/bin/dmesg
 font_version,fc-list : family style fontversion | sort -f
 hardware_class,/usr/bin/hardware_class
