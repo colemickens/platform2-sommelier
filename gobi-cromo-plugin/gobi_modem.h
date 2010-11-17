@@ -329,6 +329,9 @@ class GobiModem
   bool SuspendOk();
   void RegisterStartSuspend(const std::string& name);
 
+  void ResetDevice(void);
+  bool CanMakeMethodCalls(void);
+
   std::string hooks_name_;
 
   friend bool StartExitTrampoline(void *arg);

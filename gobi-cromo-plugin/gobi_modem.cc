@@ -881,6 +881,24 @@ void GobiModem::RegisterCallbacks() {
                                   thresholds);
 }
 
+bool GobiModem::CanMakeMethodCalls(void) {
+  // The Gobi has been observed (at least once - see chromium-os:7172) to get
+  // into a state where we can set up a QMI channel to it (so QCWWANConnect()
+  // succeeds) but not actually invoke any functions. We'll force the issue here
+  // by calling GetSerialNumbers so we can detect this failure mode early.
+  ULONG rc;
+  char esn[kDefaultBufferSize];
+  char imei[kDefaultBufferSize];
+  char meid[kDefaultBufferSize];
+  rc = sdk_->GetSerialNumbers(sizeof(esn), esn, sizeof(imei), imei,
+                              sizeof(meid), meid);
+  if (rc != 0) {
+    LOG(ERROR) << "GetSerialNumbers() failed: " << rc;
+  }
+
+  return rc == 0;
+}
+
 void GobiModem::ApiConnect(DBus::Error& error) {
 
   // It is safe to test for NULL outside of a lock because ApiConnect
@@ -894,24 +912,16 @@ void GobiModem::ApiConnect(DBus::Error& error) {
     return;
   }
   ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
-  if (rc != 0) {
-    // Can't use assert() - this should happen even in production builds (!)
+  if (rc != 0 || !CanMakeMethodCalls()) {
     LOG(ERROR) << "QCWWANConnect() failed: " << rc;
-    abort();
-  }
-
-  // The Gobi has been observed (at least once - see chromium-os:7172) to get
-  // into a state where we can set up a QMI channel to it (so QCWWANConnect()
-  // succeeds) but not actually invoke any functions. We'll force the issue here
-  // by calling GetSerialNumbers so we can detect this failure mode early.
-  char esn[kDefaultBufferSize];
-  char imei[kDefaultBufferSize];
-  char meid[kDefaultBufferSize];
-  rc = sdk_->GetSerialNumbers(sizeof(esn), esn, sizeof(imei), imei,
-                              sizeof(meid), meid);
-  if (rc != 0) {
-    LOG(ERROR) << "GetSerialNumbers() failed: " << rc;
-    abort();
+    // Reset and try again.
+    ResetDevice();
+    rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
+    if (rc != 0 || !CanMakeMethodCalls()) {
+      LOG(ERROR) << "QCWWANConnect() failed again: " << rc;
+      // Totally stuck. Oh well.
+      abort();
+    }
   }
 
   pthread_mutex_lock(&modem_mutex_.mutex_);
@@ -1879,4 +1889,11 @@ void GobiModem::RequestEvents(const std::string& events, DBus::Error& error) {
   for (it = requests.begin(); it != requests.end(); it++) {
     RequestEvent(*it, error);
   }
+}
+
+void GobiModem::ResetDevice() {
+  char buf[256];
+  const char *addr = GetUSBAddress().c_str();
+  snprintf(buf, sizeof(buf), "/usr/bin/gobi-modem-reset %s", addr);
+  system(buf);
 }
