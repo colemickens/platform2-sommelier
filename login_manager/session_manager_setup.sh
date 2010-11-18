@@ -184,6 +184,34 @@ else
   echo "Non-Chrome OS firmware: no chromeos_acpi switch device was found"
 fi >> /var/log/bios_info.txt
 
+# Set an environment variable to prevent Flash asserts from crashing the plugin
+# process.
+export DONT_CRASH_ON_ASSERT=1
+
+# Look for pepper plugins and register them
+PEPPER_PATH=/opt/google/chrome/pepper
+REGISTER_PLUGINS=
+COMMA=
+for file in $(find $PEPPER_PATH -name '*.info'); do
+  FILE_NAME=
+  PLUGIN_NAME=
+  DESCRIPTION=
+  MIME_TYPES=
+  . $file
+  [ -z "$FILE_NAME" ] && continue
+  PLUGIN_STRING="${FILE_NAME}"
+  if [ -n "$PLUGIN_NAME" ]; then
+    PLUGIN_STRING="${PLUGIN_STRING}#${PLUGIN_NAME}"
+    [ -n "$DESCRIPTION" ] && PLUGIN_STRING="${PLUGIN_STRING}#${DESCRIPTION}"
+  fi
+  PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
+  REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
+  COMMA=","
+done
+if [ -n "$REGISTER_PLUGINS" ]; then
+  REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
+fi
+
 
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
@@ -205,14 +233,6 @@ bootstat x-started
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
-# Set an environment variable to prevent Flash asserts from crashing the plugin
-# process.
-export DONT_CRASH_ON_ASSERT=1
-PEPPER_FLASH_PLUGIN=/opt/google/chrome/pepper/libpepflashplayer.so
-if [ -f $PEPPER_FLASH_PLUGIN ]; then
-    PEPPER_FLASH_FLAG="--register-pepper-plugins=${PEPPER_FLASH_PLUGIN}#Shockwave Flash#Shockwave Flash 10.1 r103.19;application/x-shockwave-flash"
-fi
-
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
             --enable-gview \
@@ -230,6 +250,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --disable-domui-menu \
             --scroll-pixels=4 \
             --compress-sys-feedback \
-            "$PEPPER_FLASH_FLAG" \
+            "$REGISTER_PLUGINS" \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
