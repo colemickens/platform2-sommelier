@@ -8,6 +8,8 @@ IFCONFIG=/sbin/ifconfig
 LSUSB=/usr/sbin/lsusb
 LSPCI=/usr/sbin/lspci
 IW=/usr/sbin/iw
+ARP=/sbin/arp
+ARPING=/sbin/arping
 
 # Cheesy option parsing until there's more than one option
 anonymize_macs=${ANONYMIZE_MACS-yes}
@@ -81,12 +83,14 @@ do_netmask () {
 get_route () {
   local ip=$1
   local route_flags=$2
-  local part=$3
+  shift ; shift
   netstat -nr | while read line; do
     local -a netstat=(${line})
     if [ ${netstat[3]} = "${route_flags}" -a \
       $(do_netmask ${ip} ${netstat[2]}) = ${netstat[0]} ] ; then
-      echo ${netstat[${part}]}
+      for part in $*; do
+        echo ${netstat[${part}]}
+      done
       return 0
     fi
   done
@@ -100,7 +104,7 @@ get_if_route () {
 
 # Return the gateway IP to which traffic to given remote IP should be forwarded
 get_gw_route () {
-  get_route $1 UG 1
+  get_route $1 UG 1 7
 }
 
 # Trace down a symbolic link until we reach a dead-end (or a real file)
@@ -251,7 +255,7 @@ diag_ip_collision () {
     fail "${ifc} does not have IP address"
     return 1
   fi
-  if arping -c 3 -I ${ifc} -D ${ip}; then
+  if ${ARPING} -c 3 -I ${ifc} -D ${ip}; then
     fail "IP Address Collision Detected!"
     return 1
   fi
@@ -265,7 +269,7 @@ diag_arp () {
   local ifc=$2
 
   if [ -n "${ip}" ] ; then
-    arp=$(arp -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')
+    arp=$(${ARP} -an | awk '/('${ip}').*'${ifc}'$/ { print $4 }')
     if [ -z "${arp}" ]; then
       fail "Arp table does not contain entry for ${ip}"
     elif [ "${arp}" = "<incomplete>" ] ; then
@@ -276,7 +280,7 @@ diag_arp () {
     fi
   fi
 
-  fn_enter_once ${FUNCNAME}_table && arp -an | mac_anonymize
+  fn_enter_once ${FUNCNAME}_table && ${ARP} -an | mac_anonymize
 
   return 1
 }
@@ -309,7 +313,16 @@ diag_ping () {
   local failures=0
   for ip in $*; do
     if ping -c 3 ${ip} | grep -q '0 received'; then
-      diag_route ${ip}
+      fail "Ping to ${ip} failed"
+      if diag_route ${ip}; then
+        fail "We were able to reach the router but we cannot get packets to"
+        fail "any machines on the other side.  The problem is probably with"
+	fail "the router configuration or connectivity and not this system."
+      else
+        fail "We were successfully able to join the network, but we cannot"
+        fail "seem to reach the router right now.  This is either a link"
+	fail "level issue or the router is down."
+      fi
       failures=$[failures + 1]
     else
       pass "address ${ip}: ping OK"
@@ -339,6 +352,7 @@ diag_dhcp () {
     *)
       fail "${ifc}: last dhcp event was" \
         "${last_dhcpd_event_type} at ${last_dhcpcd_event_time}"
+      fail "This could be a link-level connectivity problem"
       ;;
   esac
 }
@@ -479,7 +493,7 @@ diag_ifall () {
     diag_if ${ifc} && good_ifs=$[good_ifs + 1]
   done
   if [ ${good_ifs} -eq 0 ] ; then
-    fail "No good interfaces found"
+    fail "No good interfaces found.  You are not connected to a network."
     get_status flimflam
     get_status wpa_supplicant
     get_status cromo
@@ -494,19 +508,24 @@ diag_nameservers () {
   fn_enter_once ${FUNCNAME} || return
   nameservers=$(get_nameservers)
   if [ -z "${nameservers}" ] ; then
-    fail "No nameservers"
+    fail "No nameservers -- this is either a network failure or net misconfig"
     get_tracelink /etc/resolv.conf
     diag_ifall
   else
     echo "Testing connectivity to nameservers"
-    diag_ping $(get_nameservers)
+    if diag_ping $(get_nameservers); then
+      fail "We can reach the nameservers but were not able to resolve hostnames"
+      fail "You may be behind a captive portar or there may be a DNS"
+      fail "configuration problem"
+    fi
   fi
 }
 
 # See if we can connect to a given host
 diag_connectivity () {
   fn_enter_once ${FUNCNAME} $* || exit 0
-  local ip=$(get_host_addr $1)
+  local host=$1
+  local ip=$(get_host_addr $host)
   if [ -z "${ip}" ] ; then
     fail "Could not lookup host ${host}"
     diag_nameservers
@@ -514,7 +533,9 @@ diag_connectivity () {
   fi
 
   if diag_ping ${ip}; then
-    echo "TODO: We were able to ping gateway.  What next?"
+    fail "We were able to ping ${host} but were not able to connect to it."
+    fail "This probably means that you are behind a portal or (unlikely)"
+    fail "${host} is encountering technical difficulties"
   fi
 }
 
