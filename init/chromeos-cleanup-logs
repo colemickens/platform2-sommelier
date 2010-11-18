@@ -55,5 +55,8 @@ remove_old_dated_files /var/log/ui ui.*-*
 # Remove old update engine logs
 remove_old_dated_files /var/log/update_engine update_engine.*-*
 
+# Remove old power manager logs
+remove_old_dated_files /var/log/power_manager power*
+
 # Rotate other logs
 rotate_logs
