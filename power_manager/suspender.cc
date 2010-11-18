@@ -6,6 +6,7 @@
 
 #include "power_manager/suspender.h"
 
+#include "power_manager/file_tagger.h"
 #include "power_manager/util.h"
 #include "base/file_path.h"
 #include "base/logging.h"
@@ -25,8 +26,9 @@ static const unsigned int kMaximumDelayTimeoutMS = 10000;
 
 const char *kError = ".Error";
 
-Suspender::Suspender(ScreenLocker* locker)
+Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
     : locker_(locker),
+      file_tagger_(file_tagger),
       suspend_delay_timeout_ms_(0),
       suspend_delays_outstanding_(0),
       suspend_requested_(false),
@@ -230,6 +232,7 @@ void Suspender::RegisterDBusMessageHandler() {
 
 void Suspender::Suspend() {
   util::RemoveStatusFile(user_active_file_);
+  file_tagger_->HandleSuspendEvent();
   util::SendSignalToPowerM(util::kSuspendSignal);
 }
 

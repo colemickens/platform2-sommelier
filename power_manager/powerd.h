@@ -18,6 +18,8 @@
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/backlight_controller.h"
+#include "power_manager/file_tagger.h"
+#include "power_manager/inotify.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/screen_locker.h"
 #include "power_manager/suspender.h"
@@ -222,6 +224,9 @@ class Daemon : public XIdleMonitor {
   bool SendEnumMetricWithPowerState(const std::string& name, int sample,
                                     int max);
 
+  // Called by dbus handler when resume signal is received
+  void HandleResume();
+
   BacklightController* ctl_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -249,6 +254,7 @@ class Daemon : public XIdleMonitor {
   PluggedState plugged_state_;
   IdleState idle_state_;
   SystemState system_state_;
+  FileTagger file_tagger_;
   ScreenLocker locker_;
   Suspender suspender_;
   FilePath run_dir_;

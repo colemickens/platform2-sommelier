@@ -9,6 +9,7 @@
 #include <X11/extensions/dpms.h>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
+#include <sys/inotify.h>
 
 #include <algorithm>
 #include <string>
@@ -36,6 +37,8 @@ static const int64 kFuzzMS = 100;
 // The minimum delta between timers when we want to give a user time to react
 static const int64 kReactMS = 30000;
 
+static const char kTaggedFilePath[] = "/var/lib/power_manager";
+
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from the window manager.
 //         This daemon is responsible for dimming of the backlight, turning
@@ -58,7 +61,8 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
       system_state_(kSystemOn),
-      suspender_(&locker_),
+      file_tagger_(FilePath(kTaggedFilePath)),
+      suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_button_handler_(new PowerButtonHandler(this)),
       battery_discharge_rate_metric_last_(0),
@@ -107,6 +111,7 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   suspender_.Init(run_dir_);
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
+  file_tagger_.Init();
 }
 
 void Daemon::ReadSettings() {
@@ -536,10 +541,13 @@ void Daemon::SuspendOnLowBattery(double battery_percentage) {
       battery_percentage <= low_battery_suspend_percent_) {
     LOG(INFO) << "Low battery condition detected. Suspending immediately.";
     low_battery_suspended_ = true;
+    file_tagger_.HandleLowBatteryEvent();
     Suspend();
   } else if (kPowerConnected == plugged_state_ ||
              battery_percentage > low_battery_suspend_percent_ ) {
+    LOG(INFO) << "Battery condition is safe (plugged in or not low).";
     low_battery_suspended_ = false;
+    file_tagger_.HandleSafeBatteryEvent();
   } else {
     // Either a spurious reading after we have requested suspend, or the user
     // has woken the system up intentionally without rectifying the battery
@@ -547,6 +555,7 @@ void Daemon::SuspendOnLowBattery(double battery_percentage) {
     // User is on his own from here until the system dies. We will not try to
     // resuspend.
     LOG(INFO) << "Spurious low battery condition, or user living on the edge.";
+    file_tagger_.HandleLowBatteryEvent();
   }
 }
 
@@ -568,6 +577,7 @@ void Daemon::OnPowerStateChange(const char* state) {
     LOG(INFO) << "Resuming has commenced";
     system_state_ = kSystemOn;
     SetActive();
+    HandleResume();
   } else {
     DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
   }
@@ -645,6 +655,10 @@ void Daemon::SendBrightnessChangedSignal(int level) {
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
+}
+
+void Daemon::HandleResume() {
+  file_tagger_.HandleResumeEvent();
 }
 
 }  // namespace power_manager

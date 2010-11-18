@@ -16,9 +16,11 @@
 
 namespace power_manager {
 
+class FileTagger;
+
 class Suspender {
  public:
-  explicit Suspender(ScreenLocker* locker);
+  Suspender(ScreenLocker* locker, FileTagger* file_tagger);
 
   void Init(const FilePath& run_dir);
 
@@ -81,6 +83,9 @@ class Suspender {
 
   // Reference to ScreenLocker object.
   ScreenLocker* locker_;
+
+  // Reference to FileTagger object.
+  FileTagger* file_tagger_;
 
   DBusConnection* connection_;
 
