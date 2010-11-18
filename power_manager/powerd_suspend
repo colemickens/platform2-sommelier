@@ -13,7 +13,7 @@ log_msg() {
 suspend_cancel() {
     if [ $cancel -eq 1 ] || [ -e "/var/run/power_manager/lid_opened" ] ||
         [ -e "/var/run/power_manager/user_active" ]; then
-	cancel=1
+        cancel=1
         return 0
     else
         return 1
@@ -85,11 +85,12 @@ if [ $cancel -eq 0 ]; then
     # - sends UMA metrics on resume
     /usr/bin/send_metrics_on_resume &
 fi
-cleanup_for_resume
 
 # - announces the event
 /usr/bin/dbus-send --type=signal --system / \
     org.chromium.PowerManager.PowerStateChanged string:on &
+
+cleanup_for_resume
 
 #  - re-kicks laptop mode since AC<->Battery transition might've happened
 #    while the system was suspended. Sleep a bit, though, to take care of
