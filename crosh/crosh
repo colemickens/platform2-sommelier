@@ -186,7 +186,7 @@ cmd_ssh() {
   fi
 
   echo "open: host: $host, user: $user, port: $port"
-  ssh -F /etc/ssh/ssh_config -p "$port" "$user@$host"
+  ssh -e none -F /etc/ssh/ssh_config -p "$port" "$user@$host"
 }
 
 cmd_ssh_forget_host() {
