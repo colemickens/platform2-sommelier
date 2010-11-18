@@ -60,8 +60,8 @@ HELP='
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags
 
- wpa_debug [<wpa_level>] [--help] [--list_valid_level] [--reset]
-  Add and remove flimflam debugging tags
+ wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
+  Set wpa_supplicant debugging level
 
  network_logging <wifi | cellular | ethernet>
   A function that enables a predefined set of tags useful for 
