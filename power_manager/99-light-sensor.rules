@@ -1,0 +1,5 @@
+# Install tsl2563 when the i2c_i801 driver is installed.
+ACTION=="add", SUBSYSTEM=="drivers", KERNEL=="i801_smbus", RUN+="tsl2563-install.sh"
+
+# Calibrate the light sensor when the tsl2563 driver is installed.
+ACTION=="add", SUBSYSTEM=="drivers", KERNEL=="tsl2563", RUN+="light-sensor-set-multiplier.sh"
