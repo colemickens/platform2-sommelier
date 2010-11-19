@@ -28,7 +28,8 @@
 
 #include <base/basictypes.h> // for DISALLOW_COPY_AND_ASSIGN
 #include <base/scoped_ptr.h>
-#include <gtest/gtest_prod.h>  // For FRIEND_TEST
+#include <dbus/dbus.h>  // for DBus::Path &
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <map>
 #include <string>
 #include <vector>
@@ -222,6 +223,8 @@ enum RoamingState {
 
 // Selected return codes from table 2-3 of QC WWAN CM API
 enum ReturnCode {
+  kErrorSendingQmiRequest=12,
+  kErrorReceivingQmiRequest=13,
   kCallFailed = 1014,
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
@@ -251,8 +254,19 @@ struct ReentrancyGroup;
 
 class Sdk {
  public:
-  Sdk(){};
+  typedef void (*SdkErrorSink)(const std::string &modem_path,
+                               const std::string &sdk_function,
+                               ULONG error);
+
+  // SdkErrorSink is called if an SDK function returns an error.
+  // The GobiModem class uses this to decide if an error warrants
+  // resetting the modem
+  Sdk(SdkErrorSink sink) : sdk_error_sink_(sink) {}
   virtual ~Sdk() {}
+
+  virtual void set_current_modem_path(const std::string &path) {
+    current_modem_path_ = path;
+  }
 
   virtual void Init();
 
@@ -910,7 +924,10 @@ class Sdk {
   pthread_mutex_t service_to_function_mutex_;
   std::vector<const char*> service_to_function_;
 
-  friend class ReentrancyPreventer;
+  SdkErrorSink sdk_error_sink_;
+  std::string current_modem_path_;
+
+  friend class CallWrapper;
   FRIEND_TEST(GobiSdkTest, BaseClosesAllDeathTest);
   FRIEND_TEST(GobiSdkTest, EnterLeaveDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromNameDeathTest);

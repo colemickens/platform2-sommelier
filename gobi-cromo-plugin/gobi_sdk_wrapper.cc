@@ -201,19 +201,40 @@ static const char *kServiceMapping[] = {
   NULL
 };
 
-struct ReentrancyPreventer {
-  ReentrancyPreventer(Sdk *sdk, const char *name)
+struct CallWrapper {
+  CallWrapper(Sdk *sdk, const char *name)
       : sdk_(sdk),
         function_name_(name) {
     sdk_->EnterSdk(function_name_);
   }
-  ~ReentrancyPreventer() {
+
+  ULONG CheckReturn(ULONG rc) {
+    if (rc == kErrorSendingQmiRequest ||
+        rc == kErrorReceivingQmiRequest) {
+      // SetOMADM...Callback returns error kErrorSendingQmiRequest when
+      // run on an image without OMADM-capable firmware.  This error code
+      // normally means "You have lost synch with the modem and must reset
+      // it", but in this case we don't want to reset it.
+      //    http://code.google.com/p/chromium-os/issues/detail?id=9372
+      // tracks removing this workaround
+      if (strstr(function_name_, "OMADM") == NULL)  {
+        sdk_->sdk_error_sink_(sdk_->current_modem_path_,
+                              function_name_,
+                              rc);
+      } else {
+        LOG(ERROR) << "Did not notify on function " << function_name_;
+      }
+    }
+    return rc;
+  }
+
+  ~CallWrapper() {
     sdk_->LeaveSdk(function_name_);
   }
   Sdk *sdk_;
   const char *function_name_;
  private:
-  DISALLOW_COPY_AND_ASSIGN(ReentrancyPreventer);
+  DISALLOW_COPY_AND_ASSIGN(CallWrapper);
 };
 
 void Sdk::Init() {
@@ -238,7 +259,6 @@ void Sdk::InitGetServiceFromName(const char *services[]) {
       name_to_service_[std::string(name)] = service_index;
     }
   }
-
   service_index_upper_bound_ = service_index + 1;
 }
 
@@ -274,7 +294,6 @@ void Sdk::EnterSdk(const char *function_name) {
   }
   rc = pthread_mutex_unlock(&service_to_function_mutex_);
   CHECK(rc == 0) << "rc = " << rc;
-
 }
 
 void Sdk::LeaveSdk(const char *function_name) {
@@ -296,22 +315,22 @@ void Sdk::LeaveSdk(const char *function_name) {
 ULONG Sdk::QCWWANEnumerateDevices(
     BYTE *                     pDevicesSize,
     BYTE *                     pDevices) {
-  ReentrancyPreventer rp(this, "QCWWANEnumerateDevices");
-  return ::QCWWANEnumerateDevices(pDevicesSize,
-                                  pDevices);
+  CallWrapper cw(this, "QCWWANEnumerateDevices");
+  return cw.CheckReturn(::QCWWANEnumerateDevices(pDevicesSize,
+                                                 pDevices));
 }
 
 ULONG Sdk::QCWWANConnect(
     CHAR *                     pDeviceNode,
     CHAR *                     pDeviceKey) {
-  ReentrancyPreventer rp(this, "QCWWANConnect");
-  return ::QCWWANConnect(pDeviceNode,
-                         pDeviceKey);
+  CallWrapper cw(this, "QCWWANConnect");
+  return cw.CheckReturn(::QCWWANConnect(pDeviceNode,
+                                        pDeviceKey));
 }
 
 ULONG Sdk::QCWWANDisconnect() {
-  ReentrancyPreventer rp(this, "QCWWANDisconnect");
-  return ::QCWWANDisconnect();
+  CallWrapper cw(this, "QCWWANDisconnect");
+  return cw.CheckReturn(::QCWWANDisconnect());
 }
 
 ULONG Sdk::QCWWANGetConnectedDeviceID(
@@ -319,37 +338,37 @@ ULONG Sdk::QCWWANGetConnectedDeviceID(
     CHAR *                     pDeviceNode,
     ULONG                      deviceKeySize,
     CHAR *                     pDeviceKey) {
-  ReentrancyPreventer rp(this, "QCWWANGetConnectedDeviceID");
-  return ::QCWWANGetConnectedDeviceID(
+  CallWrapper cw(this, "QCWWANGetConnectedDeviceID");
+  return cw.CheckReturn(::QCWWANGetConnectedDeviceID(
       deviceNodeSize,
       pDeviceNode,
       deviceKeySize,
-      pDeviceKey);
+      pDeviceKey));
 }
 
 ULONG Sdk::GetSessionState(ULONG * pState) {
-  ReentrancyPreventer rp(this, "GetSessionState");
-  return ::GetSessionState(pState);
+  CallWrapper cw(this, "GetSessionState");
+  return cw.CheckReturn(::GetSessionState(pState));
 }
 
 ULONG Sdk::GetSessionDuration(ULONGLONG * pDuration) {
-  ReentrancyPreventer rp(this, "GetSessionDuration");
-  return ::GetSessionDuration(pDuration);
+  CallWrapper cw(this, "GetSessionDuration");
+  return cw.CheckReturn(::GetSessionDuration(pDuration));
 }
 
 ULONG Sdk::GetDormancyState(ULONG * pState) {
-  ReentrancyPreventer rp(this, "GetDormancyState");
-  return ::GetDormancyState(pState);
+  CallWrapper cw(this, "GetDormancyState");
+  return cw.CheckReturn(::GetDormancyState(pState));
 }
 
 ULONG Sdk::GetAutoconnect(ULONG * pSetting) {
-  ReentrancyPreventer rp(this, "GetAutoconnect");
-  return ::GetAutoconnect(pSetting);
+  CallWrapper cw(this, "GetAutoconnect");
+  return cw.CheckReturn(::GetAutoconnect(pSetting));
 }
 
 ULONG Sdk::SetAutoconnect(ULONG setting) {
-  ReentrancyPreventer rp(this, "SetAutoconnect");
-  return ::SetAutoconnect(setting);
+  CallWrapper cw(this, "SetAutoconnect");
+  return cw.CheckReturn(::SetAutoconnect(setting));
 }
 
 ULONG Sdk::SetDefaultProfile(
@@ -363,8 +382,8 @@ ULONG Sdk::SetDefaultProfile(
     CHAR *                     pAPNName,
     CHAR *                     pUsername,
     CHAR *                     pPassword) {
-  ReentrancyPreventer rp(this, "SetDefaultProfile");
-  return ::SetDefaultProfile(
+  CallWrapper cw(this, "SetDefaultProfile");
+  return cw.CheckReturn(::SetDefaultProfile(
       profileType,
       pPDPType,
       pIPAddress,
@@ -374,7 +393,7 @@ ULONG Sdk::SetDefaultProfile(
       pName,
       pAPNName,
       pUsername,
-      pPassword);
+      pPassword));
 }
 
 ULONG Sdk::GetDefaultProfile(
@@ -390,8 +409,8 @@ ULONG Sdk::GetDefaultProfile(
     CHAR *                     pAPNName,
     BYTE                       userSize,
     CHAR *                     pUsername) {
-  ReentrancyPreventer rp(this, "GetDefaultProfile");
-  return ::GetDefaultProfile(
+  CallWrapper cw(this, "GetDefaultProfile");
+  return cw.CheckReturn(::GetDefaultProfile(
       profileType,
       pPDPType,
       pIPAddress,
@@ -403,7 +422,7 @@ ULONG Sdk::GetDefaultProfile(
       apnSize,
       pAPNName,
       userSize,
-      pUsername);
+      pUsername));
 }
 
 ULONG Sdk::StartDataSession(
@@ -415,8 +434,8 @@ ULONG Sdk::StartDataSession(
     ULONG *                    pSessionId,
     ULONG *                    pFailureReason
                             ) {
-  ReentrancyPreventer rp(this, "StartDataSession");
-  return ::StartDataSession(
+  CallWrapper cw(this, "StartDataSession");
+  return cw.CheckReturn(::StartDataSession(
       pTechnology,
       NULL,
       NULL,
@@ -428,17 +447,17 @@ ULONG Sdk::StartDataSession(
       pUsername,
       pPassword,
       pSessionId,
-      pFailureReason);
+      pFailureReason));
 }
 
 ULONG Sdk::StopDataSession(ULONG sessionId) {
-  ReentrancyPreventer rp(this, "StopDataSession");
-  return ::StopDataSession(sessionId);
+  CallWrapper cw(this, "StopDataSession");
+  return cw.CheckReturn(::StopDataSession(sessionId));
 }
 
 ULONG Sdk::GetIPAddress(ULONG * pIPAddress) {
-  ReentrancyPreventer rp(this, "GetIPAddress");
-  return ::GetIPAddress(pIPAddress);
+  CallWrapper cw(this, "GetIPAddress");
+  return cw.CheckReturn(::GetIPAddress(pIPAddress));
 }
 
 ULONG Sdk::GetConnectionRate(
@@ -446,12 +465,12 @@ ULONG Sdk::GetConnectionRate(
     ULONG *                    pCurrentChannelRXRate,
     ULONG *                    pMaxChannelTXRate,
     ULONG *                    pMaxChannelRXRate) {
-  ReentrancyPreventer rp(this, "GetConnectionRate");
-  return ::GetConnectionRate(
+  CallWrapper cw(this, "GetConnectionRate");
+  return cw.CheckReturn(::GetConnectionRate(
       pCurrentChannelTXRate,
       pCurrentChannelRXRate,
       pMaxChannelTXRate,
-      pMaxChannelRXRate);
+      pMaxChannelRXRate));
 }
 
 ULONG Sdk::GetPacketStatus(
@@ -461,47 +480,47 @@ ULONG Sdk::GetPacketStatus(
     ULONG *                    pRXPacketErrors,
     ULONG *                    pTXPacketOverflows,
     ULONG *                    pRXPacketOverflows) {
-  ReentrancyPreventer rp(this, "GetPacketStatus");
-  return ::GetPacketStatus(
+  CallWrapper cw(this, "GetPacketStatus");
+  return cw.CheckReturn(::GetPacketStatus(
       pTXPacketSuccesses,
       pRXPacketSuccesses,
       pTXPacketErrors,
       pRXPacketErrors,
       pTXPacketOverflows,
-      pRXPacketOverflows);
+      pRXPacketOverflows));
 }
 
 ULONG Sdk::GetByteTotals(
     ULONGLONG *                pTXTotalBytes,
     ULONGLONG *                pRXTotalBytes) {
-  ReentrancyPreventer rp(this, "GetByteTotals");
-  return ::GetByteTotals(
+  CallWrapper cw(this, "GetByteTotals");
+  return cw.CheckReturn(::GetByteTotals(
       pTXTotalBytes,
-      pRXTotalBytes);
+      pRXTotalBytes));
 }
 
 ULONG Sdk::SetMobileIP(ULONG mode) {
-  ReentrancyPreventer rp(this, "SetMobileIP");
-  return ::SetMobileIP(mode);
+  CallWrapper cw(this, "SetMobileIP");
+  return cw.CheckReturn(::SetMobileIP(mode));
 }
 
 ULONG Sdk::GetMobileIP(ULONG * pMode) {
-  ReentrancyPreventer rp(this, "GetMobileIP");
-  return ::GetMobileIP(pMode);
+  CallWrapper cw(this, "GetMobileIP");
+  return cw.CheckReturn(::GetMobileIP(pMode));
 }
 
 ULONG Sdk::SetActiveMobileIPProfile(
     CHAR *                     pSPC,
     BYTE                       index) {
-  ReentrancyPreventer rp(this, "SetActiveMobileIPProfile");
-  return ::SetActiveMobileIPProfile(
+  CallWrapper cw(this, "SetActiveMobileIPProfile");
+  return cw.CheckReturn(::SetActiveMobileIPProfile(
       pSPC,
-      index);
+      index));
 }
 
 ULONG Sdk::GetActiveMobileIPProfile(BYTE * pIndex) {
-  ReentrancyPreventer rp(this, "GetActiveMobileIPProfile");
-  return ::GetActiveMobileIPProfile(pIndex);
+  CallWrapper cw(this, "GetActiveMobileIPProfile");
+  return cw.CheckReturn(::GetActiveMobileIPProfile(pIndex));
 }
 
 ULONG Sdk::SetMobileIPProfile(
@@ -517,8 +536,8 @@ ULONG Sdk::SetMobileIPProfile(
     ULONG *                    pAAASPI,
     CHAR *                     pMNHA,
     CHAR *                     pMNAAA) {
-  ReentrancyPreventer rp(this, "SetMobileIPProfile");
-  return ::SetMobileIPProfile(
+  CallWrapper cw(this, "SetMobileIPProfile");
+  return cw.CheckReturn(::SetMobileIPProfile(
       pSPC,
       index,
       pEnabled,
@@ -530,7 +549,7 @@ ULONG Sdk::SetMobileIPProfile(
       pHASPI,
       pAAASPI,
       pMNHA,
-      pMNAAA);
+      pMNAAA));
 }
 
 ULONG Sdk::GetMobileIPProfile(
@@ -546,8 +565,8 @@ ULONG Sdk::GetMobileIPProfile(
     ULONG *                    pAAASPI,
     ULONG *                    pHAState,
     ULONG *                    pAAAState) {
-  ReentrancyPreventer rp(this, "GetMobileIPProfile");
-  return ::GetMobileIPProfile(
+  CallWrapper cw(this, "GetMobileIPProfile");
+  return cw.CheckReturn(::GetMobileIPProfile(
       index,
       pEnabled,
       pAddress,
@@ -559,7 +578,7 @@ ULONG Sdk::GetMobileIPProfile(
       pHASPI,
       pAAASPI,
       pHAState,
-      pAAAState);
+      pAAAState));
 }
 
 ULONG Sdk::SetMobileIPParameters(
@@ -571,8 +590,8 @@ ULONG Sdk::SetMobileIPParameters(
     BYTE *                     pReRegTraffic,
     BYTE *                     pHAAuthenticator,
     BYTE *                     pHA2002bis) {
-  ReentrancyPreventer rp(this, "SetMobileIPParameters");
-  return ::SetMobileIPParameters(
+  CallWrapper cw(this, "SetMobileIPParameters");
+  return cw.CheckReturn(::SetMobileIPParameters(
       pSPC,
       pMode,
       pRetryLimit,
@@ -580,7 +599,7 @@ ULONG Sdk::SetMobileIPParameters(
       pReRegPeriod,
       pReRegTraffic,
       pHAAuthenticator,
-      pHA2002bis);
+      pHA2002bis));
 }
 
 ULONG Sdk::GetMobileIPParameters(
@@ -591,54 +610,54 @@ ULONG Sdk::GetMobileIPParameters(
     BYTE *                     pReRegTraffic,
     BYTE *                     pHAAuthenticator,
     BYTE *                     pHA2002bis) {
-  ReentrancyPreventer rp(this, "GetMobileIPParameters");
-  return ::GetMobileIPParameters(
+  CallWrapper cw(this, "GetMobileIPParameters");
+  return cw.CheckReturn(::GetMobileIPParameters(
       pMode,
       pRetryLimit,
       pRetryInterval,
       pReRegPeriod,
       pReRegTraffic,
       pHAAuthenticator,
-      pHA2002bis);
+      pHA2002bis));
 }
 
 ULONG Sdk::GetLastMobileIPError(ULONG * pError) {
-  ReentrancyPreventer rp(this, "GetLastMobileIPError");
-  return ::GetLastMobileIPError(pError);
+  CallWrapper cw(this, "GetLastMobileIPError");
+  return cw.CheckReturn(::GetLastMobileIPError(pError));
 }
 
 ULONG Sdk::GetANAAAAuthenticationStatus(ULONG * pStatus) {
-  ReentrancyPreventer rp(this, "GetANAAAAuthenticationStatus");
-  return ::GetANAAAAuthenticationStatus(pStatus);
+  CallWrapper cw(this, "GetANAAAAuthenticationStatus");
+  return cw.CheckReturn(::GetANAAAAuthenticationStatus(pStatus));
 }
 
 ULONG Sdk::GetSignalStrengths(
     ULONG *                    pArraySizes,
     INT8 *                     pSignalStrengths,
     ULONG *                    pRadioInterfaces) {
-  ReentrancyPreventer rp(this, "GetSignalStrengths");
-  return ::GetSignalStrengths(
+  CallWrapper cw(this, "GetSignalStrengths");
+  return cw.CheckReturn(::GetSignalStrengths(
       pArraySizes,
       pSignalStrengths,
-      pRadioInterfaces);
+      pRadioInterfaces));
 }
 
 ULONG Sdk::GetRFInfo(
     BYTE *                     pInstanceSize,
     BYTE *                     pInstances) {
-  ReentrancyPreventer rp(this, "GetRFInfo");
-  return ::GetRFInfo(
+  CallWrapper cw(this, "GetRFInfo");
+  return cw.CheckReturn(::GetRFInfo(
       pInstanceSize,
-      pInstances);
+      pInstances));
 }
 
 ULONG Sdk::PerformNetworkScan(
     BYTE *                     pInstanceSize,
     BYTE *                     pInstances) {
-  ReentrancyPreventer rp(this, "PerformNetworkScan");
-  return ::PerformNetworkScan(
+  CallWrapper cw(this, "PerformNetworkScan");
+  return cw.CheckReturn(::PerformNetworkScan(
       pInstanceSize,
-      pInstances);
+      pInstances));
 }
 
 ULONG Sdk::InitiateNetworkRegistration(
@@ -646,17 +665,17 @@ ULONG Sdk::InitiateNetworkRegistration(
     WORD                       mcc,
     WORD                       mnc,
     ULONG                      rat) {
-  ReentrancyPreventer rp(this, "InitiateNetworkRegistration");
-  return ::InitiateNetworkRegistration(
+  CallWrapper cw(this, "InitiateNetworkRegistration");
+  return cw.CheckReturn(::InitiateNetworkRegistration(
       regType,
       mcc,
       mnc,
-      rat);
+      rat));
 }
 
 ULONG Sdk::InitiateDomainAttach(ULONG action) {
-  ReentrancyPreventer rp(this, "InitiateDomainAttach");
-  return ::InitiateDomainAttach(action);
+  CallWrapper cw(this, "InitiateDomainAttach");
+  return cw.CheckReturn(::InitiateDomainAttach(action));
 }
 
 ULONG Sdk::GetServingNetwork(
@@ -669,8 +688,8 @@ ULONG Sdk::GetServingNetwork(
     WORD *                     pMNC) {
   CHAR netName[32];
   ULONG l1, l2;
-  ReentrancyPreventer rp(this, "GetServingNetwork");
-  return ::GetServingNetwork(
+  CallWrapper cw(this, "GetServingNetwork");
+  return cw.CheckReturn(::GetServingNetwork(
       pRegistrationState,
       &l1,              // CS domain
       &l2,              // PS domain
@@ -681,21 +700,21 @@ ULONG Sdk::GetServingNetwork(
       pMCC,
       pMNC,
       sizeof(netName),  // size of name array
-      netName);         // network name
+      netName));         // network name
 }
 
 ULONG Sdk::GetServingNetworkCapabilities(
     BYTE *                     pDataCapsSize,
     BYTE *                     pDataCaps) {
-  ReentrancyPreventer rp(this, "GetServingNetworkCapabilities");
-  return ::GetServingNetworkCapabilities(
+  CallWrapper cw(this, "GetServingNetworkCapabilities");
+  return cw.CheckReturn(::GetServingNetworkCapabilities(
       pDataCapsSize,
-      pDataCaps);
+      pDataCaps));
 }
 
 ULONG Sdk::GetDataBearerTechnology(ULONG * pDataBearer) {
-  ReentrancyPreventer rp(this, "GetDataBearerTechnology");
-  return ::GetDataBearerTechnology(pDataBearer);
+  CallWrapper cw(this, "GetDataBearerTechnology");
+  return cw.CheckReturn(::GetDataBearerTechnology(pDataBearer));
 }
 
 ULONG Sdk::GetHomeNetwork(
@@ -705,34 +724,34 @@ ULONG Sdk::GetHomeNetwork(
     CHAR *                     pName,
     WORD *                     pSID,
     WORD *                     pNID) {
-  ReentrancyPreventer rp(this, "GetHomeNetwork");
-  return ::GetHomeNetwork(
+  CallWrapper cw(this, "GetHomeNetwork");
+  return cw.CheckReturn(::GetHomeNetwork(
       pMCC,
       pMNC,
       nameSize,
       pName,
       pSID,
-      pNID);
+      pNID));
 }
 
 ULONG Sdk::SetNetworkPreference(
     ULONG                      technologyPref,
     ULONG                      duration) {
-  ReentrancyPreventer rp(this, "SetNetworkPreference");
-  return ::SetNetworkPreference(
+  CallWrapper cw(this, "SetNetworkPreference");
+  return cw.CheckReturn(::SetNetworkPreference(
       technologyPref,
-      duration);
+      duration));
 }
 
 ULONG Sdk::GetNetworkPreference(
     ULONG *                    pTechnologyPref,
     ULONG *                    pDuration,
     ULONG *                    pPersistentTechnologyPref) {
-  ReentrancyPreventer rp(this, "GetNetworkPreference");
-  return ::GetNetworkPreference(
+  CallWrapper cw(this, "GetNetworkPreference");
+  return cw.CheckReturn(::GetNetworkPreference(
       pTechnologyPref,
       pDuration,
-      pPersistentTechnologyPref);
+      pPersistentTechnologyPref));
 }
 
 ULONG Sdk::SetCDMANetworkParameters(
@@ -743,15 +762,15 @@ ULONG Sdk::SetCDMANetworkParameters(
     ULONG *                    pBroadcast,
     ULONG *                    pApplication,
     ULONG *                    pRoaming) {
-  ReentrancyPreventer rp(this, "SetCDMANetworkParameters");
-  return ::SetCDMANetworkParameters(
+  CallWrapper cw(this, "SetCDMANetworkParameters");
+  return cw.CheckReturn(::SetCDMANetworkParameters(
       pSPC,
       pForceRev0,
       pCustomSCP,
       pProtocol,
       pBroadcast,
       pApplication,
-      pRoaming);
+      pRoaming));
 }
 
 ULONG Sdk::GetCDMANetworkParameters(
@@ -766,8 +785,8 @@ ULONG Sdk::GetCDMANetworkParameters(
     ULONG *                    pBroadcast,
     ULONG *                    pApplication,
     ULONG *                    pRoaming) {
-  ReentrancyPreventer rp(this, "GetCDMANetworkParameters");
-  return ::GetCDMANetworkParameters(
+  CallWrapper cw(this, "GetCDMANetworkParameters");
+  return cw.CheckReturn(::GetCDMANetworkParameters(
       pSCI,
       pSCM,
       pRegHomeSID,
@@ -778,21 +797,21 @@ ULONG Sdk::GetCDMANetworkParameters(
       pProtocol,
       pBroadcast,
       pApplication,
-      pRoaming);
+      pRoaming));
 }
 
 ULONG Sdk::GetACCOLC(BYTE * pACCOLC) {
-  ReentrancyPreventer rp(this, "GetACCOLC");
-  return ::GetACCOLC(pACCOLC);
+  CallWrapper cw(this, "GetACCOLC");
+  return cw.CheckReturn(::GetACCOLC(pACCOLC));
 }
 
 ULONG Sdk::SetACCOLC(
     CHAR *                     pSPC,
     BYTE                       accolc) {
-  ReentrancyPreventer rp(this, "SetACCOLC");
-  return ::SetACCOLC(
+  CallWrapper cw(this, "SetACCOLC");
+  return cw.CheckReturn(::SetACCOLC(
       pSPC,
-      accolc);
+      accolc));
 }
 
 ULONG Sdk::GetDeviceCapabilities(
@@ -802,41 +821,41 @@ ULONG Sdk::GetDeviceCapabilities(
     ULONG *                    pSimCapability,
     ULONG *                    pRadioIfacesSize,
     BYTE *                     pRadioIfaces) {
-  ReentrancyPreventer rp(this, "GetDeviceCapabilities");
-  return ::GetDeviceCapabilities(
+  CallWrapper cw(this, "GetDeviceCapabilities");
+  return cw.CheckReturn(::GetDeviceCapabilities(
       pMaxTXChannelRate,
       pMaxRXChannelRate,
       pDataServiceCapability,
       pSimCapability,
       pRadioIfacesSize,
-      pRadioIfaces);
+      pRadioIfaces));
 }
 
 ULONG Sdk::GetManufacturer(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "GetManufacturer");
-  return ::GetManufacturer(
+  CallWrapper cw(this, "GetManufacturer");
+  return cw.CheckReturn(::GetManufacturer(
       stringSize,
-      pString);
+      pString));
 }
 
 ULONG Sdk::GetModelID(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "GetModelID");
-  return ::GetModelID(
+  CallWrapper cw(this, "GetModelID");
+  return cw.CheckReturn(::GetModelID(
       stringSize,
-      pString);
+      pString));
 }
 
 ULONG Sdk::GetFirmwareRevision(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "GetFirmwareRevision");
-  return ::GetFirmwareRevision(
+  CallWrapper cw(this, "GetFirmwareRevision");
+  return cw.CheckReturn(::GetFirmwareRevision(
       stringSize,
-      pString);
+      pString));
 }
 
 ULONG Sdk::GetFirmwareRevisions(
@@ -846,14 +865,14 @@ ULONG Sdk::GetFirmwareRevisions(
     CHAR *                     pBootString,
     BYTE                       priSize,
     CHAR *                     pPRIString) {
-  ReentrancyPreventer rp(this, "GetFirmwareRevisions");
-  return ::GetFirmwareRevisions(
+  CallWrapper cw(this, "GetFirmwareRevisions");
+  return cw.CheckReturn(::GetFirmwareRevisions(
       amssSize,
       pAMSSString,
       bootSize,
       pBootString,
       priSize,
-      pPRIString);
+      pPRIString));
 }
 
 ULONG Sdk::GetFirmwareInfo(
@@ -862,13 +881,13 @@ ULONG Sdk::GetFirmwareInfo(
     ULONG *                    pCarrier,
     ULONG *                    pRegion,
     ULONG *                    pGPSCapability) {
-  ReentrancyPreventer rp(this, "GetFirmwareInfo");
-  return ::GetFirmwareInfo(
+  CallWrapper cw(this, "GetFirmwareInfo");
+  return cw.CheckReturn(::GetFirmwareInfo(
       pFirmwareID,
       pTechnology,
       pCarrier,
       pRegion,
-      pGPSCapability);
+      pGPSCapability));
 }
 
 ULONG Sdk::GetVoiceNumber(
@@ -876,21 +895,21 @@ ULONG Sdk::GetVoiceNumber(
     CHAR *                     pVoiceNumber,
     BYTE                       minSize,
     CHAR *                     pMIN) {
-  ReentrancyPreventer rp(this, "GetVoiceNumber");
-  return ::GetVoiceNumber(
+  CallWrapper cw(this, "GetVoiceNumber");
+  return cw.CheckReturn(::GetVoiceNumber(
       voiceNumberSize,
       pVoiceNumber,
       minSize,
-      pMIN);
+      pMIN));
 }
 
 ULONG Sdk::GetIMSI(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "GetIMSI");
-  return ::GetIMSI(
+  CallWrapper cw(this, "GetIMSI");
+  return cw.CheckReturn(::GetIMSI(
       stringSize,
-      pString);
+      pString));
 }
 
 ULONG Sdk::GetSerialNumbers(
@@ -900,66 +919,66 @@ ULONG Sdk::GetSerialNumbers(
     CHAR *                     pIMEIString,
     BYTE                       meidSize,
     CHAR *                     pMEIDString) {
-  ReentrancyPreventer rp(this, "GetSerialNumbers");
-  return ::GetSerialNumbers(
+  CallWrapper cw(this, "GetSerialNumbers");
+  return cw.CheckReturn(::GetSerialNumbers(
       esnSize,
       pESNString,
       imeiSize,
       pIMEIString,
       meidSize,
-      pMEIDString);
+      pMEIDString));
 }
 
 ULONG Sdk::SetLock(
     ULONG                      state,
     CHAR *                     pCurrentPIN) {
-  ReentrancyPreventer rp(this, "SetLock");
-  return ::SetLock(
+  CallWrapper cw(this, "SetLock");
+  return cw.CheckReturn(::SetLock(
       state,
-      pCurrentPIN);
+      pCurrentPIN));
 }
 
 ULONG Sdk::QueryLock(ULONG * pState) {
-  ReentrancyPreventer rp(this, "QueryLock");
-  return ::QueryLock(pState);
+  CallWrapper cw(this, "QueryLock");
+  return cw.CheckReturn(::QueryLock(pState));
 }
 
 ULONG Sdk::ChangeLockPIN(
     CHAR *                     pCurrentPIN,
     CHAR *                     pDesiredPIN) {
-  ReentrancyPreventer rp(this, "ChangeLockPIN");
-  return ::ChangeLockPIN(
+  CallWrapper cw(this, "ChangeLockPIN");
+  return cw.CheckReturn(::ChangeLockPIN(
       pCurrentPIN,
-      pDesiredPIN);
+      pDesiredPIN));
 }
 
 ULONG Sdk::GetHardwareRevision(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "GetHardwareRevision");
-  return ::GetHardwareRevision(
+  CallWrapper cw(this, "GetHardwareRevision");
+  return cw.CheckReturn(::GetHardwareRevision(
       stringSize,
-      pString);
+      pString));
 }
 
 ULONG Sdk::GetPRLVersion(WORD * pPRLVersion) {
-  ReentrancyPreventer rp(this, "GetPRLVersion");
-  return ::GetPRLVersion(pPRLVersion);
+  CallWrapper cw(this, "GetPRLVersion");
+  return cw.CheckReturn(::GetPRLVersion(pPRLVersion));
 }
 
 ULONG Sdk::GetERIFile(
     ULONG *                    pFileSize,
     BYTE *                     pFile) {
-  ReentrancyPreventer rp(this, "GetERIFile");
-  return ::GetERIFile(
+  CallWrapper cw(this, "GetERIFile");
+  return cw.CheckReturn(::GetERIFile(
       pFileSize,
-      pFile);
+      pFile));
 }
 
 ULONG Sdk::ActivateAutomatic(const CHAR * pActivationCode) {
   TemporaryCopier mutableActivationCode(pActivationCode);
-  ReentrancyPreventer rp(this, "ActivateAutomatic");
-  return ::ActivateAutomatic(mutableActivationCode.get());
+  CallWrapper cw(this, "ActivateAutomatic");
+  return cw.CheckReturn(::ActivateAutomatic(mutableActivationCode.get()));
 }
 
 ULONG Sdk::ActivateManual(
@@ -977,8 +996,8 @@ ULONG Sdk::ActivateManual(
   TemporaryCopier mutableMNHA(pMNHA);
   TemporaryCopier mutableMNAAA(pMNAAA);
 
-  ReentrancyPreventer rp(this, "ActivateManual");
-  return ::ActivateManual(
+  CallWrapper cw(this, "ActivateManual");
+  return cw.CheckReturn(::ActivateManual(
       mutableSPC.get(),
       sid,
       mutableMDN.get(),
@@ -986,61 +1005,61 @@ ULONG Sdk::ActivateManual(
       prlSize,
       pPRL,
       mutableMNHA.get(),
-      mutableMNAAA.get());
+      mutableMNAAA.get()));
 }
 
 ULONG Sdk::ResetToFactoryDefaults(CHAR * pSPC) {
-  ReentrancyPreventer rp(this, "ResetToFactoryDefaults");
-  return ::ResetToFactoryDefaults(pSPC);
+  CallWrapper cw(this, "ResetToFactoryDefaults");
+  return cw.CheckReturn(::ResetToFactoryDefaults(pSPC));
 }
 
 ULONG Sdk::GetActivationState(ULONG * pActivationState) {
-  ReentrancyPreventer rp(this, "GetActivationState");
-  return ::GetActivationState(pActivationState);
+  CallWrapper cw(this, "GetActivationState");
+  return cw.CheckReturn(::GetActivationState(pActivationState));
 }
 
 ULONG Sdk::SetPower(ULONG powerMode) {
-  ReentrancyPreventer rp(this, "SetPower");
-  return ::SetPower(powerMode);
+  CallWrapper cw(this, "SetPower");
+  return cw.CheckReturn(::SetPower(powerMode));
 }
 
 ULONG Sdk::GetPower(ULONG * pPowerMode) {
-  ReentrancyPreventer rp(this, "GetPower");
-  return ::GetPower(pPowerMode);
+  CallWrapper cw(this, "GetPower");
+  return cw.CheckReturn(::GetPower(pPowerMode));
 }
 
 ULONG Sdk::GetOfflineReason(
     ULONG *                    pReasonMask,
     ULONG *                    pbPlatform) {
-  ReentrancyPreventer rp(this, "GetOfflineReason");
-  return ::GetOfflineReason(
+  CallWrapper cw(this, "GetOfflineReason");
+  return cw.CheckReturn(::GetOfflineReason(
       pReasonMask,
-      pbPlatform);
+      pbPlatform));
 }
 
 ULONG Sdk::GetNetworkTime(
     ULONGLONG *                pTimeCount,
     ULONG *                    pTimeSource) {
-  ReentrancyPreventer rp(this, "GetNetworkTime");
-  return ::GetNetworkTime(
+  CallWrapper cw(this, "GetNetworkTime");
+  return cw.CheckReturn(::GetNetworkTime(
       pTimeCount,
-      pTimeSource);
+      pTimeSource));
 }
 
 ULONG Sdk::ValidateSPC(CHAR * pSPC) {
-  ReentrancyPreventer rp(this, "ValidateSPC");
-  return ::ValidateSPC(pSPC);
+  CallWrapper cw(this, "ValidateSPC");
+  return cw.CheckReturn(::ValidateSPC(pSPC));
 }
 
 ULONG Sdk::DeleteSMS(
     ULONG                      storageType,
     ULONG *                    pMessageIndex,
     ULONG *                    pMessageTag) {
-  ReentrancyPreventer rp(this, "DeleteSMS");
-  return ::DeleteSMS(
+  CallWrapper cw(this, "DeleteSMS");
+  return cw.CheckReturn(::DeleteSMS(
       storageType,
       pMessageIndex,
-      pMessageTag);
+      pMessageTag));
 }
 
 ULONG Sdk::GetSMSList(
@@ -1048,12 +1067,12 @@ ULONG Sdk::GetSMSList(
     ULONG *                    pRequestedTag,
     ULONG *                    pMessageListSize,
     BYTE *                     pMessageList) {
-  ReentrancyPreventer rp(this, "GetSMSList");
-  return ::GetSMSList(
+  CallWrapper cw(this, "GetSMSList");
+  return cw.CheckReturn(::GetSMSList(
       storageType,
       pRequestedTag,
       pMessageListSize,
-      pMessageList);
+      pMessageList));
 }
 
 ULONG Sdk::GetSMS(
@@ -1063,25 +1082,25 @@ ULONG Sdk::GetSMS(
     ULONG *                    pMessageFormat,
     ULONG *                    pMessageSize,
     BYTE *                     pMessage) {
-  ReentrancyPreventer rp(this, "GetSMS");
-  return ::GetSMS(
+  CallWrapper cw(this, "GetSMS");
+  return cw.CheckReturn(::GetSMS(
       storageType,
       messageIndex,
       pMessageTag,
       pMessageFormat,
       pMessageSize,
-      pMessage);
+      pMessage));
 }
 
 ULONG Sdk::ModifySMSStatus(
     ULONG                      storageType,
     ULONG                      messageIndex,
     ULONG                      messageTag) {
-  ReentrancyPreventer rp(this, "ModifySMSStatus");
-  return ::ModifySMSStatus(
+  CallWrapper cw(this, "ModifySMSStatus");
+  return cw.CheckReturn(::ModifySMSStatus(
       storageType,
       messageIndex,
-      messageTag);
+      messageTag));
 }
 
 ULONG Sdk::SaveSMS(
@@ -1090,13 +1109,13 @@ ULONG Sdk::SaveSMS(
     ULONG                      messageSize,
     BYTE *                     pMessage,
     ULONG *                    pMessageIndex) {
-  ReentrancyPreventer rp(this, "SaveSMS");
-  return ::SaveSMS(
+  CallWrapper cw(this, "SaveSMS");
+  return cw.CheckReturn(::SaveSMS(
       storageType,
       messageFormat,
       messageSize,
       pMessage,
-      pMessageIndex);
+      pMessageIndex));
 }
 
 ULONG Sdk::SendSMS(
@@ -1104,12 +1123,12 @@ ULONG Sdk::SendSMS(
     ULONG                      messageSize,
     BYTE *                     pMessage,
     ULONG *                    pMessageFailureCode) {
-  ReentrancyPreventer rp(this, "SendSMS");
-  return ::SendSMS(
+  CallWrapper cw(this, "SendSMS");
+  return cw.CheckReturn(::SendSMS(
       messageFormat,
       messageSize,
       pMessage,
-      pMessageFailureCode);
+      pMessageFailureCode));
 }
 
 ULONG Sdk::GetSMSCAddress(
@@ -1117,21 +1136,21 @@ ULONG Sdk::GetSMSCAddress(
     CHAR *                     pSMSCAddress,
     BYTE                       typeSize,
     CHAR *                     pSMSCType) {
-  ReentrancyPreventer rp(this, "GetSMSCAddress");
-  return ::GetSMSCAddress(
+  CallWrapper cw(this, "GetSMSCAddress");
+  return cw.CheckReturn(::GetSMSCAddress(
       addressSize,
       pSMSCAddress,
       typeSize,
-      pSMSCType);
+      pSMSCType));
 }
 
 ULONG Sdk::SetSMSCAddress(
     CHAR *                     pSMSCAddress,
     CHAR *                     pSMSCType) {
-  ReentrancyPreventer rp(this, "SetSMSCAddress");
-  return ::SetSMSCAddress(
+  CallWrapper cw(this, "SetSMSCAddress");
+  return cw.CheckReturn(::SetSMSCAddress(
       pSMSCAddress,
-      pSMSCType);
+      pSMSCType));
 }
 
 ULONG Sdk::UIMSetPINProtection(
@@ -1140,13 +1159,13 @@ ULONG Sdk::UIMSetPINProtection(
     CHAR *                     pValue,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMSetPINProtection");
-  return ::UIMSetPINProtection(
+  CallWrapper cw(this, "UIMSetPINProtection");
+  return cw.CheckReturn(::UIMSetPINProtection(
       id,
       bEnable,
       pValue,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMVerifyPIN(
@@ -1154,12 +1173,12 @@ ULONG Sdk::UIMVerifyPIN(
     CHAR *                     pValue,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMVerifyPIN");
-  return ::UIMVerifyPIN(
+  CallWrapper cw(this, "UIMVerifyPIN");
+  return cw.CheckReturn(::UIMVerifyPIN(
       id,
       pValue,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMUnblockPIN(
@@ -1168,13 +1187,13 @@ ULONG Sdk::UIMUnblockPIN(
     CHAR *                     pNewValue,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMUnblockPIN");
-  return ::UIMUnblockPIN(
+  CallWrapper cw(this, "UIMUnblockPIN");
+  return cw.CheckReturn(::UIMUnblockPIN(
       id,
       pPUKValue,
       pNewValue,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMChangePIN(
@@ -1183,13 +1202,13 @@ ULONG Sdk::UIMChangePIN(
     CHAR *                     pNewValue,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMChangePIN");
-  return ::UIMChangePIN(
+  CallWrapper cw(this, "UIMChangePIN");
+  return cw.CheckReturn(::UIMChangePIN(
       id,
       pOldValue,
       pNewValue,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMGetPINStatus(
@@ -1197,33 +1216,33 @@ ULONG Sdk::UIMGetPINStatus(
     ULONG *                    pStatus,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMGetPINStatus");
-  return ::UIMGetPINStatus(
+  CallWrapper cw(this, "UIMGetPINStatus");
+  return cw.CheckReturn(::UIMGetPINStatus(
       id,
       pStatus,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMGetICCID(
     BYTE                       stringSize,
     CHAR *                     pString) {
-  ReentrancyPreventer rp(this, "UIMGetICCID");
-  return ::UIMGetICCID(
+  CallWrapper cw(this, "UIMGetICCID");
+  return cw.CheckReturn(::UIMGetICCID(
       stringSize,
-      pString);
+      pString));
 }
 ULONG Sdk::UIMGetControlKeyStatus(
     ULONG                      id,
     ULONG *                    pStatus,
     ULONG *                    pVerifyRetriesLeft,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMGetControlKeyStatus");
-  return ::UIMGetControlKeyStatus(
+  CallWrapper cw(this, "UIMGetControlKeyStatus");
+  return cw.CheckReturn(::UIMGetControlKeyStatus(
       id,
       pStatus,
       pVerifyRetriesLeft,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::UIMSetControlKeyProtection(
@@ -1231,46 +1250,46 @@ ULONG Sdk::UIMSetControlKeyProtection(
     ULONG                      status,
     CHAR *                     pValue,
     ULONG *                    pVerifyRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMSetControlKeyProtection");
-  return ::UIMSetControlKeyProtection(
+  CallWrapper cw(this, "UIMSetControlKeyProtection");
+  return cw.CheckReturn(::UIMSetControlKeyProtection(
       id,
       status,
       pValue,
-      pVerifyRetriesLeft);
+      pVerifyRetriesLeft));
 }
 
 ULONG Sdk::UIMUnblockControlKey(
     ULONG                      id,
     CHAR *                     pValue,
     ULONG *                    pUnblockRetriesLeft) {
-  ReentrancyPreventer rp(this, "UIMUnblockControlKey");
-  return ::UIMUnblockControlKey(
+  CallWrapper cw(this, "UIMUnblockControlKey");
+  return cw.CheckReturn(::UIMUnblockControlKey(
       id,
       pValue,
-      pUnblockRetriesLeft);
+      pUnblockRetriesLeft));
 }
 
 ULONG Sdk::GetPDSState(
     ULONG *                    pEnabled,
     ULONG *                    pTracking) {
-  ReentrancyPreventer rp(this, "GetPDSState");
-  return ::GetPDSState(
+  CallWrapper cw(this, "GetPDSState");
+  return cw.CheckReturn(::GetPDSState(
       pEnabled,
-      pTracking);
+      pTracking));
 }
 
 ULONG Sdk::SetPDSState(ULONG enable) {
-  ReentrancyPreventer rp(this, "SetPDSState");
-  return ::SetPDSState(enable);
+  CallWrapper cw(this, "SetPDSState");
+  return cw.CheckReturn(::SetPDSState(enable));
 }
 
 ULONG Sdk::PDSInjectTimeReference(
     ULONGLONG                  systemTime,
     USHORT                     systemDiscontinuities) {
-  ReentrancyPreventer rp(this, "PDSInjectTimeReference");
-  return ::PDSInjectTimeReference(
+  CallWrapper cw(this, "PDSInjectTimeReference");
+  return cw.CheckReturn(::PDSInjectTimeReference(
       systemTime,
-      systemDiscontinuities);
+      systemDiscontinuities));
 }
 
 ULONG Sdk::GetPDSDefaults(
@@ -1278,12 +1297,12 @@ ULONG Sdk::GetPDSDefaults(
     BYTE *                     pTimeout,
     ULONG *                    pInterval,
     ULONG *                    pAccuracy) {
-  ReentrancyPreventer rp(this, "GetPDSDefaults");
-  return ::GetPDSDefaults(
+  CallWrapper cw(this, "GetPDSDefaults");
+  return cw.CheckReturn(::GetPDSDefaults(
       pOperation,
       pTimeout,
       pInterval,
-      pAccuracy);
+      pAccuracy));
 }
 
 ULONG Sdk::SetPDSDefaults(
@@ -1291,153 +1310,153 @@ ULONG Sdk::SetPDSDefaults(
     BYTE                       timeout,
     ULONG                      interval,
     ULONG                      accuracy) {
-  ReentrancyPreventer rp(this, "SetPDSDefaults");
-  return ::SetPDSDefaults(
+  CallWrapper cw(this, "SetPDSDefaults");
+  return cw.CheckReturn(::SetPDSDefaults(
       operation,
       timeout,
       interval,
-      accuracy);
+      accuracy));
 }
 
 ULONG Sdk::GetXTRAAutomaticDownload(
     ULONG *                    pbEnabled,
     USHORT *                   pInterval) {
-  ReentrancyPreventer rp(this, "GetXTRAAutomaticDownload");
-  return ::GetXTRAAutomaticDownload(
+  CallWrapper cw(this, "GetXTRAAutomaticDownload");
+  return cw.CheckReturn(::GetXTRAAutomaticDownload(
       pbEnabled,
-      pInterval);
+      pInterval));
 }
 
 ULONG Sdk::SetXTRAAutomaticDownload(
     ULONG                      bEnabled,
     USHORT                     interval) {
-  ReentrancyPreventer rp(this, "SetXTRAAutomaticDownload");
-  return ::SetXTRAAutomaticDownload(
+  CallWrapper cw(this, "SetXTRAAutomaticDownload");
+  return cw.CheckReturn(::SetXTRAAutomaticDownload(
       bEnabled,
-      interval);
+      interval));
 }
 
 ULONG Sdk::GetXTRANetwork(ULONG * pPreference) {
-  ReentrancyPreventer rp(this, "GetXTRANetwork");
-  return ::GetXTRANetwork(pPreference);
+  CallWrapper cw(this, "GetXTRANetwork");
+  return cw.CheckReturn(::GetXTRANetwork(pPreference));
 }
 
 ULONG Sdk::SetXTRANetwork(ULONG preference) {
-  ReentrancyPreventer rp(this, "SetXTRANetwork");
-  return ::SetXTRANetwork(preference);
+  CallWrapper cw(this, "SetXTRANetwork");
+  return cw.CheckReturn(::SetXTRANetwork(preference));
 }
 
 ULONG Sdk::GetXTRAValidity(
     USHORT *                   pGPSWeek,
     USHORT *                   pGPSWeekOffset,
     USHORT *                   pDuration) {
-  ReentrancyPreventer rp(this, "GetXTRAValidity");
-  return ::GetXTRAValidity(
+  CallWrapper cw(this, "GetXTRAValidity");
+  return cw.CheckReturn(::GetXTRAValidity(
       pGPSWeek,
       pGPSWeekOffset,
-      pDuration);
+      pDuration));
 }
 
 ULONG Sdk::ForceXTRADownload() {
-  ReentrancyPreventer rp(this, "ForceXTRADownload");
-  return ::ForceXTRADownload();
+  CallWrapper cw(this, "ForceXTRADownload");
+  return cw.CheckReturn(::ForceXTRADownload());
 }
 
 ULONG Sdk::GetAGPSConfig(
     ULONG *                    pServerAddress,
     ULONG *                    pServerPort) {
-  ReentrancyPreventer rp(this, "GetAGPSConfig");
-  return ::GetAGPSConfig(
+  CallWrapper cw(this, "GetAGPSConfig");
+  return cw.CheckReturn(::GetAGPSConfig(
       pServerAddress,
-      pServerPort);
+      pServerPort));
 }
 
 ULONG Sdk::SetAGPSConfig(
     ULONG                      serverAddress,
     ULONG                      serverPort) {
-  ReentrancyPreventer rp(this, "SetAGPSConfig");
-  return ::SetAGPSConfig(
+  CallWrapper cw(this, "SetAGPSConfig");
+  return cw.CheckReturn(::SetAGPSConfig(
       serverAddress,
-      serverPort);
+      serverPort));
 }
 
 ULONG Sdk::GetServiceAutomaticTracking(ULONG * pbAuto) {
-  ReentrancyPreventer rp(this, "GetServiceAutomaticTracking");
-  return ::GetServiceAutomaticTracking(pbAuto);
+  CallWrapper cw(this, "GetServiceAutomaticTracking");
+  return cw.CheckReturn(::GetServiceAutomaticTracking(pbAuto));
 }
 
 ULONG Sdk::SetServiceAutomaticTracking(ULONG bAuto) {
-  ReentrancyPreventer rp(this, "SetServiceAutomaticTracking");
-  return ::SetServiceAutomaticTracking(bAuto);
+  CallWrapper cw(this, "SetServiceAutomaticTracking");
+  return cw.CheckReturn(::SetServiceAutomaticTracking(bAuto));
 }
 
 ULONG Sdk::GetPortAutomaticTracking(ULONG * pbAuto) {
-  ReentrancyPreventer rp(this, "GetPortAutomaticTracking");
-  return ::GetPortAutomaticTracking(pbAuto);
+  CallWrapper cw(this, "GetPortAutomaticTracking");
+  return cw.CheckReturn(::GetPortAutomaticTracking(pbAuto));
 }
 
 ULONG Sdk::SetPortAutomaticTracking(ULONG bAuto) {
-  ReentrancyPreventer rp(this, "SetPortAutomaticTracking");
-  return ::SetPortAutomaticTracking(bAuto);
+  CallWrapper cw(this, "SetPortAutomaticTracking");
+  return cw.CheckReturn(::SetPortAutomaticTracking(bAuto));
 }
 
 ULONG Sdk::ResetPDSData(
     ULONG *                    pGPSDataMask,
     ULONG *                    pCellDataMask) {
-  ReentrancyPreventer rp(this, "ResetPDSData");
-  return ::ResetPDSData(
+  CallWrapper cw(this, "ResetPDSData");
+  return cw.CheckReturn(::ResetPDSData(
       pGPSDataMask,
-      pCellDataMask);
+      pCellDataMask));
 }
 
 ULONG Sdk::CATSendTerminalResponse(
     ULONG                      refID,
     ULONG                      dataLen,
     BYTE *                     pData) {
-  ReentrancyPreventer rp(this, "CATSendTerminalResponse");
-  return ::CATSendTerminalResponse(
+  CallWrapper cw(this, "CATSendTerminalResponse");
+  return cw.CheckReturn(::CATSendTerminalResponse(
       refID,
       dataLen,
-      pData);
+      pData));
 }
 
 ULONG Sdk::CATSendEnvelopeCommand(
     ULONG                      cmdID,
     ULONG                      dataLen,
     BYTE *                     pData) {
-  ReentrancyPreventer rp(this, "CATSendEnvelopeCommand");
-  return ::CATSendEnvelopeCommand(
+  CallWrapper cw(this, "CATSendEnvelopeCommand");
+  return cw.CheckReturn(::CATSendEnvelopeCommand(
       cmdID,
       dataLen,
-      pData);
+      pData));
 }
 
 ULONG Sdk::GetSMSWake(
     ULONG *                    pbEnabled,
     ULONG *                    pWakeMask) {
-  ReentrancyPreventer rp(this, "GetSMSWake");
-  return ::GetSMSWake(
+  CallWrapper cw(this, "GetSMSWake");
+  return cw.CheckReturn(::GetSMSWake(
       pbEnabled,
-      pWakeMask);
+      pWakeMask));
 }
 
 ULONG Sdk::SetSMSWake(
     ULONG                      bEnable,
     ULONG                      wakeMask) {
-  ReentrancyPreventer rp(this, "SetSMSWake");
-  return ::SetSMSWake(
+  CallWrapper cw(this, "SetSMSWake");
+  return cw.CheckReturn(::SetSMSWake(
       bEnable,
-      wakeMask);
+      wakeMask));
 }
 
 ULONG Sdk::OMADMStartSession(ULONG sessionType) {
-  ReentrancyPreventer rp(this, "OMADMStartSession");
-  return ::OMADMStartSession(sessionType);
+  CallWrapper cw(this, "OMADMStartSession");
+  return cw.CheckReturn(::OMADMStartSession(sessionType));
 }
 
 ULONG Sdk::OMADMCancelSession() {
-  ReentrancyPreventer rp(this, "OMADMCancelSession");
-  return ::OMADMCancelSession();
+  CallWrapper cw(this, "OMADMCancelSession");
+  return cw.CheckReturn(::OMADMCancelSession());
 }
 
 ULONG Sdk::OMADMGetSessionInfo(
@@ -1447,60 +1466,60 @@ ULONG Sdk::OMADMGetSessionInfo(
     BYTE *                     pRetryCount,
     WORD *                     pSessionPause,
     WORD *                     pTimeRemaining) {
-  ReentrancyPreventer rp(this, "OMADMGetSessionInfo");
-  return ::OMADMGetSessionInfo(
+  CallWrapper cw(this, "OMADMGetSessionInfo");
+  return cw.CheckReturn(::OMADMGetSessionInfo(
       pSessionState,
       pSessionType,
       pFailureReason,
       pRetryCount,
       pSessionPause,
-      pTimeRemaining);
+      pTimeRemaining));
 }
 
 ULONG Sdk::OMADMGetPendingNIA(
     ULONG *                    pSessionType,
     USHORT *                   pSessionID) {
-  ReentrancyPreventer rp(this, "OMADMGetPendingNIA");
-  return ::OMADMGetPendingNIA(
+  CallWrapper cw(this, "OMADMGetPendingNIA");
+  return cw.CheckReturn(::OMADMGetPendingNIA(
       pSessionType,
-      pSessionID);
+      pSessionID));
 }
 
 ULONG Sdk::OMADMSendSelection(
     ULONG                      selection,
     USHORT                     sessionID) {
-  ReentrancyPreventer rp(this, "OMADMSendSelection");
-  return ::OMADMSendSelection(
+  CallWrapper cw(this, "OMADMSendSelection");
+  return cw.CheckReturn(::OMADMSendSelection(
       selection,
-      sessionID);
+      sessionID));
 }
 
 ULONG Sdk::OMADMGetFeatureSettings(
     ULONG *                    pbProvisioning,
     ULONG *                    pbPRLUpdate) {
-  ReentrancyPreventer rp(this, "OMADMGetFeatureSettings");
-  return ::OMADMGetFeatureSettings(
+  CallWrapper cw(this, "OMADMGetFeatureSettings");
+  return cw.CheckReturn(::OMADMGetFeatureSettings(
       pbProvisioning,
-      pbPRLUpdate);
+      pbPRLUpdate));
 }
 
 ULONG Sdk::OMADMSetProvisioningFeature(
     ULONG                      bProvisioning) {
-  ReentrancyPreventer rp(this, "OMADMSetProvisioningFeature");
-  return ::OMADMSetProvisioningFeature(
-      bProvisioning);
+  CallWrapper cw(this, "OMADMSetProvisioningFeature");
+  return cw.CheckReturn(::OMADMSetProvisioningFeature(
+      bProvisioning));
 }
 
 ULONG Sdk::OMADMSetPRLUpdateFeature(
     ULONG                      bPRLUpdate) {
-  ReentrancyPreventer rp(this, "OMADMSetPRLUpdateFeature");
-  return ::OMADMSetPRLUpdateFeature(
-      bPRLUpdate);
+  CallWrapper cw(this, "OMADMSetPRLUpdateFeature");
+  return cw.CheckReturn(::OMADMSetPRLUpdateFeature(
+      bPRLUpdate));
 }
 
 ULONG Sdk::UpgradeFirmware(CHAR * pDestinationPath) {
-  ReentrancyPreventer rp(this, "UpgradeFirmware");
-  return ::UpgradeFirmware(pDestinationPath);
+  CallWrapper cw(this, "UpgradeFirmware");
+  return cw.CheckReturn(::UpgradeFirmware(pDestinationPath));
 }
 
 ULONG Sdk::GetImageInfo(
@@ -1510,143 +1529,143 @@ ULONG Sdk::GetImageInfo(
     ULONG *                    pCarrier,
     ULONG *                    pRegion,
     ULONG *                    pGPSCapability) {
-  ReentrancyPreventer rp(this, "GetImageInfo");
-  return ::GetImageInfo(
+  CallWrapper cw(this, "GetImageInfo");
+  return cw.CheckReturn(::GetImageInfo(
       pPath,
       pFirmwareID,
       pTechnology,
       pCarrier,
       pRegion,
-      pGPSCapability);
+      pGPSCapability));
 }
 
 ULONG Sdk::GetImageStore(
     WORD                       pathSize,
     CHAR *                     pImageStorePath) {
-  ReentrancyPreventer rp(this, "GetImageStore");
-  return ::GetImageStore(
+  CallWrapper cw(this, "GetImageStore");
+  return cw.CheckReturn(::GetImageStore(
       pathSize,
-      pImageStorePath);
+      pImageStorePath));
 }
 
 ULONG Sdk::SetSessionStateCallback(tFNSessionState pCallback) {
-  ReentrancyPreventer rp(this, "SetSessionStateCallback");
-  return ::SetSessionStateCallback(pCallback);
+  CallWrapper cw(this, "SetSessionStateCallback");
+  return cw.CheckReturn(::SetSessionStateCallback(pCallback));
 }
 
 ULONG Sdk::SetByteTotalsCallback(
     tFNByteTotals              pCallback,
     BYTE                       interval) {
-  ReentrancyPreventer rp(this, "SetByteTotalsCallback");
-  return ::SetByteTotalsCallback(
+  CallWrapper cw(this, "SetByteTotalsCallback");
+  return cw.CheckReturn(::SetByteTotalsCallback(
       pCallback,
-      interval);
+      interval));
 }
 
 ULONG Sdk::SetDataCapabilitiesCallback(
     tFNDataCapabilities        pCallback) {
-  ReentrancyPreventer rp(this, "SetDataCapabilitiesCallback");
-  return ::SetDataCapabilitiesCallback(
-      pCallback);
+  CallWrapper cw(this, "SetDataCapabilitiesCallback");
+  return cw.CheckReturn(::SetDataCapabilitiesCallback(
+      pCallback));
 }
 
 ULONG Sdk::SetDataBearerCallback(tFNDataBearer pCallback) {
-  ReentrancyPreventer rp(this, "SetDataBearerCallback");
-  return ::SetDataBearerCallback(pCallback);
+  CallWrapper cw(this, "SetDataBearerCallback");
+  return cw.CheckReturn(::SetDataBearerCallback(pCallback));
 }
 
 ULONG Sdk::SetDormancyStatusCallback(
     tFNDormancyStatus          pCallback) {
-  ReentrancyPreventer rp(this, "SetDormancyStatusCallback");
-  return ::SetDormancyStatusCallback(
-      pCallback);
+  CallWrapper cw(this, "SetDormancyStatusCallback");
+  return cw.CheckReturn(::SetDormancyStatusCallback(
+      pCallback));
 }
 
 ULONG Sdk::SetMobileIPStatusCallback(
     tFNMobileIPStatus          pCallback) {
-  ReentrancyPreventer rp(this, "SetMobileIPStatusCallback");
-  return ::SetMobileIPStatusCallback(
-      pCallback);
+  CallWrapper cw(this, "SetMobileIPStatusCallback");
+  return cw.CheckReturn(::SetMobileIPStatusCallback(
+      pCallback));
 }
 
 ULONG Sdk::SetActivationStatusCallback(
     tFNActivationStatus        pCallback) {
-  ReentrancyPreventer rp(this, "SetActivationStatusCallback");
-  return ::SetActivationStatusCallback(
-      pCallback);
+  CallWrapper cw(this, "SetActivationStatusCallback");
+  return cw.CheckReturn(::SetActivationStatusCallback(
+      pCallback));
 }
 
 ULONG Sdk::SetPowerCallback(tFNPower pCallback) {
-  ReentrancyPreventer rp(this, "SetPowerCallback");
-  return ::SetPowerCallback(pCallback);
+  CallWrapper cw(this, "SetPowerCallback");
+  return cw.CheckReturn(::SetPowerCallback(pCallback));
 }
 ULONG Sdk::SetRoamingIndicatorCallback(
     tFNRoamingIndicator        pCallback) {
-  ReentrancyPreventer rp(this, "SetRoamingIndicatorCallback");
-  return ::SetRoamingIndicatorCallback(
-      pCallback);
+  CallWrapper cw(this, "SetRoamingIndicatorCallback");
+  return cw.CheckReturn(::SetRoamingIndicatorCallback(
+      pCallback));
 }
 
 ULONG Sdk::SetSignalStrengthCallback(
     tFNSignalStrength          pCallback,
     BYTE                       thresholdsSize,
     INT8 *                     pThresholds) {
-  ReentrancyPreventer rp(this, "SetSignalStrengthCallback");
-  return ::SetSignalStrengthCallback(
+  CallWrapper cw(this, "SetSignalStrengthCallback");
+  return cw.CheckReturn(::SetSignalStrengthCallback(
       pCallback,
       thresholdsSize,
-      pThresholds);
+      pThresholds));
 }
 
 ULONG Sdk::SetRFInfoCallback(tFNRFInfo pCallback) {
-  ReentrancyPreventer rp(this, "SetRFInfoCallback");
-  return ::SetRFInfoCallback(pCallback);
+  CallWrapper cw(this, "SetRFInfoCallback");
+  return cw.CheckReturn(::SetRFInfoCallback(pCallback));
 }
 
 ULONG Sdk::SetLURejectCallback(tFNLUReject pCallback) {
-  ReentrancyPreventer rp(this, "SetLURejectCallback");
-  return ::SetLURejectCallback(pCallback);
+  CallWrapper cw(this, "SetLURejectCallback");
+  return cw.CheckReturn(::SetLURejectCallback(pCallback));
 }
 
 ULONG Sdk::SetNewSMSCallback(tFNNewSMS pCallback) {
-  ReentrancyPreventer rp(this, "SetNewSMSCallback");
-  return ::SetNewSMSCallback(pCallback);
+  CallWrapper cw(this, "SetNewSMSCallback");
+  return cw.CheckReturn(::SetNewSMSCallback(pCallback));
 }
 
 ULONG Sdk::SetNMEACallback(tFNNewNMEA pCallback) {
-  ReentrancyPreventer rp(this, "SetNMEACallback");
-  return ::SetNMEACallback(pCallback);
+  CallWrapper cw(this, "SetNMEACallback");
+  return cw.CheckReturn(::SetNMEACallback(pCallback));
 }
 
 ULONG Sdk::SetNMEAPlusCallback(tFNNewNMEAPlus pCallback) {
-  ReentrancyPreventer rp(this, "SetNMEAPlusCallback");
-  return ::SetNMEAPlusCallback(pCallback);
+  CallWrapper cw(this, "SetNMEAPlusCallback");
+  return cw.CheckReturn(::SetNMEAPlusCallback(pCallback));
 }
 
 ULONG Sdk::SetPDSStateCallback(tFNPDSState pCallback) {
-  ReentrancyPreventer rp(this, "SetPDSStateCallback");
-  return ::SetPDSStateCallback(pCallback);
+  CallWrapper cw(this, "SetPDSStateCallback");
+  return cw.CheckReturn(::SetPDSStateCallback(pCallback));
 }
 
 ULONG Sdk::SetCATEventCallback(
     tFNCATEvent                pCallback,
     ULONG                      eventMask,
     ULONG *                    pErrorMask) {
-  ReentrancyPreventer rp(this, "SetCATEventCallback");
-  return ::SetCATEventCallback(
+  CallWrapper cw(this, "SetCATEventCallback");
+  return cw.CheckReturn(::SetCATEventCallback(
       pCallback,
       eventMask,
-      pErrorMask);
+      pErrorMask));
 }
 
 ULONG Sdk::SetOMADMAlertCallback(tFNOMADMAlert pCallback) {
-  ReentrancyPreventer rp(this, "SetOMADMAlertCallback");
-  return ::SetOMADMAlertCallback(pCallback);
+  CallWrapper cw(this, "SetOMADMAlertCallback");
+  return cw.CheckReturn(::SetOMADMAlertCallback(pCallback));
 }
 
 ULONG Sdk::SetOMADMStateCallback(tFNOMADMState pCallback) {
-  ReentrancyPreventer rp(this, "SetOMADMStateCallback");
-  return ::SetOMADMStateCallback(pCallback);
+  CallWrapper cw(this, "SetOMADMStateCallback");
+  return cw.CheckReturn(::SetOMADMStateCallback(pCallback));
 }
 
 }   // Namespace Gobi

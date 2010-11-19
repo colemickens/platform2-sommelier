@@ -58,6 +58,15 @@ class GobiModem
     last_seen_ = scan_count;
   }
 
+  static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
+
+  // Called by the SDK wrapper when it receives an error that requires
+  // that the modem be reset.  Posts a main-thread callback that
+  // power cycles the modem.
+  static void SinkSdkError(const std::string& modem_path,
+                           const std::string& sdk_function,
+                           ULONG error);
+
   std::string GetUSBAddress();
 
   // DBUS Methods: Modem
@@ -101,9 +110,13 @@ class GobiModem
   virtual void PowerCycle(DBus::Error& error);
   virtual void RequestEvents(const std::string& events, DBus::Error& error);
 
-  static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
-
  protected:
+  struct SerialNumbers {
+    std::string esn;
+    std::string imei;
+    std::string meid;
+  };
+
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOmadm();
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
@@ -117,11 +130,6 @@ class GobiModem
   void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
-  struct SerialNumbers {
-    std::string esn;
-    std::string imei;
-    std::string meid;
-  };
   void GetSerialNumbers(SerialNumbers* out, DBus::Error &error);
   void LogGobiInformation();
 
@@ -254,6 +262,8 @@ class GobiModem
 
   static gboolean ActivationTimeoutCallback(gpointer data);
 
+  static gboolean SdkFailureResetHandler(gpointer data);
+
   static void *NMEAThreadTrampoline(void *arg) {
     if (connected_modem_)
       return connected_modem_->NMEAThread();
@@ -316,6 +326,7 @@ class GobiModem
 
   bool suspending_;
   bool exiting_;
+  bool device_resetting_;
   const Carrier *carrier_;
 
   friend class GobiModemTest;

@@ -30,7 +30,7 @@ SRCS = device_watcher.cc \
 
 OBJS = $(SRCS:.cc=.o)
 
-all: $(GOBI_PLUGIN) $(TESTS)
+all: $(GOBI_PLUGIN) $(TESTS) gobi-modem-reset
 
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
@@ -60,7 +60,7 @@ install: $(GOBI_PLUGIN) gobi-modem-reset
 
 .PHONY: clean
 clean:
-	$(RM) $(GOBI_PLUGIN) *.o .*.d core a.out
+	$(RM) $(GOBI_PLUGIN) $(TESTS) *.o .*.d core a.out gobi-modem-reset
 
 .%.d: %.cc
 	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) -MF $@ -MT $(<:.cc=.o) -MT $@ $<

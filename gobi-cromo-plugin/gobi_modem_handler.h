@@ -6,6 +6,7 @@
 #define CROMO_GOBI_MODEM_HANDLER_H_
 
 #include "base/basictypes.h"
+#include "base/scoped_ptr.h"
 
 #include <map>
 
@@ -15,6 +16,9 @@
 #include "gobi_modem.h"
 
 class DeviceWatcher;
+namespace gobi {
+class Sdk;
+}
 
 class GobiModemHandler : public ModemHandler {
  public:
@@ -43,6 +47,8 @@ class GobiModemHandler : public ModemHandler {
   DeviceWatcher *device_watcher_;
 
   int scan_generation_;
+
+  scoped_ptr<gobi::Sdk> sdk_;
 
   DISALLOW_COPY_AND_ASSIGN(GobiModemHandler);
 };

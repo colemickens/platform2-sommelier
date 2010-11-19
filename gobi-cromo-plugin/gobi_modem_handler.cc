@@ -18,14 +18,13 @@ extern "C" {
 
 #include "device_watcher.h"
 #include "gobi_modem.h"
+#include "gobi_sdk_wrapper.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
 #endif
 
 using std::vector;
-
-static gobi::Sdk GOBI_SDK;
 
 static ModemHandler* mm;
 
@@ -59,7 +58,8 @@ bool GobiModemHandler::Initialize() {
   // to be an error. Fortunately syslog declares both openlog() and closelog()
   // 'optional', so...
   syslog(LOG_NOTICE, "gobi-cromo-plugin vcsid %s", VCSID);
-  GOBI_SDK.Init();
+  sdk_.reset(new gobi::Sdk(GobiModem::SinkSdkError));
+  sdk_->Init();
   GobiModem::set_handler(this);
   MonitorDevices();
   RegisterSelf();
@@ -107,8 +107,8 @@ bool GobiModemHandler::GetDeviceList() {
   DEVICE_ELEMENT devices[MAX_MODEMS];
   BYTE num_devices = MAX_MODEMS;
 
-  rc = GOBI_SDK.QCWWANEnumerateDevices(&num_devices,
-                                       reinterpret_cast<BYTE*>(devices));
+  rc = sdk_->QCWWANEnumerateDevices(&num_devices,
+                                    reinterpret_cast<BYTE*>(devices));
   if (rc != 0) {
     return false;
   }
@@ -126,7 +126,7 @@ bool GobiModemHandler::GetDeviceList() {
       GobiModem* m = new GobiModem(server().conn(),
                                    MakePath(),
                                    devices[i],
-                                   &GOBI_SDK);
+                                   sdk_.get());
       m->set_last_seen(scan_generation_);
       key_to_modem_[std::string(devices[i].deviceKey)] = m;
       server().DeviceAdded(m->path());

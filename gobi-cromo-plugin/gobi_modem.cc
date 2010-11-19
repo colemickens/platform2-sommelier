@@ -214,9 +214,11 @@ GobiModem::GobiModem(DBus::Connection& connection,
       session_state_(gobi::kDisconnected),
       session_id_(0),
       suspending_(false),
-      exiting_(false) {
+      exiting_(false),
+      device_resetting_(false) {
   memcpy(&device_, &device, sizeof(device_));
 
+  sdk_->set_current_modem_path(path);
   metrics_lib_.reset(new MetricsLibrary());
   metrics_lib_->Init();
 
@@ -642,7 +644,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   return result;
 }
 
-  // DBUS Methods: ModemCDMA
+// DBUS Methods: ModemCDMA
 
 std::string GobiModem::GetEsn(DBus::Error& error) {
   LOG(INFO) << "GetEsn";
@@ -945,7 +947,6 @@ ULONG GobiModem::ApiDisconnect(void) {
     LOG(INFO) << "Not connected.  this_=0x" << this;
     pthread_mutex_unlock(&modem_mutex_.mutex_);
   }
-
   return rc;
 }
 
@@ -1120,7 +1121,6 @@ void GobiModem::ActivateManualDebug(
 }
 
 void GobiModem::ResetModem(DBus::Error& error) {
-  // TODO(rochberg):  Is this going to confuse connman?
   Enabled = false;
   LOG(INFO) << "Offline";
 
@@ -1621,7 +1621,28 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
   return FALSE;
 }
 
-// Runs in the context of the main thread
+void GobiModem::SinkSdkError(const std::string& modem_path,
+                             const std::string& sdk_function,
+                             ULONG error) {
+  LOG(ERROR) << sdk_function << ": unrecoverable error " << error
+             << " on modem " << modem_path;
+  PostCallbackRequest(GobiModem::SdkFailureResetHandler,
+                      new CallbackArgs(new DBus::Path(modem_path)));
+}
+
+// Callbacks:  Run in the context of the main thread
+gboolean GobiModem::SdkFailureResetHandler(gpointer data) {
+  CallbackArgs *args = static_cast<CallbackArgs *>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL) {
+    modem->ResetDevice();
+  } else {
+    LOG(INFO) << "Reset received for obsolete path "
+              << args->path;
+  }
+  return FALSE;
+}
+
 gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   SignalStrengthArgs* args = static_cast<SignalStrengthArgs*>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
@@ -1892,8 +1913,34 @@ void GobiModem::RequestEvents(const std::string& events, DBus::Error& error) {
 }
 
 void GobiModem::ResetDevice() {
-  char buf[256];
+  if (device_resetting_) {
+    LOG(ERROR) << "Already resetting " << static_cast<std::string>(path());
+    return;
+  }
+  device_resetting_ = true;
   const char *addr = GetUSBAddress().c_str();
-  snprintf(buf, sizeof(buf), "/usr/bin/gobi-modem-reset %s", addr);
-  system(buf);
+
+  LOG(ERROR) << "Resetting modem device: "
+             << static_cast<std::string>(path())
+             << " USB device: " << addr;
+  ApiDisconnect();
+
+  int pid = fork();
+  if (pid < 0) {
+    PLOG(ERROR) << "fork()";
+    return;
+  }
+  if (pid == 0) {
+    int rc = daemon(0, 0);
+    if (rc == 0) {
+      const char kReset[] = "/usr/bin/gobi-modem-reset";
+      execl(kReset,
+            kReset,
+            addr,
+            static_cast<char *>(NULL));
+      PLOG(ERROR) << "execl failed";
+    } else {
+      PLOG(ERROR) << "daemon()";
+    }
+  }
 }
