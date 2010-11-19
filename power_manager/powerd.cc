@@ -344,7 +344,8 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     }
     idle_state_ = kIdleNormal;
   }
-  if (idle_time_ms >= lock_ms_ && util::LoggedIn()) {
+  if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
+      idle_state_ != kIdleSuspend) {
     locker_.LockScreen();
   }
 }
