@@ -141,8 +141,8 @@ class Daemon : public XIdleMonitor {
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
-  // Check for extremely low battery condition and triggers suspend.
-  void SuspendOnLowBattery(double battery_percentage);
+  // Check for extremely low battery condition.
+  void OnLowBattery(double battery_percentage);
 
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
@@ -234,7 +234,7 @@ class Daemon : public XIdleMonitor {
   XIdle idle_;
   double low_battery_suspend_percent_;
   bool clean_shutdown_initiated_;
-  bool low_battery_suspended_;
+  bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
   int64 plugged_dim_ms_;
   int64 plugged_off_ms_;

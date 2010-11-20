@@ -55,7 +55,7 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       video_detector_(video_detector),
       low_battery_suspend_percent_(0),
       clean_shutdown_initiated_(false),
-      low_battery_suspended_(false),
+      low_battery_(false),
       enforce_lock_(false),
       use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
@@ -356,7 +356,7 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
   daemon->GenerateMetricsOnPowerEvent(info);
   // Do not emergency suspend if no battery exists.
   if (info.battery_is_present)
-    daemon->SuspendOnLowBattery(info.battery_percentage);
+    daemon->OnLowBattery(info.battery_percentage);
 }
 
 GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
@@ -537,17 +537,19 @@ void Daemon::RegisterDBusMessageHandler() {
   LOG(INFO) << "D-Bus monitoring started";
 }
 
-void Daemon::SuspendOnLowBattery(double battery_percentage) {
-  if (kPowerDisconnected == plugged_state_ && !low_battery_suspended_ &&
+void Daemon::OnLowBattery(double battery_percentage) {
+  if (kPowerDisconnected == plugged_state_ && !low_battery_ &&
       battery_percentage <= low_battery_suspend_percent_) {
-    LOG(INFO) << "Low battery condition detected. Suspending immediately.";
-    low_battery_suspended_ = true;
+    // Shut the system down when low battery condition is encountered.
+    LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
+    low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
-    Suspend();
+    OnRequestShutdown();
   } else if (kPowerConnected == plugged_state_ ||
              battery_percentage > low_battery_suspend_percent_ ) {
-    LOG(INFO) << "Battery condition is safe (plugged in or not low).";
-    low_battery_suspended_ = false;
+    LOG(INFO) << "Battery condition is safe (plugged in or not low) : "
+              << battery_percentage << "%";
+    low_battery_ = false;
     file_tagger_.HandleSafeBatteryEvent();
   } else {
     // Either a spurious reading after we have requested suspend, or the user
