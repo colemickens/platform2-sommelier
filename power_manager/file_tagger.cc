@@ -14,9 +14,7 @@ namespace power_manager {
 
 // Files used for crash reporting
 // File with timestamp of last suspend
-static const char kPowerdSuspendFile[] = "powerd_suspending";
-// File with timestamp of last resume
-static const char kPowerdResumeFile[] = "powerd_resuming";
+static const char kPowerdSuspendFile[] = "powerd_suspended";
 // Presence of this file indicates that the battery is critically low and the
 // system is running on battery, not on AC power.
 static const char kPowerdLowBatteryFile[] = "powerd_low_battery";
@@ -25,19 +23,17 @@ FileTagger::FileTagger(const FilePath& trace_dir)
   : can_tag_files_(false),
     trace_dir_(trace_dir),
     suspend_file_(trace_dir.Append(kPowerdSuspendFile)),
-    resume_file_(trace_dir.Append(kPowerdResumeFile)),
     low_battery_file_(trace_dir.Append(kPowerdLowBatteryFile)) {}
 
 void FileTagger::Init() {
   SetupTraceFileNotifier();
 
-  // If all three trace files have been deleted, allow tracing.
+  // If both trace files have been deleted, allow tracing.
   // This prevents the files from being overwritten until the crash reporter
   // has collected the data from them.  When crash reporter is done, it will
   // delete them, at which point the tagger can start a new round of file
   // writes/deletes.
   if (!file_util::PathExists(suspend_file_) &&
-      !file_util::PathExists(resume_file_) &&
       !file_util::PathExists(low_battery_file_)) {
     LOG(INFO) << "Enabling trace file tagging";
     can_tag_files_ = true;
@@ -51,7 +47,7 @@ void FileTagger::HandleSuspendEvent() {
 }
 
 void FileTagger::HandleResumeEvent() {
-  TouchFile(resume_file_);
+  DeleteFile(suspend_file_);
 }
 
 void FileTagger::HandleLowBatteryEvent() {
@@ -93,11 +89,9 @@ gboolean FileTagger::TraceFileChangeHandler(const char* name,
   FileTagger* tagger = static_cast<FileTagger*>(data);
   LOG(INFO) << "Received file system change signal from file " << name;
   if (!strcmp(name, tagger->suspend_file_.BaseName().value().c_str()) ||
-      !strcmp(name, tagger->resume_file_.BaseName().value().c_str()) ||
       !strcmp(name, tagger->low_battery_file_.BaseName().value().c_str())) {
-    // Make sure that all three files have been deleted.
+    // Make sure that both trace files have been deleted.
     if (!file_util::PathExists(tagger->suspend_file_) &&
-        !file_util::PathExists(tagger->resume_file_) &&
         !file_util::PathExists(tagger->low_battery_file_)) {
       tagger->can_tag_files_ = true;
       LOG(INFO) << "Enabling file tagging, writing any cached files.";

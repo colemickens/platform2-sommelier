@@ -48,20 +48,15 @@ TEST_F(FileTaggerTest, SuspendFile) {
   EXPECT_TRUE(file_tagger_->can_tag_files_);
   // Make sure the file does not exist.
   EXPECT_FALSE(file_util::PathExists(file_tagger_->suspend_file_));
-  // Tag suspend file and see if it has been created.
+  // Simulate suspend event and see if suspend file has been created.
   file_tagger_->HandleSuspendEvent();
   EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
-}
-
-TEST_F(FileTaggerTest, ResumeFile) {
-  // Directory should be empty, so tagging is allowed at start.
-  EXPECT_TRUE(file_tagger_->can_tag_files_);
-  EXPECT_TRUE(file_util::PathExists(file_tagger_->trace_dir_));
-  // Make sure the file does not exist.
-  EXPECT_FALSE(file_util::PathExists(file_tagger_->resume_file_));
-  // Tag resume file and see if it has been created.
+  // Simulate resume event and see if suspend file has been deleted.
   file_tagger_->HandleResumeEvent();
-  EXPECT_TRUE(file_util::PathExists(file_tagger_->resume_file_));
+  EXPECT_FALSE(file_util::PathExists(file_tagger_->suspend_file_));
+  // Simulate suspend event again.  The suspend file should return.
+  file_tagger_->HandleSuspendEvent();
+  EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
 }
 
 TEST_F(FileTaggerTest, LowBatteryFile) {
@@ -85,32 +80,31 @@ TEST_F(FileTaggerTest, FileCache) {
   // Create suspend file that will block tagging later.
   file_tagger_->HandleSuspendEvent();
   EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
-  EXPECT_FALSE(file_util::PathExists(file_tagger_->resume_file_));
   EXPECT_FALSE(file_util::PathExists(file_tagger_->low_battery_file_));
   // Now destroy and re-create the file tagger object to simulate a restart
   // without cleaning up the created files.
   file_tagger_.reset(new FileTagger(temp_dir_generator_->path()));
   file_tagger_->Init();
-  // Suspend file should still exist.  The others should not exist.
+  // Suspend file should still exist.  Low battery file should not exist.
   EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
-  EXPECT_FALSE(file_util::PathExists(file_tagger_->resume_file_));
   EXPECT_FALSE(file_util::PathExists(file_tagger_->low_battery_file_));
   // No write access at this point because a tagged file exists.
   EXPECT_FALSE(file_tagger_->can_tag_files_);
-  // Attempt to tag all three files.  The file system should not be changed.
+  // Simulate suspend, resume, and low battery events.  The file system should
+  // not be changed.
   file_tagger_->HandleSuspendEvent();
   file_tagger_->HandleResumeEvent();
+  file_tagger_->HandleSuspendEvent();
   file_tagger_->HandleLowBatteryEvent();
   EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
-  EXPECT_FALSE(file_util::PathExists(file_tagger_->resume_file_));
   EXPECT_FALSE(file_util::PathExists(file_tagger_->low_battery_file_));
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_timeout_add(100, DeleteFile, &file_tagger_->suspend_file_);
   g_timeout_add(200, QuitLoop, loop);
   g_main_loop_run(loop);
   EXPECT_TRUE(file_tagger_->can_tag_files_);
+  // Now both files should exist, after cache has written them.
   EXPECT_TRUE(file_util::PathExists(file_tagger_->suspend_file_));
-  EXPECT_TRUE(file_util::PathExists(file_tagger_->resume_file_));
   EXPECT_TRUE(file_util::PathExists(file_tagger_->low_battery_file_));
 }
 

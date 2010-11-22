@@ -33,7 +33,6 @@ class FileTagger {
  private:
   friend class FileTaggerTest;
   FRIEND_TEST(FileTaggerTest, SuspendFile);
-  FRIEND_TEST(FileTaggerTest, ResumeFile);
   FRIEND_TEST(FileTaggerTest, LowBatteryFile);
   FRIEND_TEST(FileTaggerTest, FileCache);
 
@@ -59,7 +58,6 @@ class FileTagger {
   FilePath trace_dir_;
   // Files to be tagged
   FilePath suspend_file_;
-  FilePath resume_file_;
   FilePath low_battery_file_;
 
   // Used for recording writes/deletes before the crash reporter has removed
