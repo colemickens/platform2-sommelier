@@ -15,7 +15,9 @@ struct udev;
 struct udev_monitor;
 struct udev_device;
 
-typedef void (*DeviceCallback)(void*);
+typedef void (*DeviceCallback)(void* context,
+                               const char *action,
+                               const char *device);
 typedef void (*TimeoutCallback)(void*);
 
 class DeviceWatcher {

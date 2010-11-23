@@ -135,8 +135,11 @@ void DeviceWatcher::HandleUdevEvent() {
             << "  Subsystem: " << NullFilter(udev_device_get_subsystem(device))
             << "  Devtype: " << NullFilter(udev_device_get_devtype(device))
             << "  Driver: " << NullFilter(udev_device_get_driver(device));
-  if (device_callback_ != NULL)
-    device_callback_(device_callback_arg_);
+  if (device_callback_ != NULL) {
+    device_callback_(device_callback_arg_,
+                     udev_device_get_action(device),
+                     udev_device_get_devnode(device));
+  }
   udev_device_unref(device);
 }
 

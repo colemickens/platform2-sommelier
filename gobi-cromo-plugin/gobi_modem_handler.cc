@@ -32,9 +32,9 @@ static const int kDevicePollIntervalSecs = 1;
 static const char* kQCDeviceName = "QCQMI";
 static const char* kUSBDeviceListFile = "/var/run/cromo/usb-devices";
 
-static void udev_callback(void* data) {
+static void udev_callback(void* data, const char *action, const char *device) {
   GobiModemHandler* handler = static_cast<GobiModemHandler*>(data);
-  handler->UpdateDeviceState();
+  handler->HandleUdevMessage(action, device);
 }
 
 static void timeout_callback(void* data) {
@@ -78,17 +78,62 @@ void GobiModemHandler::MonitorDevices() {
   GetDeviceList();
 }
 
-void GobiModemHandler::UpdateDeviceState() {
-  LOG(INFO) << "UpdateDeviceState";
-  // If we got a udev event that says a device was added
-  // or removed, but the SDK doesn't reflect that yet,
-  // then start polling the SDK until the change becomes
-  // visible.
-  if (!GetDeviceList()) {
+void GobiModemHandler::HandleUdevMessage(const char *action,
+                                         const char *device) {
+  bool saw_changes = GetDeviceList();
+  if (0 == strcmp("add" , action) && DevicePresent(device)) {
+    LOG(INFO) << "Device already present";
+    return;    // Do not start poller
+  }
+
+  if (0 == strcmp("remove", action)) {
+    RemoveDeviceByName(device);
+    // No need to start poller; we have acted on event
+    return;
+  }
+
+  if (!saw_changes) {
+    // The udev change isn't yet visible to QCWWAN.  Poll until it is.
     device_watcher_->StartPolling(kDevicePollIntervalSecs,
                                   timeout_callback,
                                   this);
+  } else {
+    LOG(ERROR) << "Saw unexpected change " << action << " " device;
   }
+}
+
+void GobiModemHandler::RemoveDeviceByName(const char *device) {
+  KeyToModem::iterator p = key_to_modem_.find(device);
+  if (p != key_to_modem_.end()) {
+    LOG(INFO) << "Removing device " << device;
+    RemoveDeviceByIterator(p);
+  } else {
+    LOG(INFO) << "Could not find " << device << " to remove";
+  }
+}
+
+GobiModemHandler::KeyToModem::iterator GobiModemHandler::RemoveDeviceByIterator(
+    KeyToModem::iterator p) {
+  if (p == key_to_modem_.end()) {
+    LOG(ERROR) << "Bad iterator";
+    return p;
+  }
+  KeyToModem::iterator next = p;
+  ++next;
+
+  GobiModem *m = p->second;
+  if (m == NULL) {
+    LOG(ERROR) << "no modem";
+    return next;
+  }
+  server().DeviceRemoved(m->path());
+  key_to_modem_.erase(p);
+  delete m;
+  return next;
+}
+
+bool GobiModemHandler::DevicePresent(const char *device) {
+  return key_to_modem_.find(device) != key_to_modem_.end();
 }
 
 void GobiModemHandler::HandlePollEvent() {
@@ -96,10 +141,9 @@ void GobiModemHandler::HandlePollEvent() {
     device_watcher_->StopPolling();
 }
 
-// Get the list of visible devices, keeping track of
-// what devices have been added and removed since the
-// last time we looked. Returns true if any devices
-// have been added or removed, false otherwise.
+// Get the list of visible devices, keeping track of what devices have
+// been added and removed since the last time we looked. Returns true
+// if any devices have been added or removed, false otherwise.
 bool GobiModemHandler::GetDeviceList() {
   const int MAX_MODEMS = 16;
   ULONG rc;
@@ -141,9 +185,7 @@ bool GobiModemHandler::GetDeviceList() {
     if (m->last_seen() != scan_generation_) {
       something_changed = true;
       LOG(INFO) << "Device " << m->path() << " has disappeared";
-      server().DeviceRemoved(m->path());
-      delete m;
-      key_to_modem_.erase(p++);
+      p = RemoveDeviceByIterator(p);
     } else {
       ++p;
     }

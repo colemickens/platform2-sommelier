@@ -27,12 +27,17 @@ class GobiModemHandler : public ModemHandler {
 
   virtual std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
   virtual bool Initialize();
-  void UpdateDeviceState();
+  void HandleUdevMessage(const char *action, const char *device);
   void HandlePollEvent();
   GobiModem* LookupByPath(const std::string& path);
 
  private:
   typedef std::map<std::string, GobiModem *> KeyToModem;
+
+  bool DevicePresent(const char *device);
+
+  void RemoveDeviceByName(const char *device);
+  KeyToModem::iterator RemoveDeviceByIterator(KeyToModem::iterator p);
 
   // On clean exit clear the list of devices that need to be reset
   void ClearDeviceListFile();
