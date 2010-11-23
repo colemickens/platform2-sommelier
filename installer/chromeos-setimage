@@ -113,21 +113,29 @@ ESP_LOOP=
 ROOT_LOOP=
 KERN_LOOP=
 
+# Cleans up a device and unmount if required.
 cleanup_loop() {
   local dev="$1"
-  if [ -z "$dev" ]; then
+  local need_umount="$2"
+  if [ -z "${dev}" ]; then
     return 0
   fi
-  (sudo umount "$dev" || true)
-  (sudo losetup -d "$dev" || true)
+  if [ ${need_umount} -eq ${FLAGS_TRUE} ]; then
+    sudo umount -d "${dev}" || true
+  elif [ ${need_umount} -eq ${FLAGS_FALSE} ]; then
+    sudo losetup -d "${dev}" || true
+  else
+    echo "INTERNAL ERROR: unknown parameter for cleanup_loop: ${need_umount}" >&2
+  fi
 }
 
 cleanup() {
-  cleanup_loop "${ESP_LOOP}"
+  # Currently only ESP may be mounted. KERN and ROOT are never mounted.
+  cleanup_loop "${ESP_LOOP}" "${FLAGS_TRUE}"
   ESP_LOOP=
-  cleanup_loop "${KERN_LOOP}"
+  cleanup_loop "${KERN_LOOP}" "${FLAGS_FALSE}"
   KERN_LOOP=
-  cleanup_loop "${ROOT_LOOP}"
+  cleanup_loop "${ROOT_LOOP}" "${FLAGS_FALSE}"
   ROOT_LOOP=
 
   # Failing to clean this up isn't the worst.
