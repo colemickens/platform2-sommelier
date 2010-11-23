@@ -37,10 +37,11 @@ fi
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
-# Check if we are booted on physical media. rootdev will fail if we are in
-# an initramfs or tmpfs rootfs.
+# Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
+# Check if we are booted on physical media. rootdev will fail if we are in
+# an initramfs or tmpfs rootfs.
 if [ "$ROOTDEV_RET_CODE" = "0" ]; then
   # Find our stateful partition. It's always partition 1.
   STATE_DEV=${ROOT_DEV%[0-9]*}1
@@ -61,8 +62,15 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     fi
     umount "$TMP_STATEFUL"
     rmdir "$TMP_STATEFUL"
-  else
-    mount -n -t ext3 -o nodev,noexec,nosuid "$STATE_DEV" /mnt/stateful_partition
+
+  # For all other cases, mount stateful partition from STATE_DEV.
+  elif ! mount -n -t ext3 -o nodev,noexec,nosuid \
+         "$STATE_DEV" /mnt/stateful_partition; then
+    # Try to rebuild the stateful partition by  clobber-state
+    # (for security concern, we don't use fast mode)
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert wipe /dev/tty1
+    exec clobber-state "keepimg"
   fi
 fi
 
@@ -70,7 +78,7 @@ fi
 # by ignoring the bootloader detection and just checks the switch state.
 # Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
 cros_boot_mode -b -s -m developer
-DEVMODE=$((!$?))
+DEVMODE=$((! $?))
 
 # Check if we need to perform firmware update.
 NEED_FIRMWARE_UPDATE='/mnt/stateful_partition/.need_firmware_update'
@@ -165,6 +173,8 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
 fi
 
 # Make sure stateful partition has some basic directories
+# TODO(hungte) verify if these directories are really created or corrupted (ex,
+# occupied by files), or start a clobber-state.
 mkdir -p -m 0755 /mnt/stateful_partition/etc
 mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/var/cache
