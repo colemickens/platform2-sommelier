@@ -10,6 +10,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <sys/wait.h>
 
 extern "C" {
 #include <libudev.h>
@@ -1938,9 +1939,16 @@ void GobiModem::ResetDevice() {
             kReset,
             addr,
             static_cast<char *>(NULL));
-      PLOG(ERROR) << "execl failed";
+      PLOG(ERROR) << "execl()";
     } else {
       PLOG(ERROR) << "daemon()";
+    }
+    _exit(rc);
+  } else {
+    int status;
+    waitpid(pid, &status, 0);
+    if (status != 0) {
+      LOG(ERROR) << "Child process failed: " << status;
     }
   }
 }
