@@ -98,7 +98,7 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
                                   timeout_callback,
                                   this);
   } else {
-    LOG(ERROR) << "Saw unexpected change " << action << " " device;
+    LOG(ERROR) << "Saw unexpected change " << action << " " << device;
   }
 }
 
