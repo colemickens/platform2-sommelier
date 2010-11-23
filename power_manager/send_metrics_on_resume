@@ -10,6 +10,33 @@
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
 
+# Prints the firmware (just BIOS, not including EC) boot time in milliseconds.
+calculate_firmware_boot_time() {
+  # Max CPU frequency, in KHz
+  local cpu_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+  AWK_PROG='
+    /Initial TSC value:/ {
+      sub(".*Initial TSC value: ", "")
+      initial_tsc = $0
+    }
+    END {
+      if (initial_tsc != 0) {
+        printf "%2.2f", initial_tsc / ('$cpu_freq' * 1000.0)
+      }
+    }
+  '
+  dmesg | awk "$AWK_PROG"
+}
+
+# This creates a sentinel file that Chrome uses the existence of to
+# decide to report other statistics.
+write_firmware_boot_time() {
+  local firmware_boot_time=$(calculate_firmware_boot_time)
+  [ -n "$firmware_boot_time" ] || return
+
+  echo $firmware_boot_time > /tmp/firmware-boot-time
+}
+
 # Sends to UMA the total time since going in suspend:
 #   Power.TimeInSuspendAtBoot
 #   Power.TimeInSuspendAtResume
@@ -33,18 +60,23 @@ send_time_in_suspend() {
   /usr/bin/metrics_client $time_in_suspend_name $time_in_suspend 1 10000 50 &
 }
 
-# Prints the firmware (just BIOS, not including EC) resume time
+# Prints the firmware (just BIOS, not including EC) resume time in
+# milliseconds.
 calculate_firmware_resume_time() {
-  local f_processor_mhz=/tmp/processor-mhz
-  [ -r $f_processor_mhz ] || return
-
-  # Not double quoting variables here since they contain numbers.
-  local mhz=$(cat $f_processor_mhz)
-  local tsc=$(grep "TSC at resume" /var/log/messages \
-            | tail -1 \
-            | sed 's/.*TSC at resume: \([0-9]*\)/\1/')
-
-  echo $mhz $tsc | /usr/bin/awk '{ if (NF == 2) print int($2 / ($1 * 1000)) }'
+  # Max CPU frequency, in KHz
+  local cpu_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+  AWK_PROG='
+    /TSC at resume: / {
+      sub(".*TSC at resume: ", "")
+      tsc_at_resume = $0
+    }
+    END {
+      if (tsc_at_resume != 0) {
+        printf "%d", int(tsc_at_resume / '$cpu_freq')
+      }
+    }
+  '
+  dmesg | awk "$AWK_PROG"
 }
 
 # Prints the timestamp of the last occurrence of a specified string in
@@ -83,6 +115,7 @@ send_suspend_resume_time() {
   local kernel_resume_time=$(echo $end_suspend_time $end_resume_time \
     | /usr/bin/awk '{ if (NF == 2 && $1 < $2) print int(($2 - $1) * 1000) }')
   local firmware_resume_time=$(calculate_firmware_resume_time)
+
   [ -n "$kernel_suspend_time" ] && [ -n "$kernel_resume_time" ] &&
     [ -n "$firmware_resume_time" ] || return
 
@@ -105,6 +138,7 @@ main() {
   local event="Resume"
   [ "$1" = "-b" ] && event="Boot"
   send_time_in_suspend $event
+  [ $event = "Boot" ] && write_firmware_boot_time
   [ $event = "Resume" ] && send_suspend_resume_time
 }
 
