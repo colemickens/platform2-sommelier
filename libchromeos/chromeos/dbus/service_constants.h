@@ -63,6 +63,7 @@ extern const char *kSessionManagerEmitLoginPromptReady;
 extern const char *kSessionManagerStartSession;
 extern const char *kSessionManagerStopSession;
 extern const char *kSessionManagerRestartJob;
+extern const char *kSessionManagerRestartEntd;
 extern const char *kSessionManagerSetOwnerKey;
 extern const char *kSessionManagerUnwhitelist;
 extern const char *kSessionManagerCheckWhitelist;

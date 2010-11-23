@@ -63,6 +63,7 @@ const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
 const char *kSessionManagerRestartJob = "RestartJob";
+const char *kSessionManagerRestartEntd = "RestartEntd";
 const char *kSessionManagerSetOwnerKey = "SetOwnerKey";
 const char *kSessionManagerUnwhitelist = "Unwhitelist";
 const char *kSessionManagerCheckWhitelist = "CheckWhitelist";
