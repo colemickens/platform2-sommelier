@@ -20,9 +20,13 @@
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
 
+using base::TimeDelta;
+using base::TimeTicks;
+
 namespace power_manager {
 
 static const int kCheckLidClosedSeconds = 10;
+static const unsigned int kCancelDBusLidOpenedSecs = 5;
 
 PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
                                bool use_input_for_key_power,
@@ -69,6 +73,7 @@ void PowerManDaemon::Init() {
   if (use_input_for_lid_) {
     input_.QueryLidState(&input_lidstate);
     lidstate_ = GetLidState(input_lidstate);
+    lid_ticks_ = TimeTicks::Now();
     LOG(INFO) << "PowerM Daemon Init - lid "
               << (lidstate_ == kLidClosed?"closed.":"opened.");
     if (kLidClosed == lidstate_) {
@@ -128,6 +133,7 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
     case LID: {
       daemon->lidstate_ = daemon->GetLidState(value);
       daemon->lid_id_++;
+      daemon->lid_ticks_ = TimeTicks::Now();
       LOG(INFO) << "PowerM Daemon - lid "
                 << (daemon->lidstate_ == kLidClosed?"closed.":"opened.")
                 << " powerd "
@@ -172,14 +178,23 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
   }
 }
 
+bool PowerManDaemon::CancelDBusRequest() {
+  TimeDelta delta = TimeTicks::Now() - lid_ticks_;
+
+  bool cancel = (lidstate_ == kLidOpened) &&
+                (delta.InSeconds() < kCancelDBusLidOpenedSecs);
+  LOG(INFO) << (cancel?"Canceled":"Continuing")
+            << " DBus activated suspend.  Lid is "
+            << (lidstate_ == kLidClosed?"closed.":"open.");
+  return cancel;
+}
+
 DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     DBusConnection*, DBusMessage* message, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                              util::kSuspendSignal)) {
     LOG(INFO) << "Suspend event";
-    LOG(INFO) << "lid is "
-              << (daemon->lidstate_ == kLidClosed?"closed.":"opened.");
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
                                     util::kShutdownSignal)) {
@@ -326,7 +341,12 @@ void PowerManDaemon::Suspend() {
   pid_t pid = fork();
   if (pid == 0) {
     setsid();
-    exit(fork() == 0 ? wait(NULL), system("powerd_suspend") : 0);
+    if (fork() == 0) {
+      wait(NULL);
+      exit(CancelDBusRequest() ? system("powerd_suspend 1") : system("powerd_suspend 0"));
+    } else {
+      exit(0);
+    }
   } else if (pid > 0) {
     suspend_pid_ = pid;
     waitpid(pid, NULL, 0);

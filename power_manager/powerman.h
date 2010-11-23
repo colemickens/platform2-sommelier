@@ -10,6 +10,7 @@
 #include <gdk/gdk.h>
 
 #include "base/file_path.h"
+#include "base/time.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/input.h"
 #include "power_manager/power_prefs.h"
@@ -69,6 +70,8 @@ class PowerManDaemon {
   };
   // allocate payload for suspend related checking
   RetrySuspendPayload* CreateRetrySuspendPayload();
+
+  bool CancelDBusRequest();
 
   enum PowerManagerState { kPowerManagerUnknown, kPowerManagerAlive,
                            kPowerManagerDead };
@@ -131,6 +134,7 @@ class PowerManDaemon {
   PowerManagerState powerd_state_;   // alive | dead | unknown
   FilePath run_dir_;                 // --run_dir /var/run/power_manager
   FilePath lid_open_file_;           // touch when suspend should be cancelled
+  base::TimeTicks lid_ticks_;        // log time for every lid event
   int console_fd_;
 };
 

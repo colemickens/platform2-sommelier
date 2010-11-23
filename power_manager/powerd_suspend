@@ -29,7 +29,15 @@ cleanup_for_resume() {
     rm -f "/var/run/power_manager/user_active"
 }
 
-log_msg "Going to suspend-to-RAM state"
+parse_args() {
+    cancel=0
+    if [ "$1" != "" ] ; then
+        cancel=$((1 && $1))
+    fi
+}
+
+log_msg "Going to suspend-to-RAM state : args=$@"
+parse_args $@
 
 # - logs the time going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
@@ -40,7 +48,6 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
-cancel=0
 power_status_on_suspend=/tmp/power-status-on-suspend
 force_usb_autosuspend=0
 /usr/bin/devkit-power -d \
