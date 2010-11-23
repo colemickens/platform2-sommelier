@@ -634,6 +634,26 @@ gboolean SessionManagerService::RestartJob(gint pid,
                       OUT_done, error);
 }
 
+gboolean SessionManagerService::RestartEntd(GError** error) {
+  LOG(INFO) << "Restarting entd.";
+  // Shutdown entd if it is currently running, blocking this thread and
+  // method call until it has finished shutting down.
+  int stop_status = system("/sbin/initctl stop entd");
+  // Stop may have failed, but it may be ok if not already running.  Error
+  // messages will go to session manager log.
+  LOG_IF(INFO, stop_status != 0)
+      << "Could not stop entd, likely was not running.";
+  string command = StringPrintf("/sbin/initctl start entd "
+                                "CHROMEOS_USER=%s",
+                                current_user_.c_str());
+  // Start entd with the current user passed in, blocking this thread
+  // and method call until it has finished starting.
+  bool restarted = (system(command.c_str()) == 0);
+  LOG(INFO) << "Restart was " << (restarted ? "" : "not ")
+            << "successful.";
+  return restarted;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
 

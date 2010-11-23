@@ -83,6 +83,8 @@ gboolean session_manager_restart_job(SessionManager *self,
                                      gchar *arguments,
                                      gboolean *OUT_done,
                                      GError **error);
+gboolean session_manager_restart_entd(SessionManager* self,
+                                      GError** error);
 }  // namespace gobject
 }  // namespace login_manager
 #endif  // LOGIN_MANAGER_INTERFACE_H_

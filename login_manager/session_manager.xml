@@ -54,6 +54,8 @@
       <arg type="s" name="value" direction="out" />
       <arg type="ay" name="signature" direction="out" />
     </method>
+    <method name="RestartEntd">
+    </method>
     <signal name="SessionStateChanged">
       <!-- started, stopped -->
       <arg type="s" name="state" />

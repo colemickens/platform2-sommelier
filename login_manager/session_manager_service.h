@@ -270,6 +270,10 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
                       gboolean* OUT_done,
                       GError** error);
 
+  // Restarts (or starts if stopped) the entd upstart job.  Returns if
+  // start was successful.
+  gboolean RestartEntd(GError** error);
+
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
 
