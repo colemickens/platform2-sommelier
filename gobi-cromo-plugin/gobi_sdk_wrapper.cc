@@ -210,7 +210,8 @@ struct CallWrapper {
 
   ULONG CheckReturn(ULONG rc) {
     if (rc == kErrorSendingQmiRequest ||
-        rc == kErrorReceivingQmiRequest) {
+        rc == kErrorReceivingQmiRequest ||
+        rc == kErrorNeedsReset) {
       // SetOMADM...Callback returns error kErrorSendingQmiRequest when
       // run on an image without OMADM-capable firmware.  This error code
       // normally means "You have lost synch with the modem and must reset

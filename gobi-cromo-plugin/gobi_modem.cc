@@ -32,6 +32,8 @@ static const int DEBUG = 1;
 static const int DEBUG = 0;
 #endif
 
+#define METRIC_BASE_NAME "Network.3G.Gobi."
+
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
 static const char *kFifoName = "/tmp/gobi-nmea";
@@ -286,7 +288,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ULONG gps_capability;
 
     ULONG rc = sdk_->SetPower(gobi::kOnline);
-    metrics_lib_->SendEnumToUMA("Network.3G.Gobi.SetPower",
+    metrics_lib_->SendEnumToUMA(METRIC_BASE_NAME "SetPower",
                                 QCErrorToMetricIndex(rc),
                                 METRIC_INDEX_MAX);
     ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
@@ -918,7 +920,7 @@ void GobiModem::ApiConnect(DBus::Error& error) {
   if (rc != 0 || !CanMakeMethodCalls()) {
     LOG(ERROR) << "QCWWANConnect() failed: " << rc;
     // Reset and try again.
-    ResetDevice();
+    ResetDevice(rc);
     rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
     if (rc != 0 || !CanMakeMethodCalls()) {
       LOG(ERROR) << "QCWWANConnect() failed again: " << rc;
@@ -1583,7 +1585,7 @@ gboolean GobiModem::OmadmStateCallback(gpointer data) {
 
   if (activation_done) {
     ULONG duration = time_ms() - modem->activation_start_time_;
-    modem->metrics_lib_->SendToUMA("Network.3G.Gobi.Activation", duration,
+    modem->metrics_lib_->SendToUMA(METRIC_BASE_NAME "Activation", duration,
                                    0, 150000, 20);
   }
 
@@ -1604,7 +1606,7 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
       ULONG duration = time_ms() - modem->activation_start_time_;
-      modem->metrics_lib_->SendToUMA("Network.3G.Gobi.Activation", duration, 0,
+      modem->metrics_lib_->SendToUMA(METRIC_BASE_NAME "Activation", duration, 0,
                                      150000, 20);
     }
     if (args->device_activation_state == gobi::kActivated) {
@@ -1627,16 +1629,16 @@ void GobiModem::SinkSdkError(const std::string& modem_path,
                              ULONG error) {
   LOG(ERROR) << sdk_function << ": unrecoverable error " << error
              << " on modem " << modem_path;
-  PostCallbackRequest(GobiModem::SdkFailureResetHandler,
-                      new CallbackArgs(new DBus::Path(modem_path)));
+  PostCallbackRequest(GobiModem::SdkErrorHandler,
+                      new SdkErrorArgs(error));
 }
 
 // Callbacks:  Run in the context of the main thread
-gboolean GobiModem::SdkFailureResetHandler(gpointer data) {
-  CallbackArgs *args = static_cast<CallbackArgs *>(data);
+gboolean GobiModem::SdkErrorHandler(gpointer data) {
+  SdkErrorArgs *args = static_cast<SdkErrorArgs *>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL) {
-    modem->ResetDevice();
+    modem->ResetDevice(args->error);
   } else {
     LOG(INFO) << "Reset received for obsolete path "
               << args->path;
@@ -1712,14 +1714,14 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   if (state == gobi::kDisconnected) {
     if (disconnect_start_time_) {
       ULONG duration = time_ms() - disconnect_start_time_;
-      metrics_lib_->SendToUMA("Network.3G.Gobi.Disconnect", duration, 0, 150000,
+      metrics_lib_->SendToUMA(METRIC_BASE_NAME "Disconnect", duration, 0, 150000,
                               20);
       disconnect_start_time_ = 0;
     }
     session_id_ = 0;
   } else if (state == gobi::kConnected) {
     ULONG duration = time_ms() - connect_start_time_;
-    metrics_lib_->SendToUMA("Network.3G.Gobi.Connect", duration, 0, 150000, 20);
+    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect", duration, 0, 150000, 20);
     suspending_ = false;
   }
   bool is_connected = (state == gobi::kConnected);
@@ -1740,7 +1742,7 @@ void GobiModem::RegistrationStateHandler() {
   if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
       evdo_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     ULONG duration = time_ms() - registration_start_time_;
-    metrics_lib_->SendToUMA("Network.3G.Gobi.Registration", duration, 0, 150000,
+    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Registration", duration, 0, 150000,
                             20);
   }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
@@ -1913,14 +1915,36 @@ void GobiModem::RequestEvents(const std::string& events, DBus::Error& error) {
   }
 }
 
-void GobiModem::ResetDevice() {
+void GobiModem::RecordResetReason(ULONG reason) {
+  static const ULONG distinguished_errors[] = {
+    gobi::kErrorSendingQmiRequest,    // 0
+    gobi::kErrorReceivingQmiRequest,  // 1
+    gobi::kErrorNeedsReset,           // 2
+  };
+  // Leave some room for other errors
+  const int kMaxError = 10;
+  int bucket = kMaxError;
+  for (size_t i = 0; i < arraysize(distinguished_errors); ++i) {
+    if (reason == distinguished_errors[i]) {
+      bucket = i;
+    }
+  }
+  metrics_lib_->SendEnumToUMA(
+      METRIC_BASE_NAME "ResetReason", bucket, kMaxError + 1);
+}
+
+void GobiModem::ResetDevice(ULONG reason) {
   if (device_resetting_) {
     LOG(ERROR) << "Already resetting " << static_cast<std::string>(path());
     return;
   }
+  if (suspending_) {
+    LOG(ERROR) << "Already suspending " << static_cast<std::string>(path());
+    return;
+  }
   device_resetting_ = true;
+  RecordResetReason(reason);
   const char *addr = GetUSBAddress().c_str();
-
   LOG(ERROR) << "Resetting modem device: "
              << static_cast<std::string>(path())
              << " USB device: " << addr;

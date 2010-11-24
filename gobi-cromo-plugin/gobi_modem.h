@@ -262,7 +262,12 @@ class GobiModem
 
   static gboolean ActivationTimeoutCallback(gpointer data);
 
-  static gboolean SdkFailureResetHandler(gpointer data);
+  struct SdkErrorArgs : public CallbackArgs {
+    SdkErrorArgs(ULONG error) : error(error) { }
+    ULONG error;
+  };
+
+  static gboolean SdkErrorHandler(gpointer data);
 
   static void *NMEAThreadTrampoline(void *arg) {
     if (connected_modem_)
@@ -340,7 +345,12 @@ class GobiModem
   bool SuspendOk();
   void RegisterStartSuspend(const std::string& name);
 
-  void ResetDevice(void);
+  // Resets the device by kicking it off the USB and allowing it back
+  // on.  Reason is a QCWWAN error code for logging/metrics
+  void ResetDevice(ULONG reason);
+  // Helper that compresses reason to a small int and mails to UMA
+  void RecordResetReason(ULONG reason);
+
   bool CanMakeMethodCalls(void);
 
   std::string hooks_name_;
