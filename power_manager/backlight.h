@@ -24,7 +24,7 @@ namespace power_manager {
 
 class Backlight : public BacklightInterface {
  public:
-  Backlight() {}
+  Backlight() : initialized(false) {}
   virtual ~Backlight() {}
 
   // Initialize the backlight object.
@@ -47,6 +47,10 @@ class Backlight : public BacklightInterface {
   FilePath brightness_path_;
   FilePath max_brightness_path_;
 
+  // Set by Init() if the backlight was successfully initialized.
+  // If it was not initialized, Get- and SetBrightness are effectively stubbed
+  // out and return true.
+  bool initialized;
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };
 
