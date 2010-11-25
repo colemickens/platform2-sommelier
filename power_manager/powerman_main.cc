@@ -70,8 +70,7 @@ int main(int argc, char* argv[]) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   FilePath run_dir(FLAGS_run_dir);
-  power_manager::PowerManDaemon daemon(true, true, &prefs, &metrics_lib,
-                                       run_dir);
+  power_manager::PowerManDaemon daemon(&prefs, &metrics_lib, run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

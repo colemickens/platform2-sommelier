@@ -18,8 +18,6 @@ Input::Input()
     : handler_(NULL),
       handler_data_(NULL),
       lid_fd_(-1),
-      enable_lid_(false),
-      enable_power_button_(false),
       num_power_key_events_(0),
       num_lid_events_(0) {}
 
@@ -30,9 +28,7 @@ Input::~Input() {
     close(lid_fd_);
 }
 
-bool Input::Init(bool enable_lid, bool enable_power_button) {
-  enable_lid_ = enable_lid;
-  enable_power_button_ = enable_power_button;
+bool Input::Init() {
   return RegisterInputDevices();
 }
 
@@ -45,7 +41,7 @@ bool Input::Init(bool enable_lid, bool enable_power_button) {
 
 bool Input::QueryLidState(int* lid_state) {
   unsigned long sw[NBITS(SW_LID + 1)];
-  if (!enable_lid_ || 0 > lid_fd_) {
+  if (0 > lid_fd_) {
     LOG(ERROR) << "No lid found on system.";
     return false;
   }
@@ -94,14 +90,15 @@ bool Input::RegisterInputDevices() {
     LOG(ERROR) << "Cannot open input dir : " << input_path.value().c_str();
     return false;
   }
-  if (!num_power_key_events_ && enable_power_button_) {
+  if (!num_power_key_events_) {
     LOG(ERROR) << "No power keys registered.";
     retval = false;
   } else {
     LOG(INFO) << "Number of power key events registered : "
               << num_power_key_events_;
   }
-  if (!num_lid_events_ && enable_lid_) {
+  // Allow max of one lid.
+  if (num_lid_events_ > 1) {
     LOG(ERROR) << "No lid events registered.";
     retval = false;
   } else {
@@ -154,7 +151,7 @@ bool Input::RegisterInputEvent(int fd) {
     return false;
   }
 
-  if (enable_power_button_ && IS_BIT_SET(EV_KEY, events)) {
+  if (IS_BIT_SET(EV_KEY, events)) {
     unsigned long keys[NBITS(KEY_MAX)];
     memset(keys, 0, sizeof(keys));
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
@@ -169,7 +166,7 @@ bool Input::RegisterInputEvent(int fd) {
       watch_added = true;
     }
   }
-  if (enable_lid_ && IS_BIT_SET(EV_SW, events)) {
+  if (IS_BIT_SET(EV_SW, events)) {
     unsigned long sw[NBITS(SW_LID + 1)];
     memset(sw, 0, sizeof(sw));
     if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
@@ -210,10 +207,9 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
   if (!input->handler_)
     return true;
   for (i = 0; i < rd / sizeof(struct input_event); i++)
-    if (input->enable_power_button_ && EV_KEY == ev[i].type &&
-        KEY_POWER == ev[i].code)
+    if (EV_KEY == ev[i].type && KEY_POWER == ev[i].code)
       (*input->handler_)(input->handler_data_, PWRBUTTON, ev[i].value);
-    else if (input->enable_lid_ && EV_SW == ev[i].type && SW_LID == ev[i].code)
+    else if (EV_SW == ev[i].type && SW_LID == ev[i].code)
       (*input->handler_)(input->handler_data_, LID, ev[i].value);
   return true;
 }

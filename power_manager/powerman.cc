@@ -28,14 +28,10 @@ namespace power_manager {
 static const int kCheckLidClosedSeconds = 10;
 static const unsigned int kCancelDBusLidOpenedSecs = 5;
 
-PowerManDaemon::PowerManDaemon(bool use_input_for_lid,
-                               bool use_input_for_key_power,
-                               PowerPrefs* prefs,
+PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
                                MetricsLibraryInterface* metrics_lib,
                                const FilePath& run_dir)
   : loop_(NULL),
-    use_input_for_lid_(use_input_for_lid),
-    use_input_for_key_power_(use_input_for_key_power),
     prefs_(prefs),
     lidstate_(kLidOpened),
     metrics_lib_(metrics_lib),
@@ -67,10 +63,9 @@ void PowerManDaemon::Init() {
   // Acquire a handle to the console for VT switch locking ioctl.
   CHECK(GetConsole());
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
-  CHECK(input_.Init(use_input_for_lid_, use_input_for_key_power_))
-    <<"Cannot initialize input interface";
+  CHECK(input_.Init()) << "Cannot initialize input interface.";
   lid_open_file_ = FilePath(run_dir_).Append(util::kLidOpenFile);
-  if (use_input_for_lid_) {
+  if (input_.GetNumLidEvents() > 0) {
     input_.QueryLidState(&input_lidstate);
     lidstate_ = GetLidState(input_lidstate);
     lid_ticks_ = TimeTicks::Now();

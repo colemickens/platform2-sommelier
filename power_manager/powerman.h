@@ -20,8 +20,7 @@ namespace power_manager {
 
 class PowerManDaemon {
  public:
-  PowerManDaemon(bool use_input_for_lid, bool use_input_for_key_power,
-                 PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib,
+  PowerManDaemon(PowerPrefs* prefs, MetricsLibraryInterface* metrics_lib,
                  const FilePath& run_dir);
   virtual ~PowerManDaemon();
 

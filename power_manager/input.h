@@ -24,7 +24,7 @@ class Input {
   // Initialize the input object.
   //
   // On success, return true; otherwise return false.
-  bool Init(bool enable_lid, bool enable_power_button);
+  bool Init();
 
   // Input handler function type. |data| is object passed to RegisterHandler.
   // |type| is InputType of this event. |value| is the new state of this input
@@ -35,6 +35,13 @@ class Input {
 
   // |lid_state| is 1 for closed lid. 0 for opened lid.
   bool QueryLidState(int* lid_state);
+
+  inline int GetNumLidEvents() const {
+    return num_lid_events_;
+  }
+  inline int GetNumPowerKeyEvents() const {
+    return num_power_key_events_;
+  }
 
  private:
   // For every "event" in /dev/input/, open a file handle, and
@@ -56,8 +63,6 @@ class Input {
   InputHandler handler_;
   void* handler_data_;
   int lid_fd_;
-  bool enable_lid_;
-  bool enable_power_button_;
   int num_power_key_events_;
   int num_lid_events_;
 
