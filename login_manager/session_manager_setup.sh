@@ -212,6 +212,15 @@ if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
 fi
 
+# Look to see if there are touch devices.
+TOUCH_LIST_PATH=/etc/touch-devices
+TOUCH_DEVICES=
+if [ -s $TOUCH_LIST_PATH ] ; then
+  DEVICE_LIST="$(cat $TOUCH_LIST_PATH)"
+  if [ "${DEVICE_LIST%%[,0-9]*}" = "" ] ; then
+    TOUCH_DEVICES="--touch-devices='$DEVICE_LIST'"
+  fi
+fi
 
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
@@ -250,6 +259,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --disable-domui-menu \
             --scroll-pixels=4 \
             --compress-sys-feedback \
+            "$TOUCH_DEVICES" \
             "$REGISTER_PLUGINS" \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
