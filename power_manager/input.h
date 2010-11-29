@@ -36,10 +36,10 @@ class Input {
   // |lid_state| is 1 for closed lid. 0 for opened lid.
   bool QueryLidState(int* lid_state);
 
-  inline int GetNumLidEvents() const {
+  int num_lid_events() const {
     return num_lid_events_;
   }
-  inline int GetNumPowerKeyEvents() const {
+  int num_power_key_events() const {
     return num_power_key_events_;
   }
 

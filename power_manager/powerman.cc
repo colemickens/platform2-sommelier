@@ -65,7 +65,7 @@ void PowerManDaemon::Init() {
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   CHECK(input_.Init()) << "Cannot initialize input interface.";
   lid_open_file_ = FilePath(run_dir_).Append(util::kLidOpenFile);
-  if (input_.GetNumLidEvents() > 0) {
+  if (input_.num_lid_events() > 0) {
     input_.QueryLidState(&input_lidstate);
     lidstate_ = GetLidState(input_lidstate);
     lid_ticks_ = TimeTicks::Now();
