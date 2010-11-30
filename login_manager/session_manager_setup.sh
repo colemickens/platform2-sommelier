@@ -245,7 +245,7 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
             --enable-gview \
-            --log-level=0 \
+            --log-level=1 \
             --enable-logging \
             --disable-seccomp-sandbox \
             --no-first-run \
