@@ -30,21 +30,10 @@ if [ "$TRY_BASH" = "1" -a "$IS_BASH" != "1" -a -x "/bin/bash" ]; then
   exec /bin/bash $0 "$@"
 fi
 
+#
+# Please keep the help text in alphabetical order!
+#
 HELP='
- help
-  Display this help
-
- exit
-  Exit crosh
-
- ssh <user> <host> [<port>]
-  Open an ssh connection to the given <host>, as <user>.  The <port> parameter
-  is optional and defaults to 22.
-
- ssh_forget_host
-  Remove a host from the list of known ssh hosts.  This command displays
-  a menu of known hosts and prompts for the host to forget.
-
  enterprise_ca_approve [--allow-self-signed] <url>
   Approve an enterprise certificate authority.  The <url> option should be
   an http or https url to your enterprise Certificate Authority in PEM
@@ -57,15 +46,21 @@ HELP='
  enterprise_ca_disapprove
   Remove a previously approved enterprise certificate authority.
  
- ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
-  Add and remove flimflam debugging tags
+ exit
+  Exit crosh.
 
- wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
-  Set wpa_supplicant debugging level
+ ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
+  Add and remove flimflam debugging tags.
+
+ help
+  Display this help.
+
+ modem <command> [args...]
+  Interact with the 3G modem. Run "modem help" for detailed help.
 
  network_logging <wifi | cellular | ethernet>
   A function that enables a predefined set of tags useful for 
-  debugging the specified device
+  debugging the specified device.
 
  network_diag
   A function that performs a suite of network diagnostics.  Saves a copy
@@ -78,14 +73,22 @@ HELP='
  route [-n]
   Display the routing tables.
 
+ ssh <user> <host> [<port>]
+  Open an ssh connection to the given <host>, as <user>.  The <port> parameter
+  is optional and defaults to 22.
+
+ ssh_forget_host
+  Remove a host from the list of known ssh hosts.  This command displays
+  a menu of known hosts and prompts for the host to forget.
+
+ top
+  Run top.
+
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
 
- top
-  Run top (in secure mode).
-
- modem <command> [args...]
-  Interact with the 3G modem. Run "modem help" for detailed help.
+ wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
+  Set wpa_supplicant debugging level.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
