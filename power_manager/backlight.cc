@@ -51,7 +51,6 @@ bool Backlight::Init() {
       brightness_path_ = dir_path.Append("brightness");
       actual_brightness_path_ = dir_path.Append("actual_brightness");
       max_brightness_path_ = dir_path.Append("max_brightness");
-      initialized = true;
       return true;
     }
   } else {
@@ -63,8 +62,6 @@ bool Backlight::Init() {
 }
 
 int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
-  if (!initialized)
-    return 0;
   int64 level, max_level;
   // Use members instead of locals so GetBrightness() can use them.
   brightness_path_ = dir_path.Append("brightness");
@@ -84,11 +81,6 @@ int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
 }
 
 bool Backlight::GetBrightness(int64* level, int64* max_level) {
-  if (!initialized) {
-    *level = 1;
-    *max_level = 1;
-    return true;
-  }
   CHECK(!brightness_path_.empty());
   CHECK(!max_brightness_path_.empty());
   std::string level_buf, max_level_buf;
@@ -105,8 +97,6 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
 }
 
 bool Backlight::SetBrightness(int64 level) {
-  if (!initialized)
-    return true;
   std::string buf = base::Int64ToString(level);
   bool ok =
       -1 != file_util::WriteFile(brightness_path_, buf.data(), buf.size());

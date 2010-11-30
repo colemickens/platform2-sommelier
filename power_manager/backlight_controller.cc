@@ -116,7 +116,7 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
 }
 
 bool BacklightController::ReadBrightness() {
-  CHECK(max_ > 0) << "Init() must be called";
+  CHECK(max_ >= 0) << "Init() must be called";
   CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 level;
   GetBrightness(&level);
