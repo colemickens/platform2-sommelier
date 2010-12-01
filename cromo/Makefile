@@ -95,8 +95,8 @@ $(dummy_OBJS): $(GLUE_HEADERS)
 $(CROMO): $(OBJS) $(SYMFILE) $(LIBCROMO)
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
-$(LIBCROMO): utilities.o
-	$(AR) q $@ $^
+$(LIBCROMO): cromo_server.o hooktable.o utilities.o modem_handler.o
+	$(AR) r $@ $^
 
 cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
 utilities_unittest: utilities_unittest.o $(LIBCROMO)
