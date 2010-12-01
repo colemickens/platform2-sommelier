@@ -23,13 +23,12 @@ using ::testing::SetArrayArgument;
 using ::testing::StrEq;
 using ::testing::_;
 
-/*
 class MockGobiModemHandler : public GobiModemHandler {
- public:
-  MockGobiModemHandler() {}
-  MOCK_METHOD1(EnumerateDevices, std::vector<DBus::Path> (DBus::Error& error));
-  MOCK_METHOD0(Initialize, bool());
-  };*/
+  public:
+    MockGobiModemHandler(CromoServer& server) : GobiModemHandler(server) {}
+    MOCK_METHOD1(EnumerateDevices, std::vector<DBus::Path> (DBus::Error& error));
+    MOCK_METHOD0(Initialize, bool());
+};
 
 
 // SetQString<argument # for length, argument # for output>
@@ -48,12 +47,14 @@ static const DEVICE_ELEMENT kDeviceElement = {"/device/node", "keykeykey"};
 
 class GobiModemTest : public ::testing::Test {
  public:
-  GobiModemTest()
-      : connection_(DBus::Connection::SystemBus()),
-        path_("/Gobi/Mock/0") {
+  GobiModemTest() : connection_(DBus::Connection::SystemBus()),
+                    path_("/Gobi/Mock/0") {
+    server_ = new CromoServer(connection_);
+    handler_ = new MockGobiModemHandler(*server_);
   }
 
   void SetUp() {
+    GobiModem::set_handler(handler_);
     modem_ = new GobiModem(connection_,
                            path_,
                            kDeviceElement,
@@ -130,7 +131,8 @@ class GobiModemTest : public ::testing::Test {
  private:
   DISALLOW_COPY_AND_ASSIGN(GobiModemTest);
 
-  //  MockGobiModemHandler handler_;
+  MockGobiModemHandler *handler_;
+  CromoServer *server_;
 };
 
 TEST_F(GobiModemTest, EnableFalseToFalse) {
