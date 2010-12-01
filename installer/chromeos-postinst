@@ -74,8 +74,8 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # FS as such
   (touch "${INSTALL_ROOT}/.nodelta" || true) > /dev/null 2>&1
 
-  echo " Set boot target to ${INSTALL_DEV}: \
-Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
+  echo " Set boot target to ${INSTALL_DEV}:" \
+    "Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
   # TODO(rkc): This is a bit of a hack - we're depending on the fact that our
   # build machine will always be Intel based - if it isn't, VM builds will fail
@@ -169,7 +169,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
   # partition to find that copy of the cgpt program.
   # Note, this only works when running $INSTALL_ROOT/postinst.
   export DEFAULT_CHROOT_DIR=$(dirname "$0")
-  locate_gpt  # sets $GPT to cgpt executable
+  locate_gpt  # sets $GPT to cgpt executable (or fails and exits immediately)
 
   # If we're working on a real machine, not a mounted image, only then
   # run the gpt tool to manipulate the partitions - if we're touching
@@ -191,66 +191,17 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
         ${SUB_CMD_DEBUG_FLAG}
 
     echo "Updating Partition Table Attributes..."
-    # Mark partition table to indicate an update has occurred.
-    # The updated partition should have the highest priority (priority=3) so it
-    # will be tried on the next reboot.
-    # The updated partition should have its success flag marked 0 and its tries
-    # flag marked as having 3 attempts remaining unless in factory installation
-    # or recovery (USB) mode (nothing to fallback for these modes)
-    # The partition that has the highest priority before the update should have
-    # the highest priority after the updated kernel (priority=2).
-    # All other enabled kernel partitions are assigned priority=1.
-    # Kernel partitions that were disabled (priority=0) should remain disabled.
-    kern_parts=""
-    all_parts="$ROOT_DEV"*
     NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
-    # Find all kernel partitions
-    for i in $all_parts
-    do
-        current_index=${i##*/*[a-z]}
-        # Necessary check on arm where device is formatted mmcblk[0-9]p[0-9]
-        if [ -z "$current_index" ] || [ "$current_index" -eq 0 ]; then
-          continue
-        fi
-        # Get type string for current partition
-        type=`"$GPT" show -i $current_index -t $ROOT_DEV`
-        # Check if type string indicates that it is a kernel partition
-        if [ "$type" = "FE3A2A5D-4F32-41A7-B725-ACCC3285A309" ]; then
-          kern_parts="$current_index $kern_parts"
-        fi
-    done
-    highest_prio=0
-    highest_prio_index=-1
-    # Mark all kernel partitions low priority
-    # Kernels with priority zero should not be changed
-    for i in $kern_parts
-    do
-        # Get priority (a number) of the current partition
-        current_prio=`"$GPT" show -i $i -P $ROOT_DEV`
-        if [ $current_prio -eq 0 ]; then
-          continue
-        fi
-        if [ "$current_prio" -gt "$highest_prio" ]; then
-          if [ "$i" != $NEW_KERN_NUM ]; then
-            highest_prio=$current_prio
-            highest_prio_index=$i
-          fi
-        fi
-        "$GPT" add -i $i -P 1 $ROOT_DEV
-    done
-    # The kernel with the highest priority should retain its higher priority
-    if [ $highest_prio != 0 ]; then
-        "$GPT" add -i $highest_prio_index -P 2 $ROOT_DEV
-    fi
-    # set kernel as successful=1 except when autoupdating
+    # Make updated partition highest priority for next reboot
+    "$GPT" prioritize -i $NEW_KERN_NUM $ROOT_DEV
+    # Set kernel as successful=1 except when autoupdating
     new_as_successful=0
     if [ -n "${IS_FACTORY_INSTALL}" -o \
          -n "${IS_RECOVERY_INSTALL}" -o \
          -n "${IS_INSTALL}" ]; then
       new_as_successful=1
     fi
-    # Make updated partition highest priority for next reboot
-    sudo "$GPT" add -i $NEW_KERN_NUM -P 3 -S $new_as_successful -T 6 $ROOT_DEV
+    "$GPT" add -i $NEW_KERN_NUM -S $new_as_successful -T 6 $ROOT_DEV
 
     # Set up gpt boot selection for legacy devices.
     # flush linux caches; seems to be necessary
@@ -259,22 +210,8 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
     echo "Updating gpt PMBR target for legacy BIOS"
     # Configure the PMBR to boot the new image.
-    #
-    # IMPORTANT NOTE: postinst is run by the previoulsy installed image
-    # rather than the new image. So changes here need to be backwards compatible
-    # with the old image's gpt binaries.
-    #
-    if [ -x /usr/bin/cgpt ]; then
-      echo "marking part $LEGACY_PART_NUM bootable (new)"
-      cgpt boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
-    else
-      # The old gpt tool requires a -b arg to specify the PMBR bootcode.
-      # We don't want to change the code, so we have to extract it,
-      # then put it back.
-      dd if=${ROOT_DEV} bs=512 count=1 of=/tmp/oldpmbr.bin
-      echo "marking part $LEGACY_PART_NUM bootable (old)"
-      gpt -S boot -i $LEGACY_PART_NUM -b /tmp/oldpmbr.bin ${ROOT_DEV} 2>&1
-    fi
+    echo "marking part $LEGACY_PART_NUM bootable (new)"
+    "$GPT" boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
 
     # At this point in the script, the new partition has been marked bootable
     # and a reboot will boot into it. Thus, it's important that any future
@@ -312,6 +249,8 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
         # thing that would require/cause reboot, for example re-writing
         # EC firmware. Those tasks will be done in next boot.
         FIRMWARE_UPDATE_MODE="--background-update"
+        # FIXME(wfrichar): This is platform-specific. See below.
+        RECHECK_AFTER_UPDATE="true"
       fi
       FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
       echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
@@ -322,6 +261,46 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
       # we explicitly prompt here.
       if [ "$?" -eq 0 ]; then
         echo "Firmware update complete."
+        if [ -n "${RECHECK_AFTER_UPDATE}" ]; then
+          echo "Check for kernel subkey changes"
+          # FIXME(wfrichar): This is a platform-specific workaround for
+          # chrome-os-partner:1654. It should probably go into the firmware
+          # update script instead of here, but that script doesn't have all the
+          # tools available to make the necessary changes.
+          SCRATCHDIR=$(mktemp -d /tmp/XXXXXX)
+          cd $SCRATCHDIR
+          # Note: This code only runs when we're autoupdating, so we know that
+          # we're running from the newly updated partition. We need to use the
+          # various firmware utilities from that partition too.
+          PATH=${DEFAULT_CHROOT_DIR}/usr/sbin:${PATH}
+          PATH=${DEFAULT_CHROOT_DIR}/usr/bin:${PATH}
+          # Extract the A & B kernel subkeys from the newly written BIOS.
+          flashrom -r bios.rom
+          dump_fmap -x bios.rom
+          gbb_utility -g --rootkey rootkey.vbpubk GBB_Area 
+          vbutil_firmware --verify Firmware_A_Key \
+            --signpubkey rootkey.vbpubk --fv Firmware_A_Data \
+            --kernelkey kernel_subkey_a.vbpubk
+          vbutil_firmware --verify Firmware_B_Key \
+            --signpubkey rootkey.vbpubk --fv Firmware_B_Data \
+            --kernelkey kernel_subkey_b.vbpubk
+          # FIXME: I want to use 'cmp', but we don't have it because it pulls
+          # in all the locale stuff and is too big. When/if we switch to
+          # busybox, we should use cmp here instead.
+          hash_a=$(md5sum kernel_subkey_a.vbpubk | cut -f1 -d' ')
+          hash_b=$(md5sum kernel_subkey_b.vbpubk | cut -f1 -d' ')
+          if [ "$hash_a" != "$hash_b" ]; then
+            echo "Kernel subkeys are different. Using original boot order."
+            guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+            kern_dev=$($sudo "$GPT" find -1 -u $guid)
+            base_dev=$(get_block_dev_from_partition_dev $kern_dev)
+            kern_num=$(get_partition_number $kern_dev)
+            "$GPT" prioritize $base_dev -i $kern_num
+          fi
+          cd - >/dev/null 2>&1
+          rm -rf $SCRATCHDIR
+          echo "Kernel subkey check completed."
+        fi
       else
         # Note: This will only rollback the ChromeOS verified boot target.
         # The assumption is that systems running firmware autoupdate
@@ -330,7 +309,7 @@ Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
         # to recover with a recovery image.
         echo "Firmware update failed."
         echo "Rolling back update due to failure installing required firmware."
-        sudo "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
+        "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
         exit 1
       fi
     fi

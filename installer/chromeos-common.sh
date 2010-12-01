@@ -77,11 +77,11 @@ GPT=""
 
 locate_gpt() {
   if [ -z "$GPT" ]; then
-    GPT=$(which cgpt 2>/dev/null) || /bin/true
-    if [ -z "$GPT" ]; then
-      if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt" ]; then
-        GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt"
-      else
+    if [ -x "${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt" ]; then
+      GPT="${DEFAULT_CHROOT_DIR:-}/usr/bin/cgpt"
+    else
+      GPT=$(which cgpt 2>/dev/null) || /bin/true
+      if [ -z "$GPT" ]; then
         echo "can't find cgpt tool" 1>&2
         exit 1
       fi
