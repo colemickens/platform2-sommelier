@@ -12,6 +12,8 @@
 #include "gobi_modem_handler.h"
 #include "mock_gobi_sdk_wrapper.h"
 
+using utilities::DBusPropertyMap;
+
 using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
@@ -54,7 +56,6 @@ class GobiModemTest : public ::testing::Test {
   void SetUp() {
     modem_ = new GobiModem(connection_,
                            path_,
-                           (GobiModemHandler *)NULL,
                            kDeviceElement,
                            &sdk_);
     error_.reset(new DBus::Error);
@@ -158,7 +159,7 @@ TEST_F(GobiModemTest, GetStatusWhenDisabled) {
   EXPECT_CALL(sdk_, GetActivationState(_)).WillOnce(Return(0));
   ExpectGetFirmwareInfoWithCarrier(102);
   EXPECT_CALL(sdk_, GetSessionState(_)).WillOnce(Return(0));
-  EXPECT_CALL(sdk_, GetServingNetwork(_, _, _, _)).WillOnce(Return(0));
+  EXPECT_CALL(sdk_, GetServingNetwork(_, _, _, _, _, _, _)).WillOnce(Return(0));
   EXPECT_CALL(sdk_, GetSerialNumbers(_, _, _, _, _, _)).WillOnce(Return(1));
   map = modem_->GetStatus(*error_);
   ASSERT_FALSE(error_->is_set());

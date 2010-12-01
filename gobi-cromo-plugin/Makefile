@@ -21,7 +21,7 @@ GOBI_PLUGIN = gobi.so
 GLUE_HEADERS = modem_gobi_server_glue.h
 
 TESTS = gobi_sdk_wrapper_unittest \
-#	gobi_modem_unittest # builds slower than rest of project put together
+	gobi_modem_unittest # builds slower than rest of project put together
 
 SRCS = device_watcher.cc \
        gobi_modem_handler.cc \
@@ -35,12 +35,13 @@ all: $(GOBI_PLUGIN) $(TESTS) gobi-modem-reset
 $(GOBI_PLUGIN) : $(OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
 
-%unittest : LDLIBS += -lgtest -lgmock $(shell $(PKG_CONFIG) --libs gobject-2.0 \
-	 dbus-1 dbus-glib-1 dbus-c++-1)
+%unittest : LDLIBS += -lgtest -lgmock -lcromo -lchromeos \
+	    $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 \
+	      dbus-c++-1)
 
 gobi-modem-reset : gobi-modem-reset.c
 
-gobi_modem_unittest : gobi_modem.o gobi_sdk_wrapper.o gobi_modem_unittest.o
+gobi_modem_unittest : $(OBJS) gobi_modem_unittest.o
 
 gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
 
