@@ -41,5 +41,5 @@ syslog,/usr/share/userfeedback/scripts/getmsgs --last '2 hours' /var/log/message
 touchpad,/opt/google/touchpad/tpcontrol status
 ui_log,/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST
 uname,/bin/uname -a
-update_engine.log,/usr/share/userfeedback/scripts/get_log /var/log/update_engine.log
+update_engine.log,cat $(ls -1tr /var/log/update_engine | tail -5 | sed s.^./var/log/update_engine/.) | /usr/share/userfeedback/scripts/get_log /dev/stdin 2000
 verified boot,/usr/share/userfeedback/scripts/get_log /tmp/debug_vboot/noisy.log

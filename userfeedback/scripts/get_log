@@ -9,8 +9,10 @@
 # with empty entries that just look broken.
 
 max_lines=${2:-1000}
-
 file=$1
+
+[ "$file" = "/dev/stdin" ] && tail --lines=$max_lines "$file" && exit
+
 if [ -h "$file" ]; then
   file="$(readlink -f $file)"
 fi
