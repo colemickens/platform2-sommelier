@@ -73,11 +73,6 @@ class PowerButtonHandler {
   // message.
   bool NotifyWindowManagerAboutShutdown();
 
-  // Helper method used by NotifyWindowManagerAboutPowerButtonState() and
-  // NotifyWindowManagerAboutShutdown().
-  bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
-                                  int first_param);
-
   Daemon* daemon_;  // not owned
 
   // Timeouts for calling the corresponding Handle*TimeoutThunk() methods.

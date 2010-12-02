@@ -6,6 +6,7 @@
 #define POWER_MANAGER_UTIL_H_
 
 #include "base/file_path.h"
+#include "cros/chromeos_wm_ipc_enums.h"
 
 namespace power_manager {
 
@@ -51,6 +52,10 @@ void SendSignalToPowerD(const char* signal);
 // Status file creation and removal
 void CreateStatusFile(FilePath file);
 void RemoveStatusFile(FilePath file);
+
+// Send an X ClientEvent message to the window manager.
+bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
+                                int first_param);
 
 }  // namespace util
 

@@ -50,8 +50,8 @@ class Daemon : public XIdleMonitor {
   void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
 
-  void OnRequestRestart();
-  void OnRequestShutdown();
+  void OnRequestRestart(bool notify_window_manager);
+  void OnRequestShutdown(bool notify_window_manager);
 
  private:
   friend class DaemonTest;

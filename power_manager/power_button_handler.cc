@@ -31,15 +31,6 @@ static const guint kLockToShutdownTimeoutMs = 600;
 // system.
 static const guint kShutdownAnimationMs = 150;
 
-// Name of the X selection that the window manager takes ownership of.  This
-// comes from ICCCM 4.3; see http://tronche.com/gui/x/icccm/sec-4.html#s-4.3.
-static const char kWindowManagerSelectionName[] = "WM_S0";
-
-// Name of the atom used in the message_type field of X ClientEvent messages
-// sent to the Chrome OS window manager.  This is hardcoded in the window
-// manager.
-static const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
-
 // If the ID pointed to by |timeout_id| is non-zero, remove the timeout and set
 // the memory to 0.
 static void RemoveTimeoutIfSet(guint* timeout_id) {
@@ -151,7 +142,7 @@ void PowerButtonHandler::HandleRealShutdownTimeout() {
   // turns back on when X exits or if the user moves the mouse or hits a key.
   // We just dim it instead for now.
   daemon_->backlight_controller()->SetDimState(BACKLIGHT_DIM);
-  daemon_->OnRequestShutdown();
+  daemon_->OnRequestShutdown(false);  // notify_window_manager=false
 }
 
 void PowerButtonHandler::AddShutdownTimeout() {
@@ -166,54 +157,14 @@ void PowerButtonHandler::AddShutdownTimeout() {
 
 bool PowerButtonHandler::NotifyWindowManagerAboutPowerButtonState(
     chromeos::WmIpcPowerButtonState button_state) {
-  return SendMessageToWindowManager(
+  return util::SendMessageToWindowManager(
              chromeos::WM_IPC_MESSAGE_WM_NOTIFY_POWER_BUTTON_STATE,
              button_state);
 }
 
 bool PowerButtonHandler::NotifyWindowManagerAboutShutdown() {
-  return SendMessageToWindowManager(
+  return util::SendMessageToWindowManager(
              chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
-}
-
-bool PowerButtonHandler::SendMessageToWindowManager(
-    chromeos::WmIpcMessageType type, int first_param) {
-  // Ensure that we won't crash if we get an error from the X server.
-  gdk_error_trap_push();
-
-  Display* display = GDK_DISPLAY();
-  Window wm_window = XGetSelectionOwner(
-      display, XInternAtom(display, kWindowManagerSelectionName, True));
-  if (!wm_window) {
-    LOG(WARNING) << "Unable to find window owning the "
-                 << kWindowManagerSelectionName << " X selection -- is the "
-                 << "window manager running?";
-    gdk_error_trap_pop();
-    return false;
-  }
-
-  XEvent event;
-  event.xclient.type = ClientMessage;
-  event.xclient.window = wm_window;
-  event.xclient.message_type =
-      XInternAtom(display, kWindowManagerMessageTypeName, True);
-  event.xclient.format = 32;  // 32-bit values
-  event.xclient.data.l[0] = type;
-  event.xclient.data.l[1] = first_param;
-  for (int i = 2; i < 5; ++i)
-    event.xclient.data.l[i] = 0;
-  XSendEvent(display,
-             wm_window,
-             False,  // propagate
-             0,      // empty event mask
-             &event);
-
-  gdk_flush();
-  if (gdk_error_trap_pop()) {
-    LOG(WARNING) << "Got error while sending message to window manager";
-    return false;
-  }
-  return true;
 }
 
 }  // namespace power_manager

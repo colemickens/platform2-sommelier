@@ -20,6 +20,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/util.h"
@@ -200,15 +201,23 @@ void Daemon::SetPlugged(bool plugged) {
   }
 }
 
-void Daemon::OnRequestRestart() {
+void Daemon::OnRequestRestart(bool notify_window_manager) {
   if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+    if (notify_window_manager) {
+      util::SendMessageToWindowManager(
+          chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
+    }
     system_state_ = kSystemRestarting;
     StartCleanShutdown();
   }
 }
 
-void Daemon::OnRequestShutdown() {
+void Daemon::OnRequestShutdown(bool notify_window_manager) {
   if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+    if (notify_window_manager) {
+      util::SendMessageToWindowManager(
+          chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
+    }
     system_state_ = kSystemShuttingDown;
     StartCleanShutdown();
   }
@@ -436,11 +445,11 @@ DBusHandlerResult Daemon::DBusMessageHandler(
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestRestartSignal)) {
     LOG(INFO) << "RequestRestart event";
-    daemon->OnRequestRestart();
+    daemon->OnRequestRestart(true);  // notify_window_manager=true
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestShutdownSignal)) {
     LOG(INFO) << "RequestShutdown event";
-    daemon->OnRequestShutdown();
+    daemon->OnRequestShutdown(true);  // notify_window_manager=true
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     util::kLidClosed)) {
     LOG(INFO) << "Lid Closed event";
@@ -544,7 +553,7 @@ void Daemon::OnLowBattery(double battery_percentage) {
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
-    OnRequestShutdown();
+    OnRequestShutdown(true);  // notify_window_manager=true
   } else if (kPowerConnected == plugged_state_ ||
              battery_percentage > low_battery_suspend_percent_ ) {
     LOG(INFO) << "Battery condition is safe (plugged in or not low) : "
@@ -627,7 +636,7 @@ void Daemon::Suspend() {
     suspender_.RequestSuspend();
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
-    OnRequestShutdown();
+    OnRequestShutdown(true);  // notify_window_manager=true
   }
 }
 
