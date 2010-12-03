@@ -73,7 +73,7 @@ void PowerButtonHandler::HandleButtonDown() {
     RemoveTimeoutIfSet(&lock_timeout_id_);
     lock_timeout_id_ =
         g_timeout_add(kLockTimeoutMs,
-                      PowerButtonHandler::HandleLockTimeoutThunk,
+                      PowerButtonHandler::OnLockTimeoutThunk,
                       this);
   } else {
     AddShutdownTimeout();
@@ -85,7 +85,7 @@ void PowerButtonHandler::HandleButtonDown() {
   if (should_lock)
     daemon_->locker()->LockScreen();
   else
-    HandleShutdownTimeout();
+    OnShutdownTimeout();
 #endif
 }
 
@@ -108,33 +108,36 @@ void PowerButtonHandler::HandleButtonUp() {
 #endif
 }
 
-void PowerButtonHandler::HandleLockTimeout() {
+gboolean PowerButtonHandler::OnLockTimeout() {
   lock_timeout_id_ = 0;
   daemon_->locker()->LockScreen();
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
   lock_to_shutdown_timeout_id_ =
       g_timeout_add(kLockToShutdownTimeoutMs,
-                    PowerButtonHandler::HandleLockToShutdownTimeoutThunk,
+                    PowerButtonHandler::OnLockToShutdownTimeoutThunk,
                     this);
+  return FALSE;
 }
 
-void PowerButtonHandler::HandleLockToShutdownTimeout() {
+gboolean PowerButtonHandler::OnLockToShutdownTimeout() {
   lock_to_shutdown_timeout_id_ = 0;
   AddShutdownTimeout();
+  return FALSE;
 }
 
-void PowerButtonHandler::HandleShutdownTimeout() {
+gboolean PowerButtonHandler::OnShutdownTimeout() {
   shutdown_timeout_id_ = 0;
   shutting_down_ = true;
   NotifyWindowManagerAboutShutdown();
   DCHECK(real_shutdown_timeout_id_ == 0) << "Shutdown already in-progress";
   real_shutdown_timeout_id_ =
       g_timeout_add(kShutdownAnimationMs,
-                    PowerButtonHandler::HandleRealShutdownTimeoutThunk,
+                    PowerButtonHandler::OnRealShutdownTimeoutThunk,
                     this);
+  return FALSE;
 }
 
-void PowerButtonHandler::HandleRealShutdownTimeout() {
+gboolean PowerButtonHandler::OnRealShutdownTimeout() {
   real_shutdown_timeout_id_ = 0;
   // TODO: Ideally, we'd use the backlight controller to turn off the display
   // after the window manager has had enough time to display the shutdown
@@ -143,6 +146,7 @@ void PowerButtonHandler::HandleRealShutdownTimeout() {
   // We just dim it instead for now.
   daemon_->backlight_controller()->SetDimState(BACKLIGHT_DIM);
   daemon_->OnRequestShutdown(false);  // notify_window_manager=false
+  return FALSE;
 }
 
 void PowerButtonHandler::AddShutdownTimeout() {
@@ -151,7 +155,7 @@ void PowerButtonHandler::AddShutdownTimeout() {
   RemoveTimeoutIfSet(&shutdown_timeout_id_);
   shutdown_timeout_id_ =
       g_timeout_add(kShutdownTimeoutMs,
-                    PowerButtonHandler::HandleShutdownTimeoutThunk,
+                    PowerButtonHandler::OnShutdownTimeoutThunk,
                     this);
 }
 

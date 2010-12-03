@@ -9,6 +9,7 @@
 
 #include "base/basictypes.h"
 #include "cros/chromeos_wm_ipc_enums.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
@@ -26,37 +27,20 @@ class PowerButtonHandler {
   void HandleButtonUp();
 
  private:
-  // Lock the screen and add a timeout for HandleLockToShutdownTimeout().
-  static gboolean HandleLockTimeoutThunk(gpointer data) {
-    reinterpret_cast<PowerButtonHandler*>(data)->HandleLockTimeout();
-    return FALSE;
-  }
-  void HandleLockTimeout();
+  // Lock the screen and add a timeout for OnLockToShutdownTimeout().
+  SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnLockTimeout);
 
   // The power button has been held continuously through the unlocked and locked
   // states, and has been down for long enough that we're considering shutting
   // down the machine.  Starts the shutdown timeout.
-  static gboolean HandleLockToShutdownTimeoutThunk(gpointer data) {
-    reinterpret_cast<PowerButtonHandler*>(data)->HandleLockToShutdownTimeout();
-    return FALSE;
-  }
-  void HandleLockToShutdownTimeout();
+  SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnLockToShutdownTimeout);
 
   // Tell the window manager to start playing the shutdown animation and add a
-  // timeout for HandleRealShutdownTimeout() to fire after the animation is
-  // done.
-  static gboolean HandleShutdownTimeoutThunk(gpointer data) {
-    reinterpret_cast<PowerButtonHandler*>(data)->HandleShutdownTimeout();
-    return FALSE;
-  }
-  void HandleShutdownTimeout();
+  // timeout for OnRealShutdownTimeout() to fire after the animation is done.
+  SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnShutdownTimeout);
 
   // Dim the backlight and actually shut down the machine.
-  static gboolean HandleRealShutdownTimeoutThunk(gpointer data) {
-    reinterpret_cast<PowerButtonHandler*>(data)->HandleRealShutdownTimeout();
-    return FALSE;
-  }
-  void HandleRealShutdownTimeout();
+  SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnRealShutdownTimeout)
 
   // Tell the window manager to start the pre-shutdown animation and add a
   // timeout for HandleShutdownTimeout().
