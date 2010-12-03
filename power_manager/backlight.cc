@@ -81,8 +81,10 @@ int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
 }
 
 bool Backlight::GetBrightness(int64* level, int64* max_level) {
-  CHECK(!brightness_path_.empty());
-  CHECK(!max_brightness_path_.empty());
+  if (actual_brightness_path_.empty() || max_brightness_path_.empty()) {
+    LOG(WARNING) << "Cannot find backlight brightness files.";
+    return false;
+  }
   std::string level_buf, max_level_buf;
   bool ok = file_util::ReadFileToString(actual_brightness_path_, &level_buf) &&
             file_util::ReadFileToString(max_brightness_path_, &max_level_buf);
@@ -97,6 +99,10 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
 }
 
 bool Backlight::SetBrightness(int64 level) {
+  if (brightness_path_.empty()) {
+    LOG(WARNING) << "Cannot find backlight brightness file.";
+    return false;
+  }
   std::string buf = base::Int64ToString(level);
   bool ok =
       -1 != file_util::WriteFile(brightness_path_, buf.data(), buf.size());

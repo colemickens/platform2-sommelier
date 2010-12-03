@@ -96,12 +96,11 @@ void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
 
 gboolean Daemon::GenerateBacklightLevelMetric(gpointer data) {
   Daemon* self = static_cast<Daemon*>(data);
-  if (self->idle_state_ == Daemon::kIdleNormal) {
-    int64 level;
-    self->ctl_->GetBrightness(&level);
+  int64 level;
+  if (self->idle_state_ == Daemon::kIdleNormal &&
+      self->ctl_->GetBrightness(&level))
     self->SendEnumMetricWithPowerState(kMetricBacklightLevelName, level,
         kMetricBacklightLevelMax);
-  }
   return true;
 }
 

@@ -89,9 +89,10 @@ int main(int argc, char* argv[]) {
       << "LoadLibcros('" << chromeos::kCrosDefaultPath << "') failed: " << err;
   gdk_init(&argc, &argv);
   power_manager::Backlight backlight;
-  CHECK(backlight.Init()) << "Cannot initialize backlight";
+  LOG_IF(WARNING, !backlight.Init()) << "Cannot initialize backlight";
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
-  CHECK(backlight_ctl.Init()) << "Cannot initialize backlight controller";
+  LOG_IF(WARNING, !backlight_ctl.Init()) << "Cannot initialize backlight "
+      "controller";
   power_manager::AmbientLightSensor als(&backlight_ctl);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";

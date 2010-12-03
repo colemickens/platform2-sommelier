@@ -40,7 +40,7 @@ class BacklightController {
 
   // Set |level| to the current brightness level of the backlight as a
   // percentage.
-  void GetBrightness(int64* level);
+  bool GetBrightness(int64* level);
 
   // Increase the brightness level of the backlight by one level.
   void IncreaseBrightness();

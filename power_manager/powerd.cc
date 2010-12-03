@@ -396,11 +396,9 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
     }
   }
 
-  if (changed_brightness) {
-    int64 brightness = 0;
-    daemon->ctl_->GetBrightness(&brightness);
+  int64 brightness = 0;
+  if (changed_brightness && daemon->ctl_->GetBrightness(&brightness))
     daemon->SendBrightnessChangedSignal(static_cast<int>(brightness));
-  }
 
   return GDK_FILTER_CONTINUE;
 }
