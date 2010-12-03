@@ -235,6 +235,14 @@ bootstat x-started
 # back onscreen when X exits later.
 /usr/bin/ply-image --clear &
 
+# If screensaver use isn't disabled, set screensaver.
+SCREENSAVERS_PATH=/usr/share/chromeos-assets/screensavers
+SCREENSAVER_FLAG=
+if [ -d "${SCREENSAVERS_PATH}" ]; then
+  SCREENSAVER_FLAG="--screen-saver-url=\
+file://${SCREENSAVERS_PATH}/default/index.htm"
+fi
+
 #
 # Reset PATH to exclude directories unneeded by session_manager.
 # Save that until here, because many of the commands above depend
@@ -262,4 +270,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             "$TOUCH_DEVICES" \
             "$REGISTER_PLUGINS" \
             ${SKIP_OOBE} \
+            ${SCREENSAVER_FLAG} \
 -- "$WM_SCRIPT"
