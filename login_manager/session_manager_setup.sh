@@ -172,6 +172,11 @@ else
   echo "Unable to get bios information" > /var/log/bios_info.txt
 fi
 if [ -f /sys/devices/platform/chromeos_acpi/CHSW ]; then
+  # still some firmware out there without the read-only version
+  if [ -f /sys/devices/platform/chromeos_acpi/FRID ]; then
+     echo "ro bios version      |" \
+          `cat /sys/devices/platform/chromeos_acpi/FRID`
+  fi
   chsw=`cat /sys/devices/platform/chromeos_acpi/CHSW`
   echo "Boot switch status:"
   swstate $chsw 2 "  Recovery button" pressed released
