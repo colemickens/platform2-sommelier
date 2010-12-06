@@ -29,7 +29,7 @@ class ReadPixelTest : public TestBase {
 bool ReadPixelTest::TestFunc(int iter) {
   glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels_);
   CHECK(glGetError() == 0);
-  for (int i = 0; i < iter; i++)
+  for (int i = 0; i < iter - 1; i++)
     glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels_);
   return true;
 }

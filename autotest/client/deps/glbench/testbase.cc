@@ -27,7 +27,7 @@ uint64_t TimeTest(TestBase* test, int iter) {
   return time2 - time1;
 }
 
-#define MAX_ITERATION_DURATION_MS 100000
+#define MAX_ITERATION_DURATION_MS 1000000
 
 // Benchmark some draw commands, by running it many times.
 // We want to measure the marginal cost, so we try more and more iterations

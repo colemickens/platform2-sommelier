@@ -44,7 +44,7 @@ const char* kVertexShader2 =
     "attribute vec4 position;"
     "attribute vec4 texcoord;"
     "uniform float scale;"
-    "varying vec2 v1;"
+    "varying vec4 v1;"
     "void main() {"
     "  gl_Position = position * vec4(scale, scale, 1., 1.);"
     "  " V1 " = texcoord;"
@@ -52,7 +52,7 @@ const char* kVertexShader2 =
 
 const char* kFragmentShader2 =
     "uniform sampler2D texture;"
-    "varying vec2 v1;"
+    "varying vec4 v1;"
     "void main() {"
     "  gl_FragColor = texture2D(texture, " V1 ".xy);"
     "}";

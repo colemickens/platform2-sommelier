@@ -12,6 +12,11 @@
 #include "main.h"
 #include "utils.h"
 
+const char* kGlesHeader =
+    "#ifdef GL_ES\n"
+    "precision highp float;\n"
+    "#endif\n";
+
 FilePath *g_base_path = new FilePath();
 
 // Sets the base path for MmapFile to `dirname($argv0)`/$relative.
@@ -167,7 +172,7 @@ static void print_info_log(int obj)
 }
 
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
-  return InitShaderProgramWithHeader(NULL, vertex_src, fragment_src);
+  return InitShaderProgramWithHeader(kGlesHeader, vertex_src, fragment_src);
 }
 
 GLuint InitShaderProgramWithHeader(const char* header,
