@@ -172,20 +172,25 @@ bool Input::RegisterInputEvent(int fd) {
     if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), sw) < 0) {
       LOG(ERROR) << "Error in powerm ioctl - sw";
     }
+    // An input event may have more than one kind of key or switch.
+    // For example, if both the power button and the lid switch are handled
+    // by the gpio_keys driver, both will share a single event in /dev/input.
+    // In this case, only create one io channel per fd, and only add one
+    // watch per event file.
     if (IS_BIT_SET(SW_LID, sw)) {
       num_lid_events_++;
       if (!watch_added) {
           GIOChannel * channel;
           LOG(INFO) << "Watching this event for lid switch!";
-          if (lid_fd_ >= 0)
-            LOG(WARNING) << "Multiple lid events found on system!";
-          lid_fd_ = fd;
           channel = g_io_channel_unix_new(fd);
           g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
           watch_added = true;
       } else {
         LOG(INFO) << "Watched event also has a lid!";
       }
+      if (lid_fd_ >= 0)
+        LOG(WARNING) << "Multiple lid events found on system!";
+      lid_fd_ = fd;
     }
   }
   return watch_added;
