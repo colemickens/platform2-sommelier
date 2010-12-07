@@ -6,51 +6,53 @@
 // facility.
 
 #include "bootstat.h"
+#include "bootstat_test.h"
 
-#include <stdio.h>
+#include <assert.h>
 #include <stddef.h>
+#include <stdio.h>
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/fcntl.h>
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
+
+//
+// Default path to directory where output statistics will be stored.
+//
+static const char kDefaultOutputDirectoryName[] = "/tmp";
 
 //
 // Paths to the statistics files we snapshot as part of the data to
 // be logged.
 //
-static const char kUptimeStatisticsFileName[] = "/proc/uptime";
+static const char kDefaultUptimeStatisticsFileName[] = "/proc/uptime";
 
 #if defined (__amd64__) || defined (__x86_64__) || defined (__i386__)
-static const char kDiskStatisticsFileName[] = "/sys/block/sda/stat";
+static const char kDefaultDiskStatisticsFileName[] = "/sys/block/sda/stat";
 #elif defined (__arm__)
-static const char kDiskStatisticsFileName[] = "/sys/block/mmcblk0/stat";
+static const char kDefaultDiskStatisticsFileName[] = "/sys/block/mmcblk0/stat";
 #else
 #error "unknown processor type?"
 #endif
 
-
-//
-// Maximum length of any pathname for storing event statistics.
-// Arbitrarily chosen, but see the comment below about truncation.
-//
-#define MAX_STAT_PATH  128
-
-//
-// Output file creation mode:  0666, a.k.a. rw-rw-rw-.
-//
-static const int kFileCreationMode =
-    (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
-
+static const char *output_directory_name = kDefaultOutputDirectoryName;
+static const char *uptime_statistics_file_name =
+    kDefaultUptimeStatisticsFileName;
+static const char *disk_statistics_file_name = kDefaultDiskStatisticsFileName;
 
 static void append_logdata(const char* input_path,
                            const char* output_name_prefix,
                            const char* event_name)
 {
-  char output_path[MAX_STAT_PATH];
+  const mode_t kFileCreationMode =
+      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
+  char output_path[PATH_MAX];
   char buffer[256];
   ssize_t num_read;
   int ifd, ofd;
+  int output_path_len;
 
   ifd = open(input_path, O_RDONLY);
   if (ifd < 0) {
@@ -58,20 +60,24 @@ static void append_logdata(const char* input_path,
   }
 
   //
-  // We don't want the file name "/tmp/uptime-..." truncated
-  // differently from the the name "/tmp/disk-...", so we truncate
-  // event_name separately using the "%.*s" format.
+  // For those not up on the more esoteric features of printf
+  // formats:  the "%.*s" format is used to truncate the event name
+  // to the proper number of characters..
   //
-  // We expect that BOOTSTAT_MAX_EVENT_LEN is enough smaller than
-  // MAX_STAT_PATH that output_path will never be truncated.
+  // The assertion for output_path overflow should only be able to
+  // fail if output_directory_name is changed from its default,
+  // which can only happen in unit tests, and then only in the event
+  // of a serious test bug.
   //
-  (void) snprintf(output_path, sizeof(output_path), "/tmp/%s-%.*s",
-                  output_name_prefix,
-                  BOOTSTAT_MAX_EVENT_LEN - 1, event_name);
+  output_path_len = snprintf(output_path, sizeof(output_path), "%s/%s-%.*s",
+                             output_directory_name,
+                             output_name_prefix,
+                             BOOTSTAT_MAX_EVENT_LEN - 1, event_name);
+  assert(output_path_len < sizeof(output_path));
   ofd = open(output_path, O_WRONLY | O_APPEND | O_CREAT,
              kFileCreationMode);
   if (ofd < 0) {
-    (void) close(ifd);
+    (void)close(ifd);
     return;
   }
 
@@ -80,13 +86,40 @@ static void append_logdata(const char* input_path,
     if (num_written != num_read)
       break;
   }
-  (void) close(ofd);
-  (void) close(ifd);
+  (void)close(ofd);
+  (void)close(ifd);
 }
 
 
 void bootstat_log(const char* event_name)
 {
-  append_logdata(kUptimeStatisticsFileName, "uptime", event_name);
-  append_logdata(kDiskStatisticsFileName, "disk", event_name);
+  append_logdata(uptime_statistics_file_name, "uptime", event_name);
+  append_logdata(disk_statistics_file_name, "disk", event_name);
+}
+
+
+void bootstat_set_output_directory(const char* dirname)
+{
+  if (dirname != NULL)
+    output_directory_name = dirname;
+  else
+    output_directory_name = kDefaultOutputDirectoryName;
+}
+
+
+void bootstat_set_uptime_file_name(const char* filename)
+{
+  if (filename != NULL)
+    uptime_statistics_file_name = filename;
+  else
+    uptime_statistics_file_name = kDefaultUptimeStatisticsFileName;
+}
+
+
+void bootstat_set_disk_file_name(const char* filename)
+{
+  if (filename != NULL)
+    disk_statistics_file_name = filename;
+  else
+    disk_statistics_file_name = kDefaultDiskStatisticsFileName;
 }

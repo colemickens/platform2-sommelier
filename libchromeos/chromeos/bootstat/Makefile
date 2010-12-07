@@ -8,7 +8,10 @@
 # OPT_CFLAGS is here to allow adding options for manual, host-side
 # builds.
 OPT_CFLAGS =
-CFLAGS += -Wall -Werror -fPIC -fno-exceptions $(OPT_CFLAGS)
+COMMON_CFLAGS += -Wall -Werror -fPIC -fno-exceptions $(OPT_CFLAGS)
+
+CFLAGS += $(COMMON_CFLAGS)
+CXXFLAGS += $(COMMON_CFLAGS)
 
 LIB_OBJS = bootstat_log.o
 
