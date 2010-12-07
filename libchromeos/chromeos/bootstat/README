@@ -6,14 +6,34 @@ This is the Chromium OS 'bootstat' utility.  The utility is used
 to generate timestamps and other performance statistics during
 system boot.
 
-==== Functional specification
-Usage:
+==== Command specifications
+'bootstat' command usage:
     bootstat <event-name>
 
 Summary:  The command gathers and records the contents of
 /proc/uptime and disk statistics for the boot disk (the full disk,
 not the boot partition), and associates the data with the passed
 in <event-name>.
+
+----
+'bootstat_get_last' command usage:
+    bootstat_get_last <event-name> [ <stat> ... ]
+
+Summary:  Print on standard output the value of selected statistics
+recorded when a specified event occurred.  These are the available
+statistics:
+    time:  Total time since kernel startup at the time of the event.
+    read-sectors:  Total sectors read from any partition of the boot
+        device since kernel startup.
+    write-sectors:  Total sectors written to any partition of the
+        boot device since kernel startup.
+
+If multiple statistics requested, they are reported in order, one
+per line.  If no statistics are listed on the command line, the
+default is to report 'time'.
+
+If an event has occurred more than once since kernel startup, only
+the statistics from the last occurrence are reported.
 
 ==== API specification
 The C and C++ API is defined in "bootstat.h".  See that header for

@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+getfield() {
+  shift $1
+  echo $1
+}
+
+EVENT=$1
+shift
+if [ $# -eq 0 ]; then
+  set -- time
+fi
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    time)
+      TAG=uptime
+      FIELD=1
+    ;;
+    read-sectors)
+      TAG=disk
+      FIELD=3
+    ;;
+    write-sectors)
+      TAG=disk
+      FIELD=7
+    ;;
+    *)
+      shift
+      continue
+    ;;
+  esac
+  getfield $FIELD $(tail -1 /tmp/${TAG}-${EVENT})
+  shift
+done
