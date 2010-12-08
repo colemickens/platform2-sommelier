@@ -10,33 +10,6 @@
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
 
-# Prints the firmware (just BIOS, not including EC) boot time in milliseconds.
-calculate_firmware_boot_time() {
-  # Max CPU frequency, in KHz
-  local cpu_freq=$(cat "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
-  AWK_PROG='
-    /Initial TSC value:/ {
-      sub(".*Initial TSC value: ", "")
-      initial_tsc = $0
-    }
-    END {
-      if (initial_tsc != 0) {
-        printf "%2.2f", initial_tsc / ('$cpu_freq' * 1000.0)
-      }
-    }
-  '
-  dmesg | awk "$AWK_PROG"
-}
-
-# This creates a sentinel file that Chrome uses the existence of to
-# decide to report other statistics.
-write_firmware_boot_time() {
-  local firmware_boot_time=$(calculate_firmware_boot_time)
-  [ -n "$firmware_boot_time" ] || return
-
-  echo $firmware_boot_time > /tmp/firmware-boot-time
-}
-
 # Sends to UMA the total time since going in suspend:
 #   Power.TimeInSuspendAtBoot
 #   Power.TimeInSuspendAtResume
@@ -138,7 +111,6 @@ main() {
   local event="Resume"
   [ "$1" = "-b" ] && event="Boot"
   send_time_in_suspend $event
-  [ $event = "Boot" ] && write_firmware_boot_time
   [ $event = "Resume" ] && send_suspend_resume_time
 }
 
