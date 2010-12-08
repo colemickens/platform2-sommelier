@@ -31,7 +31,7 @@ PLUGIN_SRCS = device_watcher.cc \
 PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 
 TEST_SRCS = $(TESTS:=.cc)
-ALL_SRCS = $(PLUGIN_SRCS) $(TEST_SRCS)
+ALL_SRCS = $(PLUGIN_SRCS)
 
 TARGETS = $(GOBI_PLUGIN) gobi-modem-reset
 INSTALL_TARGETS = install-production
@@ -39,6 +39,7 @@ INSTALL_TARGETS = install-production
 ifdef INSTALL_TESTS
 	TARGETS += $(TESTS)
 	INSTALL_TARGETS += install-tests
+	ALL_SRCS += $(TEST_SRCS)
 endif
 
 all: $(TARGETS)
