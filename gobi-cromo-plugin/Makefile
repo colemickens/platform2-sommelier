@@ -21,7 +21,8 @@ GOBI_PLUGIN = gobi.so
 GLUE_HEADERS = modem_gobi_server_glue.h
 
 TESTS = gobi_sdk_wrapper_unittest \
-	gobi_modem_unittest
+	gobi_modem_unittest \
+	gobi_handle_test
 
 PLUGIN_SRCS = device_watcher.cc \
               gobi_modem_handler.cc \
@@ -50,6 +51,9 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 %unittest : LDLIBS += -lgtest -lgmock -lcromo -lchromeos \
 	    $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 \
 	      dbus-c++-1)
+
+# As few dependencies as possible
+gobi_handle_test : LDLIBS=-lQCWWAN2k -lpthread -lrt
 
 gobi-modem-reset : gobi-modem-reset.c
 
