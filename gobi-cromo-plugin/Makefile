@@ -21,18 +21,29 @@ GOBI_PLUGIN = gobi.so
 GLUE_HEADERS = modem_gobi_server_glue.h
 
 TESTS = gobi_sdk_wrapper_unittest \
-	gobi_modem_unittest # builds slower than rest of project put together
+	gobi_modem_unittest
 
-SRCS = device_watcher.cc \
-       gobi_modem_handler.cc \
-       gobi_modem.cc \
-       gobi_sdk_wrapper.cc
+PLUGIN_SRCS = device_watcher.cc \
+              gobi_modem_handler.cc \
+              gobi_modem.cc \
+              gobi_sdk_wrapper.cc
 
-OBJS = $(SRCS:.cc=.o)
+PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 
-all: $(GOBI_PLUGIN) $(TESTS) gobi-modem-reset
+TEST_SRCS = $(TESTS:=.cc)
+ALL_SRCS = $(PLUGIN_SRCS) $(TEST_SRCS)
 
-$(GOBI_PLUGIN) : $(OBJS)
+TARGETS = $(GOBI_PLUGIN) gobi-modem-reset
+INSTALL_TARGETS = install-production
+
+ifdef INSTALL_TESTS
+	TARGETS += $(TESTS)
+	INSTALL_TARGETS += install-tests
+endif
+
+all: $(TARGETS)
+
+$(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
 
 %unittest : LDLIBS += -lgtest -lgmock -lcromo -lchromeos \
@@ -41,14 +52,16 @@ $(GOBI_PLUGIN) : $(OBJS)
 
 gobi-modem-reset : gobi-modem-reset.c
 
-gobi_modem_unittest : $(OBJS) gobi_modem_unittest.o
+gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.o
 
 gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@
 
-install: $(GOBI_PLUGIN) gobi-modem-reset
+install : $(INSTALL_TARGETS)
+
+install-production:
 	install -d $(PLUGINDEST) $(UDEVRULES_DIR)
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
@@ -59,6 +72,10 @@ install: $(GOBI_PLUGIN) gobi-modem-reset
 	install -m4750 --group=cromo -D gobi-modem-reset \
 	  $(DESTDIR)/usr/bin/gobi-modem-reset
 
+install-tests:
+	install -d $(DESTDIR)/usr/bin
+	install $(TESTS) $(DESTDIR)/usr/bin
+
 .PHONY: clean
 clean:
 	$(RM) $(GOBI_PLUGIN) $(TESTS) *.o .*.d core a.out gobi-modem-reset
@@ -66,7 +83,7 @@ clean:
 .%.d: %.cc
 	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) -MF $@ -MT $(<:.cc=.o) -MT $@ $<
 
-depfiles = $(patsubst %.cc,.%.d,$(SRCS))
+depfiles = $(patsubst %.cc,.%.d,$(ALL_SRCS))
 
 $(depfiles): $(GLUE_HEADERS)
 

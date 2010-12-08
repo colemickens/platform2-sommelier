@@ -335,7 +335,6 @@ class GobiModem
   const Carrier *carrier_;
 
   friend class GobiModemTest;
-  FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
 
   bool is_disconnected() { return session_id_ == 0; }
 
@@ -379,7 +378,9 @@ class GobiModem
   void RequestEvent(const std::string req, DBus::Error& error);
   bool event_enabled[GOBI_EVENT_MAX];
 
+  FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
+  FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmConnected);
+
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
-
 #endif  // PLUGIN_GOBI_MODEM_H_

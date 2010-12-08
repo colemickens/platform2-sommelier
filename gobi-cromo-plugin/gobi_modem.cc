@@ -1391,7 +1391,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
     DLOG(INFO) << "data bearer technology " << db_technology;
     ULONG rfi_technology = get_rfi_technology(db_technology);
     for (ULONG i = 0; i < signals; ++i) {
-      if (interfaces[i] == rfi_technology) {
+      if (get_rfi_technology(interfaces[i]) == rfi_technology) {
         output = strengths[i];
         return;
       }

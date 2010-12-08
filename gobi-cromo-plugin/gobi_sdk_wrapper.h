@@ -223,6 +223,7 @@ enum RoamingState {
 
 // Selected return codes from table 2-3 of QC WWAN CM API
 enum ReturnCode {
+  kGeneralError = 1,
   kErrorSendingQmiRequest = 12,
   kErrorReceivingQmiRequest = 13,
   kErrorNeedsReset = 34,
