@@ -77,9 +77,9 @@ class GobiModemTest : public ::testing::Test {
 class SignalStrengthSdk : public gobi::BootstrapSdk {
  public:
   SignalStrengthSdk() : BootstrapSdk() {
-      correct_[0] = -50;
-      correct_[1] = -60;
-      correct_[9] = -70;
+    correct_[gobi::kRfiCdma1xRtt] = -60;
+    correct_[gobi::kRfiAmps] = -50;
+    correct_[gobi::kRfiUmts] = -70;
   }
   MOCK_METHOD1(GetDataBearerTechnology,
       ULONG(ULONG * pDataBearer));
@@ -94,8 +94,14 @@ class SignalStrengthSdk : public gobi::BootstrapSdk {
   static INT8 dbms_[];
   GobiModem::StrengthMap correct_;
 };
-ULONG SignalStrengthSdk::interfaces_[] = {1, 0,
-                                          gobi::kDataBearerHsdpaDlHsupaUl, 3};
+
+// The fourth elements of these two arrays should be ignored; the SDK
+// call returns a length of 3
+ULONG SignalStrengthSdk::interfaces_[] = {gobi::kRfiCdma1xRtt,
+                                          gobi::kRfiAmps,
+                                          gobi::kRfiUmts,
+                                          static_cast<ULONG>(-1)};
+
 INT8 SignalStrengthSdk::dbms_[] = {-60, -50, -70, -20};
 
 static void SetupSignalMocks(SignalStrengthSdk *sdk) {
@@ -123,7 +129,7 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
   modem_->GetSignalStrengthDbm(master, &result, *error_);
 
   EXPECT_FALSE(error_->is_set());
-  EXPECT_EQ(-50, master);
+  EXPECT_EQ(-50, master);  // Largest
 
   EXPECT_THAT(result, ContainerEq(sdk.correct_));
 }
@@ -141,16 +147,18 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
       SetArgumentPointee<0>(gobi::kConnected),
       Return(0)));
 
+  // gobi::kDataBearerHsdpaDlHsupaUl translates to kRfiUmts
   EXPECT_CALL(sdk, GetDataBearerTechnology(_)).WillOnce(DoAll(
-      SetArgumentPointee<0>(9),
+      SetArgumentPointee<0>(gobi::kDataBearerHsdpaDlHsupaUl),
       Return(0)));
 
   int master;
   GobiModem::StrengthMap result;
   modem_->GetSignalStrengthDbm(master, &result, *error_);
-
   EXPECT_FALSE(error_->is_set());
-  EXPECT_EQ(-70, master);
+
+  // Value for RFI technology corresponding to the DataBearer technology
+  EXPECT_EQ(sdk.correct_[gobi::kRfiUmts], master);
 
   EXPECT_THAT(result, ContainerEq(sdk.correct_));
 }
