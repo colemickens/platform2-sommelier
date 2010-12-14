@@ -76,7 +76,11 @@ void Suspender::CheckSuspend() {
 }
 
 void Suspender::SuspendReady(DBusMessage* message) {
-  std::string client_name = dbus_message_get_sender(message);
+  const char* client_name = dbus_message_get_sender(message);
+  if (!client_name) {
+    LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
+    return;
+  }
   LOG(INFO) << "SuspendReady, client : " << client_name;
   SuspendList::iterator iter = suspend_delays_.find(client_name);
   if (suspend_delays_.end() == iter) {
@@ -118,6 +122,10 @@ DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
                                           kError);
   dbus_error_init(&error);
   reply = dbus_message_new_method_return(message);
+  if (!reply) {
+    LOG(ERROR) << "dbus_message_new_method_return reply NULL!";
+    return NULL;
+  }
   if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &delay_ms,
                              DBUS_TYPE_INVALID)) {
     dbus_message_set_error_name(reply, errmsg.c_str());
@@ -126,7 +134,11 @@ DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
       dbus_error_free(&error);
     return reply;
   }
-  std::string client_name = dbus_message_get_sender(message);
+  const char* client_name = dbus_message_get_sender(message);
+  if (!client_name) {
+    LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
+    return reply;
+  }
   LOG(INFO) << "register-suspend-delay, client: " << client_name
             << " delay_ms : " << delay_ms;
   if (0 < delay_ms) {
@@ -143,7 +155,15 @@ DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
   const std::string errmsg = StringPrintf("%s%s", kPowerManagerInterface,
                                           kError);
   reply = dbus_message_new_method_return(message);
-  std::string client_name = dbus_message_get_sender(message);
+  if (!reply) {
+    LOG(ERROR) << "dbus_message_new_method_return reply NULL!";
+    return NULL;
+  }
+  const char* client_name = dbus_message_get_sender(message);
+  if (!client_name) {
+    LOG(ERROR) << "dbus_message_get_sender returned NULL name.";
+    return NULL;
+  }
   LOG(INFO) << "unregister-suspend-delay, client: " << client_name;
   if (!CleanUpSuspendDelay(client_name)) {
     dbus_message_set_error_name(reply, errmsg.c_str());
@@ -258,14 +278,21 @@ void Suspender::NameOwnerChangedHandler(DBusGProxy*,
                                         const gchar* new_owner,
                                         gpointer data) {
   Suspender* suspender = static_cast<Suspender*>(data);
-  std::string client_name = name;
-  if (0 == strlen(new_owner) && suspender->CleanUpSuspendDelay(client_name))
+  if (!name || !new_owner) {
+    LOG(ERROR) << "NameOwnerChanged with Null name or new owner.";
+    return;
+  }
+  if (0 == strlen(new_owner) && suspender->CleanUpSuspendDelay(name))
       LOG(INFO) << name << " deleted for dbus name change.";
 }
 
 
 // Remove |client_name| from list of suspend delay callback clients.
-bool Suspender::CleanUpSuspendDelay(std::string client_name) {
+bool Suspender::CleanUpSuspendDelay(const char* client_name) {
+  if (!client_name) {
+    LOG(ERROR) << "NULL client_name.";
+    return false;
+  }
   if (suspend_delays_.empty()) {
     return false;
   }
@@ -293,6 +320,10 @@ bool Suspender::CleanUpSuspendDelay(std::string client_name) {
 void Suspender::BroadcastSignalToClients(const char* signal_name,
                                          const unsigned int sequence_num) {
   dbus_uint32_t payload = sequence_num;
+  if (!signal_name) {
+    LOG(ERROR) << "signal_name NULL pointer!";
+    return;
+  }
   LOG(INFO) << "Sending Broadcast '" << signal_name << "' to PowerManager:";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",

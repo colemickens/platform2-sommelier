@@ -76,7 +76,7 @@ class Suspender {
 
   // Clean up suspend delay upon unregister or dbus name change.
   // Remove |client_name| from list of suspend delay callback clients.
-  bool CleanUpSuspendDelay(std::string client_name);
+  bool CleanUpSuspendDelay(const char* client_name);
 
   void BroadcastSignalToClients(const char* signal_name,
                                 const unsigned int sequence_num);

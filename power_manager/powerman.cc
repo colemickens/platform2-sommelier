@@ -241,6 +241,10 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
     DBusGProxy*, const gchar* name, const gchar* old_owner,
     const gchar* new_owner, void *data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
+  if (!name || !new_owner || !old_owner) {
+    LOG(ERROR) << "NameOwnerChanged with Null name.";
+    return;
+  }
   if (strcmp(name, kPowerManagerInterface) == 0) {
     DLOG(INFO) << "name:" << name << " old_owner:" << old_owner
                << " new_owner:" << new_owner;
