@@ -264,7 +264,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --no-first-run \
             --user-data-dir="$DATA_DIR" \
             --login-profile=user \
-            --in-chrome-auth \
+            --parallel-auth \
             --apps-gallery-title="Web Store" \
             --apps-gallery-url="https://chrome.google.com/webstore/" \
             --enable-login-images \
