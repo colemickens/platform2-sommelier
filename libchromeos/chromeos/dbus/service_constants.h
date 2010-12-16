@@ -60,6 +60,7 @@ extern const char *kSessionManagerServicePath;
 extern const char *kSessionManagerServiceName;
 // Methods
 extern const char *kSessionManagerEmitLoginPromptReady;
+extern const char *kSessionManagerEmitLoginPromptVisible;
 extern const char *kSessionManagerStartSession;
 extern const char *kSessionManagerStopSession;
 extern const char *kSessionManagerRestartJob;

@@ -60,6 +60,7 @@ const char *kSessionManagerServiceName = "org.chromium.SessionManager";
 const char *kSessionManagerServicePath = "/org/chromium/SessionManager";
 // Methods
 const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
+const char *kSessionManagerEmitLoginPromptVisible = "EmitLoginPromptVisible";
 const char *kSessionManagerStartSession = "StartSession";
 const char *kSessionManagerStopSession = "StopSession";
 const char *kSessionManagerRestartJob = "RestartJob";
