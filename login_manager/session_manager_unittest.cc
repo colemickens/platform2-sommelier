@@ -30,6 +30,7 @@
 #include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_pref_store.h"
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/mock_upstart_signal_emitter.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
@@ -53,6 +54,7 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerTest()
       : manager_(NULL),
         utils_(new MockSystemUtils),
+        upstart_(new MockUpstartSignalEmitter),
         file_checker_(new MockFileChecker(kCheckedFile)),
         fake_key_(CreateArray("dummy", strlen("dummy"))) {
   }
@@ -124,6 +126,7 @@ class SessionManagerTest : public ::testing::Test {
     manager_ = new SessionManagerService(jobs);
     manager_->set_file_checker(file_checker_);
     manager_->test_api().set_exit_on_child_done(true);
+    manager_->test_api().set_upstart_signal_emitter(upstart_);
   }
 
   void MockUtils() {
@@ -267,6 +270,7 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerService* manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
+  MockUpstartSignalEmitter* upstart_;
   std::string property_;
   GArray* fake_key_;
   GArray* fake_sig_;

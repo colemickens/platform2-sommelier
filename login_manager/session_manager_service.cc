@@ -144,6 +144,7 @@ SessionManagerService::SessionManagerService(
       nss_(NssUtil::Create()),
       key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
       store_(new PrefStore(FilePath(PrefStore::kDefaultPath))),
+      upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       screen_locked_(false),
       set_uid_(false),
@@ -323,14 +324,13 @@ void SessionManagerService::AllowGracefulExit() {
 
 gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
                                                      GError** error) {
-  DLOG(INFO) << "emitting login-prompt-ready ";
-  *OUT_emitted = system("/sbin/initctl emit login-prompt-ready &") == 0;
-  if (*OUT_emitted) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
-              "Can't emit login-prompt-ready.");
-  }
+  *OUT_emitted =
+      upstart_signal_emitter_->EmitSignal("login-prompt-ready", "", error);
   return *OUT_emitted;
+}
+
+gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
+  return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 
 gboolean SessionManagerService::StartSession(gchar* email_address,
@@ -374,19 +374,21 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     return FALSE;
   }
 
-  DLOG(INFO) << "emitting start-user-session for " << current_user_;
-  string command;
   if (set_uid_) {
-    command = StringPrintf("/sbin/initctl emit start-user-session "
-                           "CHROMEOS_USER=%s USER_ID=%d &",
-                           current_user_.c_str(), uid_);
+    *OUT_done =
+        upstart_signal_emitter_->EmitSignal(
+            "start-user-session",
+            StringPrintf("CHROMEOS_USER=%s USER_ID=%d",
+            current_user_.c_str(), uid_),
+            error);
   } else {
-    command = StringPrintf("/sbin/initctl emit start-user-session "
-                           "CHROMEOS_USER=%s &",
-                           current_user_.c_str());
+    *OUT_done =
+        upstart_signal_emitter_->EmitSignal(
+            "start-user-session",
+            StringPrintf("CHROMEOS_USER=%s", current_user_.c_str()),
+            error);
   }
 
-  *OUT_done = system(command.c_str()) == 0;
   if (*OUT_done) {
     for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
       ChildJobInterface* child_job = child_jobs_[i_child];
@@ -397,10 +399,6 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     g_signal_emit(session_manager_,
                   signals_[kSignalSessionStateChanged],
                   0, "started", current_user_.c_str());
-  } else {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_EMIT_FAILED,
-              "Can't emit start-session.");
   }
 
   return *OUT_done;
@@ -782,6 +780,13 @@ gboolean SessionManagerService::PersistStore(gpointer data) {
   return FALSE;  // So that the event source that called this gets removed.
 }
 
+// static
+void SessionManagerService::SetGError(GError** error,
+                                      ChromeOSLoginError code,
+                                      const char* message) {
+  g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
@@ -891,12 +896,6 @@ void SessionManagerService::CleanupChildren(int timeout) {
     if (!system_->ChildIsGone(pid, timeout))
       system_->kill(pid, uid, SIGABRT);
   }
-}
-
-void SessionManagerService::SetGError(GError** error,
-                                      ChromeOSLoginError code,
-                                      const char* message) {
-  g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
 }
 
 gboolean SessionManagerService::StoreOwnerProperties(GError** error) {

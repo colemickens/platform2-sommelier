@@ -14,6 +14,8 @@
     <method name="EmitLoginPromptReady">
       <arg type="b" name="emitted" direction="out" />
     </method>
+    <method name="EmitLoginPromptVisible">
+    </method>
     <method name="StartSession">
       <!-- Meant to be human-readable -->
       <arg type="s" name="email_address" direction="in" />

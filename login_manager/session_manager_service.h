@@ -25,6 +25,7 @@
 #include "login_manager/owner_key.h"
 #include "login_manager/pref_store.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/upstart_signal_emitter.h"
 
 class CommandLine;
 
@@ -79,19 +80,17 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
       session_manager_service_->child_pids_[i_child] = pid;
     }
 
-    // Set the SystemUtils used by the manager. Useful for mocking.
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_.reset(utils);
     }
-
-    // Set the OwnerKey object used by the manager. Useful for mocking.
     void set_ownerkey(OwnerKey* key) {
       session_manager_service_->key_.reset(key);
     }
-
-    // Set the PrefStore object used by the manager. Useful for mocking.
     void set_prefstore(PrefStore* key) {
       session_manager_service_->store_.reset(key);
+    }
+    void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
+      session_manager_service_->upstart_signal_emitter_.reset(emitter);
     }
 
     // Sets whether the the manager exits when a child finishes.
@@ -186,8 +185,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   ////////////////////////////////////////////////////////////////////////////
   // SessionManagerService commands
 
-  // Emits the "login-prompt-ready" upstart signal.
+  // Emits the "login-prompt-ready" and "login-prompt-visible" upstart signals.
   gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
+  gboolean EmitLoginPromptVisible(GError** error);
 
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
@@ -335,6 +335,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // data->signaler is used to signal Chromium that this has occurred.
   static gboolean PersistStore(gpointer data);
 
+  // Initializes |error| with |code| and |message|.
+  static void SetGError(GError** error,
+                        ChromeOSLoginError code,
+                        const char* message);
+
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
@@ -351,8 +356,6 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
-
-  void SetGError(GError** error, ChromeOSLoginError, const char* message);
 
   // If the current user has access to the owner private key
   // (read: is the owner), this call whitelists |current_user_|, sets a
@@ -408,6 +411,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<OwnerKey> key_;
   scoped_ptr<PrefStore> store_;
+  scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
   bool session_started_;
   std::string current_user_;

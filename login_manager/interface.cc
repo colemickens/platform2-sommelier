@@ -63,6 +63,10 @@ gboolean session_manager_emit_login_prompt_ready(SessionManager* self,
                                                  GError** error) {
   SESSION_MANAGER_WRAP_METHOD(EmitLoginPromptReady, OUT_emitted);
 }
+gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
+                                                   GError** error) {
+  SESSION_MANAGER_WRAP_METHOD0(EmitLoginPromptVisible);
+}
 gboolean session_manager_start_session(SessionManager* self,
                                        gchar* email_address,
                                        gchar* unique_identifier,

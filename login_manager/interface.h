@@ -35,6 +35,8 @@ GType session_manager_get_type();  // defined by G_DEFINE_TYPE
 gboolean session_manager_emit_login_prompt_ready(SessionManager *self,
                                                  gboolean *OUT_emitted,
                                                  GError **error);
+gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
+                                                   GError** error);
 gboolean session_manager_start_session(SessionManager *self,
                                        gchar *email_address,
                                        gchar *unique_identifier,
