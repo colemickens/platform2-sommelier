@@ -49,6 +49,8 @@ cleanup_caches() {
 do_disk_cleanup() {
   local stateful_space="$(get_stateful_space)"
 
+  metrics_client -e Platform.StatefulUsage ${stateful_space} 101 &
+
   # Return if there's plenty of space.
   if [ "$stateful_space" -lt "$MAX_DISK_USAGE" ]; then
     return 0
