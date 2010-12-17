@@ -29,7 +29,8 @@ if [ -x /usr/bin/ply-image ]; then
     # Moblin trick: Disable blinking cursor. Without this a splash screen
     # will show a distinct cursor shape even when the cursor is set to none.
     echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png &
+    /usr/bin/ply-image /usr/share/chromeos-assets/images/boot_splash.png \
+      0 0 /usr/share/chromeos-assets/images/boot_splash_frame*.png &
     BOOT_SPLASH_PID="$!"
   fi
 fi
