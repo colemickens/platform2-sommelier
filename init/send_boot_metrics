@@ -32,6 +32,6 @@ report_disk_metrics() {
 }
 
 report_disk_metrics $(
-  bootstat_get_last login-prompt-ready read-sectors write-sectors)
+  bootstat_get_last boot-complete read-sectors write-sectors)
 
 send_metrics_on_resume -b
