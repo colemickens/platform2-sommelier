@@ -324,12 +324,17 @@ void SessionManagerService::AllowGracefulExit() {
 
 gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
                                                      GError** error) {
+  bootstat_log("login-prompt-ready");
+  // TODO(derat): Stop emitting this signal once no one's listening for it.
+  // Jobs that want to run after we're done booting should wait for
+  // login-prompt-visible or boot-complete.
   *OUT_emitted =
       upstart_signal_emitter_->EmitSignal("login-prompt-ready", "", error);
   return *OUT_emitted;
 }
 
 gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
+  bootstat_log("login-prompt-visible");
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 
