@@ -340,37 +340,26 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   }
   ULONG failure_reason;
   ULONG rc;
-  for (int attempt = 0; attempt < 2; ++attempt) {
-    LOG(INFO) << "Starting data session attempt " << attempt;
-    connect_start_time_ = time_ms();
-    rc = sdk_->StartDataSession(NULL,  // technology
-                                NULL,  // APN Name
-                                NULL,  // Authentication
-                                NULL,  // Username
-                                NULL,  // Password
-                                &session_id_,  // OUT: session ID
-                                &failure_reason  // OUT: failure reason
-                                );
-    if (rc == 0) {
-      LOG(INFO) << "Session ID " <<  session_id_;
-      error.set(kOperationInitiatedError, "");
-      // session_state_ will be set in SessionStateCallback
-      return;
-    } else {
-      LOG(WARNING) << "StartDataSession failed: " << rc;
-      if (rc == gobi::kCallFailed) {
-        LOG(WARNING) << "Failure Reason " <<  failure_reason;
-        if (failure_reason == gobi::kClientEndedCall) {
-          LOG(WARNING) <<
-              "Call ended by client.  Retrying";
-          continue;
-        }
-      }
-      error.set(kConnectError, "StartDataSession");
-      return;
-    }
+
+  connect_start_time_ = time_ms();
+  rc = sdk_->StartDataSession(NULL,  // technology
+                              NULL,  // APN Name
+                              NULL,  // Authentication
+                              NULL,  // Username
+                              NULL,  // Password
+                              &session_id_,  // OUT: session ID
+                              &failure_reason  // OUT: failure reason
+                              );
+  if (rc == 0) {
+    LOG(INFO) << "Session ID " <<  session_id_;
+    return;
   }
-  LOG(WARNING) << "Connect retries expired.  Failing";
+
+  LOG(WARNING) << "StartDataSession failed: " << rc;
+  if (rc == gobi::kCallFailed) {
+    LOG(WARNING) << "Failure Reason " <<  failure_reason;
+  }
+  error.set(kConnectError, "StartDataSession");
 }
 
 
@@ -1610,11 +1599,12 @@ gboolean GobiModem::ActivationStatusCallback(gpointer data) {
                                      150000, 20);
     }
     if (args->device_activation_state == gobi::kActivated) {
-      modem->SendActivationStateChanged(
-          MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
       DBus::Error error;
       // Reset modem as per SDK documentation
       modem->ResetModem(error);
+      // Send the message after we have reset the modem
+      modem->SendActivationStateChanged(
+          MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
     } else if (args->device_activation_state == gobi::kNotActivated) {
       modem->SendActivationStateChanged(
           MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);
@@ -1719,16 +1709,17 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
       disconnect_start_time_ = 0;
     }
     session_id_ = 0;
+    unsigned int reason = QMIReasonToMMReason(session_end_reason);
+    if (reason == MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED &&
+        suspending_)
+      reason = MM_MODEM_CONNECTION_STATE_CHANGE_REASON_SUSPEND;
+    ConnectionStateChanged(false, reason);
   } else if (state == gobi::kConnected) {
     ULONG duration = time_ms() - connect_start_time_;
     metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect", duration, 0, 150000, 20);
     suspending_ = false;
+    ConnectionStateChanged(true, 0);
   }
-  bool is_connected = (state == gobi::kConnected);
-  unsigned int reason = QMIReasonToMMReason(session_end_reason);
-  if (reason == MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED && suspending_)
-    reason = MM_MODEM_CONNECTION_STATE_CHANGE_REASON_SUSPEND;
-  ConnectionStateChanged(is_connected, reason);
 }
 
 void GobiModem::RegistrationStateHandler() {
