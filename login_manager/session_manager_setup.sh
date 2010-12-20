@@ -255,6 +255,9 @@ fi
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
+# Device Manager Server used to fetch the enterprise policy, if applicable.
+DMSERVER="https://m.google.com/devicemanagement/data/api"
+
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --login-manager \
             --enable-gview \
@@ -272,6 +275,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --disable-domui-menu \
             --scroll-pixels=4 \
             --compress-sys-feedback \
+            --device-management-url="$DMSERVER" \
             "$TOUCH_DEVICES" \
             "$REGISTER_PLUGINS" \
             ${SKIP_OOBE} \
