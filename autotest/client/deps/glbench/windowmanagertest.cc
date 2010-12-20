@@ -17,14 +17,21 @@
 #include "utils.h"
 
 
+#if defined(I915_WORKAROUND)
+#define V1 "gl_TexCoord[0]"
+#else
+#define V1 "v1"
+#endif
+
+
 GLuint GenerateAndBindTexture() {
   GLuint name = ~0;
   glGenTextures(1, &name);
   glBindTexture(GL_TEXTURE_2D, name);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   return name;
 }
 
@@ -52,16 +59,18 @@ unsigned char* CreateBitmap(int w, int h) {
 
 const char kVertexShader[] =
     "attribute vec4 vertices;"
+    "varying vec4 v1;"
     "void main() {"
     "    gl_Position = vertices;"
-    "    gl_TexCoord[0] = vec4(vertices.y, vertices.x, 0.0, 0.0);"
+    "    " V1 " = vec4(vertices.yx, 0.0, 0.0);"
     "}";
 
 const char kFragmentShader[] =
     "uniform sampler2D tex;"
     "uniform vec4 color;"
+    "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = color * texture2D(tex, gl_TexCoord[0].xy);"
+    "    gl_FragColor = color * texture2D(tex, " V1 ".xy);"
     "}";
 
 // Command line flags
