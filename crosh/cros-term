@@ -1,3 +1,4 @@
 #!/bin/bash
 
-exec /usr/bin/aterm -tn xterm -bg black -fg grey +sb -e /usr/bin/crosh
+exec urxvt -fn "xft:Bitstream Vera Sans Mono:pixelsize=11" \
+           -tn xterm -bg black -fg grey +sb -e /usr/bin/crosh
