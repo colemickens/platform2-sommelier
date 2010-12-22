@@ -110,6 +110,18 @@ void Suspender::CancelSuspend() {
     LOG(INFO) << "Suspend canceled mid flight.";
   suspend_requested_ = false;
   suspend_delays_outstanding_ = 0;
+  // Broadcast unsuspended signal
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              "/",
+                              kPowerManagerInterface);
+  DBusMessage* signal = ::dbus_message_new_signal("/",
+                                                  kPowerManagerInterface,
+                                                  util::kPowerStateChanged);
+  const char* power_state = "on";
+  CHECK(signal);
+  dbus_message_append_args(signal, DBUS_TYPE_STRING, &power_state);
+  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  ::dbus_message_unref(signal);
 }
 
 // Register a Suspend Delay client callback. Expected argument is unsigned int32
