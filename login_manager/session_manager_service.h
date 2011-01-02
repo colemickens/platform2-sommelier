@@ -354,6 +354,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   gboolean CurrentUserHasOwnerKey(const std::vector<uint8>& pub_key,
                                   GError** error);
 
+  // Cache |email_address| in |current_user_| and return true, if the address
+  // passes validation.  Otherwise, set |error| appropriately and return false.
+  gboolean ValidateAndCacheUserEmail(const gchar* email_address,
+                                     GError** error);
+
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
 
@@ -363,6 +368,19 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // a PersistWhitelist() and a PersistStore().
   // Returns false on failure, with |error| set appropriately.
   gboolean StoreOwnerProperties(GError** error);
+
+  // Signs and stores |name|=|value|, and schedules a PersistStore().
+  // Returns false on failure, populating |error| with |err_msg|.
+  gboolean SignAndStoreProperty(const std::string& name,
+                                const std::string& value,
+                                const std::string& err_msg,
+                                GError** error);
+
+  // Signs and whitelists |email|, and schedules a PersistWhitelist().
+  // Returns false on failure, populating |error| with |err_msg|.
+  gboolean SignAndWhitelist(const std::string& email,
+                            const std::string& err_msg,
+                            GError** error);
 
   // Encodes |signature| for writing to disk, stores |name|=|value|, and
   // schedules a PersistStore().

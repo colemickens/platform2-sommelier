@@ -349,21 +349,10 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     *OUT_done = FALSE;
     return FALSE;
   }
-  // basic validity checking; avoid buffer overflows here, and
-  // canonicalize the email address a little.
-  char email[kMaxEmailSize + 1];
-  snprintf(email, sizeof(email), "%s", email_address);
-  email[kMaxEmailSize] = '\0';  // Just to be sure.
-  string email_string(email);
-  if (email_string != kIncognitoUser && !ValidateEmail(email_string)) {
+  if (!ValidateAndCacheUserEmail(email_address, error)) {
     *OUT_done = FALSE;
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
-              "Provided email address is not valid.  ASCII only.");
     return FALSE;
   }
-  current_user_ = StringToLowerASCII(email_string);
-
   // If the current user is the owner, and isn't whitelisted or set
   // as the cros.device.owner pref, then do so.  This attempt only succeeds
   // if the current user has access to the private half of the owner's
@@ -384,7 +373,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
         upstart_signal_emitter_->EmitSignal(
             "start-user-session",
             StringPrintf("CHROMEOS_USER=%s USER_ID=%d",
-            current_user_.c_str(), uid_),
+                         current_user_.c_str(), uid_),
             error);
   } else {
     *OUT_done =
@@ -789,6 +778,7 @@ gboolean SessionManagerService::PersistStore(gpointer data) {
 void SessionManagerService::SetGError(GError** error,
                                       ChromeOSLoginError code,
                                       const char* message) {
+  LOG(ERROR) << message;
   g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
 }
 
@@ -877,6 +867,25 @@ gboolean SessionManagerService::CurrentUserHasOwnerKey(
   return TRUE;
 }
 
+gboolean SessionManagerService::ValidateAndCacheUserEmail(
+    const gchar* email_address,
+    GError** error) {
+  // basic validity checking; avoid buffer overflows here, and
+  // canonicalize the email address a little.
+  char email[kMaxEmailSize + 1];
+  snprintf(email, sizeof(email), "%s", email_address);
+  email[kMaxEmailSize] = '\0';  // Just to be sure.
+  string email_string(email);
+  if (email_string != kIncognitoUser && !ValidateEmail(email_string)) {
+    SetGError(error,
+              CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
+              "Provided email address is not valid.  ASCII only.");
+    return FALSE;
+  }
+  current_user_ = StringToLowerASCII(email_string);
+  return TRUE;
+}
+
 void SessionManagerService::CleanupChildren(int timeout) {
   vector<pair<int, uid_t> > pids_to_kill;
 
@@ -904,35 +913,45 @@ void SessionManagerService::CleanupChildren(int timeout) {
 }
 
 gboolean SessionManagerService::StoreOwnerProperties(GError** error) {
+  if (!SignAndStoreProperty(kDeviceOwnerPref,
+                            current_user_,
+                            "Could not sign owner property.",
+                            error)) {
+    return FALSE;
+  }
+  return SignAndWhitelist(current_user_, "Could not whitelist owner.", error);
+}
+
+gboolean SessionManagerService::SignAndStoreProperty(const std::string& name,
+                                                     const std::string& value,
+                                                     const std::string& err_msg,
+                                                     GError** error) {
   std::vector<uint8> signature;
   std::string to_sign = base::StringPrintf("%s=%s",
                                            kDeviceOwnerPref,
                                            current_user_.c_str());
   if (!key_->Sign(to_sign.c_str(), to_sign.length(), &signature)) {
-    DLOG(INFO) << "Could not sign owner property";
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Could not sign owner property.");
+    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
     return FALSE;
   }
   std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
                                signature.size());
-  if (!SetPropertyHelper(kDeviceOwnerPref,
-                         current_user_,
-                         signature_string,
-                         error)) {
-    return FALSE;
-  }
-  signature.clear();
+  return SetPropertyHelper(kDeviceOwnerPref,
+                           current_user_,
+                           signature_string,
+                           error);
+}
+
+gboolean SessionManagerService::SignAndWhitelist(const std::string& email,
+                                                 const std::string& err_msg,
+                                                 GError** error) {
+  std::vector<uint8> signature;
   if (!key_->Sign(current_user_.c_str(), current_user_.length(), &signature)) {
-    LOG(INFO) << "Could not sign owner whitelist attempt";
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Could not whitelist owner.");
+    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
     return FALSE;
   }
-  signature_string.assign(reinterpret_cast<const char*>(&signature[0]),
-                          signature.size());
+  std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
+                               signature.size());
   return WhitelistHelper(current_user_, signature_string, error);
 }
 
