@@ -38,6 +38,8 @@ class NssUtilImpl : public NssUtil {
 
   base::RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
 
+  base::RSAPrivateKey* GenerateKeyPair();
+
   FilePath GetOwnerKeyFilePath();
 
   bool Verify(const uint8* algorithm, int algorithm_len,
@@ -49,6 +51,7 @@ class NssUtilImpl : public NssUtil {
             std::vector<uint8>* OUT_signature,
             base::RSAPrivateKey* key);
  private:
+  static const uint16 kKeySizeInBits;
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
 
@@ -71,6 +74,10 @@ void NssUtil::KeyFromBuffer(const GArray* buf, std::vector<uint8>* out) {
   memcpy(&(out->at(0)), buf->data, buf->len);
 }
 
+// We're generating and using 2048-bit RSA keys.
+// static
+const uint16 NssUtilImpl::kKeySizeInBits = 2048;
+
 NssUtilImpl::NssUtilImpl() {}
 
 NssUtilImpl::~NssUtilImpl() {}
@@ -90,6 +97,10 @@ base::RSAPrivateKey* NssUtilImpl::GetPrivateKey(
     return false;
   }
   return base::RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
+}
+
+base::RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
+  return base::RSAPrivateKey::CreateSensitive(kKeySizeInBits);
 }
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {

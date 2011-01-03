@@ -26,6 +26,7 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_pref_store.h"
@@ -54,14 +55,18 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerTest()
       : manager_(NULL),
         utils_(new MockSystemUtils),
-        upstart_(new MockUpstartSignalEmitter),
         file_checker_(new MockFileChecker(kCheckedFile)),
+        mitigator_(new MockMitigator),
+        upstart_(new MockUpstartSignalEmitter),
         fake_key_(CreateArray("dummy", strlen("dummy"))) {
   }
 
   virtual ~SessionManagerTest() {
-    if (manager_)
-      delete manager_;
+    if (!manager_.get()) {
+      delete file_checker_;
+      delete mitigator_;
+      delete upstart_;
+    }
     FilePath uptime(kUptimeFile);
     FilePath disk(kDiskFile);
     file_util::Delete(uptime, false);
@@ -84,7 +89,7 @@ class SessionManagerTest : public ::testing::Test {
     // just to be sure...
     NssUtil::set_factory(NULL);
     g_array_free(fake_sig_, TRUE);
-    if (manager_) {
+    if (manager_.get()) {
       MockPrefStore* store = new MockPrefStore;
       EXPECT_CALL(*store, Persist())
         .WillOnce(Return(true));
@@ -123,8 +128,9 @@ class SessionManagerTest : public ::testing::Test {
           .WillRepeatedly(Return(false));
       jobs.push_back(job2);
     }
-    manager_ = new SessionManagerService(jobs);
+    manager_.reset(new SessionManagerService(jobs));
     manager_->set_file_checker(file_checker_);
+    manager_->set_mitigator(mitigator_);
     manager_->test_api().set_exit_on_child_done(true);
     manager_->test_api().set_upstart_signal_emitter(upstart_);
   }
@@ -267,9 +273,10 @@ class SessionManagerTest : public ::testing::Test {
     return output;
   }
 
-  SessionManagerService* manager_;
+  scoped_ptr<SessionManagerService> manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
+  MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
   std::string property_;
   GArray* fake_key_;
@@ -436,7 +443,7 @@ TEST_F(SessionManagerTest, MustStopChild) {
 }
 
 static const pid_t kDummyPid = 4;
-TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
+TEST_F(SessionManagerTest, SessionNotStartedCleanup) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   manager_->test_api().set_child_pid(0, kDummyPid);
 
@@ -450,7 +457,7 @@ TEST_F(SessionManagerTest, SessionNotStartedCleanupTest) {
   manager_->test_api().CleanupChildren(timeout);
 }
 
-TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
+TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanup) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   manager_->test_api().set_child_pid(0, kDummyPid);
 
@@ -466,7 +473,7 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanupTest) {
   manager_->test_api().CleanupChildren(timeout);
 }
 
-TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
+TEST_F(SessionManagerTest, SessionStartedCleanup) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   manager_->test_api().set_child_pid(0, kDummyPid);
 
@@ -487,7 +494,7 @@ TEST_F(SessionManagerTest, SessionStartedCleanupTest) {
   manager_->test_api().CleanupChildren(timeout);
 }
 
-TEST_F(SessionManagerTest, SessionStartedSlowKillCleanupTest) {
+TEST_F(SessionManagerTest, SessionStartedSlowKillCleanup) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   SessionManagerService::TestApi test_api = manager_->test_api();
   test_api.set_child_pid(0, kDummyPid);
@@ -550,7 +557,7 @@ TEST_F(SessionManagerTest, HonorShouldNeverKill) {
 }
 
 static void Sleep() { execl("/bin/sleep", "sleep", "10000", NULL); }
-TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
+TEST_F(SessionManagerTest, SessionStartedSigTerm) {
   int pid = fork();
   if (pid == 0) {
     MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
@@ -570,8 +577,7 @@ TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
     manager_->StartSession(email, nothing, &out, NULL);
     SimpleRunManager(store);
 
-    delete manager_;
-    manager_ = NULL;
+    manager_.reset(NULL);
     exit(0);
   }
   sleep(1);
@@ -589,7 +595,7 @@ TEST_F(SessionManagerTest, SessionStartedSigTermTest) {
   EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
 }
 
-TEST_F(SessionManagerTest, StartSessionTest) {
+TEST_F(SessionManagerTest, StartSession) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   gboolean out;
@@ -601,7 +607,7 @@ TEST_F(SessionManagerTest, StartSessionTest) {
   manager_->StartSession(email, nothing, &out, NULL);
 }
 
-TEST_F(SessionManagerTest, StartSessionNewTest) {
+TEST_F(SessionManagerTest, StartSessionNew) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   gboolean out;
@@ -617,7 +623,7 @@ TEST_F(SessionManagerTest, StartSessionNewTest) {
                                          &chromeos::Resetter(&error).lvalue()));
 }
 
-TEST_F(SessionManagerTest, StartOwnerSessionTest) {
+TEST_F(SessionManagerTest, StartOwnerSession) {
   MockFactory<KeyCheckUtil> factory;
   NssUtil::set_factory(&factory);
 
@@ -649,7 +655,7 @@ TEST_F(SessionManagerTest, StartOwnerSessionTest) {
   manager_->Run();
 }
 
-TEST_F(SessionManagerTest, StartOwnerSessionTestNoKey) {
+TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
   MockFactory<KeyFailUtil> factory;
   NssUtil::set_factory(&factory);
 
@@ -658,11 +664,6 @@ TEST_F(SessionManagerTest, StartOwnerSessionTestNoKey) {
   gchar nothing[] = "";
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), TouchResetFile())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToPowerManager(power_manager::kRequestShutdownSignal))
-      .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
                                    Eq("success")))
@@ -673,18 +674,22 @@ TEST_F(SessionManagerTest, StartOwnerSessionTestNoKey) {
       .Times(1);
   MockUtils();
 
+  EXPECT_CALL(*mitigator_, Mitigate())
+      .WillOnce(Return(false));
   MockOwnerKey* key = new MockOwnerKey;
   MockPrefStore* store = new MockPrefStore;
   ExpectStartSessionForOwner(email, key, store);
   manager_->test_api().set_ownerkey(key);
   manager_->test_api().set_prefstore(store);
-  manager_->StartSession(email, nothing, &out, NULL);
+  bool ret_code = manager_->StartSession(email, nothing, &out, NULL);
+  EXPECT_FALSE(ret_code);
+  EXPECT_EQ(ret_code, out);
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
   manager_->Run();
 }
 
-TEST_F(SessionManagerTest, StartSessionErrorTest) {
+TEST_F(SessionManagerTest, StartSessionError) {
   MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   gboolean out;
   gchar email[] = "user";
@@ -695,7 +700,7 @@ TEST_F(SessionManagerTest, StartSessionErrorTest) {
   g_error_free(error);
 }
 
-TEST_F(SessionManagerTest, StopSessionTest) {
+TEST_F(SessionManagerTest, StopSession) {
   MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   gboolean out;
   gchar nothing[] = "";

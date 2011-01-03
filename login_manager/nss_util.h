@@ -48,6 +48,9 @@ class NssUtil {
   virtual base::RSAPrivateKey* GetPrivateKey(
       const std::vector<uint8>& public_key_der) = 0;
 
+  // Caller takes ownership of returned key.
+  virtual base::RSAPrivateKey* GenerateKeyPair() = 0;
+
   virtual FilePath GetOwnerKeyFilePath() = 0;
 
   virtual bool Verify(const uint8* algorithm, int algorithm_len,

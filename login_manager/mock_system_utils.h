@@ -7,6 +7,7 @@
 
 #include "login_manager/system_utils.h"
 
+#include <base/file_path.h>
 #include <unistd.h>
 #include <gmock/gmock.h>
 

@@ -21,6 +21,7 @@
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
+#include "login_manager/wipe_mitigator.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
@@ -123,6 +124,8 @@ int main(int argc, char* argv[]) {
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
   manager.set_file_checker(new login_manager::FileChecker(magic_chrome_file));
+  manager.set_mitigator(
+      new login_manager::WipeMitigator(new login_manager::SystemUtils()));
 
   LOG_IF(FATAL, !manager.Initialize()) << "Failed";
   LOG_IF(FATAL, !manager.Register(chromeos::dbus::GetSystemBusConnection()))

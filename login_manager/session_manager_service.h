@@ -23,6 +23,7 @@
 
 #include "login_manager/file_checker.h"
 #include "login_manager/owner_key.h"
+#include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/pref_store.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
@@ -132,9 +133,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   virtual bool Initialize();
   virtual bool Reset();
 
-  // Takes ownership of |file_checker|
+  // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
     file_checker_.reset(file_checker);
+  }
+
+  // Takes ownership of |mitigator|.
+  void set_mitigator(OwnerKeyLossMitigator* mitigator) {
+    mitigator_.reset(mitigator);
   }
 
   // Can't be "unset".
@@ -438,6 +444,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   guint signals_[kNumSignals];
 
   scoped_ptr<FileChecker> file_checker_;
+  scoped_ptr<OwnerKeyLossMitigator> mitigator_;
   bool screen_locked_;
   uid_t uid_;
   bool set_uid_;

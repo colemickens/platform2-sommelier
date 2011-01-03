@@ -363,9 +363,8 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // half of the public key, we must mitigate.
   if (CurrentUserIsOwner(error) &&
       !CurrentUserHasOwnerKey(key_->public_key_der(), error)) {
-    system_->TouchResetFile();
-    system_->SendSignalToPowerManager(power_manager::kRequestShutdownSignal);
-    return FALSE;
+    if (!(*OUT_done = mitigator_->Mitigate()))
+      return FALSE;
   }
 
   if (set_uid_) {
