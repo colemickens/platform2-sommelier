@@ -119,6 +119,7 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
                              path_,
                              kDeviceElement,
                              &sdk));
+  modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
       SetArgumentPointee<0>(gobi::kDisconnected),
@@ -142,6 +143,7 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
                              path_,
                              kDeviceElement,
                              &sdk));
+  modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
       SetArgumentPointee<0>(gobi::kConnected),

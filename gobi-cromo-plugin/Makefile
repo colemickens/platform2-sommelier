@@ -25,6 +25,7 @@ TESTS = gobi_sdk_wrapper_unittest \
 	gobi_handle_test
 
 PLUGIN_SRCS = device_watcher.cc \
+			  gobi_cdma_modem.cc \
               gobi_modem_handler.cc \
               gobi_modem.cc \
               gobi_sdk_wrapper.cc

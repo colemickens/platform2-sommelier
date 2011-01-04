@@ -18,12 +18,60 @@
 #include <cromo/cromo_server.h>
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
-#include <cromo/modem-cdma_server_glue.h>
 #include <cromo/utilities.h>
 #include <metrics/metrics_library.h>
 
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
+
+
+// TODO(rochberg)  Fix namespace pollution
+#define METRIC_BASE_NAME "Network.3G.Gobi."
+
+#define DEFINE_ERROR(name) \
+  extern const char* k##name##Error;
+#define DEFINE_MM_ERROR(name) \
+  extern const char* k##name##Error;
+#include "gobi_modem_errors.h"
+#undef DEFINE_ERROR
+#undef DEFINE_MM_ERROR
+
+#define ENSURE_SDK_SUCCESS(function, rc, errtype)        \
+    do {                                                 \
+      if (rc != 0) {                                     \
+        error.set(errtype, #function);                   \
+        LOG(WARNING) << #function << " failed : " << rc; \
+        return;                                          \
+      }                                                  \
+    } while (0)                                          \
+
+#define ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype, result) \
+    do {                                                 \
+      if (rc != 0) {                                     \
+        error.set(errtype, #function);                   \
+        LOG(WARNING) << #function << " failed : " << rc; \
+        return result;                                   \
+      }                                                  \
+    } while (0)                                          \
+
+// from mm-modem.h in ModemManager. This enum
+// should move into an XML file to become part
+// of the DBus API
+typedef enum {
+    MM_MODEM_STATE_UNKNOWN = 0,
+    MM_MODEM_STATE_DISABLED = 10,
+    MM_MODEM_STATE_DISABLING = 20,
+    MM_MODEM_STATE_ENABLING = 30,
+    MM_MODEM_STATE_ENABLED = 40,
+    MM_MODEM_STATE_SEARCHING = 50,
+    MM_MODEM_STATE_REGISTERED = 60,
+    MM_MODEM_STATE_DISCONNECTING = 70,
+    MM_MODEM_STATE_CONNECTING = 80,
+    MM_MODEM_STATE_CONNECTED = 90,
+
+    MM_MODEM_STATE_LAST = MM_MODEM_STATE_CONNECTED
+} MMModemState;
+
 
 // Qualcomm device element, capitalized to their naming conventions
 struct DEVICE_ELEMENT {
@@ -38,7 +86,7 @@ class GobiModemHandler;
 class GobiModem
     : public org::freedesktop::ModemManager::Modem_adaptor,
       public org::freedesktop::ModemManager::Modem::Simple_adaptor,
-      public org::freedesktop::ModemManager::Modem::Cdma_adaptor,
+
       public org::chromium::ModemManager::Modem::Gobi_adaptor,
       public DBus::IntrospectableAdaptor,
       public DBus::PropertiesAdaptor,
@@ -50,8 +98,9 @@ class GobiModem
             const DBus::Path& path,
             const DEVICE_ELEMENT &device,
             gobi::Sdk *sdk);
-
   virtual ~GobiModem();
+
+  virtual void Init();
 
   int last_seen() {return last_seen_;}
   void set_last_seen(int scan_count) {
@@ -89,21 +138,6 @@ class GobiModem
   // properties it cannot determine.
   virtual utilities::DBusPropertyMap GetStatus(DBus::Error& error);
 
-  // DBUS Methods: ModemCDMA
-  virtual uint32_t GetSignalQuality(DBus::Error& error);
-  virtual std::string GetEsn(DBus::Error& error);
-  virtual DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem(
-      DBus::Error& error);
-  virtual void GetRegistrationState(
-      uint32_t& cdma_1x_state, uint32_t& evdo_state, DBus::Error& error);
-  virtual uint32_t Activate(const std::string& carrier_name,
-                            DBus::Error& error);
-  virtual void ActivateManual(const utilities::DBusPropertyMap& properties,
-                              DBus::Error& error);
-  virtual void ActivateManualDebug(
-      const std::map<std::string, std::string>& properties,
-      DBus::Error &error);
-
   // DBUS Methods: ModemGobi
   virtual void SetCarrier(const std::string& image, DBus::Error& error);
   virtual void SoftReset(DBus::Error& error);
@@ -117,21 +151,23 @@ class GobiModem
     std::string meid;
   };
 
-  // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
-  uint32_t ActivateOmadm();
-  // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
-  uint32_t ActivateOtasp(const std::string& number);
-
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
+  virtual uint32_t CommonGetSignalQuality(DBus::Error& error);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
                             DBus::Error& error);
-  void RegisterCallbacks();
+
+  virtual void RegisterCallbacks();
   void ResetModem(DBus::Error& error);
 
   void GetSerialNumbers(SerialNumbers* out, DBus::Error &error);
   void LogGobiInformation();
+
+  // TODO(cros-connectivity):  Move these to a utility class
+  static unsigned long MapDbmToPercent(INT8 signal_strength_dbm);
+  static unsigned long MapDataBearerToRfi(ULONG data_bearer_technology);
+  static unsigned long long GetTimeMs(void);
 
   struct CallbackArgs {
     CallbackArgs() : path(NULL) { }
@@ -167,35 +203,6 @@ class GobiModem
                         new NmeaPlusArgs(nmea, mode));
   }
   static gboolean NmeaPlusCallback(gpointer data);
-
-  struct ActivationStatusArgs : public CallbackArgs {
-    ActivationStatusArgs(ULONG device_activation_state)
-      : device_activation_state(device_activation_state) { }
-    ULONG device_activation_state;
-  };
-
-  static void ActivationStatusCallbackTrampoline(ULONG activation_state) {
-      PostCallbackRequest(ActivationStatusCallback,
-                          new ActivationStatusArgs(activation_state));
-  }
-  static gboolean ActivationStatusCallback(gpointer data);
-
-  struct OmadmStateArgs : public CallbackArgs {
-    OmadmStateArgs(ULONG session_state,
-                   ULONG failure_reason)
-      : session_state(session_state),
-        failure_reason(failure_reason) { }
-    ULONG session_state;
-    ULONG failure_reason;
-  };
-
-  static void OmadmStateCallbackTrampoline(ULONG session_state,
-                                           ULONG failure_reason) {
-    PostCallbackRequest(OmadmStateCallback,
-                        new OmadmStateArgs(session_state,
-                                           failure_reason));
-  }
-  static gboolean OmadmStateCallback(gpointer data);
 
   struct SessionStateArgs : public CallbackArgs {
     SessionStateArgs(ULONG state,
@@ -260,13 +267,10 @@ class GobiModem
 
   static gboolean DormancyStatusCallback(gpointer data);
 
-  static gboolean ActivationTimeoutCallback(gpointer data);
-
   struct SdkErrorArgs : public CallbackArgs {
     SdkErrorArgs(ULONG error) : error(error) { }
     ULONG error;
   };
-
   static gboolean SdkErrorHandler(gpointer data);
 
   static void *NMEAThreadTrampoline(void *arg) {
@@ -277,23 +281,17 @@ class GobiModem
   }
   void *NMEAThread(void);
 
- private:
+
   static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   // Set DBus-exported properties
   void SetDeviceProperties();
   void SetModemProperties();
+  virtual void SetDeviceSpecificIdentifier(const SerialNumbers&);
 
   // Returns the modem activation state as an enum value from
   // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error.  This state
   // may be further overridden by ModifyModemStatusReturn()
   int32_t GetMmActivationState();
-
-  // Computes arguments for an ActivationStateChanged signal and sends
-  // it.  Overrides MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT if device
-  // is in fact activated.
-  void SendActivationStateChanged(uint32_t mm_activation_error);
-  // Helper that sends failure
-  void SendActivationStateFailed();
 
   void GetGobiRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
                                 ULONG* roaming_state, DBus::Error& error);
@@ -302,7 +300,10 @@ class GobiModem
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.
   void RegistrationStateHandler();
-  void SignalStrengthHandler(INT8 signal_strength, ULONG radio_interface);
+
+  // Overridden in CDMA, GSM
+  virtual void SignalStrengthHandler(INT8 signal_strength,
+                                     ULONG radio_interface);
   void SessionStateHandler(ULONG state, ULONG session_end_reason);
 
   static GobiModemHandler *handler_;
@@ -325,9 +326,6 @@ class GobiModem
   };
   static GobiModem *connected_modem_;
   static mutex_wrapper_ modem_mutex_;
-
-  static void CleanupActivationTimeoutCallback(gpointer data);
-  guint32 activation_callback_id_;
 
   bool suspending_;
   bool exiting_;
@@ -361,7 +359,7 @@ class GobiModem
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
-  unsigned long long activation_start_time_;
+
   unsigned long long connect_start_time_;
   unsigned long long disconnect_start_time_;
   unsigned long long registration_start_time_;

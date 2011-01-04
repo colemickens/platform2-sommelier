@@ -18,6 +18,7 @@ extern "C" {
 
 #include "device_watcher.h"
 #include "gobi_modem.h"
+#include "gobi_cdma_modem.h"
 #include "gobi_sdk_wrapper.h"
 
 #ifndef VCSID
@@ -167,10 +168,12 @@ bool GobiModemHandler::GetDeviceList() {
       (*p).second->set_last_seen(scan_generation_);
     } else {
       something_changed = true;
-      GobiModem* m = new GobiModem(server().conn(),
-                                   MakePath(),
-                                   devices[i],
-                                   sdk_.get());
+      // TODO:  detect modem type and instantiate accordingly
+      GobiModem* m = new GobiCdmaModem(server().conn(),
+                                       MakePath(),
+                                       devices[i],
+                                       sdk_.get());
+      m->Init();
       m->set_last_seen(scan_generation_);
       key_to_modem_[std::string(devices[i].deviceKey)] = m;
       server().DeviceAdded(m->path());
