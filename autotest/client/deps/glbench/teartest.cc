@@ -40,19 +40,26 @@ GLuint GenerateAndBindTexture() {
   return name;
 }
 
+#if defined(I915_WORKAROUND)
+#define V1 "gl_TexCoord[0]"
+#else
+#define V1 "v1"
+#endif
 
 const char *vertex_shader =
     "attribute vec4 c;"
     "uniform float shift;"
+    "varying vec4 v1;"
     "void main() {"
     "    gl_Position = c;"
-    "    gl_TexCoord[0] = vec4(c.y, c.x - shift, 0.0, 0.0);"
+    "    " V1 " = vec4(c.y, c.x - shift, 0.0, 0.0);"
     "}";
 
 const char *fragment_shader =
     "uniform sampler2D tex;"
+    "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = texture2D(tex, gl_TexCoord[0].xy);"
+    "    gl_FragColor = texture2D(tex, " V1 ".xy);"
     "}";
 
 
@@ -90,7 +97,7 @@ void CopyPixmapToTexture(Pixmap pixmap) {
   XImage *xim = XGetImage(g_xlib_display, pixmap, 0, 0, g_height, g_width,
                           AllPlanes, ZPixmap);
   CHECK(xim != NULL);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, g_height, g_width, 0,
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_height, g_width, 0,
                GL_RGBA, GL_UNSIGNED_BYTE, (void*)(&xim->data[0]));
   XDestroyImage(xim);
 }
