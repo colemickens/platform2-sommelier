@@ -18,6 +18,7 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
+FACTORY_WIPE=$(echo "$@" | grep -sq factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
 FAST_TEST=$(echo "$@" | grep -sq test && echo "test")
 KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
@@ -107,6 +108,15 @@ fi
 # Flush linux caches.
 sync
 echo 3 > /proc/sys/vm/drop_caches
+
+# Do any board specific wiping here.
+# board_factory_wipe.sh will be installed by the board overlay if necessary.
+if [ "$FACTORY_WIPE" = "factory" ]; then
+  BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
+  if [ -x "${BOARD_WIPE}" ]; then
+    ${BOARD_WIPE}
+  fi
+fi
 
 /sbin/shutdown -r now
 sleep 1d  # Wait for shutdown
