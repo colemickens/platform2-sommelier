@@ -111,3 +111,13 @@ const char* kSuspendDelay = "SuspendDelay";
 const char* kSuspendReady = "SuspendReady";
 const char* kBrightnessChangedSignal = "BrightnessChanged";
 }  // namespace power_manager
+
+namespace chromeos {
+const char *kLibCrosServiceName = "org.chromium.LibCrosService";
+const char *kLibCrosServicePath = "/org/chromium/LibCrosService";
+const char *kLibCrosServiceInterface =
+    "org.chromium.LibCrosServiceInterface";
+// Methods
+const char *kResolveNetworkProxy = "ResolveNetworkProxy";
+} // namespace chromeos
+

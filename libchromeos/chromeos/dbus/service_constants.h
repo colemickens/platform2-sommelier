@@ -132,4 +132,12 @@ extern const char* kSuspendReady;
 extern const char* kBrightnessChangedSignal;
 }  // namespace power_manager
 
+namespace chromeos {
+extern const char *kLibCrosServiceName;
+extern const char *kLibCrosServicePath;
+extern const char *kLibCrosServiceInterface;
+// Methods
+extern const char *kResolveNetworkProxy;
+} // namespace chromeos
+
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
