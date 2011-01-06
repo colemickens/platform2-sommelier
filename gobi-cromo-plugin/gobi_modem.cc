@@ -726,8 +726,13 @@ bool GobiModem::CanMakeMethodCalls(void) {
   return rc == 0;
 }
 
-void GobiModem::ApiConnect(DBus::Error& error) {
+void AbortCannotConnectToDevice() {
+  // In its own function so that it's clear what's going on from a
+  // symbolized crash dump
+  abort();
+}
 
+void GobiModem::ApiConnect(DBus::Error& error) {
   // It is safe to test for NULL outside of a lock because ApiConnect
   // is only called by the main thread, and only the main thread can
   // modify connected_modem_.
@@ -745,9 +750,11 @@ void GobiModem::ApiConnect(DBus::Error& error) {
     ResetDevice(rc);
     rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
     if (rc != 0 || !CanMakeMethodCalls()) {
-      LOG(ERROR) << "QCWWANConnect() failed again: " << rc;
-      // Totally stuck. Oh well.
-      abort();
+      LOG(ERROR) << "QCWWANConnect() failed again: " << rc << ".  Aborting.";
+      // Totally stuck.  We abort, which causes a crash dump and tells
+      // our init script (in src/platform/init/cromo.conf, package
+      // chromeos-init) to reset the device and restart us.
+      AbortCannotConnectToDevice();
     }
   }
 
