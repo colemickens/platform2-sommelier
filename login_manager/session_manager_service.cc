@@ -149,6 +149,7 @@ SessionManagerService::SessionManagerService(
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
+  memset(signals_, 0, sizeof(signals_));
   SetupHandlers();
 }
 
@@ -274,9 +275,11 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 bool SessionManagerService::Shutdown() {
   if (session_started_) {
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:stopped";
-    g_signal_emit(session_manager_,
-                  signals_[kSignalSessionStateChanged],
-                  0, "stopped", current_user_.c_str());
+    if (signals_[kSignalSessionStateChanged]) {
+      g_signal_emit(session_manager_,
+                    signals_[kSignalSessionStateChanged],
+                    0, "stopped", current_user_.c_str());
+    }
   }
 
   // Even if we haven't gotten around to processing a persist task.
@@ -389,9 +392,11 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     }
     session_started_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
-    g_signal_emit(session_manager_,
-                  signals_[kSignalSessionStateChanged],
-                  0, "started", current_user_.c_str());
+    if (signals_[kSignalSessionStateChanged]) {
+      g_signal_emit(session_manager_,
+                    signals_[kSignalSessionStateChanged],
+                    0, "started", current_user_.c_str());
+    }
   }
 
   return *OUT_done;
