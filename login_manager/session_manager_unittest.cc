@@ -1241,7 +1241,7 @@ TEST_F(SessionManagerTest, RestartJobWrongPid) {
 }
 
 TEST(SessionManagerTestStatic, EmailAddressTest) {
-  const char valid[] = "user@somewhere";
+  const char valid[] = "user@some-where.com";
   EXPECT_TRUE(login_manager::SessionManagerService::ValidateEmail(valid));
 }
 

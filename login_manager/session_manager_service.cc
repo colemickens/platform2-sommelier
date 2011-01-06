@@ -118,7 +118,7 @@ const char SessionManagerService::kEmailSeparator = '@';
 const char SessionManagerService::kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    ".@1234567890";
+    ".@1234567890-";
 //static
 const char SessionManagerService::kIncognitoUser[] = "";
 //static
