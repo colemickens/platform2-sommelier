@@ -4,19 +4,18 @@
 
 #include "gobi_cdma_modem.h"
 #include "gobi_modem_handler.h"
+
+#include <base/file_util.h>
 #include <cromo/carrier.h>
 #include <mm/mm-modem.h>
 
-
 using utilities::DBusPropertyMap;
-
 
 
 //======================================================================
 // Construct and destruct
 GobiCdmaModem::~GobiCdmaModem() {
 }
-
 
 
 //======================================================================
@@ -27,6 +26,32 @@ static GobiCdmaModem * LookupCdmaModem(GobiModemHandler *handler,
   return static_cast<GobiCdmaModem *>(handler->LookupByPath(path));
 }
 
+static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
+  int64 file_size;
+  int bytes_read;
+  FilePath path(filename);
+
+  *num_bytes = 0;
+  if (!file_util::GetFileSize(path, &file_size)) {
+    LOG(WARNING) << "Cannot open file \"" << filename
+                 << "\": " << strerror(errno);
+    return NULL;
+  }
+  BYTE* buffer = new BYTE[file_size];
+  bytes_read = file_util::ReadFile(path,
+                                   reinterpret_cast<char*>(buffer),
+                                   file_size);
+  if (bytes_read < 0) {
+    LOG(WARNING) << "Cannot read contents of PRL file \"" << filename
+                 << "\": " << strerror(errno);
+    delete [] buffer;
+    return NULL;
+  }
+  LOG(INFO) << "Read " << bytes_read << " bytes from file \""
+            << filename << "\"";
+  *num_bytes = bytes_read;
+  return buffer;
+}
 
 gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   ActivationStatusArgs* args = static_cast<ActivationStatusArgs*>(data);
@@ -278,18 +303,20 @@ void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
 
   // TODO(rochberg): Does it make sense to set defaults from the
   // modem's current state?
-  const char *spc = NULL;
+  const char* spc = NULL;
+  const char* prl_file = NULL;
   uint16_t system_id = 65535;
-  const char *mdn = NULL;
-  const char *min = NULL;
-  const char *mnha = NULL;
-  const char *mnaaa = NULL;
+  const char* mdn = NULL;
+  const char* min = NULL;
+  const char* mnha = NULL;
+  const char* mnaaa = NULL;
 
   DBusPropertyMap::const_iterator p;
   // try/catch required to cope with dbus-c++'s handling of type
   // mismatches
   try {  // Style guide violation forced by dbus-c++
     spc = ExtractString(properties, "spc", "000000", error);
+    prl_file = ExtractString(properties, "prlfile", NULL, error);
     p = properties.find("system_id");
     if (p != properties.end()) {
       system_id = p->second.reader().get_uint16();
@@ -302,14 +329,20 @@ void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
     error = e;
     return;
   }
+  BYTE* prl = NULL;
+  ULONG prl_size = 0;
+  if (prl_file != NULL) {
+    prl = GetFileContents(prl_file, &prl_size);
+  }
   ULONG rc = sdk_->ActivateManual(spc,
                                   system_id,
                                   mdn,
                                   min,
-                                  0,          // PRL size
-                                  NULL,       // PRL contents
+                                  prl_size,
+                                  prl,
                                   mnha,
                                   mnaaa);
+  delete [] prl;
   ENSURE_SDK_SUCCESS(ActivateManual, rc, kActivationError);
 }
 
