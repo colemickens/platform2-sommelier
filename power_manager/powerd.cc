@@ -381,6 +381,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: Brightness up";
       } else {  // keycode == daemon->key_f7_
         LOG(INFO) << "Key press: F7";
+        daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
       }
       daemon->ctl_->IncreaseBrightness();
       changed_brightness = true;
@@ -390,6 +391,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: Brightness down";
       } else {  // keycode == daemon->key_f6_
         LOG(INFO) << "Key press: F6";
+        daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
       }
       daemon->ctl_->DecreaseBrightness();
       changed_brightness = true;
