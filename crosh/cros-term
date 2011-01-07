@@ -1,4 +1,10 @@
-#!/bin/bash
-
-exec urxvt -fn "xft:Bitstream Vera Sans Mono:pixelsize=11" \
-           -tn xterm -bg black -fg grey +sb -e /usr/bin/crosh
+#!/bin/sh
+exec urxvt \
+  -fn 'xft:DejaVu Sans Mono:pixelsize=12' \
+  -fb 'xft:DejaVu Sans Mono:pixelsize=12' \
+  -tn xterm -bg black -fg grey +sb \
+  -color0 '#000000' -color1 '#9e1828' -color2 '#4f874f' -color3 '#968a38' \
+  -color4 '#5d5da0' -color5 '#963c59' -color6 '#418179' -color7 gray \
+  -color8 gray40 -color9 '#cf6171' -color10 '#c5f779' -color11 '#fff796' \
+  -color12 '#4186be' -color13 '#cf9ebe' -color14 '#71bebe' -color15 white \
+  -e /usr/bin/crosh
