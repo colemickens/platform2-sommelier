@@ -207,85 +207,93 @@ if [ -z "${FLAGS_kernel_image}" ]; then
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
-# TODO(kwaters): dump_kernel_config segfaults on ARM.  We use this fact to skip
-# the verified rootfs update.  This needs to be cleaned up once verified root
-# works on the ARM kernel.
+# TODO(kwaters): dump_kernel_config segfaults on ARM.  We use this to know that
+# we need to scrape the u-boot header.  This needs to be cleaned up once
+# verified root works on the ARM kernel.
 DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
 table=
-if KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
-  # Use the root to determine if verification should be happening.
-  kernel_root="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*root=\([^ ]*\).*/\1/g')"
-  # Unless specified, the kernel root should dictate whether we are verified
-  # or not.
-  if [ ${FLAGS_override_kernel_options} -eq ${FLAGS_FALSE} ]; then
-    if [ "${kernel_root}" != "/dev/dm-0" ]; then
-      FLAGS_enable_rootfs_verification=${FLAGS_FALSE}
-      FLAGS_ignore_bad_verification=${FLAGS_TRUE}
-    else
-      FLAGS_enable_rootfs_verification=${FLAGS_TRUE}
-      FLAGS_ignore_bad_verification=${FLAGS_FALSE}
-    fi
-  fi
-
-  # Extract the dm-verity target options.
-  kernel_cfg="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
-                cut -f2- -d,)"
-  verity_preamble="$(echo "${KERNEL_CONFIG}" |
-                     sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
-                     cut -f1 -d,)"
-  rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
-  verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
-  verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
-
-  rootfs_image="${FLAGS_rootfs_image}"
-  selected_root=$((selected_kernel + 1))
-  if [ -z "${rootfs_image}" ]; then
-    ROOT_LOOP=$(setup_dst_loop ${selected_root})
-    rootfs_image="${ROOT_LOOP}"
-  fi
-
-  # Update the root filesystem to ensure it can be mounted if rw access is
-  # expected.  We never disable it going back to verification here since
-  # we don't want to change a pre-created image at all if it is verified.
-  if [ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_FALSE} ]; then
-    enable_rw_mount "${rootfs_image}"
-  fi
-
-  # Compute the rootfs hash tree and dump it in the tempfile.
-  # TODO(wad) take preamble from dump_kernel_config.
-  VERITY="${INSTALL_ROOT}"/bin/verity
-  table="${verity_preamble},"$(sudo "${VERITY}" create \
-          ${verity_depth} \
-          "${verity_algorithm}" \
-          "${rootfs_image}" \
-          $((rootfs_sectors / 8)) \
-          ${tempfile})
-
-  expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
-  generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
-
-  if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
-    if [ "${expected_hash}" != "${generated_hash}" ]; then
-      echo "Root filesystem has been modified unexpectedly!" 1>&2
-      echo "Expected ${expected_hash} != ${generated_hash}" 1>&2
-      # It doesn't make sense to exit here since the root filesystem
-      # is already in place.  Might as well get everything in sync.
-      EXIT_CODE=1
-    fi
-  fi
-
-  if [ -n "${newimg:-}" ]; then
-    # This will usually be ${rootfs_image} except for cases where
-    # FLAGS_dst and FLAGS_rootfs_image diverge.
-    dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
-    # Replace the placeholders from the verity tool.
-    table="$(echo "$table" |
-             sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
-  fi
-  # Overwrite the appended hashes with the new ones.
-  sudo dd if=${tempfile} of="${rootfs_image}" \
-          bs=512 seek=${rootfs_sectors} conv=notrunc
+if ! KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
+  # FIXME(kwaters): Terrible hack to extract the kernel config from the uboot
+  # header.  There is a 64 byte u-boot header, followed by the size of the
+  # script as a uint32_t, followed by (uint32_t)0.  So, the script itself
+  # starts 72 bytes into the image.
+  dd if="${kernel_image}" of="${tempfile}" bs=1 count=512 skip=72
+  KERNEL_CONFIG=$(sed -n '/setenv bootargs/{s/setenv bootargs *//;p}' \
+                  "${tempfile}")
 fi
+
+# Use the root to determine if verification should be happening.
+kernel_root="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*root=\([^ ]*\).*/\1/g')"
+# Unless specified, the kernel root should dictate whether we are verified
+# or not.
+if [ ${FLAGS_override_kernel_options} -eq ${FLAGS_FALSE} ]; then
+  if [ "${kernel_root}" != "/dev/dm-0" ]; then
+    FLAGS_enable_rootfs_verification=${FLAGS_FALSE}
+    FLAGS_ignore_bad_verification=${FLAGS_TRUE}
+  else
+    FLAGS_enable_rootfs_verification=${FLAGS_TRUE}
+    FLAGS_ignore_bad_verification=${FLAGS_FALSE}
+  fi
+fi
+
+# Extract the dm-verity target options.
+kernel_cfg="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
+              cut -f2- -d,)"
+verity_preamble="$(echo "${KERNEL_CONFIG}" |
+                   sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
+                   cut -f1 -d,)"
+rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
+verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
+verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
+
+rootfs_image="${FLAGS_rootfs_image}"
+selected_root=$((selected_kernel + 1))
+if [ -z "${rootfs_image}" ]; then
+  ROOT_LOOP=$(setup_dst_loop ${selected_root})
+  rootfs_image="${ROOT_LOOP}"
+fi
+
+# Update the root filesystem to ensure it can be mounted if rw access is
+# expected.  We never disable it going back to verification here since
+# we don't want to change a pre-created image at all if it is verified.
+if [ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_FALSE} ]; then
+  enable_rw_mount "${rootfs_image}"
+fi
+
+# Compute the rootfs hash tree and dump it in the tempfile.
+# TODO(wad) take preamble from dump_kernel_config.
+VERITY="${INSTALL_ROOT}"/bin/verity
+table="${verity_preamble},"$(sudo "${VERITY}" create \
+        ${verity_depth} \
+        "${verity_algorithm}" \
+        "${rootfs_image}" \
+        $((rootfs_sectors / 8)) \
+        ${tempfile})
+
+expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
+generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
+
+if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
+  if [ "${expected_hash}" != "${generated_hash}" ]; then
+    echo "Root filesystem has been modified unexpectedly!" 1>&2
+    echo "Expected ${expected_hash} != ${generated_hash}" 1>&2
+    # It doesn't make sense to exit here since the root filesystem
+    # is already in place.  Might as well get everything in sync.
+    EXIT_CODE=1
+  fi
+fi
+
+if [ -n "${newimg:-}" ]; then
+  # This will usually be ${rootfs_image} except for cases where
+  # FLAGS_dst and FLAGS_rootfs_image diverge.
+  dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
+  # Replace the placeholders from the verity tool.
+  table="$(echo "$table" |
+           sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
+fi
+# Overwrite the appended hashes with the new ones.
+sudo dd if=${tempfile} of="${rootfs_image}" \
+        bs=512 seek=${rootfs_sectors} conv=notrunc
 
 # Make the change
 if [ -z "$FLAGS_update_grub_cfg" ]; then
