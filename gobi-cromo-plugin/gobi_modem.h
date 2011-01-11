@@ -299,7 +299,7 @@ class GobiModem
   void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.
-  void RegistrationStateHandler();
+  virtual void RegistrationStateHandler();
 
   // Overridden in CDMA, GSM
   virtual void SignalStrengthHandler(INT8 signal_strength,
