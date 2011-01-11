@@ -102,7 +102,7 @@ cleanup_for_resume
 #  - re-kicks laptop mode since AC<->Battery transition might've happened
 #    while the system was suspended. Sleep a bit, though, to take care of
 #    racing with USB stack coming up.
-sleep 10 && /usr/sbin/laptop_mode force &
+(sleep 10 && /usr/sbin/laptop_mode force) > /dev/null &
 
 # - resumes cryptohome device
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
