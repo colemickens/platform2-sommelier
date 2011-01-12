@@ -203,6 +203,9 @@ chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 # nodev,noexec,nosuid from /mnt/stateful_partition above.
 mount -n --bind /mnt/stateful_partition/var /var
 mount -n --bind /mnt/stateful_partition/home /home
+# If we're mod_for_test, both /home and /tmp need to be mounted without noexec
+#mod_for_test#mount -n -o remount,exec,suid /home
+#mod_for_test#mount -n -o remount,exec,suid /tmp
 
 # Mount stateful partition for dev packages
 # TODO(sosa@chromium.org) - Use $DEVMODE value?
