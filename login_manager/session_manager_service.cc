@@ -206,6 +206,33 @@ bool SessionManagerService::Initialize() {
   return Reset();
 }
 
+bool SessionManagerService::Register(
+    const chromeos::dbus::BusConnection &connection) {
+  if (!chromeos::dbus::AbstractDbusService::Register(connection))
+    return false;
+  const std::string filter =
+      StringPrintf("type='method_call', interface='%s'", service_interface());
+  DBusConnection* conn =
+      ::dbus_g_connection_get_connection(connection.g_connection());
+  CHECK(conn);
+  DBusError error;
+  ::dbus_error_init(&error);
+  ::dbus_bus_add_match(conn, filter.c_str(), &error);
+  if (::dbus_error_is_set(&error)) {
+    LOG(WARNING) << "Failed to add match to bus: " << error.name << ", message="
+                 << (error.message ? error.message : "unknown error");
+    return false;
+  }
+  if (!::dbus_connection_add_filter(conn,
+                                    &SessionManagerService::FilterMessage,
+                                    this,
+                                    NULL)) {
+    LOG(WARNING) << "Failed to add filter to connection";
+    return false;
+  }
+  return true;
+}
+
 bool SessionManagerService::Reset() {
   if (session_manager_)
     g_object_unref(session_manager_);
@@ -310,6 +337,11 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
                          this,
                          NULL);
   return pid;
+}
+
+bool SessionManagerService::IsKnownChild(int pid) {
+  return std::find(child_pids_.begin(), child_pids_.end(), pid) !=
+      child_pids_.end();
 }
 
 void SessionManagerService::AllowGracefulExit() {
@@ -808,6 +840,53 @@ bool SessionManagerService::ValidateEmail(const string& email_address) {
   return true;
 }
 
+// static
+DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
+                                                       DBusMessage* message,
+                                                       void* data) {
+  SessionManagerService* service = static_cast<SessionManagerService*>(data);
+  if (::dbus_message_is_method_call(message,
+                                    service->service_interface(),
+                                    kSessionManagerRestartJob)) {
+    const char* sender = ::dbus_message_get_sender(message);
+    if (!sender) {
+      LOG(ERROR) << "Call to RestartJob has no sender";
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    LOG(INFO) << "Received RestartJob from " << sender;
+    DBusMessage* get_pid =
+        ::dbus_message_new_method_call("org.freedesktop.DBus",
+                                       "/org/freedesktop/DBus",
+                                       "org.freedesktop.DBus",
+                                       "GetConnectionUnixProcessID");
+    CHECK(get_pid);
+    ::dbus_message_append_args(get_pid,
+                               DBUS_TYPE_STRING, &sender,
+                               DBUS_TYPE_INVALID);
+    DBusMessage* got_pid =
+        ::dbus_connection_send_with_reply_and_block(conn, get_pid, -1, NULL);
+    ::dbus_message_unref(get_pid);
+    if (!got_pid) {
+      LOG(ERROR) << "Could not look up sender of RestartJob";
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    uint32 pid;
+    if (!::dbus_message_get_args(got_pid, NULL,
+                                 DBUS_TYPE_UINT32, &pid,
+                                 DBUS_TYPE_INVALID)) {
+      ::dbus_message_unref(got_pid);
+      LOG(ERROR) << "Could not extract pid of sender of RestartJob";
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+    ::dbus_message_unref(got_pid);
+    if (!service->IsKnownChild(pid)) {
+      LOG(WARNING) << "Sender of RestartJob is no child of mine!";
+      return DBUS_HANDLER_RESULT_HANDLED;
+    }
+  }
+  return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 void SessionManagerService::SetupHandlers() {
   // I have to ignore SIGUSR1, because Xorg sends it to this process when it's
   // got no clients and is ready for new ones.  If we don't ignore it, we die.
@@ -1005,7 +1084,6 @@ gboolean SessionManagerService::GetPropertyHelper(const std::string& name,
     std::string error_string =
         base::StringPrintf("The requested property %s is unknown.",
                            name.c_str());
-    LOG(INFO) << error_string;
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,
               error_string.c_str());

@@ -5,10 +5,10 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_SERVICE_H_
 
-#include <gtest/gtest.h>
-
+#include <dbus/dbus.h>
 #include <errno.h>
 #include <glib.h>
+#include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -28,14 +28,13 @@
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 
-class CommandLine;
-
 namespace login_manager {
 namespace gobject {
 struct SessionManager;
 }  // namespace gobject
 
 class ChildJobInterface;
+class CommandLine;
 class NssUtil;
 
 // Provides a wrapper for exporting SessionManagerInterface to
@@ -131,6 +130,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   ////////////////////////////////////////////////////////////////////////////
   // Implementing chromeos::dbus::AbstractDbusService
   virtual bool Initialize();
+  virtual bool Register(const chromeos::dbus::BusConnection &conn);
   virtual bool Reset();
 
   // Takes ownership of |file_checker|.
@@ -184,6 +184,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   // Run one of the children.
   int RunChild(ChildJobInterface* child_job);
+
+  bool IsKnownChild(int pid);
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -309,6 +311,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static void SIGHUPHandler(int signal);
   static void SIGINTHandler(int signal);
   static void SIGTERMHandler(int signal);
+
+  // |data| is a SessionManagerService*
+  static DBusHandlerResult FilterMessage(DBusConnection* conn,
+                                         DBusMessage* message,
+                                         void* data);
 
   // |data| is a SessionManagerService*
   static void HandleChildExit(GPid pid,
