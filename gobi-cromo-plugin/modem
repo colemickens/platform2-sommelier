@@ -55,6 +55,22 @@ status () {
 	/usr/share/userfeedback/scripts/mm-status
 }
 
+update_prl () {
+	local modem
+	local mdn
+	local min
+	$(needarg prlfile)
+	modem=$(modems | head -1)
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	mdn=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/mdn/ {print $2}')
+	min=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/min/ {print $2}')
+	if [ -z "$mdn" -o -z "$min" ]; then
+		echo "Cannot update PRL: MDN/MIN are unknown"
+		exit 1
+	fi
+	activate_manual $modem mdn $mdn min $min prlfile $prlfile
+}
+
 usage () {
 	echo "Usage: $0 <command> [args...]"
 	echo "  activate <modem> <carrier>         Activate modem"
@@ -62,6 +78,7 @@ usage () {
 	echo "  connect <modem> [args...]          Connect modem"
 	echo "  factory-reset <modem> <spc>        Factory-reset the modem"
 	echo "  status                             Display modem status"
+        echo "  update-prl <prl-file-name>         Install a PRL file"
 	exit 0
 }
 
@@ -82,6 +99,9 @@ case "$cmd" in
 	status)
 		status "$@"
 		;;
+        update-prl)
+                update_prl "$@"
+                ;;
 	*)
 		usage
 		;;
