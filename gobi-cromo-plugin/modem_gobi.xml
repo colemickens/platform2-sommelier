@@ -47,6 +47,22 @@
       </arg>
     </method>
 
+    <method name="SetAutomaticTracking">
+      <tp:docstring>
+        Turn automatic tracking on and off
+      </tp:docstring>
+      <arg name="service_enable" type="b" direction="in">
+        <tp:docstring>
+          Value for service automatic tracking.
+        </tp:docstring>
+      </arg>
+      <arg name="port_enable" type="b" direction="in">
+        <tp:docstring>
+          Value for port automatic tracking.
+        </tp:docstring>
+      </arg>
+    </method>
+
     <signal name="DormancyStatus">
       <tp:docstring>
         Indicates that the dormancy status of the modem changed.

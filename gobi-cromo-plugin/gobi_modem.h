@@ -143,6 +143,9 @@ class GobiModem
   virtual void SoftReset(DBus::Error& error);
   virtual void PowerCycle(DBus::Error& error);
   virtual void RequestEvents(const std::string& events, DBus::Error& error);
+  virtual void SetAutomaticTracking(const bool& service_enable,
+                                    const bool& port_enable,
+                                    DBus::Error& error);
 
  protected:
   struct SerialNumbers {
@@ -189,20 +192,6 @@ class GobiModem
     }
     pthread_mutex_unlock(&modem_mutex_.mutex_);
   }
-
-  struct NmeaPlusArgs : public CallbackArgs {
-    NmeaPlusArgs(LPCSTR nmea, ULONG mode)
-      : nmea(nmea),
-        mode(mode) { }
-    std::string nmea;
-    ULONG mode;
-  };
-
-  static void NmeaPlusCallbackTrampoline(LPCSTR nmea, ULONG mode) {
-    PostCallbackRequest(NmeaPlusCallback,
-                        new NmeaPlusArgs(nmea, mode));
-  }
-  static gboolean NmeaPlusCallback(gpointer data);
 
   struct SessionStateArgs : public CallbackArgs {
     SessionStateArgs(ULONG state,
@@ -273,15 +262,6 @@ class GobiModem
   };
   static gboolean SdkErrorHandler(gpointer data);
 
-  static void *NMEAThreadTrampoline(void *arg) {
-    if (connected_modem_)
-      return connected_modem_->NMEAThread();
-    else
-      return NULL;
-  }
-  void *NMEAThread(void);
-
-
   static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   // Set DBus-exported properties
   void SetDeviceProperties();
@@ -296,7 +276,6 @@ class GobiModem
   void GetGobiRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
                                 ULONG* roaming_state, DBus::Error& error);
 
-  void StartNMEAThread();
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.
   virtual void RegistrationStateHandler();
@@ -311,9 +290,6 @@ class GobiModem
   gobi::Sdk *sdk_;
   DEVICE_ELEMENT device_;
   int last_seen_;  // Updated every scan where the modem is present
-  int nmea_fd_; // fifo to write NMEA data to
-
-  pthread_t nmea_thread;
 
   ULONG session_state_;
   ULONG session_id_;

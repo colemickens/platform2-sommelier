@@ -45,7 +45,6 @@ static const int DEBUG = 0;
 
 static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
-static const char *kFifoName = "/tmp/gobi-nmea";
 
 using utilities::DBusPropertyMap;
 
@@ -169,7 +168,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
     : DBus::ObjectAdaptor(connection, path),
       sdk_(sdk),
       last_seen_(-1),
-      nmea_fd_(-1),
       session_state_(gobi::kDisconnected),
       session_id_(0),
       suspending_(false),
@@ -269,10 +267,6 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     }
     Enabled = true;
     registration_start_time_ = GetTimeMs();
-    // TODO(ers) disabling NMEA thread creation
-    // until issues are addressed, e.g., thread
-    // leakage and possible invalid pointer references.
-    //    StartNMEAThread();
   } else if (!enable && Enabled()) {
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
@@ -664,10 +658,6 @@ static void NewSMSCallback(ULONG type, ULONG index) {
   LOG(INFO) << "NewSMSCallback: type " << type << " index " << index;
 }
 
-static void NMEACallback(LPCSTR nmea) {
-  LOG(INFO) << "NMEACallback: " << nmea;
-}
-
 static void PDSStateCallback(ULONG enabled, ULONG tracking) {
   LOG(INFO) << "PDSStateCallback: enabled " << enabled
             << " tracking " << tracking;
@@ -679,10 +669,8 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetRFInfoCallback(RFInfoCallbackTrampoline);
   sdk_->SetLURejectCallback(LURejectCallback);
   sdk_->SetNewSMSCallback(NewSMSCallback);
-  sdk_->SetNMEACallback(NMEACallback);
   sdk_->SetPDSStateCallback(PDSStateCallback);
 
-  sdk_->SetNMEAPlusCallback(NmeaPlusCallbackTrampoline);
   sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);
   sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
@@ -1064,63 +1052,21 @@ void GobiModem::SetDeviceSpecificIdentifier(const SerialNumbers& ignored) {
   // Overridden in CDMA, GSM
 }
 
-void *GobiModem::NMEAThread(void) {
-  int fd;
-  ULONG gps_mask, cell_mask;
+// DBUS message handler.
+void GobiModem::SetAutomaticTracking(const bool& service_enable,
+                                     const bool& port_enable,
+                                     DBus::Error& error) {
+  ULONG rc;
+  rc = sdk_->SetServiceAutomaticTracking(service_enable);
+  ENSURE_SDK_SUCCESS(SetServiceAutomaticTracking, rc, kSdkError);
+  LOG(INFO) << "Service automatic tracking " << (service_enable ?
+          "enabled" : "disabled");
 
-  unlink(kFifoName);
-  mkfifo(kFifoName, 0700);
-
-  // This will wait for a reader to open before continuing
-  fd = open(kFifoName, O_WRONLY);
-
-  LOG(INFO) << "NMEA fifo running, GPS enabled";
-
-  // Enable GPS tracking
-  sdk_->SetServiceAutomaticTracking(1);
-
-  // Reset all GPS/Cell positioning fields at startup
-  gps_mask = 0x1fff;
-  cell_mask = 0x3ff;
-  sdk_->ResetPDSData(&gps_mask, &cell_mask);
-
-  nmea_fd_ = fd;
-
-  return NULL;
+  rc = sdk_->SetPortAutomaticTracking(port_enable);
+  ENSURE_SDK_SUCCESS(SetPortAutomaticTracking, rc, kSdkError);
+  LOG(INFO) << "Port automatic tracking " << (port_enable ?
+          "enabled" : "disabled");
 }
-
-void GobiModem::StartNMEAThread() {
-  // Create thread to wait for fifo reader
-  pthread_create(&nmea_thread, NULL, NMEAThreadTrampoline, NULL);
-}
-
-// Event callbacks run in the context of the main thread
-
-gboolean GobiModem::NmeaPlusCallback(gpointer data) {
-  NmeaPlusArgs *args = static_cast<NmeaPlusArgs*>(data);
-  LOG(INFO) << "NMEA Plus State Callback: "
-            << args->nmea << " " << args->mode;
-  GobiModem* modem = handler_->LookupByPath(*args->path);
-  if (modem != NULL && modem->nmea_fd_ != -1) {
-    int ret = write(modem->nmea_fd_, args->nmea.c_str(), args->nmea.length());
-    if (ret < 0) {
-      // Failed write means fifo reader went away
-      LOG(INFO) << "NMEA fifo stopped, GPS disabled";
-      unlink(kFifoName);
-      close(modem->nmea_fd_);
-      modem->nmea_fd_ = -1;
-
-      // Disable GPS tracking until we have a listener again
-      modem->sdk_->SetServiceAutomaticTracking(0);
-
-      // Re-start the fifo listener thread
-      modem->StartNMEAThread();
-    }
-  }
-  delete args;
-  return FALSE;
-}
-
 
 void GobiModem::SinkSdkError(const std::string& modem_path,
                              const std::string& sdk_function,
