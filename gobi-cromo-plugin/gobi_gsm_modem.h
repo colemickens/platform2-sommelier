@@ -1,0 +1,83 @@
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// GSM specialization of Gobi Modem
+
+#ifndef PLUGIN_GOBI_GSM_MODEM_H_
+#define PLUGIN_GOBI_GSM_MODEM_H_
+
+#include "gobi_modem.h"
+#include <cromo/modem-gsm_server_glue.h>
+#include <cromo/modem-gsm-card_server_glue.h>
+#include <cromo/modem-gsm-network_server_glue.h>
+class GobiModem;
+
+typedef std::vector<std::map<std::string, std::string> > ScannedNetworkList;
+
+class GobiGsmModem
+    : public GobiModem,
+      public org::freedesktop::ModemManager::Modem::Gsm_adaptor,
+      public org::freedesktop::ModemManager::Modem::Gsm::Card_adaptor,
+      public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor {
+ public:
+
+  GobiGsmModem(DBus::Connection& connection,
+               const DBus::Path& path,
+               const gobi::DeviceElement& device,
+               gobi::Sdk *sdk)
+      : GobiModem(connection, path, device, sdk) {}
+  virtual ~GobiGsmModem();
+
+  // DBUS Methods: Modem.GSM.Network
+  virtual void Register(const std::string& network_id, DBus::Error& error);
+  virtual ScannedNetworkList Scan(DBus::Error& error);
+  virtual void SetApn(const std::string& apn, DBus::Error& error);
+  virtual uint32_t GetSignalQuality(DBus::Error& error);
+  virtual void SetBand(const uint32_t& band, DBus::Error& error);
+  virtual uint32_t GetBand(DBus::Error& error);
+  virtual void SetNetworkMode(const uint32_t& mode, DBus::Error& error);
+  virtual uint32_t GetNetworkMode(DBus::Error& error);
+  virtual DBus::Struct<uint32_t, std::string, std::string> GetRegistrationInfo(
+      DBus::Error& error);
+  virtual void SetAllowedMode(const uint32_t& mode, DBus::Error& error);
+
+  // DBUS Methods: Modem.GSM.Card
+  virtual std::string GetImei(DBus::Error& error);
+  virtual std::string GetImsi(DBus::Error& error);
+  virtual void SendPuk(const std::string& puk,
+                       const std::string& pin,
+                       DBus::Error& error);
+  virtual void SendPin(const std::string& pin, DBus::Error& error);
+  virtual void EnablePin(const std::string& pin,
+                         const bool& enabled,
+                         DBus::Error& error);
+  virtual void ChangePin(const std::string& old_pin,
+                         const std::string& new_pin,
+                         DBus::Error& error);
+
+ protected:
+  void GetGsmRegistrationInfo(uint32_t* registration_state,
+                              std::string* operator_code,
+                              std::string* operator_name,
+                              DBus::Error& error);
+  // Overrides and extensions of GobiModem functions
+  virtual void RegisterCallbacks();
+  virtual void RegistrationStateHandler();
+  virtual void DataCapabilitiesHandler(BYTE num_data_caps,
+                                       ULONG* data_caps);
+  virtual void DataBearerTechnologyHandler(ULONG technology);
+  virtual void SignalStrengthHandler(INT8 signal_strength,
+                                     ULONG radio_interface);
+  virtual void SetTechnologySpecificProperties();
+
+ private:
+  void SendNetworkTechnologySignal(uint32_t mm_access_tech);
+  uint32_t GetMmAccessTechnology();
+
+  static gboolean CheckDataCapabilities(gpointer data);
+
+};
+
+
+#endif  // PLUGIN_GOBI_GSM_MODEM_H_

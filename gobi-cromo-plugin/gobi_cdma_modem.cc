@@ -17,11 +17,36 @@ using utilities::DBusPropertyMap;
 GobiCdmaModem::~GobiCdmaModem() {
 }
 
+void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
+                                             ULONG* cdma_evdo_state,
+                                             ULONG* roaming_state,
+                                             DBus::Error& error) {
+  ULONG reg_state;
+  ULONG l1;
+  WORD w1, w2;
+  BYTE radio_interfaces[10];
+  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
+  CHAR netname[32];
+
+  ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
+                                     radio_interfaces, roaming_state,
+                                     &w1, &w2, sizeof(netname), netname);
+  ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
+
+  for (int i = 0; i < num_radio_interfaces; i++) {
+    DLOG(INFO) << "Registration state " << reg_state
+               << " for RFI " << (int)radio_interfaces[i];
+    if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
+      *cdma_1x_state = reg_state;
+    else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
+      *cdma_evdo_state = reg_state;
+  }
+}
 
 //======================================================================
 // Callbacks and callback utilities
 
-static GobiCdmaModem * LookupCdmaModem(GobiModemHandler *handler,
+static GobiCdmaModem* LookupCdmaModem(GobiModemHandler *handler,
                                        const DBus::Path &path) {
   return static_cast<GobiCdmaModem *>(handler->LookupByPath(path));
 }
@@ -152,7 +177,7 @@ void GobiCdmaModem::SignalStrengthHandler(INT8 signal_strength,
   ULONG cdma_1x_state;
   ULONG roaming_state;
   DBus::Error error;
-  GetGobiRegistrationState(&cdma_1x_state, &cdma_evdo_state,
+  GetCdmaRegistrationState(&cdma_1x_state, &cdma_evdo_state,
                            &roaming_state, error);
   if ((radio_interface == gobi::kRfiCdma1xRtt &&
        cdma_1x_state == gobi::kRegistered) ||
@@ -170,7 +195,24 @@ void GobiCdmaModem::RegisterCallbacks() {
   sdk_->SetOMADMStateCallback(OmadmStateCallbackTrampoline);
 }
 
+//======================================================================
+// DBUS Methods: overridden Modem.Simple
+utilities::DBusPropertyMap GobiCdmaModem::GetStatus(DBus::Error& error) {
+  utilities::DBusPropertyMap result = GobiModem::GetStatus(error);
 
+  WORD prl_version;
+  ULONG rc = sdk_->GetPRLVersion(&prl_version);
+  if (rc == 0) {
+    result["prl_version"].writer().append_uint16(prl_version);
+  }
+
+  int activation_state = GetMmActivationState();
+  if (activation_state >= 0) {
+    result["activation_state"].writer().append_uint32(activation_state);
+  }
+  return result;
+
+}
 
 //======================================================================
 // DBUS Methods: ModemCDMA
@@ -333,6 +375,10 @@ void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
   ULONG prl_size = 0;
   if (prl_file != NULL) {
     prl = GetFileContents(prl_file, &prl_size);
+    if (prl == NULL) {
+      error.set(kActivationError, "PRL file cannot be read");
+      return;
+    }
   }
   ULONG rc = sdk_->ActivateManual(spc,
                                   system_id,
@@ -416,7 +462,7 @@ void GobiCdmaModem::GetRegistrationState(uint32_t& cdma_1x_state,
   cdma_1x_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   cdma_evdo_state = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
 
-  GetGobiRegistrationState(&reg_state_1x, &reg_state_evdo,
+  GetCdmaRegistrationState(&reg_state_1x, &reg_state_evdo,
                            &roaming_state, error);
   if (error.is_set())
     return;
@@ -449,7 +495,7 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiCdmaModem::GetServingSystem(
 
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
                                      radio_interfaces, &roaming_state,
-                                     &mcc, &mnc);
+                                     &mcc, &mnc, sizeof(netname), netname);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetServingNetwork, rc, kSdkError, result);
   if (reg_state != gobi::kRegistered) {
     error.set(kNoNetworkError, "No network service is available");
@@ -505,8 +551,6 @@ void GobiCdmaModem::RegistrationStateHandler() {
   uint32_t evdo_state;
   DBus::Error error;
 
-  GobiModem::RegistrationStateHandler();
-
   GetRegistrationState(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
@@ -527,9 +571,18 @@ void GobiCdmaModem::RegistrationStateHandler() {
   LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }
 
+void GobiCdmaModem::DataCapabilitiesHandler(BYTE num_data_caps,
+                                            ULONG* data_caps) {
+  // TODO(ers) explore whether we should be doing anything
+  // with this event.
+}
 
-void GobiCdmaModem::SetDeviceSpecificIdentifier(const SerialNumbers& serials) {
-  MEID = serials.meid;
+void GobiCdmaModem::SetTechnologySpecificProperties() {
+  SerialNumbers serials;
+  DBus::Error error;
+  GetSerialNumbers(&serials, error);
+  if (!error.is_set())
+    MEID = serials.meid;
 }
 
 void GobiCdmaModem::SendActivationStateFailed() {

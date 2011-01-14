@@ -686,8 +686,9 @@ ULONG Sdk::GetServingNetwork(
     BYTE *                     pRadioIfaces,
     ULONG *                    pRoaming,
     WORD *                     pMCC,
-    WORD *                     pMNC) {
-  CHAR netName[32];
+    WORD *                     pMNC,
+    BYTE                       nameSize,
+    CHAR *                     pName) {
   ULONG l1, l2;
   CallWrapper cw(this, "GetServingNetwork");
   return cw.CheckReturn(::GetServingNetwork(
@@ -700,8 +701,8 @@ ULONG Sdk::GetServingNetwork(
       pRoaming,
       pMCC,
       pMNC,
-      sizeof(netName),  // size of name array
-      netName));         // network name
+      nameSize,
+      pName));
 }
 
 ULONG Sdk::GetServingNetworkCapabilities(

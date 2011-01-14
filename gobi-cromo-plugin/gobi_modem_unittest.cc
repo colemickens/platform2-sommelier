@@ -43,7 +43,7 @@ ACTION_TEMPLATE(SetQString,
   output[std::tr1::get<k_length>(args) - 1] = 0;
 }
 
-static const DEVICE_ELEMENT kDeviceElement = {"/device/node", "keykeykey"};
+static const gobi::DeviceElement kDeviceElement = {"/device/node", "keykeykey"};
 
 class GobiModemTest : public ::testing::Test {
  public:

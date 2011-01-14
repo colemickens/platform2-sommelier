@@ -18,12 +18,15 @@ class GobiCdmaModem
 
   GobiCdmaModem(DBus::Connection& connection,
                 const DBus::Path& path,
-                const DEVICE_ELEMENT &device,
+                const gobi::DeviceElement& device,
                 gobi::Sdk *sdk)
       : GobiModem(connection, path, device, sdk) {}
   virtual ~GobiCdmaModem();
 
-  // DBUS Methods: ModemCDMA
+  // DBUS Methods: overridden Modem.Simple
+  virtual utilities::DBusPropertyMap GetStatus(DBus::Error& error);
+
+  // DBUS Methods: Modem.CDMA
   virtual uint32_t GetSignalQuality(DBus::Error& error);
   virtual std::string GetEsn(DBus::Error& error);
   virtual DBus::Struct<uint32_t, std::string, uint32_t> GetServingSystem(
@@ -39,13 +42,17 @@ class GobiCdmaModem
       DBus::Error &error);
 
  protected:
+  void GetCdmaRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
+                                ULONG* roaming_state, DBus::Error& error);
 
   // Overrides and extensions of GobiModem functions
   virtual void RegisterCallbacks();
   virtual void RegistrationStateHandler();
-  virtual void SetDeviceSpecificIdentifier(const SerialNumbers&);
+  virtual void DataCapabilitiesHandler(BYTE num_data_caps,
+                                       ULONG* data_caps);
   virtual void SignalStrengthHandler(INT8 signal_strength,
                                      ULONG radio_interface);
+  virtual void SetTechnologySpecificProperties();
 
   // ======================================================================
   static void CleanupActivationTimeoutCallback(gpointer data);

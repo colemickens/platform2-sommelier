@@ -19,6 +19,7 @@ extern "C" {
 #include "device_watcher.h"
 #include "gobi_modem.h"
 #include "gobi_cdma_modem.h"
+#include "gobi_modem_factory.h"
 #include "gobi_sdk_wrapper.h"
 
 #ifndef VCSID
@@ -149,7 +150,7 @@ bool GobiModemHandler::GetDeviceList() {
   const int MAX_MODEMS = 16;
   ULONG rc;
 
-  DEVICE_ELEMENT devices[MAX_MODEMS];
+  gobi::DeviceElement devices[MAX_MODEMS];
   BYTE num_devices = MAX_MODEMS;
 
   rc = sdk_->QCWWANEnumerateDevices(&num_devices,
@@ -168,11 +169,15 @@ bool GobiModemHandler::GetDeviceList() {
       (*p).second->set_last_seen(scan_generation_);
     } else {
       something_changed = true;
-      // TODO:  detect modem type and instantiate accordingly
-      GobiModem* m = new GobiCdmaModem(server().conn(),
-                                       MakePath(),
-                                       devices[i],
-                                       sdk_.get());
+      GobiModem* m = GobiModemFactory::CreateModem(server().conn(),
+                                                   MakePath(),
+                                                   devices[i],
+                                                   sdk_.get());
+      if (m == NULL) {
+        LOG(ERROR) << "Could not create modem object for "
+                   << devices[i].deviceNode;
+        continue;
+      }
       m->Init();
       m->set_last_seen(scan_generation_);
       key_to_modem_[std::string(devices[i].deviceKey)] = m;

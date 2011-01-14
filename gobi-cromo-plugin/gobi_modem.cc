@@ -9,6 +9,7 @@
 #include <dbus/dbus.h>
 
 #include <fcntl.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/wait.h>
 
@@ -32,7 +33,6 @@ static const int DEBUG = 1;
 static const int DEBUG = 0;
 #endif
 
-
 #define DEFINE_ERROR(name) \
   const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
 #define DEFINE_MM_ERROR(name) \
@@ -43,7 +43,6 @@ static const int DEBUG = 0;
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
-static const size_t kDefaultBufferSize = 128;
 static const char *kNetworkDriver = "QCUSBNet2k";
 
 using utilities::DBusPropertyMap;
@@ -66,7 +65,7 @@ using utilities::DBusPropertyMap;
 // Any reported signal strength larger than or equal to kMaxSignalStrengthDbm
 // is considered full strength.
 static const int kMaxSignalStrengthDbm = -53;
-// Any reported signal strength smaller than kMaxSignalStrengthDbm is
+// Any reported signal strength smaller than kMinSignalStrengthDbm is
 // considered zero strength.
 static const int kMinSignalStrengthDbm = -113;
 // The number of signal strength levels we want to report, ranging from
@@ -163,16 +162,20 @@ bool SuspendOkTrampoline(void *arg) {
 
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
-                     const DEVICE_ELEMENT& device,
+                     const gobi::DeviceElement& device,
                      gobi::Sdk* sdk)
     : DBus::ObjectAdaptor(connection, path),
       sdk_(sdk),
       last_seen_(-1),
       session_state_(gobi::kDisconnected),
       session_id_(0),
+      signal_available_(false),
       suspending_(false),
       exiting_(false),
-      device_resetting_(false) {
+      device_resetting_(false),
+      connect_start_time_(0),
+      disconnect_start_time_(0),
+      registration_start_time_(0) {
   memcpy(&device_, &device, sizeof(device_));
 }
 
@@ -453,7 +456,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
 
   StrengthMap interface_to_dbm;
   GetSignalStrengthDbm(rssi, &interface_to_dbm, signal_strength_error);
-  if (signal_strength_error.is_set()) {
+  if (signal_strength_error.is_set() || rssi <= kMinSignalStrengthDbm) {
     // Activate() looks for this key and does not even try if present
     result["no_signal"].writer().append_bool(true);
   } else {
@@ -542,7 +545,9 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
         WORD w1, w2;
         BYTE b3[10];
         BYTE b2 = sizeof(b3)/sizeof(BYTE);
-        rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2);
+        CHAR netname[32];
+        rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2,
+                                     sizeof(netname), netname);
         if (rc == 0) {
           if (reg_state == gobi::kRegistered) {
             mm_modem_state = MM_MODEM_STATE_REGISTERED;
@@ -573,61 +578,15 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
     result["firmware_revision"].writer().append_string(firmware_revision);
   }
 
-  WORD prl_version;
-  rc = sdk_->GetPRLVersion(&prl_version);
-  if (rc == 0) {
-    result["prl_version"].writer().append_uint16(prl_version);
-  }
-
-  int activation_state = GetMmActivationState();
-  if (activation_state >= 0) {
-    result["activation_state"].writer().append_uint32(activation_state);
-  }
   carrier_-> ModifyModemStatusReturn(&result);
 
   return result;
-}
-
-
-void GobiModem::GetGobiRegistrationState(ULONG* cdma_1x_state,
-                                         ULONG* cdma_evdo_state,
-                                         ULONG* roaming_state,
-                                         DBus::Error& error) {
-  ULONG reg_state;
-  ULONG l1;
-  WORD w1, w2;
-  BYTE radio_interfaces[10];
-  BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
-
-  ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
-                                     radio_interfaces, roaming_state,
-                                     &w1, &w2);
-  ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
-
-  for (int i = 0; i < num_radio_interfaces; i++) {
-    DLOG(INFO) << "Registration state " << reg_state
-               << " for RFI " << (int)radio_interfaces[i];
-    if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
-      *cdma_1x_state = reg_state;
-    else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
-      *cdma_evdo_state = reg_state;
-  }
 }
 
 // This is only in debug builds; if you add actual code here, see
 // RegisterCallbacks().
 static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
   LOG(INFO) << "ByteTotalsCallback: tx " << tx << " rx " << rx;
-}
-
-// This is only in debug builds; if you add actual code here, see
-// RegisterCallbacks().
-static void DataCapabilitiesCallback(BYTE size, BYTE* caps) {
-  ULONG *ucaps = reinterpret_cast<ULONG*>(caps);
-  LOG(INFO) << "DataCapabilitiesHandler:";
-  for (int i = 0; i < size; i++) {
-    LOG(INFO) << "  Cap: " << static_cast<int>(ucaps[i]);
-  }
 }
 
 // This is only in debug builds; if you add actual code here, see
@@ -674,12 +633,12 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);
   sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
+  sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallbackTrampoline);
 
   if (DEBUG) {
     // These are only used for logging. If you make one of these a non-debug
     // callback, see EventKeyToIndex() below, which will need to be updated.
     sdk_->SetByteTotalsCallback(ByteTotalsCallback, 60);
-    sdk_->SetDataCapabilitiesCallback(DataCapabilitiesCallback);
     sdk_->SetDormancyStatusCallback(DormancyStatusCallbackTrampoline);
   }
 
@@ -954,8 +913,14 @@ void GobiModem::GetSignalStrengthDbm(int& output,
   INT8 strengths[kSignals];
   ULONG interfaces[kSignals];
 
+  signal_available_ = false;
   ULONG rc = sdk_->GetSignalStrengths(&signals, strengths, interfaces);
+  if (rc == gobi::kNoAvailableSignal) {
+    output = kMinSignalStrengthDbm-1;
+    return;
+  }
   ENSURE_SDK_SUCCESS(GetSignalStrengths, rc, kSdkError);
+  signal_available_ = true;
 
   signals = std::min(kSignals, signals);
 
@@ -965,7 +930,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
     }
   }
 
-  INT8 max_strength = -127;
+  INT8 max_strength = kint8min;
   for (ULONG i = 0; i < signals; ++i) {
     DLOG(INFO) << "Interface " << i << ": " << static_cast<int>(strengths[i])
                << " dBM technology: " << interfaces[i];
@@ -1011,16 +976,10 @@ void GobiModem::SetModemProperties() {
 
   ApiConnect(connect_error);
   if (connect_error.is_set()) {
-    // Use a default identifier assuming a single GOBI is connected
-    EquipmentIdentifier = "GOBI";
     Type = MM_MODEM_TYPE_CDMA;
     return;
   }
 
-  SerialNumbers serials;
-  DBus::Error getserial_error;
-  GetSerialNumbers(&serials, getserial_error);
-  DBus::Error getdev_error;
   ULONG u1, u2, u3, u4;
   BYTE radioInterfaces[10];
   ULONG numRadioInterfaces = sizeof(radioInterfaces)/sizeof(BYTE);
@@ -1037,19 +996,8 @@ void GobiModem::SetModemProperties() {
       }
     }
   }
+  SetTechnologySpecificProperties();
   ApiDisconnect();
-  if (!getserial_error.is_set()) {
-    // TODO(jglasgow): if GSM return serials.imei
-    EquipmentIdentifier = serials.meid;
-    SetDeviceSpecificIdentifier(serials);
-  } else {
-    // Use a default identifier assuming a single GOBI is connected
-    EquipmentIdentifier = "GOBI";
-  }
-}
-
-void GobiModem::SetDeviceSpecificIdentifier(const SerialNumbers& ignored) {
-  // Overridden in CDMA, GSM
 }
 
 // DBUS message handler.
@@ -1117,10 +1065,22 @@ gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   return FALSE;
 }
 
-void GobiModem::SignalStrengthHandler(INT8 signal_strength,
-                                      ULONG radio_interface) {
-  // Overridden by per-technology modem handlers
-  // TODO(ers) mark radio interface technology as registered?
+gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
+  DataCapabilitiesArgs* args = static_cast<DataCapabilitiesArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL)
+    modem->DataCapabilitiesHandler(args->num_data_caps, args->data_caps);
+  delete args;
+  return FALSE;
+}
+
+gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
+  DataBearerTechnologyArgs* args = static_cast<DataBearerTechnologyArgs*>(data);
+  GobiModem* modem = handler_->LookupByPath(*args->path);
+  if (modem != NULL)
+    modem->DataBearerTechnologyHandler(args->technology);
+  delete args;
+  return FALSE;
 }
 
 void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
@@ -1138,8 +1098,8 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   if (state == gobi::kDisconnected) {
     if (disconnect_start_time_) {
       ULONG duration = GetTimeMs() - disconnect_start_time_;
-      metrics_lib_->SendToUMA(METRIC_BASE_NAME "Disconnect", duration, 0, 150000,
-                              20);
+      metrics_lib_->SendToUMA(METRIC_BASE_NAME "Disconnect",
+                              duration, 0, 150000, 20);
       disconnect_start_time_ = 0;
     }
     session_id_ = 0;
@@ -1150,14 +1110,17 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     ConnectionStateChanged(false, reason);
   } else if (state == gobi::kConnected) {
     ULONG duration = GetTimeMs() - connect_start_time_;
-    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect", duration, 0, 150000, 20);
+    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect",
+                            duration, 0, 150000, 20);
     suspending_ = false;
     ConnectionStateChanged(true, 0);
   }
 }
 
-void GobiModem::RegistrationStateHandler() {
-  // TODO(cros-connectivity):  Factor out commonality from CDMA, GSM
+void GobiModem::DataBearerTechnologyHandler(ULONG technology) {
+  // Default is to ignore the argument and treat this as a
+  // registration state change. This behavior can be overridden.
+  RegistrationStateHandler();
 }
 
 // Set DBus properties that pertain to the modem hardware device.

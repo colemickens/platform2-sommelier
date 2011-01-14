@@ -72,12 +72,7 @@ typedef enum {
     MM_MODEM_STATE_LAST = MM_MODEM_STATE_CONNECTED
 } MMModemState;
 
-
-// Qualcomm device element, capitalized to their naming conventions
-struct DEVICE_ELEMENT {
-  char deviceNode[256];
-  char deviceKey[16];
-};
+static const size_t kDefaultBufferSize = 128;
 
 class Carrier;
 class CromoServer;
@@ -88,6 +83,7 @@ class GobiModem
       public org::freedesktop::ModemManager::Modem::Simple_adaptor,
 
       public org::chromium::ModemManager::Modem::Gobi_adaptor,
+      public org::freedesktop::DBus::Properties_adaptor,
       public DBus::IntrospectableAdaptor,
       public DBus::PropertiesAdaptor,
       public DBus::ObjectAdaptor {
@@ -96,7 +92,7 @@ class GobiModem
 
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
-            const DEVICE_ELEMENT &device,
+            const gobi::DeviceElement &device,
             gobi::Sdk *sdk);
   virtual ~GobiModem();
 
@@ -156,6 +152,7 @@ class GobiModem
 
   void ApiConnect(DBus::Error& error);
   ULONG ApiDisconnect(void);
+  bool IsApiConnected() { return connected_modem_ != NULL; }
   virtual uint32_t CommonGetSignalQuality(DBus::Error& error);
   void GetSignalStrengthDbm(int& strength,
                             StrengthMap *interface_to_strength,
@@ -210,10 +207,17 @@ class GobiModem
   }
   static gboolean SessionStateCallback(gpointer data);
 
-  static void DataBearerCallbackTrampoline(ULONG data_bearer_technology) {
+  struct DataBearerTechnologyArgs : public CallbackArgs {
+    DataBearerTechnologyArgs(ULONG technology) : technology(technology) {}
+    ULONG technology;
+  };
+
+  static void DataBearerCallbackTrampoline(ULONG technology) {
     // ignore the supplied argument
-    PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
+    PostCallbackRequest(DataBearerTechnologyCallback,
+                        new DataBearerTechnologyArgs(technology));
   }
+  static gboolean DataBearerTechnologyCallback(gpointer data);
 
   static void RoamingIndicatorCallbackTrampoline(ULONG roaming) {
     // ignore the supplied argument
@@ -256,6 +260,28 @@ class GobiModem
 
   static gboolean DormancyStatusCallback(gpointer data);
 
+  struct DataCapabilitiesArgs : public CallbackArgs {
+    DataCapabilitiesArgs(BYTE num_data_caps, BYTE* data_caps)
+      : num_data_caps(num_data_caps) {
+      ULONG* dcp = reinterpret_cast<ULONG*>(data_caps);
+      if (num_data_caps > 12)
+        num_data_caps = 12;
+      for (int i = 0; i < num_data_caps; i++)
+        data_caps[i] = dcp[i];
+    }
+    BYTE num_data_caps;
+    // undocumented: the SDK limits the number of
+    // data capabilities reported to 12
+    ULONG data_caps[12];
+  };
+
+  static void DataCapabilitiesCallbackTrampoline(BYTE num_data_caps,
+                                                 BYTE* data_caps) {
+    PostCallbackRequest(DataCapabilitiesCallback,
+                        new DataCapabilitiesArgs(num_data_caps, data_caps));
+  }
+  static gboolean DataCapabilitiesCallback(gpointer data);
+
   struct SdkErrorArgs : public CallbackArgs {
     SdkErrorArgs(ULONG error) : error(error) { }
     ULONG error;
@@ -266,33 +292,33 @@ class GobiModem
   // Set DBus-exported properties
   void SetDeviceProperties();
   void SetModemProperties();
-  virtual void SetDeviceSpecificIdentifier(const SerialNumbers&);
+  virtual void SetTechnologySpecificProperties() = 0;
 
   // Returns the modem activation state as an enum value from
   // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error.  This state
   // may be further overridden by ModifyModemStatusReturn()
   int32_t GetMmActivationState();
 
-  void GetGobiRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
-                                ULONG* roaming_state, DBus::Error& error);
-
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.
-  virtual void RegistrationStateHandler();
-
-  // Overridden in CDMA, GSM
+  virtual void RegistrationStateHandler() = 0;
+  virtual void DataCapabilitiesHandler(BYTE num_data_caps,
+                               ULONG* data_caps) = 0;
   virtual void SignalStrengthHandler(INT8 signal_strength,
-                                     ULONG radio_interface);
-  void SessionStateHandler(ULONG state, ULONG session_end_reason);
+                                     ULONG radio_interface) = 0;
+
+  virtual void SessionStateHandler(ULONG state, ULONG session_end_reason);
+  virtual void DataBearerTechnologyHandler(ULONG technology);
 
   static GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
-  DEVICE_ELEMENT device_;
+  gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
 
   ULONG session_state_;
   ULONG session_id_;
+  bool signal_available_;
 
   std::string sysfs_path_;
 
@@ -334,7 +360,6 @@ class GobiModem
   friend bool SuspendOkTrampoline(void *arg);
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
-
 
   unsigned long long connect_start_time_;
   unsigned long long disconnect_start_time_;

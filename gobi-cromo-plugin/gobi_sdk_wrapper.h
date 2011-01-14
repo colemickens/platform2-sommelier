@@ -145,7 +145,7 @@ enum RegistrationState {
   kRegistered = 1,
   kSearching = 2,
   kRegistrationDenied = 3,
-  kUnknown = 4
+  kRegistrationStateUnknown = 4
 };
 
 enum OmadmSessionType {
@@ -187,6 +187,11 @@ enum ActivationState {
   kOtaspSettingsCommitted = 10,
 };
 
+enum GsmRegistrationType {
+  kRegistrationTypeAutomatic = 1,
+  kRegistrationTypeManual = 2
+};
+
 enum SessionState {
   kDisconnected = 1,
   kConnected = 2,
@@ -215,6 +220,24 @@ enum DataBearerTechnology {
   kDataBearerHsdpaDlHsupaUl = 9
 };
 
+enum DataCapability {
+  kDataCapGprs = 1,
+  kDataCapEdge = 2,
+  kDataCapHsdpa = 3,
+  kDataCapHsupa = 4,
+  kDataCapWcdma = 5,
+  kDataCapCdma1xRtt = 6,
+  kDataCapCdmaEvdoRev0 = 7,
+  kDataCapCdmaEvdoRevA = 8,
+  kDataCapGsm = 9
+};
+
+enum ConfiguredTechnology {
+  kConfigurationCdma = 0,
+  kConfigurationUmts = 1,
+  kConfigurationUnknownTechnology = 0xffffffff
+};
+
 enum RoamingState {
   kRoaming = 0,
   kHome = 1,
@@ -226,11 +249,13 @@ enum ReturnCode {
   kGeneralError = 1,
   kErrorSendingQmiRequest = 12,
   kErrorReceivingQmiRequest = 13,
+  kNoAvailableSignal = 29,
   kErrorNeedsReset = 34,
   kCallFailed = 1014,
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
   kNotSupportedByDevice = 1025,
+  kOperationHasNoEffect = 1026,
   kNoTrackingSessionHasBeenStarted = 1065,
   kInformationElementUnavailable = 1074,
   kQMIHardwareRestricted = 1083
@@ -251,6 +276,21 @@ typedef struct {
   ULONG activeBandClass;
   ULONG activeChannel;
 } RfInfoInstance;
+
+typedef struct {
+  WORD mcc;
+  WORD mnc;
+  ULONG inUse;
+  ULONG roaming;
+  ULONG forbidden;
+  ULONG preferred;
+  char description[255];
+} GsmNetworkInfoInstance;
+
+struct DeviceElement {
+  char deviceNode[256];
+  char deviceKey[16];
+};
 
 struct ReentrancyGroup;
 
@@ -444,7 +484,9 @@ class Sdk {
       BYTE *                     pRadioIfaces,
       ULONG *                    pRoaming,
       WORD *                     pMCC,
-      WORD *                     pMNC);
+      WORD *                     pMNC,
+      BYTE                       nameSize,
+      CHAR *                     pName);
 
   virtual ULONG GetServingNetworkCapabilities(
       BYTE *                     pDataCapsSize,

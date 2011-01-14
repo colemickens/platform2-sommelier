@@ -1,5 +1,5 @@
 # Use internal server
-CODE_REVIEW_SERVER: https://chromereview.prom.corp.google.com
+CODE_REVIEW_SERVER: https://chromereviews.googleplex.com
 
 # Use a non-standard cc list for internal reviews
 CC_LIST: rochberg@google.com,jglasgow@google.com,ers@google.com
