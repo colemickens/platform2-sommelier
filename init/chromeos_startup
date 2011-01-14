@@ -174,29 +174,24 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
 fi
 
 # Make sure stateful partition has some basic directories
-# TODO(hungte) verify if these directories are really created or corrupted (ex,
-# occupied by files), or start a clobber-state.
 mkdir -p -m 0755 /mnt/stateful_partition/etc
 mkdir -p -m 0755 /mnt/stateful_partition/home
+mkdir -p -m 0755 /mnt/stateful_partition/home/chronos
+mkdir -p -m 0755 /mnt/stateful_partition/var
 mkdir -p -m 0755 /mnt/stateful_partition/var/cache
 mkdir -p -m 0755 /mnt/stateful_partition/var/empty
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib/ureadahead
 mkdir -p -m 0755 /mnt/stateful_partition/var/lock
 mkdir -p -m 0755 /mnt/stateful_partition/var/log
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
+mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
 mkdir -p -m 0755 /mnt/stateful_partition/var/run
-chmod 0755 /mnt/stateful_partition/var
-
 mkdir -p -m 1777 /mnt/stateful_partition/var/tmp
 
-# Directory for ChromeOS metrics collection
-mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
+# Selected directories must belong to the chronos user.
+chown chronos:chronos /mnt/stateful_partition/home/chronos
 chown chronos:chronos /mnt/stateful_partition/var/log/metrics
-
-# Create a directory for the window manager to write logs to before the
-# user has logged in (it won't be able to do it itself, since it runs as
-# chronos but /var/log is owned by root).
-mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
 chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 
 # Mount some /var directories and /home.  These mounts inherit
