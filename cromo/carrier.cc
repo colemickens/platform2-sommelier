@@ -20,4 +20,6 @@ void AddBaselineCarriers(CromoServer *server) {
       "Sprint", "3", 102, MM_MODEM_TYPE_CDMA, Carrier::kOmadm, NULL));
   server->AddCarrier(new Carrier(
       "T-Mobile", "4", 203, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
+  server->AddCarrier(new Carrier(
+      "Generic UMTS", "6", 1, MM_MODEM_TYPE_GSM, Carrier::kNone, NULL));
 }
