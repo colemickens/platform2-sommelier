@@ -46,7 +46,7 @@ mode_enter_dev() {
   for dev_count_down in $(seq $delay_secs -1 1); do
     # Trailing spaces must exist to clear previous message when the printed
     # counter width changed (ex, 100->99).
-    echo $echo_opt "\r    Starting in $dev_count_down seconds...   " >"$STDOUT"
+    echo $echo_opt "\r  Starting in $dev_count_down second(s)...   " >"$STDOUT"
     sleep 1
   done
 
