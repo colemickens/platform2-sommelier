@@ -264,26 +264,25 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 DMSERVER="https://m.google.com/devicemanagement/data/api"
 
 exec /sbin/session_manager --uid=${USER_ID} -- \
-    $CHROME --login-manager \
-            --enable-gview \
-            --log-level=1 \
-            --enable-logging \
-            --disable-seccomp-sandbox \
-            --no-first-run \
-            --user-data-dir="$DATA_DIR" \
-            --login-profile=user \
-            --parallel-auth \
-            --apps-gallery-title="Web Store" \
+    $CHROME --apps-gallery-title="Web Store" \
             --apps-gallery-url="https://chrome.google.com/webstore/" \
-            --enable-login-images \
-            --enable-tabbed-options \
-            --disable-domui-menu \
-            --scroll-pixels=4 \
             --compress-sys-feedback \
             --device-management-url="$DMSERVER" \
-            ${ACCELERATED_FLAGS} \
-            "$TOUCH_DEVICES" \
+            --disable-domui-menu \
+            --disable-seccomp-sandbox \
+            --enable-gview \
+            --enable-logging \
+            --enable-login-images \
+            --enable-tabbed-options \
+            --log-level=1 \
+            --login-manager \
+            --login-profile=user \
+            --no-first-run \
+            --parallel-auth \
+            --reload-killed-tabs \
             "$REGISTER_PLUGINS" \
-            ${SKIP_OOBE} \
+            "$TOUCH_DEVICES" \
+            ${ACCELERATED_FLAGS} \
             ${SCREENSAVER_FLAG} \
+            ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
