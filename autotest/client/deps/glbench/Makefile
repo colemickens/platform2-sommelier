@@ -7,13 +7,10 @@ SOURCES_GL_BENCH = main.cc swaptest.cc yuvtest.cc testbase.cc
 SOURCES_GL_BENCH += readpixeltest.cc
 SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
 SOURCES_GL_BENCH += textureupdatetest.cc trianglesetuptest.cc fillratetest.cc
+SOURCES_GL_BENCH += windowmanagercompositingtest.cc
 
 GRAPHICS_BACKEND ?= OPENGL
 
-# TODO: port these to GLES
-ifeq ($(GRAPHICS_BACKEND),OPENGL)
-SOURCES_GL_BENCH += windowmanagercompositingtest.cc
-endif
 SOURCES_TEARTEST = teartest.cc
 SOURCES_WINDOWMANAGERTEST = windowmanagertest.cc
 SOURCES_ALL = $(SOURCES_COMMON) \

@@ -73,25 +73,11 @@ bool WindowManagerCompositingTest::TestFunc(int iter) {
     glBindTexture(GL_TEXTURE_2D, compositing_textures_[1]);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, compositing_textures_[2]);
-    // Set up the texture coordinate arrays
-    glClientActiveTexture(GL_TEXTURE0);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glClientActiveTexture(GL_TEXTURE1);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glClientActiveTexture(GL_TEXTURE2);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
     // Use the right shader
     glUseProgram(compositing_background_program_);
     // Draw the quad
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-    // Set up one texture coordinate array
-    glClientActiveTexture(GL_TEXTURE0);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-    glClientActiveTexture(GL_TEXTURE1);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-    glClientActiveTexture(GL_TEXTURE2);
-    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     // Use the right shader
     glUseProgram(compositing_foreground_program_);
 
@@ -136,7 +122,7 @@ bool WindowManagerCompositingTest::TestFunc(int iter) {
 const char *kBasicTextureVertexShader =
     "attribute vec4 c1;"
     "attribute vec4 c2;"
-    "varying vec2 v1;"
+    "varying vec4 v1;"
     "void main() {"
     "    gl_Position = c1;"
     "    " V1 " = c2;"
@@ -144,9 +130,9 @@ const char *kBasicTextureVertexShader =
 
 const char *kBasicTextureFragmentShader =
     "uniform sampler2D texture_sampler;"
-    "varying vec2 v1;"
+    "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = texture2D(texture_sampler, " V1 ".xy);"
+    "    gl_FragColor = texture2D(texture_sampler, " V1 ".st);"
     "}";
 
 GLuint BasicTextureShaderProgram(GLuint vertex_buffer, GLuint texture_buffer) {
@@ -176,8 +162,8 @@ const char *kDoubleTextureBlendVertexShader =
     "attribute vec4 c1;"
     "attribute vec4 c2;"
     "attribute vec4 c3;"
-    "varying vec2 v1;"
-    "varying vec2 v2;"
+    "varying vec4 v1;"
+    "varying vec4 v2;"
     "void main() {"
     "    gl_Position = c1;"
     "    " V1 " = c2;"
@@ -187,11 +173,11 @@ const char *kDoubleTextureBlendVertexShader =
 const char *kDoubleTextureBlendFragmentShader =
     "uniform sampler2D texture_sampler_0;"
     "uniform sampler2D texture_sampler_1;"
-    "varying vec2 v1;"
-    "varying vec2 v2;"
+    "varying vec4 v1;"
+    "varying vec4 v2;"
     "void main() {"
-    "    vec4 one = texture2D(texture_sampler_0, " V1 ".xy);"
-    "    vec4 two = texture2D(texture_sampler_1, " V2 ".xy);"
+    "    vec4 one = texture2D(texture_sampler_0, " V1 ".st);"
+    "    vec4 two = texture2D(texture_sampler_1, " V2 ".st);"
     "    gl_FragColor = mix(one, two, 0.5);"
     "}";
 
@@ -232,9 +218,9 @@ const char *triple_texture_blend_vertex_shader =
 "attribute vec4 c2;"
 "attribute vec4 c3;"
 "attribute vec4 c4;"
-"varying vec2 v1;"
-"varying vec2 v2;"
-"varying vec2 v3;"
+"varying vec4 v1;"
+"varying vec4 v2;"
+"varying vec4 v3;"
 "void main() {"
 "    gl_Position = c1;"
 "    " V1 " = c2;"
@@ -246,13 +232,13 @@ const char *triple_texture_blend_fragment_shader =
 "uniform sampler2D texture_sampler_0;"
 "uniform sampler2D texture_sampler_1;"
 "uniform sampler2D texture_sampler_2;"
-"varying vec2 v1;"
-"varying vec2 v2;"
-"varying vec2 v3;"
+"varying vec4 v1;"
+"varying vec4 v2;"
+"varying vec4 v3;"
 "void main() {"
-"    vec4 one = texture2D(texture_sampler_0, " V1 ".xy);"
-"    vec4 two = texture2D(texture_sampler_1, " V2 ".xy);"
-"    vec4 three = texture2D(texture_sampler_2, " V3 ".xy);"
+"    vec4 one = texture2D(texture_sampler_0, " V1 ".st);"
+"    vec4 two = texture2D(texture_sampler_1, " V2 ".st);"
+"    vec4 three = texture2D(texture_sampler_2, " V3 ".st);"
 "    gl_FragColor = mix(mix(one, two, 0.5), three, 0.5);"
 "}";
 
@@ -321,10 +307,7 @@ void WindowManagerCompositingTest::InitializeCompositing() {
                     GL_LINEAR);
   }
 
-  glColor4f(1.f, 1.f, 1.f, 1.f);
-
   // Set up the vertex arrays for drawing textured quads later on.
-  glEnableClientState(GL_VERTEX_ARRAY);
   GLfloat buffer_vertex[8] = {
     -1.f, -1.f,
     1.f,  -1.f,
@@ -333,7 +316,6 @@ void WindowManagerCompositingTest::InitializeCompositing() {
   };
   GLuint vbo_vertex = SetupVBO(GL_ARRAY_BUFFER,
                                sizeof(buffer_vertex), buffer_vertex);
-  glVertexPointer(2, GL_FLOAT, 0, 0);
 
   GLfloat buffer_texture[8] = {
     0.f, 0.f,
@@ -343,11 +325,6 @@ void WindowManagerCompositingTest::InitializeCompositing() {
   };
   GLuint vbo_texture = SetupVBO(GL_ARRAY_BUFFER,
                                 sizeof(buffer_texture), buffer_texture);
-  for (int i = 0; i < 3; i++) {
-    glClientActiveTexture(GL_TEXTURE0 + i);
-    glTexCoordPointer(2, GL_FLOAT, 0, 0);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-  }
 
   // Set up the static background textures.
   UpdateTexture();
@@ -384,8 +361,6 @@ void WindowManagerCompositingTest::InitializeCompositing() {
   if (!compositing_background_program_ || !compositing_foreground_program_) {
     printf("# Could not set up compositing shader.\n");
   }
-
-  glVertexPointer(2, GL_FLOAT, 0, 0);
 }
 
 void WindowManagerCompositingTest::TeardownCompositing() {

@@ -60,10 +60,8 @@ int main(int argc, char *argv[]) {
     glbench::GetSwapTest(),
     glbench::GetClearTest(),
     glbench::GetFillRateTest(),
-#if defined(USE_OPENGL)
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
-#endif
     glbench::GetTriangleSetupTest(),
 #if !defined(DISABLE_SOME_TESTS_FOR_INTEL_DRIVER)
     glbench::GetYuvToRgbTest(),
