@@ -68,6 +68,24 @@ update_prl () {
 		echo "Cannot update PRL: MDN/MIN are unknown"
 		exit 1
 	fi
+	if [ ! -r "$prlfile" ]; then
+		echo "Cannot read PRL file \"$prlfile\""
+		exit 1
+	fi
+	# Because cromo runs as a different user than this script,
+	# it may not have access to the specified file, even when
+	# the script does. A specific example is the Downloads folder,
+	# which only the "chronos" user has access to. To work
+	# around this problem, we copy the PRL file to /tmp.
+	if ! echo "$prlfile" | grep -q '^/tmp/'; then
+		prlbase=${prlfile##*/}
+		cp $prlfile /tmp/$prlbase
+		if [ $? -ne 0 ]; then
+			echo "Cannot copy PRL file \"$prlfile\" to temp directory"
+			exit 1
+		fi
+		prlfile=/tmp/$prlbase
+	fi
 	activate_manual $modem mdn $mdn min $min prlfile $prlfile
 }
 
