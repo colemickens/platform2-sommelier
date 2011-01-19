@@ -43,6 +43,54 @@ void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
   }
 }
 
+int GobiCdmaModem::GetMmActivationState() {
+  ULONG device_activation_state;
+  ULONG rc;
+  rc = sdk_->GetActivationState(&device_activation_state);
+  if (rc != 0) {
+    LOG(ERROR) << "GetActivationState: " << rc;
+    return -1;
+  }
+  LOG(INFO) << "device activation state: " << device_activation_state;
+  if (device_activation_state == 1) {
+    return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  }
+
+  // Is the modem de-activated, or is there an activation in flight?
+  switch (carrier_->activation_method()) {
+    case Carrier::kOmadm: {
+        ULONG session_state;
+        ULONG session_type;
+        ULONG failure_reason;
+        BYTE retry_count;
+        WORD session_pause;
+        WORD time_remaining;  // For session pause
+        rc = sdk_->OMADMGetSessionInfo(
+            &session_state, &session_type, &failure_reason, &retry_count,
+            &session_pause, & time_remaining);
+        if (rc != 0) {
+          // kNoTrackingSessionHasBeenStarted -> modem has never tried
+          // to run OMADM; this is not an error condition.
+          if (rc != gobi::kNoTrackingSessionHasBeenStarted) {
+            LOG(ERROR) << "Could not get omadm state: " << rc;
+          }
+          return MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+        }
+        return (session_state <= gobi::kOmadmMaxFinal) ?
+            MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED :
+            MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+      }
+      break;
+    case Carrier::kOtasp:
+      return (device_activation_state == gobi::kNotActivated) ?
+          MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED :
+          MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+      break;
+    default:  // This is a UMTS carrier; we count it as activated
+      return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  }
+}
+
 //======================================================================
 // Callbacks and callback utilities
 
@@ -197,21 +245,17 @@ void GobiCdmaModem::RegisterCallbacks() {
 
 //======================================================================
 // DBUS Methods: overridden Modem.Simple
-utilities::DBusPropertyMap GobiCdmaModem::GetStatus(DBus::Error& error) {
-  utilities::DBusPropertyMap result = GobiModem::GetStatus(error);
-
+void GobiCdmaModem::GetTechnologySpecificStatus(DBusPropertyMap* properties) {
   WORD prl_version;
   ULONG rc = sdk_->GetPRLVersion(&prl_version);
   if (rc == 0) {
-    result["prl_version"].writer().append_uint16(prl_version);
+    (*properties)["prl_version"].writer().append_uint16(prl_version);
   }
 
   int activation_state = GetMmActivationState();
   if (activation_state >= 0) {
-    result["activation_state"].writer().append_uint32(activation_state);
+    (*properties)["activation_state"].writer().append_uint32(activation_state);
   }
-  return result;
-
 }
 
 //======================================================================

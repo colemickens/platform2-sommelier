@@ -293,11 +293,8 @@ class GobiModem
   void SetDeviceProperties();
   void SetModemProperties();
   virtual void SetTechnologySpecificProperties() = 0;
-
-  // Returns the modem activation state as an enum value from
-  // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error.  This state
-  // may be further overridden by ModifyModemStatusReturn()
-  int32_t GetMmActivationState();
+  virtual void GetTechnologySpecificStatus(
+      utilities::DBusPropertyMap* properties) = 0;
 
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.

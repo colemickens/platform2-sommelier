@@ -70,6 +70,8 @@ class GobiGsmModem
   virtual void SignalStrengthHandler(INT8 signal_strength,
                                      ULONG radio_interface);
   virtual void SetTechnologySpecificProperties();
+  virtual void GetTechnologySpecificStatus(
+      utilities::DBusPropertyMap* properties);
 
  private:
   void SendNetworkTechnologySignal(uint32_t mm_access_tech);

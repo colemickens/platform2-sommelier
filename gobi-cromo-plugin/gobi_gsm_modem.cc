@@ -244,6 +244,10 @@ void GobiGsmModem::SetTechnologySpecificProperties() {
   // interface, need to set SupportedBands and SupportedModes properties
 }
 
+void GobiGsmModem::GetTechnologySpecificStatus(
+    utilities::DBusPropertyMap* properties) {
+}
+
 //======================================================================
 // DBUS Methods: Modem.GSM.Network
 

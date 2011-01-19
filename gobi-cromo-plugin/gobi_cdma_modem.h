@@ -23,9 +23,6 @@ class GobiCdmaModem
       : GobiModem(connection, path, device, sdk) {}
   virtual ~GobiCdmaModem();
 
-  // DBUS Methods: overridden Modem.Simple
-  virtual utilities::DBusPropertyMap GetStatus(DBus::Error& error);
-
   // DBUS Methods: Modem.CDMA
   virtual uint32_t GetSignalQuality(DBus::Error& error);
   virtual std::string GetEsn(DBus::Error& error);
@@ -45,6 +42,11 @@ class GobiCdmaModem
   void GetCdmaRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
                                 ULONG* roaming_state, DBus::Error& error);
 
+  // Returns the modem activation state as an enum value from
+  // MM_MODEM_CDMA_ACTIVATION_STATE_..., or < 0 for error.  This state
+  // may be further overridden by ModifyModemStatusReturn()
+  int32_t GetMmActivationState();
+
   // Overrides and extensions of GobiModem functions
   virtual void RegisterCallbacks();
   virtual void RegistrationStateHandler();
@@ -53,6 +55,9 @@ class GobiCdmaModem
   virtual void SignalStrengthHandler(INT8 signal_strength,
                                      ULONG radio_interface);
   virtual void SetTechnologySpecificProperties();
+  virtual void GetTechnologySpecificStatus(
+      utilities::DBusPropertyMap* properties);
+
 
   // ======================================================================
   static void CleanupActivationTimeoutCallback(gpointer data);
