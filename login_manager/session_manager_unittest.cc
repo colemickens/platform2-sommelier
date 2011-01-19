@@ -1193,8 +1193,7 @@ TEST_F(SessionManagerTest, EnableChromeTesting) {
 
   EXPECT_CALL(*job, GetName())
       .WillRepeatedly(Return("chrome"));
-  EXPECT_CALL(*job, AddChromeTestingArgument(
-      SessionManagerService::kChromeTestingPath))
+  EXPECT_CALL(*job, AddChromeTestingArgument(_))
       .Times(1);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
@@ -1203,8 +1202,6 @@ TEST_F(SessionManagerTest, EnableChromeTesting) {
 
   gchar* filepath;
   EXPECT_EQ(TRUE, manager_->EnableChromeTesting(&filepath, NULL));
-  EXPECT_EQ(std::string(SessionManagerService::kChromeTestingPath),
-            std::string(filepath));
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {
