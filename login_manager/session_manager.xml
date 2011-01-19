@@ -16,6 +16,9 @@
     </method>
     <method name="EmitLoginPromptVisible">
     </method>
+    <method name="EnableChromeTesting">
+      <arg type="s" name="filepath" direction="out" />
+    </method>
     <method name="StartSession">
       <!-- Meant to be human-readable -->
       <arg type="s" name="email_address" direction="in" />

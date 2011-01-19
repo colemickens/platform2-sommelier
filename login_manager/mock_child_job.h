@@ -22,6 +22,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(ShouldNeverKill, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
+  MOCK_METHOD1(AddChromeTestingArgument, void(const std::string&));
   MOCK_METHOD1(StartSession, void(const std::string&));
   MOCK_METHOD0(StopSession, void());
   MOCK_CONST_METHOD0(GetDesiredUid, uid_t());

@@ -197,6 +197,11 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   gboolean EmitLoginPromptReady(gboolean* OUT_emitted, GError** error);
   gboolean EmitLoginPromptVisible(GError** error);
 
+  // Adds an argument to the chrome child job that makes it open a testing
+  // channel, then kills and restarts chrome. The name of the socket used
+  // for testing is returned in OUT_filepath.
+  gboolean EnableChromeTesting(gchar** OUT_filepath, GError** error);
+
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
   // also call child_job_->StartSession(email_address).
@@ -293,6 +298,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Converts args from wide to plain strings.
   static std::vector<std::vector<std::string> > GetArgLists(
       std::vector<std::string> args);
+
+  // Prefix prepended to temporary filename for Chrome testing channel
+  static const char kChromeTestingPrefix[];
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }

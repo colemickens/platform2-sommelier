@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <sys/errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -110,19 +111,23 @@ void SessionManagerService::SIGTERMHandler(int signal) {
   GracefulShutdownHandler(signal);
 }
 
-//static
+// static
 const uint32 SessionManagerService::kMaxEmailSize = 200;
-//static
+// static
 const char SessionManagerService::kEmailSeparator = '@';
-//static
+// static
 const char SessionManagerService::kLegalCharacters[] =
     "abcdefghijklmnopqrstuvwxyz"
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890-";
-//static
+// static
 const char SessionManagerService::kIncognitoUser[] = "";
-//static
+// static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
+
+// static
+const char SessionManagerService::kChromeTestingPrefix[] =
+    "ChromeTestingInterface";
 
 namespace {
 
@@ -371,6 +376,46 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
 gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
   bootstat_log("login-prompt-visible");
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
+}
+
+gboolean SessionManagerService::EnableChromeTesting(gchar** OUT_filepath,
+                                                    GError** error) {
+  for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
+    ChildJobInterface* child_job = child_jobs_[i_child];
+    if (child_job->GetName() == "chrome") {
+      // kill chrome
+      uid_t to_kill_as = getuid();
+      if (child_job->IsDesiredUidSet())
+        to_kill_as = child_job->GetDesiredUid();
+      system_->kill(-child_pids_[i_child], to_kill_as, SIGKILL);
+
+      // create a write-only temporary directory to put the testing channel in
+      FilePath temp_dir_path;
+      if (!file_util::CreateNewTempDirectory(
+          FILE_PATH_LITERAL(kChromeTestingPrefix), &temp_dir_path))
+        return FALSE;
+      if (chmod(temp_dir_path.value().c_str(), 0003))
+        return FALSE;
+
+      // get a temporary filename in the temporary directory
+      char* file_path = tempnam(temp_dir_path.value().c_str(),
+                                kChromeTestingPrefix);
+      if (!file_path)
+        return FALSE;
+
+      // run chrome
+      child_job->AddChromeTestingArgument(file_path);
+      child_pids_[i_child] = RunChild(child_job);
+
+      *OUT_filepath = g_strdup(file_path);
+
+      free(file_path);
+
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 gboolean SessionManagerService::StartSession(gchar* email_address,
