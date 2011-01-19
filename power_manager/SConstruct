@@ -85,7 +85,7 @@ Default(powerd)
 
 # Build privileged power daemon
 powerman_env = gdk_env.Clone()
-powerman_env.Append(LIBS=Split('base chromeos gflags pthread metrics'))
+powerman_env.Append(LIBS=Split('base chromeos gflags pthread metrics X11'))
 powerman_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
