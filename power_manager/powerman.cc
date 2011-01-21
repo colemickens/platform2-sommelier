@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -83,34 +83,28 @@ void PowerManDaemon::Run() {
   g_main_loop_run(loop_);
 }
 
-gboolean PowerManDaemon::CheckLidClosed(gpointer object) {
-  RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
-  PowerManDaemon* daemon = payload->daemon;
-  // same lid closed event and powerd state has changed.
-  if ((daemon->lidstate_ == kLidClosed) &&
-      (daemon->lid_id_ == payload->lid_id) &&
-      ((daemon->powerd_state_ != kPowerManagerAlive) ||
-       (daemon->powerd_id_ != payload->powerd_id))) {
+gboolean PowerManDaemon::CheckLidClosed(unsigned int lid_id,
+                                        unsigned int powerd_id) {
+  // Same lid closed event and powerd state has changed.
+  if ((lidstate_ == kLidClosed) && (lid_id_ == lid_id) &&
+      ((powerd_state_ != kPowerManagerAlive) || (powerd_id_ != powerd_id))) {
     LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
-    daemon->Suspend();
+    Suspend();
   }
   // lid closed events will re-trigger if necessary so always false return.
-  delete(payload);
   return false;
 }
 
-gboolean PowerManDaemon::RetrySuspend(gpointer object) {
-  RetrySuspendPayload *payload = static_cast<RetrySuspendPayload*>(object);
-  PowerManDaemon* daemon = payload->daemon;
-  if (daemon->lidstate_ == kLidClosed) {
-    if (daemon->lid_id_ == payload->lid_id) {
-      daemon->retry_suspend_count_++;
-      if (daemon->retry_suspend_count_ > daemon->retry_suspend_attempts_) {
+gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
+  if (lidstate_ == kLidClosed) {
+    if (lid_id_ == lid_id) {
+      retry_suspend_count_++;
+      if (retry_suspend_count_ > retry_suspend_attempts_) {
         LOG(ERROR) << "Retry suspend attempts failed ... shutting down";
-        daemon->Shutdown();
+        Shutdown();
       } else {
-        LOG(WARNING) << "Retry suspend " << daemon->retry_suspend_count_;
-        daemon->Suspend();
+        LOG(WARNING) << "Retry suspend " << retry_suspend_count_;
+        Suspend();
       }
     } else {
       LOG(INFO) << "Retry suspend sequence number changed, retry delayed";
@@ -118,7 +112,7 @@ gboolean PowerManDaemon::RetrySuspend(gpointer object) {
   } else {
     DLOG(INFO) << "Retry suspend  ... lid is open";
   }
-  delete(payload);
+  // Return false so the event trigger does not repeat.
   return false;
 }
 
@@ -144,9 +138,10 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
           util::SendSignalToPowerD(util::kLidClosed);
           // Check that powerd stuck around to act on  this event.  If not,
           // callback will assume suspend responsibilities.
-          RetrySuspendPayload* payload = daemon->CreateRetrySuspendPayload();
-          g_timeout_add_seconds(kCheckLidClosedSeconds,
-                                &(PowerManDaemon::CheckLidClosed), payload);
+          g_timeout_add_seconds(kCheckLidClosedSeconds, CheckLidClosedThunk,
+                                CreateCheckLidClosedArgs(daemon,
+                                                         daemon->lid_id_,
+                                                         daemon->powerd_id_));
         }
       } else {
         util::CreateStatusFile(daemon->lid_open_file_);
@@ -308,14 +303,6 @@ void PowerManDaemon::Restart() {
   util::Launch("shutdown -r now");
 }
 
-PowerManDaemon::RetrySuspendPayload* PowerManDaemon::CreateRetrySuspendPayload() {
-  RetrySuspendPayload* payload = new RetrySuspendPayload;
-  payload->lid_id = lid_id_;
-  payload->powerd_id = powerd_id_;
-  payload->daemon = this;
-  return payload;
-}
-
 void PowerManDaemon::Suspend() {
   LOG(INFO) << "Launching Suspend";
 
@@ -324,10 +311,8 @@ void PowerManDaemon::Suspend() {
                << suspend_pid_ << " is still running";
   }
 
-  RetrySuspendPayload* payload = CreateRetrySuspendPayload();
-  g_timeout_add_seconds(
-      retry_suspend_ms_ / 1000, &(PowerManDaemon::RetrySuspend),
-      payload);
+  g_timeout_add_seconds(retry_suspend_ms_ / 1000, RetrySuspendThunk,
+                        CreateRetrySuspendArgs(this, lid_id_));
 
 #ifdef SUSPEND_LOCK_VT
   LockVTSwitch();     // Do not let suspend change the console terminal.
@@ -342,7 +327,8 @@ void PowerManDaemon::Suspend() {
     setsid();
     if (fork() == 0) {
       wait(NULL);
-      exit(CancelDBusRequest() ? system("powerd_suspend 1") : system("powerd_suspend 0"));
+      exit(CancelDBusRequest() ? system("powerd_suspend 1")
+                               : system("powerd_suspend 0"));
     } else {
       exit(0);
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -61,14 +61,6 @@ class PowerManDaemon {
                                               DBusMessage* message,
                                               void* data);
 
-  // Payload for RetrySuspend
-  struct RetrySuspendPayload {
-    unsigned int lid_id;
-    unsigned int powerd_id;
-    PowerManDaemon* daemon;
-  };
-  // allocate payload for suspend related checking
-  RetrySuspendPayload* CreateRetrySuspendPayload();
 
   bool CancelDBusRequest();
 
@@ -81,19 +73,19 @@ class PowerManDaemon {
       const gchar* new_owner, void*);
 
   // Callback for timeout event started when lid closed to validate powerd has
-  // received it successfully
-  static gboolean CheckLidClosed(gpointer object);
+  // received it successfully.
+  SIGNAL_CALLBACK_2(PowerManDaemon, gboolean, CheckLidClosed, unsigned int,
+                    unsigned int);
 
   // Callback for timeout event started when input event signals suspend.
-  // |object| contains a pointer to a PowerManDaemon object.
-  static gboolean RetrySuspend(gpointer object);
+  SIGNAL_CALLBACK_1(PowerManDaemon, gboolean, RetrySuspend, unsigned int);
 
-  // Add interfaces to dbus matches for connection
+  // Add interfaces to dbus matches for connection.
   void AddDBusMatch(DBusConnection *connection, const char *interface);
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
-  // Generate UMA metrics on lid opening
+  // Generate UMA metrics on lid opening.
   void GenerateMetricsOnResumeEvent();
 
   // TODO(tbroch) refactor common methods for metrics

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,10 +57,8 @@ void Suspender::RequestSuspend() {
   timeout_ms = min(kMaximumDelayTimeoutMS, timeout_ms);
   LOG(INFO) << "Request Suspend #" << suspend_sequence_number_
             << " Delay Timeout = " << timeout_ms;
-  CheckSuspendTimeoutPayload* payload = new CheckSuspendTimeoutPayload;
-  payload->sequence_num = suspend_sequence_number_;
-  payload->suspender = this;
-  g_timeout_add(timeout_ms, CheckSuspendTimeout, payload);
+  g_timeout_add(timeout_ms, CheckSuspendTimeoutThunk,
+                CreateCheckSuspendTimeoutArgs(this, suspend_sequence_number_));
 }
 
 void Suspender::CheckSuspend() {
@@ -256,18 +254,12 @@ void Suspender::Suspend() {
   util::SendSignalToPowerM(util::kSuspendSignal);
 }
 
-gboolean Suspender::CheckSuspendTimeout(gpointer data) {
-  CheckSuspendTimeoutPayload* payload;
-  payload = static_cast<CheckSuspendTimeoutPayload*>(data);
-  Suspender* suspender = payload->suspender;
-  if (suspender->suspend_requested_ &&
-      suspender->suspend_sequence_number_ == payload->sequence_num) {
-    LOG(ERROR) << "Suspend delay timed out. Seq num = "
-               << payload->sequence_num;
-    suspender->suspend_delays_outstanding_ = 0;
-    suspender->CheckSuspend();
+gboolean Suspender::CheckSuspendTimeout(unsigned int sequence_num) {
+  if (suspend_requested_ && suspend_sequence_number_ == sequence_num) {
+    LOG(ERROR) << "Suspend delay timed out. Seq num = " << sequence_num;
+    suspend_delays_outstanding_ = 0;
+    CheckSuspend();
   }
-  delete(payload);
   // We don't want this callback to be repeated, so we return false.
   return false;
 }

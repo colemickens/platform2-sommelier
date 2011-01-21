@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,8 +11,9 @@
 #include <gdk/gdkx.h>
 #include <dbus/dbus.h>
 
-#include "power_manager/screen_locker.h"
 #include "base/file_path.h"
+#include "power_manager/screen_locker.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
@@ -42,7 +43,7 @@ class Suspender {
 
  private:
 
-  // Handle SuspendReady Dbus Messages
+  // Handle SuspendReady Dbus Messages.
   void SuspendReady(DBusMessage* message);
 
   // Standard handler for dbus messages. |data| contains a pointer to a
@@ -58,15 +59,9 @@ class Suspender {
   // be locked.
   void Suspend();
 
-  // Payload for CheckSuspendTimeout.
-  struct CheckSuspendTimeoutPayload {
-    unsigned int sequence_num;
-    Suspender * suspender;
-  };
-
   // Timeout callback in case suspend clients do not respond in time.
   // Always returns false.
-  static gboolean CheckSuspendTimeout(gpointer data);
+  SIGNAL_CALLBACK_1(Suspender, gboolean, CheckSuspendTimeout, unsigned int);
 
   static void NameOwnerChangedHandler(DBusGProxy* proxy,
                                       const gchar* name,
@@ -95,7 +90,7 @@ class Suspender {
   bool suspend_requested_;
   unsigned int suspend_sequence_number_;
 
-  // Identify user activity to cancel suspend in progress
+  // Identify user activity to cancel suspend in progress.
   FilePath user_active_file_;
 
   // suspend_delays_ : map from dbus unique identifiers to expected ms delays.
