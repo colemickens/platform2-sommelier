@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,14 +7,13 @@
 #include <cmath>
 
 #include "base/logging.h"
+#include "power_manager/metrics_constants.h"
 
 using base::TimeDelta;
 using base::TimeTicks;
 
 namespace power_manager {
 
-const char Daemon::kMetricBacklightLevelName[] =
-    "Power.BacklightLevel";  // %
 const int Daemon::kMetricBacklightLevelMax = 100;
 const time_t Daemon::kMetricBacklightLevelInterval = 30000;  // ms
 const char Daemon::kMetricBatteryDischargeRateName[] =

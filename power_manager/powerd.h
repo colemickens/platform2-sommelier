@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -78,7 +78,6 @@ class Daemon : public XIdleMonitor {
                      kSystemShuttingDown };
 
   // UMA metrics parameters.
-  static const char kMetricBacklightLevelName[];
   static const int kMetricBacklightLevelMax;
   static const time_t kMetricBacklightLevelInterval;
   static const char kMetricBatteryDischargeRateName[];
