@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,19 +28,19 @@ AmbientLightSensor::~AmbientLightSensor() {
     close(als_fd_);
 }
 
-bool AmbientLightSensor::DeferredInit(AmbientLightSensor* self) {
+bool AmbientLightSensor::DeferredInit() {
   // tsl2561 is currently the only supported light sensor.
   // If the lux file is not immediately found, issue a deferral
   // message and try again later.
-  self->als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
-  if (self->als_fd_ == -1) {
-    if (self->still_deferring_)
+  als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
+  if (als_fd_ == -1) {
+    if (still_deferring_)
       return false;
     LOG(WARNING) << "Deferring lux: " << strerror(errno);
-    self->still_deferring_ = true;
+    still_deferring_ = true;
     return false;
   }
-  if (self->still_deferring_)
+  if (still_deferring_)
     LOG(INFO) << "Finally found the lux file";
   return true;
 }
@@ -72,36 +72,35 @@ void AmbientLightSensor::EnableOrDisableSensor(PowerState power, DimState dim) {
   // Start polling.
   LOG(INFO) << "Enabling light sensor poll";
   is_polling_ = true;
-  g_timeout_add(kSensorPollPeriodMs, ReadAls, this);
+  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
-gboolean AmbientLightSensor::ReadAls(gpointer data) {
-  AmbientLightSensor* self = static_cast<AmbientLightSensor*>(data);
-  if (self->disable_polling_) {
-    self->is_polling_ = false;
+gboolean AmbientLightSensor::ReadAls() {
+  if (disable_polling_) {
+    is_polling_ = false;
     return false; // Returning false removes the timeout.
   }
 
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
-  if (self->als_fd_ < 0) {
-    if (!DeferredInit(self))
+  if (als_fd_ < 0) {
+    if (!DeferredInit())
       return true; // Return true to try again later.
   }
 
   char buffer[10];
   int n;
-  if (lseek(self->als_fd_, 0, SEEK_SET) != 0 ||
-      (n = read(self->als_fd_, buffer, sizeof(buffer) - 1)) == -1) {
+  if (lseek(als_fd_, 0, SEEK_SET) != 0 ||
+      (n = read(als_fd_, buffer, sizeof(buffer) - 1)) == -1) {
     LOG(WARNING) << "Unable to read light sensor file";
   }
   if (n > 0 && n < static_cast<int>(sizeof(buffer))) {
     buffer[n] = '\0';
     int luxval = atoi(buffer);
     int64 level = Tsl2563LuxToLevel(luxval);
-    if (level != self->last_level_ && self->controller_)
-      self->controller_->SetAlsBrightnessLevel(level);
-    self->last_level_ = level;
+    if (level != last_level_ && controller_)
+      controller_->SetAlsBrightnessLevel(level);
+    last_level_ = level;
   }
   return true;
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <glib.h>
 
 #include "power_manager/backlight_controller.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
@@ -47,8 +48,11 @@ class AmbientLightSensor {
   void EnableOrDisableSensor(PowerState power, DimState dim);
 
  private:
-  static gboolean ReadAls(gpointer data);
-  static bool DeferredInit(AmbientLightSensor* self);
+  // Handler for a periodic event that reads the ambient light sensor.
+  SIGNAL_CALLBACK_0(AmbientLightSensor, gboolean, ReadAls);
+
+  // Deferred init for the als in case the light sensor starts late.
+  bool DeferredInit();
 
   // Return a luma level normalized to 100 based on the tsl2563 lux value.
   // The luma level will modify the controller's brightness calculation.
