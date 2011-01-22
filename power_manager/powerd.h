@@ -178,7 +178,7 @@ class Daemon : public XIdleMonitor {
 
   // Generates UMA metrics about the current backlight level.
   // Always returns true.
-  static gboolean GenerateBacklightLevelMetric(gpointer data);
+  SIGNAL_CALLBACK_0(Daemon, gboolean, GenerateBacklightLevelMetric);
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.

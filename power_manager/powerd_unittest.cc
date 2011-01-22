@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -335,7 +335,7 @@ TEST_F(DaemonTest, SendMetricWithPowerState) {
 
 TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   daemon_.idle_state_ = Daemon::kIdleDim;
-  daemon_.GenerateBacklightLevelMetric(&daemon_);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
   daemon_.idle_state_ = Daemon::kIdleNormal;
   daemon_.plugged_state_ = kPowerDisconnected;
   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
@@ -344,7 +344,7 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
                       Return(true)));
   ExpectEnumMetric("Power.BacklightLevelOnBattery",
                    kDefaultBrightness, kMaxBrightness);
-  daemon_.GenerateBacklightLevelMetric(&daemon_);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
   daemon_.plugged_state_ = kPowerConnected;
   EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
@@ -352,7 +352,7 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
                       Return(true)));
   ExpectEnumMetric("Power.BacklightLevelOnAC",
                    kDefaultBrightness, kMaxBrightness);
-  daemon_.GenerateBacklightLevelMetric(&daemon_);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
 }
 
 }  // namespace power_manager

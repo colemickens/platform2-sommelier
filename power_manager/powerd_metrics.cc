@@ -56,7 +56,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
 
 void Daemon::MetricInit() {
   g_timeout_add(kMetricBacklightLevelInterval,
-                &Daemon::GenerateBacklightLevelMetric, this);
+                &Daemon::GenerateBacklightLevelMetricThunk, this);
 }
 
 void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
@@ -93,13 +93,12 @@ void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
   GenerateBatteryTimeToEmptyMetric(info, now);
 }
 
-gboolean Daemon::GenerateBacklightLevelMetric(gpointer data) {
-  Daemon* self = static_cast<Daemon*>(data);
+gboolean Daemon::GenerateBacklightLevelMetric() {
   int64 level;
-  if (self->idle_state_ == Daemon::kIdleNormal &&
-      self->ctl_->GetBrightness(&level))
-    self->SendEnumMetricWithPowerState(kMetricBacklightLevelName, level,
-        kMetricBacklightLevelMax);
+  if (idle_state_ == Daemon::kIdleNormal &&
+      ctl_->GetBrightness(&level))
+    SendEnumMetricWithPowerState(kMetricBacklightLevelName, level,
+                                 kMetricBacklightLevelMax);
   return true;
 }
 
