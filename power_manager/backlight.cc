@@ -1,10 +1,11 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "power_manager/backlight.h"
 
 #include <dirent.h>
+#include <glib.h>
 #include <inttypes.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -17,6 +18,12 @@
 #include "base/string_util.h"
 
 namespace power_manager {
+
+// Gradually change backlight level to new brightness by breaking up the
+// transition into N steps, where N = kBacklightNumSteps.
+const int kBacklightNumSteps = 8;
+// Time between backlight adjustment steps.
+const int kBacklightStepTime = 30;
 
 bool Backlight::Init() {
   FilePath base_path("/sys/class/backlight");
@@ -51,6 +58,9 @@ bool Backlight::Init() {
       brightness_path_ = dir_path.Append("brightness");
       actual_brightness_path_ = dir_path.Append("actual_brightness");
       max_brightness_path_ = dir_path.Append("max_brightness");
+      // Read brightness to initialize the target brightness value.
+      int64 max_brightness;
+      GetBrightness(&target_brightness_, &max_brightness);
       return true;
     }
   } else {
@@ -95,19 +105,47 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
          base::StringToInt64(max_level_buf, max_level);
   }
   LOG_IF(WARNING, !ok) << "Can't get brightness";
+  LOG(INFO) << "GetBrightness: " << *level;
   return ok;
 }
 
-bool Backlight::SetBrightness(int64 level) {
+bool Backlight::GetTargetBrightness(int64* level) {
+  *level = target_brightness_;
+  return true;
+}
+
+bool Backlight::SetBrightness(int64 target_level) {
   if (brightness_path_.empty()) {
     LOG(WARNING) << "Cannot find backlight brightness file.";
     return false;
   }
-  std::string buf = base::Int64ToString(level);
-  bool ok =
-      -1 != file_util::WriteFile(brightness_path_, buf.data(), buf.size());
-  LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
-  return ok;
+  LOG(INFO) << "SetBrightness(" << target_level << ")";
+  int64 current_level, max_level;
+  GetBrightness(&current_level, &max_level);
+  int64 diff = target_level - current_level;
+  target_brightness_ = target_level;
+  for (int i = 0; i < kBacklightNumSteps; i++) {
+    int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
+    g_timeout_add(i * kBacklightStepTime, SetBrightnessHardThunk,
+                  CreateSetBrightnessHardArgs(this, step_level, target_level));
+  }
+  return true;
 }
+
+gboolean Backlight::SetBrightnessHard(int64 level, int64 target_level) {
+  // If the target brightness of this call does not match the backlight's
+  // current target brightness, it must be from an earlier backlight adjustment
+  // that had a different target brightness.  In that case, it is invalidated
+  // so do nothing.
+  if (target_brightness_ != target_level)
+    return false; // Return false so glib doesn't repeat.
+  DLOG(INFO) << "Setting brightness to " << level;
+  std::string buf = base::Int64ToString(level);
+  bool ok = (-1 != file_util::WriteFile(brightness_path_, buf.data(),
+                                        buf.size()));
+  LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
+  return false; // Return false so glib doesn't repeat.
+}
+
 
 }  // namespace power_manager

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,12 @@ class BacklightInterface {
   //
   // On success, return true; otherwise return false.
   virtual bool GetBrightness(int64* level, int64* max) = 0;
+
+  // Set |level| to the intended brightness level of the backlight.  The
+  // minimum brightness level of the backlight is zero.
+  //
+  // On success, return true; otherwise return false.
+  virtual bool GetTargetBrightness(int64* level) = 0;
 
   // Set the backlight to the specified brightness |level|.
   //

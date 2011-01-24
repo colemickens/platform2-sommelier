@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -399,7 +399,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   }
 
   int64 brightness = 0;
-  if (changed_brightness && daemon->ctl_->GetBrightness(&brightness))
+  if (changed_brightness && daemon->ctl_->GetTargetBrightness(&brightness))
     daemon->SendBrightnessChangedSignal(static_cast<int>(brightness));
 
   return GDK_FILTER_CONTINUE;
@@ -627,7 +627,8 @@ void Daemon::Shutdown() {
 }
 
 void Daemon::Suspend() {
-  if (system_state_ == kSystemRestarting || system_state_ == kSystemShuttingDown) {
+  if (system_state_ == kSystemRestarting ||
+      system_state_ == kSystemShuttingDown) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }

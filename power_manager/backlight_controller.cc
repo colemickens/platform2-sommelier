@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,6 +13,9 @@
 #include "power_manager/power_constants.h"
 
 namespace power_manager {
+
+// Set brightness to this value when going into idle-induced dim state.
+static const int64 kIdleBrightness = 10;
 
 BacklightController::BacklightController(BacklightInterface* backlight,
                                          PowerPrefsInterface* prefs)
@@ -42,6 +45,14 @@ bool BacklightController::Init() {
 bool BacklightController::GetBrightness(int64* level) {
   int64 raw_level;
   if (!backlight_->GetBrightness(&raw_level, &max_))
+    return false;
+  *level = lround(100. * raw_level / max_);
+  return true;
+}
+
+bool BacklightController::GetTargetBrightness(int64* level) {
+  int64 raw_level;
+  if (!backlight_->GetTargetBrightness(&raw_level))
     return false;
   *level = lround(100. * raw_level / max_);
   return true;
@@ -121,7 +132,7 @@ bool BacklightController::ReadBrightness() {
   CHECK(max_ >= 0) << "Init() must be called";
   CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 level;
-  if (GetBrightness(&level) && level != system_brightness_) {
+  if (GetTargetBrightness(&level) && level != system_brightness_) {
     // Another program adjusted the brightness. Sync up.
     LOG(INFO) << "ReadBrightness: " << system_brightness_ << " -> " << level;
     int64 brightness = Clamp(als_brightness_level_ + *brightness_offset_);
@@ -139,8 +150,12 @@ int64 BacklightController::WriteBrightness() {
   int64 old_brightness = system_brightness_;
   if (state_ == BACKLIGHT_ACTIVE)
     system_brightness_ = Clamp(als_brightness_level_ + *brightness_offset_);
+  // When in dimmed state, set to dim level only if it results in a reduction
+  // of system brightness.
+  else if (system_brightness_ > kIdleBrightness)
+    system_brightness_ = kIdleBrightness;
   else
-    system_brightness_ = 0;
+    LOG(INFO) << "Not dimming because backlight is already dim.";
   als_hysteresis_level_ = als_brightness_level_;
   int64 val = lround(max_ * system_brightness_ / 100.);
   system_brightness_ = Clamp(lround(100. * val / max_));
@@ -158,8 +173,13 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   int64 diff = level - als_hysteresis_level_;
   if (diff < 0)
     diff = -diff;
-  if (diff >= 5)
+  if (diff >= 5) {
+    // Do not let ALS adjustment set brightness from nonzero to zero.  Turning
+    // the backlight off due to ALS adjustment looks unnatural.
+    if (als_brightness_level_ + *brightness_offset_ <= 0)
+      als_brightness_level_ = 1 - *brightness_offset_;
     WriteBrightness();
+  }
 }
 
 int64 BacklightController::Clamp(int64 value) {

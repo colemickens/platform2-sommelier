@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,6 +41,7 @@ class BacklightController {
   // Set |level| to the current brightness level of the backlight as a
   // percentage.
   bool GetBrightness(int64* level);
+  bool GetTargetBrightness(int64* level);
 
   // Increase the brightness level of the backlight by one level.
   void IncreaseBrightness();
@@ -70,15 +71,19 @@ class BacklightController {
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
 
-  int64 plugged_brightness_offset() { return plugged_brightness_offset_; }
+  int64 plugged_brightness_offset() const { return plugged_brightness_offset_; }
   void set_plugged_brightness_offset(int64 offset) {
     plugged_brightness_offset_ = offset;
   }
 
-  int64 unplugged_brightness_offset() { return unplugged_brightness_offset_; }
+  int64 unplugged_brightness_offset () const {
+    return unplugged_brightness_offset_;
+  }
   void set_unplugged_brightness_offset(int64 offset) {
     unplugged_brightness_offset_ = offset;
   }
+
+  int64 system_brightness () const { return system_brightness_; }
 
  private:
   // Clamp |value| to fit between 0 and 100.
