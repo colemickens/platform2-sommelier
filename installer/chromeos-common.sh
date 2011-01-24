@@ -404,45 +404,6 @@ make_partition_dev() {
   fi
 }
 
-# Construct a PMBR for the arm platform, Uboot will load PMBR and "autoscr" it.
-# Arguments List:
-# $1 : Kernel Partition Offset.
-# $2 : Kernel Partition Size ( in Sectors ).
-# $3 : DEVICE
-# Return file path of the generated PMBR.
-
-make_arm_mbr() {
-  # Create the U-Boot script to copy the kernel into memory and boot it.
-  local KERNEL_OFFSET=$(printf "0x%08x" ${1})
-  local KERNEL_SECS_HEX=$(printf "0x%08x" ${2})
-  local DEVICE=${3}
-  local EXTRA_BOOTARGS=${4}
-
-  BOOTARGS="root=/dev/mmcblk${DEVICE}p3"
-  BOOTARGS="${BOOTARGS} init=/sbin/init"
-  BOOTARGS="${BOOTARGS} console=ttySAC2,115200"
-  BOOTARGS="${BOOTARGS} mem=1024M"
-  BOOTARGS="${BOOTARGS} rootwait"
-  BOOTARGS="${BOOTARGS} ${EXTRA_BOOTARGS}"
-
-  MBR_SCRIPT="/var/tmp/mbr_script"
-  echo -e "echo\necho ---- ChromeOS Boot ----\necho\n" \
-          "setenv bootargs ${BOOTARGS}\n" \
-          "mmc read ${DEVICE} C0008000 $KERNEL_OFFSET $KERNEL_SECS_HEX\n" \
-          "bootm C0008000" > ${MBR_SCRIPT}
-  MKIMAGE="/usr/bin/mkimage"
-  if [ -x "$MKIMAGE" ]; then
-    MBR_SCRIPT_UIMG="${MBR_SCRIPT}.uimg"
-    "$MKIMAGE" -A "arm" -O linux  -T script -a 0 -e 0 -n "COS boot" \
-               -d ${MBR_SCRIPT} ${MBR_SCRIPT_UIMG} >&2
-  else
-    echo "Error: u-boot mkimage not found or not executable." >&2
-    exit 1
-  fi
-  echo ${MBR_SCRIPT_UIMG}
-}
-
-
 # The scripts that source this file typically want to use the root password as
 # confirmation, unless the --run_as_root flag is given.
 dont_run_as_root() {

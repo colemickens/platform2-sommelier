@@ -387,12 +387,6 @@ install_gpt ${DST} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
   ${PMBRCODE} ${ESP_IMG_SECTORS}
 
 # TODO(tgao): add support for arm recovery
-if [ "$ARCH" = "ARM" ]; then
-  DEVICE=$(echo $DST | sed -e 's/^.*\([0-9]\)$/\1/')
-  MBR_SCRIPT_UIMG=$(make_arm_mbr ${START_KERN_A} ${NUM_KERN_SECTORS} ${DEVICE} "")
-  fast_dd 1 `stat --printf="%s" ${MBR_SCRIPT_UIMG}` 0 0 \
-     if="$MBR_SCRIPT_UIMG" of=${DST} conv=notrunc
-fi
 
 if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
   echo Done installing partitons.
