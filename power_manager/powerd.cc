@@ -61,8 +61,8 @@ Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
       use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
       idle_state_(kIdleUnknown),
-      system_state_(kSystemOn),
       file_tagger_(FilePath(kTaggedFilePath)),
+      shutdown_state_(kShutdownNone),
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
       power_button_handler_(new PowerButtonHandler(this)),
@@ -202,23 +202,23 @@ void Daemon::SetPlugged(bool plugged) {
 }
 
 void Daemon::OnRequestRestart(bool notify_window_manager) {
-  if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+  if (shutdown_state_ == kShutdownNone) {
     if (notify_window_manager) {
       util::SendMessageToWindowManager(
           chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
     }
-    system_state_ = kSystemRestarting;
+    shutdown_state_ = kShutdownRestarting;
     StartCleanShutdown();
   }
 }
 
 void Daemon::OnRequestShutdown(bool notify_window_manager) {
-  if (system_state_ == kSystemOn || system_state_ == kSystemSuspend) {
+  if (shutdown_state_ == kShutdownNone) {
     if (notify_window_manager) {
       util::SendMessageToWindowManager(
           chromeos::WM_IPC_MESSAGE_WM_NOTIFY_SHUTTING_DOWN, 0);
     }
-    system_state_ = kSystemShuttingDown;
+    shutdown_state_ = kShutdownPowerOff;
     StartCleanShutdown();
   }
 }
@@ -587,7 +587,6 @@ void Daemon::OnPowerStateChange(const char* state) {
  // on == resume via powerd_suspend
   if (g_str_equal(state, "on") == TRUE) {
     LOG(INFO) << "Resuming has commenced";
-    system_state_ = kSystemOn;
     SetActive();
     HandleResume();
   } else {
@@ -615,10 +614,10 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
 }
 
 void Daemon::Shutdown() {
-  if (system_state_ == kSystemShuttingDown) {
+  if (shutdown_state_ == kShutdownPowerOff) {
     LOG(INFO) << "Shutting down";
     util::SendSignalToPowerM(util::kShutdownSignal);
-  } else if (system_state_ == kSystemRestarting) {
+  } else if (shutdown_state_ == kShutdownRestarting) {
     LOG(INFO) << "Restarting";
     util::SendSignalToPowerM(util::kRestartSignal);
   } else {
@@ -627,13 +626,11 @@ void Daemon::Shutdown() {
 }
 
 void Daemon::Suspend() {
-  if (system_state_ == kSystemRestarting ||
-      system_state_ == kSystemShuttingDown) {
+  if (clean_shutdown_initiated_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }
   if (util::LoggedIn()) {
-    system_state_ = kSystemSuspend;
     suspender_.RequestSuspend();
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";

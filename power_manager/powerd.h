@@ -74,8 +74,8 @@ class Daemon : public XIdleMonitor {
   enum IdleState { kIdleUnknown, kIdleNormal, kIdleDim, kIdleScreenOff,
                    kIdleSuspend };
 
-  enum SystemState { kSystemOn, kSystemSuspend, kSystemRestarting,
-                     kSystemShuttingDown };
+  enum ShutdownState { kShutdownNone, kShutdownRestarting,
+                       kShutdownPowerOff };
 
   // UMA metrics parameters.
   static const int kMetricBacklightLevelMax;
@@ -252,8 +252,8 @@ class Daemon : public XIdleMonitor {
   bool use_xscreensaver_;
   PluggedState plugged_state_;
   IdleState idle_state_;
-  SystemState system_state_;
   FileTagger file_tagger_;
+  ShutdownState shutdown_state_;
   ScreenLocker locker_;
   Suspender suspender_;
   FilePath run_dir_;
