@@ -4,10 +4,14 @@
 
 #include "gobi_cdma_modem.h"
 #include "gobi_modem_handler.h"
-
-#include <base/file_util.h>
 #include <cromo/carrier.h>
 #include <mm/mm-modem.h>
+
+extern "C" {
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+};
 
 using utilities::DBusPropertyMap;
 
@@ -100,29 +104,38 @@ static GobiCdmaModem* LookupCdmaModem(GobiModemHandler *handler,
 }
 
 static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {
-  int64 file_size;
   int bytes_read;
-  FilePath path(filename);
+  int fd;
+  struct stat st;
 
-  *num_bytes = 0;
-  if (!file_util::GetFileSize(path, &file_size)) {
-    LOG(WARNING) << "Cannot open file \"" << filename
-                 << "\": " << strerror(errno);
+  fd = open(filename, O_RDONLY);
+  if (fd == -1) {
+    LOG(WARNING) << "Can't open '" << filename << "': " << strerror(errno);
     return NULL;
   }
-  BYTE* buffer = new BYTE[file_size];
-  bytes_read = file_util::ReadFile(path,
-                                   reinterpret_cast<char*>(buffer),
-                                   file_size);
+
+  if (fstat(fd, &st) == -1) {
+    LOG(WARNING) << "Can't fstat '" << filename << "': " << strerror(errno);
+    close(fd);
+    return NULL;
+  }
+
+  *num_bytes = st.st_size;
+  BYTE* buffer = new BYTE[*num_bytes];
+  bytes_read = read(fd, reinterpret_cast<char*>(buffer), *num_bytes);
+
   if (bytes_read < 0) {
     LOG(WARNING) << "Cannot read contents of PRL file \"" << filename
                  << "\": " << strerror(errno);
     delete [] buffer;
+    close(fd);
     return NULL;
   }
+
   LOG(INFO) << "Read " << bytes_read << " bytes from file \""
             << filename << "\"";
   *num_bytes = bytes_read;
+  close(fd);
   return buffer;
 }
 
