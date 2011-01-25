@@ -80,21 +80,14 @@ class TestClient {
   void StartTests() {
     tests_.resize(0);
 
-    AddTest(
-      "/home/chronos/user/Downloads/chromeos_image/chroemos_image.bin.gz",
-      "/usr/local/chroemos_image.bin.gz");
+    const char* const kImgSrc =
+      "/home/chronos/user/Downloads/chromeos_image/chromeos_image.bin.zip";
 
-    AddTest(
-      "/home/chronos/user/Downloads/chromeos_image/chroemos_image.bin.gz",
-      "/dev/sda");
-
-    AddTest(
-      "/home/chronos/user/Downloads/chromeos_image/chroemos_image.bin.gz",
-      "/dev/sda1");
-
-    AddTest(
-      "/home/chronos/user/Downloads/chromeos_image/chroemos_image.bin.gz",
-      "/dev/sdb");
+    // First 3 should fail because the target is on the root partition.
+    AddTest(kImgSrc, "/usr/local/chromeos_image.bin.zip");
+    AddTest(kImgSrc, "/dev/sda");
+    AddTest(kImgSrc, "/dev/sda1");
+    AddTest(kImgSrc, "/dev/sdb");
 
     tests_it_ = tests_.begin();
     RunNext();

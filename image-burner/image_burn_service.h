@@ -72,7 +72,6 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService {
   // Reads last 4 bytes from gzip file (which hold uncompressed content size)
   // maximum content size supported is 4GB.
   int64 GetTotalImageSize(const char* from_path);
-  bool IsBootPath(const char* device_path);
 
   ImageBurner* image_burner_;
   GMainLoop* main_loop_;

@@ -15,7 +15,6 @@
 #include <cros/chromeos_cros_api.h>
 #include <cros/chromeos_mount.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <rootdev/rootdev.h>
 
 #include <fstream>
 #include <string>
@@ -170,18 +169,8 @@ void ImageBurnService::InitiateBurning(const char* from_path,
   burning_ = false;
 }
 
-bool ImageBurnService::IsBootPath(const char* device_path) {
-  char boot_path[PATH_MAX];
-  if (rootdev(boot_path, sizeof(boot_path), true, true)) {
-    LOG(ERROR) << "IsBootPath: rootdev failed to find the root device";
-    return true;
-  }
-
-  return (strncmp(device_path, boot_path, strlen(boot_path)) == 0);
-}
-
 bool ImageBurnService::UnmountAndValidateDevice(const char* device_path) {
-  if (IsBootPath(device_path)) {
+  if (chromeos::IsBootDevicePath(device_path)) {
     LOG(ERROR) << device_path << " is on root device";
     return false;
   }
