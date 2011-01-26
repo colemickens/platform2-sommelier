@@ -371,3 +371,9 @@ void GobiGsmModem::ChangePin(const std::string& old_pin,
                              DBus::Error& error) {
   LOG(INFO) << "GobiGsmModem::ChangePin not yet implemented";
 }
+
+std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
+  // TODO(ellyjones): Um, yeah.
+  LOG(INFO) << "GobiGsmModem::GetOperatorId not yet implemented";
+  return "<not implemented>";
+}

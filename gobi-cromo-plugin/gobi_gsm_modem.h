@@ -55,6 +55,7 @@ class GobiGsmModem
   virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
                          DBus::Error& error);
+  virtual std::string GetOperatorId(DBus::Error& error);
 
  protected:
   void GetGsmRegistrationInfo(uint32_t* registration_state,

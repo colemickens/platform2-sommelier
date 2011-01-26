@@ -18,6 +18,7 @@
 #include <cromo/cromo_server.h>
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
+#include <cromo/properties_server_glue.h>
 #include <cromo/utilities.h>
 #include <metrics/metrics_library.h>
 
@@ -125,6 +126,7 @@ class GobiModem
 
   virtual ::DBus::Struct<
     std::string, std::string, std::string> GetInfo(DBus::Error& error);
+  virtual void Reset(DBus::Error& error);
 
   // DBUS Methods: ModemSimple
   virtual void Connect(const utilities::DBusPropertyMap& properties,
@@ -168,6 +170,8 @@ class GobiModem
   static unsigned long MapDbmToPercent(INT8 signal_strength_dbm);
   static unsigned long MapDataBearerToRfi(ULONG data_bearer_technology);
   static unsigned long long GetTimeMs(void);
+
+  unsigned int QCStateToMMState(ULONG qcstate);
 
   struct CallbackArgs {
     CallbackArgs() : path(NULL) { }

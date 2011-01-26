@@ -639,7 +639,7 @@ void GobiCdmaModem::SetTechnologySpecificProperties() {
   DBus::Error error;
   GetSerialNumbers(&serials, error);
   if (!error.is_set())
-    MEID = serials.meid;
+    Meid = serials.meid;
 }
 
 void GobiCdmaModem::SendActivationStateFailed() {

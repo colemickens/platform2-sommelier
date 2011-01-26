@@ -398,6 +398,43 @@ void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
   out->meid = meid;
 }
 
+unsigned int GobiModem::QCStateToMMState(ULONG qcstate) {
+  unsigned int mmstate;
+
+  // TODO(ers) if not registered, should return enabled state
+  switch (qcstate) {
+    case gobi::kConnected:
+      mmstate = MM_MODEM_STATE_CONNECTED;
+      break;
+    case gobi::kAuthenticating:
+      mmstate = MM_MODEM_STATE_CONNECTING;
+      break;
+    case gobi::kDisconnected:
+    default:
+      ULONG rc;
+      ULONG reg_state;
+      ULONG l1, l2;      // don't care
+      WORD w1, w2;
+      BYTE b3[10];
+      BYTE b2 = sizeof(b3)/sizeof(BYTE);
+      char buf[255];
+      rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2,
+                                   sizeof(buf), buf);
+      if (rc == 0) {
+        if (reg_state == gobi::kRegistered) {
+          mmstate = MM_MODEM_STATE_REGISTERED;
+          break;
+        } else if (reg_state == gobi::kSearching) {
+          mmstate = MM_MODEM_STATE_SEARCHING;
+          break;
+        }
+      }
+      mmstate = MM_MODEM_STATE_UNKNOWN;
+  }
+
+  return mmstate;
+}
+
 // if we get SDK errors while trying to retrieve information,
 // we ignore them, and just don't set the corresponding properties
 DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
@@ -479,39 +516,9 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
 
 
   ULONG session_state;
-  ULONG mm_modem_state;
   rc = sdk_->GetSessionState(&session_state);
   if (rc == 0) {
-    // TODO(ers) if not registered, should return enabled state
-    switch (session_state) {
-      case gobi::kConnected:
-        mm_modem_state = MM_MODEM_STATE_CONNECTED;
-        break;
-      case gobi::kAuthenticating:
-        mm_modem_state = MM_MODEM_STATE_CONNECTING;
-        break;
-      case gobi::kDisconnected:
-      default:
-        ULONG reg_state;
-        ULONG l1, l2;      // don't care
-        WORD w1, w2;
-        BYTE b3[10];
-        BYTE b2 = sizeof(b3)/sizeof(BYTE);
-        CHAR netname[32];
-        rc = sdk_->GetServingNetwork(&reg_state, &l1, &b2, b3, &l2, &w1, &w2,
-                                     sizeof(netname), netname);
-        if (rc == 0) {
-          if (reg_state == gobi::kRegistered) {
-            mm_modem_state = MM_MODEM_STATE_REGISTERED;
-            break;
-          } else if (reg_state == gobi::kSearching) {
-            mm_modem_state = MM_MODEM_STATE_SEARCHING;
-            break;
-          }
-        }
-        mm_modem_state = MM_MODEM_STATE_UNKNOWN;
-    }
-    result["state"].writer().append_uint32(mm_modem_state);
+    result["state"].writer().append_uint32(QCStateToMMState(session_state));
   }
 
   char mdn[kDefaultBufferSize], min[kDefaultBufferSize];
@@ -1057,16 +1064,17 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     }
     session_id_ = 0;
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
-    if (reason == MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED &&
-        suspending_)
-      reason = MM_MODEM_CONNECTION_STATE_CHANGE_REASON_SUSPEND;
-    ConnectionStateChanged(false, reason);
+    if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
+      reason = MM_MODEM_STATE_CHANGED_REASON_SUSPEND;
+    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
+    StateChanged(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_REGISTERED, reason);
   } else if (state == gobi::kConnected) {
     ULONG duration = GetTimeMs() - connect_start_time_;
     metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect",
                             duration, 0, 150000, 20);
     suspending_ = false;
-    ConnectionStateChanged(true, 0);
+    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
+    StateChanged(MM_MODEM_STATE_REGISTERED, MM_MODEM_STATE_CONNECTED, 0);
   }
 }
 
@@ -1154,9 +1162,9 @@ bool GobiModem::StartExit() {
 unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
   switch (qmireason) {
     case gobi::kClientEndedCall:
-      return MM_MODEM_CONNECTION_STATE_CHANGE_REASON_REQUESTED;
+      return MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED;
     default:
-      return MM_MODEM_CONNECTION_STATE_CHANGE_REASON_UNKNOWN;
+      return MM_MODEM_STATE_CHANGED_REASON_UNKNOWN;
   }
 }
 
@@ -1263,7 +1271,8 @@ void GobiModem::ResetDevice(ULONG reason) {
     return;
   }
   device_resetting_ = true;
-  RecordResetReason(reason);
+  if (reason)
+    RecordResetReason(reason);
   const char *addr = GetUSBAddress().c_str();
   LOG(ERROR) << "Resetting modem device: "
              << static_cast<std::string>(path())
@@ -1295,4 +1304,8 @@ void GobiModem::ResetDevice(ULONG reason) {
       LOG(ERROR) << "Child process failed: " << status;
     }
   }
+}
+
+void GobiModem::Reset(DBus::Error& error) {
+  ResetDevice(0);
 }
