@@ -500,7 +500,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   if (!session_started_) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Illegal attempt to set the owner's public key.");
+              "Cannot set the owner's public key outside of a session.");
     return FALSE;
   }
 
@@ -514,7 +514,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   if (!key_->PopulateFromBuffer(pub_key)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Illegal attempt to set the owner's public key.");
+              "Attempted to set invalid key as owner's public key.");
     return FALSE;
   }
   g_idle_add_full(G_PRIORITY_HIGH_IDLE,
@@ -540,7 +540,7 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
                     signature->len)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
-              "Signature could not be verified.");
+              "Signature could not be verified in Unwhitelist.");
     return FALSE;
   }
   store_->Unwhitelist(email_address);
@@ -565,7 +565,7 @@ gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
   if (!base::Base64Decode(encoded, &decoded)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
-              "Signature could not be decoded.");
+              "Signature could not be decoded in CheckWhitelist.");
     return FALSE;
   }
 
@@ -605,7 +605,7 @@ gboolean SessionManagerService::Whitelist(gchar* email_address,
                     signature->len)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
-              "Signature could not be verified.");
+              "Signature could not be verified in Whitelist.");
     return FALSE;
   }
   std::string data(signature->data, signature->len);
@@ -630,7 +630,7 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
                     signature->len)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,
-              "Signature could not be verified.");
+              "Signature could not be verified in StoreProperty.");
     return FALSE;
   }
   std::string data(signature->data, signature->len);
@@ -1091,7 +1091,7 @@ gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
   if (!base::Base64Encode(signature, &encoded)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
-              "Signature could not be verified.");
+              "Signature could not be verified in SetPropertyHelper.");
     return FALSE;
   }
   store_->Set(name, value, encoded);
@@ -1109,7 +1109,7 @@ gboolean SessionManagerService::WhitelistHelper(const std::string& email,
   if (!base::Base64Encode(signature, &encoded)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
-              "Signature could not be encoded.");
+              "Signature could not be encoded in WhitelistHelper.");
     return FALSE;
   }
   store_->Whitelist(email, encoded);
@@ -1137,7 +1137,7 @@ gboolean SessionManagerService::GetPropertyHelper(const std::string& name,
   if (!base::Base64Decode(encoded, OUT_signature)) {
     SetGError(error,
               CHROMEOS_LOGIN_ERROR_DECODE_FAIL,
-              "Signature could not be decoded.");
+              "Signature could not be decoded in GetPropertyHelper.");
     return FALSE;
   }
   return TRUE;
