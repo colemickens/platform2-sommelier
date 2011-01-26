@@ -26,27 +26,33 @@ PLUGINS = dummy_modem.so
 PLUGINDIR ?= /usr/lib/cromo/plugins
 DBUSDATADIR ?= /etc/dbus-1/system.d
 DBUSCONFIGFILE ?= org.chromium.ModemManager.conf
+DBUSIFACEDIR ?= $(ROOT)/usr/share/dbus-1/interfaces
 
 plugin_manager_CPPFLAGS=-DPLUGINDIR=\"$(PLUGINDIR)\"
 dummy_modem_CPPFLAGS = -fPIC
 dummy_modem_handler_CPPFLAGS = -fPIC
 
-XMLFILES = mm-manager.xml \
-	mm-mobile-error.xml \
-	mm-modem-cdma.xml \
-	mm-modem-connect-error.xml \
-	mm-modem-error.xml \
-	mm-modem-gsm-card.xml \
-	mm-modem-gsm-contacts.xml \
-	mm-modem-gsm-hso.xml \
-	mm-modem-gsm-network.xml \
-	mm-modem-gsm-sms.xml \
-	mm-modem-gsm.xml \
-	mm-modem-simple.xml \
-	mm-modem.xml \
-	mm-serial-error.xml
+XMLFILES := mm-mobile-error.xml \
+            mm-serial-error.xml \
+            org.freedesktop.ModemManager.Modem.xml \
+            org.freedesktop.ModemManager.Modem.Cdma.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.Card.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.Contacts.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.Network.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.SMS.xml \
+            org.freedesktop.ModemManager.Modem.Gsm.Ussd.xml \
+            org.freedesktop.ModemManager.Modem.Simple.xml \
+            org.freedesktop.ModemManager.xml \
+            org.freedesktop.DBus.Properties.xml
 
-GLUE_HEADERS = $(XMLFILES:mm-%.xml=%_server_glue.h)
+XMLPREFIX := \\(org.freedesktop.ModemManager\\|org.freedesktop.DBus\\)
+EMPTY := manager
+
+GLUE_HEADERS := $(foreach XML,$(XMLFILES), \
+                  $(shell ./iface2header "$(XMLPREFIX)" \
+                                         $(EMPTY) \
+                                         $(XML)))
 
 # TODO(rochberg):
 
@@ -86,11 +92,15 @@ all : $(TARGETS)
 %unittest :
 	$(CXX) $^ $(LDLIBS_UNITTEST) -o $@
 
-%_server_glue.h: $(ROOT)/usr/lib/mm/mm-%.xml
-	$(DBUSXX_XML2CPP) $^ --adaptor=$@
+glue: $(patsubst %,$(DBUSIFACEDIR)/%,$(XMLFILES))
+	@for xml in $(XMLFILES); do \
+		hdr=$$(./iface2header "$(XMLPREFIX)" $(EMPTY) $$xml); \
+		echo "xml2cpp $$xml -> $$hdr"; \
+		$(DBUSXX_XML2CPP) $(DBUSIFACEDIR)/$$xml --adaptor=$$hdr; \
+	done
 
-$(OBJS): $(GLUE_HEADERS)
-$(dummy_OBJS): $(GLUE_HEADERS)
+$(OBJS): glue
+$(dummy_OBJS): glue
 
 $(CROMO): $(OBJS) $(SYMFILE) $(LIBCROMO)
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
@@ -123,7 +133,7 @@ $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
                                hooktable.h carrier.h utilities.h
 
-install-headers: $(GLUE_HEADERS)
+install-headers: glue
 	install -d $(DESTDIR)/usr/include/cromo
 	install -t $(DESTDIR)/usr/include/cromo $(EXPORT_HEADERS)
 

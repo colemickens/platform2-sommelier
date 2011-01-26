@@ -33,6 +33,7 @@ class DummyModem
       DBus::Error& error);
   DBus::Struct<std::string, std::string, std::string> GetInfo(
       DBus::Error& error);
+  void Reset(DBus::Error& error);
 
   // DBUS Methods: ModemSimple
   void Connect(const PropertyMap& properties, DBus::Error& error);

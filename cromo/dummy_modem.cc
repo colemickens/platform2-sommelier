@@ -47,6 +47,10 @@ DBus::Struct<string, string, string> DummyModem::GetInfo(DBus::Error& error) {
   return result;
 }
 
+void DummyModem::Reset(DBus::Error& error) {
+  cout << "Reset" << endl;
+}
+
 // DBUS Methods: ModemSimple
 void DummyModem::Connect(const PropertyMap& properties, DBus::Error& error) {
   cout << "Simple.Connect" << endl;
