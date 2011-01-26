@@ -22,8 +22,8 @@ namespace power_manager {
 // Gradually change backlight level to new brightness by breaking up the
 // transition into N steps, where N = kBacklightNumSteps.
 const int kBacklightNumSteps = 8;
-// Time between backlight adjustment steps.
-const int kBacklightStepTime = 30;
+// Time between backlight adjustment steps, in milliseconds.
+const int kBacklightStepTimeMs = 30;
 
 bool Backlight::Init() {
   FilePath base_path("/sys/class/backlight");
@@ -126,9 +126,20 @@ bool Backlight::SetBrightness(int64 target_level) {
   target_brightness_ = target_level;
   for (int i = 0; i < kBacklightNumSteps; i++) {
     int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
-    g_timeout_add(i * kBacklightStepTime, SetBrightnessHardThunk,
+    g_timeout_add(i * kBacklightStepTimeMs, SetBrightnessHardThunk,
                   CreateSetBrightnessHardArgs(this, step_level, target_level));
   }
+  return true;
+}
+
+bool Backlight::GetTransitionParams(int* num_steps, int* step_time_ms)
+{
+  if (num_steps == NULL)
+    return false;
+  if (step_time_ms == NULL)
+    return false;
+  *num_steps = kBacklightNumSteps;
+  *step_time_ms = kBacklightStepTimeMs;
   return true;
 }
 
@@ -146,6 +157,5 @@ gboolean Backlight::SetBrightnessHard(int64 level, int64 target_level) {
   LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
   return false; // Return false so glib doesn't repeat.
 }
-
 
 }  // namespace power_manager

@@ -41,6 +41,10 @@ class Backlight : public BacklightInterface {
   virtual bool GetTargetBrightness(int64* level);
   virtual bool SetBrightness(int64 level);
 
+  // Returns info about the gradual brightness transition, represented as the
+  // number of steps and the interval of each step in milliseconds.
+  bool GetTransitionParams(int* num_steps, int* step_time_ms);
+
  private:
   // Look for the existence of required files and return the granularity of
   // the given backlight interface directory path.

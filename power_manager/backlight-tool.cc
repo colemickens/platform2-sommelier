@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
+#include <glib.h>
 #include <inttypes.h>
 
 #include <cstdio>
@@ -17,6 +18,12 @@
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
 DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
 DEFINE_int64(set_brightness, -1, "Set brightness level.");
+
+static gboolean QuitLoop(gpointer data) {
+  GMainLoop* loop = static_cast<GMainLoop*>(data);
+  g_main_loop_quit(loop);
+  return false;
+}
 
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -34,7 +41,12 @@ int main(int argc, char* argv[]) {
       printf("%" PRIi64 "\n", max);
   }
   if (FLAGS_set_brightness >= 0) {
+    GMainLoop* loop = g_main_loop_new(NULL, false);
     CHECK(backlight.SetBrightness(FLAGS_set_brightness));
+    int num_steps, step_time_ms;
+    CHECK(backlight.GetTransitionParams(&num_steps, &step_time_ms));
+    g_timeout_add(num_steps * step_time_ms, QuitLoop, loop);
+    g_main_loop_run(loop);
   }
   return 0;
 }
