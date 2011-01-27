@@ -228,8 +228,7 @@ void Daemon::StartCleanShutdown() {
   // Cancel any outstanding suspend in flight.
   suspender_.CancelSuspend();
   util::SendSignalToPowerM(util::kRequestCleanShutdown);
-  g_timeout_add(clean_shutdown_timeout_ms_, Daemon::CleanShutdownTimedOut,
-                this);
+  g_timeout_add(clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
@@ -571,12 +570,11 @@ void Daemon::OnLowBattery(double battery_percentage) {
   }
 }
 
-gboolean Daemon::CleanShutdownTimedOut(gpointer data) {
-  Daemon* daemon = static_cast<Daemon*>(data);
-  if (daemon->clean_shutdown_initiated_) {
-    daemon->clean_shutdown_initiated_ = false;
+gboolean Daemon::CleanShutdownTimedOut() {
+  if (clean_shutdown_initiated_) {
+    clean_shutdown_initiated_ = false;
     LOG(INFO) << "Timed out waiting for clean shutdown/restart.";
-    daemon->Shutdown();
+    Shutdown();
   } else {
     LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
   }

@@ -146,7 +146,7 @@ class Daemon : public XIdleMonitor {
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
   // go through with the shutdown now.
-  static gboolean CleanShutdownTimedOut(gpointer data);
+  SIGNAL_CALLBACK_0(Daemon, gboolean, CleanShutdownTimedOut);
 
   // Handle power state changes from powerd_suspend.
   // |state| is "on" when resuming from suspend.
