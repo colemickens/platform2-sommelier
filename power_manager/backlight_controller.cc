@@ -167,6 +167,11 @@ int64 BacklightController::WriteBrightness() {
 }
 
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
+  int64 target_level;
+  CHECK(GetTargetBrightness(&target_level));
+  // Do not use ALS to adjust if backlight is turned all the way down.
+  if (target_level == 0)
+    return;
   als_brightness_level_ = level;
 
   // Only a change of 5% of the brightness range will force a change.
