@@ -204,11 +204,26 @@ void BacklightController::ReadPrefs() {
 
 void BacklightController::WritePrefs() {
   if (plugged_state_ == kPowerConnected) {
-    prefs_->SetInt64(kPluggedBrightnessOffset,
-                     plugged_brightness_offset_);
+    prefs_->SetInt64(kPluggedBrightnessOffset, plugged_brightness_offset_);
+    // If plugged brightness is set to less than unplugged brightness, reduce
+    // the unplugged brightness so that it is not greater than plugged
+    // brightness.  Otherwise there will be an unnatural increase in brightness
+    // when the user switches from AC to battery power.
+    if (plugged_brightness_offset_ < unplugged_brightness_offset_) {
+      unplugged_brightness_offset_ = plugged_brightness_offset_;
+      prefs_->SetInt64(kUnpluggedBrightnessOffset,
+                       unplugged_brightness_offset_);
+    }
   } else if (plugged_state_ == kPowerDisconnected) {
-    prefs_->SetInt64(kUnpluggedBrightnessOffset,
-                     unplugged_brightness_offset_);
+    prefs_->SetInt64(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
+    // If unplugged brightness is set to greater than plugged brightness,
+    // increase the plugged brightness so that it is not less than unplugged
+    // brightness.  Otherwise there will be an unnatural decrease in brightness
+    // when the user switches from battery to AC power.
+    if (unplugged_brightness_offset_ > plugged_brightness_offset_) {
+      plugged_brightness_offset_ = unplugged_brightness_offset_;
+      prefs_->SetInt64(kPluggedBrightnessOffset, plugged_brightness_offset_);
+    }
   }
 }
 
