@@ -82,10 +82,6 @@ src_version() {
   cat /etc/lsb-release | grep ^CHROMEOS_RELEASE_VERSION | cut -d = -f 2-
 }
 
-echo src_version: $(src_version)
-echo "sleeping"
-sleep 60
-
 MAKE_DEV_READONLY=${FLAGS_FALSE}
 if [ -n "$IS_UPDATE" ]; then
   if $(version_less $(src_version) 0.10.157.0); then
