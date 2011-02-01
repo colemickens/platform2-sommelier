@@ -7,4 +7,4 @@
 trap '' USR1 TTOU TTIN
 # The '-noreset' works around an apparent bug in the X server that
 # makes us fail to boot sometimes; see http://crosbug.com/7578.
-exec /usr/bin/X11/X -noreset -nolisten tcp vt01 -auth $1 2> /dev/null
+exec /usr/bin/X -noreset -nolisten tcp vt01 -auth $1 2> /dev/null
