@@ -71,6 +71,30 @@ if [ -z "${IS_FACTORY_INSTALL}" -a \
   IS_UPDATE=1
 fi
 
+# Usage: if $(version_less A.B.C.D W.X.Y.Z); then...
+version_less() {
+  local a=$(printf '%010d%010d%010d%010d' $(echo "$1" | sed 's/\./ /g'))
+  local b=$(printf '%010d%010d%010d%010d' $(echo "$2" | sed 's/\./ /g'))
+  [ $a \< $b ]
+}
+
+src_version() {
+  cat /etc/lsb-release | grep ^CHROMEOS_RELEASE_VERSION | cut -d = -f 2-
+}
+
+echo src_version: $(src_version)
+echo "sleeping"
+sleep 60
+
+MAKE_DEV_READONLY=${FLAGS_FALSE}
+if [ -n "$IS_UPDATE" ]; then
+  if $(version_less $(src_version) 0.10.157.0); then
+    echo "Patching new rootfs"
+    dd if=/dev/zero of="${INSTALL_DEV}" bs=1 count=2 conv=notrunc seek=1400
+    MAKE_DEV_READONLY=${FLAGS_TRUE}
+  fi
+fi
+
 if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
   # installed system.
@@ -227,6 +251,11 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     # Configure the PMBR to boot the new image.
     echo "marking part $LEGACY_PART_NUM bootable (new)"
     "$GPT" boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
+
+    if [ ${MAKE_DEV_READONLY} -eq ${FLAGS_TRUE} ]; then
+      echo "Making dev ${INSTALL_DEV} read-only"
+      hdparm -r 1 "${INSTALL_DEV}"
+    fi
 
     # At this point in the script, the new partition has been marked bootable
     # and a reboot will boot into it. Thus, it's important that any future
