@@ -16,6 +16,7 @@
 #include <string>
 
 #include <cromo/cromo_server.h>
+#include <cromo/modem.h>
 #include <cromo/modem_server_glue.h>
 #include <cromo/modem-simple_server_glue.h>
 #include <cromo/properties_server_glue.h>
@@ -80,7 +81,8 @@ class CromoServer;
 class GobiModemHandler;
 
 class GobiModem
-    : public org::freedesktop::ModemManager::Modem_adaptor,
+    : public Modem,
+      public org::freedesktop::ModemManager::Modem_adaptor,
       public org::freedesktop::ModemManager::Modem::Simple_adaptor,
 
       public org::chromium::ModemManager::Modem::Gobi_adaptor,
@@ -114,6 +116,20 @@ class GobiModem
                            ULONG error);
 
   std::string GetUSBAddress();
+
+  // Modem methods.
+  virtual ModemAdaptor *modem_adaptor() {
+    return static_cast<ModemAdaptor *>(this);
+  }
+
+  virtual SimpleAdaptor *simple_adaptor() {
+    return static_cast<SimpleAdaptor *>(this);
+  }
+
+  virtual CdmaAdaptor *cdma_adaptor() {
+    LOG(WARNING) << "Modem::cdma_adaptor() called on non-CDMA modem.";
+    return NULL;
+  }
 
   // DBUS Methods: Modem
   virtual void Enable(const bool& enable, DBus::Error& error);

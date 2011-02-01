@@ -354,11 +354,9 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
       break;
 
     case Carrier::kOtasp: {
-        using org::freedesktop::ModemManager::Modem::Cdma_adaptor;
-        Cdma_adaptor *cdma_this = static_cast<Cdma_adaptor *>(this);
         uint32_t immediate_return;
         if (carrier->CdmaCarrierSpecificActivate(
-                status, cdma_this, &immediate_return)) {
+                status, this, &immediate_return)) {
           return immediate_return;
         }
       }

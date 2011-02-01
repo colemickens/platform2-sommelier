@@ -23,6 +23,11 @@ class GobiCdmaModem
       : GobiModem(connection, path, device, sdk) {}
   virtual ~GobiCdmaModem();
 
+  // Modem methods
+  virtual CdmaAdaptor *cdma_adaptor() {
+    return static_cast<CdmaAdaptor*>(this);
+  }
+
   // DBUS Methods: Modem.CDMA
   virtual uint32_t GetSignalQuality(DBus::Error& error);
   virtual std::string GetEsn(DBus::Error& error);
