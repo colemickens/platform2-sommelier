@@ -172,23 +172,33 @@ static void print_info_log(int obj)
 }
 
 GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src) {
-  return InitShaderProgramWithHeader(kGlesHeader, vertex_src, fragment_src);
+  return InitShaderProgramWithHeader(NULL, vertex_src, fragment_src);
 }
 
 GLuint InitShaderProgramWithHeader(const char* header,
                                    const char* vertex_src,
                                    const char* fragment_src) {
+  const char* headers[] = {kGlesHeader, header};
+  return InitShaderProgramWithHeaders(headers,
+                                      arraysize(headers) - (header ? 0 : 1),
+                                      vertex_src, fragment_src);
+}
+
+GLuint InitShaderProgramWithHeaders(const char** headers,
+                                    int count,
+                                    const char* vertex_src,
+                                    const char* fragment_src) {
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
-  const char* header_and_body[2];
-  header_and_body[0] = header ? header : "";
-  header_and_body[1] = vertex_src;
-  glShaderSource(vertex_shader,
-                 arraysize(header_and_body), header_and_body, NULL);
-  header_and_body[1] = fragment_src;
-  glShaderSource(fragment_shader,
-                 arraysize(header_and_body), header_and_body, NULL);
+  const char** header_and_body = new const char*[count + 1];
+  if (count != 0)
+    memcpy(header_and_body, headers, count * sizeof(const char*));
+  header_and_body[count] = vertex_src;
+  glShaderSource(vertex_shader, count + 1, header_and_body, NULL);
+  header_and_body[count] = fragment_src;
+  glShaderSource(fragment_shader, count + 1, header_and_body, NULL);
+  delete[] header_and_body;
 
   glCompileShader(vertex_shader);
   print_info_log(vertex_shader);

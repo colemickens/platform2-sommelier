@@ -29,6 +29,10 @@ GLuint InitShaderProgram(const char *vertex_src, const char *fragment_src);
 GLuint InitShaderProgramWithHeader(const char* header,
                                    const char* vertex_src,
                                    const char* fragment_src);
+GLuint InitShaderProgramWithHeaders(const char** headers,
+                                    int count,
+                                    const char* vertex_src,
+                                    const char* fragment_src);
 
 } // namespace glbench
 

@@ -63,9 +63,7 @@ int main(int argc, char *argv[]) {
     glbench::GetWindowManagerCompositingTest(false),
     glbench::GetWindowManagerCompositingTest(true),
     glbench::GetTriangleSetupTest(),
-#if !defined(DISABLE_SOME_TESTS_FOR_INTEL_DRIVER)
     glbench::GetYuvToRgbTest(),
-#endif
     glbench::GetReadPixelTest(),
     glbench::GetAttributeFetchShaderTest(),
     glbench::GetVaryingsAndDdxyShaderTest(),
