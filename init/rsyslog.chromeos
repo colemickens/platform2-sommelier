@@ -1,0 +1,35 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+
+$ModLoad immark.so # provides --MARK-- message capability
+$ModLoad imuxsock.so # provides support for local system logging (e.g. via logger command)
+$ModLoad imklog.so # kernel logging (formerly provided by rklogd)
+
+# Log all kernel messages to the console.
+# Logging much else clutters up the screen.
+#kern.*                                                 /dev/console
+
+# Log anything (except mail) of level info or higher.
+# Don't log private authentication messages!
+*.*;mail.none;authpriv.none;cron.none;local5.none       -/var/log/messages
+
+# Copy these messages to tty8 to help with troubleshooting.
+# Don't log authentication messages, mail, cron, or wpa_supplicant(local6).
+*.*;mail.none;authpriv.none;cron.none;local6.none       /dev/tty8
+
+# The authpriv file has restricted access.
+authpriv.*                                              /var/log/secure
+
+# Log cron stuff
+cron.*                                                  -/var/log/cron
+
+# Everybody gets emergency messages
+*.emerg                                                 *
+
+# Save boot messages also to boot.log
+local7.*                                                /var/log/boot.log
+
+# laptop-mode can be configured to log to local5
+local5.info                                             /var/log/laptopmode.log
