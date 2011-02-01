@@ -10,14 +10,8 @@
 #include <dbus-c++/dbus.h>
 #include <map>
 
+#include "modem.h"
 #include "utilities.h"
-
-namespace org {
-namespace freedesktop {
-namespace ModemManager {
-namespace Modem {
-class Cdma_adaptor;
-}}}}
 
 class Carrier {
  public:
@@ -55,7 +49,7 @@ class Carrier {
   virtual bool CdmaCarrierSpecificActivate (
       const utilities::DBusPropertyMap &status,  // Result of
                                                  // Modem.Simple.GetStatus()
-      org::freedesktop::ModemManager::Modem::Cdma_adaptor *modem,
+      Modem *modem,
       uint32_t *immediate_return) const {
     return false;
   }

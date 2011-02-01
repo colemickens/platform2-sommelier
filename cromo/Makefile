@@ -131,7 +131,7 @@ $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@cat $@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
-                               hooktable.h carrier.h utilities.h
+                               hooktable.h carrier.h utilities.h modem.h
 
 install-headers: glue
 	install -d $(DESTDIR)/usr/include/cromo
