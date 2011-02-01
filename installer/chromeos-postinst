@@ -84,7 +84,7 @@ src_version() {
 
 MAKE_DEV_READONLY=${FLAGS_FALSE}
 if [ -n "$IS_UPDATE" ]; then
-  if $(version_less $(src_version) 0.10.157.0); then
+  if $(version_less $(src_version) 0.10.156.2); then
     echo "Patching new rootfs"
     dd if=/dev/zero of="${INSTALL_DEV}" bs=1 count=2 conv=notrunc seek=1400
     MAKE_DEV_READONLY=${FLAGS_TRUE}
