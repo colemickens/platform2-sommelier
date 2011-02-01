@@ -47,6 +47,7 @@ INSTALL_DEV="$1"
 # Find whole disk device.
 ROOT_DEV=$(get_block_dev_from_partition_dev ${INSTALL_DEV})
 NEW_PART_NUM=${INSTALL_DEV##*/*[a-z]}
+NEW_K_DEV=$(make_partition_dev ${ROOT_DEV} $(( $NEW_PART_NUM - 1)) )
 
 case ${NEW_PART_NUM} in
   "3" )
@@ -63,6 +64,12 @@ case ${NEW_PART_NUM} in
 esac
 # For legacy and efi boot, we only have one boot-capable partition.
 LEGACY_PART_NUM=12
+
+if [ -z "${IS_FACTORY_INSTALL}" -a \
+     -z "${IS_RECOVERY_INSTALL}" -a \
+     -z "${IS_INSTALL}" ]; then
+  IS_UPDATE=1
+fi
 
 if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
@@ -116,6 +123,10 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     if [ "${ERR}" -eq "0" ]; then
       syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
       grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
+      ROOT_DEV_PARAM=""
+      if [ -n "$IS_UPDATE" ]; then
+        ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
+      fi
       "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
           --dst=${ROOT_DEV} --run_as_root \
           --install_root="${INSTALL_ROOT}" \
@@ -123,7 +134,7 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
           --update_grub_cfg="${grub_cfg}" \
           --esp_mounted_at="${EFI_MNT}" \
           --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz \
-          ${SUB_CMD_DEBUG_FLAG}
+          ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
       ERR=${?}
     fi
     umount "${EFI_MNT}"
@@ -182,13 +193,17 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     # vboot configuration data.
     syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
     grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
+    ROOT_DEV_PARAM=""
+    if [ -n "$IS_UPDATE" ]; then
+      ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
+    fi
     "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
         --dst=${ROOT_DEV} --run_as_root \
         --install_root="${INSTALL_ROOT}" \
         --update_syslinux_cfg="${syslinux_cfg}" \
         --update_grub_cfg="${grub_cfg}" \
         --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz \
-        ${SUB_CMD_DEBUG_FLAG}
+        ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
 
     echo "Updating Partition Table Attributes..."
     NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
