@@ -21,10 +21,6 @@ else
   IS_BASH=0
 fi
 
-# The terminal seems to come up with a bogus notion of its geometry.  Calling
-# reset works around the problem.
-reset
-
 if [ "$TRY_BASH" = "1" -a "$IS_BASH" != "1" -a -x "/bin/bash" ]; then
   # Relaunch in bash if we can.
   exec /bin/bash $0 "$@"
@@ -45,7 +41,7 @@ HELP='
 
  enterprise_ca_disapprove
   Remove a previously approved enterprise certificate authority.
- 
+
  exit
   Exit crosh.
 
@@ -59,7 +55,7 @@ HELP='
   Interact with the 3G modem. Run "modem help" for detailed help.
 
  network_logging <wifi | cellular | ethernet>
-  A function that enables a predefined set of tags useful for 
+  A function that enables a predefined set of tags useful for
   debugging the specified device.
 
  network_diag
@@ -176,7 +172,7 @@ cmd_ssh() {
   if [ -z "$host" ]; then
     echo "Missing required parameter: host"
     return
-  elif ! check_hostname "$host"; then
+  elif ! check_hostname "$host" && ! check_ipv6 "$host"; then
     echo "Invalid host: $host"
     return
   fi
@@ -285,11 +281,11 @@ cmd_network_logging(){
         echo; /usr/bin/wpa_debug msgdump
         ;;
       "cellular")
-        echo; /usr/bin/ff_debug service+modem+device+manager  
-        echo; /usr/bin/wpa_debug info 
+        echo; /usr/bin/ff_debug service+modem+device+manager
+        echo; /usr/bin/wpa_debug info
         ;;
       "ethernet")
-        echo; /usr/bin/ff_debug service+ethernet+device+manager  
+        echo; /usr/bin/ff_debug service+ethernet+device+manager
         echo; /usr/bin/wpa_debug info
         ;;
       "--help")
@@ -451,10 +447,18 @@ dispatch() {
   fi
 }
 
-# Checks that a given string starts with an alphanumeric, and contains only
-# alphanumeric, '.' or '-' characters
+# Checks that a given string looks like a hostname or IPv4 address (starts
+# with an alphanumeric and contains only alphanumeric, '.', or '-'
+# characters).
 check_hostname() {
-  expr "$1" : '^[[:alnum:]][[:alnum:].\-]*$' > /dev/null
+  expr "$1" : '^[[:alnum:]][-[:alnum:].]*$' > /dev/null
+}
+
+# Checks that a given string could plausibly be an IPv6 address
+# (hexadecimal, ':', and '.' characters only, followed by an optional zone
+# index consisting of a '%' and a device name).
+check_ipv6() {
+  echo "$1" | /bin/grep -E -q '^[0-9a-fA-F:.]+(%[a-z0-9]+)?$'
 }
 
 # Checks that a given string starts with an alphanumeric, and contains only
