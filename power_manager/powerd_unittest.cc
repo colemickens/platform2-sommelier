@@ -30,6 +30,7 @@ static const int64 kDefaultBrightness = 50;
 static const int64 kMaxBrightness = 100;
 static const int64 kPluggedBrightness = 70;
 static const int64 kUnpluggedBrightness = 30;
+static const int64 kAlsBrightness = 0;
 static const int64 kSmallInterval = 500;
 static const int64 kBigInterval = kSmallInterval * 4;
 static const int64 kPluggedDim = kBigInterval;
@@ -60,6 +61,7 @@ class DaemonTest : public Test {
                         Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
+    prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
     CHECK(backlight_ctl_.Init());
     ResetPowerStatus(status_);
   }

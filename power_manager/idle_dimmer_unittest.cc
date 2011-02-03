@@ -25,6 +25,7 @@ static const int64 kDefaultBrightness = 50;
 static const int64 kMaxBrightness = 100;
 static const int64 kPluggedBrightness = 70;
 static const int64 kUnpluggedBrightness = 30;
+static const int64 kAlsBrightness = 0;
 static const int64 kPluggedBrightnessP = kPluggedBrightness;
 static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness;
 
@@ -39,6 +40,7 @@ class IdleDimmerTest : public Test {
                         Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightnessP);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightnessP);
+    prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
     EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
         .WillOnce(Return(true));
     CHECK(backlight_ctl_.Init());
