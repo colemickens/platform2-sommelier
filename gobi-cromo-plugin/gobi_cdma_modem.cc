@@ -552,6 +552,7 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiCdmaModem::GetServingSystem(
                                      radio_interfaces, &roaming_state,
                                      &mcc, &mnc, sizeof(netname), netname);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetServingNetwork, rc, kSdkError, result);
+  LOG(INFO) << "Serving MCC/MNC: " << mcc << "/" << mnc;
   if (reg_state != gobi::kRegistered) {
     error.set(kNoNetworkError, "No network service is available");
     return result;
@@ -561,6 +562,8 @@ DBus::Struct<uint32_t, std::string, uint32_t> GobiCdmaModem::GetServingSystem(
                             sizeof(netname), netname, &sid, &nid);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
 
+  LOG(INFO) << "Home MCC/MNC: " << mcc << "/" << mnc << " SID/NID: " << sid
+            << "/" << nid << " name: " << netname;
   gobi::RfInfoInstance rf_info[10];
   BYTE rf_info_size = sizeof(rf_info) / sizeof(rf_info[0]);
 

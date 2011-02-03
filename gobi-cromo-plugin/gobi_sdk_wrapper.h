@@ -366,10 +366,10 @@ class Sdk {
 
   virtual ULONG StartDataSession(
       ULONG *                    pTechnology,
-      CHAR *                     pAPNName,
+      const CHAR *               pAPNName,
       ULONG *                    pAuthentication,
-      CHAR *                     pUsername,
-      CHAR *                     pPassword,
+      const CHAR *               pUsername,
+      const CHAR *               pPassword,
       ULONG *                    pSessionId,
       ULONG *                    pFailureReason);
 

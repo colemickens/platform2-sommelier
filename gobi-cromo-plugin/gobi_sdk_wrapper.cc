@@ -428,13 +428,16 @@ ULONG Sdk::GetDefaultProfile(
 
 ULONG Sdk::StartDataSession(
     ULONG *                    pTechnology,
-    CHAR *                     pAPNName,
+    const CHAR *               pAPNName,
     ULONG *                    pAuthentication,
-    CHAR *                     pUsername,
-    CHAR *                     pPassword,
+    const CHAR *               pUsername,
+    const CHAR *               pPassword,
     ULONG *                    pSessionId,
     ULONG *                    pFailureReason
                             ) {
+  TemporaryCopier mutableAPNName(pAPNName);
+  TemporaryCopier mutableUsername(pUsername);
+  TemporaryCopier mutablePassword(pPassword);
   CallWrapper cw(this, "StartDataSession");
   return cw.CheckReturn(::StartDataSession(
       pTechnology,
@@ -442,11 +445,11 @@ ULONG Sdk::StartDataSession(
       NULL,
       NULL,
       NULL,
-      pAPNName,
+      mutableAPNName.get(),
       NULL,
       pAuthentication,
-      pUsername,
-      pPassword,
+      mutableUsername.get(),
+      mutablePassword.get(),
       pSessionId,
       pFailureReason));
 }

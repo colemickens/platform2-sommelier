@@ -283,40 +283,9 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
 }
 
 void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
-  if (!Enabled()) {
-    LOG(WARNING) << "Connect on disabled modem";
-    error.set(kConnectError, "Modem is disabled");
-    return;
-  }
-  if (exiting_) {
-    LOG(WARNING) << "Connect when exiting";
-    error.set(kConnectError, "Cromo is exiting");
-    return;
-  }
-  ULONG failure_reason;
-  ULONG rc;
-
-  connect_start_time_ = GetTimeMs();
-  rc = sdk_->StartDataSession(NULL,  // technology
-                              NULL,  // APN Name
-                              NULL,  // Authentication
-                              NULL,  // Username
-                              NULL,  // Password
-                              &session_id_,  // OUT: session ID
-                              &failure_reason  // OUT: failure reason
-                              );
-  if (rc == 0) {
-    LOG(INFO) << "Session ID " <<  session_id_;
-    return;
-  }
-
-  LOG(WARNING) << "StartDataSession failed: " << rc;
-  if (rc == gobi::kCallFailed) {
-    LOG(WARNING) << "Failure Reason " <<  failure_reason;
-  }
-  error.set(kConnectError, "StartDataSession");
+  DBusPropertyMap properties;
+  Connect(properties, error);
 }
-
 
 void GobiModem::Disconnect(DBus::Error& error) {
   LOG(INFO) << "Disconnect(" << session_id_ << ")";
@@ -378,10 +347,49 @@ DBus::Struct<std::string, std::string, std::string> GobiModem::GetInfo(
   return result;
 }
 
-// DBUS Methods: ModemSimple
+//======================================================================
+// DBUS Methods: Modem.Simple
+
 void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
-  LOG(INFO) << "Simple.Connect";
-  Connect("unused_number", error);
+  if (!Enabled()) {
+    LOG(WARNING) << "Connect on disabled modem";
+    error.set(kConnectError, "Modem is disabled");
+    return;
+  }
+  if (exiting_) {
+    LOG(WARNING) << "Connect when exiting";
+    error.set(kConnectError, "Cromo is exiting");
+    return;
+  }
+  const char* apn = utilities::ExtractString(properties, "apn", NULL, error);
+  const char* username =
+      utilities::ExtractString(properties, "username", NULL, error);
+  const char* password =
+      utilities::ExtractString(properties, "password", NULL, error);
+  ULONG failure_reason;
+  ULONG rc;
+
+  connect_start_time_ = GetTimeMs();
+  if (apn !=  NULL)
+    LOG(INFO) << "Starting data session for APN " << apn;
+  rc = sdk_->StartDataSession(NULL,  // technology
+                              apn,
+                              NULL,  // Authentication
+                              username,
+                              password,
+                              &session_id_,  // OUT: session ID
+                              &failure_reason  // OUT: failure reason
+                              );
+  if (rc == 0) {
+    LOG(INFO) << "Session ID " <<  session_id_;
+    return;
+  }
+
+  LOG(WARNING) << "StartDataSession failed: " << rc;
+  if (rc == gobi::kCallFailed) {
+    LOG(WARNING) << "Failure Reason " <<  failure_reason;
+  }
+  error.set(kConnectError, "StartDataSession");
 }
 
 void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {

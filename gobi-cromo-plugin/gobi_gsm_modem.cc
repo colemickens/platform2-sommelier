@@ -162,6 +162,14 @@ void GobiGsmModem::RegisterCallbacks() {
   GobiModem::RegisterCallbacks();
 }
 
+static std::string MakeOperatorCode(WORD mcc, WORD mnc) {
+  std::ostringstream opercode;
+  std::string result;
+  if (mcc != 0xffff && mnc != 0xffff)
+    opercode << mcc << mnc;
+  return opercode.str();
+}
+
 // returns <registration status, operator code, operator name>
 void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
                                           std::string* operator_code,
@@ -200,10 +208,7 @@ void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
       *registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN;
       break;
   }
-  std::ostringstream opercode;
-  if (mcc != 0xffff && mnc != 0xffff)
-    opercode << mcc << mnc;
-  *operator_code = opercode.str();
+  *operator_code = MakeOperatorCode(mcc, mnc);
   // trim operator name
   *operator_name = netname;
   std::string::size_type pos1 = operator_name->find_first_not_of(' ');
@@ -373,7 +378,14 @@ void GobiGsmModem::ChangePin(const std::string& old_pin,
 }
 
 std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
-  // TODO(ellyjones): Um, yeah.
-  LOG(INFO) << "GobiGsmModem::GetOperatorId not yet implemented";
-  return "<not implemented>";
+  std::string result;
+  WORD mcc, mnc, sid, nid;
+  CHAR netname[32];
+
+  ULONG rc = sdk_->GetHomeNetwork(&mcc, &mnc,
+                                  sizeof(netname), netname, &sid, &nid);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
+  LOG(INFO) << "Home MCC/MNC: " << mcc << "/" << mnc << " SID/NID: " << sid
+            << "/" << nid << " name: " << netname;
+  return MakeOperatorCode(mcc, mnc);
 }
