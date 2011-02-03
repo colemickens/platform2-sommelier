@@ -20,6 +20,10 @@ static const int64 kIdleBrightness = 10;
 // Minimum allowed brightness during startup.
 static const int64 kMinInitialBrightness = 10;
 
+// When waiting for the backlight to be turned off before turning the display,
+// wait for this time between polling the backlight value.
+static const int64 kDisplayOffDelayMS = 100;
+
 BacklightController::BacklightController(BacklightInterface* backlight,
                                          PowerPrefsInterface* prefs)
     : backlight_(backlight),
@@ -106,12 +110,14 @@ void BacklightController::SetPowerState(PowerState state) {
     LOG(WARNING) << "X Server is not DPMS capable";
   } else {
     CHECK(DPMSEnable(GDK_DISPLAY()));
-    if (state == BACKLIGHT_OFF)
-      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
-    else if (state == BACKLIGHT_ON)
+    if (state == BACKLIGHT_OFF) {
+      g_timeout_add(kDisplayOffDelayMS, DisplayOffWhenBacklightOffThunk, this);
+      SetBrightnessToZero();
+    } else if (state == BACKLIGHT_ON) {
       CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
-    else
+    } else {
       NOTREACHED();
+    }
   }
 
   if (light_sensor_)
@@ -172,9 +178,11 @@ int64 BacklightController::WriteBrightness() {
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   int64 target_level;
   CHECK(GetTargetBrightness(&target_level));
-  // Do not use ALS to adjust if backlight is turned all the way down.
+  // Do not use ALS to adjust the backlight brightness if the backlight is
+  // turned off.
   if (target_level == 0)
     return;
+
   als_brightness_level_ = level;
 
   // Only a change of 5% of the brightness range will force a change.
@@ -262,6 +270,25 @@ void BacklightController::WritePrefs() {
   }
   // Store the last ALS brightness reading.
   prefs_->SetInt64(kAlsBrightnessLevel, als_brightness_level_);
+}
+
+void BacklightController::SetBrightnessToZero() {
+  system_brightness_ = 0;
+  if (backlight_->SetBrightness(0))
+    WritePrefs();
+}
+
+gboolean BacklightController::DisplayOffWhenBacklightOff() {
+  int64 brightness;
+  CHECK(GetBrightness(&brightness));
+  if (brightness == 0) {
+    CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+    return false;
+  } else {
+    // If the brightness has not been set all the way down, keep polling it
+    // until it reaches zero.
+    return true;
+  }
 }
 
 }  // namespace power_manager

@@ -9,8 +9,11 @@
 
 #include "power_manager/backlight_interface.h"
 #include "power_manager/power_prefs_interface.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
+
+typedef int gboolean;
 
 class AmbientLightSensor;
 
@@ -91,6 +94,11 @@ class BacklightController {
 
   void ReadPrefs();
   void WritePrefs();
+
+  void SetBrightnessToZero();
+
+  // Turn off the display if the backlight has been turned off.
+  SIGNAL_CALLBACK_0(BacklightController, gboolean, DisplayOffWhenBacklightOff);
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
