@@ -9,6 +9,7 @@ namespace power_manager {
 
 extern const char kPluggedBrightnessOffset[];
 extern const char kUnpluggedBrightnessOffset[];
+extern const char kAlsBrightnessLevel[];
 extern const char kLowBatterySuspendPercent[];
 extern const char kCleanShutdownTimeoutMs[];
 extern const char kPluggedDimMs[];

@@ -17,6 +17,9 @@ namespace power_manager {
 // Set brightness to this value when going into idle-induced dim state.
 static const int64 kIdleBrightness = 10;
 
+// Minimum allowed brightness during startup.
+static const int64 kMinInitialBrightness = 10;
+
 BacklightController::BacklightController(BacklightInterface* backlight,
                                          PowerPrefsInterface* prefs)
     : backlight_(backlight),
@@ -196,35 +199,69 @@ void BacklightController::ReadPrefs() {
                          &plugged_brightness_offset_));
   CHECK(prefs_->GetInt64(kUnpluggedBrightnessOffset,
                          &unplugged_brightness_offset_));
+  CHECK(prefs_->GetInt64(kAlsBrightnessLevel, &als_brightness_level_));
   CHECK(plugged_brightness_offset_ >= -100);
   CHECK(plugged_brightness_offset_ <= 100);
   CHECK(unplugged_brightness_offset_ >= -100);
   CHECK(unplugged_brightness_offset_ <= 100);
+  CHECK(als_brightness_level_ >= 0);
+  CHECK(als_brightness_level_ <= 100);
+
+  // Adjust brightness offset values to make sure that the backlight is not
+  // initially set to too low of a level.
+  if (als_brightness_level_ + plugged_brightness_offset_ <
+      kMinInitialBrightness)
+    plugged_brightness_offset_ = kMinInitialBrightness - als_brightness_level_;
+  if (als_brightness_level_ + unplugged_brightness_offset_ <
+      kMinInitialBrightness)
+    unplugged_brightness_offset_ = kMinInitialBrightness -
+                                   als_brightness_level_;
 }
 
 void BacklightController::WritePrefs() {
+  int64 brightness_offset;
+  bool store_plugged_brightness = false;
+  bool store_unplugged_brightness = false;
+  // Do not store brightness that falls below a particular threshold, so that
+  // when powerd restarts, the screen does not appear to be off.
   if (plugged_state_ == kPowerConnected) {
-    prefs_->SetInt64(kPluggedBrightnessOffset, plugged_brightness_offset_);
+    store_plugged_brightness = true;
     // If plugged brightness is set to less than unplugged brightness, reduce
     // the unplugged brightness so that it is not greater than plugged
     // brightness.  Otherwise there will be an unnatural increase in brightness
     // when the user switches from AC to battery power.
     if (plugged_brightness_offset_ < unplugged_brightness_offset_) {
       unplugged_brightness_offset_ = plugged_brightness_offset_;
-      prefs_->SetInt64(kUnpluggedBrightnessOffset,
-                       unplugged_brightness_offset_);
+      store_unplugged_brightness = true;
     }
   } else if (plugged_state_ == kPowerDisconnected) {
-    prefs_->SetInt64(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
+    store_unplugged_brightness = true;
     // If unplugged brightness is set to greater than plugged brightness,
     // increase the plugged brightness so that it is not less than unplugged
     // brightness.  Otherwise there will be an unnatural decrease in brightness
     // when the user switches from battery to AC power.
     if (unplugged_brightness_offset_ > plugged_brightness_offset_) {
       plugged_brightness_offset_ = unplugged_brightness_offset_;
-      prefs_->SetInt64(kPluggedBrightnessOffset, plugged_brightness_offset_);
+      store_plugged_brightness = true;
     }
   }
+
+  // Store the brightness levels to preference files.  Adjust them to make sure
+  // they are not stored as zero.
+  if (store_plugged_brightness) {
+    brightness_offset = plugged_brightness_offset_;
+    if (brightness_offset + als_brightness_level_ < kMinInitialBrightness)
+      brightness_offset = kMinInitialBrightness - als_brightness_level_;
+    prefs_->SetInt64(kPluggedBrightnessOffset, brightness_offset);
+  }
+  if (store_unplugged_brightness) {
+    brightness_offset = unplugged_brightness_offset_;
+    if (brightness_offset + als_brightness_level_ < kMinInitialBrightness)
+      brightness_offset = kMinInitialBrightness - als_brightness_level_;
+    prefs_->SetInt64(kUnpluggedBrightnessOffset, brightness_offset);
+  }
+  // Store the last ALS brightness reading.
+  prefs_->SetInt64(kAlsBrightnessLevel, als_brightness_level_);
 }
 
 }  // namespace power_manager
