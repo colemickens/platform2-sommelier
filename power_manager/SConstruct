@@ -117,7 +117,7 @@ xidle_unittest_env.Append(LIBS=['gtest', 'Xtst'])
 deps = [testrunner, 'xidle_unittest.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 dimmer_unittest_env = gdk_env.Clone()
-dimmer_unittest_env.Append(LIBS=Split('base rt gtest pthread gmock'))
+dimmer_unittest_env.Append(LIBS=Split('base rt gtest pthread gmock Xext'))
 deps = [testrunner, 'idle_dimmer_unittest.cc', backlight_controller, backlight,
         power_prefs, util_lib]
 tests.append(dimmer_unittest_env.Program('idle_dimmer_unittest', deps))
