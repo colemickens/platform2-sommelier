@@ -206,6 +206,7 @@ bool SessionManagerService::Initialize() {
                    G_TYPE_STRING,   // state ("started" or "stopped")
                    G_TYPE_STRING);  // current user
 
+  LOG(INFO) << "SessionManagerService starting";
   if (!store_->LoadOrCreate())
     LOG(ERROR) << "Could not load existing settings.  Continuing anyway...";
   return Reset();
@@ -352,6 +353,7 @@ bool SessionManagerService::IsKnownChild(int pid) {
 void SessionManagerService::AllowGracefulExit() {
   shutting_down_ = true;
   if (exit_on_child_done_) {
+    LOG(INFO) << "SessionManagerService set to exit on child done";
     g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
                     ServiceShutdown,
                     this,
@@ -482,6 +484,10 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
 gboolean SessionManagerService::StopSession(gchar* unique_identifier,
                                             gboolean* OUT_done,
                                             GError** error) {
+  // Most calls to StopSession() will log the reason for the call.
+  // If you don't see a log message saying the reason for the call, it is
+  // likely a DBUS message. See interface.cc for that call.
+  LOG(INFO) << "SessionManagerService StopSession";
   g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
                   ServiceShutdown,
                   this,
@@ -779,6 +785,7 @@ void SessionManagerService::HandleChildExit(GPid pid,
 
   if (child_job) {
     if (manager->ShouldStopChild(child_job)) {
+      LOG(INFO) << "Child stopped, shutting down",
       ServiceShutdown(data);
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()
@@ -800,6 +807,7 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
                                            gpointer data) {
   // We only get called if there's data on the pipe.  If there's data, we're
   // supposed to exit.  So, don't even bother to read it.
+  LOG(INFO) << "SessionManagerService - data on pipe, so exiting";
   return ServiceShutdown(data);
 }
 
