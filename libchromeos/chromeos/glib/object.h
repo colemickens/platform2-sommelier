@@ -85,6 +85,10 @@ inline ::GType type_to_gtypeid<const char*>() {
   return G_TYPE_STRING;
 }
 template < >
+inline ::GType type_to_gtypeid<char*>() {
+  return G_TYPE_STRING;
+}
+template < >
 inline ::GType type_to_gtypeid< ::uint8>() {
   return G_TYPE_UCHAR;
 }
