@@ -122,12 +122,18 @@ bool Backlight::SetBrightness(int64 target_level) {
   LOG(INFO) << "SetBrightness(" << target_level << ")";
   int64 current_level, max_level;
   GetBrightness(&current_level, &max_level);
+  if (current_level == target_level)
+    return true;
   int64 diff = target_level - current_level;
   target_brightness_ = target_level;
+  int64 previous_level = current_level;
   for (int i = 0; i < kBacklightNumSteps; i++) {
     int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
+    if (step_level == previous_level)
+      continue;
     g_timeout_add(i * kBacklightStepTimeMs, SetBrightnessHardThunk,
                   CreateSetBrightnessHardArgs(this, step_level, target_level));
+    previous_level = step_level;
   }
   return true;
 }
