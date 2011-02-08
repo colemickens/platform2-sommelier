@@ -238,11 +238,13 @@ diag_date () {
   date_error=$(htpdate -q ${host} 2>&1 >/dev/null)
   offset=$(htpdate -q ${host} 2>&1 | awk -v 'FS=[. ]' '{print $2}')
   if [ -n "${date_error}" ]; then
-    fail "Unable to get date via htpdate from ${host}"
+    fail "Unable to get date via htpdate from ${host}: ${date_error}"
   elif [ "${offset}" = time ] ; then
     pass "Time appears to be correct"
   elif [ ${offset} -lt -3600 -o ${offset} -gt 3600 ] ; then
     fail "Time offset = ${offset}"
+  else
+    pass "Time offset is small (${offset})"
   fi
 }
 
@@ -317,11 +319,11 @@ diag_ping () {
       if diag_route ${ip}; then
         fail "We were able to reach the router but we cannot get packets to"
         fail "any machines on the other side.  The problem is probably with"
-	fail "the router configuration or connectivity and not this system."
+        fail "the router configuration or connectivity and not this system."
       else
         fail "We were successfully able to join the network, but we cannot"
         fail "seem to reach the router right now.  This is either a link"
-	fail "level issue or the router is down."
+        fail "level issue or the router is down."
       fi
       failures=$[failures + 1]
     else
