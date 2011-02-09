@@ -110,6 +110,7 @@ const char* kUnregisterSuspendDelay = "UnregisterSuspendDelay";
 const char* kSuspendDelay = "SuspendDelay";
 const char* kSuspendReady = "SuspendReady";
 const char* kBrightnessChangedSignal = "BrightnessChanged";
+const char* kPowerStateChangedSignal = "PowerStateChanged";
 }  // namespace power_manager
 
 namespace chromeos {
@@ -120,4 +121,3 @@ const char *kLibCrosServiceInterface =
 // Methods
 const char *kResolveNetworkProxy = "ResolveNetworkProxy";
 } // namespace chromeos
-

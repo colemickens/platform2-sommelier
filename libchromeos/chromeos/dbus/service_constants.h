@@ -130,6 +130,7 @@ extern const char* kUnregisterSuspendDelay;
 extern const char* kSuspendDelay;
 extern const char* kSuspendReady;
 extern const char* kBrightnessChangedSignal;
+extern const char* kPowerStateChangedSignal;
 }  // namespace power_manager
 
 namespace chromeos {
