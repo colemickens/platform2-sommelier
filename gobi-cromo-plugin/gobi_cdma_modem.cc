@@ -157,11 +157,11 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
     }
     if (args->device_activation_state == gobi::kActivated) {
       DBus::Error error;
-      // Reset modem as per SDK documentation
+      // Reset modem as per SDK documentation. This has the side-effect of
+      // causing the modem to disappear from the DBus bus, which will cause the
+      // connection manager to lose track of its state, but when we come back,
+      // we'll be in the right state for them.
       modem->ResetModem(error);
-      // Send the message only after we have reset the modem
-      modem->SendActivationStateChanged(
-          MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
     } else if (args->device_activation_state == gobi::kNotActivated) {
       modem->SendActivationStateChanged(
           MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED);

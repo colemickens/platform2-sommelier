@@ -89,7 +89,7 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
   }
 
   if (0 == strcmp("remove", action)) {
-    RemoveDeviceByName(device);
+    delete RemoveDeviceByName(device);
     // No need to start poller; we have acted on event
     return;
   }
@@ -104,13 +104,15 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
   }
 }
 
-void GobiModemHandler::RemoveDeviceByName(const char *device) {
+GobiModem* GobiModemHandler::RemoveDeviceByName(const char *device) {
   KeyToModem::iterator p = key_to_modem_.find(device);
   if (p != key_to_modem_.end()) {
     LOG(INFO) << "Removing device " << device;
     RemoveDeviceByIterator(p);
+    return p->second;
   } else {
     LOG(INFO) << "Could not find " << device << " to remove";
+    return NULL;
   }
 }
 
@@ -130,7 +132,6 @@ GobiModemHandler::KeyToModem::iterator GobiModemHandler::RemoveDeviceByIterator(
   }
   server().DeviceRemoved(m->path());
   key_to_modem_.erase(p);
-  delete m;
   return next;
 }
 
@@ -194,6 +195,7 @@ bool GobiModemHandler::GetDeviceList() {
       something_changed = true;
       LOG(INFO) << "Device " << m->path() << " has disappeared";
       p = RemoveDeviceByIterator(p);
+      delete m;
     } else {
       ++p;
     }
@@ -242,6 +244,17 @@ GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
       return m;
   }
   return NULL;
+}
+
+void GobiModemHandler::Remove(GobiModem* modem)
+{
+  for (KeyToModem::iterator p = key_to_modem_.begin();
+       p != key_to_modem_.end(); ++p) {
+    GobiModem* m = p->second;
+    if (m == modem) {
+      RemoveDeviceByIterator(p);
+    }
+  }
 }
 
 static void onload(CromoServer* server) {

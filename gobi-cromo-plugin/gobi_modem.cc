@@ -796,6 +796,11 @@ void GobiModem::PowerCycle(DBus::Error &error) {
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 }
 
+static gboolean delete_modem(gpointer p) {
+  GobiModem *m = static_cast<GobiModem*>(p);
+  delete m;
+  return FALSE;
+}
 
 void GobiModem::ResetModem(DBus::Error& error) {
   Enabled = false;
@@ -811,6 +816,19 @@ void GobiModem::ResetModem(DBus::Error& error) {
 
   rc = ApiDisconnect();
   ENSURE_SDK_SUCCESS(QCWWanDisconnect, rc, kSdkError);
+
+  // WARNING: This modem became invalid when we called SetPower(gobi::kReset)
+  // above; any further attempts to make method calls might result in us trying
+  // to open a /dev/qcqmi which doesn't exist yet (the modem being in the middle
+  // of a reset operation).
+  //
+  // Note that after the unregister_obj(), methods on us can't be called any
+  // more; it would be rude to have signals originating from this object after
+  // Remove() returns, since Remove() declares us to no longer exist.
+  unregister_obj();
+  handler_->Remove(this);
+
+  g_idle_add(delete_modem, this);
 }
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
