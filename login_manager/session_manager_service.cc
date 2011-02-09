@@ -382,36 +382,42 @@ gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
 
 gboolean SessionManagerService::EnableChromeTesting(gchar** OUT_filepath,
                                                     GError** error) {
+  // Check to see if we already have Chrome testing enabled.
+  if (!chrome_testing_path_.empty()) {
+    *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
+    return TRUE;
+  }
+
+  // Create a write-only temporary directory to put the testing channel in.
+  FilePath temp_dir_path;
+  if (!file_util::CreateNewTempDirectory(
+      FILE_PATH_LITERAL(kChromeTestingPrefix), &temp_dir_path))
+    return FALSE;
+  if (chmod(temp_dir_path.value().c_str(), 0003))
+    return FALSE;
+
+  // Get a temporary filename in the temporary directory.
+  char* temp_path = tempnam(temp_dir_path.value().c_str(),
+                            kChromeTestingPrefix);
+  if (!temp_path)
+    return FALSE;
+  chrome_testing_path_ = temp_path;
+  free(temp_path);
+
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
     if (child_job->GetName() == "chrome") {
-      // kill chrome
+      // Kill Chrome.
       uid_t to_kill_as = getuid();
       if (child_job->IsDesiredUidSet())
         to_kill_as = child_job->GetDesiredUid();
       system_->kill(-child_pids_[i_child], to_kill_as, SIGKILL);
 
-      // create a write-only temporary directory to put the testing channel in
-      FilePath temp_dir_path;
-      if (!file_util::CreateNewTempDirectory(
-          FILE_PATH_LITERAL(kChromeTestingPrefix), &temp_dir_path))
-        return FALSE;
-      if (chmod(temp_dir_path.value().c_str(), 0003))
-        return FALSE;
-
-      // get a temporary filename in the temporary directory
-      char* file_path = tempnam(temp_dir_path.value().c_str(),
-                                kChromeTestingPrefix);
-      if (!file_path)
-        return FALSE;
-
-      // run chrome
-      child_job->AddChromeTestingArgument(file_path);
+      // Run Chrome.
+      child_job->AddChromeTestingArgument(chrome_testing_path_);
       child_pids_[i_child] = RunChild(child_job);
 
-      *OUT_filepath = g_strdup(file_path);
-
-      free(file_path);
+      *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
 
       return TRUE;
     }

@@ -454,6 +454,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   bool session_started_;
   std::string current_user_;
+  std::string chrome_testing_path_;
 
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];
