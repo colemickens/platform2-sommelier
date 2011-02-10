@@ -142,17 +142,8 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
   fi
 fi
 
-# Check if the stateful partition has requested self-destruction
-# This is used for the factory install process
-if [ -O "$RESET_FILE" ]; then
-  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-  chromeos-boot-alert wipe /dev/tty1 \
-    /mnt/stateful_partition/wipe_splash.png
-  ARGS="$(cat ${RESET_FILE})"
-  exec clobber-state "$ARGS"
-fi
-
-# Check if we have an update to stateful pending.  This is used for dev_mode.
+# Check if we have an update to stateful pending.
+# Note:  THIS MUST BE DONE BEFORE CLOBBER STATE.
 VAR_NEW="/mnt/stateful_partition/var_new"
 DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
@@ -171,6 +162,16 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
   rm -rf "$STATEFUL_UPDATE" \
     /mnt/stateful_partition/dev_image_old \
     /mnt/stateful_partition/var_old &
+fi
+
+# Check if the stateful partition has requested self-destruction
+# This is used for the factory install process
+if [ -O "$RESET_FILE" ]; then
+  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+  chromeos-boot-alert wipe /dev/tty1 \
+    /mnt/stateful_partition/wipe_splash.png
+  ARGS="$(cat ${RESET_FILE})"
+  exec clobber-state "$ARGS"
 fi
 
 # Make sure stateful partition has some basic directories
