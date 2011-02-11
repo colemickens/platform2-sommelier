@@ -22,7 +22,6 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(ShouldNeverKill, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
-  MOCK_METHOD1(AddChromeTestingArgument, void(const std::string&));
   MOCK_METHOD1(StartSession, void(const std::string&));
   MOCK_METHOD0(StopSession, void());
   MOCK_CONST_METHOD0(GetDesiredUid, uid_t());
@@ -30,6 +29,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(IsDesiredUidSet, bool());
   MOCK_CONST_METHOD0(GetName, const std::string());
   MOCK_METHOD1(SetArguments, void(const std::string&));
+  MOCK_METHOD1(AddArgument, void(const std::string&));
 };
 }  // namespace login_manager
 

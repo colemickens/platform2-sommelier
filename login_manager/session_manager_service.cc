@@ -126,8 +126,8 @@ const char SessionManagerService::kIncognitoUser[] = "";
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 
 // static
-const char SessionManagerService::kChromeTestingPrefix[] =
-    "ChromeTestingInterface";
+const char SessionManagerService::kTestingChannelFlag[] =
+    "--testing-channel=NamedTestingInterface:";
 
 namespace {
 
@@ -345,6 +345,14 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   return pid;
 }
 
+void SessionManagerService::KillChild(const ChildJobInterface* child_job,
+                                      int child_pid) {
+  uid_t to_kill_as = getuid();
+  if (child_job->IsDesiredUidSet())
+    to_kill_as = child_job->GetDesiredUid();
+  system_->kill(-child_pid, to_kill_as, SIGKILL);
+}
+
 bool SessionManagerService::IsKnownChild(int pid) {
   return std::find(child_pids_.begin(), child_pids_.end(), pid) !=
       child_pids_.end();
@@ -380,47 +388,52 @@ gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 
-gboolean SessionManagerService::EnableChromeTesting(gchar** OUT_filepath,
+gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
+                                                    gchar** extra_arguments,
+                                                    gchar** OUT_filepath,
                                                     GError** error) {
   // Check to see if we already have Chrome testing enabled.
-  if (!chrome_testing_path_.empty()) {
-    *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
-    return TRUE;
+  bool already_enabled = !chrome_testing_path_.empty();
+
+  if (!already_enabled) {
+    // Create a write-only temporary directory to put the testing channel in.
+    FilePath temp_dir_path;
+    if (!file_util::CreateNewTempDirectory(
+        FILE_PATH_LITERAL(""), &temp_dir_path))
+      return FALSE;
+    if (chmod(temp_dir_path.value().c_str(), 0003))
+      return FALSE;
+
+    // Get a temporary filename in the temporary directory.
+    char* temp_path = tempnam(temp_dir_path.value().c_str(), "");
+    if (!temp_path)
+      return FALSE;
+    chrome_testing_path_ = temp_path;
+    free(temp_path);
   }
 
-  // Create a write-only temporary directory to put the testing channel in.
-  FilePath temp_dir_path;
-  if (!file_util::CreateNewTempDirectory(
-      FILE_PATH_LITERAL(kChromeTestingPrefix), &temp_dir_path))
-    return FALSE;
-  if (chmod(temp_dir_path.value().c_str(), 0003))
-    return FALSE;
+  *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
 
-  // Get a temporary filename in the temporary directory.
-  char* temp_path = tempnam(temp_dir_path.value().c_str(),
-                            kChromeTestingPrefix);
-  if (!temp_path)
-    return FALSE;
-  chrome_testing_path_ = temp_path;
-  free(temp_path);
+  if (already_enabled && !force_relaunch)
+    return TRUE;
 
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
-    if (child_job->GetName() == "chrome") {
-      // Kill Chrome.
-      uid_t to_kill_as = getuid();
-      if (child_job->IsDesiredUidSet())
-        to_kill_as = child_job->GetDesiredUid();
-      system_->kill(-child_pids_[i_child], to_kill_as, SIGKILL);
-
-      // Run Chrome.
-      child_job->AddChromeTestingArgument(chrome_testing_path_);
-      child_pids_[i_child] = RunChild(child_job);
-
-      *OUT_filepath = g_strdup(chrome_testing_path_.c_str());
-
-      return TRUE;
+    if (child_job->GetName() != "chrome")
+      continue;
+    // Kill Chrome.
+    KillChild(child_job, child_pids_[i_child]);
+    // Add arguments to Chrome. AddArgument() checks for duplicates for us.
+    std::string testing_argument = kTestingChannelFlag;
+    testing_argument.append(chrome_testing_path_);
+    child_job->AddArgument(testing_argument);
+    while (*extra_arguments != NULL) {
+      child_job->AddArgument(*extra_arguments);
+      ++extra_arguments;
     }
+    // Run Chrome.
+    child_pids_[i_child] = RunChild(child_job);
+    return TRUE;
   }
 
   return FALSE;
@@ -701,10 +714,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  uid_t to_kill_as = getuid();
-  if (child_jobs_[child_index]->IsDesiredUidSet())
-    to_kill_as = child_jobs_[child_index]->GetDesiredUid();
-  system_->kill(-child_pid, to_kill_as, SIGKILL);
+  KillChild(child_jobs_[child_index], child_pid);
 
   char arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);

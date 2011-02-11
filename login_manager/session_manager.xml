@@ -17,6 +17,8 @@
     <method name="EmitLoginPromptVisible">
     </method>
     <method name="EnableChromeTesting">
+      <arg type="b" name="force_relaunch" direction="in" />
+      <arg type="as" name="extra_arguments" direction="in" />
       <arg type="s" name="filepath" direction="out" />
     </method>
     <method name="StartSession">

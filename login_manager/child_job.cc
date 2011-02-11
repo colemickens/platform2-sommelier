@@ -39,9 +39,6 @@ const char ChildJob::kLoginManagerFlag[] = "--login-manager";
 // static
 const char ChildJob::kLoginUserFlag[] = "--login-user=";
 // static
-const char ChildJob::kTestingChannelFlag[] =
-    "--testing-channel=NamedTestingInterface:";
-// static
 const char ChildJob::kBWSIFlag[] = "--bwsi";
 // static
 const char ChildJob::kWindowManagerSuffix[] = "window-manager-session.sh";
@@ -91,11 +88,6 @@ void ChildJob::Run() {
       StringPrintf(
           "Error (%d) executing %s: %s", ret, argv[0], strerror(errno));
   exit(kCantExec);
-}
-
-void ChildJob::AddChromeTestingArgument(const std::string& path) {
-  arguments_.push_back(kTestingChannelFlag);
-  arguments_.back().append(path);
 }
 
 // When user logs in we want to restart chrome in browsing mode with user
@@ -174,6 +166,14 @@ void ChildJob::SetArguments(const std::string& arguments) {
     else
       arguments_.push_back(argv0);
   }
+}
+
+void ChildJob::AddArgument(const std::string& argument) {
+  // Check for duplicates.
+  std::vector<std::string>::iterator argument_location;
+  argument_location = std::find(arguments_.begin(), arguments_.end(), argument);
+  if (argument_location == arguments_.end())
+    arguments_.push_back(argument);
 }
 
 char const** ChildJob::CreateArgv() const {

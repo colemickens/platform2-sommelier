@@ -185,6 +185,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Run one of the children.
   int RunChild(ChildJobInterface* child_job);
 
+  // Kill one of the children.
+  void KillChild(const ChildJobInterface* child_job, int child_pid);
+
   bool IsKnownChild(int pid);
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
@@ -200,7 +203,14 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // Adds an argument to the chrome child job that makes it open a testing
   // channel, then kills and restarts chrome. The name of the socket used
   // for testing is returned in OUT_filepath.
-  gboolean EnableChromeTesting(gchar** OUT_filepath, GError** error);
+  // If force_relaunch is true, Chrome will be restarted with each
+  // invocation. Otherwise, it will only be restarted on the first invocation.
+  // The extra_arguments parameter can include any additional arguments
+  // that need to be passed to Chrome on subsequent launches.
+  gboolean EnableChromeTesting(gboolean force_relaunch,
+                               gchar** extra_arguments,
+                               gchar** OUT_filepath,
+                               GError** error);
 
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
@@ -299,8 +309,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static std::vector<std::vector<std::string> > GetArgLists(
       std::vector<std::string> args);
 
-  // Prefix prepended to temporary filename for Chrome testing channel
-  static const char kChromeTestingPrefix[];
+  // The flag to pass to chrome to open a named socket for testing.
+  static const char kTestingChannelFlag[];
 
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }

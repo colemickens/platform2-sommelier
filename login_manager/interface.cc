@@ -68,9 +68,14 @@ gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
   SESSION_MANAGER_WRAP_METHOD0(EmitLoginPromptVisible);
 }
 gboolean session_manager_enable_chrome_testing(SessionManager* self,
+                                               gboolean force_relaunch,
+                                               gchar** extra_arguments,
                                                gchar** OUT_filepath,
                                                GError** error) {
-  SESSION_MANAGER_WRAP_METHOD(EnableChromeTesting, OUT_filepath);
+  SESSION_MANAGER_WRAP_METHOD(EnableChromeTesting,
+                              force_relaunch,
+                              extra_arguments,
+                              OUT_filepath);
 }
 gboolean session_manager_start_session(SessionManager* self,
                                        gchar* email_address,

@@ -38,6 +38,8 @@ gboolean session_manager_emit_login_prompt_ready(SessionManager *self,
 gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
                                                    GError** error);
 gboolean session_manager_enable_chrome_testing(SessionManager* self,
+                                               gboolean force_relaunch,
+                                               gchar** extra_arguments,
                                                gchar** OUT_filepath,
                                                GError** error);
 gboolean session_manager_start_session(SessionManager *self,

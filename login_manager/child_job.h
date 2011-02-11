@@ -41,9 +41,6 @@ class ChildJobInterface {
   // Wraps up all the logic of what the job is meant to do. Should NOT return.
   virtual void Run() = 0;
 
-  // Adds an argument to enable testing.
-  virtual void AddChromeTestingArgument(const std::string& path) = 0;
-
   // Called when a session is started for a user with |email|.
   virtual void StartSession(const std::string& email) = 0;
 
@@ -66,6 +63,9 @@ class ChildJobInterface {
   // Sets command line arguments for the job from string.
   virtual void SetArguments(const std::string& arguments) = 0;
 
+  // Add a command line argument to the job.
+  virtual void AddArgument(const std::string& argument) = 0;
+
   // Potential exit codes for Run().
   static const int kCantSetUid;
   static const int kCantSetGid;
@@ -86,7 +86,6 @@ class ChildJob : public ChildJobInterface {
   virtual bool ShouldNeverKill() const;
   virtual void RecordTime();
   virtual void Run();
-  virtual void AddChromeTestingArgument(const std::string& path);
   virtual void StartSession(const std::string& email);
   virtual void StopSession();
   virtual uid_t GetDesiredUid() const;
@@ -94,13 +93,12 @@ class ChildJob : public ChildJobInterface {
   virtual bool IsDesiredUidSet() const;
   virtual const std::string GetName() const;
   virtual void SetArguments(const std::string& arguments);
+  virtual void AddArgument(const std::string& argument);
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
   // The flag to pass to chrome to tell it which user has logged in.
   static const char kLoginUserFlag[];
-  // The flag to pass to chrome to open a named socket for testing.
-  static const char kTestingChannelFlag[];
   // The flag to pass to chrome when starting "Browse Without Sign In" mode.
   static const char kBWSIFlag[];
   // Suffix matched against each job's argv[0] to determine if it's the window

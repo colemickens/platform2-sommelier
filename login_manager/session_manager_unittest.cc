@@ -1186,22 +1186,45 @@ TEST_F(SessionManagerTest, RetrieveProperty) {
 
 TEST_F(SessionManagerTest, EnableChromeTesting) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  manager_->test_api().set_child_pid(0, kDummyPid);
   EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, getuid(), SIGKILL))
-      .WillOnce(Return(0));
+      .Times(2).WillOnce(Return(0)).WillOnce(Return(0));
   MockUtils();
 
   EXPECT_CALL(*job, GetName())
       .WillRepeatedly(Return("chrome"));
-  EXPECT_CALL(*job, AddChromeTestingArgument(_))
+  EXPECT_CALL(*job, AddArgument(_))
+      .Times(1);
+  EXPECT_CALL(*job, AddArgument("--repeat-arg"))
+      .Times(2);
+  EXPECT_CALL(*job, AddArgument("--dummy"))
       .Times(1);
   EXPECT_CALL(*job, RecordTime())
-      .Times(1);
+      .Times(2);
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  gchar* filepath;
-  EXPECT_EQ(TRUE, manager_->EnableChromeTesting(&filepath, NULL));
+  gchar* testing_path, *file_path;
+
+  // DBus arrays are null-terminated.
+  char* args1[] = {"--repeat-arg", NULL};
+  manager_->test_api().set_child_pid(0, kDummyPid);
+  EXPECT_TRUE(manager_->EnableChromeTesting(false, args1, &testing_path, NULL));
+
+  // We should see the same testing channel path in the subsequent invocation.
+  std::string testing_argument = "--testing-channel=NamedTestingInterface:";
+  testing_argument.append(testing_path);
+  EXPECT_CALL(*job, AddArgument(testing_argument)).Times(1);
+
+  // This invocation should do everything again, since force_relaunch is true.
+  char* args2[] = {"--dummy", "--repeat-arg", NULL};
+  manager_->test_api().set_child_pid(0, kDummyPid);
+  EXPECT_TRUE(manager_->EnableChromeTesting(true, args2, &file_path, NULL));
+  EXPECT_EQ(std::string(testing_path), std::string(file_path));
+
+  // This invocation should do nothing.
+  manager_->test_api().set_child_pid(0, kDummyPid);
+  EXPECT_TRUE(manager_->EnableChromeTesting(false, args2, &file_path, NULL));
+  EXPECT_EQ(std::string(testing_path), std::string(file_path));
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {
