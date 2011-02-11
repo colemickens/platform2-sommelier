@@ -193,7 +193,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     // Do not let ALS adjustment set brightness from nonzero to zero.  Turning
     // the backlight off due to ALS adjustment looks unnatural.
     if (als_brightness_level_ + *brightness_offset_ <= 0)
-      als_brightness_level_ = 1 - *brightness_offset_;
+      *brightness_offset_ = 1 - als_brightness_level_;
     WriteBrightness();
   }
 }
