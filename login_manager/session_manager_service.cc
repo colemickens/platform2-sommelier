@@ -27,6 +27,7 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/message_loop_proxy.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
@@ -124,10 +125,11 @@ const char SessionManagerService::kLegalCharacters[] =
 const char SessionManagerService::kIncognitoUser[] = "";
 // static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
-
 // static
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
+// static
+const char SessionManagerService::kIOThreadName[] = "ThreadForIO";
 
 namespace {
 
@@ -151,9 +153,13 @@ SessionManagerService::SessionManagerService(
       store_(new PrefStore(FilePath(PrefStore::kDefaultPath))),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
+      io_thread_(kIOThreadName),
+      dont_use_directly_(new MessageLoopForUI),
+      message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
+  io_thread_.Start();
   memset(signals_, 0, sizeof(signals_));
   SetupHandlers();
 }
@@ -256,6 +262,9 @@ bool SessionManagerService::Reset() {
     LOG(ERROR) << "Failed to create main loop";
     return false;
   }
+  dont_use_directly_.reset(NULL);
+  dont_use_directly_.reset(new MessageLoopForUI);
+  message_loop_ = base::MessageLoopProxy::CreateForCurrentThread();
   return true;
 }
 
@@ -289,9 +298,7 @@ bool SessionManagerService::Run() {
   // TODO(cmasone): A corrupted owner key means that the user needs to go
   //                to recovery mode.  How to tell them that from here?
   CHECK(key_->PopulateFromDiskIfPossible());
-
-  g_main_loop_run(main_loop_);
-
+  MessageLoop::current()->Run();
   CleanupChildren(kKillTimeout);
 
   return true;
@@ -317,8 +324,10 @@ bool SessionManagerService::Shutdown() {
 
   // Even if we haven't gotten around to processing a persist task.
   store_->Persist();
-
-  return chromeos::dbus::AbstractDbusService::Shutdown();
+  io_thread_.Stop();
+  message_loop_->PostTask(FROM_HERE, new MessageLoop::QuitTask());
+  LOG(INFO) << "SessionManagerService quitting run loop";
+  return true;
 }
 
 void SessionManagerService::RunChildren() {
@@ -362,10 +371,9 @@ void SessionManagerService::AllowGracefulExit() {
   shutting_down_ = true;
   if (exit_on_child_done_) {
     LOG(INFO) << "SessionManagerService set to exit on child done";
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                    ServiceShutdown,
-                    this,
-                    NULL);
+    message_loop_->PostTask(
+        FROM_HERE,
+        NewRunnableMethod(this, &SessionManagerService::Shutdown));
   }
 }
 
@@ -542,10 +550,8 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
               "Attempted to set invalid key as owner's public key.");
     return FALSE;
   }
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistKey,
-                  new PersistKeyData(system_.get(), key_.get()),
-                  NULL);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
   return StoreOwnerProperties(error);
 }
 
@@ -569,10 +575,9 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
     return FALSE;
   }
   store_->Unwhitelist(email_address);
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistWhitelist,
-                  new PersistStoreData(system_.get(), store_.get()),
-                  NULL);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      NewRunnableMethod(this, &SessionManagerService::PersistWhitelist));
   return TRUE;
 }
 
@@ -834,49 +839,31 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
   return FALSE;  // So that the event source that called this gets removed.
 }
 
-gboolean SessionManagerService::PersistKey(gpointer data) {
-  PersistKeyData* key_data = static_cast<PersistKeyData*>(data);
+void SessionManagerService::PersistKey() {
   LOG(INFO) << "Persisting Owner key to disk.";
-  if (key_data->to_persist->Persist())
-    key_data->signaler->SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                             "success");
-  else
-    key_data->signaler->SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                             "failure");
-  delete key_data;
-  return FALSE;  // So that the event source that called this gets removed.
+  bool what_happened = key_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
+                                   chromium::kOwnerKeySetSignal,
+                                   what_happened));
 }
 
-gboolean SessionManagerService::PersistWhitelist(gpointer data) {
-  PersistStoreData* store_data = static_cast<PersistStoreData*>(data);
+void SessionManagerService::PersistWhitelist() {
   LOG(INFO) << "Persisting Whitelist to disk.";
-  if (store_data->to_persist->Persist()) {
-    store_data->signaler->SendSignalToChromium(
-        chromium::kWhitelistChangeCompleteSignal,
-        "success");
-  } else {
-    store_data->signaler->SendSignalToChromium(
-        chromium::kWhitelistChangeCompleteSignal,
-        "failure");
-  }
-  delete store_data;
-  return FALSE;  // So that the event source that called this gets removed.
+  bool what_happened = store_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
+                                   chromium::kWhitelistChangeCompleteSignal,
+                                   what_happened));
 }
 
-gboolean SessionManagerService::PersistStore(gpointer data) {
-  PersistStoreData* store_data = static_cast<PersistStoreData*>(data);
+void SessionManagerService::PersistStore() {
   LOG(INFO) << "Persisting Store to disk.";
-  if (store_data->to_persist->Persist()) {
-    store_data->signaler->SendSignalToChromium(
-        chromium::kPropertyChangeCompleteSignal,
-        "success");
-  } else {
-    store_data->signaler->SendSignalToChromium(
-        chromium::kPropertyChangeCompleteSignal,
-        "failure");
-  }
-  delete store_data;
-  return FALSE;  // So that the event source that called this gets removed.
+  bool what_happened = store_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
+                                   chromium::kPropertyChangeCompleteSignal,
+                                   what_happened));
 }
 
 // static
@@ -1119,10 +1106,8 @@ gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
     return FALSE;
   }
   store_->Set(name, value, encoded);
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistStore,
-                  new PersistStoreData(system_.get(), store_.get()),
-                  NULL);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistStore));
   return TRUE;
 }
 
@@ -1137,10 +1122,9 @@ gboolean SessionManagerService::WhitelistHelper(const std::string& email,
     return FALSE;
   }
   store_->Whitelist(email, encoded);
-  g_idle_add_full(G_PRIORITY_HIGH_IDLE,
-                  PersistWhitelist,
-                  new PersistStoreData(system_.get(), store_.get()),
-                  NULL);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      NewRunnableMethod(this, &SessionManagerService::PersistWhitelist));
   return TRUE;
 }
 
@@ -1165,6 +1149,11 @@ gboolean SessionManagerService::GetPropertyHelper(const std::string& name,
     return FALSE;
   }
   return TRUE;
+}
+
+void SessionManagerService::SendSignal(const char signal_name[],
+                                       bool succeeded) {
+  system_->SendSignalToChromium(signal_name, succeeded ? "success" : "failure");
 }
 
 // static

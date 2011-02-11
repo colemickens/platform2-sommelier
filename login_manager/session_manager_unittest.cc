@@ -16,6 +16,7 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/ref_counted.h"
 #include "base/scoped_ptr.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
@@ -42,6 +43,7 @@ using ::testing::Invoke;
 using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
+using ::testing::StrEq;
 using ::testing::_;
 
 static const char kCheckedFile[] = "/tmp/checked_file";
@@ -58,11 +60,12 @@ class SessionManagerTest : public ::testing::Test {
         file_checker_(new MockFileChecker(kCheckedFile)),
         mitigator_(new MockMitigator),
         upstart_(new MockUpstartSignalEmitter),
+        must_destroy_mocks_(true),
         fake_key_(CreateArray("dummy", strlen("dummy"))) {
   }
 
   virtual ~SessionManagerTest() {
-    if (!manager_.get()) {
+    if (must_destroy_mocks_) {
       delete file_checker_;
       delete mitigator_;
       delete upstart_;
@@ -89,13 +92,8 @@ class SessionManagerTest : public ::testing::Test {
     // just to be sure...
     NssUtil::set_factory(NULL);
     g_array_free(fake_sig_, TRUE);
-    if (manager_.get()) {
-      MockPrefStore* store = new MockPrefStore;
-      EXPECT_CALL(*store, Persist())
-        .WillOnce(Return(true));
-      manager_->test_api().set_prefstore(store);
-      manager_->Shutdown();
-    }
+    must_destroy_mocks_ = !manager_;
+    manager_ = NULL;
   }
 
   void SimpleRunManager(MockPrefStore* store) {
@@ -128,7 +126,8 @@ class SessionManagerTest : public ::testing::Test {
           .WillRepeatedly(Return(false));
       jobs.push_back(job2);
     }
-    manager_.reset(new SessionManagerService(jobs));
+    ASSERT_TRUE(MessageLoop::current() == NULL);
+    manager_ = new SessionManagerService(jobs);
     manager_->set_file_checker(file_checker_);
     manager_->set_mitigator(mitigator_);
     manager_->test_api().set_exit_on_child_done(true);
@@ -193,7 +192,7 @@ class SessionManagerTest : public ::testing::Test {
         .RetiresOnSaturation();
     EXPECT_CALL(*store, Set(_, email_string, _))
         .Times(1);
-    EXPECT_CALL(*key, Sign(Eq(email_string), email_string.length(), _))
+    EXPECT_CALL(*key, Sign(StrEq(email_string), email_string.length(), _))
         .WillOnce(Return(true))
         .RetiresOnSaturation();
     EXPECT_CALL(*store, Whitelist(email_string, _))
@@ -273,11 +272,12 @@ class SessionManagerTest : public ::testing::Test {
     return output;
   }
 
-  scoped_ptr<SessionManagerService> manager_;
+  scoped_refptr<SessionManagerService> manager_;
   scoped_ptr<MockSystemUtils> utils_;
   MockFileChecker* file_checker_;
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
+  bool must_destroy_mocks_;
   std::string property_;
   GArray* fake_key_;
   GArray* fake_sig_;
@@ -556,45 +556,6 @@ TEST_F(SessionManagerTest, HonorShouldNeverKill) {
   manager_->test_api().CleanupChildren(kTimeout);
 }
 
-static void Sleep() { execl("/bin/sleep", "sleep", "10000", NULL); }
-TEST_F(SessionManagerTest, SessionStartedSigTerm) {
-  int pid = fork();
-  if (pid == 0) {
-    MockChildJob* job = CreateTrivialMockJob(EXACTLY_ONCE);
-    MockPrefStore* store = new MockPrefStore;
-    gboolean out;
-    gchar email[] = "user@somewhere";
-    gchar nothing[] = "";
-    std::string email_string(email);
-
-    EXPECT_CALL(*job, RecordTime())
-        .Times(1);
-    ON_CALL(*job, Run())
-        .WillByDefault(Invoke(Sleep));
-    ExpectStartSession(email_string, job, store);
-    manager_->test_api().set_prefstore(store);
-
-    manager_->StartSession(email, nothing, &out, NULL);
-    SimpleRunManager(store);
-
-    manager_.reset(NULL);
-    exit(0);
-  }
-  sleep(1);
-  kill(pid, SIGTERM);
-  int status;
-  while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
-    ;
-
-  DLOG(INFO) << "exited waitpid. " << pid << "\n"
-             << "  WIFSIGNALED is " << WIFSIGNALED(status) << "\n"
-             << "  WTERMSIG is " << WTERMSIG(status) << "\n"
-             << "  WIFEXITED is " << WIFEXITED(status) << "\n"
-             << "  WEXITSTATUS is " << WEXITSTATUS(status);
-
-  EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-}
-
 TEST_F(SessionManagerTest, StartSession) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
@@ -636,11 +597,11 @@ TEST_F(SessionManagerTest, StartOwnerSession) {
       .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
 
@@ -666,11 +627,11 @@ TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
 
@@ -793,15 +754,16 @@ TEST_F(SessionManagerTest, SetOwnerKey) {
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal, Eq("success")))
+              SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                   StrEq("success")))
       .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
   StartFakeSession();
@@ -881,7 +843,7 @@ TEST_F(SessionManagerTest, Whitelist) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
 
@@ -912,7 +874,7 @@ TEST_F(SessionManagerTest, Unwhitelist) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
 
@@ -1069,7 +1031,7 @@ TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(Eq(property_), property_.length(),
+  EXPECT_CALL(*key, Verify(StrEq(property_), property_.length(),
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
@@ -1088,7 +1050,7 @@ TEST_F(SessionManagerTest, StoreProperty) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   Eq("success")))
+                                   StrEq("success")))
       .Times(1);
   MockUtils();
 
@@ -1098,7 +1060,7 @@ TEST_F(SessionManagerTest, StoreProperty) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(Eq(property_), property_.length(),
+  EXPECT_CALL(*key, Verify(StrEq(property_), property_.length(),
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);

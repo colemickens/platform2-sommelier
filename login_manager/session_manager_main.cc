@@ -14,6 +14,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/ref_counted.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
@@ -117,19 +118,20 @@ int main(int argc, char* argv[]) {
   }
 
   ::g_type_init();
-  login_manager::SessionManagerService manager(child_jobs);
+  scoped_refptr<login_manager::SessionManagerService> manager =
+      new login_manager::SessionManagerService(child_jobs);
 
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  manager.set_file_checker(new login_manager::FileChecker(magic_chrome_file));
-  manager.set_mitigator(
+  manager->set_file_checker(new login_manager::FileChecker(magic_chrome_file));
+  manager->set_mitigator(
       new login_manager::WipeMitigator(new login_manager::SystemUtils()));
 
-  LOG_IF(FATAL, !manager.Initialize()) << "Failed";
-  LOG_IF(FATAL, !manager.Register(chromeos::dbus::GetSystemBusConnection()))
+  LOG_IF(FATAL, !manager->Initialize()) << "Failed";
+  LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()))
     << "Failed";
-  LOG_IF(FATAL, !manager.Run()) << "Failed";
+  LOG_IF(FATAL, !manager->Run()) << "Failed";
   return 0;
 }

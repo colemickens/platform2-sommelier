@@ -16,7 +16,9 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/ref_counted.h>
 #include <base/scoped_ptr.h>
+#include <base/thread.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -27,6 +29,10 @@
 #include "login_manager/pref_store.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
+
+namespace base {
+class MessageLoopProxy;
+}  // namespace base
 
 namespace login_manager {
 namespace gobject {
@@ -44,7 +50,9 @@ class NssUtil;
 //
 // All signatures used in the methods of the ownership API are
 // SHA1 with RSA encryption.
-class SessionManagerService : public chromeos::dbus::AbstractDbusService {
+class SessionManagerService
+    : public base::RefCountedThreadSafe<SessionManagerService>,
+      public chromeos::dbus::AbstractDbusService {
  public:
   struct PersistKeyData {
    public:
@@ -86,8 +94,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
     void set_ownerkey(OwnerKey* key) {
       session_manager_service_->key_.reset(key);
     }
-    void set_prefstore(PrefStore* key) {
-      session_manager_service_->store_.reset(key);
+    void set_prefstore(PrefStore* store) {
+      session_manager_service_->store_.reset(store);
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
@@ -351,21 +359,6 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
-  // |data| is a PersistKeyData*
-  // data->to_persist is persisted to disk, and then
-  // data->signaler is used to signal Chromium that this has occurred.
-  static gboolean PersistKey(gpointer data);
-
-  // |data| is a PersistStoreData*
-  // data->to_persist is persisted to disk, and then
-  // data->signaler is used to signal Chromium that this has occurred.
-  static gboolean PersistWhitelist(gpointer data);
-
-  // |data| is a PersistStoreData*
-  // data->to_persist is persisted to disk, and then
-  // data->signaler is used to signal Chromium that this has occurred.
-  static gboolean PersistStore(gpointer data);
-
   // Initializes |error| with |code| and |message|.
   static void SetGError(GError** error,
                         ChromeOSLoginError code,
@@ -436,6 +429,22 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
                              std::string* OUT_signature,
                              GError** error);
 
+  // |key_| is persisted to disk, and then posts a task to |message_loop_|
+  // to signal Chromium when done.
+  void PersistKey();
+
+  // |store_| is persisted to disk, and then posts a task to |message_loop_|
+  // to signal Chromium when done.
+  void PersistWhitelist();
+
+  // |store_| is persisted to disk, and then posts a task to |message_loop_|
+  // to signal Chromium when done.
+  void PersistStore();
+
+  // Uses |system_| to send |signal_name| to Chromium.  Attaches a payload
+  // to the signal indicating the status of |succeeded|.
+  void SendSignal(const char signal_name[], bool succeeded);
+
   bool ShouldRunChildren();
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)
@@ -448,6 +457,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   static const char kIncognitoUser[];
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
+  static const char kIOThreadName[];
 
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
@@ -455,6 +465,8 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
+  scoped_ptr<MessageLoop> dont_use_directly_;
+  scoped_refptr<base::MessageLoopProxy> message_loop_;
 
   scoped_ptr<SystemUtils> system_;
   scoped_ptr<NssUtil> nss_;
@@ -469,6 +481,9 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];
 
+  // A thread on which to perform blocking operations
+  base::Thread io_thread_;
+
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
   bool screen_locked_;
@@ -476,6 +491,7 @@ class SessionManagerService : public chromeos::dbus::AbstractDbusService {
   bool set_uid_;
 
   bool shutting_down_;
+  bool shutdown_already_;
 
   friend class TestAPI;
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
