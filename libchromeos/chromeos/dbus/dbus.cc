@@ -4,10 +4,12 @@
 
 #include "chromeos/dbus/dbus.h"
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <base/logging.h>
+#include <dbus/dbus-glib-bindings.h>
+#include <dbus/dbus.h>
+
+#include "base/logging.h"
+#include "base/stringprintf.h"
 
 namespace chromeos {
 namespace dbus {
@@ -254,6 +256,73 @@ void SendSignalWithNoArgumentsToSystemBus(const char* path,
   }
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
+}
+
+void SignalWatcher::StartMonitoring(const std::string& interface,
+                                    const std::string& signal) {
+  DCHECK(!interface_.empty()) << "StartMonitoring() must be called only once";
+  interface_ = interface;
+  signal_ = signal;
+
+  // Snoop on D-Bus messages so we can get notified about signals.
+  DBusConnection* dbus_conn = dbus_g_connection_get_connection(
+      GetSystemBusConnection().g_connection());
+  DCHECK(dbus_conn);
+
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_bus_add_match(dbus_conn, GetDBusMatchString().c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(DFATAL) << "Got error while adding D-Bus match rule: " << error.name
+                << " (" << error.message << ")";
+  }
+
+  if (!dbus_connection_add_filter(dbus_conn,
+                                  &SignalWatcher::FilterDBusMessage,
+                                  this,        // user_data
+                                  NULL)) {     // free_data_function
+    LOG(DFATAL) << "Unable to add D-Bus filter";
+  }
+}
+
+SignalWatcher::~SignalWatcher() {
+  if (interface_.empty())
+    return;
+
+  DBusConnection* dbus_conn = dbus_g_connection_get_connection(
+      dbus::GetSystemBusConnection().g_connection());
+  DCHECK(dbus_conn);
+
+  dbus_connection_remove_filter(dbus_conn,
+                                &SignalWatcher::FilterDBusMessage,
+                                this);
+
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_bus_remove_match(dbus_conn, GetDBusMatchString().c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(DFATAL) << "Got error while removing D-Bus match rule: " << error.name
+                << " (" << error.message << ")";
+  }
+}
+
+std::string SignalWatcher::GetDBusMatchString() const {
+  return StringPrintf("type='signal', interface='%s', member='%s'",
+                      interface_.c_str(), signal_.c_str());
+}
+
+/* static */
+DBusHandlerResult SignalWatcher::FilterDBusMessage(DBusConnection* dbus_conn,
+                                                   DBusMessage* message,
+                                                   void* data) {
+  SignalWatcher* self = static_cast<SignalWatcher*>(data);
+  if (dbus_message_is_signal(
+          message, self->interface_.c_str(), self->signal_.c_str())) {
+    self->OnSignal(message);
+    return DBUS_HANDLER_RESULT_HANDLED;
+  } else {
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+  }
 }
 
 }  // namespace dbus

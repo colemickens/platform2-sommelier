@@ -14,6 +14,9 @@
 #include "base/logging.h"
 #include "chromeos/glib/object.h"
 
+struct DBusMessage;
+struct DBusConnection;
+
 namespace chromeos {
 
 // \precondition No functions in the dbus namespace can be called before
@@ -415,6 +418,32 @@ BusConnection GetPrivateBusConnection(const char* address);
 void SendSignalWithNoArgumentsToSystemBus(const char* path,
                                           const char* interface_name,
                                           const char* signal_name);
+
+// \brief Low-level signal monitor base class.
+//
+// Used when there is no definite named signal sender (that Proxy
+// could be used for).
+
+class SignalWatcher {
+ public:
+  SignalWatcher() {}
+  ~SignalWatcher();
+  void StartMonitoring(const std::string& interface, const std::string& signal);
+ private:
+
+  // Callback invoked on the given signal arrival.
+  virtual void OnSignal(DBusMessage* message) = 0;
+
+  // Returns a string matching the D-Bus messages that we want to listen for.
+  std::string GetDBusMatchString() const;
+
+  // A D-Bus message filter to receive signals.
+  static DBusHandlerResult FilterDBusMessage(DBusConnection* dbus_conn,
+                                             DBusMessage* message,
+                                             void* data);
+  std::string interface_;
+  std::string signal_;
+};
 
 }  // namespace dbus
 }  // namespace chromeos
