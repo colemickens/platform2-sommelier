@@ -176,7 +176,7 @@ int64 BacklightController::WriteBrightness() {
 }
 
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
-  int64 target_level;
+  int64 target_level = 0;
   CHECK(GetTargetBrightness(&target_level));
   // Do not use ALS to adjust the backlight brightness if the backlight is
   // turned off.
@@ -279,7 +279,7 @@ void BacklightController::SetBrightnessToZero() {
 }
 
 gboolean BacklightController::DisplayOffWhenBacklightOff() {
-  int64 brightness;
+  int64 brightness = 0;
   CHECK(GetBrightness(&brightness));
   if (brightness == 0) {
     CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
