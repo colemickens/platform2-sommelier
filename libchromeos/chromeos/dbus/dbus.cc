@@ -260,7 +260,7 @@ void SendSignalWithNoArgumentsToSystemBus(const char* path,
 
 void SignalWatcher::StartMonitoring(const std::string& interface,
                                     const std::string& signal) {
-  DCHECK(!interface_.empty()) << "StartMonitoring() must be called only once";
+  DCHECK(interface_.empty()) << "StartMonitoring() must be called only once";
   interface_ = interface;
   signal_ = signal;
 
