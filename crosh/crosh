@@ -69,6 +69,14 @@ HELP='
  route [-n]
   Display the routing tables.
 
+ set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
+  Set the APN to use when connecting to the network specified by <network-id>.
+  If <network-id> is not specified, use the network-id of the currently
+  registered network.
+
+ set_apn -c
+  Clear the APN to be used, so that the default APN will be used instead.
+
  ssh <user> <host> [<port>]
   Open an ssh connection to the given <host>, as <user>.  The <port> parameter
   is optional and defaults to 22.
@@ -399,6 +407,10 @@ cmd_top() {
 
 cmd_modem() {
   /usr/bin/modem "$@"
+}
+
+cmd_set_apn() {
+  /usr/bin/set_apn "$@"
 }
 
 substr() {
