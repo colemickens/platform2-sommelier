@@ -180,6 +180,7 @@ mkdir -p -m 0755 /mnt/stateful_partition/home
 mkdir -p -m 0755 /mnt/stateful_partition/home/chronos
 mkdir -p -m 0755 /mnt/stateful_partition/var
 mkdir -p -m 0755 /mnt/stateful_partition/var/cache
+mkdir -p -m 0755 /mnt/stateful_partition/var/db
 mkdir -p -m 0755 /mnt/stateful_partition/var/empty
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib
 mkdir -p -m 0755 /mnt/stateful_partition/var/lib/ureadahead
