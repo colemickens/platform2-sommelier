@@ -22,6 +22,7 @@ cpu,uname -p
 cpuinfo,cat /proc/cpuinfo
 devkit-power,devkit-power -d
 dmesg,/bin/dmesg
+ec_info,/usr/share/userfeedback/scripts/get_log /var/log/ec_info.txt
 font_info,/usr/share/userfeedback/scripts/font_info
 hardware_class,/usr/bin/hardware_class
 hostname,hostname
