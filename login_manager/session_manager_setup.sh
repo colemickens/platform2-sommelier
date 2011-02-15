@@ -166,11 +166,24 @@ bootreason () {
 }
 
 if [ -x /usr/sbin/mosys ]; then
+  # If a command is not available on a platform, mosys will fail with
+  # a non-zero exit code (EXIT_FAILURE) and print the help menu. For example,
+  # this will happen if a "mosys smbios" sub-command is run on ARM since ARM
+  # platforms do not support SMBIOS. If mosys fails, delete the output file to
+  # avoid placing non-relevent or confusing output in /var/log.
+
   mosys -l smbios info bios > /var/log/bios_info.txt
-else
-  # message not blank on systems without mosys (ARM mosys is not done)
-  echo "Unable to get bios information" > /var/log/bios_info.txt
+  if [ $? -ne 0 ]; then
+    rm -f /var/log/bios_info.txt
+  fi
+
+  echo "ec info since last boot" > /var/log/ec_info.txt
+  mosys -l ec info >> /var/log/ec_info.txt
+  if [ $? -ne 0 ]; then
+    rm -f /var/log/ec_info.txt
+  fi
 fi
+
 if [ -f /sys/devices/platform/chromeos_acpi/CHSW ]; then
   # still some firmware out there without the read-only version
   if [ -f /sys/devices/platform/chromeos_acpi/FRID ]; then
