@@ -119,11 +119,14 @@ bool Backlight::SetBrightness(int64 target_level) {
     LOG(WARNING) << "Cannot find backlight brightness file.";
     return false;
   }
-  LOG(INFO) << "SetBrightness(" << target_level << ")";
+  LOG(INFO) << "Attempting to set brightness to " << target_level;
   int64 current_level, max_level;
   GetBrightness(&current_level, &max_level);
+  LOG(INFO) << "Current actual brightness: " << current_level;
+  LOG(INFO) << "Current target brightness: " << target_brightness_;
   if (current_level == target_level)
     return true;
+  LOG(INFO) << "Setting to new target brightness " << target_level;
   int64 diff = target_level - current_level;
   target_brightness_ = target_level;
   int64 previous_level = current_level;
