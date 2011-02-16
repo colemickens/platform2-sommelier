@@ -240,11 +240,6 @@ if [ -s $TOUCH_LIST_PATH ] ; then
   fi
 fi
 
-# Use OpenGL acceleration flags except on ARM
-if [ "$(uname -m)" != "armv7l" ] ; then
-  ACCELERATED_FLAGS="--enable-accelerated-layers --enable-webgl"
-fi
-
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 wait
@@ -297,7 +292,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
             "$TOUCH_DEVICES" \
-            ${ACCELERATED_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
