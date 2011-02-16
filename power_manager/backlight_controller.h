@@ -70,6 +70,10 @@ class BacklightController {
   // Write brightness based on current settings. Returns new brightness level.
   int64 WriteBrightness();
 
+  // Tweaks brightness level so that the overall brightness (including ALS)
+  // is greater than zero.
+  void AdjustBrightnessLevelToAvoidZero();
+
   void SetAlsBrightnessLevel(int64 level);
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }

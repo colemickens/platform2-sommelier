@@ -134,6 +134,7 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
     brightness_offset_ = &unplugged_brightness_offset_;
     plugged_state_ = kPowerDisconnected;
   }
+  AdjustBrightnessLevelToAvoidZero();
   WriteBrightness();
 }
 
@@ -175,6 +176,13 @@ int64 BacklightController::WriteBrightness() {
   return system_brightness_;
 }
 
+void BacklightController::AdjustBrightnessLevelToAvoidZero() {
+  // Do not let ALS adjustment set brightness from nonzero to zero.  Turning
+  // the backlight off due to ALS adjustment looks unnatural.
+  if (als_brightness_level_ + *brightness_offset_ <= 0)
+    *brightness_offset_ = 1 - als_brightness_level_;
+}
+
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   int64 target_level = 0;
   CHECK(GetTargetBrightness(&target_level));
@@ -190,10 +198,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   if (diff < 0)
     diff = -diff;
   if (diff >= 5) {
-    // Do not let ALS adjustment set brightness from nonzero to zero.  Turning
-    // the backlight off due to ALS adjustment looks unnatural.
-    if (als_brightness_level_ + *brightness_offset_ <= 0)
-      *brightness_offset_ = 1 - als_brightness_level_;
+    AdjustBrightnessLevelToAvoidZero();
     WriteBrightness();
   }
 }
