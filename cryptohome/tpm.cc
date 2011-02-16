@@ -865,9 +865,9 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   unsigned int offset = local_data.size() - aes_block_size;
 
   SecureBlob passkey_part;
-  if (!crypto_->WrapAesSpecifyBlockMode(local_data, offset, aes_block_size,
-                                        aes_key, iv, Crypto::PADDING_NONE,
-                                        Crypto::ECB, &passkey_part)) {
+  if (!crypto_->AesEncryptSpecifyBlockMode(local_data, offset, aes_block_size,
+                                           aes_key, iv, Crypto::kPaddingNone,
+                                           Crypto::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES encryption failed.";
     return false;
   }
@@ -909,9 +909,9 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   unsigned int offset = data.size() - aes_block_size;
 
   SecureBlob passkey_part;
-  if (!crypto_->UnwrapAesSpecifyBlockMode(data, offset, aes_block_size, aes_key,
-                                          iv, Crypto::PADDING_NONE, Crypto::ECB,
-                                          &passkey_part)) {
+  if (!crypto_->AesDecryptSpecifyBlockMode(data, offset, aes_block_size,
+                                           aes_key, iv, Crypto::kPaddingNone,
+                                           Crypto::kEcb, &passkey_part)) {
     LOG(ERROR) << "AES decryption failed.";
     return false;
   }

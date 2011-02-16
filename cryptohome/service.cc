@@ -37,6 +37,9 @@ const int kDefaultRandomSeedLength = 64;
 const char* kMountThreadName = "MountThread";
 const char* kTpmInitStatusEventType = "TpmInitStatus";
 
+// The default entropy source to seed with random data from the TPM on startup.
+const char* kDefaultEntropySource = "/dev/urandom";
+
 class TpmInitStatus : public CryptohomeEventBase {
  public:
   TpmInitStatus()

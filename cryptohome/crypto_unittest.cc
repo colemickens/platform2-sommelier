@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+
 // Unit tests for Crypto.
 
 #include "crypto.h"
@@ -64,79 +65,58 @@ class CryptoTest : public ::testing::Test {
   DISALLOW_COPY_AND_ASSIGN(CryptoTest);
 };
 
-TEST_F(CryptoTest, RandomTest) {
-  // Check that GetSecureRandom() returns different bytes than are passed in or
-  // that come from the entropy source
-  Crypto crypto;
-  crypto.set_entropy_source("/dev/zero");
-
-  unsigned char data[32];
-  memset(data, 1, sizeof(data));
-
-  crypto.GetSecureRandom(data, sizeof(data));
-
-  unsigned char comparison[32];
-  memset(comparison, 0, sizeof(comparison));
-  EXPECT_NE(0, memcmp(data, comparison, sizeof(data)));
-
-  memset(comparison, 1, sizeof(comparison));
-  EXPECT_NE(0, memcmp(data, comparison, sizeof(data)));
-}
-
 TEST_F(CryptoTest, EncryptionTest) {
-  // Check that WrapVaultKeyset returns something other than the bytes passed
+  // Check that EncryptVaultKeyset returns something other than the bytes passed
   Crypto crypto;
 
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(crypto);
 
-  SecureBlob wrapper(20);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
-                         wrapper.size());
+  SecureBlob key(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
 
   SecureBlob original;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original));
-  SecureBlob wrapped;
-  GetSerializedBlob(serialized, &wrapped);
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(wrapped.size() > 0);
-  ASSERT_FALSE(CryptoTest::FindBlobInBlob(wrapped, original));
+  ASSERT_TRUE(encrypted.size() > 0);
+  ASSERT_FALSE(CryptoTest::FindBlobInBlob(encrypted, original));
 }
 
 TEST_F(CryptoTest, DecryptionTest) {
-  // Check that UnwrapVaultKeyset returns the original keyset
+  // Check that DecryptVaultKeyset returns the original keyset
   Crypto crypto;
 
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(crypto);
 
-  SecureBlob wrapper(20);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
-                         wrapper.size());
+  SecureBlob key(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
-  SecureBlob wrapped;
-  GetSerializedBlob(serialized, &wrapped);
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
 
-  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
   VaultKeyset new_keyset;
-  unsigned int wrap_flags = 0;
+  unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
-                                       &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
+                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -217,27 +197,26 @@ TEST_F(CryptoTest, TpmStepTest) {
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(crypto);
 
-  SecureBlob wrapper(20);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
-                         wrapper.size());
+  SecureBlob key(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
-  SecureBlob wrapped;
-  GetSerializedBlob(serialized, &wrapped);
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
 
-  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
   VaultKeyset new_keyset;
-  unsigned int wrap_flags = 0;
+  unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
-                                       &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
+                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -259,27 +238,26 @@ TEST_F(CryptoTest, ScryptStepTest) {
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(crypto);
 
-  SecureBlob wrapper(20);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
-                         wrapper.size());
+  SecureBlob key(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
-  SecureBlob wrapped;
-  GetSerializedBlob(serialized, &wrapped);
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
 
-  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
   VaultKeyset new_keyset;
-  unsigned int wrap_flags = 0;
+  unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
-                                       &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
+                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
@@ -309,27 +287,26 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(crypto);
 
-  SecureBlob wrapper(20);
-  crypto.GetSecureRandom(static_cast<unsigned char*>(wrapper.data()),
-                         wrapper.size());
+  SecureBlob key(20);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(key.data()), key.size());
   SecureBlob salt(PKCS5_SALT_LEN);
   crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                          salt.size());
 
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(crypto.WrapVaultKeyset(vault_keyset, wrapper, salt, &serialized));
-  SecureBlob wrapped;
-  GetSerializedBlob(serialized, &wrapped);
+  ASSERT_TRUE(crypto.EncryptVaultKeyset(vault_keyset, key, salt, &serialized));
+  SecureBlob encrypted;
+  GetSerializedBlob(serialized, &encrypted);
 
-  ASSERT_TRUE(CryptoTest::FindBlobInBlob(wrapped, salt));
+  ASSERT_TRUE(CryptoTest::FindBlobInBlob(encrypted, salt));
 
-  ASSERT_TRUE(CryptoTest::FromSerializedBlob(wrapped, &serialized));
+  ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
   VaultKeyset new_keyset;
-  unsigned int wrap_flags = 0;
+  unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  ASSERT_TRUE(crypto.UnwrapVaultKeyset(serialized, wrapper, &wrap_flags,
-                                       &crypto_error, &new_keyset));
+  ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
+                                        &crypto_error, &new_keyset));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));

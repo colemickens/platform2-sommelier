@@ -163,10 +163,10 @@ class Mount : public EntropySource {
   // Cleans (removes) content from unmounted tracked subdirectories
   virtual void CleanUnmountedTrackedSubdirectories() const;
 
-  // Tests if the given credentials would unwrap the user's cryptohome key
+  // Tests if the given credentials would decrypt the user's cryptohome key
   //
   // Parameters
-  //   credentials - The Credentials to attempt to unwrap the key with
+  //   credentials - The Credentials to attempt to decrypt the key with
   virtual bool TestCredentials(const Credentials& credentials) const;
 
   // Migrages a user's vault key from one passkey to another
@@ -184,10 +184,10 @@ class Mount : public EntropySource {
   virtual void GetSystemSalt(chromeos::Blob* salt) const;
 
   virtual bool LoadVaultKeyset(const Credentials& credentials,
-                               SerializedVaultKeyset* wrapped_keyset) const;
+                               SerializedVaultKeyset* encrypted_keyset) const;
 
   virtual bool StoreVaultKeyset(const Credentials& credentials,
-      const SerializedVaultKeyset& wrapped_keyset) const;
+      const SerializedVaultKeyset& encrypted_keyset) const;
 
   // Used to disable setting vault ownership
   void set_set_vault_ownership(bool value) {
@@ -279,43 +279,43 @@ class Mount : public EntropySource {
   //   content (OUT) - The string value
   static bool LoadFileString(const FilePath& path, std::string* content);
 
-  // Wraps and adds the VaultKeyset to the serialized store
+  // Encrypts and adds the VaultKeyset to the serialized store
   //
   // Parameters
   //   credentials - The Credentials for the user
   //   vault_keyset - The VaultKeyset to save
-  //   serialized (IN/OUT) - The SerializedVaultKeyset to add the wrapped
+  //   serialized (IN/OUT) - The SerializedVaultKeyset to add the encrypted
   //                         VaultKeyset to
   bool AddVaultKeyset(const Credentials& credentials,
                       const VaultKeyset& vault_keyset,
                       SerializedVaultKeyset* serialized) const;
 
   // Resaves the vault keyset, restoring on failure.  The vault_keyset supplied
-  // is wrapped (encrypted) and stored in the wrapped_keyset parameter of
-  // serialized, which is then saved to disk.
+  // is encrypted and stored in the wrapped_keyset parameter of serialized,
+  // which is then saved to disk.
   //
   // Parameters
   //   credentials - The Credentials for the user
   //   vault_keyset - The VaultKeyset to save
   //   serialized (IN/OUT) - The serialized container to be saved
-  bool RewrapVaultKeyset(const Credentials& credentials,
-                         const VaultKeyset& vault_keyset,
-                         SerializedVaultKeyset* serialized) const;
+  bool ReEncryptVaultKeyset(const Credentials& credentials,
+                            const VaultKeyset& vault_keyset,
+                            SerializedVaultKeyset* serialized) const;
 
-  // Attempt to unwrap the keyset for the specified user.  The method both
-  // deserializes the SerializedVaultKeyset from disk and unwraps (decrypts) the
+  // Attempt to decrypt the keyset for the specified user.  The method both
+  // deserializes the SerializedVaultKeyset from disk and decrypts the
   // encrypted vault keyset, returning it in vault_keyset.
   //
   // Parameters
   //   credentials - The user credentials to use
   //   vault_keyset (OUT) - The unencrypted vault keyset on success
   //   serialized (OUT) - The keyset container as deserialized from disk
-  //   error (OUT) - The specific error when unwrapping
-  bool UnwrapVaultKeyset(const Credentials& credentials,
-                         bool migrate_if_needed,
-                         VaultKeyset* vault_keyset,
-                         SerializedVaultKeyset* serialized,
-                         MountError* error) const;
+  //   error (OUT) - The specific error when decrypting
+  bool DecryptVaultKeyset(const Credentials& credentials,
+                          bool migrate_if_needed,
+                          VaultKeyset* vault_keyset,
+                          SerializedVaultKeyset* serialized,
+                          MountError* error) const;
 
   // Saves the VaultKeyset for the user in the old method
   //
@@ -325,14 +325,15 @@ class Mount : public EntropySource {
   bool SaveVaultKeysetOld(const Credentials& credentials,
                           const VaultKeyset& vault_keyset) const;
 
-  // Attempt to unwrap the keyset using the old method for a user
+  // Attempt to decrypt the keyset using the old method for a user
   //
   // Parameters
   //   credentials - The user credentials to use
   //   vault_keyset (OUT) - The unencrypted vault keyset on success
-  //   error (OUT) - The specific error when unwrapping
-  bool UnwrapVaultKeysetOld(const Credentials& credentials,
-                            VaultKeyset* vault_keyset, MountError* error) const;
+  //   error (OUT) - The specific error when decrypting
+  bool DecryptVaultKeysetOld(const Credentials& credentials,
+                             VaultKeyset* vault_keyset,
+                             MountError* error) const;
 
   // Remove the key file and (old) salt file if they exist
   //
@@ -398,12 +399,12 @@ class Mount : public EntropySource {
   //   mount_args - The options for the call to mount: whether to create the
   //                cryptohome if it doesn't exist and any tracked directories
   //                to create
-  //   recreate_unwrap_fatal - Attempt to recreate the cryptohome directory on a
-  //                           fatal error (for example, TPM was cleared)
+  //   recreate_decrypt_fatal - Attempt to recreate the cryptohome directory on
+  //                            a fatal error (for example, TPM was cleared)
   //   error - The specific error condition on failure
   virtual bool MountCryptohomeInner(const Credentials& credentials,
                                     const MountArgs& mount_args,
-                                    bool recreate_unwrap_fatal,
+                                    bool recreate_decrypt_fatal,
                                     MountError* error) const;
 
   // Recursively copies directory contents to the destination if the destination

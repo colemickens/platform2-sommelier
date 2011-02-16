@@ -274,12 +274,12 @@ TEST_F(MountTest, GoodReDecryptTest) {
   ASSERT_EQ(0, (serialized.flags() &
                 cryptohome::SerializedVaultKeyset::SCRYPT_WRAPPED));
 
-  // Call UnwrapVaultKeyset first, allowing migration (the test data is not
+  // Call DecryptVaultKeyset first, allowing migration (the test data is not
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
   VaultKeyset vault_keyset;
   Mount::MountError error;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   // Make sure the keyset is now scrypt wrapped
   cryptohome::SerializedVaultKeyset serialized2;
@@ -313,13 +313,13 @@ TEST_F(MountTest, MigrateTest) {
   std::string salt_path = mount.GetUserSaltFile(up);
   ASSERT_TRUE(file_util::PathExists(FilePath(salt_path)));
 
-  // Call UnwrapVaultKeyset first, allowing migration (the test data is not
+  // Call DecryptVaultKeyset first, allowing migration (the test data is not
   // scrypt nor TPM wrapped) to a scrypt-wrapped keyset
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
   Mount::MountError error;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   // Make sure the salt path no longer exists
   ASSERT_FALSE(file_util::PathExists(FilePath(salt_path)));
@@ -373,8 +373,8 @@ TEST_F(MountTest, ChangeTrackedDirs) {
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
   Mount::MountError error;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   ASSERT_EQ(1, serialized.tracked_subdirectories_size());
   ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));
@@ -451,8 +451,8 @@ TEST_F(MountTest, MountCryptohome) {
   // Make sure the keyset now has only one tracked directory, "DIR0"
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   ASSERT_EQ(1, serialized.tracked_subdirectories_size());
   ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));
@@ -461,8 +461,8 @@ TEST_F(MountTest, MountCryptohome) {
   ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
 
   // Make sure the keyset now has only one tracked directory, "DIR1"
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   ASSERT_EQ(1, serialized.tracked_subdirectories_size());
   ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR1"));
@@ -498,8 +498,8 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
   Mount::MountError error;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
@@ -512,8 +512,8 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   // Make sure the keyset now has only one tracked directory, "DIR0"
   SerializedVaultKeyset new_serialized;
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &new_serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &new_serialized,
+                                       &error));
 
   ASSERT_EQ(1, new_serialized.tracked_subdirectories_size());
   ASSERT_EQ(0, new_serialized.tracked_subdirectories(0).compare("DIR0"));
@@ -576,8 +576,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
   // Make sure the keyset now has only one tracked directory, "DIR0"
-  ASSERT_TRUE(mount.UnwrapVaultKeyset(up, true, &vault_keyset, &serialized,
-                                      &error));
+  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+                                       &error));
 
   ASSERT_EQ(1, serialized.tracked_subdirectories_size());
   ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));

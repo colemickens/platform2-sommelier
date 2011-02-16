@@ -111,8 +111,8 @@ void MakeTests::InitTestData(const std::string& image_dir,
         VaultKeyset vault_keyset;
         SerializedVaultKeyset serialized;
         cryptohome::Mount::MountError error;
-        if (mount.UnwrapVaultKeyset(up, false, &vault_keyset, &serialized,
-                                    &error)) {
+        if (mount.DecryptVaultKeyset(up, false, &vault_keyset, &serialized,
+                                     &error)) {
           mount.RemoveOldFiles(up);
           mount.SaveVaultKeysetOld(up, vault_keyset);
         }

@@ -20,23 +20,33 @@
 
 namespace cryptohome {
 
-// Default entropy source is used to seed openssl's random number generator
-extern const std::string kDefaultEntropySource;
 // Default number of hash rounds to use when generating  key from a password
 extern const unsigned int kDefaultPasswordRounds;
 
 class Crypto : public EntropySource {
  public:
 
+  // PaddingScheme dictates the padding at the end of the ciphertext:
+  //   kPaddingNone - Do not use padding.  The input plaintext must be a
+  //     multiple of the crypto algorithm's block size.  This is used in the
+  //     encryption of the vault keyset as described in the Protection
+  //     Mechanisms section of the README file.
+  //   kPaddingLibraryDefault - Use OpenSSL default padding (PKCS#5), which
+  //     allows the plaintext to be marginally verified on decrypt, and
+  //     automatically handles plaintext that is not a multiple of the block
+  //     size.
+  //   kPaddingCryptohomeDefault - The default padding, which adds a SHA1 hash
+  //     to the end of the plaintext before encryption so that the contents can
+  //     be verified.
   enum PaddingScheme {
-    PADDING_NONE = 0,
-    PADDING_LIBRARY_DEFAULT = 1,
-    PADDING_CRYPTOHOME_DEFAULT = 2,
+    kPaddingNone = 0,
+    kPaddingLibraryDefault = 1,
+    kPaddingCryptohomeDefault = 2,
   };
 
   enum BlockMode {
-    ECB = 1,
-    CBC = 2,
+    kEcb = 1,
+    kCbc = 2,
   };
 
   enum CryptoError {
@@ -51,7 +61,7 @@ class Crypto : public EntropySource {
     CE_NO_PUBLIC_KEY_HASH,
   };
 
-  // Default constructor, using the default entropy source
+  // Default constructor
   Crypto();
 
   virtual ~Crypto();
@@ -59,15 +69,14 @@ class Crypto : public EntropySource {
   // Initializes Crypto
   bool Init();
 
-  // Seeds the random number generator
-  void SeedRng() const;
-
-  // Returns random bytes of the given length
+  // Returns random bytes of the given length using OpenSSL's random number
+  // generator.  The random number generator is automatically seeded from
+  // /dev/urandom by OpenSSL.
   //
   // Parameters
   //   rand (OUT) - Where to store the random bytes
   //   length - The number of random bytes to store in rand
-  void GetSecureRandom(unsigned char *rand, unsigned int length) const;
+  void GetSecureRandom(unsigned char* rand, unsigned int length) const;
 
   // Gets the AES block size
   unsigned int GetAesBlockSize() const;
@@ -79,12 +88,13 @@ class Crypto : public EntropySource {
   //   start - The position in the blob to start with
   //   count - The count of bytes to decrypt
   //   key - The AES key to use in decryption
+  //   iv - The initialization vector to use
   //   padding - The padding method to use
   //   unwrapped (OUT) - The unwrapped (decrypted) data
-  bool UnwrapAes(const chromeos::Blob& wrapped, unsigned int start,
-                 unsigned int count, const SecureBlob& key,
-                 const SecureBlob& iv, PaddingScheme padding,
-                 SecureBlob* unwrapped) const;
+  bool AesDecrypt(const chromeos::Blob& wrapped, unsigned int start,
+                  unsigned int count, const SecureBlob& key,
+                  const SecureBlob& iv, PaddingScheme padding,
+                  SecureBlob* unwrapped) const;
 
   // AES encrypts the plain text data using the specified key
   //
@@ -93,25 +103,27 @@ class Crypto : public EntropySource {
   //   start - The position in the blob to start with
   //   count - The count of bytes to encrypt
   //   key - The AES key to use
+  //   iv - The initialization vector to use
   //   padding - The padding method to use
   //   wrapped - On success, the encrypted data
-  bool WrapAes(const chromeos::Blob& unwrapped, unsigned int start,
-               unsigned int count, const SecureBlob& key, const SecureBlob& iv,
-               PaddingScheme padding, SecureBlob* wrapped) const;
+  bool AesEncrypt(const chromeos::Blob& unwrapped, unsigned int start,
+                  unsigned int count, const SecureBlob& key,
+                  const SecureBlob& iv, PaddingScheme padding,
+                  SecureBlob* wrapped) const;
 
-  // Same as UnwrapAes, but allows using either CBC or ECB
-  bool UnwrapAesSpecifyBlockMode(const chromeos::Blob& wrapped,
-                                 unsigned int start, unsigned int count,
-                                 const SecureBlob& key, const SecureBlob& iv,
-                                 PaddingScheme padding, BlockMode block_mode,
-                                 SecureBlob* unwrapped) const;
+  // Same as AesDecrypt, but allows using either CBC or ECB
+  bool AesDecryptSpecifyBlockMode(const chromeos::Blob& wrapped,
+                                  unsigned int start, unsigned int count,
+                                  const SecureBlob& key, const SecureBlob& iv,
+                                  PaddingScheme padding, BlockMode block_mode,
+                                  SecureBlob* unwrapped) const;
 
-  // Same as WrapAes, but allows using either CBC or ECB
-  bool WrapAesSpecifyBlockMode(const chromeos::Blob& unwrapped,
-                               unsigned int start, unsigned int count,
-                               const SecureBlob& key, const SecureBlob& iv,
-                               PaddingScheme padding, BlockMode block_mode,
-                               SecureBlob* wrapped) const;
+  // Same as AesEncrypt, but allows using either CBC or ECB
+  bool AesEncryptSpecifyBlockMode(const chromeos::Blob& unwrapped,
+                                  unsigned int start, unsigned int count,
+                                  const SecureBlob& key, const SecureBlob& iv,
+                                  PaddingScheme padding, BlockMode block_mode,
+                                  SecureBlob* wrapped) const;
 
   // Creates a new RSA key
   //
@@ -119,60 +131,60 @@ class Crypto : public EntropySource {
   //   key_bits - The key size to generate
   //   n (OUT) - the modulus
   //   p (OUT) - the private key
-  bool CreateRsaKey(unsigned int key_bits, SecureBlob* n, SecureBlob *p) const;
+  bool CreateRsaKey(unsigned int key_bits, SecureBlob* n, SecureBlob* p) const;
 
-  // Unwraps an encrypted vault keyset.  The vault keyset should be the output
-  // of WrapVaultKeyset().
+  // Decrypts an encrypted vault keyset.  The vault keyset should be the output
+  // of EncryptVaultKeyset().
   //
   // Parameters
-  //   wrapped_keyset - The blob containing the encrypted keyset
-  //   vault_wrapper - The passkey wrapper used to unwrap the keyset
-  //   wrap_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
+  //   encrypted_keyset - The blob containing the encrypted keyset
+  //   vault_key - The passkey used to decrypt the keyset
+  //   crypt_flags (OUT) - Whether the keyset was wrapped by the TPM or scrypt
   //   error (OUT) - The specific error code on failure
-  //   vault_keyset (OUT) - The unwrapped vault keyset on success
-  bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
-                         const chromeos::Blob& vault_wrapper,
-                         unsigned int* wrap_flags, CryptoError* error,
-                         VaultKeyset* vault_keyset) const;
+  //   vault_keyset (OUT) - The decrypted vault keyset on success
+  bool DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
+                          const chromeos::Blob& vault_key,
+                          unsigned int* crypt_flags, CryptoError* error,
+                          VaultKeyset* vault_keyset) const;
 
-  // Wraps (encrypts) the vault keyset with the given wrapper
+  // Encrypts the vault keyset with the given passkey
   //
   // Parameters
   //   vault_keyset - The VaultKeyset to encrypt
-  //   vault_wrapper - The passkey wrapper used to wrap the keyset
-  //   vault_wrapper_salt - The salt to use for the vault wrapper when wrapping
-  //                        the keyset
-  //   wrapped_keyset - On success, the encrypted vault keyset
-  bool WrapVaultKeyset(const VaultKeyset& vault_keyset,
-                       const SecureBlob& vault_wrapper,
-                       const SecureBlob& vault_wrapper_salt,
-                       SerializedVaultKeyset* serialized) const;
+  //   vault_key - The passkey used to encrypt the keyset
+  //   vault_key_salt - The salt to use for the vault passkey to key conversion
+  //                    when encrypting the keyset
+  //   encrypted_keyset - On success, the encrypted vault keyset
+  bool EncryptVaultKeyset(const VaultKeyset& vault_keyset,
+                          const SecureBlob& vault_key,
+                          const SecureBlob& vault_key_salt,
+                          SerializedVaultKeyset* serialized) const;
 
-  // Unwraps an encrypted vault keyset in the old method
+  // Decrypts an encrypted vault keyset in the old method
   //
   // Parameters
-  //   wrapped_keyset - The blob containing the encrypted keyset
-  //   vault_wrapper - The passkey wrapper used to unwrap the keyset
-  //   vault_keyset (OUT) - The unwrapped vault keyset on success
-  bool UnwrapVaultKeysetOld(const chromeos::Blob& wrapped_keyset,
-                            const chromeos::Blob& vault_wrapper,
-                            VaultKeyset* vault_keyset) const;
+  //   encrypted_keyset - The blob containing the encrypted keyset
+  //   vault_key - The passkey used to decrypt the keyset
+  //   vault_keyset (OUT) - The decrypted vault keyset on success
+  bool DecryptVaultKeysetOld(const chromeos::Blob& encrypted_keyset,
+                             const chromeos::Blob& vault_key,
+                             VaultKeyset* vault_keyset) const;
 
-  // Wraps (encrypts) the vault keyset with the given wrapper in the old method
+  // Encrypts the vault keyset with the given passkey in the old method
   //
   // Parameters
   //   vault_keyset - The VaultKeyset to encrypt
-  //   vault_wrapper - The passkey wrapper used to wrap the keyset
-  //   vault_wrapper_salt - The salt to use for the vault wrapper when wrapping
-  //                        the keyset
-  //   wrapped_keyset - On success, the encrypted vault keyset
-  bool WrapVaultKeysetOld(const VaultKeyset& vault_keyset,
-                          const SecureBlob& vault_wrapper,
-                          const SecureBlob& vault_wrapper_salt,
-                          SecureBlob* wrapped_keyset) const;
+  //   vault_key - The passkey used to wrap the keyset
+  //   vault_key_salt - The salt to use for the vault passke to key conversion
+  //                    when encrypting the keyset
+  //   encrypted_keyset - On success, the encrypted vault keyset
+  bool EncryptVaultKeysetOld(const VaultKeyset& vault_keyset,
+                             const SecureBlob& vault_key,
+                             const SecureBlob& vault_key_salt,
+                             SecureBlob* encrypted_keyset) const;
 
-  // Converts the passkey directly to an AES key, using the default OpenSSL
-  // conversion method.
+  // Converts the passkey directly to an AES key.  This method derives the key
+  // using the default OpenSSL conversion method.
   //
   // Parameters
   //   passkey - The passkey (hash, currently) to create the key from
@@ -185,16 +197,17 @@ class Crypto : public EntropySource {
                        SecureBlob* key, SecureBlob* iv) const;
 
   // Converts the passkey to a symmetric key used to decrypt the user's
-  // cryptohome key.
+  // cryptohome key.  This method calculates a SHA1 hash of the salt and the
+  // specified number of iterations on the passkey.
   //
   // Parameters
   //   passkey - The passkey (hash, currently) to create the key from
   //   salt - The salt used in creating the key
   //   iters - The hash iterations to use in generating the key
   //   wrapper (OUT) - The wrapper
-  void PasskeyToWrapper(const chromeos::Blob& passkey,
-                        const chromeos::Blob& salt, unsigned int iters,
-                        SecureBlob* wrapper) const;
+  void PasskeyToKeysetKey(const chromeos::Blob& passkey,
+                          const chromeos::Blob& salt, unsigned int iters,
+                          SecureBlob* key) const;
 
   // Gets an existing salt, or creates one if it doesn't exist
   //
@@ -213,11 +226,11 @@ class Crypto : public EntropySource {
   //   vault_keyset - The keyset to add
   //   key_signature (OUT) - The signature of the cryptohome key that should be
   //     used in subsequent calls to mount(2)
-  //   fnek_signature (OUT) - The signature of the cryptohome filename
+  //   filename_key_signature (OUT) - The signature of the cryptohome filename
   //     encryption key that should be used in subsequent calls to mount(2)
   bool AddKeyset(const VaultKeyset& vault_keyset,
                  std::string* key_signature,
-                 std::string* fnek_signature) const;
+                 std::string* filename_key_signature) const;
 
   // Clears the user's kernel keyring
   void ClearKeyset() const;
@@ -242,17 +255,12 @@ class Crypto : public EntropySource {
   //   password - The password to convert
   //   salt - The salt used during hashing
   //   passkey (OUT) - The passkey
-  static void PasswordToPasskey(const char *password,
+  static void PasswordToPasskey(const char* password,
                                 const chromeos::Blob& salt,
                                 SecureBlob* passkey);
 
   // Ensures that the TPM is connected
   CryptoError EnsureTpm(bool disconnect_first) const;
-
-  // Overrides the default the entropy source
-  void set_entropy_source(const std::string& entropy_source) {
-    entropy_source_ = entropy_source;
-  }
 
   // Sets whether or not to use scrypt to add a layer of protection to the vault
   // keyset when the TPM is not used
@@ -309,8 +317,6 @@ class Crypto : public EntropySource {
   bool PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                            const SecureBlob& salt) const;
 
-  std::string entropy_source_;
-
   // If set, the TPM will be used during the encryption of the vault keyset
   bool use_tpm_;
 
@@ -321,7 +327,7 @@ class Crypto : public EntropySource {
   bool load_tpm_;
 
   // The TPM implementation
-  Tpm *tpm_;
+  Tpm* tpm_;
 
   // If set, Crypto will use scrypt to protect the vault keyset when the TPM is
   // not available for use (or turned off)

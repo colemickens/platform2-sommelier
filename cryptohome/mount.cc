@@ -43,6 +43,9 @@ const unsigned int kUserDirNameLength = 40;
 // and only delete the pass-through directories.
 const std::string kEncryptedFilePrefix = "ECRYPTFS_FNEK_ENCRYPTED.";
 
+const std::string kDefaultEcryptfsCryptoAlg = "aes";
+const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
+
 Mount::Mount()
     : default_user_(-1),
       default_group_(-1),
@@ -159,7 +162,7 @@ bool Mount::MountCryptohome(const Credentials& credentials,
 
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  const Mount::MountArgs& mount_args,
-                                 bool recreate_unwrap_fatal,
+                                 bool recreate_decrypt_fatal,
                                  MountError* mount_error) const {
   current_user_->Reset();
 
@@ -188,16 +191,16 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Attempt to unwrap the vault keyset with the specified credentials
+  // Attempt to decrypt the vault keyset with the specified credentials
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
-  if (!UnwrapVaultKeyset(credentials, true, &vault_keyset, &serialized,
+  if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
                          &local_mount_error)) {
     if (mount_error) {
       *mount_error = local_mount_error;
     }
-    if (recreate_unwrap_fatal && (local_mount_error & MOUNT_ERROR_FATAL)) {
+    if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
       if (!RemoveCryptohome(credentials)) {
@@ -250,7 +253,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                          ",ecryptfs_fnek_sig=%s"
                                          ",ecryptfs_sig=%s"
                                          ",ecryptfs_unlink_sigs",
-                                         CRYPTOHOME_AES_KEY_BYTES,
+                                         kDefaultEcryptfsKeySize,
                                          fnek_signature.c_str(),
                                          key_signature.c_str());
 
@@ -525,12 +528,12 @@ bool Mount::TestCredentials(const Credentials& credentials) const {
   MountError mount_error;
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
-  bool result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
-                                  &serialized, &mount_error);
+  bool result = DecryptVaultKeyset(credentials, false, &vault_keyset,
+                                   &serialized, &mount_error);
   // Retry once if there is a TPM communications failure
   if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = UnwrapVaultKeyset(credentials, false, &vault_keyset,
-                               &serialized, &mount_error);
+    result = DecryptVaultKeyset(credentials, false, &vault_keyset,
+                                &serialized, &mount_error);
   }
   return result;
 }
@@ -570,22 +573,22 @@ bool Mount::StoreVaultKeyset(const Credentials& credentials,
   return true;
 }
 
-bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
-                              bool migrate_if_needed,
-                              VaultKeyset* vault_keyset,
-                              SerializedVaultKeyset* serialized,
-                              MountError* error) const {
+bool Mount::DecryptVaultKeyset(const Credentials& credentials,
+                               bool migrate_if_needed,
+                               VaultKeyset* vault_keyset,
+                               SerializedVaultKeyset* serialized,
+                               MountError* error) const {
   FilePath salt_path(GetUserSaltFile(credentials));
   // If a separate salt file exists, it is the old-style keyset
   if (file_util::PathExists(salt_path)) {
     VaultKeyset old_keyset;
-    if (!UnwrapVaultKeysetOld(credentials, &old_keyset, error)) {
+    if (!DecryptVaultKeysetOld(credentials, &old_keyset, error)) {
       return false;
     }
     if (migrate_if_needed) {
       // This is not considered a fatal error.  Re-saving with the desired
       // protection is ideal, but not required.
-      RewrapVaultKeyset(credentials, old_keyset, serialized);
+      ReEncryptVaultKeyset(credentials, old_keyset, serialized);
     }
     vault_keyset->FromVaultKeyset(old_keyset);
     return true;
@@ -601,11 +604,11 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       return false;
     }
 
-    // Attempt to unwrap the master key with the passkey
-    unsigned int wrap_flags = 0;
+    // Attempt decrypt the master key with the passkey
+    unsigned int crypt_flags = 0;
     Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-    if (!crypto_->UnwrapVaultKeyset(*serialized, passkey, &wrap_flags,
-                                    &crypto_error, vault_keyset)) {
+    if (!crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
+                                     &crypto_error, vault_keyset)) {
       if (error) {
         switch (crypto_error) {
           case Crypto::CE_TPM_FATAL:
@@ -650,9 +653,10 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
       // scrypt_wrapped       -   -   X   -   -   X   -   -   X   -   -   X
       //
       // migrate              N   Y   Y   Y   N   Y   Y   N   Y   Y   Y   N
-      bool tpm_wrapped = (wrap_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
+      bool tpm_wrapped =
+          (crypt_flags & SerializedVaultKeyset::TPM_WRAPPED) != 0;
       bool scrypt_wrapped =
-          (wrap_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
+          (crypt_flags & SerializedVaultKeyset::SCRYPT_WRAPPED) != 0;
       bool should_tpm = (crypto_->has_tpm() && use_tpm_ &&
                          crypto_->is_tpm_connected());
       bool should_scrypt = fallback_to_scrypt_;
@@ -671,7 +675,7 @@ bool Mount::UnwrapVaultKeyset(const Credentials& credentials,
         // protection is ideal, but not required.
         SerializedVaultKeyset new_serialized;
         new_serialized.CopyFrom(*serialized);
-        if (RewrapVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
+        if (ReEncryptVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
           serialized->CopyFrom(new_serialized);
         }
       } while(false);
@@ -688,21 +692,21 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
 
-  // Wrap the vault keyset
+  // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                            salt.size());
 
-  if (!crypto_->WrapVaultKeyset(vault_keyset, passkey, salt, serialized)) {
-    LOG(ERROR) << "Wrapping vault keyset failed";
+  if (!crypto_->EncryptVaultKeyset(vault_keyset, passkey, salt, serialized)) {
+    LOG(ERROR) << "Encrypting vault keyset failed";
     return false;
   }
 
   return true;
 }
 
-bool Mount::RewrapVaultKeyset(const Credentials& credentials,
-                              const VaultKeyset& vault_keyset,
+bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
+                                 const VaultKeyset& vault_keyset,
                               SerializedVaultKeyset* serialized) const {
   std::vector<std::string> files(2);
   files[0] = GetUserSaltFile(credentials);
@@ -731,19 +735,19 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   std::string username = credentials.GetFullUsernameString();
   UsernamePasskey old_credentials(username.c_str(),
                                   SecureBlob(old_key, strlen(old_key)));
-  // Attempt to unwrap the vault keyset with the specified credentials
+  // Attempt to decrypt the vault keyset with the specified credentials
   MountError mount_error;
   VaultKeyset vault_keyset;
   SerializedVaultKeyset serialized;
-  bool result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
-                                  &serialized, &mount_error);
+  bool result = DecryptVaultKeyset(old_credentials, false, &vault_keyset,
+                                   &serialized, &mount_error);
   // Retry once if there is a TPM communications failure
   if (!result && mount_error == MOUNT_ERROR_TPM_COMM_ERROR) {
-    result = UnwrapVaultKeyset(old_credentials, false, &vault_keyset,
-                               &serialized, &mount_error);
+    result = DecryptVaultKeyset(old_credentials, false, &vault_keyset,
+                                &serialized, &mount_error);
   }
   if (result) {
-    if (!RewrapVaultKeyset(credentials, vault_keyset, &serialized)) {
+    if (!ReEncryptVaultKeyset(credentials, vault_keyset, &serialized)) {
       LOG(ERROR) << "Couldn't save keyset.";
       current_user_->Reset();
       return false;
@@ -967,22 +971,22 @@ bool Mount::LoadFileString(const FilePath& path,
 
 bool Mount::SaveVaultKeysetOld(const Credentials& credentials,
                                const VaultKeyset& vault_keyset) const {
-  // Get the vault keyset wrapper
+  // Get the vault keyset key
   SecureBlob user_salt;
   GetUserSalt(credentials, true, &user_salt);
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
-  SecureBlob passkey_wrapper;
-  crypto_->PasskeyToWrapper(passkey, user_salt, 1, &passkey_wrapper);
+  SecureBlob keyset_key;
+  crypto_->PasskeyToKeysetKey(passkey, user_salt, 1, &keyset_key);
 
-  // Wrap the vault keyset
+  // Encrypt the vault keyset
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   SecureBlob cipher_text;
   crypto_->GetSecureRandom(static_cast<unsigned char*>(salt.data()),
                            salt.size());
-  if (!crypto_->WrapVaultKeysetOld(vault_keyset, passkey_wrapper, salt,
-                                   &cipher_text)) {
-    LOG(ERROR) << "Wrapping vault keyset failed";
+  if (!crypto_->EncryptVaultKeysetOld(vault_keyset, keyset_key, salt,
+                                      &cipher_text)) {
+    LOG(ERROR) << "Encrypting vault keyset failed";
     return false;
   }
 
@@ -999,10 +1003,10 @@ bool Mount::SaveVaultKeysetOld(const Credentials& credentials,
   return true;
 }
 
-bool Mount::UnwrapVaultKeysetOld(const Credentials& credentials,
-                                 VaultKeyset* vault_keyset,
-                                 MountError* error) const {
-  // Generate the passkey wrapper (key encryption key)
+bool Mount::DecryptVaultKeysetOld(const Credentials& credentials,
+                                  VaultKeyset* vault_keyset,
+                                  MountError* error) const {
+  // Generate the keyset key (key encryption key)
   SecureBlob user_salt;
   GetUserSalt(credentials, false, &user_salt);
   if (user_salt.size() == 0) {
@@ -1013,8 +1017,8 @@ bool Mount::UnwrapVaultKeysetOld(const Credentials& credentials,
   }
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
-  SecureBlob passkey_wrapper;
-  crypto_->PasskeyToWrapper(passkey, user_salt, 1, &passkey_wrapper);
+  SecureBlob keyset_key;
+  crypto_->PasskeyToKeysetKey(passkey, user_salt, 1, &keyset_key);
 
   // Load the encrypted keyset
   FilePath user_key_file(GetUserKeyFile(credentials));
@@ -1032,9 +1036,8 @@ bool Mount::UnwrapVaultKeysetOld(const Credentials& credentials,
     return false;
   }
 
-  // Attempt to unwrap the master key with the passkey wrapper
-  if (!crypto_->UnwrapVaultKeysetOld(cipher_text, passkey_wrapper,
-                                     vault_keyset)) {
+  // Attempt to unwrap the master key with the passkey key
+  if (!crypto_->DecryptVaultKeysetOld(cipher_text, keyset_key, vault_keyset)) {
     if (error) {
       *error = Mount::MOUNT_ERROR_KEY_FAILURE;
     }
