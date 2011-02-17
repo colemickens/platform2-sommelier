@@ -9,19 +9,21 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "base/base64.h"
-#include "base/basictypes.h"
-#include "base/command_line.h"
-#include "base/crypto/rsa_private_key.h"
-#include "base/file_path.h"
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/ref_counted.h"
-#include "base/scoped_ptr.h"
-#include "base/string_util.h"
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/dbus/service_constants.h"
-#include "chromeos/glib/object.h"
+#include <base/base64.h>
+#include <base/basictypes.h>
+#include <base/command_line.h>
+#include <base/crypto/rsa_private_key.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/ref_counted.h>
+#include <base/scoped_ptr.h>
+#include <base/scoped_temp_dir.h>
+#include <base/string_util.h>
+#include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
+#include <chromeos/glib/object.h>
+
 #include "login_manager/bindings/client.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
@@ -440,6 +442,35 @@ TEST_F(SessionManagerTest, MustStopChild) {
       .WillByDefault(Invoke(BadExit));
 
   SimpleRunManager(new MockPrefStore);
+}
+
+TEST_F(SessionManagerTest, KeygenTest) {
+  const char key_file_name[] = "foo.pub";
+  ScopedTempDir tmpdir;
+  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
+  FilePath key_file_path(tmpdir.path().AppendASCII(key_file_name));
+
+  int pid = fork();
+  if (pid == 0) {
+    execl("./keygen", "./keygen", key_file_path.value().c_str(), NULL);
+  }
+  int status;
+  while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
+    ;
+
+  LOG(INFO) << "exited waitpid. " << pid << "\n"
+            << "  WIFSIGNALED is " << WIFSIGNALED(status) << "\n"
+            << "  WTERMSIG is " << WTERMSIG(status) << "\n"
+            << "  WIFEXITED is " << WIFEXITED(status) << "\n"
+            << "  WEXITSTATUS is " << WEXITSTATUS(status);
+
+  ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+  ASSERT_TRUE(file_util::PathExists(key_file_path));
+
+  SystemUtils utils;
+  int32 file_size = 0;
+  ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
+  ASSERT_GT(file_size, 0);
 }
 
 static const pid_t kDummyPid = 4;
