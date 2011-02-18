@@ -76,14 +76,6 @@ bool OwnerKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
   return true;
 }
 
-bool OwnerKey::PopulateFromKeypair(base::RSAPrivateKey* pair) {
-  std::vector<uint8> public_key_der;
-  if (pair && pair->ExportPublicKey(&public_key_der))
-    return PopulateFromBuffer(public_key_der);
-  LOG(ERROR) << "Failed to export public key from key pair";
-  return false;
-}
-
 bool OwnerKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
@@ -98,7 +90,6 @@ bool OwnerKey::Persist() {
     PLOG(ERROR) << "Could not write data to " << key_file_.value();
     return false;
   }
-  DLOG(INFO) << "wrote " << key_.size() << " bytes to " << key_file_.value();
   return true;
 }
 

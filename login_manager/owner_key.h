@@ -12,7 +12,6 @@
 #include <base/scoped_ptr.h>
 
 namespace base {
-class RSAPrivateKey;
 class SignatureVerifier;
 }  // namespace base
 
@@ -45,11 +44,6 @@ class OwnerKey {
   // We will _deny_ such an attempt if we have not yet checked disk for a key,
   // or if we have already successfully loaded a key from disk.
   virtual bool PopulateFromBuffer(const std::vector<uint8>& public_key_der);
-
-  // Load key material from |pair|.
-  // We will _deny_ such an attempt if we have not yet checked disk for a key,
-  // or if we have already successfully loaded a key from disk.
-  virtual bool PopulateFromKeypair(base::RSAPrivateKey* pair);
 
   // Persist |key_| to disk, at |key_file_|.
   // Calling this method before checking for a key on disk is an error.

@@ -100,6 +100,8 @@ TEST_F(OwnerKeyTest, RefuseToClobberInMemory) {
 }
 
 TEST_F(OwnerKeyTest, RefuseToClobberOnDisk) {
+  std::vector<uint8> fake(1, 1);
+
   OwnerKey key(tmpfile_);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());

@@ -9,7 +9,6 @@
 
 #include <unistd.h>
 #include <base/file_path.h>
-#include <base/nss_util.h>
 #include <gmock/gmock.h>
 
 namespace base {
@@ -17,13 +16,15 @@ class RSAPrivateKey;
 }
 
 namespace login_manager {
-using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::_;
 
 class MockNssUtil : public NssUtil {
  public:
-  MockNssUtil() {}
+  MockNssUtil() {
+    EXPECT_CALL(*this, GetOwnerKeyFilePath())
+        .WillOnce(Return(FilePath("")));
+  }
   virtual ~MockNssUtil() {}
 
   MOCK_METHOD0(OpenUserDB, bool());
@@ -37,11 +38,6 @@ class MockNssUtil : public NssUtil {
   MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
                           std::vector<uint8>* OUT_signature,
                           base::RSAPrivateKey* key));
- protected:
-  void ExpectGetOwnerKeyFilePath() {
-    EXPECT_CALL(*this, GetOwnerKeyFilePath())
-        .WillOnce(Return(FilePath("")));
-  }
 };
 
 template<typename T>
@@ -58,8 +54,7 @@ class MockFactory : public NssUtil::Factory {
 
 class KeyCheckUtil : public MockNssUtil {
  public:
-  KeyCheckUtil() {
-    ExpectGetOwnerKeyFilePath();
+  KeyCheckUtil() : MockNssUtil() {
     EXPECT_CALL(*this, OpenUserDB())
         .WillOnce(Return(true));
     EXPECT_CALL(*this, GetPrivateKey(_))
@@ -70,8 +65,7 @@ class KeyCheckUtil : public MockNssUtil {
 
 class KeyFailUtil : public MockNssUtil {
  public:
-  KeyFailUtil() {
-    ExpectGetOwnerKeyFilePath();
+  KeyFailUtil() : MockNssUtil() {
     EXPECT_CALL(*this, OpenUserDB())
         .WillOnce(Return(true));
     EXPECT_CALL(*this, GetPrivateKey(_))
@@ -82,41 +76,11 @@ class KeyFailUtil : public MockNssUtil {
 
 class SadNssUtil : public MockNssUtil {
  public:
-  SadNssUtil() {
-    ExpectGetOwnerKeyFilePath();
+  SadNssUtil() : MockNssUtil() {
     EXPECT_CALL(*this, OpenUserDB())
         .WillOnce(Return(false));
   }
   virtual ~SadNssUtil() {}
-};
-
-class ShortKeyGenerator : public MockNssUtil {
- public:
-  ShortKeyGenerator() {
-    base::EnsureNSSInit();
-    base::OpenPersistentNSSDB();
-    ON_CALL(*this, GenerateKeyPair())
-        .WillByDefault(Invoke(CreateFake));
-  }
-  virtual ~ShortKeyGenerator() {}
-
-  static base::RSAPrivateKey* CreateFake() {
-    base::RSAPrivateKey* ret = base::RSAPrivateKey::CreateSensitive(512);
-    LOG_IF(INFO, ret == NULL) << "returning NULL!!!";
-    return ret;
-  }
-};
-
-class ShortKeyUtil : public ShortKeyGenerator {
- public:
-  ShortKeyUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, OpenUserDB())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*this, GenerateKeyPair())
-        .Times(1);
-  }
-  virtual ~ShortKeyUtil() {}
 };
 
 }  // namespace login_manager

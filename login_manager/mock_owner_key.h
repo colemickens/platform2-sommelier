@@ -10,10 +10,6 @@
 #include <unistd.h>
 #include <gmock/gmock.h>
 
-namespace base {
-class RSAPrivateKey;
-}
-
 namespace login_manager {
 class MockOwnerKey : public OwnerKey {
  public:
@@ -23,7 +19,6 @@ class MockOwnerKey : public OwnerKey {
   MOCK_METHOD0(IsPopulated, bool());
   MOCK_METHOD0(PopulateFromDiskIfPossible, bool());
   MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8>&));
-  MOCK_METHOD1(PopulateFromKeypair, bool(base::RSAPrivateKey*));
   MOCK_METHOD0(Persist, bool());
   MOCK_METHOD4(Verify, bool(const char*, uint32, const char*, uint32));
   MOCK_METHOD3(Sign, bool(const char*, uint32, std::vector<uint8>*));
