@@ -16,18 +16,18 @@ LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 \
 	gtk+-2.0 nss)
 
 SESSION_COMMON_OBJS = session_manager_service.o child_job.o interface.o \
-	nss_util.o pref_store.o system_utils.o owner_key.o \
+	nss_util.o owner_key.o pref_store.o system_utils.o \
 	upstart_signal_emitter.o wipe_mitigator.o
 
 DBUS_SOURCE = session_manager.xml
 DBUS_SERVER = bindings/server.h
 DBUS_CLIENT = bindings/client.h
 
+KEYGEN_BIN = keygen
+KEYGEN_OBJS = keygen.o nss_util.o owner_key.o system_utils.o
+
 SESSION_BIN = session_manager
 SESSION_OBJS = $(SESSION_COMMON_OBJS) session_manager_main.o
-
-SIGNALLER_BIN = signaller
-SIGNALLER_OBJS = signaller.o
 
 TEST_BIN = session_manager_unittest
 TEST_OBJS = $(SESSION_COMMON_OBJS) session_manager_testrunner.o \
@@ -37,19 +37,19 @@ TEST_OBJS = $(SESSION_COMMON_OBJS) session_manager_testrunner.o \
 
 BINDINGS_DIR = bindings
 
-all: $(SESSION_BIN) $(SIGNALLER_BIN) $(TEST_BIN)
+all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN)
 
 $(SESSION_OBJS) : $(DBUS_SERVER)
 $(SIGNALLER_OBJS) : $(DBUS_CLIENT)
 $(TEST_OBJS) : $(DBUS_CLIENT)
 
+$(KEYGEN_BIN): $(KEYGEN_OBJS)
+	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(KEYGEN_OBJS) \
+	$(LIBS) $(LDFLAGS) -o $(KEYGEN_BIN)
+
 $(SESSION_BIN): $(SESSION_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(SESSION_OBJS) \
 	$(LIBS) $(LDFLAGS) -o $(SESSION_BIN)
-
-$(SIGNALLER_BIN): $(SIGNALLER_OBJS)
-	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(SIGNALLER_OBJS) \
-	$(TEST_LIBS) $(LDFLAGS) -o $(SIGNALLER_BIN)
 
 $(TEST_BIN): CXXFLAGS+=-DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS)
@@ -71,4 +71,4 @@ $(DBUS_CLIENT): $(DBUS_SOURCE) $(BINDINGS_DIR)
 	 --prefix=`basename $(DBUS_SOURCE) .xml` $(DBUS_SOURCE) > $(DBUS_CLIENT)
 
 clean:
-	rm -rf *.o $(SESSION_BIN) $(SIGNALLER_BIN) $(TEST_BIN) $(BINDINGS_DIR)
+	rm -rf *.o $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(BINDINGS_DIR)
