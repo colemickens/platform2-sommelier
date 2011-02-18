@@ -444,7 +444,6 @@ TEST_F(SessionManagerTest, MustStopChild) {
   SimpleRunManager(new MockPrefStore);
 }
 
-/* TODO(cmasone): Re-enable this after ebuild change lands
 TEST_F(SessionManagerTest, KeygenTest) {
   const char key_file_name[] = "foo.pub";
   ScopedTempDir tmpdir;
@@ -454,6 +453,7 @@ TEST_F(SessionManagerTest, KeygenTest) {
   int pid = fork();
   if (pid == 0) {
     execl("./keygen", "./keygen", key_file_path.value().c_str(), NULL);
+    exit(1);
   }
   int status;
   while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
@@ -473,7 +473,6 @@ TEST_F(SessionManagerTest, KeygenTest) {
   ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
   ASSERT_GT(file_size, 0);
 }
-*/
 
 static const pid_t kDummyPid = 4;
 TEST_F(SessionManagerTest, SessionNotStartedCleanup) {

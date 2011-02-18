@@ -60,5 +60,5 @@ int main(int argc, char* argv[]) {
     LOG(INFO) << "Writing Owner key to " << key_file.value();
     return (key->Persist() ? 0 : 1);
   }
-  return 1;
+  LOG(FATAL) << "Could not generate owner key!";
 }
