@@ -425,6 +425,9 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   if (already_enabled && !force_relaunch)
     return TRUE;
 
+  // Delete testing channel file if it already exists.
+  file_util::Delete(FilePath(chrome_testing_path_), false);
+
   for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
     ChildJobInterface* child_job = child_jobs_[i_child];
     if (child_job->GetName() != "chrome")
