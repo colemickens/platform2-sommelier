@@ -161,6 +161,15 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
       // causing the modem to disappear from the DBus bus, which will cause the
       // connection manager to lose track of its state, but when we come back,
       // we'll be in the right state for them.
+
+      // We must send the ActivationStateChanged signal here and only here. If
+      // we don't send it, flimflam might end up holding onto a modem forever,
+      // waiting for a pending task (the activation) to complete; if we send it
+      // after ResetModem, the outside universe will observe a signal coming
+      // from a modem that has already been removed from the bus (and announced
+      // to be gone).
+      modem->SendActivationStateChanged(
+          MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
       modem->ResetModem(error);
     } else if (args->device_activation_state == gobi::kNotActivated) {
       modem->SendActivationStateChanged(
