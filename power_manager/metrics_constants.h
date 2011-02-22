@@ -8,6 +8,9 @@
 namespace power_manager {
 
 extern const char kMetricBacklightLevelName[];
+extern const int kMetricIdleAfterScreenOffMin;
+extern const int kMetricIdleAfterScreenOffMax;
+extern const int kMetricIdleAfterScreenOffBuckets;
 
 }  // namespace power_manager
 

@@ -42,9 +42,6 @@ const int Daemon::kMetricIdleAfterDimMax = 10 * 60 * 1000;
 const int Daemon::kMetricIdleAfterDimBuckets = 50;
 const char Daemon::kMetricIdleAfterScreenOffName[] =
     "Power.IdleTimeAfterScreenOff";  // ms
-const int Daemon::kMetricIdleAfterScreenOffMin = 100;
-const int Daemon::kMetricIdleAfterScreenOffMax = 10 * 60 * 1000;
-const int Daemon::kMetricIdleAfterScreenOffBuckets = 50;
 
 // Checks if |now| is the time to generate a new sample of a given
 // metric. Returns true if the last metric sample was generated at

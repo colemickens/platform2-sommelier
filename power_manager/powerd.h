@@ -102,9 +102,6 @@ class Daemon : public XIdleMonitor {
   static const int kMetricIdleAfterDimMax;
   static const int kMetricIdleAfterDimBuckets;
   static const char kMetricIdleAfterScreenOffName[];
-  static const int kMetricIdleAfterScreenOffMin;
-  static const int kMetricIdleAfterScreenOffMax;
-  static const int kMetricIdleAfterScreenOffBuckets;
 
   // Read settings from disk
   void ReadSettings();
