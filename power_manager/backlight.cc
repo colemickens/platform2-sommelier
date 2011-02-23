@@ -124,7 +124,7 @@ bool Backlight::SetBrightness(int64 target_level) {
   GetBrightness(&current_level, &max_level);
   LOG(INFO) << "Current actual brightness: " << current_level;
   LOG(INFO) << "Current target brightness: " << target_brightness_;
-  if (current_level == target_level)
+  if (current_level == target_level || target_brightness_ == target_level)
     return true;
   LOG(INFO) << "Setting to new target brightness " << target_level;
   int64 diff = target_level - current_level;
