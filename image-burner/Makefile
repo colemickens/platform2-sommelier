@@ -5,7 +5,7 @@
 XXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lz -lcrosapi -ldl -lrootdev
+BASE_LIBS = -lpthread -lrt -lchromeos -lz -lcrosapi -lbase -ldl -lrootdev
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \
