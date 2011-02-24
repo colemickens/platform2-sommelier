@@ -620,6 +620,20 @@ diag_webget () {
       diag_connectivity ${host}
       ;;
 
+    28)
+      # Operation timed out
+      fail "Operation timed out during connection to ${host}"
+      diag_connectivity ${host}
+      diag_ifall
+      ;;
+
+    35)
+      # SSL connect error. The SSL handshaking failed
+      fail "SSL connect error. The SSL handshaking failed"
+      diag_connectivity ${host}
+      diag_ifall
+      ;;
+
     60)
       # Peer certificate cannot be authenticated with known CA certificates
       fail "Peer cert not authenticated -- probably a hotspot!"
