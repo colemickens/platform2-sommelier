@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 
+#include "login_manager/child_job.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/system_utils.h"
 
@@ -137,6 +138,16 @@ bool OwnerKey::Sign(const char* data,
     return false;
   }
   return true;
+}
+
+
+int OwnerKey::StartGeneration(ChildJobInterface* generator) {
+  int pid = fork();
+  if (pid == 0) {
+    generator->Run();
+    exit(1);  // Run() is not supposed to return.
+  }
+  return pid;
 }
 
 }  // namespace login_manager

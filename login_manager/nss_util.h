@@ -6,7 +6,7 @@
 #define LOGIN_MANAGER_NSS_UTIL_H_
 
 #include <base/basictypes.h>
-#include <glib/garray.h>
+#include <string>
 #include <vector>
 
 class FilePath;
@@ -40,7 +40,7 @@ class NssUtil {
   // Factory (the default) this creates and returns a new NssUtil.
   static NssUtil* Create();
 
-  static void KeyFromBuffer(const GArray* buf, std::vector<uint8>* out);
+  static void KeyFromBuffer(const std::string& buf, std::vector<uint8>* out);
 
   virtual bool OpenUserDB() = 0;
 

@@ -13,7 +13,6 @@
 #include <base/nss_util.h>
 #include <base/scoped_ptr.h>
 #include <cros/chromeos_login.h>
-#include <glib/garray.h>
 
 namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
@@ -67,11 +66,11 @@ NssUtil* NssUtil::Create() {
 }
 
 // static
-void NssUtil::KeyFromBuffer(const GArray* buf, std::vector<uint8>* out) {
-  out->resize(buf->len);
-  if (buf->len == 0)
+void NssUtil::KeyFromBuffer(const std::string& buf, std::vector<uint8>* out) {
+  out->resize(buf.length());
+  if (out->size() == 0)
     return;
-  memcpy(&(out->at(0)), buf->data, buf->len);
+  memcpy(&(out->at(0)), buf.c_str(), out->size());
 }
 
 // We're generating and using 2048-bit RSA keys.

@@ -130,6 +130,10 @@ const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
 // static
 const char SessionManagerService::kIOThreadName[] = "ThreadForIO";
+// static
+const char SessionManagerService::kKeygenExecutable[] = "/sbin/keygen";
+// static
+const char SessionManagerService::kTemporaryKeyFilename[] = "key.pub";
 
 namespace {
 
@@ -145,6 +149,7 @@ SessionManagerService::SessionManagerService(
     : child_jobs_(child_jobs.begin(), child_jobs.end()),
       child_pids_(child_jobs.size(), -1),
       exit_on_child_done_(false),
+      keygen_job_(NULL),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
@@ -479,20 +484,11 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
       return FALSE;
   }
 
-  if (set_uid_) {
-    *OUT_done =
-        upstart_signal_emitter_->EmitSignal(
-            "start-user-session",
-            StringPrintf("CHROMEOS_USER=%s USER_ID=%d",
-                         current_user_.c_str(), uid_),
-            error);
-  } else {
-    *OUT_done =
-        upstart_signal_emitter_->EmitSignal(
-            "start-user-session",
-            StringPrintf("CHROMEOS_USER=%s", current_user_.c_str()),
-            error);
-  }
+  *OUT_done =
+      upstart_signal_emitter_->EmitSignal(
+          "start-user-session",
+          StringPrintf("CHROMEOS_USER=%s", current_user_.c_str()),
+          error);
 
   if (*OUT_done) {
     for (size_t i_child = 0; i_child < child_jobs_.size(); ++i_child) {
@@ -506,9 +502,73 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
                     signals_[kSignalSessionStateChanged],
                     0, "started", current_user_.c_str());
     }
+    if (key_->HaveCheckedDisk() && !key_->IsPopulated())
+      StartKeyGeneration();
   }
 
   return *OUT_done;
+}
+
+void SessionManagerService::HandleKeygenExit(GPid pid,
+                                             gint status,
+                                             gpointer data) {
+  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
+  int i_child = manager->FindChildByPid(pid);
+  manager->child_pids_[i_child] = -1;
+  delete *(manager->child_jobs_.erase(manager->child_jobs_.begin() + i_child));
+
+  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    std::string key;
+    file_util::ReadFileToString(
+        FilePath(file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename)),
+        &key);
+    manager->ValidateAndStoreOwnerKey(key);
+  } else {
+    if (WIFSIGNALED(status))
+      LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
+    else
+      LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
+  }
+}
+
+void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
+  std::vector<uint8> pub_key;
+  NssUtil::KeyFromBuffer(buf, &pub_key);
+
+  if (!CurrentUserHasOwnerKey(pub_key, NULL)) {
+    SendSignal(chromium::kOwnerKeySetSignal, false);
+    return;
+  }
+
+  if (!key_->PopulateFromBuffer(pub_key)) {
+    SendSignal(chromium::kOwnerKeySetSignal, false);
+    return;
+  }
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
+  StoreOwnerProperties(NULL);
+}
+
+void SessionManagerService::StartKeyGeneration() {
+  if (!keygen_job_.get()) {
+    LOG(INFO) << "Creating keygen job";
+    std::vector<std::string> keygen_argv;
+    keygen_argv.push_back(kKeygenExecutable);
+    keygen_argv.push_back(
+        file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename).value());
+    keygen_job_.reset(new ChildJob(keygen_argv));
+  }
+
+  if (set_uid_)
+    keygen_job_->SetDesiredUid(uid_);
+  int pid = key_->StartGeneration(keygen_job_.get());
+  g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
+                         pid,
+                         HandleKeygenExit,
+                         this,
+                         NULL);
+  child_jobs_.push_back(keygen_job_.release());
+  child_pids_.push_back(pid);
 }
 
 gboolean SessionManagerService::StopSession(gchar* unique_identifier,
@@ -531,31 +591,12 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
 
 gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
                                             GError** error) {
-  LOG(INFO) << "key size is " << public_key_der->len;
-
-  if (!session_started_) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Cannot set the owner's public key outside of a session.");
-    return FALSE;
-  }
-
-  std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(public_key_der, &pub_key);
-
-  if (!CurrentUserHasOwnerKey(pub_key, error)) {
-    return FALSE;  // error set by CurrentUserHasOwnerKey()
-  }
-
-  if (!key_->PopulateFromBuffer(pub_key)) {
-    SetGError(error,
-              CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-              "Attempted to set invalid key as owner's public key.");
-    return FALSE;
-  }
-  io_thread_.message_loop()->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
-  return StoreOwnerProperties(error);
+  SetGError(error,
+            CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+            "The session_manager now sets the Owner's public key.");
+  // Just to be safe, send back a nACK in addition to returning an error.
+  SendSignal(chromium::kOwnerKeySetSignal, false);
+  return FALSE;
 }
 
 gboolean SessionManagerService::Unwhitelist(gchar* email_address,
@@ -784,18 +825,12 @@ void SessionManagerService::HandleChildExit(GPid pid,
   if (manager->shutting_down_)
     return;
 
-  int i_child = -1;
-  for (int i = 0; i < manager->child_pids_.size(); ++i) {
-    if (manager->child_pids_[i] == pid) {
-      i_child = i;
-      manager->child_pids_[i] = -1;
-      break;
-    }
+  ChildJobInterface* child_job = NULL;
+  int i_child = manager->FindChildByPid(pid);
+  if (i_child >= 0) {
+    child_job = manager->child_jobs_[i_child];
+    manager->child_pids_[i_child] = -1;
   }
-
-  ChildJobInterface* child_job = i_child >= 0
-                                 ? manager->child_jobs_[i_child]
-                                 : NULL;
 
   LOG(ERROR) << StringPrintf(
       "Process %s(%d) exited.",
@@ -1026,6 +1061,14 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
   }
   current_user_ = StringToLowerASCII(email_string);
   return TRUE;
+}
+
+int SessionManagerService::FindChildByPid(int pid) {
+  for (int i = 0; i < child_pids_.size(); ++i) {
+    if (child_pids_[i] == pid)
+      return i;
+  }
+  return -1;
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {

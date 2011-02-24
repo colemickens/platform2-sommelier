@@ -23,6 +23,7 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
@@ -99,6 +100,9 @@ class SessionManagerService
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
+    }
+    void set_keygen_job(ChildJobInterface* job) {
+      session_manager_service_->keygen_job_.reset(job);
     }
 
     // Sets whether the the manager exits when a child finishes.
@@ -305,6 +309,12 @@ class SessionManagerService
   // start was successful.
   gboolean RestartEntd(GError** error);
 
+  // Ensures that the public key in |buf| is legitimately paired with
+  // a private key held by the current user, signs and stores some
+  // ownership-related metadata, and then stores this key off as the
+  // new device Owner key.
+  void ValidateAndStoreOwnerKey(const std::string& buf);
+
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
 
@@ -344,9 +354,10 @@ class SessionManagerService
                                          void* data);
 
   // |data| is a SessionManagerService*
-  static void HandleChildExit(GPid pid,
-                              gint status,
-                              gpointer data);
+  static void HandleChildExit(GPid pid, gint status, gpointer data);
+
+  // |data| is a SessionManagerService*
+  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
   // |data| is a SessionManagerService*.  This is a wrapper around
   // ServiceShutdown() so that we can register it as the callback for
@@ -383,10 +394,14 @@ class SessionManagerService
   gboolean ValidateAndCacheUserEmail(const gchar* email_address,
                                      GError** error);
 
+  // Searches through |child_pids_| for |pid|.  Returns index of child if
+  // found, -1 if not.
+  int FindChildByPid(int pid);
+
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
 
-  // If the current user has access to the owner private key
+  // Assuming the current user has access to the owner private key
   // (read: is the owner), this call whitelists |current_user_|, sets a
   // property indicating |current_user_| is the owner, and schedules both
   // a PersistWhitelist() and a PersistStore().
@@ -441,6 +456,8 @@ class SessionManagerService
   // to signal Chromium when done.
   void PersistStore();
 
+  void StartKeyGeneration();
+
   // Uses |system_| to send |signal_name| to Chromium.  Attaches a payload
   // to the signal indicating the status of |succeeded|.
   void SendSignal(const char signal_name[], bool succeeded);
@@ -458,10 +475,13 @@ class SessionManagerService
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char kIOThreadName[];
+  static const char kKeygenExecutable[];
+  static const char kTemporaryKeyFilename[];
 
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
   bool exit_on_child_done_;
+  scoped_ptr<ChildJobInterface> keygen_job_;
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;

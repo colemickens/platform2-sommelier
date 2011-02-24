@@ -128,6 +128,8 @@ int main(int argc, char* argv[]) {
   manager->set_file_checker(new login_manager::FileChecker(magic_chrome_file));
   manager->set_mitigator(
       new login_manager::WipeMitigator(new login_manager::SystemUtils()));
+  if (uid_set)
+    manager->set_uid(uid);
 
   LOG_IF(FATAL, !manager->Initialize()) << "Failed";
   LOG_IF(FATAL, !manager->Register(chromeos::dbus::GetSystemBusConnection()))

@@ -17,6 +17,7 @@ class SignatureVerifier;
 }  // namespace base
 
 namespace login_manager {
+class ChildJobInterface;
 class SystemUtils;
 
 // This class holds the device owner's public key.
@@ -71,6 +72,9 @@ class OwnerKey {
   virtual bool Sign(const char* data,
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature);
+
+  // Runs |generator| in a child process.  Returns pid of the child.
+  virtual int StartGeneration(ChildJobInterface* generator);
 
   // Returned reference will be empty if we haven't populated |key_| yet.
   const std::vector<uint8>& public_key_der() const {
