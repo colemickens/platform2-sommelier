@@ -226,12 +226,7 @@ echo 2 > /proc/sys/fs/suid_dumpable
 
 # NOTE: ensure that a rootdev has been found.
 if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
-  # Mount OEM partner partition if OOBE has not yet been completed.
-  # Also create /tmp/machine-info.
   if [ ! -e /home/chronos/.oobe_completed ]; then
-    OEM_DEV=${ROOT_DEV%[0-9]*}8
-    mount -n -t ext3 "$OEM_DEV" -o nodev,noexec,nosuid /mnt/partner_partition
-
     # TODO(yjlou): We are developing a more generic hook mechanism (i.e.
     #              pre-OOBE-oem.sh), and will move this block to new hook point.
     #
