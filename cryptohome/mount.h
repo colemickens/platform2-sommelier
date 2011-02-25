@@ -36,6 +36,10 @@ extern const std::string kDefaultSharedUser;
 extern const std::string kDefaultSkeletonSource;
 // The incognito user
 extern const std::string kIncognitoUser;
+// Directories that we intend to track (make pass-through in cryptohome vault)
+extern const char* kCacheDir;
+extern const char* kDownloadsDir;
+
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
@@ -145,12 +149,15 @@ class Mount : public EntropySource {
                                 const MountArgs& mount_args) const;
 
   // Creates the the tracked subdirectories in a user's cryptohome
+  // If the cryptohome did not have tracked directories, but had them untracked,
+  // migrate their contents.
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  //   tracked_subdirectories - The tracked passthrough directories to create
+  //   is_new - True, if the cryptohome is being created and there is
+  //            no need in migration
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
-      const SerializedVaultKeyset& serialized) const;
+                                           bool is_new) const;
 
   // Replaces the tracked subdirectories, returning true if a substition was
   // made, or false if the set was the same

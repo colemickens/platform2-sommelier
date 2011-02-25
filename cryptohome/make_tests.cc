@@ -51,6 +51,7 @@ const size_t kDefaultUserCount =
 
 const TestUserInfo kAlternateUsers[] = {
   {"altuser0@invalid.domain", "zero", true, false, {"DIR0", NULL}},
+  {"altuser1@invalid.domain", "odin", true, false},
 };
 const size_t kAlternateUserCount =
     sizeof(kAlternateUsers) / sizeof(kAlternateUsers[0]);

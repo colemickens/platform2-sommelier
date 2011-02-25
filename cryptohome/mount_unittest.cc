@@ -37,6 +37,7 @@ using ::testing::NiceMock;
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
 const char kAltImageDir[] = "alt_test_image_dir";
+const char kAltHomeDir[] = "alt_test_home_dir";
 
 class MountTest : public ::testing::Test {
  public:
@@ -230,22 +231,16 @@ TEST_F(MountTest, CreateCryptohomeTest) {
 
   EXPECT_TRUE(mount.Init());
   bool created;
-  const char* subdirs[] = {"subdir", NULL};
-  Mount::MountArgs mount_args;
-  mount_args.AssignSubdirsNullTerminatedList(subdirs);
-  ASSERT_TRUE(mount.EnsureCryptohome(up, mount_args, &created));
+  ASSERT_TRUE(mount.EnsureCryptohome(up, Mount::MountArgs(), &created));
   ASSERT_TRUE(created);
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath key_path = user_path.Append("master.0");
   FilePath vault_path = user_path.Append("vault");
-  FilePath skel_testfile_path = user_path.Append("sub_path/.testfile");
-  FilePath subdir_path = vault_path.Append("subdir");
 
   ASSERT_TRUE(file_util::PathExists(key_path));
   ASSERT_TRUE(file_util::PathExists(vault_path));
-  ASSERT_TRUE(file_util::PathExists(subdir_path));
   ASSERT_TRUE(mount.TestCredentials(up));
 }
 
@@ -433,7 +428,6 @@ TEST_F(MountTest, MountCryptohome) {
 
   EXPECT_TRUE(mount.Init());
 
-  // Test user at index 9 has a tracked dir "DIR0"
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[10].password,
                                         system_salt_, &passkey);
@@ -442,35 +436,13 @@ TEST_F(MountTest, MountCryptohome) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
 
-  const char* new_dirs[] = {"DIR1", NULL};
-  Mount::MountArgs mount_args;
-  mount_args.AssignSubdirsNullTerminatedList(new_dirs);
   Mount::MountError error;
-  ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
-
-  // Make sure the keyset now has only one tracked directory, "DIR0"
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
-                                       &error));
-
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-  ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));
-
-  mount_args.replace_tracked_subdirectories = true;
-  ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
-
-  // Make sure the keyset now has only one tracked directory, "DIR1"
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
-                                       &error));
-
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-  ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR1"));
+  ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append("vault");
-  FilePath subdir_path = vault_path.Append("DIR1");
+  FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
 
@@ -489,7 +461,6 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   EXPECT_TRUE(mount.Init());
 
-  // Test user at index 11 has a tracked dir "DIR0"
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[11].password,
                                         system_salt_, &passkey);
@@ -504,24 +475,17 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
 
-  const char* new_dirs[] = {"DIR0", NULL};
-  Mount::MountArgs mount_args;
-  mount_args.replace_tracked_subdirectories = true;
-  mount_args.AssignSubdirsNullTerminatedList(new_dirs);
-  ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
-  // Make sure the keyset now has only one tracked directory, "DIR0"
+  // Make sure the keyset now has only one tracked directory, "Cache"
   SerializedVaultKeyset new_serialized;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &new_serialized,
                                        &error));
 
-  ASSERT_EQ(1, new_serialized.tracked_subdirectories_size());
-  ASSERT_EQ(0, new_serialized.tracked_subdirectories(0).compare("DIR0"));
-
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append("vault");
-  FilePath subdir_path = vault_path.Append("DIR0");
+  FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 
   SecureBlob lhs;
@@ -556,10 +520,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
 
-  const char* new_dirs[] = {"DIR0", NULL};
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
-  mount_args.AssignSubdirsNullTerminatedList(new_dirs);
   Mount::MountError error;
   ASSERT_FALSE(mount.MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(Mount::MOUNT_ERROR_USER_DOES_NOT_EXIST, error);
@@ -573,16 +535,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
   ASSERT_TRUE(file_util::PathExists(vault_path));
 
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  // Make sure the keyset now has only one tracked directory, "DIR0"
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
-                                       &error));
-
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-  ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));
-
-  FilePath subdir_path = vault_path.Append("DIR0");
+  FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
 
@@ -601,7 +554,6 @@ TEST_F(MountTest, RemoveSubdirectories) {
 
   EXPECT_TRUE(mount.Init());
 
-  // Alternate test user at index 0 has a tracked dir "DIR0"
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[0].password,
                                         system_salt_, &passkey);
@@ -612,14 +564,13 @@ TEST_F(MountTest, RemoveSubdirectories) {
   EXPECT_CALL(platform, Unmount(_, _, _))
       .WillRepeatedly(Return(true));
 
-  Mount::MountArgs mount_args;
   Mount::MountError error;
-  EXPECT_TRUE(mount.MountCryptohome(up, mount_args, &error));
+  EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   FilePath image_dir(kAltImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append("vault");
-  FilePath subdir_path = vault_path.Append("DIR0");
+  FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 
   NiceMock<MockPlatform> platform_mounted;
@@ -655,6 +606,93 @@ TEST_F(MountTest, RemoveSubdirectories) {
   mount.CleanUnmountedTrackedSubdirectories();
 
   ASSERT_FALSE(file_util::PathExists(subdir_path));
+}
+
+TEST_F(MountTest, MigrationOfTrackedDirs) {
+  // Checks that old cryptohomes (without pass-through tracked
+  // directories) migrate when Mount()ed.
+  LoadSystemSalt(kAltImageDir);
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kAltImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
+
+  EXPECT_TRUE(mount.Init());
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[1].password,
+                                        system_salt_, &passkey);
+  UsernamePasskey up(kAlternateUsers[1].username, passkey);
+
+  // As we don't have real mount in the test, immagine its output (home)
+  // directory.
+  FilePath home_dir(kAltHomeDir);
+  file_util::CreateDirectory(home_dir);
+  mount.set_home_dir(home_dir.value());
+
+  // Pretend that mounted cryptohome already had non-pass-through
+  // subdirs "Cache" and "Downloads".
+  FilePath cache_dir(home_dir.Append(kCacheDir));
+  FilePath downloads_dir(home_dir.Append(kDownloadsDir));
+  file_util::CreateDirectory(cache_dir);
+  file_util::CreateDirectory(downloads_dir);
+
+  // And they are not empty.
+  const string contents = "Hello world!!!";
+  file_util::WriteFile(cache_dir.Append("cached_file"),
+                       contents.c_str(), contents.length());
+  file_util::WriteFile(downloads_dir.Append("downloaded_file"),
+                       contents.c_str(), contents.length());
+
+  // Even have subdirectories.
+  FilePath cache_subdir(cache_dir.Append("cache_subdir"));
+  FilePath downloads_subdir(downloads_dir.Append("downloads_subdir"));
+  file_util::CreateDirectory(cache_subdir);
+  file_util::CreateDirectory(downloads_subdir);
+  file_util::WriteFile(cache_subdir.Append("cached_file"),
+                       contents.c_str(), contents.length());
+  file_util::WriteFile(downloads_subdir.Append("downloaded_file"),
+                       contents.c_str(), contents.length());
+
+  // Now Mount().
+  EXPECT_CALL(platform, Mount(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, Unmount(_, _, _))
+      .WillRepeatedly(Return(true));
+  Mount::MountError error;
+  EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
+
+  // Check that vault path now have pass-through version of tracked dirs.
+  FilePath image_dir(kAltImageDir);
+  FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
+  FilePath vault_path = user_path.Append("vault");
+  ASSERT_TRUE(file_util::PathExists(vault_path.Append(kCacheDir)));
+  ASSERT_TRUE(file_util::PathExists(vault_path.Append(kDownloadsDir)));
+
+  // Check that Cache is clear (because it does not need migration) so
+  // it should not appear in a home dir.
+  EXPECT_FALSE(file_util::PathExists(cache_dir));
+
+  // Check that Downloads is completely migrated.
+  string tested;
+  EXPECT_TRUE(file_util::PathExists(downloads_dir));
+  EXPECT_TRUE(file_util::ReadFileToString(
+      downloads_dir.Append("downloaded_file"), &tested));
+  EXPECT_EQ(contents, tested);
+  EXPECT_TRUE(file_util::PathExists(downloads_subdir));
+  tested.clear();
+  EXPECT_TRUE(file_util::ReadFileToString(
+      downloads_subdir.Append("downloaded_file"), &tested));
+  EXPECT_EQ(contents, tested);
+
+  // Check that we did not leave any litter.
+  file_util::Delete(downloads_dir, true);
+  EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
 }
 
 } // namespace cryptohome

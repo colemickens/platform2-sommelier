@@ -42,6 +42,17 @@ const unsigned int kUserDirNameLength = 40;
 // following constant.  When clearing tracked subdirectories, we ignore these
 // and only delete the pass-through directories.
 const std::string kEncryptedFilePrefix = "ECRYPTFS_FNEK_ENCRYPTED.";
+// Tracked directories - special sub-directories of the cryptohome
+// vault, that are visible even if not mounted. Contents is still encrypted.
+const char* kCacheDir = "Cache";
+const char* kDownloadsDir = "Downloads";
+const struct TrackedDir {
+  const char* name;
+  bool need_migration;
+} kTrackedDirs[] = {
+  {kCacheDir, false},
+  {kDownloadsDir, true}
+};
 
 const std::string kDefaultEcryptfsCryptoAlg = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
@@ -224,6 +235,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  // TODO(glotov): the following code is deprecated. Remove it.
   if (mount_args.replace_tracked_subdirectories) {
     if (ReplaceTrackedSubdirectories(mount_args.tracked_subdirectories,
                                      &serialized)) {
@@ -231,9 +243,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       StoreVaultKeyset(credentials, serialized);
     }
   }
-
-  // Ensure that the tracked subdirectories exist
-  CreateTrackedSubdirectories(credentials, serialized);
 
   crypto_->ClearKeyset();
 
@@ -271,6 +280,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   if (created) {
     CopySkeletonForUser(credentials);
   }
+
+  // Ensure that the tracked subdirectories exist.
+  CreateTrackedSubdirectories(credentials, created);
 
   if (mount_error) {
     *mount_error = MOUNT_ERROR_NONE;
@@ -383,23 +395,17 @@ bool Mount::CreateCryptohome(const Credentials& credentials,
     }
   }
 
-  CreateTrackedSubdirectories(credentials, serialized);
-
   // Restore the umask
   platform_->SetMask(original_mask);
   return true;
 }
 
 bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
-      const SerializedVaultKeyset& serialized) const {
-  if (serialized.tracked_subdirectories_size() == 0) {
-    return true;
-  }
+                                        bool is_new) const {
+  const int original_mask = platform_->SetMask(kDefaultUmask);
 
-  int original_mask = platform_->SetMask(kDefaultUmask);
-
-  // Add the subdirectories if they do not exist
-  FilePath vault_path = FilePath(GetUserVaultPath(credentials));
+  // Add the subdirectories if they do not exist.
+  const FilePath vault_path = FilePath(GetUserVaultPath(credentials));
   if (!file_util::DirectoryExists(vault_path)) {
     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
     platform_->SetMask(original_mask);
@@ -410,26 +416,70 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // want to have as many of the specified tracked directories created as
   // possible.
   bool result = true;
-  for (int index = 0; index < serialized.tracked_subdirectories_size();
-       ++index) {
-    const std::string& subdir = serialized.tracked_subdirectories(index);
-    if (subdir.find("..") != std::string::npos) {
-      result = false;
-      continue;
-    }
-    FilePath directory = vault_path.Append(subdir);
-    if (!file_util::DirectoryExists(directory)) {
-      file_util::CreateDirectory(directory);
-      if (set_vault_ownership_) {
-        if (!platform_->SetOwnership(directory.value(), default_user_,
-                                     default_group_)) {
-          LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                     << default_group_ << ") of tracked directory path: "
-                     << directory.value();
-          file_util::Delete(directory, true);
+  for (size_t index = 0; index < arraysize(kTrackedDirs); ++index) {
+    const TrackedDir& subdir = kTrackedDirs[index];
+    const string subdir_name = subdir.name;
+    const FilePath passthrough_dir = vault_path.Append(subdir_name);
+    const FilePath old_dir = FilePath(home_dir_).Append(subdir_name);
+
+    // Start migrating if |subdir| is not a pass-through directory yet.
+    FilePath tmp_migrated_dir;
+    if (!is_new && file_util::DirectoryExists(old_dir) &&
+        !file_util::DirectoryExists(passthrough_dir)) {
+      if (!subdir.need_migration) {
+        LOG(INFO) << "Removing non-pass-through " << old_dir.value() << ". "
+                  << "Migration not requested.";
+        file_util::Delete(old_dir, true);
+      } else {
+        // Migrate it: rename it, and after the pass-through one is
+        // created, move its contents there.
+        tmp_migrated_dir = FilePath(home_dir_).Append(subdir_name + ".tmp");
+        LOG(INFO) << "Moving migration directory " << old_dir.value()
+                  << " to " << tmp_migrated_dir.value() << "...";
+        if (!file_util::Move(old_dir, tmp_migrated_dir)) {
+          LOG(ERROR) << "Moving migration directory " << old_dir.value()
+                     << " to " << tmp_migrated_dir.value() << " failed. "
+                     << "Deleting it.";
+          file_util::Delete(old_dir, true);
+          tmp_migrated_dir.clear();
           result = false;
         }
       }
+    }
+
+    // Create pass-through directory.
+    if (!file_util::DirectoryExists(passthrough_dir)) {
+      file_util::CreateDirectory(passthrough_dir);
+      if (set_vault_ownership_) {
+        if (!platform_->SetOwnership(passthrough_dir.value(),
+                                     default_user_, default_group_)) {
+          LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                     << default_group_ << ") of tracked directory path: "
+                     << passthrough_dir.value();
+          file_util::Delete(passthrough_dir, true);
+          result = false;
+          continue;
+        }
+      }
+    }
+
+    // Finish migration if started for this directory.
+    if (!tmp_migrated_dir.empty()) {
+      const FilePath new_dir = FilePath(home_dir_).Append(subdir_name);
+      if (!file_util::DirectoryExists(new_dir)) {
+        LOG(ERROR) << "Unable to locate created pass-through directory from "
+                   << new_dir.value() << ". Are we in a unit-test?";
+
+        // For the test sake (where we don't have real mount), just create it.
+        file_util::CreateDirectory(new_dir);
+      }
+      LOG(INFO) << "Moving migration directory " << tmp_migrated_dir.value()
+                << " to " << new_dir.value() << "...";
+      if (!file_util::Move(tmp_migrated_dir, new_dir)) {
+        LOG(ERROR) << "Unable to move.";
+        result = false;
+      }
+      file_util::Delete(tmp_migrated_dir, true);
     }
   }
 
