@@ -45,7 +45,7 @@ class AmbientLightSensor {
 
   // The backlight controller sends us power state events so we can
   // enable and disable polling.
-  void EnableOrDisableSensor(PowerState power, DimState dim);
+  void EnableOrDisableSensor(PowerState state);
 
  private:
   // Handler for a periodic event that reads the ambient light sensor.

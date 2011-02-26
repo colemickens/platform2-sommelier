@@ -17,12 +17,12 @@ typedef int gboolean;
 
 class AmbientLightSensor;
 
-enum DimState {
-  BACKLIGHT_ACTIVE, BACKLIGHT_DIM
-};
-
 enum PowerState {
-  BACKLIGHT_OFF, BACKLIGHT_ON
+  BACKLIGHT_ACTIVE_ON,
+  BACKLIGHT_DIM,
+  BACKLIGHT_IDLE_OFF,
+  BACKLIGHT_ACTIVE_OFF,
+  BACKLIGHT_SUSPENDED
 };
 
 enum PluggedState {
@@ -51,9 +51,6 @@ class BacklightController {
 
   // Decrease the brightness level of the backlight by one level.
   void DecreaseBrightness();
-
-  // Set the backlight to active or dim.
-  void SetDimState(DimState state);
 
   // Turn the backlight on or off
   void SetPowerState(PowerState state);
@@ -128,8 +125,9 @@ class BacklightController {
   // Pointer to currently in-use user brightness offset.
   int64* brightness_offset_;
 
-  // Whether backlight is active or dimmed
-  DimState state_;
+  // Backlight power state, used to distinguish between various cases.
+  // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.
+  PowerState state_;
 
   // Whether the computer is plugged in.
   PluggedState plugged_state_;

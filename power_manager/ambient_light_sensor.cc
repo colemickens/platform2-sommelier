@@ -51,8 +51,8 @@ bool AmbientLightSensor::Init() {
   return true;
 }
 
-void AmbientLightSensor::EnableOrDisableSensor(PowerState power, DimState dim) {
-  if (power == BACKLIGHT_OFF || dim == BACKLIGHT_DIM) {
+void AmbientLightSensor::EnableOrDisableSensor(PowerState state) {
+  if (state != BACKLIGHT_ACTIVE_ON) {
     LOG(INFO) << "Disabling light sensor poll";
     disable_polling_ = true;
     return;

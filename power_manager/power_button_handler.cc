@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -144,7 +144,7 @@ gboolean PowerButtonHandler::OnRealShutdownTimeout() {
   // animation.  Using DPMS for this is pretty ugly, though -- the backlight
   // turns back on when X exits or if the user moves the mouse or hits a key.
   // We just dim it instead for now.
-  daemon_->backlight_controller()->SetDimState(BACKLIGHT_DIM);
+  daemon_->backlight_controller()->SetPowerState(BACKLIGHT_DIM);
   daemon_->OnRequestShutdown(false);  // notify_window_manager=false
   return FALSE;
 }

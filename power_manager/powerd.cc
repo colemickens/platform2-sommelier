@@ -331,21 +331,24 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
+    // Note: currently this state doesn't do anything.  But it can be possibly
+    // useful in future development.  For example, if we want to implement fade
+    // from suspend, we would want to have this state to make sure the backlight
+    // is set to zero when suspended.
+    ctl_->SetPowerState(BACKLIGHT_SUSPENDED);
     idle_state_ = kIdleSuspend;
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
     LOG(INFO) << "state = kIdleScreenOff";
-    ctl_->SetPowerState(BACKLIGHT_OFF);
+    ctl_->SetPowerState(BACKLIGHT_IDLE_OFF);
     idle_state_ = kIdleScreenOff;
   } else if (idle_time_ms >= dim_ms_) {
     LOG(INFO) << "state = kIdleDim";
-    ctl_->SetDimState(BACKLIGHT_DIM);
-    ctl_->SetPowerState(BACKLIGHT_ON);
+    ctl_->SetPowerState(BACKLIGHT_DIM);
     idle_state_ = kIdleDim;
   } else {
     LOG(INFO) << "state = kIdleNormal";
-    ctl_->SetDimState(BACKLIGHT_ACTIVE);
-    ctl_->SetPowerState(BACKLIGHT_ON);
+    ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
     if (idle_state_ == kIdleSuspend) {
       util::CreateStatusFile(FilePath(run_dir_).Append(util::kUserActiveFile));
       suspender_.CancelSuspend();
@@ -372,7 +375,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
   Daemon* daemon = static_cast<Daemon*>(data);
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   bool changed_brightness = false;
-  if (xevent->type == KeyPress) {
+  if (xevent->type == KeyPress && daemon->idle_state_ == kIdleNormal) {
     int keycode = xevent->xkey.keycode;
     if (keycode == daemon->key_brightness_up_ ||
                keycode == daemon->key_f7_) {
@@ -667,6 +670,7 @@ void Daemon::SendBrightnessChangedSignal(int level) {
 
 void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
+  ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
 }
 
 }  // namespace power_manager
