@@ -59,30 +59,12 @@ class Mount : public EntropySource {
 
   struct MountArgs {
     bool create_if_missing;
-    bool replace_tracked_subdirectories;
-    std::vector<std::string> tracked_subdirectories;
 
-    MountArgs()
-        : create_if_missing(false),
-          replace_tracked_subdirectories(false) {
-    }
-
-    void AssignSubdirsNullTerminatedList(const char** tracked_subdirectories) {
-      while (*tracked_subdirectories != NULL) {
-        this->tracked_subdirectories.push_back(*tracked_subdirectories);
-        tracked_subdirectories++;
-      }
+    MountArgs() : create_if_missing(false) {
     }
 
     void CopyFrom(const MountArgs& rhs) {
       this->create_if_missing = rhs.create_if_missing;
-      this->replace_tracked_subdirectories = rhs.replace_tracked_subdirectories;
-      for (std::vector<std::string>::const_iterator itr =
-           rhs.tracked_subdirectories.begin();
-           itr != rhs.tracked_subdirectories.end();
-           itr++) {
-        this->tracked_subdirectories.push_back(*itr);
-      }
     }
   };
 
@@ -158,14 +140,6 @@ class Mount : public EntropySource {
   //            no need in migration
   virtual bool CreateTrackedSubdirectories(const Credentials& credentials,
                                            bool is_new) const;
-
-  // Replaces the tracked subdirectories, returning true if a substition was
-  // made, or false if the set was the same
-  //
-  // Parameters
-  virtual bool ReplaceTrackedSubdirectories(
-      const std::vector<std::string>& tracked_subdirectories,
-      SerializedVaultKeyset* serialized) const;
 
   // Cleans (removes) content from unmounted tracked subdirectories
   virtual void CleanUnmountedTrackedSubdirectories() const;

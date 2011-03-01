@@ -28,29 +28,28 @@ using ::testing::NiceMock;
 //   const char* password;
 //   bool create;
 //   bool use_old_format;
-//   const char* tracked_dirs[2];
 // };
 
 const TestUserInfo kDefaultUsers[] = {
-  {"testuser0@invalid.domain", "zero", true, false, {NULL}},
-  {"testuser1@invalid.domain", "one", true, false, {NULL}},
-  {"testuser2@invalid.domain", "two", true, false, {NULL}},
-  {"testuser3@invalid.domain", "three", true, false, {NULL}},
-  {"testuser4@invalid.domain", "four", true, false, {NULL}},
-  {"testuser5@invalid.domain", "five", false, false, {NULL}},
-  {"testuser6@invalid.domain", "six", true, false, {NULL}},
-  {"testuser7@invalid.domain", "seven", true, true, {NULL}},
-  {"testuser8@invalid.domain", "eight", true, false, {NULL}},
-  {"testuser9@invalid.domain", "nine", true, false, {"DIR0", NULL}},
-  {"testuser10@invalid.domain", "ten", true, false, {"DIR0", NULL}},
-  {"testuser11@invalid.domain", "eleven", true, false, {"DIR0", NULL}},
-  {"testuser12@invalid.domain", "twelve", false, false, {"DIR0", NULL}},
+  {"testuser0@invalid.domain", "zero", true, false},
+  {"testuser1@invalid.domain", "one", true, false},
+  {"testuser2@invalid.domain", "two", true, false},
+  {"testuser3@invalid.domain", "three", true, false},
+  {"testuser4@invalid.domain", "four", true, false},
+  {"testuser5@invalid.domain", "five", false, false},
+  {"testuser6@invalid.domain", "six", true, false},
+  {"testuser7@invalid.domain", "seven", true, true},
+  {"testuser8@invalid.domain", "eight", true, false},
+  {"testuser9@invalid.domain", "nine", true, false},
+  {"testuser10@invalid.domain", "ten", true, false},
+  {"testuser11@invalid.domain", "eleven", true, false},
+  {"testuser12@invalid.domain", "twelve", false, false},
 };
 const size_t kDefaultUserCount =
     sizeof(kDefaultUsers) / sizeof(kDefaultUsers[0]);
 
 const TestUserInfo kAlternateUsers[] = {
-  {"altuser0@invalid.domain", "zero", true, false, {"DIR0", NULL}},
+  {"altuser0@invalid.domain", "zero", true, false},
   {"altuser1@invalid.domain", "odin", true, false},
 };
 const size_t kAlternateUserCount =
@@ -102,10 +101,6 @@ void MakeTests::InitTestData(const std::string& image_dir,
       UsernamePasskey up(test_users[i].username, passkey);
       bool created;
       Mount::MountArgs mount_args;
-      if (test_users[i].tracked_dirs[0] != NULL) {
-        mount_args.AssignSubdirsNullTerminatedList(
-            const_cast<const char**>(test_users[i].tracked_dirs));
-      }
       mount.EnsureCryptohome(up, mount_args, &created);
 
       if (test_users[i].use_old_format) {

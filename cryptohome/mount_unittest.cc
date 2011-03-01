@@ -346,73 +346,6 @@ TEST_F(MountTest, SystemSaltTest) {
                          system_salt.size()));
 }
 
-TEST_F(MountTest, ChangeTrackedDirs) {
-  // create a Mount instance that points to a good shadow root, test that it
-  // will re-save the vault keyset on tracked dirs change
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-
-  // Test user at index 9 has a tracked dir "DIR0"
-  cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[9].password,
-                                        system_salt_, &passkey);
-  UsernamePasskey up(kDefaultUsers[9].username, passkey);
-
-  EXPECT_TRUE(mount.Init());
-
-  // Make sure the keyset has only one tracked directory, "DIR0"
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  Mount::MountError error;
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
-                                       &error));
-
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-  ASSERT_EQ(0, serialized.tracked_subdirectories(0).compare("DIR0"));
-
-  // Make sure the tracked dirs change.  serialized starts with DIR0
-  std::vector<std::string> new_dirs;
-  new_dirs.push_back("DIR0");
-  ASSERT_FALSE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has "DIR0"
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-
-  new_dirs.clear();
-  new_dirs.push_back("DIR1");
-  ASSERT_TRUE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has "DIR1"
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-
-  new_dirs.clear();
-  new_dirs.push_back("DIR1");
-  new_dirs.push_back("DIR0");
-  ASSERT_TRUE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has "DIR1", "DIR0"
-  ASSERT_EQ(2, serialized.tracked_subdirectories_size());
-
-  new_dirs.clear();
-  new_dirs.push_back("DIR0");
-  new_dirs.push_back("DIR1");
-  ASSERT_FALSE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has "DIR1", "DIR0"
-  ASSERT_EQ(2, serialized.tracked_subdirectories_size());
-
-  new_dirs.clear();
-  new_dirs.push_back("DIR0");
-  ASSERT_TRUE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has "DIR0"
-  ASSERT_EQ(1, serialized.tracked_subdirectories_size());
-
-  new_dirs.clear();
-  ASSERT_TRUE(mount.ReplaceTrackedSubdirectories(new_dirs, &serialized));
-  // serialized now has nothing
-  ASSERT_EQ(0, serialized.tracked_subdirectories_size());
-}
-
 TEST_F(MountTest, MountCryptohome) {
   // checks that cryptohome tries to mount successfully, and tests that the
   // tracked directories are created/replaced as expected
@@ -673,6 +606,12 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   FilePath vault_path = user_path.Append("vault");
   ASSERT_TRUE(file_util::PathExists(vault_path.Append(kCacheDir)));
   ASSERT_TRUE(file_util::PathExists(vault_path.Append(kDownloadsDir)));
+
+  // Check that vault path does not contain user data unencrypted.
+  // Note, that if we had real mount, we would see encrypted file names there;
+  // but with our mock mount, we must see empty directories.
+  EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path.Append(kCacheDir)));
+  EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path.Append(kDownloadsDir)));
 
   // Check that Cache is clear (because it does not need migration) so
   // it should not appear in a home dir.

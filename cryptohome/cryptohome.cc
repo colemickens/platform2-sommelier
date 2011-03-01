@@ -72,7 +72,6 @@ namespace switches {
   static const char kForceSwitch[] = "force";
   static const char kAsyncSwitch[] = "async";
   static const char kCreateSwitch[] = "create";
-  static const char kTrackedDirsSwitch[] = "tracked_dirs";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
@@ -292,22 +291,6 @@ int main(int argc, char **argv) {
                 StringPrintf("Enter the password for <%s>", user.c_str()),
                 &password);
 
-    const char** tracked_subdirectories = NULL;
-    // Defined outside to keep the values in-scope for use in the functions
-    // below
-    std::vector<std::string> tracked_dirs;
-    if (cl->HasSwitch(switches::kTrackedDirsSwitch)) {
-      SplitString(cl->GetSwitchValueASCII(switches::kTrackedDirsSwitch), ',',
-                  &tracked_dirs);
-      tracked_subdirectories = new const char*[tracked_dirs.size() + 1];
-      int i = 0;
-      for (std::vector<std::string>::const_iterator itr = tracked_dirs.begin();
-           itr != tracked_dirs.end(); itr++, i++) {
-        tracked_subdirectories[i] = itr->c_str();
-      }
-      tracked_subdirectories[i] = NULL;
-    }
-
     gboolean done = false;
     gint mount_error = 0;
     chromeos::glib::ScopedError error;
@@ -317,8 +300,8 @@ int main(int argc, char **argv) {
                user.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
-               (tracked_subdirectories != NULL),
-               tracked_subdirectories,
+               false,
+               NULL,
                &mount_error,
                &done,
                &chromeos::Resetter(&error).lvalue())) {
@@ -333,8 +316,8 @@ int main(int argc, char **argv) {
                user.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
-               (tracked_subdirectories != NULL),
-               tracked_subdirectories,
+               false,
+               NULL,
                &async_id,
                &chromeos::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s.\n", error->message);
@@ -342,9 +325,6 @@ int main(int argc, char **argv) {
         client_loop.Run(async_id);
         done = client_loop.get_return_status();
       }
-    }
-    if (tracked_subdirectories) {
-      delete(tracked_subdirectories);
     }
     if (!done) {
       printf("Mount failed.\n");
@@ -599,13 +579,6 @@ int main(int argc, char **argv) {
     if (serialized.has_password_rounds()) {
       printf("  Password rounds:\n");
       printf("    %d\n", serialized.password_rounds());
-    }
-    if (serialized.tracked_subdirectories_size()) {
-      printf("  Tracked subdirectories:\n");
-      for (int index = 0; index < serialized.tracked_subdirectories_size();
-           index++) {
-        printf("    %s\n", serialized.tracked_subdirectories(index).c_str());
-      }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {

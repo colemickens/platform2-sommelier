@@ -47,8 +47,8 @@
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
       <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="replace_tracked_subdirectories" direction="in" />
-      <arg type="as" name="tracked_subdirectories" direction="in" />
+      <arg type="b" name="deprecated_replace_tracked_subdirectories" direction="in" />
+      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
       <arg type="i" name="error" direction="out" />
       <arg type="b" name="done" direction="out" />
     </method>
@@ -56,8 +56,8 @@
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
       <arg type="b" name="create_if_missing" direction="in" />
-      <arg type="b" name="replace_tracked_subdirectories" direction="in" />
-      <arg type="as" name="tracked_subdirectories" direction="in" />
+      <arg type="b" name="deprecated_replace_tracked_subdirectories" direction="in" />
+      <arg type="as" name="deprecated_tracked_subdirectories" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="MountGuest">

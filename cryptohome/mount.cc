@@ -235,15 +235,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // TODO(glotov): the following code is deprecated. Remove it.
-  if (mount_args.replace_tracked_subdirectories) {
-    if (ReplaceTrackedSubdirectories(mount_args.tracked_subdirectories,
-                                     &serialized)) {
-      // If the tracked subdirectories changed, re-save the vault keyset
-      StoreVaultKeyset(credentials, serialized);
-    }
-  }
-
   crypto_->ClearKeyset();
 
   // Add the decrypted key to the keyring so that ecryptfs can use it
@@ -364,11 +355,10 @@ bool Mount::CreateCryptohome(const Credentials& credentials,
   FilePath user_dir(GetUserDirectory(credentials));
   file_util::CreateDirectory(user_dir);
 
-  // Generat a new master key
+  // Generate a new master key
   VaultKeyset vault_keyset;
   vault_keyset.CreateRandom(*this);
   SerializedVaultKeyset serialized;
-  ReplaceTrackedSubdirectories(mount_args.tracked_subdirectories, &serialized);
   if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
     platform_->SetMask(original_mask);
     return false;
@@ -486,38 +476,6 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // Restore the umask
   platform_->SetMask(original_mask);
   return result;
-}
-
-bool Mount::ReplaceTrackedSubdirectories(
-      const std::vector<std::string>& tracked_subdirectories,
-      SerializedVaultKeyset* serialized) const {
-  std::set<std::string> existing;
-  for (int index = 0; index < serialized->tracked_subdirectories_size();
-       ++index) {
-    existing.insert(serialized->tracked_subdirectories(index));
-  }
-  bool new_exists = false;
-  for (std::vector<std::string>::const_iterator itr =
-       tracked_subdirectories.begin();
-       itr != tracked_subdirectories.end();
-       ++itr) {
-    if (!existing.erase(*itr)) {
-      new_exists = true;
-    }
-  }
-  // If there are any subdirectories that were in one set but not the other,
-  // then we need to replace
-  if (existing.size() || new_exists) {
-    serialized->clear_tracked_subdirectories();
-    for (std::vector<std::string>::const_iterator itr =
-         tracked_subdirectories.begin();
-         itr != tracked_subdirectories.end();
-         ++itr) {
-      serialized->add_tracked_subdirectories(*itr);
-    }
-    return true;
-  }
-  return false;
 }
 
 void Mount::CleanUnmountedTrackedSubdirectories() const {

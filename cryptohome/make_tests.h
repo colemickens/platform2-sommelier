@@ -18,7 +18,6 @@ struct TestUserInfo {
   const char* password;
   bool create;
   bool use_old_format;
-  const char* tracked_dirs[2];
 };
 
 extern const TestUserInfo kDefaultUsers[];

@@ -333,8 +333,8 @@ gboolean Service::IsMounted(gboolean *OUT_is_mounted, GError **error) {
 gboolean Service::Mount(gchar *userid,
                         gchar *key,
                         gboolean create_if_missing,
-                        gboolean replace_tracked_subdirectories,
-                        gchar** tracked_subdirectories,
+                        gboolean deprecated_replace_tracked_subdirectories,
+                        gchar** deprecated_tracked_subdirectories,
                         gint *OUT_error_code,
                         gboolean *OUT_result,
                         GError **error) {
@@ -360,11 +360,6 @@ gboolean Service::Mount(gchar *userid,
   base::WaitableEvent event(true, false);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
-  mount_args.replace_tracked_subdirectories = replace_tracked_subdirectories;
-  if (tracked_subdirectories) {
-    mount_args.AssignSubdirsNullTerminatedList(
-        const_cast<const char**>(tracked_subdirectories));
-  }
   MountTaskMount* mount_task = new MountTaskMount(NULL,
                                                   mount_,
                                                   credentials,
@@ -381,8 +376,8 @@ gboolean Service::Mount(gchar *userid,
 gboolean Service::AsyncMount(gchar *userid,
                              gchar *key,
                              gboolean create_if_missing,
-                             gboolean replace_tracked_subdirectories,
-                             gchar** tracked_subdirectories,
+                             gboolean deprecated_replace_tracked_subdirectories,
+                             gchar** deprecated_tracked_subdirectories,
                              gint *OUT_async_id,
                              GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
@@ -412,11 +407,6 @@ gboolean Service::AsyncMount(gchar *userid,
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
-  mount_args.replace_tracked_subdirectories = replace_tracked_subdirectories;
-  if (tracked_subdirectories) {
-    mount_args.AssignSubdirsNullTerminatedList(
-        const_cast<const char**>(tracked_subdirectories));
-  }
   MountTaskMount* mount_task = new MountTaskMount(this,
                                                   mount_,
                                                   credentials,
