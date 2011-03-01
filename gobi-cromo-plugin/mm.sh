@@ -23,8 +23,8 @@ MTYPE_GSM=1
 MTYPE_CDMA=2
 
 dbus () {
-	obj=$1
-	method=$2
+	local obj=$1
+	local method=$2
 	shift 2
 
 	dbus-send --system --print-reply --fixed \
@@ -36,7 +36,7 @@ modems () {
 }
 
 modemprops () {
-	modem=$1
+	local modem=$1
 	for i in $IMODEMS; do
 		dbus $modem $IDBUS_PROPERTIES.GetAll string:$i 2>/dev/null \
 			| awk '/[^[:space:]] [^[:space:]]/ {print $N}'
@@ -44,7 +44,15 @@ modemprops () {
 }
 
 modemprop () {
-	modem=$1
-	prop=$2
+	local modem=$1
+	local prop=$2
 	modemprops $modem | grep /$prop | awk '{print $2}'
+}
+
+modem_activation_state () {
+        local modem=$1
+        if [ -n $modem ] ; then
+                dbus $modem $IMODEM_SIMPLE.GetStatus |\
+                      awk '/\/activation_state/ {print $2}'
+        fi
 }
