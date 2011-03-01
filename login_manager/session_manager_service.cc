@@ -502,8 +502,10 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
                     signals_[kSignalSessionStateChanged],
                     0, "started", current_user_.c_str());
     }
-    if (key_->HaveCheckedDisk() && !key_->IsPopulated())
+    if (key_->HaveCheckedDisk() && !key_->IsPopulated() &&
+        current_user_ != kIncognitoUser) {
       StartKeyGeneration();
+    }
   }
 
   return *OUT_done;
