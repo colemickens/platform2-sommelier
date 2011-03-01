@@ -28,6 +28,17 @@ const char *ExtractString(const DBusPropertyMap properties,
                           const char *not_found_response,
                           DBus::Error &error);
 
+// Extracts the key from proprties, returning not_found_response if
+// the key is not found.  If key is found, but is not a Uint32, sets
+// error and returns not_found_response.  If error.is_set() is true,
+// ExtractUint32 will not report further errors.  You can make
+// multiple ExtractUint32 calls and check error at the end.
+uint32_t ExtractUint32(const DBusPropertyMap properties,
+                       const char *key,
+                       uint32_t not_found_response,
+                       DBus::Error &error);
+
+
 // Convert a string representing a hex ESN to one representing a
 // decimal ESN.  Returns success.
 bool HexEsnToDecimal(const std::string &esn_hex, std::string *out);

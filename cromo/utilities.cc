@@ -36,6 +36,29 @@ const char *ExtractString(const DBusPropertyMap properties,
   return to_return;
 }
 
+uint32_t ExtractUint32(const DBusPropertyMap properties,
+                       const char *key,
+                       uint32_t not_found_response,
+                       DBus::Error &error) {
+  DBusPropertyMap::const_iterator p;
+  unsigned int to_return = not_found_response;
+  try {
+    p = properties.find(key);
+    if (p != properties.end()) {
+      to_return = p->second.reader().get_uint32();
+    }
+  } catch (const DBus::Error &e) {
+    LOG(ERROR)<<"Bad type for: " << key;
+    // Setting an already-set error causes an assert fail inside dbus-c++.
+    if (!error.is_set()) {
+    // NB: the copy constructor for DBus::Error causes a template to
+    // be instantiated that kills our -Werror build
+      error.set(e.name(), e.message());
+    }
+  }
+  return to_return;
+}
+
 bool HexEsnToDecimal(const std::string &esn_hex, std::string *out) {
   size_t length = esn_hex.length();
   if (length > 8) {
