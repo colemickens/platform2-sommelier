@@ -38,7 +38,7 @@ PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 TEST_SRCS = $(TESTS:=.cc)
 ALL_SRCS = $(PLUGIN_SRCS)
 
-TARGETS = $(GOBI_PLUGIN) gobi-modem-reset
+TARGETS = $(GOBI_PLUGIN)
 INSTALL_TARGETS = install-production
 
 ifdef INSTALL_TESTS
@@ -59,8 +59,6 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 # As few dependencies as possible
 gobi_handle_test : LDLIBS=-lQCWWAN2k -lpthread -lrt
 
-gobi-modem-reset : gobi-modem-reset.c
-
 gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.o
 
 gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
@@ -77,9 +75,6 @@ install-production:
 	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
 	install -D mm.sh $(DESTDIR)/usr/lib/mm.sh
 	install -D modem $(DESTDIR)/usr/bin/modem
-	# 04750 = setuid, rwxr-x---.
-	install -m4750 --group=cromo -D gobi-modem-reset \
-	  $(DESTDIR)/usr/bin/gobi-modem-reset
 
 install-tests:
 	install -d $(DESTDIR)/usr/bin

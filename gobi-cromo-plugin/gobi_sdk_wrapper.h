@@ -312,6 +312,9 @@ class Sdk {
 
   virtual void Init();
 
+  // Future calls to the sdk will return this error
+  virtual void InjectFaultSdkError(int error);
+
   virtual ULONG QCWWANEnumerateDevices(
       BYTE *                     pDevicesSize,
       BYTE *                     pDevices);
@@ -917,7 +920,6 @@ class Sdk {
   virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
 
  protected:
-
   // Make a temporary copy of a char *, preserving the NULL-ness of the
   // input.
   struct TemporaryCopier {
@@ -970,6 +972,9 @@ class Sdk {
 
   SdkErrorSink sdk_error_sink_;
   std::string current_modem_path_;
+
+  // Always return this error if != 0
+  int fault_inject_sdk_error_;
 
   friend class CallWrapper;
   FRIEND_TEST(GobiSdkTest, BaseClosesAllDeathTest);

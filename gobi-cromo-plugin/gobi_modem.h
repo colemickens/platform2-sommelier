@@ -160,6 +160,10 @@ class GobiModem
   virtual void SetAutomaticTracking(const bool& service_enable,
                                     const bool& port_enable,
                                     DBus::Error& error);
+  virtual void InjectFault(const std::string& name,
+                           const int32_t &value,
+                           DBus::Error& error);
+
 
  protected:
   struct SerialNumbers {
@@ -362,8 +366,9 @@ class GobiModem
   void RegisterStartSuspend(const std::string& name);
 
   // Resets the device by kicking it off the USB and allowing it back
-  // on.  Reason is a QCWWAN error code for logging/metrics
-  void ResetDevice(ULONG reason);
+  // on.  Reason is a QCWWAN error code for logging/metrics, or 0 for
+  // 'externally initiated'
+  void ExitAndResetDevice(ULONG reason);
   // Helper that compresses reason to a small int and mails to UMA
   void RecordResetReason(ULONG reason);
 

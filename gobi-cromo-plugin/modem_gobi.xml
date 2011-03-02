@@ -63,6 +63,22 @@
       </arg>
     </method>
 
+    <method name="InjectFault">
+      <tp:docstring>
+        Tells the modem to power cycle itself.
+      </tp:docstring>
+      <arg name="type" type="s" direction="in">
+        <tp:docstring>
+          Type of fault to introduce, currently only QmiRequestError.
+        </tp:docstring>
+      </arg>
+      <arg name="value" type="i" direction="in">
+        <tp:docstring>
+          Argument to that fault 
+        </tp:docstring>
+      </arg>
+    </method>
+
     <signal name="DormancyStatus">
       <tp:docstring>
         Indicates that the dormancy status of the modem changed.

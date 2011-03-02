@@ -209,6 +209,11 @@ struct CallWrapper {
   }
 
   ULONG CheckReturn(ULONG rc) {
+    if (sdk_->fault_inject_sdk_error_ != 0) {
+      LOG(ERROR) << "Injecting error " << sdk_->fault_inject_sdk_error_;
+      rc = sdk_->fault_inject_sdk_error_;
+    }
+
     if (rc == kErrorSendingQmiRequest ||
         rc == kErrorReceivingQmiRequest ||
         rc == kErrorNeedsReset) {
@@ -222,8 +227,6 @@ struct CallWrapper {
         sdk_->sdk_error_sink_(sdk_->current_modem_path_,
                               function_name_,
                               rc);
-      } else {
-        LOG(ERROR) << "Did not notify on function " << function_name_;
       }
     }
     return rc;
@@ -245,6 +248,12 @@ void Sdk::Init() {
       service_index_upper_bound_,
       static_cast<const char *>(NULL));
   pthread_mutex_init(&service_to_function_mutex_, NULL);
+  fault_inject_sdk_error_ = 0;
+}
+
+void Sdk::InjectFaultSdkError(int error) {
+  LOG(WARNING) << "Injecting sdk  error" << error;
+  fault_inject_sdk_error_ = error;
 }
 
 void Sdk::InitGetServiceFromName(const char *services[]) {

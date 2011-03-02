@@ -46,12 +46,15 @@ static void timeout_callback(void* data) {
 
 GobiModemHandler::GobiModemHandler(CromoServer& server)
     : ModemHandler(server, "Gobi"),
+      clear_device_list_on_destroy_(true),
       device_watcher_(NULL),
       scan_generation_(0) {
 }
 
 GobiModemHandler::~GobiModemHandler() {
-  ClearDeviceListFile();
+  if (clear_device_list_on_destroy_) {
+    ClearDeviceListFile();
+  }
   delete device_watcher_;
 }
 
@@ -235,8 +238,7 @@ vector<DBus::Path> GobiModemHandler::EnumerateDevices(DBus::Error& error) {
   return to_return;
 }
 
-GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
-{
+GobiModem* GobiModemHandler::LookupByPath(const std::string& path) {
   for (KeyToModem::iterator p = key_to_modem_.begin();
        p != key_to_modem_.end(); ++p) {
     GobiModem* m = p->second;
@@ -246,8 +248,7 @@ GobiModem* GobiModemHandler::LookupByPath(const std::string& path)
   return NULL;
 }
 
-void GobiModemHandler::Remove(GobiModem* modem)
-{
+void GobiModemHandler::Remove(GobiModem* modem) {
   for (KeyToModem::iterator p = key_to_modem_.begin();
        p != key_to_modem_.end(); ++p) {
     GobiModem* m = p->second;
@@ -255,6 +256,12 @@ void GobiModemHandler::Remove(GobiModem* modem)
       RemoveDeviceByIterator(p);
     }
   }
+}
+
+void GobiModemHandler::ExitLeavingModemsForCleanup() {
+  clear_device_list_on_destroy_ = false;
+  LOG(ERROR) << "Exiting without clearing device list.";
+  exit(1);
 }
 
 static void onload(CromoServer* server) {

@@ -172,7 +172,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
       signal_available_(false),
       suspending_(false),
       exiting_(false),
-      device_resetting_(false),
       connect_start_time_(0),
       disconnect_start_time_(0),
       registration_start_time_(0) {
@@ -641,12 +640,6 @@ bool GobiModem::CanMakeMethodCalls(void) {
   return rc == 0;
 }
 
-void AbortCannotConnectToDevice() {
-  // In its own function so that it's clear what's going on from a
-  // symbolized crash dump
-  abort();
-}
-
 void GobiModem::ApiConnect(DBus::Error& error) {
   // It is safe to test for NULL outside of a lock because ApiConnect
   // is only called by the main thread, and only the main thread can
@@ -658,32 +651,22 @@ void GobiModem::ApiConnect(DBus::Error& error) {
               "Only one modem can be connected via Api");
     return;
   }
-  ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
-  if (rc != 0 || !CanMakeMethodCalls()) {
-    LOG(ERROR) << "QCWWANConnect() failed: " << rc;
-    // Reset and try again.
-    ResetDevice(rc);
-    rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
-    if (rc != 0 || !CanMakeMethodCalls()) {
-      LOG(ERROR) << "QCWWANConnect() failed again: " << rc << ".  Aborting.";
-      // Totally stuck.  We abort, which causes a crash dump and tells
-      // our init script (in src/platform/init/cromo.conf, package
-      // chromeos-init) to reset the device and restart us.
-      AbortCannotConnectToDevice();
-    }
-  }
 
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
+
+  ULONG rc = sdk_->QCWWANConnect(device_.deviceNode, device_.deviceKey);
+  if (rc != 0 || !CanMakeMethodCalls()) {
+    LOG(ERROR) << "QCWWANConnect() failed.  Exiting so modem can reset." << rc;
+    ExitAndResetDevice(rc);
+  }
   RegisterCallbacks();
 }
 
 
 ULONG GobiModem::ApiDisconnect(void) {
-
-  ULONG rc = 0;
-
+  ULONG rc;
   pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
     LOG(INFO) << "Disconnecting from QCWWAN.  this_=0x" << this;
@@ -1002,13 +985,23 @@ void GobiModem::SetAutomaticTracking(const bool& service_enable,
           "enabled" : "disabled");
 }
 
+void GobiModem::InjectFault(const std::string& name,
+                            const int32_t &value,
+                            DBus::Error& error) {
+  if (name == "SdkError") {
+    sdk_->InjectFaultSdkError(value);
+  } else {
+    error.set(kInvalidArgumentError, "Unknown fault requested.");
+  }
+}
+
+
 void GobiModem::SinkSdkError(const std::string& modem_path,
                              const std::string& sdk_function,
                              ULONG error) {
   LOG(ERROR) << sdk_function << ": unrecoverable error " << error
              << " on modem " << modem_path;
-  PostCallbackRequest(GobiModem::SdkErrorHandler,
-                      new SdkErrorArgs(error));
+  PostCallbackRequest(GobiModem::SdkErrorHandler, new SdkErrorArgs(error));
 }
 
 // Callbacks:  Run in the context of the main thread
@@ -1016,7 +1009,7 @@ gboolean GobiModem::SdkErrorHandler(gpointer data) {
   SdkErrorArgs *args = static_cast<SdkErrorArgs *>(data);
   GobiModem* modem = handler_->LookupByPath(*args->path);
   if (modem != NULL) {
-    modem->ResetDevice(args->error);
+    modem->ExitAndResetDevice(args->error);
   } else {
     LOG(INFO) << "Reset received for obsolete path "
               << args->path;
@@ -1287,51 +1280,24 @@ void GobiModem::RecordResetReason(ULONG reason) {
       METRIC_BASE_NAME "ResetReason", bucket, kMaxError + 1);
 }
 
-void GobiModem::ResetDevice(ULONG reason) {
-  if (device_resetting_) {
-    LOG(ERROR) << "Already resetting " << static_cast<std::string>(path());
-    return;
-  }
+void GobiModem::ExitAndResetDevice(ULONG reason) {
+  ApiDisconnect();
   if (suspending_) {
     LOG(ERROR) << "Already suspending " << static_cast<std::string>(path());
     return;
   }
-  device_resetting_ = true;
   if (reason)
     RecordResetReason(reason);
-  const char *addr = GetUSBAddress().c_str();
-  LOG(ERROR) << "Resetting modem device: "
-             << static_cast<std::string>(path())
-             << " USB device: " << addr;
-  ApiDisconnect();
 
-  int pid = fork();
-  if (pid < 0) {
-    PLOG(ERROR) << "fork()";
-    return;
-  }
-  if (pid == 0) {
-    int rc = daemon(0, 0);
-    if (rc == 0) {
-      const char kReset[] = "/usr/bin/gobi-modem-reset";
-      execl(kReset,
-            kReset,
-            addr,
-            static_cast<char *>(NULL));
-      PLOG(ERROR) << "execl()";
-    } else {
-      PLOG(ERROR) << "daemon()";
-    }
-    _exit(rc);
-  } else {
-    int status;
-    waitpid(pid, &status, 0);
-    if (status != 0) {
-      LOG(ERROR) << "Child process failed: " << status;
-    }
-  }
+  handler_->ExitLeavingModemsForCleanup();
 }
 
+// DBus-exported
 void GobiModem::Reset(DBus::Error& error) {
-  ResetDevice(0);
+  // NB: If we have multiple modems, this is going to disconnect those
+  // other modems.  If this becomes a problem, previous versions of
+  // the code forked off a suid-root process to kick the device off
+  // the bus; that code is still in the git repo.
+
+  ExitAndResetDevice(0);
 }

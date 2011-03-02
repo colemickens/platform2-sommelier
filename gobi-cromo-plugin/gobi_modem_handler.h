@@ -33,6 +33,10 @@ class GobiModemHandler : public ModemHandler {
   GobiModem* LookupByPath(const std::string& path);
   void Remove(GobiModem *modem);
 
+  // Exit, but do not clean up list of modems; the upstart script will
+  // then clean up any modems we were servicing
+  void ExitLeavingModemsForCleanup();
+
  private:
   typedef std::map<std::string, GobiModem *> KeyToModem;
 
@@ -50,9 +54,10 @@ class GobiModemHandler : public ModemHandler {
 
   bool GetDeviceList();
   void MonitorDevices();
-  KeyToModem key_to_modem_;
-  DeviceWatcher *device_watcher_;
 
+  bool clear_device_list_on_destroy_;
+  DeviceWatcher *device_watcher_;
+  KeyToModem key_to_modem_;
   int scan_generation_;
 
   scoped_ptr<gobi::Sdk> sdk_;
