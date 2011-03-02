@@ -19,6 +19,7 @@
 #include <base/ref_counted.h>
 #include <base/scoped_ptr.h>
 #include <base/thread.h>
+#include <base/waitable_event.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -55,27 +56,6 @@ class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public chromeos::dbus::AbstractDbusService {
  public:
-  struct PersistKeyData {
-   public:
-    PersistKeyData(SystemUtils* utils, OwnerKey* key)
-        : signaler(utils),
-          to_persist(key) {
-    }
-    ~PersistKeyData() {}
-    SystemUtils* signaler;
-    OwnerKey* to_persist;
-  };
-
-  struct PersistStoreData {
-   public:
-    PersistStoreData(SystemUtils* utils, PrefStore* store)
-        : signaler(utils),
-          to_persist(store) {
-    }
-    ~PersistStoreData() {}
-    SystemUtils* signaler;
-    PrefStore* to_persist;
-  };
 
   SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
   virtual ~SessionManagerService();
@@ -470,6 +450,10 @@ class SessionManagerService
   // |store_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
   void PersistStore();
+
+  // |store_| is persisted to disk, and |event| is signaled when done.  This
+  // is used to provide synchronous, threadsafe persisting.
+  void PersistStoreSync(base::WaitableEvent* event);
 
   void StartKeyGeneration();
 

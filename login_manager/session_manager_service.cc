@@ -328,7 +328,12 @@ bool SessionManagerService::Shutdown() {
   }
 
   // Even if we haven't gotten around to processing a persist task.
-  store_->Persist();
+  base::WaitableEvent event(true, false);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE, NewRunnableMethod(this,
+                                   &SessionManagerService::PersistStoreSync,
+                                   &event));
+  event.Wait();
   io_thread_.Stop();
   message_loop_->PostTask(FROM_HERE, new MessageLoop::QuitTask());
   LOG(INFO) << "SessionManagerService quitting run loop";
@@ -907,6 +912,12 @@ void SessionManagerService::PersistWhitelist() {
       FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
                                    chromium::kWhitelistChangeCompleteSignal,
                                    what_happened));
+}
+
+void SessionManagerService::PersistStoreSync(base::WaitableEvent* event) {
+  store_->Persist();
+  LOG(INFO) << "Persisted Store to disk.";
+  event->Signal();
 }
 
 void SessionManagerService::PersistStore() {
