@@ -135,6 +135,18 @@ gboolean session_manager_retrieve_property(SessionManager *self,
                                            GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RetrieveProperty, name, OUT_value, OUT_signature);
 }
+gboolean session_manager_store_policy(SessionManager *self,
+                                      gchar *policy_blob,
+                                      GArray *signature,
+                                      GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(StorePolicy, policy_blob, signature);
+}
+gboolean session_manager_retrieve_policy(SessionManager *self,
+                                         gchar **OUT_policy_blob,
+                                         GArray **OUT_signature,
+                                         GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(RetrievePolicy, OUT_policy_blob, OUT_signature);
+}
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD0(LockScreen);

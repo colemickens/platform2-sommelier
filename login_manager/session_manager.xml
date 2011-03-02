@@ -61,6 +61,14 @@
       <arg type="s" name="value" direction="out" />
       <arg type="ay" name="signature" direction="out" />
     </method>
+    <method name="StorePolicy">
+      <arg type="s" name="policy_blob" direction="in" />
+      <arg type="ay" name="signature" direction="in" />
+    </method>
+    <method name="RetrievePolicy">
+      <arg type="s" name="policy_blob" direction="in" />
+      <arg type="ay" name="signature" direction="out" />
+    </method>
     <method name="RestartEntd">
     </method>
     <signal name="SessionStateChanged">

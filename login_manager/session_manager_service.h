@@ -290,6 +290,21 @@ class SessionManagerService
                             GArray** OUT_signature,
                             GError** error);
 
+  // Store |policy_blob, signature| to disk.
+  //
+  // |signature| is a SAH1 with RSA signature over |policy_blob|,
+  // verifiable with |key_|.
+  //
+  // Returns TRUE if the signature checks out and the data is inserted,
+  // FALSE otherwise.
+  gboolean StorePolicy(gchar* policy_blob, GArray* signature, GError** error);
+
+  // Get the policy_blob and associated signature off of disk.
+  // Returns TRUE if the data is can be fetched, FALSE otherwise.
+  gboolean RetrievePolicy(gchar** OUT_policy_blob,
+                          GArray** OUT_signature,
+                          GError** error);
+
   // Handles LockScreen request from PowerManager. It switches itself to
   // lock mode, and emit LockScreen signal to Chromium Browser.
   gboolean LockScreen(GError** error);

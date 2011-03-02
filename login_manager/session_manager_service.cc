@@ -728,6 +728,18 @@ gboolean SessionManagerService::RetrieveProperty(gchar* name,
   return TRUE;
 }
 
+gboolean SessionManagerService::StorePolicy(gchar* policy_blob,
+                                            GArray* signature,
+                                            GError** error) {
+  return FALSE;
+}
+
+gboolean SessionManagerService::RetrievePolicy(gchar** OUT_policy_blob,
+                                               GArray** OUT_signature,
+                                               GError** error) {
+  return FALSE;
+}
+
 gboolean SessionManagerService::LockScreen(GError** error) {
   screen_locked_ = TRUE;
   system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
