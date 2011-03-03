@@ -8,7 +8,9 @@ import sys
 SOURCES=['chromeos/dbus/abstract_dbus_service.cc',
          'chromeos/dbus/dbus.cc',
          'chromeos/dbus/service_constants.cc',
+	 'chromeos/process.cc',
          'chromeos/string.cc',
+	 'chromeos/syslog_logging.cc',
          'chromeos/utility.cc']
 
 env = Environment(
@@ -40,7 +42,7 @@ if ARGUMENTS.get('debug', 0):
 env_test = env.Clone()
 
 env_test.Append(
-    LIBS = ['gtest', 'chromeos', 'base', 'rt'],
+    LIBS = ['gtest', 'base', 'rt'],
     LIBPATH = ['.', '../third_party/chrome'],
   )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
@@ -48,12 +50,14 @@ for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   if value:
     env_test[key] = Split(value)
 
-unittest_sources =['chromeos/glib/object_unittest.cc']
+# Use libchromeos instead of passing in LIBS in order to always
+# get the version we just built, not what was previously installed.
+unittest_sources =['chromeos/glib/object_unittest.cc',
+                   'chromeos/process_test.cc',
+                   'libchromeos.a']
 unittest_main = ['testrunner.cc']
 unittest_cmd = env_test.Program('unittests',
                            unittest_sources + unittest_main)
 
 Clean(unittest_cmd, Glob('*.gcda') + Glob('*.gcno') + Glob('*.gcov') +
                     Split('html app.info'))
-
-
