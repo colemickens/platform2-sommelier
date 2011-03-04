@@ -10,6 +10,7 @@ LSPCI=/usr/sbin/lspci
 IW=/usr/sbin/iw
 ARP=/sbin/arp
 ARPING=/sbin/arping
+HTPDATE=/usr/sbin/htpdate
 
 # Cheesy option parsing until there's more than one option
 anonymize_macs=${ANONYMIZE_MACS-yes}
@@ -236,8 +237,8 @@ diag_date () {
   local host=$1
   fn_enter ${FUNCNAME} $*
   echo "Local time of day: $(date)"
-  date_error=$(htpdate -q ${host} 2>&1 >/dev/null)
-  offset=$(htpdate -q ${host} 2>&1 | awk -v 'FS=[. ]' '{print $2}')
+  date_error=$(${HTPDATE} -q ${host} 2>&1 >/dev/null)
+  offset=$(${HTPDATE} -q ${host} 2>&1 | awk -v 'FS=[. ]' '{print $2}')
   if [ -n "${date_error}" ]; then
     fail "Unable to get date via htpdate from ${host}: ${date_error}"
   elif [ "${offset}" = time ] ; then
