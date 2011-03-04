@@ -38,6 +38,10 @@ const char *kCryptohomeRemoveTrackedSubdirectories =
     "RemoveTrackedSubdirectories";
 const char *kCryptohomeAsyncRemoveTrackedSubdirectories =
     "AsyncRemoveTrackedSubdirectories";
+const char *kCryptohomeDoAutomaticFreeDiskSpaceControl =
+    "DoAutomaticFreeDiskSpaceControl";
+const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl =
+    "AsyncDoAutomaticFreeDiskSpaceControl";
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 const char *kSignalTpmInitStatus = "TpmInitStatus";

@@ -38,6 +38,8 @@ extern const char *kCryptohomeAsyncRemove;
 extern const char *kCryptohomeGetStatusString;
 extern const char *kCryptohomeRemoveTrackedSubdirectories;
 extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
+extern const char *kCryptohomeDoAutomaticFreeDiskSpaceControl;
+extern const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
 // Signals
 extern const char *kSignalAsyncCallStatus;
 extern const char *kSignalTpmInitStatus;
