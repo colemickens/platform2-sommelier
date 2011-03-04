@@ -478,7 +478,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
-void Mount::CleanUnmountedTrackedSubdirectories() const {
+void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const {
   FilePath shadow_root(shadow_root_);
   file_util::FileEnumerator dir_enumerator(shadow_root, false,
       file_util::FileEnumerator::DIRECTORIES);
@@ -507,23 +507,46 @@ void Mount::CleanUnmountedTrackedSubdirectories() const {
     if (platform_->IsDirectoryMountedWith(home_dir_, vault_path.value())) {
       continue;
     }
-    file_util::FileEnumerator subdir_enumerator(
-        vault_path,
-        false,
-        file_util::FileEnumerator::DIRECTORIES);
-    for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
-         subdir_path = subdir_enumerator.Next()) {
-      FilePath subdir_name = subdir_path.BaseName();
-      if (subdir_name.value().find(kEncryptedFilePrefix) == 0) {
-        continue;
-      }
-      if (subdir_name.value().compare(".") == 0 ||
-          subdir_name.value().compare("..") == 0) {
-        continue;
-      }
-      file_util::Delete(subdir_path, true);
-    }
+    callback(vault_path);
   }
+}
+
+// Deletes all tracking subdirectories of the given vault.
+static void DeleteTrackedDirsCallback(const FilePath& vault) {
+  file_util::FileEnumerator subdir_enumerator(
+      vault, false, file_util::FileEnumerator::DIRECTORIES);
+  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
+       subdir_path = subdir_enumerator.Next()) {
+    FilePath subdir_name = subdir_path.BaseName();
+    if (subdir_name.value().find(kEncryptedFilePrefix) == 0) {
+      continue;
+    }
+    if (subdir_name.value().compare(".") == 0 ||
+        subdir_name.value().compare("..") == 0) {
+      continue;
+    }
+    file_util::Delete(subdir_path, true);
+  }
+}
+
+void Mount::CleanUnmountedTrackedSubdirectories() const {
+  DoForEveryUnmountedCryptohome(&DeleteTrackedDirsCallback);
+}
+
+// Deletes Cache tracking directory of the given vault.
+static void DeleteCacheCallback(const FilePath& vault) {
+  LOG(WARNING) << "Deleting Cache for user " << vault.value();
+  file_util::Delete(vault.Append(kCacheDir), true);
+}
+
+void Mount::DoAutomaticFreeDiskSpaceControl() const {
+  if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
+    return;
+
+  // Clean Cache directories for every user (except current one).
+  DoForEveryUnmountedCryptohome(&DeleteCacheCallback);
+
+  // TODO(glotov): do further cleanup.
 }
 
 bool Mount::TestCredentials(const Credentials& credentials) const {

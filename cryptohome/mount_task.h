@@ -331,6 +331,21 @@ class MountTaskRemoveTrackedSubdirectories : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskRemoveTrackedSubdirectories);
 };
 
+// Implements asychronous removal of tracked subdirectories
+class MountTaskAutomaticFreeDiskSpace : public MountTask {
+ public:
+  MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
+                                       Mount* mount)
+      : MountTask(observer, mount, UsernamePasskey()) {
+  }
+  virtual ~MountTaskAutomaticFreeDiskSpace() { }
+
+  virtual void Run();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
+};
+
 }  // namespace cryptohome
 
 #endif // CRYPTOHOME_MOUNT_TASK_H_

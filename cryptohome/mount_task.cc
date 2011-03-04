@@ -120,4 +120,12 @@ void MountTaskRemoveTrackedSubdirectories::Run() {
   MountTask::Notify();
 }
 
+void MountTaskAutomaticFreeDiskSpace::Run() {
+  result()->set_return_status(true);
+  if (mount_) {
+    mount_->DoAutomaticFreeDiskSpaceControl();
+  }
+  MountTask::Notify();
+}
+
 }  // namespace cryptohome

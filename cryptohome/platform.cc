@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <sys/types.h>
 
 #include <base/file_util.h>
@@ -364,6 +365,14 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
   *user_id = user_info.pw_uid;
   *group_id = user_info.pw_gid;
   return true;
+}
+
+int64 Platform::AmountOfFreeDiskSpace(const string& path) {
+  struct statvfs stats;
+  if (statvfs(path.c_str(), &stats) != 0) {
+    return -1;
+  }
+  return static_cast<int64>(stats.f_bavail) * stats.f_frsize;
 }
 
 void Platform::ClearUserKeyring() {

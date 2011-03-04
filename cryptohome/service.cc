@@ -493,6 +493,29 @@ gboolean Service::AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
   return TRUE;
 }
 
+gboolean Service::DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
+                                                  GError **error) {
+  MountTaskResult result;
+  base::WaitableEvent event(true, false);
+  MountTaskAutomaticFreeDiskSpace* mount_task =
+      new MountTaskAutomaticFreeDiskSpace(this, mount_);
+  mount_task->set_result(&result);
+  mount_task->set_complete_event(&event);
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event.Wait();
+  *OUT_result = result.return_status();
+  return TRUE;
+}
+
+gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
+                                                       GError **error) {
+  MountTaskAutomaticFreeDiskSpace* mount_task =
+      new MountTaskAutomaticFreeDiskSpace(this, mount_);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  return TRUE;
+}
+
 gboolean Service::TpmIsReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = tpm_init_->IsTpmReady();
   return TRUE;

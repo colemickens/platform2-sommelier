@@ -100,6 +100,13 @@ gboolean cryptohome_remove_tracked_subdirectories(Cryptohome *self,
 gboolean cryptohome_async_remove_tracked_subdirectories(Cryptohome *self,
                                                         gint *OUT_async_id,
                                                         GError **error);
+gboolean cryptohome_do_automatic_free_disk_space_control(Cryptohome *self,
+                                                         gboolean *OUT_result,
+                                                         GError **error);
+gboolean cryptohome_async_do_automatic_free_disk_space_control(
+    Cryptohome *self,
+    gint *OUT_async_id,
+    GError **error);
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error);

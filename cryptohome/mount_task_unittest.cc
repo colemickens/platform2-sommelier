@@ -236,4 +236,14 @@ TEST_F(MountTaskTest, RemoveTrackedSubdirectories) {
   ASSERT_TRUE(event_.IsSignaled());
 }
 
+TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
+  ASSERT_FALSE(event_.IsSignaled());
+  MountTask* mount_task = new MountTaskAutomaticFreeDiskSpace(NULL, &mount_);
+  mount_task->set_complete_event(&event_);
+  mount_task->set_result(&result_);
+  runner_.message_loop()->PostTask(FROM_HERE, mount_task);
+  event_.TimedWait(wait_time_);
+  ASSERT_TRUE(event_.IsSignaled());
+}
+
 } // namespace cryptohome

@@ -154,6 +154,14 @@ class Platform {
   virtual bool GetUserId(const std::string& user, uid_t* user_id,
                          gid_t* group_id);
 
+  // Return the available disk space in bytes on the volume containing |path|,
+  // or -1 on failure.
+  // Code duplicated from Chrome's base::SysInfo::AmountOfFreeDiskSpace().
+  //
+  // Parameters
+  //   path - the pathname of any file within the mounted file system
+  virtual int64 AmountOfFreeDiskSpace(const std::string& path);
+
   // Clears the user keyring
   static void ClearUserKeyring();
 

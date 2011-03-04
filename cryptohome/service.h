@@ -126,6 +126,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                                GError **error);
   virtual gboolean AsyncRemoveTrackedSubdirectories(gint *OUT_async_id,
                                                     GError **error);
+  virtual gboolean DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
+                                                   GError **error);
+  virtual gboolean AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
+                                                        GError **error);
 
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);

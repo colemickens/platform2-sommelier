@@ -36,8 +36,8 @@ using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
+const char kHomeDir[] = "alt_test_home_dir";
 const char kAltImageDir[] = "alt_test_image_dir";
-const char kAltHomeDir[] = "alt_test_home_dir";
 
 class MountTest : public ::testing::Test {
  public:
@@ -544,12 +544,11 @@ TEST_F(MountTest, RemoveSubdirectories) {
 TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Checks that old cryptohomes (without pass-through tracked
   // directories) migrate when Mount()ed.
-  LoadSystemSalt(kAltImageDir);
+  LoadSystemSalt(kImageDir);
   Mount mount;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kAltImageDir);
-  mount.set_skel_source(kSkelDir);
+  mount.set_shadow_root(kImageDir);
   mount.set_use_tpm(false);
 
   NiceMock<MockPlatform> platform;
@@ -558,13 +557,13 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(mount.Init());
 
   cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[1].password,
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[8].password,
                                         system_salt_, &passkey);
-  UsernamePasskey up(kAlternateUsers[1].username, passkey);
+  UsernamePasskey up(kDefaultUsers[8].username, passkey);
 
   // As we don't have real mount in the test, immagine its output (home)
   // directory.
-  FilePath home_dir(kAltHomeDir);
+  FilePath home_dir(kHomeDir);
   file_util::CreateDirectory(home_dir);
   mount.set_home_dir(home_dir.value());
 
@@ -595,13 +594,11 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Now Mount().
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, Unmount(_, _, _))
-      .WillRepeatedly(Return(true));
   Mount::MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Check that vault path now have pass-through version of tracked dirs.
-  FilePath image_dir(kAltImageDir);
+  FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append("vault");
   ASSERT_TRUE(file_util::PathExists(vault_path.Append(kCacheDir)));
@@ -632,6 +629,85 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Check that we did not leave any litter.
   file_util::Delete(downloads_dir, true);
   EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
+}
+
+TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
+  // Checks that DoAutomaticFreeDiskSpaceControl() does the clean-up
+  // if free disk space is low.
+  LoadSystemSalt(kAltImageDir);
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kAltImageDir);
+  mount.set_use_tpm(false);
+
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
+
+  EXPECT_TRUE(mount.Init());
+
+  // For every user, prepare cryptohome contents.
+  const string contents = "some crypted contets";
+  FilePath image_dir(kAltImageDir);
+  FilePath vault_path[kAlternateUserCount];
+  FilePath cache_dir[kAlternateUserCount];
+  FilePath cache_subdir[kAlternateUserCount];
+  for (size_t user = 0; user < kAlternateUserCount; user ++) {
+    cryptohome::SecureBlob passkey;
+    cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[user].password,
+                                          system_salt_, &passkey);
+    UsernamePasskey up(kAlternateUsers[user].username, passkey);
+    vault_path[user] = image_dir
+        .Append(up.GetObfuscatedUsername(system_salt_))
+        .Append("vault");
+
+    // Let their Cache dirs be filled with some data.
+    cache_dir[user] = vault_path[user].Append(kCacheDir);
+    file_util::CreateDirectory(cache_dir[user]);
+    file_util::WriteFile(cache_dir[user].Append("cached_file"),
+                         contents.c_str(), contents.length());
+    cache_subdir[user] = cache_dir[user].Append("cache_subdir");
+    file_util::CreateDirectory(cache_subdir[user]);
+    file_util::WriteFile(cache_subdir[user].Append("cached_file"),
+                         contents.c_str(), contents.length());
+  }
+
+  // Firstly, pretend we have lots of free space.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillRepeatedly(Return(kMinFreeSpace + 1));
+
+  // DoAutomaticFreeDiskSpaceControl() must do nothing.
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  // Check that Cache is not changed.
+  for (size_t user = 0; user < kAlternateUserCount; user ++) {
+    string tested;
+    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
+    EXPECT_TRUE(file_util::ReadFileToString(
+        cache_dir[user].Append("cached_file"), &tested));
+    EXPECT_EQ(contents, tested);
+    EXPECT_TRUE(file_util::PathExists(cache_subdir[user]));
+    tested.clear();
+    EXPECT_TRUE(file_util::ReadFileToString(
+        cache_subdir[user].Append("cached_file"), &tested));
+    EXPECT_EQ(contents, tested);
+  }
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillRepeatedly(Return(kMinFreeSpace - 1));
+
+  // DoAutomaticFreeDiskSpaceControl() must do the clean-up..
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  // Cache must be empty (and may even be deleted).
+  for (size_t user = 0; user < kAlternateUserCount; user ++) {
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
+
+    // Check that we did not leave any litter.
+    file_util::Delete(cache_dir[user], true);
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path[user]));
+  }
 }
 
 } // namespace cryptohome

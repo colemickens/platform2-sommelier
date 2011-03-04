@@ -40,6 +40,9 @@ extern const std::string kIncognitoUser;
 extern const char* kCacheDir;
 extern const char* kDownloadsDir;
 
+// Minimum free disk space on stateful_partition not to begin the cleanup
+const int64 kMinFreeSpace = 500 * 1LL << 20;  // 500M bytes
+
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
@@ -143,6 +146,10 @@ class Mount : public EntropySource {
 
   // Cleans (removes) content from unmounted tracked subdirectories
   virtual void CleanUnmountedTrackedSubdirectories() const;
+
+  // Checks free disk space and if it falls below minimum
+  // (kMinFreeSpace), performs cleanup
+  virtual void DoAutomaticFreeDiskSpaceControl() const;
 
   // Tests if the given credentials would decrypt the user's cryptohome key
   //
@@ -372,6 +379,13 @@ class Mount : public EntropySource {
   std::string GetUserVaultPath(const Credentials& credentials) const;
 
  private:
+  // Invokes given callback for every unmounted cryptohome
+  //
+  // Parameters
+  //   callback - routine to invoke.
+  typedef void (*CryptohomeCallback)(const FilePath&);
+  void DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const;
+
   // Same as MountCryptohome but specifies if the cryptohome directory should be
   // recreated on a fatal error
   //
