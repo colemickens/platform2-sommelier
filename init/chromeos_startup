@@ -148,6 +148,7 @@ VAR_NEW="/mnt/stateful_partition/var_new"
 DEVELOPER_NEW="/mnt/stateful_partition/dev_image_new"
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
 if [ -f "$STATEFUL_UPDATE" ] ; then
+  STATEFUL_UPDATE_ARGS=$(cat "$STATEFUL_UPDATE")
   # Remove old state in case this process got interrupted by a reset, this is
   # usually a no-op.
   rm -rf /mnt/stateful_partition/dev_image_old \
@@ -158,10 +159,20 @@ if [ -f "$STATEFUL_UPDATE" ] ; then
   mv /mnt/stateful_partition/var /mnt/stateful_partition/var_old || true
   mv "$DEVELOPER_NEW" /mnt/stateful_partition/dev_image || true
   mv "$VAR_NEW" /mnt/stateful_partition/var || true
-  # Backgrounded to take off boot path.
-  rm -rf "$STATEFUL_UPDATE" \
-    /mnt/stateful_partition/dev_image_old \
-    /mnt/stateful_partition/var_old &
+  # Check for clobber.
+  if [ "$STATEFUL_UPDATE_ARGS" = "clobber" ]; then
+    # Removes all dirs except the new dev_image and var.
+    find /mnt/stateful_partition -mindepth 1 -maxdepth 1 |
+      grep -v -e dev_image\$ -e var\$ |
+      xargs -d "\n" rm -rf
+    # Let's really be done before coming back.
+    sync
+  else
+    # Backgrounded to take off boot path.
+    rm -rf "$STATEFUL_UPDATE" \
+      /mnt/stateful_partition/dev_image_old \
+      /mnt/stateful_partition/var_old &
+  fi
 fi
 
 # Check if the stateful partition has requested self-destruction

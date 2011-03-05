@@ -20,7 +20,6 @@ fi
 # Run "clobber-state fast" to clobber the state quickly but unsecurely.
 FACTORY_WIPE=$(echo "$@" | grep -sq factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
-FAST_TEST=$(echo "$@" | grep -sq test && echo "test")
 KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
 
 wipedev() {
@@ -63,11 +62,6 @@ then
   exit 1
 fi
 
-# Save dev_image in tmp as a stow-away.
-if [ "${FAST_TEST}" = "test" -a -d /mnt/stateful_partition/dev_image ]; then
-  cp -af /mnt/stateful_partition/dev_image /tmp
-fi
-
 umount /mnt/stateful_partition
 
 if [ "$FAST_WIPE" = "fast" ]; then
@@ -94,11 +88,6 @@ fi
 
 # Mount the fresh image for last minute additions.
 mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
-
-# Restore dev_image from tmp.
-if [ "${FAST_TEST}" = "test" -a -d /tmp/dev_image ]; then
-  cp -af /tmp/dev_image /mnt/stateful_partition
-fi
 
 # Tag that we're in developer mode otherwise we may get wiped again.
 if /bin/cros_boot_mode -m developer; then
