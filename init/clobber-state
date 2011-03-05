@@ -101,6 +101,11 @@ echo 3 > /proc/sys/vm/drop_caches
 # Do any board specific wiping here.
 # board_factory_wipe.sh will be installed by the board overlay if necessary.
 if [ "$FACTORY_WIPE" = "factory" ]; then
+  FIRMWARE_WIPE='/usr/sbin/firmware-factory-wipe'
+  if [ -x "${FIRMWARE_WIPE}" ]; then
+    ${FIRMWARE_WIPE}
+  fi
+
   BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
   if [ -x "${BOARD_WIPE}" ]; then
     ${BOARD_WIPE}
