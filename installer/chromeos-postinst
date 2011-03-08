@@ -91,6 +91,89 @@ if [ -n "$IS_UPDATE" ]; then
   fi
 fi
 
+update_firmware() {
+  # See if we need to update firmware. NOTE: we must activate new firmware
+  # only after new kernel is actived (installed and made bootable),
+  # otherwise new firmware with all old kernels may lead to recovery screen
+  # (due to new key).
+  FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
+  if [ ${FLAGS_update_firmware} -eq "${FLAGS_TRUE}" -a \
+       -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
+    FIRMWARE_UPDATE_MODE=""
+    if [ -n "${IS_FACTORY_INSTALL}" ]; then
+      # factory-mode
+      FIRMWARE_UPDATE_MODE="--factory"
+    elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
+      # recovery-mode
+      FIRMWARE_UPDATE_MODE="--rw-ab-together"
+    elif [ -n "${IS_INSTALL}" ]; then
+      # installation from chromeos-install
+      FIRMWARE_UPDATE_MODE="--rw-ab-together"
+    else
+      # Default: background update by Update Engine.
+      # "--background-update" tells it not to perform any dangerous
+      # thing that would require/cause reboot, for example re-writing
+      # EC firmware. Those tasks will be done in next boot.
+      FIRMWARE_UPDATE_MODE="--background-update"
+      # FIXME(wfrichar): This is platform-specific. See below.
+      RECHECK_AFTER_UPDATE="true"
+    fi
+    FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
+    echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
+    env INSTALL_ROOT="${INSTALL_ROOT}" \
+      "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS}
+    # Next step after postinst may take a lot of time (eg, disk wiping)
+    # and people may confuse that as 'firmware update takes a long wait',
+    # we explicitly prompt here.
+    if [ "$?" -eq 0 ]; then
+      echo "Firmware update complete."
+      if [ -n "${RECHECK_AFTER_UPDATE}" ]; then
+        echo "Check for kernel subkey changes"
+        # FIXME(wfrichar): This is a platform-specific workaround for
+        # chrome-os-partner:1654. It should probably go into the firmware
+        # update script instead of here, but that script doesn't have all the
+        # tools available to make the necessary changes.
+        SCRATCHDIR=$(mktemp -d /tmp/XXXXXX)
+        cd $SCRATCHDIR
+        # Note: This code only runs when we're autoupdating, so we know that
+        # we're running from the newly updated partition. We need to use the
+        # various firmware utilities from that partition too.
+        PATH=${DEFAULT_CHROOT_DIR}/usr/sbin:${PATH}
+        PATH=${DEFAULT_CHROOT_DIR}/usr/bin:${PATH}
+        # Extract the A & B kernel subkeys from the newly written BIOS.
+        flashrom -r bios.rom
+        dump_fmap -x bios.rom
+        gbb_utility -g --rootkey rootkey.vbpubk GBB_Area 
+        vbutil_firmware --verify Firmware_A_Key \
+          --signpubkey rootkey.vbpubk --fv Firmware_A_Data \
+          --kernelkey kernel_subkey_a.vbpubk
+        vbutil_firmware --verify Firmware_B_Key \
+          --signpubkey rootkey.vbpubk --fv Firmware_B_Data \
+          --kernelkey kernel_subkey_b.vbpubk
+        # FIXME: I want to use 'cmp', but we don't have it because it pulls
+        # in all the locale stuff and is too big. When/if we switch to
+        # busybox, we should use cmp here instead.
+        hash_a=$(md5sum kernel_subkey_a.vbpubk | cut -f1 -d' ')
+        hash_b=$(md5sum kernel_subkey_b.vbpubk | cut -f1 -d' ')
+        if [ "$hash_a" != "$hash_b" ]; then
+          echo "Kernel subkeys are different. Using original boot order."
+          guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+          kern_dev=$($sudo "$GPT" find -1 -u $guid)
+          base_dev=$(get_block_dev_from_partition_dev $kern_dev)
+          kern_num=$(get_partition_number $kern_dev)
+          "$GPT" prioritize $base_dev -i $kern_num
+        fi
+        cd - >/dev/null 2>&1
+        rm -rf $SCRATCHDIR
+        echo "Kernel subkey check completed."
+      fi
+    else
+      return 1  # error
+    fi
+  fi
+  return 0  # success
+}
+
 if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # Pre-commit. Returning an error here will prevent ever booting into the
   # installed system.
@@ -266,92 +349,16 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     # regenerate them on the next reboot.
     rm -f /var/lib/ureadahead/*
 
-    # See if we need to update firmware. NOTE: we must activate new firmware
-    # only after new kernel is actived (installed and made bootable),
-    # otherwise new firmware with all old kernels may lead to recovery screen
-    # (due to new key).
-    FIRMWARE_UPDATE_SCRIPT="${INSTALL_ROOT}/usr/sbin/chromeos-firmwareupdate"
-    if [ ${FLAGS_update_firmware} -eq "${FLAGS_TRUE}" -a \
-         -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
-      FIRMWARE_UPDATE_MODE=""
-      if [ -n "${IS_FACTORY_INSTALL}" ]; then
-        # factory-mode
-        FIRMWARE_UPDATE_MODE="--factory"
-      elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
-        # recovery-mode
-        FIRMWARE_UPDATE_MODE="--rw-ab-together"
-      elif [ -n "${IS_INSTALL}" ]; then
-        # installation from chromeos-install
-        FIRMWARE_UPDATE_MODE="--rw-ab-together"
-      else
-        # Default: background update by Update Engine.
-        # "--background-update" tells it not to perform any dangerous
-        # thing that would require/cause reboot, for example re-writing
-        # EC firmware. Those tasks will be done in next boot.
-        FIRMWARE_UPDATE_MODE="--background-update"
-        # FIXME(wfrichar): This is platform-specific. See below.
-        RECHECK_AFTER_UPDATE="true"
-      fi
-      FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
-      echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
-      env INSTALL_ROOT="${INSTALL_ROOT}" \
-        "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS}
-      # Next step after postinst may take a lot of time (eg, disk wiping)
-      # and people may confuse that as 'firmware update takes a long wait',
-      # we explicitly prompt here.
-      if [ "$?" -eq 0 ]; then
-        echo "Firmware update complete."
-        if [ -n "${RECHECK_AFTER_UPDATE}" ]; then
-          echo "Check for kernel subkey changes"
-          # FIXME(wfrichar): This is a platform-specific workaround for
-          # chrome-os-partner:1654. It should probably go into the firmware
-          # update script instead of here, but that script doesn't have all the
-          # tools available to make the necessary changes.
-          SCRATCHDIR=$(mktemp -d /tmp/XXXXXX)
-          cd $SCRATCHDIR
-          # Note: This code only runs when we're autoupdating, so we know that
-          # we're running from the newly updated partition. We need to use the
-          # various firmware utilities from that partition too.
-          PATH=${DEFAULT_CHROOT_DIR}/usr/sbin:${PATH}
-          PATH=${DEFAULT_CHROOT_DIR}/usr/bin:${PATH}
-          # Extract the A & B kernel subkeys from the newly written BIOS.
-          flashrom -r bios.rom
-          dump_fmap -x bios.rom
-          gbb_utility -g --rootkey rootkey.vbpubk GBB_Area 
-          vbutil_firmware --verify Firmware_A_Key \
-            --signpubkey rootkey.vbpubk --fv Firmware_A_Data \
-            --kernelkey kernel_subkey_a.vbpubk
-          vbutil_firmware --verify Firmware_B_Key \
-            --signpubkey rootkey.vbpubk --fv Firmware_B_Data \
-            --kernelkey kernel_subkey_b.vbpubk
-          # FIXME: I want to use 'cmp', but we don't have it because it pulls
-          # in all the locale stuff and is too big. When/if we switch to
-          # busybox, we should use cmp here instead.
-          hash_a=$(md5sum kernel_subkey_a.vbpubk | cut -f1 -d' ')
-          hash_b=$(md5sum kernel_subkey_b.vbpubk | cut -f1 -d' ')
-          if [ "$hash_a" != "$hash_b" ]; then
-            echo "Kernel subkeys are different. Using original boot order."
-            guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
-            kern_dev=$($sudo "$GPT" find -1 -u $guid)
-            base_dev=$(get_block_dev_from_partition_dev $kern_dev)
-            kern_num=$(get_partition_number $kern_dev)
-            "$GPT" prioritize $base_dev -i $kern_num
-          fi
-          cd - >/dev/null 2>&1
-          rm -rf $SCRATCHDIR
-          echo "Kernel subkey check completed."
-        fi
-      else
-        # Note: This will only rollback the ChromeOS verified boot target.
-        # The assumption is that systems running firmware autoupdate
-        # are running H2C Bios. If the firmware updater crashes or writes
-        # corrupt data rather than gracefully failing, we'll probably need
-        # to recover with a recovery image.
-        echo "Firmware update failed."
-        echo "Rolling back update due to failure installing required firmware."
-        "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
-        exit 1
-      fi
+    if ! update_firmware; then
+      # Note: This will only rollback the ChromeOS verified boot target.
+      # The assumption is that systems running firmware autoupdate
+      # are running H2C Bios. If the firmware updater crashes or writes
+      # corrupt data rather than gracefully failing, we'll probably need
+      # to recover with a recovery image.
+      echo "Firmware update failed."
+      echo "Rolling back update due to failure installing required firmware."
+      "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
+      exit 1
     fi
   fi
 else
