@@ -287,6 +287,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --device-management-url="$DMSERVER" \
             --disable-domui-menu \
             --disable-seccomp-sandbox \
+            --enable-accelerated-plugins \
             --enable-gview \
             --enable-logging \
             --enable-login-images \
