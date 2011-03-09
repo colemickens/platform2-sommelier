@@ -129,6 +129,8 @@ activate_manual () {
 	args=$(echo "$@" | sed -e 's/ /,/g')
 	args=$(require "$args" min)
 	args=$(require "$args" mdn)
+	args=$(require "$args" spc)
+	args=$(require "$args" system_id)
 	local oldstate=$(modem_activation_state $modem)
 	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
 	  "dict:string:string:$args"
@@ -204,8 +206,10 @@ update_prl () {
 		prlfile=/tmp/$prlbase
 	fi
 	local oldstate=$(modem_activation_state $modem)
-	activate_manual $modem mdn $mdn min $min prlfile $prlfile
-	wait_for_activation_change $modem $oldstate 40
+        args="mdn,$mdn,min,$min,prlfile,$prlfile"
+	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
+	  "dict:string:string:$args"
+        wait_for_modem_reset $modem 40
 }
 
 usage () {
