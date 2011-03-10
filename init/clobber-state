@@ -110,14 +110,6 @@ if [ "$FACTORY_WIPE" = "factory" ]; then
   if [ -x "${BOARD_WIPE}" ]; then
     ${BOARD_WIPE}
   fi
-else
-  if /bin/cros_boot_mode -m developer; then
-    # Update firmware
-    FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-    if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-      "$FIRMWARE_UPDATE_SCRIPT" --mode=todev
-    fi
-  fi
 fi
 
 /sbin/shutdown -r now
