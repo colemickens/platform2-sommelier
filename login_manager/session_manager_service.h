@@ -335,6 +335,12 @@ class SessionManagerService
     kNumSignals
   };
 
+  enum SigReturnCode {
+    SUCCESS = 0,
+    NO_KEY,
+    SIGNATURE_FAIL
+  };
+
   static void do_nothing(int sig) {}
 
   // Common code between SIG{HUP, INT, TERM}Handler.
@@ -466,6 +472,8 @@ class SessionManagerService
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
+
+  SigReturnCode VerifyHelper(const std::string& data, GArray* sig);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;

@@ -29,7 +29,7 @@ class SystemUtils;
 // before on-disk storage has been checked will be denied.
 class OwnerKey {
  public:
-  OwnerKey(const FilePath& key_file);
+  explicit OwnerKey(const FilePath& key_file);
   virtual ~OwnerKey();
 
   virtual bool HaveCheckedDisk();

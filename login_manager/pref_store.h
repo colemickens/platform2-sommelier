@@ -5,7 +5,6 @@
 #ifndef LOGIN_MANAGER_PREF_STORE_H_
 #define LOGIN_MANAGER_PREF_STORE_H_
 
-#include <base/json/json_reader.h>
 #include <base/file_path.h>
 #include <base/scoped_ptr.h>
 
@@ -94,7 +93,6 @@ class PrefStore {
   static const char kDefaultPath[];
 
  private:
-  base::JSONReader reader_;
   scoped_ptr<DictionaryValue> prefs_;
   DictionaryValue* whitelist_;
   DictionaryValue* properties_;

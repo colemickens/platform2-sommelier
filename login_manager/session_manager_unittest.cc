@@ -851,7 +851,7 @@ TEST_F(SessionManagerTest, WhitelistVerifyFail) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
@@ -877,7 +877,7 @@ TEST_F(SessionManagerTest, Whitelist) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(true));
 
@@ -908,7 +908,7 @@ TEST_F(SessionManagerTest, Unwhitelist) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(kFakeEmail, strlen(kFakeEmail),
+  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
                            fake_sig_->data, fake_sig_->len))
       .WillOnce(Return(true));
 

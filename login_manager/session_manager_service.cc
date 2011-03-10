@@ -609,16 +609,14 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
                                             GArray* signature,
                                             GError** error) {
   LOG(INFO) << "Unwhitelisting " << email_address;
-  if (!key_->IsPopulated()) {
+  SessionManagerService::SigReturnCode verify_result =
+      VerifyHelper(email_address, signature);
+  if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to unwhitelist before owner's key is set.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
-  }
-  if (!key_->Verify(email_address,
-                    strlen(email_address),
-                    signature->data,
-                    signature->len)) {
+  } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in Unwhitelist.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
@@ -673,16 +671,14 @@ gboolean SessionManagerService::Whitelist(gchar* email_address,
                                           GArray* signature,
                                           GError** error) {
   LOG(INFO) << "Whitelisting " << email_address;
-  if (!key_->IsPopulated()) {
+  SessionManagerService::SigReturnCode verify_result =
+      VerifyHelper(email_address, signature);
+  if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to whitelist before owner's key is set.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
-  }
-  if (!key_->Verify(email_address,
-                    strlen(email_address),
-                    signature->data,
-                    signature->len)) {
+  } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in Whitelist.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
@@ -697,17 +693,14 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
                                               GArray* signature,
                                               GError** error) {
   LOG(INFO) << "Setting pref " << name << "=" << value;
-  if (!key_->IsPopulated()) {
+  SessionManagerService::SigReturnCode verify_result =
+      VerifyHelper(base::StringPrintf("%s=%s", name, value), signature);
+  if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to store property before owner's key is set.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
-  }
-  std::string was_signed = base::StringPrintf("%s=%s", name, value);
-  if (!key_->Verify(was_signed.c_str(),
-                    was_signed.length(),
-                    signature->data,
-                    signature->len)) {
+  } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in StoreProperty.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
@@ -1182,6 +1175,15 @@ gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
   io_thread_.message_loop()->PostTask(
       FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistStore));
   return TRUE;
+}
+
+SessionManagerService::SigReturnCode
+SessionManagerService::VerifyHelper(const std::string& data, GArray* sig) {
+  if (!key_->IsPopulated())
+    return NO_KEY;
+  if (!key_->Verify(data.c_str(), data.length(), sig->data, sig->len))
+    return SIGNATURE_FAIL;
+  return SUCCESS;
 }
 
 gboolean SessionManagerService::WhitelistHelper(const std::string& email,

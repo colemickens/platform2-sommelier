@@ -15,8 +15,8 @@ INCLUDE_DIRS = -I.. $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1 glib-2.0 \
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 \
 	gtk+-2.0 nss)
 
-SESSION_COMMON_OBJS = session_manager_service.o child_job.o interface.o \
-	nss_util.o owner_key.o pref_store.o system_utils.o \
+SESSION_COMMON_OBJS = session_manager_service.o device_policy.o child_job.o \
+	interface.o nss_util.o owner_key.o pref_store.o system_utils.o \
 	upstart_signal_emitter.o wipe_mitigator.o
 
 DBUS_SOURCE = session_manager.xml
@@ -31,7 +31,8 @@ SESSION_OBJS = $(SESSION_COMMON_OBJS) session_manager_main.o
 
 TEST_BIN = session_manager_unittest
 TEST_OBJS = $(SESSION_COMMON_OBJS) session_manager_testrunner.o \
-	session_manager_unittest.o child_job_unittest.o pref_store_unittest.o \
+	session_manager_unittest.o child_job_unittest.o \
+	device_policy_unittest.o pref_store_unittest.o \
 	nss_util_unittest.o owner_key_unittest.o system_utils_unittest.o \
 	wipe_mitigator_unittest.o
 
