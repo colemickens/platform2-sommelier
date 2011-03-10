@@ -68,12 +68,13 @@ SRCS = carrier.cc \
        main.cc \
        modem_handler.cc \
        plugin_manager.cc \
+       sms_message.cc \
        utilities.cc
 
 OBJS = $(SRCS:.cc=.o)
 
 TARGETS = $(CROMO) $(LIBCROMO) $(PLUGINS)
-TESTS = cromo_server_unittest utilities_unittest
+TESTS = cromo_server_unittest sms_message_unittest utilities_unittest
 
 INSTALL_TARGETS = install-programs install-libs install-headers
 
@@ -99,17 +100,19 @@ glue: $(patsubst %,$(DBUSIFACEDIR)/%,$(XMLFILES))
 		$(DBUSXX_XML2CPP) $(DBUSIFACEDIR)/$$xml --adaptor=$$hdr; \
 	done
 
-$(OBJS): glue
+$(OBJS) cromo_server_unittest.o: glue
 $(dummy_OBJS): glue
 
 $(CROMO): $(OBJS) $(SYMFILE) $(LIBCROMO)
 	$(CXX) $(LDFLAGS_CROMO) $(OBJS) $(LDLIBS) -o $@
 
-$(LIBCROMO): cromo_server.o hooktable.o utilities.o modem_handler.o
+$(LIBCROMO): cromo_server.o hooktable.o utilities.o modem_handler.o \
+	     sms_message.o
 	$(AR) r $@ $^
 
 cromo_server_unittest: carrier.o cromo_server_unittest.o cromo_server.o hooktable.o
 utilities_unittest: utilities_unittest.o $(LIBCROMO)
+sms_message_unittest: sms_message_unittest.o $(LIBCROMO)
 
 dummy_modem.so: $(dummy_OBJS)
 	$(CXX) -shared -o $@ $^
@@ -118,7 +121,8 @@ dummy_modem.so: $(dummy_OBJS)
 KEEP_SYMS:= "_ZN11CromoServer \
     _ZN9HookTable \
     _ZN12ModemHandler \
-    _ZN9utilities"
+    _ZN9utilities \
+    _ZN10SmsMessage13CreateMessage"
 
 $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@echo '{' >$@
@@ -131,7 +135,8 @@ $(SYMFILE): cromo_server.o hooktable.o modem_handler.o $(LIBCROMO)
 	@cat $@
 
 EXPORT_HEADERS=$(GLUE_HEADERS) modem_handler.h cromo_server.h plugin.h \
-                               hooktable.h carrier.h utilities.h modem.h
+                               hooktable.h carrier.h utilities.h modem.h \
+			       sms_message.h
 
 install-headers: glue
 	install -d $(DESTDIR)/usr/include/cromo

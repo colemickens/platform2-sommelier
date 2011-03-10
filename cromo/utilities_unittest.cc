@@ -1,7 +1,7 @@
 // Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-// Utilities for the cromo modem manager
+// Unit tests for utilities for the cromo modem manager
 
 #include "utilities.h"
 
@@ -60,7 +60,138 @@ TEST(Utilities, HexEsnToDecimal) {
   EXPECT_FALSE(HexEsnToDecimal("ffffffff" "f", &out));
 }
 
-int main(int argc, char *argv[]) {
+const uint8_t gsm1[] = {
+  10, 0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
+};
+const uint8_t gsm2[] = {
+  9, 0xd4, 0xf2, 0x9c, 0x0e, 0x9a, 0x36, 0xa7, 0x2e
+};
+const uint8_t gsm3[] = {
+  10, 0xc9, 0x53, 0x1b, 0x24, 0x40, 0xf3, 0xdb, 0x65, 0x17
+};
+const uint8_t gsm4[] = { 2, 0x1b, 0x1e };
+const uint8_t gsm5[] = {
+  0x6a, 0xc8, 0xb2, 0xbc, 0x7c, 0x9a, 0x83, 0xc2,
+  0x20, 0xf6, 0xdb, 0x7d, 0x2e, 0xcb, 0x41, 0xed,
+  0xf2, 0x7c, 0x1e, 0x3e, 0x97, 0x41, 0x1b, 0xde,
+  0x06, 0x75, 0x4f, 0xd3, 0xd1, 0xa0, 0xf9, 0xbb,
+  0x5d, 0x06, 0x95, 0xf1, 0xf4, 0xb2, 0x9b, 0x5c,
+  0x26, 0x83, 0xc6, 0xe8, 0xb0, 0x3c, 0x3c, 0xa6,
+  0x97, 0xe5, 0xf3, 0x4d, 0x6a, 0xe3, 0x03, 0xd1,
+  0xd1, 0xf2, 0xf7, 0xdd, 0x0d, 0x4a, 0xbb, 0x59,
+  0xa0, 0x79, 0x7d, 0x8c, 0x06, 0x85, 0xe7, 0xa0,
+  0x00, 0x28, 0xec, 0x26, 0x83, 0x2a, 0x96, 0x0b,
+  0x28, 0xec, 0x26, 0x83, 0xbe, 0x60, 0x50, 0x78,
+  0x0e, 0xba, 0x97, 0xd9, 0x6c, 0x17
+};
+const uint8_t gsm7_alphabet[] = {
+  0x7f, 0x80, 0x80, 0x60, 0x40, 0x28, 0x18, 0x0e,
+  0x88, 0x84, 0x62, 0xc1, 0x68, 0x38, 0x1e, 0x90,
+  0x88, 0x64, 0x42, 0xa9, 0x58, 0x2e, 0x98, 0x8c,
+  0x86, 0xd3, 0xf1, 0x7c, 0x40, 0x21, 0xd1, 0x88,
+  0x54, 0x32, 0x9d, 0x50, 0x29, 0xd5, 0x8a, 0xd5,
+  0x72, 0xbd, 0x60, 0x31, 0xd9, 0x8c, 0x56, 0xb3,
+  0xdd, 0x70, 0x39, 0xdd, 0x8e, 0xd7, 0xf3, 0xfd,
+  0x80, 0x41, 0xe1, 0x90, 0x58, 0x34, 0x1e, 0x91,
+  0x49, 0xe5, 0x92, 0xd9, 0x74, 0x3e, 0xa1, 0x51,
+  0xe9, 0x94, 0x5a, 0xb5, 0x5e, 0xb1, 0x59, 0xed,
+  0x96, 0xdb, 0xf5, 0x7e, 0xc1, 0x61, 0xf1, 0x98,
+  0x5c, 0x36, 0x9f, 0xd1, 0x69, 0xf5, 0x9a, 0xdd,
+  0x76, 0xbf, 0xe1, 0x71, 0xf9, 0x9c, 0x5e, 0xb7,
+  0xdf, 0xf1, 0x79, 0xfd, 0x9e, 0xdf, 0xf7, 0xff,
+  0x01
+};
+const uint8_t gsm7_extended_chars[] = {
+  0x14, 0x1b, 0xc5, 0x86, 0xb2, 0x41, 0x6d, 0x52,
+  0x9b, 0xd7, 0x86, 0xb7, 0xe9, 0x6d, 0x7c, 0x1b,
+  0xe0, 0xa6, 0x0c
+};
+
+static const struct {
+  const std::string utf8_string;
+  const uint8_t* packed_gsm7;
+  size_t packed_gsm7_size;
+} gsm_test_data[] = {
+  {"hellohello", gsm1, sizeof(gsm1)},
+  {"Test SMS.", gsm2, sizeof(gsm2)},
+  {"I'm $höme.", gsm3, sizeof(gsm3)},
+  {"[", gsm4, sizeof(gsm4)},
+  {"Here's a longer message [{with some extended characters}] thrown "
+    "in, such as £ and ΩΠΨ and §¿ as well.", gsm5, sizeof(gsm5)},
+  {"@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./"
+   "0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+   "ÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà",
+   gsm7_alphabet,
+   sizeof(gsm7_alphabet)},
+  {"\xC^{}\\[~]|€", gsm7_extended_chars, sizeof(gsm7_extended_chars)},
+  {"", NULL}
+};
+
+TEST(Utilities, Gsm7ToUtf8) {
+  using utilities::Gsm7ToUtf8String;
+  std::string out;
+
+  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
+    out = Gsm7ToUtf8String(gsm_test_data[i].packed_gsm7);
+    EXPECT_EQ(gsm_test_data[i].utf8_string, out);
+  }
+
+}
+
+TEST(Utilities, Utf8ToGsm7) {
+  using utilities::Utf8StringToGsm7;
+  std::vector<uint8_t> out;
+
+  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
+    out = Utf8StringToGsm7(gsm_test_data[i].utf8_string);
+    EXPECT_EQ(gsm_test_data[i].packed_gsm7_size, out.size());
+    EXPECT_EQ(0, memcmp(&out[0], gsm_test_data[i].packed_gsm7, out.size()));
+  }
+}
+
+TEST(Utilities, Utf8Gsm7RoundTrip) {
+  using utilities::Utf8StringToGsm7;
+  using utilities::Gsm7ToUtf8String;
+  std::vector<uint8_t> gsm7_out;
+  std::string utf8_out;
+
+  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
+    gsm7_out = Utf8StringToGsm7(gsm_test_data[i].utf8_string);
+    utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
+    EXPECT_EQ(gsm_test_data[i].utf8_string, utf8_out);
+  }
+}
+
+TEST(Utilities, Gsm7Utf8RoundTrip) {
+  using utilities::Utf8StringToGsm7;
+  using utilities::Gsm7ToUtf8String;
+  std::vector<uint8_t> gsm7_out;
+  std::string utf8_out;
+
+  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
+    utf8_out = Gsm7ToUtf8String(gsm_test_data[i].packed_gsm7);
+    gsm7_out = Utf8StringToGsm7(utf8_out);
+    EXPECT_EQ(gsm_test_data[i].packed_gsm7_size, gsm7_out.size());
+    EXPECT_EQ(
+        0, memcmp(&gsm7_out[0], gsm_test_data[i].packed_gsm7, gsm7_out.size()));
+  }
+}
+
+TEST(Utilities, Gsm7InvalidCharacter) {
+  using utilities::Utf8StringToGsm7;
+  using utilities::Gsm7ToUtf8String;
+  std::string utf8_input;
+  std::vector<uint8_t> gsm7_out;
+  std::string utf8_out;
+
+  utf8_input = "This |±| text '©' has |½| non-GSM7 characters";
+  gsm7_out = Utf8StringToGsm7(utf8_input);
+  utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
+  // Expect the text to have spaces where the invalid characters were.
+  EXPECT_EQ("This | | text ' ' has | | non-GSM7 characters", utf8_out);
+}
+
+int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
   google::ParseCommandLineFlags(&argc, &argv, true);
