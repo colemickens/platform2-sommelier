@@ -4,6 +4,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+
+# Used to determine whether to run the firmware updater in the critical path
+# (hence get_startup_update_tries() is not in chromeos-firmware-update)
+get_startup_update_tries() {
+  echo $(( $(crossystem kern_nv ||
+    cat /mnt/stateful_partition/.need_firmware_update) & 0x0F ))
+}
+
 # The kernel mounts /proc and /sys during initialization, prior
 # to starting init.
 
@@ -82,12 +90,10 @@ cros_boot_mode -b -s -m developer
 DEVMODE=$((! $?))
 
 # Check if we need to perform firmware update.
-NEED_FIRMWARE_UPDATE='/mnt/stateful_partition/.need_firmware_update'
-if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
-  rm -f "$NEED_FIRMWARE_UPDATE"
-  FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-  FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
-  if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
+FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
+if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+  if [ $(get_startup_update_tries) -gt 0 ]; then
     if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
       # More message on console for developer mode and dev builds
       FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
@@ -95,7 +101,7 @@ if [ -f "$NEED_FIRMWARE_UPDATE" ]; then
     mkdir -p /mnt/stateful_partition/var/log
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert update_firmware /dev/tty1
-    IS_CHROMEOS_STARTUP=1 "$FIRMWARE_UPDATE_SCRIPT" 2>&1 |
+    "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1 |
       tee $FIRMWARE_UPDATE_LOGS
   fi
 fi
