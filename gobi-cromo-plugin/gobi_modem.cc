@@ -580,10 +580,6 @@ static void LURejectCallback(ULONG domain, ULONG cause) {
   LOG(INFO) << "LURejectCallback: domain " << domain << " cause " << cause;
 }
 
-static void NewSMSCallback(ULONG type, ULONG index) {
-  LOG(INFO) << "NewSMSCallback: type " << type << " index " << index;
-}
-
 static void PDSStateCallback(ULONG enabled, ULONG tracking) {
   LOG(INFO) << "PDSStateCallback: enabled " << enabled
             << " tracking " << tracking;
@@ -594,7 +590,6 @@ void GobiModem::RegisterCallbacks() {
   sdk_->SetPowerCallback(PowerCallback);
   sdk_->SetRFInfoCallback(RFInfoCallbackTrampoline);
   sdk_->SetLURejectCallback(LURejectCallback);
-  sdk_->SetNewSMSCallback(NewSMSCallback);
   sdk_->SetPDSStateCallback(PDSStateCallback);
 
   sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);

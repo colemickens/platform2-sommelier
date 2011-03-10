@@ -5,7 +5,9 @@
 #include "gobi_gsm_modem.h"
 
 #include "gobi_modem_handler.h"
+#include <base/scoped_ptr.h>
 #include <cromo/carrier.h>
+#include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
 
 #include <sstream>
@@ -158,8 +160,21 @@ gboolean GobiGsmModem::CheckDataCapabilities(gpointer data) {
   return FALSE;
 }
 
+gboolean GobiGsmModem::NewSmsCallback(gpointer data) {
+  NewSmsArgs* args = static_cast<NewSmsArgs*>(data);
+  LOG(INFO) << "New SMS Callback: type " << args->storage_type
+            << " index " << args->message_index;
+  GobiGsmModem* modem =
+      static_cast<GobiGsmModem *>(handler_->LookupByPath(*args->path));
+  if (modem == NULL)
+    return FALSE;
+  modem->SmsReceived(args->message_index, true);
+  return FALSE;
+}
+
 void GobiGsmModem::RegisterCallbacks() {
   GobiModem::RegisterCallbacks();
+  sdk_->SetNewSMSCallback(NewSmsCallbackTrampoline);
 }
 
 static std::string MakeOperatorCode(WORD mcc, WORD mnc) {
@@ -254,7 +269,7 @@ void GobiGsmModem::GetTechnologySpecificStatus(
 }
 
 //======================================================================
-// DBUS Methods: Modem.GSM.Network
+// DBUS Methods: Modem.Gsm.Network
 
 void GobiGsmModem::Register(const std::string& network_id,
                             DBus::Error& error) {
@@ -280,7 +295,7 @@ ScannedNetworkList GobiGsmModem::Scan(DBus::Error& error) {
 }
 
 void GobiGsmModem::SetApn(const std::string& apn, DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SetApn not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SetApn not implemented";
 }
 
 uint32_t GobiGsmModem::GetSignalQuality(DBus::Error& error) {
@@ -288,20 +303,20 @@ uint32_t GobiGsmModem::GetSignalQuality(DBus::Error& error) {
 }
 
 void GobiGsmModem::SetBand(const uint32_t& band, DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SetBand not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SetBand not implemented";
 }
 
 uint32_t GobiGsmModem::GetBand(DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::GetBand not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::GetBand not implemented";
   return 0;
 }
 
 void GobiGsmModem::SetNetworkMode(const uint32_t& mode, DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SetNetworkMode not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SetNetworkMode not implemented";
 }
 
 uint32_t GobiGsmModem::GetNetworkMode(DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::GetNetworkMode not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::GetNetworkMode not implemented";
   return 0;
 }
 
@@ -322,11 +337,11 @@ DBus::Struct<uint32_t,
 
 void GobiGsmModem::SetAllowedMode(const uint32_t& mode,
                                   DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SetAllowedMmode not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SetAllowedMmode not implemented";
 }
 
 //======================================================================
-// DBUS Methods: Modem.GSM.Card
+// DBUS Methods: Modem.Gsm.Card
 
 std::string GobiGsmModem::GetImei(DBus::Error& error) {
   SerialNumbers serials;
@@ -358,23 +373,23 @@ std::string GobiGsmModem::GetImsi(DBus::Error& error) {
 void GobiGsmModem::SendPuk(const std::string& puk,
                            const std::string& pin,
                            DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SendPuk not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SendPuk not implemented";
 }
 
 void GobiGsmModem::SendPin(const std::string& pin, DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::SendPin not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::SendPin not implemented";
 }
 
 void GobiGsmModem::EnablePin(const std::string& pin,
                              const bool& enabled,
                              DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::EnablePin not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::EnablePin not implemented";
 }
 
 void GobiGsmModem::ChangePin(const std::string& old_pin,
                              const std::string& new_pin,
                              DBus::Error& error) {
-  LOG(INFO) << "GobiGsmModem::ChangePin not yet implemented";
+  LOG(WARNING) << "GobiGsmModem::ChangePin not implemented";
 }
 
 std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
@@ -385,7 +400,108 @@ std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
   ULONG rc = sdk_->GetHomeNetwork(&mcc, &mnc,
                                   sizeof(netname), netname, &sid, &nid);
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
-  LOG(INFO) << "Home MCC/MNC: " << mcc << "/" << mnc << " SID/NID: " << sid
-            << "/" << nid << " name: " << netname;
   return MakeOperatorCode(mcc, mnc);
+}
+
+//======================================================================
+// DBUS Methods: Modem.Gsm.SMS
+
+void GobiGsmModem::Delete(const uint32_t& index, DBus::Error &error) {
+  ULONG lindex = index;
+  ULONG rc = sdk_->DeleteSMS(gobi::kSmsNonVolatileMemory, &lindex, NULL);
+  ENSURE_SDK_SUCCESS(DeleteSMS, rc, kSdkError);
+}
+
+utilities::DBusPropertyMap GobiGsmModem::Get(const uint32_t& index,
+                                             DBus::Error &error) {
+  ULONG tag, format, size;
+  BYTE message[400];
+  utilities::DBusPropertyMap result;
+
+  size = sizeof(message);
+  ULONG rc = sdk_->GetSMS(gobi::kSmsNonVolatileMemory, index,
+                          &tag, &format, &size, message);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMS, rc, kSdkError, result);
+  LOG(INFO) << "GetSms: " << "tag " << tag << " format " << format
+            << " size " << size;
+
+  scoped_ptr<SmsMessage> sms(SmsMessage::CreateMessage(message, size));
+
+  if (sms.get() != NULL) {
+    result["number"].writer().append_string(sms->sender_address().c_str());
+    result["smsc"].writer().append_string(sms->smsc_address().c_str());
+    result["text"].writer().append_string(sms->text().c_str());
+    result["timestamp"].writer().append_string(sms->timestamp().c_str());
+  }
+  return result;
+}
+
+std::string GobiGsmModem::GetSmsc(DBus::Error &error) {
+  CHAR address[100];
+  CHAR address_type[100];
+
+  std::string result;
+  ULONG rc = sdk_->GetSMSCAddress(sizeof(address), address,
+                                  sizeof(address_type), address_type);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSCAddress, rc, kSdkError, result);
+  LOG(INFO) << "SMSC address: " << address << " type: " << address_type;
+  result = address;
+  return result;
+}
+
+void GobiGsmModem::SetSmsc(const std::string& smsc, DBus::Error &error) {
+  CHAR *addr = const_cast<CHAR*>(smsc.c_str());
+  ULONG rc = sdk_->SetSMSCAddress(addr, NULL);
+  ENSURE_SDK_SUCCESS(GetSMSCAddress, rc, kSdkError);
+}
+
+std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
+  std::vector<utilities::DBusPropertyMap> result;
+  LOG(WARNING) << "GobiGsmModem::List not implemented";
+  return result;
+}
+
+std::vector<uint32_t> GobiGsmModem::Save(
+    const utilities::DBusPropertyMap& properties,
+    DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::Save not implemented";
+  return std::vector<uint32_t>();
+}
+
+std::vector<uint32_t> GobiGsmModem::Send(
+    const utilities::DBusPropertyMap& properties,
+    DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::Send not implemented";
+  return std::vector<uint32_t>();
+}
+
+void GobiGsmModem::SendFromStorage(const uint32_t& index, DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::SendFromStorage not implemented";
+}
+
+// What is this supposed to do?
+void GobiGsmModem::SetIndication(const uint32_t& mode,
+                                 const uint32_t& mt,
+                                 const uint32_t& bm,
+                                 const uint32_t& ds,
+                                 const uint32_t& bfr,
+                                 DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::SetIndication not implemented";
+}
+
+// The API documentation says nothing about what this is supposed
+// to return. Most likely it's intended to report whether messages
+// are being sent and received in text mode or PDU mode. But the
+// meanings of the return values are undocumented.
+uint32_t GobiGsmModem::GetFormat(DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::GetFormat not implemented";
+  return 0;
+}
+
+// The API documentation says nothing about what this is supposed
+// to return. Most likely it's intended for specifying whether messages
+// are being sent and received in text mode or PDU mode. But the
+// meanings of the argument values are undocumented.
+void GobiGsmModem::SetFormat(const uint32_t& format, DBus::Error &error) {
+  LOG(WARNING) << "GobiGsmModem::SetFormat not implemented";
 }

@@ -11,6 +11,7 @@
 #include <cromo/modem-gsm_server_glue.h>
 #include <cromo/modem-gsm-card_server_glue.h>
 #include <cromo/modem-gsm-network_server_glue.h>
+#include <cromo/modem-gsm-sms_server_glue.h>
 class GobiModem;
 
 typedef std::vector<std::map<std::string, std::string> > ScannedNetworkList;
@@ -19,7 +20,8 @@ class GobiGsmModem
     : public GobiModem,
       public org::freedesktop::ModemManager::Modem::Gsm_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::Card_adaptor,
-      public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor {
+      public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor,
+      public org::freedesktop::ModemManager::Modem::Gsm::SMS_adaptor {
  public:
 
   GobiGsmModem(DBus::Connection& connection,
@@ -29,7 +31,7 @@ class GobiGsmModem
       : GobiModem(connection, path, device, sdk) {}
   virtual ~GobiGsmModem();
 
-  // DBUS Methods: Modem.GSM.Network
+  // DBUS Methods: Modem.Gsm.Network
   virtual void Register(const std::string& network_id, DBus::Error& error);
   virtual ScannedNetworkList Scan(DBus::Error& error);
   virtual void SetApn(const std::string& apn, DBus::Error& error);
@@ -42,7 +44,7 @@ class GobiGsmModem
       DBus::Error& error);
   virtual void SetAllowedMode(const uint32_t& mode, DBus::Error& error);
 
-  // DBUS Methods: Modem.GSM.Card
+  // DBUS Methods: Modem.Gsm.Card
   virtual std::string GetImei(DBus::Error& error);
   virtual std::string GetImsi(DBus::Error& error);
   virtual void SendPuk(const std::string& puk,
@@ -56,6 +58,29 @@ class GobiGsmModem
                          const std::string& new_pin,
                          DBus::Error& error);
   virtual std::string GetOperatorId(DBus::Error& error);
+
+  // DBUS Methods: Modem.Gsm.SMS
+  virtual void Delete(const uint32_t& index, DBus::Error &error);
+  virtual utilities::DBusPropertyMap Get(const uint32_t& index,
+                                         DBus::Error &error);
+  virtual uint32_t GetFormat(DBus::Error &error);
+  virtual void SetFormat(const uint32_t& format, DBus::Error &error);
+  virtual std::string GetSmsc(DBus::Error &error);
+  virtual void SetSmsc(const std::string& smsc, DBus::Error &error);
+  virtual std::vector<utilities::DBusPropertyMap> List(DBus::Error &error);
+  virtual std::vector<uint32_t> Save(
+      const utilities::DBusPropertyMap& properties,
+      DBus::Error &error);
+  virtual std::vector<uint32_t> Send(
+      const utilities::DBusPropertyMap& properties,
+      DBus::Error &error);
+  virtual void SendFromStorage(const uint32_t& index, DBus::Error &error);
+  virtual void SetIndication(const uint32_t& mode,
+                             const uint32_t& mt,
+                             const uint32_t& bm,
+                             const uint32_t& ds,
+                             const uint32_t& bfr,
+                             DBus::Error &error);
 
  protected:
   void GetGsmRegistrationInfo(uint32_t* registration_state,
@@ -73,6 +98,22 @@ class GobiGsmModem
   virtual void SetTechnologySpecificProperties();
   virtual void GetTechnologySpecificStatus(
       utilities::DBusPropertyMap* properties);
+
+  struct NewSmsArgs : public CallbackArgs {
+    NewSmsArgs(ULONG storage_type,
+               ULONG message_index)
+      : storage_type(storage_type),
+        message_index(message_index) { }
+    ULONG storage_type;
+    ULONG message_index;
+  };
+  static void NewSmsCallbackTrampoline(ULONG storage_type,
+                                       ULONG message_index) {
+    PostCallbackRequest(NewSmsCallback,
+                        new NewSmsArgs(storage_type,
+                                       message_index));
+  }
+  static gboolean NewSmsCallback(gpointer data);
 
  private:
   void SendNetworkTechnologySignal(uint32_t mm_access_tech);

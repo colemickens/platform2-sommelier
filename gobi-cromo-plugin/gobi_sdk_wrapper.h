@@ -266,6 +266,18 @@ enum DormancyStatus {
   kNotDormant = 2
 };
 
+enum SmsMessageStorageType {
+  kSmsUim = 0,
+  kSmsNonVolatileMemory = 1
+};
+
+enum SmsMessageTag {
+  kSmsRead = 0,
+  kSmsNotRead = 1,
+  kSmsMobileOrigAndSent = 2,
+  kSmsMobileOrigNotSent = 3
+};
+
 // Selected call failure reasons from table 2-4 "Call end reason codes"
 enum CallEndReason {
   kClientEndedCall = 2,
