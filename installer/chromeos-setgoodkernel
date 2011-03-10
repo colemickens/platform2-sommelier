@@ -33,3 +33,10 @@ $sudo cgpt prioritize $base_dev -i $kern_num
 # manually if there's a problem (no root shell). It leaves a log file that we
 # can look at.
 $sudo dev_debug_vboot --cleanup
+
+# Run the firmware updater
+FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
+if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+  "$FIRMWARE_UPDATE_SCRIPT" --mode=bootok
+fi
+

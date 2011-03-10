@@ -102,19 +102,19 @@ update_firmware() {
     FIRMWARE_UPDATE_MODE=""
     if [ -n "${IS_FACTORY_INSTALL}" ]; then
       # factory-mode
-      FIRMWARE_UPDATE_MODE="--factory"
+      FIRMWARE_UPDATE_MODE="--mode=factory_install"
     elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
       # recovery-mode
-      FIRMWARE_UPDATE_MODE="--rw-ab-together"
+      FIRMWARE_UPDATE_MODE="--mode=recovery"
     elif [ -n "${IS_INSTALL}" ]; then
       # installation from chromeos-install
-      FIRMWARE_UPDATE_MODE="--rw-ab-together"
+      FIRMWARE_UPDATE_MODE="--mode=recovery"
     else
       # Default: background update by Update Engine.
       # "--background-update" tells it not to perform any dangerous
       # thing that would require/cause reboot, for example re-writing
       # EC firmware. Those tasks will be done in next boot.
-      FIRMWARE_UPDATE_MODE="--background-update"
+      FIRMWARE_UPDATE_MODE="--mode=autoupdate"
       # FIXME(wfrichar): This is platform-specific. See below.
       RECHECK_AFTER_UPDATE="true"
     fi
