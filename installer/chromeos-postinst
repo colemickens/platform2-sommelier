@@ -347,7 +347,15 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     # We have a new image, making the ureadahead pack files
     # out-of-date.  Delete the files so that ureadahead will
     # regenerate them on the next reboot.
+    # WARNING: This doesn't work with upgrade from USB, rather than full
+    # install/recovery. We don't have support for it as it'll increase the
+    # complexity here, and only developers do upgrade from USB.
     rm -f /var/lib/ureadahead/*
+
+    # Create a file indicating that the install is completed. The file
+    # will be used in /sbin/chromeos_startup to run tasks on the next boot.
+    # See comments above about removing ureadahead files.
+    touch /mnt/stateful_partition/.install_completed
 
     if ! update_firmware; then
       # Note: This will only rollback the ChromeOS verified boot target.
