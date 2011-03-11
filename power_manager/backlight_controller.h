@@ -38,6 +38,22 @@ class BacklightController {
                       PowerPrefsInterface* prefs);
   virtual ~BacklightController() {}
 
+  void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
+
+  int64 plugged_brightness_offset() const { return plugged_brightness_offset_; }
+  void set_plugged_brightness_offset(int64 offset) {
+    plugged_brightness_offset_ = offset;
+  }
+
+  int64 unplugged_brightness_offset() const {
+    return unplugged_brightness_offset_;
+  }
+  void set_unplugged_brightness_offset(int64 offset) {
+    unplugged_brightness_offset_ = offset;
+  }
+
+  int64 system_brightness() const { return system_brightness_; }
+
   // Initialize the object.
   bool Init();
 
@@ -52,42 +68,16 @@ class BacklightController {
   // Decrease the brightness level of the backlight by one level.
   void DecreaseBrightness();
 
-  // Turn the backlight on or off
-  void SetPowerState(PowerState state);
+  // Turn the backlight on or off.  Returns true if the brightness was changed
+  // and false otherwise.
+  bool SetPowerState(PowerState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
-  // appropriately.
-  void OnPlugEvent(bool is_plugged);
-
-  // Read brightness settings from the system and apply any changes made
-  // by other programs to our local view. Return true if the brightness
-  // has not been modified by other programs; return false otherwise.
-  bool ReadBrightness();
-
-  // Write brightness based on current settings. Returns new brightness level.
-  int64 WriteBrightness();
-
-  // Tweaks brightness level so that the overall brightness (including ALS)
-  // is greater than zero.
-  void AdjustBrightnessLevelToAvoidZero();
+  // appropriately.  Returns true if the brightness was changed and false
+  // otherwise.
+  bool OnPlugEvent(bool is_plugged);
 
   void SetAlsBrightnessLevel(int64 level);
-
-  void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
-
-  int64 plugged_brightness_offset() const { return plugged_brightness_offset_; }
-  void set_plugged_brightness_offset(int64 offset) {
-    plugged_brightness_offset_ = offset;
-  }
-
-  int64 unplugged_brightness_offset () const {
-    return unplugged_brightness_offset_;
-  }
-  void set_unplugged_brightness_offset(int64 offset) {
-    unplugged_brightness_offset_ = offset;
-  }
-
-  int64 system_brightness () const { return system_brightness_; }
 
  private:
   // Clamp |value| to fit between 0 and 100.
@@ -95,6 +85,15 @@ class BacklightController {
 
   void ReadPrefs();
   void WritePrefs();
+
+  // Read brightness settings from the system and apply any changes made
+  // by other programs to our local view. Return true if the brightness
+  // has not been modified by other programs; return false otherwise.
+  bool ReadBrightness();
+
+  // Write brightness based on current settings.
+  // Returns true if the brightness was changed and false otherwise.
+  bool WriteBrightness();
 
   void SetBrightnessToZero();
 

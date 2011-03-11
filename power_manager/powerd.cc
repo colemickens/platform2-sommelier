@@ -46,11 +46,12 @@ static const char kTaggedFilePath[] = "/var/lib/power_manager";
 //         the screen off, and suspending to RAM. The daemon also has the
 //         capability of shutting the system down.
 
-Daemon::Daemon(BacklightController* ctl, PowerPrefs* prefs,
+Daemon::Daemon(BacklightController* backlight_controller,
+               PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
                VideoDetectorInterface* video_detector,
                const FilePath& run_dir)
-    : ctl_(ctl),
+    : backlight_controller_(backlight_controller),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
@@ -181,24 +182,26 @@ void Daemon::Run() {
 }
 
 void Daemon::SetPlugged(bool plugged) {
-  if (plugged != plugged_state_) {
-    LOG(INFO) << "Daemon : SetPlugged = " << plugged;
-    plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
-    int64 idle_time_ms;
-    CHECK(idle_.GetIdleTime(&idle_time_ms));
-    // If the screen is on, and the user plugged or unplugged the computer,
-    // we should wait a bit before turning off the screen.
-    // If the screen is off, don't immediately suspend.
-    if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
-      SetIdleOffset(idle_time_ms, kIdleNormal);
-    else if (idle_state_ == kIdleScreenOff)
-      SetIdleOffset(idle_time_ms, kIdleSuspend);
-    else
-      SetIdleOffset(0, kIdleNormal);
+  if (plugged == plugged_state_)
+    return;
 
-    ctl_->OnPlugEvent(plugged);
-    SetIdleState(idle_time_ms);
-  }
+  LOG(INFO) << "Daemon : SetPlugged = " << plugged;
+  plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
+  int64 idle_time_ms;
+  CHECK(idle_.GetIdleTime(&idle_time_ms));
+  // If the screen is on, and the user plugged or unplugged the computer,
+  // we should wait a bit before turning off the screen.
+  // If the screen is off, don't immediately suspend.
+  if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
+    SetIdleOffset(idle_time_ms, kIdleNormal);
+  else if (idle_state_ == kIdleScreenOff)
+    SetIdleOffset(idle_time_ms, kIdleSuspend);
+  else
+    SetIdleOffset(0, kIdleNormal);
+
+  if (backlight_controller_->OnPlugEvent(plugged))
+    SendBrightnessChangedSignal(false);  // user_initiated=false
+  SetIdleState(idle_time_ms);
 }
 
 void Daemon::OnRequestRestart(bool notify_window_manager) {
@@ -329,26 +332,30 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
+  bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement fade
     // from suspend, we would want to have this state to make sure the backlight
     // is set to zero when suspended.
-    ctl_->SetPowerState(BACKLIGHT_SUSPENDED);
+    changed_brightness =
+        backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     idle_state_ = kIdleSuspend;
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
     LOG(INFO) << "state = kIdleScreenOff";
-    ctl_->SetPowerState(BACKLIGHT_IDLE_OFF);
+    changed_brightness =
+        backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
     idle_state_ = kIdleScreenOff;
   } else if (idle_time_ms >= dim_ms_) {
     LOG(INFO) << "state = kIdleDim";
-    ctl_->SetPowerState(BACKLIGHT_DIM);
+    changed_brightness = backlight_controller_->SetPowerState(BACKLIGHT_DIM);
     idle_state_ = kIdleDim;
   } else {
     LOG(INFO) << "state = kIdleNormal";
-    ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
+    changed_brightness =
+        backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON);
     if (idle_state_ == kIdleSuspend) {
       util::CreateStatusFile(FilePath(run_dir_).Append(util::kUserActiveFile));
       suspender_.CancelSuspend();
@@ -359,6 +366,9 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
       idle_state_ != kIdleSuspend) {
     locker_.LockScreen();
   }
+
+  if (changed_brightness)
+    SendBrightnessChangedSignal(false);  // user_initiated=false
 }
 
 void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
@@ -385,7 +395,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F7";
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
       }
-      daemon->ctl_->IncreaseBrightness();
+      daemon->backlight_controller_->IncreaseBrightness();
       changed_brightness = true;
     } else if (keycode == daemon->key_brightness_down_ ||
                keycode == daemon->key_f6_) {
@@ -395,14 +405,13 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F6";
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
       }
-      daemon->ctl_->DecreaseBrightness();
+      daemon->backlight_controller_->DecreaseBrightness();
       changed_brightness = true;
     }
   }
 
-  int64 brightness = 0;
-  if (changed_brightness && daemon->ctl_->GetTargetBrightness(&brightness))
-    daemon->SendBrightnessChangedSignal(static_cast<int>(brightness));
+  if (changed_brightness)
+    daemon->SendBrightnessChangedSignal(true);  // user_initiated=true
 
   return GDK_FILTER_CONTINUE;
 }
@@ -653,7 +662,14 @@ gboolean Daemon::PrefChangeHandler(const char* name,
   return true;
 }
 
-void Daemon::SendBrightnessChangedSignal(int level) {
+void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
+  int64 brightness = 0;
+  if (!backlight_controller_->GetTargetBrightness(&brightness))
+    return;
+
+  // DBUS_TYPE_BOOLEAN actually corresponds to an int.
+  int user_initiated_int = user_initiated;
+
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",
                               kPowerManagerInterface);
@@ -662,7 +678,8 @@ void Daemon::SendBrightnessChangedSignal(int level) {
                                                 kBrightnessChangedSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &level,
+                           DBUS_TYPE_INT32, &brightness,
+                           DBUS_TYPE_BOOLEAN, &user_initiated_int,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
@@ -670,7 +687,7 @@ void Daemon::SendBrightnessChangedSignal(int level) {
 
 void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
-  ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
+  backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON);
 }
 
 }  // namespace power_manager

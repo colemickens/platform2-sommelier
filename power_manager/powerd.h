@@ -40,7 +40,7 @@ class Daemon : public XIdleMonitor {
   ~Daemon();
 
   ScreenLocker* locker() { return &locker_; }
-  BacklightController* backlight_controller() { return ctl_; }
+  BacklightController* backlight_controller() { return backlight_controller_; }
 
   const std::string& current_user() const { return current_user_; }
 
@@ -163,8 +163,11 @@ class Daemon : public XIdleMonitor {
                                     gpointer data);
 
   // Send a D-Bus signal announcing that the screen brightness has been set to
-  // |level| (a percentage between 0 and 100).
-  void SendBrightnessChangedSignal(int level);
+  // its current level, given as a percentage between 0 and 100.
+  // |user_initiated| specifies whether this brightness change was requested by
+  // the user (i.e. brightness keys) instead of being automatic (e.g. idle, AC
+  // plugged or unplugged, etc.).
+  void SendBrightnessChangedSignal(bool user_initiated);
 
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
@@ -223,7 +226,7 @@ class Daemon : public XIdleMonitor {
   // Called by dbus handler when resume signal is received
   void HandleResume();
 
-  BacklightController* ctl_;
+  BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   VideoDetectorInterface* video_detector_;
