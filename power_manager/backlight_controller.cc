@@ -37,8 +37,6 @@ static const char* PowerStateToString(PowerState state) {
       return "state(ACTIVE_OFF)";
     case BACKLIGHT_SUSPENDED:
       return "state(SUSPENDED)";
-    case BACKLIGHT_UNINITIALIZED:
-      return "state(UNINITIALIZED)";
     default:
       NOTREACHED();
       return "";
@@ -55,7 +53,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
-      state_(BACKLIGHT_UNINITIALIZED),
+      state_(BACKLIGHT_ACTIVE_ON),
       plugged_state_(kPowerUnknown),
       system_brightness_(0),
       min_(0),
@@ -125,8 +123,6 @@ void BacklightController::DecreaseBrightness() {
 void BacklightController::SetPowerState(PowerState state) {
   if (state == state_)
     return;
-  CHECK(state != BACKLIGHT_UNINITIALIZED);
-
   LOG(INFO) << PowerStateToString(state_) << " -> "
             << PowerStateToString(state);
   ReadBrightness();
@@ -166,7 +162,7 @@ void BacklightController::OnPlugEvent(bool is_plugged) {
 
 bool BacklightController::ReadBrightness() {
   CHECK(max_ >= 0) << "Init() must be called";
-  CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
+  CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 level;
   if (GetTargetBrightness(&level) && level != system_brightness_) {
     // Another program adjusted the brightness. Sync up.
@@ -182,7 +178,7 @@ bool BacklightController::ReadBrightness() {
 }
 
 int64 BacklightController::WriteBrightness() {
-  CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
+  CHECK(brightness_offset_) << "Plugged state must be initialized";
   int64 old_brightness = system_brightness_;
   if (state_ == BACKLIGHT_ACTIVE_ON) {
     system_brightness_ = Clamp(als_brightness_level_ + *brightness_offset_);
