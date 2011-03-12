@@ -474,9 +474,9 @@ check_ipv6() {
 }
 
 # Checks that a given string starts with an alphanumeric, and contains only
-# alphanumeric and zero or more of ":.~%$^\-"
+# alphanumeric and zero or more of "_:.~%$^\-"
 check_username() {
-  expr "$1" : '^[[:alnum:]][[:alnum:]:.~%$^\-]*$' > /dev/null
+  expr "$1" : '^[[:alnum:]][[:alnum:]_:.~%$^\-]*$' > /dev/null
 }
 
 check_digits() {
