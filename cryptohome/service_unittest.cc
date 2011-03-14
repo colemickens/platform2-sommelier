@@ -133,4 +133,20 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   EXPECT_TRUE(out);
 }
 
+TEST(Standalone, CheckAutoCleanupCallback) {
+  // Checks that AutoCleanupCallback() is called periodically.
+  NiceMock<MockMount> mount;
+  Service service;
+  service.set_mount(&mount);
+  service.set_initialize_tpm(false);
+
+  // Service will schedule periodic clean-ups. Wait a bit and make
+  // sure that we had at least 3 executed.
+  EXPECT_CALL(mount, DoAutomaticFreeDiskSpaceControl())
+      .Times(::testing::AtLeast(3));
+  service.set_auto_cleanup_period(5);  // 5ms = 200HZ
+  service.Initialize();
+  PlatformThread::Sleep(100);
+}
+
 }  // namespace cryptohome

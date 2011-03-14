@@ -46,21 +46,30 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   // Used internally during registration to set the
   // proper service information.
-  virtual const char *service_name() const
-    { return kCryptohomeServiceName; }
-  virtual const char *service_path() const
-    { return kCryptohomeServicePath; }
-  virtual const char *service_interface() const
-    { return kCryptohomeInterface; }
+  virtual const char *service_name() const {
+    return kCryptohomeServiceName;
+  }
+  virtual const char *service_path() const {
+    return kCryptohomeServicePath;
+  }
+  virtual const char *service_interface() const {
+    return kCryptohomeInterface;
+  }
   virtual GObject* service_object() const {
     return G_OBJECT(cryptohome_);
   }
-  virtual void set_mount(Mount* mount)
-    { mount_ = mount; }
-  virtual void set_tpm_init(TpmInit* tpm_init)
-    { tpm_init_ = tpm_init; }
-  virtual void set_initialize_tpm(bool value)
-    { initialize_tpm_ = value; }
+  virtual void set_mount(Mount* mount) {
+    mount_ = mount;
+  }
+  virtual void set_tpm_init(TpmInit* tpm_init) {
+    tpm_init_ = tpm_init;
+  }
+  virtual void set_initialize_tpm(bool value) {
+    initialize_tpm_ = value;
+  }
+  virtual void set_auto_cleanup_period(int value) {
+    auto_cleanup_period_ = value;
+  }
 
 
   // MountTaskObserver
@@ -143,6 +152,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
  protected:
   virtual GMainLoop *main_loop() { return loop_; }
 
+  // Called periodically on Mount thread to initiate automatic disk
+  // cleanup if needed.
+  virtual void AutoCleanupCallback();
+
  private:
   GMainLoop *loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
@@ -157,6 +170,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   guint async_complete_signal_;
   guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
+  int auto_cleanup_period_;
+
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

@@ -37,7 +37,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(TerminatePidsForUser, bool(const uid_t, bool));
   MOCK_METHOD3(SetOwnership, bool(const std::string&, uid_t, gid_t));
   MOCK_METHOD3(GetUserId, bool(const std::string&, uid_t*, gid_t*));
-  MOCK_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));
+  MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));
 
  private:
   bool MockGetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {

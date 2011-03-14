@@ -160,7 +160,7 @@ class Platform {
   //
   // Parameters
   //   path - the pathname of any file within the mounted file system
-  virtual int64 AmountOfFreeDiskSpace(const std::string& path);
+  virtual int64 AmountOfFreeDiskSpace(const std::string& path) const;
 
   // Clears the user keyring
   static void ClearUserKeyring();

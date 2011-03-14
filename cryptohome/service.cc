@@ -33,6 +33,7 @@ namespace gobject {  // NOLINT
 
 namespace cryptohome {
 
+const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
 const int kDefaultRandomSeedLength = 64;
 const char* kMountThreadName = "MountThread";
 const char* kTpmInitStatusEventType = "TpmInitStatus";
@@ -84,7 +85,8 @@ Service::Service()
       mount_thread_(kMountThreadName),
       async_complete_signal_(-1),
       tpm_init_signal_(-1),
-      event_source_() {
+      event_source_(),
+      auto_cleanup_period_(kAutoCleanupPeriodMS) {
 }
 
 Service::~Service() {
@@ -144,6 +146,12 @@ bool Service::Initialize() {
                                   G_TYPE_BOOLEAN);
 
   mount_thread_.Start();
+
+  // Start scheduling periodic cleanup events.  Note, that the first
+  // event will be called by Chrome explicitly from the login screen.
+  mount_thread_.message_loop()->PostDelayedTask(
+      FROM_HERE, NewRunnableMethod(this, &Service::AutoCleanupCallback),
+      auto_cleanup_period_);
 
   return result;
 }
@@ -654,4 +662,20 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   return TRUE;
 }
 
+// Called on Mount thread.
+void Service::AutoCleanupCallback() {
+  mount_->DoAutomaticFreeDiskSpaceControl();
+
+  // Schedule our next call. If the thread is terminating, we would
+  // not be called.
+  mount_thread_.message_loop()->PostDelayedTask(
+      FROM_HERE, NewRunnableMethod(this, &Service::AutoCleanupCallback),
+      auto_cleanup_period_);
+}
+
 }  // namespace cryptohome
+
+// We do not want AutoCleanupCallback() to refer the class and make it
+// wait for its execution.  If Mount thread terminates, it will delete
+// our pending task or wait for it to finish.
+DISABLE_RUNNABLE_METHOD_REFCOUNT(cryptohome::Service);

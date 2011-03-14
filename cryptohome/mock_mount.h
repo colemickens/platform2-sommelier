@@ -25,6 +25,7 @@ class MockMount : public Mount {
   MOCK_CONST_METHOD0(MountGuestCryptohome, bool());
   MOCK_CONST_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_CONST_METHOD1(RemoveCryptohome, bool(const Credentials&));
+  MOCK_CONST_METHOD0(DoAutomaticFreeDiskSpaceControl, void());
 };
 }  // namespace cryptohome
 

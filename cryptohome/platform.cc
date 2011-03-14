@@ -367,7 +367,7 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
   return true;
 }
 
-int64 Platform::AmountOfFreeDiskSpace(const string& path) {
+int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
   struct statvfs stats;
   if (statvfs(path.c_str(), &stats) != 0) {
     return -1;
