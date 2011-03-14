@@ -76,6 +76,8 @@ const char *kSessionManagerEnumerateWhitelisted = "EnumerateWhitelisted";
 const char *kSessionManagerWhitelist = "Whitelist";
 const char *kSessionManagerStoreProperty = "StoreProperty";
 const char *kSessionManagerRetrieveProperty = "RetrieveProperty";
+const char *kSessionManagerStorePolicy = "StorePolicy";
+const char *kSessionManagerRetrievePolicy = "RetrievePolicy";
 // Signals
 const char *kSessionManagerSessionStateChanged = "SessionStateChanged";
 }  // namespace login_manager

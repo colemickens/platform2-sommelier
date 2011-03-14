@@ -74,6 +74,8 @@ extern const char *kSessionManagerEnumerateWhitelisted;
 extern const char *kSessionManagerWhitelist;
 extern const char *kSessionManagerStoreProperty;
 extern const char *kSessionManagerRetrieveProperty;
+extern const char *kSessionManagerStorePolicy;
+extern const char *kSessionManagerRetrievePolicy;
 // Signals
 extern const char *kSessionManagerSessionStateChanged;
 
