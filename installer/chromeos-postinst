@@ -127,7 +127,8 @@ update_firmware() {
     # we explicitly prompt here.
     if [ "$?" -eq 0 ]; then
       echo "Firmware update complete."
-      if [ -n "${RECHECK_AFTER_UPDATE}" ]; then
+      if [ "$(mosys platform name)" = "Mario" ] &&
+          [ -n "${RECHECK_AFTER_UPDATE}" ]; then
         echo "Check for kernel subkey changes"
         # FIXME(wfrichar): This is a platform-specific workaround for
         # chrome-os-partner:1654. It should probably go into the firmware
