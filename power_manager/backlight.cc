@@ -124,11 +124,21 @@ bool Backlight::SetBrightness(int64 target_level) {
   GetBrightness(&current_level, &max_level);
   LOG(INFO) << "Current actual brightness: " << current_level;
   LOG(INFO) << "Current target brightness: " << target_brightness_;
-  if (current_level == target_level || target_brightness_ == target_level)
+
+  // If this is a redundant call (existing target level is the same as
+  // new target level), ignore this call.
+  if (target_brightness_ == target_level)
     return true;
-  LOG(INFO) << "Setting to new target brightness " << target_level;
-  int64 diff = target_level - current_level;
+  // Otherwise, set to the new target brightness.  This will disable any
+  // outstanding brightness transition to a different brightness.
   target_brightness_ = target_level;
+  // If the current brightness happens to be at the new target brightness,
+  // do not start a new transition.
+  int64 diff = target_level - current_level;
+  if (diff == 0)
+    return true;
+
+  LOG(INFO) << "Setting to new target brightness " << target_level;
   int64 previous_level = current_level;
   for (int i = 0; i < kBacklightNumSteps; i++) {
     int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
