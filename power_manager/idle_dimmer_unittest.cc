@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -15,61 +15,46 @@ using ::testing::_;
 using ::testing::DoAll;
 using ::testing::NotNull;
 using ::testing::Return;
-using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::Test;
 
 namespace power_manager {
 
-static const int64 kIdleBrightness = 1;
-static const int64 kDefaultBrightness = 5;
-static const int64 kMaxBrightness = 10;
-static const int64 kPluggedBrightness = 7;
-static const int64 kUnpluggedBrightness = 3;
-static const int64 kPluggedBrightnessP = kPluggedBrightness * 100 /
-                                                          kMaxBrightness;
-static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 100 /
-                                                          kMaxBrightness;
+static const int64 kIdleBrightness = 10;
+static const int64 kDefaultBrightness = 50;
+static const int64 kMaxBrightness = 100;
+static const int64 kPluggedBrightness = 70;
+static const int64 kUnpluggedBrightness = 30;
+static const int64 kAlsBrightness = 0;
+static const int64 kPluggedBrightnessP = kPluggedBrightness;
+static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness;
 
 class IdleDimmerTest : public Test {
  public:
   IdleDimmerTest()
-      : prefs_(FilePath("/tmp"),
-        FilePath("/tmp")),
-        backlight_ctl_(&backlight_, &prefs_),
-        current_brightness_(0),
-        target_brightness_(0) {
+      : prefs_(FilePath("/tmp"), FilePath("/tmp")),
+        backlight_ctl_(&backlight_, &prefs_) {
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(current_brightness_),
-                              SetArgumentPointee<1>(kMaxBrightness),
-                              Return(true)));
-    EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(target_brightness_),
-                              Return(true)));
-    EXPECT_CALL(backlight_, SetBrightness(_))
-        .WillRepeatedly(DoAll(SaveArg<0>(&current_brightness_),
-                              SaveArg<0>(&target_brightness_),
-                              Return(true)));
-
+        .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                        SetArgumentPointee<1>(kMaxBrightness),
+                        Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightnessP);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightnessP);
-
+    prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
+    EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+        .WillOnce(Return(true));
     CHECK(backlight_ctl_.Init());
     backlight_ctl_.OnPlugEvent(true);
-    backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
   }
 
  protected:
   MockBacklight backlight_;
   PowerPrefs prefs_;
   BacklightController backlight_ctl_;
-
-  int64 current_brightness_;
-  int64 target_brightness_;
 };
 
 // Test that OnIdleEvent sets the brightness appropriately when
-// the user becomes idle.
+// the user becomes idle
 TEST_F(IdleDimmerTest, TestIdle) {
   EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
@@ -80,7 +65,7 @@ TEST_F(IdleDimmerTest, TestIdle) {
 }
 
 // Test that OnIdleEvent does not mess with the user's brightness settings
-// when we receive duplicate idle events.
+// when we receive duplicate idle events
 TEST_F(IdleDimmerTest, TestDuplicateIdleEvent) {
   EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
@@ -92,15 +77,15 @@ TEST_F(IdleDimmerTest, TestDuplicateIdleEvent) {
 }
 
 // Test that OnIdleEvent does not set the brightness when we receive
-// an idle event for a non-idle user.
+// an idle event for a non-idle user
 TEST_F(IdleDimmerTest, TestNonIdle) {
-  EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
+  EXPECT_CALL(backlight_, SetBrightness(_))
       .Times(0);
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
 }
 
 // Test that OnIdleEvent sets the brightness appropriately when the
-// user transitions to idle and back.
+// user transitions to idle and back
 TEST_F(IdleDimmerTest, TestIdleTransition) {
   EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
@@ -118,7 +103,7 @@ TEST_F(IdleDimmerTest, TestIdleTransition) {
 
 // Test that OnIdleEvent sets the brightness appropriately when the
 // user transitions to idle and back, and the max brightness setting
-// is reached.
+// is reached
 TEST_F(IdleDimmerTest, TestOverflowIdleTransition) {
   EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
