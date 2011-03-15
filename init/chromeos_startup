@@ -16,6 +16,7 @@ set_startup_update_tries() {
   oldkernnv=$(crossystem kern_nv)
   if [ $? = 0 ]; then
     newkernnv=$(( (oldkernnv & ~0x0F) | ($1 & 0x0F) ))
+    crossystem kern_nv=$newkernnv
   else
     echo $1 > cat /mnt/stateful_partition/.need_firmware_update
   fi
