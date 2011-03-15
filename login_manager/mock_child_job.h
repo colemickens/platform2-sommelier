@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,6 +9,7 @@
 
 #include <gmock/gmock.h>
 #include <string>
+#include <vector>
 
 namespace login_manager {
 class MockChildJob : public ChildJobInterface {
@@ -29,7 +30,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(IsDesiredUidSet, bool());
   MOCK_CONST_METHOD0(GetName, const std::string());
   MOCK_METHOD1(SetArguments, void(const std::string&));
-  MOCK_METHOD1(AddArgument, void(const std::string&));
+  MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
 };
 }  // namespace login_manager
 

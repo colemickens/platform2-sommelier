@@ -168,25 +168,27 @@ void ChildJob::SetArguments(const std::string& arguments) {
   }
 }
 
-void ChildJob::AddArgument(const std::string& argument) {
-  // Check for duplicates.
-  std::vector<std::string>::iterator argument_location;
-  argument_location = std::find(arguments_.begin(), arguments_.end(), argument);
-  if (argument_location == arguments_.end())
-    arguments_.push_back(argument);
+void ChildJob::SetExtraArguments(const std::vector<std::string>& arguments) {
+  extra_arguments_.assign(arguments.begin(), arguments.end());
+}
+
+void ChildJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
+                              char const** argv) const {
+  for (size_t i = 0; i < arguments.size(); ++i) {
+    size_t needed_space = arguments[i].length() + 1;
+    char* space = new char[needed_space];
+    strncpy(space, arguments[i].c_str(), needed_space);
+    argv[i] = space;
+  }
 }
 
 char const** ChildJob::CreateArgv() const {
+  size_t total_size = arguments_.size() + extra_arguments_.size();
+  char const** argv = new char const*[total_size + 1];
+  CopyArgsToArgv(arguments_, argv);
+  CopyArgsToArgv(extra_arguments_, argv + arguments_.size());
   // Need to append NULL at the end.
-  char const** argv = new char const*[arguments_.size() + 1];
-  for (size_t i = 0; i < arguments_.size(); ++i) {
-    const std::string& arg = arguments_[i];
-    int needed_space = arg.length() + 1;
-    char* space = new char[needed_space];
-    strncpy(space, arg.c_str(), needed_space);
-    argv[i] = space;
-  }
-  argv[arguments_.size()] = NULL;
+  argv[total_size] = NULL;
   return argv;
 }
 

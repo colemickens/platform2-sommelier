@@ -442,16 +442,23 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
     ChildJobInterface* child_job = child_jobs_[i_child];
     if (child_job->GetName() != "chrome")
       continue;
+
     // Kill Chrome.
     KillChild(child_job, child_pids_[i_child]);
-    // Add arguments to Chrome. AddArgument() checks for duplicates for us.
-    std::string testing_argument = kTestingChannelFlag;
-    testing_argument.append(chrome_testing_path_);
-    child_job->AddArgument(testing_argument);
+
+    std::vector<std::string> extra_argument_vector;
+    // Create extra argument vector.
     while (*extra_arguments != NULL) {
-      child_job->AddArgument(*extra_arguments);
+      extra_argument_vector.push_back(*extra_arguments);
       ++extra_arguments;
     }
+    // Add testing channel argument to extra arguments.
+    std::string testing_argument = kTestingChannelFlag;
+    testing_argument.append(chrome_testing_path_);
+    extra_argument_vector.push_back(testing_argument);
+    // Add extra arguments to Chrome.
+    child_job->SetExtraArguments(extra_argument_vector);
+
     // Run Chrome.
     child_pids_[i_child] = RunChild(child_job);
     return TRUE;

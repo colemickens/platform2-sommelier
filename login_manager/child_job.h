@@ -63,8 +63,8 @@ class ChildJobInterface {
   // Sets command line arguments for the job from string.
   virtual void SetArguments(const std::string& arguments) = 0;
 
-  // Add a command line argument to the job.
-  virtual void AddArgument(const std::string& argument) = 0;
+  // Sets extra command line arguments for the job from a string vector.
+  virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
 
   // Potential exit codes for Run().
   static const int kCantSetUid;
@@ -93,7 +93,7 @@ class ChildJob : public ChildJobInterface {
   virtual bool IsDesiredUidSet() const;
   virtual const std::string GetName() const;
   virtual void SetArguments(const std::string& arguments);
-  virtual void AddArgument(const std::string& argument);
+  virtual void SetExtraArguments(const std::vector<std::string>& arguments);
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
@@ -110,6 +110,10 @@ class ChildJob : public ChildJobInterface {
   static const int kRestartWindow;
 
  private:
+  // Helper for CreateArgV() that copies a vector of arguments into argv.
+  void CopyArgsToArgv(const std::vector<std::string>& arguments,
+                      char const** argv) const;
+
   // Allocates and populates array of C strings to pass to exec call.
   char const** CreateArgv() const;
 
@@ -124,6 +128,9 @@ class ChildJob : public ChildJobInterface {
 
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
+
+  // Extra arguments to pass to exec.
+  std::vector<std::string> extra_arguments_;
 
   // UID to set for job's process before exec is called.
   uid_t desired_uid_;
@@ -144,6 +151,8 @@ class ChildJob : public ChildJobInterface {
   FRIEND_TEST(ChildJobTest, StartStopSessionTest);
   FRIEND_TEST(ChildJobTest, StartStopSessionFromLoginTest);
   FRIEND_TEST(ChildJobTest, SetArguments);
+  FRIEND_TEST(ChildJobTest, SetExtraArguments);
+  FRIEND_TEST(ChildJobTest, CreateArgv);
   DISALLOW_COPY_AND_ASSIGN(ChildJob);
 };
 

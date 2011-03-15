@@ -136,6 +136,45 @@ TEST(ChildJobTest, SetArguments) {
   }
 }
 
+TEST(ChildJobTest, SetExtraArguments) {
+  vector<string> argv(kArgv, kArgv + arraysize(kArgv));
+  ChildJob job(argv);
+
+  const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
+  vector<string> extra_args(kExtraArgs, kExtraArgs + arraysize(kExtraArgs));
+  job.SetExtraArguments(extra_args);
+
+  // Make sure regular arguments are untouched.
+  ASSERT_EQ(argv.size(), job.arguments_.size());
+  for (size_t i = 0; i < argv.size(); ++i)
+    EXPECT_EQ(argv[i], job.arguments_[i]);
+
+  ASSERT_EQ(extra_args.size(), job.extra_arguments_.size());
+  for (size_t i = 0; i < extra_args.size(); ++i)
+    EXPECT_EQ(extra_args[i], job.extra_arguments_[i]);
+}
+
+TEST(ChildJobTest, CreateArgv) {
+  vector<string> argv(kArgv, kArgv + arraysize(kArgv));
+  ChildJob job(argv);
+
+  const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
+  vector<string> extra_args(kExtraArgs, kExtraArgs + arraysize(kExtraArgs));
+  job.SetExtraArguments(extra_args);
+
+  const char** arg_array = job.CreateArgv();
+
+  argv.insert(argv.end(), extra_args.begin(), extra_args.end());
+
+  size_t arg_array_size = 0;
+  for (const char** arr = arg_array; *arr != NULL; ++arr)
+    ++arg_array_size;
+
+  ASSERT_EQ(argv.size(), arg_array_size);
+  for (size_t i = 0; i < argv.size(); ++i)
+    EXPECT_EQ(argv[i], arg_array[i]);
+}
+
 // Test that we avoid killing the window manager job.
 TEST(ChildJobTest, AvoidKillingWindowManager) {
   vector<string> wm_args;
