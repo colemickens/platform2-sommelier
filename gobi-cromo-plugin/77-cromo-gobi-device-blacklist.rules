@@ -196,5 +196,8 @@ ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9208", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Gobi 2000 Modem device
 ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920b", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+# Novatel Gobi 3000 Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a021", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 LABEL="mm_cromo_gobi_device_blacklist_end"
 
