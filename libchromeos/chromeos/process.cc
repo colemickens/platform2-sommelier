@@ -45,6 +45,54 @@ void ProcessImpl::RedirectOutput(const std::string& output_file) {
   output_file_ = output_file;
 }
 
+void ProcessImpl::RedirectUsingPipe(int child_fd, bool is_input) {
+  PipeInfo info;
+  info.is_input_ = is_input;
+  pipe_map_[child_fd] = info;
+}
+
+int ProcessImpl::GetPipe(int child_fd) {
+  PipeMap::iterator i = pipe_map_.find(child_fd);
+  if (i == pipe_map_.end())
+    return -1;
+  else
+    return i->second.parent_fd_;
+}
+
+bool ProcessImpl::PopulatePipeMap() {
+  // Verify all target fds are already open.  With this assumption we
+  // can be sure that the pipe fds created below do not overlap with
+  // any of the target fds which simplifies how we dup2 to them.  Note
+  // that multi-threaded code could close i->first between this loop
+  // and the next.
+  for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+    struct stat stat_buffer;
+    if (fstat(i->first, &stat_buffer) < 0) {
+      int saved_errno = errno;
+      LOG(ERROR) << "Unable to fstat fd " << i->first << ": " << saved_errno;
+      return false;
+    }
+  }
+
+  for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+    int pipefds[2];
+    if (pipe(pipefds) < 0) {
+      int saved_errno = errno;
+      LOG(ERROR) << "pipe call failed with: " << saved_errno;
+      return false;
+    }
+    if (i->second.is_input_) {
+      // pipe is an input from the prospective of the child.
+      i->second.parent_fd_ = pipefds[1];
+      i->second.child_fd_ = pipefds[0];
+    } else {
+      i->second.parent_fd_ = pipefds[0];
+      i->second.child_fd_ = pipefds[1];
+    }
+  }
+  return true;
+}
+
 bool ProcessImpl::Start() {
   // Copy off a writeable version of arguments.  Exec wants to be able
   // to write both the array and the strings.
@@ -65,14 +113,28 @@ bool ProcessImpl::Start() {
   }
   argv[arguments_.size()] = NULL;
 
+  if (!PopulatePipeMap()) {
+    LOG(ERROR) << "Failing to start because pipe creation failed";
+    return false;
+  }
+
   pid_t pid = fork();
   int saved_errno = errno;
-  if (pid  < 0) {
+  if (pid < 0) {
     LOG(ERROR) << "Fork failed: " << saved_errno;
+    Reset(0);
     return false;
   }
 
   if (pid == 0) {
+    // Executing inside the child process.
+    // Close parent's side of the child pipes. dup2 ours into place and
+    // then close our ends.
+    for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+      HANDLE_EINTR(close(i->second.parent_fd_));
+      HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
+      HANDLE_EINTR(close(i->second.child_fd_));
+    }
     if (!output_file_.empty()) {
       int output_handle = HANDLE_EINTR(
           open(output_file_.c_str(),
@@ -84,19 +146,26 @@ bool ProcessImpl::Start() {
         // Avoid exit() to avoid atexit handlers from parent.
         _exit(127);
       }
-      dup2(output_handle, STDOUT_FILENO);
-      dup2(output_handle, STDERR_FILENO);
+      HANDLE_EINTR(dup2(output_handle, STDOUT_FILENO));
+      HANDLE_EINTR(dup2(output_handle, STDERR_FILENO));
       // Only close output_handle if it does not happen to be one of
       // the two standard file descriptors we are trying to redirect.
-      if (output_handle != STDOUT_FILENO && output_handle != STDERR_FILENO)
-        close(output_handle);
+      if (output_handle != STDOUT_FILENO && output_handle != STDERR_FILENO) {
+        HANDLE_EINTR(close(output_handle));
+      }
     }
     execv(argv[0], &argv[0]);
     saved_errno = errno;
     LOG(ERROR) << "Exec of " << argv[0] << " failed: " << saved_errno;
     _exit(127);
   } else {
-    Reset(pid);
+    // Still executing inside the parent process with known child pid.
+    arguments_.clear();
+    UpdatePid(pid);
+    // Close our copy of child side pipes.
+    for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+      HANDLE_EINTR(close(i->second.child_fd_));
+    }
   }
   return true;
 }
@@ -175,6 +244,12 @@ void ProcessImpl::UpdatePid(pid_t new_pid) {
 
 void ProcessImpl::Reset(pid_t new_pid) {
   arguments_.clear();
+  // Close our side of all pipes to this child giving the child to
+  // handle sigpipes and shutdown nicely, though likely it won't
+  // have time.
+  for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i)
+    HANDLE_EINTR(close(i->second.parent_fd_));
+  pipe_map_.clear();
   if (pid_)
     Kill(SIGKILL, 0);
   UpdatePid(new_pid);

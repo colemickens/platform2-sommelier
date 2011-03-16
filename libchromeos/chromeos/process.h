@@ -7,6 +7,7 @@
 
 #include <sys/types.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,14 @@ class Process {
   // Redirects stderr and stdout to |output_file|.
   virtual void RedirectOutput(const std::string& output_file) = 0;
 
+  // Indicates we want to redirect |child_fd| in the child process's
+  // file table to a pipe.  |child_fd| will be available for reading
+  // from child process's perspective iff |is_input|.
+  virtual void RedirectUsingPipe(int child_fd, bool is_input) = 0;
+
+  // Gets the pipe file descriptor mapped to the process's |child_fd|.
+  virtual int GetPipe(int child_fd) = 0;
+
   // Starts this process, returning true if successful.
   virtual bool Start() = 0;
 
@@ -61,11 +70,11 @@ class Process {
   // or has since exited).
   virtual pid_t pid() = 0;
 
-  // Kills this process with |signal|.  If process is not a child,
-  // returns immediately with a value based on whether kill was
-  // successful.  If the process is a child and |timeout| is non-zero,
-  // returns true if the process is able to be reaped within the given
-  // |timeout| in seconds.
+  // Sends |signal| to process and wait |timeout| seconds until it
+  // dies.  If process is not a child, returns immediately with a
+  // value based on whether kill was successful.  If the process is a
+  // child and |timeout| is non-zero, returns true if the process is
+  // able to be reaped within the given |timeout| in seconds.
   virtual bool Kill(int signal, int timeout) = 0;
 
   // Resets this Process object to refer to the process with |pid|.
@@ -90,6 +99,8 @@ class ProcessImpl : public Process {
 
   virtual void AddArg(const std::string& arg);
   virtual void RedirectOutput(const std::string& output_file);
+  virtual void RedirectUsingPipe(int child_fd, bool is_input);
+  virtual int GetPipe(int child_fd);
   virtual bool Start();
   virtual int Wait();
   virtual int Run();
@@ -100,10 +111,25 @@ class ProcessImpl : public Process {
   virtual pid_t Release();
 
  protected:
+  struct PipeInfo {
+    PipeInfo() : parent_fd_(-1), child_fd_(-1), is_input_(false) {}
+    // Parent (our) side of the pipe to the the child process.
+    int parent_fd_;
+    // Child's side of the pipe to the parent.
+    int child_fd_;
+    // Is this an input or output pipe from child's perspective.
+    bool is_input_;
+  };
+  typedef std::map<int, PipeInfo> PipeMap;
+
   std::string output_file_;
   std::vector<std::string> arguments_;
+  // Map of child target file descriptors (first) to information about
+  // pipes created (second).
+  PipeMap pipe_map_;
 
   void UpdatePid(pid_t new_pid);
+  bool PopulatePipeMap();
 
  private:
   // Pid of currently managed process or 0 if no currently managed

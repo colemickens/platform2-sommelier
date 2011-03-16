@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <chromeos/process.h>
+#include <chromeos/process_mock.h>
 #include <chromeos/test_helpers.h>
 
 #include <base/file_util.h>
@@ -10,6 +11,7 @@
 
 // This test assumes the following standard binaries are installed.
 static const char kBinBash[] = "/bin/bash";
+static const char kBinCat[] = "/bin/cat";
 static const char kBinCp[] = "/bin/cp";
 static const char kBinEcho[] = "/bin/echo";
 static const char kBinFalse[] = "/bin/false";
@@ -19,6 +21,12 @@ using chromeos::Process;
 using chromeos::ProcessImpl;
 using chromeos::FindLog;
 using chromeos::GetLog;
+
+// Test that the mock has all the functions of the interface by
+// instantiating it.  This variable is not used elsewhere.
+struct CompileMocks {
+  chromeos::ProcessMock process_mock;
+};
 
 TEST(SimpleProcess, Basic) {
   ProcessImpl process;
@@ -44,6 +52,7 @@ class ProcessTest : public ::testing::Test {
 
  protected:
   void CheckStderrCaptured();
+  FilePath GetFdPath(int fd);
 
   ProcessImpl process_;
   std::vector<const char*> args_;
@@ -119,6 +128,72 @@ TEST_F(ProcessTest, StderrCapturedWhenPreviouslyClosed) {
   close(STDERR_FILENO);
   CheckStderrCaptured();
   dup2(saved_stderr, STDERR_FILENO);
+}
+
+FilePath ProcessTest::GetFdPath(int fd) {
+  return FilePath(StringPrintf("/proc/self/fd/%d", fd));
+}
+
+TEST_F(ProcessTest, RedirectStderrUsingPipe) {
+  std::string contents;
+  process_.RedirectOutput("");
+  process_.AddArg(kBinCp);
+  process_.RedirectUsingPipe(STDERR_FILENO, false);
+  EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
+  EXPECT_EQ(1, process_.Run());
+  int pipe_fd = process_.GetPipe(STDERR_FILENO);
+  EXPECT_GE(pipe_fd, 0);
+  EXPECT_EQ(-1, process_.GetPipe(STDOUT_FILENO));
+  EXPECT_EQ(-1, process_.GetPipe(STDIN_FILENO));
+  EXPECT_TRUE(file_util::ReadFileToString(GetFdPath(pipe_fd),
+                                          &contents));
+  EXPECT_NE(std::string::npos, contents.find("missing file operand"));
+  EXPECT_EQ("", GetLog());
+}
+
+TEST_F(ProcessTest, RedirectStderrUsingPipeWhenPreviouslyClosed) {
+  int saved_stderr = dup(STDERR_FILENO);
+  close(STDERR_FILENO);
+  process_.RedirectOutput("");
+  process_.AddArg(kBinCp);
+  process_.RedirectUsingPipe(STDERR_FILENO, false);
+  EXPECT_FALSE(process_.Start());
+  EXPECT_TRUE(FindLog("Unable to fstat fd 2:"));
+  dup2(saved_stderr, STDERR_FILENO);
+}
+
+TEST_F(ProcessTest, RedirectStdoutUsingPipe) {
+  std::string contents;
+  process_.RedirectOutput("");
+  process_.AddArg(kBinEcho);
+  process_.AddArg("hello world\n");
+  process_.RedirectUsingPipe(STDOUT_FILENO, false);
+  EXPECT_EQ(-1, process_.GetPipe(STDOUT_FILENO));
+  EXPECT_EQ(0, process_.Run());
+  int pipe_fd = process_.GetPipe(STDOUT_FILENO);
+  EXPECT_GE(pipe_fd, 0);
+  EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
+  EXPECT_EQ(-1, process_.GetPipe(STDIN_FILENO));
+  EXPECT_TRUE(file_util::ReadFileToString(GetFdPath(pipe_fd),
+                                          &contents));
+  EXPECT_NE(std::string::npos, contents.find("hello world\n"));
+  EXPECT_EQ("", GetLog());
+}
+
+TEST_F(ProcessTest, RedirectStdinUsingPipe) {
+  std::string contents;
+  const char kMessage[] = "made it!\n";
+  process_.AddArg(kBinCat);
+  process_.RedirectUsingPipe(STDIN_FILENO, true);
+  process_.RedirectOutput(output_file_);
+  EXPECT_TRUE(process_.Start());
+  int write_fd = process_.GetPipe(STDIN_FILENO);
+  EXPECT_EQ(-1, process_.GetPipe(STDERR_FILENO));
+  EXPECT_TRUE(file_util::WriteFile(GetFdPath(write_fd), kMessage,
+                                   strlen(kMessage)));
+  close(write_fd);
+  EXPECT_EQ(0, process_.Wait());
+  ExpectFileEquals(kMessage, output_file_.c_str());
 }
 
 TEST_F(ProcessTest, NoParams) {
