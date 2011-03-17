@@ -37,6 +37,8 @@ static const char* PowerStateToString(PowerState state) {
       return "state(ACTIVE_OFF)";
     case BACKLIGHT_SUSPENDED:
       return "state(SUSPENDED)";
+    case BACKLIGHT_UNINITIALIZED:
+      return "state(UNINITIALIZED)";
     default:
       NOTREACHED();
       return "";
@@ -53,7 +55,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
-      state_(BACKLIGHT_ACTIVE_ON),
+      state_(BACKLIGHT_UNINITIALIZED),
       plugged_state_(kPowerUnknown),
       system_brightness_(0),
       min_(0),
@@ -129,6 +131,7 @@ void BacklightController::DecreaseBrightness() {
 bool BacklightController::SetPowerState(PowerState state) {
   if (state == state_ || !is_initialized_)
     return false;
+  CHECK(state != BACKLIGHT_UNINITIALIZED);
 
   LOG(INFO) << PowerStateToString(state_) << " -> "
             << PowerStateToString(state);
