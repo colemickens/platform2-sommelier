@@ -246,7 +246,9 @@ fi
 
 # Use OpenGL acceleration flags except on ARM
 if [ "$(uname -m)" != "armv7l" ] ; then
-  ACCELERATED_FLAGS="--enable-accelerated-layers --enable-webgl"
+  ACCELERATED_FLAGS="--enable-accelerated-layers"
+else
+  ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
 # The subshell that started the X server will terminate once X is
