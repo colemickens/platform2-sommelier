@@ -274,6 +274,13 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
     fi
     # End of activate_date block
 
+    # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt.
+    # So that OOBE process can read the default locale setting from VPD.
+    if [ -x /usr/sbin/dump_vpd_log ]; then
+      /usr/sbin/dump_vpd_log
+    fi
+    # End of OOBE block
+
     # Dump machine info from mosys
     mosys -k smbios info system > /tmp/machine-info
   fi
