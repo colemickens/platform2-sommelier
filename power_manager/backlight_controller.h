@@ -138,6 +138,9 @@ class BacklightController {
   int64 min_;
   int64 max_;
 
+  // Flag is set if a backlight device exists.
+  bool is_initialized_;
+
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };
 
