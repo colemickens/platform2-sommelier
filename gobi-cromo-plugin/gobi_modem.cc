@@ -43,7 +43,9 @@ static const int DEBUG = 0;
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
-static const char *kNetworkDriver = "QCUSBNet2k";
+static const char *k2kNetworkDriver = "QCUSBNet2k";
+static const char *k3kNetworkDriver = "GobiNet";
+static const char *kUnifiedNetworkDriver = "gobi";
 
 using utilities::DBusPropertyMap;
 
@@ -1133,7 +1135,9 @@ void GobiModem::SetDeviceProperties()
     if (parent != NULL)
       driver = udev_device_get_driver(parent);
 
-    if (driver.compare(kNetworkDriver) == 0) {
+    if (driver.compare(k2kNetworkDriver) == 0 ||
+        driver.compare(k3kNetworkDriver) == 0 ||
+        driver.compare(kUnifiedNetworkDriver) == 0) {
       // Extract last portion of syspath...
       size_t found = syspath.find_last_of('/');
       if (found != std::string::npos) {
