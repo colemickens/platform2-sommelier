@@ -50,22 +50,16 @@ void session_manager_init(SessionManager *self) { }
   if (!self->service) { \
     return FALSE; \
   } \
-  return self->service->_NAME(args, error);
-
-#define SESSION_MANAGER_WRAP_METHOD0(_NAME) \
-  if (!self->service) { \
-    return FALSE; \
-  } \
-  return self->service->_NAME(error);
+  return self->service->_NAME(args);
 
 gboolean session_manager_emit_login_prompt_ready(SessionManager* self,
                                                  gboolean* OUT_emitted,
                                                  GError** error) {
-  SESSION_MANAGER_WRAP_METHOD(EmitLoginPromptReady, OUT_emitted);
+  SESSION_MANAGER_WRAP_METHOD(EmitLoginPromptReady, OUT_emitted, error);
 }
 gboolean session_manager_emit_login_prompt_visible(SessionManager* self,
                                                    GError** error) {
-  SESSION_MANAGER_WRAP_METHOD0(EmitLoginPromptVisible);
+  SESSION_MANAGER_WRAP_METHOD(EmitLoginPromptVisible, error);
 }
 gboolean session_manager_enable_chrome_testing(SessionManager* self,
                                                gboolean force_relaunch,
@@ -75,7 +69,8 @@ gboolean session_manager_enable_chrome_testing(SessionManager* self,
   SESSION_MANAGER_WRAP_METHOD(EnableChromeTesting,
                               force_relaunch,
                               extra_arguments,
-                              OUT_filepath);
+                              OUT_filepath,
+                              error);
 }
 gboolean session_manager_start_session(SessionManager* self,
                                        gchar* email_address,
@@ -85,86 +80,92 @@ gboolean session_manager_start_session(SessionManager* self,
   SESSION_MANAGER_WRAP_METHOD(StartSession,
                               email_address,
                               unique_identifier,
-                              OUT_done);
+                              OUT_done,
+                              error);
 }
 gboolean session_manager_stop_session(SessionManager* self,
                                       gchar* unique_identifier,
                                       gboolean* OUT_done,
                                       GError** error) {
-  SESSION_MANAGER_WRAP_METHOD(StopSession, unique_identifier, OUT_done);
+  SESSION_MANAGER_WRAP_METHOD(StopSession, unique_identifier, OUT_done, error);
 }
 gboolean session_manager_set_owner_key(SessionManager *self,
                                        GArray *public_key_der,
                                        GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(SetOwnerKey, public_key_der);
+  SESSION_MANAGER_WRAP_METHOD(SetOwnerKey, public_key_der, error);
 }
 gboolean session_manager_unwhitelist(SessionManager *self,
                                      gchar *email_address,
                                      GArray *signature,
                                      GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(Unwhitelist, email_address, signature);
+  SESSION_MANAGER_WRAP_METHOD(Unwhitelist, email_address, signature, error);
 }
 gboolean session_manager_check_whitelist(SessionManager *self,
                                          gchar *email_address,
                                          GArray **OUT_signature,
                                          GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(CheckWhitelist, email_address, OUT_signature);
+  SESSION_MANAGER_WRAP_METHOD(CheckWhitelist,
+                              email_address,
+                              OUT_signature,
+                              error);
 }
 gboolean session_manager_enumerate_whitelisted(SessionManager *self,
                                                gchar ***OUT_whitelist,
                                                GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(EnumerateWhitelisted, OUT_whitelist);
+  SESSION_MANAGER_WRAP_METHOD(EnumerateWhitelisted, OUT_whitelist, error);
 }
 gboolean session_manager_whitelist(SessionManager *self,
                                    gchar *email_address,
                                    GArray *signature,
                                    GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(Whitelist, email_address, signature);
+  SESSION_MANAGER_WRAP_METHOD(Whitelist, email_address, signature, error);
 }
 gboolean session_manager_store_property(SessionManager *self,
                                         gchar *name,
                                         gchar *value,
                                         GArray *signature,
                                         GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(StoreProperty, name, value, signature);
+  SESSION_MANAGER_WRAP_METHOD(StoreProperty, name, value, signature, error);
 }
 gboolean session_manager_retrieve_property(SessionManager *self,
                                            gchar *name,
                                            gchar **OUT_value,
                                            GArray **OUT_signature,
                                            GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(RetrieveProperty, name, OUT_value, OUT_signature);
+  SESSION_MANAGER_WRAP_METHOD(RetrieveProperty,
+                              name,
+                              OUT_value,
+                              OUT_signature,
+                              error);
 }
 gboolean session_manager_store_policy(SessionManager *self,
                                       gchar *policy_blob,
-                                      GArray *signature,
-                                      GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(StorePolicy, policy_blob, signature);
+                                      DBusGMethodInvocation* context) {
+  SESSION_MANAGER_WRAP_METHOD(StorePolicy, policy_blob, context);
 }
 gboolean session_manager_retrieve_policy(SessionManager *self,
                                          gchar **OUT_policy_blob,
-                                         GArray **OUT_signature,
                                          GError **error) {
-  SESSION_MANAGER_WRAP_METHOD(RetrievePolicy, OUT_policy_blob, OUT_signature);
+  SESSION_MANAGER_WRAP_METHOD(RetrievePolicy, OUT_policy_blob, error);
 }
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error) {
-  SESSION_MANAGER_WRAP_METHOD0(LockScreen);
+  SESSION_MANAGER_WRAP_METHOD(LockScreen, error);
 }
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error) {
-  SESSION_MANAGER_WRAP_METHOD0(UnlockScreen);
+  SESSION_MANAGER_WRAP_METHOD(UnlockScreen, error);
 }
 gboolean session_manager_restart_job(SessionManager* self,
                                      gint pid,
                                      gchar* arguments,
                                      gboolean* OUT_done,
                                      GError** error) {
-  SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done);
+  SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done, error);
 }
 gboolean session_manager_restart_entd(SessionManager* self,
                                       GError** error) {
-  SESSION_MANAGER_WRAP_METHOD0(RestartEntd);
+  SESSION_MANAGER_WRAP_METHOD(RestartEntd, error);
 }
 
 #undef SESSION_MANAGER_WRAP_METHOD

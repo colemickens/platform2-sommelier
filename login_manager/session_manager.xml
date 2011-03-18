@@ -62,12 +62,22 @@
       <arg type="ay" name="signature" direction="out" />
     </method>
     <method name="StorePolicy">
+      <!-- Async annotation means that this method can respond asynchronously;
+	   in the normal case, once the handler bound to this method call
+	   returns, dbus-daemon will send a response back to the caller. -->
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="s" name="policy_blob" direction="in" />
-      <arg type="ay" name="signature" direction="in" />
+      <arg type="b" direction="out">
+	<!-- This means that the caller doesn't have to pass in an
+	     out-param to get the result of this call.  In synchronous
+	     operation, this is mapped to the return value of the
+	     method call.  In async mode, this is just another value
+	     passed to the callback. -->
+	<annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
     </method>
     <method name="RetrievePolicy">
       <arg type="s" name="policy_blob" direction="out" />
-      <arg type="ay" name="signature" direction="out" />
     </method>
     <method name="RestartEntd">
     </method>

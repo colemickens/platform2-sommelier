@@ -82,11 +82,9 @@ gboolean session_manager_retrieve_property(SessionManager *self,
                                            GError **error);
 gboolean session_manager_store_policy(SessionManager *self,
                                       gchar *policy_blob,
-                                      GArray *signature,
-                                      GError **error);
+                                      DBusGMethodInvocation* context);
 gboolean session_manager_retrieve_policy(SessionManager *self,
                                          gchar **OUT_policy_blob,
-                                         GArray **OUT_signature,
                                          GError **error);
 
 gboolean session_manager_unlock_screen(SessionManager *self,

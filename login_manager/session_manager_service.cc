@@ -153,6 +153,7 @@ SessionManagerService::SessionManagerService(
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
+      policy_(new DevicePolicy(FilePath(DevicePolicy::kDefaultPath))),
       nss_(NssUtil::Create()),
       key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
       store_(new PrefStore(FilePath(PrefStore::kDefaultPath))),
@@ -220,6 +221,8 @@ bool SessionManagerService::Initialize() {
   LOG(INFO) << "SessionManagerService starting";
   if (!store_->LoadOrCreate())
     LOG(ERROR) << "Could not load existing settings.  Continuing anyway...";
+  if (!policy_->LoadOrCreate())
+    LOG(ERROR) << "Could not load existing policy.  Continuing anyway...";
   return Reset();
 }
 
@@ -331,7 +334,7 @@ bool SessionManagerService::Shutdown() {
   base::WaitableEvent event(true, false);
   io_thread_.message_loop()->PostTask(
       FROM_HERE, NewRunnableMethod(this,
-                                   &SessionManagerService::PersistStoreSync,
+                                   &SessionManagerService::PersistAllSync,
                                    &event));
   event.Wait();
   io_thread_.Stop();
@@ -732,16 +735,33 @@ gboolean SessionManagerService::RetrieveProperty(gchar* name,
   return TRUE;
 }
 
+void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
+                                             bool succeeded) {
+  if (context)
+    dbus_g_method_return(context, succeeded);
+}
+
 gboolean SessionManagerService::StorePolicy(gchar* policy_blob,
-                                            GArray* signature,
-                                            GError** error) {
-  return FALSE;
+                                            DBusGMethodInvocation* context) {
+  // TODO(cmasone): Extract policy, signature and do verification.
+  policy_->Set(policy_blob);
+  io_thread_.message_loop()->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistPolicy,
+                                   context));
+  return TRUE;
 }
 
 gboolean SessionManagerService::RetrievePolicy(gchar** OUT_policy_blob,
-                                               GArray** OUT_signature,
                                                GError** error) {
-  return FALSE;
+  const std::string& polstr = policy_->Get();
+  *OUT_policy_blob = g_strdup_printf("%.*s", polstr.length(), polstr.c_str());
+  if (!*OUT_policy_blob) {
+    const char msg[] = "Unable to allocate memory for response.";
+    LOG(ERROR) << msg;
+    SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    return FALSE;
+  }
+  return TRUE;
 }
 
 gboolean SessionManagerService::LockScreen(GError** error) {
@@ -904,18 +924,10 @@ void SessionManagerService::PersistKey() {
                                    what_happened));
 }
 
-void SessionManagerService::PersistWhitelist() {
-  LOG(INFO) << "Persisting Whitelist to disk.";
-  bool what_happened = store_->Persist();
-  message_loop_->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
-                                   chromium::kWhitelistChangeCompleteSignal,
-                                   what_happened));
-}
-
-void SessionManagerService::PersistStoreSync(base::WaitableEvent* event) {
+void SessionManagerService::PersistAllSync(base::WaitableEvent* event) {
   store_->Persist();
-  LOG(INFO) << "Persisted Store to disk.";
+  policy_->Persist();
+  LOG(INFO) << "Persisted store, policy to disk.";
   event->Signal();
 }
 
@@ -925,6 +937,25 @@ void SessionManagerService::PersistStore() {
   message_loop_->PostTask(
       FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
                                    chromium::kPropertyChangeCompleteSignal,
+                                   what_happened));
+}
+
+void SessionManagerService::PersistPolicy(DBusGMethodInvocation* context) {
+  LOG(INFO) << "Persisting policy to disk.";
+  bool what_happened = policy_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this,
+                                   &SessionManagerService::SendBooleanReply,
+                                   context,
+                                   what_happened));
+}
+
+void SessionManagerService::PersistWhitelist() {
+  LOG(INFO) << "Persisting Whitelist to disk.";
+  bool what_happened = store_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
+                                   chromium::kWhitelistChangeCompleteSignal,
                                    what_happened));
 }
 

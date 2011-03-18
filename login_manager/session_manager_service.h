@@ -25,6 +25,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
+#include "login_manager/device_policy.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
@@ -77,6 +78,9 @@ class SessionManagerService
     }
     void set_prefstore(PrefStore* store) {
       session_manager_service_->store_.reset(store);
+    }
+    void set_policy(DevicePolicy* store) {
+      session_manager_service_->policy_.reset(store);
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
@@ -270,20 +274,19 @@ class SessionManagerService
                             GArray** OUT_signature,
                             GError** error);
 
-  // Store |policy_blob, signature| to disk.
+  // |policy_blob| is a serialized protobuffer containing a device policy
+  // and a signature over that policy.  Verify the sig and persist
+  // |policy_blob| to disk.
   //
-  // |signature| is a SAH1 with RSA signature over |policy_blob|,
+  // The signature is a SHA1 with RSA signature over the policy,
   // verifiable with |key_|.
   //
-  // Returns TRUE if the signature checks out and the data is inserted,
-  // FALSE otherwise.
-  gboolean StorePolicy(gchar* policy_blob, GArray* signature, GError** error);
+  // Returns TRUE if the signature checks out, FALSE otherwise.
+  gboolean StorePolicy(gchar* policy_blob, DBusGMethodInvocation* context);
 
   // Get the policy_blob and associated signature off of disk.
   // Returns TRUE if the data is can be fetched, FALSE otherwise.
-  gboolean RetrievePolicy(gchar** OUT_policy_blob,
-                          GArray** OUT_signature,
-                          GError** error);
+  gboolean RetrievePolicy(gchar** OUT_policy_blob, GError** error);
 
   // Handles LockScreen request from PowerManager. It switches itself to
   // lock mode, and emit LockScreen signal to Chromium Browser.
@@ -449,23 +452,30 @@ class SessionManagerService
   // to signal Chromium when done.
   void PersistKey();
 
-  // |store_| is persisted to disk, and then posts a task to |message_loop_|
-  // to signal Chromium when done.
-  void PersistWhitelist();
+  // |store_| and |policy_| are persisted to disk, then |event| is
+  // signaled when done.  This is used to provide synchronous,
+  // threadsafe persisting.
+  void PersistAllSync(base::WaitableEvent* event);
 
   // |store_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
   void PersistStore();
 
-  // |store_| is persisted to disk, and |event| is signaled when done.  This
-  // is used to provide synchronous, threadsafe persisting.
-  void PersistStoreSync(base::WaitableEvent* event);
+  // |policy_| is persisted to disk, and then a task is posted to
+  // ||message_loop_| to complete the StorePolicy DBus method call.
+  void PersistPolicy(DBusGMethodInvocation* context);
+
+  // |store_| is persisted to disk, and then posts a task to |message_loop_|
+  // to signal Chromium when done.
+  void PersistWhitelist();
 
   void StartKeyGeneration();
 
   // Uses |system_| to send |signal_name| to Chromium.  Attaches a payload
   // to the signal indicating the status of |succeeded|.
   void SendSignal(const char signal_name[], bool succeeded);
+
+  void SendBooleanReply(DBusGMethodInvocation* context, bool succeeded);
 
   bool ShouldRunChildren();
   // Returns true if |child_job| believes it should be stopped.
@@ -496,6 +506,7 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> message_loop_;
 
   scoped_ptr<SystemUtils> system_;
+  scoped_ptr<DevicePolicy> policy_;
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<OwnerKey> key_;
   scoped_ptr<PrefStore> store_;

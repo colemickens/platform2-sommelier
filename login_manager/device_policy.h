@@ -9,9 +9,6 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
-#include <base/scoped_ptr.h>
-
-class DictionaryValue;
 
 namespace login_manager {
 
@@ -29,25 +26,21 @@ class DevicePolicy {
 
   // Load the signed policy off of disk into |policy_|.
   // Returns true unless there is a policy on disk and loading it fails.
-  virtual bool Load();
+  virtual bool LoadOrCreate();
 
-  // Get the policy blob and the signature and return in the out params.
-  // Returns false if there is an error extracting the info from |policy_|.
-  virtual bool Get(std::string* OUT_policy, std::string* OUT_sig);
+  virtual const std::string& Get();
 
   // Persist |policy_| to disk at |policy_file_|
   // Returns false if there's an error while writing data.
   virtual bool Persist();
 
   // Clobber the stored policy with new data.
-  virtual void Set(const std::string& policy, const std::string& sig);
+  virtual void Set(const std::string& policy);
+
+  static const char kDefaultPath[];
 
  private:
-  static const char kDefaultPath[];
-  static const char kPolicyField[];
-  static const char kPolicySigField[];
-
-  scoped_ptr<DictionaryValue> policy_;
+  std::string policy_;
   const FilePath policy_path_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicy);

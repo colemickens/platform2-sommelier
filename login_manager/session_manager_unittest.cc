@@ -28,6 +28,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
+#include "login_manager/mock_device_policy.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
@@ -103,9 +104,16 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   void SimpleRunManager(MockPrefStore* store) {
+    SimpleRunManager(store, new MockDevicePolicy);
+  }
+
+  void SimpleRunManager(MockPrefStore* store, MockDevicePolicy* policy) {
     EXPECT_CALL(*store, Persist())
         .WillOnce(Return(true));
     manager_->test_api().set_prefstore(store);
+    EXPECT_CALL(*policy, Persist())
+        .WillOnce(Return(true));
+    manager_->test_api().set_policy(policy);
     manager_->Run();
   }
 
@@ -341,7 +349,7 @@ const pid_t SessionManagerTest::kDummyPid = 4;
 
 TEST_F(SessionManagerTest, NoLoopTest) {
   MockChildJob* job = CreateTrivialMockJob(NEVER);
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, BadExitChild) {
@@ -354,7 +362,7 @@ TEST_F(SessionManagerTest, BadExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, BadExitChild1) {
@@ -374,7 +382,7 @@ TEST_F(SessionManagerTest, BadExitChild1) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, BadExitChild2) {
@@ -394,7 +402,7 @@ TEST_F(SessionManagerTest, BadExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(BadExitAfterSleep));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, CleanExitChild) {
@@ -406,7 +414,7 @@ TEST_F(SessionManagerTest, CleanExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, CleanExitChild2) {
@@ -428,7 +436,7 @@ TEST_F(SessionManagerTest, CleanExitChild2) {
   EXPECT_CALL(*job2, ShouldStop())
       .WillOnce(Return(true));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, LoadOwnerKey) {
@@ -444,7 +452,7 @@ TEST_F(SessionManagerTest, LoadOwnerKey) {
 
   manager_->test_api().set_ownerkey(key);
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, LockedExit) {
@@ -469,7 +477,7 @@ TEST_F(SessionManagerTest, LockedExit) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, MustStopChild) {
@@ -482,7 +490,7 @@ TEST_F(SessionManagerTest, MustStopChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, KeygenTest) {
@@ -676,9 +684,15 @@ TEST_F(SessionManagerTest, StartOwnerSession) {
 
   MockOwnerKey* key = new MockOwnerKey;
   MockPrefStore* store = new MockPrefStore;
+  MockDevicePolicy* policy = new MockDevicePolicy;
   ExpectStartSessionForOwner(email, key, store);
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+
   manager_->test_api().set_ownerkey(key);
   manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_policy(policy);
+
   manager_->StartSession(email, nothing, &out, NULL);
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
@@ -708,9 +722,15 @@ TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
       .WillOnce(Return(false));
   MockOwnerKey* key = new MockOwnerKey;
   MockPrefStore* store = new MockPrefStore;
+  MockDevicePolicy* policy = new MockDevicePolicy;
   ExpectStartSessionForOwner(email, key, store);
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+
   manager_->test_api().set_ownerkey(key);
   manager_->test_api().set_prefstore(store);
+  manager_->test_api().set_policy(policy);
+
   bool ret_code = manager_->StartSession(email, nothing, &out, NULL);
   EXPECT_FALSE(ret_code);
   EXPECT_EQ(ret_code, out);
@@ -751,7 +771,7 @@ TEST_F(SessionManagerTest, StatsRecorded) {
       .WillOnce(Return(false));
   ON_CALL(*job, GetName())
       .WillByDefault(Return(std::string("foo")));
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
   LOG(INFO) << "Finished the run!";
   EXPECT_TRUE(file_util::PathExists(uptime));
   EXPECT_TRUE(file_util::PathExists(disk));
@@ -797,6 +817,8 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
+
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
   EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
@@ -816,8 +838,12 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
       .WillOnce(Return(true))
       .WillOnce(Return(true))
       .WillOnce(Return(true));
-
   manager_->test_api().set_prefstore(store);
+
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
+
   StartFakeSession();
   manager_->ValidateAndStoreOwnerKey(kPropValue);
   manager_->Run();
@@ -839,7 +865,7 @@ TEST_F(SessionManagerTest, WhitelistNoKey) {
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, error->code);
   g_error_free(error);
 
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, WhitelistVerifyFail) {
@@ -860,7 +886,7 @@ TEST_F(SessionManagerTest, WhitelistVerifyFail) {
   EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_, &error));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, error->code);
   g_error_free(error);
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, Whitelist) {
@@ -873,6 +899,7 @@ TEST_F(SessionManagerTest, Whitelist) {
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
@@ -889,6 +916,10 @@ TEST_F(SessionManagerTest, Whitelist) {
       .WillOnce(Return(true))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
+
   manager_->test_api().set_prefstore(store);
   EXPECT_EQ(TRUE, manager_->Whitelist(kFakeEmail, fake_sig_, NULL));
   manager_->Run();
@@ -904,6 +935,7 @@ TEST_F(SessionManagerTest, Unwhitelist) {
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
@@ -919,6 +951,10 @@ TEST_F(SessionManagerTest, Unwhitelist) {
   EXPECT_CALL(*store, Persist())
       .WillOnce(Return(true))
       .WillOnce(Return(true));
+
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
 
   manager_->test_api().set_prefstore(store);
   EXPECT_EQ(TRUE, manager_->Unwhitelist(kFakeEmail, fake_sig_, NULL));
@@ -1025,6 +1061,31 @@ TEST_F(SessionManagerTest, EnumerateEmptyWhitelist) {
   g_strfreev(out_list);
 }
 
+TEST_F(SessionManagerTest, StorePolicy) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+
+  MockPrefStore* store = new MockPrefStore;
+  MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  manager_->test_api().set_ownerkey(key);
+
+  EXPECT_CALL(*store, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_prefstore(store);
+
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*policy, Set(StrEq(kPropValue)))
+      .Times(1);
+  manager_->test_api().set_policy(policy);
+
+  EXPECT_EQ(TRUE, manager_->StorePolicy(kPropValue, NULL));
+  manager_->Run();
+}
+
 TEST_F(SessionManagerTest, StorePropertyNoKey) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   MockUtils();
@@ -1043,7 +1104,7 @@ TEST_F(SessionManagerTest, StorePropertyNoKey) {
                                            &error));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, error->code);
   g_error_free(error);
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
@@ -1067,7 +1128,7 @@ TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
                                            &error));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, error->code);
   g_error_free(error);
-  SimpleRunManager(new MockPrefStore);
+  SimpleRunManager(new MockPrefStore, new MockDevicePolicy);
 }
 
 TEST_F(SessionManagerTest, StoreProperty) {
@@ -1080,6 +1141,7 @@ TEST_F(SessionManagerTest, StoreProperty) {
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
@@ -1095,6 +1157,11 @@ TEST_F(SessionManagerTest, StoreProperty) {
       .WillOnce(Return(true))
       .WillOnce(Return(true));
   manager_->test_api().set_prefstore(store);
+
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
+
   EXPECT_EQ(TRUE, manager_->StoreProperty(kPropName,
                                           kPropValue,
                                           fake_sig_,
