@@ -352,7 +352,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     LOG(INFO) << "state = kIdleDim";
     changed_brightness = backlight_controller_->SetPowerState(BACKLIGHT_DIM);
     idle_state_ = kIdleDim;
-  } else {
+  } else if (idle_state_ != kIdleNormal) {
     LOG(INFO) << "state = kIdleNormal";
     changed_brightness =
         backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON);
