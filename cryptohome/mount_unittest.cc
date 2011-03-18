@@ -703,6 +703,7 @@ TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
   // Cache must be empty (and may even be deleted).
   for (size_t user = 0; user < kAlternateUserCount; user ++) {
     EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
+    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
 
     // Check that we did not leave any litter.
     file_util::Delete(cache_dir[user], true);

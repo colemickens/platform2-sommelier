@@ -512,6 +512,7 @@ void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const {
 }
 
 // Deletes all tracking subdirectories of the given vault.
+// This callback is OBSOLETE.
 static void DeleteTrackedDirsCallback(const FilePath& vault) {
   file_util::FileEnumerator subdir_enumerator(
       vault, false, file_util::FileEnumerator::DIRECTORIES);
@@ -529,6 +530,21 @@ static void DeleteTrackedDirsCallback(const FilePath& vault) {
   }
 }
 
+// Deletes specified directory contents, but leaves the directory itself.
+static void DeleteDirectoryContents(const FilePath& dir) {
+  file_util::FileEnumerator subdir_enumerator(
+      dir,
+      false,
+      static_cast<file_util::FileEnumerator::FILE_TYPE>(
+          file_util::FileEnumerator::FILES |
+          file_util::FileEnumerator::DIRECTORIES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS));
+  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
+       subdir_path = subdir_enumerator.Next()) {
+    file_util::Delete(subdir_path, true);
+  }
+}
+
 void Mount::CleanUnmountedTrackedSubdirectories() const {
   DoForEveryUnmountedCryptohome(&DeleteTrackedDirsCallback);
 }
@@ -536,7 +552,7 @@ void Mount::CleanUnmountedTrackedSubdirectories() const {
 // Deletes Cache tracking directory of the given vault.
 static void DeleteCacheCallback(const FilePath& vault) {
   LOG(WARNING) << "Deleting Cache for user " << vault.value();
-  file_util::Delete(vault.Append(kCacheDir), true);
+  DeleteDirectoryContents(vault.Append(kCacheDir));
 }
 
 void Mount::DoAutomaticFreeDiskSpaceControl() const {
