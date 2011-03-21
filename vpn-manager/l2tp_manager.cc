@@ -11,6 +11,7 @@
 #include "gflags/gflags.h"
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+DEFINE_bool(defaultroute, true, "defaultroute");
 DEFINE_bool(length_bit, true, "length bit");
 DEFINE_bool(require_chap, true, "require chap");
 DEFINE_bool(refuse_pap, true, "refuse chap");
@@ -88,10 +89,11 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "idle 1800\n"
       "mtu 1410\n"
       "mru 1410\n"
-      "nodefaultroute\n"
       "debug\n"
       "lock\n"
       "connect-delay 5000\n");
+  pppd_config.append(StringPrintf("%sdefaultroute\n",
+                                  FLAGS_defaultroute ? "" : "no"));
   if (FLAGS_usepeerdns) {
     pppd_config.append("usepeerdns\n");
   }

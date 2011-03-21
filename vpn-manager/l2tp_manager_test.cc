@@ -77,10 +77,10 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "idle 1800\n"
       "mtu 1410\n"
       "mru 1410\n"
-      "nodefaultroute\n"
       "debug\n"
       "lock\n"
       "connect-delay 5000\n"
+      "defaultroute\n"
       "usepeerdns\n";
   std::string expected(kBaseExpected);
   EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
