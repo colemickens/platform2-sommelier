@@ -114,10 +114,11 @@ if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
 fi
 
 # TODO(rginda): Switch to the "real" dev mode file when we have one.
-/bin/cros_boot_mode -s -m developer
+/usr/bin/crossystem cros_debug?1
 DEVMODE=$((!$?))
 # Force dev behavior on dev images
-# TODO(wad) replace with a cros_boot_mode arg once supported.
+# TODO(wad,rspangler) replace with a crossystem arg once cros_debug checks this
+# too.
 if [ -f "/root/.dev_mode" ]; then
   DEVMODE=1
 fi
