@@ -30,6 +30,43 @@ usage_help() {
 "
 }
 
+# Prints the two byte hex code of the matched char or
+# exists non-zero on timeout.  It reads from the current tty.
+# To override, call it as follows,
+#   match_char_timeout args < "$STDOUT"
+#
+# Arguments: time_in_seconds two_byte_hex_match_1 two_byte_hex_match_2 ...
+match_char_timeout() {
+  local delay_secs="$1"
+  shift
+
+  local input=''
+  local match=''
+  local start_time=$(date +%s)
+  local stop_time=$((start_time + delay_secs))
+  local tty_config=$(stty -g)
+  stty raw -echo
+  while [ $delay_secs -gt 0 ]; do
+    input=$(timeout -s KILL ${delay_secs}s head -c 1)
+    [ $? -eq 137 ] && break  # Timed out.
+    input=$(printf "%02x" "'$input")
+    for char in "$@"; do
+      if [ "$input" = "$char" ]; then
+        match="$input"
+        break
+      fi
+    done
+    [ -n "$match" ] && break
+    delay_secs=$((stop_time - $(date +%s) ))
+  done
+  # Restores the tty's settings.
+  stty $tty_config
+
+  [ -z "$match" ] && return 1
+  printf "$match"
+  return 0
+}
+
 # Prints message when in developer mode
 # Argument: time to countdown (in seconds)
 mode_warn_dev() {
@@ -67,38 +104,24 @@ mode_warn_dev() {
   ' >"$STDOUT"
   # TODO(wad) Use the developer mode firmware image
 
-  local echo_opt='-n'
-  if [ -n "$BASH_VERSION" ]; then
-    # bash needs -e to interpret \r, but dash does not.
-    echo_opt='-n -e'
-  fi
-  # During the countdown, read a space bar or CTRL+D.
-  # TODO(wad) move this to an input_handler().
-  local tty_config=$(stty -g < "$STDOUT")
-  local input=''
-  local start_time=$(date +%s)
-  local stop_time=$((start_time + delay_secs))
-  while [ $delay_secs -gt 0 ]; do
-    # Read with a timeout.
-    input=$(timeout -s KILL ${delay_secs}s \
-      dash -c "(stty raw -echo; head -c 1) <> \"$STDOUT\" ")
-    [ $? -eq 137 ] && break  # Timed out.
-    input=$(printf "%02x" "'$input")
-    [ "$input" = "04" ] && break  # Ctrl+D
-    if [ "$input" = "20" ]; then  # Space
+  # Read a space bar or Ctrl+D or timeout.
+  local input=$(match_char_timeout "$delay_secs" 04 20 < "$STDOUT")
+  local exit_code=$?
+  tput clear > "$STDOUT"
+  # If we timed out, we're done.
+  [ $exit_code -ne 0 ] && return 0
+  case "$input" in
+    "04")  # Ctrl+D
+      # Done.
+      ;;
+    "20")  # Spacebar
       crossystem recovery_request=1
       # TODO(rspangler,vb) remove when reboot_mode is gone.
       reboot_mode --recovery=1
       reboot
-    fi
-    delay_secs=$((stop_time - $(date +%s) ))
-  done
-  # Restores the tty's settings.  Normally this isn't needed, but
-  # if called where a controlling terminal exists, then it is appropriate.
-  stty $tty_config < "$STDOUT"
-  tput clear > "$STDOUT"
-
-  echo $echo_opt "\r                                               " >"$STDOUT"
+      ;;
+  esac
+  return 0
 }
 
 
@@ -131,6 +154,8 @@ mode_enter_dev() {
     Preparing your system for developer mode.
     Please wait 5 - 10 minutes and DO NOT POWER OFF . . .
     The system will reboot when complete.
+
+    On reboot, press Ctrl+Alt+[->] (F2) for further instruction.
   " >"$STDOUT"
   # TODO(wad,wfrichar) Request a root password here.
   # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev

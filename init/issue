@@ -2,7 +2,7 @@ Developer Console
 
 To return to the browser, press:
 
-  [ Ctrl ] and [ Alt ] and [ F1 ]
+  [ Ctrl ] and [ Alt ] and [ <- ]  (F1)
 
 To use this console, the developer mode switch must be engaged.
 Doing so will destroy any saved data on the system.
@@ -18,6 +18,10 @@ In developer mode, it is possible to
 
 echo "chronos:$(openssl passwd -1)" > /mnt/stateful_partition/etc/devmode.passwd
 
+If you are having trouble booting a self-signed kernel, you may need to
+install the developer firmware.  To do so, run the following as root:
+
+chromeos-firmwareupdate --mode=todev
 
 Have fun and send patches!
 
