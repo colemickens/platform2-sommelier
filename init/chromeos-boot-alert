@@ -13,6 +13,9 @@ set +e
 usage_help() {
   echo "Usage: $0 mode terminal [arg ...]
 
+  warn_dev: Message for warning about developer mode on normal firmware.
+            Arg #1: (optional, default=30) Countdown in seconds before continue
+
   enter_dev: Message for entering developer mode from non-dev.
              Arg #1: (optional, default=30) Countdown in seconds before continue
 
@@ -26,6 +29,78 @@ usage_help() {
              Arg #1: (optional) Image file to show.
 "
 }
+
+# Prints message when in developer mode
+# Argument: time to countdown (in seconds)
+mode_warn_dev() {
+  local delay_secs="${1:-30}"
+  # Don't show a broken/partial background image.
+  tput clear > "$STDOUT"
+  echo '
+
+
+
+
+
+
+                        __________________________
+                       |.------------------------.|
+                       ||                        ||
+                       ||    (_)          (_)    ||
+                       ||                        ||
+                       ||       __________       ||
+                       ||     /            \     ||
+                       ||________________________||
+                      / __/___/_____________\__\__ \
+                     /               _              \
+                    /        /_______\ \_____\       \
+                   /__________________\ \_____________\
+                   \___________________\ \____________/
+                                        \ \_-_-_-.
+                                      /|         |
+                                     |  |        |
+                                       \         |
+                                        \_______/
+
+                   Chrome OS verification is turned off.
+                     Press space to begin recovery.
+  ' >"$STDOUT"
+  # TODO(wad) Use the developer mode firmware image
+
+  local echo_opt='-n'
+  if [ -n "$BASH_VERSION" ]; then
+    # bash needs -e to interpret \r, but dash does not.
+    echo_opt='-n -e'
+  fi
+  # During the countdown, read a space bar or CTRL+D.
+  # TODO(wad) move this to an input_handler().
+  local tty_config=$(stty -g < "$STDOUT")
+  local input=''
+  local start_time=$(date +%s)
+  local stop_time=$((start_time + delay_secs))
+  while [ $delay_secs -gt 0 ]; do
+    # Read with a timeout.
+    input=$(timeout -s KILL ${delay_secs}s \
+      dash -c "(stty raw -echo; head -c 1) <> \"$STDOUT\" ")
+    [ $? -eq 137 ] && break  # Timed out.
+    input=$(printf "%02x" "'$input")
+    [ "$input" = "04" ] && break  # Ctrl+D
+    if [ "$input" = "20" ]; then  # Space
+      crossystem recovery_request=1
+      # TODO(rspangler,vb) remove when reboot_mode is gone.
+      reboot_mode --recovery=1
+      reboot
+    fi
+    delay_secs=$((stop_time - $(date +%s) ))
+  done
+  # Restores the tty's settings.  Normally this isn't needed, but
+  # if called where a controlling terminal exists, then it is appropriate.
+  stty $tty_config < "$STDOUT"
+  tput clear > "$STDOUT"
+
+  echo $echo_opt "\r                                               " >"$STDOUT"
+}
+
 
 # Prints message when entering developer mode
 # Argument: time to countdown (in seconds)
@@ -57,6 +132,8 @@ mode_enter_dev() {
     Please wait 5 - 10 minutes and DO NOT POWER OFF . . .
     The system will reboot when complete.
   " >"$STDOUT"
+  # TODO(wad,wfrichar) Request a root password here.
+  # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev
 }
 
 # Prints message when leaving developer mode
@@ -108,7 +185,7 @@ main() {
   fi
 
   case "$mode" in
-    "enter_dev" | "leave_dev" | "update_firmware" | "wipe" )
+    "warn_dev" | "enter_dev" | "leave_dev" | "update_firmware" | "wipe" )
       mode_"$mode" "$@"
       ;;
     * )

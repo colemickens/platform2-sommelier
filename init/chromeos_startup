@@ -94,9 +94,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
 fi
 
 # DEVMODE is used to determine if we're booted in developer mode,
-# by ignoring the bootloader detection and just checks the switch state.
+# by checking only the developer and recovery switch states.
 # Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
-cros_boot_mode -b -s -m developer
+crossystem devsw_boot?1 recoverysw_boot?0
 DEVMODE=$((! $?))
 
 # Check if we need to perform firmware update.
@@ -135,6 +135,17 @@ DEVMODE_FILE="/mnt/stateful_partition/.developer_mode"
 # If in factory mode or a wipe process is already scheduled, don't change it.
 if [ -n "$IS_FACTORY_MODE" -o -O "$RESET_FILE" ]; then
   DEVMODE=2
+fi
+
+if [ ${DEVMODE} -eq 1 ]; then
+  PLATFORM=$(mosys platform name)
+  FW_TYPE=$(crossystem mainfw_type)
+  # Mario always displays the developer mode warning in firmware while
+  # other platforms only display it if the firmware volume is "developer".
+  if  [ "${PLATFORM}" != "Mario" -a "${FW_TYPE}" != "developer" ]; then
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert warn_dev /dev/tty1
+  fi
 fi
 
 # Transition to devmode
@@ -292,6 +303,7 @@ fi
 INSTALL_COMPLETED=/mnt/stateful_partition/.install_completed
 if [ -f "${INSTALL_COMPLETED}" ]; then
   # Remove XKB cache files, as the files may be incompatible after upgrade.
+  # TODO(wad,satorux) move this to ui.conf.
   rm -f /var/lib/xkb/*.xkm
 
   # This has to be done at the end of the block.

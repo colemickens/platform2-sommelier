@@ -84,13 +84,14 @@ else
   wipedev ${STATE_DEV}
 
   /sbin/mkfs.ext3 "$STATE_DEV"
+  # TODO(wad) tune2fs.
 fi
 
 # Mount the fresh image for last minute additions.
 mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
 
 # Tag that we're in developer mode otherwise we may get wiped again.
-if /bin/cros_boot_mode -m developer; then
+if crossystem devsw_boot?1 recoverysw_boot?0; then
   touch /mnt/stateful_partition/.developer_mode
 fi
 
@@ -102,21 +103,14 @@ echo 3 > /proc/sys/vm/drop_caches
 # board_factory_wipe.sh will be installed by the board overlay if necessary.
 if [ "$FACTORY_WIPE" = "factory" ]; then
   FIRMWARE_WIPE='/usr/sbin/firmware-factory-wipe'
+  # Factory wipe doesn't occur in developer mode w.r.t firmware wiping.
   if [ -x "${FIRMWARE_WIPE}" ]; then
-    /bin/cros_boot_mode -m developer || ${FIRMWARE_WIPE}
+    crossystem devsw_boot?1 || ${FIRMWARE_WIPE}
   fi
 
   BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
   if [ -x "${BOARD_WIPE}" ]; then
     ${BOARD_WIPE}
-  fi
-else
-  if /bin/cros_boot_mode -m developer; then
-    # Update firmware
-    FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-    if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-      "$FIRMWARE_UPDATE_SCRIPT" --mode=todev
-    fi
   fi
 fi
 
