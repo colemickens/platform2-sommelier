@@ -140,7 +140,7 @@ namespace {
 // Time we wait for child job to die (in seconds).
 const int kKillTimeout = 3;
 
-const int kMaxArgumentsSize = 512;
+const int kMaxArgumentsSize = 1024;
 
 }  // namespace
 
