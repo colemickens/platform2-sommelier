@@ -32,6 +32,7 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
                                MetricsLibraryInterface* metrics_lib,
                                const FilePath& run_dir)
   : loop_(NULL),
+    use_input_for_lid_(1),
     prefs_(prefs),
     lidstate_(kLidOpened),
     metrics_lib_(metrics_lib),
@@ -52,13 +53,16 @@ PowerManDaemon::~PowerManDaemon() {
 
 void PowerManDaemon::Init() {
   int input_lidstate = 0;
+  int64 use_input_for_lid;
   CHECK(prefs_->GetInt64(kRetrySuspendMs, &retry_suspend_ms_));
   CHECK(prefs_->GetInt64(kRetrySuspendAttempts, &retry_suspend_attempts_));
+  CHECK(prefs_->GetInt64(kUseLid, &use_input_for_lid));
   // Retrys will occur no more than once a minute.
   CHECK_GE(retry_suspend_ms_, 60000);
   // Only 1-10 retries prior to just shutting down.
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
+  use_input_for_lid_ = 1 == use_input_for_lid;
   loop_ = g_main_loop_new(NULL, false);
   // Acquire a handle to the console for VT switch locking ioctl.
   CHECK(GetConsole());
@@ -129,6 +133,10 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                 << (daemon->powerd_state_ == kPowerManagerDead?
                     "dead":(daemon->powerd_state_ == kPowerManagerAlive?
                             "alive":"unknown"));
+      if (!daemon->use_input_for_lid_) {
+        LOG(INFO) << "Ignoring lid.";
+        break;
+      }
       if (daemon->lidstate_ == kLidClosed) {
         if (daemon->powerd_state_ != kPowerManagerAlive) {
           // powerd is not alive so act on its behalf.
