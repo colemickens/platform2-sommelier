@@ -54,6 +54,9 @@ HELP='
  modem <command> [args...]
   Interact with the 3G modem. Run "modem help" for detailed help.
 
+ modem_set_carrier carrier-name
+  Configures the modem for the specified carrier.
+
  network_logging <wifi | cellular | ethernet>
   A function that enables a predefined set of tags useful for
   debugging the specified device.
@@ -408,6 +411,10 @@ cmd_top() {
 
 cmd_modem() {
   /usr/bin/modem "$@"
+}
+
+cmd_modem_set_carrier() {
+  /usr/bin/modem_set_carrier "$@"
 }
 
 cmd_set_apn() {
