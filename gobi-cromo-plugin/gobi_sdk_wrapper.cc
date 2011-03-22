@@ -24,7 +24,7 @@
 
 #include <glog/logging.h>
 
-#include "QCWWANCMAPI2k.h"
+#include "gobi/GobiConnectionMgmtAPI.h"
 
 namespace gobi {
 
@@ -189,7 +189,6 @@ static const char *kServiceMapping[] = {
   "SetRFInfoCallback",
   "SetLURejectCallback",
   "SetNMEACallback",
-  "SetNMEAPlusCallback",
   "SetPDSStateCallback",
   "SetNewSMSCallback",
   "SetDataCapabilitiesCallback",
@@ -1649,11 +1648,6 @@ ULONG Sdk::SetNewSMSCallback(tFNNewSMS pCallback) {
 ULONG Sdk::SetNMEACallback(tFNNewNMEA pCallback) {
   CallWrapper cw(this, "SetNMEACallback");
   return cw.CheckReturn(::SetNMEACallback(pCallback));
-}
-
-ULONG Sdk::SetNMEAPlusCallback(tFNNewNMEAPlus pCallback) {
-  CallWrapper cw(this, "SetNMEAPlusCallback");
-  return cw.CheckReturn(::SetNMEAPlusCallback(pCallback));
 }
 
 ULONG Sdk::SetPDSStateCallback(tFNPDSState pCallback) {

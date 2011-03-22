@@ -918,8 +918,6 @@ class Sdk {
 
   virtual ULONG SetNMEACallback(tFNNewNMEA pCallback);
 
-  virtual ULONG SetNMEAPlusCallback(tFNNewNMEAPlus pCallback);
-
   virtual ULONG SetPDSStateCallback(tFNPDSState pCallback);
 
   virtual ULONG SetCATEventCallback(

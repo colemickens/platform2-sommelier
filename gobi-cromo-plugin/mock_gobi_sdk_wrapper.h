@@ -1234,10 +1234,6 @@ class ErrorSdk : public gobi::Sdk {
     return 0;
   }
 
-  virtual ULONG SetNMEAPlusCallback(tFNNewNMEAPlus pCallback) {
-    return 0;
-  }
-
   virtual ULONG SetPDSStateCallback(tFNPDSState pCallback) {
     return 0;
   }

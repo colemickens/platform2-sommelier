@@ -7,7 +7,7 @@ INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
 
 CXXFLAGS += -fPIC -I$(INCLUDE_DIRS) -Wall -Werror -g -O0
 CFLAGS := $(CXXFLAGS)
-LDLIBS += -lbase -lQCWWAN2k -lglog -lpthread -lrt -ludev -lmetrics
+LDLIBS += -lbase -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt -ludev -lmetrics
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
@@ -57,7 +57,7 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 	      dbus-c++-1)
 
 # As few dependencies as possible
-gobi_handle_test : LDLIBS=-lQCWWAN2k -lpthread -lrt
+gobi_handle_test : LDLIBS=-lGobiConnectionMgmt -lpthread -lrt
 
 gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.o
 

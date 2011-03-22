@@ -18,7 +18,7 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#include "QCWWANCMAPI2k.h"
+#include "gobi/GobiConnectionMgmtAPI.h"
 
 static void log(const char *format, ...) {
   va_list args;
@@ -103,7 +103,7 @@ static void usage(const char *progname)
           progname);
   fprintf(stderr, "\tExample: %s api 1-2 /dev/qcqmi0\n", progname);
   fprintf(stderr, "To determine the usb dev id, run \n");
-  fprintf(stderr, "\tls -d /sys/bus/usb/drivers/QCUSBNet2k/*-*\n");
+  fprintf(stderr, "\tls -d /sys/bus/usb/drivers/{QCUSBNet2k,gobi}/*-*\n");
   fprintf(stderr, "and use the string before the :\n");
 }
 
