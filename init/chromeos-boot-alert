@@ -27,6 +27,8 @@ usage_help() {
 
   wipe:      Message when starting to erase stateful partition.
              Arg #1: (optional) Image file to show.
+
+  self_repair: Message when starting to rebuild stateful partition.
 "
 }
 
@@ -191,6 +193,13 @@ mode_wipe() {
   fi
 }
 
+# Prints message before starting to rebuild a corrupted stateful partition.
+mode_self_repair() {
+  echo "
+    Your system is performing a self-repair process, please wait...
+  " >"$STDOUT"
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
@@ -210,7 +219,8 @@ main() {
   fi
 
   case "$mode" in
-    "warn_dev" | "enter_dev" | "leave_dev" | "update_firmware" | "wipe" )
+    "warn_dev" | "enter_dev" | "leave_dev" | \
+      "update_firmware" | "wipe" |"self_repair" )
       mode_"$mode" "$@"
       ;;
     * )

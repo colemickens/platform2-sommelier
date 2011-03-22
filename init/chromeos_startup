@@ -88,7 +88,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     # Try to rebuild the stateful partition by  clobber-state
     # (for security concern, we don't use fast mode)
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert wipe /dev/tty1
+    chromeos-boot-alert self_repair /dev/tty1
     exec clobber-state "keepimg"
   fi
 fi
