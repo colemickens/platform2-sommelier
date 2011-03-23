@@ -67,6 +67,7 @@ bool BacklightController::Init() {
   if (backlight_->GetBrightness(&level, &max_)) {
     ReadPrefs();
     is_initialized_ = true;
+    backlight_->SetScreenOffFunc(TurnScreenOffThunk, this);
     return true;
   }
   return false;
@@ -149,7 +150,6 @@ bool BacklightController::SetPowerState(PowerState state) {
   } else {
     CHECK(DPMSEnable(GDK_DISPLAY()));
     if (state == BACKLIGHT_IDLE_OFF) {
-      g_timeout_add(kDisplayOffDelayMS, DisplayOffWhenBacklightOffThunk, this);
       SetBrightnessToZero();
     } else if (state == BACKLIGHT_ACTIVE_ON) {
       CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
@@ -299,17 +299,10 @@ void BacklightController::SetBrightnessToZero() {
     WritePrefs();
 }
 
-gboolean BacklightController::DisplayOffWhenBacklightOff() {
-  int64 brightness = 0;
-  CHECK(GetBrightness(&brightness));
-  if (brightness == 0) {
+void BacklightController::TurnScreenOff() {
+  if (state_ == BACKLIGHT_IDLE_OFF && GDK_DISPLAY() != NULL)
     CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
-    return false;
-  } else {
-    // If the brightness has not been set all the way down, keep polling it
-    // until it reaches zero.
-    return true;
-  }
 }
+
 
 }  // namespace power_manager

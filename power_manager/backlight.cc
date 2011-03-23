@@ -25,6 +25,10 @@ const int kBacklightNumSteps = 8;
 // Time between backlight adjustment steps, in milliseconds.
 const int kBacklightStepTimeMs = 30;
 
+Backlight::Backlight()
+    : turn_screen_off_data_(NULL),
+      turn_screen_off_func_(NULL) {}
+
 bool Backlight::Init() {
   FilePath base_path("/sys/class/backlight");
   DIR* dir = opendir(base_path.value().c_str());
@@ -151,6 +155,11 @@ bool Backlight::SetBrightness(int64 target_level) {
   return true;
 }
 
+void Backlight::SetScreenOffFunc(SIGNAL_CALLBACK_PTR(void, func), void *data) {
+  turn_screen_off_func_ = func;
+  turn_screen_off_data_ = data;
+}
+
 bool Backlight::GetTransitionParams(int* num_steps, int* step_time_ms)
 {
   if (num_steps == NULL)
@@ -174,6 +183,12 @@ gboolean Backlight::SetBrightnessHard(int64 level, int64 target_level) {
   bool ok = (-1 != file_util::WriteFile(brightness_path_, buf.data(),
                                         buf.size()));
   LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
+
+  if (level == 0 &&
+      target_level == 0 &&
+      turn_screen_off_func_ != NULL &&
+      turn_screen_off_data_ != NULL)
+    turn_screen_off_func_(turn_screen_off_data_);
   return false; // Return false so glib doesn't repeat.
 }
 

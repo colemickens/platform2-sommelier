@@ -108,4 +108,14 @@
   }                                                                  \
   RETURN METHOD(TYPE0, TYPE1);
 
+// This macro defines a function pointer for the thunk functions defined by
+// the above macros.
+//
+// Usage example:
+//   SIGNAL_CALLBACK_PTR(bool, callback_func);
+// is equivalent to:
+//   bool (*callback_func)((void*)
+
+#define SIGNAL_CALLBACK_PTR(RETURN, NAME) RETURN (*NAME)(void*)
+
 #endif  // POWER_MANAGER_SIGNAL_CALLBACK_H_

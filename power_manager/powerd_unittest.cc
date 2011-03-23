@@ -59,6 +59,7 @@ class DaemonTest : public Test {
         .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
                         SetArgumentPointee<1>(kMaxBrightness),
                         Return(true)));
+    EXPECT_CALL(backlight_, SetScreenOffFunc(NotNull(), NotNull()));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
     prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);

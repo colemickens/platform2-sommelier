@@ -98,8 +98,9 @@ class BacklightController {
 
   void SetBrightnessToZero();
 
-  // Turn off the display if the backlight has been turned off.
-  SIGNAL_CALLBACK_0(BacklightController, gboolean, DisplayOffWhenBacklightOff);
+  // Indicates whether the display should be turned off based on the current
+  // power state.
+  SIGNAL_CALLBACK_0(BacklightController, void, TurnScreenOff);
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;

@@ -28,7 +28,7 @@ namespace power_manager {
 
 class Backlight : public BacklightInterface {
  public:
-  Backlight() {}
+  Backlight();
   virtual ~Backlight() {}
 
   // Initialize the backlight object.
@@ -40,6 +40,7 @@ class Backlight : public BacklightInterface {
   virtual bool GetBrightness(int64* level, int64* max);
   virtual bool GetTargetBrightness(int64* level);
   virtual bool SetBrightness(int64 level);
+  virtual void SetScreenOffFunc(SIGNAL_CALLBACK_PTR(void, func), void *data);
 
   // Returns info about the gradual brightness transition, represented as the
   // number of steps and the interval of each step in milliseconds.
@@ -75,6 +76,10 @@ class Backlight : public BacklightInterface {
   FilePath max_brightness_path_;
 
   int64 target_brightness_;  // The current intended brightness level.
+
+  // Callback function and data to determine whether to turn screen off.
+  void *turn_screen_off_data_;
+  SIGNAL_CALLBACK_PTR(void, turn_screen_off_func_);
 
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };

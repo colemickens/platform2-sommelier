@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_BACKLIGHT_INTERFACE_H_
 #define POWER_MANAGER_BACKLIGHT_INTERFACE_H_
 
+#include "power_manager/signal_callback.h"
+
 #include "base/basictypes.h"
 
 namespace power_manager {
@@ -29,6 +31,11 @@ class BacklightInterface {
   //
   // On success, return true; otherwise return false.
   virtual bool SetBrightness(int64 level) = 0;
+
+  // Specify a callback that will be used to determine if the screen should
+  // be turned off during a backlight transition.
+  virtual void SetScreenOffFunc(SIGNAL_CALLBACK_PTR(void, func), void *data)
+      = 0;
 
  protected:
   ~BacklightInterface() {}
