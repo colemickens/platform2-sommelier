@@ -22,11 +22,16 @@
 #include "gflags/gflags.h"
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+// Windows RRAS requires modp1024 dh-group.  Strongswan's
+// default is modp1536 which it does not support.
+DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
 DEFINE_int32(ipsec_timeout, 10, "timeout for ipsec to be established");
 DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
+DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
 DEFINE_bool(pfs, false, "pfs");
 DEFINE_bool(rekey, false, "rekey");
 DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
+DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 const char kIpsecConnectionName[] = "ipsec_managed";
@@ -260,7 +265,9 @@ std::string IpsecManager::FormatStarterConfigFile() {
   } else {
     AppendBoolSetting(&config, "plutostart", false);
   }
+  AppendBoolSetting(&config, "nat_traversal", FLAGS_nat_traversal);
   config.append("conn managed\n");
+  AppendStringSetting(&config, "ike", FLAGS_ike);
   AppendStringSetting(&config, "keyexchange",
                       ike_version_ == 1 ? "ikev1" : "ikev2");
   if (!psk_file_.empty()) AppendStringSetting(&config, "authby", "psk");
@@ -271,6 +278,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "leftupdown", IPSEC_UPDOWN);
   AppendStringSetting(&config, "right", remote_address_);
   AppendStringSetting(&config, "rightprotoport", FLAGS_rightprotoport);
+  AppendStringSetting(&config, "type", FLAGS_type);
   AppendStringSetting(&config, "auto", "start");
   return config;
 }

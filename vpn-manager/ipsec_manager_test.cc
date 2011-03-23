@@ -220,7 +220,9 @@ void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
   const char kExpected[] =
       "config setup\n"
       "\tcharonstart=no\n"
+      "\tnat_traversal=yes\n"
       "conn managed\n"
+      "\tike=3des-sha1-modp1024\n"
       "\tkeyexchange=ikev1\n"
       "\tauthby=psk\n"
       "\tpfs=no\n"
@@ -230,6 +232,7 @@ void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
       "\tleftupdown=/usr/libexec/l2tpipsec_vpn/pluto_updown\n"
       "\tright=1.2.3.4\n"
       "\trightprotoport=17/1701\n"
+      "\ttype=transport\n"
       "\tauto=start\n";
   EXPECT_EQ(kExpected, actual);
 }

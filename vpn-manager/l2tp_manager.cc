@@ -79,7 +79,7 @@ std::string L2tpManager::FormatL2tpdConfiguration(
 }
 
 std::string L2tpManager::FormatPppdConfiguration() {
-  std::string pppd_config = StringPrintf(
+  std::string pppd_config(
       "ipcp-accept-local\n"
       "ipcp-accept-remote\n"
       "refuse-eap\n"
