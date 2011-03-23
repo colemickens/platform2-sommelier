@@ -312,6 +312,7 @@ class GobiModem
   };
   static gboolean SdkErrorHandler(gpointer data);
 
+  static const char* QMICallFailureToMMError(unsigned int qmireason);
   static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   // Set DBus-exported properties
   void SetDeviceProperties();

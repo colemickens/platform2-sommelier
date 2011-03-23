@@ -280,7 +280,9 @@ enum SmsMessageTag {
 
 // Selected call failure reasons from table 2-4 "Call end reason codes"
 enum CallEndReason {
-  kClientEndedCall = 2,
+  kReasonClientEndedCall = 2,
+  kReasonBadApn = 1013,
+  kReasonNotSubscribed = 1018
 };
 
 typedef struct {

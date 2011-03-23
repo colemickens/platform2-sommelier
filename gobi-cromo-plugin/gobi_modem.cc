@@ -387,10 +387,14 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   }
 
   LOG(WARNING) << "StartDataSession failed: " << rc;
+  const char* msg;
   if (rc == gobi::kCallFailed) {
     LOG(WARNING) << "Failure Reason " <<  failure_reason;
+    msg = QMICallFailureToMMError(failure_reason);
+  } else {
+    msg = "StartDataSession";
   }
-  error.set(kConnectError, "StartDataSession");
+  error.set(kConnectError, msg);
 }
 
 void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
@@ -1177,9 +1181,20 @@ bool GobiModem::StartExit() {
   return true;
 }
 
+// Map call failure reasons into ModemManager errors
+const char* GobiModem::QMICallFailureToMMError(unsigned int qmireason) {
+  switch (qmireason) {
+    case gobi::kReasonBadApn:
+    case gobi::kReasonNotSubscribed:
+      return MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED;
+    default:
+      return MM_ERROR_MODEM_GSM_UNKNOWN;
+  }
+}
+
 unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
   switch (qmireason) {
-    case gobi::kClientEndedCall:
+    case gobi::kReasonClientEndedCall:
       return MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED;
     default:
       return MM_MODEM_STATE_CHANGED_REASON_UNKNOWN;
