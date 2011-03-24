@@ -251,19 +251,6 @@ else
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
-# The subshell that started the X server will terminate once X is
-# ready.  Wait here for that event before continuing.
-wait
-
-# TODO: consider moving this when we start X in a different way.
-initctl emit x-started
-bootstat x-started
-
-# When X starts, it copies the contents of the framebuffer to the root
-# window.  We clear the framebuffer here to make sure that it doesn't flash
-# back onscreen when X exits later.
-/usr/bin/ply-image --clear &
-
 # If screensaver use isn't disabled, set screensaver.
 SCREENSAVERS_PATH=/usr/share/chromeos-assets/screensavers
 SCREENSAVER_FLAG=
@@ -272,15 +259,36 @@ if [ -d "${SCREENSAVERS_PATH}" ]; then
 file://${SCREENSAVERS_PATH}/default/index.htm"
 fi
 
+# Device Manager Server used to fetch the enterprise policy, if applicable.
+DMSERVER="https://m.google.com/devicemanagement/data/api"
+
+# The subshell that started the X server will terminate once X is
+# ready.  Wait here for that event before continuing.
+#
+# RED ALERT!  The code from the 'wait' to the end of the script is
+# part of the boot time critical path.  Every millisecond spent after
+# the wait is a millisecond longer till the login screen.
+#
+# KEEP THIS CODE PATH CLEAN!  The code must be obviously fast by
+# inspection; nothing should go after the wait that isn't required
+# for correctness.
+
+wait
+
+initctl emit x-started
+bootstat x-started
+
+# When X starts, it copies the contents of the framebuffer to the root
+# window.  We clear the framebuffer here to make sure that it doesn't flash
+# back onscreen when X exits later.
+ply-image --clear &
+
 #
 # Reset PATH to exclude directories unneeded by session_manager.
 # Save that until here, because many of the commands above depend
 # on the default PATH handed to us by init.
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
-
-# Device Manager Server used to fetch the enterprise policy, if applicable.
-DMSERVER="https://m.google.com/devicemanagement/data/api"
 
 exec /sbin/session_manager --uid=${USER_ID} -- \
     $CHROME --apps-gallery-title="Web Store" \
