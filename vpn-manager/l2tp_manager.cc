@@ -37,8 +37,8 @@ L2tpManager::L2tpManager()
       l2tpd_(new ProcessImpl) {
 }
 
-bool L2tpManager::Initialize(const std::string& remote_address) {
-  remote_address_ = remote_address;
+bool L2tpManager::Initialize(const std::string& remote_host) {
+  remote_host_ = remote_host;
   if (FLAGS_user.empty()) {
     LOG(ERROR) << "l2tp layer requires user name";
     return false;
@@ -66,7 +66,7 @@ std::string L2tpManager::FormatL2tpdConfiguration(
     const std::string& ppp_config_path) {
   std::string l2tpd_config;
   l2tpd_config.append(StringPrintf("[lac %s]\n", kL2tpConnectionName));
-  AddString(&l2tpd_config, "lns", remote_address_);
+  AddString(&l2tpd_config, "lns", remote_host_);
   AddBool(&l2tpd_config, "require chap", FLAGS_require_chap);
   AddBool(&l2tpd_config, "refuse pap", FLAGS_refuse_pap);
   AddBool(&l2tpd_config, "require authentication",

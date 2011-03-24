@@ -53,6 +53,7 @@ using ::chromeos::ProcessImpl;
 IpsecManager::IpsecManager()
     : ServiceManager(kIpsecServiceName),
       force_local_address_(NULL),
+      force_remote_address_(NULL),
       output_fd_(-1),
       ike_version_(0),
       ipsec_group_(0),
@@ -64,16 +65,16 @@ IpsecManager::IpsecManager()
 }
 
 bool IpsecManager::Initialize(int ike_version,
-                              const std::string& remote_address,
+                              const std::string& remote_host,
                               const std::string& psk_file,
                               const std::string& server_ca_file,
                               const std::string& client_key_file,
                               const std::string& client_cert_file) {
-  if (remote_address.empty()) {
-    LOG(ERROR) << "Missing remote address to IPsec layer";
+  if (remote_host.empty()) {
+    LOG(ERROR) << "Missing remote host to IPsec layer";
     return false;
   }
-  remote_address_ = remote_address;
+  remote_host_ = remote_host;
 
   if (psk_file.empty()) {
     if (server_ca_file.empty() && client_key_file.empty() &&
@@ -128,19 +129,52 @@ bool IpsecManager::Initialize(int ike_version,
   return true;
 }
 
-bool IpsecManager::GetLocalAddressForRemote(
-    const std::string& remote_address_text,
+bool IpsecManager::ConvertSockAddrToIPString(
+    const struct sockaddr& socket_address,
+    std::string* output) {
+  char str[INET6_ADDRSTRLEN] = { 0 };
+  switch (socket_address.sa_family) {
+    case AF_INET:
+      if (!inet_ntop(AF_INET, &reinterpret_cast<const sockaddr_in*>(
+              &socket_address)->sin_addr, str, INET6_ADDRSTRLEN)) {
+        LOG(ERROR) << "inet_ntop failed";
+        return false;
+      }
+      break;
+    case AF_INET6:
+      if (!inet_ntop(AF_INET6, &reinterpret_cast<const sockaddr_in6*>(
+              &socket_address)->sin6_addr, str, INET6_ADDRSTRLEN)) {
+        LOG(ERROR) << "inet_ntop failed";
+        return false;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Unknown address family";
+      return false;
+  }
+  *output = str;
+  return true;
+}
+
+bool IpsecManager::GetAddressesFromRemoteHost(
+    const std::string& remote_host,
+    std::string* remote_address_text,
     std::string* local_address_text) {
   static const char kService[] = "80";
   if (force_local_address_ != NULL) {
     *local_address_text = force_local_address_;
+    *remote_address_text = force_remote_address_;
     return true;
   }
   struct addrinfo *remote_address;
-  int s = getaddrinfo(remote_address_text.c_str(), kService, NULL,
+  int s = getaddrinfo(remote_host.c_str(), kService, NULL,
                       &remote_address);
   if (s != 0) {
     LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
+    return false;
+  }
+  if (!ConvertSockAddrToIPString(*remote_address->ai_addr,
+                                 remote_address_text)) {
     return false;
   }
   int sock = HANDLE_EINTR(socket(AF_INET, SOCK_DGRAM, 0));
@@ -157,34 +191,14 @@ bool IpsecManager::GetLocalAddressForRemote(
   bool result = false;
   struct sockaddr local_address;
   socklen_t addr_len = sizeof(local_address);
-  char str[INET6_ADDRSTRLEN] = { 0 };
   if (getsockname(sock, &local_address, &addr_len) != 0) {
     int saved_errno = errno;
     LOG(ERROR) << "getsockname failed on socket connecting to "
                << remote_address_text << ": " << saved_errno;
     goto error_label;
   }
-  // convert local_address to local_address_text.
-  switch (local_address.sa_family) {
-    case AF_INET:
-      if (!inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(
-              &local_address)->sin_addr, str, INET6_ADDRSTRLEN)) {
-        LOG(ERROR) << "inet_ntop failed on " << remote_address_text;
-        goto error_label;
-      }
-      break;
-    case AF_INET6:
-      if (!inet_ntop(AF_INET6, &reinterpret_cast<sockaddr_in6*>(
-              &local_address)->sin6_addr, str, INET6_ADDRSTRLEN)) {
-        LOG(ERROR) << "inet_ntop failed on " << remote_address_text;
-        goto error_label;
-      }
-      break;
-    default:
-      LOG(ERROR) << "Unknown address family converting " << remote_address_text;
-      goto error_label;
-  }
-  *local_address_text = str;
+  if (!ConvertSockAddrToIPString(local_address, local_address_text))
+    goto error_label;
   LOG(INFO) << "Remote address " << remote_address_text << " has local address "
             << *local_address_text;
   result = true;
@@ -203,14 +217,16 @@ bool IpsecManager::FormatPsk(const FilePath& input_file,
     return false;
   }
   std::string local_address;
-  if (!GetLocalAddressForRemote(remote_address_, &local_address)) {
+  std::string remote_address;
+  if (!GetAddressesFromRemoteHost(remote_host_, &remote_address,
+                                  &local_address)) {
     LOG(ERROR) << "Local IP address could not be determined for PSK mode";
     return false;
   }
   TrimWhitespaceASCII(psk, TRIM_TRAILING, &psk);
   *formatted =
       StringPrintf("%s %s : PSK \"%s\"\n", local_address.c_str(),
-                   remote_address_.c_str(), psk.c_str());
+                   remote_address.c_str(), psk.c_str());
   return true;
 }
 
@@ -276,7 +292,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "left", "%defaultroute");
   AppendStringSetting(&config, "leftprotoport", FLAGS_leftprotoport);
   AppendStringSetting(&config, "leftupdown", IPSEC_UPDOWN);
-  AppendStringSetting(&config, "right", remote_address_);
+  AppendStringSetting(&config, "right", remote_host_);
   AppendStringSetting(&config, "rightprotoport", FLAGS_rightprotoport);
   AppendStringSetting(&config, "type", FLAGS_type);
   AppendStringSetting(&config, "auto", "start");

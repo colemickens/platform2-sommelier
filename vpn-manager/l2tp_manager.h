@@ -26,10 +26,10 @@ class L2tpManager : public ServiceManager {
  public:
   L2tpManager();
 
-  // Initialize the object using |remote_address|.  Returns false if
+  // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects
   // other than setting up the object.
-  bool Initialize(const std::string& remote_address);
+  bool Initialize(const std::string& remote_host);
 
   virtual bool Start();
   virtual void Stop();
@@ -65,8 +65,8 @@ class L2tpManager : public ServiceManager {
   int output_fd_;
   // Start time of the l2tp daemon.
   base::TimeTicks start_ticks_;
-  // Remote address for L2TP connection.
-  std::string remote_address_;
+  // Remote host for L2TP connection.
+  std::string remote_host_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
   // Path to a file whose existence indicates the ppp device is up.

@@ -28,7 +28,7 @@ class L2tpManagerTest : public ::testing::Test {
     ServiceManager::temp_path_ = new FilePath(test_path_);
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
-    remote_ = "1.2.3.4";
+    remote_hostname_ = "vpnserver";
     control_path_ = test_path_.Append("control");
     pppd_config_path_ = test_path_.Append("pppd.config");
     ppp_interface_path_ = test_path_.Append("ppp0");
@@ -38,11 +38,11 @@ class L2tpManagerTest : public ::testing::Test {
     l2tp_.ppp_interface_path_ = ppp_interface_path_;
     FLAGS_pppd_plugin = "";
     FLAGS_user = "me";
-    EXPECT_TRUE(l2tp_.Initialize(remote_));
+    EXPECT_TRUE(l2tp_.Initialize(remote_hostname_));
   }
 
  protected:
-  std::string remote_;
+  std::string remote_hostname_;
   FilePath test_path_;
   FilePath control_path_;
   FilePath pppd_config_path_;
@@ -54,7 +54,7 @@ class L2tpManagerTest : public ::testing::Test {
 TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
   static const char kBaseExpected[] =
       "[lac managed]\n"
-      "lns = 1.2.3.4\n"
+      "lns = vpnserver\n"
       "require chap = yes\n"
       "refuse pap = yes\n"
       "require authentication = yes\n"

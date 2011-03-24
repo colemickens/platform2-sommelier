@@ -32,7 +32,7 @@ class IpsecManagerTest : public ::testing::Test {
     file_util::CreateDirectory(test_path_);
     stateful_container_ = test_path_.Append("etc");
     file_util::CreateDirectory(stateful_container_);
-    remote_ = "1.2.3.4";
+    remote_ = "vpnserver";
     ServiceManager::temp_path_ = new FilePath(test_path_);
     psk_file_ = test_path_.Append("psk").value();
     server_ca_file_ = test_path_.Append("server.ca").value();
@@ -52,6 +52,7 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_.ipsec_run_path_ = ipsec_run_path_;
     ipsec_.ipsec_up_file_ = ipsec_up_file_;
     ipsec_.force_local_address_ = "5.6.7.8";
+    ipsec_.force_remote_address_ = "1.2.3.4";
   }
 
   void SetStartStarterExpectations(bool already_running);
@@ -183,11 +184,15 @@ class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
 TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {
 }
 
-TEST_F(IpsecManagerTestIkeV1Psk, GetLocalAddressForRemote) {
+TEST_F(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost) {
   ipsec_.force_local_address_ = NULL;
   std::string local_address;
-  EXPECT_TRUE(ipsec_.GetLocalAddressForRemote("127.0.0.1", &local_address));
+  std::string remote_address;
+  EXPECT_TRUE(ipsec_.GetAddressesFromRemoteHost("localhost",
+                                                &remote_address,
+                                                &local_address));
   EXPECT_EQ("127.0.0.1", local_address);
+  EXPECT_EQ("127.0.0.1", remote_address);
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, FormatPsk) {
@@ -230,7 +235,7 @@ void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
       "\tleft=%defaultroute\n"
       "\tleftprotoport=17/1701\n"
       "\tleftupdown=/usr/libexec/l2tpipsec_vpn/pluto_updown\n"
-      "\tright=1.2.3.4\n"
+      "\tright=vpnserver\n"
       "\trightprotoport=17/1701\n"
       "\ttype=transport\n"
       "\tauto=start\n";

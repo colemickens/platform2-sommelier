@@ -25,12 +25,12 @@ class IpsecManager : public ServiceManager {
   IpsecManager();
 
   // Initialize the object to control IKE version |ike_version| daemon,
-  // connecting to the give |remote_address|, with given paths to
+  // connecting to the give |remote_hostname|, with given paths to
   // pre-shared key file |psk_file|, server certificate authority file
   // |server_ca_file|, client key file |client_key_file|, and client
   // certificate file |client_cert_file|.
   bool Initialize(int ike_version,
-                  const std::string& remote_address,
+                  const std::string& remote_hostname,
                   const std::string& psk_file,
                   const std::string& server_ca_file,
                   const std::string& client_key_file,
@@ -54,14 +54,17 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatPsk);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile);
-  FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetLocalAddressForRemote);
+  FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, Start);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterNotYetRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, WriteConfigFiles);
 
-  bool GetLocalAddressForRemote(const std::string& remote_address_text,
-                                std::string* local_address_text);
+  bool ConvertSockAddrToIPString(const struct sockaddr& socket_address,
+                                 std::string* output);
+  bool GetAddressesFromRemoteHost(const std::string& remote_hostname,
+                                  std::string* remote_address_text,
+                                  std::string* local_address_text);
   bool FormatPsk(const FilePath& input_file, std::string* formatted);
   void KillCurrentlyRunning();
   bool WriteConfigFiles();
@@ -70,8 +73,10 @@ class IpsecManager : public ServiceManager {
   bool StartStarter();
   bool SetIpsecGroup(const FilePath& file_path);
 
-  // for testing, always return this value from GetLocalAddressForRemote.
+  // for testing, always return these values from
+  // GetAddressesFromRemoteHostname.
   const char* force_local_address_;
+  const char* force_remote_address_;
   // ipsec daemon stderr pipe file descriptor.
   int output_fd_;
   // IKE key exchange version to use.
@@ -91,8 +96,8 @@ class IpsecManager : public ServiceManager {
   std::string ipsec_prefix_;
   // File containing starter process's process id.
   std::string starter_pid_file_;
-  // Remote IP of IPsec connection.
-  std::string remote_address_;
+  // Remote hostname of IPsec connection.
+  std::string remote_host_;
   // File containing the IPsec pre-shared key.
   std::string psk_file_;
   // File containing the server certificate authority.

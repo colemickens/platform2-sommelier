@@ -22,7 +22,7 @@
 DEFINE_string(client_cert_file, "", "File with IPsec client certificate");
 DEFINE_string(client_key_file, "", "File with IPsec client private key");
 DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
-DEFINE_string(remote_address, "", "VPN server address");
+DEFINE_string(remote_host, "", "VPN server hostname");
 DEFINE_string(server_ca_file, "", "File with IPsec server CA");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
@@ -111,14 +111,14 @@ int main(int argc, char* argv[]) {
   ServiceManager::InitializeDirectories(&temp_dir);
 
   if (!ipsec.Initialize(1,
-                        FLAGS_remote_address,
+                        FLAGS_remote_host,
                         FLAGS_psk_file,
                         FLAGS_server_ca_file,
                         FLAGS_client_key_file,
                         FLAGS_client_cert_file)) {
     return 1;
   }
-  if (!l2tp.Initialize(FLAGS_remote_address)) {
+  if (!l2tp.Initialize(FLAGS_remote_host)) {
     return 1;
   }
   ServiceManager::SetLayerOrder(&ipsec, &l2tp);
