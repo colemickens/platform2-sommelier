@@ -124,7 +124,13 @@ install_gpt() {
   local pmbrcode=$4
   local esp_img_sectors=$5
   local force_full="${6:-}"
-  local rootfs_size="${7:-2048}"   # 2GiB
+  local rootfs_default_size=2048  # 2GiB
+  local rootfs_size="${7:-$rootfs_default_size}"
+  local large_test_partitions="${8:-false}"
+
+  if [ "$rootfs_size" = "default" ]; then
+    rootfs_size=$rootfs_default_size
+  fi
 
   # The gpt tool requires a fixed-size target to work on, so we may have to
   # create a file of the appropriate size. Let's figure out what that size is
@@ -189,10 +195,18 @@ install_gpt() {
   local num_rootfs_c_sectors=1
   local start_future_9=$(($start_rootfs_c + 1))
   local num_future_sectors=1
-  local start_future_10=$(($start_future_9 + 1))
-  local start_future_11=$(($start_future_10 + 1))
+  local num_future_sectors_9=$num_future_sectors
+  local num_future_sectors_10=$num_future_sectors
+  # If this is a test image, reserve some room in partitions 9 and 10 for file
+  # system tests.  Assume disk is large enough.
+  if [ "$large_test_partitions" -eq ${FLAGS_TRUE} ]; then
+    num_future_sectors_9=$((512 * 1024 * 1024 / 512))  # 512 MiB
+    num_future_sectors_10=$((512 * 1024 * 1024 / 512))  # 512 MiB
+  fi
+  local start_future_10=$(($start_future_9 + $num_future_sectors_9))
+  local start_future_11=$(($start_future_10 + $num_future_sectors_10))
 
-  local start_useful=$(roundup $(($start_future_11 + 1)))
+  local start_useful=$(roundup $(($start_future_11 + $num_future_sectors)))
 
   locate_gpt
 
@@ -318,10 +332,10 @@ install_gpt() {
   $sudo $GPT add -b ${START_OEM} -s ${NUM_OEM_SECTORS} \
     -t data -l "OEM" ${outdev}
 
-  $sudo $GPT add -b ${start_future_9} -s ${num_future_sectors} \
+  $sudo $GPT add -b ${start_future_9} -s ${num_future_sectors_9} \
     -t reserved -l "reserved" ${outdev}
 
-  $sudo $GPT add -b ${start_future_10} -s ${num_future_sectors} \
+  $sudo $GPT add -b ${start_future_10} -s ${num_future_sectors_10} \
     -t reserved -l "reserved" ${outdev}
 
   $sudo $GPT add -b ${start_future_11} -s ${num_future_sectors} \
