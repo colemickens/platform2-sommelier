@@ -165,5 +165,6 @@ env_client.Program('cryptohome', client_sources)
 
 # TODO(wad) we'll probably want a separate runner for client roundtrip tests
 env_tests = env.Clone()
-env_tests.Append(LIBS=['cryptohome', 'gtest', 'gmock'])
-env_tests.Program('cryptohome_testrunner', test_sources)
+env_tests.Append(LIBS=['gtest', 'gmock'])
+# If the lib is linked, it will use the system search path.
+env_tests.Program('cryptohome_testrunner', test_sources + commonlib_sources)
