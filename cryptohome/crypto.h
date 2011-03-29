@@ -239,6 +239,10 @@ class Crypto : public EntropySource {
   void GetSha1(const chromeos::Blob& data, unsigned int start,
                unsigned int count, SecureBlob* hash) const;
 
+  // Gets the SHA256 hash of the data provided
+  void GetSha256(const chromeos::Blob& data, unsigned int start,
+                 unsigned int count, SecureBlob* hash) const;
+
   // Encodes a binary blob to hex-ascii
   //
   // Parameters

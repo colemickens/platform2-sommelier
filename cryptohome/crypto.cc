@@ -324,6 +324,27 @@ void Crypto::GetSha1(const chromeos::Blob& data, unsigned int start,
   SHA1_Final(md_value, &sha_context);
   hash->resize(sizeof(md_value));
   memcpy(hash->data(), md_value, sizeof(md_value));
+  // Zero the stack to match expectations set by SecureBlob.
+  memset(md_value, 0, sizeof(md_value));
+}
+
+void Crypto::GetSha256(const chromeos::Blob& data, unsigned int start,
+                       unsigned int count, SecureBlob* hash) const {
+  if (start > data.size() ||
+      ((start + count) > data.size()) ||
+      ((start + count) < start)) {
+    return;
+  }
+  SHA256_CTX sha_context;
+  unsigned char md_value[SHA256_DIGEST_LENGTH];
+
+  SHA256_Init(&sha_context);
+  SHA256_Update(&sha_context, &data[start], count);
+  SHA256_Final(md_value, &sha_context);
+  hash->resize(sizeof(md_value));
+  memcpy(hash->data(), md_value, sizeof(md_value));
+  // Zero the stack to match expectations set by SecureBlob.
+  memset(md_value, 0, sizeof(md_value));
 }
 
 bool Crypto::AesDecrypt(const chromeos::Blob& encrypted, unsigned int start,

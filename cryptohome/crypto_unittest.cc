@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,8 +16,10 @@
 #include <base/logging.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
+#include <vector>
 
 #include "mock_tpm.h"
+#include "sha_test_vectors.h"
 
 namespace cryptohome {
 using std::string;
@@ -315,6 +317,36 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   EXPECT_EQ(new_data.size(), original_data.size());
   ASSERT_TRUE(CryptoTest::FindBlobInBlob(new_data, original_data));
+}
+
+TEST_F(CryptoTest, GetSha1FipsTest) {
+  Crypto crypto;
+  ShaTestVectors vectors(1);
+  SecureBlob digest;
+  for (size_t i = 0; i < vectors.count(); ++i) {
+    crypto.GetSha1(*vectors.input(i), 0, vectors.input(i)->size(), &digest);
+    std::string computed(reinterpret_cast<const char*>(digest.const_data()),
+                         digest.size());
+    std::string expected(
+      reinterpret_cast<const char*>(vectors.output(i)->const_data()),
+                                    vectors.output(i)->size());
+    EXPECT_EQ(expected, computed);
+  }
+}
+
+TEST_F(CryptoTest, GetSha256FipsTest) {
+  Crypto crypto;
+  ShaTestVectors vectors(256);
+  SecureBlob digest;
+  for (size_t i = 0; i < vectors.count(); ++i) {
+    crypto.GetSha256(*vectors.input(i), 0, vectors.input(i)->size(), &digest);
+    std::string computed(reinterpret_cast<const char*>(digest.const_data()),
+                         digest.size());
+    std::string expected(
+      reinterpret_cast<const char*>(vectors.output(i)->const_data()),
+                                    vectors.output(i)->size());
+    EXPECT_EQ(expected, computed);
+  }
 }
 
 } // namespace cryptohome
