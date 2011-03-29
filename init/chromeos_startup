@@ -103,20 +103,26 @@ DEVMODE=$((! $?))
 FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
 FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
 if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-  tries="$(get_startup_update_tries)"
-  if [ $tries -gt 0 ]; then
-    if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
-      # More message on console for developer mode and dev builds
-      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
-    fi
-    mkdir -p /mnt/stateful_partition/var/log
-    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-    chromeos-boot-alert update_firmware /dev/tty1
-
-    set_startup_update_tries $(( $tries - 1 ))
-
-    "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1 |
+  if [ "$(crossystem mainfw_type)" = developer ]; then
+    FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
+    "$FIRMWARE_UPDATE_SCRIPT" --mode=devstartup 2>&1 |
       tee $FIRMWARE_UPDATE_LOGS
+  else
+    tries="$(get_startup_update_tries)"
+    if [ $tries -gt 0 ]; then
+      set_startup_update_tries $(( $tries - 1 ))
+
+      if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
+        # More message on console for developer mode and dev builds
+        FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
+      fi
+      mkdir -p /mnt/stateful_partition/var/log
+      [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+      chromeos-boot-alert update_firmware /dev/tty1
+
+      "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1 |
+        tee $FIRMWARE_UPDATE_LOGS
+    fi
   fi
 fi
 
