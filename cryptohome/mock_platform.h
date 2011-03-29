@@ -38,7 +38,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD3(SetOwnership, bool(const std::string&, uid_t, gid_t));
   MOCK_METHOD3(SetOwnershipRecursive, bool(const std::string&, uid_t, gid_t));
   MOCK_METHOD3(GetUserId, bool(const std::string&, uid_t*, gid_t*));
-  MOCK_METHOD3(GetGroupId, bool(const std::string&, gid_t*));
+  MOCK_METHOD2(GetGroupId, bool(const std::string&, gid_t*));
   MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));
   MOCK_METHOD2(Symlink, bool(const std::string&, const std::string&));
   MOCK_METHOD4(Exec, bool(const std::string&, const std::vector<std::string>&,
