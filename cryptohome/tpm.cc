@@ -630,7 +630,7 @@ unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
     return count;
   }
   if (cap_length == sizeof(unsigned int)) {
-    count = *(reinterpret_cast<unsigned int*>(*cap));
+    count = *(reinterpret_cast<unsigned int*>(*cap.ptr()));
   }
   return count;
 }
@@ -1085,7 +1085,7 @@ void Tpm::IsEnabledOwnedCheckViaContext(TSS_HCONTEXT context_handle,
                                        &cap_length, cap.ptr())) == 0) {
     if (cap_length >= (sizeof(TSS_BOOL))) {
       *enabled = true;
-      *owned = ((*(reinterpret_cast<TSS_BOOL*>(*cap))) != 0);
+      *owned = ((*(reinterpret_cast<TSS_BOOL*>(*cap.ptr()))) != 0);
     }
   } else if(ERROR_CODE(result) == TPM_E_DISABLED) {
     *enabled = false;
