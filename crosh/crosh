@@ -48,6 +48,9 @@ HELP='
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
 
+ gobi_fw <command> [args...]
+  Manipulate Qualcomm Gobi 3000 firmware.
+
  help
   Display this help.
 
@@ -407,6 +410,10 @@ cmd_top() {
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
   # interval.
   top -s
+}
+
+cmd_gobi_fw() {
+  /usr/bin/gobi-fw "$@"
 }
 
 cmd_modem() {
