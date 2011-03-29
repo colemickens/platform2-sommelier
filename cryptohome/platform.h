@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -130,14 +130,26 @@ class Platform {
   //   pids (OUT) - the list of PIDs
   void GetPidsForUser(uid_t uid, std::vector<pid_t>* pids);
 
+  // Calls the platform chown() function on the given path.
+  //
+  // The path may be a directory or a file.
+  //
+  // Parameters
+  //   path - The path to set ownership on
+  //   user_id - The user_id to assign ownership to
+  //   group_id - The group_id to assign ownership to
+  virtual bool SetOwnership(const std::string& directory, uid_t user_id,
+                            gid_t group_id);
+
   // Calls the platform chown() function recursively on the directory
   //
   // Parameters
   //   directory - The directory to set ownership on
   //   user_id - The user_id to assign ownership to
   //   group_id - The group_id to assign ownership to
-  virtual bool SetOwnership(const std::string& directory, uid_t user_id,
-                            gid_t group_id);
+  virtual bool SetOwnershipRecursive(const std::string& directory,
+                                     uid_t user_id,
+                                     gid_t group_id);
 
   // Sets the current umask, returning the old mask
   //
@@ -154,6 +166,13 @@ class Platform {
   virtual bool GetUserId(const std::string& user, uid_t* user_id,
                          gid_t* group_id);
 
+  // Returns the group id for a group
+  //
+  // Parameters
+  //   group - The group name to query for
+  //   group_id (OUT) - The group ID on success
+  virtual bool GetGroupId(const std::string& group, gid_t* group_id);
+
   // Return the available disk space in bytes on the volume containing |path|,
   // or -1 on failure.
   // Code duplicated from Chrome's base::SysInfo::AmountOfFreeDiskSpace().
@@ -164,6 +183,25 @@ class Platform {
 
   // Clears the user keyring
   static void ClearUserKeyring();
+
+  // Creates a symbolic link from one path to the other
+  //
+  // Parameters
+  //  from - source path that the symlink points to
+  //  to - symlink to create which points to the source path
+  virtual bool Symlink(const std::string& from, const std::string& to);
+
+  // Executes a command with the specified arguments and waits for it to finish
+  //
+  // Parameters
+  //  command - string containing the filename of the binary to execute
+  //  args - list of arguments to pass to the run the command with
+  //  uid - effective user id to run the command with
+  //  gid - effective group id to run the command with
+  bool Exec(const std::string& command,
+            const std::vector<std::string>& args,
+            uid_t uid,
+            gid_t gid);
 
   // Overrides the default mount options
   void set_mount_options(int value) {

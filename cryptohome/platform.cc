@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 #include "platform.h"
 
 #include <errno.h>
+#include <grp.h>
 #include <limits.h>
 #include <pwd.h>
 #include <signal.h>
@@ -14,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <base/file_util.h>
 #include <base/string_util.h>
@@ -337,10 +339,51 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
   }
 }
 
-bool Platform::SetOwnership(const std::string& directory, uid_t user_id,
+bool Platform::SetOwnership(const std::string& path, uid_t user_id,
                             gid_t group_id) {
-  if (chown(directory.c_str(), user_id, group_id)) {
+  if (chown(path.c_str(), user_id, group_id)) {
     return false;
+  }
+  return true;
+}
+
+bool Platform::SetOwnershipRecursive(const std::string& directory,
+                                     uid_t user_id,
+                                     gid_t group_id) {
+  std::vector<std::string> to_recurse;
+  to_recurse.push_back(directory);
+  while (to_recurse.size()) {
+    std::string current_dir = to_recurse.back();
+    to_recurse.pop_back();
+
+    FilePath next_path;
+
+    // Push the subdirectories to the back of the vector
+    file_util::FileEnumerator dir_enumerator(
+        FilePath(current_dir),
+        false,  // do not recurse into subdirectories.
+        file_util::FileEnumerator::DIRECTORIES);
+    while (!(next_path = dir_enumerator.Next()).empty()) {
+      to_recurse.push_back(next_path.value());
+    }
+
+    // Handle the files
+    file_util::FileEnumerator file_enumerator(FilePath(current_dir), false,
+                                              file_util::FileEnumerator::FILES);
+    while (!(next_path = file_enumerator.Next()).empty()) {
+      if (!SetOwnership(next_path.value(), user_id, group_id)) {
+        LOG(ERROR) << "Couldn't change owner (" << user_id << ":" << group_id
+                   << ") of path: " << next_path.value().c_str();
+        return false;
+      }
+    }
+
+    // Set permissions on the directory itself
+    if (!SetOwnership(current_dir, user_id, group_id)) {
+      LOG(ERROR) << "Couldn't change owner (" << user_id << ":" << group_id
+                 << ") of path: " << current_dir.c_str();
+      return false;
+    }
   }
   return true;
 }
@@ -353,7 +396,7 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
                          gid_t* group_id) {
   // Load the passwd entry
   long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if(user_name_length == -1) {
+  if (user_name_length == -1) {
     user_name_length = kDefaultPwnameLength;
   }
   struct passwd user_info, *user_infop;
@@ -367,6 +410,22 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
   return true;
 }
 
+bool Platform::GetGroupId(const std::string& group, gid_t* group_id) {
+  // Load the group entry
+  long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (group_name_length == -1) {
+    group_name_length = kDefaultPwnameLength;
+  }
+  struct group group_info, *group_infop;
+  std::vector<char> group_name_buf(group_name_length);
+  if (getgrnam_r(group.c_str(), &group_info, &group_name_buf[0],
+                group_name_length, &group_infop)) {
+    return false;
+  }
+  *group_id = group_info.gr_gid;
+  return true;
+}
+
 int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
   struct statvfs stats;
   if (statvfs(path.c_str(), &stats) != 0) {
@@ -377,6 +436,63 @@ int64 Platform::AmountOfFreeDiskSpace(const string& path) const {
 
 void Platform::ClearUserKeyring() {
   keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
+}
+
+bool Platform::Symlink(const std::string& from, const std::string& to) {
+  int rc = symlink(from.c_str(), to.c_str());
+  if (rc && rc != EEXIST) {
+    PLOG(ERROR) << "Error creating symbolic link from " << from << " to " << to
+                << ".";
+    return false;
+  }
+  return true;
+}
+
+bool Platform::Exec(const std::string& command,
+                    const std::vector<std::string>& args,
+                    uid_t uid,
+                    gid_t gid) {
+  pid_t child_pid = -1;
+  child_pid = vfork();
+  if (child_pid == 0) {
+    if (gid != static_cast<gid_t>(-1)) {
+      if (setresgid(gid, gid, gid)) {
+        _exit(2);
+      }
+    }
+    if (uid != static_cast<uid_t>(-1)) {
+      if (setresuid(uid, uid, uid)) {
+        _exit(1);
+      }
+    }
+    const char** local_args = (const char**) calloc(args.size() + 1,
+                                                    sizeof(char*));
+    int index = 0;
+    std::vector<std::string>::const_iterator it;
+    for (it = args.begin(); it != args.end(); ++it, ++index) {
+      local_args[index] = const_cast<char*>(it->c_str());
+    }
+    execve(command.c_str(), const_cast<char* const*>(local_args), NULL);
+    PLOG(ERROR) << "Couldn't start the command subprocess.";
+    _exit(3);
+  } else if (child_pid != -1) {
+    int status = 0;
+    do {
+      pid_t term_pid = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
+      if (term_pid == -1) {
+        return false;
+      }
+    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+      return true;
+    }
+    PLOG(ERROR) << "Command subprocess exited with a non-zero status. ("
+                << "status = " << WEXITSTATUS(status) << " )";
+  }
+  else {
+    PLOG(ERROR) << "Couldn't spawn a subprocess for command execution.";
+  }
+  return false;
 }
 
 } // namespace cryptohome
