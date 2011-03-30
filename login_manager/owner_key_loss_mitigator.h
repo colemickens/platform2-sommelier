@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,13 +14,16 @@ namespace login_manager {
 // interface for objects that can handle this situation.
 class OwnerKeyLossMitigator {
  public:
-  OwnerKeyLossMitigator() {}
-  virtual ~OwnerKeyLossMitigator() {}
+  static const char kMitigateMsg[];
+
+  OwnerKeyLossMitigator();
+  virtual ~OwnerKeyLossMitigator();
 
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
   virtual bool Mitigate() = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(OwnerKeyLossMitigator);
 };

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,8 +6,10 @@
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
 #include <unistd.h>
+#include <string>
 
 #include <base/basictypes.h>
+#include <base/stringprintf.h>
 
 class FilePath;
 
@@ -55,6 +57,10 @@ class SystemUtils {
   //
   // Sends |signal_name| to power manager.
   virtual void SendSignalToPowerManager(const char* signal_name);
+
+  // Makes a best-effort attempt to append |msg| to the system log that is
+  // persisted across stateful partition wipes.
+  virtual void AppendToClobberLog(const char* msg) const;
 
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.

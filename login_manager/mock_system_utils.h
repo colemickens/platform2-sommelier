@@ -25,6 +25,7 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD0(TouchResetFile, bool(void));
   MOCK_METHOD2(SendSignalToChromium, void(const char*, const char*));
   MOCK_METHOD1(SendSignalToPowerManager, void(const char*));
+  MOCK_CONST_METHOD1(AppendToClobberLog, void(const char*));
 };
 }  // namespace login_manager
 
