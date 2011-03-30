@@ -89,6 +89,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
     # (for security concern, we don't use fast mode)
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert self_repair /dev/tty1
+    clobber-log --repair "$STATE_DEV" "Self-repair corrupted stateful partition"
     exec clobber-state "keepimg"
   fi
 fi
@@ -166,6 +167,7 @@ if [ ${DEVMODE} -eq 1 -a ! -O ${DEVMODE_FILE} ]; then
     chromeos-boot-alert enter_dev /dev/tty1
     # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
     echo "keepimg" > ${RESET_FILE}
+    clobber-log -- "Enter developer mode"
   fi
 
   # Transition from devmode
@@ -176,6 +178,7 @@ elif [ ${DEVMODE} -eq 0 -a -O ${DEVMODE_FILE} ]; then
     [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
     chromeos-boot-alert leave_dev /dev/tty1
     echo "fast keepimg" > ${RESET_FILE}
+    clobber-log -- "Leave developer mode"
   fi
 fi
 

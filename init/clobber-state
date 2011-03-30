@@ -8,6 +8,7 @@
 # and possibly reset the other root filesystem
 
 . /usr/sbin/chromeos-common.sh
+SCRIPT="$0"
 
 # stateful partition isn't around for logging, so dump to the screen:
 set -x
@@ -62,6 +63,9 @@ then
   exit 1
 fi
 
+# Preserve the log file
+clobber-log --preserve "$SCRIPT" "$@"
+
 umount /mnt/stateful_partition
 
 if [ "$FAST_WIPE" = "fast" ]; then
@@ -89,6 +93,9 @@ fi
 
 # Mount the fresh image for last minute additions.
 mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
+
+# Restore the log file
+clobber-log --restore "$SCRIPT" "$@"
 
 # Tag that we're in developer mode otherwise we may get wiped again.
 if crossystem devsw_boot?1 recoverysw_boot?0; then
