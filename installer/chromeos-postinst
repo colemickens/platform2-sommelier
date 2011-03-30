@@ -71,6 +71,9 @@ if [ -z "${IS_FACTORY_INSTALL}" -a \
   IS_UPDATE=1
 fi
 
+# Turn on/off x86-specific stuff
+IS_INTEL_ARCH=$(uname -m | grep "^i.86\|^x86_..\$" | wc -l)
+
 # Usage: if $(version_less A.B.C.D W.X.Y.Z); then...
 version_less() {
   local a=$(printf '%010d%010d%010d%010d' $(echo "$1" | sed 's/\./ /g'))
@@ -190,7 +193,6 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
 
   # TODO(rkc): This is a bit of a hack - we're depending on the fact that our
   # build machine will always be Intel based - if it isn't, VM builds will fail
-  IS_INTEL_ARCH=$(uname -m | grep "^i.86\|^x86_..\$" | wc -l)
   # Install syslinux files on EFI partition
   if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
     EFI_MNT=$(mktemp -d /tmp/EFI.XXXXXX)
@@ -292,22 +294,29 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
   # the GPT and firmware scripts inapplicable nor are we auto-updating
   if [ -z "${FLAGS_esp_part_file}" ]; then
     echo "Updating the root filesystem hashes and legacy bootloaders"
-    # Ensure we use a template from the INSTALL_ROOT for both grub
-    # and syslinux otherwise we can never update them with new rootfs
-    # vboot configuration data.
-    syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
-    grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
     ROOT_DEV_PARAM=""
     if [ -n "$IS_UPDATE" ]; then
       ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
     fi
-    "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root \
-        --install_root="${INSTALL_ROOT}" \
-        --update_syslinux_cfg="${syslinux_cfg}" \
-        --update_grub_cfg="${grub_cfg}" \
-        --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz \
-        ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
+    if [ ${IS_INTEL_ARCH} -eq 1 ]; then
+      # Ensure we use a template from the INSTALL_ROOT for both grub
+      # and syslinux otherwise we can never update them with new rootfs
+      # vboot configuration data.
+      syslinux_cfg="${INSTALL_ROOT}/boot/syslinux/root.${BOOT_SLOT}.cfg"
+      grub_cfg="${INSTALL_ROOT}/boot/efi/boot/grub.cfg"
+      "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+          --dst=${ROOT_DEV} --run_as_root \
+          --install_root="${INSTALL_ROOT}" \
+          --update_syslinux_cfg="${syslinux_cfg}" \
+          --update_grub_cfg="${grub_cfg}" \
+          --update_vmlinuz=${INSTALL_ROOT}/boot/vmlinuz \
+          ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
+    else
+      "${INSTALL_ROOT}"/usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+          --dst=${ROOT_DEV} --run_as_root \
+          --install_root="${INSTALL_ROOT}" \
+          ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
+    fi
 
     echo "Updating Partition Table Attributes..."
     NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
@@ -358,7 +367,8 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
     # See comments above about removing ureadahead files.
     touch /mnt/stateful_partition/.install_completed
 
-    if ! update_firmware; then
+    # TODO: support firmware update for ARM
+    if [ ${IS_INTEL_ARCH} -eq 1 ] && ! update_firmware; then
       # Note: This will only rollback the ChromeOS verified boot target.
       # The assumption is that systems running firmware autoupdate
       # are running H2C Bios. If the firmware updater crashes or writes
