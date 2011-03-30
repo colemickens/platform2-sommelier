@@ -126,7 +126,7 @@ install_gpt() {
   local force_full="${6:-}"
   local rootfs_default_size=2048  # 2GiB
   local rootfs_size="${7:-$rootfs_default_size}"
-  local large_test_partitions="${8:-false}"
+  local large_test_partitions="${8:-${FLAGS_FALSE}}"
 
   if [ "$rootfs_size" = "default" ]; then
     rootfs_size=$rootfs_default_size
