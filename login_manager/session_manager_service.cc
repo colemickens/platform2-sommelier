@@ -35,6 +35,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/bootstat.h"
 
+#include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
 #include "login_manager/nss_util.h"
@@ -620,7 +621,7 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
                                             GError** error) {
   LOG(INFO) << "Unwhitelisting " << email_address;
   SessionManagerService::SigReturnCode verify_result =
-      VerifyHelper(email_address, signature);
+      VerifyHelperArray(email_address, signature);
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to unwhitelist before owner's key is set.";
     LOG(ERROR) << msg;
@@ -682,7 +683,7 @@ gboolean SessionManagerService::Whitelist(gchar* email_address,
                                           GError** error) {
   LOG(INFO) << "Whitelisting " << email_address;
   SessionManagerService::SigReturnCode verify_result =
-      VerifyHelper(email_address, signature);
+      VerifyHelperArray(email_address, signature);
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to whitelist before owner's key is set.";
     LOG(ERROR) << msg;
@@ -704,7 +705,7 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
                                               GError** error) {
   LOG(INFO) << "Setting pref " << name << "=" << value;
   SessionManagerService::SigReturnCode verify_result =
-      VerifyHelper(base::StringPrintf("%s=%s", name, value), signature);
+      VerifyHelperArray(base::StringPrintf("%s=%s", name, value), signature);
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to store property before owner's key is set.";
     LOG(ERROR) << msg;
@@ -741,26 +742,59 @@ void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
     dbus_g_method_return(context, succeeded);
 }
 
-gboolean SessionManagerService::StorePolicy(gchar* policy_blob,
+gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
                                             DBusGMethodInvocation* context) {
-  // TODO(cmasone): Extract policy, signature and do verification.
-  policy_->Set(policy_blob);
+  std::string policy_str(policy_blob->data, policy_blob->len);
+  GError* error = NULL;
+  enterprise_management::PolicyFetchResponse policy;
+  if (!policy.ParseFromString(policy_str) ||
+      !policy.has_policy_data() ||
+      !policy.has_policy_data_signature()) {
+    const char msg[] = "Unable to parse policy protobuf.";
+    LOG(ERROR) << msg;
+    SetGError(&error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    dbus_g_method_return_error(context, error);
+    g_error_free(error);
+    return FALSE;
+  }
+  const std::string& sig = policy.policy_data_signature();
+  SessionManagerService::SigReturnCode verify_result =
+      VerifyHelper(policy.policy_data(), sig.c_str(), sig.length());
+  if (verify_result == NO_KEY) {
+    const char msg[] = "Attempt to store policy before owner's key is set.";
+    LOG(ERROR) << msg;
+    SetGError(&error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
+    return FALSE;
+  } else if (verify_result == SIGNATURE_FAIL) {
+    const char msg[] = "Signature could not be verified in StorePolicy.";
+    LOG(ERROR) << msg;
+    SetGError(&error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    return FALSE;
+  }
+  policy_->Set(policy);
   io_thread_.message_loop()->PostTask(
       FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistPolicy,
                                    context));
   return TRUE;
 }
 
-gboolean SessionManagerService::RetrievePolicy(gchar** OUT_policy_blob,
+gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
                                                GError** error) {
-  const std::string& polstr = policy_->Get();
-  *OUT_policy_blob = g_strdup_printf("%.*s", polstr.length(), polstr.c_str());
+  std::string polstr;
+  if (!policy_->Get(&polstr)) {
+    const char msg[] = "Unable to serialize policy protobuf.";
+    LOG(ERROR) << msg;
+    SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+    return FALSE;
+  }
+  *OUT_policy_blob = g_array_sized_new(FALSE, FALSE, 1, polstr.length());
   if (!*OUT_policy_blob) {
     const char msg[] = "Unable to allocate memory for response.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
     return FALSE;
   }
+  g_array_append_vals(*OUT_policy_blob, polstr.c_str(), polstr.length());
   return TRUE;
 }
 
@@ -1216,10 +1250,17 @@ gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
 }
 
 SessionManagerService::SigReturnCode
-SessionManagerService::VerifyHelper(const std::string& data, GArray* sig) {
+SessionManagerService::VerifyHelperArray(const std::string& data, GArray* sig) {
+  return VerifyHelper(data, sig->data, sig->len);
+}
+
+SessionManagerService::SigReturnCode
+SessionManagerService::VerifyHelper(const std::string& data,
+                                    const char* sig,
+                                    uint32 sig_len) {
   if (!key_->IsPopulated())
     return NO_KEY;
-  if (!key_->Verify(data.c_str(), data.length(), sig->data, sig->len))
+  if (!key_->Verify(data.c_str(), data.length(), sig, sig_len))
     return SIGNATURE_FAIL;
   return SUCCESS;
 }

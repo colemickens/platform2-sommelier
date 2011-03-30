@@ -10,6 +10,8 @@
 #include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/bindings/device_management_backend.pb.h"
+
 namespace login_manager {
 
 class DevicePolicyTest : public ::testing::Test {
@@ -34,7 +36,8 @@ class DevicePolicyTest : public ::testing::Test {
     store_.reset(new DevicePolicy(tmpfile_));
     ASSERT_TRUE(store_->LoadOrCreate());
 
-    store_->Set(kDefaultPolicy);
+    policy_.set_error_message(kDefaultPolicy);
+    store_->Set(policy_);
 
     ASSERT_TRUE(store_->Persist());
   }
@@ -43,7 +46,11 @@ class DevicePolicyTest : public ::testing::Test {
   }
 
   void CheckExpectedPolicy(DevicePolicy* store) {
-    EXPECT_EQ(kDefaultPolicy, store->Get());
+    std::string serialized;
+    ASSERT_TRUE(policy_.SerializeToString(&serialized));
+    std::string serialized_from;
+    ASSERT_TRUE(store->Get(&serialized_from));
+    EXPECT_EQ(serialized, serialized_from);
   }
 
   static const char kDefaultPolicy[];
@@ -51,6 +58,7 @@ class DevicePolicyTest : public ::testing::Test {
   ScopedTempDir tmpdir_;
   FilePath tmpfile_;
   scoped_ptr<DevicePolicy> store_;
+  enterprise_management::PolicyFetchResponse policy_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DevicePolicyTest);
@@ -63,7 +71,9 @@ TEST_F(DevicePolicyTest, CreateEmptyStore) {
   StartFresh();
   DevicePolicy store(tmpfile_);
   ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty DictionaryValue.
-  EXPECT_TRUE(store.Get().empty());
+  std::string serialized;
+  EXPECT_TRUE(store.Get(&serialized));
+  EXPECT_TRUE(serialized.empty());
 }
 
 TEST_F(DevicePolicyTest, FailBrokenStore) {
@@ -80,10 +90,15 @@ TEST_F(DevicePolicyTest, VerifyPolicyStorage) {
 TEST_F(DevicePolicyTest, VerifyPolicyUpdate) {
   CheckExpectedPolicy(store_.get());
 
-  std::string new_value("new policy");
-  store_->Set(new_value);
+  enterprise_management::PolicyFetchResponse new_policy;
+  new_policy.set_error_message("new policy");
+  store_->Set(new_policy);
 
-  EXPECT_EQ(new_value, store_->Get());
+  std::string new_out;
+  ASSERT_TRUE(store_->Get(&new_out));
+  std::string new_value;
+  ASSERT_TRUE(new_policy.SerializeToString(&new_value));
+  EXPECT_EQ(new_value, new_out);
 }
 
 TEST_F(DevicePolicyTest, LoadStoreFromDisk) {

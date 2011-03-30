@@ -17,8 +17,8 @@ class MockDevicePolicy : public DevicePolicy {
   virtual ~MockDevicePolicy() {}
   MOCK_METHOD0(LoadOrCreate, bool(void));
   MOCK_METHOD0(Persist, bool(void));
-  MOCK_METHOD0(Get, const std::string&(void));
-  MOCK_METHOD1(Set, void(const std::string&));
+  MOCK_CONST_METHOD1(Get, bool(std::string*));
+  MOCK_METHOD1(Set, void(const enterprise_management::PolicyFetchResponse&));
 };
 }  // namespace login_manager
 

@@ -1062,12 +1062,20 @@ TEST_F(SessionManagerTest, EnumerateEmptyWhitelist) {
 }
 
 TEST_F(SessionManagerTest, StorePolicy) {
+  enterprise_management::PolicyFetchResponse fake_policy;
+  fake_policy.set_policy_data(kPropName);
+  fake_policy.set_policy_data_signature(kPropValue);
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
   MockDevicePolicy* policy = new MockDevicePolicy;
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(StrEq(kPropName), strlen(kPropName),
+                           StrEq(kPropValue), strlen(kPropValue)))
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
@@ -1078,12 +1086,16 @@ TEST_F(SessionManagerTest, StorePolicy) {
   EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true))
       .WillOnce(Return(true));
-  EXPECT_CALL(*policy, Set(StrEq(kPropValue)))
+  EXPECT_CALL(*policy, Set(_))
       .Times(1);
   manager_->test_api().set_policy(policy);
 
-  EXPECT_EQ(TRUE, manager_->StorePolicy(kPropValue, NULL));
+  std::string pol_str = fake_policy.SerializeAsString();
+  ASSERT_FALSE(pol_str.empty());
+  GArray* policy_array = CreateArray(pol_str.c_str(), pol_str.length());
+  EXPECT_EQ(TRUE, manager_->StorePolicy(policy_array, NULL));
   manager_->Run();
+  g_array_free(policy_array, TRUE);
 }
 
 TEST_F(SessionManagerTest, StorePropertyNoKey) {

@@ -282,11 +282,11 @@ class SessionManagerService
   // verifiable with |key_|.
   //
   // Returns TRUE if the signature checks out, FALSE otherwise.
-  gboolean StorePolicy(gchar* policy_blob, DBusGMethodInvocation* context);
+  gboolean StorePolicy(GArray* policy_blob, DBusGMethodInvocation* context);
 
   // Get the policy_blob and associated signature off of disk.
   // Returns TRUE if the data is can be fetched, FALSE otherwise.
-  gboolean RetrievePolicy(gchar** OUT_policy_blob, GError** error);
+  gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error);
 
   // Handles LockScreen request from PowerManager. It switches itself to
   // lock mode, and emit LockScreen signal to Chromium Browser.
@@ -483,7 +483,10 @@ class SessionManagerService
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
 
-  SigReturnCode VerifyHelper(const std::string& data, GArray* sig);
+  SigReturnCode VerifyHelper(const std::string& data,
+                             const char* sig,
+                             uint32 sig_len);
+  SigReturnCode VerifyHelperArray(const std::string& data, GArray* sig);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;

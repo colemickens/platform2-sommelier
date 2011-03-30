@@ -10,6 +10,8 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 
+#include "login_manager/bindings/device_management_backend.pb.h"
+
 namespace login_manager {
 
 // This class holds device settings that are to be enforced across all users.
@@ -28,19 +30,19 @@ class DevicePolicy {
   // Returns true unless there is a policy on disk and loading it fails.
   virtual bool LoadOrCreate();
 
-  virtual const std::string& Get();
+  virtual bool Get(std::string* output) const;
 
   // Persist |policy_| to disk at |policy_file_|
   // Returns false if there's an error while writing data.
   virtual bool Persist();
 
   // Clobber the stored policy with new data.
-  virtual void Set(const std::string& policy);
+  virtual void Set(const enterprise_management::PolicyFetchResponse& policy);
 
   static const char kDefaultPath[];
 
  private:
-  std::string policy_;
+  enterprise_management::PolicyFetchResponse policy_;
   const FilePath policy_path_;
 
   DISALLOW_COPY_AND_ASSIGN(DevicePolicy);
