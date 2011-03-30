@@ -11,7 +11,6 @@
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::Return;
-using ::testing::StrEq;
 
 namespace login_manager {
 
@@ -29,10 +28,7 @@ TEST_F(WipeMitigatorTest, Mitigate) {
   EXPECT_CALL(*utils, TouchResetFile())
       .WillOnce(Return(true));
   EXPECT_CALL(*utils,
-              AppendToClobberLog(StrEq(OwnerKeyLossMitigator::kMitigateMsg)))
-      .Times(1);
-  EXPECT_CALL(*utils,
-              SendSignalToPowerManager(power_manager::kRequestRestartSignal))
+              SendSignalToPowerManager(power_manager::kRequestShutdownSignal))
       .Times(1);
 
   WipeMitigator mitigator(utils);

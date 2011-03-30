@@ -17,8 +17,8 @@ LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 \
 
 
 SESSION_COMMON_OBJS = session_manager_service.o device_policy.o child_job.o \
-	interface.o nss_util.o owner_key.o owner_key_loss_mitigator.o \
-	pref_store.o system_utils.o upstart_signal_emitter.o wipe_mitigator.o
+	interface.o nss_util.o owner_key.o pref_store.o system_utils.o \
+	upstart_signal_emitter.o wipe_mitigator.o
 
 BINDINGS = bindings
 

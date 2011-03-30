@@ -139,8 +139,4 @@ void SystemUtils::SendSignalTo(const char* interface,
   ::dbus_message_unref(signal);
 }
 
-void SystemUtils::AppendToClobberLog(const char* msg) const {
-  system(base::StringPrintf("/sbin/clobber-log -- %s", msg).c_str());
-}
-
 }  // namespace login_manager

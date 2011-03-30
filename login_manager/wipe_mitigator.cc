@@ -14,8 +14,7 @@ WipeMitigator::~WipeMitigator() {}
 
 bool WipeMitigator::Mitigate() {
   system_->TouchResetFile();
-  system_->AppendToClobberLog(OwnerKeyLossMitigator::kMitigateMsg);
-  system_->SendSignalToPowerManager(power_manager::kRequestRestartSignal);
+  system_->SendSignalToPowerManager(power_manager::kRequestShutdownSignal);
   return false;
 }
 
