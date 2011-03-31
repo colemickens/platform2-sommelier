@@ -24,7 +24,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 
-#include "login_manager/bindings/client.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
