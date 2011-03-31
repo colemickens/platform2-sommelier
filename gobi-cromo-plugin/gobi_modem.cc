@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -251,13 +251,23 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     metrics_lib_->SendEnumToUMA(METRIC_BASE_NAME "SetPower",
                                 QCErrorToMetricIndex(rc),
                                 METRIC_INDEX_MAX);
-    ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
+    if (rc != 0) {
+      error.set(kSdkError, "SetPower");
+      LOG(WARNING) << "SetPower failed : " << rc;
+      ApiDisconnect();
+      return;
+    }
     rc = sdk_->GetFirmwareInfo(&firmware_id,
                                &technology,
                                &carrier_id,
                                &region,
                                &gps_capability);
-    ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kSdkError);
+    if (rc != 0) {
+      error.set(kSdkError, "GetFirmwareInfo");
+      LOG(WARNING) << "GetFirmwareInfo failed : " << rc;
+      ApiDisconnect();
+      return;
+    }
 
     const Carrier *carrier =
         handler_->server().FindCarrierByCarrierId(carrier_id);
@@ -723,13 +733,6 @@ void GobiModem::LogGobiInformation() {
               << " pri: " << pri;
   } else {
     LOG(WARNING) << "Cannot get firmware revision info: " << rc;
-  }
-
-  rc = sdk_->GetImageStore(sizeof(buffer), buffer);
-  if (rc == 0) {
-    LOG(INFO) << "ImageStore: " << buffer;
-  } else {
-    LOG(WARNING) << "Cannot get image store info: " << rc;
   }
 
   SerialNumbers serials;
