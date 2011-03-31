@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -73,8 +73,6 @@ install-production:
 	install $(GOBI_PLUGIN) $(PLUGINDEST)
 	install $(UDEVRULES) $(UDEVRULES_DIR)
 	install -D modem_set_carrier $(DESTDIR)/usr/bin/modem_set_carrier
-	install -D mm.sh $(DESTDIR)/usr/lib/mm.sh
-	install -D modem $(DESTDIR)/usr/bin/modem
 
 install-tests:
 	install -d $(DESTDIR)/usr/bin
