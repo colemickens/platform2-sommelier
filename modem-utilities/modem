@@ -1,0 +1,249 @@
+#!/bin/sh
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This is a wrapper around a lot of different DBus calls, written in sh; this is
+# meant to replace parts of flimflam-test, and also to be callable from crosh.
+
+. /usr/lib/mm.sh
+
+# Generates a small snippet of code to take a single argument out of our
+# parameter list, and complain (and exit) if it's not present. Used in other
+# places like: $(needarg foo), which binds foo to $1.
+needarg () {
+	# We need to echo eval here because the part of bash that understands
+	# variable assignments has already run by the time we substitute in the
+	# text of $(needarg foo) - i.e., bash will try to execute 'foo="$1"' as
+	# a *command*, which it isn't. The eval forces bash to reparse the code
+	# before executing it.
+	echo eval "$1=\"\$1\";
+		  [ -z \"\$$1\" ] && echo 'Missing arg: $1' && usage;
+		  shift"
+}
+
+# Generates a small snippet of code to take a matching flag argument
+# and value out of our parameter list if present.  If not, assign the
+# default value to $1.
+# Used in other places like: $(arg_or_default foo bar)
+# which binds foo to "bar", unless $1 is "-foo" in which case foo is
+# bound to $2.
+arg_or_default () {
+	echo eval "[ x\"\$1\" = x\"-$1\" ] && $1=\"\$2\" && shift 2;
+		  [ -z \"\$$1\" ] && $1=\"$2\""
+}
+
+# Generates a small snippet of code to take a single argument out of our
+# parameter list.  If it's not present, prompt the user and accept a
+# blank input as if the users chose the default specified as $2.
+arg_or_prompt () {
+	echo eval "$1=\"\$1\";
+		  [ -n \"\$$1\" ] && shift ;
+		  [ -z \"\$$1\" ] && read -p \"$1 [$2]: \" $1 ;
+		  [ -z \"\$$1\" ] && $1=\"$2\";"
+}
+
+# Require a key in a csv list of key value pairs
+#   $1 - comma separated list of keys and values
+#   $2 - required key
+# If the key is not found in the argument list, then prompt the user
+# for a value for key, and return $key,$value appended to $1
+require () {
+	local value
+	local args=$1
+	local key=$2
+	if [ -z "$args" -o -n "${args##*$2*}" ] ; then
+		read -p "$key: " value
+		if [ -n "$args" ] ; then
+			args="$args,"
+		fi
+		args="$args$key,$value"
+	fi
+	echo "$args"
+}
+
+# Wait for a modem to reset itself and come back with a new dbus name
+# args:
+#   $1 - dbus name of the modem before reset
+#   $2 - timeout in seconds
+wait_for_modem_reset () {
+	local modem
+	local oldmodem=$1
+	local timeout=$2
+	local status="Timed out"
+	echo -n "Waiting..."
+	while test $timeout -gt 0 ; do
+		modem=$(modems | head -1)
+		if [ -n "$modem" -a "$modem" != "$oldmodem" ] ; then
+			status="Done"
+			break
+		fi
+		sleep 1
+		timeout=$((timeout - 1))
+		echo -n "."
+	done
+	echo $status
+}
+
+# Wait for a modem to reset itself and come back with a new dbus name,
+# or for the activation state to change from "1"
+# MM_MODEM_ACTIVATION_STATE_ACTIVATING to something else
+#
+# args:
+#   $1 - dbus name of the modem before activation
+#   $2 - activation state of modem before activation call
+#   $3 - timeout in seconds
+wait_for_activation_change () {
+	local modem
+	local oldmodem=$1
+	local oldstate=$2
+	local timeout=$3
+	local status="Timed out"
+	local activation_state
+	echo -n "Waiting..."
+	while test $timeout -gt 0 ; do
+		modem=$(modems | head -1)
+		if [ -n "$modem" -a "$modem" != "$oldmodem" ] ; then
+			status="Done"
+			break
+		fi
+		activation_state=$(modem_activation_state $modem)
+		if [ $activation_state != 1 ]; then
+			status="Done"
+			break
+		fi
+		sleep 1
+		timeout=$((timeout - 1))
+		echo -n "."
+	done
+	activation_state=$(modem_activation_state $modem)
+	if [ -z "$activation_state" -o $activation_state -le $oldstate ] ; then
+		status="Failed"
+	fi
+	echo $status
+}
+
+activate_manual () {
+	$(arg_or_default modem $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	args=$(echo "$@" | sed -e 's/ /,/g')
+	args=$(require "$args" min)
+	args=$(require "$args" mdn)
+	args=$(require "$args" spc)
+	args=$(require "$args" system_id)
+	local oldstate=$(modem_activation_state $modem)
+	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
+	  "dict:string:string:$args"
+	wait_for_activation_change $modem $oldstate 40
+}
+
+activate () {
+	$(arg_or_default modem $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	# Work around braindead crosh quoting semantics (i.e., there are none,
+	# arguments are tokenized on spaces). Sigh.
+	carrier=$(echo "$@")
+	# TODO(jglasgow): verify that we can pass an empty string
+	local oldstate=$(modem_activation_state $modem)
+	local status=$(dbus "$modem" $IMODEM_CDMA.Activate "string:$carrier")
+	if [ $status != 0 ] ; then
+		echo "Error $status while activating"
+	else
+		wait_for_activation_change $modem $oldstate 40
+	fi
+}
+
+connect () {
+	$(arg_or_default modem  $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	# Work around braindead quoting again...
+	args=$(echo "$@")
+	[ -z "$args" ] && args='ignored'
+	dbus "$modem" $IMODEM.Connect "string:$args"
+}
+
+factory_reset () {
+	$(arg_or_default modem $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	$(arg_or_prompt spc 000000)
+	dbus "$modem" $IMODEM.FactoryReset "string:$spc"
+	wait_for_modem_reset $modem 40
+}
+
+status () {
+	/usr/share/userfeedback/scripts/mm-status
+}
+
+update_prl () {
+	local modem
+	local mdn
+	local min
+	$(arg_or_default modem $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	$(needarg prlfile)
+	mdn=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/mdn/ {print $2}')
+	min=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/min/ {print $2}')
+	if [ -z "$mdn" -o -z "$min" ]; then
+		echo "Cannot update PRL: MDN/MIN are unknown"
+		exit 1
+	fi
+	if [ ! -r "$prlfile" ]; then
+		echo "Cannot read PRL file \"$prlfile\""
+		exit 1
+	fi
+	# Because cromo runs as a different user than this script,
+	# it may not have access to the specified file, even when
+	# the script does. A specific example is the Downloads folder,
+	# which only the "chronos" user has access to. To work
+	# around this problem, we copy the PRL file to /tmp.
+	if ! echo "$prlfile" | grep -q '^/tmp/'; then
+		prlbase=${prlfile##*/}
+		cp $prlfile /tmp/$prlbase
+		if [ $? -ne 0 ]; then
+			echo "Cannot copy PRL file \"$prlfile\" to temp directory"
+			exit 1
+		fi
+		prlfile=/tmp/$prlbase
+	fi
+	local oldstate=$(modem_activation_state $modem)
+        args="mdn,$mdn,min,$min,prlfile,$prlfile"
+	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
+	  "dict:string:string:$args"
+        wait_for_modem_reset $modem 40
+}
+
+usage () {
+	echo "Usage: $0 <command> [args...]"
+	echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
+	echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
+	echo "  connect [-modem <modem>] [phone number]      Connect modem"
+	echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
+	echo "  status                                       Display modem status"
+	echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
+	exit 0
+}
+
+$(needarg cmd)
+case "$cmd" in
+	activate)
+		activate "$@"
+		;;
+	activate-manual)
+		activate_manual "$@"
+		;;
+	connect)
+		connect "$@"
+		;;
+	factory-reset)
+		factory_reset "$@"
+		;;
+	status)
+		status "$@"
+		;;
+	update-prl)
+		update_prl "$@"
+		;;
+	*)
+		usage
+		;;
+esac
