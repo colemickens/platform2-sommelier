@@ -258,10 +258,64 @@ uint32_t GobiGsmModem::GetMmAccessTechnology() {
       reinterpret_cast<ULONG*>(data_caps));
 }
 
+void GobiGsmModem::GetPinStatus(const char** status,
+                                uint32_t* retries_left) {
+  ULONG pin_status, verify_retries_left, unblock_retries_left;
+  DBus::Error error;
+
+  ULONG rc = sdk_->UIMGetPINStatus(gobi::kPinId1, &pin_status,
+                                   &verify_retries_left,
+                                   &unblock_retries_left);
+  ENSURE_SDK_SUCCESS(UIMGetPINStatus, rc, kPinError);
+  LOG(INFO) << "pin_status " << pin_status << " vrl " << verify_retries_left
+            << " url " << unblock_retries_left;
+  if (pin_status == gobi::kPinStatusPermanentlyBlocked) {
+      *status = "sim-puk";
+      *retries_left = 0;
+  } else if (pin_status == gobi::kPinStatusBlocked) {
+      *status = "sim-puk";
+      *retries_left = unblock_retries_left;
+  } else if (pin_status == gobi::kPinStatusNotInitialized ||
+             pin_status == gobi::kPinStatusVerified ||
+             pin_status == gobi::kPinStatusDisabled) {
+      *status = "";
+      if (verify_retries_left != gobi::kPinRetriesLeftUnknown)
+        *retries_left = verify_retries_left;
+      else
+        *retries_left = 999;
+  } else if (pin_status == gobi::kPinStatusEnabled) {
+      *status = "sim-pin";
+      *retries_left = verify_retries_left;
+  }
+}
+
 void GobiGsmModem::SetTechnologySpecificProperties() {
   AccessTechnology = GetMmAccessTechnology();
+  const char *status;
+  uint32_t retries_left;
+  GetPinStatus(&status, &retries_left);
+  LOG(INFO) << "GetPinStatus1: \"" << status << "\" " << retries_left;
+  UnlockRequired = status;
+  UnlockRetries = retries_left;
   // TODO(ers) also need to set AllowedModes property. For the Gsm.Card
   // interface, need to set SupportedBands and SupportedModes properties
+}
+
+void GobiGsmModem::UpdatePinStatus() {
+  const char *status;
+  uint32_t retries_left;
+
+  GetPinStatus(&status, &retries_left);
+  LOG(INFO) << "GetPinStatus2: \"" << status << "\" " << retries_left;
+
+  UnlockRequired = status;
+  UnlockRetries = retries_left;
+
+  utilities::DBusPropertyMap props;
+  props["UnlockRequired"].writer().append_string(status);
+  props["UnlockRetries"].writer().append_uint32(retries_left);
+  MmPropertiesChanged(
+      org::freedesktop::ModemManager::Modem_adaptor::introspect()->name, props);
 }
 
 void GobiGsmModem::GetTechnologySpecificStatus(
@@ -373,23 +427,64 @@ std::string GobiGsmModem::GetImsi(DBus::Error& error) {
 void GobiGsmModem::SendPuk(const std::string& puk,
                            const std::string& pin,
                            DBus::Error& error) {
-  LOG(WARNING) << "GobiGsmModem::SendPuk not implemented";
+  ULONG verify_retries_left;
+  ULONG unblock_retries_left;
+  CHAR *pukP = const_cast<CHAR*>(puk.c_str());
+  CHAR *pinP = const_cast<CHAR*>(pin.c_str());
+
+  ULONG rc = sdk_->UIMUnblockPIN(gobi::kPinId1, pukP, pinP,
+                                 &verify_retries_left,
+                                 &unblock_retries_left);
+  LOG(INFO) << "UnblockPIN: " << rc << " vrl " << verify_retries_left
+            << " url " << unblock_retries_left;  // XXX remove
+  UpdatePinStatus();
+  ENSURE_SDK_SUCCESS(UIMUnblockPIN, rc, kPinError);
 }
 
 void GobiGsmModem::SendPin(const std::string& pin, DBus::Error& error) {
-  LOG(WARNING) << "GobiGsmModem::SendPin not implemented";
+  ULONG verify_retries_left;
+  ULONG unblock_retries_left;
+  CHAR* pinP = const_cast<CHAR*>(pin.c_str());
+
+  ULONG rc = sdk_->UIMVerifyPIN(gobi::kPinId1, pinP, &verify_retries_left,
+                                &unblock_retries_left);
+  LOG(INFO) << "VerifyPIN: " << rc << " vrl " << verify_retries_left
+            << " url " << unblock_retries_left;  // XXX remove
+  UpdatePinStatus();
+  ENSURE_SDK_SUCCESS(UIMVerifyPIN, rc, kPinError);
 }
 
 void GobiGsmModem::EnablePin(const std::string& pin,
                              const bool& enabled,
                              DBus::Error& error) {
-  LOG(WARNING) << "GobiGsmModem::EnablePin not implemented";
+  ULONG bEnable = enabled;
+  ULONG verify_retries_left;
+  ULONG unblock_retries_left;
+  CHAR* pinP = const_cast<CHAR*>(pin.c_str());
+
+  ULONG rc = sdk_->UIMSetPINProtection(gobi::kPinId1, bEnable,
+                                       pinP, &verify_retries_left,
+                                       &unblock_retries_left);
+  LOG(INFO) << "EnablePIN: " << rc << " vrl " << verify_retries_left
+            << " url " << unblock_retries_left;  // XXX remove
+  UpdatePinStatus();
+  ENSURE_SDK_SUCCESS(UIMSetPINProtection, rc, kPinError);
 }
 
 void GobiGsmModem::ChangePin(const std::string& old_pin,
                              const std::string& new_pin,
                              DBus::Error& error) {
-  LOG(WARNING) << "GobiGsmModem::ChangePin not implemented";
+  ULONG verify_retries_left;
+  ULONG unblock_retries_left;
+  CHAR* old_pinP = const_cast<CHAR*>(old_pin.c_str());
+  CHAR* new_pinP = const_cast<CHAR*>(new_pin.c_str());
+
+  ULONG rc = sdk_->UIMChangePIN(gobi::kPinId1, old_pinP, new_pinP,
+                                &verify_retries_left, &unblock_retries_left);
+  LOG(INFO) << "ChangePIN: " << rc << " vrl " << verify_retries_left
+            << " url " << unblock_retries_left;  // XXX remove
+  UpdatePinStatus();
+  ENSURE_SDK_SUCCESS(UIMChangePIN, rc, kPinError);
 }
 
 std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {

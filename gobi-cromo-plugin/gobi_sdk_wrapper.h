@@ -251,13 +251,18 @@ enum ReturnCode {
   kErrorReceivingQmiRequest = 13,
   kNoAvailableSignal = 29,
   kErrorNeedsReset = 34,
+  kInvalidPinId = 1011,
+  kIncorrectPinId = 1012,
   kCallFailed = 1014,
   kNotProvisioned = 1016,
   kNotSupportedByNetwork = 1024,
   kNotSupportedByDevice = 1025,
   kOperationHasNoEffect = 1026,
+  kPinBlocked = 1035,
+  kPinPermanentlyBlocked = 1036,
   kNoTrackingSessionHasBeenStarted = 1065,
   kInformationElementUnavailable = 1074,
+  kAccessToRequiredEntityNotAvailable = 1082,
   kQMIHardwareRestricted = 1083
 };
 
@@ -283,6 +288,22 @@ enum CallEndReason {
   kReasonClientEndedCall = 2,
   kReasonBadApn = 1013,
   kReasonNotSubscribed = 1018
+};
+
+enum PinId {
+  kPinId1 = 1,
+  kPinId2 = 2,
+};
+
+static const unsigned int kPinRetriesLeftUnknown = 0xffffffff;
+
+enum PinStatus {
+  kPinStatusNotInitialized = 0,
+  kPinStatusEnabled = 1,
+  kPinStatusVerified = 2,
+  kPinStatusDisabled = 3,
+  kPinStatusBlocked = 4,
+  kPinStatusPermanentlyBlocked = 5
 };
 
 typedef struct {

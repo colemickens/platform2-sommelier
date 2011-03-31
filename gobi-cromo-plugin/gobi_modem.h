@@ -38,23 +38,22 @@
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
 
-#define ENSURE_SDK_SUCCESS(function, rc, errtype)        \
-    do {                                                 \
-      if (rc != 0) {                                     \
-        error.set(errtype, #function);                   \
-        LOG(WARNING) << #function << " failed : " << rc; \
-        return;                                          \
-      }                                                  \
-    } while (0)                                          \
 
 #define ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype, result) \
-    do {                                                 \
-      if (rc != 0) {                                     \
-        error.set(errtype, #function);                   \
-        LOG(WARNING) << #function << " failed : " << rc; \
-        return result;                                   \
-      }                                                  \
-    } while (0)                                          \
+    do {                                                   \
+      if (rc != 0) {                                       \
+        const char *errmsg = QMIReturnCodeToMMError(rc);   \
+        if (errmsg != NULL)                                \
+          error.set(errtype, errmsg);                      \
+        else                                               \
+          error.set(errtype, #function);                   \
+        LOG(WARNING) << #function << " failed : " << rc;   \
+        return result;                                     \
+      }                                                    \
+    } while (0)                                            \
+
+#define ENSURE_SDK_SUCCESS(function, rc, errtype)   \
+        ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype,)
 
 // from mm-modem.h in ModemManager. This enum
 // should move into an XML file to become part
@@ -312,6 +311,7 @@ class GobiModem
   };
   static gboolean SdkErrorHandler(gpointer data);
 
+  static const char* QMIReturnCodeToMMError(unsigned int qmicode);
   static const char* QMICallFailureToMMError(unsigned int qmireason);
   static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   // Set DBus-exported properties

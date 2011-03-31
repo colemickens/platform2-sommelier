@@ -186,12 +186,12 @@ void GobiModem::Init() {
   metrics_lib_->Init();
 
   // Initialize DBus object properties
-  SetDeviceProperties();
-  SetModemProperties();
   Enabled = false;
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
   UnlockRequired = "";
   UnlockRetries = 999;
+  SetDeviceProperties();
+  SetModemProperties();
 
   carrier_ = handler_->server().FindCarrierNoOp();
 
@@ -1171,6 +1171,23 @@ bool GobiModem::StartExit() {
 
   LOG(INFO) << "StartExit: session id " << session_id_;
   return true;
+}
+
+const char* GobiModem::QMIReturnCodeToMMError(unsigned int qmicode) {
+  switch (qmicode) {
+    case gobi::kInvalidPinId:
+    case gobi::kIncorrectPinId:
+    case gobi::kAccessToRequiredEntityNotAvailable:
+      return MM_ERROR_MODEM_GSM_SIMPINREQUIRED;
+    case gobi::kPinBlocked:
+    case gobi::kPinPermanentlyBlocked:
+      // blocked vs. permanently block is distinguished by
+      // looking at the value of UnlockRetries. If it is
+      // zero, then the SIM is permanently blocked.
+      return MM_ERROR_MODEM_GSM_SIMPUKREQUIRED;
+    default:
+      return NULL;
+  }
 }
 
 // Map call failure reasons into ModemManager errors
