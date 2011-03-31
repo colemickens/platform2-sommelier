@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,7 +48,7 @@ bool HexEsnToDecimal(const std::string& esn_hex, std::string* out);
 // GSM-7 is a 7-bit character set, and in SMS messages, the 7-bit
 // septets are packed into an array of 8-bit octets.
 //
-// The first byte of the input array the length of the converted
+// The first byte of the input array gives the length of the converted
 // data in septets, i.e., it is the number of GSM-7 septets that
 // will result after the array is unpacked.
 std::string Gsm7ToUtf8String(const uint8_t* gsm7);
@@ -58,6 +58,18 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7);
 // septets in the GSM-7 alphabet and then packing the septets into
 // octets.
 std::vector<uint8_t> Utf8StringToGsm7(const std::string& input);
+
+// Converts an array of bytes containing text in the UCS-2 encoding
+// into a UTF-8 encoded string.
+//
+// The first byte of the input array gives the length of the converted
+// data in octets. Dividing this number by 2 gives the number of
+// characters in the text.
+std::string Ucs2ToUtf8String(const uint8_t* ucs2);
+
+// Convert a UTF-8 encoded string to a byte array encoding
+// the string as UCS-2.
+std::vector<uint8_t> Utf8StringToUcs2(const std::string& input);
 
 // Debugging utility for printing an array of bytes in a nicely
 // formatted manner á la the UNIX hd command.

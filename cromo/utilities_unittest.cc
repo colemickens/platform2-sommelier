@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // Unit tests for utilities for the cromo modem manager
@@ -111,7 +111,7 @@ static const struct {
   const std::string utf8_string;
   const uint8_t* packed_gsm7;
   size_t packed_gsm7_size;
-} gsm_test_data[] = {
+} gsm7_test_data[] = {
   {"hellohello", gsm1, sizeof(gsm1)},
   {"Test SMS.", gsm2, sizeof(gsm2)},
   {"I'm $höme.", gsm3, sizeof(gsm3)},
@@ -131,9 +131,9 @@ TEST(Utilities, Gsm7ToUtf8) {
   using utilities::Gsm7ToUtf8String;
   std::string out;
 
-  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
-    out = Gsm7ToUtf8String(gsm_test_data[i].packed_gsm7);
-    EXPECT_EQ(gsm_test_data[i].utf8_string, out);
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+    out = Gsm7ToUtf8String(gsm7_test_data[i].packed_gsm7);
+    EXPECT_EQ(gsm7_test_data[i].utf8_string, out);
   }
 
 }
@@ -142,10 +142,10 @@ TEST(Utilities, Utf8ToGsm7) {
   using utilities::Utf8StringToGsm7;
   std::vector<uint8_t> out;
 
-  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
-    out = Utf8StringToGsm7(gsm_test_data[i].utf8_string);
-    EXPECT_EQ(gsm_test_data[i].packed_gsm7_size, out.size());
-    EXPECT_EQ(0, memcmp(&out[0], gsm_test_data[i].packed_gsm7, out.size()));
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+    out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
+    EXPECT_EQ(gsm7_test_data[i].packed_gsm7_size, out.size());
+    EXPECT_EQ(0, memcmp(&out[0], gsm7_test_data[i].packed_gsm7, out.size()));
   }
 }
 
@@ -155,10 +155,10 @@ TEST(Utilities, Utf8Gsm7RoundTrip) {
   std::vector<uint8_t> gsm7_out;
   std::string utf8_out;
 
-  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
-    gsm7_out = Utf8StringToGsm7(gsm_test_data[i].utf8_string);
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+    gsm7_out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
     utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
-    EXPECT_EQ(gsm_test_data[i].utf8_string, utf8_out);
+    EXPECT_EQ(gsm7_test_data[i].utf8_string, utf8_out);
   }
 }
 
@@ -168,12 +168,13 @@ TEST(Utilities, Gsm7Utf8RoundTrip) {
   std::vector<uint8_t> gsm7_out;
   std::string utf8_out;
 
-  for (int i = 0; gsm_test_data[i].packed_gsm7 != NULL; ++i) {
-    utf8_out = Gsm7ToUtf8String(gsm_test_data[i].packed_gsm7);
+  for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
+    utf8_out = Gsm7ToUtf8String(gsm7_test_data[i].packed_gsm7);
     gsm7_out = Utf8StringToGsm7(utf8_out);
-    EXPECT_EQ(gsm_test_data[i].packed_gsm7_size, gsm7_out.size());
+    EXPECT_EQ(gsm7_test_data[i].packed_gsm7_size, gsm7_out.size());
     EXPECT_EQ(
-        0, memcmp(&gsm7_out[0], gsm_test_data[i].packed_gsm7, gsm7_out.size()));
+        0, memcmp(&gsm7_out[0], gsm7_test_data[i].packed_gsm7,
+                  gsm7_out.size()));
   }
 }
 
@@ -189,6 +190,83 @@ TEST(Utilities, Gsm7InvalidCharacter) {
   utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
   // Expect the text to have spaces where the invalid characters were.
   EXPECT_EQ("This | | text ' ' has | | non-GSM7 characters", utf8_out);
+}
+
+uint8_t ucs_sample1[] = {
+  0x3a,
+  0x04, 0x1f, 0x04, 0x40, 0x04, 0x3e, 0x04, 0x41,
+  0x04, 0x42, 0x04, 0x3e, 0x00, 0x20, 0x04, 0x42,
+  0x04, 0x35, 0x04, 0x3a, 0x04, 0x41, 0x04, 0x42,
+  0x00, 0x2e, 0x00, 0x20, 0x00, 0x4a, 0x00, 0x75,
+  0x00, 0x73, 0x00, 0x74, 0x00, 0x20, 0x00, 0x73,
+  0x00, 0x6f, 0x00, 0x6d, 0x00, 0x65, 0x00, 0x20,
+  0x00, 0x74, 0x00, 0x65, 0x00, 0x78, 0x00, 0x74,
+  0x00, 0x2e
+};
+
+uint8_t ucs_sample2[] = {
+  0x08,
+  0x04, 0x42, 0x04, 0x35, 0x04, 0x41, 0x04, 0x42
+};
+
+static const struct {
+  const std::string utf8_string;
+  const uint8_t* ucs2_string;
+  size_t ucs2_size;
+} ucs2_test_data[] = {
+  {"Просто текст. Just some text.", ucs_sample1, sizeof(ucs_sample1)},
+  {"тест", ucs_sample2, sizeof(ucs_sample2)},
+  {"", NULL}
+};
+
+TEST(Utilities, Ucs2ToUtf8) {
+  using utilities::Ucs2ToUtf8String;
+  std::string out;
+
+  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+    out = Ucs2ToUtf8String(ucs2_test_data[i].ucs2_string);
+    EXPECT_EQ(ucs2_test_data[i].utf8_string, out);
+  }
+}
+
+TEST(Utilities, Utf8ToUcs2) {
+  using utilities::Utf8StringToUcs2;
+  std::vector<uint8_t> out;
+
+  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+    out = Utf8StringToUcs2(ucs2_test_data[i].utf8_string);
+    EXPECT_EQ(ucs2_test_data[i].ucs2_size, out.size());
+    EXPECT_EQ(0, memcmp(&out[0], ucs2_test_data[i].ucs2_string, out.size()));
+  }
+}
+
+TEST(Utilities, Utf8Ucs2RoundTrip) {
+  using utilities::Utf8StringToUcs2;
+  using utilities::Ucs2ToUtf8String;
+  std::vector<uint8_t> ucs2_out;
+  std::string utf8_out;
+
+  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+    ucs2_out = Utf8StringToUcs2(ucs2_test_data[i].utf8_string);
+    utf8_out = Ucs2ToUtf8String(&ucs2_out[0]);
+    EXPECT_EQ(ucs2_test_data[i].utf8_string, utf8_out);
+  }
+}
+
+TEST(Utilities, Ucs2Utf8RoundTrip) {
+  using utilities::Utf8StringToUcs2;
+  using utilities::Ucs2ToUtf8String;
+  std::vector<uint8_t> ucs2_out;
+  std::string utf8_out;
+
+  for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
+    utf8_out = Ucs2ToUtf8String(ucs2_test_data[i].ucs2_string);
+    ucs2_out = Utf8StringToUcs2(utf8_out);
+    EXPECT_EQ(ucs2_test_data[i].ucs2_size, ucs2_out.size());
+    EXPECT_EQ(
+        0, memcmp(&ucs2_out[0], ucs2_test_data[i].ucs2_string,
+                  ucs2_out.size()));
+  }
 }
 
 int main(int argc, char* argv[]) {

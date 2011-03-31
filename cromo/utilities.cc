@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -270,6 +270,61 @@ std::vector<uint8_t> Utf8StringToGsm7(const std::string& input) {
       shift = 0;
   }
 
+  return octets;
+}
+
+std::string Ucs2ToUtf8String(const uint8_t *ucs2) {
+  std::string str;
+  uint8_t num_chars = *ucs2++ >> 1;
+
+  for (int i = 0; i < num_chars; ++i) {
+    uint16_t ucs2char = ucs2[0] << 8 | ucs2[1];
+    if (ucs2char <= 0x7f) {
+      str += ucs2[1];
+    } else if (ucs2char <= 0x7ff) {
+      str += (uint8_t)(0xc0 | ((ucs2char & 0x7c0) >> 6));
+      str += (uint8_t)(0x80 | (ucs2char & 0x3f));
+    } else {
+      str += (uint8_t)(0xe0 | ((ucs2char & 0xf000) >> 12));
+      str += (uint8_t)(0x80 | ((ucs2char & 0xfc0) >> 6));
+      str += (uint8_t)(0x80 | (ucs2char & 0x3f));
+    }
+    ucs2 += 2;
+  }
+  return str;
+}
+
+std::vector<uint8_t> Utf8StringToUcs2(const std::string& input)
+{
+  std::vector<uint8_t> octets;
+  size_t length = input.length();
+
+  // First byte gives the length in octets of the UCS-2 string
+  // Insert a placeholder value until we know the true length.
+  octets.push_back(0);
+  for (size_t i = 0; i < length; i++) {
+    char char1 = input.at(i);
+    // Check whether this is a one byte UTF-8 sequence, or the
+    // start of a two or three byte sequence.
+    if ((char1 & 0x80) == 0) {
+      octets.push_back(0);
+      octets.push_back(char1);
+    } else if ((char1 & 0xe0) == 0xc0) {
+      uint8_t char2 = input.at(++i);
+      octets.push_back((char1 >> 2) & 0x7);
+      octets.push_back(((char1 & 0x3) << 6) | (char2 & 0x3f));
+    } else if ((char1 & 0xf0) == 0xe0) {
+      uint8_t char2 = input.at(++i);
+      uint8_t char3 = input.at(++i);
+      octets.push_back(((char1 & 0xf) << 4) | ((char2 & 0x30) >> 2));
+      octets.push_back(((char2 & 0x3) << 6) | (char3 & 0x3f));
+    } else {
+      // character not representable in UCS-2, insert a space
+      octets.push_back(0);
+      octets.push_back(' ');
+    }
+  }
+  octets[0] = octets.size() - 1;
   return octets;
 }
 

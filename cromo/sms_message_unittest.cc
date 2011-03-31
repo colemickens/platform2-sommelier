@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // Unit tests for SMS message creation
@@ -9,7 +9,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-const uint8_t pdu[] = {
+const uint8_t pdu1[] = {
   0x07, 0x91, 0x21, 0x04, 0x44, 0x29, 0x61, 0xf4,
   0x04, 0x0b, 0x91, 0x61, 0x71, 0x95, 0x72, 0x91,
   0xf8, 0x00, 0x00, 0x11, 0x20, 0x82, 0x11, 0x05,
@@ -29,8 +29,16 @@ const uint8_t pdu[] = {
   0x0e, 0xba, 0x97, 0xd9, 0x6c, 0x17
 };
 
+const uint8_t pdu2[] = {
+  0x07, 0x91, 0x97, 0x30, 0x07, 0x11, 0x11, 0xf1,
+  0x04, 0x14, 0xd0, 0x49, 0x37, 0xbd, 0x2c, 0x77,
+  0x97, 0xe9, 0xd3, 0xe6, 0x14, 0x00, 0x08, 0x11,
+  0x30, 0x92, 0x91, 0x02, 0x40, 0x61, 0x08, 0x04,
+  0x42, 0x04, 0x35, 0x04, 0x41, 0x04, 0x42
+};
+
 TEST(SmsMessage, CreateFromPdu) {
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu1, sizeof(pdu1));
 
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("12404492164", sms->smsc_address());
@@ -38,6 +46,16 @@ TEST(SmsMessage, CreateFromPdu) {
   EXPECT_EQ("110228115050-08", sms->timestamp());
   EXPECT_EQ("Here's a longer message [{with some extended characters}] "
             "thrown in, such as £ and ΩΠΨ and §¿ as well.", sms->text());
+}
+
+TEST(SmsMessage, CreateFromPduWithAlphaSenderAndUcs2Text) {
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu2, sizeof(pdu2));
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("79037011111", sms->smsc_address());
+  EXPECT_EQ("InternetSMS", sms->sender_address());
+  EXPECT_EQ("110329192004+05", sms->timestamp());
+  EXPECT_EQ("тест", sms->text());
 }
 
 int main(int argc, char* argv[]) {
