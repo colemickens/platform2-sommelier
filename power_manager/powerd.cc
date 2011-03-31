@@ -334,33 +334,39 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::SetIdleState(int64 idle_time_ms) {
   bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
-    LOG(INFO) << "state = kIdleSuspend";
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement fade
     // from suspend, we would want to have this state to make sure the backlight
     // is set to zero when suspended.
-    changed_brightness =
-        backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
-    idle_state_ = kIdleSuspend;
-    Suspend();
-  } else if (idle_time_ms >= off_ms_) {
-    LOG(INFO) << "state = kIdleScreenOff";
-    changed_brightness =
-        backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
-    idle_state_ = kIdleScreenOff;
-  } else if (idle_time_ms >= dim_ms_) {
-    LOG(INFO) << "state = kIdleDim";
-    changed_brightness = backlight_controller_->SetPowerState(BACKLIGHT_DIM);
-    idle_state_ = kIdleDim;
-  } else if (idle_state_ != kIdleNormal) {
-    LOG(INFO) << "state = kIdleNormal";
-    changed_brightness =
-        backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON);
-    if (idle_state_ == kIdleSuspend) {
-      util::CreateStatusFile(FilePath(run_dir_).Append(util::kUserActiveFile));
-      suspender_.CancelSuspend();
+    if (backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED)) {
+      idle_state_ = kIdleSuspend;
+      LOG(INFO) << "state = kIdleSuspend";
+      changed_brightness = true;
+      Suspend();
     }
-    idle_state_ = kIdleNormal;
+  } else if (idle_time_ms >= off_ms_) {
+    if (backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
+      idle_state_ = kIdleScreenOff;
+      LOG(INFO) << "state = kIdleScreenOff";
+      changed_brightness = true;
+    }
+  } else if (idle_time_ms >= dim_ms_) {
+    if (backlight_controller_->SetPowerState(BACKLIGHT_DIM)) {
+      idle_state_ = kIdleDim;
+      LOG(INFO) << "state = kIdleDim";
+      changed_brightness = true;
+    }
+  } else if (idle_state_ != kIdleNormal) {
+    if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON)) {
+      if (idle_state_ == kIdleSuspend) {
+        util::CreateStatusFile(FilePath(run_dir_)
+                              .Append(util::kUserActiveFile));
+        suspender_.CancelSuspend();
+      }
+      idle_state_ = kIdleNormal;
+      LOG(INFO) << "state = kIdleNormal";
+      changed_brightness = true;
+    }
   }
   if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
       idle_state_ != kIdleSuspend) {

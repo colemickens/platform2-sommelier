@@ -128,11 +128,16 @@ void BacklightController::DecreaseBrightness() {
   }
 }
 
-
 bool BacklightController::SetPowerState(PowerState state) {
   if (state == state_ || !is_initialized_)
     return false;
   CHECK(state != BACKLIGHT_UNINITIALIZED);
+
+  // If backlight is turned off, do not transition to dim or off states.
+  // From ACTIVE_OFF state only transition to ACTIVE_ON and SUSPEND states.
+  if (state_ == BACKLIGHT_ACTIVE_OFF && (state == BACKLIGHT_IDLE_OFF ||
+                                         state == BACKLIGHT_DIM))
+    return false;
 
   LOG(INFO) << PowerStateToString(state_) << " -> "
             << PowerStateToString(state);
