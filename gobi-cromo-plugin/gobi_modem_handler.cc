@@ -86,13 +86,13 @@ void GobiModemHandler::MonitorDevices() {
 void GobiModemHandler::HandleUdevMessage(const char *action,
                                          const char *device) {
   bool saw_changes = GetDeviceList();
-  if (0 == strcmp("add" , action) && DevicePresent(device)) {
+  if (0 == strcmp("add" , action) && DevicePresentByControlPath(device)) {
     LOG(INFO) << "Device already present";
     return;    // Do not start poller
   }
 
   if (0 == strcmp("remove", action)) {
-    delete RemoveDeviceByName(device);
+    RemoveDeviceByControlPath(device);
     // No need to start poller; we have acted on event
     return;
   }
@@ -107,25 +107,29 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
   }
 }
 
-GobiModem* GobiModemHandler::RemoveDeviceByName(const char *device) {
-  KeyToModem::iterator p = key_to_modem_.find(device);
-  if (p != key_to_modem_.end()) {
-    LOG(INFO) << "Removing device " << device;
+void GobiModemHandler::RemoveDeviceByControlPath(const char *path) {
+  ControlPathToModem::iterator p = control_path_to_modem_.find(path);
+  if (p != control_path_to_modem_.end()) {
+    LOG(INFO) << "Removing device " << path;
     RemoveDeviceByIterator(p);
-    return p->second;
   } else {
-    LOG(INFO) << "Could not find " << device << " to remove";
-    return NULL;
+    LOG(INFO) << "Could not find " << path << " to remove";
   }
 }
 
-GobiModemHandler::KeyToModem::iterator GobiModemHandler::RemoveDeviceByIterator(
-    KeyToModem::iterator p) {
-  if (p == key_to_modem_.end()) {
+static gboolean delete_modem(gpointer p) {
+  GobiModem *m = static_cast<GobiModem*>(p);
+  delete m;
+  return FALSE;
+}
+
+GobiModemHandler::ControlPathToModem::iterator
+GobiModemHandler::RemoveDeviceByIterator(ControlPathToModem::iterator p) {
+  if (p == control_path_to_modem_.end()) {
     LOG(ERROR) << "Bad iterator";
     return p;
   }
-  KeyToModem::iterator next = p;
+  ControlPathToModem::iterator next = p;
   ++next;
 
   GobiModem *m = p->second;
@@ -134,12 +138,24 @@ GobiModemHandler::KeyToModem::iterator GobiModemHandler::RemoveDeviceByIterator(
     return next;
   }
   server().DeviceRemoved(m->path());
-  key_to_modem_.erase(p);
+  control_path_to_modem_.erase(p);
+  g_idle_add(delete_modem, m);
   return next;
 }
 
-bool GobiModemHandler::DevicePresent(const char *device) {
-  return key_to_modem_.find(device) != key_to_modem_.end();
+void GobiModemHandler::Remove(GobiModem* modem) {
+  for (ControlPathToModem::iterator p = key_to_modem_.begin();
+       p != key_to_modem_.end(); ++p) {
+    GobiModem* m = p->second;
+    if (m == modem) {
+      RemoveDeviceByIterator(p);
+    }
+  }
+}
+
+
+bool GobiModemHandler::DevicePresentByControlPath(const char *path) {
+  return control_path_to_modem_.find(path) != control_path_to_modem_.end();
 }
 
 void GobiModemHandler::HandlePollEvent() {
@@ -167,8 +183,9 @@ bool GobiModemHandler::GetDeviceList() {
   bool something_changed = false;
 
   for (size_t i = 0; i < num_devices; ++i) {
-    KeyToModem::iterator p = key_to_modem_.find(devices[i].deviceKey);
-    if (p != key_to_modem_.end()) {
+    ControlPathToModem::iterator p =
+        control_path_to_modem_.find(devices[i].deviceNode);
+    if (p != control_path_to_modem_.end()) {
       CHECK((*p).second);
       (*p).second->set_last_seen(scan_generation_);
     } else {
@@ -184,40 +201,39 @@ bool GobiModemHandler::GetDeviceList() {
       }
       m->Init();
       m->set_last_seen(scan_generation_);
-      key_to_modem_[std::string(devices[i].deviceKey)] = m;
+      control_path_to_modem_[std::string(devices[i].deviceNode)] = m;
       server().DeviceAdded(m->path());
       LOG(INFO) << "Found new modem: " << m->path()
                 << " (" << devices[i].deviceNode << ")";
     }
   }
 
-  for (KeyToModem::iterator p = key_to_modem_.begin();
-       p != key_to_modem_.end(); ) {
+  for (ControlPathToModem::iterator p = control_path_to_modem_.begin();
+       p != control_path_to_modem_.end(); ) {
     GobiModem* m = p->second;
     if (m->last_seen() != scan_generation_) {
       something_changed = true;
       LOG(INFO) << "Device " << m->path() << " has disappeared";
       p = RemoveDeviceByIterator(p);
-      delete m;
     } else {
       ++p;
     }
   }
 
-  WriteDeviceListFile(key_to_modem_);
+  WriteDeviceListFile(control_path_to_modem_);
 
   return something_changed;
 }
 
 void GobiModemHandler::ClearDeviceListFile() {
-  KeyToModem no_modems;
+  ControlPathToModem no_modems;
   WriteDeviceListFile(no_modems);
 }
 
-void GobiModemHandler::WriteDeviceListFile(const KeyToModem &modems) {
+void GobiModemHandler::WriteDeviceListFile(const ControlPathToModem &modems) {
   FILE *dev_list_file = fopen(kUSBDeviceListFile, "w");
   if (dev_list_file) {
-    for (KeyToModem::const_iterator p = modems.begin();
+    for (ControlPathToModem::const_iterator p = modems.begin();
          p != modems.end(); p++) {
       GobiModem *m = p->second;
       fprintf(dev_list_file, "%s\n", m->GetUSBAddress().c_str());
@@ -231,31 +247,22 @@ void GobiModemHandler::WriteDeviceListFile(const KeyToModem &modems) {
 
 vector<DBus::Path> GobiModemHandler::EnumerateDevices(DBus::Error& error) {
   vector <DBus::Path> to_return;
-  for (KeyToModem::iterator p = key_to_modem_.begin();
-       p != key_to_modem_.end(); ++p) {
+  for (ControlPathToModem::iterator p = control_path_to_modem_.begin();
+       p != control_path_to_modem_.end(); ++p) {
     to_return.push_back(p->second->path());
   }
   return to_return;
 }
 
-GobiModem* GobiModemHandler::LookupByPath(const std::string& path) {
-  for (KeyToModem::iterator p = key_to_modem_.begin();
-       p != key_to_modem_.end(); ++p) {
+GobiModem* GobiModemHandler::LookupByDbusPath(const std::string& dbuspath)
+{
+  for (ControlPathToModem::iterator p = control_path_to_modem_.begin();
+       p != control_path_to_modem_.end(); ++p) {
     GobiModem* m = p->second;
-    if (m->path() == path)
+    if (m->path() == dbuspath)
       return m;
   }
   return NULL;
-}
-
-void GobiModemHandler::Remove(GobiModem* modem) {
-  for (KeyToModem::iterator p = key_to_modem_.begin();
-       p != key_to_modem_.end(); ++p) {
-    GobiModem* m = p->second;
-    if (m == modem) {
-      RemoveDeviceByIterator(p);
-    }
-  }
 }
 
 void GobiModemHandler::ExitLeavingModemsForCleanup() {

@@ -20,6 +20,12 @@ namespace gobi {
 class Sdk;
 }
 
+// This class cares about two orthogonal kinds of path: control paths and DBus
+// paths. Control paths are only used internally, and are the names of the qcqmi
+// device the modem is associated with (e.g., /dev/qcqmi0); DBus paths are used
+// externally and are associated with DBus objects (e.g.
+// /org/chromium/ModemManager/Gobi/0). Public methods always deal in DBus paths,
+// and private methods always deal in control paths.
 class GobiModemHandler : public ModemHandler {
  public:
   explicit GobiModemHandler(CromoServer& server);
@@ -30,34 +36,33 @@ class GobiModemHandler : public ModemHandler {
   void HandleUdevMessage(const char *action, const char *device);
   void HandlePollEvent();
 
-  GobiModem* LookupByPath(const std::string& path);
-  void Remove(GobiModem *modem);
-
-  // Exit, but do not clean up list of modems; the upstart script will
-  // then clean up any modems we were servicing
   void ExitLeavingModemsForCleanup();
+  GobiModem* LookupByDbusPath(const std::string& dbuspath);
+  void Remove(GobiModem *m);
 
  private:
-  typedef std::map<std::string, GobiModem *> KeyToModem;
+  typedef std::map<std::string, GobiModem *> ControlPathToModem;
 
-  bool DevicePresent(const char *device);
+  bool DevicePresentByControlPath(const char *path);
+  void RemoveDeviceByControlPath(const char *path);
 
-  GobiModem* RemoveDeviceByName(const char *device);
-  KeyToModem::iterator RemoveDeviceByIterator(KeyToModem::iterator p);
+  ControlPathToModem::iterator
+      RemoveDeviceByIterator(ControlPathToModem::iterator p);
 
   // On clean exit clear the list of devices that need to be reset
   void ClearDeviceListFile();
 
   // Write a list of devices to a file so that upstart can reset the
   // devices if we exit unexpectedly.
-  void WriteDeviceListFile(const KeyToModem &modems);
+  void WriteDeviceListFile(const ControlPathToModem &modems);
 
   bool GetDeviceList();
   void MonitorDevices();
+  ControlPathToModem control_path_to_modem_;
 
   bool clear_device_list_on_destroy_;
   DeviceWatcher *device_watcher_;
-  KeyToModem key_to_modem_;
+  ControlPathToModem key_to_modem_;
   int scan_generation_;
 
   scoped_ptr<gobi::Sdk> sdk_;

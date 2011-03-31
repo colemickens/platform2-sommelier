@@ -100,7 +100,7 @@ int GobiCdmaModem::GetMmActivationState() {
 
 static GobiCdmaModem* LookupCdmaModem(GobiModemHandler *handler,
                                        const DBus::Path &path) {
-  return static_cast<GobiCdmaModem *>(handler->LookupByPath(path));
+  return static_cast<GobiCdmaModem *>(handler->LookupByDbusPath(path));
 }
 
 static BYTE* GetFileContents(const char* filename, ULONG* num_bytes) {

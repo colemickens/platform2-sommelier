@@ -153,7 +153,7 @@ void GobiGsmModem::SendNetworkTechnologySignal(uint32_t mm_access_tech) {
 gboolean GobiGsmModem::CheckDataCapabilities(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
   GobiGsmModem* modem =
-      static_cast<GobiGsmModem *>(handler_->LookupByPath(*args->path));
+      static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
   delete args;
   if (modem != NULL)
     modem->SendNetworkTechnologySignal(modem->GetMmAccessTechnology());
@@ -165,7 +165,7 @@ gboolean GobiGsmModem::NewSmsCallback(gpointer data) {
   LOG(INFO) << "New SMS Callback: type " << args->storage_type
             << " index " << args->message_index;
   GobiGsmModem* modem =
-      static_cast<GobiGsmModem *>(handler_->LookupByPath(*args->path));
+      static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
   if (modem == NULL)
     return FALSE;
   modem->SmsReceived(args->message_index, true);

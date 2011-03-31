@@ -566,7 +566,7 @@ static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
 // RegisterCallbacks().
 gboolean GobiModem::DormancyStatusCallback(gpointer data) {
   DormancyStatusArgs *args = reinterpret_cast<DormancyStatusArgs*>(data);
-  GobiModem *modem = handler_->LookupByPath(*args->path);
+  GobiModem *modem = handler_->LookupByDbusPath(*args->path);
   LOG(INFO) << "DormancyStatusCallback: " << args->status;
   if (modem->event_enabled[GOBI_EVENT_DORMANCY]) {
     modem->DormancyStatus(args->status == gobi::kDormant);
@@ -780,12 +780,6 @@ void GobiModem::PowerCycle(DBus::Error &error) {
   ENSURE_SDK_SUCCESS(SetPower, rc, kSdkError);
 }
 
-static gboolean delete_modem(gpointer p) {
-  GobiModem *m = static_cast<GobiModem*>(p);
-  delete m;
-  return FALSE;
-}
-
 void GobiModem::ResetModem(DBus::Error& error) {
   Enabled = false;
   LOG(INFO) << "Offline";
@@ -811,8 +805,6 @@ void GobiModem::ResetModem(DBus::Error& error) {
   // Remove() returns, since Remove() declares us to no longer exist.
   unregister_obj();
   handler_->Remove(this);
-
-  g_idle_add(delete_modem, this);
 }
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
@@ -1008,7 +1000,7 @@ void GobiModem::SinkSdkError(const std::string& modem_path,
 // Callbacks:  Run in the context of the main thread
 gboolean GobiModem::SdkErrorHandler(gpointer data) {
   SdkErrorArgs *args = static_cast<SdkErrorArgs *>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL) {
     modem->ExitAndResetDevice(args->error);
   } else {
@@ -1020,7 +1012,7 @@ gboolean GobiModem::SdkErrorHandler(gpointer data) {
 
 gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   SignalStrengthArgs* args = static_cast<SignalStrengthArgs*>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->SignalStrengthHandler(args->signal_strength, args->radio_interface);
   delete args;
@@ -1029,7 +1021,7 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
 
 gboolean GobiModem::SessionStateCallback(gpointer data) {
   SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->SessionStateHandler(args->state, args->session_end_reason);
   delete args;
@@ -1038,7 +1030,7 @@ gboolean GobiModem::SessionStateCallback(gpointer data) {
 
 gboolean GobiModem::RegistrationStateCallback(gpointer data) {
   CallbackArgs* args = static_cast<CallbackArgs*>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   delete args;
   if (modem != NULL)
     modem->RegistrationStateHandler();
@@ -1047,7 +1039,7 @@ gboolean GobiModem::RegistrationStateCallback(gpointer data) {
 
 gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
   DataCapabilitiesArgs* args = static_cast<DataCapabilitiesArgs*>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->DataCapabilitiesHandler(args->num_data_caps, args->data_caps);
   delete args;
@@ -1056,7 +1048,7 @@ gboolean GobiModem::DataCapabilitiesCallback(gpointer data) {
 
 gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
   DataBearerTechnologyArgs* args = static_cast<DataBearerTechnologyArgs*>(data);
-  GobiModem* modem = handler_->LookupByPath(*args->path);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
   if (modem != NULL)
     modem->DataBearerTechnologyHandler(args->technology);
   delete args;
