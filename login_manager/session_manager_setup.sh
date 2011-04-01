@@ -210,6 +210,7 @@ export DONT_CRASH_ON_ASSERT=1
 PEPPER_PATH=/opt/google/chrome/pepper
 REGISTER_PLUGINS=
 COMMA=
+FLASH_FLAGS=
 for file in $(find $PEPPER_PATH -name '*.info'); do
   FILE_NAME=
   PLUGIN_NAME=
@@ -226,9 +227,15 @@ for file in $(find $PEPPER_PATH -name '*.info'); do
       [ -n "$VERSION" ] && PLUGIN_STRING="${PLUGIN_STRING}#${VERSION}"
     fi
   fi
-  PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
-  REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
-  COMMA=","
+  if [ "$PLUGIN_NAME" = "Shockwave Flash" ]; then
+    # Flash is treated specially.
+    FLASH_FLAGS="--ppapi-flash-path=${FILE_NAME}"
+    FLASH_FLAGS="${FLASH_FLAGS} --ppapi-flash-version=${VERSION}"
+  else
+    PLUGIN_STRING="${PLUGIN_STRING};${MIME_TYPES}"
+    REGISTER_PLUGINS="${REGISTER_PLUGINS}${COMMA}${PLUGIN_STRING}"
+    COMMA=","
+  fi
 done
 if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
@@ -324,6 +331,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             "$REGISTER_PLUGINS" \
             "$TOUCH_DEVICES" \
             ${ACCELERATED_FLAGS} \
+            ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
 -- "$WM_SCRIPT"
