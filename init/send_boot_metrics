@@ -35,3 +35,16 @@ report_disk_metrics $(
   bootstat_get_last boot-complete read-sectors write-sectors)
 
 send_metrics_on_resume -b
+
+# Report disk health from SMART (S.M.A.R.T.) parameters.
+# The first printf avoids a newline in $smart.
+smart="$(/usr/sbin/smartctl -A $(/usr/bin/rootdev -d) | \
+  awk '
+/^187/ { printf "%d ", $10; }
+/^199/ { print $10; }
+')"
+# smart now contains two numbers, for instance "10 20".  Extract each number
+# using prefix and suffix substitutions.  This would less cryptic if dash had
+# arrays.
+metrics_client Platform.SmartUncorrectableErrors ${smart% *} 1 1000000 20
+metrics_client Platform.SmartTransferErrors      ${smart#* } 1 1000000 20
