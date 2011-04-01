@@ -24,12 +24,12 @@ DBUS_CLIENT = $(BINDINGS)/client.h
 PROTO_PATH = $(ROOT)/usr/include/proto
 PROTO_DEFS = $(PROTO_PATH)/device_management_backend.proto
 PROTO_BINDINGS = $(BINDINGS)/device_management_backend.pb.cc
+PROTO_HEADERS = $(patsubst %.cc,%.h,$(PROTO_BINDINGS))
 PROTO_OBJS = $(BINDINGS)/device_management_backend.pb.o
 
 COMMON_OBJS = child_job.o interface.o nss_util.o owner_key.o pref_store.o \
-	system_utils.o upstart_signal_emitter.o wipe_mitigator.o
-
-NEED_PROTO_OBJS = session_manager_service.o device_policy.o $(PROTO_OBJS)
+	system_utils.o upstart_signal_emitter.o wipe_mitigator.o \
+	session_manager_service.o device_policy.o $(PROTO_OBJS)
 
 KEYGEN_BIN = keygen
 KEYGEN_OBJS = keygen.o nss_util.o owner_key.o system_utils.o
@@ -45,9 +45,11 @@ TEST_OBJS = session_manager_testrunner.o session_manager_unittest.o \
 
 all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN)
 
-$(NEED_PROTO_OBJS): $(PROTO_BINDINGS)
-$(SESSION_OBJS): $(DBUS_SERVER) $(COMMON_OBJS) $(NEED_PROTO_OBJS)
-$(TEST_OBJS): $(DBUS_SERVER) $(COMMON_OBJS) $(NEED_PROTO_OBJS)
+$(PROTO_HEADERS): %.h: %.cc
+
+$(COMMON_OBJS): $(PROTO_HEADERS)
+$(SESSION_OBJS): $(DBUS_SERVER) $(COMMON_OBJS)
+$(TEST_OBJS): $(DBUS_SERVER) $(COMMON_OBJS)
 
 $(KEYGEN_BIN): $(KEYGEN_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(KEYGEN_OBJS) \
