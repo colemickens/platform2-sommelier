@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/scoped_temp_dir.h>
 #include <base/time.h>
+#include <chromeos/process.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -137,6 +138,14 @@ void SystemUtils::SendSignalTo(const char* interface,
   }
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
+}
+
+void SystemUtils::AppendToClobberLog(const char* msg) const {
+  chromeos::ProcessImpl appender;
+  appender.AddArg("/sbin/clobber-log");
+  appender.AddArg("--");
+  appender.AddArg(msg);
+  appender.Run();
 }
 
 }  // namespace login_manager

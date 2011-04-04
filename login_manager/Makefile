@@ -7,7 +7,7 @@ CXXFLAGS ?= -Wall -Werror -g
 CXXFLAGS += -DOS_CHROMEOS
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lbase -lpthread -lrt -lchromeos -lbootstat -levent -lprotobuf-lite
+BASE_LIBS = -lpthread -lrt -lchromeos -lbootstat -levent -lprotobuf-lite -lbase
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1 glib-2.0 \
@@ -27,8 +27,9 @@ PROTO_BINDINGS = $(BINDINGS)/device_management_backend.pb.cc
 PROTO_HEADERS = $(patsubst %.cc,%.h,$(PROTO_BINDINGS))
 PROTO_OBJS = $(BINDINGS)/device_management_backend.pb.o
 
-COMMON_OBJS = child_job.o interface.o nss_util.o owner_key.o pref_store.o \
-	system_utils.o upstart_signal_emitter.o wipe_mitigator.o \
+COMMON_OBJS = child_job.o interface.o nss_util.o owner_key.o \
+	owner_key_loss_mitigator.o pref_store.o system_utils.o \
+	upstart_signal_emitter.o wipe_mitigator.o \
 	session_manager_service.o device_policy.o $(PROTO_OBJS)
 
 KEYGEN_BIN = keygen
