@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -550,7 +550,7 @@ void SessionManagerService::HandleKeygenExit(GPid pid,
 
 void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
   std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(buf, &pub_key);
+  NssUtil::BlobFromBuffer(buf, &pub_key);
 
   if (!CurrentUserHasOwnerKey(pub_key, NULL)) {
     SendSignal(chromium::kOwnerKeySetSignal, false);
@@ -745,30 +745,63 @@ void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
 gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
                                             DBusGMethodInvocation* context) {
   std::string policy_str(policy_blob->data, policy_blob->len);
-  GError* error = NULL;
   enterprise_management::PolicyFetchResponse policy;
   if (!policy.ParseFromString(policy_str) ||
       !policy.has_policy_data() ||
       !policy.has_policy_data_signature()) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    SetGError(&error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-    dbus_g_method_return_error(context, error);
-    g_error_free(error);
+    SetAndSendGError(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, context, msg);
     return FALSE;
   }
+
+  // Determine if the policy has pushed a new owner key and, if so, set it and
+  // schedule a task to persist it to disk.
+  if (policy.has_new_public_key() && !key_->Equals(policy.new_public_key())) {
+    // The policy contains a new key, and it is different from |key_|.
+    std::vector<uint8> der;
+    nss_->BlobFromBuffer(policy.new_public_key(), &der);
+
+    if (session_started_) {
+      bool rotated = false;
+      if (policy.has_new_public_key_signature()) {
+        // Graceful key rotation.
+        std::vector<uint8> sig;
+        nss_->BlobFromBuffer(policy.new_public_key_signature(), &sig);
+        rotated = key_->Rotate(der, sig);
+      }
+      if (!rotated) {
+        const char msg[] = "Failed attempted key rotation!";
+        LOG(ERROR) << msg;
+        SetAndSendGError(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, context, msg);
+        return FALSE;
+      }
+    } else {
+      // Force a new key, regardless of whether we have one or not.
+      if (key_->IsPopulated()) {
+        key_->ClobberCompromisedKey(der);
+        LOG(INFO) << "Clobbered existing key outside of session";
+      } else {
+        CHECK(key_->PopulateFromBuffer(der));  // Should be unable to fail.
+        LOG(INFO) << "Setting key outside of session";
+      }
+    }
+    // If here, need to persit new key to disk.  Already loaded key into memory.
+    io_thread_.message_loop()->PostTask(
+        FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
+  }
+
+  // Validate signature on policy and persist to disk
   const std::string& sig = policy.policy_data_signature();
   SessionManagerService::SigReturnCode verify_result =
       VerifyHelper(policy.policy_data(), sig.c_str(), sig.length());
   if (verify_result == NO_KEY) {
-    const char msg[] = "Attempt to store policy before owner's key is set.";
-    LOG(ERROR) << msg;
-    SetGError(&error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
+    NOTREACHED() << "Should have set the key earlier in this function!";
     return FALSE;
   } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in StorePolicy.";
     LOG(ERROR) << msg;
-    SetGError(&error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    SetAndSendGError(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, context, msg);
     return FALSE;
   }
   policy_->Set(policy);
@@ -1000,6 +1033,15 @@ void SessionManagerService::SetGError(GError** error,
   g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
 }
 
+// static
+void SessionManagerService::SetAndSendGError(ChromeOSLoginError code,
+                                             DBusGMethodInvocation* context,
+                                             const char* msg) {
+  GError* error = NULL;
+  SetGError(&error, code, msg);
+  dbus_g_method_return_error(context, error);
+  g_error_free(error);
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
@@ -1102,10 +1144,7 @@ gboolean SessionManagerService::CurrentUserIsOwner(GError** error) {
   std::string was_signed = base::StringPrintf("%s=%s",
                                               kDeviceOwnerPref,
                                               value.c_str());
-  if (!key_->Verify(was_signed.c_str(),
-                    was_signed.length(),
-                    decoded.c_str(),
-                    decoded.length())) {
+  if (VerifyHelper(was_signed, decoded.c_str(), decoded.length()) != SUCCESS) {
     const char msg[] = "Owner pref signature could not be verified.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
@@ -1203,7 +1242,8 @@ gboolean SessionManagerService::SignAndStoreProperty(const std::string& name,
   std::string to_sign = base::StringPrintf("%s=%s",
                                            kDeviceOwnerPref,
                                            current_user_.c_str());
-  if (!key_->Sign(to_sign.c_str(), to_sign.length(), &signature)) {
+  const uint8* data = reinterpret_cast<const uint8*>(to_sign.c_str());
+  if (!key_->Sign(data, to_sign.length(), &signature)) {
     LOG_IF(ERROR, error) << err_msg;
     LOG_IF(WARNING, !error) << err_msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
@@ -1221,7 +1261,8 @@ gboolean SessionManagerService::SignAndWhitelist(const std::string& email,
                                                  const std::string& err_msg,
                                                  GError** error) {
   std::vector<uint8> signature;
-  if (!key_->Sign(current_user_.c_str(), current_user_.length(), &signature)) {
+  const uint8* data = reinterpret_cast<const uint8*>(current_user_.c_str());
+  if (!key_->Sign(data, current_user_.length(), &signature)) {
     LOG_IF(ERROR, error) << err_msg;
     LOG_IF(WARNING, !error) << err_msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
@@ -1260,8 +1301,12 @@ SessionManagerService::VerifyHelper(const std::string& data,
                                     uint32 sig_len) {
   if (!key_->IsPopulated())
     return NO_KEY;
-  if (!key_->Verify(data.c_str(), data.length(), sig, sig_len))
+  if (!key_->Verify(reinterpret_cast<const uint8*>(data.c_str()),
+                    data.length(),
+                    reinterpret_cast<const uint8*>(sig),
+                    sig_len)) {
     return SIGNATURE_FAIL;
+  }
   return SUCCESS;
 }
 

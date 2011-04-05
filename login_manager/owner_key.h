@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -32,6 +32,8 @@ class OwnerKey {
   explicit OwnerKey(const FilePath& key_file);
   virtual ~OwnerKey();
 
+  virtual bool Equals(const std::string& key_der) const;
+  virtual bool VEquals(const std::vector<uint8>& key_der) const;
   virtual bool HaveCheckedDisk();
   virtual bool IsPopulated();
 
@@ -58,18 +60,30 @@ class OwnerKey {
   // writing data.
   virtual bool Persist();
 
+  // Load key material from |public_key_der|, as long as |sig| is a valid
+  // signature over |public_key_der| with |key_|.
+  // We will _deny_ such an attempt if we do not have a key loaded.
+  // If you're trying to set a key for the first time, use PopulateFromBuffer()
+  virtual bool Rotate(const std::vector<uint8>& public_key_der,
+                      const std::vector<uint8>& signature);
+
+  // THIS IS ONLY INTENDED TO BE USED WHEN THE CURRENTLY REGISTERED KEY HAS BEEN
+  // COMPROMISED OR LOST AND WE ARE RECOVERING.
+  // Load key material from |public_key_der| into key_.
+  virtual void ClobberCompromisedKey(const std::vector<uint8>& public_key_der);
+
   // Verify that |signature| is a valid sha1 w/ RSA signature over the data in
   // |data| with |key_|.
   // Returns false if the sig is invalid, or there's an error.
-  virtual bool Verify(const char* data,
+  virtual bool Verify(const uint8* data,
                       uint32 data_len,
-                      const char* signature,
+                      const uint8* signature,
                       uint32 sig_len);
 
   // Generate |OUT_signature|, a valid sha1 w/ RSA signature over the data in
   // |data| that can be verified with |key_|.
   // Returns false if the sig is invalid, or there's an error.
-  virtual bool Sign(const char* data,
+  virtual bool Sign(const uint8* data,
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature);
 
@@ -86,6 +100,7 @@ class OwnerKey {
 
   const FilePath key_file_;
   bool have_checked_disk_;
+  bool have_replaced_;
   std::vector<uint8> key_;
   scoped_ptr<SystemUtils> utils_;
 

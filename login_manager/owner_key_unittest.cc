@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -37,6 +37,30 @@ class OwnerKeyTest : public ::testing::Test {
   ScopedTempDir tmpdir_;
   DISALLOW_COPY_AND_ASSIGN(OwnerKeyTest);
 };
+
+TEST_F(OwnerKeyTest, Equals) {
+  // Set up an empty key
+  StartUnowned();
+  OwnerKey key(tmpfile_);
+  ASSERT_TRUE(key.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_FALSE(key.IsPopulated());
+
+  // Trivial case.
+  EXPECT_TRUE(key.VEquals(std::vector<uint8>()));
+
+  // Ensure that 0-length keys don't cause us to return true for everything.
+  std::vector<uint8> fake(1, 1);
+  EXPECT_FALSE(key.VEquals(fake));
+
+  // Populate the key.
+  ASSERT_TRUE(key.PopulateFromBuffer(fake));
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_TRUE(key.IsPopulated());
+
+  // Real comparison.
+  EXPECT_TRUE(key.VEquals(fake));
+}
 
 TEST_F(OwnerKeyTest, LoadKey) {
   OwnerKey key(tmpfile_);
@@ -120,7 +144,7 @@ TEST_F(OwnerKeyTest, SignVerify) {
   base::EnsureNSSInit();
   base::OpenPersistentNSSDB();
   scoped_ptr<base::RSAPrivateKey> pair(
-      base::RSAPrivateKey::CreateSensitive(2048));
+      base::RSAPrivateKey::CreateSensitive(512));
   ASSERT_NE(pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -134,11 +158,64 @@ TEST_F(OwnerKeyTest, SignVerify) {
   ASSERT_TRUE(key.IsPopulated());
 
   std::string data("whatever");
+  const uint8* data_p = reinterpret_cast<const uint8*>(data.c_str());
   std::vector<uint8> signature;
-  EXPECT_TRUE(key.Sign(data.c_str(), data.length(), &signature));
-  EXPECT_TRUE(key.Verify(data.c_str(),
+  EXPECT_TRUE(key.Sign(data_p, data.length(), &signature));
+  EXPECT_TRUE(key.Verify(data_p,
                          data.length(),
-                         reinterpret_cast<const char*>(&signature[0]),
+                         &signature[0],
                          signature.size()));
 }
+
+TEST_F(OwnerKeyTest, RotateKey) {
+  StartUnowned();
+  OwnerKey key(tmpfile_);
+
+  base::EnsureNSSInit();
+  base::OpenPersistentNSSDB();
+  scoped_ptr<base::RSAPrivateKey> pair(
+      base::RSAPrivateKey::CreateSensitive(512));
+  ASSERT_NE(pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+
+  ASSERT_TRUE(key.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_FALSE(key.IsPopulated());
+
+  std::vector<uint8> to_export;
+  ASSERT_TRUE(pair->ExportPublicKey(&to_export));
+  ASSERT_TRUE(key.PopulateFromBuffer(to_export));
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_TRUE(key.IsPopulated());
+  ASSERT_TRUE(key.Persist());
+
+  OwnerKey key2(tmpfile_);
+  ASSERT_TRUE(key2.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key2.HaveCheckedDisk());
+  ASSERT_TRUE(key2.IsPopulated());
+
+  scoped_ptr<base::RSAPrivateKey> new_pair(
+      base::RSAPrivateKey::CreateSensitive(512));
+  ASSERT_NE(new_pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+  std::vector<uint8> new_export;
+  ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
+
+  std::vector<uint8> signature;
+  ASSERT_TRUE(key2.Sign(&new_export[0], new_export.size(), &signature));
+  ASSERT_TRUE(key2.Rotate(new_export, signature));
+  ASSERT_TRUE(key2.Persist());
+}
+
+TEST_F(OwnerKeyTest, ClobberKey) {
+  OwnerKey key(tmpfile_);
+
+  ASSERT_TRUE(key.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_TRUE(key.IsPopulated());
+
+  std::vector<uint8> fake(1, 1);
+  key.ClobberCompromisedKey(fake);
+  ASSERT_TRUE(key.VEquals(fake));
+  ASSERT_TRUE(key.Persist());
+}
+
 }  // namespace login_manager

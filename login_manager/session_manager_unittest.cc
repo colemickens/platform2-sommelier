@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -48,6 +48,10 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
+
+MATCHER_P(CastEq, str, "") {                                            \
+  return std::string(reinterpret_cast<const char*>(arg)) == str;        \
+}
 
 static const char kCheckedFile[] = "/tmp/checked_file";
 static const char kUptimeFile[] = "/tmp/uptime-chrome-exec";
@@ -177,6 +181,7 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*key, HaveCheckedDisk())
         .WillOnce(Return(true));
     EXPECT_CALL(*key, IsPopulated())
+        .WillOnce(Return(true))
         .WillOnce(Return(true));
   }
 
@@ -241,7 +246,7 @@ class SessionManagerTest : public ::testing::Test {
         .RetiresOnSaturation();
     EXPECT_CALL(*store, Set(_, email_string, _))
         .Times(1);
-    EXPECT_CALL(*key, Sign(StrEq(email_string), email_string.length(), _))
+    EXPECT_CALL(*key, Sign(CastEq(email_string), email_string.length(), _))
         .WillOnce(Return(true))
         .RetiresOnSaturation();
     EXPECT_CALL(*store, Whitelist(email_string, _))
@@ -262,7 +267,7 @@ class SessionManagerTest : public ::testing::Test {
         .Times(AtMost(1))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*key, IsPopulated())
-        .Times(AtMost(1))
+        .Times(AtMost(2))
         .WillRepeatedly(Return(true));
   }
 
@@ -812,7 +817,7 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
   MockUtils();
 
   std::vector<uint8> pub_key;
-  NssUtil::KeyFromBuffer(kPropValue, &pub_key);
+  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
 
   MockPrefStore* store = new MockPrefStore;
   MockOwnerKey* key = new MockOwnerKey;
@@ -876,8 +881,8 @@ TEST_F(SessionManagerTest, WhitelistVerifyFail) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
-                           fake_sig_->data, fake_sig_->len))
+  EXPECT_CALL(*key, Verify(CastEq(kFakeEmail), strlen(kFakeEmail),
+                           CastEq(fake_sig_->data), fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
 
@@ -903,8 +908,8 @@ TEST_F(SessionManagerTest, Whitelist) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
-                           fake_sig_->data, fake_sig_->len))
+  EXPECT_CALL(*key, Verify(CastEq(kFakeEmail), strlen(kFakeEmail),
+                           CastEq(fake_sig_->data), fake_sig_->len))
       .WillOnce(Return(true));
 
   manager_->test_api().set_ownerkey(key);
@@ -939,8 +944,8 @@ TEST_F(SessionManagerTest, Unwhitelist) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(kFakeEmail), strlen(kFakeEmail),
-                           fake_sig_->data, fake_sig_->len))
+  EXPECT_CALL(*key, Verify(CastEq(kFakeEmail), strlen(kFakeEmail),
+                           CastEq(fake_sig_->data), fake_sig_->len))
       .WillOnce(Return(true));
 
   manager_->test_api().set_ownerkey(key);
@@ -1064,6 +1069,8 @@ TEST_F(SessionManagerTest, StorePolicy) {
   enterprise_management::PolicyFetchResponse fake_policy;
   fake_policy.set_policy_data(kPropName);
   fake_policy.set_policy_data_signature(kPropValue);
+  fake_policy.set_new_public_key(kPropName);
+  fake_policy.set_new_public_key_signature(kPropValue);
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   MockPrefStore* store = new MockPrefStore;
@@ -1071,10 +1078,17 @@ TEST_F(SessionManagerTest, StorePolicy) {
   MockDevicePolicy* policy = new MockDevicePolicy;
   EXPECT_CALL(*key, PopulateFromDiskIfPossible())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, IsPopulated())
+  EXPECT_CALL(*key, PopulateFromBuffer(_))
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(kPropName), strlen(kPropName),
-                           StrEq(kPropValue), strlen(kPropValue)))
+  EXPECT_CALL(*key, IsPopulated())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Verify(CastEq(kPropName), strlen(kPropName),
+                           CastEq(kPropValue), strlen(kPropValue)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, Equals(StrEq(kPropName)))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*key, Persist())
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 
@@ -1088,6 +1102,12 @@ TEST_F(SessionManagerTest, StorePolicy) {
   EXPECT_CALL(*policy, Set(_))
       .Times(1);
   manager_->test_api().set_policy(policy);
+
+  EXPECT_CALL(*(utils_.get()),
+              SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                   StrEq("success")))
+      .Times(1);
+  MockUtils();
 
   std::string pol_str = fake_policy.SerializeAsString();
   ASSERT_FALSE(pol_str.empty());
@@ -1127,8 +1147,8 @@ TEST_F(SessionManagerTest, StorePropertyVerifyFail) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(property_), property_.length(),
-                           fake_sig_->data, fake_sig_->len))
+  EXPECT_CALL(*key, Verify(CastEq(property_), property_.length(),
+                           CastEq(fake_sig_->data), fake_sig_->len))
       .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
 
@@ -1157,8 +1177,8 @@ TEST_F(SessionManagerTest, StoreProperty) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, IsPopulated())
       .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(StrEq(property_), property_.length(),
-                           fake_sig_->data, fake_sig_->len))
+  EXPECT_CALL(*key, Verify(CastEq(property_), property_.length(),
+                           CastEq(fake_sig_->data), fake_sig_->len))
       .WillOnce(Return(true));
   manager_->test_api().set_ownerkey(key);
 

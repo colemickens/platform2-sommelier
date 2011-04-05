@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -28,10 +28,21 @@ const uint8 OwnerKey::kAlgorithm[15] = {
 OwnerKey::OwnerKey(const FilePath& key_file)
     : key_file_(key_file),
       have_checked_disk_(false),
+      have_replaced_(false),
       utils_(new SystemUtils) {
 }
 
 OwnerKey::~OwnerKey() {}
+
+bool OwnerKey::Equals(const std::string& key_der) const {
+  return VEquals(std::vector<uint8>(key_der.c_str(),
+                                    key_der.c_str() + key_der.length()));
+}
+
+bool OwnerKey::VEquals(const std::vector<uint8>& key_der) const {
+  return ((key_.empty() == key_der.empty()) &&
+          memcmp(&key_der[0], &key_[0], key_.size()) == 0);
+}
 
 bool OwnerKey::HaveCheckedDisk() { return have_checked_disk_; }
 
@@ -88,7 +99,7 @@ bool OwnerKey::PopulateFromKeypair(base::RSAPrivateKey* pair) {
 bool OwnerKey::Persist() {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
-  if (file_util::PathExists(key_file_)) {
+  if (!have_replaced_ && file_util::PathExists(key_file_)) {
     LOG(ERROR) << "Tried to overwrite owner key!";
     return false;
   }
@@ -103,17 +114,44 @@ bool OwnerKey::Persist() {
   return true;
 }
 
-bool OwnerKey::Verify(const char* data,
+bool OwnerKey::Rotate(const std::vector<uint8>& public_key_der,
+                      const std::vector<uint8>& signature) {
+  if (!IsPopulated()) {
+    LOG(ERROR) << "Don't yet have an owner key!";
+    return false;
+  }
+  if (Verify(&public_key_der[0],
+             public_key_der.size(),
+             &signature[0],
+             signature.size())) {
+    key_ = public_key_der;
+    have_replaced_ = true;
+    return true;
+  }
+  LOG(ERROR) << "Invalid signature on new key!";
+  return false;
+}
+
+void OwnerKey::ClobberCompromisedKey(const std::vector<uint8>& public_key_der) {
+  // It is a programming error to call this before checking for the key on disk.
+  CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
+  // It is a programming error to call this without a key already loaded.
+  CHECK(IsPopulated()) << "Don't yet have an owner key!";
+
+  key_ = public_key_der;
+  have_replaced_ = true;
+}
+
+bool OwnerKey::Verify(const uint8* data,
                       uint32 data_len,
-                      const char* signature,
+                      const uint8* signature,
                       uint32 sig_len) {
   scoped_ptr<NssUtil> util(NssUtil::Create());
-
   if (!util->Verify(kAlgorithm,
                     sizeof(kAlgorithm),
-                    reinterpret_cast<const uint8*>(signature),
+                    signature,
                     sig_len,
-                    reinterpret_cast<const uint8*>(data),
+                    data,
                     data_len,
                     &key_[0],
                     key_.size())) {
@@ -123,17 +161,14 @@ bool OwnerKey::Verify(const char* data,
   return true;
 }
 
-bool OwnerKey::Sign(const char* data,
+bool OwnerKey::Sign(const uint8* data,
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature) {
   scoped_ptr<NssUtil> util(NssUtil::Create());
   scoped_ptr<base::RSAPrivateKey> private_key(util->GetPrivateKey(key_));
   if (!private_key.get())
     return false;
-  if (!util->Sign(reinterpret_cast<const uint8*>(data),
-                  data_len,
-                  OUT_signature,
-                  private_key.get())) {
+  if (!util->Sign(data, data_len, OUT_signature, private_key.get())) {
     LOG(ERROR) << "Signing of " << data << " failed";
     return false;
   }
