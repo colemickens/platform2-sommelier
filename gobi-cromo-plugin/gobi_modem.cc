@@ -1178,8 +1178,9 @@ bool GobiModem::StartExit() {
 
 const char* GobiModem::QMIReturnCodeToMMError(unsigned int qmicode) {
   switch (qmicode) {
-    case gobi::kInvalidPinId:
     case gobi::kIncorrectPinId:
+      return MM_ERROR_MODEM_GSM_INCORRECTPASSWORD;
+    case gobi::kInvalidPinId:
     case gobi::kAccessToRequiredEntityNotAvailable:
       return MM_ERROR_MODEM_GSM_SIMPINREQUIRED;
     case gobi::kPinBlocked:
