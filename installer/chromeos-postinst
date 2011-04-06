@@ -104,8 +104,11 @@ update_firmware() {
        -x "${FIRMWARE_UPDATE_SCRIPT}" ]; then
     FIRMWARE_UPDATE_MODE=""
     if [ -n "${IS_FACTORY_INSTALL}" ]; then
-      # factory-mode
-      FIRMWARE_UPDATE_MODE="--mode=factory_install"
+      # factory-mode (--force must be the first parameter when being invoked)
+      # Factory install shim will invoke similiar command in memento_updater.sh,
+      # so if you modify any parameters here, please remember to also update
+      # memento_updater.sh.
+      FIRMWARE_UPDATE_MODE="--force --mode=factory_install"
     elif [ -n "${IS_RECOVERY_INSTALL}" ]; then
       # recovery-mode
       FIRMWARE_UPDATE_MODE="--mode=recovery"
