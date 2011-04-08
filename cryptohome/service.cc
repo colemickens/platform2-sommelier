@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -81,6 +81,8 @@ Service::Service()
       mount_(default_mount_.get()),
       default_tpm_init_(new TpmInit()),
       tpm_init_(default_tpm_init_.get()),
+      default_pkcs11_init_(new Pkcs11Init()),
+      pkcs11_init_(default_pkcs11_init_.get()),
       initialize_tpm_(true),
       mount_thread_(kMountThreadName),
       async_complete_signal_(-1),
@@ -564,6 +566,20 @@ gboolean Service::TpmCanAttemptOwnership(GError** error) {
 
 gboolean Service::TpmClearStoredPassword(GError** error) {
   tpm_init_->ClearStoredTpmPassword();
+  return TRUE;
+}
+
+gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
+  // TODO(kmixter/gauravsh): Base this on PKCS#11 really being initialized.
+  *OUT_ready = TRUE;
+  return TRUE;
+}
+
+gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
+                                        gchar** OUT_user_pin,
+                                        GError** error) {
+  pkcs11_init_->GetTpmTokenInfo(OUT_label,
+                                OUT_user_pin);
   return TRUE;
 }
 

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!-- COPYRIGHT HERE
+<!--
+  Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+
      dbus-binding-tool -mode=glib-server -prefix=cryptohome cryptohome.xml
                         &gt; bindings/server.h
 -->
@@ -100,6 +104,13 @@
     <method name="TpmCanAttemptOwnership">
     </method>
     <method name="TpmClearStoredPassword">
+    </method>
+    <method name="Pkcs11IsTpmTokenReady">
+      <arg type="b" name="ready" direction="out" />
+    </method>
+    <method name="Pkcs11GetTpmTokenInfo">
+      <arg type="s" name="label" direction="out" />
+      <arg type="s" name="user_pin" direction="out" />
     </method>
     <method name="GetStatusString">
       <arg type="s" name="status" direction="out" />

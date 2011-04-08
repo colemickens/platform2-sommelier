@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CRYPTOHOME_SERVICE_H_
@@ -17,6 +17,7 @@
 #include "cryptohome_event_source.h"
 #include "mount.h"
 #include "mount_task.h"
+#include "pkcs11_init.h"
 #include "tpm_init.h"
 
 namespace cryptohome {
@@ -147,6 +148,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmIsBeingOwned(gboolean* OUT_owning, GError** error);
   virtual gboolean TpmCanAttemptOwnership(GError** error);
   virtual gboolean TpmClearStoredPassword(GError** error);
+
+  // Returns the label of the TPM token along with its user PIN.
+  virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
+                                         gchar** OUT_user_pin,
+                                         GError** error);
+
+  // Returns in |OUT_ready| whether the TPM token is ready for use.
+  virtual gboolean Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
  protected:
@@ -165,6 +174,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   cryptohome::Mount* mount_;
   scoped_ptr<TpmInit> default_tpm_init_;
   TpmInit *tpm_init_;
+  scoped_ptr<Pkcs11Init> default_pkcs11_init_;
+  Pkcs11Init *pkcs11_init_;
   bool initialize_tpm_;
   base::Thread mount_thread_;
   guint async_complete_signal_;

@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #include "interface.h"
@@ -200,6 +200,17 @@ gboolean cryptohome_tpm_can_attempt_ownership(Cryptohome *self,
 gboolean cryptohome_tpm_clear_stored_password(Cryptohome *self,
                                               GError **error) {
   CRYPTOHOME_WRAP_METHOD_NO_ARGS(TpmClearStoredPassword);
+}
+gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
+                                              gchar **OUT_label,
+                                              gchar **OUT_user_pin,
+                                              GError **error) {
+  CRYPTOHOME_WRAP_METHOD(Pkcs11GetTpmTokenInfo, OUT_label, OUT_user_pin);
+}
+gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
+                                    gboolean *OUT_ready,
+                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(Pkcs11IsTpmTokenReady, OUT_ready);
 }
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,

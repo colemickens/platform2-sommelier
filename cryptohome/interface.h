@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CRYPTOHOME_INTERFACE_H_
@@ -125,6 +125,13 @@ gboolean cryptohome_tpm_is_being_owned(Cryptohome *self,
 gboolean cryptohome_tpm_can_attempt_ownership(Cryptohome *self,
                                               GError **error);
 gboolean cryptohome_tpm_clear_stored_password(Cryptohome *self,
+                                              GError **error);
+gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
+                                              gchar **OUT_label,
+                                              gchar **OUT_user_pin,
+                                              GError **error);
+gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
+                                              gboolean *OUT_ready,
                                               GError **error);
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,
