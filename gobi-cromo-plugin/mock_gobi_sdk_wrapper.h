@@ -154,6 +154,13 @@ class ErrorSdk : public gobi::Sdk {
     return kGeneralError;
   }
 
+  virtual ULONG CancelStartDataSession() {
+    if (strict_) {
+      ADD_FAILURE() << kBadCall << __PRETTY_FUNCTION__;
+    }
+    return kGeneralError;
+  }
+
   virtual ULONG StopDataSession(ULONG sessionId) {
     if (strict_) {
       ADD_FAILURE() << kBadCall << __PRETTY_FUNCTION__;

@@ -18,6 +18,15 @@ using utilities::DBusPropertyMap;
 
 //======================================================================
 // Construct and destruct
+
+GobiCdmaModem::GobiCdmaModem(DBus::Connection& connection,
+                             const DBus::Path& path,
+                             const gobi::DeviceElement& device,
+                             gobi::Sdk* sdk)
+    : GobiModem(connection, path, device, sdk),
+      activation_time_(METRIC_BASE_NAME "Activation", 0, 150000, 20) {
+}
+
 GobiCdmaModem::~GobiCdmaModem() {
 }
 
@@ -151,9 +160,7 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
     }
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
-      ULONG duration = GetTimeMs() - modem->activation_start_time_;
-      modem->metrics_lib_->SendToUMA(METRIC_BASE_NAME "Activation", duration, 0,
-                                     150000, 20);
+      modem->activation_time_.StopIfStarted();
     }
     if (args->device_activation_state == gobi::kActivated) {
       DBus::Error error;
@@ -220,9 +227,7 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
   }
 
   if (activation_done) {
-    ULONG duration = GetTimeMs() - modem->activation_start_time_;
-    modem->metrics_lib_->SendToUMA(METRIC_BASE_NAME "Activation", duration,
-                                   0, 150000, 20);
+    modem->activation_time_.Stop();
   }
 
   delete args;
@@ -352,7 +357,7 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
     }
   }
 
-  activation_start_time_ = GetTimeMs();
+  activation_time_.Start();
   switch (carrier->activation_method()) {
     case Carrier::kOmadm:
       return ActivateOmadm();
@@ -619,9 +624,7 @@ void GobiCdmaModem::RegistrationStateHandler() {
     return;
   if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
       evdo_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
-    ULONG duration = GetTimeMs() - registration_start_time_;
-    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Registration", duration, 0, 150000,
-                            20);
+    registration_time_.Stop();
   }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
   if (session_state_ == gobi::kConnected) {

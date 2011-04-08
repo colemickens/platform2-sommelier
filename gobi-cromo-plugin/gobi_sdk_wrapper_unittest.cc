@@ -89,7 +89,7 @@ TEST_F(GobiSdkTest, EnterLeaveDeathTest) {
   EXPECT_STREQ("GetRFInfo", sdk_->service_to_function_[kNetworkAccess]);
 
   // Another function from WirelessData
-  EXPECT_DEATH(sdk_->EnterSdk("StartDataSession"),
+  EXPECT_DEATH(sdk_->EnterSdk("GetConnectionRate"),
                "Reentrant SDK access");
 
   // Leave GetSessionState; another WirelessData function should now
@@ -110,16 +110,16 @@ TEST_F(GobiSdkTest, EnterLeaveDeathTest) {
 }
 
 TEST_F(GobiSdkTest, TemporaryCopier) {
-  Sdk::TemporaryCopier a(NULL);
+  gobi::CharStarCopier a(NULL);
   EXPECT_EQ(NULL, a.get());
 
-  Sdk::TemporaryCopier b("");
+  gobi::CharStarCopier b("");
   EXPECT_NE(static_cast<const char *>(NULL), b.get());
   EXPECT_STREQ("", b.get());
 
   const char *hello="hello";
-  for (int i = 0; i < (1 << 24); ++i) {
-    Sdk::TemporaryCopier c(hello);
+  for (int i = 0; i < (1 << 16); ++i) {
+    gobi::CharStarCopier c(hello);
     EXPECT_STREQ(hello, c.get());
     EXPECT_NE(hello, c.get());
   }

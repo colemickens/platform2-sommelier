@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "gobi_cdma_modem.h"
 #include "gobi_modem.h"
 #include "gobi_modem_handler.h"
 #include "mock_gobi_sdk_wrapper.h"
@@ -115,10 +116,10 @@ static void SetupSignalMocks(SignalStrengthSdk *sdk) {
 TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
   SignalStrengthSdk sdk;
   SetupSignalMocks(&sdk);
-  modem_.reset(new GobiModem(connection_,
-                             path_,
-                             kDeviceElement,
-                             &sdk));
+  modem_.reset(new GobiCdmaModem(connection_,
+                                 path_,
+                                 kDeviceElement,
+                                 &sdk));
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
@@ -139,10 +140,10 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
 TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
   SignalStrengthSdk sdk;
   SetupSignalMocks(&sdk);
-  modem_.reset(new GobiModem(connection_,
-                             path_,
-                             kDeviceElement,
-                             &sdk));
+  modem_.reset(new GobiCdmaModem(connection_,
+                                 path_,
+                                 kDeviceElement,
+                                 &sdk));
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(

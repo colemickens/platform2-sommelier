@@ -9,6 +9,7 @@
 #include <dbus/dbus.h>
 
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <sys/wait.h>
@@ -74,17 +75,151 @@ static const int kMinSignalStrengthDbm = -113;
 // 0 bars to kSignalStrengthNumLevels-1 bars.
 static const int kSignalStrengthNumLevels = 6;
 
-// Returns the current time, in milliseconds, from an unspecified epoch.
-unsigned long long GobiModem::GetTimeMs(void) {
-  struct timespec ts;
-  unsigned long long rv;
+// Encapsulates a separate thread that calls sdk->StartDataSession.
+// We need to run this on a separate thread so that we can continue to
+// process DBus messages (including requests to cancel the call to
+// StartDataSession).  The main thread creates an anonynmous
+// SessionStarter, then deletes it when the session starter passes a
+// pointer to itself as an argument to SessionStarterDoneCallback.
+class SessionStarter {
+ public:
+  SessionStarter(gobi::Sdk *sdk,
+                 GobiModem *modem,
+                 const char *apn,
+                 const char *username,
+                 const char *password)
+      : sdk_(sdk),
+        modem_dbus_path_(modem->path()),
+        apn_(apn),
+        username_(username),
+        password_(password),
+        return_value_(ULONG_MAX),
+        failure_reason_(ULONG_MAX),
+        connect_time_(METRIC_BASE_NAME "Connect", 0, 150000, 20),
+        fault_inject_sleep_time_ms_(static_cast <useconds_t> (
+            modem->injected_faults_["AsyncConnectSleepMs"])) {
+    // Do not save modem; it might be deleted from under us
+  }
 
-  clock_gettime(CLOCK_MONOTONIC, &ts);
-  rv = ts.tv_sec;
-  rv *= 1000;
-  rv += ts.tv_nsec / 1000000;
-  return rv;
-}
+  static void *StarterThreadTrampoline(void *data) {
+    SessionStarter *s = static_cast<SessionStarter *>(data);
+    return s->Run();
+  }
+
+  void *Run(void) {
+    connect_time_.Start();
+    // A warning: there is a race here, if the modem handler is
+    // deallocated while this is in flight, we'll lose sdk_.  If this
+    // is a problem, we'll need to refcount sdk_.
+    LOG(INFO) << "Starter thread running";
+    return_value_ = sdk_->StartDataSession(
+        NULL,
+        apn_.get(),
+        NULL,  // Authentication
+        username_.get(),
+        password_.get(),
+        &session_id_,  // OUT: session ID
+        &failure_reason_);  // OUT: failure reason
+    LOG(INFO) << "Starter completing";
+    connect_time_.Stop();
+    if (fault_inject_sleep_time_ms_ > 0) {
+      LOG(WARNING) << "Fault injection:  connect sleeping for "
+                   << fault_inject_sleep_time_ms_ << "ms";
+      usleep(1000 * fault_inject_sleep_time_ms_);
+    }
+    g_idle_add(CompletionCallback, this);
+    return NULL;
+  }
+
+  static gboolean CompletionCallback(void *data) {
+    // Runs on main thread;
+    SessionStarter *s = static_cast<SessionStarter *>(data);
+
+    int join_rc = pthread_join(s->thread_, NULL);
+    if (join_rc != 0) {
+      errno = join_rc;
+      PLOG(ERROR) << "Join failed";
+    }
+
+    // GobiModem::handler_ is a static
+    GobiModem *modem = GobiModem::handler_->LookupByDbusPath(
+        s->modem_dbus_path_);
+    if (modem == NULL) {
+      LOG(ERROR) << "SessionStarter complete with no modem";
+      return false;
+    }
+    modem->SessionStarterDoneCallback(s);
+    return false;
+  }
+
+  void StartDataSession(DBus::Error& error) {
+    // Runs on main thread
+    int rc = pthread_create(
+        &thread_, NULL /* attributes */, StarterThreadTrampoline, this);
+    if (rc != 0) {
+      errno = rc;
+      PLOG(ERROR) << "Thread creation failed: " << rc;
+      error.set(kConnectError, "Could not start thread");
+    }
+  }
+
+  static void CancelDataSession(gobi::Sdk *sdk) {
+    // Runs on main thread
+    LOG(WARNING) << "Cancelling in-flight data session start";
+
+    // Horrendous hack alert; If we issue CancelStartDataSession
+    // before the StartDataSession request has made much progress,
+    // then the StartDataSession call ends up hanging for the entire 5
+    // minute timeout.  Empirically, 100ms seems to be a long enough
+    // pause, so we go for 3x that.  This solution is totally
+    // unacceptable, but debugging the Gobi API isn't an option right
+    // now.
+    usleep(300000);
+
+    ULONG rc;
+    rc = sdk->CancelStartDataSession();
+    if (rc != 0) {
+      LOG(ERROR) << "CancelStartDataSession failed: " << rc;
+    }
+  }
+
+ protected:
+  gobi::Sdk *sdk_;
+  DBus::Path modem_dbus_path_;
+
+  // CharStarCopier preserves NULL-ness
+  gobi::CharStarCopier apn_;
+  gobi::CharStarCopier username_;
+  gobi::CharStarCopier password_;
+
+  ULONG session_id_;
+  ULONG return_value_;
+  ULONG failure_reason_;
+
+  MetricsStopwatch connect_time_;
+  int fault_inject_sleep_time_ms_;
+  pthread_t thread_;
+  DBus::Tag continuation_tag_;
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SessionStarter);
+
+  friend class GobiModem;
+};
+
+// Tracks a call to disable that we cannot respond to immmediately
+// (because a long-running connect is already in progress).
+struct PendingDisable {
+  PendingDisable() {}
+  DBus::Tag disable_tag_;
+  // NB: contrary to our style guide, this throws an exception that
+  // dbus catches
+  void RecordDisableAndReturnLater(GobiModem *modem) {
+    modem->return_later(&disable_tag_);
+  }
+  virtual ~PendingDisable() {}
+ private:
+  DISALLOW_COPY_AND_ASSIGN(PendingDisable);
+};
 
 unsigned long GobiModem::MapDbmToPercent(INT8 signal_strength_dbm) {
   unsigned long signal_strength_percent;
@@ -174,9 +309,9 @@ GobiModem::GobiModem(DBus::Connection& connection,
       signal_available_(false),
       suspending_(false),
       exiting_(false),
-      connect_start_time_(0),
-      disconnect_start_time_(0),
-      registration_start_time_(0) {
+      session_starter_in_flight_(false),
+      disconnect_time_(METRIC_BASE_NAME "Disconnect", 0, 150000, 20),
+      registration_time_(METRIC_BASE_NAME "Registration", 0, 150000, 20) {
   memcpy(&device_, &device, sizeof(device_));
 }
 
@@ -280,8 +415,23 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       LOG(WARNING) << "Unknown carrier, id=" << carrier_id;
     }
     Enabled = true;
-    registration_start_time_ = GetTimeMs();
+    registration_time_.Start();    // Stopped in
+                                   // GobiCdmaModem::RegistrationStateHandler,
+                                   // if appropriate
   } else if (!enable && Enabled()) {
+    if (session_starter_in_flight_) {
+      LOG(INFO) << "Disable while connect in flight";
+      if (pending_disable_ != NULL) {
+        // We could in theory have a queue of in-flight disables if we
+        // needed to.
+        error.set(kModeError, "Already have a pending disable");
+      } else {
+        SessionStarter::CancelDataSession(sdk_);
+        pending_disable_.reset(new PendingDisable());
+        pending_disable_->RecordDisableAndReturnLater(this);
+        CHECK(false) << "Not reached";
+      }
+    }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
       error.set(kSdkError, "SetPower");
@@ -306,10 +456,10 @@ void GobiModem::Disconnect(DBus::Error& error) {
     return;
   }
 
-  disconnect_start_time_ = GetTimeMs();
+  disconnect_time_.Start();
   ULONG rc = sdk_->StopDataSession(session_id_);
   if (rc != 0)
-    disconnect_start_time_ = 0;
+    disconnect_time_.Reset();
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
   error.set(kOperationInitiatedError, "");
   // session_state_ will be set in SessionStateCallback
@@ -372,39 +522,94 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
     error.set(kConnectError, "Cromo is exiting");
     return;
   }
+  if (session_starter_in_flight_) {
+    LOG(WARNING) << "Session start already in flight";
+    error.set(kConnectError, "Connect already in progress");
+    return;
+  }
   const char* apn = utilities::ExtractString(properties, "apn", NULL, error);
   const char* username =
       utilities::ExtractString(properties, "username", NULL, error);
   const char* password =
       utilities::ExtractString(properties, "password", NULL, error);
-  ULONG failure_reason;
-  ULONG rc;
 
-  connect_start_time_ = GetTimeMs();
   if (apn !=  NULL)
     LOG(INFO) << "Starting data session for APN " << apn;
-  rc = sdk_->StartDataSession(NULL,  // technology
-                              apn,
-                              NULL,  // Authentication
-                              username,
-                              password,
-                              &session_id_,  // OUT: session ID
-                              &failure_reason  // OUT: failure reason
-                              );
-  if (rc == 0) {
-    LOG(INFO) << "Session ID " <<  session_id_;
+
+  SessionStarter *starter = new SessionStarter(sdk_,
+                                               this,
+                                               apn,
+                                               username,
+                                               password);
+  session_starter_in_flight_ = true;
+  starter->StartDataSession(error);
+
+  return_later(&starter->continuation_tag_);
+}
+
+void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
+  // find_continuation, return_error, and return_now are defined in
+  // <dbus-c++/object.h>
+  DBus::ObjectAdaptor::Continuation *c = find_continuation(tag);
+  if (!c) {
+    LOG(ERROR) << "Could not find continuation: tag = " << std::ios::hex << tag;
     return;
   }
-
-  LOG(WARNING) << "StartDataSession failed: " << rc;
-  const char* msg;
-  if (rc == gobi::kCallFailed) {
-    LOG(WARNING) << "Failure Reason " <<  failure_reason;
-    msg = QMICallFailureToMMError(failure_reason);
+  if (error.is_set()) {
+    return_error(c, error);
   } else {
-    msg = "StartDataSession";
+    return_now(c);
   }
-  error.set(kConnectError, msg);
+}
+
+void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
+  scoped_ptr<SessionStarter> starter(starter_raw);  // Take ownership
+  scoped_ptr<PendingDisable> scoped_disable(pending_disable_.release());
+
+  session_starter_in_flight_ = false;
+
+  DBus::Error error;
+  if (starter->return_value_ == 0) {
+    // TODO(connectivity): There has got to be a better place to clear
+    // this flag.
+    suspending_ = false;
+
+    session_id_ = starter->session_id_;
+
+    if (scoped_disable != NULL) {
+      error.set(kConnectError, "StartDataSession Cancelled");
+      LOG(INFO) << "Cancellation arrived after connect succeeded";
+      ULONG rc = sdk_->StopDataSession(session_id_);
+      if (rc != 0) {
+        LOG(ERROR) << "Could not disconnect: " << rc;
+        // TODO(connectivity):  Should we reset the modem here?
+      }
+      // SessionStateHandler will clear session_id_
+    }
+  } else {
+    LOG(WARNING) << "StartDataSession failed: " << starter->return_value_;
+    const char* msg;
+    if (starter->return_value_ == gobi::kCallFailed) {
+      LOG(WARNING) << "Failure Reason " <<  starter->failure_reason_;
+      msg = QMICallFailureToMMError(starter->failure_reason_);
+    } else {
+      msg = "StartDataSession";
+    }
+    error.set(kConnectError, msg);
+  }
+  LOG(INFO) << "Returning deferred connect call";
+  FinishDeferredCall(&starter->continuation_tag_, error);
+
+  if (!error.is_set()) {
+    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_CONNECTING here.
+    StateChanged(MM_MODEM_STATE_REGISTERED, MM_MODEM_STATE_CONNECTED, 0);
+  }
+
+  if (scoped_disable != NULL) {
+    DBus::Error disable_error;
+    Enable(false, disable_error);
+    FinishDeferredCall(&scoped_disable->disable_tag_, disable_error);
+  }
 }
 
 void GobiModem::GetSerialNumbers(SerialNumbers *out, DBus::Error &error) {
@@ -537,11 +742,16 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
     result["technology"].writer().append_string(technology);
   }
 
-
-  ULONG session_state;
-  rc = sdk_->GetSessionState(&session_state);
-  if (rc == 0) {
-    result["state"].writer().append_uint32(QCStateToMMState(session_state));
+  if (session_starter_in_flight_) {
+    // If there's a connect request in flight, then we won't be able
+    // to call GetSessionState; it's part of the same service group.
+    result["state"].writer().append_uint32(MM_MODEM_STATE_CONNECTING);
+  } else {
+    ULONG session_state;
+    rc = sdk_->GetSessionState(&session_state);
+    if (rc == 0) {
+      result["state"].writer().append_uint32(QCStateToMMState(session_state));
+    }
   }
 
   char mdn[kDefaultBufferSize], min[kDefaultBufferSize];
@@ -987,7 +1197,8 @@ void GobiModem::InjectFault(const std::string& name,
   if (name == "SdkError") {
     sdk_->InjectFaultSdkError(value);
   } else {
-    error.set(kInvalidArgumentError, "Unknown fault requested.");
+    LOG(ERROR) << "Injecting fault " << name << ": " << value;
+    injected_faults_[name] = value;
   }
 }
 
@@ -1061,7 +1272,7 @@ gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
 void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   LOG(INFO) << "SessionStateHandler state: " << state
             << " reason: "
-            << (state == gobi::kConnected?0:session_end_reason);
+            << (state == gobi::kConnected ? 0 : session_end_reason);
   if (state == gobi::kConnected) {
     ULONG data_bearer_technology;
     sdk_->GetDataBearerTechnology(&data_bearer_technology);
@@ -1071,12 +1282,7 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
 
   session_state_ = state;
   if (state == gobi::kDisconnected) {
-    if (disconnect_start_time_) {
-      ULONG duration = GetTimeMs() - disconnect_start_time_;
-      metrics_lib_->SendToUMA(METRIC_BASE_NAME "Disconnect",
-                              duration, 0, 150000, 20);
-      disconnect_start_time_ = 0;
-    }
+    disconnect_time_.Stop();
     session_id_ = 0;
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
     if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
@@ -1084,12 +1290,7 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
     StateChanged(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_REGISTERED, reason);
   } else if (state == gobi::kConnected) {
-    ULONG duration = GetTimeMs() - connect_start_time_;
-    metrics_lib_->SendToUMA(METRIC_BASE_NAME "Connect",
-                            duration, 0, 150000, 20);
-    suspending_ = false;
-    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
-    StateChanged(MM_MODEM_STATE_REGISTERED, MM_MODEM_STATE_CONNECTED, 0);
+    // Nothing to do here; this is handled in SessionStarterDoneCallback
   }
 }
 

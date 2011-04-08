@@ -19,8 +19,7 @@ class GobiCdmaModem
   GobiCdmaModem(DBus::Connection& connection,
                 const DBus::Path& path,
                 const gobi::DeviceElement& device,
-                gobi::Sdk *sdk)
-      : GobiModem(connection, path, device, sdk) {}
+                gobi::Sdk *sdk);
   virtual ~GobiCdmaModem();
 
   // Modem methods
@@ -106,13 +105,15 @@ class GobiCdmaModem
   // Helper that sends failure
   void SendActivationStateFailed();
 
-
-  unsigned long long activation_start_time_;
+  MetricsStopwatch activation_time_;
 
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOmadm();
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOtasp(const std::string& number);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GobiCdmaModem);
 };
 
 

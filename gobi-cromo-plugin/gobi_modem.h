@@ -25,7 +25,7 @@
 
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
-
+#include "metrics_stopwatch.h"
 
 // TODO(rochberg)  Fix namespace pollution
 #define METRIC_BASE_NAME "Network.3G.Gobi."
@@ -77,7 +77,13 @@ static const size_t kDefaultBufferSize = 128;
 
 class Carrier;
 class CromoServer;
+class GobiModem;
 class GobiModemHandler;
+class SessionStarter;
+class InjectedFaults;
+
+
+struct PendingDisable;
 
 class GobiModem
     : public Modem,
@@ -188,7 +194,12 @@ class GobiModem
   // TODO(cros-connectivity):  Move these to a utility class
   static unsigned long MapDbmToPercent(INT8 signal_strength_dbm);
   static unsigned long MapDataBearerToRfi(ULONG data_bearer_technology);
-  static unsigned long long GetTimeMs(void);
+
+  // Send the return for the outstanding dbus call associated with *tag.
+  void FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error);
+
+  // This does not use the callback args mechanism below.
+  void SessionStarterDoneCallback(SessionStarter *starter);
 
   unsigned int QCStateToMMState(ULONG qcstate);
 
@@ -354,6 +365,10 @@ class GobiModem
   bool suspending_;
   bool exiting_;
   bool device_resetting_;
+
+  bool session_starter_in_flight_;
+  scoped_ptr<PendingDisable> pending_disable_;
+
   const Carrier *carrier_;
 
   friend class GobiModemTest;
@@ -384,9 +399,9 @@ class GobiModem
 
   scoped_ptr<MetricsLibraryInterface> metrics_lib_;
 
-  unsigned long long connect_start_time_;
-  unsigned long long disconnect_start_time_;
-  unsigned long long registration_start_time_;
+  MetricsStopwatch disconnect_time_;
+  MetricsStopwatch registration_time_;
+  std::map<std::string, int32_t> injected_faults_;
 
   // This ought to go on the gobi modem XML interface, but dbus-c++ can't handle
   // enums, and all the ways of hacking around it seem worse than just using
@@ -403,6 +418,10 @@ class GobiModem
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmDisconnected);
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmConnected);
 
+  friend class SessionStarter;
+  friend class PendingDisable;
+
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
 };
+
 #endif  // PLUGIN_GOBI_MODEM_H_

@@ -21,17 +21,18 @@ GOBI_PLUGIN = gobi.so
 GLUE_HEADERS = modem_gobi_server_glue.h
 
 TESTS = gobi_sdk_wrapper_unittest \
-	gobi_modem_unittest \
-	gobi_handle_test
+	gobi_handle_test \
+	metrics_stopwatch_unittest \
+	gobi_modem_unittest
 
 PLUGIN_SRCS = device_watcher.cc \
 	      gobi_cdma_modem.cc \
-              gobi_modem_handler.cc \
-              gobi_modem.cc \
-	      gobi_cdma_modem.cc \
 	      gobi_gsm_modem.cc \
+	      gobi_modem.cc \
 	      gobi_modem_factory.cc \
-              gobi_sdk_wrapper.cc
+	      gobi_modem_handler.cc \
+	      gobi_sdk_wrapper.cc \
+	      metrics_stopwatch.cc
 
 PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 
@@ -62,6 +63,8 @@ gobi_handle_test : LDLIBS=-lGobiConnectionMgmt -lpthread -lrt
 gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.o
 
 gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
+
+metrics_stopwatch_unittest : metrics_stopwatch.o metrics_stopwatch_unittest.o
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@

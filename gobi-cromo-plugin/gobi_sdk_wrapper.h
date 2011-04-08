@@ -263,7 +263,12 @@ enum ReturnCode {
   kNoTrackingSessionHasBeenStarted = 1065,
   kInformationElementUnavailable = 1074,
   kAccessToRequiredEntityNotAvailable = 1082,
-  kQMIHardwareRestricted = 1083
+  kQMIHardwareRestricted = 1083,
+
+  // CrOS made-up code (31 random bits.  Number does not appear in
+  // Gobi SDK sources in hex or decimal).  Returned when a call is
+  // made to a Gobi subsystem that already has a call pending.
+  kCrosGobiSubsystemInUse = 0x74b97cc5,
 };
 
 enum DormancyStatus {
@@ -328,6 +333,33 @@ struct DeviceElement {
 };
 
 struct ReentrancyGroup;
+
+struct CharStarCopier {
+  // Make a temporary, writable, copy of a char *, preserving the
+  // NULL-ness of the input.
+ public:
+  explicit CharStarCopier(const char *in) {
+    if (!in) {
+      // str_ is constructed as NULL
+    } else {
+      str_.reset(strdup(in));
+    }
+  }
+  ~CharStarCopier() {
+    // We sometimes pass sensitive information
+    if (str_.get()) {
+      memset(str_.get(), '\0', strlen(str_.get()));
+    }
+  }
+  char *get() {
+    return str_.get();
+  }
+
+ private:
+  scoped_ptr_malloc<char> str_;
+  DISALLOW_COPY_AND_ASSIGN(CharStarCopier);
+};
+
 
 class Sdk {
  public:
@@ -410,6 +442,9 @@ class Sdk {
       const CHAR *               pPassword,
       ULONG *                    pSessionId,
       ULONG *                    pFailureReason);
+
+  // Calls QCWWANCancel and CancelDataSession.
+  virtual ULONG CancelStartDataSession();
 
   virtual ULONG StopDataSession(ULONG sessionId);
 
@@ -953,38 +988,12 @@ class Sdk {
   virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
 
  protected:
-  // Make a temporary copy of a char *, preserving the NULL-ness of the
-  // input.
-  struct TemporaryCopier {
-   public:
-    explicit TemporaryCopier(const char *in) {
-      if (!in) {
-        str_.reset(NULL);
-      } else {
-        str_.reset(strdup(in));
-      }
-    }
-    ~TemporaryCopier() {
-      // We sometimes pass sensitive information
-      if (str_.get()) {
-        memset(str_.get(), '\0', strlen(str_.get()));
-      }
-    }
-    char *get() {
-      return str_.get();
-    }
-
-   private:
-    scoped_ptr_malloc<char> str_;
-    DISALLOW_COPY_AND_ASSIGN(TemporaryCopier);
-  };
-
   // The CMAPI is split into groups.  Functions in multiple groups can
   // be called simultaneously, but each group is nonreentrant against
-  // itself.  This machinery verifies that we don't violate these
-  // restrictions.
+  // itself.  This machinery takes care of this
 
-  void EnterSdk(const char *function_name);
+  // Returns kCrosGobiSubsystemInUse if it cannot get the lock for a subsystem
+  ULONG EnterSdk(const char *function_name);
   void LeaveSdk(const char *function_name);
 
   void InitGetServiceFromName(const char *service_map[]);
@@ -1014,7 +1023,7 @@ class Sdk {
   FRIEND_TEST(GobiSdkTest, EnterLeaveDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromNameDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromName);
-  FRIEND_TEST(GobiSdkTest, TemporaryCopier);
+  FRIEND_TEST(GobiSdkTest, CharStarCopier);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Sdk);
