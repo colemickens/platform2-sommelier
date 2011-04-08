@@ -10,9 +10,17 @@
 #include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "login_manager/bindings/chrome_device_policy.pb.h"
 #include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/mock_owner_key.h"
+
+namespace em = enterprise_management;
 
 namespace login_manager {
+using google::protobuf::RepeatedPtrField;
+using std::string;
+using ::testing::Return;
+using ::testing::_;
 
 class DevicePolicyTest : public ::testing::Test {
  public:
@@ -49,8 +57,61 @@ class DevicePolicyTest : public ::testing::Test {
     std::string serialized;
     ASSERT_TRUE(policy_.SerializeToString(&serialized));
     std::string serialized_from;
-    ASSERT_TRUE(store->Get(&serialized_from));
+    ASSERT_TRUE(store->SerializeToString(&serialized_from));
     EXPECT_EQ(serialized, serialized_from);
+  }
+
+  void ExtractPolicyValue(const DevicePolicy& pol,
+                          em::ChromeDeviceSettingsProto* polval) {
+    em::PolicyData poldata;
+    ASSERT_TRUE(pol.Get().has_policy_data());
+    ASSERT_TRUE(poldata.ParseFromString(pol.Get().policy_data()));
+    ASSERT_TRUE(poldata.has_policy_type());
+    ASSERT_EQ(poldata.policy_type(), DevicePolicy::kDevicePolicyType);
+    ASSERT_TRUE(poldata.has_policy_value());
+    ASSERT_TRUE(polval->ParseFromString(poldata.policy_value()));
+  }
+
+  int CountOwnerInWhitelist(const DevicePolicy& pol, const std::string& owner) {
+    em::ChromeDeviceSettingsProto polval;
+    ExtractPolicyValue(pol, &polval);
+    const em::UserWhitelistProto& whitelist_proto = polval.user_whitelist();
+    int whitelist_count = 0;
+    const RepeatedPtrField<std::string>& whitelist =
+        whitelist_proto.user_whitelist();
+    for (RepeatedPtrField<std::string>::const_iterator it = whitelist.begin();
+         it != whitelist.end();
+         ++it) {
+      whitelist_count += (owner == *it ? 1 : 0);
+    }
+    return whitelist_count;
+  }
+
+  em::PolicyFetchResponse Wrap(const em::ChromeDeviceSettingsProto& polval) {
+    em::PolicyData new_poldata;
+    new_poldata.set_policy_type(DevicePolicy::kDevicePolicyType);
+    new_poldata.set_policy_value(polval.SerializeAsString());
+    em::PolicyFetchResponse new_policy;
+    new_policy.set_policy_data(new_poldata.SerializeAsString());
+    return new_policy;
+  }
+
+  em::PolicyFetchResponse CreateWithOwner(const std::string& owner) {
+    em::ChromeDeviceSettingsProto new_polval;
+    new_polval.mutable_user_whitelist()->add_user_whitelist(owner);
+    return Wrap(new_polval);
+  }
+
+  em::PolicyFetchResponse CreateWithWhitelist(
+      const std::vector<std::string>& users) {
+    em::ChromeDeviceSettingsProto polval;
+    em::UserWhitelistProto* whitelist_proto = polval.mutable_user_whitelist();
+    for(std::vector<std::string>::const_iterator it = users.begin();
+        it != users.end();
+        ++it) {
+      whitelist_proto->add_user_whitelist(*it);
+    }
+    return Wrap(polval);
   }
 
   static const char kDefaultPolicy[];
@@ -70,9 +131,9 @@ const char DevicePolicyTest::kDefaultPolicy[] = "the policy";
 TEST_F(DevicePolicyTest, CreateEmptyStore) {
   StartFresh();
   DevicePolicy store(tmpfile_);
-  ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty DictionaryValue.
+  ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty policy.
   std::string serialized;
-  EXPECT_TRUE(store.Get(&serialized));
+  EXPECT_TRUE(store.SerializeToString(&serialized));
   EXPECT_TRUE(serialized.empty());
 }
 
@@ -95,7 +156,7 @@ TEST_F(DevicePolicyTest, VerifyPolicyUpdate) {
   store_->Set(new_policy);
 
   std::string new_out;
-  ASSERT_TRUE(store_->Get(&new_out));
+  ASSERT_TRUE(store_->SerializeToString(&new_out));
   std::string new_value;
   ASSERT_TRUE(new_policy.SerializeToString(&new_value));
   EXPECT_EQ(new_value, new_out);
@@ -105,6 +166,52 @@ TEST_F(DevicePolicyTest, LoadStoreFromDisk) {
   DevicePolicy store2(tmpfile_);
   ASSERT_TRUE(store2.LoadOrCreate());
   CheckExpectedPolicy(&store2);
+}
+
+TEST_F(DevicePolicyTest, FreshPolicy) {
+  StartFresh();
+  DevicePolicy pol(tmpfile_);
+  ASSERT_TRUE(pol.LoadOrCreate());  // Should create an empty policy.
+
+  std::string current_user("me");
+  scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  EXPECT_CALL(*key.get(), Sign(_, _, _))
+      .WillOnce(Return(true));
+  pol.StoreOwnerProperties(key.get(), current_user, NULL);
+
+  ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
+}
+
+TEST_F(DevicePolicyTest, OwnerAlreadyInPolicy) {
+  StartFresh();
+  DevicePolicy pol(tmpfile_);
+  ASSERT_TRUE(pol.LoadOrCreate());  // Should create an empty policy.
+
+  std::string current_user("me");
+  pol.Set(CreateWithOwner(current_user));
+
+  scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  pol.StoreOwnerProperties(key.get(), current_user, NULL);
+
+  ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
+}
+
+TEST_F(DevicePolicyTest, ExistingPolicy) {
+  StartFresh();
+  DevicePolicy pol(tmpfile_);
+  ASSERT_TRUE(pol.LoadOrCreate());  // Should create an empty policy.
+
+  std::string current_user("me");
+  const char* users[] = { "you", "him", "her" };
+  std::vector<std::string> default_whitelist(users, users + arraysize(users));
+  pol.Set(CreateWithWhitelist(default_whitelist));
+
+  scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  EXPECT_CALL(*key.get(), Sign(_, _, _))
+      .WillOnce(Return(true));
+  pol.StoreOwnerProperties(key.get(), current_user, NULL);
+
+  ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
 }
 
 }  // namespace login_manager

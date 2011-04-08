@@ -49,6 +49,7 @@ namespace gobject {  // NOLINT
 }  // namespace gobject
 }  // namespace login_manager
 
+namespace em = enterprise_management;
 namespace login_manager {
 
 using std::make_pair;
@@ -478,7 +479,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   if (session_started_) {
     const char msg[] = "Can't start session while session is already active.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
     return *OUT_done = FALSE;
   }
   if (!ValidateAndCacheUserEmail(email_address, error)) {
@@ -486,15 +487,14 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     return FALSE;
   }
   // If the current user is the owner, and isn't whitelisted or set
-  // as the cros.device.owner pref, then do so.  This attempt only succeeds
-  // if the current user has access to the private half of the owner's
-  // registered public key.
-  StoreOwnerProperties(NULL);
+  // as the cros.device.owner pref, then do so.
+  bool can_access_key = CurrentUserHasOwnerKey(key_->public_key_der(), error);
+  if (can_access_key)
+    StoreOwnerProperties(NULL);
   // Now, the flip side...if we believe the current user to be the owner
   // based on the cros.owner.device setting, and he DOESN'T have the private
   // half of the public key, we must mitigate.
-  if (CurrentUserIsOwner(error) &&
-      !CurrentUserHasOwnerKey(key_->public_key_der(), error)) {
+  if (CurrentUserIsOwner() && !can_access_key) {
     if (!(*OUT_done = mitigator_->Mitigate()))
       return FALSE;
   }
@@ -610,7 +610,7 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
                                             GError** error) {
   const char msg[] = "The session_manager now sets the Owner's public key.";
   LOG(ERROR) << msg;
-  SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
   // Just to be safe, send back a nACK in addition to returning an error.
   SendSignal(chromium::kOwnerKeySetSignal, false);
   return FALSE;
@@ -625,12 +625,12 @@ gboolean SessionManagerService::Unwhitelist(gchar* email_address,
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to unwhitelist before owner's key is set.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
   } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in Unwhitelist.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
     return FALSE;
   }
   store_->Unwhitelist(email_address);
@@ -647,14 +647,14 @@ gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
   if (!store_->GetFromWhitelist(email_address, &encoded)) {
     const char msg[] = "The user is not whitelisted.";
     LOG(INFO) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_USER, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_USER, msg);
     return FALSE;
   }
   std::string decoded;
   if (!base::Base64Decode(encoded, &decoded)) {
     const char msg[] = "Signature could not be decoded in CheckWhitelist.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
     return FALSE;
   }
 
@@ -687,12 +687,12 @@ gboolean SessionManagerService::Whitelist(gchar* email_address,
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to whitelist before owner's key is set.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
   } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in Whitelist.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
     return FALSE;
   }
   std::string data(signature->data, signature->len);
@@ -709,12 +709,12 @@ gboolean SessionManagerService::StoreProperty(gchar* name,
   if (verify_result == NO_KEY) {
     const char msg[] = "Attempt to store property before owner's key is set.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY, msg);
     return FALSE;
   } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in StoreProperty.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
     return FALSE;
   }
   std::string data(signature->data, signature->len);
@@ -745,13 +745,13 @@ void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
 gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
                                             DBusGMethodInvocation* context) {
   std::string policy_str(policy_blob->data, policy_blob->len);
-  enterprise_management::PolicyFetchResponse policy;
+  em::PolicyFetchResponse policy;
   if (!policy.ParseFromString(policy_str) ||
       !policy.has_policy_data() ||
       !policy.has_policy_data_signature()) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    SetAndSendGError(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, context, msg);
+    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, context, msg);
     return FALSE;
   }
 
@@ -773,7 +773,9 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
       if (!rotated) {
         const char msg[] = "Failed attempted key rotation!";
         LOG(ERROR) << msg;
-        SetAndSendGError(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, context, msg);
+        system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
+                                 context,
+                                 msg);
         return FALSE;
       }
     } else {
@@ -801,7 +803,7 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
   } else if (verify_result == SIGNATURE_FAIL) {
     const char msg[] = "Signature could not be verified in StorePolicy.";
     LOG(ERROR) << msg;
-    SetAndSendGError(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, context, msg);
+    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, context, msg);
     return FALSE;
   }
   policy_->Set(policy);
@@ -814,17 +816,17 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
 gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
                                                GError** error) {
   std::string polstr;
-  if (!policy_->Get(&polstr)) {
+  if (!policy_->SerializeToString(&polstr)) {
     const char msg[] = "Unable to serialize policy protobuf.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
     return FALSE;
   }
   *OUT_policy_blob = g_array_sized_new(FALSE, FALSE, 1, polstr.length());
   if (!*OUT_policy_blob) {
     const char msg[] = "Unable to allocate memory for response.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
     return FALSE;
   }
   g_array_append_vals(*OUT_policy_blob, polstr.c_str(), polstr.length());
@@ -860,7 +862,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
     *OUT_done = FALSE;
     const char msg[] = "Provided pid is unknown.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, msg);
     return FALSE;
   }
 
@@ -1026,23 +1028,6 @@ void SessionManagerService::PersistWhitelist() {
                                    what_happened));
 }
 
-// static
-void SessionManagerService::SetGError(GError** error,
-                                      ChromeOSLoginError code,
-                                      const char* message) {
-  g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
-}
-
-// static
-void SessionManagerService::SetAndSendGError(ChromeOSLoginError code,
-                                             DBusGMethodInvocation* context,
-                                             const char* msg) {
-  GError* error = NULL;
-  SetGError(&error, code, msg);
-  dbus_g_method_return_error(context, error);
-  g_error_free(error);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
 
@@ -1136,18 +1121,16 @@ void SessionManagerService::SetupHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-gboolean SessionManagerService::CurrentUserIsOwner(GError** error) {
+gboolean SessionManagerService::CurrentUserIsOwner() {
   std::string value;
   std::string decoded;
-  if (!GetPropertyHelper(kDeviceOwnerPref, &value, &decoded, error))
+  if (!GetPropertyHelper(kDeviceOwnerPref, &value, &decoded, NULL))
     return FALSE;
   std::string was_signed = base::StringPrintf("%s=%s",
                                               kDeviceOwnerPref,
                                               value.c_str());
   if (VerifyHelper(was_signed, decoded.c_str(), decoded.length()) != SUCCESS) {
-    const char msg[] = "Owner pref signature could not be verified.";
-    LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    LOG(ERROR) << "Owner pref signature could not be verified.";
     return FALSE;
   }
   return value == current_user_;
@@ -1159,13 +1142,13 @@ gboolean SessionManagerService::CurrentUserHasOwnerKey(
   if (!nss_->OpenUserDB()) {
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
     return FALSE;
   }
   if (!nss_->GetPrivateKey(pub_key)) {
     const char msg[] = "Could not verify that public key belongs to the owner.";
     LOG(WARNING) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
     return FALSE;
   }
   return TRUE;
@@ -1183,7 +1166,7 @@ gboolean SessionManagerService::ValidateAndCacheUserEmail(
   if (email_string != kIncognitoUser && !ValidateEmail(email_string)) {
     const char msg[] = "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
     return FALSE;
   }
   current_user_ = StringToLowerASCII(email_string);
@@ -1236,7 +1219,7 @@ gboolean SessionManagerService::StoreOwnerProperties(GError** error) {
 
 gboolean SessionManagerService::SignAndStoreProperty(const std::string& name,
                                                      const std::string& value,
-                                                     const std::string& err_msg,
+                                                     const std::string& msg,
                                                      GError** error) {
   std::vector<uint8> signature;
   std::string to_sign = base::StringPrintf("%s=%s",
@@ -1244,9 +1227,9 @@ gboolean SessionManagerService::SignAndStoreProperty(const std::string& name,
                                            current_user_.c_str());
   const uint8* data = reinterpret_cast<const uint8*>(to_sign.c_str());
   if (!key_->Sign(data, to_sign.length(), &signature)) {
-    LOG_IF(ERROR, error) << err_msg;
-    LOG_IF(WARNING, !error) << err_msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
+    LOG_IF(ERROR, error) << msg;
+    LOG_IF(WARNING, !error) << msg;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg.c_str());
     return FALSE;
   }
   std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
@@ -1258,14 +1241,14 @@ gboolean SessionManagerService::SignAndStoreProperty(const std::string& name,
 }
 
 gboolean SessionManagerService::SignAndWhitelist(const std::string& email,
-                                                 const std::string& err_msg,
+                                                 const std::string& msg,
                                                  GError** error) {
   std::vector<uint8> signature;
   const uint8* data = reinterpret_cast<const uint8*>(current_user_.c_str());
   if (!key_->Sign(data, current_user_.length(), &signature)) {
-    LOG_IF(ERROR, error) << err_msg;
-    LOG_IF(WARNING, !error) << err_msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg.c_str());
+    LOG_IF(ERROR, error) << msg;
+    LOG_IF(WARNING, !error) << msg;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg.c_str());
     return FALSE;
   }
   std::string signature_string(reinterpret_cast<const char*>(&signature[0]),
@@ -1281,7 +1264,7 @@ gboolean SessionManagerService::SetPropertyHelper(const std::string& name,
   if (!base::Base64Encode(signature, &encoded)) {
     const char msg[] = "Signature could not be encoded.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
     return FALSE;
   }
   store_->Set(name, value, encoded);
@@ -1317,7 +1300,7 @@ gboolean SessionManagerService::WhitelistHelper(const std::string& email,
   if (!base::Base64Encode(signature, &encoded)) {
     const char msg[] = "Signature could not be encoded.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
     return FALSE;
   }
   store_->Whitelist(email, encoded);
@@ -1330,20 +1313,20 @@ gboolean SessionManagerService::WhitelistHelper(const std::string& email,
 gboolean SessionManagerService::GetPropertyHelper(const std::string& name,
                                                   std::string* OUT_value,
                                                   std::string* OUT_signature,
-                                                  GError** error) {
+                                                  GError** err) {
   std::string encoded;
   if (!store_->Get(name, OUT_value, &encoded)) {
-    std::string error_msg =
+    std::string msg =
         base::StringPrintf("The requested property %s is unknown.",
                            name.c_str());
-    LOG(WARNING) << error_msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error_msg.c_str());
+    LOG(WARNING) << msg;
+    system_->SetGError(err, CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, msg.c_str());
     return FALSE;
   }
   if (!base::Base64Decode(encoded, OUT_signature)) {
     const char msg[] = "Signature could not be decoded.";
     LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    system_->SetGError(err, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
     return FALSE;
   }
   return TRUE;

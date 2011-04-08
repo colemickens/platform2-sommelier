@@ -5,11 +5,15 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
+#include <dbus/dbus.h>
+#include <dbus/dbus-glib.h>
+#include <glib.h>
 #include <unistd.h>
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 class FilePath;
 
@@ -61,6 +65,16 @@ class SystemUtils {
   // Makes a best-effort attempt to append |msg| to the system log that is
   // persisted across stateful partition wipes.
   virtual void AppendToClobberLog(const char* msg) const;
+
+  // Initializes |error| with |code| and |message|.
+  virtual void SetGError(GError** error,
+                         ChromeOSLoginError code,
+                         const char* message);
+
+  // Initializes |error| with |code| and |message|.
+  virtual void SetAndSendGError(ChromeOSLoginError code,
+                                DBusGMethodInvocation* context,
+                                const char* message);
 
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.

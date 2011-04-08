@@ -34,8 +34,8 @@ class OwnerKey {
 
   virtual bool Equals(const std::string& key_der) const;
   virtual bool VEquals(const std::vector<uint8>& key_der) const;
-  virtual bool HaveCheckedDisk();
-  virtual bool IsPopulated();
+  virtual bool HaveCheckedDisk() const;
+  virtual bool IsPopulated() const;
 
   // If |key_file_| exists, populate the object with the contents of the file.
   // If the file isn't there, that's ok.

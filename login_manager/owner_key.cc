@@ -44,9 +44,9 @@ bool OwnerKey::VEquals(const std::vector<uint8>& key_der) const {
           memcmp(&key_der[0], &key_[0], key_.size()) == 0);
 }
 
-bool OwnerKey::HaveCheckedDisk() { return have_checked_disk_; }
+bool OwnerKey::HaveCheckedDisk() const { return have_checked_disk_; }
 
-bool OwnerKey::IsPopulated() { return !key_.empty(); }
+bool OwnerKey::IsPopulated() const { return !key_.empty(); }
 
 bool OwnerKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;

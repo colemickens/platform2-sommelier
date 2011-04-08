@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,8 @@ class MockDevicePolicy : public DevicePolicy {
   virtual ~MockDevicePolicy() {}
   MOCK_METHOD0(LoadOrCreate, bool(void));
   MOCK_METHOD0(Persist, bool(void));
-  MOCK_CONST_METHOD1(Get, bool(std::string*));
+  MOCK_CONST_METHOD0(Get, const enterprise_management::PolicyFetchResponse&());
+  MOCK_CONST_METHOD1(SerializeToString, bool(std::string*));
   MOCK_METHOD1(Set, void(const enterprise_management::PolicyFetchResponse&));
 };
 }  // namespace login_manager

@@ -374,23 +374,12 @@ class SessionManagerService
   // |data| is a SessionManagerService*
   static gboolean ServiceShutdown(gpointer data);
 
-  // Initializes |error| with |code| and |message|.
-  static void SetGError(GError** error,
-                        ChromeOSLoginError code,
-                        const char* message);
-
-  // Initializes |error| with |code| and |message|.
-  static void SetAndSendGError(ChromeOSLoginError code,
-                               DBusGMethodInvocation* context,
-                               const char* message);
-
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
   // Returns true if the current user is listed in |store_| as the
   // kDeviceOwner.  Returns false if not, or if that cannot be determined.
-  // |error| is set appropriately on failure.
-  gboolean CurrentUserIsOwner(GError** error);
+  gboolean CurrentUserIsOwner();
 
   // Returns true if the current user has the private half of |pub_key|
   // in his nssdb.  Returns false if not, or if that cannot be determined.
@@ -415,6 +404,7 @@ class SessionManagerService
   // property indicating |current_user_| is the owner, and schedules both
   // a PersistWhitelist() and a PersistStore().
   // Returns false on failure, with |error| set appropriately.
+  // |error| can be NULL, should you wish to ignore the particulars.
   gboolean StoreOwnerProperties(GError** error);
 
   // Signs and stores |name|=|value|, and schedules a PersistStore().

@@ -148,4 +148,19 @@ void SystemUtils::AppendToClobberLog(const char* msg) const {
   appender.Run();
 }
 
+void SystemUtils::SetGError(GError** error,
+                            ChromeOSLoginError code,
+                            const char* message) {
+  g_set_error(error, CHROMEOS_LOGIN_ERROR, code, "Login error: %s", message);
+}
+
+void SystemUtils::SetAndSendGError(ChromeOSLoginError code,
+                                   DBusGMethodInvocation* context,
+                                   const char* msg) {
+  GError* error = NULL;
+  SetGError(&error, code, msg);
+  dbus_g_method_return_error(context, error);
+  g_error_free(error);
+}
+
 }  // namespace login_manager

@@ -21,8 +21,8 @@ class MockOwnerKey : public OwnerKey {
   virtual ~MockOwnerKey() {}
   MOCK_CONST_METHOD1(Equals, bool(const std::string&));
   MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8>&));
-  MOCK_METHOD0(HaveCheckedDisk, bool());
-  MOCK_METHOD0(IsPopulated, bool());
+  MOCK_CONST_METHOD0(HaveCheckedDisk, bool());
+  MOCK_CONST_METHOD0(IsPopulated, bool());
   MOCK_METHOD0(PopulateFromDiskIfPossible, bool());
   MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8>&));
   MOCK_METHOD1(PopulateFromKeypair, bool(base::RSAPrivateKey*));

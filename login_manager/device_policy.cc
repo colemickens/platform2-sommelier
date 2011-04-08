@@ -11,12 +11,21 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 
+#include "login_manager/bindings/chrome_device_policy.pb.h"
 #include "login_manager/bindings/device_management_backend.pb.h"
+#include "login_manager/owner_key.h"
 #include "login_manager/system_utils.h"
 
+namespace em = enterprise_management;
+
 namespace login_manager {
+using google::protobuf::RepeatedPtrField;
+using std::string;
+
 // static
 const char DevicePolicy::kDefaultPath[] = "/var/lib/whitelist/policy";
+// static
+const char DevicePolicy::kDevicePolicyType[] = "google/chromeos/device";
 
 DevicePolicy::DevicePolicy(const FilePath& policy_path)
     : policy_path_(policy_path) {
@@ -40,8 +49,8 @@ bool DevicePolicy::LoadOrCreate() {
   return true;
 }
 
-bool DevicePolicy::Get(std::string* output) const {
-  return policy_.SerializeToString(output);
+const enterprise_management::PolicyFetchResponse& DevicePolicy::Get() const {
+  return policy_;
 }
 
 bool DevicePolicy::Persist() {
@@ -54,11 +63,73 @@ bool DevicePolicy::Persist() {
   return utils.AtomicFileWrite(policy_path_, polstr.c_str(), polstr.length());
 }
 
+bool DevicePolicy::SerializeToString(std::string* output) const {
+  return policy_.SerializeToString(output);
+}
+
 void DevicePolicy::Set(
     const enterprise_management::PolicyFetchResponse& policy) {
   policy_.Clear();
   // This can only fail if |policy| and |policy_| are different types.
   policy_.CheckTypeAndMergeFrom(policy);
+}
+
+bool DevicePolicy::StoreOwnerProperties(OwnerKey* key,
+                                        const std::string& current_user,
+                                        GError** error) {
+  em::PolicyData poldata;
+  if (policy_.has_policy_data())
+    poldata.ParseFromString(policy_.policy_data());
+  em::ChromeDeviceSettingsProto polval;
+  if (poldata.has_policy_type() &&
+      poldata.policy_type() == kDevicePolicyType) {
+    if (poldata.has_policy_value())
+      polval.ParseFromString(poldata.policy_value());
+  } else {
+    poldata.set_policy_type(kDevicePolicyType);
+  }
+  // If there existed some device policy, we've got it now!
+  // Update the UserWhitelistProto inside the ChromeDeviceSettingsProto we made.
+  em::UserWhitelistProto* whitelist_proto = polval.mutable_user_whitelist();
+  bool on_whitelist = false;
+  const RepeatedPtrField<string>& whitelist = whitelist_proto->user_whitelist();
+  for (RepeatedPtrField<string>::const_iterator it = whitelist.begin();
+       it != whitelist.end();
+       ++it) {
+    if (on_whitelist = (current_user == *it))
+      break;
+  }
+  if (!on_whitelist)
+    whitelist_proto->add_user_whitelist(current_user);
+  bool current_user_is_owner = true;
+  // TODO(cmasone): once ChromeDeviceSettingsProto contains an owner name field
+  //                check that against |current_user| here.
+  if (current_user_is_owner && on_whitelist)
+    return true;  // No changes are needed.
+
+  // We have now updated the whitelist and owner setting in |polval|.
+  // We need to put it into |poldata|, serialize that, sign it, and
+  // put both into |policy_|.
+  poldata.set_policy_value(polval.SerializeAsString());
+  std::string new_data = poldata.SerializeAsString();
+  std::vector<uint8> sig;
+  const uint8* data = reinterpret_cast<const uint8*>(new_data.c_str());
+  if (!key || !key->Sign(data, new_data.length(), &sig)) {
+    SystemUtils utils;
+    const char err_msg[] = "Could not sign policy containing new owner data.";
+    LOG_IF(ERROR, error) << err_msg;
+    LOG_IF(WARNING, !error) << err_msg;
+    utils.SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
+    return false;
+  }
+
+  em::PolicyFetchResponse new_policy;
+  new_policy.CheckTypeAndMergeFrom(policy_);
+  new_policy.set_policy_data(new_data);
+  new_policy.set_policy_data_signature(
+      std::string(reinterpret_cast<const char*>(&sig[0]), sig.size()));
+  Set(new_policy);
+  return true;
 }
 
 }  // namespace login_manager

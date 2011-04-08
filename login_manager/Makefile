@@ -22,10 +22,13 @@ DBUS_SERVER = $(BINDINGS)/server.h
 DBUS_CLIENT = $(BINDINGS)/client.h
 
 PROTO_PATH = $(ROOT)/usr/include/proto
-PROTO_DEFS = $(PROTO_PATH)/device_management_backend.proto
-PROTO_BINDINGS = $(BINDINGS)/device_management_backend.pb.cc
+PROTO_DEFS = $(PROTO_PATH)/chrome_device_policy.proto \
+	$(PROTO_PATH)/device_management_backend.proto
+PROTO_BINDINGS = $(BINDINGS)/chrome_device_policy.pb.cc \
+	 $(BINDINGS)/device_management_backend.pb.cc
 PROTO_HEADERS = $(patsubst %.cc,%.h,$(PROTO_BINDINGS))
-PROTO_OBJS = $(BINDINGS)/device_management_backend.pb.o
+PROTO_OBJS = $(BINDINGS)/chrome_device_policy.pb.o \
+	 $(BINDINGS)/device_management_backend.pb.o
 
 COMMON_OBJS = child_job.o interface.o nss_util.o owner_key.o \
 	owner_key_loss_mitigator.o pref_store.o system_utils.o \

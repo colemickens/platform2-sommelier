@@ -164,12 +164,7 @@ class SessionManagerTest : public ::testing::Test {
     MockOwnerKey* key = new MockOwnerKey;
     EXPECT_CALL(*key, PopulateFromDiskIfPossible())
         .WillRepeatedly(Return(true));
-    // First, expect an attempt to set the device owner property, but
-    // act like this user isn't the owner.
-    EXPECT_CALL(*key, Sign(_, _, _))
-        .WillOnce(Return(false));
-    manager_->test_api().set_ownerkey(key);
-    // Now, expect an attempt to check whether this user is the owner; respond
+    // Expect an attempt to check whether this user is the owner; respond
     // as though he is not.
     std::string other_user("notme");
     EXPECT_CALL(*store, Get(_, _, _))
@@ -183,6 +178,7 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*key, IsPopulated())
         .WillOnce(Return(true))
         .WillOnce(Return(true));
+    manager_->test_api().set_ownerkey(key);
   }
 
   void ExpectStartSessionUnowned(const std::string& email_string,
@@ -208,9 +204,6 @@ class SessionManagerTest : public ::testing::Test {
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*key, StartGeneration(k_job))
         .WillOnce(Return(keygen_pid));
-    // act like this user isn't the owner.
-    EXPECT_CALL(*key, Sign(_, _, _))
-        .WillOnce(Return(false));
 
     // Now, expect an attempt to check whether this user is the owner; respond
     // as though there isn't one.
@@ -236,25 +229,30 @@ class SessionManagerTest : public ::testing::Test {
 
   void ExpectStartSessionForOwner(const std::string& email_string,
                                   MockOwnerKey* key,
-                                  MockPrefStore* store) {
+                                  MockPrefStore* store,
+                                  bool has_key) {
     ON_CALL(*key, PopulateFromDiskIfPossible())
         .WillByDefault(Return(true));
-    // First, mimic attempt to whitelist the owner and set a the
-    // device owner pref.
-    EXPECT_CALL(*key, Sign(_, _, _))
-        .WillOnce(Return(true))
-        .RetiresOnSaturation();
-    EXPECT_CALL(*store, Set(_, email_string, _))
-        .Times(1);
-    EXPECT_CALL(*key, Sign(CastEq(email_string), email_string.length(), _))
-        .WillOnce(Return(true))
-        .RetiresOnSaturation();
-    EXPECT_CALL(*store, Whitelist(email_string, _))
-        .Times(1);
+    int persist_times = 1;
+    if (has_key) {
+      // First, mimic attempt to whitelist the owner and set the
+      // device owner pref.
+      EXPECT_CALL(*key, Sign(_, _, _))
+          .WillOnce(Return(true))
+          .RetiresOnSaturation();
+      EXPECT_CALL(*store, Set(_, email_string, _))
+          .Times(1);
+      EXPECT_CALL(*key, Sign(CastEq(email_string), email_string.length(), _))
+          .WillOnce(Return(true))
+          .RetiresOnSaturation();
+      EXPECT_CALL(*store, Whitelist(email_string, _))
+          .Times(1);
+      persist_times = 3;
+    }
     EXPECT_CALL(*store, Persist())
-        .WillOnce(Return(true))
-        .WillOnce(Return(true))
-        .WillOnce(Return(true));
+        .Times(persist_times)
+        .WillRepeatedly(Return(true));
+
     // Now, expect an attempt to check whether this user is the owner;
     // respond as though he is.
     EXPECT_CALL(*store, Get(_, _, _))
@@ -506,7 +504,7 @@ TEST_F(SessionManagerTest, KeygenTest) {
   int pid = fork();
   if (pid == 0) {
     execl("./keygen", "./keygen", key_file_path.value().c_str(), NULL);
-    exit(1);
+    exit(255);
   }
   int status;
   while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
@@ -518,13 +516,13 @@ TEST_F(SessionManagerTest, KeygenTest) {
             << "  WIFEXITED is " << WIFEXITED(status) << "\n"
             << "  WEXITSTATUS is " << WEXITSTATUS(status);
 
-  ASSERT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-  ASSERT_TRUE(file_util::PathExists(key_file_path));
+  EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+  EXPECT_TRUE(file_util::PathExists(key_file_path));
 
   SystemUtils utils;
   int32 file_size = 0;
-  ASSERT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
-  ASSERT_GT(file_size, 0);
+  EXPECT_TRUE(utils.EnsureAndReturnSafeFileSize(key_file_path, &file_size));
+  EXPECT_GT(file_size, 0);
 }
 
 TEST_F(SessionManagerTest, SessionNotStartedCleanup) {
@@ -639,6 +637,9 @@ TEST_F(SessionManagerTest, HonorShouldNeverKill) {
 }
 
 TEST_F(SessionManagerTest, StartSession) {
+  MockFactory<KeyFailUtil> factory;
+  NssUtil::set_factory(&factory);
+
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   gboolean out;
@@ -651,6 +652,9 @@ TEST_F(SessionManagerTest, StartSession) {
 }
 
 TEST_F(SessionManagerTest, StartSessionNew) {
+  MockFactory<KeyFailUtil> factory;
+  NssUtil::set_factory(&factory);
+
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
@@ -689,7 +693,7 @@ TEST_F(SessionManagerTest, StartOwnerSession) {
   MockOwnerKey* key = new MockOwnerKey;
   MockPrefStore* store = new MockPrefStore;
   MockDevicePolicy* policy = new MockDevicePolicy;
-  ExpectStartSessionForOwner(email, key, store);
+  ExpectStartSessionForOwner(email, key, store, true);
   EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true));
 
@@ -712,22 +716,12 @@ TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
   gchar nothing[] = "";
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   StrEq("success")))
-      .Times(1);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
-                                   StrEq("success")))
-      .Times(1);
-  MockUtils();
-
   EXPECT_CALL(*mitigator_, Mitigate())
       .WillOnce(Return(false));
   MockOwnerKey* key = new MockOwnerKey;
   MockPrefStore* store = new MockPrefStore;
   MockDevicePolicy* policy = new MockDevicePolicy;
-  ExpectStartSessionForOwner(email, key, store);
+  ExpectStartSessionForOwner(email, key, store, false);
   EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true));
 
