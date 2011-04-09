@@ -26,6 +26,7 @@ class MockNssUtil : public NssUtil {
   MockNssUtil() {}
   virtual ~MockNssUtil() {}
 
+  MOCK_METHOD0(MightHaveKeys, bool());
   MOCK_METHOD0(OpenUserDB, bool());
   MOCK_METHOD1(GetPrivateKey, base::RSAPrivateKey*(const std::vector<uint8>&));
   MOCK_METHOD0(GenerateKeyPair, base::RSAPrivateKey*());
@@ -39,8 +40,7 @@ class MockNssUtil : public NssUtil {
                           base::RSAPrivateKey* key));
  protected:
   void ExpectGetOwnerKeyFilePath() {
-    EXPECT_CALL(*this, GetOwnerKeyFilePath())
-        .WillOnce(Return(FilePath("")));
+    EXPECT_CALL(*this, GetOwnerKeyFilePath()).WillOnce(Return(FilePath("")));
   }
 };
 
@@ -60,8 +60,8 @@ class KeyCheckUtil : public MockNssUtil {
  public:
   KeyCheckUtil() {
     ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, OpenUserDB())
-        .WillOnce(Return(true));
+    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
+    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
     EXPECT_CALL(*this, GetPrivateKey(_))
         .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(7)));
   }
@@ -72,8 +72,8 @@ class KeyFailUtil : public MockNssUtil {
  public:
   KeyFailUtil() {
     ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, OpenUserDB())
-        .WillOnce(Return(true));
+    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
+    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
     EXPECT_CALL(*this, GetPrivateKey(_))
         .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(NULL)));
   }
@@ -84,10 +84,19 @@ class SadNssUtil : public MockNssUtil {
  public:
   SadNssUtil() {
     ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, OpenUserDB())
-        .WillOnce(Return(false));
+    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
+    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
   }
   virtual ~SadNssUtil() {}
+};
+
+class EmptyNssUtil : public MockNssUtil {
+ public:
+  EmptyNssUtil() {
+    ExpectGetOwnerKeyFilePath();
+    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(false));
+  }
+  virtual ~EmptyNssUtil() {}
 };
 
 class ShortKeyGenerator : public MockNssUtil {
@@ -95,8 +104,7 @@ class ShortKeyGenerator : public MockNssUtil {
   ShortKeyGenerator() {
     base::EnsureNSSInit();
     base::OpenPersistentNSSDB();
-    ON_CALL(*this, GenerateKeyPair())
-        .WillByDefault(Invoke(CreateFake));
+    ON_CALL(*this, GenerateKeyPair()).WillByDefault(Invoke(CreateFake));
   }
   virtual ~ShortKeyGenerator() {}
 
@@ -111,10 +119,9 @@ class ShortKeyUtil : public ShortKeyGenerator {
  public:
   ShortKeyUtil() {
     ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, OpenUserDB())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*this, GenerateKeyPair())
-        .Times(1);
+    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
+    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
+    EXPECT_CALL(*this, GenerateKeyPair()).Times(1);
   }
   virtual ~ShortKeyUtil() {}
 };

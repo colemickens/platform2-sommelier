@@ -9,6 +9,7 @@
 #include <base/crypto/signature_creator.h>
 #include <base/crypto/signature_verifier.h>
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/nss_util.h>
 #include <base/scoped_ptr.h>
@@ -33,6 +34,8 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   virtual ~NssUtilImpl();
 
+  bool MightHaveKeys();
+
   bool OpenUserDB();
 
   base::RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
@@ -51,6 +54,10 @@ class NssUtilImpl : public NssUtil {
             base::RSAPrivateKey* key);
  private:
   static const uint16 kKeySizeInBits;
+  // Hardcoded path of the user's NSS key database.
+  // TODO(cmasone): get rid of this once http://crosbug.com/14007 is fixed.
+  static const char kUserDbPath[];
+
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
 
@@ -76,10 +83,16 @@ void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
 // We're generating and using 2048-bit RSA keys.
 // static
 const uint16 NssUtilImpl::kKeySizeInBits = 2048;
+// static
+const char NssUtilImpl::kUserDbPath[] = "/home/chronos/user/.pki/nssdb/key4.db";
 
 NssUtilImpl::NssUtilImpl() {}
 
 NssUtilImpl::~NssUtilImpl() {}
+
+bool NssUtilImpl::MightHaveKeys() {
+  return file_util::PathExists(FilePath(NssUtilImpl::kUserDbPath));
+}
 
 bool NssUtilImpl::OpenUserDB() {
   // TODO(cmasone): If we ever try to keep the session_manager alive across

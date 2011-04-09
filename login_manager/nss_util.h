@@ -42,6 +42,8 @@ class NssUtil {
 
   static void BlobFromBuffer(const std::string& buf, std::vector<uint8>* out);
 
+  virtual bool MightHaveKeys() = 0;
+
   virtual bool OpenUserDB() = 0;
 
   // Caller takes ownership of returned key.

@@ -1139,6 +1139,8 @@ gboolean SessionManagerService::CurrentUserIsOwner() {
 gboolean SessionManagerService::CurrentUserHasOwnerKey(
     const std::vector<uint8>& pub_key,
     GError** error) {
+  if (!nss_->MightHaveKeys())
+    return FALSE;
   if (!nss_->OpenUserDB()) {
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
