@@ -564,6 +564,12 @@ void Daemon::RegisterDBusMessageHandler() {
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {
+  if (!low_battery_suspend_percent_) {
+    LOG(INFO) << "Battery percent : "
+              << battery_percentage << "%";
+    low_battery_ = false;
+    return;
+  }
   if (kPowerDisconnected == plugged_state_ && !low_battery_ &&
       battery_percentage <= low_battery_suspend_percent_) {
     // Shut the system down when low battery condition is encountered.
