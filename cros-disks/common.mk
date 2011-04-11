@@ -165,10 +165,10 @@ endif
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-CXXFLAGS := $(CXXFLAGS) -Wall -Werror -fstack-protector-all  -DFORTIFY_SOURCE \
-  -O2 -ggdb3 -DNDEBUG -Wa,--noexecstack
-CFLAGS := $(CFLAGS) -Wall -Werror -fstack-protector-all -DFORTIFY_SOURCE \
-  -O2 -ggdb3 -DNDEBUG -Wa,--noexecstack
+CXXFLAGS := $(CXXFLAGS) -Wall -Werror -fstack-protector-all -fno-strict-aliasing -DFORTIFY_SOURCE \
+  -ggdb3 -Wa,--noexecstack
+CFLAGS := $(CFLAGS) -Wall -Werror -fstack-protector-all -fno-strict-aliasing -DFORTIFY_SOURCE \
+  -ggdb3 -Wa,--noexecstack
 
 ifeq ($(PROFILING),1)
   CFLAGS := -pg 
