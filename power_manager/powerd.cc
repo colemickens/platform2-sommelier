@@ -334,16 +334,15 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::SetIdleState(int64 idle_time_ms) {
   bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
+    LOG(INFO) << "state = kIdleSuspend";
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement fade
     // from suspend, we would want to have this state to make sure the backlight
     // is set to zero when suspended.
-    if (backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED)) {
-      idle_state_ = kIdleSuspend;
-      LOG(INFO) << "state = kIdleSuspend";
-      changed_brightness = true;
-      Suspend();
-    }
+    changed_brightness =
+        backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    idle_state_ = kIdleSuspend;
+    Suspend();
   } else if (idle_time_ms >= off_ms_) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
       idle_state_ = kIdleScreenOff;
