@@ -24,10 +24,6 @@ void GobiGsmModem::SignalStrengthHandler(INT8 signal_strength,
                                          ULONG radio_interface) {
   unsigned long ss_percent = MapDbmToPercent(signal_strength);
 
-  DLOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
-             << " dBm on radio interface " << radio_interface
-             << " (" << ss_percent << "%)";
-
   // TODO(ers) make sure radio interface corresponds to the network
   // on which we're registered
   SignalQuality(ss_percent);  // NB:  org.freedesktop...Modem.Gsm.Network

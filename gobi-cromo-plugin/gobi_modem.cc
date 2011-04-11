@@ -779,7 +779,7 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
 // This is only in debug builds; if you add actual code here, see
 // RegisterCallbacks().
 static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
-  LOG(INFO) << "ByteTotalsCallback: tx " << tx << " rx " << rx;
+
 }
 
 // This is only in debug builds; if you add actual code here, see
@@ -787,7 +787,6 @@ static void ByteTotalsCallback(ULONGLONG tx, ULONGLONG rx) {
 gboolean GobiModem::DormancyStatusCallback(gpointer data) {
   DormancyStatusArgs *args = reinterpret_cast<DormancyStatusArgs*>(data);
   GobiModem *modem = handler_->LookupByDbusPath(*args->path);
-  LOG(INFO) << "DormancyStatusCallback: " << args->status;
   if (modem->event_enabled[GOBI_EVENT_DORMANCY]) {
     modem->DormancyStatus(args->status == gobi::kDormant);
   }
@@ -1129,7 +1128,6 @@ void GobiModem::GetSignalStrengthDbm(int& output,
       error.set(kSdkError, "GetDataBearerTechnology");
       return;
     }
-    DLOG(INFO) << "data bearer technology " << db_technology;
     ULONG rfi_technology = MapDataBearerToRfi(db_technology);
     for (ULONG i = 0; i < signals; ++i) {
       if (interfaces[i] == rfi_technology) {

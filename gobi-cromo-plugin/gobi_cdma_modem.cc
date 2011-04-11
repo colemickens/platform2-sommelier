@@ -47,8 +47,6 @@ void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
   ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
 
   for (int i = 0; i < num_radio_interfaces; i++) {
-    DLOG(INFO) << "Registration state " << reg_state
-               << " for RFI " << (int)radio_interfaces[i];
     if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
       *cdma_1x_state = reg_state;
     else if (radio_interfaces[i] == gobi::kRfiCdmaEvdo)
@@ -237,11 +235,6 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
 void GobiCdmaModem::SignalStrengthHandler(INT8 signal_strength,
                                           ULONG radio_interface) {
   unsigned long ss_percent = MapDbmToPercent(signal_strength);
-
-  DLOG(INFO) << "SignalStrengthHandler " << static_cast<int>(signal_strength)
-             << " dBm on radio interface " << radio_interface
-             << " (" << ss_percent << "%)";
-
 
   ULONG cdma_evdo_state;
   ULONG cdma_1x_state;
