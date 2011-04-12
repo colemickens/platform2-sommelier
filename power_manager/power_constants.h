@@ -26,6 +26,7 @@ extern const char kRetrySuspendMs[];
 extern const char kRetrySuspendAttempts[];
 extern const char kUseXScreenSaver[];
 extern const char kPluggedSuspendMs[];
+extern const char kMinBacklightPercent[];
 
 }  // namespace power_manager
 

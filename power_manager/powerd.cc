@@ -114,6 +114,7 @@ void Daemon::Init() {
   suspender_.Init(run_dir_);
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
   file_tagger_.Init();
+  backlight_controller_->SetMinimumBrightness(min_backlight_percent_);
 }
 
 void Daemon::ReadSettings() {
@@ -137,6 +138,10 @@ void Daemon::ReadSettings() {
     LOG(INFO) << "Idle suspend feature disabled";
     plugged_suspend_ms_ = INT64_MAX;
     unplugged_suspend_ms_ = INT64_MAX;
+  }
+  if (!prefs_->GetInt64(kMinBacklightPercent, &min_backlight_percent_)) {
+    LOG(INFO) << "Backlight minimum file not found, setting to default.";
+    min_backlight_percent_ = 0;
   }
   ReadLockScreenSettings();
   if (low_battery_suspend_percent >= 0 && low_battery_suspend_percent <= 100) {

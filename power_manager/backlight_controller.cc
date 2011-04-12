@@ -57,9 +57,10 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       brightness_offset_(NULL),
       state_(BACKLIGHT_UNINITIALIZED),
       plugged_state_(kPowerUnknown),
-      system_brightness_(0),
+      local_brightness_(0),
       min_(0),
       max_(-1),
+      min_percent_(0),
       is_initialized_(false) {}
 
 bool BacklightController::Init() {
@@ -77,7 +78,8 @@ bool BacklightController::GetBrightness(int64* level) {
   int64 raw_level;
   if (!backlight_->GetBrightness(&raw_level, &max_))
     return false;
-  *level = lround(100. * raw_level / max_);
+
+  *level = RawBrightnessToLocalBrightness(raw_level);
   return true;
 }
 
@@ -85,7 +87,8 @@ bool BacklightController::GetTargetBrightness(int64* level) {
   int64 raw_level;
   if (!backlight_->GetTargetBrightness(&raw_level))
     return false;
-  *level = lround(100. * raw_level / max_);
+
+  *level = RawBrightnessToLocalBrightness(raw_level);
   return true;
 }
 
@@ -95,9 +98,9 @@ void BacklightController::IncreaseBrightness() {
   if (ReadBrightness()) {
     // Give the user between 8 and 16 distinct brightness levels
     int64 offset = 1 + (max_ >> 4);
-    int64 new_val = offset + lround(max_ * system_brightness_ / 100.);
-    int64 new_brightness = Clamp(lround(100. * new_val / max_));
-    if (new_brightness != system_brightness_) {
+    int64 new_val = offset + LocalBrightnessToRawBrightness(local_brightness_);
+    int64 new_brightness = ClampToMin(RawBrightnessToLocalBrightness(new_val));
+    if (new_brightness != local_brightness_) {
       SetPowerState(BACKLIGHT_ACTIVE_ON);
       // Allow large swing in brightness_offset for absolute brightness
       // outside of clamped brightness region.
@@ -114,10 +117,10 @@ void BacklightController::DecreaseBrightness() {
   if (ReadBrightness()) {
     // Give the user between 8 and 16 distinct brightness levels
     int64 offset = 1 + (max_ >> 4);
-    int64 new_val = lround(max_ * system_brightness_ / 100.) - offset;
-    int64 new_brightness = Clamp(lround(100. * new_val / max_));
-    if (new_brightness != system_brightness_) {
-      if (new_brightness == 0)
+    int64 new_val = LocalBrightnessToRawBrightness(local_brightness_) - offset;
+    int64 new_brightness = ClampToMin(RawBrightnessToLocalBrightness(new_val));
+    if (new_brightness != local_brightness_ || new_brightness == min_percent_) {
+      if (new_brightness == min_percent_)
         SetPowerState(BACKLIGHT_ACTIVE_OFF);
       // Allow large swing in brightness_offset for absolute brightness
       // outside of clamped brightness region.
@@ -176,6 +179,10 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
   return WriteBrightness();
 }
 
+void BacklightController::SetMinimumBrightness(int64 level) {
+  min_percent_ = level;
+}
+
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   if (!is_initialized_)
     return;
@@ -198,6 +205,18 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
 
 int64 BacklightController::Clamp(int64 value) {
   return std::min(100LL, std::max(0LL, value));
+}
+
+int64 BacklightController::ClampToMin(int64 value) {
+  return std::min(100LL, std::max(min_percent_, value));
+}
+
+int64 BacklightController::RawBrightnessToLocalBrightness(int64 raw_level) {
+  return lround(100. * (raw_level ) / (max_ ));
+}
+
+int64 BacklightController::LocalBrightnessToRawBrightness(int64 local_level) {
+  return lround((max_ ) * local_level / 100.);
 }
 
 void BacklightController::ReadPrefs() {
@@ -253,13 +272,16 @@ bool BacklightController::ReadBrightness() {
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
   int64 level;
-  if (GetTargetBrightness(&level) && level != system_brightness_) {
+  if (GetTargetBrightness(&level) && level != local_brightness_) {
     // Another program adjusted the brightness. Sync up.
-    LOG(INFO) << "ReadBrightness: " << system_brightness_ << " -> " << level;
+    // TODO(sque): This is currently useless code due to the implementation of
+    // smoothing and target brightness.  However, that will soon change, and
+    // this code will become useful again.  Delete the Clamp function as needed.
+    LOG(INFO) << "ReadBrightness: " << local_brightness_ << " -> " << level;
     int64 brightness = Clamp(als_brightness_level_ + *brightness_offset_);
-    int64 diff = Clamp(brightness + level - system_brightness_) - brightness;
+    int64 diff = Clamp(brightness + level - local_brightness_) - brightness;
     *brightness_offset_ += diff;
-    system_brightness_ = level;
+    local_brightness_ = level;
     WritePrefs();
     return false;
   }
@@ -270,36 +292,39 @@ bool BacklightController::WriteBrightness() {
   if (!is_initialized_)
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
-  int64 old_brightness = system_brightness_;
+  int64 old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE_ON) {
-    system_brightness_ = Clamp(als_brightness_level_ + *brightness_offset_);
-    if (system_brightness_ == 0)
-      system_brightness_ = 1;
+    local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);
   } else if (state_ == BACKLIGHT_DIM) {
     // When in dimmed state, set to dim level only if it results in a reduction
-    // of system brightness.
-    if (system_brightness_ > kIdleBrightness)
-      system_brightness_ = kIdleBrightness;
-    else
+    // of system brightness.  Also, make sure idle brightness is not lower than
+    // the minimum brightness.
+    if (local_brightness_ > ClampToMin(kIdleBrightness)) {
+      local_brightness_ = ClampToMin(kIdleBrightness);
+    } else {
       LOG(INFO) << "Not dimming because backlight is already dim.";
+      // Even if the brightness is below the dim level, make sure it is not
+      // below the minimum brightness.
+      local_brightness_ = ClampToMin(local_brightness_);
+    }
   } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_ACTIVE_OFF ||
              state_ == BACKLIGHT_SUSPENDED) {
-    system_brightness_ = 0;
+    local_brightness_ = 0;
   }
   als_hysteresis_level_ = als_brightness_level_;
-  int64 val = lround(max_ * system_brightness_ / 100.);
-  system_brightness_ = Clamp(lround(100. * val / max_));
+  int64 val = LocalBrightnessToRawBrightness(local_brightness_);
+  local_brightness_ = RawBrightnessToLocalBrightness(val);
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
-            << system_brightness_;
+            << local_brightness_;
   if (backlight_->SetBrightness(val))
     WritePrefs();
-  return system_brightness_ != old_brightness;
+  return local_brightness_ != old_brightness;
 }
 
 void BacklightController::SetBrightnessToZero() {
   if (!is_initialized_)
     return;
-  system_brightness_ = 0;
+  local_brightness_ = 0;
   if (backlight_->SetBrightness(0))
     WritePrefs();
 }

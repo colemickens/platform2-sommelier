@@ -53,7 +53,7 @@ class BacklightController {
     unplugged_brightness_offset_ = offset;
   }
 
-  int64 system_brightness() const { return system_brightness_; }
+  int64 local_brightness() const { return local_brightness_; }
 
   // Initialize the object.
   bool Init();
@@ -80,9 +80,18 @@ class BacklightController {
 
   void SetAlsBrightnessLevel(int64 level);
 
+  void SetMinimumBrightness(int64 level);
+
  private:
   // Clamp |value| to fit between 0 and 100.
   int64 Clamp(int64 value);
+
+  // Clamp |value| to fit between min_ and 100.
+  int64 ClampToMin(int64 value);
+
+  // Converts between [0, 100] and [min, max] brightness scales.
+  int64 RawBrightnessToLocalBrightness(int64 raw_level);
+  int64 LocalBrightnessToRawBrightness(int64 local_level);
 
   void ReadPrefs();
   void WritePrefs();
@@ -133,12 +142,15 @@ class BacklightController {
   // Whether the computer is plugged in.
   PluggedState plugged_state_;
 
-  // Current system brightness.
-  int64 system_brightness_;
+  // Current system brightness, on local [0, 100] scale.
+  int64 local_brightness_;
 
   // Min and max brightness for backlight object.
   int64 min_;
   int64 max_;
+
+  // Minimum brightness as a percentage.
+  int64 min_percent_;
 
   // Flag is set if a backlight device exists.
   bool is_initialized_;
