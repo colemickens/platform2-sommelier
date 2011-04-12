@@ -41,7 +41,10 @@ extern const char* kCacheDir;
 extern const char* kDownloadsDir;
 
 // Minimum free disk space on stateful_partition not to begin the cleanup
-const int64 kMinFreeSpace = 500 * 1LL << 20;  // 500M bytes
+const int64 kMinFreeSpace = 512 * 1LL << 20;  // 500M bytes
+
+// Enough free disk space on stateful_partition to stop the cleanup
+const int64 kEnoughFreeSpace = 1LL << 30;  // 1G bytes
 
 
 // The Mount class handles mounting/unmounting of the user's cryptohome
@@ -145,11 +148,23 @@ class Mount : public EntropySource {
                                            bool is_new) const;
 
   // Cleans (removes) content from unmounted tracked subdirectories
-  virtual void CleanUnmountedTrackedSubdirectories() const;
+  virtual void CleanUnmountedTrackedSubdirectories();
+
+  // Deletes all tracking subdirectories of the given vault.
+  // This callback is OBSOLETE.
+  // TODO(glotov): remove the callback after feature implementation
+  // croosbug.com/9620) is complete.
+  virtual void DeleteTrackedDirsCallback(const FilePath& vault);
+
+  // Deletes Cache tracking directory of the given vault
+  virtual void DeleteCacheCallback(const FilePath& vault);
 
   // Checks free disk space and if it falls below minimum
   // (kMinFreeSpace), performs cleanup
-  virtual void DoAutomaticFreeDiskSpaceControl() const;
+  virtual void DoAutomaticFreeDiskSpaceControl();
+
+  // Update user activity timestamp to be able to detect old users.
+  virtual void UpdateUserActivityTimestamp() const;
 
   // Tests if the given credentials would decrypt the user's cryptohome key
   //
@@ -174,7 +189,16 @@ class Mount : public EntropySource {
   virtual bool LoadVaultKeyset(const Credentials& credentials,
                                SerializedVaultKeyset* encrypted_keyset) const;
 
-  virtual bool StoreVaultKeyset(const Credentials& credentials,
+  virtual bool LoadVaultKeysetForUser(
+      const std::string& obsfucated_username,
+      SerializedVaultKeyset* encrypted_keyset) const;
+
+  virtual bool StoreVaultKeyset(
+      const Credentials& credentials,
+      const SerializedVaultKeyset& encrypted_keyset) const;
+
+  virtual bool StoreVaultKeysetForUser(
+      const std::string& obsfucated_username,
       const SerializedVaultKeyset& encrypted_keyset) const;
 
   // Used to disable setting vault ownership
@@ -366,6 +390,13 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetUserKeyFile(const Credentials& credentials) const;
 
+  // Gets the user's key file name
+  //
+  // Parameters
+  //   obsfucated_username - Obsfucated username field of the Credentials
+  std::string GetUserKeyFileForUser(
+      const std::string& obsfucated_username) const;
+
   // Gets the user's salt file name
   //
   // Parameters
@@ -382,9 +413,9 @@ class Mount : public EntropySource {
   // Invokes given callback for every unmounted cryptohome
   //
   // Parameters
-  //   callback - routine to invoke.
-  typedef void (*CryptohomeCallback)(const FilePath&);
-  void DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const;
+  //   callback - Routine to invoke.
+  typedef void (Mount::*CryptohomeCallback)(const FilePath&);
+  void DoForEveryUnmountedCryptohome(CryptohomeCallback callback);
 
   // Same as MountCryptohome but specifies if the cryptohome directory should be
   // recreated on a fatal error

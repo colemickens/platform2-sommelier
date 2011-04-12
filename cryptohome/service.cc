@@ -34,6 +34,7 @@ namespace gobject {  // NOLINT
 namespace cryptohome {
 
 const int kAutoCleanupPeriodMS = 1000 * 60 * 60;  // 1 hour
+const int kUpdateUserActivityPeriod = 24;  // divider of the former
 const int kDefaultRandomSeedLength = 64;
 const char* kMountThreadName = "MountThread";
 const char* kTpmInitStatusEventType = "TpmInitStatus";
@@ -88,7 +89,8 @@ Service::Service()
       async_complete_signal_(-1),
       tpm_init_signal_(-1),
       event_source_(),
-      auto_cleanup_period_(kAutoCleanupPeriodMS) {
+      auto_cleanup_period_(kAutoCleanupPeriodMS),
+      update_user_activity_period_(kUpdateUserActivityPeriod - 1) {
 }
 
 Service::~Service() {
@@ -680,6 +682,14 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
 
 // Called on Mount thread.
 void Service::AutoCleanupCallback() {
+  static int ticks;
+
+  // Update current user's activity timestamp every day.
+  if (++ticks > update_user_activity_period_) {
+    mount_->UpdateUserActivityTimestamp();
+    ticks = 0;
+  }
+
   mount_->DoAutomaticFreeDiskSpaceControl();
 
   // Schedule our next call. If the thread is terminating, we would

@@ -58,6 +58,12 @@ void MountTaskMount::Run() {
     result()->set_return_code(code);
   }
   MountTask::Notify();
+
+  // Update user activity timestamp to be able to detect old users.
+  // This action is not mandatory, so we perform it after
+  // CryptohomeMount() returns, in background.
+  if (mount_)
+    mount_->UpdateUserActivityTimestamp();
 }
 
 void MountTaskMountGuest::Run() {

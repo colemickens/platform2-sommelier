@@ -17,4 +17,5 @@ message SerializedVaultKeyset {
   optional bytes tpm_public_key_hash = 5;
   optional int32 password_rounds = 6;
   repeated string deprecated_tracked_subdirectories = 7;
+  optional int64 last_activity_timestamp = 8;
 }

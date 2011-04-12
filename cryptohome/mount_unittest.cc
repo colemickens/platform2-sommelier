@@ -15,6 +15,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/time.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
@@ -380,8 +381,7 @@ TEST_F(MountTest, MountCryptohome) {
 }
 
 TEST_F(MountTest, MountCryptohomeNoChange) {
-  // checks that cryptohome doesn't by default re-save the cryptohome when an
-  // identical list of tracked directories is passed in
+  // checks that cryptohome doesn't by default re-save the cryptohome when mount
   Mount mount;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
@@ -410,16 +410,9 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
-  // Make sure the keyset now has only one tracked directory, "Cache"
   SerializedVaultKeyset new_serialized;
   ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &new_serialized,
                                        &error));
-
-  FilePath image_dir(kImageDir);
-  FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
-  FilePath vault_path = user_path.Append("vault");
-  FilePath subdir_path = vault_path.Append(kCacheDir);
-  ASSERT_TRUE(file_util::PathExists(subdir_path));
 
   SecureBlob lhs;
   GetKeysetBlob(serialized, &lhs);
@@ -695,9 +688,11 @@ TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
 
   // Now pretend we have lack of free space.
   EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillRepeatedly(Return(kMinFreeSpace - 1));
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
 
-  // DoAutomaticFreeDiskSpaceControl() must do the clean-up..
+  // DoAutomaticFreeDiskSpaceControl() must remove Caches contents for
+  // all users and stop.
   mount.DoAutomaticFreeDiskSpaceControl();
 
   // Cache must be empty (and may even be deleted).
@@ -709,6 +704,68 @@ TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
     file_util::Delete(cache_dir[user], true);
     EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path[user]));
   }
+}
+
+TEST_F(MountTest, UserActivityTimestampUpdated) {
+  // checks that user activity timestamp is updated during Mount() and
+  // periodically while mounted, other Keyset fields remains the same
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
+
+  EXPECT_TRUE(mount.Init());
+
+  cryptohome::SecureBlob passkey;
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[11].password,
+                                        system_salt_, &passkey);
+  UsernamePasskey up(kDefaultUsers[11].username, passkey);
+
+  // Grab original keyset
+  VaultKeyset vault_keyset;
+  SerializedVaultKeyset serialized;
+  Mount::MountError error;
+  ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized));
+
+  // Mount()
+  EXPECT_CALL(platform, Mount(_, _, _, _))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
+
+  // Update the timestamp
+  mount.UpdateUserActivityTimestamp();
+  SerializedVaultKeyset serialized1;
+  ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized1));
+
+  // Make sure that the time advances.
+  PlatformThread::Sleep(1);
+
+  // Check that last activity timestamp is updated (and within a 0.1s from now)
+  ASSERT_TRUE(serialized1.has_last_activity_timestamp());
+  const base::Time last_activity =
+      base::Time::FromInternalValue(serialized1.last_activity_timestamp());
+  const int64 last_activity_delay_us =
+      (base::Time::NowFromSystemTime() - last_activity).InMicroseconds();
+  EXPECT_GT(100000, last_activity_delay_us);
+  EXPECT_LT(0, last_activity_delay_us);
+
+  // Update timestamp again, after user is unmounted. User's activity
+  // timestamp must not change thus
+  mount.UnmountCryptohome();
+  mount.UpdateUserActivityTimestamp();
+  SerializedVaultKeyset serialized2;
+  ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
+
+  // Check that last activity timestamp is not updated
+  ASSERT_TRUE(serialized2.has_last_activity_timestamp());
+  const base::Time last_activity_2 =
+      base::Time::FromInternalValue(serialized2.last_activity_timestamp());
+  EXPECT_EQ(0, (last_activity_2 - last_activity).InMicroseconds());
 }
 
 } // namespace cryptohome

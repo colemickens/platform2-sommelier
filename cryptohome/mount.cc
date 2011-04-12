@@ -478,7 +478,18 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
-void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const {
+void Mount::UpdateUserActivityTimestamp() const {
+  string obsfucated_username;
+  current_user_->GetObfuscatedUsername(&obsfucated_username);
+  if (!obsfucated_username.empty()) {
+    SerializedVaultKeyset serialized;
+    LoadVaultKeysetForUser(obsfucated_username, &serialized);
+    serialized.set_last_activity_timestamp(base::Time::Now().ToInternalValue());
+    StoreVaultKeysetForUser(obsfucated_username, serialized);
+  }
+}
+
+void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) {
   FilePath shadow_root(shadow_root_);
   file_util::FileEnumerator dir_enumerator(shadow_root, false,
       file_util::FileEnumerator::DIRECTORIES);
@@ -500,20 +511,18 @@ void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) const {
     if (!valid_name) {
       continue;
     }
-    FilePath vault_path = next_path.Append("vault");
+    const FilePath vault_path = next_path.Append("vault");
     if (!file_util::DirectoryExists(vault_path)) {
       continue;
     }
     if (platform_->IsDirectoryMountedWith(home_dir_, vault_path.value())) {
       continue;
     }
-    callback(vault_path);
+    (this->*callback)(vault_path);
   }
 }
 
-// Deletes all tracking subdirectories of the given vault.
-// This callback is OBSOLETE.
-static void DeleteTrackedDirsCallback(const FilePath& vault) {
+void Mount::DeleteTrackedDirsCallback(const FilePath& vault) {
   file_util::FileEnumerator subdir_enumerator(
       vault, false, file_util::FileEnumerator::DIRECTORIES);
   for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
@@ -545,22 +554,24 @@ static void DeleteDirectoryContents(const FilePath& dir) {
   }
 }
 
-void Mount::CleanUnmountedTrackedSubdirectories() const {
-  DoForEveryUnmountedCryptohome(&DeleteTrackedDirsCallback);
+void Mount::CleanUnmountedTrackedSubdirectories() {
+  DoForEveryUnmountedCryptohome(&Mount::DeleteTrackedDirsCallback);
 }
 
-// Deletes Cache tracking directory of the given vault.
-static void DeleteCacheCallback(const FilePath& vault) {
+void Mount::DeleteCacheCallback(const FilePath& vault) {
   LOG(WARNING) << "Deleting Cache for user " << vault.value();
   DeleteDirectoryContents(vault.Append(kCacheDir));
 }
 
-void Mount::DoAutomaticFreeDiskSpaceControl() const {
+void Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
     return;
 
   // Clean Cache directories for every user (except current one).
-  DoForEveryUnmountedCryptohome(&DeleteCacheCallback);
+  DoForEveryUnmountedCryptohome(&Mount::DeleteCacheCallback);
+
+  if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
+    return;
 
   // TODO(glotov): do further cleanup.
 }
@@ -587,8 +598,14 @@ bool Mount::TestCredentials(const Credentials& credentials) const {
 
 bool Mount::LoadVaultKeyset(const Credentials& credentials,
                             SerializedVaultKeyset* serialized) const {
+  return LoadVaultKeysetForUser(credentials.GetObfuscatedUsername(system_salt_),
+                                serialized);
+}
+
+bool Mount::LoadVaultKeysetForUser(const string& obsfucated_username,
+                                   SerializedVaultKeyset* serialized) const {
   // Load the encrypted keyset
-  FilePath user_key_file(GetUserKeyFile(credentials));
+  FilePath user_key_file(GetUserKeyFileForUser(obsfucated_username));
   if (!file_util::PathExists(user_key_file)) {
     return false;
   }
@@ -605,12 +622,20 @@ bool Mount::LoadVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::StoreVaultKeyset(const Credentials& credentials,
+                             const SerializedVaultKeyset& serialized) const {
+  return StoreVaultKeysetForUser(
+      credentials.GetObfuscatedUsername(system_salt_),
+      serialized);
+}
+
+bool Mount::StoreVaultKeysetForUser(
+    const string& obsfucated_username,
     const SerializedVaultKeyset& serialized) const {
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
   unsigned int data_written = file_util::WriteFile(
-      FilePath(GetUserKeyFile(credentials)),
+      FilePath(GetUserKeyFileForUser(obsfucated_username)),
       static_cast<const char*>(final_blob.const_data()),
       final_blob.size());
 
@@ -841,9 +866,13 @@ string Mount::GetUserSaltFile(const Credentials& credentials) const {
 }
 
 string Mount::GetUserKeyFile(const Credentials& credentials) const {
+  return GetUserKeyFileForUser(credentials.GetObfuscatedUsername(system_salt_));
+}
+
+string Mount::GetUserKeyFileForUser(const string& obsfucated_username) const {
   return StringPrintf("%s/%s/master.0",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+                      obsfucated_username.c_str());
 }
 
 string Mount::GetUserVaultPath(const Credentials& credentials) const {

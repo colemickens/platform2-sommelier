@@ -71,7 +71,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void set_auto_cleanup_period(int value) {
     auto_cleanup_period_ = value;
   }
-
+  virtual void set_update_user_activity_period(int value) {
+    update_user_activity_period_ = value;
+  }
 
   // MountTaskObserver
   virtual void MountTaskObserve(const MountTaskResult& result);
@@ -182,6 +184,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
   int auto_cleanup_period_;
+  int update_user_activity_period_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

@@ -580,6 +580,12 @@ int main(int argc, char **argv) {
       printf("  Password rounds:\n");
       printf("    %d\n", serialized.password_rounds());
     }
+    if (serialized.has_last_activity_timestamp()) {
+      const base::Time last_activity =
+          base::Time::FromInternalValue(serialized.last_activity_timestamp());
+      printf("  Last activity (days ago):\n");
+      printf("    %d\n", (base::Time::Now() - last_activity).InDays());
+    }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {
     chromeos::glib::ScopedError error;
