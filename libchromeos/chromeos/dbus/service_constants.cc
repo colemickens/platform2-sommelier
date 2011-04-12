@@ -28,6 +28,8 @@ const char *kCryptohomeTpmIsBeingOwned = "TpmIsBeingOwned";
 const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
 const char *kCryptohomeTpmCanAttemptOwnership = "TpmCanAttemptOwnership";
 const char *kCryptohomeTpmClearStoredPassword = "TpmClearStoredPassword";
+const char *kCryptohomePkcs11GetTpmTokenInfo = "Pkcs11GetTpmTokenInfo";
+const char *kCryptohomePkcs11IsTpmTokenReady = "Pkcs11IsTpmTokenReady";
 const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
 const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
 const char *kCryptohomeAsyncMount = "AsyncMount";
@@ -47,7 +49,7 @@ const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 const char *kSignalTpmInitStatus = "TpmInitStatus";
 }  // namespace cryptohome
 
-namespace imageburn{
+namespace imageburn {
 const char *kImageBurnServiceName = "org.chromium.ImageBurner";
 const char *kImageBurnServicePath = "/org/chromium/ImageBurner";
 const char *kImageBurnServiceInterface = "org.chromium.ImageBurnerInterface";

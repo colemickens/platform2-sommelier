@@ -30,6 +30,8 @@ extern const char *kCryptohomeTpmIsBeingOwned;
 extern const char *kCryptohomeTpmGetPassword;
 extern const char *kCryptohomeTpmCanAttemptOwnership;
 extern const char *kCryptohomeTpmClearStoredPassword;
+extern const char *kCryptohomePkcs11GetTpmTokenInfo;
+extern const char *kCryptohomePkcs11IsTpmTokenReady;
 extern const char *kCryptohomeAsyncCheckKey;
 extern const char *kCryptohomeAsyncMigrateKey;
 extern const char *kCryptohomeAsyncMount;
