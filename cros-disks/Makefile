@@ -12,26 +12,32 @@ include common.mk
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
-INCLUDE_DIRS = -I.. -I$(OUT)include $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1\
+INCLUDE_DIRS = -I.. -I$(OUT) $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1\
 	dbus-c++-1 glib-2.0)
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 dbus-c++-1 glib-2.0)
 
 CFLAGS := -Iinclude $(CFLAGS)
 CXXFLAGS := -Iinclude -I../ $(INCLUDE_DIRS) $(CXXFLAGS)
-LDFLAGS += -lbase -lgflags -lmetrics -ludev $(LIB_DIRS)
+LDFLAGS += -lbase -lchromeos -lgflags -lmetrics -ludev $(LIB_DIRS)
 
-$(OUT)include/cros-disks-server.h: cros-disks.xml
-	mkdir -p $(OUT)include
+cros-disks-server.h: cros-disks.xml
 	$(DBUSXX_XML2CPP) cros-disks.xml --adaptor=$@
-RM_ON_CLEAN += $(OUT)include/cros-disks-server.h
+RM_ON_CLEAN += cros-disks-server.h
 
-$(OUT)disks: $(filter-out %_testrunner.o %_unittest.o,$(C_OBJECTS)) \
-              $(OUT)include/cros-disks-server.h \
-              $(CXX_OBJECTS)
+$(OUT)disks: $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
+		cros-disks-server.h
 	$(call cxx_binary)
-all: $(OUT)disks
+RM_ON_CLEAN += $(OUT)disks
+
+$(OUT)disks_testrunner: $(filter-out %main.o,$(CXX_OBJECTS)) \
+		cros-disks-server.h
+	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)disks
 
 # Some shortcuts
-disks: $(OUT)disks
-dbus-headers: $(OUT)include/cros-disks-server.h
+all: disks
+disks: dbus-headers
+	make $(OUT)disks
+dbus-headers: cros-disks-server.h
+tests: dbus-headers
+	make $(OUT)disks_testrunner

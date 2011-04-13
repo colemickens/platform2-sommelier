@@ -109,6 +109,7 @@ std::vector<std::string> UdevDevice::GetMountedPaths() const {
   if (fs.is_open()) {
     return ParseMountedPaths(dev_file, fs);
   }
+  LOG(INFO) << "unable to parse /proc/mounts";
   return std::vector<std::string>();
 }
 
@@ -145,7 +146,11 @@ Disk UdevDevice::ToDisk() const {
 
   std::vector<std::string> mounted_paths = GetMountedPaths();
   disk.set_is_mounted(!mounted_paths.empty());
-  disk.set_mount_path(mounted_paths[0]);  // TODO(benchan): multiple paths
+
+  if (!mounted_paths.empty()) {
+    // TODO(benchan): support multiple paths
+    disk.set_mount_path(mounted_paths[0]);
+  }
 
   uint64 total_size, remaining_size;
   GetSizeInfo(&total_size, &remaining_size);

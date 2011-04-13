@@ -25,6 +25,7 @@ class Disk {
 
   Disk();
   virtual ~Disk();
+  DBusDisk ToDBusFormat() const; 
 
   bool is_drive() const { return is_drive_; }
   void set_is_drive(bool is_drive) { is_drive_ = is_drive; }

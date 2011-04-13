@@ -6,10 +6,12 @@
 
 #include "cros-disks-server-impl.h"
 #include "disk-manager.h"
+
 #include <base/basictypes.h>
+#include <base/command_line.h>
 #include <base/file_util.h>
-#include <base/logging.h>
 #include <base/string_util.h>
+#include <chromeos/syslog_logging.h>
 #include <dbus-c++/glib-integration.h>
 #include <dbus-c++/util.h>
 #include <gflags/gflags.h>
@@ -25,16 +27,15 @@ using cros_disks::DiskManager;
 DEFINE_bool(foreground, false, 
             "Don't daemon()ize; run in foreground.");
 
-// TODO(rtc): gflags string defines require the use of
-// -fno-strict-aliasing for some reason. Verify that disabling this check
-// is sane.
-DEFINE_string(log_dir, "/var/log/cros-disks", "log directory");
-
+// Always logs to the syslog and logs to stderr if
+// we are running in the foreground.
 void SetupLogging() {
-  logging::InitLogging(FLAGS_log_dir.c_str(),
-                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+  int log_flags = 0;
+  log_flags |= chromeos::kLogToSyslog;
+  if (FLAGS_foreground) {
+    log_flags |= chromeos::kLogToStderr;
+  }
+  chromeos::InitLog(log_flags);
 }
 
 // This callback will be invoked once udev has data about 
@@ -51,10 +52,13 @@ int main(int argc, char** argv) {
   ::g_type_init();
   g_thread_init(NULL);
   google::ParseCommandLineFlags(&argc, &argv, true);
+  CommandLine::Init(argc, argv);
+
+  SetupLogging();
 
   if(!FLAGS_foreground) {
+    LOG(INFO) << "Daemonizing";
     PLOG_IF(FATAL, daemon(0, 0) == 1) << "daemon() failed";
-    // SetupLogging();
   }
 
   LOG(INFO) << "Creating a GMainLoop";
@@ -81,7 +85,6 @@ int main(int argc, char** argv) {
 
   DiskManager manager;
   manager.EnumerateDisks();
-
   // Setup a monitor
   g_io_add_watch_full(g_io_channel_unix_new(manager.udev_monitor_fd()),
                       G_PRIORITY_HIGH_IDLE,

@@ -29,6 +29,10 @@
       <arg name="disks" type="aa{sv}" direction="out" tp:type="DiskDevices">
       </arg>
     </method>
+    <signal name="DeviceUpdates">
+      <arg name="disks" type="aa{sv}" direction="out" tp:type="DiskDevices">
+      </arg>
+    </signal>
     <method name="IsAlive">
       <tp:docstring>
         Test method to verify that Cashew service is working.
