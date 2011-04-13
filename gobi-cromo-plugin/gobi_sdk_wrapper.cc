@@ -76,6 +76,7 @@ static const char *kServiceMapping[] = {
   "GetSignalStrengths",
   "GetRFInfo",
   "PerformNetworkScan",
+  "PerformNetworkRATScan",
   "InitiateNetworkRegistration",
   "InitiateDomainAttach",
   "GetServingNetwork",
@@ -762,6 +763,20 @@ ULONG Sdk::PerformNetworkScan(
   return cw.CheckReturn(::PerformNetworkScan(
       pInstanceSize,
       pInstances));
+}
+
+ULONG Sdk::PerformNetworkRATScan(
+    BYTE *                     pInstanceSize,
+    BYTE *                     pInstances,
+    BYTE *                     pRATSize,
+    BYTE *                     pRATInstances) {
+  CallWrapper cw(this, "PerformNetworkRATScan");
+  RETURN_IF_CALL_WRAPPER_LOCKED(cw);
+  return cw.CheckReturn(::PerformNetworkRATScan(
+      pInstanceSize,
+      pInstances,
+      pRATSize,
+      pRATInstances));
 }
 
 ULONG Sdk::InitiateNetworkRegistration(

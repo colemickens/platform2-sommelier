@@ -7,6 +7,7 @@
 // include guard
 
 DEFINE_ERROR(Activation)
+DEFINE_ERROR(Registration)
 DEFINE_ERROR(Connect)
 DEFINE_ERROR(Disconnect)
 DEFINE_ERROR(Pin)

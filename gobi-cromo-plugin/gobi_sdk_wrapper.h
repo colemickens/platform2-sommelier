@@ -317,15 +317,25 @@ typedef struct {
   ULONG activeChannel;
 } RfInfoInstance;
 
-typedef struct {
+static const unsigned int kGsmNetInfoUnknown = 0;
+static const unsigned int kGsmNetInfoYes = 1;
+static const unsigned int kGsmNetInfoNo = 2;
+
+typedef struct __attribute__ ((__packed__)) {
   WORD mcc;
   WORD mnc;
   ULONG inUse;
   ULONG roaming;
   ULONG forbidden;
   ULONG preferred;
-  char description[255];
+  CHAR description[255];
 } GsmNetworkInfoInstance;
+
+typedef struct {
+  WORD mcc;
+  WORD mnc;
+  WORD radioAccessTech;
+} GsmNetworkRATInfoInstance;
 
 struct DeviceElement {
   char deviceNode[256];
@@ -541,6 +551,12 @@ class Sdk {
   virtual ULONG PerformNetworkScan(
       BYTE *                     pInstanceSize,
       BYTE *                     pInstances);
+
+  virtual ULONG PerformNetworkRATScan(
+      BYTE *                     pInstanceSize,
+      BYTE *                     pInstances,
+      BYTE *                     pRATSize,
+      BYTE *                     pRATInstances);
 
   virtual ULONG InitiateNetworkRegistration(
       ULONG                      regType,

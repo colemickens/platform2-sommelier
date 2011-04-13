@@ -6,6 +6,7 @@
 
 #include "gobi_modem_handler.h"
 #include <base/scoped_ptr.h>
+#include <base/string_util.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
@@ -38,7 +39,6 @@ void GobiGsmModem::SignalStrengthHandler(INT8 signal_strength,
 }
 
 void GobiGsmModem::RegistrationStateHandler() {
-  LOG(INFO) << "RegistrationStateHandler";
   uint32_t registration_status;
   std::string operator_code;
   std::string operator_name;
@@ -220,18 +220,7 @@ void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
       break;
   }
   *operator_code = MakeOperatorCode(mcc, mnc);
-  // trim operator name
-  *operator_name = netname;
-  std::string::size_type pos1 = operator_name->find_first_not_of(' ');
-  if (pos1 != std::string::npos) {
-    operator_name->erase(0, pos1);
-    std::string::size_type pos2 = operator_name->find_last_not_of(' ');
-    if (pos2 != std::string::npos) {
-      operator_name->erase(pos2+1);
-    }
-  } else {
-    operator_name->erase(0);
-  }
+  TrimWhitespaceASCII(netname, TRIM_ALL, operator_name);
   LOG(INFO) << "GSM reg info: "
             << *registration_state << ", "
             << *operator_code << ", "
@@ -323,24 +312,65 @@ void GobiGsmModem::GetTechnologySpecificStatus(
 
 void GobiGsmModem::Register(const std::string& network_id,
                             DBus::Error& error) {
-  // TODO(ers) For now, ignore network_id, and only do automatic registration
+  ULONG rc;
+  ULONG regtype, rat;
+  WORD mcc, mnc;
   // This is a blocking call, and may take a while (up to 30 seconds)
-  ULONG rc = sdk_->InitiateNetworkRegistration(
-      gobi::kRegistrationTypeAutomatic, 0, 0, 0);
+
+  if (network_id.empty()) {
+    regtype = gobi::kRegistrationTypeAutomatic;
+    mcc = 0;
+    mnc = 0;
+    rat = 0;
+  } else {
+    int n = sscanf(network_id.c_str(), "%3hu%3hu", &mcc, &mnc);
+    if (n != 2) {
+      error.set(kRegistrationError, "Malformed network ID");
+      return;
+    }
+    regtype = gobi::kRegistrationTypeManual;
+    rat = gobi::kRfiUmts;
+  }
+  LOG(INFO) << "Initiating registration for " << mcc << mnc;
+  rc = sdk_->InitiateNetworkRegistration(regtype, mcc, mnc, rat);
   if (rc == gobi::kOperationHasNoEffect)
     return;  // already registered on requested network
   ENSURE_SDK_SUCCESS(InitiateNetworkRegistration, rc, kSdkError);
 }
 
 ScannedNetworkList GobiGsmModem::Scan(DBus::Error& error) {
-  gobi::GsmNetworkInfoInstance networks[4];
+  gobi::GsmNetworkInfoInstance networks[40];
   BYTE num_networks = sizeof(networks)/sizeof(networks[0]);
   ScannedNetworkList list;
 
   // This is a blocking call, and may take a while (i.e., a minute or more)
+  LOG(INFO) << "Beginning network scan";
   ULONG rc = sdk_->PerformNetworkScan(&num_networks,
-                                      static_cast<BYTE*>((void *)&networks[0]));
+                                    static_cast<BYTE*>((void *)&networks[0]));
   ENSURE_SDK_SUCCESS_WITH_RESULT(PerformNetworkScan, rc, kSdkError, list);
+  LOG(INFO) << "Network scan returned " << (int)num_networks << " networks";
+  for (int i = 0; i < num_networks; i++) {
+    gobi::GsmNetworkInfoInstance *net = &networks[i];
+    std::map<std::string, std::string> netprops;
+    // status, operator-long, operator-short, operator-num, access-tech
+    const char* status;
+    if (net->inUse == gobi::kGsmNetInfoYes)
+      status = "2";
+    else if (net->forbidden == gobi::kGsmNetInfoYes)
+      status = "3";
+    else if (net->inUse == gobi::kGsmNetInfoNo)
+      status = "1";
+    else
+      status = "0";
+    netprops["status"] = status;
+    netprops["operator-num"] = MakeOperatorCode(net->mcc, net->mnc);
+    if (strlen(net->description) != 0) {
+      std::string operator_name;
+      TrimWhitespaceASCII(net->description, TRIM_ALL, &operator_name);
+      netprops["operator-short"] = operator_name;
+    }
+    list.push_back(netprops);
+  }
   return list;
 }
 
