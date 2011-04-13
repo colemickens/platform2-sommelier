@@ -1,0 +1,70 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef CHOS_DISKS_UDEV_DEVICE_H_
+#define CROS_DISKS_UDEV_DEVICE_H_
+
+#include <base/basictypes.h>
+#include <iostream>
+#include <string>
+#include <vector>
+
+#include "disk.h"
+
+struct udev_device;
+
+namespace cros_disks {
+
+// A utility class that helps query information about a udev device.
+class UdevDevice {
+ public:
+
+  explicit UdevDevice(struct udev_device *dev);
+  ~UdevDevice();
+
+  // Gets the string value of a device attribute.
+  std::string GetAttribute(const char *key) const;
+
+  // Checks if the value of a device attribute represents a Boolean true.
+  bool IsAttributeTrue(const char *key) const;
+
+  // Checks if a device attribute exists.
+  bool HasAttribute(const char *key) const;
+
+  // Gets the string value of a device property.
+  std::string GetProperty(const char *key) const;
+
+  // Checks if the value of a device property represents a Boolean true.
+  bool IsPropertyTrue(const char *key) const;
+
+  // Checks if a device property exists.
+  bool HasProperty(const char *key) const;
+
+  // Gets the total and remaining capacity of the device.
+  void GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const;
+
+  // Checks if any media is available in the device.
+  bool IsMediaAvailable() const;
+
+  // Gets the mounted paths for the device.
+  std::vector<std::string> GetMountedPaths() const;
+
+  // Gets the mounted paths for an input stream that has the
+  // same format as /proc/mounts
+  static std::vector<std::string> ParseMountedPaths(
+      const std::string& device_path, std::istream& stream);
+
+  // Returns a Disk object based on the device information.
+  Disk ToDisk() const;
+
+ private:
+
+  bool IsValueBooleanTrue(const char *value) const;
+
+  mutable struct udev_device *dev_;
+};
+
+}  // namespace cros_disks
+
+#endif  // CROS_DISKS_UDEV_DEVICE_H_

@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include "disk-manager.h"
-
 #include "disk.h"
+#include "udev-device.h"
 
 #include <base/logging.h>
 #include <libudev.h>
@@ -30,8 +30,40 @@ DiskManager::~DiskManager() {
 }
 
 std::vector<Disk> DiskManager::EnumerateDisks() {
-  //TODO(rtc): implement this...
   std::vector<Disk> disks;
+
+  struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
+  udev_enumerate_add_match_subsystem(enumerate, "block");
+  udev_enumerate_scan_devices(enumerate);
+
+  struct udev_list_entry *device_list, *device_list_entry;
+  device_list = udev_enumerate_get_list_entry(enumerate);
+  udev_list_entry_foreach(device_list_entry, device_list) {
+    const char *path = udev_list_entry_get_name(device_list_entry);
+    udev_device *dev = udev_device_new_from_syspath(udev_, path);
+
+    LOG(INFO) << "Device";
+    LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
+    LOG(INFO) << "   Subsystem: " << udev_device_get_subsystem(dev);
+    LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
+    LOG(INFO) << "   Devpath: " << udev_device_get_devpath(dev);
+    LOG(INFO) << "   Sysname: " << udev_device_get_sysname(dev);
+    LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
+    LOG(INFO) << "   Properties: ";
+    struct udev_list_entry *property_list, *property_list_entry;
+    property_list = udev_device_get_properties_list_entry(dev);
+    udev_list_entry_foreach (property_list_entry, property_list) {
+      const char *key = udev_list_entry_get_name(property_list_entry);
+      const char *value = udev_list_entry_get_value(property_list_entry);
+      LOG(INFO) << "      " << key << " = " << value;
+    }
+
+    disks.push_back(UdevDevice(dev).ToDisk());
+    udev_device_unref(dev);
+  }
+
+  udev_enumerate_unref(enumerate);
+
   return disks;
 }
 
