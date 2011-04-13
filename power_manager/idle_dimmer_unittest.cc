@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <glib.h>
 #include <gtest/gtest.h>
 
 #include "base/command_line.h"
@@ -43,18 +44,17 @@ class IdleDimmerTest : public Test {
         .WillRepeatedly(DoAll(SetArgumentPointee<0>(current_brightness_),
                               SetArgumentPointee<1>(kMaxBrightness),
                               Return(true)));
-    EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(target_brightness_),
-                              Return(true)));
     EXPECT_CALL(backlight_, SetBrightness(_))
         .WillRepeatedly(DoAll(SaveArg<0>(&current_brightness_),
-                              SaveArg<0>(&target_brightness_),
                               Return(true)));
 
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightnessP);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightnessP);
 
     CHECK(backlight_ctl_.Init());
+  }
+
+  virtual void SetUp() {
     backlight_ctl_.OnPlugEvent(true);
     backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
   }
@@ -71,22 +71,24 @@ class IdleDimmerTest : public Test {
 // Test that OnIdleEvent sets the brightness appropriately when
 // the user becomes idle.
 TEST_F(IdleDimmerTest, TestIdle) {
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                Return(true)));
+                      SetArgumentPointee<1>(kMaxBrightness),
+                      Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kIdleBrightness))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_DIM);
 }
 
 // Test that OnIdleEvent does not mess with the user's brightness settings
 // when we receive duplicate idle events.
 TEST_F(IdleDimmerTest, TestDuplicateIdleEvent) {
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                Return(true)));
+                      SetArgumentPointee<1>(kMaxBrightness),
+                      Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kIdleBrightness))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_DIM);
   backlight_ctl_.SetPowerState(BACKLIGHT_DIM);
 }
@@ -102,17 +104,19 @@ TEST_F(IdleDimmerTest, TestNonIdle) {
 // Test that OnIdleEvent sets the brightness appropriately when the
 // user transitions to idle and back.
 TEST_F(IdleDimmerTest, TestIdleTransition) {
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                      SetArgumentPointee<1>(kMaxBrightness),
                       Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kIdleBrightness))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_DIM);
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kIdleBrightness+2),
+                      SetArgumentPointee<1>(kMaxBrightness),
                       Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kDefaultBrightness+2))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
 }
 
@@ -120,17 +124,19 @@ TEST_F(IdleDimmerTest, TestIdleTransition) {
 // user transitions to idle and back, and the max brightness setting
 // is reached.
 TEST_F(IdleDimmerTest, TestOverflowIdleTransition) {
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                      SetArgumentPointee<1>(kMaxBrightness),
                       Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kIdleBrightness))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_DIM);
-  EXPECT_CALL(backlight_, GetTargetBrightness(NotNull()))
+  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
       .WillOnce(DoAll(SetArgumentPointee<0>(kMaxBrightness-1),
+                      SetArgumentPointee<1>(kMaxBrightness),
                       Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kMaxBrightness))
-      .WillOnce(Return(true));
+      .WillRepeatedly(Return(true));
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
 }
 

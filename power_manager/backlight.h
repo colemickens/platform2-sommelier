@@ -38,48 +38,18 @@ class Backlight : public BacklightInterface {
 
   // Overridden from BacklightInterface:
   virtual bool GetBrightness(int64* level, int64* max);
-  virtual bool GetTargetBrightness(int64* level);
   virtual bool SetBrightness(int64 level);
-  virtual void SetScreenOffFunc(SIGNAL_CALLBACK_PTR(void, func), void *data);
-
-  // Returns info about the gradual brightness transition, represented as the
-  // number of steps and the interval of each step in milliseconds.
-  bool GetTransitionParams(int* num_steps, int* step_time_ms);
 
  private:
   // Look for the existence of required files and return the granularity of
   // the given backlight interface directory path.
   int64 CheckBacklightFiles(const FilePath& dir_path);
 
-  // Directly and immediately set backlight brightness to a particular level,
-  // without any gradual dimming.  The target_level argument is used to keep
-  // track of what brightness level a given SetBrightnessHard command is being
-  // used to move toward.
-  //
-  // Example:
-  //   Current brightness = 40
-  //   Want to set brightness to 60 over 5 steps, so the steps are:
-  //      40 -> 44 -> 48 -> 52 -> 56 -> 60
-  //   Thus, SetBrightnessHard(level, target_level) would be called five times
-  //   with the args:
-  //      SetBrightnessHard(44, 60);
-  //      SetBrightnessHard(48, 60);
-  //      SetBrightnessHard(52, 60);
-  //      SetBrightnessHard(56, 60);
-  //      SetBrightnessHard(60, 60);
-  SIGNAL_CALLBACK_2(Backlight, gboolean, SetBrightnessHard, int64, int64);
-
   // Paths to the actual_brightness, brightness, and max_brightness files
   // under /sys/class/backlight.
   FilePath actual_brightness_path_;
   FilePath brightness_path_;
   FilePath max_brightness_path_;
-
-  int64 target_brightness_;  // The current intended brightness level.
-
-  // Callback function and data to determine whether to turn screen off.
-  void *turn_screen_off_data_;
-  SIGNAL_CALLBACK_PTR(void, turn_screen_off_func_);
 
   DISALLOW_COPY_AND_ASSIGN(Backlight);
 };

@@ -19,15 +19,7 @@
 
 namespace power_manager {
 
-// Gradually change backlight level to new brightness by breaking up the
-// transition into N steps, where N = kBacklightNumSteps.
-const int kBacklightNumSteps = 8;
-// Time between backlight adjustment steps, in milliseconds.
-const int kBacklightStepTimeMs = 30;
-
-Backlight::Backlight()
-    : turn_screen_off_data_(NULL),
-      turn_screen_off_func_(NULL) {}
+Backlight::Backlight() {}
 
 bool Backlight::Init() {
   FilePath base_path("/sys/class/backlight");
@@ -62,9 +54,6 @@ bool Backlight::Init() {
       brightness_path_ = dir_path.Append("brightness");
       actual_brightness_path_ = dir_path.Append("actual_brightness");
       max_brightness_path_ = dir_path.Append("max_brightness");
-      // Read brightness to initialize the target brightness value.
-      int64 max_brightness;
-      GetBrightness(&target_brightness_, &max_brightness);
       return true;
     }
   } else {
@@ -113,83 +102,17 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
   return ok;
 }
 
-bool Backlight::GetTargetBrightness(int64* level) {
-  *level = target_brightness_;
-  return true;
-}
-
-bool Backlight::SetBrightness(int64 target_level) {
+bool Backlight::SetBrightness(int64 level) {
   if (brightness_path_.empty()) {
     LOG(WARNING) << "Cannot find backlight brightness file.";
     return false;
   }
-  LOG(INFO) << "Attempting to set brightness to " << target_level;
-  int64 current_level, max_level;
-  GetBrightness(&current_level, &max_level);
-  LOG(INFO) << "Current actual brightness: " << current_level;
-  LOG(INFO) << "Current target brightness: " << target_brightness_;
-
-  // If this is a redundant call (existing target level is the same as
-  // new target level), ignore this call.
-  if (target_brightness_ == target_level)
-    return true;
-  // Otherwise, set to the new target brightness.  This will disable any
-  // outstanding brightness transition to a different brightness.
-  target_brightness_ = target_level;
-  // If the current brightness happens to be at the new target brightness,
-  // do not start a new transition.
-  int64 diff = target_level - current_level;
-  if (diff == 0)
-    return true;
-
-  LOG(INFO) << "Setting to new target brightness " << target_level;
-  int64 previous_level = current_level;
-  for (int i = 0; i < kBacklightNumSteps; i++) {
-    int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
-    if (step_level == previous_level)
-      continue;
-    g_timeout_add(i * kBacklightStepTimeMs, SetBrightnessHardThunk,
-                  CreateSetBrightnessHardArgs(this, step_level, target_level));
-    previous_level = step_level;
-  }
-  return true;
-}
-
-void Backlight::SetScreenOffFunc(SIGNAL_CALLBACK_PTR(void, func), void *data) {
-  turn_screen_off_func_ = func;
-  turn_screen_off_data_ = data;
-}
-
-bool Backlight::GetTransitionParams(int* num_steps, int* step_time_ms)
-{
-  if (num_steps == NULL)
-    return false;
-  if (step_time_ms == NULL)
-    return false;
-  *num_steps = kBacklightNumSteps;
-  *step_time_ms = kBacklightStepTimeMs;
-  return true;
-}
-
-gboolean Backlight::SetBrightnessHard(int64 level, int64 target_level) {
-  // If the target brightness of this call does not match the backlight's
-  // current target brightness, it must be from an earlier backlight adjustment
-  // that had a different target brightness.  In that case, it is invalidated
-  // so do nothing.
-  if (target_brightness_ != target_level)
-    return false; // Return false so glib doesn't repeat.
-  DLOG(INFO) << "Setting brightness to " << level;
   std::string buf = base::Int64ToString(level);
   bool ok = (-1 != file_util::WriteFile(brightness_path_, buf.data(),
                                         buf.size()));
-  LOG_IF(WARNING, !ok) << "Can't set brightness to " << level;
-
-  if (level == 0 &&
-      target_level == 0 &&
-      turn_screen_off_func_ != NULL &&
-      turn_screen_off_data_ != NULL)
-    turn_screen_off_func_(turn_screen_off_data_);
-  return false; // Return false so glib doesn't repeat.
+  LOG_IF(WARNING, !ok) << "Can't write [" << level << "] to "
+                       << brightness_path_.value().c_str();
+  return ok;
 }
 
 }  // namespace power_manager

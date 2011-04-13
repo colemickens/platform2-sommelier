@@ -58,9 +58,13 @@ class BacklightController {
   // Initialize the object.
   bool Init();
 
-  // Set |level| to the current brightness level of the backlight as a
-  // percentage.
+  // Get the current brightness of the backlight, as a percentage.
+  // TODO(sque): rename to something like GetCurrentBrightness to better
+  // distinguish from GetTargetBrightness.
   bool GetBrightness(int64* level);
+  // Get the intended brightness of the backlight, as a percentage.  Intended
+  // brightness is the destination brightness during a transition.  Once the
+  // transition completes, this equals the current brightness.
   bool GetTargetBrightness(int64* level);
 
   // Increase the brightness level of the backlight by one level.
@@ -107,9 +111,27 @@ class BacklightController {
 
   void SetBrightnessToZero();
 
-  // Indicates whether the display should be turned off based on the current
-  // power state.
-  SIGNAL_CALLBACK_0(BacklightController, void, TurnScreenOff);
+  // Changes the brightness to |target_level| over time.  This is used for
+  // smoothing effects.
+  bool SetBrightnessGradual(int64 target_level);
+
+  // Callback function to set backlight brightness through the backlight
+  // interface.  This is used by SetBrightnessGradual to change the brightness
+  // over a series of steps.
+  //
+  // Example:
+  //   Current brightness = 40
+  //   Want to set brightness to 60 over 5 steps, so the steps are:
+  //      40 -> 44 -> 48 -> 52 -> 56 -> 60
+  //   Thus, SetBrightnessHard(level, target_level) would be called five times
+  //   with the args:
+  //      SetBrightnessHard(44, 60);
+  //      SetBrightnessHard(48, 60);
+  //      SetBrightnessHard(52, 60);
+  //      SetBrightnessHard(56, 60);
+  //      SetBrightnessHard(60, 60);
+  SIGNAL_CALLBACK_2(BacklightController, gboolean, SetBrightnessHard,
+                    int64, int64);
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;
@@ -154,6 +176,9 @@ class BacklightController {
 
   // Flag is set if a backlight device exists.
   bool is_initialized_;
+
+  // The destination hardware brightness used for brightness transitions.
+  int64 target_raw_brightness_;
 
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };

@@ -24,6 +24,13 @@ static const int64 kMinInitialBrightness = 10;
 // wait for this time between polling the backlight value.
 static const int64 kDisplayOffDelayMS = 100;
 
+// Gradually change backlight level to new brightness by breaking up the
+// transition into N steps, where N = kBacklightNumSteps.
+const int kBacklightNumSteps = 8;
+
+// Time between backlight adjustment steps, in milliseconds.
+const int kBacklightStepTimeMS = 30;
+
 // String names for power states.
 static const char* PowerStateToString(PowerState state) {
   switch (state) {
@@ -68,7 +75,6 @@ bool BacklightController::Init() {
   if (backlight_->GetBrightness(&level, &max_)) {
     ReadPrefs();
     is_initialized_ = true;
-    backlight_->SetScreenOffFunc(TurnScreenOffThunk, this);
     return true;
   }
   return false;
@@ -84,11 +90,7 @@ bool BacklightController::GetBrightness(int64* level) {
 }
 
 bool BacklightController::GetTargetBrightness(int64* level) {
-  int64 raw_level;
-  if (!backlight_->GetTargetBrightness(&raw_level))
-    return false;
-
-  *level = RawBrightnessToLocalBrightness(raw_level);
+  *level = RawBrightnessToLocalBrightness(target_raw_brightness_);
   return true;
 }
 
@@ -186,11 +188,10 @@ void BacklightController::SetMinimumBrightness(int64 level) {
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   if (!is_initialized_)
     return;
-  int64 target_level = 0;
-  CHECK(GetTargetBrightness(&target_level));
+
   // Do not use ALS to adjust the backlight brightness if the backlight is
   // turned off.
-  if (target_level == 0)
+  if (state_ == BACKLIGHT_ACTIVE_OFF || state_ == BACKLIGHT_IDLE_OFF)
     return;
 
   als_brightness_level_ = level;
@@ -271,8 +272,8 @@ bool BacklightController::ReadBrightness() {
   if (!is_initialized_)
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
-  int64 level;
-  if (GetTargetBrightness(&level) && level != local_brightness_) {
+  int64 level = RawBrightnessToLocalBrightness(target_raw_brightness_);
+  if (level != local_brightness_) {
     // Another program adjusted the brightness. Sync up.
     // TODO(sque): This is currently useless code due to the implementation of
     // smoothing and target brightness.  However, that will soon change, and
@@ -316,7 +317,7 @@ bool BacklightController::WriteBrightness() {
   local_brightness_ = RawBrightnessToLocalBrightness(val);
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
             << local_brightness_;
-  if (backlight_->SetBrightness(val))
+  if (SetBrightnessGradual(val))
     WritePrefs();
   return local_brightness_ != old_brightness;
 }
@@ -325,14 +326,62 @@ void BacklightController::SetBrightnessToZero() {
   if (!is_initialized_)
     return;
   local_brightness_ = 0;
-  if (backlight_->SetBrightness(0))
+  if (SetBrightnessGradual(0))
     WritePrefs();
 }
 
-void BacklightController::TurnScreenOff() {
-  if (state_ == BACKLIGHT_IDLE_OFF && GDK_DISPLAY() != NULL)
-    CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+bool BacklightController::SetBrightnessGradual(int64 target_level) {
+  LOG(INFO) << "Attempting to set brightness to " << target_level;
+  int64 current_level, max_level;
+  backlight_->GetBrightness(&current_level, &max_level);
+  LOG(INFO) << "Current actual brightness: " << current_level;
+  LOG(INFO) << "Current target brightness: " << target_raw_brightness_;
+
+  // If this is a redundant call (existing target level is the same as
+  // new target level), ignore this call.
+  if (target_raw_brightness_ == target_level)
+    return true;
+
+  // Otherwise, set to the new target brightness. This will disable any
+  // outstanding brightness transition to a different brightness.
+  target_raw_brightness_ = target_level;
+  // If the current brightness happens to be at the new target brightness,
+  // do not start a new transition.
+  int64 diff = target_level - current_level;
+  if (diff == 0)
+    return true;
+
+  LOG(INFO) << "Setting to new target brightness " << target_level;
+  int64 previous_level = current_level;
+  for (int i = 0; i < kBacklightNumSteps; ++i) {
+    int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
+    if (step_level == previous_level)
+      continue;
+    g_timeout_add(i * kBacklightStepTimeMS, SetBrightnessHardThunk,
+                  CreateSetBrightnessHardArgs(this, step_level, target_level));
+    previous_level = step_level;
+  }
+  return true;
 }
 
+gboolean BacklightController::SetBrightnessHard(int64 level,
+                                                int64 target_level) {
+  // If the target brightness of this call does not match the backlight's
+  // current target brightness, it must be from an earlier backlight adjustment
+  // that had a different target brightness.  In that case, it is invalidated
+  // so do nothing.
+  if (target_raw_brightness_ != target_level)
+    return false; // Return false so glib doesn't repeat.
+
+  DLOG(INFO) << "Setting brightness to " << level;
+  if (!backlight_->SetBrightness(level))
+    DLOG(INFO) << "Could not set brightness to " << level;
+
+  // Turn off screen if transitioning to zero.
+  if (level == 0 && target_level == 0 && GDK_DISPLAY() != NULL &&
+      state_ == BACKLIGHT_IDLE_OFF)
+    CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+  return false; // Return false so glib doesn't repeat.
+}
 
 }  // namespace power_manager
