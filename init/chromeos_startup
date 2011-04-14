@@ -5,23 +5,6 @@
 # found in the LICENSE file.
 
 
-# Used to determine whether to run the firmware updater in the critical path
-# (hence get_startup_update_tries() is not in chromeos-firmware-update)
-get_startup_update_tries() {
-  echo $(( $(crossystem kern_nv ||
-    cat /mnt/stateful_partition/.need_firmware_update || echo 0) & 0x0F ))
-}
-
-set_startup_update_tries() {
-  oldkernnv=$(crossystem kern_nv)
-  if [ $? = 0 ]; then
-    newkernnv=$(( (oldkernnv & ~0x0F) | ($1 & 0x0F) ))
-    crossystem kern_nv=$newkernnv
-  else
-    echo $1 > /mnt/stateful_partition/.need_firmware_update
-  fi
-}
-
 # The kernel mounts /proc and /sys during initialization, prior
 # to starting init.
 
@@ -101,23 +84,28 @@ crossystem devsw_boot?1 recoverysw_boot?0
 DEVMODE=$((! $?))
 
 # Check if we need to perform firmware update.
-FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
-FIRMWARE_UPDATE_LOGS='/mnt/stateful_partition/var/log/update_firmware.log'
+FIRMWARE_UPDATE_SCRIPT=/usr/sbin/chromeos-firmwareupdate
 if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+  FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/var/log/update_firmware.log
+
   if [ "$(crossystem mainfw_type)" = developer ]; then
     FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
     "$FIRMWARE_UPDATE_SCRIPT" --mode=devstartup 2>&1 |
       tee $FIRMWARE_UPDATE_LOGS
   else
-    tries="$(get_startup_update_tries)"
+    # fwupdate_tries is not supported in legacy system like CR48, so a cookie
+    # file in stateful partition is used when fwupdate_tries is not available)
+    tries="$(crossystem fwupdate_tries || echo 0)"
     if [ $tries -gt 0 ]; then
-      set_startup_update_tries $(( $tries - 1 ))
+      tries=$((tries - 1))
+      crossystem fwupdate_tries=$tries
 
       if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
         # More message on console for developer mode and dev builds
         FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
       fi
-      mkdir -p /mnt/stateful_partition/var/log
+      # TODO(hungte) don't duplicate the creation of var/log code
+      mkdir -p -m 0755 /mnt/stateful_partition/var/log
       [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
       chromeos-boot-alert update_firmware /dev/tty1
 
