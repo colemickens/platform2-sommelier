@@ -11,6 +11,15 @@ extern const char kMetricBacklightLevelName[];
 extern const int kMetricIdleAfterScreenOffMin;
 extern const int kMetricIdleAfterScreenOffMax;
 extern const int kMetricIdleAfterScreenOffBuckets;
+extern const char kMetricIdleName[];
+extern const int kMetricIdleMin;
+extern const int kMetricIdleMax;
+extern const int kMetricIdleBuckets;
+extern const char kMetricIdleAfterDimName[];
+extern const int kMetricIdleAfterDimMin;
+extern const int kMetricIdleAfterDimMax;
+extern const int kMetricIdleAfterDimBuckets;
+extern const char kMetricIdleAfterScreenOffName[];
 
 }  // namespace power_manager
 

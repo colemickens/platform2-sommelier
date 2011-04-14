@@ -32,16 +32,6 @@ const int Daemon::kMetricBatteryTimeToEmptyMin = 1;
 const int Daemon::kMetricBatteryTimeToEmptyMax = 1000;
 const int Daemon::kMetricBatteryTimeToEmptyBuckets = 50;
 const time_t Daemon::kMetricBatteryTimeToEmptyInterval = 30;  // seconds
-const char Daemon::kMetricIdleName[] = "Power.IdleTime";  // ms
-const int Daemon::kMetricIdleMin = 60 * 1000;
-const int Daemon::kMetricIdleMax = 60 * 60 * 1000;
-const int Daemon::kMetricIdleBuckets = 50;
-const char Daemon::kMetricIdleAfterDimName[] = "Power.IdleTimeAfterDim";  // ms
-const int Daemon::kMetricIdleAfterDimMin = 100;
-const int Daemon::kMetricIdleAfterDimMax = 10 * 60 * 1000;
-const int Daemon::kMetricIdleAfterDimBuckets = 50;
-const char Daemon::kMetricIdleAfterScreenOffName[] =
-    "Power.IdleTimeAfterScreenOff";  // ms
 
 // Checks if |now| is the time to generate a new sample of a given
 // metric. Returns true if the last metric sample was generated at

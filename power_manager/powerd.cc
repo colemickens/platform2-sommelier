@@ -21,6 +21,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "cros/chromeos_wm_ipc_enums.h"
+#include "power_manager/metrics_constants.h"
 #include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/util.h"
