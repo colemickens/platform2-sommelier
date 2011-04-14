@@ -87,10 +87,21 @@ class DevicePolicyTest : public ::testing::Test {
     return whitelist_count;
   }
 
-  em::PolicyFetchResponse Wrap(const em::ChromeDeviceSettingsProto& polval) {
+  bool AreNewUsersAllowed(const DevicePolicy& pol) {
+    em::ChromeDeviceSettingsProto polval;
+    ExtractPolicyValue(pol, &polval);
+    return (polval.has_allow_new_users() &&
+            polval.allow_new_users().has_allow_new_users() &&
+            polval.allow_new_users().allow_new_users());
+  }
+
+  em::PolicyFetchResponse Wrap(const em::ChromeDeviceSettingsProto& polval,
+                               const std::string& user) {
     em::PolicyData new_poldata;
     new_poldata.set_policy_type(DevicePolicy::kDevicePolicyType);
     new_poldata.set_policy_value(polval.SerializeAsString());
+    if (!user.empty())
+      new_poldata.set_username(user);
     em::PolicyFetchResponse new_policy;
     new_policy.set_policy_data(new_poldata.SerializeAsString());
     return new_policy;
@@ -99,19 +110,21 @@ class DevicePolicyTest : public ::testing::Test {
   em::PolicyFetchResponse CreateWithOwner(const std::string& owner) {
     em::ChromeDeviceSettingsProto new_polval;
     new_polval.mutable_user_whitelist()->add_user_whitelist(owner);
-    return Wrap(new_polval);
+    new_polval.mutable_allow_new_users()->set_allow_new_users(true);
+    return Wrap(new_polval, owner);
   }
 
   em::PolicyFetchResponse CreateWithWhitelist(
       const std::vector<std::string>& users) {
     em::ChromeDeviceSettingsProto polval;
+    polval.mutable_allow_new_users()->set_allow_new_users(true);
     em::UserWhitelistProto* whitelist_proto = polval.mutable_user_whitelist();
     for(std::vector<std::string>::const_iterator it = users.begin();
         it != users.end();
         ++it) {
       whitelist_proto->add_user_whitelist(*it);
     }
-    return Wrap(polval);
+    return Wrap(polval, std::string());
   }
 
   static const char kDefaultPolicy[];
@@ -191,9 +204,12 @@ TEST_F(DevicePolicyTest, OwnerAlreadyInPolicy) {
   pol.Set(CreateWithOwner(current_user));
 
   scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  EXPECT_CALL(*key.get(), Sign(_, _, _))
+      .Times(0);
   pol.StoreOwnerProperties(key.get(), current_user, NULL);
 
   ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
+  ASSERT_TRUE(AreNewUsersAllowed(pol));
 }
 
 TEST_F(DevicePolicyTest, ExistingPolicy) {

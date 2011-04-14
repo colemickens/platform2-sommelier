@@ -37,8 +37,10 @@
 #include "login_manager/mock_upstart_signal_emitter.h"
 #include "login_manager/system_utils.h"
 
-namespace login_manager {
+namespace em = enterprise_management;
 
+namespace login_manager {
+using ::testing::A;
 using ::testing::AnyNumber;
 using ::testing::AtMost;
 using ::testing::DoAll;
@@ -238,6 +240,7 @@ class SessionManagerTest : public ::testing::Test {
       // First, mimic attempt to whitelist the owner and set the
       // device owner pref.
       EXPECT_CALL(*key, Sign(_, _, _))
+          .WillOnce(Return(true))
           .WillOnce(Return(true))
           .RetiresOnSaturation();
       EXPECT_CALL(*store, Set(_, email_string, _))
@@ -696,6 +699,8 @@ TEST_F(SessionManagerTest, StartOwnerSession) {
   ExpectStartSessionForOwner(email, key, store, true);
   EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true));
+  EXPECT_CALL(*policy, Set(A<const em::PolicyFetchResponse&>()))
+      .Times(1);
 
   manager_->test_api().set_ownerkey(key);
   manager_->test_api().set_prefstore(store);
@@ -823,6 +828,7 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
       .WillOnce(Return(true));
   EXPECT_CALL(*key, Sign(_, _, _))
       .WillOnce(Return(true))
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
   EXPECT_CALL(*key, Persist())
       .WillOnce(Return(true));
@@ -839,6 +845,7 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
   manager_->test_api().set_prefstore(store);
 
   EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
   manager_->test_api().set_policy(policy);
 

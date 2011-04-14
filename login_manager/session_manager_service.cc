@@ -489,12 +489,15 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // If the current user is the owner, and isn't whitelisted or set
   // as the cros.device.owner pref, then do so.
   bool can_access_key = CurrentUserHasOwnerKey(key_->public_key_der(), error);
-  if (can_access_key)
+  if (can_access_key) {
     StoreOwnerProperties(NULL);
+    policy_->StoreOwnerProperties(key_.get(), current_user_, NULL);
+  }
   // Now, the flip side...if we believe the current user to be the owner
   // based on the cros.owner.device setting, and he DOESN'T have the private
   // half of the public key, we must mitigate.
-  if (CurrentUserIsOwner() && !can_access_key) {
+  if ((CurrentUserIsOwner() || policy_->CurrentUserIsOwner(current_user_)) &&
+      !can_access_key) {
     if (!(*OUT_done = mitigator_->Mitigate()))
       return FALSE;
   }
@@ -564,6 +567,15 @@ void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
   io_thread_.message_loop()->PostTask(
       FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
   StoreOwnerProperties(NULL);
+  if (policy_->StoreOwnerProperties(key_.get(), current_user_, NULL)) {
+    io_thread_.message_loop()->PostTask(
+        FROM_HERE,
+        NewRunnableMethod(this,
+                          &SessionManagerService::PersistPolicy,
+                          reinterpret_cast<DBusGMethodInvocation*>(NULL)));
+  } else {
+    LOG(WARNING) << "Could not immediately store owner properties in policy";
+  }
 }
 
 void SessionManagerService::StartKeyGeneration() {
@@ -755,8 +767,7 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
     return FALSE;
   }
 
-  // Determine if the policy has pushed a new owner key and, if so, set it and
-  // schedule a task to persist it to disk.
+  // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key_->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
     std::vector<uint8> der;

@@ -91,21 +91,25 @@ bool DevicePolicy::StoreOwnerProperties(OwnerKey* key,
   // If there existed some device policy, we've got it now!
   // Update the UserWhitelistProto inside the ChromeDeviceSettingsProto we made.
   em::UserWhitelistProto* whitelist_proto = polval.mutable_user_whitelist();
-  bool on_whitelist = false;
+  bool on_list = false;
   const RepeatedPtrField<string>& whitelist = whitelist_proto->user_whitelist();
   for (RepeatedPtrField<string>::const_iterator it = whitelist.begin();
        it != whitelist.end();
        ++it) {
-    if (on_whitelist = (current_user == *it))
+    if (on_list = (current_user == *it))
       break;
   }
-  if (!on_whitelist)
-    whitelist_proto->add_user_whitelist(current_user);
-  bool current_user_is_owner = true;
-  // TODO(cmasone): once ChromeDeviceSettingsProto contains an owner name field
-  //                check that against |current_user| here.
-  if (current_user_is_owner && on_whitelist)
+  if (poldata.has_username() && poldata.username() == current_user && on_list)
     return true;  // No changes are needed.
+
+  if (!on_list) {
+    // Add owner to the whitelist and turn off whitelist enforcement if it is
+    // currently not explicitly turned on or off.
+    whitelist_proto->add_user_whitelist(current_user);
+    if (!polval.has_allow_new_users())
+      polval.mutable_allow_new_users()->set_allow_new_users(true);
+  }
+  poldata.set_username(current_user);
 
   // We have now updated the whitelist and owner setting in |polval|.
   // We need to put it into |poldata|, serialize that, sign it, and
@@ -130,6 +134,15 @@ bool DevicePolicy::StoreOwnerProperties(OwnerKey* key,
       std::string(reinterpret_cast<const char*>(&sig[0]), sig.size()));
   Set(new_policy);
   return true;
+}
+
+bool DevicePolicy::CurrentUserIsOwner(const std::string& current_user) {
+  em::PolicyData poldata;
+  if (!policy_.has_policy_data())
+    return false;
+  if (poldata.ParseFromString(policy_.policy_data()))
+    return poldata.has_username() && poldata.username() == current_user;
+  return false;
 }
 
 }  // namespace login_manager
