@@ -89,9 +89,7 @@ if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
   FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/var/log/update_firmware.log
 
   if [ "$(crossystem mainfw_type)" = developer ]; then
-    FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
-    "$FIRMWARE_UPDATE_SCRIPT" --mode=devstartup 2>&1 |
-      tee $FIRMWARE_UPDATE_LOGS
+    chromeos-boot-alert dev_fwcheck /dev/tty1
   else
     # fwupdate_tries is not supported in legacy system like CR48, so a cookie
     # file in stateful partition is used when fwupdate_tries is not available)

@@ -29,6 +29,9 @@ usage_help() {
              Arg #1: (optional) Image file to show.
 
   self_repair: Message when starting to rebuild stateful partition.
+
+  dev_fwcheck: Message when staring with developer firmware, to check if there
+               is available updates.
 "
 }
 
@@ -200,6 +203,53 @@ mode_self_repair() {
   " >"$STDOUT"
 }
 
+# Prints message when starting with developer firmware, to check if there's
+# available updates for firmware.
+mode_dev_fwcheck() {
+  # TODO(hungte) Find some better way to store firmware value, like using
+  # /etc/lsb-release.  Currently the firmware updater may contain fields like
+  # SHELLBALL_FWVERSION in the beginning of updater script.
+  local SHELLBALL_FWVERSION=""
+  local SHELLBALL_ECVERSION=""
+  # The magic value 40 is verified on current updaters (using line 23-24)
+  eval "$(head -40 /usr/sbin/chromeos-firmwareupdate |
+          grep '^ *SHELLBALL_..VERSION=')"
+  if [ -z "$SHELLBALL_FWVERSION" -a -z "$SHELLBALL_ECVERSION" ]; then
+    return
+  fi
+
+  local fw_version="$(crossystem fwid)"
+  local ec_info="$(mosys -k ec info 2>/dev/null)" || ec_info=""
+  ec_version="$(eval "$ec_info"; echo "$fw_version")"
+
+  local notify_update=0
+  if [ "$SHELLBALL_FWVERSION" != "$fw_version" ] &&
+     [ "$SHELLBALL_FWVERSION" != "IGNORE" ]; then
+    notify_update=1
+    echo "
+      System firmware update available: [$SHELLBALL_FWVERSION]
+      Currently installed system firmware: [$fw_version]
+    " > "$STDOUT"
+  fi
+  if [ "$SHELLBALL_ECVERSION" != "$ec_version" ] &&
+     [ "$SHELLBALL_ECVERSION" != "IGNORE" ]; then
+    notify_update=1
+    echo "
+      EC firmware update available: [$SHELLBALL_ECVERSION]
+      Currently installed EC firmware: [$ec_version]
+    " >"$STDOUT"
+  fi
+  if [ $notify_update -ne 0 ]; then
+    echo "
+      Firmware auto updating is disabled for developer mode. If you want to
+      manually update your firmware, please run the following command from a
+      root shell:
+
+      sudo chromeos-firmwareupdate --force --mode=recovery
+    " >"$STDOUT"
+  fi
+}
+
 # Main initialization and dispatcher
 main() {
   # process args
@@ -219,8 +269,8 @@ main() {
   fi
 
   case "$mode" in
-    "warn_dev" | "enter_dev" | "leave_dev" | \
-      "update_firmware" | "wipe" |"self_repair" )
+    "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
+      "update_firmware" | "wipe" | "self_repair" )
       mode_"$mode" "$@"
       ;;
     * )
