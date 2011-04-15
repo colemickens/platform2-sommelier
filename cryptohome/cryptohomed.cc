@@ -10,6 +10,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <chromeos/syslog_logging.h>
 
 // TODO(wad) This is a placeholder DBus service which allows
 //           chrome-login (and anything else running as chronos)
@@ -30,10 +31,8 @@ int main(int argc, char **argv) {
   ::g_type_init();
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
-  logging::InitLogging("/var/log/cryptohomed.log",
-                       logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
 
   // Allow the commands to be configurable.
   CommandLine *cl = CommandLine::ForCurrentProcess();
