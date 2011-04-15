@@ -570,9 +570,7 @@ void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
   if (policy_->StoreOwnerProperties(key_.get(), current_user_, NULL)) {
     io_thread_.message_loop()->PostTask(
         FROM_HERE,
-        NewRunnableMethod(this,
-                          &SessionManagerService::PersistPolicy,
-                          reinterpret_cast<DBusGMethodInvocation*>(NULL)));
+        NewRunnableMethod(this, &SessionManagerService::PersistPolicy));
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
@@ -819,7 +817,8 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
   }
   policy_->Set(policy);
   io_thread_.message_loop()->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistPolicy,
+      FROM_HERE, NewRunnableMethod(this,
+                                   &SessionManagerService::PersistPolicyReturn,
                                    context));
   return TRUE;
 }
@@ -1020,13 +1019,22 @@ void SessionManagerService::PersistStore() {
                                    what_happened));
 }
 
-void SessionManagerService::PersistPolicy(DBusGMethodInvocation* context) {
+void SessionManagerService::PersistPolicyReturn(DBusGMethodInvocation* ctxt) {
   LOG(INFO) << "Persisting policy to disk.";
   bool what_happened = policy_->Persist();
   message_loop_->PostTask(
       FROM_HERE, NewRunnableMethod(this,
                                    &SessionManagerService::SendBooleanReply,
-                                   context,
+                                   ctxt,
+                                   what_happened));
+}
+
+void SessionManagerService::PersistPolicy() {
+  LOG(INFO) << "Persisting policy to disk.";
+  bool what_happened = policy_->Persist();
+  message_loop_->PostTask(
+      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
+                                   chromium::kPropertyChangeCompleteSignal,
                                    what_happened));
 }
 

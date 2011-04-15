@@ -808,7 +808,7 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
                                    StrEq("success")))
-      .Times(1);
+      .Times(2);
   EXPECT_CALL(*(utils_.get()),
               SendSignalToChromium(chromium::kWhitelistChangeCompleteSignal,
                                    StrEq("success")))
@@ -847,6 +847,8 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
   EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true))
       .WillOnce(Return(true));
+  EXPECT_CALL(*policy, Set(A<const em::PolicyFetchResponse&>()))
+      .Times(1);
   manager_->test_api().set_policy(policy);
 
   StartFakeSession();

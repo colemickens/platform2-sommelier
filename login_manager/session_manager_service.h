@@ -458,7 +458,11 @@ class SessionManagerService
 
   // |policy_| is persisted to disk, and then a task is posted to
   // ||message_loop_| to complete the StorePolicy DBus method call.
-  void PersistPolicy(DBusGMethodInvocation* context);
+  void PersistPolicyReturn(DBusGMethodInvocation* ctxt);
+
+  // |policy_| is persisted to disk, and then posts a task to |message_loop_|
+  // to signal Chromium when done.
+  void PersistPolicy();
 
   // |store_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
