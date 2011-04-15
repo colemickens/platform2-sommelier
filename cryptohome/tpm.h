@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,6 +7,7 @@
 // keys stored on disk.  When the TPM is enabled, there is a system-wide
 // cryptohome RSA key that is used during the encryption/decryption of these
 // keys.
+// TODO(wad) make more functions virtual for use in mock_tpm.h.
 
 #include <base/file_util.h>
 #include <base/lock.h>
@@ -136,7 +137,7 @@ class Tpm {
   //
   // Parameters
   //   owner_password (OUT) - The random owner password used
-  bool GetOwnerPassword(chromeos::Blob* owner_password);
+  virtual bool GetOwnerPassword(chromeos::Blob* owner_password);
 
   // Clears the owner password from storage
   void ClearStoredOwnerPassword();
@@ -149,7 +150,7 @@ class Tpm {
   // Returns whether or not the TPM is owned.  This method call returns a cached
   // result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
-  bool IsOwned() const { return is_owned_; }
+  virtual bool IsOwned() const { return is_owned_; }
 
   // Returns whether or not the SRK is available
   bool IsSrkAvailable() const { return is_srk_available_; }
@@ -168,6 +169,69 @@ class Tpm {
   //   data (OUT) - The random data from the TPM
   bool GetRandomData(size_t length, chromeos::Blob* data);
 
+  // Creates a lockable NVRAM space in the TPM
+  //
+  // Parameters
+  //   index - The index of the space
+  //   length - The number of bytes to allocate
+  //   flags - any space-specific flags (currently ignored)
+  // TODO(wad) Add PCR compositing via flags.
+  // TODO(wad) Should this just be a factory for a TpmNvram class?
+  // Returns false if the index, length, or flags are invalid or the required
+  // authorization is not possible.
+  virtual bool DefineLockOnceNvram(uint32_t index,
+                                   size_t length,
+                                   uint32_t flags);
+
+  // Destroys a defined NVRAM space
+  //
+  // Parameters
+  //  index - The index of the space to destroy
+  // Returns false if the index is invalid or the required authorization
+  // is not possible.
+  virtual bool DestroyNvram(uint32_t index);
+
+  // Writes the given blob to NVRAM
+  //
+  // Parameters
+  //  index - The index of the space to write
+  //  blob - the data to write (size==0 may be used for locking)
+  // Returns false if the index is invalid or the request lacks the required
+  // authorization.
+  virtual bool WriteNvram(uint32_t index, const SecureBlob& blob);
+
+  // Reads from the NVRAM index to the given blob
+  //
+  // Parameters
+  //  index - The index of the space to write
+  //  blob - the data to read
+  // Returns false if the index is invalid or the request lacks the required
+  // authorization.
+  virtual bool ReadNvram(uint32_t index, SecureBlob* blob);
+
+  // Determines if the given index is defined in the TPM
+  //
+  // Parameters
+  //  index - The index of the space
+  // Returns true if it exists and false if it doesn't or there is a failure to
+  // communicate with the TPM.
+  virtual bool IsNvramDefined(uint32_t index);
+
+  // Determines if the NVRAM space at the given index is bWriteDefine locked
+  //
+  // Parameters
+  //   index - The index of the space
+  // Returns true if locked and false if it is unlocked, the space does not
+  // exist, or there is a TPM-related error.
+  virtual bool IsNvramLocked(uint32_t index);
+
+  // Returns the reported size of the NVRAM space indicated by its index
+  //
+  // Parameters
+  //   index - The index of the space
+  // Returns the size of the space. If undefined or an error occurs, 0 is
+  // returned.
+  virtual unsigned int GetNvramSize(uint32_t index);
 
   void set_srk_auth(const SecureBlob& value) {
     srk_auth_.resize(value.size());
@@ -199,6 +263,18 @@ class Tpm {
                          TSS_RESULT* result);
 
   bool OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the owner password is available and
+  // authorization is successfully acquired.
+  bool ConnectContextAsOwner(TSS_HCONTEXT* context_handle,
+                             TSS_HTPM* tpm_handle);
+
+  // Populates |context_handle| with a valid TSS_HCONTEXT and |tpm_handle| with
+  // its matching TPM object iff the context can be created and a TPM object
+  // exists in the TSS.
+  bool ConnectContextAsUser(TSS_HCONTEXT* context_handle,
+                            TSS_HTPM* tpm_handle);
 
   bool CreateCryptohomeKey(TSS_HCONTEXT context_handle,
                            bool create_in_tpm, TSS_RESULT* result);
@@ -261,6 +337,27 @@ class Tpm {
   // Parameters
   //   context_handle - The context handle for the TPM session
   unsigned int GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle);
+
+  // Returns the size of the specified NVRAM space.
+  //
+  // Parameters
+  //   context_handle - The context handle for the TPM session
+  //   index - NVRAM Space index
+  // Returns -1 if the index, handle, or space is invalid.
+  unsigned int GetNvramSizeForContext(TSS_HCONTEXT context_handle,
+                                      TSS_HTPM tpm_handle,
+                                      uint32_t index);
+
+  // Returns if an Nvram space exists using the given context.
+  bool IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
+                                TSS_HTPM tpm_handle,
+                                uint32_t index);
+
+  // Returns if bWriteDefine is true for a given NVRAM space using the given
+  // context.
+  bool IsNvramLockedForContext(TSS_HCONTEXT context_handle,
+                               TSS_HTPM tpm_handle,
+                               uint32_t index);
 
   // Returns whether or not the TPM is disabled by checking a flag in the TPM's
   // entry in /sys/class/misc

@@ -38,6 +38,7 @@ class MockTpm : public Tpm {
   ~MockTpm() {}
   MOCK_METHOD2(Init, bool(Crypto*, bool));
   MOCK_METHOD0(IsConnected, bool());
+  MOCK_CONST_METHOD0(IsOwned, bool());
   MOCK_METHOD1(Connect, bool(TpmRetryAction*));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD6(Encrypt, bool(const chromeos::Blob&, const chromeos::Blob&,
@@ -47,6 +48,14 @@ class MockTpm : public Tpm {
                                    unsigned int, const chromeos::Blob&,
                                    SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(SecureBlob*, TpmRetryAction*));
+  MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
+  MOCK_METHOD3(DefineLockOnceNvram, bool(uint32_t, size_t, uint32_t));
+  MOCK_METHOD2(WriteNvram, bool(uint32_t, const SecureBlob&));
+  MOCK_METHOD2(ReadNvram, bool(uint32_t, SecureBlob*));
+  MOCK_METHOD1(DestroyNvram, bool(uint32_t));
+  MOCK_METHOD1(IsNvramDefined, bool(uint32_t));
+  MOCK_METHOD1(IsNvramLocked, bool(uint32_t));
+  MOCK_METHOD1(GetNvramSize, unsigned int(uint32_t));
 
  private:
   bool Xor(const chromeos::Blob& data, const chromeos::Blob& password,

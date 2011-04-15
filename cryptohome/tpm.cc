@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,9 +6,11 @@
 
 #include "tpm.h"
 
+#include <arpa/inet.h>
 #include <base/file_util.h>
 #include <base/platform_thread.h>
 #include <base/time.h>
+#include <base/scoped_ptr.h>
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -210,6 +212,52 @@ void Tpm::DisconnectContext(TSS_HCONTEXT context_handle) {
   }
 }
 
+bool Tpm::ConnectContextAsOwner(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
+  *context = 0;
+  *tpm = 0;
+  if (owner_password_.size() == 0) {
+    LOG(ERROR) << "ConnectContextAsOwner requires an owner password";
+    return false;
+  }
+
+  if (!is_owned_ || is_being_owned_) {
+    LOG(ERROR) << "ConnectContextAsOwner: TPM is unowned or still being owned";
+    return false;
+  }
+
+  if ((*context = ConnectContext()) == 0) {
+    LOG(ERROR) << "ConnectContextAsOwner: Could not open the TPM";
+    return false;
+  }
+
+  if (!GetTpmWithAuth(*context, owner_password_, tpm)) {
+    LOG(ERROR) << "ConnectContextAsOwner: failed to authorize as the owner";
+    Tspi_Context_Close(*context);
+    *context = 0;
+    *tpm = 0;
+    return false;
+  }
+  return true;
+}
+
+bool Tpm::ConnectContextAsUser(TSS_HCONTEXT* context, TSS_HTPM* tpm) {
+  *context = 0;
+  *tpm = 0;
+  if ((*context = ConnectContext()) == 0) {
+    LOG(ERROR) << "ConnectContextAsUser: Could not open the TPM";
+    return false;
+  }
+
+  if (!GetTpm(*context, tpm)) {
+    LOG(ERROR) << "ConnectContextAsUser: failed to get a TPM object";
+    Tspi_Context_Close(*context);
+    *context = 0;
+    *tpm = 0;
+    return false;
+  }
+  return true;
+}
+
 void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
   memset(status, 0, sizeof(Tpm::TpmStatusInfo));
   status->ThisInstanceHasContext = (context_handle_ != 0);
@@ -224,7 +272,7 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
   status->CanConnect = true;
 
   // Check the Storage Root Key
-  ScopedTssType<TSS_HKEY> srk_handle(context_handle);
+  ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
     status->LastTpmError = result;
     return;
@@ -242,7 +290,7 @@ void Tpm::GetStatus(bool check_crypto, Tpm::TpmStatusInfo* status) {
   status->CanLoadSrkPublicKey = true;
 
   // Check the Cryptohome key
-  ScopedTssType<TSS_HKEY> key_handle(context_handle);
+  ScopedTssKey key_handle(context_handle);
   if (!LoadCryptohomeKey(context_handle, key_handle.ptr(), &result)) {
     status->LastTpmError = result;
     return;
@@ -283,7 +331,7 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   *result = TSS_SUCCESS;
 
   // Load the Storage Root Key
-  ScopedTssType<TSS_HKEY> srk_handle(context_handle);
+  ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
     return false;
   }
@@ -630,7 +678,7 @@ unsigned int Tpm::GetMaxRsaKeyCountForContext(TSS_HCONTEXT context_handle) {
     return count;
   }
   if (cap_length == sizeof(unsigned int)) {
-    count = *(reinterpret_cast<unsigned int*>(*cap.ptr()));
+    count = *(reinterpret_cast<unsigned int*>(cap.value()));
   }
   return count;
 }
@@ -808,7 +856,7 @@ bool Tpm::EncryptBlob(TSS_HCONTEXT context_handle,
   }
 
   SecureBlob local_data(enc_data_length);
-  memcpy(local_data.data(), enc_data, enc_data_length);
+  memcpy(local_data.data(), enc_data.value(), enc_data_length);
   // We're done with enc_* so let's free it now.
   enc_data.reset();
   enc_handle.reset();
@@ -918,8 +966,8 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
   }
 
   data_out->resize(dec_data_length);
-  memcpy(data_out->data(), dec_data, dec_data_length);
-  chromeos::SecureMemset(dec_data, 0, dec_data_length);
+  memcpy(data_out->data(), dec_data.value(), dec_data_length);
+  chromeos::SecureMemset(dec_data.value(), 0, dec_data_length);
 
   return true;
 }
@@ -938,8 +986,8 @@ bool Tpm::GetKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   SecureBlob local_data(blob_size);
-  memcpy(local_data.data(), blob, blob_size);
-  chromeos::SecureMemset(blob, 0, blob_size);
+  memcpy(local_data.data(), blob.value(), blob_size);
+  chromeos::SecureMemset(blob.value(), 0, blob_size);
   data_out->swap(local_data);
   return true;
 }
@@ -957,8 +1005,8 @@ bool Tpm::GetPublicKeyBlob(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
   }
 
   SecureBlob local_data(blob_size);
-  memcpy(local_data.data(), blob, blob_size);
-  chromeos::SecureMemset(blob, 0, blob_size);
+  memcpy(local_data.data(), blob.value(), blob_size);
+  chromeos::SecureMemset(blob.value(), 0, blob_size);
   data_out->swap(local_data);
   return true;
 }
@@ -1085,7 +1133,7 @@ void Tpm::IsEnabledOwnedCheckViaContext(TSS_HCONTEXT context_handle,
                                        &cap_length, cap.ptr())) == 0) {
     if (cap_length >= (sizeof(TSS_BOOL))) {
       *enabled = true;
-      *owned = ((*(reinterpret_cast<TSS_BOOL*>(*cap.ptr()))) != 0);
+      *owned = ((*(reinterpret_cast<TSS_BOOL*>(cap.value()))) != 0);
     }
   } else if(ERROR_CODE(result) == TPM_E_DISABLED) {
     *enabled = false;
@@ -1373,7 +1421,9 @@ bool Tpm::LoadOwnerPassword(const TpmStatus& tpm_status,
   }
 
   SecureBlob local_data(dec_data_length);
-  memcpy(static_cast<char*>(local_data.data()), dec_data, dec_data_length);
+  memcpy(static_cast<char*>(local_data.data()),
+         dec_data.value(),
+         dec_data_length);
   owner_password->swap(local_data);
 
   return true;
@@ -1423,7 +1473,7 @@ bool Tpm::StoreOwnerPassword(const chromeos::Blob& owner_password,
   UINT32 pcr_len;
   ScopedTssMemory pcr_value(context_handle);
   Tspi_TPM_PcrRead(tpm_handle, 0, &pcr_len, pcr_value.ptr());
-  Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_len, pcr_value);
+  Tspi_PcrComposite_SetPcrValue(pcrs_handle, 0, pcr_len, pcr_value.value());
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
   ScopedTssKey enc_handle(context_handle);
@@ -1455,7 +1505,7 @@ bool Tpm::StoreOwnerPassword(const chromeos::Blob& owner_password,
     return false;
   }
 
-  tpm_status->set_owner_password(enc_data, enc_data_length);
+  tpm_status->set_owner_password(enc_data.value(), enc_data_length);
   return true;
 }
 
@@ -1679,9 +1729,312 @@ bool Tpm::GetRandomData(size_t length, chromeos::Blob* data) {
     TPM_LOG(ERROR, result) << "Could not get random data from the TPM";
     return false;
   }
-  memcpy(random.data(), tpm_data, random.size());
-  chromeos::SecureMemset(tpm_data, 0, random.size());
+  memcpy(random.data(), tpm_data.value(), random.size());
+  chromeos::SecureMemset(tpm_data.value(), 0, random.size());
   data->swap(random);
+  return true;
+}
+
+bool Tpm::DestroyNvram(uint32_t index) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not open the TPM";
+    return false;
+  }
+
+  if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
+    LOG(INFO) << "NVRAM index is already undefined.";
+    return true;
+  }
+
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle,
+                                     TSS_OBJECT_TYPE_NV,
+                                     0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX,
+                                0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  if ((result = Tspi_NV_ReleaseSpace(nv_handle))) {
+    TPM_LOG(ERROR, result) << "Could not release NVRAM space: " << index;
+    return false;
+  }
+
+  return true;
+}
+
+// TODO(wad) Make this a wrapper around a generic DefineNvram().
+bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length, uint32_t flags) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsOwner(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "DefineLockOnceNvram failed to acquire authorization.";
+    return false;
+  }
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle,
+                                     TSS_OBJECT_TYPE_NV,
+                                     0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX,
+                                0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_DATASIZE,
+                                0, length);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set size on NVRAM object: " << length;
+    return false;
+  }
+
+  // Do not restrict to owner auth for write - just ensure it is lockable.
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_PERMISSIONS,
+                                0, TPM_NV_PER_WRITEDEFINE);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set PER_WRITEDEFINE on NVRAM object";
+    return false;
+  }
+
+  if (TPM_ERROR(result = Tspi_NV_DefineSpace(nv_handle, NULL, NULL))) {
+    TPM_LOG(ERROR, result) << "Could not define NVRAM space: " << index;
+    return false;
+  }
+
+  return true;
+}
+
+bool Tpm::IsNvramDefined(uint32_t index) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not connect to the TPM";
+    return false;
+  }
+  return IsNvramDefinedForContext(context_handle, tpm_handle, index);
+}
+
+bool Tpm::IsNvramDefinedForContext(TSS_HCONTEXT context_handle,
+                                TSS_HTPM tpm_handle,
+                                uint32_t index) {
+  TSS_RESULT result;
+  UINT32 nv_list_data_length = 0;
+  ScopedTssMemory nv_list_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle,
+                                                TSS_TPMCAP_NV_LIST,
+                                                0,
+                                                NULL,
+                                                &nv_list_data_length,
+                                                nv_list_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return false;
+  }
+
+  // Walk the list and check if the index exists.
+  UINT32* nv_list = reinterpret_cast<UINT32*>(nv_list_data.value());
+  UINT32 nv_list_length = nv_list_data_length / sizeof(UINT32);
+  index = htonl(index);  // TPM data is network byte order.
+  for (UINT32 i = 0; i < nv_list_length; ++i) {
+    // TODO(wad) add a NvramList method.
+    if (index == nv_list[i])
+      return true;
+  }
+  return false;
+}
+
+unsigned int Tpm::GetNvramSize(uint32_t index) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not connect to the TPM";
+    return 0;
+  }
+
+  return GetNvramSizeForContext(context_handle, tpm_handle, index);
+}
+
+unsigned int Tpm::GetNvramSizeForContext(TSS_HCONTEXT context_handle,
+                                         TSS_HTPM tpm_handle,
+                                         uint32_t index) {
+  unsigned int count = 0;
+  TSS_RESULT result;
+
+  UINT32 nv_index_data_length = 0;
+  ScopedTssMemory nv_index_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle,
+                                                TSS_TPMCAP_NV_INDEX,
+                                                sizeof(index),
+                                                reinterpret_cast<BYTE*>(&index),
+                                                &nv_index_data_length,
+                                                nv_index_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return count;
+  }
+  if (nv_index_data_length == 0) {
+    return count;
+  }
+  // TPM_NV_DATA_PUBLIC->dataSize is the last element in the struct.
+  // Since packing the struct still doesn't eliminate inconsistencies between
+  // the API and the hardware, this is the safest way to extract the data.
+  uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
+                               nv_index_data.value() + nv_index_data_length -
+                               sizeof(UINT32));
+  return htonl(*nv_data_public);
+}
+
+bool Tpm::IsNvramLocked(uint32_t index) {
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not connect to the TPM";
+    return 0;
+  }
+
+  return IsNvramLockedForContext(context_handle, tpm_handle, index);
+}
+
+bool Tpm::IsNvramLockedForContext(TSS_HCONTEXT context_handle,
+                                  TSS_HTPM tpm_handle,
+                                  uint32_t index) {
+  unsigned int count = 0;
+  TSS_RESULT result;
+  UINT32 nv_index_data_length = 0;
+  ScopedTssMemory nv_index_data(context_handle);
+  if (TPM_ERROR(result = Tspi_TPM_GetCapability(tpm_handle,
+                                                TSS_TPMCAP_NV_INDEX,
+                                                sizeof(index),
+                                                reinterpret_cast<BYTE*>(&index),
+                                                &nv_index_data_length,
+                                                nv_index_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Error calling Tspi_TPM_GetCapability";
+    return count;
+  }
+  if (nv_index_data_length < sizeof(UINT32) + sizeof(TPM_BOOL)) {
+    return count;
+  }
+  // TPM_NV_DATA_PUBLIC->bWriteDefine is the second to last element in the
+  // struct.  Since packing the struct still doesn't eliminate inconsistencies
+  // between the API and the hardware, this is the safest way to extract the
+  // data.
+  // TODO(wad) share data with GetNvramSize() to avoid extra calls.
+  uint32_t* nv_data_public = reinterpret_cast<uint32_t*>(
+                               nv_index_data.value() + nv_index_data_length -
+                               (sizeof(UINT32) + sizeof(TPM_BOOL)));
+  return (*nv_data_public != 0);
+}
+
+bool Tpm::ReadNvram(uint32_t index, SecureBlob* blob) {
+  // TODO(wad) longer term, add support for checking when a space is restricted
+  //           and needs an authenticated handle.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not connect to the TPM";
+    return 0;
+  }
+
+  if (!IsNvramDefinedForContext(context_handle, tpm_handle, index)) {
+    LOG(ERROR) << "Cannot read from non-existent NVRAM space.";
+    return false;
+  }
+
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle,
+                                     TSS_OBJECT_TYPE_NV,
+                                     0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX,
+                                0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  unsigned int size = GetNvramSizeForContext(context_handle, tpm_handle, index);
+  if (size == 0) {
+    LOG(ERROR) << "NvramSize is too small.";
+    // TODO(wad) get attrs so we can explore more
+    return false;
+  }
+  ScopedTssMemory space_data(context_handle);
+  if ((result = Tspi_NV_ReadValue(nv_handle, 0, &size, space_data.ptr()))) {
+    TPM_LOG(ERROR, result) << "Could not read to NVRAM space: " << index;
+    return false;
+  }
+  if (!space_data.value()) {
+    LOG(ERROR) << "No data read from NVRAM space: " << index;
+    return false;
+  }
+  blob->resize(size);
+  memcpy(blob->data(), space_data.value(), size);
+
+  return true;
+}
+
+bool Tpm::WriteNvram(uint32_t index, const SecureBlob& blob) {
+  // TODO(wad) longer term, add support for checking when a space is restricted
+  //           and needs an authenticated handle.
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Could not connect to the TPM";
+    return 0;
+  }
+
+  // Create an NVRAM store object handle.
+  TSS_RESULT result;
+  ScopedTssNvStore nv_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle,
+                                     TSS_OBJECT_TYPE_NV,
+                                     0,
+                                     nv_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not acquire an NVRAM object handle";
+    return false;
+  }
+
+  result = Tspi_SetAttribUint32(nv_handle, TSS_TSPATTRIB_NV_INDEX,
+                                0, index);
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not set index on NVRAM object: " << index;
+    return false;
+  }
+
+  scoped_array<BYTE> nv_data(new BYTE[blob.size()]);
+  memcpy(nv_data.get(), blob.const_data(), blob.size());
+  result = Tspi_NV_WriteValue(nv_handle, 0, blob.size(), nv_data.get());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Could not write to NVRAM space: " << index;
+    return false;
+  }
+
   return true;
 }
 

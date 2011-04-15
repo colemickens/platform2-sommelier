@@ -8,23 +8,22 @@
 // Example usage:
 //  ScopedTssContext context_handle;
 //  TSS_RESULT result;
-//  if (!OpenAndConnectTpm(context_handle.get(), &result))
+//  if (!OpenAndConnectTpm(context_handle.ptr(), &result))
 //    ...
 //  ScopedTssKey srk(context_handle);
-//  if (!LoadSrk(context_handle, srk_handle.get(), &result))
+//  if (!LoadSrk(context_handle, srk_handle.ptr(), &result))
 //    ...
 //
 // See the bottom of this file for common typedefs.
-
-#include <assert.h>
-#include <trousers/tss.h>
-#include <trousers/trousers.h>
-
-#include <base/compiler_specific.h>
-#include <vector>
-
 #ifndef CRYPTOHOME_SCOPED_TSS_TYPE_H_
 #define CRYPTOHOME_SCOPED_TSS_TYPE_H_
+
+#include <assert.h>
+
+#include <base/compiler_specific.h>
+#include <trousers/tss.h>
+#include <trousers/trousers.h>
+#include <vector>
 
 namespace cryptohome {
 
@@ -69,11 +68,13 @@ class ScopedTssType {
     release_(context_, type_);
   }
 
-  // Allow typecasting to TssType.
-  operator TssType() { return type_; }
+  // Provide a means to access the value without conversion.
+  virtual TssType value() {
+    return type_;
+  }
 
   // Allow direct referencing of the wrapped value.
-  TssType* ptr() {
+  virtual TssType* ptr() {
     return &type_;
   }
 
@@ -101,14 +102,37 @@ class ScopedTssType {
   TssType type_;
 };
 
-// Provide clear-cut helpers for the common cases.
-typedef ScopedTssType<TSS_HCONTEXT, ScopedTssContextRelease> ScopedTssContext;
+// Wrap ScopedTssObject to allow implicit conversion only when safe.
+template<class TssType = TSS_HOBJECT,
+         class ReleaseProc = ScopedTssObjectRelease>
+class ScopedTssObject : public ScopedTssType<TssType, ReleaseProc> {
+ public:
+  // Enforce a context for scoped objects.
+  explicit ScopedTssObject(TSS_HCONTEXT c, TssType t = 0) {}
+  virtual ~ScopedTssObject() {}
+
+  // Allow implicit conversion to anything TSS_HOBJECT based.
+  virtual operator TssType() {
+    return this->value();
+  }
+};
+
+class ScopedTssContext
+   : public ScopedTssObject<TSS_HCONTEXT, ScopedTssContextRelease> {
+ public:
+  // Enforce a context for scoped objects.
+  explicit ScopedTssContext(TSS_HCONTEXT t = 0)
+    : ScopedTssObject<TSS_HCONTEXT,ScopedTssContextRelease>(0, t) {}
+  virtual ~ScopedTssContext() {}
+};
+
+// Provide clear-cut typedefs for the common cases.
 typedef ScopedTssType<BYTE*, ScopedTssMemoryRelease> ScopedTssMemory;
 
-typedef ScopedTssType<TSS_HOBJECT> ScopedTssObject;
-typedef ScopedTssType<TSS_HKEY> ScopedTssKey;
-typedef ScopedTssType<TSS_HPOLICY> ScopedTssPolicy;
-typedef ScopedTssType<TSS_HPCRS> ScopedTssPcrs;
+typedef ScopedTssObject<TSS_HKEY> ScopedTssKey;
+typedef ScopedTssObject<TSS_HPOLICY> ScopedTssPolicy;
+typedef ScopedTssObject<TSS_HPCRS> ScopedTssPcrs;
+typedef ScopedTssObject<TSS_HNVSTORE> ScopedTssNvStore;
 
 }  // namespace cryptohome
 
