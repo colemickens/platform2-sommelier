@@ -25,7 +25,6 @@ extern "C" {
 #include <cromo/utilities.h>
 
 #include <glog/logging.h>
-#include <mm/mm-modem.h>
 
 // This ought to be in a header file somewhere, but if it is, I can't find it.
 #ifndef NDEBUG
@@ -36,9 +35,9 @@ static const int DEBUG = 0;
 
 #define DEFINE_ERROR(name) \
   const char* k##name##Error = "org.chromium.ModemManager.Error." #name;
-#define DEFINE_MM_ERROR(name) \
-  const char* k##name##Error = \
-    "org.freedesktop.ModemManager.Modem.Gsm." #name;
+#define DEFINE_MM_ERROR(name, str) \
+  const char* kError##name = \
+    "org.freedesktop.ModemManager.Modem.Gsm." str;
 
 #include "gobi_modem_errors.h"
 #undef DEFINE_ERROR
@@ -588,14 +587,17 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
     }
   } else {
     LOG(WARNING) << "StartDataSession failed: " << starter->return_value_;
-    const char* msg;
+    const char* err_name;
+    const char* err_msg;
     if (starter->return_value_ == gobi::kCallFailed) {
       LOG(WARNING) << "Failure Reason " <<  starter->failure_reason_;
-      msg = QMICallFailureToMMError(starter->failure_reason_);
+      err_name = QMICallFailureToMMError(starter->failure_reason_);
+      err_msg = "Connect failed";
     } else {
-      msg = "StartDataSession";
+      err_name = kConnectError;
+      err_msg = "StartDataSession";
     }
-    error.set(kConnectError, msg);
+    error.set(err_name, err_msg);
   }
   LOG(INFO) << "Returning deferred connect call";
   FinishDeferredCall(&starter->continuation_tag_, error);
@@ -867,7 +869,7 @@ void GobiModem::ApiConnect(DBus::Error& error) {
   if (connected_modem_ != NULL) {
     LOG(INFO) << "ApiAlready connected: connected_modem_=0x" << connected_modem_
               << "this=0x" << this;
-    error.set(kOperationNotAllowedError,
+    error.set(kErrorOperationNotAllowed,
               "Only one modem can be connected via Api");
     return;
   }
@@ -1378,16 +1380,16 @@ bool GobiModem::StartExit() {
 const char* GobiModem::QMIReturnCodeToMMError(unsigned int qmicode) {
   switch (qmicode) {
     case gobi::kIncorrectPinId:
-      return MM_ERROR_MODEM_GSM_INCORRECTPASSWORD;
+      return kErrorIncorrectPassword;
     case gobi::kInvalidPinId:
     case gobi::kAccessToRequiredEntityNotAvailable:
-      return MM_ERROR_MODEM_GSM_SIMPINREQUIRED;
+      return kErrorSimPinRequired;
     case gobi::kPinBlocked:
     case gobi::kPinPermanentlyBlocked:
       // blocked vs. permanently block is distinguished by
       // looking at the value of UnlockRetries. If it is
       // zero, then the SIM is permanently blocked.
-      return MM_ERROR_MODEM_GSM_SIMPUKREQUIRED;
+      return kErrorSimPukRequired;
     default:
       return NULL;
   }
@@ -1398,9 +1400,9 @@ const char* GobiModem::QMICallFailureToMMError(unsigned int qmireason) {
   switch (qmireason) {
     case gobi::kReasonBadApn:
     case gobi::kReasonNotSubscribed:
-      return MM_ERROR_MODEM_GSM_GPRSNOTSUBSCRIBED;
+      return kErrorGprsNotSubscribed;
     default:
-      return MM_ERROR_MODEM_GSM_UNKNOWN;
+      return kErrorGsmUnknown;
   }
 }
 

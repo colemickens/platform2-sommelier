@@ -22,6 +22,7 @@
 #include <cromo/properties_server_glue.h>
 #include <cromo/utilities.h>
 #include <metrics/metrics_library.h>
+#include <mm/mm-modem.h>
 
 #include "modem_gobi_server_glue.h"
 #include "gobi_sdk_wrapper.h"
@@ -32,8 +33,8 @@
 
 #define DEFINE_ERROR(name) \
   extern const char* k##name##Error;
-#define DEFINE_MM_ERROR(name) \
-  extern const char* k##name##Error;
+#define DEFINE_MM_ERROR(name, str) \
+  extern const char* kError##name;
 #include "gobi_modem_errors.h"
 #undef DEFINE_ERROR
 #undef DEFINE_MM_ERROR
@@ -42,9 +43,9 @@
 #define ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype, result) \
     do {                                                   \
       if (rc != 0) {                                       \
-        const char *errmsg = QMIReturnCodeToMMError(rc);   \
-        if (errmsg != NULL)                                \
-          error.set(errtype, errmsg);                      \
+        const char *errname = QMIReturnCodeToMMError(rc);  \
+        if (errname != NULL)                               \
+          error.set(errname, #function);                   \
         else                                               \
           error.set(errtype, #function);                   \
         LOG(WARNING) << #function << " failed : " << rc;   \

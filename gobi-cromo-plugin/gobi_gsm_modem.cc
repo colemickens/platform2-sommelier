@@ -47,7 +47,7 @@ void GobiGsmModem::RegistrationStateHandler() {
   LOG(INFO) << "RegistrationStateHandler";
   GetGsmRegistrationInfo(&registration_status,
                          &operator_code, &operator_name, error);
-  if (!error.is_set())
+  if (!error)
     RegistrationInfo(registration_status, operator_code, operator_name);
 }
 
@@ -63,7 +63,9 @@ static uint32_t DataCapabilitiesToMmAccessTechnology(BYTE num_data_caps,
   // to work with.
   for (int i = 0; i < num_data_caps; i++) {
     LOG(INFO) << "  Cap: " << static_cast<int>(data_caps[i]);
-    capmask |= 1 << static_cast<int>(data_caps[i]);
+    if (data_caps[i] >= gobi::kDataCapGprs &&
+        data_caps[i] <= gobi::kDataCapGsm)
+      capmask |= 1 << static_cast<int>(data_caps[i]);
   }
   // Of the data capabilities reported, select the one with the
   // highest theoretical bandwidth.
@@ -102,8 +104,21 @@ static uint32_t DataCapabilitiesToMmAccessTechnology(BYTE num_data_caps,
 void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
                                            ULONG* data_caps) {
   LOG(INFO) << "GsmDataCapabilitiesHandler";
-  SendNetworkTechnologySignal(
-      DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
+  uint32_t registration_status;
+  std::string operator_code;
+  std::string operator_name;
+  DBus::Error error;
+
+  GetGsmRegistrationInfo(&registration_status,
+                         &operator_code, &operator_name, error);
+  // Sometimes when we lose registration, we don't get a
+  // RegistrationStateChange callback, but we often do get
+  // a DataCapabilitiesHandler callback!
+  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE)
+    RegistrationInfo(registration_status, operator_code, operator_name);
+  else
+    SendNetworkTechnologySignal(
+        DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
 }
 
 void GobiGsmModem::DataBearerTechnologyHandler(ULONG technology) {
@@ -317,11 +332,13 @@ void GobiGsmModem::Register(const std::string& network_id,
   WORD mcc, mnc;
   // This is a blocking call, and may take a while (up to 30 seconds)
 
+  LOG(INFO) << "Register request for [" << network_id << "]";
   if (network_id.empty()) {
     regtype = gobi::kRegistrationTypeAutomatic;
     mcc = 0;
     mnc = 0;
     rat = 0;
+    LOG(INFO) << "Initiating automatic registration";
   } else {
     int n = sscanf(network_id.c_str(), "%3hu%3hu", &mcc, &mnc);
     if (n != 2) {
@@ -330,8 +347,8 @@ void GobiGsmModem::Register(const std::string& network_id,
     }
     regtype = gobi::kRegistrationTypeManual;
     rat = gobi::kRfiUmts;
+    LOG(INFO) << "Initiating manual registration for " << mcc << mnc;
   }
-  LOG(INFO) << "Initiating registration for " << mcc << mnc;
   rc = sdk_->InitiateNetworkRegistration(regtype, mcc, mnc, rat);
   if (rc == gobi::kOperationHasNoEffect)
     return;  // already registered on requested network
