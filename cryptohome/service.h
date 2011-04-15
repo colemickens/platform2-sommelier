@@ -15,6 +15,7 @@
 #include <glib-object.h>
 
 #include "cryptohome_event_source.h"
+#include "install_attributes.h"
 #include "mount.h"
 #include "mount_task.h"
 #include "pkcs11_init.h"
@@ -43,6 +44,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Setup the wrapped GObject and the GMainLoop
   virtual bool Initialize();
   virtual bool SeedUrandom();
+  virtual void InitializeInstallAttributes(bool first_time);
   virtual bool Reset();
 
   // Used internally during registration to set the
@@ -70,6 +72,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   }
   virtual void set_auto_cleanup_period(int value) {
     auto_cleanup_period_ = value;
+  }
+  virtual void set_install_attrs(InstallAttributes* install_attrs) {
+    install_attrs_ = install_attrs;
   }
   virtual void set_update_user_activity_period(int value) {
     update_user_activity_period_ = value;
@@ -160,6 +165,27 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
+  // InstallAttributes methods
+  virtual gboolean InstallAttributesGet(gchar* name,
+                              GArray** OUT_value,
+                              gboolean* OUT_successful,
+                              GError** error);
+  virtual gboolean InstallAttributesSet(gchar* name,
+                              GArray* value,
+                              gboolean* OUT_successful,
+                              GError** error);
+  virtual gboolean InstallAttributesFinalize(gboolean* OUT_finalized,
+                                             GError** error);
+  virtual gboolean InstallAttributesCount(gint* OUT_count, GError** error);
+  virtual gboolean InstallAttributesIsReady(gboolean* OUT_ready,
+                                            GError** error);
+  virtual gboolean InstallAttributesIsSecure(gboolean* OUT_secure,
+                                             GError** error);
+  virtual gboolean InstallAttributesIsInvalid(gboolean* OUT_invalid,
+                                              GError** error);
+  virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
+                                                   GError** error);
+
  protected:
   virtual GMainLoop *main_loop() { return loop_; }
 
@@ -168,22 +194,24 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void AutoCleanupCallback();
 
  private:
-  GMainLoop *loop_;
+  GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
-  gobject::Cryptohome *cryptohome_;
+  gobject::Cryptohome* cryptohome_;
   chromeos::Blob system_salt_;
   scoped_ptr<cryptohome::Mount> default_mount_;
   cryptohome::Mount* mount_;
   scoped_ptr<TpmInit> default_tpm_init_;
-  TpmInit *tpm_init_;
+  TpmInit* tpm_init_;
   scoped_ptr<Pkcs11Init> default_pkcs11_init_;
-  Pkcs11Init *pkcs11_init_;
+  Pkcs11Init* pkcs11_init_;
   bool initialize_tpm_;
   base::Thread mount_thread_;
   guint async_complete_signal_;
   guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
   int auto_cleanup_period_;
+  scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
+  cryptohome::InstallAttributes* install_attrs_;
   int update_user_activity_period_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);

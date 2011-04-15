@@ -115,6 +115,34 @@
     <method name="GetStatusString">
       <arg type="s" name="status" direction="out" />
     </method>
+    <method name="InstallAttributesGet">
+      <arg type="s" name="name" direction="in" />
+      <arg type="ay" name="value" direction="out" />
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesSet">
+      <arg type="s" name="name" direction="in" />
+      <arg type="ay" name="value" direction="in" />
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesCount">
+      <arg type="i" name="count" direction="out" />
+    </method>
+    <method name="InstallAttributesFinalize">
+      <arg type="b" name="successful" direction="out" />
+    </method>
+    <method name="InstallAttributesIsReady">
+      <arg type="b" name="is_ready" direction="out" />
+    </method>
+    <method name="InstallAttributesIsSecure">
+      <arg type="b" name="is_secure" direction="out" />
+    </method>
+    <method name="InstallAttributesIsInvalid">
+      <arg type="b" name="is_invalid" direction="out" />
+    </method>
+    <method name="InstallAttributesIsFirstInstall">
+      <arg type="b" name="is_first_install" direction="out" />
+    </method>
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
       <arg type="b" name="owned" />

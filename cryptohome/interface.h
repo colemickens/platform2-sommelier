@@ -136,6 +136,35 @@ gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,
                                       GError **error);
+gboolean cryptohome_install_attributes_get(Cryptohome *self,
+                                           gchar* name,
+                                           GArray** OUT_value,
+                                           gboolean* OUT_successful,
+                                           GError** error);
+gboolean cryptohome_install_attributes_set(Cryptohome *self,
+                                           gchar* name,
+                                           GArray* value,
+                                           gboolean* OUT_successful,
+                                           GError** error);
+gboolean cryptohome_install_attributes_finalize(Cryptohome *self,
+                                                gboolean* OUT_successful,
+                                                GError** error);
+gboolean cryptohome_install_attributes_count(Cryptohome *self,
+                                             gint* OUT_count,
+                                             GError** error);
+gboolean cryptohome_install_attributes_is_ready(Cryptohome *self,
+                                                gboolean* OUT_is_ready,
+                                                GError** error);
+gboolean cryptohome_install_attributes_is_secure(Cryptohome *self,
+                                                 gboolean* OUT_is_secure,
+                                                 GError** error);
+gboolean cryptohome_install_attributes_is_invalid(Cryptohome *self,
+                                                  gboolean* OUT_is_invalid,
+                                                  GError** error);
+gboolean cryptohome_install_attributes_is_first_install(
+                                                Cryptohome *self,
+                                                gboolean* OUT_is_first_install,
+                                                GError** error);
 
 }  // namespace gobject
 }  // namespace cryptohome

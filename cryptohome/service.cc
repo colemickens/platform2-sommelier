@@ -4,6 +4,8 @@
 
 #include "service.h"
 
+#define __STDC_FORMAT_MACROS 1
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,11 +14,14 @@
 #include <base/string_util.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
+#include <string>
+#include <vector>
 
 #include "cryptohome/marshal.glibmarshal.h"
 #include "cryptohome_event_source.h"
-#include "interface.h"
 #include "crypto.h"
+#include "install_attributes.h"
+#include "interface.h"
 #include "mount.h"
 #include "secure_blob.h"
 #include "tpm.h"
@@ -90,6 +95,8 @@ Service::Service()
       tpm_init_signal_(-1),
       event_source_(),
       auto_cleanup_period_(kAutoCleanupPeriodMS),
+      default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
+      install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1) {
 }
 
@@ -107,7 +114,14 @@ bool Service::Initialize() {
   bool result = true;
 
   mount_->Init();
+  // If the TPM is unowned or doesn't exist, it's safe for
+  // this function to be called again. However, it shouldn't
+  // be called across multiple threads in parallel.
+  InitializeInstallAttributes(false);
+
   Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
+  // TODO(wad) Determine if this should only be called if
+  //           tpm->IsEnabled() is true.
   if (tpm && initialize_tpm_) {
     tpm_init_->set_tpm(tpm);
     tpm_init_->Init(this);
@@ -115,7 +129,6 @@ bool Service::Initialize() {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
   }
-
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
                                   &gobject::dbus_glib_cryptohome_object_info);
@@ -158,6 +171,24 @@ bool Service::Initialize() {
       auto_cleanup_period_);
 
   return result;
+}
+
+void Service::InitializeInstallAttributes(bool first_time) {
+  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
+  // Wait for ownership if there is a working TPM.
+  if (tpm && tpm->IsEnabled() && !tpm->IsOwned())
+    return;
+
+  // The TPM owning instance may have changed since initialization.
+  // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
+  install_attrs_->SetTpm(tpm);
+
+  if (first_time)
+    // TODO(wad) Go nuclear if PrepareSystem fails!
+    install_attrs_->PrepareSystem();
+
+  // Init can fail without making the interface inconsistent so we're okay here.
+  install_attrs_->Init();
 }
 
 bool Service::SeedUrandom() {
@@ -210,6 +241,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     TpmInitStatus* result = static_cast<TpmInitStatus*>(event);
     g_signal_emit(cryptohome_, tpm_init_signal_, 0, tpm_init_->IsTpmReady(),
                   tpm_init_->IsTpmEnabled(), result->get_took_ownership());
+    // TODO(wad) should we package up a InstallAttributes status here too?
   }
 }
 
@@ -223,6 +255,9 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     mount_task->set_complete_event(&event);
     mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
     event.Wait();
+    // Initialize the install-time locked attributes since we
+    // can't do it prior to ownership.
+    InitializeInstallAttributes(true);
   }
   // The event source will free this object
   TpmInitStatus* tpm_init_status = new TpmInitStatus();
@@ -368,6 +403,12 @@ gboolean Service::Mount(gchar *userid,
     }
   }
 
+  // Any non-guest mount attempt triggers InstallAttributes finalization.
+  // The return value is ignored as it is possible we're pre-ownership.
+  // The next login will assure finalization if possible.
+  if (install_attrs_->is_first_install())
+    install_attrs_->Finalize();
+
   MountTaskResult result;
   base::WaitableEvent event(true, false);
   Mount::MountArgs mount_args;
@@ -416,6 +457,10 @@ gboolean Service::AsyncMount(gchar *userid,
       }
     }
   }
+
+  // See Mount for a relevant comment.
+  if (install_attrs_->is_first_install())
+    install_attrs_->Finalize();
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
@@ -585,6 +630,69 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
   return TRUE;
 }
 
+gboolean Service::InstallAttributesGet(gchar* name,
+                                       GArray** OUT_value,
+                                       gboolean* OUT_successful,
+                                       GError** error) {
+  chromeos::Blob value;
+  *OUT_successful = install_attrs_->Get(name, &value);
+  // TODO(wad) can g_array_new return NULL.
+  *OUT_value = g_array_new(false, false, sizeof(char));
+  if (*OUT_successful)
+    g_array_append_vals(*OUT_value, &value.front(), value.size());
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesSet(gchar* name,
+                                       GArray* value,
+                                       gboolean* OUT_successful,
+                                       GError** error) {
+  // Convert from GArray to vector
+  chromeos::Blob value_blob;
+  value_blob.assign(value->data, value->data + value->len);
+  *OUT_successful = install_attrs_->Set(name, value_blob);
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesFinalize(gboolean* OUT_finalized,
+                                            GError** error) {
+  *OUT_finalized = install_attrs_->Finalize();
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
+  // TODO(wad) for all of these functions return error on uninit.
+  // Follow the CHROMEOS_LOGIN_ERROR quark example in chromeos/dbus/
+  *OUT_count = install_attrs_->Count();
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesIsReady(gboolean* OUT_ready,
+                                           GError** error) {
+  *OUT_ready = (install_attrs_->IsReady() == true);
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesIsSecure(gboolean* OUT_is_secure,
+                                            GError** error) {
+  *OUT_is_secure = (install_attrs_->is_secure() == true);
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesIsInvalid(gboolean* OUT_is_invalid,
+                                             GError** error) {
+  // Is true after a failed init or prior to Init().
+  *OUT_is_invalid = (install_attrs_->is_invalid() == true);
+  return TRUE;
+}
+
+gboolean Service::InstallAttributesIsFirstInstall(
+    gboolean* OUT_is_first_install,
+    GError** error) {
+  *OUT_is_first_install = (install_attrs_->is_first_install() == true);
+  return TRUE;
+}
+
 gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   Tpm::TpmStatusInfo tpm_status;
   mount_->get_crypto()->EnsureTpm(false);
@@ -645,6 +753,25 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
 
     } while(false);
   }
+  int install_attrs_size = install_attrs_->Count();
+  std::string install_attrs_data("InstallAttributes Contents:\n");
+  if (install_attrs_->Count()) {
+    std::string name;
+    chromeos::Blob value;
+    for (int pair = 0; pair < install_attrs_size; ++pair) {
+      install_attrs_data.append(StringPrintf(
+        "  Index...........................: %d\n", pair));
+      if (install_attrs_->GetByIndex(pair, &name, &value)) {
+        std::string value_str(reinterpret_cast<const char*>(&value[0]),
+                              value.size());
+        install_attrs_data.append(StringPrintf(
+          "  Name............................: %s\n"
+          "  Value...........................: %s\n",
+          name.c_str(),
+          value_str.c_str()));
+      }
+    }
+  }
 
   *OUT_status = g_strdup_printf(
       "TPM Status:\n"
@@ -662,7 +789,16 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       "  Last Error......................: %08x\n"
       "%s"
       "Mount Status:\n"
-      "  Vault Is Mounted................: %s\n",
+      "  Vault Is Mounted................: %s\n"
+      "InstallAttributes Status:\n"
+      "  Initialized.....................: %s\n"
+      "  Version.........................: %"PRIx64"\n"
+      "  Lockbox Index...................: 0x%x\n"
+      "  Secure..........................: %s\n"
+      "  Invalid.........................: %s\n"
+      "  First Install / Unlocked........: %s\n"
+      "  Entries.........................: %d\n"
+      "%s",
       (tpm_status.Enabled ? "1" : "0"),
       (tpm_status.Owned ? "1" : "0"),
       (tpm_status.BeingOwned ? "1" : "0"),
@@ -676,7 +812,15 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       (tpm_status.ThisInstanceHasKeyHandle ? "1" : "0"),
       tpm_status.LastTpmError,
       user_data.c_str(),
-      (mount_->IsCryptohomeMounted() ? "1" : "0"));
+      (mount_->IsCryptohomeMounted() ? "1" : "0"),
+      (install_attrs_->is_initialized() ? "1" : "0"),
+      install_attrs_->version(),
+      InstallAttributes::kLockboxIndex,
+      (install_attrs_->is_secure() ? "1" : "0"),
+      (install_attrs_->is_invalid() ? "1" : "0"),
+      (install_attrs_->is_first_install() ? "1" : "0"),
+      install_attrs_size,
+      install_attrs_data.c_str());
   return TRUE;
 }
 

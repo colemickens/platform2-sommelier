@@ -217,6 +217,60 @@ gboolean cryptohome_get_status_string(Cryptohome *self,
                                       GError **error) {
   CRYPTOHOME_WRAP_METHOD(GetStatusString, OUT_status);
 }
+
+gboolean cryptohome_install_attributes_get(Cryptohome *self,
+                                gchar* name,
+                                GArray** OUT_value,
+                                gboolean* OUT_successful,
+                                GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesGet, name, OUT_value, OUT_successful);
+}
+
+gboolean cryptohome_install_attributes_set(Cryptohome *self,
+                                           gchar* name,
+                                           GArray* value,
+                                           gboolean* OUT_successful,
+                                           GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesSet, name, value, OUT_successful);
+}
+
+gboolean cryptohome_install_attributes_finalize(Cryptohome *self,
+                                                gboolean* OUT_successful,
+                                                GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesFinalize, OUT_successful);
+}
+
+gboolean cryptohome_install_attributes_count(Cryptohome *self,
+                                             gint* OUT_count,
+                                             GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesCount, OUT_count);
+}
+
+gboolean cryptohome_install_attributes_is_ready(Cryptohome *self,
+                                                gboolean* OUT_is_ready,
+                                                GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesIsReady, OUT_is_ready);
+}
+
+gboolean cryptohome_install_attributes_is_secure(Cryptohome *self,
+                                                 gboolean* OUT_is_secure,
+                                                 GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesIsSecure, OUT_is_secure);
+}
+
+gboolean cryptohome_install_attributes_is_invalid(Cryptohome *self,
+                                                  gboolean* OUT_is_invalid,
+                                                  GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesIsInvalid, OUT_is_invalid);
+}
+
+gboolean cryptohome_install_attributes_is_first_install(
+  Cryptohome *self,
+  gboolean* OUT_is_first_install,
+  GError** error) {
+  CRYPTOHOME_WRAP_METHOD(InstallAttributesIsFirstInstall, OUT_is_first_install);
+}
+
 #undef CRYPTOHOME_WRAP_METHOD
 
 }  // namespace gobject

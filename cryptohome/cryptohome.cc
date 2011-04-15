@@ -49,6 +49,9 @@ namespace switches {
     "tpm_take_ownership",
     "tpm_clear_stored_password",
     "tpm_wait_ownership",
+    "install_attributes_set",
+    "install_attributes_get",
+    "install_attributes_finalize",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -65,13 +68,18 @@ namespace switches {
     ACTION_REMOVE_TRACKED_SUBDIRS,
     ACTION_TPM_TAKE_OWNERSHIP,
     ACTION_TPM_CLEAR_STORED_PASSWORD,
-    ACTION_TPM_WAIT_OWNERSHIP };
+    ACTION_TPM_WAIT_OWNERSHIP,
+    ACTION_INSTALL_ATTRIBUTES_SET,
+    ACTION_INSTALL_ATTRIBUTES_GET,
+    ACTION_INSTALL_ATTRIBUTES_FINALIZE };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
   static const char kForceSwitch[] = "force";
   static const char kAsyncSwitch[] = "async";
   static const char kCreateSwitch[] = "create";
+  static const char kAttrNameSwitch[] = "name";
+  static const char kAttrValueSwitch[] = "value";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
@@ -93,6 +101,26 @@ chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
   }
   g_array_free(salt, false);
   return system_salt;
+}
+
+bool GetAttrName(const CommandLine* cl, std::string* name_out) {
+  *name_out = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+
+  if (name_out->length() == 0) {
+    printf("No install attribute name specified (--name=<name>)\n");
+    return false;
+  }
+  return true;
+}
+
+bool GetAttrValue(const CommandLine* cl, std::string* value_out) {
+  *value_out = cl->GetSwitchValueASCII(switches::kAttrValueSwitch);
+
+  if (value_out->length() == 0) {
+    printf("No install attribute value specified (--value=<value>)\n");
+    return false;
+  }
+  return true;
 }
 
 bool GetUsername(const CommandLine* cl, std::string* user_out) {
@@ -674,6 +702,107 @@ int main(int argc, char **argv) {
         &chromeos::Resetter(&error).lvalue())) {
       printf("TpmClearStoredPassword call failed: %s.\n", error->message);
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_GET],
+      action.c_str())) {
+    std::string name;
+    if (!GetAttrName(cl, &name)) {
+      printf("No attribute name specified.\n");
+      return 1;
+    }
+
+    chromeos::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
+        proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("IsReady call failed: %s.\n", error->message);
+    }
+    if (result == FALSE) {
+      printf("InstallAttributes() is not ready.\n");
+      return 1;
+    }
+
+    GArray *value = NULL;
+    if (!org_chromium_CryptohomeInterface_install_attributes_get(
+        proxy.gproxy(),
+        name.c_str(),
+        &value,
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+       printf("Get() failed: %s.\n", error->message);
+    }
+    std::string value_str(value->data, value->len);
+    if (result == TRUE) {
+      printf("%s\n", value_str.c_str());
+    } else {
+      return 1;
+    }
+    g_array_free(value, false);
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_SET],
+      action.c_str())) {
+    std::string name;
+    if (!GetAttrName(cl, &name)) {
+      printf("No attribute name specified.\n");
+      return 1;
+    }
+    std::string value;
+    if (!GetAttrValue(cl, &value)) {
+      printf("No attribute value specified.\n");
+      return 1;
+    }
+
+    chromeos::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
+        proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("IsReady call failed: %s.\n", error->message);
+    }
+
+    if (result == FALSE) {
+      printf("InstallAttributes() is not ready.\n");
+      return 1;
+    }
+
+    GArray *value_ary = g_array_new(FALSE, FALSE, sizeof(char));
+    g_array_append_vals(value_ary, value.c_str(), value.size());
+    if (!org_chromium_CryptohomeInterface_install_attributes_set(
+        proxy.gproxy(),
+        name.c_str(),
+        value_ary,
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+       printf("Set() failed: %s.\n", error->message);
+    }
+    g_array_free(value_ary, false);
+    if (result == FALSE)
+      return 1;
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_INSTALL_ATTRIBUTES_FINALIZE],
+      action.c_str())) {
+    chromeos::glib::ScopedError error;
+    gboolean result;
+    if (!org_chromium_CryptohomeInterface_install_attributes_is_ready(
+        proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("IsReady call failed: %s.\n", error->message);
+    }
+    if (result == FALSE) {
+      printf("InstallAttributes is not ready.\n");
+      return 1;
+    }
+    if (!org_chromium_CryptohomeInterface_install_attributes_finalize(
+        proxy.gproxy(),
+        &result,
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("Finalize() failed: %s.\n", error->message);
+    }
+    printf("InstallAttributesFinalize(): %d\n", result);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {

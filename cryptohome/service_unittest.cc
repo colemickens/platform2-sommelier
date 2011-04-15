@@ -13,6 +13,7 @@
 
 #include "crypto.h"
 #include "make_tests.h"
+#include "mock_install_attributes.h"
 #include "mock_mount.h"
 #include "mock_tpm.h"
 #include "secure_blob.h"
@@ -77,6 +78,8 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
 
   Service service;
   service.set_mount(&mount);
+  NiceMock<MockInstallAttributes> attrs;
+  service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
   service.Initialize();
   gboolean out = FALSE;
@@ -99,6 +102,8 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 
   ServiceSubclass service;
   service.set_mount(&mount);
+  NiceMock<MockInstallAttributes> attrs;
+  service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
   service.Initialize();
 
@@ -138,6 +143,8 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   NiceMock<MockMount> mount;
   Service service;
   service.set_mount(&mount);
+  NiceMock<MockInstallAttributes> attrs;
+  service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
 
   // Service will schedule periodic clean-ups. Wait a bit and make
