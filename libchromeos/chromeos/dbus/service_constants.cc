@@ -44,6 +44,17 @@ const char *kCryptohomeDoAutomaticFreeDiskSpaceControl =
     "DoAutomaticFreeDiskSpaceControl";
 const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl =
     "AsyncDoAutomaticFreeDiskSpaceControl";
+const char *kCryptohomeInstallAttributesGet = "InstallAttributesGet";
+const char *kCryptohomeInstallAttributesSet = "InstallAttributesSet";
+const char *kCryptohomeInstallAttributesCount = "InstallAttributesCount";
+const char *kCryptohomeInstallAttributesFinalize = "InstallAttributesFinalize";
+const char *kCryptohomeInstallAttributesIsReady = "InstallAttributesIsReady";
+const char *kCryptohomeInstallAttributesIsSecure = "InstallAttributesIsSecure";
+const char *kCryptohomeInstallAttributesIsInvalid =
+    "InstallAttributesIsInvalid";
+const char *kCryptohomeInstallAttributesIsFirstInstall =
+    "InstallAttributesIsFirstInstall";
+
 // Signals
 const char *kSignalAsyncCallStatus = "AsyncCallStatus";
 const char *kSignalTpmInitStatus = "TpmInitStatus";

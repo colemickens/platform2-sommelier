@@ -42,6 +42,14 @@ extern const char *kCryptohomeRemoveTrackedSubdirectories;
 extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
 extern const char *kCryptohomeDoAutomaticFreeDiskSpaceControl;
 extern const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
+extern const char *kCryptohomeInstallAttributesGet;
+extern const char *kCryptohomeInstallAttributesSet;
+extern const char *kCryptohomeInstallAttributesCount;
+extern const char *kCryptohomeInstallAttributesFinalize;
+extern const char *kCryptohomeInstallAttributesIsReady;
+extern const char *kCryptohomeInstallAttributesIsSecure;
+extern const char *kCryptohomeInstallAttributesIsInvalid;
+extern const char *kCryptohomeInstallAttributesIsFirstInstall;
 // Signals
 extern const char *kSignalAsyncCallStatus;
 extern const char *kSignalTpmInitStatus;
