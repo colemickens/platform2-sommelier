@@ -91,7 +91,10 @@ env.Append(BUILDERS = { 'DbusServerBindings' : dbus_server_builder,
 # setup sources
 commonlib_sources = env.Split("""crypto.cc
                                  cryptohome_event_source.cc
+                                 install_attributes.pb.cc
+                                 install_attributes.cc
                                  interface.cc
+                                 lockbox.cc
                                  marshal.glibmarshal.c
                                  mount.cc
                                  mount_task.cc
@@ -113,6 +116,8 @@ client_sources = env.Split("""cryptohome.cc""")
 test_sources = env.Split("""cryptohome_event_source_unittest.cc
                             crypto_unittest.cc
                             service_unittest.cc
+                            install_attributes_unittest.cc
+                            lockbox_unittest.cc
                             mount_task_unittest.cc
                             mount_unittest.cc
                             secure_blob_unittest.cc
@@ -150,6 +155,7 @@ env.ParseConfig('pkg-config --cflags --libs ' \
                 'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
 env.ProtocolBuffer('tpm_status.pb.cc', 'tpm_status.proto')
+env.ProtocolBuffer('install_attributes.pb.cc', 'install_attributes.proto')
 env.GlibMarshal('marshal.glibmarshal.c', 'marshal.list')
 
 env_commonlib = env.Clone()

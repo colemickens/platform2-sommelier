@@ -6,6 +6,7 @@
 #define CRYPTOHOME_PLATFORM_H_
 
 #include <base/basictypes.h>
+#include <chromeos/utility.h>
 #include <set>
 #include <string>
 #include <vector>
@@ -198,10 +199,36 @@ class Platform {
   //  args - list of arguments to pass to the run the command with
   //  uid - effective user id to run the command with
   //  gid - effective group id to run the command with
-  bool Exec(const std::string& command,
-            const std::vector<std::string>& args,
-            uid_t uid,
-            gid_t gid);
+  virtual bool Exec(const std::string& command,
+                    const std::vector<std::string>& args,
+                    uid_t uid,
+                    gid_t gid);
+
+  // Reads a file completely into a Blob.
+  //
+  // Parameters
+  //  path - Path of the file to read
+  //  blob - blob to populate
+  virtual bool ReadFile(const std::string& path, chromeos::Blob* blob);
+
+  // Writes the entirety of the data to the given file.
+  //
+  // Parameters
+  //  path - Path of the file to write
+  //  blob - blob to populate from
+  virtual bool WriteFile(const std::string& path, const chromeos::Blob& blob);
+
+  // Deletes the file at the given path.
+  //
+  // Parameters
+  //  path - Path of the file to delete
+  virtual bool DeleteFile(const std::string& path);
+
+  // Returns true if the specified file exists.
+  //
+  // Parameters
+  //  path - Path of the file to check
+  virtual bool FileExists(const std::string& path);
 
   // Overrides the default mount options
   void set_mount_options(int value) {

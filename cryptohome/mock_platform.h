@@ -26,7 +26,7 @@ class MockPlatform : public Platform {
     ON_CALL(*this, TerminatePidsForUser(_, _))
         .WillByDefault(Return(false));
   }
-  ~MockPlatform() {}
+  virtual ~MockPlatform() {}
   MOCK_METHOD4(Mount, bool(const std::string&, const std::string&,
                            const std::string&, const std::string&));
   MOCK_METHOD3(Unmount, bool(const std::string&, bool, bool*));
@@ -43,6 +43,10 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(Symlink, bool(const std::string&, const std::string&));
   MOCK_METHOD4(Exec, bool(const std::string&, const std::vector<std::string>&,
                           uid_t, gid_t));
+  MOCK_METHOD1(FileExists, bool(const std::string&));
+  MOCK_METHOD1(DeleteFile, bool(const std::string&));
+  MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
+  MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
 
  private:
   bool MockGetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {

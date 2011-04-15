@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <pwd.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -19,6 +20,7 @@
 
 #include <base/file_util.h>
 #include <base/string_util.h>
+#include <chromeos/utility.h>
 
 // Included last to avoid redefinition problems
 extern "C" {
@@ -493,6 +495,66 @@ bool Platform::Exec(const std::string& command,
     PLOG(ERROR) << "Couldn't spawn a subprocess for command execution.";
   }
   return false;
+}
+
+bool Platform::DeleteFile(const std::string& path) {
+ return file_util::Delete(FilePath(path), false);
+}
+
+bool Platform::FileExists(const std::string& path) {
+  return file_util::PathExists(FilePath(path));
+}
+
+bool Platform::WriteFile(const std::string& path,
+                         const chromeos::Blob& blob) {
+  FilePath file_path(path);
+  if (!file_util::DirectoryExists(file_path.DirName())) {
+    if (!file_util::CreateDirectory(file_path.DirName())) {
+      LOG(ERROR) << "Cannot create directory: " << file_path.DirName().value();
+      return false;
+    }
+  }
+  // chromeos::Blob::size_type is std::vector::size_type and is unsigned.
+  if (blob.size() > static_cast<chromeos::Blob::size_type>(INT_MAX)) {
+    LOG(ERROR) << "Cannot write to " << path
+               << ". Blob is too large: " << blob.size() << " bytes.";
+    return false;
+  }
+
+  int data_written = file_util::WriteFile(
+      file_path,
+      reinterpret_cast<const char*>(&blob[0]),
+      blob.size());
+  return data_written == static_cast<int>(blob.size());
+}
+
+bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
+  int64 file_size;
+  FilePath file_path(path);
+  if (!file_util::PathExists(file_path)) {
+    return false;
+  }
+  if (!file_util::GetFileSize(file_path, &file_size)) {
+    LOG(ERROR) << "Could not get size of " << path;
+    return false;
+  }
+  // Compare to the max of a signed integer.
+  if (file_size > static_cast<int64>(INT_MAX)) {
+    LOG(ERROR) << "File " << path << " is too large: "
+               << file_size << " bytes.";
+    return false;
+  }
+  chromeos::Blob buf(file_size);
+  int data_read = file_util::ReadFile(file_path,
+                                      reinterpret_cast<char*>(&buf[0]),
+                                      file_size);
+  // Cast is okay because of comparison to INT_MAX above.
+  if (data_read != static_cast<int>(file_size)) {
+    LOG(ERROR) << "Only read " << data_read << " of " << file_size << " bytes.";
+    return false;
+  }
+  blob->swap(buf);
+  return true;
 }
 
 } // namespace cryptohome

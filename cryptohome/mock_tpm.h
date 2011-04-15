@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -49,6 +49,8 @@ class MockTpm : public Tpm {
                                    SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(SecureBlob*, TpmRetryAction*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
+  MOCK_CONST_METHOD0(IsEnabled, bool());
+  MOCK_METHOD2(GetRandomData, bool(size_t, chromeos::Blob*));
   MOCK_METHOD3(DefineLockOnceNvram, bool(uint32_t, size_t, uint32_t));
   MOCK_METHOD2(WriteNvram, bool(uint32_t, const SecureBlob&));
   MOCK_METHOD2(ReadNvram, bool(uint32_t, SecureBlob*));

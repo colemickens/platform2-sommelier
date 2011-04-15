@@ -145,7 +145,7 @@ class Tpm {
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is
   // currently being taken (such as on a separate thread).
-  bool IsEnabled() const { return !is_disabled_; }
+  virtual bool IsEnabled() const { return !is_disabled_; }
 
   // Returns whether or not the TPM is owned.  This method call returns a cached
   // result because querying the TPM directly will block if ownership is
@@ -167,7 +167,7 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  bool GetRandomData(size_t length, chromeos::Blob* data);
+  virtual bool GetRandomData(size_t length, chromeos::Blob* data);
 
   // Creates a lockable NVRAM space in the TPM
   //
