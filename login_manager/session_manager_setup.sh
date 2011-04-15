@@ -316,6 +316,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --disable-domui-menu \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
+            --enable-device-policy \
             --enable-gview \
             --enable-logging \
             --enable-login-images \
