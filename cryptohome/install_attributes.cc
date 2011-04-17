@@ -42,7 +42,8 @@ bool InstallAttributes::PrepareSystem() {
   set_is_first_install(true);
   Lockbox::ErrorId error_id;
   // Delete the attributes file if it exists.
-  if (platform_->FileExists(data_file_) && !platform_->DeleteFile(data_file_)) {
+  if (platform_->FileExists(data_file_) &&
+      !platform_->DeleteFile(data_file_, false)) {
     LOG(ERROR) << "PrepareSystem() unable to delete old data!";
     return false;
   }

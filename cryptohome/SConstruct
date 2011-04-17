@@ -136,7 +136,7 @@ env.Append(
     CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
     LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
-            'protobuf', 'pthread', 'scrypt', 'tspi'],
+            'opencryptoki', 'protobuf', 'pthread', 'scrypt', 'tspi'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)

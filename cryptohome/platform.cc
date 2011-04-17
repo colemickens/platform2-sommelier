@@ -344,6 +344,8 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
 bool Platform::SetOwnership(const std::string& path, uid_t user_id,
                             gid_t group_id) {
   if (chown(path.c_str(), user_id, group_id)) {
+    PLOG(ERROR) << "chown() of " << path.c_str() << " to (" << user_id
+                << "," << group_id << ") failed.";
     return false;
   }
   return true;
@@ -373,19 +375,13 @@ bool Platform::SetOwnershipRecursive(const std::string& directory,
     file_util::FileEnumerator file_enumerator(FilePath(current_dir), false,
                                               file_util::FileEnumerator::FILES);
     while (!(next_path = file_enumerator.Next()).empty()) {
-      if (!SetOwnership(next_path.value(), user_id, group_id)) {
-        LOG(ERROR) << "Couldn't change owner (" << user_id << ":" << group_id
-                   << ") of path: " << next_path.value().c_str();
+      if (!SetOwnership(next_path.value(), user_id, group_id))
         return false;
-      }
     }
 
     // Set permissions on the directory itself
-    if (!SetOwnership(current_dir, user_id, group_id)) {
-      LOG(ERROR) << "Couldn't change owner (" << user_id << ":" << group_id
-                 << ") of path: " << current_dir.c_str();
+    if (!SetOwnership(current_dir, user_id, group_id))
       return false;
-    }
   }
   return true;
 }
@@ -440,11 +436,11 @@ void Platform::ClearUserKeyring() {
   keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
 }
 
-bool Platform::Symlink(const std::string& from, const std::string& to) {
-  int rc = symlink(from.c_str(), to.c_str());
-  if (rc && rc != EEXIST) {
-    PLOG(ERROR) << "Error creating symbolic link from " << from << " to " << to
-                << ".";
+bool Platform::Symlink(const std::string& oldpath, const std::string& newpath) {
+  int rc = symlink(oldpath.c_str(), newpath.c_str());
+  if (rc && errno != EEXIST) {
+    PLOG(ERROR) << "Error creating symbolic link from " << newpath << " to "
+                << oldpath << ".";
     return false;
   }
   return true;
@@ -455,7 +451,7 @@ bool Platform::Exec(const std::string& command,
                     uid_t uid,
                     gid_t gid) {
   pid_t child_pid = -1;
-  child_pid = vfork();
+  child_pid = fork();
   if (child_pid == 0) {
     if (gid != static_cast<gid_t>(-1)) {
       if (setresgid(gid, gid, gid)) {
@@ -488,8 +484,9 @@ bool Platform::Exec(const std::string& command,
     if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
       return true;
     }
-    PLOG(ERROR) << "Command subprocess exited with a non-zero status. ("
-                << "status = " << WEXITSTATUS(status) << " )";
+    LOG(ERROR) << "Command subprocess (" << command
+               << ") exited with a non-zero status. ("
+               << "status = " << WEXITSTATUS(status) << " )";
   }
   else {
     PLOG(ERROR) << "Couldn't spawn a subprocess for command execution.";
@@ -497,12 +494,12 @@ bool Platform::Exec(const std::string& command,
   return false;
 }
 
-bool Platform::DeleteFile(const std::string& path) {
- return file_util::Delete(FilePath(path), false);
-}
-
 bool Platform::FileExists(const std::string& path) {
   return file_util::PathExists(FilePath(path));
+}
+
+bool Platform::DirectoryExists(const std::string& path) {
+  return file_util::DirectoryExists(FilePath(path));
 }
 
 bool Platform::WriteFile(const std::string& path,
@@ -554,6 +551,24 @@ bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
     return false;
   }
   blob->swap(buf);
+  return true;
+}
+
+bool Platform::CreateDirectory(const std::string& path) {
+  return file_util::CreateDirectory(FilePath(path));
+}
+
+bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
+  return file_util::Delete(FilePath(path), is_recursive);
+}
+
+bool Platform::EnumerateFiles(const std::string& path,
+                    bool recursive,
+                    std::vector<std::string>* file_list) {
+  file_util::FileEnumerator dir_enum(FilePath(path), recursive,
+                                     file_util::FileEnumerator::FILES);
+  for (FilePath path = dir_enum.Next(); !path.empty(); path = dir_enum.Next())
+    file_list->push_back(path.value());
   return true;
 }
 

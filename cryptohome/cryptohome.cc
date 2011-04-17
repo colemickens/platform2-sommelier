@@ -24,6 +24,7 @@
 #include "cryptohome/marshal.glibmarshal.h"
 #include "crypto.h"
 #include "mount.h"
+#include "pkcs11_init.h"
 #include "secure_blob.h"
 #include "tpm.h"
 #include "username_passkey.h"
@@ -52,6 +53,7 @@ namespace switches {
     "install_attributes_set",
     "install_attributes_get",
     "install_attributes_finalize",
+    "pkcs11_init",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -71,7 +73,8 @@ namespace switches {
     ACTION_TPM_WAIT_OWNERSHIP,
     ACTION_INSTALL_ATTRIBUTES_SET,
     ACTION_INSTALL_ATTRIBUTES_GET,
-    ACTION_INSTALL_ATTRIBUTES_FINALIZE };
+    ACTION_INSTALL_ATTRIBUTES_FINALIZE,
+    ACTION_PKCS11_INIT };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -822,6 +825,11 @@ int main(int argc, char **argv) {
         printf("TPM is not currently being owned.\n");
       }
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_PKCS11_INIT],
+      action.c_str())) {
+    cryptohome::Pkcs11Init init;
+    init.Initialize();
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for(int i = 0; /* loop forever */; i++) {

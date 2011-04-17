@@ -187,10 +187,11 @@ class Platform {
 
   // Creates a symbolic link from one path to the other
   //
+  // Returns true on success or if the symlink already exists. False on failure.
   // Parameters
-  //  from - source path that the symlink points to
-  //  to - symlink to create which points to the source path
-  virtual bool Symlink(const std::string& from, const std::string& to);
+  //  oldpath - source path that the symlink points to
+  //  newpath - symlink to create which points to the source path
+  virtual bool Symlink(const std::string& oldpath, const std::string& newpath);
 
   // Executes a command with the specified arguments and waits for it to finish
   //
@@ -203,6 +204,15 @@ class Platform {
                     const std::vector<std::string>& args,
                     uid_t uid,
                     gid_t gid);
+
+  // Returns true if the specified file exists.
+  //
+  // Parameters
+  //  path - Path of the file to check
+  virtual bool FileExists(const std::string& path);
+
+  // Check if a directory exists as the given path
+  virtual bool DirectoryExists(const std::string& path);
 
   // Reads a file completely into a Blob.
   //
@@ -218,17 +228,25 @@ class Platform {
   //  blob - blob to populate from
   virtual bool WriteFile(const std::string& path, const chromeos::Blob& blob);
 
-  // Deletes the file at the given path.
+  // Delete file(s) at the given path
   //
   // Parameters
-  //  path - Path of the file to delete
-  virtual bool DeleteFile(const std::string& path);
+  //  path - string containing file path to delete
+  //  recursive - whether to perform recursive deletion of the subtree
+  virtual bool DeleteFile(const std::string& path, bool recursive);
 
-  // Returns true if the specified file exists.
+  // Create a directory with the given path
+  virtual bool CreateDirectory(const std::string& path);
+
+  // Enumerate all files under a given path subtree
   //
   // Parameters
-  //  path - Path of the file to check
-  virtual bool FileExists(const std::string& path);
+  //  path - string containing the file path
+  //  recurisve - whether to recurse into subdirectories
+  //  file_list - vector of strings to add the enumerated files to.
+  virtual bool EnumerateFiles(const std::string& path,
+                              bool is_recursive,
+                              std::vector<std::string>* file_list);
 
   // Overrides the default mount options
   void set_mount_options(int value) {
