@@ -229,6 +229,19 @@ void BacklightController::ReadPrefs() {
   CHECK(plugged_brightness_offset_ <= 100);
   CHECK(unplugged_brightness_offset_ >= -100);
   CHECK(unplugged_brightness_offset_ <= 100);
+
+  // Adjust brightness offset values to make sure that the backlight is not
+  // initially set to too low of a level.
+  int64 minimum_starting_brightness =
+      std::max(kMinInitialBrightness, min_percent_);
+  if (als_brightness_level_ + plugged_brightness_offset_ <
+      minimum_starting_brightness)
+    plugged_brightness_offset_ = minimum_starting_brightness -
+                                                  als_brightness_level_;
+  if (als_brightness_level_ + unplugged_brightness_offset_ <
+      minimum_starting_brightness)
+    unplugged_brightness_offset_ = minimum_starting_brightness -
+                                                  als_brightness_level_;
 }
 
 void BacklightController::WritePrefs() {
