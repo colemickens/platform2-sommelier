@@ -114,6 +114,21 @@ class DevicePolicyTest : public ::testing::Test {
     return Wrap(new_polval, owner);
   }
 
+  em::PolicyFetchResponse CreateWithToken(const std::string& owner) {
+    em::ChromeDeviceSettingsProto polval;
+    polval.mutable_user_whitelist()->add_user_whitelist(owner);
+    polval.mutable_allow_new_users()->set_allow_new_users(true);
+    em::PolicyData new_poldata;
+    new_poldata.set_policy_type(DevicePolicy::kDevicePolicyType);
+    new_poldata.set_policy_value(polval.SerializeAsString());
+    new_poldata.set_username(owner);
+    new_poldata.set_request_token("token");
+    em::PolicyFetchResponse new_policy;
+    new_policy.set_policy_data(new_poldata.SerializeAsString());
+    return new_policy;
+
+  }
+
   em::PolicyFetchResponse CreateWithWhitelist(
       const std::vector<std::string>& users) {
     em::ChromeDeviceSettingsProto polval;
@@ -210,6 +225,14 @@ TEST_F(DevicePolicyTest, OwnerAlreadyInPolicy) {
 
   ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
   ASSERT_TRUE(AreNewUsersAllowed(pol));
+}
+
+TEST_F(DevicePolicyTest, CloudPolicy) {
+  DevicePolicy pol(tmpfile_);
+  std::string current_user("me");
+  pol.Set(CreateWithToken(current_user));
+
+  ASSERT_FALSE(pol.CurrentUserIsOwner(current_user));
 }
 
 TEST_F(DevicePolicyTest, ExistingPolicy) {

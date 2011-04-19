@@ -140,8 +140,11 @@ bool DevicePolicy::CurrentUserIsOwner(const std::string& current_user) {
   em::PolicyData poldata;
   if (!policy_.has_policy_data())
     return false;
-  if (poldata.ParseFromString(policy_.policy_data()))
-    return poldata.has_username() && poldata.username() == current_user;
+  if (poldata.ParseFromString(policy_.policy_data())) {
+    return (!poldata.has_request_token() &&
+            poldata.has_username() &&
+            poldata.username() == current_user);
+  }
   return false;
 }
 
