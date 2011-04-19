@@ -99,7 +99,6 @@ class ChildJob : public ChildJobInterface {
   static const char kLoginManagerFlag[];
   // The flag to pass to chrome to tell it which user has logged in.
   static const char kLoginUserFlag[];
-  static const char kDOMLoginFlag[];
   // The flag to pass to chrome when starting "Browse Without Sign In" mode.
   static const char kBWSIFlag[];
   // Suffix matched against each job's argv[0] to determine if it's the window
@@ -145,7 +144,6 @@ class ChildJob : public ChildJobInterface {
   // Indicates if we removed login manager flag when session started so we
   // add it back when session stops.
   bool removed_login_manager_flag_;
-  bool removed_dom_login_flag_;
 
   FRIEND_TEST(ChildJobTest, InitializationTest);
   FRIEND_TEST(ChildJobTest, ShouldStopTest);
