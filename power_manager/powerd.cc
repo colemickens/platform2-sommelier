@@ -22,6 +22,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/metrics_constants.h"
+#include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/util.h"
@@ -51,11 +52,13 @@ Daemon::Daemon(BacklightController* backlight_controller,
                PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
                VideoDetectorInterface* video_detector,
+               MonitorReconfigure* monitor_reconfigure,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
+      monitor_reconfigure_(monitor_reconfigure),
       low_battery_suspend_percent_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
@@ -704,7 +707,8 @@ void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
 
 void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
-  backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON);
+  // Monitor reconfigure will set the backlight if needed.
+  monitor_reconfigure_->Run();
 }
 
 }  // namespace power_manager

@@ -18,6 +18,8 @@ Executable programs:
     button.
   * xidle-example (xidle-example.cc)
     Prints console notifications when the user is and is not idle.
+  * drm-tool (drm-tool.cc)
+    Waits for drm hotplug events, mostly useful as a demo for the udev class.
 
 Main Classes:
   * AmbientLightSensor (ambient_light_sensor.{cc,h})

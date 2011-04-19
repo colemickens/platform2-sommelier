@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,6 +18,7 @@
 #include "cros/chromeos_cros_api.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/backlight.h"
+#include "power_manager/monitor_reconfigure.h"
 #include "power_manager/powerd.h"
 
 #ifndef VCSID
@@ -101,8 +102,11 @@ int main(int argc, char* argv[]) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
   FilePath run_dir(FLAGS_run_dir);
+  power_manager::MonitorReconfigure monitor_reconfigure(&backlight_ctl);
+  if (!monitor_reconfigure.Init())
+    LOG(WARNING) << "Cannot initialize monitor reconfigure";
   power_manager::Daemon daemon(&backlight_ctl, &prefs, &metrics_lib,
-                               &video_detector, run_dir);
+                               &video_detector, &monitor_reconfigure, run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

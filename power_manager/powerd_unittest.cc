@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/mock_backlight.h"
+#include "power_manager/mock_monitor_reconfigure.h"
 #include "power_manager/mock_video_detector.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
@@ -48,7 +49,7 @@ class DaemonTest : public Test {
       : prefs_(FilePath("."), FilePath(".")),
         backlight_ctl_(&backlight_, &prefs_),
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                FilePath(".")) {}
+                &monitor_reconfigure_, FilePath(".")) {}
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
@@ -118,6 +119,7 @@ class DaemonTest : public Test {
 
   StrictMock<MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
+  StrictMock<MockMonitorReconfigure> monitor_reconfigure_;
   PowerPrefs prefs_;
   chromeos::PowerStatus status_;
   BacklightController backlight_ctl_;

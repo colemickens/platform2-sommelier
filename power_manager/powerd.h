@@ -29,6 +29,7 @@
 
 namespace power_manager {
 
+class MonitorReconfigure;
 class PowerButtonHandler;
 
 class Daemon : public XIdleMonitor {
@@ -36,6 +37,7 @@ class Daemon : public XIdleMonitor {
   Daemon(BacklightController* ctl, PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
          VideoDetectorInterface* video_detector,
+         MonitorReconfigure* monitor_reconfigure,
          const FilePath& run_dir);
   ~Daemon();
 
@@ -222,6 +224,7 @@ class Daemon : public XIdleMonitor {
   MetricsLibraryInterface* metrics_lib_;
   VideoDetectorInterface* video_detector_;
   XIdle idle_;
+  MonitorReconfigure* monitor_reconfigure_;
   double low_battery_suspend_percent_;
   bool clean_shutdown_initiated_;
   bool low_battery_;
