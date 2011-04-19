@@ -1,15 +1,22 @@
 #!/bin/sh
 
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # Shutdown is best-effort. We don't want to die on errors.
 set +e
 
+logevent() {
+  local event=shutdown-$1
+  local metricsfile=/var/log/metrics/shutdown_${1}
+  local metricslist="time read-sectors write-sectors"
+  bootstat $event
+  bootstat_get_last $event $metricslist > $metricsfile
+}
+
 # Measure shutdown time. /var/log/metrics is created by chromeos_startup.
-cut -f 1 -d ' ' /proc/uptime > /var/log/metrics/uptime_shutdown_start
-cat /sys/block/sda/stat > /var/log/metrics/disk_shutdown_start
+logevent start
 
 # Sync the system clock to the hardware clock.
 HWCLOCK=/sbin/hwclock
@@ -40,8 +47,7 @@ fi
 (fg ${HWCLOCK} || /bin/true) 2> /dev/null
 
 # Measure shutdown time
-cut -f 1 -d ' ' /proc/uptime > /var/log/metrics/uptime_shutdown_stop
-cat /sys/block/sda/stat > /var/log/metrics/disk_shutdown_stop
+logevent stop
 
 # Signal that the clean shutdown point was reached (or at least as
 # close to that point as we can be before stateful is unmounted).
