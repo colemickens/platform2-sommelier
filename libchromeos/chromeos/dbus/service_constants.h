@@ -42,6 +42,8 @@ extern const char *kCryptohomeRemoveTrackedSubdirectories;
 extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
 extern const char *kCryptohomeDoAutomaticFreeDiskSpaceControl;
 extern const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
+extern const char *kCryptohomeAsyncDoesUsersExist;
+extern const char *kCryptohomeAsyncSetOwnerUser;
 extern const char *kCryptohomeInstallAttributesGet;
 extern const char *kCryptohomeInstallAttributesSet;
 extern const char *kCryptohomeInstallAttributesCount;
@@ -53,6 +55,7 @@ extern const char *kCryptohomeInstallAttributesIsFirstInstall;
 // Signals
 extern const char *kSignalAsyncCallStatus;
 extern const char *kSignalTpmInitStatus;
+extern const char *kSignalCleanupUsersRemoved;
 }  // namespace cryptohome
 
 namespace imageburn {
