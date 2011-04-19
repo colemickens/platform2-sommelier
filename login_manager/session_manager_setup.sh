@@ -251,6 +251,12 @@ if [ -s $TOUCH_LIST_PATH ] ; then
   fi
 fi
 
+# TODO(crosbug.com/14277): Make this a default.
+PKCS11_FLAGS=
+if [ -r "/home/chronos/.cryptohome-init-pkcs11" ]; then
+  PKCS11_FLAGS=--load-opencryptoki
+fi
+
 # Use OpenGL acceleration flags except on ARM
 if [ "$(uname -m)" != "armv7l" ] ; then
   ACCELERATED_FLAGS="--enable-accelerated-layers"
@@ -335,4 +341,5 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
+            ${PKCS11_FLAGS} \
 -- "$WM_SCRIPT"
