@@ -39,6 +39,8 @@ const char ChildJob::kLoginManagerFlag[] = "--login-manager";
 // static
 const char ChildJob::kLoginUserFlag[] = "--login-user=";
 // static
+const char ChildJob::kDOMLoginFlag[] = "--dom-login";
+// static
 const char ChildJob::kBWSIFlag[] = "--bwsi";
 // static
 const char ChildJob::kWindowManagerSuffix[] = "window-manager-session.sh";
@@ -105,6 +107,14 @@ void ChildJob::StartSession(const std::string& email) {
     removed_login_manager_flag_ = true;
   }
 
+  to_erase = std::remove(arguments_.begin(),
+                         arguments_.end(),
+                         kDOMLoginFlag);
+  if (to_erase != arguments_.end()) {
+    arguments_.erase(to_erase, arguments_.end());
+    removed_dom_login_flag_ = true;
+  }
+
   arguments_.push_back(kLoginUserFlag);
   arguments_.back().append(email);
 }
@@ -116,6 +126,12 @@ void ChildJob::StopSession() {
     arguments_.push_back(kLoginManagerFlag);
     removed_login_manager_flag_ = false;
   }
+
+  if (removed_dom_login_flag_) {
+    arguments_.push_back(kDOMLoginFlag);
+    removed_dom_login_flag_ = false;
+  }
+
 }
 
 uid_t ChildJob::GetDesiredUid() const {
