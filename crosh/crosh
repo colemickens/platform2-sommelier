@@ -278,6 +278,11 @@ cmd_enterprise_ca_approve() {
   fi
 
   /usr/sbin/entdwife.sh -c approve $option -C "$1"
+  if dbus-send --system --type=method_call --print-reply \
+      --dest=org.chromium.SessionManager /org/chromium/SessionManager \
+      org.chromium.SessionManagerInterface.RestartEntd | grep -q error; then
+    echo "Please log out and then log back in to use this CA."
+  fi
 }
 
 cmd_enterprise_ca_disapprove() {
