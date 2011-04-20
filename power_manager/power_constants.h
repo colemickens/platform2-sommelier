@@ -17,6 +17,7 @@ extern const char kPluggedOffMs[];
 extern const char kUnpluggedDimMs[];
 extern const char kUnpluggedOffMs[];
 extern const char kUnpluggedSuspendMs[];
+extern const char kReactMs[];
 extern const char kEnforceLock[];
 extern const char kDisableIdleSuspend[];
 extern const char kUseLid[];

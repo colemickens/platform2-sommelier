@@ -34,11 +34,8 @@ using std::vector;
 
 namespace power_manager {
 
-// The minimum delta between timers to avoid timer precision issues
+// The minimum delta between timers to avoid timer precision issues.
 static const int64 kFuzzMS = 100;
-
-// The minimum delta between timers when we want to give a user time to react
-static const int64 kReactMS = 30000;
 
 static const char kTaggedFilePath[] = "/var/lib/power_manager";
 
@@ -135,6 +132,7 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kUnpluggedDimMs, &unplugged_dim_ms_));
   CHECK(prefs_->GetInt64(kUnpluggedOffMs, &unplugged_off_ms_));
   CHECK(prefs_->GetInt64(kUnpluggedSuspendMs, &unplugged_suspend_ms_));
+  CHECK(prefs_->GetInt64(kReactMs, &react_ms_));
   CHECK(prefs_->GetInt64(kEnforceLock, &enforce_lock));
   CHECK(prefs_->GetInt64(kUseXScreenSaver, &use_xscreensaver));
   if (prefs_->GetInt64(kDisableIdleSuspend, &disable_idle_suspend) &&
@@ -162,14 +160,14 @@ void Daemon::ReadSettings() {
 
   // Check that timeouts are sane
   CHECK(kMetricIdleMin >= kFuzzMS);
-  CHECK(plugged_dim_ms_ >= kReactMS);
-  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + kReactMS);
-  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + kReactMS);
-  CHECK(unplugged_dim_ms_ >= kReactMS);
-  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + kReactMS);
-  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + kReactMS);
-  CHECK(default_lock_ms_ >= unplugged_off_ms_ + kReactMS);
-  CHECK(default_lock_ms_ >= plugged_off_ms_ + kReactMS);
+  CHECK(plugged_dim_ms_ >= react_ms_);
+  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + react_ms_);
+  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + react_ms_);
+  CHECK(unplugged_dim_ms_ >= react_ms_);
+  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + react_ms_);
+  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + react_ms_);
+  CHECK(default_lock_ms_ >= unplugged_off_ms_ + react_ms_);
+  CHECK(default_lock_ms_ >= plugged_off_ms_ + react_ms_);
 }
 
 void Daemon::ReadLockScreenSettings() {
@@ -269,8 +267,8 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
     // Make sure that the screen turns off before it locks, and dims before
     // it turns off. This ensures the user gets a warning before we lock the
     // screen.
-    off_ms_ = min(off_ms_, lock_ms_ - kReactMS);
-    dim_ms_ = min(dim_ms_, lock_ms_ - 2 * kReactMS);
+    off_ms_ = min(off_ms_, lock_ms_ - react_ms_);
+    dim_ms_ = min(dim_ms_, lock_ms_ - 2 * react_ms_);
   } else {
     lock_ms_ = max(lock_ms_ + offset_ms, lock_ms_);
   }

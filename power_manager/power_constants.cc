@@ -16,6 +16,7 @@ const char kPluggedOffMs[] = "plugged_off_ms";
 const char kUnpluggedDimMs[] = "unplugged_dim_ms";
 const char kUnpluggedOffMs[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMs[] = "unplugged_suspend_ms";
+const char kReactMs[] = "react_ms";
 const char kEnforceLock[] = "enforce_lock";
 const char kDisableIdleSuspend[] = "disable_idle_suspend";
 const char kUseLid[] = "use_lid";
