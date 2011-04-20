@@ -29,7 +29,7 @@ const CK_CHAR Pkcs11Init::kDefaultOpencryptokiSoPin[] = "87654321";
 const CK_CHAR Pkcs11Init::kDefaultOpencryptokiUserPin[] = "12345678";
 const CK_CHAR Pkcs11Init::kDefaultSoPin[] = "000000";
 const CK_CHAR Pkcs11Init::kDefaultUserPin[] = "111111";
-const CK_CHAR Pkcs11Init::kDefaultLabel[] = "TPM";
+const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
 const char Pkcs11Init::kOpencryptokiDir[] = "/var/lib/opencryptoki";
 const char Pkcs11Init::kUserTokenLink[] = "/var/lib/opencryptoki/tpm/chronos";
 const char Pkcs11Init::kRootTokenLink[] = "/var/lib/opencryptoki/tpm/root";
@@ -85,8 +85,8 @@ bool Pkcs11Init::Initialize() {
     return false;
 
   if (IsTokenBroken()) {
-    LOG(WARNING) << "Broken Token. Removing user token dir " << kUserTokenDir;
-
+    LOG(INFO) << "Broken or uninitialized token. Removing user token dir "
+              << kUserTokenDir << " just to be safe.";
     RemoveUserTokenDir();
     if (!SetUpLinksAndPermissions())
       return false;
@@ -135,8 +135,8 @@ bool Pkcs11Init::SetUpTPMToken() {
   // Setup the TPM as a token.
   std::vector<std::string> arguments;
   arguments.assign(kPkcsSlotCmd, kPkcsSlotCmd + arraysize(kPkcsSlotCmd));
-  if (!platform.Exec(kPkcsSlotPath, arguments, 0, /* chronos_user_id_, */
-                    pkcs11_group_id_)) {
+  if (!platform.Exec(kPkcsSlotPath, arguments, chronos_user_id_,
+                     pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't configure the tpm as a token. "
                << kPkcsSlotPath << " " << kPkcsSlotCmd[1] << " "
                << kPkcsSlotCmd[2] << "failed.";
@@ -303,7 +303,6 @@ bool Pkcs11Init::SetInitialized(bool status) {
   is_initialized_ = true;
   return true;
 }
-
 
 bool Pkcs11Init::SetPin(CK_SLOT_ID slot_id, CK_USER_TYPE user,
                         CK_CHAR_PTR old_pin, CK_ULONG old_pin_len,

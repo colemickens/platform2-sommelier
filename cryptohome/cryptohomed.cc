@@ -25,6 +25,10 @@
 namespace switches {
 // Keeps std* open for debugging
 static const char *kNoCloseOnDaemonize = "noclose";
+// Enable PKCS#11 initialization via cryptohomed
+// TODO(gauravsh): crosbug.com/14277 Remove this flag once this
+// feature is stabilized.
+static const char *kEnablePkcs11Init = "cryptohome-init-pkcs11";
 }  // namespace switches
 
 int main(int argc, char **argv) {
@@ -39,7 +43,8 @@ int main(int argc, char **argv) {
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
-  cryptohome::Service service;
+  int enable_pkcs11_init = cl->HasSwitch(switches::kEnablePkcs11Init);
+  cryptohome::Service service(enable_pkcs11_init);
   if (!service.Initialize()) {
     LOG(FATAL) << "Service initialization failed";
     return 1;

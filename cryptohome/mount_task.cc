@@ -7,6 +7,7 @@
 namespace cryptohome {
 
 const char* kMountTaskResultEventType = "MountTaskResult";
+const char* kPkcs11InitResultEventType = "Pkcs11InitResult";
 
 base::AtomicSequenceNumber MountTask::sequence_holder_;
 
@@ -130,6 +131,23 @@ void MountTaskAutomaticFreeDiskSpace::Run() {
   result()->set_return_status(true);
   if (mount_) {
     mount_->DoAutomaticFreeDiskSpaceControl();
+  }
+  MountTask::Notify();
+}
+
+MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
+                                         Mount* mount)
+    : MountTask(observer, mount, UsernamePasskey()),
+      pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)) {
+  set_result(pkcs11_init_result_.get());
+}
+
+void MountTaskPkcs11Init::Run() {
+  if (mount_) {
+    // Initialize() determines if initialization is needed, and if
+    // so, performs it.
+    bool status = pkcs11_init_.Initialize();
+    result()->set_return_status(status);
   }
   MountTask::Notify();
 }

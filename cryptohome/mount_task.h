@@ -31,26 +31,37 @@
 
 #include "cryptohome_event_source.h"
 #include "mount.h"
+#include "pkcs11_init.h"
 #include "username_passkey.h"
 
 namespace cryptohome {
 
 extern const char* kMountTaskResultEventType;
+extern const char* kPkcs11InitResultEventType;
 
 class MountTaskResult : public CryptohomeEventBase {
  public:
   MountTaskResult()
       : sequence_id_(-1),
-      return_status_(false),
-      return_code_(Mount::MOUNT_ERROR_NONE) { }
+        return_status_(false),
+        return_code_(Mount::MOUNT_ERROR_NONE),
+        event_name_(kMountTaskResultEventType) { }
+
+  // Constructor which sets an alternative event name. Useful
+  // for using MountTaskResult for other event types.
+  MountTaskResult(const char* event_name)
+      : sequence_id_(-1),
+        return_status_(false),
+        return_code_(Mount::MOUNT_ERROR_NONE),
+        event_name_(event_name) { }
 
   // Copy constructor is necessary for inserting MountTaskResult into the events
   // vector in CryptohomeEventSource.
   MountTaskResult(const MountTaskResult& rhs)
       : sequence_id_(rhs.sequence_id_),
-      return_status_(rhs.return_status_),
-      return_code_(rhs.return_code_) {
-  }
+        return_status_(rhs.return_status_),
+        return_code_(rhs.return_code_),
+        event_name_(rhs.event_name_) { }
 
   virtual ~MountTaskResult() { }
 
@@ -88,17 +99,19 @@ class MountTaskResult : public CryptohomeEventBase {
     sequence_id_ = rhs.sequence_id_;
     return_status_ = rhs.return_status_;
     return_code_ = rhs.return_code_;
+    event_name_ = rhs.event_name_;
     return *this;
   }
 
   virtual const char* GetEventName() {
-    return kMountTaskResultEventType;
+    return event_name_;
   }
 
  private:
   int sequence_id_;
   bool return_status_;
   Mount::MountError return_code_;
+  const char* event_name_;
 };
 
 class MountTaskObserver {
@@ -335,7 +348,7 @@ class MountTaskRemoveTrackedSubdirectories : public MountTask {
 class MountTaskAutomaticFreeDiskSpace : public MountTask {
  public:
   MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
-                                       Mount* mount)
+                                  Mount* mount)
       : MountTask(observer, mount, UsernamePasskey()) {
   }
   virtual ~MountTaskAutomaticFreeDiskSpace() { }
@@ -344,6 +357,20 @@ class MountTaskAutomaticFreeDiskSpace : public MountTask {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
+};
+
+// Implements asynchronous initialization of Pkcs11.
+class MountTaskPkcs11Init : public MountTask {
+ public:
+  MountTaskPkcs11Init(MountTaskObserver* observer, Mount* mount);
+  virtual ~MountTaskPkcs11Init() { }
+
+  virtual void Run();
+
+ private:
+  Pkcs11Init pkcs11_init_;
+  scoped_ptr<MountTaskResult> pkcs11_init_result_;
+  DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
 };
 
 }  // namespace cryptohome

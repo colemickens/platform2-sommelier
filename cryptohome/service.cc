@@ -79,7 +79,7 @@ class TpmInitStatus : public CryptohomeEventBase {
   bool status_;
 };
 
-Service::Service()
+Service::Service(bool enable_pkcs11_init)
     : loop_(NULL),
       cryptohome_(NULL),
       system_salt_(),
@@ -97,7 +97,11 @@ Service::Service()
       auto_cleanup_period_(kAutoCleanupPeriodMS),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
-      update_user_activity_period_(kUpdateUserActivityPeriod - 1) {
+      update_user_activity_period_(kUpdateUserActivityPeriod - 1),
+      enable_pkcs11_init_(enable_pkcs11_init),
+      pkcs11_state_(kUninitialized),
+      async_mount_pkcs11_init_sequence_id_(-1),
+      tpminit_must_pkcs11_init_(false) {
 }
 
 Service::~Service() {
@@ -191,6 +195,39 @@ void Service::InitializeInstallAttributes(bool first_time) {
   install_attrs_->Init();
 }
 
+void Service::InitializePkcs11() {
+  // Do nothing if PKCS#11 initialization via cryptohomed is not enabled.
+  if (!enable_pkcs11_init_) {
+    LOG(WARNING) << "PKCS#11 initialization not enabled. Skipping.";
+    return;
+  }
+
+  Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
+  // Wait for ownership if there is a working TPM.
+  if (tpm && tpm->IsEnabled() && !tpm->IsOwned()) {
+    LOG(WARNING) << "TPM was not owned. TPM initialization call back will"
+                 << " handle PKCS#11 initialization.";
+    pkcs11_state_ = kIsWaitingOnTPM;
+    return;
+  }
+
+  // Ok, so the TPM is owned. Time to request asynchronous initialization of
+  // PKCS#11.
+  // Make sure cryptohome is mounted, otherwise all of this is for naught.
+  if (!mount_->IsCryptohomeMounted()) {
+    LOG(WARNING) << "PKCS#11 initialization requested but cryptohome is"
+                 << " not mounted.";
+    return;
+  }
+
+  // Reset PKCS#11 initialization status. A succesful completion of
+  // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
+  pkcs11_state_ = kIsBeingInitialized;
+  MountTaskPkcs11Init* pkcs11_init_task = new MountTaskPkcs11Init(this, mount_);
+  LOG(INFO) << "Putting a Pkcs11_Initialize on the mount thread.";
+  mount_thread_.message_loop()->PostTask(FROM_HERE, pkcs11_init_task);
+}
+
 bool Service::SeedUrandom() {
   SecureBlob random;
   if (!tpm_init_->GetRandomData(kDefaultRandomSeedLength, &random)) {
@@ -237,11 +274,30 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     MountTaskResult* result = static_cast<MountTaskResult*>(event);
     g_signal_emit(cryptohome_, async_complete_signal_, 0, result->sequence_id(),
                   result->return_status(), result->return_code());
+    if (result->sequence_id() == async_mount_pkcs11_init_sequence_id_) {
+      LOG(INFO) << "An asynchronous mount request with sequence id: "
+                << async_mount_pkcs11_init_sequence_id_
+                << " finished.";
+      // Time to push the task for PKCS#11 initialization.
+      InitializePkcs11();
+    }
   } else if (!strcmp(event->GetEventName(), kTpmInitStatusEventType)) {
     TpmInitStatus* result = static_cast<TpmInitStatus*>(event);
     g_signal_emit(cryptohome_, tpm_init_signal_, 0, tpm_init_->IsTpmReady(),
                   tpm_init_->IsTpmEnabled(), result->get_took_ownership());
     // TODO(wad) should we package up a InstallAttributes status here too?
+  } else if (!strcmp(event->GetEventName(), kPkcs11InitResultEventType)) {
+    LOG(INFO) << "A Pkcs11_Init event got finished.";
+    MountTaskResult* result = static_cast<MountTaskResult*>(event);
+    // Do extra sanity checks before updating our state.
+    if (result->return_status() && mount_->IsCryptohomeMounted() &&
+        !pkcs11_init_->IsTokenBroken()) {
+      LOG(INFO) << "Pkcs#11 initialization succeeded.";
+      pkcs11_state_ = kIsInitialized;
+      return;
+    }
+    LOG(ERROR) << "Pkcs#11 initialization failed.";
+    pkcs11_state_ = kIsFailed;
   }
 }
 
@@ -255,6 +311,11 @@ void Service::InitializeTpmComplete(bool status, bool took_ownership) {
     mount_task->set_complete_event(&event);
     mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
     event.Wait();
+    // Check if we have a pending pkcs11 init task due to tpm ownership
+    // not being done earlier. Trigger initialization if so.
+    if (pkcs11_state_ == kIsWaitingOnTPM) {
+      InitializePkcs11();
+    }
     // Initialize the install-time locked attributes since we
     // can't do it prior to ownership.
     InitializeInstallAttributes(true);
@@ -390,6 +451,14 @@ gboolean Service::Mount(gchar *userid,
   if (mount_->IsCryptohomeMounted()) {
     if (mount_->IsCryptohomeMountedForUser(credentials)) {
       LOG(INFO) << "Cryptohome already mounted for this user";
+      // This is the case where there were 2 mount requests for a given user
+      // without any intervening unmount requests. This can happen, for example,
+      // if cryptohomed was killed and restarted before an unmount request could
+      // be received or processed.
+      // As far as PKCS#11 initialization goes, we treat this as a brand new
+      // mount request. InitializePkcs11() will detect and re-initialize if
+      // necessary.
+      InitializePkcs11();
       *OUT_error_code = Mount::MOUNT_ERROR_NONE;
       *OUT_result = TRUE;
       return TRUE;
@@ -421,6 +490,10 @@ gboolean Service::Mount(gchar *userid,
   mount_task->set_complete_event(&event);
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
   event.Wait();
+
+  pkcs11_state_ = kUninitialized;
+  InitializePkcs11();
+
   *OUT_error_code = result.return_code();
   *OUT_result = result.return_status();
   return TRUE;
@@ -443,6 +516,8 @@ gboolean Service::AsyncMount(gchar *userid,
       mount_task->result()->set_return_status(true);
       *OUT_async_id = mount_task->sequence_id();
       mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+      // See comment in Service::Mount() above on why this is needed here.
+      InitializePkcs11();
       return TRUE;
     } else {
       if (!mount_->UnmountCryptohome()) {
@@ -470,6 +545,11 @@ gboolean Service::AsyncMount(gchar *userid,
                                                   mount_args);
   *OUT_async_id = mount_task->sequence_id();
   mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+
+  LOG(INFO) << "Asynced Mount() requested. Tracking request sequence id"
+            << " for later PKCS#11 initialization.";;
+  pkcs11_state_ = kUninitialized;
+  async_mount_pkcs11_init_sequence_id_ = mount_task->sequence_id();
   return TRUE;
 }
 
@@ -524,6 +604,13 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   } else {
     *OUT_result = true;
   }
+  if (pkcs11_state_ == kIsBeingInitialized) {
+    // TODO(gauravsh): Need a better strategy on how to deal with an ongoing
+    // initialization on the mount thread. Can we kill it?
+    LOG(WARNING) << "Unmount request received while PKCS#11 init in progress";
+  }
+  // Reset PKCS#11 initialization state.
+  pkcs11_state_ = kUninitialized;
   return TRUE;
 }
 
@@ -606,6 +693,7 @@ gboolean Service::TpmIsBeingOwned(gboolean* OUT_owning, GError** error) {
 
 gboolean Service::TpmCanAttemptOwnership(GError** error) {
   if (!tpm_init_->HasInitializeBeenCalled()) {
+
     tpm_init_->StartInitializeTpm();
   }
   return TRUE;
@@ -617,8 +705,9 @@ gboolean Service::TpmClearStoredPassword(GError** error) {
 }
 
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
-  // TODO(kmixter/gauravsh): Base this on PKCS#11 really being initialized.
-  *OUT_ready = TRUE;
+  // TODO(gauravsh): Give out more information here. The state of PKCS#11
+  // initialization, and it it failed - the reason for that.
+  *OUT_ready = (pkcs11_state_ == kIsInitialized);
   return TRUE;
 }
 
@@ -798,7 +887,8 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       "  Invalid.........................: %s\n"
       "  First Install / Unlocked........: %s\n"
       "  Entries.........................: %d\n"
-      "%s",
+      "%s"
+      "PKCS#11 Init State................: %d\n",
       (tpm_status.Enabled ? "1" : "0"),
       (tpm_status.Owned ? "1" : "0"),
       (tpm_status.BeingOwned ? "1" : "0"),
@@ -820,7 +910,8 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       (install_attrs_->is_invalid() ? "1" : "0"),
       (install_attrs_->is_first_install() ? "1" : "0"),
       install_attrs_size,
-      install_attrs_data.c_str());
+      install_attrs_data.c_str(),
+      pkcs11_state_);
   return TRUE;
 }
 
