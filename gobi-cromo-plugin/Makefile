@@ -36,16 +36,13 @@ PLUGIN_SRCS = device_watcher.cc \
 
 PLUGIN_OBJS = $(PLUGIN_SRCS:.cc=.o)
 
-TEST_SRCS = $(TESTS:=.cc)
-ALL_SRCS = $(PLUGIN_SRCS)
+ALL_SRCS = $(PLUGIN_SRCS) $(TEST_SRCS)
 
-TARGETS = $(GOBI_PLUGIN)
+TARGETS = $(GOBI_PLUGIN) $(TESTS)
 INSTALL_TARGETS = install-production
 
 ifdef INSTALL_TESTS
-	TARGETS += $(TESTS)
 	INSTALL_TARGETS += install-tests
-	ALL_SRCS += $(TEST_SRCS)
 endif
 
 all: $(TARGETS)
@@ -53,6 +50,7 @@ all: $(TARGETS)
 $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 	$(CXX) -shared $^ $(LDFLAGS) $(LDLIBS) -o $@
 
+# Libraries that we normally get via the plugin host (cromo)
 %unittest : LDLIBS += -lgtest -lgmock -lcromo -lchromeos \
 	    $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 \
 	      dbus-c++-1)
@@ -60,11 +58,13 @@ $(GOBI_PLUGIN) : $(PLUGIN_OBJS)
 # As few dependencies as possible
 gobi_handle_test : LDLIBS=-lGobiConnectionMgmt -lpthread -lrt
 
-gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.o
+gobi_handle_test : gobi_handle_test.cc
 
-gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o
+gobi_modem_unittest : $(PLUGIN_OBJS) gobi_modem_unittest.cc
 
-metrics_stopwatch_unittest : metrics_stopwatch.o metrics_stopwatch_unittest.o
+gobi_sdk_wrapper_unittest : gobi_sdk_wrapper.o gobi_sdk_wrapper_unittest.cc
+
+metrics_stopwatch_unittest : metrics_stopwatch.o metrics_stopwatch_unittest.cc
 
 %_server_glue.h: %.xml
 	$(DBUSXX_XML2CPP) $^ --adaptor=$@

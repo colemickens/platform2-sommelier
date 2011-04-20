@@ -5,7 +5,6 @@
 #include "gobi_sdk_wrapper.h"
 
 #include <base/scoped_ptr.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -129,8 +128,6 @@ TEST_F(GobiSdkTest, TemporaryCopier) {
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
-
   // Documentation says this can make tests run slower, but we're
   // still at << 1s for all our death tests, and using "threadsafe"
   // quiets warnings from gtest

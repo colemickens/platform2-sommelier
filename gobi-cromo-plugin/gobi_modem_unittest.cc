@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <base/scoped_ptr.h>
-#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -169,7 +168,6 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);
   google::InitGoogleLogging(argv[0]);
-  google::ParseCommandLineFlags(&argc, &argv, true);
 
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
