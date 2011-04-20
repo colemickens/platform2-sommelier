@@ -92,7 +92,7 @@ TEST_F(ProcessTest, NonZeroReturnValue) {
 TEST_F(ProcessTest, BadOutputFile) {
   process_.AddArg(kBinEcho);
   process_.RedirectOutput("/bad/path");
-  EXPECT_EQ(127, process_.Run());
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
 }
 
 TEST_F(ProcessTest, ExistingOutputFile) {
@@ -101,12 +101,12 @@ TEST_F(ProcessTest, ExistingOutputFile) {
   EXPECT_FALSE(file_util::PathExists(FilePath(output_file_)));
   EXPECT_EQ(0, process_.Run());
   EXPECT_TRUE(file_util::PathExists(FilePath(output_file_)));
-  EXPECT_EQ(127, process_.Run());
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
 }
 
 TEST_F(ProcessTest, BadExecutable) {
   process_.AddArg("false");
-  EXPECT_EQ(127, process_.Run());
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
 }
 
 void ProcessTest::CheckStderrCaptured() {
@@ -196,8 +196,46 @@ TEST_F(ProcessTest, RedirectStdinUsingPipe) {
   ExpectFileEquals(kMessage, output_file_.c_str());
 }
 
+TEST_F(ProcessTest, WithSameUid) {
+  gid_t uid = geteuid();
+  process_.AddArg(kBinEcho);
+  process_.SetUid(uid);
+  EXPECT_EQ(0, process_.Run());
+}
+
+TEST_F(ProcessTest, WithSameGid) {
+  gid_t gid = getegid();
+  process_.AddArg(kBinEcho);
+  process_.SetGid(gid);
+  EXPECT_EQ(0, process_.Run());
+}
+
+TEST_F(ProcessTest, WithIllegalUid) {
+  ASSERT_NE(0, geteuid());
+  process_.AddArg(kBinEcho);
+  process_.SetUid(0);
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
+  std::string contents;
+  EXPECT_TRUE(file_util::ReadFileToString(FilePath(output_file_),
+                                          &contents));
+  EXPECT_NE(std::string::npos,
+            contents.find("Unable to set UID to 0: 1\n"));
+}
+
+TEST_F(ProcessTest, WithIllegalGid) {
+  ASSERT_NE(0, getegid());
+  process_.AddArg(kBinEcho);
+  process_.SetGid(0);
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
+  std::string contents;
+  EXPECT_TRUE(file_util::ReadFileToString(FilePath(output_file_),
+                                          &contents));
+  EXPECT_NE(std::string::npos,
+            contents.find("Unable to set GID to 0: 1\n"));
+}
+
 TEST_F(ProcessTest, NoParams) {
-  EXPECT_EQ(127, process_.Run());
+  EXPECT_EQ(Process::kErrorExitStatus, process_.Run());
 }
 
 TEST_F(ProcessTest, SegFaultHandling) {

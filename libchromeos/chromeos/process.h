@@ -51,6 +51,12 @@ class Process {
   // from child process's perspective iff |is_input|.
   virtual void RedirectUsingPipe(int child_fd, bool is_input) = 0;
 
+  // Set the real/effective/saved user ID of the child process.
+  virtual void SetUid(uid_t uid) = 0;
+
+  // Set the real/effective/saved group ID of the child process.
+  virtual void SetGid(gid_t gid) = 0;
+
   // Gets the pipe file descriptor mapped to the process's |child_fd|.
   virtual int GetPipe(int child_fd) = 0;
 
@@ -58,7 +64,9 @@ class Process {
   virtual bool Start() = 0;
 
   // Waits for this process to finish.  Returns the process's exit
-  // status if it exited normally, or otherwise returns -1.
+  // status if it exited normally, or otherwise returns -1.  Note
+  // that kErrorExitStatus may be returned if an error occurred
+  // after forking and before execing the child process.
   virtual int Wait() = 0;
 
   // Start and wait for this process to finish.  Returns same value as
@@ -90,6 +98,10 @@ class Process {
 
   // Returns if |pid| is a currently running process.
   static bool ProcessExists(pid_t pid);
+
+  // When returned from Wait or Run, indicates an error may have occurred
+  // creating the process.
+  enum { kErrorExitStatus = 127 };
 };
 
 class ProcessImpl : public Process {
@@ -100,6 +112,8 @@ class ProcessImpl : public Process {
   virtual void AddArg(const std::string& arg);
   virtual void RedirectOutput(const std::string& output_file);
   virtual void RedirectUsingPipe(int child_fd, bool is_input);
+  virtual void SetUid(uid_t uid);
+  virtual void SetGid(gid_t gid);
   virtual int GetPipe(int child_fd);
   virtual bool Start();
   virtual int Wait();
@@ -122,12 +136,6 @@ class ProcessImpl : public Process {
   };
   typedef std::map<int, PipeInfo> PipeMap;
 
-  std::string output_file_;
-  std::vector<std::string> arguments_;
-  // Map of child target file descriptors (first) to information about
-  // pipes created (second).
-  PipeMap pipe_map_;
-
   void UpdatePid(pid_t new_pid);
   bool PopulatePipeMap();
 
@@ -136,6 +144,13 @@ class ProcessImpl : public Process {
   // process.  pid must not be modified except by calling
   // UpdatePid(new_pid).
   pid_t pid_;
+  std::string output_file_;
+  std::vector<std::string> arguments_;
+  // Map of child target file descriptors (first) to information about
+  // pipes created (second).
+  PipeMap pipe_map_;
+  uid_t uid_;
+  gid_t gid_;
 };
 
 }  // namespace chromeos

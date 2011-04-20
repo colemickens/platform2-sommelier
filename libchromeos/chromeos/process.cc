@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <map>
 
@@ -30,7 +31,7 @@ bool Process::ProcessExists(pid_t pid) {
   return file_util::DirectoryExists(FilePath(StringPrintf("/proc/%d", pid)));
 }
 
-ProcessImpl::ProcessImpl() : pid_(0) {
+ProcessImpl::ProcessImpl() : pid_(0), uid_(-1), gid_(-1) {
 }
 
 ProcessImpl::~ProcessImpl() {
@@ -49,6 +50,14 @@ void ProcessImpl::RedirectUsingPipe(int child_fd, bool is_input) {
   PipeInfo info;
   info.is_input_ = is_input;
   pipe_map_[child_fd] = info;
+}
+
+void ProcessImpl::SetUid(uid_t uid) {
+  uid_ = uid;
+}
+
+void ProcessImpl::SetGid(gid_t gid) {
+  gid_ = gid;
 }
 
 int ProcessImpl::GetPipe(int child_fd) {
@@ -144,7 +153,7 @@ bool ProcessImpl::Start() {
         LOG(ERROR) << "Could not create " << output_file_
                    << ": " << saved_errno;
         // Avoid exit() to avoid atexit handlers from parent.
-        _exit(127);
+        _exit(kErrorExitStatus);
       }
       HANDLE_EINTR(dup2(output_handle, STDOUT_FILENO));
       HANDLE_EINTR(dup2(output_handle, STDERR_FILENO));
@@ -154,10 +163,20 @@ bool ProcessImpl::Start() {
         HANDLE_EINTR(close(output_handle));
       }
     }
+    if (uid_ >= 0 && setresuid(uid_, uid_, uid_) < 0) {
+      int saved_errno = errno;
+      LOG(ERROR) << "Unable to set UID to " << uid_ << ": " << saved_errno;
+      _exit(kErrorExitStatus);
+    }
+    if (gid_ >= 0 && setresgid(gid_, gid_, gid_) < 0) {
+      int saved_errno = errno;
+      LOG(ERROR) << "Unable to set GID to " << gid_ << ": " << saved_errno;
+      _exit(kErrorExitStatus);
+    }
     execv(argv[0], &argv[0]);
     saved_errno = errno;
     LOG(ERROR) << "Exec of " << argv[0] << " failed: " << saved_errno;
-    _exit(127);
+    _exit(kErrorExitStatus);
   } else {
     // Still executing inside the parent process with known child pid.
     arguments_.clear();
