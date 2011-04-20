@@ -75,6 +75,10 @@ HELP='
  route [-n]
   Display the routing tables.
 
+ secure_certificates [on|off]
+  Enables TPM-wrapped secure certificate storage in Chrome.  This is off by
+  default and is currently a lab feature.
+
  set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
   Set the APN to use when connecting to the network specified by <network-id>.
   If <network-id> is not specified, use the network-id of the currently
@@ -422,6 +426,34 @@ cmd_modem() {
 
 cmd_modem_set_carrier() {
   /usr/bin/modem_set_carrier "$@"
+}
+
+# TODO(crosbug.com/14277): Remove once this is default.
+cmd_secure_certificates() {
+  local flag_file="/home/chronos/.cryptohome-init-pkcs11"
+  local enabled=0
+  local changed=0
+  [ -r ${flag_file} ] && enabled=1
+  if [ -z "$1" ]; then
+    if [ ${enabled} -eq 1 ]; then
+      echo "Currently enabled"
+    else
+      echo "Currently disabled"
+    fi
+    return
+  fi
+  if [ "$1" = "on" ]; then
+    [ ${enabled} -eq 0 ] && changed=1
+    touch "${flag_file}"
+  else
+    [ $enabled -eq 1 ] && changed=1
+    rm -f $flag_file
+  fi
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot for this to take effect"
+  else
+    echo "No change."
+  fi
 }
 
 cmd_set_apn() {
