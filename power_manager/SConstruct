@@ -73,7 +73,7 @@ powerd_env.Append(LIBS=Split(
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
-powerd_sources = Split('''\
+powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
   monitor_reconfigure.cc resolution_selector.cc udev_controller.cc

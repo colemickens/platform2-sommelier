@@ -23,20 +23,23 @@
 #include "power_manager/power_prefs.h"
 #include "power_manager/screen_locker.h"
 #include "power_manager/suspender.h"
-#include "power_manager/video_detector.h"
 #include "power_manager/xidle.h"
 #include "power_manager/xidle_monitor.h"
 
 namespace power_manager {
 
+class AudioDetectorInterface;
 class MonitorReconfigure;
 class PowerButtonHandler;
+class VideoDetectorInterface;
 
 class Daemon : public XIdleMonitor {
  public:
-  Daemon(BacklightController* ctl, PowerPrefs* prefs,
+  Daemon(BacklightController* ctl,
+         PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
          VideoDetectorInterface* video_detector,
+         AudioDetectorInterface* audio_detector,
          MonitorReconfigure* monitor_reconfigure,
          const FilePath& run_dir);
   ~Daemon();
@@ -223,6 +226,7 @@ class Daemon : public XIdleMonitor {
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   VideoDetectorInterface* video_detector_;
+  AudioDetectorInterface* audio_detector_;
   XIdle idle_;
   MonitorReconfigure* monitor_reconfigure_;
   double low_battery_suspend_percent_;

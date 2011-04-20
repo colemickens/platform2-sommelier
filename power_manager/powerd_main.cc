@@ -17,9 +17,11 @@
 #include "base/string_util.h"
 #include "cros/chromeos_cros_api.h"
 #include "power_manager/ambient_light_sensor.h"
+#include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/powerd.h"
+#include "power_manager/video_detector.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -97,16 +99,23 @@ int main(int argc, char* argv[]) {
   power_manager::AmbientLightSensor als(&backlight_ctl);
   if (!als.Init())
     LOG(WARNING) << "Cannot initialize light sensor";
+  MetricsLibrary metrics_lib;
   power_manager::VideoDetector video_detector;
   video_detector.Init();
-  MetricsLibrary metrics_lib;
+  power_manager::AudioDetector audio_detector;
+  audio_detector.Init();
   metrics_lib.Init();
-  FilePath run_dir(FLAGS_run_dir);
   power_manager::MonitorReconfigure monitor_reconfigure(&backlight_ctl);
   if (!monitor_reconfigure.Init())
     LOG(WARNING) << "Cannot initialize monitor reconfigure";
-  power_manager::Daemon daemon(&backlight_ctl, &prefs, &metrics_lib,
-                               &video_detector, &monitor_reconfigure, run_dir);
+  FilePath run_dir(FLAGS_run_dir);
+  power_manager::Daemon daemon(&backlight_ctl,
+                               &prefs,
+                               &metrics_lib,
+                               &video_detector,
+                               &audio_detector,
+                               &monitor_reconfigure,
+                               run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

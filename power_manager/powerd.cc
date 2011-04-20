@@ -21,10 +21,12 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "cros/chromeos_wm_ipc_enums.h"
+#include "power_manager/audio_detector_interface.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
+#include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
 
 using std::max;
@@ -49,12 +51,14 @@ Daemon::Daemon(BacklightController* backlight_controller,
                PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
                VideoDetectorInterface* video_detector,
+               AudioDetectorInterface* audio_detector,
                MonitorReconfigure* monitor_reconfigure,
                const FilePath& run_dir)
     : backlight_controller_(backlight_controller),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
+      audio_detector_(audio_detector),
       monitor_reconfigure_(monitor_reconfigure),
       low_battery_suspend_percent_(0),
       clean_shutdown_initiated_(false),
@@ -332,6 +336,23 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
     SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
+  if (is_idle && kIdleScreenOff == idle_state_ && idle_time_ms >= suspend_ms_) {
+    // Delay suspend if audio is active.
+    bool audio_is_playing = false;
+    // TODO(sque): Add a CHECK once AudioDetector is more flexible and supports
+    // various audio sysfs across different systems.
+    audio_detector_->GetAudioStatus(&audio_is_playing);
+    if (audio_is_playing) {
+      LOG(INFO) << "Delaying suspend because audio is playing.";
+      // Increase the suspend offset by the react time.  Since the offset is
+      // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
+      // need to use that here.
+      int64 base_suspend_ms = (plugged_state_ == kPowerConnected) ?
+                               plugged_suspend_ms_ : unplugged_suspend_ms_;
+      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_, kIdleSuspend);
+    }
+  }
+
   GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
@@ -343,9 +364,9 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   if (idle_time_ms >= suspend_ms_) {
     LOG(INFO) << "state = kIdleSuspend";
     // Note: currently this state doesn't do anything.  But it can be possibly
-    // useful in future development.  For example, if we want to implement fade
-    // from suspend, we would want to have this state to make sure the backlight
-    // is set to zero when suspended.
+    // useful in future development.  For example, if we want to implement
+    // fade from suspend, we would want to have this state to make sure the
+    // backlight is set to zero when suspended.
     changed_brightness =
         backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     idle_state_ = kIdleSuspend;
