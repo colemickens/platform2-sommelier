@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 
+#include "platform.h"
+
 // TODO(wad) This is a placeholder DBus service which allows
 //           chrome-login (and anything else running as chronos)
 //           to request to mount, unmount, or check if a mapper
@@ -25,11 +27,12 @@
 namespace switches {
 // Keeps std* open for debugging
 static const char *kNoCloseOnDaemonize = "noclose";
-// Enable PKCS#11 initialization via cryptohomed
-// TODO(gauravsh): crosbug.com/14277 Remove this flag once this
-// feature is stabilized.
-static const char *kEnablePkcs11Init = "cryptohome-init-pkcs11";
 }  // namespace switches
+
+// Enable PKCS#11 initialization via cryptohomed
+// TODO(gauravsh): crosbug.com/14277 Remove this code once this
+// feature is stabilized.
+static const char *kEnablePkcs11Path = "/home/chronos/.cryptohome-init-pkcs11";
 
 int main(int argc, char **argv) {
   ::g_type_init();
@@ -43,7 +46,8 @@ int main(int argc, char **argv) {
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
-  int enable_pkcs11_init = cl->HasSwitch(switches::kEnablePkcs11Init);
+  cryptohome::Platform platform;
+  bool enable_pkcs11_init = platform.FileExists(kEnablePkcs11Path);
   cryptohome::Service service(enable_pkcs11_init);
   if (!service.Initialize()) {
     LOG(FATAL) << "Service initialization failed";
