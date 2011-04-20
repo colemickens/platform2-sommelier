@@ -258,7 +258,7 @@ uint32_t GobiGsmModem::GetMmAccessTechnology() {
       reinterpret_cast<ULONG*>(data_caps));
 }
 
-void GobiGsmModem::GetPinStatus(const char** status,
+void GobiGsmModem::GetPinStatus(std::string* status,
                                 uint32_t* retries_left) {
   ULONG pin_status, verify_retries_left, unblock_retries_left;
   DBus::Error error;
@@ -291,7 +291,7 @@ void GobiGsmModem::GetPinStatus(const char** status,
 
 void GobiGsmModem::SetTechnologySpecificProperties() {
   AccessTechnology = GetMmAccessTechnology();
-  const char *status;
+  std::string status;
   uint32_t retries_left;
   GetPinStatus(&status, &retries_left);
   LOG(INFO) << "GetPinStatus1: \"" << status << "\" " << retries_left;
@@ -302,7 +302,7 @@ void GobiGsmModem::SetTechnologySpecificProperties() {
 }
 
 void GobiGsmModem::UpdatePinStatus() {
-  const char *status;
+  std::string status;
   uint32_t retries_left;
 
   GetPinStatus(&status, &retries_left);
@@ -312,7 +312,7 @@ void GobiGsmModem::UpdatePinStatus() {
   UnlockRetries = retries_left;
 
   utilities::DBusPropertyMap props;
-  props["UnlockRequired"].writer().append_string(status);
+  props["UnlockRequired"].writer().append_string(status.c_str());
   props["UnlockRetries"].writer().append_uint32(retries_left);
   MmPropertiesChanged(
       org::freedesktop::ModemManager::Modem_adaptor::introspect()->name, props);
