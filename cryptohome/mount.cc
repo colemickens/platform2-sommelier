@@ -835,7 +835,7 @@ bool Mount::MountGuestCryptohome() const {
   current_user_->Reset();
 
   // Attempt to mount guestfs
-  if (!platform_->Mount("guestfs", home_dir_, "tmpfs", "")) {
+  if (!platform_->Mount("guestfs", home_dir_, "tmpfs", "mode=0700")) {
     LOG(ERROR) << "Cryptohome mount failed: " << errno << " for guestfs";
     return false;
   }
