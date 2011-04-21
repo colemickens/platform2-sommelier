@@ -1004,6 +1004,18 @@ class Sdk {
   virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
 
  protected:
+
+  struct CallWrapper {
+    CallWrapper(Sdk *sdk, const char *name);
+    ULONG CheckReturn(ULONG rc);
+    ~CallWrapper();
+    Sdk *sdk_;
+    const char *function_name_;
+    bool sdk_locked_;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CallWrapper);
+  };
+
   // The CMAPI is split into groups.  Functions in multiple groups can
   // be called simultaneously, but each group is nonreentrant against
   // itself.  This machinery takes care of this
@@ -1039,6 +1051,7 @@ class Sdk {
   FRIEND_TEST(GobiSdkTest, EnterLeaveDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromNameDeathTest);
   FRIEND_TEST(GobiSdkTest, InitGetServiceFromName);
+  FRIEND_TEST(GobiSdkTest, InterleavedSdkCalls);
   FRIEND_TEST(GobiSdkTest, CharStarCopier);
 
  private:

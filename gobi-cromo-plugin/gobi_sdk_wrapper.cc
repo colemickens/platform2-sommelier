@@ -201,48 +201,42 @@ static const char *kServiceMapping[] = {
   NULL
 };
 
-struct CallWrapper {
-  CallWrapper(Sdk *sdk, const char *name)
-      : sdk_(sdk),
-        function_name_(name) {
-    sdk_locked_ = sdk_->EnterSdk(function_name_) == kCrosGobiSubsystemInUse;
+
+Sdk::CallWrapper::CallWrapper(Sdk *sdk, const char *name)
+    : sdk_(sdk),
+      function_name_(name) {
+  sdk_locked_ = sdk_->EnterSdk(function_name_) == kCrosGobiSubsystemInUse;
+}
+
+ULONG Sdk::CallWrapper::CheckReturn(ULONG rc) {
+  if (sdk_->fault_inject_sdk_error_ != 0) {
+    LOG(ERROR) << "Injecting error " << sdk_->fault_inject_sdk_error_;
+    rc = sdk_->fault_inject_sdk_error_;
   }
 
-  ULONG CheckReturn(ULONG rc) {
-    if (sdk_->fault_inject_sdk_error_ != 0) {
-      LOG(ERROR) << "Injecting error " << sdk_->fault_inject_sdk_error_;
-      rc = sdk_->fault_inject_sdk_error_;
-    }
-
-    if (rc == kErrorSendingQmiRequest ||
-        rc == kErrorReceivingQmiRequest ||
-        rc == kErrorNeedsReset) {
-      // SetOMADM...Callback returns error kErrorSendingQmiRequest when
-      // run on an image without OMADM-capable firmware.  This error code
-      // normally means "You have lost synch with the modem and must reset
-      // it", but in this case we don't want to reset it.
-      //    http://code.google.com/p/chromium-os/issues/detail?id=9372
-      // tracks removing this workaround
-      if (strstr(function_name_, "OMADM") == NULL)  {
-        sdk_->sdk_error_sink_(sdk_->current_modem_path_,
-                              function_name_,
-                              rc);
-      }
-    }
-    return rc;
-  }
-
-  ~CallWrapper() {
-    if (!sdk_locked_) {
-      sdk_->LeaveSdk(function_name_);
+  if (rc == kErrorSendingQmiRequest ||
+      rc == kErrorReceivingQmiRequest ||
+      rc == kErrorNeedsReset) {
+    // SetOMADM...Callback returns error kErrorSendingQmiRequest when
+    // run on an image without OMADM-capable firmware.  This error code
+    // normally means "You have lost synch with the modem and must reset
+    // it", but in this case we don't want to reset it.
+    //    http://code.google.com/p/chromium-os/issues/detail?id=9372
+    // tracks removing this workaround
+    if (strstr(function_name_, "OMADM") == NULL)  {
+      sdk_->sdk_error_sink_(sdk_->current_modem_path_,
+                            function_name_,
+                            rc);
     }
   }
-  Sdk *sdk_;
-  const char *function_name_;
-  bool sdk_locked_;
- private:
-  DISALLOW_COPY_AND_ASSIGN(CallWrapper);
-};
+  return rc;
+}
+
+Sdk::CallWrapper::~CallWrapper() {
+  if (!sdk_locked_) {
+    sdk_->LeaveSdk(function_name_);
+  }
+}
 
 void Sdk::Init() {
   InitGetServiceFromName(kServiceMapping);
@@ -296,7 +290,6 @@ ULONG Sdk::EnterSdk(const char *function_name) {
   ULONG to_return = 0;
   int rc = pthread_mutex_lock(&service_to_function_mutex_);
   CHECK(rc == 0) << "lock failed: rc = " << rc;
-
   int service = GetServiceFromName(function_name);
   for (int i = service; i < GetServiceBound(service); ++i) {
     if (service_to_function_[i]) {
@@ -304,7 +297,10 @@ ULONG Sdk::EnterSdk(const char *function_name) {
                    << function_name << " while already in call to "
                    << service_to_function_[i];
       to_return = kCrosGobiSubsystemInUse;
-    } else {
+    }
+  }
+  if (to_return == 0) {
+    for (int i = service; i < GetServiceBound(service); ++i) {
       service_to_function_[i] = function_name;
     }
   }
