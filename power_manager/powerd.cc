@@ -4,13 +4,12 @@
 
 #include "power_manager/powerd.h"
 
-#include <cmath>
 #include <gdk/gdkx.h>
 #include <stdint.h>
-#include <sys/inotify.h>
 #include <X11/extensions/dpms.h>
 #include <X11/keysym.h>
 #include <X11/XF86keysym.h>
+#include <sys/inotify.h>
 
 #include <algorithm>
 #include <string>
@@ -703,11 +702,9 @@ gboolean Daemon::PrefChangeHandler(const char* name,
 }
 
 void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
-  double brightness = 0.;
-  int64 brightness_rounded;
+  int64 brightness = 0;
   if (!backlight_controller_->GetTargetBrightness(&brightness))
     return;
-  brightness_rounded = lround(brightness);
 
   // DBUS_TYPE_BOOLEAN actually corresponds to an int.
   int user_initiated_int = user_initiated;
@@ -720,7 +717,7 @@ void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
                                                 kBrightnessChangedSignal);
   CHECK(signal);
   dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &brightness_rounded,
+                           DBUS_TYPE_INT32, &brightness,
                            DBUS_TYPE_BOOLEAN, &user_initiated_int,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
