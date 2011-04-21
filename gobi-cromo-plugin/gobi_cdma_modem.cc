@@ -620,12 +620,8 @@ void GobiCdmaModem::RegistrationStateHandler() {
     registration_time_.Stop();
   }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
-  if (session_state_ == gobi::kConnected) {
-    ULONG data_bearer_technology;
-    sdk_->GetDataBearerTechnology(&data_bearer_technology);
-    // TODO(ers) send a signal or change a property to notify
-    // listeners about the change in data bearer technology
-  }
+
+  // TODO(ers) check data bearer technology and notify if appropriate.
 
   LOG(INFO) << "  => 1xRTT: " << cdma_1x_state << " EVDO: " << evdo_state;
 }

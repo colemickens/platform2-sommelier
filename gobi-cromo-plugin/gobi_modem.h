@@ -350,7 +350,6 @@ class GobiModem
   gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
 
-  ULONG session_state_;
   ULONG session_id_;
   bool signal_available_;
 

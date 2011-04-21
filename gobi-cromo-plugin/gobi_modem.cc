@@ -303,7 +303,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
     : DBus::ObjectAdaptor(connection, path),
       sdk_(sdk),
       last_seen_(-1),
-      session_state_(gobi::kDisconnected),
       session_id_(0),
       signal_available_(false),
       suspending_(false),
@@ -449,7 +448,7 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
 
 void GobiModem::Disconnect(DBus::Error& error) {
   LOG(INFO) << "Disconnect(" << session_id_ << ")";
-  if (session_state_ != gobi::kConnected) {
+  if (session_id_ == 0) {
     LOG(WARNING) << "Disconnect called when not connected";
     error.set(kDisconnectError, "Not connected");
     return;
@@ -461,7 +460,6 @@ void GobiModem::Disconnect(DBus::Error& error) {
     disconnect_time_.Reset();
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
   error.set(kOperationInitiatedError, "");
-  // session_state_ will be set in SessionStateCallback
 }
 
 std::string GobiModem::GetUSBAddress() {
@@ -1280,7 +1278,6 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     // listeners about the change in data bearer technology
   }
 
-  session_state_ = state;
   if (state == gobi::kDisconnected) {
     disconnect_time_.Stop();
     session_id_ = 0;
