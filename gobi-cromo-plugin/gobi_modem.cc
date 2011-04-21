@@ -119,13 +119,13 @@ class SessionStarter {
         password_.get(),
         &session_id_,  // OUT: session ID
         &failure_reason_);  // OUT: failure reason
-    LOG(INFO) << "Starter completing";
     connect_time_.Stop();
     if (fault_inject_sleep_time_ms_ > 0) {
       LOG(WARNING) << "Fault injection:  connect sleeping for "
                    << fault_inject_sleep_time_ms_ << "ms";
       usleep(1000 * fault_inject_sleep_time_ms_);
     }
+    LOG(INFO) << "Starter completing";
     g_idle_add(CompletionCallback, this);
     return NULL;
   }
@@ -350,7 +350,6 @@ GobiModem::~GobiModem() {
   handler_->server().exit_ok_hooks().Del(hooks_name_);
   handler_->server().UnregisterStartSuspend(hooks_name_);
   handler_->server().suspend_ok_hooks().Del(hooks_name_);
-
   ApiDisconnect();
 }
 
@@ -890,6 +889,9 @@ ULONG GobiModem::ApiDisconnect(void) {
   pthread_mutex_lock(&modem_mutex_.mutex_);
   if (connected_modem_ == this) {
     LOG(INFO) << "Disconnecting from QCWWAN.  this_=0x" << this;
+    if (session_starter_in_flight_) {
+      SessionStarter::CancelDataSession(sdk_);
+    }
     connected_modem_ = NULL;
     pthread_mutex_unlock(&modem_mutex_.mutex_);
     rc = sdk_->QCWWANDisconnect();
