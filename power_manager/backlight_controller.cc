@@ -4,8 +4,8 @@
 
 #include "power_manager/backlight_controller.h"
 
+#include <cmath>
 #include <gdk/gdkx.h>
-#include <math.h>
 #include <X11/extensions/dpms.h>
 
 #include "base/logging.h"
@@ -15,10 +15,10 @@
 namespace power_manager {
 
 // Set brightness to this value when going into idle-induced dim state.
-static const int64 kIdleBrightness = 10;
+static const double kIdleBrightness = 10;
 
 // Minimum allowed brightness during startup.
-static const int64 kMinInitialBrightness = 10;
+static const double kMinInitialBrightness = 10;
 
 // When waiting for the backlight to be turned off before turning the display,
 // wait for this time between polling the backlight value.
@@ -30,6 +30,9 @@ const int kBacklightNumSteps = 8;
 
 // Time between backlight adjustment steps, in milliseconds.
 const int kBacklightStepTimeMS = 30;
+
+// Maximum number of brightness adjustment steps.
+static const int64 kMaxBrightnessSteps = 16;
 
 // String names for power states.
 static const char* PowerStateToString(PowerState state) {
@@ -67,20 +70,28 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       local_brightness_(0),
       min_(0),
       max_(-1),
-      min_percent_(0),
-      is_initialized_(false) {}
+      min_percent_(0.),
+      max_percent_(100.),
+      num_steps_(kMaxBrightnessSteps),
+      is_initialized_(false),
+      is_in_transition_(false) {}
 
 bool BacklightController::Init() {
   int64 level;
   if (backlight_->GetBrightness(&level, &max_)) {
     ReadPrefs();
     is_initialized_ = true;
+
+    // If there are fewer steps than the max, adjust for it.
+    // TODO(sque): this is not ideal for some cases, such as max=17, where the
+    // steps will have a large spread.  Something we can work on in the future.
+    num_steps_ = std::max(1LL, std::min(kMaxBrightnessSteps, max_));
     return true;
   }
   return false;
 }
 
-bool BacklightController::GetBrightness(int64* level) {
+bool BacklightController::GetCurrentBrightness(double* level) {
   int64 raw_level;
   if (!backlight_->GetBrightness(&raw_level, &max_))
     return false;
@@ -89,7 +100,7 @@ bool BacklightController::GetBrightness(int64* level) {
   return true;
 }
 
-bool BacklightController::GetTargetBrightness(int64* level) {
+bool BacklightController::GetTargetBrightness(double* level) {
   *level = RawBrightnessToLocalBrightness(target_raw_brightness_);
   return true;
 }
@@ -97,57 +108,81 @@ bool BacklightController::GetTargetBrightness(int64* level) {
 void BacklightController::IncreaseBrightness() {
   if (!is_initialized_)
     return;
-  if (ReadBrightness()) {
-    // Give the user between 8 and 16 distinct brightness levels
-    int64 offset = 1 + (max_ >> 4);
-    int64 new_val = offset + LocalBrightnessToRawBrightness(local_brightness_);
-    int64 new_brightness = ClampToMin(RawBrightnessToLocalBrightness(new_val));
-    if (new_brightness != local_brightness_) {
-      SetPowerState(BACKLIGHT_ACTIVE_ON);
-      // Allow large swing in brightness_offset for absolute brightness
-      // outside of clamped brightness region.
-      int64 absolute_brightness = als_brightness_level_ + *brightness_offset_;
-      *brightness_offset_ += new_brightness - absolute_brightness;
-      WriteBrightness();
+  if (!ReadBrightness())
+    return;
+
+  // Determine the adjustment step size.
+  double step_size = (max_percent_ - min_percent_) / num_steps_;
+  double new_brightness = ClampToMin(local_brightness_ + step_size);
+
+  if (new_brightness != local_brightness_) {
+    // This gets out of backlight off state when minimum brightness is zero.
+    if (local_brightness_ == 0) {
+      // Do not call SetPowerState because that calls ReadBrightness and
+      // WriteBrightness.  This function already calls both; hence, it should
+      // directly set the power state.
+      state_ = BACKLIGHT_ACTIVE_ON;
     }
+
+    // Allow large swing in |brightness_offset_| for absolute brightness
+    // outside of clamped brightness region.
+    double absolute_brightness = als_brightness_level_ + *brightness_offset_;
+    *brightness_offset_ += new_brightness - absolute_brightness;
+    WriteBrightness();
   }
 }
 
 void BacklightController::DecreaseBrightness() {
   if (!is_initialized_)
     return;
-  if (ReadBrightness()) {
-    // Give the user between 8 and 16 distinct brightness levels
-    int64 offset = 1 + (max_ >> 4);
-    int64 new_val = LocalBrightnessToRawBrightness(local_brightness_) - offset;
-    int64 new_brightness = ClampToMin(RawBrightnessToLocalBrightness(new_val));
-    if (new_brightness != local_brightness_ || new_brightness == min_percent_) {
-      if (new_brightness == min_percent_)
-        SetPowerState(BACKLIGHT_ACTIVE_OFF);
-      // Allow large swing in brightness_offset for absolute brightness
-      // outside of clamped brightness region.
-      int64 absolute_brightness = als_brightness_level_ + *brightness_offset_;
-      *brightness_offset_ += new_brightness - absolute_brightness;
-      WriteBrightness();
+  if (!ReadBrightness())
+    return;
+
+  // Determine the adjustment step size.
+  double step_size = (max_percent_ - min_percent_) / num_steps_;
+  double new_brightness = ClampToMin(local_brightness_ - step_size);
+
+  if ((new_brightness == min_percent_ && min_percent_ > 0) ||
+      new_brightness != local_brightness_) {
+    // Set backlight to zero if there is no change in the brightness, but
+    // already at a nonzero minimum. (Can go one step lower to zero.)
+    if ((new_brightness == min_percent_ && min_percent_ > 0) ||
+        new_brightness == 0) {
+      // Do not call SetPowerState because that calls ReadBrightness and
+      // WriteBrightness.  This function already calls both; hence, it should
+      // directly set the power state.
+      state_ = BACKLIGHT_ACTIVE_OFF;
+      // Explicitly et new brightness to zero in case backlight was adjusted
+      // from min -> 0.
+      new_brightness = 0;
     }
+
+    // Allow large swing in |brightness_offset_| for absolute brightness
+    // outside of clamped brightness region.
+    double absolute_brightness = als_brightness_level_ + *brightness_offset_;
+    *brightness_offset_ += new_brightness - absolute_brightness;
+    WriteBrightness();
   }
 }
 
-bool BacklightController::SetPowerState(PowerState state) {
-  if (state == state_ || !is_initialized_)
+bool BacklightController::SetPowerState(PowerState new_state) {
+  if (new_state == state_ || !is_initialized_)
     return false;
-  CHECK(state != BACKLIGHT_UNINITIALIZED);
+  CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
   // If backlight is turned off, do not transition to dim or off states.
   // From ACTIVE_OFF state only transition to ACTIVE_ON and SUSPEND states.
-  if (state_ == BACKLIGHT_ACTIVE_OFF && (state == BACKLIGHT_IDLE_OFF ||
-                                         state == BACKLIGHT_DIM))
+  if (state_ == BACKLIGHT_ACTIVE_OFF && (new_state == BACKLIGHT_IDLE_OFF ||
+                                         new_state == BACKLIGHT_DIM))
     return false;
 
   LOG(INFO) << PowerStateToString(state_) << " -> "
-            << PowerStateToString(state);
-  ReadBrightness();
-  state_ = state;
+            << PowerStateToString(new_state);
+
+  if (new_state != BACKLIGHT_ACTIVE_OFF && new_state != BACKLIGHT_ACTIVE_ON)
+    ReadBrightness();
+  state_ = new_state;
+
   bool changed_brightness = WriteBrightness();
 
   if (light_sensor_)
@@ -159,11 +194,8 @@ bool BacklightController::SetPowerState(PowerState state) {
     LOG(WARNING) << "X Server is not DPMS capable";
   } else {
     CHECK(DPMSEnable(GDK_DISPLAY()));
-    if (state == BACKLIGHT_IDLE_OFF) {
-      SetBrightnessToZero();
-    } else if (state == BACKLIGHT_ACTIVE_ON) {
+    if (new_state == BACKLIGHT_ACTIVE_ON)
       CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
-    }
   }
   return changed_brightness;
 }
@@ -183,6 +215,7 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
 
 void BacklightController::SetMinimumBrightness(int64 level) {
   min_percent_ = level;
+  min_ = LocalBrightnessToRawBrightness(level);
 }
 
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
@@ -204,36 +237,36 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     WriteBrightness();
 }
 
-int64 BacklightController::Clamp(int64 value) {
-  return std::min(100LL, std::max(0LL, value));
+double BacklightController::Clamp(double value) {
+  return std::min(max_percent_, std::max(0., value));
 }
 
-int64 BacklightController::ClampToMin(int64 value) {
-  return std::min(100LL, std::max(min_percent_, value));
+double BacklightController::ClampToMin(double value) {
+  return std::min(max_percent_, std::max(min_percent_, value));
 }
 
-int64 BacklightController::RawBrightnessToLocalBrightness(int64 raw_level) {
-  return lround(100. * (raw_level ) / (max_ ));
+double BacklightController::RawBrightnessToLocalBrightness(int64 raw_level) {
+  return max_percent_ * raw_level / max_;
 }
 
-int64 BacklightController::LocalBrightnessToRawBrightness(int64 local_level) {
-  return lround((max_ ) * local_level / 100.);
+int64 BacklightController::LocalBrightnessToRawBrightness(double local_level) {
+  return lround(local_level * max_ / max_percent_);
 }
 
 void BacklightController::ReadPrefs() {
-  CHECK(prefs_->GetInt64(kPluggedBrightnessOffset,
-                         &plugged_brightness_offset_));
-  CHECK(prefs_->GetInt64(kUnpluggedBrightnessOffset,
+  CHECK(prefs_->GetDouble(kPluggedBrightnessOffset,
+                          &plugged_brightness_offset_));
+  CHECK(prefs_->GetDouble(kUnpluggedBrightnessOffset,
                          &unplugged_brightness_offset_));
-  CHECK(plugged_brightness_offset_ >= -100);
-  CHECK(plugged_brightness_offset_ <= 100);
-  CHECK(unplugged_brightness_offset_ >= -100);
-  CHECK(unplugged_brightness_offset_ <= 100);
+  CHECK(plugged_brightness_offset_ >= -max_percent_);
+  CHECK(plugged_brightness_offset_ <= max_percent_);
+  CHECK(unplugged_brightness_offset_ >= -max_percent_);
+  CHECK(unplugged_brightness_offset_ <= max_percent_);
 
   // Adjust brightness offset values to make sure that the backlight is not
   // initially set to too low of a level.
-  int64 minimum_starting_brightness =
-      std::max(kMinInitialBrightness, min_percent_);
+  double minimum_starting_brightness = std::max(kMinInitialBrightness,
+                                                min_percent_);
   if (als_brightness_level_ + plugged_brightness_offset_ <
       minimum_starting_brightness)
     plugged_brightness_offset_ = minimum_starting_brightness -
@@ -275,30 +308,36 @@ void BacklightController::WritePrefs() {
 
   // Store the brightness levels to preference files.
   if (store_plugged_brightness)
-    prefs_->SetInt64(kPluggedBrightnessOffset, plugged_brightness_offset_);
+    prefs_->SetDouble(kPluggedBrightnessOffset, plugged_brightness_offset_);
 
   if (store_unplugged_brightness)
-    prefs_->SetInt64(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
+    prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
 }
 
 bool BacklightController::ReadBrightness() {
   if (!is_initialized_)
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
-  int64 level = RawBrightnessToLocalBrightness(target_raw_brightness_);
-  if (level != local_brightness_) {
+
+  int64 raw_level;
+  CHECK(backlight_->GetBrightness(&raw_level, &max_));
+  double level = RawBrightnessToLocalBrightness(raw_level);
+
+  if (LocalBrightnessToRawBrightness(local_brightness_) != raw_level &&
+      !is_in_transition_) {
     // Another program adjusted the brightness. Sync up.
-    // TODO(sque): This is currently useless code due to the implementation of
-    // smoothing and target brightness.  However, that will soon change, and
-    // this code will become useful again.  Delete the Clamp function as needed.
     LOG(INFO) << "ReadBrightness: " << local_brightness_ << " -> " << level;
-    int64 brightness = Clamp(als_brightness_level_ + *brightness_offset_);
-    int64 diff = Clamp(brightness + level - local_brightness_) - brightness;
+
+    // TODO(sque): This part should be modified to use ClampToMin instead.  It
+    // also rather complex and could use some simplification.
+    double brightness = Clamp(*brightness_offset_ + als_brightness_level_);
+    double diff = Clamp(brightness + level - local_brightness_) - brightness;
     *brightness_offset_ += diff;
     local_brightness_ = level;
     WritePrefs();
     return false;
   }
+
   return true;
 }
 
@@ -306,7 +345,7 @@ bool BacklightController::WriteBrightness() {
   if (!is_initialized_)
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
-  int64 old_brightness = local_brightness_;
+  double old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE_ON) {
     local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);
   } else if (state_ == BACKLIGHT_DIM) {
@@ -327,20 +366,11 @@ bool BacklightController::WriteBrightness() {
   }
   als_hysteresis_level_ = als_brightness_level_;
   int64 val = LocalBrightnessToRawBrightness(local_brightness_);
-  local_brightness_ = RawBrightnessToLocalBrightness(val);
   LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
             << local_brightness_;
   if (SetBrightnessGradual(val))
     WritePrefs();
   return local_brightness_ != old_brightness;
-}
-
-void BacklightController::SetBrightnessToZero() {
-  if (!is_initialized_)
-    return;
-  local_brightness_ = 0;
-  if (SetBrightnessGradual(0))
-    WritePrefs();
 }
 
 bool BacklightController::SetBrightnessGradual(int64 target_level) {
@@ -365,6 +395,7 @@ bool BacklightController::SetBrightnessGradual(int64 target_level) {
     return true;
 
   LOG(INFO) << "Setting to new target brightness " << target_level;
+  is_in_transition_ = true;
   int64 previous_level = current_level;
   for (int i = 0; i < kBacklightNumSteps; ++i) {
     int64 step_level = current_level + diff * (i + 1) / kBacklightNumSteps;
@@ -390,9 +421,12 @@ gboolean BacklightController::SetBrightnessHard(int64 level,
   if (!backlight_->SetBrightness(level))
     DLOG(INFO) << "Could not set brightness to " << level;
 
+  if (level == target_level)
+    is_in_transition_ = false;
+
   // Turn off screen if transitioning to zero.
   if (level == 0 && target_level == 0 && GDK_DISPLAY() != NULL &&
-      state_ == BACKLIGHT_IDLE_OFF)
+      DPMSCapable(GDK_DISPLAY()) && state_ == BACKLIGHT_IDLE_OFF)
     CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
   return false; // Return false so glib doesn't repeat.
 }

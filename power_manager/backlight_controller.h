@@ -41,31 +41,32 @@ class BacklightController {
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
 
-  int64 plugged_brightness_offset() const { return plugged_brightness_offset_; }
-  void set_plugged_brightness_offset(int64 offset) {
+  double plugged_brightness_offset() const {
+    return plugged_brightness_offset_;
+  }
+  void set_plugged_brightness_offset(double offset) {
     plugged_brightness_offset_ = offset;
   }
 
-  int64 unplugged_brightness_offset() const {
+  double unplugged_brightness_offset() const {
     return unplugged_brightness_offset_;
   }
-  void set_unplugged_brightness_offset(int64 offset) {
+  void set_unplugged_brightness_offset(double offset) {
     unplugged_brightness_offset_ = offset;
   }
 
-  int64 local_brightness() const { return local_brightness_; }
+  double local_brightness() const { return local_brightness_; }
 
   // Initialize the object.
   bool Init();
 
   // Get the current brightness of the backlight, as a percentage.
-  // TODO(sque): rename to something like GetCurrentBrightness to better
-  // distinguish from GetTargetBrightness.
-  bool GetBrightness(int64* level);
+  bool GetCurrentBrightness(double* level);
+
   // Get the intended brightness of the backlight, as a percentage.  Intended
   // brightness is the destination brightness during a transition.  Once the
   // transition completes, this equals the current brightness.
-  bool GetTargetBrightness(int64* level);
+  bool GetTargetBrightness(double* level);
 
   // Increase the brightness level of the backlight by one level.
   void IncreaseBrightness();
@@ -88,14 +89,14 @@ class BacklightController {
 
  private:
   // Clamp |value| to fit between 0 and 100.
-  int64 Clamp(int64 value);
+  double Clamp(double value);
 
-  // Clamp |value| to fit between min_ and 100.
-  int64 ClampToMin(int64 value);
+  // Clamp |value| to fit between |min_percent_| and 100.
+  double ClampToMin(double value);
 
-  // Converts between [0, 100] and [min, max] brightness scales.
-  int64 RawBrightnessToLocalBrightness(int64 raw_level);
-  int64 LocalBrightnessToRawBrightness(int64 local_level);
+  // Converts between [0, 100] and [0, |max_|] brightness scales.
+  double RawBrightnessToLocalBrightness(int64 raw_level);
+  int64 LocalBrightnessToRawBrightness(double local_level);
 
   void ReadPrefs();
   void WritePrefs();
@@ -108,8 +109,6 @@ class BacklightController {
   // Write brightness based on current settings.
   // Returns true if the brightness was changed and false otherwise.
   bool WriteBrightness();
-
-  void SetBrightnessToZero();
 
   // Changes the brightness to |target_level| over time.  This is used for
   // smoothing effects.
@@ -149,13 +148,13 @@ class BacklightController {
   int64 als_hysteresis_level_;
 
   // User adjustable brightness offset when AC plugged.
-  int64 plugged_brightness_offset_;
+  double plugged_brightness_offset_;
 
   // User adjustable brightness offset when AC unplugged.
-  int64 unplugged_brightness_offset_;
+  double unplugged_brightness_offset_;
 
   // Pointer to currently in-use user brightness offset.
-  int64* brightness_offset_;
+  double* brightness_offset_;
 
   // Backlight power state, used to distinguish between various cases.
   // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.
@@ -165,20 +164,27 @@ class BacklightController {
   PluggedState plugged_state_;
 
   // Current system brightness, on local [0, 100] scale.
-  int64 local_brightness_;
+  double local_brightness_;
 
-  // Min and max brightness for backlight object.
+  // Min and max raw brightness for backlight object.
   int64 min_;
   int64 max_;
 
-  // Minimum brightness as a percentage.
-  int64 min_percent_;
+  // Minimum and maximum brightness as a percentage.
+  double min_percent_;
+  double max_percent_;
+
+  // Number of brightness adjustment steps.
+  int64 num_steps_;
 
   // Flag is set if a backlight device exists.
   bool is_initialized_;
 
   // The destination hardware brightness used for brightness transitions.
   int64 target_raw_brightness_;
+
+  // Flag to indicate whether there is an active brightness transition going on.
+  bool is_in_transition_;
 
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };

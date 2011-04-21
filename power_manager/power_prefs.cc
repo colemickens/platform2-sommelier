@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -57,10 +57,40 @@ bool PowerPrefs::GetInt64(const char* name, int64* value) {
 }
 
 bool PowerPrefs::SetInt64(const char* name, int64 value) {
-  int status;
   FilePath path = pref_path_.Append(name);
   string buf = base::Int64ToString(value);
-  status = file_util::WriteFile(path, buf.data(), buf.size());
+  int status = file_util::WriteFile(path, buf.data(), buf.size());
+  LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
+  return -1 != status;
+}
+
+bool PowerPrefs::GetDouble(const char* name, double* value) {
+  FilePath path = pref_path_.Append(name);
+  string buf;
+  if (file_util::ReadFileToString(path, &buf)) {
+    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    if (base::StringToDouble(buf, value))
+      return true;
+    else
+      LOG(ERROR) << "Garbage found in " << path.value();
+  }
+  path = default_path_.Append(name);
+  buf.clear();
+  if (file_util::ReadFileToString(path, &buf)) {
+    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+    if (base::StringToDouble(buf, value))
+      return true;
+    else
+      LOG(ERROR) << "Garbage found in " << path.value();
+  }
+  LOG(INFO) << "Could not read " << path.value();
+  return false;
+}
+
+bool PowerPrefs::SetDouble(const char* name, double value) {
+  FilePath path = pref_path_.Append(name);
+  string buf = base::DoubleToString(value);
+  int status = file_util::WriteFile(path, buf.data(), buf.size());
   LOG_IF(ERROR, -1 == status) << "Failed to write to " << path.value();
   return -1 != status;
 }
