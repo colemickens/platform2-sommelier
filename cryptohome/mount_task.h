@@ -359,6 +359,24 @@ class MountTaskAutomaticFreeDiskSpace : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
 };
 
+// Implements asychronous setting owner user
+class MountTaskSetOwnerUser : public MountTask {
+ public:
+  MountTaskSetOwnerUser(MountTaskObserver* observer,
+                        Mount* mount,
+                        const char* username)
+      : MountTask(observer, mount, UsernamePasskey()),
+        username_(username) {
+  }
+  virtual ~MountTaskSetOwnerUser() { }
+
+  virtual void Run();
+
+ private:
+  const std::string username_;
+  DISALLOW_COPY_AND_ASSIGN(MountTaskSetOwnerUser);
+};
+
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:

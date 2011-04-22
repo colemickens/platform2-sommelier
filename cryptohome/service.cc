@@ -193,6 +193,9 @@ void Service::InitializeInstallAttributes(bool first_time) {
 
   // Init can fail without making the interface inconsistent so we're okay here.
   install_attrs_->Init();
+
+  // Check if the machine is enterprise owned and report to mount_ then.
+  DetectEnterpriseOwnership();
 }
 
 void Service::InitializePkcs11() {
@@ -660,6 +663,16 @@ gboolean Service::AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
   return TRUE;
 }
 
+gboolean Service::AsyncSetOwnerUser(gchar *user,
+                                    gint *OUT_async_id,
+                                    GError **error) {
+  MountTaskSetOwnerUser* mount_task =
+      new MountTaskSetOwnerUser(this, mount_, user);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  return TRUE;
+}
+
 gboolean Service::TpmIsReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = tpm_init_->IsTpmReady();
   return TRUE;
@@ -879,6 +892,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       "%s"
       "Mount Status:\n"
       "  Vault Is Mounted................: %s\n"
+      "  Owner User......................: %s\n"
       "InstallAttributes Status:\n"
       "  Initialized.....................: %s\n"
       "  Version.........................: %"PRIx64"\n"
@@ -903,6 +917,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       tpm_status.LastTpmError,
       user_data.c_str(),
       (mount_->IsCryptohomeMounted() ? "1" : "0"),
+      mount_->owner_obfuscated_username().c_str(),
       (install_attrs_->is_initialized() ? "1" : "0"),
       install_attrs_->version(),
       InstallAttributes::kLockboxIndex,
@@ -921,7 +936,7 @@ void Service::AutoCleanupCallback() {
 
   // Update current user's activity timestamp every day.
   if (++ticks > update_user_activity_period_) {
-    mount_->UpdateUserActivityTimestamp();
+    mount_->UpdateCurrentUserActivityTimestamp();
     ticks = 0;
   }
 
@@ -932,6 +947,16 @@ void Service::AutoCleanupCallback() {
   mount_thread_.message_loop()->PostDelayedTask(
       FROM_HERE, NewRunnableMethod(this, &Service::AutoCleanupCallback),
       auto_cleanup_period_);
+}
+
+void Service::DetectEnterpriseOwnership() const {
+  static const char true_str[] = "true";
+  const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
+  chromeos::Blob value;
+  if (install_attrs_->Get("enterprise.owned", &value) &&
+      value == true_value) {
+    mount_->set_enterprise_owned(true);
+  }
 }
 
 }  // namespace cryptohome

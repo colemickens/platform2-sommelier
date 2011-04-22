@@ -168,6 +168,13 @@ gboolean cryptohome_async_do_automatic_free_disk_space_control(
     GError **error) {
   CRYPTOHOME_WRAP_METHOD(AsyncDoAutomaticFreeDiskSpaceControl, OUT_async_id);
 }
+gboolean cryptohome_async_set_owner_user(
+    Cryptohome *self,
+    gchar *userid,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncSetOwnerUser, userid, OUT_async_id);
+}
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error) {

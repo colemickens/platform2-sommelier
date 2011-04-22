@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2010-2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -26,7 +26,7 @@ class MockMount : public Mount {
   MOCK_CONST_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
   MOCK_CONST_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD0(DoAutomaticFreeDiskSpaceControl, void());
-  MOCK_CONST_METHOD0(UpdateUserActivityTimestamp, void());
+  MOCK_METHOD0(UpdateCurrentUserActivityTimestamp, void());
 };
 }  // namespace cryptohome
 

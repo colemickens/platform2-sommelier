@@ -148,6 +148,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                                    GError **error);
   virtual gboolean AsyncDoAutomaticFreeDiskSpaceControl(gint *OUT_async_id,
                                                         GError **error);
+  virtual gboolean AsyncSetOwnerUser(gchar *user,
+                                     gint *OUT_async_id,
+                                     GError **error);
 
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);
@@ -193,6 +196,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Called periodically on Mount thread to initiate automatic disk
   // cleanup if needed.
   virtual void AutoCleanupCallback();
+
+  // Checks if the machine is enterprise owned and report to mount_ then.
+  virtual void DetectEnterpriseOwnership() const;
 
  private:
   GMainLoop* loop_;

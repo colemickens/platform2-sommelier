@@ -704,6 +704,100 @@ TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
     file_util::Delete(cache_dir[user], true);
     EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path[user]));
   }
+
+  // Verify that user timestamp cache must still be not initialized by now.
+  UserOldestActivityTimestampCache* user_timestamp =
+      mount.user_timestamp_cache();
+  EXPECT_TRUE(user_timestamp->empty());
+
+  // Setting owner so that old user may be deleted.
+  mount.SetOwnerUser("owner123@invalid.domain");
+
+  // Now pretend we have lack of free space 2 times.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillOnce(Return(kEnoughFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
+
+  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
+  // for all users and remove the 1 oldest user. But, as we didn't put
+  // user timestamps, all users must remain.
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  for (size_t user = 0; user < kAlternateUserCount; user ++) {
+    EXPECT_TRUE(file_util::PathExists(vault_path[user]));
+  }
+
+  // Verify that user timestamp cache must be initialized by now.
+  EXPECT_FALSE(user_timestamp->empty());
+
+  // Update cached users with artifical timestamp:
+  // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
+  // user[3] is old as well, but it is an owner.
+  user_timestamp->UpdateExistingUser(
+      vault_path[0], base::Time::Now() - kOldUserLastActivityTime);
+  user_timestamp->UpdateExistingUser(
+      vault_path[1], base::Time::Now());
+  user_timestamp->UpdateExistingUser(
+      vault_path[3], base::Time::Now() - kOldUserLastActivityTime);
+
+  // Now pretend we have lack of free space 2 times.
+  // So 1st Caches are deleted and then 1 oldest user is deleted.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillOnce(Return(kEnoughFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
+
+  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
+  // for all users and remove the 1 olderst user.
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  // User[2] should be deleted because we have not updated its
+  // timestamp (so it does not have one) and 1st user is old, so 2nd
+  // user is older.
+  EXPECT_TRUE(file_util::PathExists(vault_path[0]));
+  EXPECT_TRUE(file_util::PathExists(vault_path[1]));
+  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
+  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+
+  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
+  // for all users and remove the 2 olderst user.
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  // User[0] should be deleted because it is oldest now.
+  // User[1] should not be deleted because it is up to date.
+  EXPECT_FALSE(file_util::PathExists(vault_path[0]));
+  EXPECT_TRUE(file_util::PathExists(vault_path[1]));
+  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
+  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
+
+  // Update cached users with artifical timestamp: user[1] is old.
+  user_timestamp->UpdateExistingUser(
+      vault_path[1], base::Time::Now() - kOldUserLastActivityTime);
+
+  // Now pretend we have lack of free space all times - to delete all users.
+  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+
+  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
+  // for all users and remove the 1 olderst user.
+  mount.DoAutomaticFreeDiskSpaceControl();
+
+  // User[1] should be deleted because we updated its timestamp old.
+  // User[3] is not touched as an owner.
+  EXPECT_FALSE(file_util::PathExists(vault_path[0]));
+  EXPECT_FALSE(file_util::PathExists(vault_path[1]));
+  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
+  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
+
+  // Verify that user timestamp cache must be empty by now.
+  EXPECT_TRUE(user_timestamp->empty());
 }
 
 TEST_F(MountTest, UserActivityTimestampUpdated) {
@@ -738,7 +832,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp
-  mount.UpdateUserActivityTimestamp();
+  mount.UpdateCurrentUserActivityTimestamp();
   SerializedVaultKeyset serialized1;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized1));
 
@@ -755,9 +849,9 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_LT(0, last_activity_delay_us);
 
   // Update timestamp again, after user is unmounted. User's activity
-  // timestamp must not change thus
+  // timestamp must not change this
   mount.UnmountCryptohome();
-  mount.UpdateUserActivityTimestamp();
+  mount.UpdateCurrentUserActivityTimestamp();
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
 

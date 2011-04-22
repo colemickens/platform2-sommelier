@@ -108,6 +108,7 @@ commonlib_sources = env.Split("""crypto.cc
                                  tpm_status.pb.cc
                                  user_session.cc
                                  username_passkey.cc
+                                 user_oldest_activity_timestamp_cache.cc
                                  vault_keyset.cc
                                  vault_keyset.pb.cc
                               """)
@@ -122,6 +123,7 @@ test_sources = env.Split("""cryptohome_event_source_unittest.cc
                             mount_unittest.cc
                             secure_blob_unittest.cc
                             username_passkey_unittest.cc
+                            user_oldest_activity_timestamp_cache_unittest.cc
                             vault_keyset_unittest.cc
                             user_session_unittest.cc
                             sha_test_vectors.cc

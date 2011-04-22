@@ -21,6 +21,7 @@
 #include "platform.h"
 #include "secure_blob.h"
 #include "user_session.h"
+#include "user_oldest_activity_timestamp_cache.h"
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
@@ -39,6 +40,8 @@ extern const std::string kIncognitoUser;
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const char* kCacheDir;
 extern const char* kDownloadsDir;
+// Time delta of last user's activity to be considered as old.
+extern const base::TimeDelta kOldUserLastActivityTime;
 
 // Minimum free disk space on stateful_partition not to begin the cleanup
 const int64 kMinFreeSpace = 512 * 1LL << 20;  // 500M bytes
@@ -159,12 +162,30 @@ class Mount : public EntropySource {
   // Deletes Cache tracking directory of the given vault
   virtual void DeleteCacheCallback(const FilePath& vault);
 
+  // Adds the user, by vault, to the cache of the latest activity timestamps.
+  //
+  // Parameters
+  //   vault - The FilePath of the desired user's vault
+  virtual void AddUserTimestampCallback(const FilePath& vault);
+
   // Checks free disk space and if it falls below minimum
   // (kMinFreeSpace), performs cleanup
   virtual void DoAutomaticFreeDiskSpaceControl();
 
-  // Update user activity timestamp to be able to detect old users.
-  virtual void UpdateUserActivityTimestamp() const;
+  // Sets owner user. Called by Chrome during the login screen, before the first
+  // call to DoAutomaticFreeDiskSpaceControl().
+  //
+  // Parameters
+  //   username - login name of the owner user
+  //
+  // The Owner user is the logical owner of the device this is running on.
+  // It implies that the vault should not be deleted during Automatic recovery.
+  virtual void SetOwnerUser(const std::string& username);
+
+  // Updates current user activity timestamp. This is called daily.
+  // So we may not consider current user as old (and delete it soon after she
+  // logs off). Nothing is done if no user is logged in.
+  virtual void UpdateCurrentUserActivityTimestamp();
 
   // Tests if the given credentials would decrypt the user's cryptohome key
   //
@@ -275,6 +296,11 @@ class Mount : public EntropySource {
   // Manually clear the current logged-in user
   void reset_current_user_credentials() {
     current_user_->Reset();
+  }
+
+  // Get the owner user obfuscated hash
+  std::string owner_obfuscated_username() {
+    return owner_obfuscated_username_;
   }
 
   // Loads the contents of the specified file as a blob
@@ -409,6 +435,22 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetUserVaultPath(const Credentials& credentials) const;
 
+  // Set/get last access timestamp cache instance for test purposes.
+  UserOldestActivityTimestampCache* user_timestamp_cache() const {
+    return user_timestamp_;
+  }
+  void set_user_timestamp_cache(UserOldestActivityTimestampCache* cache) {
+    user_timestamp_ = cache;
+  }
+
+  // Set/get a flag, that this machine is enterprise owned.
+  bool enterprise_owned() const {
+    return enterprise_owned_;
+  }
+  void set_enterprise_owned(bool value) {
+    enterprise_owned_ = value;
+  }
+
  private:
   // Invokes given callback for every unmounted cryptohome
   //
@@ -512,6 +554,18 @@ class Mount : public EntropySource {
   // Used to keep track of the current logged-in user
   scoped_ptr<UserSession> default_current_user_;
   UserSession* current_user_;
+
+  // Cache of last access timestamp for existing users.
+  scoped_ptr<UserOldestActivityTimestampCache> default_user_timestamp_;
+  UserOldestActivityTimestampCache* user_timestamp_;
+
+  // Owner user that we got from Chrome in the beginning. Empty if
+  // owner has not been received yet (or we have crashed).
+  std::string owner_obfuscated_username_;
+
+  // True if the machine is enterprise owned, false if not or we have
+  // not discovered it in this session.
+  bool enterprise_owned_;
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

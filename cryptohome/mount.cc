@@ -11,8 +11,9 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/platform_thread.h>
-#include <base/time.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
+#include <base/time.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 #include <set>
@@ -53,6 +54,7 @@ const struct TrackedDir {
   {kCacheDir, false},
   {kDownloadsDir, true}
 };
+const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
 const std::string kDefaultEcryptfsCryptoAlg = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
@@ -73,7 +75,10 @@ Mount::Mount()
       fallback_to_scrypt_(true),
       use_tpm_(true),
       default_current_user_(new UserSession()),
-      current_user_(default_current_user_.get()) {
+      current_user_(default_current_user_.get()),
+      default_user_timestamp_(new UserOldestActivityTimestampCache()),
+      user_timestamp_(default_user_timestamp_.get()),
+      enterprise_owned_(false) {
 }
 
 Mount::~Mount() {
@@ -478,14 +483,19 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
-void Mount::UpdateUserActivityTimestamp() const {
+void Mount::UpdateCurrentUserActivityTimestamp() {
   string obsfucated_username;
   current_user_->GetObfuscatedUsername(&obsfucated_username);
   if (!obsfucated_username.empty()) {
     SerializedVaultKeyset serialized;
     LoadVaultKeysetForUser(obsfucated_username, &serialized);
-    serialized.set_last_activity_timestamp(base::Time::Now().ToInternalValue());
+    base::Time timestamp = base::Time::Now();
+    serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
     StoreVaultKeysetForUser(obsfucated_username, serialized);
+    if (!user_timestamp_->empty()) {
+      user_timestamp_->UpdateExistingUser(
+          FilePath(GetUserKeyFileForUser(obsfucated_username)), timestamp);
+    }
   }
 }
 
@@ -563,6 +573,23 @@ void Mount::DeleteCacheCallback(const FilePath& vault) {
   DeleteDirectoryContents(vault.Append(kCacheDir));
 }
 
+void Mount::AddUserTimestampCallback(const FilePath& vault) {
+  const std::string obsfucated_username = vault.DirName().BaseName().value();
+  SerializedVaultKeyset serialized;
+  LoadVaultKeysetForUser(obsfucated_username, &serialized);
+  if (serialized.has_last_activity_timestamp()) {
+    base::Time timestamp = base::Time::FromInternalValue(
+        serialized.last_activity_timestamp());
+    user_timestamp_->AddExistingUser(vault, timestamp);
+    LOG(INFO) << "Caching user " << obsfucated_username << " with timestamp "
+              << timestamp.is_null() ?
+        "unknown" : base::IntToString((base::Time::Now() - timestamp).InDays());
+  } else {
+    user_timestamp_->AddExistingUserNotime(vault);
+    LOG(INFO) << "Caching user " << obsfucated_username << ", no timestamp.";
+  }
+}
+
 void Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
     return;
@@ -573,7 +600,42 @@ void Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
     return;
 
+  // Initialize user timestamp cache if it has not been yet.
+  if (user_timestamp_->empty()) {
+    DoForEveryUnmountedCryptohome(&Mount::AddUserTimestampCallback);
+  }
+
+  // Delete old users, the oldest first.
+  // Don't delete anyone if we don't know who the owner is.
+  if (enterprise_owned_ || !owner_obfuscated_username_.empty()) {
+    const base::Time timestamp_threshold =
+        base::Time::Now() - kOldUserLastActivityTime;
+    while (!user_timestamp_->latest_known_timestamp().is_null() &&
+           user_timestamp_->latest_known_timestamp() <= timestamp_threshold) {
+      FilePath deleted_user_vault = user_timestamp_->RemoveOldestUser();
+      if (!enterprise_owned_) {
+        std::string obfuscated_username =
+            deleted_user_vault.DirName().BaseName().value();
+        if (obfuscated_username == owner_obfuscated_username_) {
+          LOG(WARNING) << "Not deleting owner user " << obfuscated_username;
+          continue;
+        }
+      }
+      LOG(WARNING) << "Deleting old user " << deleted_user_vault.value();
+      platform_->DeleteFile(deleted_user_vault.value(), true);
+      if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
+        return;
+    }
+  }
+
   // TODO(glotov): do further cleanup.
+}
+
+void Mount::SetOwnerUser(const string& username) {
+  if (!username.empty()) {
+    owner_obfuscated_username_ = UsernamePasskey(
+        username.c_str(), chromeos::Blob()).GetObfuscatedUsername(system_salt_);
+  }
 }
 
 bool Mount::TestCredentials(const Credentials& credentials) const {

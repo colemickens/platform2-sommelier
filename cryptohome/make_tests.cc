@@ -52,6 +52,7 @@ const TestUserInfo kAlternateUsers[] = {
   {"altuser0@invalid.domain", "zero", true, false},
   {"altuser1@invalid.domain", "odin", true, false},
   {"altuser2@invalid.domain", "dwaa", true, false},
+  {"owner123@invalid.domain", "123", true, false},
 };
 const size_t kAlternateUserCount = arraysize(kAlternateUsers);
 
