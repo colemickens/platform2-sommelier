@@ -198,6 +198,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
 
   // Only a change of 5% of the brightness range will force a change.
   int64 diff = level - als_hysteresis_level_;
+
   if (diff < 0)
     diff = -diff;
   if (diff >= 5)
@@ -309,6 +310,11 @@ bool BacklightController::WriteBrightness() {
   int64 old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE_ON) {
     local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);
+    // Do not turn off backlight in this state.
+    if (local_brightness_ == 0)
+      local_brightness_ = 1;
+    // Adjust offset in case brightness was changed.
+    *brightness_offset_ = local_brightness_ - als_brightness_level_;
   } else if (state_ == BACKLIGHT_DIM) {
     // When in dimmed state, set to dim level only if it results in a reduction
     // of system brightness.  Also, make sure idle brightness is not lower than
