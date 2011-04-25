@@ -32,7 +32,7 @@ RM_ON_CLEAN += $(OUT)disks
 $(OUT)disks_testrunner: $(filter-out %main.o,$(CXX_OBJECTS)) \
 		cros-disks-server.h
 	$(call cxx_binary, -lgtest -lgmock)
-RM_ON_CLEAN += $(OUT)disks
+RM_ON_CLEAN += $(OUT)disks_testrunner
 
 # Some shortcuts
 all: disks

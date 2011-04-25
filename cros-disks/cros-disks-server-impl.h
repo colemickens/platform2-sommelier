@@ -13,6 +13,8 @@
 
 namespace cros_disks {
 
+class DiskManager;
+
 // The d-bus server for the cros-disks daemon. 
 //
 // Example Usage:
@@ -27,23 +29,37 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::IntrospectableAdaptor,
                         public DBus::ObjectAdaptor {
  public:
-  CrosDisksServer(DBus::Connection& connection);
+  CrosDisksServer(DBus::Connection& connection, DiskManager* disk_manager);
   virtual ~CrosDisksServer();
 
   // A method for checking if the daemon is running. Always returns true.
   virtual bool IsAlive(DBus::Error& error);  // NOLINT
 
   // Unmounts a device when invoked.
-  virtual void FilesystemUnmount(const std::vector<std::string>& mountOptions,
-                                 DBus::Error& error); // NOLINT
+  virtual void FilesystemUnmount(const std::string& device_path,
+      const std::vector<std::string>& mount_options,
+      DBus::Error& error); // NOLINT
 
   // Mounts a device when invoked.
-  virtual void FilesystemMount(const std::string& nullArgument, 
-                               const std::vector<std::string>& mountOptions,
-                               DBus::Error& error); // NOLINT
+  virtual std::string FilesystemMount(const std::string& device_path,
+      const std::string& filesystem_type,
+      const std::vector<std::string>& mount_options,
+      DBus::Error& error); // NOLINT
 
-  // Returns a description of every disk device attached to the sytem.
-  virtual DBusDisks GetAll(DBus::Error& error); // NOLINT
+  // Returns a list of device files for all disk devices attached to
+  // the system.
+  virtual std::vector<std::string> EnumerateDeviceFiles(
+      DBus::Error& error); // NOLINT
+
+  // Returns properties of a disk device attached to the system.
+  virtual DBusDisk GetDeviceProperties(const std::string& device_path,
+      DBus::Error& error); // NOLINT
+
+  // Emits appropriate DBus signals notifying device changes.
+  void SignalDeviceChanges();
+
+ private:
+  DiskManager* disk_manager_;
 };
 } // namespace cros_disks
 

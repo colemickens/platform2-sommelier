@@ -59,30 +59,42 @@ bool UdevDevice::HasProperty(const char *key) const {
 }
 
 void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
-  const char *dev_file = udev_device_get_devnode(dev_);
+  static const int kSectorSize = 512;
+  uint64 total = 0, remaining = 0;
 
-  struct statvfs stat;
-  bool stat_available = (statvfs(dev_file, &stat) == 0);
-
-  if (total_size) {
-    *total_size = (stat_available) ? (stat.f_blocks * stat.f_frsize) : 0;
-    const char *partition_size = udev_device_get_property_value(dev_,
-            "UDISKS_PARTITION_SIZE");
-    int64 size = 0;
-    if (partition_size) {
-      base::StringToInt64(partition_size, &size);
-      *total_size = size;
-    } else {
-      const char *size_attr = udev_device_get_sysattr_value(dev_, "size");
-      if (size_attr) {
-        base::StringToInt64(size_attr, &size);
-        *total_size = size;
-      }
+  // If the device is mounted, obtain the total and remaining size in bytes
+  // using statvfs.
+  std::vector<std::string> mount_paths = GetMountPaths();
+  if (!mount_paths.empty()) {
+    struct statvfs stat;
+    if (statvfs(mount_paths[0].c_str(), &stat) == 0) {
+      total = stat.f_blocks * stat.f_frsize;
+      remaining = stat.f_bfree * stat.f_frsize;
     }
   }
 
+  // If the UDISKS_PARTITION_SIZE property is set, use it as the total size
+  // instead. If the UDISKS_PARTITION_SIZE property is not set but sysfs
+  // provides a size value, which is the actual size in bytes divided by 512,
+  // use that as the total size instead.
+  const char *partition_size = udev_device_get_property_value(dev_,
+      "UDISKS_PARTITION_SIZE");
+  int64 size = 0;
+  if (partition_size) {
+    base::StringToInt64(partition_size, &size);
+    total = size;
+  } else {
+    const char *size_attr = udev_device_get_sysattr_value(dev_, "size");
+    if (size_attr) {
+      base::StringToInt64(size_attr, &size);
+      total = size * kSectorSize;
+    }
+  }
+
+  if (total_size)
+    *total_size = total;
   if (remaining_size)
-    *remaining_size = (stat_available) ? (stat.f_bfree * stat.f_frsize) : 0;
+    *remaining_size = remaining;
 }
 
 bool UdevDevice::IsMediaAvailable() const {
@@ -92,40 +104,50 @@ bool UdevDevice::IsMediaAvailable() const {
       is_media_available = IsPropertyTrue("ID_CDROM_MEDIA");
     } else {
       const char *dev_file = udev_device_get_devnode(dev_);
-      int fd = open(dev_file, O_RDONLY);
-      if (fd < 0) {
-        is_media_available = true;
-      } else {
-        close(fd);
+      if (dev_file) {
+        int fd = open(dev_file, O_RDONLY);
+        if (fd < 0) {
+          is_media_available = false;
+        } else {
+          close(fd);
+        }
       }
     }
   }
   return is_media_available;
 }
 
-std::vector<std::string> UdevDevice::GetMountedPaths() const {
-  const std::string dev_file = udev_device_get_devnode(dev_);
-  std::ifstream fs("/proc/mounts");
-  if (fs.is_open()) {
-    return ParseMountedPaths(dev_file, fs);
+std::vector<std::string> UdevDevice::GetMountPaths() const {
+  const char *device_path = udev_device_get_devnode(dev_);
+  if (device_path) {
+    return GetMountPaths(device_path);
   }
-  LOG(INFO) << "unable to parse /proc/mounts";
   return std::vector<std::string>();
 }
 
-std::vector<std::string> UdevDevice::ParseMountedPaths(
+std::vector<std::string> UdevDevice::GetMountPaths(
+    const std::string& device_path) {
+  std::ifstream fs("/proc/mounts");
+  if (fs.is_open()) {
+    return ParseMountPaths(device_path, fs);
+  }
+  LOG(ERROR) << "Unable to parse /proc/mounts";
+  return std::vector<std::string>();
+}
+
+std::vector<std::string> UdevDevice::ParseMountPaths(
     const std::string& device_path, std::istream& stream) {
-  std::vector<std::string> mounted_paths;
+  std::vector<std::string> mount_paths;
   std::string line;
   while (std::getline(stream, line)) {
     std::vector<std::string> tokens;
     SplitString(line, ' ', &tokens);
     if (tokens.size() >= 2) {
       if (tokens[0] == device_path)
-        mounted_paths.push_back(tokens[1]);
+        mount_paths.push_back(tokens[1]);
     }
   }
-  return mounted_paths;
+  return mount_paths;
 }
 
 Disk UdevDevice::ToDisk() const {
@@ -139,18 +161,17 @@ Disk UdevDevice::ToDisk() const {
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_drive_model(GetProperty("ID_MODEL"));
   disk.set_label(GetProperty("ID_FS_LABEL"));
-  disk.set_native_path(udev_device_get_syspath(dev_));
+  const char *sys_path = udev_device_get_syspath(dev_);
+  if (sys_path)
+    disk.set_native_path(sys_path);
 
   const char *dev_file = udev_device_get_devnode(dev_);
-  disk.set_device_file(dev_file);
+  if (dev_file)
+    disk.set_device_file(dev_file);
 
-  std::vector<std::string> mounted_paths = GetMountedPaths();
-  disk.set_is_mounted(!mounted_paths.empty());
-
-  if (!mounted_paths.empty()) {
-    // TODO(benchan): support multiple paths
-    disk.set_mount_path(mounted_paths[0]);
-  }
+  std::vector<std::string> mount_paths = GetMountPaths();
+  disk.set_is_mounted(!mount_paths.empty());
+  disk.set_mount_paths(mount_paths);
 
   uint64 total_size, remaining_size;
   GetSizeInfo(&total_size, &remaining_size);

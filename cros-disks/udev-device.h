@@ -47,12 +47,16 @@ class UdevDevice {
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
 
-  // Gets the mounted paths for the device.
-  std::vector<std::string> GetMountedPaths() const;
+  // Gets the mount paths for the device.
+  std::vector<std::string> GetMountPaths() const;
 
-  // Gets the mounted paths for an input stream that has the
+  // Gets the mount paths for a given device path.
+  static std::vector<std::string> GetMountPaths(
+      const std::string& device_path);
+
+  // Gets the mount paths for an input stream that has the
   // same format as /proc/mounts
-  static std::vector<std::string> ParseMountedPaths(
+  static std::vector<std::string> ParseMountPaths(
       const std::string& device_path, std::istream& stream);
 
   // Returns a Disk object based on the device information.

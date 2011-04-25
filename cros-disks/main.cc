@@ -43,8 +43,10 @@ void SetupLogging() {
 gboolean UdevCallback(GIOChannel* source, 
                       GIOCondition condition, 
                       gpointer data) {
-  DiskManager* mgr = static_cast<DiskManager*>(data);
-  mgr->ProcessUdevChanges();
+  CrosDisksServer* server = static_cast<CrosDisksServer*>(data);
+  server->SignalDeviceChanges();
+  // This function should always return true so that the main loop
+  // continues to select on udev monitor's file descriptor.
   return true;
 }
 
@@ -75,22 +77,22 @@ int main(int argc, char** argv) {
   LOG(INFO) << "creating server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
   server_conn.request_name("org.chromium.CrosDisks");
-  CrosDisksServer* server = new(std::nothrow) CrosDisksServer(server_conn);
+
+  DiskManager manager;
+  CrosDisksServer* server = new(std::nothrow) CrosDisksServer(server_conn,
+                                                              &manager);
   CHECK(server) << "Failed to create the cros-disks server";
 
   LOG(INFO) << "Initializing the metrics library";
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
 
-
-  DiskManager manager;
-  manager.EnumerateDisks();
   // Setup a monitor
   g_io_add_watch_full(g_io_channel_unix_new(manager.udev_monitor_fd()),
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
                       UdevCallback,
-                      &manager,
+                      server,
                       NULL);
   g_main_loop_run(loop);
 

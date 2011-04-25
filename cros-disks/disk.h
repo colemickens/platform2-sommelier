@@ -52,8 +52,10 @@ class Disk {
   bool is_read_only() const { return is_read_only_; }
   void set_is_read_only(bool is_read_only) { is_read_only_ = is_read_only; }
 
-  std::string mount_path() const { return mount_path_; }
-  void set_mount_path(const std::string& mount_path) { mount_path_ = mount_path; }
+  const std::vector<std::string>& mount_paths() const { return mount_paths_; }
+  void set_mount_paths(const std::vector<std::string>& mount_paths) {
+    mount_paths_ = mount_paths;
+  }
 
   std::string native_path() const { return native_path_; }
   void set_native_path(const std::string& native_path) {
@@ -78,7 +80,7 @@ class Disk {
     device_capacity_ = device_capacity; 
   }
 
-  uint64 bytes_remaining() { return bytes_remaining_; }
+  uint64 bytes_remaining() const { return bytes_remaining_; }
   void set_bytes_remaining(uint64 bytes_remaining) { 
     bytes_remaining_ = bytes_remaining; 
   }
@@ -92,7 +94,7 @@ class Disk {
   bool is_rotational_;
   bool is_optical_disk_;
   bool is_read_only_;
-  std::string mount_path_;
+  std::vector<std::string> mount_paths_;
   std::string native_path_;
   std::string device_file_;
   std::string label_;

@@ -3,43 +3,63 @@
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.CrosDisks">
     <tp:struct name="DiskDevice" array-name="DiskDevices">
-      <tp:member name="deviceIsDrive" type="b"> </tp:member>
-      <tp:member name="devicePresentationHide" type="b"> </tp:member>
-      <tp:member name="deviceIsMounted" type="b"> </tp:member>
-      <tp:member name="deviceMountPath" type="s"> </tp:member>
-      <tp:member name="label" type="s"> </tp:member>
-      <tp:member name="driveModel" type="s"> </tp:member>
-      <tp:member name="isRotational" type="b"> </tp:member>
-      <tp:member name="isOptical" type="b"> </tp:member>
-      <tp:member name="isReadOnly" type="b"> </tp:member>
-      <tp:member name="capacity" type="d"> </tp:member>
-      <tp:member name="bytes_remaining" type="d"> </tp:member>
+      <tp:member name="DeviceIsDrive" type="b"> </tp:member>
+      <tp:member name="DevicePresentationHide" type="b"> </tp:member>
+      <tp:member name="DeviceIsMounted" type="b"> </tp:member>
+      <tp:member name="DeviceMountPaths" type="s"> </tp:member>
+      <tp:member name="IdLabel" type="s"> </tp:member>
+      <tp:member name="DeviceFile" type="s"> </tp:member>
+      <tp:member name="DriveModel" type="s"> </tp:member>
+      <tp:member name="DriveIsRotational" type="b"> </tp:member>
+      <tp:member name="DeviceIsOpticalDisc" type="b"> </tp:member>
+      <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
+      <tp:member name="DeviceSize" type="t"> </tp:member>
     </tp:struct>
     <method name="FilesystemMount">
-      <arg name="nullArgument" type="s" direction="in">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
+      <arg name="filesystemType" type="s" direction="in">
       </arg>
       <arg name="mountOptions" type="as" direction="in">
+      </arg>
+      <arg name="mountPath" type="s" direction="out">
       </arg>
     </method>
     <method name="FilesystemUnmount">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
       <arg name="mountOptions" type="as" direction="in">
       </arg>
     </method>
-    <method name="GetAll">
-      <arg name="disks" type="aa{sv}" direction="out" tp:type="DiskDevices">
+    <method name="EnumerateDeviceFiles">
+      <arg name="disks" type="as" direction="out">
       </arg>
     </method>
-    <signal name="DeviceUpdates">
-      <arg name="disks" type="aa{sv}" direction="out" tp:type="DiskDevices">
+    <method name="GetDeviceProperties">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
+      <arg name="device" type="a{sv}" direction="out" tp:type="DiskDevices">
+      </arg>
+    </method>
+    <signal name="DeviceAdded">
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DeviceRemoved">
+      <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DeviceChanged">
+      <arg name="device" type="s" direction="out">
       </arg>
     </signal>
     <method name="IsAlive">
       <tp:docstring>
-        Test method to verify that Cashew service is working.
+        Test method to verify that CrosDisks service is working.
       </tp:docstring>
       <arg name="result" type="b" direction="out">
         <tp:docstring>
-          Boolean indicating whether Cashew service is alive.
+          Boolean indicating whether CrosDisks service is alive.
         </tp:docstring>
       </arg>
     </method>

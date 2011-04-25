@@ -27,7 +27,21 @@ const char kPartitionSlave[] = "PartitionSlave";
 
 // TODO(rtc): The constructor should set some defaults, but I'm still iterating
 // on the data model.
-Disk::Disk() { 
+Disk::Disk()
+  : is_drive_(false),
+    is_hidden_(false),
+    is_mounted_(false),
+    is_media_available_(false),
+    is_rotational_(false),
+    is_optical_disk_(false),
+    is_read_only_(false),
+    mount_paths_(),
+    native_path_(),
+    device_file_(),
+    label_(),
+    drive_model_(),
+    device_capacity_(0),
+    bytes_remaining_(0) {
 }
 
 Disk::~Disk() {
@@ -38,7 +52,6 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceIsDrive].writer().append_bool(is_drive());
   disk[kDevicePresentationHide].writer().append_bool(is_hidden());
   disk[kDeviceIsMounted].writer().append_bool(is_mounted());
-  disk[kDeviceMountPaths].writer().append_string(mount_path().c_str());
   disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
   disk[kNativePath].writer().append_string(native_path().c_str());
   disk[kDeviceFile].writer().append_string(device_file().c_str());
@@ -46,8 +59,10 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());
   disk[kDeviceIsOpticalDisc].writer().append_bool(is_optical_disk());
-  disk[kDeviceSize].writer().append_int64(device_capacity());
+  disk[kDeviceSize].writer().append_uint64(device_capacity());
   disk[kReadOnly].writer().append_bool(is_read_only());
+  DBus::MessageIter iter = disk[kDeviceMountPaths].writer();
+  iter << mount_paths();
   return disk;
 }
 
