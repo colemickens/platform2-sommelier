@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,6 +23,8 @@ class PowerPrefs : public PowerPrefsInterface {
   // Overridden from PowerPrefsInterface:
   virtual bool GetInt64(const char* name, int64* value);
   virtual bool SetInt64(const char* name, int64 value);
+  virtual bool GetDouble(const char* name, double* value);
+  virtual bool SetDouble(const char* name, double value);
 
  private:
   FilePath pref_path_;
