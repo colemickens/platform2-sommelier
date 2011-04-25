@@ -112,6 +112,11 @@ gboolean cryptohome_async_set_owner_user(
     gchar *userid,
     gint *OUT_async_id,
     GError **error);
+gboolean cryptohome_async_update_current_user_activity_timestamp(
+    Cryptohome *self,
+    gint time_shift_sec,
+    gint *OUT_async_id,
+    GError **error);
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error);

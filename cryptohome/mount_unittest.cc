@@ -832,7 +832,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp
-  mount.UpdateCurrentUserActivityTimestamp();
+  mount.UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized1;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized1));
 
@@ -851,7 +851,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   // Update timestamp again, after user is unmounted. User's activity
   // timestamp must not change this
   mount.UnmountCryptohome();
-  mount.UpdateCurrentUserActivityTimestamp();
+  mount.UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
 

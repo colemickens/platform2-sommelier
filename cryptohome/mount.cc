@@ -483,20 +483,24 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   return result;
 }
 
-void Mount::UpdateCurrentUserActivityTimestamp() {
+bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   string obsfucated_username;
   current_user_->GetObfuscatedUsername(&obsfucated_username);
   if (!obsfucated_username.empty()) {
     SerializedVaultKeyset serialized;
     LoadVaultKeysetForUser(obsfucated_username, &serialized);
     base::Time timestamp = base::Time::Now();
+    if (time_shift_sec > 0)
+      timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
     StoreVaultKeysetForUser(obsfucated_username, serialized);
     if (!user_timestamp_->empty()) {
       user_timestamp_->UpdateExistingUser(
           FilePath(GetUserKeyFileForUser(obsfucated_username)), timestamp);
     }
+    return true;
   }
+  return false;
 }
 
 void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) {
@@ -590,15 +594,15 @@ void Mount::AddUserTimestampCallback(const FilePath& vault) {
   }
 }
 
-void Mount::DoAutomaticFreeDiskSpaceControl() {
+bool Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) > kMinFreeSpace)
-    return;
+    return false;
 
   // Clean Cache directories for every user (except current one).
   DoForEveryUnmountedCryptohome(&Mount::DeleteCacheCallback);
 
   if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
-    return;
+    return true;
 
   // Initialize user timestamp cache if it has not been yet.
   if (user_timestamp_->empty()) {
@@ -624,11 +628,12 @@ void Mount::DoAutomaticFreeDiskSpaceControl() {
       LOG(WARNING) << "Deleting old user " << deleted_user_vault.value();
       platform_->DeleteFile(deleted_user_vault.value(), true);
       if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
-        return;
+        return true;
     }
   }
 
   // TODO(glotov): do further cleanup.
+  return true;
 }
 
 void Mount::SetOwnerUser(const string& username) {

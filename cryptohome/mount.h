@@ -169,8 +169,10 @@ class Mount : public EntropySource {
   virtual void AddUserTimestampCallback(const FilePath& vault);
 
   // Checks free disk space and if it falls below minimum
-  // (kMinFreeSpace), performs cleanup
-  virtual void DoAutomaticFreeDiskSpaceControl();
+  // (kMinFreeSpace), performs cleanup. Returns true if cleanup
+  // started (but maybe could not do anything), false if disk space
+  // was enough.
+  virtual bool DoAutomaticFreeDiskSpaceControl();
 
   // Sets owner user. Called by Chrome during the login screen, before the first
   // call to DoAutomaticFreeDiskSpaceControl().
@@ -184,8 +186,13 @@ class Mount : public EntropySource {
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
-  // logs off). Nothing is done if no user is logged in.
-  virtual void UpdateCurrentUserActivityTimestamp();
+  // logs off). Returns true if current user is in and updated.
+  // Nothing is done if no user is logged in and false is returned.
+  //
+  // Parameters
+  //   time_shift_sec - normally must be 0. Shifts the updated time backwards
+  //                    by specified number of seconds. Used in manual tests.
+  virtual bool UpdateCurrentUserActivityTimestamp(int time_shift_sec);
 
   // Tests if the given credentials would decrypt the user's cryptohome key
   //

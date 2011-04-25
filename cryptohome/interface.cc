@@ -175,6 +175,14 @@ gboolean cryptohome_async_set_owner_user(
     GError **error) {
   CRYPTOHOME_WRAP_METHOD(AsyncSetOwnerUser, userid, OUT_async_id);
 }
+gboolean cryptohome_async_update_current_user_activity_timestamp(
+    Cryptohome *self,
+    gint time_shift_sec,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncUpdateCurrentUserActivityTimestamp,
+                         time_shift_sec, OUT_async_id);
+}
 gboolean cryptohome_tpm_is_ready(Cryptohome *self,
                                  gboolean *OUT_ready,
                                  GError **error) {

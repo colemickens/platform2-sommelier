@@ -673,6 +673,17 @@ gboolean Service::AsyncSetOwnerUser(gchar *user,
   return TRUE;
 }
 
+gboolean Service::AsyncUpdateCurrentUserActivityTimestamp(gint time_shift_sec,
+                                                          gint *OUT_async_id,
+                                                          GError **error) {
+  MountTaskUpdateCurrentUserActivityTimestamp* mount_task =
+      new MountTaskUpdateCurrentUserActivityTimestamp(
+          this, mount_, time_shift_sec);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE, mount_task);
+  return TRUE;
+}
+
 gboolean Service::TpmIsReady(gboolean* OUT_ready, GError** error) {
   *OUT_ready = tpm_init_->IsTpmReady();
   return TRUE;
@@ -893,6 +904,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       "Mount Status:\n"
       "  Vault Is Mounted................: %s\n"
       "  Owner User......................: %s\n"
+      "  Enterprise Owned................: %s\n"
       "InstallAttributes Status:\n"
       "  Initialized.....................: %s\n"
       "  Version.........................: %"PRIx64"\n"
@@ -918,6 +930,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
       user_data.c_str(),
       (mount_->IsCryptohomeMounted() ? "1" : "0"),
       mount_->owner_obfuscated_username().c_str(),
+      (mount_->enterprise_owned() ? "1" : "0"),
       (install_attrs_->is_initialized() ? "1" : "0"),
       install_attrs_->version(),
       InstallAttributes::kLockboxIndex,
@@ -936,7 +949,7 @@ void Service::AutoCleanupCallback() {
 
   // Update current user's activity timestamp every day.
   if (++ticks > update_user_activity_period_) {
-    mount_->UpdateCurrentUserActivityTimestamp();
+    mount_->UpdateCurrentUserActivityTimestamp(0);
     ticks = 0;
   }
 

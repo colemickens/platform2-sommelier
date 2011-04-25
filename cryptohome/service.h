@@ -151,6 +151,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncSetOwnerUser(gchar *user,
                                      gint *OUT_async_id,
                                      GError **error);
+  virtual gboolean AsyncUpdateCurrentUserActivityTimestamp(gint time_shift_sec,
+                                                           gint *OUT_async_id,
+                                                           GError **error);
 
   virtual gboolean TpmIsReady(gboolean* OUT_ready, GError** error);
   virtual gboolean TpmIsEnabled(gboolean* OUT_enabled, GError** error);

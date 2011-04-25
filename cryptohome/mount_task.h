@@ -377,6 +377,25 @@ class MountTaskSetOwnerUser : public MountTask {
   DISALLOW_COPY_AND_ASSIGN(MountTaskSetOwnerUser);
 };
 
+// Implements asynchronous updating of the current user (if any)
+// activity timestamp
+class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
+ public:
+  MountTaskUpdateCurrentUserActivityTimestamp(MountTaskObserver* observer,
+                                              Mount* mount,
+                                              int time_shift_sec)
+      : MountTask(observer, mount, UsernamePasskey()),
+        time_shift_sec_(time_shift_sec) {
+  }
+  virtual ~MountTaskUpdateCurrentUserActivityTimestamp() { }
+
+  virtual void Run();
+
+ private:
+  const int time_shift_sec_;
+  DISALLOW_COPY_AND_ASSIGN(MountTaskUpdateCurrentUserActivityTimestamp);
+};
+
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:

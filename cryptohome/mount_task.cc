@@ -64,7 +64,7 @@ void MountTaskMount::Run() {
   // This action is not mandatory, so we perform it after
   // CryptohomeMount() returns, in background.
   if (mount_)
-    mount_->UpdateCurrentUserActivityTimestamp();
+    mount_->UpdateCurrentUserActivityTimestamp(0);
 }
 
 void MountTaskMountGuest::Run() {
@@ -128,10 +128,11 @@ void MountTaskRemoveTrackedSubdirectories::Run() {
 }
 
 void MountTaskAutomaticFreeDiskSpace::Run() {
-  result()->set_return_status(true);
+  bool rc = false;
   if (mount_) {
-    mount_->DoAutomaticFreeDiskSpaceControl();
+    rc = mount_->DoAutomaticFreeDiskSpaceControl();
   }
+  result()->set_return_status(rc);
   MountTask::Notify();
 }
 
@@ -140,6 +141,15 @@ void MountTaskSetOwnerUser::Run() {
   if (mount_) {
     mount_->SetOwnerUser(username_);
   }
+  MountTask::Notify();
+}
+
+void MountTaskUpdateCurrentUserActivityTimestamp::Run() {
+  bool rc = false;
+  if (mount_) {
+    rc = mount_->UpdateCurrentUserActivityTimestamp(time_shift_sec_);
+  }
+  result()->set_return_status(rc);
   MountTask::Notify();
 }
 

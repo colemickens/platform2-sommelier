@@ -152,7 +152,7 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   // sure that we had at least 3 executed.
   EXPECT_CALL(mount, DoAutomaticFreeDiskSpaceControl())
       .Times(::testing::AtLeast(3));
-  EXPECT_CALL(mount, UpdateCurrentUserActivityTimestamp())
+  EXPECT_CALL(mount, UpdateCurrentUserActivityTimestamp(0))
       .Times(::testing::AtLeast(3));
   service.set_auto_cleanup_period(2);  // 2ms = 500HZ
   service.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
