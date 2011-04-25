@@ -14,8 +14,6 @@ using base::TimeTicks;
 
 namespace power_manager {
 
-const int Daemon::kMetricBacklightLevelMax = 100;
-const time_t Daemon::kMetricBacklightLevelInterval = 30000;  // ms
 const char Daemon::kMetricBatteryDischargeRateName[] =
     "Power.BatteryDischargeRate";  // mW
 const int Daemon::kMetricBatteryDischargeRateMin = 1000;
@@ -42,7 +40,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
 }
 
 void Daemon::MetricInit() {
-  g_timeout_add(kMetricBacklightLevelInterval,
+  g_timeout_add(kMetricBacklightLevelIntervalMs,
                 &Daemon::GenerateBacklightLevelMetricThunk, this);
 }
 

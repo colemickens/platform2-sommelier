@@ -5,9 +5,13 @@
 #ifndef POWER_MANAGER_METRICS_CONSTANTS_H_
 #define POWER_MANAGER_METRICS_CONSTANTS_H_
 
+#include <time.h>
+
 namespace power_manager {
 
 extern const char kMetricBacklightLevelName[];
+extern const int kMetricBacklightLevelMax;
+extern const time_t kMetricBacklightLevelIntervalMs;
 extern const int kMetricIdleAfterScreenOffMin;
 extern const int kMetricIdleAfterScreenOffMax;
 extern const int kMetricIdleAfterScreenOffBuckets;

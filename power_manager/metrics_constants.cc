@@ -7,6 +7,8 @@
 namespace power_manager {
 
 const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
+const int kMetricBacklightLevelMax = 100;
+const time_t kMetricBacklightLevelIntervalMs = 30000;
 
 const int kMetricIdleAfterScreenOffMin = 100;
 const int kMetricIdleAfterScreenOffMax = 10 * 60 * 1000;
