@@ -83,6 +83,7 @@ class TpmInit {
   // The background task for initializing the TPM, implemented as a
   // PlatformThread::Delegate
   scoped_ptr<TpmInitTask> tpm_init_task_;
+  PlatformThreadHandle init_thread_;
 
   TpmInitCallback* notify_callback_;
 

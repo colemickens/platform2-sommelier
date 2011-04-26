@@ -51,6 +51,7 @@ class TpmInitTask : public PlatformThread::Delegate {
 
 TpmInit::TpmInit()
     : tpm_init_task_(new TpmInitTask()),
+      init_thread_(kNullThreadHandle),
       notify_callback_(NULL),
       initialize_called_(false),
       task_done_(false),
@@ -59,6 +60,12 @@ TpmInit::TpmInit()
 }
 
 TpmInit::~TpmInit() {
+  if (init_thread_ != kNullThreadHandle) {
+    // Must wait for tpm init thread to complete, because when the main thread
+    // exits some libtspi data structures are freed.
+    PlatformThread::Join(init_thread_);
+    init_thread_ = kNullThreadHandle;
+  }
 }
 
 void TpmInit::set_tpm(Tpm* value) {
@@ -83,7 +90,7 @@ bool TpmInit::GetRandomData(int length, chromeos::Blob* data) {
 
 bool TpmInit::StartInitializeTpm() {
   initialize_called_ = true;
-  if (!PlatformThread::CreateNonJoinable(0, tpm_init_task_.get())) {
+  if (!PlatformThread::Create(0, tpm_init_task_.get(), &init_thread_)) {
     LOG(ERROR) << "Unable to create TPM initialization background thread.";
     return false;
   }
