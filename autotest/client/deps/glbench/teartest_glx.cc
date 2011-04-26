@@ -44,7 +44,7 @@ bool PixmapToTextureTest::InitNative() {
     return false;
 
   if (major < 1 || (major == 1 && minor < 3)) {
-    printf("# GLX 1.3 required for pixmap to texture extension.\n");
+    printf("# Warning: GLX 1.3 required for pixmap to texture extension.\n");
     return false;
   }
 
@@ -74,7 +74,7 @@ bool PixmapToTextureTest::InitNative() {
 
 bool PixmapToTextureTest::Start() {
   init_succeeded = InitNative();
-  printf("# Update pixmap bound to texture.\n");
+  printf("# Info: Update pixmap bound to texture.\n");
   CopyPixmapToTexture(pixmap_);
   glXBindTexImageEXT(g_xlib_display, glxpixmap_, GLX_FRONT_LEFT_EXT, NULL);
   return true;

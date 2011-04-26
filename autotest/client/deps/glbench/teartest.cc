@@ -11,6 +11,9 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
+#ifdef WORKAROUND_CROSBUG14304
+#include "base/string_split.h"
+#endif
 
 #include "main.h"
 #include "utils.h"
@@ -108,7 +111,7 @@ class UniformTest : public Test {
  public:
   UniformTest() : pixmap_(0), shift_uniform_(-1) {}
   virtual bool Start() {
-    printf("# Plain texture draw.\n");
+    printf("# Info: Plain texture draw.\n");
     pixmap_ = AllocatePixmap();
     CopyPixmapToTexture(pixmap_);
     return true;
@@ -144,7 +147,7 @@ class TexImage2DTest : public Test {
  public:
   TexImage2DTest() : pixmap_(0) {}
   virtual bool Start() {
-    printf("# Full texture update.\n");
+    printf("# Info: Full texture update.\n");
     pixmap_ = AllocatePixmap();
     CopyPixmapToTexture(pixmap_);
     return true;
@@ -182,7 +185,7 @@ int main(int argc, char* argv[]) {
     sleep_duration->tv_nsec = static_cast<long>(1.e9 / FLAGS_refresh);
   }
   if (!Init()) {
-    printf("# Failed to initialize.\n");
+    printf("# Error: Failed to initialize.\n");
     return 1;
   }
 
@@ -220,7 +223,11 @@ int main(int argc, char* argv[]) {
   SwapInterval(sleep_duration ? 0 : 1);
 
   std::vector<std::string> tests;
+#ifdef WORKAROUND_CROSBUG14304
+  base::SplitString(FLAGS_tests, ',', &tests);
+#else
   SplitString(FLAGS_tests, ',', &tests);
+#endif
 
   int return_code = 0;
   for (std::vector<std::string>::iterator it = tests.begin();

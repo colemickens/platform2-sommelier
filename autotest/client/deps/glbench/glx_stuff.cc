@@ -15,6 +15,11 @@ GLXFBConfig g_glx_fbconfig = NULL;
 #define F(fun, type) type fun = NULL;
 LIST_PROC_FUNCTIONS(F)
 #undef F
+
+#ifndef GLX_MESA_swap_control
+typedef GLint (* PFNGLXSWAPINTERVALMESAPROC) (unsigned interval);
+typedef GLint (* PFNGLXGETSWAPINTERVALMESAPROC) (void);
+#endif
 PFNGLXSWAPINTERVALMESAPROC _glXSwapIntervalMESA = NULL;
 
 bool Init() {

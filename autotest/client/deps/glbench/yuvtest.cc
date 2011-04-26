@@ -145,11 +145,11 @@ bool YuvToRgbTest::SetupTextures() {
   const char* u_plane = pixels + luma_size;
   const char* v_plane = pixels + luma_size + chroma_size;
   if (!pixels) {
-    printf("# Could not open image file: %s\n", YUV2RGB_NAME);
+    printf("# Error: Could not open image file: %s\n", YUV2RGB_NAME);
     goto done;
   }
   if (size != YUV2RGB_SIZE) {
-    printf("# Image file of wrong size, got %d, expected %d\n",
+    printf("# Error: Image file of wrong size, got %d, expected %d\n",
            static_cast<int>(size), YUV2RGB_SIZE);
     goto done;
   }
@@ -246,7 +246,7 @@ bool YuvToRgbTest::Run() {
                                   std::min(YUV2RGB_WIDTH, g_width),
                                   std::min(YUV2RGB_PIXEL_HEIGHT, g_height));
     } else {
-      printf("# Could not set up YUV shader.\n");
+      printf("# Error: Could not set up YUV shader.\n");
     }
 
     glDeleteProgram(program);

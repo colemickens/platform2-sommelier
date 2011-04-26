@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,7 +8,12 @@ SOURCES_GL_BENCH += readpixeltest.cc
 SOURCES_GL_BENCH += attributefetchtest.cc varyingsandddxytest.cc cleartest.cc
 SOURCES_GL_BENCH += textureupdatetest.cc trianglesetuptest.cc fillratetest.cc
 SOURCES_GL_BENCH += windowmanagercompositingtest.cc
+SOURCES_GL_BENCH += md5.cc png_helper.cc
 
+# work around USE="opengles" ./run_remote_tests.sh bug and directly parse $USE
+ifneq (,$(findstring opengles, $(USE)))
+GRAPHICS_BACKEND ?= OPENGLES
+endif
 GRAPHICS_BACKEND ?= OPENGL
 
 SOURCES_TEARTEST = teartest.cc
@@ -19,10 +24,10 @@ SOURCES_ALL = $(SOURCES_COMMON) \
               $(SOURCES_WINDOWMANAGERTEST)
 
 CXXFLAGS = -g -Wall -Werror
-LDFLAGS = -lbase -lrt -lgflags -lglib-2.0 -pthread
-# To compile outside of chroot, use the following two lines:
-#CXXFLAGS += -I../../../../../../chrome/files
-#LDFLAGS += -L../../../../../../chrome
+LDFLAGS = -lbase -lrt -lgflags -lglib-2.0 -pthread -lpng
+# To compile outside of chroot or with newest libchome, use the following two lines:
+#CXXFLAGS += -I$(HOME)/chromium/src -DWORKAROUND_CROSBUG14304
+#LDFLAGS += -lbase_static -L$(HOME)/chromium/src/out/Release/obj.target/base
 
 GL_BENCH = ../glbench
 TEARTEST = ../teartest
@@ -58,7 +63,7 @@ $(WINDOWMANAGERTEST): $(OBJS_COMMON) $(OBJS_WINDOWMANAGERTEST)
 clean:
 	$(RM) $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST)
 	$(RM) $(OBJS_ALL) $(DEPS_ALL)
-	$(RM) *.o *.d
+	$(RM) *.o *.d .version
 
 $(GL_BENCH) $(TEARTEST) $(WINDOWMANAGERTEST):
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDFLAGS)

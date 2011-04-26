@@ -4,35 +4,39 @@
 
 #include <gflags/gflags.h>
 #include <stdio.h>
+#include <png.h>
 
 #include "base/scoped_ptr.h"
 #include "base/file_util.h"
 
+#include "png_helper.h"
+#include "md5.h"
 #include "testbase.h"
 #include "utils.h"
 
 DEFINE_bool(save, false, "save images after each test case");
-DEFINE_string(out, "out", "directory to save images");
+DEFINE_string(outdir, "", "directory to save images");
 
 namespace glbench {
 
 uint64_t TimeTest(TestBase* test, int iter) {
-  SwapBuffers();
-  glFinish();
-  uint64_t time1 = GetUTime();
-  if (!test->TestFunc(iter))
-    return ~0;
-  glFinish();
-  uint64_t time2 = GetUTime();
-  return time2 - time1;
+    SwapBuffers();
+    glFinish();
+    uint64_t time1 = GetUTime();
+    if (!test->TestFunc(iter))
+        return ~0;
+    glFinish();
+    uint64_t time2 = GetUTime();
+    return time2 - time1;
 }
 
 #define MAX_ITERATION_DURATION_MS 1000000
 
 // Benchmark some draw commands, by running it many times.
-// We want to measure the marginal cost, so we try more and more iterations
-// until we get a somewhat linear response (to eliminate constant cost), and we
-// do a linear regression on a few samples.
+// We want to measure the marginal cost, so we try more and more
+// iterations until we get a somewhat linear response (to
+// eliminate constant cost), and we do a linear regression on
+// a few samples.
 bool Bench(TestBase* test, float *slope, int64_t *bias) {
   // Do one iteration in case the driver needs to set up states.
   if (TimeTest(test, 1) > MAX_ITERATION_DURATION_MS)
@@ -47,8 +51,9 @@ bool Bench(TestBase* test, float *slope, int64_t *bias) {
   uint64_t iter;
   for (iter = 8; iter < 1<<30; iter *= 2) {
     uint64_t time = TimeTest(test, iter);
-    if (last_time > 0 && (time > last_time * 1.8))
+    if (last_time > 0 && (time > last_time * 1.8)) {
       do_count = true;
+    }
     last_time = time;
     if (do_count) {
       ++count;
@@ -73,33 +78,68 @@ bool Bench(TestBase* test, float *slope, int64_t *bias) {
 void SaveImage(const char* name) {
   const int size = g_width * g_height * 4;
   scoped_array<char> pixels(new char[size]);
-  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE,
-               pixels.get());
-  FilePath dirname = GetBasePath().Append(FLAGS_out);
+  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+  // I really think we want to use outdir as a straight argument
+  FilePath dirname = FilePath(FLAGS_outdir);
   file_util::CreateDirectory(dirname);
   FilePath filename = dirname.Append(name);
-  file_util::WriteFile(filename, pixels.get(), size);
+  write_png_file(filename.value().c_str(),
+                 pixels.get(), g_width, g_height);
 }
 
-void RunTest(TestBase* test, const char* name,
+void ComputeMD5(unsigned char digest[16]) {
+  MD5Context ctx;
+  MD5Init(&ctx);
+  const int size = g_width * g_height * 4;
+  scoped_array<char> pixels(new char[size]);
+  glReadPixels(0, 0, g_width, g_height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.get());
+  MD5Update(&ctx, (unsigned char *)pixels.get(), 4*g_width*g_height);
+  MD5Final(digest, &ctx);
+}
+
+void RunTest(TestBase* test, const char* testname,
              float coefficient, bool inverse) {
   float slope;
   int64_t bias;
 
-  GLenum err = glGetError();
-  if (err != 0) {
-    printf("# %s failed, glGetError returned 0x%x.\n", name, err);
-    // float() in python will happily parse Nan.
-    printf("%s: Nan\n", name);
-  } else {
-    if (Bench(test, &slope, &bias)) {
+  GLenum error = glGetError();
+  if (error == GL_NO_ERROR) {
+    bool status = Bench(test, &slope, &bias);
+    if (status) {
+      // save as png with MD5 as hex string attached
+      char          pixmd5[33];
+      unsigned char d[16];
+      ComputeMD5(d);
+      // translate to hexadecimal ASCII of MD5
+      sprintf(pixmd5,
+        "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
+        d[ 0],d[ 1],d[ 2],d[ 3],d[ 4],d[ 5],d[ 6],d[ 7],
+        d[ 8],d[ 9],d[10],d[11],d[12],d[13],d[14],d[15]);
+      char name_png[512];
+      sprintf(name_png, "%s.pixmd5-%s.png", testname, pixmd5);
+
       if (FLAGS_save)
-        SaveImage(name);
-      printf("%s: %g\n", name, coefficient * (inverse ? 1.f / slope : slope));
+        SaveImage(name_png);
+
+      // TODO(ihf) adjust string length based on longest test name
+      int length = strlen(testname);
+      if (length > 45)
+          printf("# Warning: adjust string formatting to length = %d\n",
+                 length);
+      printf("%-45s= %10.2f   [%s]\n",
+             testname,
+             coefficient * (inverse ? 1.f / slope : slope),
+             name_png);
     } else {
-      printf("# %s is too slow, returning zero.\n", name);
-      printf("%s: 0\n", name);
+      printf("# Warning: %s is scales nonlinear, returning zero.\n",
+             testname);
+      printf("%-45s=          0   []\n", testname);
     }
+  } else {
+    printf("# Error: %s aborted, glGetError returned 0x%02x.\n",
+            testname, error);
+    // float() in python will happily parse Nan.
+    printf("%-45s=        Nan   []\n", testname);
   }
 }
 

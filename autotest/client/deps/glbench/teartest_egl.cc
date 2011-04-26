@@ -34,7 +34,7 @@ PixmapToTextureTestEGL::PixmapToTextureTestEGL()
 }
 
 bool PixmapToTextureTestEGL::Start() {
-  printf("# Attaching pixmap to EGL texture.\n");
+  printf("# Info: Attaching pixmap to EGL texture.\n");
 
   // Get extension entrypoints
   egl_create_image_khr_ =

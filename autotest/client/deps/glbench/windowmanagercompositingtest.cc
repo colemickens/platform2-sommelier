@@ -359,7 +359,7 @@ void WindowManagerCompositingTest::InitializeCompositing() {
   compositing_foreground_program_ =
       BasicTextureShaderProgram(vbo_vertex, vbo_texture);
   if (!compositing_background_program_ || !compositing_foreground_program_) {
-    printf("# Could not set up compositing shader.\n");
+    printf("# Warning: Could not set up compositing shader.\n");
   }
 }
 

@@ -65,7 +65,7 @@ bool TextureUpdateTest::TestFunc(int iter) {
   glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_,
                0, GL_LUMINANCE, GL_UNSIGNED_BYTE, NULL);
   if (glGetError() != 0) {
-    printf("# Failed to allocate %dx%d texture.\n", width_, height_);
+    printf("# Error: Failed to allocate %dx%d texture.\n", width_, height_);
     return false;
   }
 

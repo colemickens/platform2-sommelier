@@ -164,7 +164,7 @@ static void print_info_log(int obj)
     char *newline = strchr(p, '\n');
     if (newline)
       *newline = '\0';
-    printf("# Log: %s\n", p);
+    printf("# Info: glGetShader/ProgramInfoLog: %s\n", p);
     if (!newline)
       break;
     p = newline + 1;

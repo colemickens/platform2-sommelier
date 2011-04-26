@@ -88,7 +88,7 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   if (!Init()) {
-    printf("# Failed to initialize.\n");
+    printf("# Error: Failed to initialize %s.\n", argv[0]);
     return 1;
   }
 

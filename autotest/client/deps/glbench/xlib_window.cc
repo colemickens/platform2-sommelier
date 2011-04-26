@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
+#include <stdio.h>
 
 #include "base/logging.h"
 #include "main.h"
@@ -19,8 +20,11 @@ DEFINE_bool(override_redirect, true, "Use an override redirect window");
 
 bool XlibInit() {
   g_xlib_display = XOpenDisplay(0);
-  if (!g_xlib_display)
+  if (!g_xlib_display) {
+    printf("# Error: in xlib_window.cc::XlibInit() could not open "
+           "default display.\n");
     return false;
+  }
 
   int screen = DefaultScreen(g_xlib_display);
   Window root_window = RootWindow(g_xlib_display, screen);

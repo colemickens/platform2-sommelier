@@ -5,9 +5,14 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctime>
 
 #include "base/logging.h"
 #include "base/string_util.h"
+#ifdef WORKAROUND_CROSBUG14304
+#include "base/string_split.h"
+#endif
 
 #include "main.h"
 #include "utils.h"
@@ -40,11 +45,20 @@ bool test_is_enabled(glbench::TestBase* test,
   return false;
 }
 
+void printDateTime(void) {
+  struct tm *ttime;
+  time_t tm = time(0);
+  char time_string[64];
+  ttime = localtime(&tm);
+  strftime(time_string, 63, "%c",ttime);
+  printf("# DateTime: %s\n", time_string);
+}
+
 int main(int argc, char *argv[]) {
   SetBasePathFromArgv0(argv[0], "src");
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  google::ParseCommandLineFlags(&argc, &argv, false);
   if (!Init()) {
-    printf("# Failed to initialize.\n");
+    printf("# Error: Failed to initialize %s.\n", argv[0]);
     return 1;
   }
 
@@ -53,9 +67,21 @@ int main(int argc, char *argv[]) {
          glGetString(GL_VENDOR), glGetString(GL_RENDERER));
   DestroyContext();
 
-  vector<string> enabled_tests;
-  SplitString(FLAGS_tests, ':', &enabled_tests);
+  if (argc == 1) {
+    printf("# Usage: %s [-save [-outdir=<directory>]] to save images\n", argv[0]);
+  } else {
+    printf("# Running: ");
+    for (int i = 0; i < argc; i++) printf("%s ", argv[i]);
+    printf("\n");
+  }
+  printDateTime();
 
+  vector<string> enabled_tests;
+#ifdef WORKAROUND_CROSBUG14304
+  base::SplitString(FLAGS_tests, ':', &enabled_tests);
+#else
+  SplitString(FLAGS_tests, ':', &enabled_tests);
+#endif
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
     glbench::GetClearTest(),
@@ -85,6 +111,8 @@ int main(int argc, char *argv[]) {
     delete tests[i];
     tests[i] = NULL;
   }
+
+  printDateTime();
 
   return 0;
 }
