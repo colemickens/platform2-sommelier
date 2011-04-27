@@ -118,7 +118,6 @@ TEST_F(UdevDeviceTest, GetSizeInfo) {
   uint64 total_size = 0, remaining_size = 0;
   device.GetSizeInfo(&total_size, &remaining_size);
   EXPECT_TRUE(total_size > 0);
-  EXPECT_TRUE(remaining_size > 0);
 }
 
 TEST_F(UdevDeviceTest, GetMountPaths) {
