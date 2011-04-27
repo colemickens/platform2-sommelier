@@ -55,17 +55,38 @@ class UdevDeviceTest : public ::testing::Test {
  private:
 
   void SelectUdevDeviceForTest() {
-    // TODO(benchan): Make the logic for selecting a valid device more scalable
-    static const char *kSystemPathsToTry[] = {
-      "/sys/block/sda/sda1",
-      "/sys/block/hda/hda1",
-      NULL
-    };
-
-    for (const char **syspath = kSystemPathsToTry;
-        *syspath != NULL && udev_device_ == NULL; ++syspath) {
-      udev_device_ = udev_device_new_from_syspath(udev_, *syspath);
+    if (udev_device_) {
+      udev_device_unref(udev_device_);
+      udev_device_ = NULL;
     }
+
+    struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
+    udev_enumerate_add_match_subsystem(enumerate, "block");
+    udev_enumerate_scan_devices(enumerate);
+
+    struct udev_list_entry *device_list, *device_list_entry;
+    device_list = udev_enumerate_get_list_entry(enumerate);
+    udev_list_entry_foreach(device_list_entry, device_list) {
+      const char *path = udev_list_entry_get_name(device_list_entry);
+      udev_device_ = udev_device_new_from_syspath(udev_, path);
+      if (udev_device_) {
+        const char *device_path = udev_device_get_devnode(udev_device_);
+        if (device_path) {
+          LOG(INFO) << "SelectUdevDeviceForTest: checking if '"
+            << device_path << "' is mounted";
+          std::vector<std::string> mount_paths =
+            UdevDevice::GetMountPaths(device_path);
+          if (!mount_paths.empty()) {
+            LOG(INFO) << "SelectUdevDeviceForTest: use '" << device_path
+              << "' for testing";
+            break;
+          }
+        }
+        udev_device_unref(udev_device_);
+        udev_device_ = NULL;
+      }
+    }
+    udev_enumerate_unref(enumerate);
 
     EXPECT_TRUE(udev_device_ != NULL);
   }
@@ -117,6 +138,8 @@ TEST_F(UdevDeviceTest, GetSizeInfo) {
   UdevDevice device(udev_device());
   uint64 total_size = 0, remaining_size = 0;
   device.GetSizeInfo(&total_size, &remaining_size);
+  LOG(INFO) << "GetSizeInfo: total=" << total_size
+    << ", remaining=" << remaining_size;
   EXPECT_TRUE(total_size > 0);
 }
 
