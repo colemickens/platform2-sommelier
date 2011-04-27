@@ -233,6 +233,7 @@ class Daemon : public XIdleMonitor {
   int64 unplugged_off_ms_;
   int64 unplugged_suspend_ms_;
   int64 react_ms_;
+  int64 fuzz_ms_;
   int64 default_lock_ms_;
   int64 dim_ms_;
   int64 off_ms_;

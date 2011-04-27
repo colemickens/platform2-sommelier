@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,6 @@ extern const char kPluggedOffMs[];
 extern const char kUnpluggedDimMs[];
 extern const char kUnpluggedOffMs[];
 extern const char kUnpluggedSuspendMs[];
-extern const char kReactMs[];
 extern const char kEnforceLock[];
 extern const char kDisableIdleSuspend[];
 extern const char kUseLid[];
@@ -28,8 +27,9 @@ extern const char kRetrySuspendAttempts[];
 extern const char kUseXScreenSaver[];
 extern const char kPluggedSuspendMs[];
 extern const char kMinBacklightPercent[];
+extern const char kReactMs[];
+extern const char kFuzzMs[];
 
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWER_CONSTANTS_H_
-

@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,7 +16,6 @@ const char kPluggedOffMs[] = "plugged_off_ms";
 const char kUnpluggedDimMs[] = "unplugged_dim_ms";
 const char kUnpluggedOffMs[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMs[] = "unplugged_suspend_ms";
-const char kReactMs[] = "react_ms";
 const char kEnforceLock[] = "enforce_lock";
 const char kDisableIdleSuspend[] = "disable_idle_suspend";
 const char kUseLid[] = "use_lid";
@@ -27,5 +26,10 @@ const char kRetrySuspendAttempts[] = "retry_suspend_attempts";
 const char kPluggedSuspendMs[] = "plugged_suspend_ms";
 const char kUseXScreenSaver[] = "use_xscreensaver";
 const char kMinBacklightPercent[] = "min_backlight_percent";
+
+// The minimum delta between timers when we want to give a user time to react.
+const char kReactMs[] = "react_ms";
+// The minimum delta between timers to avoid timer precision issues.
+const char kFuzzMs[] = "fuzz_ms";
 
 }  // namespace power_manager

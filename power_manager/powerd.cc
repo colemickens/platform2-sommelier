@@ -37,9 +37,6 @@ using std::vector;
 
 namespace power_manager {
 
-// The minimum delta between timers to avoid timer precision issues.
-static const int64 kFuzzMS = 100;
-
 static const char kTaggedFilePath[] = "/var/lib/power_manager";
 
 // Daemon: Main power manager. Adjusts device status based on whether the
@@ -138,6 +135,7 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kUnpluggedOffMs, &unplugged_off_ms_));
   CHECK(prefs_->GetInt64(kUnpluggedSuspendMs, &unplugged_suspend_ms_));
   CHECK(prefs_->GetInt64(kReactMs, &react_ms_));
+  CHECK(prefs_->GetInt64(kFuzzMs, &fuzz_ms_));
   CHECK(prefs_->GetInt64(kEnforceLock, &enforce_lock));
   CHECK(prefs_->GetInt64(kUseXScreenSaver, &use_xscreensaver));
   if (prefs_->GetInt64(kDisableIdleSuspend, &disable_idle_suspend) &&
@@ -163,8 +161,8 @@ void Daemon::ReadSettings() {
   enforce_lock_ = enforce_lock;
   use_xscreensaver_ = use_xscreensaver;
 
-  // Check that timeouts are sane
-  CHECK(kMetricIdleMin >= kFuzzMS);
+  // Check that timeouts are sane.
+  CHECK(kMetricIdleMin >= fuzz_ms_);
   CHECK(plugged_dim_ms_ >= react_ms_);
   CHECK(plugged_off_ms_ >= plugged_dim_ms_ + react_ms_);
   CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + react_ms_);
@@ -294,15 +292,15 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
     }
   }
 
-  // Sync up idle state with new settings
+  // Sync up idle state with new settings.
   CHECK(idle_.ClearTimeouts());
-  if (offset_ms > kFuzzMS)
-    CHECK(idle_.AddIdleTimeout(kFuzzMS));
-  if (kMetricIdleMin <= dim_ms_ - kFuzzMS)
+  if (offset_ms > fuzz_ms_)
+    CHECK(idle_.AddIdleTimeout(fuzz_ms_));
+  if (kMetricIdleMin <= dim_ms_ - fuzz_ms_)
     CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
   CHECK(idle_.AddIdleTimeout(dim_ms_));
   CHECK(idle_.AddIdleTimeout(off_ms_));
-  if (lock_ms_ < suspend_ms_ - kFuzzMS || lock_ms_ - kFuzzMS > suspend_ms_) {
+  if (lock_ms_ < suspend_ms_ - fuzz_ms_ || lock_ms_ - fuzz_ms_ > suspend_ms_) {
     CHECK(idle_.AddIdleTimeout(lock_ms_));
     CHECK(idle_.AddIdleTimeout(suspend_ms_));
   } else {
