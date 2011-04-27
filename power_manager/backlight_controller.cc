@@ -372,8 +372,8 @@ bool BacklightController::WriteBrightness() {
   }
   als_hysteresis_level_ = als_brightness_level_;
   int64 val = LocalBrightnessToRawBrightness(local_brightness_);
-  LOG(INFO) << "WriteBrightness: " << old_brightness << " -> "
-            << local_brightness_;
+  LOG(INFO) << "WriteBrightness: " << old_brightness << "% -> "
+            << local_brightness_ << "%";
   if (SetBrightnessGradual(val))
     WritePrefs();
   return local_brightness_ != old_brightness;
