@@ -29,7 +29,7 @@ $(OUT)disks: $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
 	$(call cxx_binary)
 RM_ON_CLEAN += $(OUT)disks
 
-$(OUT)disks_testrunner: $(filter-out %main.o,$(CXX_OBJECTS)) \
+$(OUT)disks_testrunner: $(filter-out %main.o %udev-device_unittest.o,$(CXX_OBJECTS)) \
 		cros-disks-server.h
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)disks_testrunner
