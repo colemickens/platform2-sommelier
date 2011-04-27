@@ -14,12 +14,6 @@ using base::TimeTicks;
 
 namespace power_manager {
 
-const char Daemon::kMetricBatteryDischargeRateName[] =
-    "Power.BatteryDischargeRate";  // mW
-const int Daemon::kMetricBatteryDischargeRateMin = 1000;
-const int Daemon::kMetricBatteryDischargeRateMax = 30000;
-const int Daemon::kMetricBatteryDischargeRateBuckets = 50;
-const time_t Daemon::kMetricBatteryDischargeRateInterval = 30;  // seconds
 const char Daemon::kMetricBatteryRemainingChargeName[] =
     "Power.BatteryRemainingCharge";  // %
 const int Daemon::kMetricBatteryRemainingChargeMax = 101;

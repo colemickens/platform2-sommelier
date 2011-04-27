@@ -24,6 +24,11 @@ extern const int kMetricIdleAfterDimMin;
 extern const int kMetricIdleAfterDimMax;
 extern const int kMetricIdleAfterDimBuckets;
 extern const char kMetricIdleAfterScreenOffName[];
+extern const char kMetricBatteryDischargeRateName[];
+extern const int kMetricBatteryDischargeRateMin;
+extern const int kMetricBatteryDischargeRateMax;
+extern const int kMetricBatteryDischargeRateBuckets;
+extern const time_t kMetricBatteryDischargeRateInterval;
 
 }  // namespace power_manager
 

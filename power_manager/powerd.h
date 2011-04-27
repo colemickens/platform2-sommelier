@@ -83,11 +83,6 @@ class Daemon : public XIdleMonitor {
                        kShutdownPowerOff };
 
   // UMA metrics parameters.
-  static const char kMetricBatteryDischargeRateName[];
-  static const int kMetricBatteryDischargeRateMin;
-  static const int kMetricBatteryDischargeRateMax;
-  static const int kMetricBatteryDischargeRateBuckets;
-  static const time_t kMetricBatteryDischargeRateInterval;
   static const char kMetricBatteryRemainingChargeName[];
   static const int kMetricBatteryRemainingChargeMax;
   static const time_t kMetricBatteryRemainingChargeInterval;

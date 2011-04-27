@@ -10,6 +10,7 @@
 
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
+#include "power_manager/metrics_constants.h"
 #include "power_manager/mock_audio_detector.h"
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_monitor_reconfigure.h"
@@ -91,10 +92,10 @@ class DaemonTest : public Test {
   // Adds a metrics library mock expectation for the battery discharge
   // rate metric with the given |sample|.
   void ExpectBatteryDischargeRateMetric(int sample) {
-    ExpectMetric(Daemon::kMetricBatteryDischargeRateName, sample,
-                 Daemon::kMetricBatteryDischargeRateMin,
-                 Daemon::kMetricBatteryDischargeRateMax,
-                 Daemon::kMetricBatteryDischargeRateBuckets);
+    ExpectMetric(kMetricBatteryDischargeRateName, sample,
+                 kMetricBatteryDischargeRateMin,
+                 kMetricBatteryDischargeRateMax,
+                 kMetricBatteryDischargeRateBuckets);
   }
 
   // Adds a metrics library mock expectation for the remaining battery
@@ -145,22 +146,22 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
   status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, Daemon::kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(Daemon::kMetricBatteryDischargeRateInterval,
+      status_, kMetricBatteryDischargeRateInterval));
+  EXPECT_EQ(kMetricBatteryDischargeRateInterval,
             daemon_.battery_discharge_rate_metric_last_);
 
   status_.battery_energy_rate = 4.5;
   ExpectBatteryDischargeRateMetric(4500);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, Daemon::kMetricBatteryDischargeRateInterval - 1));
-  EXPECT_EQ(Daemon::kMetricBatteryDischargeRateInterval - 1,
+      status_, kMetricBatteryDischargeRateInterval - 1));
+  EXPECT_EQ(kMetricBatteryDischargeRateInterval - 1,
             daemon_.battery_discharge_rate_metric_last_);
 
   status_.battery_energy_rate = 6.4;
   ExpectBatteryDischargeRateMetric(6400);
   EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(2 * Daemon::kMetricBatteryDischargeRateInterval,
+      status_, 2 * kMetricBatteryDischargeRateInterval));
+  EXPECT_EQ(2 * kMetricBatteryDischargeRateInterval,
             daemon_.battery_discharge_rate_metric_last_);
 }
 
@@ -172,7 +173,7 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, Daemon::kMetricBatteryDischargeRateInterval - 1));
+      status_, kMetricBatteryDischargeRateInterval - 1));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
@@ -181,24 +182,24 @@ TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
 
   status_.battery_energy_rate = 4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, Daemon::kMetricBatteryDischargeRateInterval));
+      status_, kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
+      status_, 2 * kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
 TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
   daemon_.plugged_state_ = kPowerDisconnected;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, Daemon::kMetricBatteryDischargeRateInterval));
+      status_, kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
   status_.battery_energy_rate = -4.0;
   EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      status_, 2 * Daemon::kMetricBatteryDischargeRateInterval));
+      status_, 2 * kMetricBatteryDischargeRateInterval));
   EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 }
 
