@@ -121,8 +121,6 @@ mode_warn_dev() {
       ;;
     "20")  # Spacebar
       crossystem recovery_request=1
-      # TODO(rspangler,vb) remove when reboot_mode is gone.
-      reboot_mode --recovery=1
       reboot
       ;;
   esac
