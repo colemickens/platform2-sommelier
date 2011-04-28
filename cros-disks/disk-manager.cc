@@ -20,6 +20,12 @@
 
 namespace cros_disks {
 
+static const char *kMountOptionReadWrite = "rw";
+static const char *kMountOptionNoDev = "nodev";
+static const char *kMountOptionNoExec = "noexec";
+static const char *kMountOptionNoSuid = "nosuid";
+static const char *kUnmountOptionForce = "force";
+
 DiskManager::DiskManager()
     : udev_(udev_new()),
       udev_monitor_fd_(0) {
@@ -203,6 +209,24 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
   return mount_path;
 }
 
+std::vector<std::string> DiskManager::SanitizeMountOptions(
+    const std::vector<std::string>& options, const Disk& disk) const {
+  std::vector<std::string> sanitized_options;
+  sanitized_options.reserve(options.size());
+
+  for (std::vector<std::string>::const_iterator
+      option_iterator = options.begin(); option_iterator != options.end();
+      ++option_iterator) {
+    const std::string& option = *option_iterator;
+    if (option == kMountOptionReadWrite) {
+      if (disk.is_read_only() || disk.is_optical_disk())
+        continue;
+    }
+    sanitized_options.push_back(option);
+  }
+  return sanitized_options;
+}
+
 bool DiskManager::ExtractMountOptions(const std::vector<std::string>& options,
     unsigned long *mount_flags, std::string *mount_data) const {
   if (mount_flags == NULL || mount_data == NULL)
@@ -214,13 +238,13 @@ bool DiskManager::ExtractMountOptions(const std::vector<std::string>& options,
       option_iterator = options.begin(); option_iterator != options.end();
       ++option_iterator) {
     const std::string& option = *option_iterator;
-    if (option == "rw") {
+    if (option == kMountOptionReadWrite) {
       *mount_flags &= ~(unsigned long)MS_RDONLY;
-    } else if (option == "nodev") {
+    } else if (option == kMountOptionNoDev) {
       *mount_flags |= MS_NODEV;
-    } else if (option == "noexec") {
+    } else if (option == kMountOptionNoExec) {
       *mount_flags |= MS_NOEXEC;
-    } else if (option == "nosuid") {
+    } else if (option == kMountOptionNoSuid) {
       *mount_flags |= MS_NOSUID;
     } else {
       LOG(ERROR) << "Got unsupported mount option: " << option;
@@ -240,7 +264,7 @@ bool DiskManager::ExtractUnmountOptions(const std::vector<std::string>& options,
       option_iterator = options.begin(); option_iterator != options.end();
       ++option_iterator) {
     const std::string& option = *option_iterator;
-    if (option == "force") {
+    if (option == kUnmountOptionForce) {
       *unmount_flags |= MNT_FORCE;
     } else {
       LOG(ERROR) << "Got unsupported unmount option: " << option;
@@ -283,18 +307,20 @@ bool DiskManager::Mount(const std::string& device_path,
   // based on a removed sysfs path.
   device_file_map_[disk.native_path()] = disk.device_file();
 
+  unsigned long mount_flags = 0;
+  std::string mount_data;
+  std::vector<std::string> sanitized_options =
+    SanitizeMountOptions(options, disk);
+  if (!ExtractMountOptions(sanitized_options, &mount_flags, &mount_data)) {
+    LOG(ERROR) << "Invalid mount options.";
+    return false;
+  }
+
   std::string mount_target = mount_path ? *mount_path : std::string();
   mount_target = CreateMountDirectory(disk, mount_target);
   if (mount_target.empty()) {
     LOG(ERROR) << "Failed to create mount directory for '"
       << device_path << "'";
-    return false;
-  }
-
-  unsigned long mount_flags;
-  std::string mount_data;
-  if (!ExtractMountOptions(options, &mount_flags, &mount_data)) {
-    LOG(ERROR) << "Invalid mount options.";
     return false;
   }
 

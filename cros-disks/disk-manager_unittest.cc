@@ -86,6 +86,42 @@ TEST_F(DiskManagerTest, GetFilesystemsFromStream) {
   }
 }
 
+TEST_F(DiskManagerTest, SanitizeMountOptionsWithReadOnlyDisk) {
+  DiskManager manager;
+  std::vector<std::string> options;
+  options.push_back("nodev");
+  options.push_back("rw");
+  options.push_back("noexec");
+  options.push_back("nosuid");
+  Disk disk;
+  disk.set_is_read_only(true);
+
+  std::vector<std::string> santized_options =
+    manager.SanitizeMountOptions(options, disk);
+  EXPECT_EQ(3, santized_options.size());
+  EXPECT_EQ("nodev", santized_options[0]);
+  EXPECT_EQ("noexec", santized_options[1]);
+  EXPECT_EQ("nosuid", santized_options[2]);
+}
+
+TEST_F(DiskManagerTest, SanitizeMountOptionsWithOpticalDisk) {
+  DiskManager manager;
+  std::vector<std::string> options;
+  options.push_back("nodev");
+  options.push_back("rw");
+  options.push_back("noexec");
+  options.push_back("nosuid");
+  Disk disk;
+  disk.set_is_optical_disk(true);
+
+  std::vector<std::string> santized_options =
+    manager.SanitizeMountOptions(options, disk);
+  EXPECT_EQ(3, santized_options.size());
+  EXPECT_EQ("nodev", santized_options[0]);
+  EXPECT_EQ("noexec", santized_options[1]);
+  EXPECT_EQ("nosuid", santized_options[2]);
+}
+
 TEST_F(DiskManagerTest, ExtractSupportedMountOptions) {
   DiskManager manager;
   std::vector<std::string> options;

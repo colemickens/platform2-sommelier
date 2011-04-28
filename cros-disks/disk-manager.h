@@ -58,6 +58,10 @@ class DiskManager {
   std::string CreateMountDirectory(const Disk& disk,
       const std::string& target_path) const;
 
+  // Sanitize an array of mount options based on the properties of a disk.
+  std::vector<std::string> SanitizeMountOptions(
+      const std::vector<std::string>& options, const Disk& disk) const;
+
   // Extracts mount flags and data for Mount() from an array of options.
   bool ExtractMountOptions(const std::vector<std::string>& options,
       unsigned long *mount_flags, std::string *mount_data) const;
