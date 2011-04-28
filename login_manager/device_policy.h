@@ -49,13 +49,13 @@ class DevicePolicy {
   // and schedules a PersistPolicy().
   // Returns false on failure, with |error| set appropriately.
   // |error| can be NULL, should you wish to ignore the particulars.
-  bool StoreOwnerProperties(OwnerKey* key,
-                            const std::string& current_user,
-                            GError** error);
+  virtual bool StoreOwnerProperties(OwnerKey* key,
+                                    const std::string& current_user,
+                                    GError** error);
 
   // Returns true if the current user is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.
-  bool CurrentUserIsOwner(const std::string& current_user);
+  virtual bool CurrentUserIsOwner(const std::string& current_user);
 
   static const char kDefaultPath[];
   // Format of this string is documented in device_management_backend.proto.

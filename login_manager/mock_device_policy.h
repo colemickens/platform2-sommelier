@@ -20,6 +20,10 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD0(Get, const enterprise_management::PolicyFetchResponse&());
   MOCK_CONST_METHOD1(SerializeToString, bool(std::string*));
   MOCK_METHOD1(Set, void(const enterprise_management::PolicyFetchResponse&));
+  MOCK_METHOD3(StoreOwnerProperties, bool(OwnerKey*,
+                                          const std::string&,
+                                          GError**));
+  MOCK_METHOD1(CurrentUserIsOwner, bool(const std::string&));
 };
 }  // namespace login_manager
 

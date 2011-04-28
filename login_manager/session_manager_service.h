@@ -29,7 +29,6 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
-#include "login_manager/pref_store.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
 
@@ -75,9 +74,6 @@ class SessionManagerService
     }
     void set_ownerkey(OwnerKey* key) {
       session_manager_service_->key_.reset(key);
-    }
-    void set_prefstore(PrefStore* store) {
-      session_manager_service_->store_.reset(store);
     }
     void set_policy(DevicePolicy* store) {
       session_manager_service_->policy_.reset(store);
@@ -377,10 +373,6 @@ class SessionManagerService
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
-  // Returns true if the current user is listed in |store_| as the
-  // kDeviceOwner.  Returns false if not, or if that cannot be determined.
-  gboolean CurrentUserIsOwner();
-
   // Returns true if the current user has the private half of |pub_key|
   // in his nssdb.  Returns false if not, or if that cannot be determined.
   // |error| is set appropriately on failure.
@@ -399,50 +391,6 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
 
-  // Assuming the current user has access to the owner private key
-  // (read: is the owner), this call whitelists |current_user_|, sets a
-  // property indicating |current_user_| is the owner, and schedules both
-  // a PersistWhitelist() and a PersistStore().
-  // Returns false on failure, with |error| set appropriately.
-  // |error| can be NULL, should you wish to ignore the particulars.
-  gboolean StoreOwnerProperties(GError** error);
-
-  // Signs and stores |name|=|value|, and schedules a PersistStore().
-  // Returns false on failure, populating |error| with |err_msg|.
-  gboolean SignAndStoreProperty(const std::string& name,
-                                const std::string& value,
-                                const std::string& err_msg,
-                                GError** error);
-
-  // Signs and whitelists |email|, and schedules a PersistWhitelist().
-  // Returns false on failure, populating |error| with |err_msg|.
-  gboolean SignAndWhitelist(const std::string& email,
-                            const std::string& err_msg,
-                            GError** error);
-
-  // Encodes |signature| for writing to disk, stores |name|=|value|, and
-  // schedules a PersistStore().
-  // Returns false on failure, with |error| set appropriately.
-  gboolean SetPropertyHelper(const std::string& name,
-                             const std::string& value,
-                             const std::string& signature,
-                             GError** error);
-
-  // Encodes |signature| for writing to disk, whitelists |email|, and
-  // schedules a PersistWhitelist().
-  // Returns false on failure, with |error| set appropriately.
-  gboolean WhitelistHelper(const std::string& email,
-                           const std::string& signature,
-                           GError** error);
-
-  // Looks for |name| in |store_|.  If there, returns the associated value
-  // and the (base64-decoded) signature in the associated OUT_ params.
-  // Upon failure, FALSE is returned and error is set appropriately.
-  gboolean GetPropertyHelper(const std::string& name,
-                             std::string* OUT_value,
-                             std::string* OUT_signature,
-                             GError** error);
-
   // |key_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
   void PersistKey();
@@ -450,11 +398,7 @@ class SessionManagerService
   // |store_| and |policy_| are persisted to disk, then |event| is
   // signaled when done.  This is used to provide synchronous,
   // threadsafe persisting.
-  void PersistAllSync(base::WaitableEvent* event);
-
-  // |store_| is persisted to disk, and then posts a task to |message_loop_|
-  // to signal Chromium when done.
-  void PersistStore();
+  void PersistPolicySync(base::WaitableEvent* event);
 
   // |policy_| is persisted to disk, and then a task is posted to
   // ||message_loop_| to complete the StorePolicy DBus method call.
@@ -463,10 +407,6 @@ class SessionManagerService
   // |policy_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
   void PersistPolicy();
-
-  // |store_| is persisted to disk, and then posts a task to |message_loop_|
-  // to signal Chromium when done.
-  void PersistWhitelist();
 
   void StartKeyGeneration();
 
@@ -481,6 +421,8 @@ class SessionManagerService
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
+
+  gboolean DeprecatedError(const char* msg, GError** error);
 
   SigReturnCode VerifyHelper(const std::string& data,
                              const char* sig,
@@ -511,7 +453,6 @@ class SessionManagerService
   scoped_ptr<DevicePolicy> policy_;
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<OwnerKey> key_;
-  scoped_ptr<PrefStore> store_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
   bool session_started_;
