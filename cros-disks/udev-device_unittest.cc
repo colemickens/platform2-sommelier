@@ -18,8 +18,11 @@ class UdevDeviceTest : public ::testing::Test {
     : udev_(udev_new()),
       udev_device_(NULL)
   {
-    EXPECT_TRUE(udev_ != NULL);
     SelectUdevDeviceForTest();
+    if (IsUdevDeviceAvailableForTesting())
+      LOG(INFO) << "A udev device is available for testing.";
+    else
+      LOG(INFO) << "No udev device is available for testing. ";
   }
 
   virtual ~UdevDeviceTest() {
@@ -41,6 +44,10 @@ class UdevDeviceTest : public ::testing::Test {
     return udev_device_;
   }
 
+  bool IsUdevDeviceAvailableForTesting() const {
+    return (udev_ != NULL && udev_device_ != NULL);
+  }
+
   static std::ostream& GenerateTestMountFileContent(std::ostream& stream) {
     stream << "rootfs / rootfs rw 0 0\n"
       << "none /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0\n"
@@ -55,6 +62,9 @@ class UdevDeviceTest : public ::testing::Test {
  private:
 
   void SelectUdevDeviceForTest() {
+    if (udev_ == NULL)
+      return;
+
     if (udev_device_) {
       udev_device_unref(udev_device_);
       udev_device_ = NULL;
@@ -87,8 +97,6 @@ class UdevDeviceTest : public ::testing::Test {
       }
     }
     udev_enumerate_unref(enumerate);
-
-    EXPECT_TRUE(udev_device_ != NULL);
   }
 
   struct udev* udev_;
@@ -98,55 +106,73 @@ class UdevDeviceTest : public ::testing::Test {
 };
 
 TEST_F(UdevDeviceTest, IsAttributeTrueForNonexistentAttribute) {
-  UdevDevice device(udev_device());
-  EXPECT_FALSE(device.IsAttributeTrue("nonexistent-attribute"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_FALSE(device.IsAttributeTrue("nonexistent-attribute"));
+  }
 }
 
 TEST_F(UdevDeviceTest, HasAttributeForExistentAttribute) {
-  UdevDevice device(udev_device());
-  EXPECT_TRUE(device.HasAttribute("stat"));
-  EXPECT_TRUE(device.HasAttribute("size"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_TRUE(device.HasAttribute("stat"));
+    EXPECT_TRUE(device.HasAttribute("size"));
+  }
 }
 
 TEST_F(UdevDeviceTest, HasAttributeForNonexistentAttribute) {
-  UdevDevice device(udev_device());
-  EXPECT_FALSE(device.HasAttribute("nonexistent-attribute"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_FALSE(device.HasAttribute("nonexistent-attribute"));
+  }
 }
 
 TEST_F(UdevDeviceTest, IsPropertyTrueForNonexistentProperty) {
-  UdevDevice device(udev_device());
-  EXPECT_FALSE(device.IsPropertyTrue("nonexistent-property"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_FALSE(device.IsPropertyTrue("nonexistent-property"));
+  }
 }
 
 TEST_F(UdevDeviceTest, HasPropertyForExistentProperty) {
-  UdevDevice device(udev_device());
-  EXPECT_TRUE(device.HasProperty("DEVTYPE"));
-  EXPECT_TRUE(device.HasProperty("DEVNAME"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_TRUE(device.HasProperty("DEVTYPE"));
+    EXPECT_TRUE(device.HasProperty("DEVNAME"));
+  }
 }
 
 TEST_F(UdevDeviceTest, HasPropertyForNonexistentProperty) {
-  UdevDevice device(udev_device());
-  EXPECT_FALSE(device.HasProperty("nonexistent-property"));
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_FALSE(device.HasProperty("nonexistent-property"));
+  }
 }
 
 TEST_F(UdevDeviceTest, IsMediaAvailable) {
-  UdevDevice device(udev_device());
-  EXPECT_TRUE(device.IsMediaAvailable());
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    EXPECT_TRUE(device.IsMediaAvailable());
+  }
 }
 
 TEST_F(UdevDeviceTest, GetSizeInfo) {
-  UdevDevice device(udev_device());
-  uint64 total_size = 0, remaining_size = 0;
-  device.GetSizeInfo(&total_size, &remaining_size);
-  LOG(INFO) << "GetSizeInfo: total=" << total_size
-    << ", remaining=" << remaining_size;
-  EXPECT_TRUE(total_size > 0);
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    uint64 total_size = 0, remaining_size = 0;
+    device.GetSizeInfo(&total_size, &remaining_size);
+    LOG(INFO) << "GetSizeInfo: total=" << total_size
+      << ", remaining=" << remaining_size;
+    EXPECT_TRUE(total_size > 0);
+  }
 }
 
 TEST_F(UdevDeviceTest, GetMountPaths) {
-  UdevDevice device(udev_device());
-  std::vector<std::string> mount_paths = device.GetMountPaths();
-  EXPECT_FALSE(mount_paths.empty());
+  if (IsUdevDeviceAvailableForTesting()) {
+    UdevDevice device(udev_device());
+    std::vector<std::string> mount_paths = device.GetMountPaths();
+    EXPECT_FALSE(mount_paths.empty());
+  }
 }
 
 TEST_F(UdevDeviceTest, ParseMountPathsReturnsNoPaths) {
