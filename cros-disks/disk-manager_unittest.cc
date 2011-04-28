@@ -52,6 +52,13 @@ TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
   EXPECT_FALSE(manager.GetDiskByDevicePath(device_path, &disk));
 }
 
+TEST_F(DiskManagerTest, GetFilesystemTypeOfNonexistentDevice) {
+  DiskManager manager;
+  std::string device_path = "/dev/nonexistent-path";
+  std::string filesystem_type = manager.GetFilesystemTypeOfDevice(device_path);
+  EXPECT_EQ("", filesystem_type);
+}
+
 TEST_F(DiskManagerTest, GetFilesystems) {
   DiskManager manager;
   std::vector<std::string> filesystems = manager.GetFilesystems();

@@ -5,6 +5,7 @@
 #ifndef DISK_MANAGER_H__
 #define DISK_MANAGER_H__
 
+#include <blkid/blkid.h>
 #include <libudev.h>
 #include <iostream>
 #include <map>
@@ -41,6 +42,9 @@ class DiskManager {
 
   // Gets a device file from the cache mapping from sysfs path to device file.
   std::string GetDeviceFileFromCache(const std::string& device_path) const;
+
+  // Gets the filesystem type of a device.
+  std::string GetFilesystemTypeOfDevice(const std::string& device_path);
 
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
@@ -93,6 +97,9 @@ class DiskManager {
 
   // A file descriptor that indicates changes to the system.
   int udev_monitor_fd_;
+
+  // blkid_cache object.
+  blkid_cache blkid_cache_;
 
   // A cache mapping device sysfs path to device file.
   std::map<std::string, std::string> device_file_map_;

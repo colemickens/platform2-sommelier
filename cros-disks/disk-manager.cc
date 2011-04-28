@@ -28,7 +28,8 @@ static const char *kUnmountOptionForce = "force";
 
 DiskManager::DiskManager()
     : udev_(udev_new()),
-      udev_monitor_fd_(0) {
+      udev_monitor_fd_(0),
+      blkid_cache_(NULL) {
 
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
@@ -142,6 +143,23 @@ std::string DiskManager::GetDeviceFileFromCache(
   std::map<std::string, std::string>::const_iterator map_iterator =
     device_file_map_.find(device_path);
   return (map_iterator != device_file_map_.end()) ? map_iterator->second : "";
+}
+
+std::string DiskManager::GetFilesystemTypeOfDevice(
+    const std::string& device_path) {
+  std::string filesystem_type;
+  if (blkid_cache_ != NULL || blkid_get_cache(&blkid_cache_, NULL) == 0) {
+    blkid_dev dev =
+      blkid_get_dev(blkid_cache_, device_path.c_str(), BLKID_DEV_NORMAL);
+    if (dev) {
+      const char *type = blkid_get_tag_value(blkid_cache_, "TYPE",
+          device_path.c_str());
+      if (type) {
+        filesystem_type = type;
+      }
+    }
+  }
+  return filesystem_type;
 }
 
 std::vector<std::string> DiskManager::GetFilesystems() const {
@@ -305,7 +323,7 @@ bool DiskManager::Mount(const std::string& device_path,
   // After a device is removed, the sysfs path may no longer exist,
   // so this cache helps Unmount to search for a mounted device file
   // based on a removed sysfs path.
-  device_file_map_[disk.native_path()] = disk.device_file();
+  device_file_map_[disk.native_path()] = device_file;
 
   unsigned long mount_flags = 0;
   std::string mount_data;
@@ -324,11 +342,17 @@ bool DiskManager::Mount(const std::string& device_path,
     return false;
   }
 
+  // If no explicit filesystem type is given, try to determine it via blkid.
+  std::string device_filesystem_type = filesystem_type.empty() ?
+    GetFilesystemTypeOfDevice(device_file) : filesystem_type;
+
+  // If the filesystem type is not determined, try iterate through the types
+  // listede in /proc/filesystem.
   std::vector<std::string> filesystems;
-  if (filesystem_type.empty()) {
+  if (device_filesystem_type.empty()) {
     filesystems = GetFilesystems();
   } else {
-    filesystems.push_back(filesystem_type);
+    filesystems.push_back(device_filesystem_type);
   }
 
   bool mounted = false;
