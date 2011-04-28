@@ -87,9 +87,8 @@ HELP='
  set_apn -c
   Clear the APN to be used, so that the default APN will be used instead.
 
- ssh <user> <host> [<port>]
-  Open an ssh connection to the given <host>, as <user>.  The <port> parameter
-  is optional and defaults to 22.
+ ssh
+  Starts the ssh subsystem.
 
  ssh_forget_host
   Remove a host from the list of known ssh hosts.  This command displays
@@ -174,43 +173,159 @@ cmd_exit() {
   exit
 }
 
+check_dforward() {
+  # Matches a port number between 8000 and 8999.
+  expr "$1" : '^8[0-9][0-9][0-9]' > /dev/null
+}
+
+check_forward() {
+  # Matches three things, separated by ':':
+  # A port number, between 8000 and 8999;
+  # A hostname
+  # A port number, unrestricted
+  expr "$1" : '^8[0-9][0-9][0-9]:[[:alnum:]][-[:alnum:].]*:[1-9][0-9]*$' \
+      > /dev/null
+}
+
+check_keyfile() {
+  # Allow files in /home/chronos/user, /media. Note that we *do* allow .., so
+  # this isn't actually a security barrier, just a molly-guard to keep users
+  # from putting keys in insecure storage.
+  if [ ! -r "$1" -a ! -r "$HOME/Downloads/$1" ]; then
+    return 1;
+  fi
+  (expr "$1" : "^$HOME" > /dev/null) || \
+  (expr "$1" : '^/media/' > /dev/null) || \
+  (expr "$1" : '^[^/]*$' > /dev/null)
+}
+
 cmd_ssh() {
-  local user="$1"
-  local host="$2"
-  local port="${3:-22}"
+  local user=""
+  local host=""
+  local port="22"
+  local idfile=""
+  local dforwards=""
+  local forwards=""
+  local nocmd=""
+  local line
+  local cmd
+  local params
+  local id=$(uuidgen)
 
-  # Ssh consults /etc/passwd for the home directory, rather than trusting
-  # $HOME.  This is a problem for us because $HOME is /home/chronos/user, while
-  # /etc/passwd lists /home/chronos.  We work around it by reading /etc/passwd
-  # too.
+  local defopts="-e none -F /etc/ssh/ssh_config"
   local home="$(getent passwd "$USER" | cut -f6 -d':')"
-  rm -rf $home/.ssh
+  rm -rf "$home/.ssh"
 
-  if [ -z "$user" ]; then
-    echo "Missing required parameter: user"
-    return
-  elif ! check_username "$user"; then
-    echo "Invalid user: $user"
-    return
-  fi
-
-  if [ -z "$host" ]; then
-    echo "Missing required parameter: host"
-    return
-  elif ! check_hostname "$host" && ! check_ipv6 "$host"; then
-    echo "Invalid host: $host"
-    return
-  fi
-
-  if [ ! -z "$port" ]; then
-    if ! check_digits "$port"; then
-      echo "Invalid port: $port"
-      return
+  if [ ! -z "$1" ]; then
+    # Sets the username and host directly. We accept either 'user host' or
+    # 'user@host'.
+    local at_pos=$(expr index "$1" '@')
+    if [ $at_pos = 0 ]; then
+      user="$1"
+      host="$2"
+    else
+      user=$(substr "$1" "0" $(expr "$at_pos" - 1))
+      host=$(substr "$1" "$at_pos")
     fi
   fi
 
-  echo "open: host: $host, user: $user, port: $port"
-  ssh -e none -F /etc/ssh/ssh_config -p "$port" "$user@$host"
+  while [ 1 ]; do
+    if ! shell_read "ssh> " line; then continue; fi
+    local space_pos=$(expr index "$line" ' ')
+    if [ $space_pos = 0 ]; then
+      cmd="$line"
+    else
+      cmd=$(substr "$line" "0" "$space_pos")
+      params=$(substr "$line" "$space_pos")
+    fi
+
+    case "$cmd" in
+
+    key)
+      if check_keyfile "$params"; then
+        (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
+        chmod 600 "$HOME/.ssh/key-$id"
+        idfile="-i $HOME/.ssh/key-$id"
+      else
+        echo "File '$params' is not a valid key file. Key files must reside"
+        echo "under /media or $HOME. Key files in the Downloads directory may"
+        echo "be specified with an unqualified name."
+      fi
+      ;;
+
+    dynamic-forward)
+      if ! check_dforward "$params"; then
+        echo "Invalid forward '$params'."
+        echo "Note that the local port number must be in 8000-8999."
+      else
+        dforwards="$dforwards -D$params"
+      fi
+      ;;
+
+    forward)
+      if ! check_forward "$params"; then
+        echo "Invalid forward '$params'"
+        echo "Note that the local port number must be in 8000-8999."
+      else
+        forwards="$forwards -L$params"
+      fi
+      ;;
+
+    nocmd)
+      nocmd="-N"
+      ;;
+
+    port)
+      if ! check_digits "$params"; then
+        echo "Invalid port '$params'"
+      else
+        port="$params"
+      fi
+      ;;
+
+    user)
+      user="$params"
+      ;;
+
+    host)
+      host="$params"
+      ;;
+
+    quit)
+      break
+      ;;
+
+    connect)
+      if [ -z "$user" ]; then
+        echo "No username given."
+      elif [ -z "$host" ]; then
+        echo "No host given."
+      elif ! check_username "$user"; then
+        echo "Invalid username '$user'"
+      elif ! check_hostname "$host"; then
+        echo "Invalid hostname '$host'"
+      else
+        ssh $defopts $idfile $dforwards $forwards $nocmd -p "$port" \
+            -l "$user" "$host"
+      fi
+      ;;
+
+    *)
+      echo "connect                       - connect"
+      echo "dynamic-forward port          - dynamic socks proxy (-D)"
+      echo "forward port:host:port        - static port forward (-L)"
+      echo "help                          - this"
+      echo "host <hostname>               - remote hostname"
+      echo "key <file>                    - sets private key to use (-i)"
+      echo "nocmd                         - don't execute command (-N)"
+      echo "port <num>                    - port on remote host (-p)"
+      echo "quit                          - exit ssh subsystem"
+      echo "user <username>               - username on remote host"
+      echo "Note that this program can only bind local ports in the range"
+      echo "8000-8999, inclusive."
+      ;;
+    esac
+  done
 }
 
 cmd_ssh_forget_host() {
