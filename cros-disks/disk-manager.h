@@ -7,6 +7,7 @@
 
 #include <libudev.h>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -38,6 +39,9 @@ class DiskManager {
   // fd.
   bool ProcessUdevChanges(std::string *device_path, std::string *action);
 
+  // Gets a device file from the cache mapping from sysfs path to device file.
+  std::string GetDeviceFileFromCache(const std::string& device_path) const;
+
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
 
@@ -66,11 +70,11 @@ class DiskManager {
   bool Mount(const std::string& device_path,
       const std::string& filesystem_type,
       const std::vector<std::string>& options,
-      std::string *mount_path) const;
+      std::string *mount_path);
 
   // Unmounts a given device path.
   bool Unmount(const std::string& device_path,
-      const std::vector<std::string>& options) const;
+      const std::vector<std::string>& options);
 
   // A file descriptor that can be select()ed or poll()ed for system changes.
   int udev_monitor_fd() const { return udev_monitor_fd_; }
@@ -85,6 +89,9 @@ class DiskManager {
 
   // A file descriptor that indicates changes to the system.
   int udev_monitor_fd_;
+
+  // A cache mapping device sysfs path to device file.
+  std::map<std::string, std::string> device_file_map_;
 };
 
 } // namespace cros_disks

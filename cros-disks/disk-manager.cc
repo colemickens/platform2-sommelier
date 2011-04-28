@@ -81,11 +81,12 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
   CHECK(device_path) << "Invalid device path";
   CHECK(action) << "Unknown device action";
   LOG(INFO) << "Got Device";
+  LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
   LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
   LOG(INFO) << "   Subsystem: " << udev_device_get_subsystem(dev);
   LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
-  *device_path = udev_device_get_devnode(dev);
+  *device_path = udev_device_get_syspath(dev);
   *action = udev_device_get_action(dev);
   udev_device_unref(dev);
   return true;
@@ -93,6 +94,12 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
 
 bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
     Disk *disk) const {
+  if (device_path.empty())
+    return false;
+
+  bool is_sys_path = StartsWithASCII(device_path, "/sys/", true);
+  bool is_dev_path = StartsWithASCII(device_path, "/devices/", true);
+  bool is_dev_file = StartsWithASCII(device_path, "/dev/", true);
   bool disk_found = false;
 
   struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
@@ -102,10 +109,14 @@ bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
   struct udev_list_entry *device_list, *device_list_entry;
   device_list = udev_enumerate_get_list_entry(enumerate);
   udev_list_entry_foreach(device_list_entry, device_list) {
-    const char *path = udev_list_entry_get_name(device_list_entry);
-    udev_device *dev = udev_device_new_from_syspath(udev_, path);
-    const char *device_file = udev_device_get_devnode(dev);
-    if (device_file && strcmp(device_file, device_path.c_str()) == 0) {
+    const char *sys_path = udev_list_entry_get_name(device_list_entry);
+    udev_device *dev = udev_device_new_from_syspath(udev_, sys_path);
+    const char *dev_path = udev_device_get_devpath(dev);
+    const char *dev_file = udev_device_get_devnode(dev);
+    if ((is_sys_path && strcmp(sys_path, device_path.c_str()) == 0) ||
+        (is_dev_path && strcmp(dev_path, device_path.c_str()) == 0) ||
+        (is_dev_file && dev_file != NULL
+         && strcmp(dev_file, device_path.c_str()) == 0)) {
       disk_found = true;
       if (disk)
         *disk = UdevDevice(dev).ToDisk();
@@ -118,6 +129,13 @@ bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
   udev_enumerate_unref(enumerate);
 
   return disk_found;
+}
+
+std::string DiskManager::GetDeviceFileFromCache(
+    const std::string& device_path) const {
+  std::map<std::string, std::string>::const_iterator map_iterator =
+    device_file_map_.find(device_path);
+  return (map_iterator != device_file_map_.end()) ? map_iterator->second : "";
 }
 
 std::vector<std::string> DiskManager::GetFilesystems() const {
@@ -235,7 +253,7 @@ bool DiskManager::ExtractUnmountOptions(const std::vector<std::string>& options,
 bool DiskManager::Mount(const std::string& device_path,
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
-    std::string *mount_path) const {
+    std::string *mount_path) {
 
   if (device_path.empty()) {
     LOG(ERROR) << "Invalid device path.";
@@ -252,6 +270,18 @@ bool DiskManager::Mount(const std::string& device_path,
     LOG(ERROR) << "'" << device_path << "' is already mounted.";
     return false;
   }
+
+  const std::string& device_file = disk.device_file();
+  if (device_file.empty()) {
+    LOG(ERROR) << "'" << device_path << "' does not have a device file.";
+    return false;
+  }
+
+  // Cache the mapping from device sysfs path to device file.
+  // After a device is removed, the sysfs path may no longer exist,
+  // so this cache helps Unmount to search for a mounted device file
+  // based on a removed sysfs path.
+  device_file_map_[disk.native_path()] = disk.device_file();
 
   std::string mount_target = mount_path ? *mount_path : std::string();
   mount_target = CreateMountDirectory(disk, mount_target);
@@ -279,7 +309,7 @@ bool DiskManager::Mount(const std::string& device_path,
   for (std::vector<std::string>::const_iterator
       filesystem_iterator(filesystems.begin());
       filesystem_iterator != filesystems.end(); ++filesystem_iterator) {
-    if (mount(device_path.c_str(), mount_target.c_str(),
+    if (mount(device_file.c_str(), mount_target.c_str(),
           filesystem_iterator->c_str(), mount_flags,
           mount_data.c_str()) == 0) {
       mounted = true;
@@ -308,10 +338,23 @@ bool DiskManager::Mount(const std::string& device_path,
 }
 
 bool DiskManager::Unmount(const std::string& device_path,
-    const std::vector<std::string>& options) const {
+    const std::vector<std::string>& options) {
 
   if (device_path.empty()) {
     LOG(ERROR) << "Invalid device path.";
+    return false;
+  }
+
+  std::string device_file = GetDeviceFileFromCache(device_path);
+  if (device_file.empty()) {
+    Disk disk;
+    if (GetDiskByDevicePath(device_path, &disk)) {
+      device_file = disk.device_file();
+    }
+  }
+
+  if (device_file.empty()) {
+    LOG(ERROR) << "Could not find the device file for '" << device_path << "'";
     return false;
   }
 
@@ -319,7 +362,7 @@ bool DiskManager::Unmount(const std::string& device_path,
   // udev_enumerate_scan_devices, as the device node may no longer exist after
   // device removal.
   std::vector<std::string> mount_paths =
-    UdevDevice::GetMountPaths(device_path);
+    UdevDevice::GetMountPaths(device_file);
   if (mount_paths.empty()) {
     LOG(ERROR) << "'" << device_path << "' is not mounted.";
     return false;
@@ -348,6 +391,9 @@ bool DiskManager::Unmount(const std::string& device_path,
       LOG(WARNING) << "Failed to remove directory '" << *path_iterator
         << "' (errno=" << errno << ")";
   }
+
+  device_file_map_.erase(device_path);
+
   return unmount_ok;
 }
 
