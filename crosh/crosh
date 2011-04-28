@@ -1,0 +1,689 @@
+#!/bin/dash
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+TRY_BASH=1
+if echo "$@" | grep -q -- "--dash"; then
+  TRY_BASH=0
+fi
+
+# NOTE: This script *almost* works in dash.  Unfortunately, dash is missing
+# the 'history' builtin and readline support is missing from the 'read'
+# builtin.
+#
+# Please test that any changes continue to work in dash by running
+# '/build/board-name/bin/dash crosh --dash' before checking them in.
+
+if type "history" 2>/dev/null | grep -q "shell builtin"; then
+  IS_BASH=1
+else
+  IS_BASH=0
+fi
+
+if [ "$TRY_BASH" = "1" -a "$IS_BASH" != "1" -a -x "/bin/bash" ]; then
+  # Relaunch in bash if we can.
+  exec /bin/bash $0 "$@"
+fi
+
+#
+# Please keep the help text in alphabetical order!
+#
+HELP='
+ enterprise_ca_approve [--allow-self-signed] <url>
+  Approve an enterprise certificate authority.  The <url> option should be
+  an http or https url to your enterprise Certificate Authority in PEM
+  format.  This CA will be used to validate the signature of an enterprise
+  policy extension.
+
+  If the --allow-self-signed option is provided, then you may provide a self
+  signed CA.  Use this only if you are certain of the source of the CA.
+
+ enterprise_ca_disapprove
+  Remove a previously approved enterprise certificate authority.
+
+ exit
+  Exit crosh.
+
+ ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
+  Add and remove flimflam debugging tags.
+
+ gobi_fw <command> [args...]
+  Manipulate Qualcomm Gobi 3000 firmware.
+
+ help
+  Display this help.
+
+ modem <command> [args...]
+  Interact with the 3G modem. Run "modem help" for detailed help.
+
+ modem_set_carrier carrier-name
+  Configures the modem for the specified carrier.
+
+ network_logging <wifi | cellular | ethernet>
+  A function that enables a predefined set of tags useful for
+  debugging the specified device.
+
+ network_diag
+  A function that performs a suite of network diagnostics.  Saves a copy
+  of the output to your download directory.
+
+ ping [-c count] [-i interval] [-n] [-s packet-size] [-W wait-time] <destination>
+  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
+  then the next hop gateway for the default route is used.
+
+ route [-n]
+  Display the routing tables.
+
+ secure_certificates [on|off]
+  Enables TPM-wrapped secure certificate storage in Chrome.  This is off by
+  default and is currently a lab feature.
+
+ set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
+  Set the APN to use when connecting to the network specified by <network-id>.
+  If <network-id> is not specified, use the network-id of the currently
+  registered network.
+
+ set_apn -c
+  Clear the APN to be used, so that the default APN will be used instead.
+
+ ssh
+  Starts the ssh subsystem.
+
+ ssh_forget_host
+  Remove a host from the list of known ssh hosts.  This command displays
+  a menu of known hosts and prompts for the host to forget.
+
+ top
+  Run top.
+
+ tracepath [-n] <destination>[/port]
+  Trace the path/route to a network host.
+
+ wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
+  Set wpa_supplicant debugging level.
+'
+
+CHROMEOS_INSTALL=/usr/sbin/chromeos-install
+
+if [ -f $CHROMEOS_INSTALL ]; then
+  # Install script exists.  Test if it thinks we booted from a removable
+  # device.  This is based on the knowledge that the install script checks
+  # that the root device is removable before validating its other arguments.
+  # Also, we expect that when it fails in this manner, it mentions the word
+  # "removable" on stdout.
+
+  if ! $CHROMEOS_INSTALL --dst=/dev/null | grep -q "removable"; then
+    REMOVABLE=1
+  fi
+fi
+
+if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
+  . "$(dirname "$0")/crosh-usb"
+fi
+
+# TODO(rginda): Switch to the "real" dev mode file when we have one.
+/usr/bin/crossystem cros_debug?1
+DEVMODE=$((!$?))
+# Force dev behavior on dev images
+# TODO(wad,rspangler) replace with a crossystem arg once cros_debug checks this
+# too.
+if [ -f "/root/.dev_mode" ]; then
+  DEVMODE=1
+fi
+
+if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
+  . "$(dirname "$0")/crosh-dev"
+fi
+
+if [ -e "$(dirname $0)/crosh-workarounds" ]; then
+  . "$(dirname "$0")/crosh-workarounds"
+fi
+
+ctrl_c() {
+  return
+}
+
+trap ctrl_c SIGINT
+
+shell_read() {
+  local prompt="$1"
+  shift
+
+  if [ "$IS_BASH" -eq "1" ]; then
+    # In bash, -e gives readline support.
+    read -p "$prompt" -e $@
+  else
+    read -p "$prompt" $@
+  fi
+}
+
+shell_history() {
+  if [ "$IS_BASH" -eq "1" ]; then
+    # In bash, the history builtin can be used to manage readline history
+    history $@
+  fi
+}
+
+cmd_help() {
+  echo "$HELP"
+}
+
+cmd_exit() {
+  exit
+}
+
+check_dforward() {
+  # Matches a port number between 8000 and 8999.
+  expr "$1" : '^8[0-9][0-9][0-9]' > /dev/null
+}
+
+check_forward() {
+  # Matches three things, separated by ':':
+  # A port number, between 8000 and 8999;
+  # A hostname
+  # A port number, unrestricted
+  expr "$1" : '^8[0-9][0-9][0-9]:[[:alnum:]][-[:alnum:].]*:[1-9][0-9]*$' \
+      > /dev/null
+}
+
+check_keyfile() {
+  # Allow files in /home/chronos/user, /media. Note that we *do* allow .., so
+  # this isn't actually a security barrier, just a molly-guard to keep users
+  # from putting keys in insecure storage.
+  if [ ! -r "$1" -a ! -r "$HOME/Downloads/$1" ]; then
+    return 1;
+  fi
+  (expr "$1" : "^$HOME" > /dev/null) || \
+  (expr "$1" : '^/media/' > /dev/null) || \
+  (expr "$1" : '^[^/]*$' > /dev/null)
+}
+
+cmd_ssh() {
+  local user=""
+  local host=""
+  local port="22"
+  local idfile=""
+  local dforwards=""
+  local forwards=""
+  local nocmd=""
+  local line
+  local cmd
+  local params
+  local id=$(uuidgen)
+
+  local defopts="-e none -F /etc/ssh/ssh_config"
+  local home="$(getent passwd "$USER" | cut -f6 -d':')"
+  rm -rf "$home/.ssh"
+
+  if [ ! -z "$1" ]; then
+    # Sets the username and host directly. We accept either 'user host' or
+    # 'user@host'.
+    local at_pos=$(expr index "$1" '@')
+    if [ $at_pos = 0 ]; then
+      user="$1"
+      host="$2"
+    else
+      user=$(substr "$1" "0" $(expr "$at_pos" - 1))
+      host=$(substr "$1" "$at_pos")
+    fi
+  fi
+
+  while [ 1 ]; do
+    if ! shell_read "ssh> " line; then continue; fi
+    local space_pos=$(expr index "$line" ' ')
+    if [ $space_pos = 0 ]; then
+      cmd="$line"
+    else
+      cmd=$(substr "$line" "0" "$space_pos")
+      params=$(substr "$line" "$space_pos")
+    fi
+
+    case "$cmd" in
+
+    key)
+      if check_keyfile "$params"; then
+        (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
+        chmod 600 "$HOME/.ssh/key-$id"
+        idfile="-i $HOME/.ssh/key-$id"
+      else
+        echo "File '$params' is not a valid key file. Key files must reside"
+        echo "under /media or $HOME. Key files in the Downloads directory may"
+        echo "be specified with an unqualified name."
+      fi
+      ;;
+
+    dynamic-forward)
+      if ! check_dforward "$params"; then
+        echo "Invalid forward '$params'."
+        echo "Note that the local port number must be in 8000-8999."
+      else
+        dforwards="$dforwards -D$params"
+      fi
+      ;;
+
+    forward)
+      if ! check_forward "$params"; then
+        echo "Invalid forward '$params'"
+        echo "Note that the local port number must be in 8000-8999."
+      else
+        forwards="$forwards -L$params"
+      fi
+      ;;
+
+    nocmd)
+      nocmd="-N"
+      ;;
+
+    port)
+      if ! check_digits "$params"; then
+        echo "Invalid port '$params'"
+      else
+        port="$params"
+      fi
+      ;;
+
+    user)
+      user="$params"
+      ;;
+
+    host)
+      host="$params"
+      ;;
+
+    quit)
+      break
+      ;;
+
+    connect)
+      if [ -z "$user" ]; then
+        echo "No username given."
+      elif [ -z "$host" ]; then
+        echo "No host given."
+      elif ! check_username "$user"; then
+        echo "Invalid username '$user'"
+      elif ! check_hostname "$host"; then
+        echo "Invalid hostname '$host'"
+      else
+        ssh $defopts $idfile $dforwards $forwards $nocmd -p "$port" \
+            -l "$user" "$host"
+      fi
+      ;;
+
+    *)
+      echo "connect                       - connect"
+      echo "dynamic-forward port          - dynamic socks proxy (-D)"
+      echo "forward port:host:port        - static port forward (-L)"
+      echo "help                          - this"
+      echo "host <hostname>               - remote hostname"
+      echo "key <file>                    - sets private key to use (-i)"
+      echo "nocmd                         - don't execute command (-N)"
+      echo "port <num>                    - port on remote host (-p)"
+      echo "quit                          - exit ssh subsystem"
+      echo "user <username>               - username on remote host"
+      echo "Note that this program can only bind local ports in the range"
+      echo "8000-8999, inclusive."
+      ;;
+    esac
+  done
+}
+
+cmd_ssh_forget_host() {
+  local known_hosts="$(readlink -f $HOME/.ssh/known_hosts)"
+
+  # Test that the known_hosts is a regular file and is not 0 length.
+  if [ ! -f "$known_hosts" -o ! -s "$known_hosts" ]; then
+    echo "No known hosts."
+    return
+  fi
+
+  local count="$(cat "$known_hosts" | wc -l)"
+
+  # Print an indexed list of the known hosts.
+  echo "Known hosts:"
+  awk '{ print " " NR ") " $1; }' "$known_hosts"
+
+  local hostno
+
+  while true; do
+    LINE_=""
+    shell_read "Please select a host to forget [1-$count]: " LINE_
+    if [ -z "$LINE_" ]; then
+      echo "Aborting."
+      return
+    fi
+
+    # Extract the numbers from the user input.
+    hostno="$(echo $LINE_ | sed 's/[^[:digit:]]*//g')"
+
+    # If they typed a number...
+    if [ -n "$hostno" ]; then
+      # And it was in the proper range...
+      if [ $hostno -gt 0 -a $hostno -le $count ]; then
+        # Then we can stop asking for input.
+        break
+      fi
+    fi
+
+    echo "Invalid selection.  Please enter a number between 1 and $count."
+  done
+
+  local trimmed="$(awk -v I="$hostno" 'NR != I { print }' "$known_hosts")"
+  echo "$trimmed" > "$known_hosts"
+  chmod 644 "$known_hosts"
+}
+
+cmd_enterprise_ca_approve() {
+  local option=""
+
+  while [ "$(echo "$1" | cut -c1-2)" = "--" ]; do
+    if [ "$1" = "--allow-self-signed" ]; then
+      option="$option --allow_self_signed"
+    elif [ "$1" = "--allow-chaining" ]; then
+      # This option allows enterprise extensions which are signed by
+      # certificates that chain to this one.  Because we're not currently
+      # doing any key usage checks, this can be pretty risky.  If you're not
+      # sure that you need this, don't use it.
+      option="$option --allow_chaining"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: url"
+    return 1
+  fi
+
+  /usr/sbin/entdwife.sh -c approve $option -C "$1"
+  if dbus-send --system --type=method_call --print-reply \
+      --dest=org.chromium.SessionManager /org/chromium/SessionManager \
+      org.chromium.SessionManagerInterface.RestartEntd | grep -q error; then
+    echo "Please log out and then log back in to use this CA."
+  fi
+}
+
+cmd_enterprise_ca_disapprove() {
+  /usr/sbin/entdwife.sh -c disapprove
+}
+
+cmd_ff_debug(){
+  /usr/bin/ff_debug "$@"
+}
+
+cmd_wpa_debug(){
+  /usr/bin/wpa_debug "$@"
+}
+
+cmd_network_logging(){
+  if [ -n "$1" ]; then
+    case "$1" in
+      "wifi")
+        echo; /usr/bin/ff_debug service+wifi+inet+device+manager
+        echo; /usr/bin/wpa_debug msgdump
+        ;;
+      "cellular")
+        echo; /usr/bin/ff_debug service+modem+device+manager
+        echo; /usr/bin/wpa_debug info
+        ;;
+      "ethernet")
+        echo; /usr/bin/ff_debug service+ethernet+device+manager
+        echo; /usr/bin/wpa_debug info
+        ;;
+      "--help")
+        echo "Usage: network_logging <wifi | cellular | ethernet>"
+        ;;
+      *)
+        echo "Invalid parameter $1"
+        ;;
+    esac
+  else
+    echo "Missing parameter wifi | cellular | ethernet"
+  fi
+}
+
+cmd_network_diag(){
+  /usr/bin/network_diagnostics
+}
+
+cmd_ping() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    # Do just enough parsing to filter/map options; we
+    # depend on ping to handle final validation
+    if [ "$1" = "-i" ]; then
+      shift; option="$option -i $1"
+    elif [ "$1" = "-c" ]; then
+      shift; option="$option -c $1"
+    elif [ "$1" = "-W" ]; then
+      shift; option="$option -W $1"
+    elif [ "$1" = "-s" ]; then
+      shift; option="$option -s $1"
+    elif [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  local dest="$1"
+  if [ "$dest" = "gw" ]; then
+    # Convenient shorthand for the next-hop gateway attached
+    # to the default route; this means if you have a host named
+    # "gw" then you'll need to specify a FQDN or IP address.
+    dest=$(/sbin/route -n | awk '$1 == "0.0.0.0" { print $2; }')
+    if [ -z "$dest" ]; then
+      echo "Cannot determine primary gateway; routing table is:"
+      cmd_route -n
+      return 1
+    fi
+  fi
+
+  /bin/ping $option "$dest"
+}
+
+cmd_route() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  /sbin/route $option
+}
+
+cmd_tracepath() {
+  local option=""
+
+  # NB: use printf to avoid echo interpreting -n
+  while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
+    if [ "$1" = "-n" ]; then
+      option="$option -n"
+    else
+      echo "Unknown option: $1"
+      return 1
+    fi
+
+    shift
+  done
+
+  if [ -z "$1" ]; then
+    echo "Missing parameter: destination"
+    return 1
+  fi
+
+  /usr/sbin/tracepath $option "$1"
+}
+
+cmd_top() {
+  # -s is "secure" mode, which disables kill, renice, and change display/sleep
+  # interval.
+  top -s
+}
+
+cmd_gobi_fw() {
+  /usr/bin/gobi-fw "$@"
+}
+
+cmd_modem() {
+  /usr/bin/modem "$@"
+}
+
+cmd_modem_set_carrier() {
+  /usr/bin/modem_set_carrier "$@"
+}
+
+# TODO(crosbug.com/14277): Remove once this is default.
+cmd_secure_certificates() {
+  local flag_file="/home/chronos/.cryptohome-init-pkcs11"
+  local enabled=0
+  local changed=0
+  [ -r ${flag_file} ] && enabled=1
+  if [ -z "$1" ]; then
+    if [ ${enabled} -eq 1 ]; then
+      echo "Currently enabled"
+    else
+      echo "Currently disabled"
+    fi
+    return
+  fi
+  if [ "$1" = "on" ]; then
+    [ ${enabled} -eq 0 ] && changed=1
+    touch "${flag_file}"
+  else
+    [ $enabled -eq 1 ] && changed=1
+    rm -f $flag_file
+  fi
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot for this to take effect"
+  else
+    echo "No change."
+  fi
+}
+
+cmd_set_apn() {
+  /usr/bin/set_apn "$@"
+}
+
+cmd_autest() {
+  /usr/bin/update_engine_client --omaha_url autest
+}
+
+substr() {
+  local str="$1"
+  local start="$2"
+  local end="$3"
+
+  if [ "$IS_BASH" = "1" ]; then
+    # NB: use printf to avoid echo interpreting -n
+    if [ -z "$end" ]; then
+      printf '%s\n' ${str:$start}
+    else
+      printf '%s\n' ${str:$start:$end}
+    fi
+    return
+  fi
+
+  start=$(expr "$start" + 1)
+
+  if [ ! -z "$end" ]; then
+    end=$(expr "$end" - 1)
+  fi
+
+  echo "$str" | cut -c${start}-${end}
+}
+
+dispatch() {
+  local line="$1"
+  local command=""
+  local params=""
+
+  local space_pos=$(expr index "$line" ' ')
+
+  if [ $space_pos = 0 ]; then
+    command=$line
+  else
+    command=$(substr "$line" "0" "$space_pos")
+    params=$(substr "$line" "$space_pos")
+  fi
+
+  if ! type "cmd_$command" 2>/dev/null | head -1 | grep -q "function"; then
+    echo "Unknown command: '$command'"
+  else
+    command="cmd_$command"
+    $command $params
+  fi
+}
+
+# Checks that a given string looks like a hostname or IPv4 address (starts
+# with an alphanumeric and contains only alphanumeric, '.', or '-'
+# characters).
+check_hostname() {
+  expr "$1" : '^[[:alnum:]][-[:alnum:].]*$' > /dev/null
+}
+
+# Checks that a given string could plausibly be an IPv6 address
+# (hexadecimal, ':', and '.' characters only, followed by an optional zone
+# index consisting of a '%' and a device name).
+check_ipv6() {
+  echo "$1" | /bin/grep -E -q '^[0-9a-fA-F:.]+(%[a-z0-9]+)?$'
+}
+
+# Checks that a given string starts with an alphanumeric, and contains only
+# alphanumeric and zero or more of "_:.~%$^\-"
+check_username() {
+  expr "$1" : '^[[:alnum:]][[:alnum:]_:.~%$^\-]*$' > /dev/null
+}
+
+check_digits() {
+  expr "$1" : '^[[:digit:]]*$' > /dev/null
+}
+
+repl() {
+  echo "Welcome to crosh, type 'help' for a list of commands."
+  if [ "$IS_BASH" != "1" ]; then
+    echo "Sorry, line editing and command history disabled due to" \
+      "shell limitations."
+  fi
+
+  while [ 1 ]; do
+    if shell_read "crosh> " LINE_; then
+      if [ ! -z "$LINE_" ]; then
+        shell_history -s "$LINE_"
+        dispatch "$LINE_"
+      fi
+    else
+      echo
+      return 1
+    fi
+  done
+}
+
+INPUTRC="$(dirname "$0")/inputrc.crosh"
+HISTFILE="$HOME/.crosh_history"
+shell_history -r $HISTFILE
+
+repl
+
+shell_history -w $HISTFILE

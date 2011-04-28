@@ -1,0 +1,196 @@
+#!/bin/bash
+# Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# This script generates a initrc file that removes any readline keybindings
+# not on the whitelist.  It was used to generate
+# window_manager/bin/inputrc.crosh, so that crosh can use readline for its line
+# editing features, without exposing edit-and-execute-command or the various
+# file completion commands.
+#
+# To regenerate the inputrc file, run...
+#
+#  $ bind -p | make-safe-initrc > inputrc
+#
+# Unfortunately this command line cannot be scripted because `bind -p` only
+# prints the keybindings from the current environment, and in the context of
+# a script there are no keybindings.
+#
+# The non-whitelisted commands are commented out below for reference only.
+# Only the non-commented commands will be included in the actual whitelist.
+# Any commands found in the `bind -p` output not on that list will be remapped
+# to the "abort" readline command.
+#
+# This list of commands was initially generated with `bind -l`.
+
+WHITELIST="$(grep -v "#" <<EOF
+abort
+accept-line
+#alias-expand-line
+#arrow-key-prefix
+#backward-byte
+backward-char
+backward-delete-char
+backward-kill-line
+backward-kill-word
+backward-word
+beginning-of-history
+beginning-of-line
+#call-last-kbd-macro
+capitalize-word
+character-search
+character-search-backward
+clear-screen
+#complete
+#complete-command
+#complete-filename
+#complete-hostname
+#complete-into-braces
+#complete-username
+#complete-variable
+copy-backward-word
+copy-forward-word
+copy-region-as-kill
+delete-char
+delete-char-or-list
+delete-horizontal-space
+digit-argument
+#display-shell-version
+do-lowercase-version
+downcase-word
+#dump-functions
+#dump-macros
+#dump-variables
+dynamic-complete-history
+#edit-and-execute-command
+#emacs-editing-mode
+#end-kbd-macro
+end-of-history
+end-of-line
+exchange-point-and-mark
+forward-backward-delete-char
+forward-byte
+forward-char
+forward-search-history
+forward-word
+#glob-complete-word
+#glob-expand-word
+#glob-list-expansions
+#history-and-alias-expand-line
+history-expand-line
+history-search-backward
+history-search-forward
+#insert-comment
+#insert-completions
+insert-last-argument
+kill-line
+kill-region
+kill-whole-line
+kill-word
+#magic-space
+#menu-complete
+next-history
+non-incremental-forward-search-history
+non-incremental-forward-search-history-again
+non-incremental-reverse-search-history
+non-incremental-reverse-search-history-again
+operate-and-get-next
+overwrite-mode
+#possible-command-completions
+#possible-completions
+#possible-filename-completions
+#possible-hostname-completions
+#possible-username-completions
+#possible-variable-completions
+previous-history
+quoted-insert
+#re-read-init-file
+redraw-current-line
+reverse-search-history
+revert-line
+self-insert
+set-mark
+#shell-expand-line
+#start-kbd-macro
+tab-insert
+#tilde-expand
+transpose-chars
+transpose-words
+#tty-status
+undo
+universal-argument
+unix-filename-rubout
+unix-line-discard
+unix-word-rubout
+upcase-word
+#vi-append-eol
+#vi-append-mode
+#vi-arg-digit
+#vi-bWord
+#vi-back-to-indent
+#vi-bword
+#vi-change-case
+#vi-change-char
+#vi-change-to
+#vi-char-search
+#vi-column
+#vi-complete
+#vi-delete
+#vi-delete-to
+#vi-eWord
+#vi-editing-mode
+#vi-end-word
+#vi-eof-maybe
+#vi-eword
+#vi-fWord
+#vi-fetch-history
+#vi-first-print
+#vi-fword
+#vi-goto-mark
+#vi-insert-beg
+#vi-insertion-mode
+#vi-match
+#vi-movement-mode
+#vi-next-word
+#vi-overstrike
+#vi-overstrike-delete
+#vi-prev-word
+#vi-put
+#vi-redo
+#vi-replace
+#vi-rubout
+#vi-search
+#vi-search-again
+#vi-set-mark
+#vi-subst
+#vi-tilde-expand
+#vi-yank-arg
+#vi-yank-to
+yank
+yank-last-arg
+yank-nth-arg
+yank-pop
+EOF
+)"
+
+if [ -t 0 ]; then
+  echo "Usage: bind -p | $0 > inputrc"
+  exit
+fi
+
+# Remove any commands that are not bound to a key.
+BINDINGS="$(cat | grep -v "not bound")"
+
+# Remove any whitelisted commands from the list of bindings.
+for safecommand in $WHITELIST; do
+  BINDINGS="$(echo "$BINDINGS" | grep -v ": $safecommand\$")"
+done
+
+# Anything left is not on the whitelist, remap it to the "abort" command.
+echo "# Generated with $(basename $0) on $(date)"
+echo "$BINDINGS" | sed 's/\([^:]\+\):\(.*\)$/\1: abort #\2/'
+echo
+echo "set expand-tilde off"
+echo "set disable-completion on"
+
