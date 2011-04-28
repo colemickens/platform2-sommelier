@@ -265,6 +265,13 @@ echo 2 > /proc/sys/fs/suid_dumpable
 # NOTE: ensure that a rootdev has been found.
 if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
   if [ ! -e /home/chronos/.oobe_completed ]; then
+    # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt.
+    # So that OOBE process can read the default locale setting from VPD.
+    if [ -x /usr/sbin/dump_vpd_log ]; then
+      /usr/sbin/dump_vpd_log
+    fi
+    # End of OOBE block
+
     # TODO(yjlou): We are developing a more generic hook mechanism (i.e.
     #              pre-OOBE-oem.sh), and will move this block to new hook point.
     #
@@ -277,16 +284,9 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
     if [ -x /usr/sbin/activate_date ]; then
       # Since this script will invoke flash read/write (around 20 secs),
       # run it in background.
-      /usr/sbin/activate_date &
+      (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
     fi
     # End of activate_date block
-
-    # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt.
-    # So that OOBE process can read the default locale setting from VPD.
-    if [ -x /usr/sbin/dump_vpd_log ]; then
-      /usr/sbin/dump_vpd_log
-    fi
-    # End of OOBE block
 
     # Dump machine info from mosys
     mosys -k smbios info system > /tmp/machine-info
