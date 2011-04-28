@@ -22,8 +22,6 @@ struct TestUserInfo {
 
 extern const TestUserInfo kDefaultUsers[];
 extern const size_t kDefaultUserCount;
-extern const TestUserInfo kAlternateUsers[];
-extern const size_t kAlternateUserCount;
 
 class MakeTests {
  public:

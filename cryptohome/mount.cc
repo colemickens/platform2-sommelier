@@ -11,7 +11,6 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/platform_thread.h>
-#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/time.h>
 #include <base/values.h>
@@ -45,8 +44,8 @@ const unsigned int kUserDirNameLength = 40;
 const std::string kEncryptedFilePrefix = "ECRYPTFS_FNEK_ENCRYPTED.";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
-const char* kCacheDir = "Cache";
-const char* kDownloadsDir = "Downloads";
+const char kCacheDir[] = "Cache";
+const char kDownloadsDir[] = "Downloads";
 const struct TrackedDir {
   const char* name;
   bool need_migration;
@@ -54,6 +53,7 @@ const struct TrackedDir {
   {kCacheDir, false},
   {kDownloadsDir, true}
 };
+const char kVaultDir[] = "vault";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
 const std::string kDefaultEcryptfsCryptoAlg = "aes";
@@ -78,7 +78,8 @@ Mount::Mount()
       current_user_(default_current_user_.get()),
       default_user_timestamp_(new UserOldestActivityTimestampCache()),
       user_timestamp_(default_user_timestamp_.get()),
-      enterprise_owned_(false) {
+      enterprise_owned_(false),
+      old_user_last_activity_time_(kOldUserLastActivityTime) {
 }
 
 Mount::~Mount() {
@@ -157,7 +158,7 @@ bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
 
 bool Mount::MountCryptohome(const Credentials& credentials,
                             const Mount::MountArgs& mount_args,
-                            MountError* mount_error) const {
+                            MountError* mount_error) {
   MountError local_mount_error = MOUNT_ERROR_NONE;
   bool result = MountCryptohomeInner(credentials,
                                      mount_args,
@@ -179,7 +180,7 @@ bool Mount::MountCryptohome(const Credentials& credentials,
 bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                  const Mount::MountArgs& mount_args,
                                  bool recreate_decrypt_fatal,
-                                 MountError* mount_error) const {
+                                 MountError* mount_error) {
   current_user_->Reset();
 
   std::string username = credentials.GetFullUsernameString();
@@ -288,7 +289,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   return true;
 }
 
-bool Mount::UnmountCryptohome() const {
+bool Mount::UnmountCryptohome() {
+  UpdateCurrentUserActivityTimestamp(0);
   current_user_->Reset();
 
   // Try an immediate unmount
@@ -330,7 +332,7 @@ bool Mount::UnmountCryptohome() const {
   return true;
 }
 
-bool Mount::RemoveCryptohome(const Credentials& credentials) const {
+bool Mount::RemoveCryptohome(const Credentials& credentials) {
   std::string user_dir = GetUserDirectory(credentials);
   CHECK(user_dir.length() > (shadow_root_.length() + 1));
 
@@ -484,19 +486,19 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 }
 
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
-  string obsfucated_username;
-  current_user_->GetObfuscatedUsername(&obsfucated_username);
-  if (!obsfucated_username.empty()) {
+  string obfuscated_username;
+  current_user_->GetObfuscatedUsername(&obfuscated_username);
+  if (!obfuscated_username.empty()) {
     SerializedVaultKeyset serialized;
-    LoadVaultKeysetForUser(obsfucated_username, &serialized);
+    LoadVaultKeysetForUser(obfuscated_username, &serialized);
     base::Time timestamp = base::Time::Now();
     if (time_shift_sec > 0)
       timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
-    StoreVaultKeysetForUser(obsfucated_username, serialized);
-    if (!user_timestamp_->empty()) {
+    StoreVaultKeysetForUser(obfuscated_username, serialized);
+    if (user_timestamp_->initialized()) {
       user_timestamp_->UpdateExistingUser(
-          FilePath(GetUserKeyFileForUser(obsfucated_username)), timestamp);
+          FilePath(GetUserDirectoryForUser(obfuscated_username)), timestamp);
     }
     return true;
   }
@@ -525,7 +527,7 @@ void Mount::DoForEveryUnmountedCryptohome(CryptohomeCallback callback) {
     if (!valid_name) {
       continue;
     }
-    const FilePath vault_path = next_path.Append("vault");
+    const FilePath vault_path = next_path.Append(kVaultDir);
     if (!file_util::DirectoryExists(vault_path)) {
       continue;
     }
@@ -577,20 +579,17 @@ void Mount::DeleteCacheCallback(const FilePath& vault) {
   DeleteDirectoryContents(vault.Append(kCacheDir));
 }
 
-void Mount::AddUserTimestampCallback(const FilePath& vault) {
-  const std::string obsfucated_username = vault.DirName().BaseName().value();
+void Mount::AddUserTimestampToCacheCallback(const FilePath& vault) {
+  const FilePath user_dir = vault.DirName();
+  const std::string obfuscated_username = user_dir.BaseName().value();
   SerializedVaultKeyset serialized;
-  LoadVaultKeysetForUser(obsfucated_username, &serialized);
+  LoadVaultKeysetForUser(obfuscated_username, &serialized);
   if (serialized.has_last_activity_timestamp()) {
-    base::Time timestamp = base::Time::FromInternalValue(
+    const base::Time timestamp = base::Time::FromInternalValue(
         serialized.last_activity_timestamp());
-    user_timestamp_->AddExistingUser(vault, timestamp);
-    LOG(INFO) << "Caching user " << obsfucated_username << " with timestamp "
-              << timestamp.is_null() ?
-        "unknown" : base::IntToString((base::Time::Now() - timestamp).InDays());
+    user_timestamp_->AddExistingUser(user_dir, timestamp);
   } else {
-    user_timestamp_->AddExistingUserNotime(vault);
-    LOG(INFO) << "Caching user " << obsfucated_username << ", no timestamp.";
+    user_timestamp_->AddExistingUserNotime(user_dir);
   }
 }
 
@@ -604,31 +603,38 @@ bool Mount::DoAutomaticFreeDiskSpaceControl() {
   if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
     return true;
 
-  // Initialize user timestamp cache if it has not been yet.
-  if (user_timestamp_->empty()) {
-    DoForEveryUnmountedCryptohome(&Mount::AddUserTimestampCallback);
+  // Initialize user timestamp cache if it has not been yet.  Current
+  // user is not added now, but added on log out or during daily
+  // updates (UpdateCurrentUserActivityTimestamp()).
+  if (!user_timestamp_->initialized()) {
+    user_timestamp_->Initialize();
+    DoForEveryUnmountedCryptohome(&Mount::AddUserTimestampToCacheCallback);
   }
 
   // Delete old users, the oldest first.
   // Don't delete anyone if we don't know who the owner is.
   if (enterprise_owned_ || !owner_obfuscated_username_.empty()) {
     const base::Time timestamp_threshold =
-        base::Time::Now() - kOldUserLastActivityTime;
-    while (!user_timestamp_->latest_known_timestamp().is_null() &&
-           user_timestamp_->latest_known_timestamp() <= timestamp_threshold) {
-      FilePath deleted_user_vault = user_timestamp_->RemoveOldestUser();
+        base::Time::Now() - old_user_last_activity_time_;
+    while (!user_timestamp_->oldest_known_timestamp().is_null() &&
+           user_timestamp_->oldest_known_timestamp() <= timestamp_threshold) {
+      FilePath deleted_user_dir = user_timestamp_->RemoveOldestUser();
       if (!enterprise_owned_) {
-        std::string obfuscated_username =
-            deleted_user_vault.DirName().BaseName().value();
+        std::string obfuscated_username = deleted_user_dir.BaseName().value();
         if (obfuscated_username == owner_obfuscated_username_) {
           LOG(WARNING) << "Not deleting owner user " << obfuscated_username;
           continue;
         }
       }
-      LOG(WARNING) << "Deleting old user " << deleted_user_vault.value();
-      platform_->DeleteFile(deleted_user_vault.value(), true);
-      if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
-        return true;
+      if (platform_->IsDirectoryMountedWith(
+              home_dir_, deleted_user_dir.Append(kVaultDir).value())) {
+        LOG(WARNING) << "Attempt to delete currently logged user. Skipped...";
+      } else {
+        LOG(WARNING) << "Deleting old user " << deleted_user_dir.value();
+        platform_->DeleteFile(deleted_user_dir.value(), true);
+        if (platform_->AmountOfFreeDiskSpace(home_dir_) >= kEnoughFreeSpace)
+          return true;
+      }
     }
   }
 
@@ -669,10 +675,10 @@ bool Mount::LoadVaultKeyset(const Credentials& credentials,
                                 serialized);
 }
 
-bool Mount::LoadVaultKeysetForUser(const string& obsfucated_username,
+bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
                                    SerializedVaultKeyset* serialized) const {
   // Load the encrypted keyset
-  FilePath user_key_file(GetUserKeyFileForUser(obsfucated_username));
+  FilePath user_key_file(GetUserKeyFileForUser(obfuscated_username));
   if (!file_util::PathExists(user_key_file)) {
     return false;
   }
@@ -696,13 +702,13 @@ bool Mount::StoreVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::StoreVaultKeysetForUser(
-    const string& obsfucated_username,
+    const string& obfuscated_username,
     const SerializedVaultKeyset& serialized) const {
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
   unsigned int data_written = file_util::WriteFile(
-      FilePath(GetUserKeyFileForUser(obsfucated_username)),
+      FilePath(GetUserKeyFileForUser(obfuscated_username)),
       static_cast<const char*>(final_blob.const_data()),
       final_blob.size());
 
@@ -921,9 +927,14 @@ bool Mount::MountGuestCryptohome() const {
 }
 
 string Mount::GetUserDirectory(const Credentials& credentials) const {
+  return GetUserDirectoryForUser(
+      credentials.GetObfuscatedUsername(system_salt_));
+}
+
+string Mount::GetUserDirectoryForUser(const string& obfuscated_username) const {
   return StringPrintf("%s/%s",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+                      obfuscated_username.c_str());
 }
 
 string Mount::GetUserSaltFile(const Credentials& credentials) const {
@@ -936,16 +947,17 @@ string Mount::GetUserKeyFile(const Credentials& credentials) const {
   return GetUserKeyFileForUser(credentials.GetObfuscatedUsername(system_salt_));
 }
 
-string Mount::GetUserKeyFileForUser(const string& obsfucated_username) const {
+string Mount::GetUserKeyFileForUser(const string& obfuscated_username) const {
   return StringPrintf("%s/%s/master.0",
                       shadow_root_.c_str(),
-                      obsfucated_username.c_str());
+                      obfuscated_username.c_str());
 }
 
 string Mount::GetUserVaultPath(const Credentials& credentials) const {
-  return StringPrintf("%s/%s/vault",
+  return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+                      credentials.GetObfuscatedUsername(system_salt_).c_str(),
+                      kVaultDir);
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,

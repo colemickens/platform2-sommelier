@@ -38,8 +38,10 @@ extern const std::string kDefaultSkeletonSource;
 // The incognito user
 extern const std::string kIncognitoUser;
 // Directories that we intend to track (make pass-through in cryptohome vault)
-extern const char* kCacheDir;
-extern const char* kDownloadsDir;
+extern const char kCacheDir[];
+extern const char kDownloadsDir[];
+// Name of the vault directory.
+extern const char kVaultDir[];
 // Time delta of last user's activity to be considered as old.
 extern const base::TimeDelta kOldUserLastActivityTime;
 
@@ -95,13 +97,13 @@ class Mount : public EntropySource {
   //   error - The specific error condition on failure
   virtual bool MountCryptohome(const Credentials& credentials,
                                const MountArgs& mount_args,
-                               MountError* error) const;
+                               MountError* error);
 
   // Unmounts any mount at the cryptohome mount point
-  virtual bool UnmountCryptohome() const;
+  virtual bool UnmountCryptohome();
 
   // Remove a user's cryptohome
-  virtual bool RemoveCryptohome(const Credentials& credentials) const;
+  virtual bool RemoveCryptohome(const Credentials& credentials);
 
   // Checks if the mount point currently has a mount
   virtual bool IsCryptohomeMounted() const;
@@ -162,11 +164,11 @@ class Mount : public EntropySource {
   // Deletes Cache tracking directory of the given vault
   virtual void DeleteCacheCallback(const FilePath& vault);
 
-  // Adds the user, by vault, to the cache of the latest activity timestamps.
+  // Adds the user, by vault, to the cache of the oldest activity timestamps.
   //
   // Parameters
   //   vault - The FilePath of the desired user's vault
-  virtual void AddUserTimestampCallback(const FilePath& vault);
+  virtual void AddUserTimestampToCacheCallback(const FilePath& vault);
 
   // Checks free disk space and if it falls below minimum
   // (kMinFreeSpace), performs cleanup. Returns true if cleanup
@@ -218,7 +220,7 @@ class Mount : public EntropySource {
                                SerializedVaultKeyset* encrypted_keyset) const;
 
   virtual bool LoadVaultKeysetForUser(
-      const std::string& obsfucated_username,
+      const std::string& obfuscated_username,
       SerializedVaultKeyset* encrypted_keyset) const;
 
   virtual bool StoreVaultKeyset(
@@ -226,7 +228,7 @@ class Mount : public EntropySource {
       const SerializedVaultKeyset& encrypted_keyset) const;
 
   virtual bool StoreVaultKeysetForUser(
-      const std::string& obsfucated_username,
+      const std::string& obfuscated_username,
       const SerializedVaultKeyset& encrypted_keyset) const;
 
   // Used to disable setting vault ownership
@@ -417,6 +419,14 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetUserDirectory(const Credentials& credentials) const;
 
+  // Gets the directory in the shadow root where the user's salt, key, and vault
+  // are stored.
+  //
+  // Parameters
+  //   obfuscated_username - Obfuscated username field of the Credentials
+  std::string GetUserDirectoryForUser(
+      const std::string& obfuscated_username) const;
+
   // Gets the user's key file name
   //
   // Parameters
@@ -426,9 +436,9 @@ class Mount : public EntropySource {
   // Gets the user's key file name
   //
   // Parameters
-  //   obsfucated_username - Obsfucated username field of the Credentials
+  //   obfuscated_username - Obfuscated username field of the Credentials
   std::string GetUserKeyFileForUser(
-      const std::string& obsfucated_username) const;
+      const std::string& obfuscated_username) const;
 
   // Gets the user's salt file name
   //
@@ -458,6 +468,14 @@ class Mount : public EntropySource {
     enterprise_owned_ = value;
   }
 
+  // Set/get time delta of last user's activity to be considered as old.
+  base::TimeDelta old_user_last_activity_time() const {
+    return old_user_last_activity_time_;
+  }
+  void set_old_user_last_activity_time(base::TimeDelta value) {
+    old_user_last_activity_time_ = value;
+  }
+
  private:
   // Invokes given callback for every unmounted cryptohome
   //
@@ -480,7 +498,7 @@ class Mount : public EntropySource {
   virtual bool MountCryptohomeInner(const Credentials& credentials,
                                     const MountArgs& mount_args,
                                     bool recreate_decrypt_fatal,
-                                    MountError* error) const;
+                                    MountError* error);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to the default_user_
@@ -573,6 +591,9 @@ class Mount : public EntropySource {
   // True if the machine is enterprise owned, false if not or we have
   // not discovered it in this session.
   bool enterprise_owned_;
+
+  // Time delta of last user's activity to be considered as old.
+  base::TimeDelta old_user_last_activity_time_;
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

@@ -38,7 +38,6 @@ using ::testing::NiceMock;
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
 const char kHomeDir[] = "alt_test_home_dir";
-const char kAltImageDir[] = "alt_test_image_dir";
 
 class MountTest : public ::testing::Test {
  public:
@@ -238,7 +237,7 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath key_path = user_path.Append("master.0");
-  FilePath vault_path = user_path.Append("vault");
+  FilePath vault_path = user_path.Append(kVaultDir);
 
   ASSERT_TRUE(file_util::PathExists(key_path));
   ASSERT_TRUE(file_util::PathExists(vault_path));
@@ -375,7 +374,7 @@ TEST_F(MountTest, MountCryptohome) {
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
-  FilePath vault_path = user_path.Append("vault");
+  FilePath vault_path = user_path.Append(kVaultDir);
   FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
@@ -454,7 +453,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
-  FilePath vault_path = user_path.Append("vault");
+  FilePath vault_path = user_path.Append(kVaultDir);
   ASSERT_FALSE(file_util::PathExists(vault_path));
 
   mount_args.create_if_missing = true;
@@ -467,11 +466,11 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
 TEST_F(MountTest, RemoveSubdirectories) {
   // checks that cryptohome can delete tracked subdirectories
-  LoadSystemSalt(kAltImageDir);
+  LoadSystemSalt(kImageDir);
   Mount mount;
   NiceMock<MockTpm> tpm;
   mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kAltImageDir);
+  mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
 
@@ -481,9 +480,9 @@ TEST_F(MountTest, RemoveSubdirectories) {
   EXPECT_TRUE(mount.Init());
 
   cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[0].password,
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[13].password,
                                         system_salt_, &passkey);
-  UsernamePasskey up(kAlternateUsers[0].username, passkey);
+  UsernamePasskey up(kDefaultUsers[13].username, passkey);
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
@@ -493,9 +492,9 @@ TEST_F(MountTest, RemoveSubdirectories) {
   Mount::MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
-  FilePath image_dir(kAltImageDir);
+  FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
-  FilePath vault_path = user_path.Append("vault");
+  FilePath vault_path = user_path.Append(kVaultDir);
   FilePath subdir_path = vault_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 
@@ -593,7 +592,7 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Check that vault path now have pass-through version of tracked dirs.
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
-  FilePath vault_path = user_path.Append("vault");
+  FilePath vault_path = user_path.Append(kVaultDir);
   ASSERT_TRUE(file_util::PathExists(vault_path.Append(kCacheDir)));
   ASSERT_TRUE(file_util::PathExists(vault_path.Append(kDownloadsDir)));
 
@@ -624,182 +623,6 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
 }
 
-TEST_F(MountTest, DoAutomaticFreeDiskSpaceControl) {
-  // Checks that DoAutomaticFreeDiskSpaceControl() does the clean-up
-  // if free disk space is low.
-  LoadSystemSalt(kAltImageDir);
-  Mount mount;
-  NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kAltImageDir);
-  mount.set_use_tpm(false);
-
-  NiceMock<MockPlatform> platform;
-  mount.set_platform(&platform);
-
-  EXPECT_TRUE(mount.Init());
-
-  // For every user, prepare cryptohome contents.
-  const string contents = "some crypted contets";
-  FilePath image_dir(kAltImageDir);
-  FilePath vault_path[kAlternateUserCount];
-  FilePath cache_dir[kAlternateUserCount];
-  FilePath cache_subdir[kAlternateUserCount];
-  for (size_t user = 0; user < kAlternateUserCount; user ++) {
-    cryptohome::SecureBlob passkey;
-    cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[user].password,
-                                          system_salt_, &passkey);
-    UsernamePasskey up(kAlternateUsers[user].username, passkey);
-    vault_path[user] = image_dir
-        .Append(up.GetObfuscatedUsername(system_salt_))
-        .Append("vault");
-
-    // Let their Cache dirs be filled with some data.
-    cache_dir[user] = vault_path[user].Append(kCacheDir);
-    file_util::CreateDirectory(cache_dir[user]);
-    file_util::WriteFile(cache_dir[user].Append("cached_file"),
-                         contents.c_str(), contents.length());
-    cache_subdir[user] = cache_dir[user].Append("cache_subdir");
-    file_util::CreateDirectory(cache_subdir[user]);
-    file_util::WriteFile(cache_subdir[user].Append("cached_file"),
-                         contents.c_str(), contents.length());
-  }
-
-  // Firstly, pretend we have lots of free space.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillRepeatedly(Return(kMinFreeSpace + 1));
-
-  // DoAutomaticFreeDiskSpaceControl() must do nothing.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  // Check that Cache is not changed.
-  for (size_t user = 0; user < kAlternateUserCount; user ++) {
-    string tested;
-    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
-    EXPECT_TRUE(file_util::ReadFileToString(
-        cache_dir[user].Append("cached_file"), &tested));
-    EXPECT_EQ(contents, tested);
-    EXPECT_TRUE(file_util::PathExists(cache_subdir[user]));
-    tested.clear();
-    EXPECT_TRUE(file_util::ReadFileToString(
-        cache_subdir[user].Append("cached_file"), &tested));
-    EXPECT_EQ(contents, tested);
-  }
-
-  // Now pretend we have lack of free space.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillRepeatedly(Return(kEnoughFreeSpace));
-
-  // DoAutomaticFreeDiskSpaceControl() must remove Caches contents for
-  // all users and stop.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  // Cache must be empty (and may even be deleted).
-  for (size_t user = 0; user < kAlternateUserCount; user ++) {
-    EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
-    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
-
-    // Check that we did not leave any litter.
-    file_util::Delete(cache_dir[user], true);
-    EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path[user]));
-  }
-
-  // Verify that user timestamp cache must still be not initialized by now.
-  UserOldestActivityTimestampCache* user_timestamp =
-      mount.user_timestamp_cache();
-  EXPECT_TRUE(user_timestamp->empty());
-
-  // Setting owner so that old user may be deleted.
-  mount.SetOwnerUser("owner123@invalid.domain");
-
-  // Now pretend we have lack of free space 2 times.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillOnce(Return(kEnoughFreeSpace - 1))
-      .WillRepeatedly(Return(kEnoughFreeSpace));
-
-  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
-  // for all users and remove the 1 oldest user. But, as we didn't put
-  // user timestamps, all users must remain.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  for (size_t user = 0; user < kAlternateUserCount; user ++) {
-    EXPECT_TRUE(file_util::PathExists(vault_path[user]));
-  }
-
-  // Verify that user timestamp cache must be initialized by now.
-  EXPECT_FALSE(user_timestamp->empty());
-
-  // Update cached users with artifical timestamp:
-  // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
-  // user[3] is old as well, but it is an owner.
-  user_timestamp->UpdateExistingUser(
-      vault_path[0], base::Time::Now() - kOldUserLastActivityTime);
-  user_timestamp->UpdateExistingUser(
-      vault_path[1], base::Time::Now());
-  user_timestamp->UpdateExistingUser(
-      vault_path[3], base::Time::Now() - kOldUserLastActivityTime);
-
-  // Now pretend we have lack of free space 2 times.
-  // So 1st Caches are deleted and then 1 oldest user is deleted.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillOnce(Return(kEnoughFreeSpace - 1))
-      .WillRepeatedly(Return(kEnoughFreeSpace));
-
-  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
-  // for all users and remove the 1 olderst user.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  // User[2] should be deleted because we have not updated its
-  // timestamp (so it does not have one) and 1st user is old, so 2nd
-  // user is older.
-  EXPECT_TRUE(file_util::PathExists(vault_path[0]));
-  EXPECT_TRUE(file_util::PathExists(vault_path[1]));
-  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
-  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
-
-  // Now pretend we have lack of free space.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-
-  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
-  // for all users and remove the 2 olderst user.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  // User[0] should be deleted because it is oldest now.
-  // User[1] should not be deleted because it is up to date.
-  EXPECT_FALSE(file_util::PathExists(vault_path[0]));
-  EXPECT_TRUE(file_util::PathExists(vault_path[1]));
-  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
-  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
-
-  // Update cached users with artifical timestamp: user[1] is old.
-  user_timestamp->UpdateExistingUser(
-      vault_path[1], base::Time::Now() - kOldUserLastActivityTime);
-
-  // Now pretend we have lack of free space all times - to delete all users.
-  EXPECT_CALL(platform, AmountOfFreeDiskSpace(_))
-      .WillOnce(Return(kMinFreeSpace - 1))
-      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-
-  // DoAutomaticFreeDiskSpaceControl() must, as before, remove Cache contents
-  // for all users and remove the 1 olderst user.
-  mount.DoAutomaticFreeDiskSpaceControl();
-
-  // User[1] should be deleted because we updated its timestamp old.
-  // User[3] is not touched as an owner.
-  EXPECT_FALSE(file_util::PathExists(vault_path[0]));
-  EXPECT_FALSE(file_util::PathExists(vault_path[1]));
-  EXPECT_FALSE(file_util::PathExists(vault_path[2]));
-  EXPECT_TRUE(file_util::PathExists(vault_path[3]));
-
-  // Verify that user timestamp cache must be empty by now.
-  EXPECT_TRUE(user_timestamp->empty());
-}
-
 TEST_F(MountTest, UserActivityTimestampUpdated) {
   // checks that user activity timestamp is updated during Mount() and
   // periodically while mounted, other Keyset fields remains the same
@@ -816,50 +639,460 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_TRUE(mount.Init());
 
   cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[11].password,
+  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[9].password,
                                         system_salt_, &passkey);
-  UsernamePasskey up(kDefaultUsers[11].username, passkey);
-
-  // Grab original keyset
-  VaultKeyset vault_keyset;
-  SerializedVaultKeyset serialized;
-  Mount::MountError error;
-  ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized));
+  UsernamePasskey up(kDefaultUsers[9].username, passkey);
 
   // Mount()
+  Mount::MountError error;
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
-  // Update the timestamp
+  // Update the timestamp. Normally it is called in MountTaskMount::Run() in
+  // background but here in the test we must call it manually.
   mount.UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized1;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized1));
 
-  // Make sure that the time advances.
-  PlatformThread::Sleep(1);
-
-  // Check that last activity timestamp is updated (and within a 0.1s from now)
+  // Check that last activity timestamp is updated (and within a 0.1s from now).
   ASSERT_TRUE(serialized1.has_last_activity_timestamp());
   const base::Time last_activity =
       base::Time::FromInternalValue(serialized1.last_activity_timestamp());
   const int64 last_activity_delay_us =
       (base::Time::NowFromSystemTime() - last_activity).InMicroseconds();
   EXPECT_GT(100000, last_activity_delay_us);
-  EXPECT_LT(0, last_activity_delay_us);
+  EXPECT_LE(0, last_activity_delay_us);
 
-  // Update timestamp again, after user is unmounted. User's activity
-  // timestamp must not change this
+  // Unmount the user. This must update user's activity timestamps.
+  EXPECT_CALL(platform, Unmount(_, _, _))
+      .WillOnce(Return(true));
   mount.UnmountCryptohome();
-  mount.UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
-
-  // Check that last activity timestamp is not updated
   ASSERT_TRUE(serialized2.has_last_activity_timestamp());
   const base::Time last_activity_2 =
       base::Time::FromInternalValue(serialized2.last_activity_timestamp());
-  EXPECT_EQ(0, (last_activity_2 - last_activity).InMicroseconds());
+  const int64 last_activity_delay_us_2 =
+      (base::Time::NowFromSystemTime() - last_activity_2).InMicroseconds();
+  EXPECT_GT(100000, last_activity_delay_us_2);
+  EXPECT_LE(0, last_activity_delay_us_2);
+
+  // Update timestamp again, after user is unmounted. User's activity
+  // timestamp must not change this.
+  mount.UpdateCurrentUserActivityTimestamp(0);
+  SerializedVaultKeyset serialized3;
+  ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized3));
+  ASSERT_TRUE(serialized3.has_last_activity_timestamp());
+  const base::Time last_activity_3 =
+      base::Time::FromInternalValue(serialized2.last_activity_timestamp());
+  EXPECT_EQ(0, (last_activity_3 - last_activity_2).InMicroseconds());
+}
+
+// Users for testing automatic disk cleanup.
+const TestUserInfo kAlternateUsers[] = {
+  {"user0@invalid.domain", "zero", true, false},
+  {"user1@invalid.domain", "odin", true, false},
+  {"user2@invalid.domain", "dwaa", true, false},
+  {"owner@invalid.domain", "1234", true, false},
+};
+const int kAlternateUserCount = arraysize(kAlternateUsers);
+const char kAltImageDir[] = "alt_test_image_dir";
+
+// Checks DoAutomaticFreeDiskSpaceControl() to act in different situations when
+// free disk space is low.
+class DoAutomaticFreeDiskSpaceControlTest : public MountTest {
+ public:
+  DoAutomaticFreeDiskSpaceControlTest() { }
+
+  void SetUp() {
+    // Set up fresh users.
+    cryptohome::MakeTests make_tests;
+    make_tests.InitTestData(kAltImageDir, kAlternateUsers, kAlternateUserCount);
+    MountTest::SetUp();
+    LoadSystemSalt(kAltImageDir);
+    FilePath root_dir(kAltImageDir);
+    for (int user = 0; user != kAlternateUserCount; user++) {
+      cryptohome::SecureBlob passkey;
+      cryptohome::Crypto::PasswordToPasskey(kAlternateUsers[user].password,
+                                            system_salt_, &passkey);
+      username_passkey_[user].Assign(
+          UsernamePasskey(kAlternateUsers[user].username, passkey));
+      image_path_[user] = root_dir.Append(
+          username_passkey_[user].GetObfuscatedUsername(system_salt_));
+    }
+
+    // Initialize Mount object.
+    mount_.get_crypto()->set_tpm(&tpm_);
+    mount_.set_shadow_root(kAltImageDir);
+    mount_.set_use_tpm(false);
+    mount_.set_platform(&platform_);
+    EXPECT_TRUE(mount_.Init());
+  }
+
+  bool StoreSerializedKeyset(
+      const string& key_path,
+      const SerializedVaultKeyset& serialized) {
+    SecureBlob final_blob(serialized.ByteSize());
+    serialized.SerializeWithCachedSizesToArray(
+        static_cast<google::protobuf::uint8*>(final_blob.data()));
+    unsigned int data_written = file_util::WriteFile(
+        FilePath(key_path),
+        static_cast<const char*>(final_blob.const_data()),
+        final_blob.size());
+    return data_written == final_blob.size();
+  }
+
+  // Set the user with specified |key_file| old.
+  bool SetUserTimestamp(const Mount& mount, int user, base::Time timestamp) {
+    CHECK(user >= 0 && user < kAlternateUserCount);
+    const string key_file =
+        mount.GetUserKeyFileForUser(image_path_[user].BaseName().value());
+    SerializedVaultKeyset serialized;
+    if (!LoadSerializedKeyset(key_file, &serialized))
+      return false;
+    serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
+    return StoreSerializedKeyset(key_file, serialized);
+  }
+
+ protected:
+  Mount mount_;
+  NiceMock<MockTpm> tpm_;
+  NiceMock<MockPlatform> platform_;
+  FilePath image_path_[kAlternateUserCount];
+  UsernamePasskey username_passkey_[kAlternateUserCount];
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DoAutomaticFreeDiskSpaceControlTest);
+};
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheCleanup) {
+  // Removes caches of all users (except current one, if any).
+
+  // For every user, prepare cryptohome contents.
+  const string contents = "some encrypted contents";
+  FilePath cache_dir[kAlternateUserCount];
+  FilePath cache_subdir[kAlternateUserCount];
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    // Let their Cache dirs be filled with some data.
+    cache_dir[user] = image_path_[user].Append(kVaultDir).Append(kCacheDir);
+    file_util::CreateDirectory(cache_dir[user]);
+    file_util::WriteFile(cache_dir[user].Append("cached_file"),
+                         contents.c_str(), contents.length());
+    cache_subdir[user] = cache_dir[user].Append("cache_subdir");
+    file_util::CreateDirectory(cache_subdir[user]);
+    file_util::WriteFile(cache_subdir[user].Append("cached_file"),
+                         contents.c_str(), contents.length());
+  }
+
+  // Firstly, pretend we have lots of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillRepeatedly(Return(kMinFreeSpace + 1));
+  EXPECT_FALSE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // Check that Cache is not changed.
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    string tested;
+    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
+    EXPECT_TRUE(file_util::ReadFileToString(
+        cache_dir[user].Append("cached_file"), &tested));
+    EXPECT_EQ(contents, tested);
+    EXPECT_TRUE(file_util::PathExists(cache_subdir[user]));
+    tested.clear();
+    EXPECT_TRUE(file_util::ReadFileToString(
+        cache_subdir[user].Append("cached_file"), &tested));
+    EXPECT_EQ(contents, tested);
+  }
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // Cache must be empty (and not even be deleted).
+  for (int user = 0; user != kAlternateUserCount; user++) {
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(cache_dir[user]));
+    EXPECT_TRUE(file_util::PathExists(cache_dir[user]));
+
+    // Check that we did not leave any litter.
+    file_util::Delete(cache_dir[user], true);
+    EXPECT_TRUE(file_util::IsDirectoryEmpty(
+        image_path_[user].Append(kVaultDir)));
+  }
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
+  // Removes old (except owner and the current one, if any) even if
+  // users had no oldest activity timestamp.
+
+  // Setting owner so that old user may be deleted.
+  mount_.SetOwnerUser("owner@invalid.domain");
+
+  // Verify that user timestamp cache must be not initialized by now.
+  UserOldestActivityTimestampCache* user_timestamp =
+      mount_.user_timestamp_cache();
+  EXPECT_FALSE(user_timestamp->initialized());
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // Make sure no users actually deleted as we didn't put
+  // user timestamps, all users must remain.
+  for (int user = 0; user != kAlternateUserCount; user++)
+    EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+
+  // Verify that user timestamp cache must be initialized by now.
+  EXPECT_TRUE(user_timestamp->initialized());
+
+  // Simulate the user[0] have been updated but not old enough.
+  user_timestamp->UpdateExistingUser(
+      image_path_[0], base::Time::Now() - kOldUserLastActivityTime / 2);
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // Make sure no users actually deleted. Because the only
+  // timestamp we put is not old enough.
+  for (int user = 0; user != kAlternateUserCount; user++)
+    EXPECT_TRUE(file_util::PathExists(image_path_[user]));
+
+  // Verify that user timestamp cache must be initialized.
+  EXPECT_TRUE(user_timestamp->initialized());
+
+  // Simulate the user[0] have been updated old enough.
+  user_timestamp->UpdateExistingUser(
+      image_path_[0], base::Time::Now() - kOldUserLastActivityTime);
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[0] is old, user[1,2] have no timestamp => older, user[3] is owner.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanup) {
+  // Remove old users, oldest first. Stops removing when disk space is enough.
+
+  // Setting owner so that old user may be deleted.
+  mount_.SetOwnerUser("owner@invalid.domain");
+
+  // Update cached users with following timestamps:
+  // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
+  // user[3] is very old, but it is an owner.
+  SetUserTimestamp(mount_, 0, base::Time::Now() - kOldUserLastActivityTime);
+  SetUserTimestamp(mount_, 1, base::Time::Now());
+  SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime * 2);
+
+  // Now pretend we have lack of free space 2 times.
+  // So at 1st Caches are deleted and then 1 oldest user is deleted.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillOnce(Return(kEnoughFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[2] should be deleted because we have not updated its
+  // timestamp (so it does not have one) and 1st user is old, so 2nd
+  // user is older.
+  EXPECT_TRUE(file_util::PathExists(image_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+
+  // Now pretend we have lack of free space at all times.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[0] should be deleted because it is oldest now.
+  // User[1] should not be deleted because it is up to date.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
+  // Cryptohomed may restart for some reason and continue nuking users
+  // as if not restarted. Scenario is same as in test OldUsersCleanup.
+
+  // Update cached users with following timestamps:
+  // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
+  // user[3] is very old, but it is an owner.
+  SetUserTimestamp(mount_, 0, base::Time::Now() - kOldUserLastActivityTime);
+  SetUserTimestamp(mount_, 1, base::Time::Now());
+  SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime * 2);
+
+  // Setting owner so that old user may be deleted.
+  mount_.SetOwnerUser("owner@invalid.domain");
+
+  // Now pretend we have lack of free space 2 times.
+  // So at 1st Caches are deleted and then 1 oldest user is deleted.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillOnce(Return(kEnoughFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[2] should be deleted because we have not updated its
+  // timestamp (so it does not have one) and 1st user is old, so 2nd
+  // user is older.
+  EXPECT_TRUE(file_util::PathExists(image_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+
+  // Forget about mount_ instance as if it has crashed.
+  // Simulate cryptohome restart. Create new Mount instance.
+  scoped_ptr<Mount> mount2(new Mount);
+  mount2->get_crypto()->set_tpm(&tpm_);
+  mount2->set_shadow_root(kAltImageDir);
+  mount2->set_use_tpm(false);
+  mount2->set_platform(&platform_);
+  EXPECT_TRUE(mount2->Init());
+
+  // Setting owner so that old user may be deleted. Currently chrome
+  // will set it on nearest log in.
+  mount2->SetOwnerUser("owner@invalid.domain");
+
+  // Now pretend we have lack of free space at all times.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount2->DoAutomaticFreeDiskSpaceControl());
+
+  // User[0] should be deleted because it is oldest now.
+  // User[1] should not be deleted because it is up to date.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoOwnerSet) {
+  // No users deleted when no owner known (set) and not in enterprise mode.
+
+  // Update cached users with artificial timestamp: user[0] is old,
+  // Other users still have no timestamp so we consider them even older.
+  ASSERT_TRUE(SetUserTimestamp(
+      mount_, 0,  base::Time::Now() - kOldUserLastActivityTime));
+
+  // Now pretend we have lack of free space at all times - to delete all users.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // All users must remain because, although they are either old or with no
+  // timestamp, we have not set an owner or enterprise mode.
+  EXPECT_TRUE(file_util::PathExists(image_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[1]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEnterprise) {
+  // Removes old users in enterprise mode.
+
+  // Setting owner so that old user may be deleted.
+  mount_.SetOwnerUser("owner@invalid.domain");
+  mount_.set_enterprise_owned(true);
+
+  // Update cached users with artificial timestamp: user[0] is old,
+  // Other users still have no timestamp so we consider them even older.
+  ASSERT_TRUE(SetUserTimestamp(
+      mount_, 0,  base::Time::Now() - kOldUserLastActivityTime));
+
+  // Now pretend we have lack of free space at all times - to delete all users.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // All users must be deleted because they are either old or with no
+  // timestamp. Owner is not counted because we are in enterprise
+  // mode.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[3]));
+}
+
+TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
+  // Do not remove currently mounted user and do remove it when unmounted.
+
+  // Setting owner (user[3]) so that old user may be deleted.
+  mount_.SetOwnerUser("owner@invalid.domain");
+
+  // Set all users old should one of them have a timestamp.
+  mount_.set_old_user_last_activity_time(base::TimeDelta::FromMicroseconds(0));
+  SetUserTimestamp(mount_, 3, base::Time::Now() - kOldUserLastActivityTime);
+
+  // Mount() user[0].
+  Mount::MountError error;
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(mount_.MountCryptohome(
+      username_passkey_[0], Mount::MountArgs(), &error));
+  const string current_uservault = image_path_[0].Append(kVaultDir).value();
+  LOG(WARNING) << "User[0]: " << current_uservault;
+
+  // Update current user timestamp.
+  // Normally it is done in MountTaskMount::Run() in background.
+  mount_.UpdateCurrentUserActivityTimestamp(0);
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, current_uservault))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[0] should not be deleted because it is the current,
+  // user[1,2] should be deleted because they are old.
+  // user[3] should not be deleted because it is the oener.
+  EXPECT_TRUE(file_util::PathExists(image_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
+
+  // Now unmount the user. So it (user[0]) should be cached and may be
+  // deleted next when it becomes old.
+  EXPECT_CALL(platform_, Unmount(_, _, _))
+      .WillOnce(Return(true));
+  mount_.UnmountCryptohome();
+
+  // Now pretend we have lack of free space.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
+      .WillOnce(Return(kMinFreeSpace - 1))
+      .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+
+  // User[0] should be deleted because it is no more current and we
+  // delete all users despite their oldness in this test.
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[1]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[2]));
+  EXPECT_TRUE(file_util::PathExists(image_path_[3]));
 }
 
 } // namespace cryptohome

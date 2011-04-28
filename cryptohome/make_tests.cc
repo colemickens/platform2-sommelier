@@ -44,17 +44,9 @@ const TestUserInfo kDefaultUsers[] = {
   {"testuser10@invalid.domain", "ten", true, false},
   {"testuser11@invalid.domain", "eleven", true, false},
   {"testuser12@invalid.domain", "twelve", false, false},
+  {"testuser13@invalid.domain", "thirteen", true, false},
 };
 const size_t kDefaultUserCount = arraysize(kDefaultUsers);
-
-// Used for tracking directories clean-up tests.
-const TestUserInfo kAlternateUsers[] = {
-  {"altuser0@invalid.domain", "zero", true, false},
-  {"altuser1@invalid.domain", "odin", true, false},
-  {"altuser2@invalid.domain", "dwaa", true, false},
-  {"owner123@invalid.domain", "123", true, false},
-};
-const size_t kAlternateUserCount = arraysize(kAlternateUsers);
 
 MakeTests::MakeTests() {
 }

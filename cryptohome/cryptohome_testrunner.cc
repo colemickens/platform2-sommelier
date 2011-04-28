@@ -17,9 +17,6 @@ int main(int argc, char **argv) {
   make_tests.InitTestData(std::string(kDefaultImageDir),
                           cryptohome::kDefaultUsers,
                           cryptohome::kDefaultUserCount);
-  make_tests.InitTestData(std::string(kAltImageDir),
-                          cryptohome::kAlternateUsers,
-                          cryptohome::kAlternateUserCount);
 
   ::g_type_init();
   ::testing::InitGoogleTest(&argc, argv);

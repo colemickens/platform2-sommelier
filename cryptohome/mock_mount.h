@@ -18,13 +18,13 @@ class MockMount : public Mount {
   ~MockMount() {}
   MOCK_METHOD0(Init, bool());
   MOCK_CONST_METHOD1(TestCredentials, bool(const Credentials&));
-  MOCK_CONST_METHOD3(MountCryptohome, bool(const Credentials&,
+  MOCK_METHOD3(MountCryptohome, bool(const Credentials&,
                                            const Mount::MountArgs&,
                                            MountError*));
-  MOCK_CONST_METHOD0(UnmountCryptohome, bool());
+  MOCK_METHOD0(UnmountCryptohome, bool());
   MOCK_CONST_METHOD0(MountGuestCryptohome, bool());
   MOCK_CONST_METHOD2(MigratePasskey, bool(const Credentials&, const char*));
-  MOCK_CONST_METHOD1(RemoveCryptohome, bool(const Credentials&));
+  MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD0(DoAutomaticFreeDiskSpaceControl, bool());
   MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int));
 };
