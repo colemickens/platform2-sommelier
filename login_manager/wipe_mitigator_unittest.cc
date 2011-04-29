@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
+#include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::Return;
@@ -35,8 +36,9 @@ TEST_F(WipeMitigatorTest, Mitigate) {
               SendSignalToPowerManager(power_manager::kRequestRestartSignal))
       .Times(1);
 
+  MockOwnerKey key;
   WipeMitigator mitigator(utils);
-  EXPECT_FALSE(mitigator.Mitigate());
+  EXPECT_FALSE(mitigator.Mitigate(&key));
 }
 
 }  // namespace login_manager

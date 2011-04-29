@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,9 +22,10 @@
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
-#include "login_manager/wipe_mitigator.h"
+#include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
+#include "login_manager/wipe_mitigator.h"
 
 using std::string;
 using std::vector;
@@ -75,6 +76,15 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 
 }  // namespace switches
 
+using login_manager::ChildJob;
+using login_manager::ChildJobInterface;
+using login_manager::FileChecker;
+using login_manager::KeyGenerator;
+using login_manager::RegenMitigator;
+using login_manager::WipeMitigator;
+using login_manager::SessionManagerService;
+using login_manager::SystemUtils;
+
 int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
@@ -109,25 +119,27 @@ int main(int argc, char* argv[]) {
   // Parse jobs to be run with its args.
   vector<string> loose_args = cl->args();
   vector<vector<string> > arg_lists =
-      login_manager::SessionManagerService::GetArgLists(loose_args);
-  vector<login_manager::ChildJobInterface*> child_jobs;
+      SessionManagerService::GetArgLists(loose_args);
+  vector<ChildJobInterface*> child_jobs;
   for (size_t i = 0; i < arg_lists.size(); ++i) {
-    child_jobs.push_back(new login_manager::ChildJob(arg_lists[i]));
+    child_jobs.push_back(new ChildJob(arg_lists[i]));
     if (uid_set)
       child_jobs.back()->SetDesiredUid(uid);
   }
 
   ::g_type_init();
-  scoped_refptr<login_manager::SessionManagerService> manager =
-      new login_manager::SessionManagerService(child_jobs);
+  scoped_refptr<SessionManagerService> manager =
+      new SessionManagerService(child_jobs);
 
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
-  manager->set_file_checker(new login_manager::FileChecker(magic_chrome_file));
-  manager->set_mitigator(
-      new login_manager::WipeMitigator(new login_manager::SystemUtils()));
+  manager->set_file_checker(new FileChecker(magic_chrome_file));
+  manager->set_mitigator(new RegenMitigator(new KeyGenerator(),
+                                            uid_set,
+                                            uid,
+                                            manager));
   if (uid_set)
     manager->set_uid(uid);
 

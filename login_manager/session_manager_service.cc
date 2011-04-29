@@ -38,6 +38,7 @@
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
+#include "login_manager/key_generator.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key.h"
 
@@ -132,10 +133,6 @@ const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
 // static
 const char SessionManagerService::kIOThreadName[] = "ThreadForIO";
-// static
-const char SessionManagerService::kKeygenExecutable[] = "/sbin/keygen";
-// static
-const char SessionManagerService::kTemporaryKeyFilename[] = "key.pub";
 
 namespace {
 
@@ -151,13 +148,13 @@ SessionManagerService::SessionManagerService(
     : child_jobs_(child_jobs.begin(), child_jobs.end()),
       child_pids_(child_jobs.size(), -1),
       exit_on_child_done_(false),
-      keygen_job_(NULL),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
       system_(new SystemUtils),
       policy_(new DevicePolicy(FilePath(DevicePolicy::kDefaultPath))),
       nss_(NssUtil::Create()),
       key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
+      gen_(new KeyGenerator),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       io_thread_(kIOThreadName),
@@ -374,6 +371,12 @@ void SessionManagerService::KillChild(const ChildJobInterface* child_job,
   system_->kill(-child_pid, to_kill_as, SIGKILL);
 }
 
+void SessionManagerService::AdoptChild(ChildJobInterface* child_job,
+                                       int child_pid) {
+  child_jobs_.push_back(child_job);
+  child_pids_.push_back(child_pid);
+}
+
 bool SessionManagerService::IsKnownChild(int pid) {
   return std::find(child_pids_.begin(), child_pids_.end(), pid) !=
       child_pids_.end();
@@ -493,7 +496,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // based on the cros.owner.device setting, and he DOESN'T have the private
   // half of the public key, we must mitigate.
   if (policy_->CurrentUserIsOwner(current_user_) && !can_access_key) {
-    if (!(*OUT_done = mitigator_->Mitigate()))
+    if (!(*OUT_done = mitigator_->Mitigate(key_.get())))
       return FALSE;
   }
 
@@ -517,7 +520,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     }
     if (key_->HaveCheckedDisk() && !key_->IsPopulated() &&
         current_user_ != kIncognitoUser) {
-      StartKeyGeneration();
+      gen_->Start(set_uid_ ? uid_ : 0, key_.get(), this);
     }
   }
 
@@ -535,7 +538,8 @@ void SessionManagerService::HandleKeygenExit(GPid pid,
   if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
     std::string key;
     file_util::ReadFileToString(
-        FilePath(file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename)),
+        FilePath(file_util::GetHomeDir().AppendASCII(
+            KeyGenerator::kTemporaryKeyFilename)),
         &key);
     manager->ValidateAndStoreOwnerKey(key);
   } else {
@@ -555,7 +559,10 @@ void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
     return;
   }
 
-  if (!key_->PopulateFromBuffer(pub_key)) {
+  // If we're not mitigating a key loss, we should be able to populate |key_|.
+  // If we're mitigating a key loss, we should be able to clobber |key_|.
+  if ((!mitigator_->Mitigating() && !key_->PopulateFromBuffer(pub_key)) ||
+      (mitigator_->Mitigating() && !key_->ClobberCompromisedKey(pub_key))) {
     SendSignal(chromium::kOwnerKeySetSignal, false);
     return;
   }
@@ -568,28 +575,6 @@ void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
-}
-
-void SessionManagerService::StartKeyGeneration() {
-  if (!keygen_job_.get()) {
-    LOG(INFO) << "Creating keygen job";
-    std::vector<std::string> keygen_argv;
-    keygen_argv.push_back(kKeygenExecutable);
-    keygen_argv.push_back(
-        file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename).value());
-    keygen_job_.reset(new ChildJob(keygen_argv));
-  }
-
-  if (set_uid_)
-    keygen_job_->SetDesiredUid(uid_);
-  int pid = key_->StartGeneration(keygen_job_.get());
-  g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
-                         pid,
-                         HandleKeygenExit,
-                         this,
-                         NULL);
-  child_jobs_.push_back(keygen_job_.release());
-  child_pids_.push_back(pid);
 }
 
 gboolean SessionManagerService::StopSession(gchar* unique_identifier,

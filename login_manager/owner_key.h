@@ -18,6 +18,7 @@ class SignatureVerifier;
 
 namespace login_manager {
 class ChildJobInterface;
+class SessionManagerService;
 class SystemUtils;
 
 // This class holds the device owner's public key.
@@ -70,7 +71,7 @@ class OwnerKey {
   // THIS IS ONLY INTENDED TO BE USED WHEN THE CURRENTLY REGISTERED KEY HAS BEEN
   // COMPROMISED OR LOST AND WE ARE RECOVERING.
   // Load key material from |public_key_der| into key_.
-  virtual void ClobberCompromisedKey(const std::vector<uint8>& public_key_der);
+  virtual bool ClobberCompromisedKey(const std::vector<uint8>& public_key_der);
 
   // Verify that |signature| is a valid sha1 w/ RSA signature over the data in
   // |data| with |key_|.

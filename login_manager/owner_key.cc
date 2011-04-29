@@ -132,14 +132,14 @@ bool OwnerKey::Rotate(const std::vector<uint8>& public_key_der,
   return false;
 }
 
-void OwnerKey::ClobberCompromisedKey(const std::vector<uint8>& public_key_der) {
+bool OwnerKey::ClobberCompromisedKey(const std::vector<uint8>& public_key_der) {
   // It is a programming error to call this before checking for the key on disk.
   CHECK(have_checked_disk_) << "Haven't checked disk for owner key yet!";
   // It is a programming error to call this without a key already loaded.
   CHECK(IsPopulated()) << "Don't yet have an owner key!";
 
   key_ = public_key_der;
-  have_replaced_ = true;
+  return have_replaced_ = true;
 }
 
 bool OwnerKey::Verify(const uint8* data,
@@ -174,7 +174,6 @@ bool OwnerKey::Sign(const uint8* data,
   }
   return true;
 }
-
 
 int OwnerKey::StartGeneration(ChildJobInterface* generator) {
   int pid = fork();

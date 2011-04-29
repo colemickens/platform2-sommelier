@@ -29,6 +29,7 @@
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_device_policy.h"
 #include "login_manager/mock_file_checker.h"
+#include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_owner_key.h"
@@ -44,7 +45,6 @@ using ::testing::AnyNumber;
 using ::testing::AtMost;
 using ::testing::DoAll;
 using ::testing::Invoke;
-using ::testing::Eq;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
@@ -182,23 +182,13 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
 
-    MockChildJob* k_job = new MockChildJob;
-    EXPECT_CALL(*k_job, SetDesiredUid(getuid()))
-        .Times(1);
-    EXPECT_CALL(*k_job, GetDesiredUid())
-        .Times(1)
-        .WillRepeatedly(Return(getuid()));
-    EXPECT_CALL(*k_job, IsDesiredUidSet())
-        .WillRepeatedly(Return(true));
-    ON_CALL(*k_job, Run())
-        .WillByDefault(Invoke(CleanExit));
-    int keygen_pid = kDummyPid + 1;
-
     MockOwnerKey* key = new MockOwnerKey;
     EXPECT_CALL(*key, PopulateFromDiskIfPossible())
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*key, StartGeneration(k_job))
-        .WillOnce(Return(keygen_pid));
+
+    MockKeyGenerator* gen = new MockKeyGenerator;
+    EXPECT_CALL(*gen, Start(_, key, _))
+        .WillRepeatedly(Return(true));
 
     // Now, expect an attempt to check whether this user is the owner; respond
     // as though there isn't one.
@@ -208,15 +198,9 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*key, IsPopulated())
         .WillOnce(Return(false));
 
-    manager_->test_api().set_keygen_job(k_job);  // manager_ takes ownership.
     manager_->set_uid(getuid());
     manager_->test_api().set_ownerkey(key);
-
-    EXPECT_CALL(*(utils_.get()), kill(keygen_pid, getuid(), SIGTERM))
-        .WillOnce(Return(0));
-    EXPECT_CALL(*(utils_.get()), ChildIsGone(keygen_pid, _))
-        .WillOnce(Return(true));
-    MockUtils();
+    manager_->test_api().set_keygen(gen);
   }
 
   void ExpectStartSessionForOwner(const std::string& email_string,
@@ -692,10 +676,10 @@ TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
   gchar nothing[] = "";
 
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*mitigator_, Mitigate())
-      .WillOnce(Return(false));
   MockOwnerKey* key = new MockOwnerKey;
   ExpectStartSessionForOwner(email, key, false);
+  EXPECT_CALL(*mitigator_, Mitigate(key))
+      .WillOnce(Return(false));
   manager_->test_api().set_ownerkey(key);
 
   bool ret_code = manager_->StartSession(email, nothing, &out, NULL);
@@ -774,6 +758,8 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
                                    StrEq("success")))
       .Times(1);
   MockUtils();
+  EXPECT_CALL(*mitigator_, Mitigating())
+      .WillRepeatedly(Return(false));
 
   std::vector<uint8> pub_key;
   NssUtil::BlobFromBuffer(kPropValue, &pub_key);
@@ -793,6 +779,74 @@ TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
       .WillOnce(Return(true))
       .WillOnce(Return(true));
   EXPECT_CALL(*policy, StoreOwnerProperties(key, StrEq(kFakeEmail), _))
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
+
+  StartFakeSession();
+  manager_->ValidateAndStoreOwnerKey(kPropValue);
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, ValidateAndFailToStoreOwnerKey) {
+  MockFactory<KeyCheckUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()),
+              SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                   StrEq("failure")))
+      .Times(1);
+  MockUtils();
+  EXPECT_CALL(*mitigator_, Mitigating())
+      .WillRepeatedly(Return(false));
+
+  std::vector<uint8> pub_key;
+  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
+
+  MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
+
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  EXPECT_CALL(*policy, Persist())
+      .WillOnce(Return(true));
+  manager_->test_api().set_policy(policy);
+
+  StartFakeSession();
+  manager_->ValidateAndStoreOwnerKey(kPropValue);
+  manager_->Run();
+}
+
+TEST_F(SessionManagerTest, ValidateAndFailToClobberOwnerKey) {
+  MockFactory<KeyCheckUtil> factory;
+  NssUtil::set_factory(&factory);
+
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  EXPECT_CALL(*(utils_.get()),
+              SendSignalToChromium(chromium::kOwnerKeySetSignal,
+                                   StrEq("failure")))
+      .Times(1);
+  MockUtils();
+  EXPECT_CALL(*mitigator_, Mitigating())
+      .WillRepeatedly(Return(true));
+
+  std::vector<uint8> pub_key;
+  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
+
+  MockOwnerKey* key = new MockOwnerKey;
+  MockDevicePolicy* policy = new MockDevicePolicy;
+
+  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*key, ClobberCompromisedKey(pub_key))
+      .WillOnce(Return(false));
+  manager_->test_api().set_ownerkey(key);
+
+  EXPECT_CALL(*policy, Persist())
       .WillOnce(Return(true));
   manager_->test_api().set_policy(policy);
 

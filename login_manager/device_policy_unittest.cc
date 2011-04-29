@@ -210,6 +210,25 @@ TEST_F(DevicePolicyTest, FreshPolicy) {
   ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
 }
 
+TEST_F(DevicePolicyTest, NewKeyPolicy) {
+  StartFresh();
+  DevicePolicy pol(tmpfile_);
+  ASSERT_TRUE(pol.LoadOrCreate());  // Should create an empty policy.
+
+  std::string current_user("me");
+  pol.Set(CreateWithOwner(current_user));
+
+  scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  EXPECT_CALL(*key.get(), Equals(_))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*key.get(), Sign(_, _, _))
+      .WillOnce(Return(true));
+  pol.StoreOwnerProperties(key.get(), current_user, NULL);
+
+  ASSERT_EQ(CountOwnerInWhitelist(pol, current_user), 1);
+  ASSERT_TRUE(AreNewUsersAllowed(pol));
+}
+
 TEST_F(DevicePolicyTest, OwnerAlreadyInPolicy) {
   StartFresh();
   DevicePolicy pol(tmpfile_);
@@ -219,6 +238,8 @@ TEST_F(DevicePolicyTest, OwnerAlreadyInPolicy) {
   pol.Set(CreateWithOwner(current_user));
 
   scoped_ptr<MockOwnerKey> key(new MockOwnerKey);
+  EXPECT_CALL(*key.get(), Equals(_))
+      .WillOnce(Return(true));
   EXPECT_CALL(*key.get(), Sign(_, _, _))
       .Times(0);
   pol.StoreOwnerProperties(key.get(), current_user, NULL);

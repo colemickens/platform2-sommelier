@@ -27,6 +27,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/device_policy.h"
 #include "login_manager/file_checker.h"
+#include "login_manager/key_generator.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/system_utils.h"
@@ -81,8 +82,8 @@ class SessionManagerService
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
     }
-    void set_keygen_job(ChildJobInterface* job) {
-      session_manager_service_->keygen_job_.reset(job);
+    void set_keygen(KeyGenerator* gen) {
+      session_manager_service_->gen_.reset(gen);
     }
 
     // Sets whether the the manager exits when a child finishes.
@@ -181,6 +182,9 @@ class SessionManagerService
   void KillChild(const ChildJobInterface* child_job, int child_pid);
 
   bool IsKnownChild(int pid);
+
+  // Start tracking a new, potentially running child job.
+  void AdoptChild(ChildJobInterface* child_job, int child_pid);
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
@@ -309,6 +313,9 @@ class SessionManagerService
   // new device Owner key.
   void ValidateAndStoreOwnerKey(const std::string& buf);
 
+  // |data| is a SessionManagerService*
+  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
+
   // Perform very, very basic validation of |email_address|.
   static bool ValidateEmail(const std::string& email_address);
 
@@ -356,9 +363,6 @@ class SessionManagerService
   // |data| is a SessionManagerService*
   static void HandleChildExit(GPid pid, gint status, gpointer data);
 
-  // |data| is a SessionManagerService*
-  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
-
   // |data| is a SessionManagerService*.  This is a wrapper around
   // ServiceShutdown() so that we can register it as the callback for
   // when |source| has data to read.
@@ -395,9 +399,8 @@ class SessionManagerService
   // to signal Chromium when done.
   void PersistKey();
 
-  // |store_| and |policy_| are persisted to disk, then |event| is
-  // signaled when done.  This is used to provide synchronous,
-  // threadsafe persisting.
+  // |policy_| is persisted to disk, then |event| is signaled when
+  // done.  This is used to provide synchronous, threadsafe persisting.
   void PersistPolicySync(base::WaitableEvent* event);
 
   // |policy_| is persisted to disk, and then a task is posted to
@@ -436,13 +439,10 @@ class SessionManagerService
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char kIOThreadName[];
-  static const char kKeygenExecutable[];
-  static const char kTemporaryKeyFilename[];
 
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
   bool exit_on_child_done_;
-  scoped_ptr<ChildJobInterface> keygen_job_;
 
   gobject::SessionManager* session_manager_;
   GMainLoop* main_loop_;
@@ -453,6 +453,7 @@ class SessionManagerService
   scoped_ptr<DevicePolicy> policy_;
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<OwnerKey> key_;
+  scoped_ptr<KeyGenerator> gen_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
   bool session_started_;

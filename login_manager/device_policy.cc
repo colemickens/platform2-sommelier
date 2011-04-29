@@ -99,9 +99,11 @@ bool DevicePolicy::StoreOwnerProperties(OwnerKey* key,
     if (on_list = (current_user == *it))
       break;
   }
-  if (poldata.has_username() && poldata.username() == current_user && on_list)
+  if (poldata.has_username() && poldata.username() == current_user &&
+      on_list &&
+      key->Equals(policy_.new_public_key())) {
     return true;  // No changes are needed.
-
+  }
   if (!on_list) {
     // Add owner to the whitelist and turn off whitelist enforcement if it is
     // currently not explicitly turned on or off.
@@ -132,6 +134,9 @@ bool DevicePolicy::StoreOwnerProperties(OwnerKey* key,
   new_policy.set_policy_data(new_data);
   new_policy.set_policy_data_signature(
       std::string(reinterpret_cast<const char*>(&sig[0]), sig.size()));
+  const std::vector<uint8>& key_der = key->public_key_der();
+  new_policy.set_new_public_key(
+      std::string(reinterpret_cast<const char*>(&key_der[0]), key_der.size()));
   Set(new_policy);
   return true;
 }

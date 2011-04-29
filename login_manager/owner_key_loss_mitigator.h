@@ -9,6 +9,8 @@
 
 namespace login_manager {
 
+class OwnerKey;
+
 // Sometimes, the user we believe to be the Owner will not be able to
 // demonstrate possession of the Owner private key.  This class defines the
 // interface for objects that can handle this situation.
@@ -16,13 +18,17 @@ class OwnerKeyLossMitigator {
  public:
   static const char kMitigateMsg[];
 
-  OwnerKeyLossMitigator();
   virtual ~OwnerKeyLossMitigator();
 
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  virtual bool Mitigate() = 0;
+  virtual bool Mitigate(OwnerKey* key) = 0;
+
+  virtual bool Mitigating() = 0;
+
+ protected:
+  OwnerKeyLossMitigator();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(OwnerKeyLossMitigator);

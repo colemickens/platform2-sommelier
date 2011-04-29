@@ -28,7 +28,7 @@ class MockOwnerKey : public OwnerKey {
   MOCK_METHOD1(PopulateFromKeypair, bool(base::RSAPrivateKey*));
   MOCK_METHOD0(Persist, bool());
   MOCK_METHOD3(Rotate, bool(const std::vector<uint8>&, const uint8*, uint32));
-  MOCK_METHOD1(ClobberCompromisedKey, void(const std::vector<uint8>&));
+  MOCK_METHOD1(ClobberCompromisedKey, bool(const std::vector<uint8>&));
   MOCK_METHOD4(Verify, bool(const uint8*, uint32, const uint8*, uint32));
   MOCK_METHOD3(Sign, bool(const uint8*, uint32, std::vector<uint8>*));
   MOCK_METHOD1(StartGeneration, int(ChildJobInterface*));

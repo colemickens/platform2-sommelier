@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,7 @@
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
+class OwnerKey;
 
 // This class mitigates owner key loss by triggering a wipe of the stateful
 // partition and forcing a reboot.
@@ -22,10 +23,12 @@ class WipeMitigator : public OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  bool Mitigate();
+  bool Mitigate(OwnerKey* ignored);
+  bool Mitigating();
 
  private:
   scoped_ptr<SystemUtils> system_;
+  bool mitigating_;
   DISALLOW_COPY_AND_ASSIGN(WipeMitigator);
 };
 }  // namespace login_manager
