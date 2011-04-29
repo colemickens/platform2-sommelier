@@ -65,7 +65,7 @@ std::vector<std::string> CrosDisksServer::EnumerateDeviceFiles(
   devices.reserve(disks.size());
   for (std::vector<Disk>::const_iterator disk_iterator(disks.begin());
       disk_iterator != disks.end(); ++disk_iterator)
-    devices.push_back(disk_iterator->device_file());
+    devices.push_back(disk_iterator->native_path());
   return devices;
 }
 
