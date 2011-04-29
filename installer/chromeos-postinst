@@ -94,6 +94,18 @@ if [ -n "$IS_UPDATE" ]; then
   fi
 fi
 
+# There is a race condition in init/chromeos_startup script. If activate_date
+# script exists on the image, it would be run in background and cause cache
+# file obscured. Even though chromeos_startup script has been fixed after R12,
+# there is one model shipped with this bug. Hence, this function is for that
+# model. Please read chrome-os-partner:3412 for more details.
+if [ -n "$IS_UPDATE" ] &&
+   $(version_less $(src_version) 0.13.0.0) &&
+   [ -x /usr/sbin/activate_date ]; then
+  echo "Force to re-generate VPD cached log file"
+  ${INSTALL_ROOT}/usr/sbin/dump_vpd_log --force || true
+fi
+
 update_firmware() {
   # See if we need to update firmware. NOTE: we must activate new firmware
   # only after new kernel is actived (installed and made bootable),
