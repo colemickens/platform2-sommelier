@@ -605,43 +605,6 @@ gboolean SessionManagerService::SetOwnerKey(GArray* public_key_der,
   return FALSE;
 }
 
-gboolean SessionManagerService::Unwhitelist(gchar* email_address,
-                                            GArray* signature,
-                                            GError** error) {
-  return DeprecatedError("Unwhitelist is now deprecated.", error);
-}
-
-gboolean SessionManagerService::CheckWhitelist(gchar* email_address,
-                                               GArray** OUT_signature,
-                                               GError** error) {
-  return DeprecatedError("CheckWhitelist is now deprecated.", error);
-}
-
-gboolean SessionManagerService::EnumerateWhitelisted(gchar*** OUT_whitelist,
-                                                     GError** error) {
-  return DeprecatedError("EnumerateWhitelisted is now deprecated.", error);
-}
-
-gboolean SessionManagerService::Whitelist(gchar* email_address,
-                                          GArray* signature,
-                                          GError** error) {
-  return DeprecatedError("Whitelist is now deprecated.", error);
-}
-
-gboolean SessionManagerService::StoreProperty(gchar* name,
-                                              gchar* value,
-                                              GArray* signature,
-                                              GError** error) {
-  return DeprecatedError("StoreProperty is now deprecated.", error);
-}
-
-gboolean SessionManagerService::RetrieveProperty(gchar* name,
-                                                 gchar** OUT_value,
-                                                 GArray** OUT_signature,
-                                                 GError** error) {
-  return DeprecatedError("RetrieveProperty is now deprecated.", error);
-}
-
 void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
                                              bool succeeded) {
   if (context)

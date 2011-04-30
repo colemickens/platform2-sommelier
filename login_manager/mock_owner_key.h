@@ -17,8 +17,8 @@ class RSAPrivateKey;
 namespace login_manager {
 class MockOwnerKey : public OwnerKey {
  public:
-  MockOwnerKey() : OwnerKey(FilePath("")) {}
-  virtual ~MockOwnerKey() {}
+  MockOwnerKey();
+  virtual ~MockOwnerKey();
   MOCK_CONST_METHOD1(Equals, bool(const std::string&));
   MOCK_CONST_METHOD1(VEquals, bool(const std::vector<uint8>&));
   MOCK_CONST_METHOD0(HaveCheckedDisk, bool());

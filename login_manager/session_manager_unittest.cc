@@ -9,7 +9,6 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <base/base64.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/crypto/rsa_private_key.h>
@@ -98,8 +97,6 @@ class SessionManagerTest : public ::testing::Test {
     int len = strlen(sig);
     sig[2] = '\0';  // to make sure we can handle NULL inside a signature.
     fake_sig_ = CreateArray(sig, len);
-    ASSERT_TRUE(base::Base64Encode(std::string(fake_sig_->data, fake_sig_->len),
-                                   &fake_sig_encoded_));
   }
 
   virtual void TearDown() {
@@ -322,7 +319,6 @@ class SessionManagerTest : public ::testing::Test {
   bool must_destroy_mocks_;
   std::string property_;
   GArray* fake_sig_;
-  std::string fake_sig_encoded_;
 };
 
 // static
@@ -855,49 +851,15 @@ TEST_F(SessionManagerTest, ValidateAndFailToClobberOwnerKey) {
   manager_->Run();
 }
 
-TEST_F(SessionManagerTest, Whitelist) {
+TEST_F(SessionManagerTest, DeprecatedMethod) {
   MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
   ExpectDeprecatedCall();
   ScopedError error;
-  EXPECT_EQ(FALSE, manager_->Whitelist(kFakeEmail, fake_sig_,
-                                       &Resetter(&error).lvalue()));
+  EXPECT_EQ(FALSE, manager_->DeprecatedError("", &Resetter(&error).lvalue()));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
   manager_->Run();
 }
 
-TEST_F(SessionManagerTest, Unwhitelist) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-  ScopedError error;
-  EXPECT_EQ(FALSE, manager_->Unwhitelist(kFakeEmail, fake_sig_,
-                                         &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, CheckWhitelist) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-
-  ScopedError error;
-  GArray* out_sig = NULL;
-  EXPECT_EQ(FALSE, manager_->CheckWhitelist(kFakeEmail, &out_sig,
-                                            &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, EnumerateEmptyWhitelist) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-
-  ScopedError error;
-  char** out_list = NULL;
-  ASSERT_EQ(FALSE, manager_->EnumerateWhitelisted(&out_list,
-                                                  &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  manager_->Run();
-}
 
 TEST_F(SessionManagerTest, StorePolicy) {
   enterprise_management::PolicyFetchResponse fake_policy;
@@ -944,38 +906,6 @@ TEST_F(SessionManagerTest, StorePolicy) {
   EXPECT_EQ(TRUE, manager_->StorePolicy(policy_array, NULL));
   manager_->Run();
   g_array_free(policy_array, TRUE);
-}
-
-TEST_F(SessionManagerTest, StoreProperty) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-
-  ScopedError error;
-  EXPECT_EQ(FALSE, manager_->StoreProperty(kPropName,
-                                           kPropValue,
-                                           fake_sig_,
-                                           &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, RetrieveProperty) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-
-  ScopedError error;
-  GArray* out_sig = NULL;
-  gchar* out_value = NULL;
-  EXPECT_EQ(FALSE, manager_->RetrieveProperty(kPropName,
-                                              &out_value,
-                                              &out_sig,
-                                              &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  if (out_sig)
-    g_array_free(out_sig, false);
-  if (out_value)
-    g_free(out_value);
-  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, EnableChromeTesting) {
@@ -1074,72 +1004,6 @@ TEST_F(SessionManagerTest, RestartJobWrongPid) {
                                         &Resetter(&error).lvalue()));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, error->code);
   EXPECT_EQ(FALSE, out);
-}
-
-TEST(SessionManagerTestStatic, EmailAddressTest) {
-  const char valid[] = "user_who+we.like@some-where.com";
-  EXPECT_TRUE(login_manager::SessionManagerService::ValidateEmail(valid));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressNonAsciiTest) {
-  char invalid[4] = "a@m";
-  invalid[2] = 254;
-  EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(invalid));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressNoAtTest) {
-  const char no_at[] = "user";
-  EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(no_at));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressTooMuchAtTest) {
-  const char extra_at[] = "user@what@where";
-  EXPECT_FALSE(login_manager::SessionManagerService::ValidateEmail(extra_at));
-}
-
-TEST(SessionManagerTestStatic, GetArgLists0) {
-  std::vector<std::string> args;
-  std::vector<std::vector<std::string> > arg_lists =
-      SessionManagerService::GetArgLists(args);
-  EXPECT_EQ(0, arg_lists.size());
-}
-
-static std::vector<std::vector<std::string> > GetArgs(const char** c_args) {
-  std::vector<std::string> args;
-  while (*c_args) {
-    args.push_back(*c_args);
-    c_args++;
-  }
-  return SessionManagerService::GetArgLists(args);
-}
-
-TEST(SessionManagerTestStatic, GetArgLists1) {
-  const char* c_args[] = {"a", "b", "c", NULL};
-  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
-  EXPECT_EQ(1, arg_lists.size());
-  EXPECT_EQ(3, arg_lists[0].size());
-}
-
-TEST(SessionManagerTestStatic, GetArgLists2) {
-  const char* c_args[] = {"a", "b", "c", "--", "d", NULL};
-  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
-  EXPECT_EQ(2, arg_lists.size());
-  EXPECT_EQ(3, arg_lists[0].size());
-  EXPECT_EQ(1, arg_lists[1].size());
-}
-
-TEST(SessionManagerTestStatic, GetArgLists_TrailingDashes) {
-  const char* c_args[] = {"a", "b", "c", "--", NULL};
-  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
-  EXPECT_EQ(1, arg_lists.size());
-  EXPECT_EQ(3, arg_lists[0].size());
-}
-
-TEST(SessionManagerTestStatic, GetArgLists3_InitialDashes) {
-  const char* c_args[] = {"--", "a", "b", "c", NULL};
-  std::vector<std::vector<std::string> > arg_lists = GetArgs(c_args);
-  EXPECT_EQ(1, arg_lists.size());
-  EXPECT_EQ(3, arg_lists[0].size());
 }
 
 }  // namespace login_manager

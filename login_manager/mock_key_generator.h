@@ -16,8 +16,8 @@ class SessionManagerService;
 
 class MockKeyGenerator : public KeyGenerator {
  public:
-  MockKeyGenerator() {}
-  virtual ~MockKeyGenerator() {}
+  MockKeyGenerator();
+  virtual ~MockKeyGenerator();
   MOCK_METHOD3(Start, bool(uid_t, OwnerKey*, SessionManagerService*));
 };
 }  // namespace login_manager

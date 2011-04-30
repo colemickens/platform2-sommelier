@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,9 +13,8 @@
 namespace login_manager {
 class MockFileChecker : public FileChecker {
  public:
-  explicit MockFileChecker(std::string filename) : FileChecker(filename) {}
-
-  ~MockFileChecker() {}
+  explicit MockFileChecker(std::string filename);
+  ~MockFileChecker();
   MOCK_METHOD0(exists, bool());
 };
 }  // namespace login_manager

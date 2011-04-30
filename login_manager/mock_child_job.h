@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,11 +14,8 @@
 namespace login_manager {
 class MockChildJob : public ChildJobInterface {
  public:
-  MockChildJob() {
-    EXPECT_CALL(*this, ShouldNeverKill())
-        .WillRepeatedly(::testing::Return(false));
-  }
-  ~MockChildJob() { }
+  MockChildJob();
+  virtual ~MockChildJob();
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_CONST_METHOD0(ShouldNeverKill, bool());
   MOCK_METHOD0(RecordTime, void());

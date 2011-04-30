@@ -13,8 +13,8 @@
 namespace login_manager {
 class MockDevicePolicy : public DevicePolicy {
  public:
-  MockDevicePolicy() : DevicePolicy(FilePath("")) {}
-  virtual ~MockDevicePolicy() {}
+  MockDevicePolicy();
+  virtual ~MockDevicePolicy();
   MOCK_METHOD0(LoadOrCreate, bool(void));
   MOCK_METHOD0(Persist, bool(void));
   MOCK_CONST_METHOD0(Get, const enterprise_management::PolicyFetchResponse&());

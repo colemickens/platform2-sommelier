@@ -25,7 +25,6 @@
 #include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
-#include "login_manager/wipe_mitigator.h"
 
 using std::string;
 using std::vector;
@@ -81,7 +80,6 @@ using login_manager::ChildJobInterface;
 using login_manager::FileChecker;
 using login_manager::KeyGenerator;
 using login_manager::RegenMitigator;
-using login_manager::WipeMitigator;
 using login_manager::SessionManagerService;
 using login_manager::SystemUtils;
 

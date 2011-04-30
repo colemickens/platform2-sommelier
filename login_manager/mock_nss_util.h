@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,14 +17,10 @@ class RSAPrivateKey;
 }
 
 namespace login_manager {
-using ::testing::Invoke;
-using ::testing::Return;
-using ::testing::_;
 
 class MockNssUtil : public NssUtil {
  public:
-  MockNssUtil() {}
-  virtual ~MockNssUtil() {}
+  virtual ~MockNssUtil();
 
   MOCK_METHOD0(MightHaveKeys, bool());
   MOCK_METHOD0(OpenUserDB, bool());
@@ -39,9 +35,11 @@ class MockNssUtil : public NssUtil {
                           std::vector<uint8>* OUT_signature,
                           base::RSAPrivateKey* key));
  protected:
-  void ExpectGetOwnerKeyFilePath() {
-    EXPECT_CALL(*this, GetOwnerKeyFilePath()).WillOnce(Return(FilePath("")));
-  }
+  MockNssUtil();
+  void ExpectGetOwnerKeyFilePath();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockNssUtil);
 };
 
 template<typename T>
@@ -58,72 +56,52 @@ class MockFactory : public NssUtil::Factory {
 
 class KeyCheckUtil : public MockNssUtil {
  public:
-  KeyCheckUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
-    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
-    EXPECT_CALL(*this, GetPrivateKey(_))
-        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(7)));
-  }
-  virtual ~KeyCheckUtil() {}
+  KeyCheckUtil();
+  virtual ~KeyCheckUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(KeyCheckUtil);
 };
 
 class KeyFailUtil : public MockNssUtil {
  public:
-  KeyFailUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
-    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
-    EXPECT_CALL(*this, GetPrivateKey(_))
-        .WillOnce(Return(reinterpret_cast<base::RSAPrivateKey*>(NULL)));
-  }
-  virtual ~KeyFailUtil() {}
+  KeyFailUtil();
+  virtual ~KeyFailUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(KeyFailUtil);
 };
 
 class SadNssUtil : public MockNssUtil {
  public:
-  SadNssUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
-    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
-  }
-  virtual ~SadNssUtil() {}
+  SadNssUtil();
+  virtual ~SadNssUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(SadNssUtil);
 };
 
 class EmptyNssUtil : public MockNssUtil {
  public:
-  EmptyNssUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(false));
-  }
-  virtual ~EmptyNssUtil() {}
+  EmptyNssUtil();
+  virtual ~EmptyNssUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(EmptyNssUtil);
 };
 
 class ShortKeyGenerator : public MockNssUtil {
  public:
-  ShortKeyGenerator() {
-    base::EnsureNSSInit();
-    base::OpenPersistentNSSDB();
-    ON_CALL(*this, GenerateKeyPair()).WillByDefault(Invoke(CreateFake));
-  }
-  virtual ~ShortKeyGenerator() {}
+  ShortKeyGenerator();
+  virtual ~ShortKeyGenerator();
+  static base::RSAPrivateKey* CreateFake();
 
-  static base::RSAPrivateKey* CreateFake() {
-    base::RSAPrivateKey* ret = base::RSAPrivateKey::CreateSensitive(512);
-    LOG_IF(INFO, ret == NULL) << "returning NULL!!!";
-    return ret;
-  }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ShortKeyGenerator);
 };
 
 class ShortKeyUtil : public ShortKeyGenerator {
  public:
-  ShortKeyUtil() {
-    ExpectGetOwnerKeyFilePath();
-    EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
-    EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
-    EXPECT_CALL(*this, GenerateKeyPair()).Times(1);
-  }
-  virtual ~ShortKeyUtil() {}
+  ShortKeyUtil();
+  virtual ~ShortKeyUtil();
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ShortKeyUtil);
 };
 
 }  // namespace login_manager

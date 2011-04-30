@@ -15,8 +15,8 @@ class OwnerKey;
 
 class MockMitigator : public OwnerKeyLossMitigator {
  public:
-  MockMitigator() {}
-  virtual ~MockMitigator() {}
+  MockMitigator();
+  virtual ~MockMitigator();
 
   MOCK_METHOD1(Mitigate, bool(OwnerKey*));
   MOCK_METHOD0(Mitigating, bool());

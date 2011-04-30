@@ -208,6 +208,8 @@ class SessionManagerService
                                gchar** OUT_filepath,
                                GError** error);
 
+  gboolean DeprecatedError(const char* msg, GError** error);
+
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
   // also call child_job_->StartSession(email_address).
@@ -231,48 +233,6 @@ class SessionManagerService
   // If the key is rejected, because we already have one or for any other
   // reason, we return FALSE and set |error| appropriately.
   gboolean SetOwnerKey(GArray* public_key_der, GError** error);
-
-  // Remove the user |email_address| from the whitelist.  |signature| must
-  // be a signature over |email_address| that validates with |key_|.
-  // |signature| is a binary blob representing a sha1WithRSAEncryption sig.
-  gboolean Unwhitelist(gchar* email_address, GArray* signature, GError** error);
-
-  // If |email_address| is whitelisted, return true and put the signature blob
-  // in |OUT_signature|.  Otherwise, return false and set |error|.
-  gboolean CheckWhitelist(gchar* email_address,
-                          GArray** OUT_signature,
-                          GError** error);
-
-  // Return all email addresses on the whitelist in |OUT_whitelist| and return
-  // true.
-  gboolean EnumerateWhitelisted(gchar*** OUT_whitelist, GError** error);
-
-  // Add the user |email_address| to the whitelist.  |signature| must
-  // be a signature over |email_address| that validates with |key_|.
-  // |signature| should a binary blob representing a sha1WithRSAEncryption sig.
-  gboolean Whitelist(gchar* email_address, GArray* signature, GError** error);
-
-  // Store |name| = |value,signature| in |store_|.  Passing '.' characters in
-  // the name is fine and will create nested Dictionaries in the underlying
-  // representation, though there's no way to get those dictionaries out right
-  // now.
-  //
-  // |signature| is a SAH1 with RSA signature over the concatenation
-  // of name and value, verifiable with |key_|.
-  //
-  // Returns TRUE if the signature checks out and the data is inserted,
-  // FALSE otherwise.
-  gboolean StoreProperty(gchar* name,
-                         gchar* value,
-                         GArray* signature,
-                         GError** error);
-
-  // Get the value and signature associated with |name| out of |store|.
-  // Returns TRUE if the data is can be fetched, FALSE otherwise.
-  gboolean RetrieveProperty(gchar* name,
-                            gchar** OUT_value,
-                            GArray** OUT_signature,
-                            GError** error);
 
   // |policy_blob| is a serialized protobuffer containing a device policy
   // and a signature over that policy.  Verify the sig and persist
@@ -424,8 +384,6 @@ class SessionManagerService
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
-
-  gboolean DeprecatedError(const char* msg, GError** error);
 
   SigReturnCode VerifyHelper(const std::string& data,
                              const char* sig,

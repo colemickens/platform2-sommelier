@@ -33,7 +33,7 @@ PROTO_OBJS = $(BINDINGS)/chrome_device_policy.pb.o \
 COMMON_OBJS = child_job.o device_policy.o interface.o key_generator.o \
 	nss_util.o owner_key.o owner_key_loss_mitigator.o regen_mitigator.o \
 	session_manager_service.o system_utils.o upstart_signal_emitter.o \
-	wipe_mitigator.o $(PROTO_OBJS)
+	$(PROTO_OBJS)
 
 KEYGEN_BIN = keygen
 KEYGEN_OBJS = keygen.o nss_util.o owner_key.o system_utils.o
@@ -42,10 +42,12 @@ SESSION_BIN = session_manager
 SESSION_OBJS = session_manager_main.o
 
 TEST_BIN = session_manager_unittest
-TEST_OBJS = session_manager_testrunner.o session_manager_unittest.o \
-	child_job_unittest.o device_policy_unittest.o key_generator_unittest.o \
-	nss_util_unittest.o owner_key_unittest.o regen_mitigator_unittest.o \
-	system_utils_unittest.o wipe_mitigator_unittest.o
+TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
+	device_policy_unittest.o key_generator_unittest.o \
+	mock_constructors.o mock_nss_util.o nss_util_unittest.o \
+	owner_key_unittest.o regen_mitigator_unittest.o \
+	session_manager_unittest.o session_manager_static_unittest.o \
+	system_utils_unittest.o
 
 all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN)
 
