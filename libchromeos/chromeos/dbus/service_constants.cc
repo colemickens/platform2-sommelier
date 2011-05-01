@@ -119,6 +119,12 @@ const char* kWhitelistChangeCompleteSignal = "WhitelistChangeComplete";
 
 namespace power_manager {
 const char* kPowerManagerInterface = "org.chromium.PowerManager";
+const char* kPowerManagerServicePath = "/org/chromium/PowerManager";
+const char* kPowerManagerServiceName = "org.chromium.PowerManager";
+// Methods
+const char* kPowerManagerDecreaseScreenBrightness = "DecreaseScreenBrightness";
+const char* kPowerManagerIncreaseScreenBrightness = "IncreaseScreenBrightness";
+// Signals
 const char* kRequestLockScreenSignal = "RequestLockScreen";
 const char* kRequestRestartSignal = "RequestRestart";
 const char* kRequestSuspendSignal = "RequestSuspend";

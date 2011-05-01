@@ -134,6 +134,12 @@ extern const char* kWhitelistChangeCompleteSignal;
 
 namespace power_manager {
 extern const char* kPowerManagerInterface;
+extern const char *kPowerManagerServicePath;
+extern const char *kPowerManagerServiceName;
+// Methods
+extern const char* kPowerManagerDecreaseScreenBrightness;
+extern const char* kPowerManagerIncreaseScreenBrightness;
+// Signals
 extern const char* kRequestLockScreenSignal;
 extern const char* kRequestRestartSignal;
 extern const char* kRequestSuspendSignal;
