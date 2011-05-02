@@ -29,10 +29,12 @@ AmbientLightSensor::~AmbientLightSensor() {
 }
 
 bool AmbientLightSensor::DeferredInit() {
-  // tsl2561 is currently the only supported light sensor.
+  // Support both old and new naming conventions.
   // If the lux file is not immediately found, issue a deferral
   // message and try again later.
   als_fd_ = open("/sys/class/iio/device0/lux", O_RDONLY);
+  if (als_fd_ == -1)
+    als_fd_ = open("/sys/bus/iio/devices/device0/illuminance0_input", O_RDONLY);
   if (als_fd_ == -1) {
     if (still_deferring_)
       return false;
