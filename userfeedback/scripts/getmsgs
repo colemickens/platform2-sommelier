@@ -20,7 +20,8 @@ fi
 if [ "$1" = "--bytes" -o "$1" = "-c" ]; then
   MAXDATA="$2"; shift; shift
 else
-  MAXDATA='80K'
+  # NB: 1000 lines at 132 chars/line is ~130Kbytes
+  MAXDATA='130K'
 fi
 LOGFILE=${1:-/var/log/messages}
 
