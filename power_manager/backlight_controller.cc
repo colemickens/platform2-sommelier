@@ -132,7 +132,7 @@ void BacklightController::IncreaseBrightness() {
   }
 }
 
-void BacklightController::DecreaseBrightness() {
+void BacklightController::DecreaseBrightness(bool allow_off) {
   if (!is_initialized_)
     return;
   if (!ReadBrightness())
@@ -146,8 +146,8 @@ void BacklightController::DecreaseBrightness() {
       new_brightness != local_brightness_) {
     // Set backlight to zero if there is no change in the brightness, but
     // already at a nonzero minimum. (Can go one step lower to zero.)
-    if ((new_brightness == min_percent_ && min_percent_ > 0) ||
-        new_brightness == 0) {
+    if (allow_off && (new_brightness == 0 ||
+                      (new_brightness == min_percent_ && min_percent_ > 0))) {
       // Do not call SetPowerState because that calls ReadBrightness and
       // WriteBrightness.  This function already calls both; hence, it should
       // directly set the power state.

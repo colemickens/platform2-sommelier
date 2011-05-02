@@ -58,6 +58,16 @@ class Daemon : public XIdleMonitor {
   void OnRequestRestart(bool notify_window_manager);
   void OnRequestShutdown(bool notify_window_manager);
 
+  // Decreases the screen brightness and announces the change as a D-Bus signal.
+  //
+  // If |allow_off| is FALSE, the backlight will never be entirely turned off.
+  // This should be used with on-screen controls to prevent their becoming
+  // impossible for the user to see.
+  void DecreaseScreenBrightness(bool allow_off, bool user_initiated);
+
+  // Increases the screen brightness and announces the change as a D-Bus signal.
+  void IncreaseScreenBrightness(bool user_initiated);
+
  private:
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, GenerateBacklightLevelMetric);

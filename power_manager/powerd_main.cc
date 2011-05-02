@@ -20,6 +20,7 @@
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
+#include "power_manager/power_manager_service.h"
 #include "power_manager/powerd.h"
 #include "power_manager/video_detector.h"
 
@@ -116,6 +117,18 @@ int main(int argc, char* argv[]) {
                                &audio_detector,
                                &monitor_reconfigure,
                                run_dir);
+
+  // Create and initialize the D-Bus power manager service.
+  //
+  // This must occur before the Daemon is initialized, so that the Service
+  // can take ownership of the org.chromium.PowerManager interface.
+  ::g_type_init();
+  power_manager::PowerManagerService manager(&daemon);
+  if (!manager.Initialize())
+    LOG(ERROR) << "Cannot initialize power manager service";
+  else if (!manager.Register(chromeos::dbus::GetSystemBusConnection()))
+    LOG(ERROR) << "Cannot register power manager service";
+
   daemon.Init();
   daemon.Run();
   return 0;

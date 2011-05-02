@@ -417,7 +417,7 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
                                          gpointer data) {
   Daemon* daemon = static_cast<Daemon*>(data);
   XEvent* xevent = static_cast<XEvent*>(gxevent);
-  bool changed_brightness = false;
+
   if (xevent->type == KeyPress && daemon->idle_state_ == kIdleNormal) {
     int keycode = xevent->xkey.keycode;
     if (keycode == daemon->key_brightness_up_ ||
@@ -428,8 +428,8 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F7";
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
       }
-      daemon->backlight_controller_->IncreaseBrightness();
-      changed_brightness = true;
+      daemon->IncreaseScreenBrightness(true);
+
     } else if (keycode == daemon->key_brightness_down_ ||
                keycode == daemon->key_f6_) {
       if (keycode == daemon->key_brightness_down_) {
@@ -438,15 +438,21 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         LOG(INFO) << "Key press: F6";
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
       }
-      daemon->backlight_controller_->DecreaseBrightness();
-      changed_brightness = true;
+      daemon->DecreaseScreenBrightness(true, true);
     }
   }
 
-  if (changed_brightness)
-    daemon->SendBrightnessChangedSignal(true);  // user_initiated=true
-
   return GDK_FILTER_CONTINUE;
+}
+
+void Daemon::DecreaseScreenBrightness(bool allow_off, bool user_initiated) {
+  backlight_controller_->DecreaseBrightness(allow_off);
+  SendBrightnessChangedSignal(user_initiated);
+}
+
+void Daemon::IncreaseScreenBrightness(bool user_initiated) {
+  backlight_controller_->IncreaseBrightness();
+  SendBrightnessChangedSignal(user_initiated);
 }
 
 void Daemon::GrabKey(KeyCode key, uint32 mask) {

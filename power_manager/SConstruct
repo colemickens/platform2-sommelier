@@ -26,6 +26,25 @@ base_env['CFLAGS'].extend(Split(extra_flags))
 base_env['CXXFLAGS'].extend(Split(extra_flags))
 base_env['CPPFLAGS'].extend(Split(extra_cppflags))
 
+# Add rules for dbus-binding-tool
+
+def dbus_server_generator(source, target, env, for_signature):
+  prefix = os.path.splitext(str(source[0]))[0]
+  return 'dbus-binding-tool --mode=glib-server ' \
+      '--prefix=%s $SOURCE > $TARGET' % (prefix)
+
+def dbus_client_generator(source, target, env, for_signature):
+  prefix = os.path.splitext(str(source[0]))[0]
+  return 'dbus-binding-tool --mode=glib-client ' \
+      '--prefix=%s $SOURCE > $TARGET' % (prefix)
+
+base_env['BUILDERS']['DBusServer'] = Builder(
+  generator=dbus_server_generator,
+  src_suffix='.xml', suffix='_bindings_server.h')
+base_env['BUILDERS']['DBusClient'] = Builder(
+  generator=dbus_client_generator,
+  src_suffix='.xml', suffix='_bindings_server.h')
+
 # Switch between new and legacy power button behavior.
 # Legacy : power button doesn't send release signal at the right time.
 # First button push enables lock screen. Second button push shuts down.
@@ -73,10 +92,14 @@ powerd_env.Append(LIBS=Split(
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
+powerd_env.DBusServer('power_manager_bindings_server.h', 'power_manager.xml')
+powerd_env.DBusClient('power_manager_bindings_client.h', 'power_manager.xml')
+
 powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
-  monitor_reconfigure.cc resolution_selector.cc udev_controller.cc
+  monitor_reconfigure.cc power_manager_service.cc resolution_selector.cc
+  udev_controller.cc
 ''')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)

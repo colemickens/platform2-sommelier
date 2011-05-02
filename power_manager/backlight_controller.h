@@ -72,7 +72,11 @@ class BacklightController {
   void IncreaseBrightness();
 
   // Decrease the brightness level of the backlight by one level.
-  void DecreaseBrightness();
+  //
+  // If |allow_off| is false, the backlight will never be entirely turned off.
+  // This should be used with on-screen controls to prevent their becoming
+  // impossible for the user to see.
+  void DecreaseBrightness(bool allow_off);
 
   // Turn the backlight on or off.  Returns true if the brightness was changed
   // and false otherwise.
