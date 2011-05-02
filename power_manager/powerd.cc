@@ -371,7 +371,8 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     idle_state_ = kIdleSuspend;
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
-    if (backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
+    if (util::LoggedIn() &&
+        backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
       idle_state_ = kIdleScreenOff;
       LOG(INFO) << "state = kIdleScreenOff";
       changed_brightness = true;
