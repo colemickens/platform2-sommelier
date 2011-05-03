@@ -4,8 +4,18 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script is called after an AutoUpdate or USB install.
+# This script is called after an AutoUpdate or USB install. This script is a
+# simple wrapper that performs the minimal setup necessary to run
+# chromeos-chroot-postinst inside a chroot.
 
-# Setup INSTALL_ROOT.
+get_src_version() {
+  grep ^CHROMEOS_RELEASE_VERSION /etc/lsb-release | cut -d = -f 2-
+}
+
+set -e
+
 export INSTALL_ROOT=$(dirname "$0")
-"${INSTALL_ROOT}"/usr/sbin/chromeos-chroot-postinst "$@"
+
+"${INSTALL_ROOT}"/usr/sbin/chromeos-chroot-postinst \
+  --src_version="$(get_src_version)" \
+  "$@"

@@ -14,10 +14,12 @@
 . "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh
 . "${INSTALL_ROOT}"/usr/lib/shflags
 
-# Process flags now, couldn't earlier since we needed INSTALL_ROOT
-# to know where to load shflags from
+# Process flags now, couldn't earlier since we needed INSTALL_ROOT to know where
+# to load shflags from.
+DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 DEFINE_string esp_part_file "" "File containing the ESP partition"
 DEFINE_boolean postcommit ${FLAGS_FALSE} "Run postcommit"
+DEFINE_string src_version "0.0.0.0" "Current OS version"
 
 # WARNING: do NOT change this default value without consulting adlr/nsanders.
 # If you want to temporary enable firmware update for testing, create a
@@ -27,7 +29,6 @@ if [ -f "${INSTALL_ROOT}/root/.force_update_firmware" ]; then
   FLAGS_firmware_default=${FLAGS_TRUE}
 fi
 DEFINE_boolean update_firmware $FLAGS_firmware_default "Enable firmware update."
-DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 
 # Parse command line
 FLAGS "$@" || exit 1
@@ -80,13 +81,9 @@ version_less() {
   [ $a \< $b ]
 }
 
-src_version() {
-  cat /etc/lsb-release | grep ^CHROMEOS_RELEASE_VERSION | cut -d = -f 2-
-}
-
 MAKE_DEV_READONLY=${FLAGS_FALSE}
 if [ -n "$IS_UPDATE" ]; then
-  if $(version_less $(src_version) 0.10.156.2); then
+  if $(version_less "${FLAGS_src_version}" 0.10.156.2); then
     echo "Patching new rootfs"
     dd if=/dev/zero of="${INSTALL_DEV}" bs=1 count=2 conv=notrunc seek=1400
     MAKE_DEV_READONLY=${FLAGS_TRUE}
@@ -99,7 +96,7 @@ fi
 # there is one model shipped with this bug. Hence, this function is for that
 # model. Please read chrome-os-partner:3412 for more details.
 if [ -n "$IS_UPDATE" ] &&
-   $(version_less $(src_version) 0.13.0.0) &&
+   $(version_less "${FLAGS_src_version}" 0.13.0.0) &&
    [ -x /usr/sbin/activate_date ]; then
   echo "Force to re-generate VPD cached log file"
   ${INSTALL_ROOT}/usr/sbin/dump_vpd_log --force || true
