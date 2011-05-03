@@ -25,6 +25,9 @@ static const char *kMountOptionNoDev = "nodev";
 static const char *kMountOptionNoExec = "noexec";
 static const char *kMountOptionNoSuid = "nosuid";
 static const char *kUnmountOptionForce = "force";
+static const char *kMountRootPrefix = "/media/";
+static const char *kFallbackMountPath = "/media/disk";
+static const unsigned kMaxNumMountTrials = 10000;
 
 DiskManager::DiskManager()
     : udev_(udev_new()),
@@ -186,16 +189,32 @@ std::vector<std::string> DiskManager::GetFilesystems(
   return filesystems;
 }
 
+std::string DiskManager::GetMountDirectoryName(const Disk& disk) const {
+  std::string mount_path;
+  if (!disk.label().empty()) {
+    mount_path = disk.label();
+    std::replace(mount_path.begin(), mount_path.end(), '/', '_');
+    mount_path = kMountRootPrefix + mount_path;
+  } else if (!disk.uuid().empty()) {
+    mount_path = kMountRootPrefix + disk.uuid();
+  } else {
+    mount_path = kFallbackMountPath;
+  }
+  return mount_path;
+}
+
 std::string DiskManager::CreateMountDirectory(const Disk& disk,
     const std::string& target_path) const {
   // Construct the mount path as follows:
   // (1) If a target path is specified, use it.
-  // (2) Otherwise, if the disk has a non-empty label
+  // (2) If the disk has a non-empty label,
   //     use /media/<label> as the target path.
   //     Note: any forward slash '/' in the label is replaced
   //     with a underscore '_'.
-  // (3) Otherwise, use /media/disk as the target path.
-  // (4) If the target path obtained in (2) or (3) cannot
+  // (3) If the disk has a non-empty uuid,
+  //     use /media/<uuid> as the target path.
+  // (4) Otherwise, use /media/disk as the target path.
+  // (5) If the target path obtained in (2)-(4) cannot
   //     be created, try suffixing it with a number.
 
   if (!target_path.empty()) {
@@ -207,21 +226,16 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
     return target_path;
   }
 
-  std::string mount_path;
-  if (disk.label().empty()) {
-    mount_path = "/media/disk";
-  } else {
-    mount_path = disk.label();
-    std::replace(mount_path.begin(), mount_path.end(), '/', '_');
-    mount_path = "/media/" + mount_path;
-  }
-
   unsigned suffix = 1;
+  std::string mount_path = GetMountDirectoryName(disk);
   std::string mount_path_prefix = mount_path + "_";
   while (mkdir(mount_path.c_str(), S_IRWXU) != 0) {
+    if (suffix == kMaxNumMountTrials) {
+      mount_path.clear();
+      break;
+    }
     mount_path = mount_path_prefix + base::UintToString(suffix);
     suffix++;
-    // TODO(benchan): Should we give up after a number of trials?
   }
 
   return mount_path;
@@ -272,8 +286,8 @@ bool DiskManager::ExtractMountOptions(const std::vector<std::string>& options,
   return true;
 }
 
-bool DiskManager::ExtractUnmountOptions(const std::vector<std::string>& options,
-    int *unmount_flags) const {
+bool DiskManager::ExtractUnmountOptions(
+    const std::vector<std::string>& options, int *unmount_flags) const {
   if (unmount_flags == NULL)
     return false;
 
@@ -347,7 +361,7 @@ bool DiskManager::Mount(const std::string& device_path,
     GetFilesystemTypeOfDevice(device_file) : filesystem_type;
 
   // If the filesystem type is not determined, try iterate through the types
-  // listede in /proc/filesystem.
+  // listed in /proc/filesystems.
   std::vector<std::string> filesystems;
   if (device_filesystem_type.empty()) {
     filesystems = GetFilesystems();

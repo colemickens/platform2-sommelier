@@ -15,6 +15,7 @@ const char kDeviceMountPaths[] = "DeviceMountPaths";
 const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
 const char kNativePath[] = "NativePath";
 const char kDeviceFile[] = "DeviceFile";
+const char kUuid[] = "IdUuid";
 const char kLabel[] = "IdLabel";
 const char kDriveModel[] = "DriveModel";
 const char kDriveIsRotational[] = "DriveIsRotational";
@@ -25,8 +26,6 @@ const char kReadOnly[] = "DeviceIsReadOnly";
 // TODO(rtc): Figure out what this field is and include it in the response.
 const char kPartitionSlave[] = "PartitionSlave";
 
-// TODO(rtc): The constructor should set some defaults, but I'm still iterating
-// on the data model.
 Disk::Disk()
   : is_drive_(false),
     is_hidden_(false),
@@ -38,6 +37,7 @@ Disk::Disk()
     mount_paths_(),
     native_path_(),
     device_file_(),
+    uuid_(),
     label_(),
     drive_model_(),
     device_capacity_(0),
@@ -55,6 +55,7 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
   disk[kNativePath].writer().append_string(native_path().c_str());
   disk[kDeviceFile].writer().append_string(device_file().c_str());
+  disk[kUuid].writer().append_string(uuid().c_str());
   disk[kLabel].writer().append_string(label().c_str());
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());

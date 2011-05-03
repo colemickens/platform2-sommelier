@@ -25,14 +25,14 @@ class Disk {
 
   Disk();
   virtual ~Disk();
-  DBusDisk ToDBusFormat() const; 
+  DBusDisk ToDBusFormat() const;
 
   bool is_drive() const { return is_drive_; }
   void set_is_drive(bool is_drive) { is_drive_ = is_drive; }
 
   bool is_hidden() const { return is_hidden_; }
   void set_is_hidden(bool is_hidden) { is_hidden_ = is_hidden; }
-  
+
   bool is_mounted() const { return is_mounted_; }
   void set_is_mounted(bool is_mounted) { is_mounted_ = is_mounted; }
 
@@ -45,8 +45,8 @@ class Disk {
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
   bool is_optical_disk() const { return is_optical_disk_; }
-  void set_is_optical_disk(bool is_optical_disk) { 
-    is_optical_disk_ = is_optical_disk; 
+  void set_is_optical_disk(bool is_optical_disk) {
+    is_optical_disk_ = is_optical_disk;
   }
 
   bool is_read_only() const { return is_read_only_; }
@@ -66,23 +66,26 @@ class Disk {
   void set_device_file(const std::string& device_file) {
     device_file_ = device_file;
   }
-  
+
+  std::string uuid() const { return uuid_; }
+  void set_uuid(const std::string& uuid) { uuid_ = uuid; }
+
   std::string label() const { return label_; }
   void set_label(const std::string& label) { label_ = label; }
 
   std::string drive_model() const { return drive_model_; }
   void set_drive_model(const std::string& drive_model) {
-    drive_model_ = drive_model; 
+    drive_model_ = drive_model;
   }
 
   uint64 device_capacity() const { return device_capacity_; }
   void set_device_capacity(uint64 device_capacity) {
-    device_capacity_ = device_capacity; 
+    device_capacity_ = device_capacity;
   }
 
   uint64 bytes_remaining() const { return bytes_remaining_; }
-  void set_bytes_remaining(uint64 bytes_remaining) { 
-    bytes_remaining_ = bytes_remaining; 
+  void set_bytes_remaining(uint64 bytes_remaining) {
+    bytes_remaining_ = bytes_remaining;
   }
 
  private:
@@ -97,6 +100,7 @@ class Disk {
   std::vector<std::string> mount_paths_;
   std::string native_path_;
   std::string device_file_;
+  std::string uuid_;
   std::string label_;
   std::string drive_model_;
   uint64 device_capacity_;

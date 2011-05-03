@@ -207,6 +207,39 @@ TEST_F(DiskManagerTest, ExtractUnsupportedUnmountOptions) {
   EXPECT_FALSE(manager.ExtractUnmountOptions(options, &unmount_flags));
 }
 
+TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithoutLabelOrUuid) {
+  DiskManager manager;
+  Disk disk;
+  std::string mount_path = manager.GetMountDirectoryName(disk);
+  EXPECT_EQ("/media/disk", mount_path);
+}
+
+TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithLabel) {
+  DiskManager manager;
+  Disk disk;
+  disk.set_label("My Disk");
+  disk.set_uuid("1A2B-3C4D");
+  std::string mount_path = manager.GetMountDirectoryName(disk);
+  EXPECT_EQ("/media/My Disk", mount_path);
+}
+
+TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithLabelWithSlashes) {
+  DiskManager manager;
+  Disk disk;
+  disk.set_label("This/Is/My/Disk");
+  disk.set_uuid("1A2B-3C4D");
+  std::string mount_path = manager.GetMountDirectoryName(disk);
+  EXPECT_EQ("/media/This_Is_My_Disk", mount_path);
+}
+
+TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithUuid) {
+  DiskManager manager;
+  Disk disk;
+  disk.set_uuid("1A2B-3C4D");
+  std::string mount_path = manager.GetMountDirectoryName(disk);
+  EXPECT_EQ("/media/1A2B-3C4D", mount_path);
+}
+
 TEST_F(DiskManagerTest, CreateMountDirectoryAlreadyExists) {
   DiskManager manager;
   Disk disk;

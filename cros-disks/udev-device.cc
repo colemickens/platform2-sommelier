@@ -160,6 +160,7 @@ Disk UdevDevice::ToDisk() const {
   disk.set_is_hidden(IsPropertyTrue("UDISKS_PRESENTATION_HIDE"));
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_drive_model(GetProperty("ID_MODEL"));
+  disk.set_uuid(GetProperty("ID_FS_UUID"));
   disk.set_label(GetProperty("ID_FS_LABEL"));
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path)

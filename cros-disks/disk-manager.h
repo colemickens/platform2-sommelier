@@ -58,11 +58,14 @@ class DiskManager {
   // /proc/filesystems.
   std::vector<std::string> GetFilesystems(std::istream& stream) const;
 
-  // Create a mount directory for a given disk.
+  // Gets the mount directory name for a disk.
+  std::string GetMountDirectoryName(const Disk& disk) const;
+
+  // Creates a mount directory for a given disk.
   std::string CreateMountDirectory(const Disk& disk,
       const std::string& target_path) const;
 
-  // Sanitize an array of mount options based on the properties of a disk.
+  // Sanitizes an array of mount options based on the properties of a disk.
   std::vector<std::string> SanitizeMountOptions(
       const std::vector<std::string>& options, const Disk& disk) const;
 
