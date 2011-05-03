@@ -9,7 +9,8 @@
     },
   },
   'WATCHLISTS': {
-    'all': ['petkov@chromium.org',
+    'all': ['cmasone@chromium.org',
+            'petkov@chromium.org',
             'pstew@chromium.org',
             'quiche@chromium.org']
   },
