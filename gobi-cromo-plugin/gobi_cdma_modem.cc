@@ -154,7 +154,7 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   if (modem != NULL) {
     if (modem->activation_callback_id_) {
       g_source_remove(modem->activation_callback_id_);
-      modem->activation_callback_id_ = NULL;
+      modem->activation_callback_id_ = 0;
     }
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
