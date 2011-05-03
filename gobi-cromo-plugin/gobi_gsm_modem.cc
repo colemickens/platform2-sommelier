@@ -190,7 +190,6 @@ void GobiGsmModem::RegisterCallbacks() {
 
 static std::string MakeOperatorCode(WORD mcc, WORD mnc) {
   std::ostringstream opercode;
-  std::string result;
   if (mcc != 0xffff && mnc != 0xffff)
     opercode << mcc << mnc;
   return opercode.str();
@@ -201,19 +200,26 @@ void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
                                           std::string* operator_code,
                                           std::string* operator_name,
                                           DBus::Error& error) {
-  ULONG reg_state, roaming_state;
+  ULONG gobi_reg_state, roaming_state;
   ULONG l1;
   WORD mcc, mnc;
   CHAR netname[32];
   BYTE radio_interfaces[10];
   BYTE num_radio_interfaces = sizeof(radio_interfaces)/sizeof(BYTE);
 
-  ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
+  ULONG rc = sdk_->GetServingNetwork(&gobi_reg_state, &l1,
+                                     &num_radio_interfaces,
                                      radio_interfaces, &roaming_state,
                                      &mcc, &mnc, sizeof(netname), netname);
-  ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
+  if (rc != 0) {
+    // All errors are treated as if the registration state is unknown
+    gobi_reg_state = gobi::kRegistrationStateUnknown;
+    mcc = 0xffff;
+    mnc = 0xffff;
+    netname[0] = '\0';
+  }
 
-  switch (reg_state) {
+  switch (gobi_reg_state) {
     case gobi::kUnregistered:
       *registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE;
       break;

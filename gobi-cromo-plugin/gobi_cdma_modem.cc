@@ -44,7 +44,13 @@ void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
   ULONG rc = sdk_->GetServingNetwork(&reg_state, &l1, &num_radio_interfaces,
                                      radio_interfaces, roaming_state,
                                      &w1, &w2, sizeof(netname), netname);
-  ENSURE_SDK_SUCCESS(GetServingNetwork, rc, kSdkError);
+  if (rc != 0) {
+    // All errors are treated as if the modem is not yet registered.
+    *cdma_1x_state = 0;
+    *cdma_evdo_state = 0;
+    *roaming_state = 0;
+    return;
+  }
 
   for (int i = 0; i < num_radio_interfaces; i++) {
     if (radio_interfaces[i] == gobi::kRfiCdma1xRtt)
