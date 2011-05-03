@@ -9,7 +9,7 @@
 # chromeos-chroot-postinst inside a chroot.
 
 get_src_version() {
-  grep ^CHROMEOS_RELEASE_VERSION /etc/lsb-release | cut -d = -f 2-
+  grep ^CHROMEOS_RELEASE_VERSION= /etc/lsb-release | cut -d = -f 2-
 }
 
 set -e
