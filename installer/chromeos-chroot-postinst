@@ -10,9 +10,9 @@
 # rootfs is mounted-read only and should not be updated.
 
 # Load helper functions
-[ -n "${INSTALL_ROOT}" ] || exit 1
-. "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh
-. "${INSTALL_ROOT}"/usr/lib/shflags
+INSTALL_ROOT=/
+. "${INSTALL_ROOT}"/usr/sbin/chromeos-common.sh || exit 1
+. "${INSTALL_ROOT}"/usr/lib/shflags || exit 1
 
 # Process flags now, couldn't earlier since we needed INSTALL_ROOT to know where
 # to load shflags from.
@@ -264,29 +264,8 @@ if [ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ]; then
       echo "Failed to copy syslinux files in and make them bootable."
       exit 1
     fi
-    set -e
-    mount -o bind /dev "${INSTALL_ROOT}"/dev
-    set +e
-    mount -o bind /proc "${INSTALL_ROOT}"/proc
+    /usr/bin/syslinux "${EFI_PART}"
     ERR=${?}
-    if [ "${ERR}" -ne "0" ]; then
-      umount "${INSTALL_ROOT}"/dev
-      echo "Failed to bind mount /proc"
-      exit 1
-    fi
-    mount -o bind /tmp "${INSTALL_ROOT}"/tmp
-    ERR=${?}
-    if [ "${ERR}" -ne "0" ]; then
-      umount "${INSTALL_ROOT}"/dev
-      umount "${INSTALL_ROOT}"/proc
-      echo "Failed to bind mount /tmp"
-      exit 1
-    fi
-    chroot "${INSTALL_ROOT}" /usr/bin/syslinux "${EFI_PART}"
-    ERR=${?}
-    umount "${INSTALL_ROOT}"/tmp
-    umount "${INSTALL_ROOT}"/proc
-    umount "${INSTALL_ROOT}"/dev
     if (expr match "${EFI_PART}" "/dev/loop*" >/dev/null); then
       losetup -d "${EFI_PART}"
     fi

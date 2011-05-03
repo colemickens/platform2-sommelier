@@ -6,16 +6,34 @@
 
 # This script is called after an AutoUpdate or USB install. This script is a
 # simple wrapper that performs the minimal setup necessary to run
-# chromeos-chroot-postinst inside a chroot.
+# chromeos-chroot-postinst inside an install root chroot.
+
+MOUNTS=
+INSTALL_ROOT=$(dirname "$0")
 
 get_src_version() {
   grep ^CHROMEOS_RELEASE_VERSION= /etc/lsb-release | cut -d = -f 2-
 }
 
+install_root_mount() {
+  local mount_point="${INSTALL_ROOT}/${1}"
+  mount --bind --no-mtab "/${1}" "${mount_point}"
+  MOUNTS="${mount_point} ${MOUNTS}"
+}
+
+cleanup() {
+  set +e
+  [ -n "${MOUNTS}" ] && umount --no-mtab ${MOUNTS}
+}
+
 set -e
 
-export INSTALL_ROOT=$(dirname "$0")
+trap cleanup EXIT
 
-"${INSTALL_ROOT}"/usr/sbin/chromeos-chroot-postinst \
+for mnt in dev home mnt/stateful_partition proc sys tmp var; do
+  install_root_mount "${mnt}"
+done
+
+chroot "${INSTALL_ROOT}" /usr/sbin/chromeos-chroot-postinst \
   --src_version="$(get_src_version)" \
   "$@"
