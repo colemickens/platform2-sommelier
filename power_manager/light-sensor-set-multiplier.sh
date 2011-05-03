@@ -10,6 +10,9 @@ TUNEVAL=1000
 if [ -w /sys/class/iio/device0/calib0 ]; then
 	echo $TUNEVAL > /sys/class/iio/device0/calib0
 fi
+if [ -w /sys/class/iio/device0/als_trim ]; then
+	echo $TUNEVAL > /sys/class/iio/device0/als_trim
+fi
 if [ -w /sys/bus/iio/devices/device0/illuminance0_calibbias ]; then
 	echo $TUNEVAL > /sys/bus/iio/devices/device0/illuminance0_calibbias
 fi
