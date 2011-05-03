@@ -9,7 +9,7 @@ PKG_CONFIG ?= pkg-config
 
 BASE_LIBS = -lpthread -lrt -lchromeos -lbootstat -levent -lprotobuf-lite -lbase
 LIBS = $(BASE_LIBS)
-TEST_LIBS = $(BASE_LIBS)
+TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 INCLUDE_DIRS = -I.. $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1 glib-2.0 \
 	gdk-2.0 gtk+-2.0 nss)
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 \
@@ -59,17 +59,18 @@ $(TEST_OBJS): $(DBUS_SERVER) $(COMMON_OBJS)
 
 $(KEYGEN_BIN): $(KEYGEN_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(KEYGEN_OBJS) \
-	$(LIBS) $(LDFLAGS) -o $(KEYGEN_BIN)
+		$(LIBS) $(LDFLAGS) -o $(KEYGEN_BIN)
 
 $(SESSION_BIN): $(SESSION_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(SESSION_OBJS) \
-	$(COMMON_OBJS) $(NEED_PROTO_OBJS) $(LIBS) $(LDFLAGS) -o $(SESSION_BIN)
+		$(COMMON_OBJS) $(NEED_PROTO_OBJS) $(LIBS) $(LDFLAGS) \
+		-o $(SESSION_BIN)
 
 $(TEST_BIN): CXXFLAGS+=-DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(TEST_OBJS) \
-	$(COMMON_OBJS) $(NEED_PROTO_OBJS) $(TEST_LIBS) $(LDFLAGS) -lgtest \
-	-lgmock -o $(TEST_BIN)
+		$(COMMON_OBJS) $(NEED_PROTO_OBJS) $(TEST_LIBS) $(LDFLAGS) \
+		-o $(TEST_BIN)
 
 .cc.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
