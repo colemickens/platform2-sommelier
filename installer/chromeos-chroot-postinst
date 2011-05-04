@@ -4,10 +4,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script is called after an AutoUpdate or USB install. The first argument
-# is the partition where the new rootfs is installed or empty. If non-empty
-# the rootfs should be updated w/ the new bootloader config. If empty, the
-# rootfs is mounted-read only and should not be updated.
+# This script is called after an AutoUpdate or USB install in an install root
+# chroot. The first argument is the partition where the new rootfs is installed
+# or empty. If non-empty the rootfs should be updated w/ the new bootloader
+# config. If empty, the rootfs is mounted-read only and should not be updated.
 
 # Load helper functions
 . /usr/sbin/chromeos-common.sh || exit 1
@@ -39,6 +39,12 @@ fi
 
 # Update syslinux configuration file and install syslinux itself.
 INSTALL_DEV="$1"
+
+# Assert that this script is running in an install root chroot. The assertions
+# fail if /proc is not bind mounted, or if the script is running inside a chroot
+# on the same device, or if the new root is not really a root (inode != 2).
+[ $(stat -c %d /proc/1/root) -ne $(stat -c %d /) ] || exit 1
+[ $(stat -c %i /) -eq 2 ] || exit 1
 
 # Find whole disk device.
 ROOT_DEV=$(get_block_dev_from_partition_dev ${INSTALL_DEV})
