@@ -1,5 +1,5 @@
 #!/bin/sh -u
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -43,8 +43,6 @@ By default, it uses the kernel partition for A or B as requested."
 DEFINE_string rootfs_image "" \
   "Specifies a rootfs image/partition to hash and update for vboot.
 By default, it uses the current root device."
-DEFINE_string install_root "/" \
-  "Specifies the base location to find utilities in the new root"
 DEFINE_boolean ignore_bad_verification ${FLAGS_FALSE} \
   "With override_kernel_options, will ignore rootfs integrity errors"
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
@@ -59,18 +57,13 @@ if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
 fi
 
 EXIT_CODE=0  # To be made non-zero in case of a non-terminal error case
-INSTALL_ROOT="${FLAGS_install_root}"
 # This export is so that locate_gpt will look within this install
 # partition to find that copy of the cgpt program.
 # TODO(wad,adlr) This duplicates the hack from postinst and should be fixed.
-export DEFAULT_CHROOT_DIR="${INSTALL_ROOT}"
+export DEFAULT_CHROOT_DIR=/
 locate_gpt  # sets $GPT to cgpt executable
 
-if [ "$PATH" != "/" ]; then
-  ir="${FLAGS_install_root}"
-  PATH="$ir/bin:$ir/sbin:$ir/usr/bin:$ir/usr/sbin:${PATH}"
-  unset ir
-fi
+[ "$PATH" != "/" ] && PATH="/bin:/sbin:/usr/bin:/usr/sbin:${PATH}"
 
 # Hack to run the code to setup the default dst only if not provided since if
 # this is run from a mounted image on a different machine, rootdev will fail.
@@ -210,7 +203,7 @@ fi
 # TODO(kwaters): dump_kernel_config segfaults on ARM.  We use this to know that
 # we need to scrape the u-boot header.  This needs to be cleaned up once
 # verified root works on the ARM kernel.
-DUMP_KERNEL_CONFIG="${INSTALL_ROOT}"/usr/bin/dump_kernel_config
+DUMP_KERNEL_CONFIG=/usr/bin/dump_kernel_config
 table=
 if ! KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
   # FIXME(kwaters): Terrible hack to extract the kernel config from the uboot
@@ -262,7 +255,7 @@ fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
 # TODO(wad) take preamble from dump_kernel_config.
-VERITY="${INSTALL_ROOT}"/bin/verity
+VERITY=/bin/verity
 table="${verity_preamble},"$(sudo "${VERITY}" create \
         ${verity_depth} \
         "${verity_algorithm}" \
@@ -353,9 +346,8 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_syslinux_cfg" ]; then
 fi
 
 # Lather, rinse and repeat for Das U-Boot
-if [ -s "${INSTALL_ROOT}/boot/boot-A.scr.uimg" ]; then
-  cp "${INSTALL_ROOT}/boot/boot-${newimg_letter}.scr.uimg" \
-    "${mountpoint}/u-boot/boot.scr.uimg"
+if [ -s "/boot/boot-A.scr.uimg" ]; then
+  cp "/boot/boot-${newimg_letter}.scr.uimg" "${mountpoint}/u-boot/boot.scr.uimg"
 fi
 
 set +e  # just grep oneliners and cleanup from here on out.
