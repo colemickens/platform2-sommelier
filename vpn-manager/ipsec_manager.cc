@@ -20,12 +20,13 @@
 #include "base/string_util.h"
 #include "chromeos/process.h"
 #include "gflags/gflags.h"
+#include "openssl/x509.h"
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 // Windows RRAS requires modp1024 dh-group.  Strongswan's
 // default is modp1536 which it does not support.
 DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
-DEFINE_int32(ipsec_timeout, 10, "timeout for ipsec to be established");
+DEFINE_int32(ipsec_timeout, 30, "timeout for ipsec to be established");
 DEFINE_string(leftprotoport, "17/1701", "client protocol/port");
 DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
 DEFINE_bool(pfs, false, "pfs");
@@ -68,8 +69,10 @@ bool IpsecManager::Initialize(int ike_version,
                               const std::string& remote_host,
                               const std::string& psk_file,
                               const std::string& server_ca_file,
-                              const std::string& client_key_file,
-                              const std::string& client_cert_file) {
+                              const std::string& server_id,
+                              const std::string& client_cert_tpm_slot,
+                              const std::string& client_cert_tpm_id,
+                              const std::string& tpm_user_pin) {
   if (remote_host.empty()) {
     LOG(ERROR) << "Missing remote host to IPsec layer";
     return false;
@@ -77,37 +80,61 @@ bool IpsecManager::Initialize(int ike_version,
   remote_host_ = remote_host;
 
   if (psk_file.empty()) {
-    if (server_ca_file.empty() && client_key_file.empty() &&
-        client_cert_file.empty()) {
+    if (server_ca_file.empty() && server_id.empty() &&
+        client_cert_tpm_slot.empty() && client_cert_tpm_id.empty() &&
+        tpm_user_pin.empty()) {
       LOG(ERROR) << "Must specify either PSK or certificates for IPsec layer";
       return false;
     }
 
+    if (ike_version != 1) {
+      LOG(ERROR) << "Only IKE version 1 is supported with certificates";
+      return false;
+    }
+
     // Must be a certificate based connection.
-    if (!file_util::PathExists(FilePath(server_ca_file))) {
+    FilePath server_ca_path(server_ca_file);
+    if (!file_util::PathExists(server_ca_path)) {
       LOG(ERROR) << "Invalid server CA file for IPsec layer: "
+                 << server_ca_file;
+      return false;
+    }
+    if (!ReadCertificateSubject(server_ca_path, &server_ca_subject_)) {
+      LOG(ERROR) << "Unable to read certificate subject from: "
                  << server_ca_file;
       return false;
     }
     server_ca_file_ = server_ca_file;
 
-    if (!file_util::PathExists(FilePath(client_key_file))) {
-      LOG(ERROR) << "Invalid client key file for IPsec layer: "
-                 << client_key_file;
+    if (server_id.empty()) {
+      LOG(ERROR) << "Must specify an ID for the server";
       return false;
     }
-    client_key_file_ = client_key_file;
+    server_id_ = server_id;
 
-    if (!file_util::PathExists(FilePath(client_cert_file))) {
-      LOG(ERROR) << "Invalid client certificate file for IPsec layer: "
-                 << client_key_file;
+    if (client_cert_tpm_slot.empty()) {
+      LOG(ERROR) << "Must specify the slot containing the certificate";
       return false;
     }
-    client_cert_file_ = client_cert_file;
+    client_cert_tpm_slot_ = client_cert_tpm_slot;
+
+    if (client_cert_tpm_id.empty()) {
+      LOG(ERROR) << "Must specify the key ID for the certificate";
+      return false;
+    }
+    client_cert_tpm_id_ = client_cert_tpm_id;
+
+    if (tpm_user_pin.empty()) {
+      LOG(ERROR) << "Must specify user PIN for TPM to use certificate";
+      return false;
+    }
+    tpm_user_pin_ = tpm_user_pin;
   } else {
     if (!server_ca_file.empty() ||
-        !client_key_file.empty() ||
-        !client_cert_file.empty()) {
+        !server_id.empty() ||
+        !client_cert_tpm_slot.empty() ||
+        !client_cert_tpm_id.empty() ||
+        !tpm_user_pin.empty()) {
       LOG(ERROR) << "Specified both PSK and certificates for IPsec layer";
       return false;
     }
@@ -126,6 +153,35 @@ bool IpsecManager::Initialize(int ike_version,
 
   file_util::Delete(FilePath(kIpsecUpFile), false);
 
+  return true;
+}
+
+bool IpsecManager::ReadCertificateSubject(const FilePath& filepath,
+                                          std::string* output) {
+  FILE* fp = fopen(filepath.value().c_str(), "rb");
+  if (!fp) {
+    LOG(ERROR) << "Unable to read certificate";
+    return false;
+  }
+  X509* cert = d2i_X509_fp(fp, NULL);
+  fclose(fp);
+  if (!cert) {
+    LOG(ERROR) << "Error parsing certificate";
+    return false;
+  }
+  BIO* bio = BIO_new(BIO_s_mem());
+  if (!X509_NAME_print_ex(bio, X509_get_subject_name(cert), 0,
+                          XN_FLAG_SEP_CPLUS_SPC)) {
+    LOG(ERROR) << "Could not print certificate name";
+    BIO_free(bio);
+    X509_free(cert);
+    return false;
+  }
+  char* name_ptr;
+  int length = BIO_get_mem_data(bio, &name_ptr);
+  output->assign(name_ptr, length);
+  BIO_free(bio);
+  X509_free(cert);
   return true;
 }
 
@@ -209,12 +265,21 @@ bool IpsecManager::GetAddressesFromRemoteHost(
   return result;
 }
 
-bool IpsecManager::FormatPsk(const FilePath& input_file,
-                             std::string* formatted) {
-  std::string psk;
-  if (!file_util::ReadFileToString(input_file, &psk)) {
-    LOG(ERROR) << "Unable to read PSK from " << input_file.value();
-    return false;
+bool IpsecManager::FormatSecrets(std::string* formatted) {
+  std::string secret_mode;
+  std::string secret;
+  if (psk_file_.empty()) {
+    secret_mode = StringPrintf("PIN %%smartcard%s:%s",
+                               client_cert_tpm_slot_.c_str(),
+                               client_cert_tpm_id_.c_str());
+    secret = tpm_user_pin_;
+  } else {
+    secret_mode = "PSK";
+    if (!file_util::ReadFileToString(FilePath(psk_file_), &secret)) {
+      LOG(ERROR) << "Unable to read PSK from " << psk_file_;
+      return false;
+    }
+    TrimWhitespaceASCII(secret, TRIM_TRAILING, &secret);
   }
   std::string local_address;
   std::string remote_address;
@@ -223,10 +288,9 @@ bool IpsecManager::FormatPsk(const FilePath& input_file,
     LOG(ERROR) << "Local IP address could not be determined for PSK mode";
     return false;
   }
-  TrimWhitespaceASCII(psk, TRIM_TRAILING, &psk);
-  *formatted =
-      StringPrintf("%s %s : PSK \"%s\"\n", local_address.c_str(),
-                   remote_address.c_str(), psk.c_str());
+  *formatted = StringPrintf("%s %s : %s \"%s\"\n", local_address.c_str(),
+                            remote_address.c_str(), secret_mode.c_str(),
+                            secret.c_str());
   return true;
 }
 
@@ -265,7 +329,7 @@ inline void AppendBoolSetting(std::string* config, const char* key,
 
 inline void AppendStringSetting(std::string* config, const char* key,
                                 const std::string& value) {
-  config->append(StringPrintf("\t%s=%s\n", key, value.c_str()));
+  config->append(StringPrintf("\t%s=\"%s\"\n", key, value.c_str()));
 }
 
 inline void AppendIntSetting(std::string* config, const char* key,
@@ -282,6 +346,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
     AppendBoolSetting(&config, "plutostart", false);
   }
   AppendBoolSetting(&config, "nat_traversal", FLAGS_nat_traversal);
+  AppendStringSetting(&config, "pkcs11module", PKCS11_LIB);
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", FLAGS_ike);
   AppendStringSetting(&config, "keyexchange",
@@ -290,9 +355,19 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendBoolSetting(&config, "pfs", FLAGS_pfs);
   AppendBoolSetting(&config, "rekey", FLAGS_rekey);
   AppendStringSetting(&config, "left", "%defaultroute");
+  if (!client_cert_tpm_slot_.empty()) {
+    std::string smartcard = StringPrintf("%%smartcard%s:%s",
+                                         client_cert_tpm_slot_.c_str(),
+                                         client_cert_tpm_id_.c_str());
+    AppendStringSetting(&config, "leftcert", smartcard);
+  }
   AppendStringSetting(&config, "leftprotoport", FLAGS_leftprotoport);
   AppendStringSetting(&config, "leftupdown", IPSEC_UPDOWN);
   AppendStringSetting(&config, "right", remote_host_);
+  if (!server_ca_subject_.empty()) {
+    AppendStringSetting(&config, "rightca", server_ca_subject_);
+  }
+  if (!server_id_.empty()) AppendStringSetting(&config, "rightid", server_id_);
   AppendStringSetting(&config, "rightprotoport", FLAGS_rightprotoport);
   AppendStringSetting(&config, "type", FLAGS_type);
   AppendStringSetting(&config, "auto", "start");
@@ -306,25 +381,21 @@ bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
 bool IpsecManager::WriteConfigFiles() {
   // We need to keep secrets in /mnt/stateful_partition/etc for now
   // because pluto loses permissions to /home/chronos before it tries
-  // reading secrets.
+  // reading secrets. Ditto for CA certs.
   // TODO(kmixter): write this via a fifo.
   FilePath secrets_path_ = FilePath(stateful_container_).
       Append("ipsec.secrets");
   file_util::Delete(secrets_path_, false);
-  if (!psk_file_.empty()) {
-    std::string formatted;
-    if (!FormatPsk(FilePath(psk_file_), &formatted)) {
-      LOG(ERROR) << "Unable to create secrets contents";
-      return false;
-    }
-    if (!file_util::WriteFile(secrets_path_, formatted.c_str(),
-                              formatted.length()) ||
-        !SetIpsecGroup(secrets_path_)) {
-      LOG(ERROR) << "Unable to write secrets file " << secrets_path_.value();
-      return false;
-    }
-  } else {
-    LOG(FATAL) << "Certificate mode not yet implemented";
+  std::string formatted_secrets;
+  if (!FormatSecrets(&formatted_secrets)) {
+    LOG(ERROR) << "Unable to create secrets contents";
+    return false;
+  }
+  if (!file_util::WriteFile(secrets_path_, formatted_secrets.c_str(),
+                            formatted_secrets.length()) ||
+      !SetIpsecGroup(secrets_path_)) {
+    LOG(ERROR) << "Unable to write secrets file " << secrets_path_.value();
+    return false;
   }
   FilePath starter_config_path = temp_path()->Append("ipsec.conf");
   std::string starter_config = FormatStarterConfigFile();
@@ -352,6 +423,22 @@ bool IpsecManager::WriteConfigFiles() {
                << starter_config_path.value() << ": " << saved_errno;
     return false;
   }
+
+  if (!server_ca_file_.empty()) {
+    FilePath target_ca_path = FilePath(stateful_container_).
+        Append("cacert.der");
+    unlink(target_ca_path.value().c_str());
+    if (file_util::PathExists(target_ca_path)) {
+      LOG(ERROR) << "Unable to delete old CA cert";
+      return false;
+    }
+    if (!file_util::CopyFile(FilePath(server_ca_file_), target_ca_path) ||
+        !SetIpsecGroup(target_ca_path)) {
+      LOG(ERROR) << "Unable to copy CA cert file to stateful partition";
+      return false;
+    }
+  }
+
   return true;
 }
 

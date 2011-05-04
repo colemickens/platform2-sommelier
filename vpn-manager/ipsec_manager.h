@@ -30,11 +30,13 @@ class IpsecManager : public ServiceManager {
   // |server_ca_file|, client key file |client_key_file|, and client
   // certificate file |client_cert_file|.
   bool Initialize(int ike_version,
-                  const std::string& remote_hostname,
+                  const std::string& remote_host,
                   const std::string& psk_file,
                   const std::string& server_ca_file,
-                  const std::string& client_key_file,
-                  const std::string& client_cert_file);
+                  const std::string& server_id,
+                  const std::string& client_cert_tpm_slot,
+                  const std::string& client_cert_tpm_id,
+                  const std::string& tpm_user_pin);
 
   virtual bool Start();
   virtual void Stop();
@@ -52,24 +54,31 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, PollTimeoutWaiting);
   FRIEND_TEST(IpsecManagerTest, PollTransitionToUp);
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
-  FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatPsk);
+  FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, Start);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterNotYetRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, WriteConfigFiles);
+  FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatSecrets);
+  FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile);
+  FRIEND_TEST(IpsecManagerTestIkeV1Certs, WriteConfigFiles);
 
+  bool ReadCertificateSubject(const FilePath& filepath,
+                              std::string* output);
   bool ConvertSockAddrToIPString(const struct sockaddr& socket_address,
                                  std::string* output);
   bool GetAddressesFromRemoteHost(const std::string& remote_hostname,
                                   std::string* remote_address_text,
                                   std::string* local_address_text);
-  bool FormatPsk(const FilePath& input_file, std::string* formatted);
+  bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
   std::string FormatStarterConfigFile();
+  bool CreateStatefulSymlink(const std::string& target_filename,
+                             const std::string& symlink_filename);
   bool StartStarter();
   bool SetIpsecGroup(const FilePath& file_path);
 
@@ -100,12 +109,18 @@ class IpsecManager : public ServiceManager {
   std::string remote_host_;
   // File containing the IPsec pre-shared key.
   std::string psk_file_;
-  // File containing the server certificate authority.
+  // File containing the server certificate authority in DER format.
   std::string server_ca_file_;
-  // File containing the client private key.
-  std::string client_key_file_;
-  // File containing the client certificate.
-  std::string client_cert_file_;
+  // Subject of the server certificate authority certificate.
+  std::string server_ca_subject_;
+  // ID that server must send to identify itself.
+  std::string server_id_;
+  // Slot where the client certificate resides in the TPM.
+  std::string client_cert_tpm_slot_;
+  // Key ID of the client certificate residing in the TPM.
+  std::string client_cert_tpm_id_;
+  // User PIN to access the TPM.
+  std::string tpm_user_pin_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
   // Time when ipsec was started.

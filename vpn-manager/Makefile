@@ -11,13 +11,16 @@ L2TPIPSEC_OBJS = \
 	ipsec_manager.o \
 	l2tp_manager.o \
 	service_manager.o
+PKCS11_LIB = /usr/lib/opencryptoki/libopencryptoki.so.0
 TEST_OBJS = $(L2TPIPSEC_OBJS)
 TEST_BINS = \
 	ipsec_manager_test \
 	l2tp_manager_test \
 	service_manager_test
 
-LDCONFIG = $(shell $(PKG_CONFIG) --libs libpcrecpp)
+LDCONFIG = \
+	$(shell $(PKG_CONFIG) --libs libpcrecpp) \
+	$(shell $(PKG_CONFIG) --libs openssl)
 
 # -lglib-2.0 is needed by libbase.a now.
 COMMON_LIBS = -lchromeos -lbase -lpthread -lglib-2.0 -lgflags -lrt $(LDCONFIG)
@@ -28,7 +31,9 @@ INCLUDE_DIRS = -I..
 CXXFLAGS += -Wall -Werror -DIPSEC_STARTER=\"$(IPSEC_STARTER)\" \
 	-DIPSEC_WHACK=\"$(IPSEC_WHACK)\" \
 	-DIPSEC_UPDOWN=\"$(IPSEC_UPDOWN)\" \
-	-DL2TPD=\"$(L2TPD)\"
+	-DL2TPD=\"$(L2TPD)\" \
+	-DPKCS11_LIB=\"$(PKCS11_LIB)\" \
+	$(shell $(PKG_CONFIG) --cflags openssl)
 
 all: $(BINS)
 
