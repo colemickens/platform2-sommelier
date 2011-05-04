@@ -101,17 +101,17 @@ class DaemonTest : public Test {
   // Adds a metrics library mock expectation for the remaining battery
   // charge metric with the given |sample|.
   void ExpectBatteryRemainingChargeMetric(int sample) {
-    ExpectEnumMetric(Daemon::kMetricBatteryRemainingChargeName, sample,
-                     Daemon::kMetricBatteryRemainingChargeMax);
+    ExpectEnumMetric(kMetricBatteryRemainingChargeName, sample,
+                     kMetricBatteryRemainingChargeMax);
   }
 
   // Adds a metrics library mock expectation for the battery's
   // remaining to empty metric with the given |sample|.
   void ExpectBatteryTimeToEmptyMetric(int sample) {
-    ExpectMetric(Daemon::kMetricBatteryTimeToEmptyName, sample,
-                 Daemon::kMetricBatteryTimeToEmptyMin,
-                 Daemon::kMetricBatteryTimeToEmptyMax,
-                 Daemon::kMetricBatteryTimeToEmptyBuckets);
+    ExpectMetric(kMetricBatteryTimeToEmptyName, sample,
+                 kMetricBatteryTimeToEmptyMin,
+                 kMetricBatteryTimeToEmptyMax,
+                 kMetricBatteryTimeToEmptyBuckets);
   }
 
   // Resets all fields of |info| to 0.
@@ -208,22 +208,22 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetric) {
   status_.battery_percentage = 10.4;
   ExpectBatteryRemainingChargeMetric(10);
   EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, Daemon::kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(Daemon::kMetricBatteryRemainingChargeInterval,
+      status_, kMetricBatteryRemainingChargeInterval));
+  EXPECT_EQ(kMetricBatteryRemainingChargeInterval,
             daemon_.battery_remaining_charge_metric_last_);
 
   status_.battery_percentage = 11.6;
   ExpectBatteryRemainingChargeMetric(12);
   EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, Daemon::kMetricBatteryRemainingChargeInterval - 1));
-  EXPECT_EQ(Daemon::kMetricBatteryRemainingChargeInterval - 1,
+      status_, kMetricBatteryRemainingChargeInterval - 1));
+  EXPECT_EQ(kMetricBatteryRemainingChargeInterval - 1,
             daemon_.battery_remaining_charge_metric_last_);
 
   status_.battery_percentage = 14.5;
   ExpectBatteryRemainingChargeMetric(15);
   EXPECT_TRUE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, 2 * Daemon::kMetricBatteryRemainingChargeInterval));
-  EXPECT_EQ(2 * Daemon::kMetricBatteryRemainingChargeInterval,
+      status_, 2 * kMetricBatteryRemainingChargeInterval));
+  EXPECT_EQ(2 * kMetricBatteryRemainingChargeInterval,
             daemon_.battery_remaining_charge_metric_last_);
 }
 
@@ -235,7 +235,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricInterval) {
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, Daemon::kMetricBatteryRemainingChargeInterval - 1));
+      status_, kMetricBatteryRemainingChargeInterval - 1));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
@@ -244,12 +244,12 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
 
   status_.battery_percentage = 20.0;
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, Daemon::kMetricBatteryRemainingChargeInterval));
+      status_, kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 
   daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryRemainingChargeMetric(
-      status_, 2 * Daemon::kMetricBatteryRemainingChargeInterval));
+      status_, 2 * kMetricBatteryRemainingChargeInterval));
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
@@ -258,22 +258,22 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
   status_.battery_time_to_empty = 90;
   ExpectBatteryTimeToEmptyMetric(2);
   EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, Daemon::kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(Daemon::kMetricBatteryTimeToEmptyInterval,
+      status_, kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(kMetricBatteryTimeToEmptyInterval,
             daemon_.battery_time_to_empty_metric_last_);
 
   status_.battery_time_to_empty = 89;
   ExpectBatteryTimeToEmptyMetric(1);
   EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, Daemon::kMetricBatteryTimeToEmptyInterval - 1));
-  EXPECT_EQ(Daemon::kMetricBatteryTimeToEmptyInterval - 1,
+      status_, kMetricBatteryTimeToEmptyInterval - 1));
+  EXPECT_EQ(kMetricBatteryTimeToEmptyInterval - 1,
             daemon_.battery_time_to_empty_metric_last_);
 
   status_.battery_time_to_empty = 151;
   ExpectBatteryTimeToEmptyMetric(3);
   EXPECT_TRUE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, 2 * Daemon::kMetricBatteryTimeToEmptyInterval));
-  EXPECT_EQ(2 * Daemon::kMetricBatteryTimeToEmptyInterval,
+      status_, 2 * kMetricBatteryTimeToEmptyInterval));
+  EXPECT_EQ(2 * kMetricBatteryTimeToEmptyInterval,
             daemon_.battery_time_to_empty_metric_last_);
 }
 
@@ -283,7 +283,7 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(status_, /* now */ 0));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, Daemon::kMetricBatteryTimeToEmptyInterval - 1));
+      status_, kMetricBatteryTimeToEmptyInterval - 1));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
@@ -292,12 +292,12 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
 
   status_.battery_time_to_empty = 120;
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, Daemon::kMetricBatteryTimeToEmptyInterval));
+      status_, kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 
   daemon_.plugged_state_ = kPowerConnected;
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
-      status_, 2 * Daemon::kMetricBatteryTimeToEmptyInterval));
+      status_, 2 * kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 }
 

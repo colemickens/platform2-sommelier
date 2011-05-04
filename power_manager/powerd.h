@@ -92,16 +92,6 @@ class Daemon : public XIdleMonitor {
   enum ShutdownState { kShutdownNone, kShutdownRestarting,
                        kShutdownPowerOff };
 
-  // UMA metrics parameters.
-  static const char kMetricBatteryRemainingChargeName[];
-  static const int kMetricBatteryRemainingChargeMax;
-  static const time_t kMetricBatteryRemainingChargeInterval;
-  static const char kMetricBatteryTimeToEmptyName[];
-  static const int kMetricBatteryTimeToEmptyMin;
-  static const int kMetricBatteryTimeToEmptyMax;
-  static const int kMetricBatteryTimeToEmptyBuckets;
-  static const time_t kMetricBatteryTimeToEmptyInterval;
-
   // Read settings from disk
   void ReadSettings();
 

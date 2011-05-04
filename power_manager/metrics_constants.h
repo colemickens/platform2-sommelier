@@ -4,6 +4,7 @@
 
 #ifndef POWER_MANAGER_METRICS_CONSTANTS_H_
 #define POWER_MANAGER_METRICS_CONSTANTS_H_
+#pragma once
 
 #include <time.h>
 
@@ -29,6 +30,14 @@ extern const int kMetricBatteryDischargeRateMin;
 extern const int kMetricBatteryDischargeRateMax;
 extern const int kMetricBatteryDischargeRateBuckets;
 extern const time_t kMetricBatteryDischargeRateInterval;
+extern const char kMetricBatteryRemainingChargeName[];
+extern const int kMetricBatteryRemainingChargeMax;
+extern const time_t kMetricBatteryRemainingChargeInterval;
+extern const char kMetricBatteryTimeToEmptyName[];
+extern const int kMetricBatteryTimeToEmptyMin;
+extern const int kMetricBatteryTimeToEmptyMax;
+extern const int kMetricBatteryTimeToEmptyBuckets;
+extern const time_t kMetricBatteryTimeToEmptyInterval;
 
 }  // namespace power_manager
 
