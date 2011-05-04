@@ -14,17 +14,6 @@ using base::TimeTicks;
 
 namespace power_manager {
 
-const char Daemon::kMetricBatteryRemainingChargeName[] =
-    "Power.BatteryRemainingCharge";  // %
-const int Daemon::kMetricBatteryRemainingChargeMax = 101;
-const time_t Daemon::kMetricBatteryRemainingChargeInterval = 30;  // seconds
-const char Daemon::kMetricBatteryTimeToEmptyName[] =
-    "Power.BatteryTimeToEmpty";  // minutes
-const int Daemon::kMetricBatteryTimeToEmptyMin = 1;
-const int Daemon::kMetricBatteryTimeToEmptyMax = 1000;
-const int Daemon::kMetricBatteryTimeToEmptyBuckets = 50;
-const time_t Daemon::kMetricBatteryTimeToEmptyInterval = 30;  // seconds
-
 // Checks if |now| is the time to generate a new sample of a given
 // metric. Returns true if the last metric sample was generated at
 // least |interval| seconds ago (or if there is a clock jump back in
