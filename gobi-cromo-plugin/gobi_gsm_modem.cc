@@ -601,7 +601,23 @@ void GobiGsmModem::SetSmsc(const std::string& smsc, DBus::Error &error) {
 
 std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
   std::vector<utilities::DBusPropertyMap> result;
-  LOG(WARNING) << "GobiGsmModem::List not implemented";
+  ULONG items[100];
+  ULONG num_items;
+
+  num_items = sizeof(items) / (2 * sizeof(items[0]));
+  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL,
+                              &num_items, (BYTE *)items);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, result);
+  LOG(INFO) << "GetSmsList: got " << num_items << " messages";
+
+  for (ULONG i = 0 ; i < num_items ; i++) {
+    int index = items[2 * i];
+    utilities::DBusPropertyMap sms_result;
+    sms_result = GobiGsmModem::Get(index, error);
+    sms_result["index"].writer().append_uint32(index);
+    result.push_back(sms_result);
+  }
+
   return result;
 }
 
