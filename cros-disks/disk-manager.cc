@@ -7,27 +7,43 @@
 #include "udev-device.h"
 
 #include <base/logging.h>
+#include <base/scoped_ptr.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <errno.h>
 #include <libudev.h>
+#include <pwd.h>
 #include <sys/mount.h>
 #include <unistd.h>
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <vector>
 
 
 namespace cros_disks {
 
-static const char *kMountOptionReadWrite = "rw";
-static const char *kMountOptionNoDev = "nodev";
-static const char *kMountOptionNoExec = "noexec";
-static const char *kMountOptionNoSuid = "nosuid";
-static const char *kUnmountOptionForce = "force";
-static const char *kMountRootPrefix = "/media/";
-static const char *kFallbackMountPath = "/media/disk";
+// TODO(benchan): Refactor DiskManager to move functionalities like
+// processing mount/unmount options into separate classes.
+
+// TODO(benchan): Infer the current user/group from session manager
+// instead of hardcoding as chronos
+static const char kMountDefaultUser[] = "chronos";
+static const char kMountOptionReadWrite[] = "rw";
+static const char kMountOptionNoDev[] = "nodev";
+static const char kMountOptionNoExec[] = "noexec";
+static const char kMountOptionNoSuid[] = "nosuid";
+static const char kUnmountOptionForce[] = "force";
+static const char kMountRootPrefix[] = "/media/";
+static const char kFallbackMountPath[] = "/media/disk";
 static const unsigned kMaxNumMountTrials = 10000;
+static const unsigned kFallbackPasswordBufferSize = 16384;
+static const char* const kFilesystemsWithMountUserAndGroupId[] = {
+  "fat", "vfat", "msdos", "ntfs",
+  "iso9660", "udf",
+  "hfs", "hfsplus", "hpfs",
+  NULL
+};
 
 DiskManager::DiskManager()
     : udev_(udev_new()),
@@ -174,6 +190,30 @@ std::vector<std::string> DiskManager::GetFilesystems() const {
   return std::vector<std::string>();
 }
 
+bool DiskManager::GetUserAndGroupId(const std::string& username,
+    uid_t *uid, gid_t *gid) const {
+  long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
+  if (buffer_size <= 0) {
+    buffer_size = kFallbackPasswordBufferSize;
+  }
+
+  struct passwd password_buffer, *password_buffer_ptr = NULL;
+  scoped_array<char> buffer(new char[buffer_size]);
+  getpwnam_r(username.c_str(), &password_buffer, buffer.get(), buffer_size,
+      &password_buffer_ptr);
+  if (password_buffer_ptr == NULL) {
+    return false;
+  }
+
+  if (uid) {
+    *uid = password_buffer.pw_uid;
+  }
+  if (gid) {
+    *gid = password_buffer.pw_gid;
+  }
+  return true;
+}
+
 std::vector<std::string> DiskManager::GetFilesystems(
     std::istream& stream) const {
   std::vector<std::string> filesystems;
@@ -306,6 +346,65 @@ bool DiskManager::ExtractUnmountOptions(
   return true;
 }
 
+bool DiskManager::IsMountUserAndGroupIdSupportedByFilesystem(
+    const std::string& filesystem_type) const {
+  for (const char* const* filesystem = kFilesystemsWithMountUserAndGroupId;
+      *filesystem; ++filesystem) {
+    if (strcmp(filesystem_type.c_str(), *filesystem) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string DiskManager::ModifyMountOptionsForFilesystem(
+    const std::string& filesystem_type, const std::string& options) const {
+  std::stringstream extended_options(options);
+  if (IsMountUserAndGroupIdSupportedByFilesystem(filesystem_type)) {
+    uid_t uid;
+    gid_t gid;
+    if (GetUserAndGroupId(kMountDefaultUser, &uid, &gid)) {
+      if (!options.empty()) {
+        extended_options << ",";
+      }
+      extended_options << "uid=" << uid << ",gid=" << gid;
+    }
+  }
+  return extended_options.str();
+}
+
+bool DiskManager::DoMount(const std::string& device_file,
+    const std::string& mount_path, const std::string& filesystem_type,
+    unsigned long mount_flags, const std::string& mount_data) const {
+  bool mounted = false;
+  if (mount(device_file.c_str(), mount_path.c_str(),
+        filesystem_type.c_str(), mount_flags,
+        mount_data.c_str()) == 0) {
+    mounted = true;
+  } else {
+    // Try to mount the disk as read-only if mounting as read-write failed.
+    unsigned long read_only_mount_flags = mount_flags | MS_RDONLY;
+    if (read_only_mount_flags != mount_flags) {
+      if (mount(device_file.c_str(), mount_path.c_str(),
+            filesystem_type.c_str(), read_only_mount_flags,
+            mount_data.c_str()) == 0) {
+        mounted = true;
+      }
+    }
+  }
+
+  if (mounted) {
+    LOG(INFO) << "Mounted '" << device_file << "' to '" << mount_path
+      << "' as " << filesystem_type << " with options '" << mount_data
+      << "'";
+  } else {
+    LOG(INFO) << "Failed to mount '" << device_file << "' to '" << mount_path
+      << "' as " << filesystem_type << " with options '" << mount_data
+      << "' (errno=" << errno << ")";
+  }
+  return mounted;
+}
+
 bool DiskManager::Mount(const std::string& device_path,
     const std::string& filesystem_type,
     const std::vector<std::string>& options,
@@ -373,18 +472,13 @@ bool DiskManager::Mount(const std::string& device_path,
   for (std::vector<std::string>::const_iterator
       filesystem_iterator(filesystems.begin());
       filesystem_iterator != filesystems.end(); ++filesystem_iterator) {
-    if (mount(device_file.c_str(), mount_target.c_str(),
-          filesystem_iterator->c_str(), mount_flags,
-          mount_data.c_str()) == 0) {
-      mounted = true;
-      LOG(INFO) << "Mounted '" << device_path << "' to '"
-        << mount_target << "' as " << *filesystem_iterator;
+    const std::string& filesystem_type = *filesystem_iterator;
+    const std::string mount_options =
+      ModifyMountOptionsForFilesystem(filesystem_type, mount_data);
+    mounted = DoMount(device_file, mount_target, filesystem_type, mount_flags,
+        mount_options);
+    if (mounted)
       break;
-    }
-
-    LOG(INFO) << "Failed to mount '" << device_path << "' to '"
-      << mount_target << "' as " << *filesystem_iterator
-      << " (errno=" << errno << ")";
   }
 
   if (!mounted) {

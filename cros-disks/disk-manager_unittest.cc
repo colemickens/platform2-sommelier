@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <sys/mount.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <sstream>
 
@@ -91,6 +92,38 @@ TEST_F(DiskManagerTest, GetFilesystemsFromStream) {
     EXPECT_EQ("fuseblk", filesystems[3]);
     EXPECT_EQ("vfat", filesystems[4]);
   }
+}
+
+TEST_F(DiskManagerTest, IsMountUserAndGroupIdSupportedByFilesystem) {
+  DiskManager manager;
+  EXPECT_FALSE(manager.IsMountUserAndGroupIdSupportedByFilesystem("ext2"));
+  EXPECT_FALSE(manager.IsMountUserAndGroupIdSupportedByFilesystem("ext3"));
+  EXPECT_FALSE(manager.IsMountUserAndGroupIdSupportedByFilesystem("ext4"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("fat"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("vfat"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("msdos"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("ntfs"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("iso9660"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("udf"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("hfs"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("hfsplus"));
+  EXPECT_TRUE(manager.IsMountUserAndGroupIdSupportedByFilesystem("hpfs"));
+}
+
+TEST_F(DiskManagerTest, GetUserAndGroupIdForRoot) {
+  DiskManager manager;
+  uid_t uid;
+  gid_t gid;
+  EXPECT_TRUE(manager.GetUserAndGroupId("root", &uid, &gid));
+  EXPECT_EQ(0, uid);
+  EXPECT_EQ(0, gid);
+}
+
+TEST_F(DiskManagerTest, GetUserAndGroupIdForNonExistentUser) {
+  DiskManager manager;
+  uid_t uid;
+  gid_t gid;
+  EXPECT_FALSE(manager.GetUserAndGroupId("non-existent-user", &uid, &gid));
 }
 
 TEST_F(DiskManagerTest, SanitizeMountOptionsWithReadOnlyDisk) {

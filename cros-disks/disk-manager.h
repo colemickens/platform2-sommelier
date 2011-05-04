@@ -7,6 +7,7 @@
 
 #include <blkid/blkid.h>
 #include <libudev.h>
+#include <sys/types.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -58,6 +59,14 @@ class DiskManager {
   // /proc/filesystems.
   std::vector<std::string> GetFilesystems(std::istream& stream) const;
 
+  // Checks if a filesystem supports user ID and group ID in mount options.
+  bool IsMountUserAndGroupIdSupportedByFilesystem(
+      const std::string& filesystem_type) const;
+
+  // Gets the user ID and group ID for a given username.
+  bool GetUserAndGroupId(const std::string& username,
+      uid_t *uid, gid_t *gid) const;
+
   // Gets the mount directory name for a disk.
   std::string GetMountDirectoryName(const Disk& disk) const;
 
@@ -69,6 +78,10 @@ class DiskManager {
   std::vector<std::string> SanitizeMountOptions(
       const std::vector<std::string>& options, const Disk& disk) const;
 
+  // Modifies mount options for a filesystem type.
+  std::string ModifyMountOptionsForFilesystem(
+      const std::string& filesystem_type, const std::string& options) const;
+
   // Extracts mount flags and data for Mount() from an array of options.
   bool ExtractMountOptions(const std::vector<std::string>& options,
       unsigned long *mount_flags, std::string *mount_data) const;
@@ -76,6 +89,11 @@ class DiskManager {
   // Extracts unmount flags for Unmount() from an array of options.
   bool ExtractUnmountOptions(const std::vector<std::string>& options,
       int *unmount_flags) const;
+
+  // Calls the low-level mount function to mount a device file.
+  bool DoMount(const std::string& device_file,
+      const std::string& mount_path, const std::string& filesystem_type,
+      unsigned long mount_flags, const std::string& mount_data) const;
 
   // Mounts a given disk.
   bool Mount(const std::string& device_path,
