@@ -5,16 +5,14 @@
 # found in the LICENSE file.
 
 # This script is called after an AutoUpdate or USB install in an install root
-# chroot. The first argument is the partition where the new rootfs is installed
-# or empty. If non-empty the rootfs should be updated w/ the new bootloader
-# config. If empty, the rootfs is mounted-read only and should not be updated.
+# chroot. The first argument is the partition where the new rootfs is
+# installed. The rootfs should be updated w/ the new bootloader config.
 
 # Load helper functions
 . /usr/sbin/chromeos-common.sh || exit 1
 . /usr/lib/shflags || exit 1
 
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
-DEFINE_string esp_part_file "" "File containing the ESP partition"
 DEFINE_string src_version "0.0.0.0" "Current OS version"
 
 # WARNING: do NOT change this default value without consulting adlr/nsanders.
@@ -194,9 +192,6 @@ update_firmware() {
   return 0  # success
 }
 
-# Pre-commit. Returning an error here will prevent ever booting into the
-# installed system.
-
 echo "Postinst running"
 
 # If this FS was mounted read-write, we can't do deltas from it. Mark the
@@ -206,22 +201,10 @@ echo "Postinst running"
 echo " Set boot target to ${INSTALL_DEV}:" \
   "Partition ${NEW_PART_NUM}, Slot ${BOOT_SLOT}"
 
-# TODO(rkc): This is a bit of a hack - we're depending on the fact that our
-# build machine will always be Intel based - if it isn't, VM builds will fail
 # Install syslinux files on EFI partition
 if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
   EFI_MNT=$(mktemp -d /tmp/EFI.XXXXXX)
-  if [ -z "${FLAGS_esp_part_file}" ]; then
-    EFI_PART=$(make_partition_dev "${ROOT_DEV}" "${LEGACY_PART_NUM}")
-  else
-    EFI_PART=$(losetup -f)
-    if [ -z "${EFI_PART}" ]; then
-      # It's okay to die here; this parameter will never be given on live
-      # system - this is only in case of mounted image postinst runs
-      die "No free loop device. Free up a loop device or reboot. Exiting."
-    fi
-    losetup "${EFI_PART}" "${FLAGS_esp_part_file}"
-  fi
+  EFI_PART=$(make_partition_dev "${ROOT_DEV}" "${LEGACY_PART_NUM}")
   # TODO: scary hack to work around disk corruption
   # Note, we mean to run fsck.vfat twice, fsck.vfat returns status 1 for
   # "Recoverable errors have been detected or dosfsck has discovered an
@@ -263,16 +246,8 @@ if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
     echo "Failed to copy syslinux files in and make them bootable."
     exit 1
   fi
-  /usr/bin/syslinux "${EFI_PART}"
-  ERR=${?}
-  if (expr match "${EFI_PART}" "/dev/loop*" >/dev/null); then
-    losetup -d "${EFI_PART}"
-  fi
   set -e
-  if [ "${ERR}" -ne "0" ]; then
-    echo "Failed to run syslinux on: ${EFI_PART}"
-    exit 1
-  fi
+  /usr/bin/syslinux "${EFI_PART}"
 fi
 
 # This export is so that locate_gpt will look within this install partition to
@@ -280,90 +255,84 @@ fi
 export DEFAULT_CHROOT_DIR=/
 locate_gpt  # sets $GPT to cgpt executable (or fails and exits immediately)
 
-# If we're working on a real machine, not a mounted image, only then
-# run the gpt tool to manipulate the partitions - if we're touching
-# the ESP from a file, it means we are not on the target hardware, making
-# the GPT and firmware scripts inapplicable nor are we auto-updating
-if [ -z "${FLAGS_esp_part_file}" ]; then
-  echo "Updating the root filesystem hashes and legacy bootloaders"
-  ROOT_DEV_PARAM=""
-  if [ -n "$IS_UPDATE" ]; then
-    ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
-  fi
-  if [ ${IS_INTEL_ARCH} -eq 1 ]; then
-    syslinux_cfg="/boot/syslinux/root.${BOOT_SLOT}.cfg"
-    grub_cfg="/boot/efi/boot/grub.cfg"
-    /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root \
-        --update_syslinux_cfg="${syslinux_cfg}" \
-        --update_grub_cfg="${grub_cfg}" \
-        --update_vmlinuz=/boot/vmlinuz \
-        ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
-  else
-    /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root \
-        ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
-  fi
+echo "Updating the root filesystem hashes and legacy bootloaders"
+ROOT_DEV_PARAM=""
+if [ -n "$IS_UPDATE" ]; then
+  ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
+fi
+if [ ${IS_INTEL_ARCH} -eq 1 ]; then
+  syslinux_cfg="/boot/syslinux/root.${BOOT_SLOT}.cfg"
+  grub_cfg="/boot/efi/boot/grub.cfg"
+  /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+      --dst=${ROOT_DEV} --run_as_root \
+      --update_syslinux_cfg="${syslinux_cfg}" \
+      --update_grub_cfg="${grub_cfg}" \
+      --update_vmlinuz=/boot/vmlinuz \
+      ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
+else
+  /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
+      --dst=${ROOT_DEV} --run_as_root \
+      ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
+fi
 
-  echo "Updating Partition Table Attributes..."
-  NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
-  # Make updated partition highest priority for next reboot
-  "$GPT" prioritize -i $NEW_KERN_NUM $ROOT_DEV
-  # Set kernel as successful=1 except when autoupdating
-  new_as_successful=0
-  if [ -n "${IS_FACTORY_INSTALL}" -o \
-       -n "${IS_RECOVERY_INSTALL}" -o \
-       -n "${IS_INSTALL}" ]; then
-    new_as_successful=1
-  fi
-  "$GPT" add -i $NEW_KERN_NUM -S $new_as_successful -T 6 $ROOT_DEV
+echo "Updating Partition Table Attributes..."
+NEW_KERN_NUM=$(( $NEW_PART_NUM - 1))
+# Make updated partition highest priority for next reboot
+"$GPT" prioritize -i $NEW_KERN_NUM $ROOT_DEV
+# Set kernel as successful=1 except when autoupdating
+new_as_successful=0
+if [ -n "${IS_FACTORY_INSTALL}" -o \
+     -n "${IS_RECOVERY_INSTALL}" -o \
+     -n "${IS_INSTALL}" ]; then
+  new_as_successful=1
+fi
+"$GPT" add -i $NEW_KERN_NUM -S $new_as_successful -T 6 $ROOT_DEV
 
-  # Set up gpt boot selection for legacy devices.
-  # flush linux caches; seems to be necessary
-  sync
-  echo 3 > /proc/sys/vm/drop_caches
+# Set up gpt boot selection for legacy devices.
+# flush linux caches; seems to be necessary
+sync
+echo 3 > /proc/sys/vm/drop_caches
 
-  echo "Updating gpt PMBR target for legacy BIOS"
-  # Configure the PMBR to boot the new image.
-  echo "marking part $LEGACY_PART_NUM bootable (new)"
-  "$GPT" boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
+echo "Updating gpt PMBR target for legacy BIOS"
+# Configure the PMBR to boot the new image.
+echo "marking part $LEGACY_PART_NUM bootable (new)"
+"$GPT" boot -i $LEGACY_PART_NUM ${ROOT_DEV} 2>&1
 
-  if [ ${MAKE_DEV_READONLY} -eq ${FLAGS_TRUE} ]; then
-    echo "Making dev ${INSTALL_DEV} read-only"
-    hdparm -r 1 "${INSTALL_DEV}"
-  fi
+if [ ${MAKE_DEV_READONLY} -eq ${FLAGS_TRUE} ]; then
+  echo "Making dev ${INSTALL_DEV} read-only"
+  hdparm -r 1 "${INSTALL_DEV}"
+fi
 
-  # At this point in the script, the new partition has been marked bootable
-  # and a reboot will boot into it. Thus, it's important that any future
-  # errors in this script do not cause this script to return failure unless
-  # in factory mode.
-  if [ -z "${IS_FACTORY_INSTALL}" ]; then
-    set +e
-  fi
+# At this point in the script, the new partition has been marked bootable
+# and a reboot will boot into it. Thus, it's important that any future
+# errors in this script do not cause this script to return failure unless
+# in factory mode.
+if [ -z "${IS_FACTORY_INSTALL}" ]; then
+  set +e
+fi
 
-  # We have a new image, making the ureadahead pack files
-  # out-of-date.  Delete the files so that ureadahead will
-  # regenerate them on the next reboot.
-  # WARNING: This doesn't work with upgrade from USB, rather than full
-  # install/recovery. We don't have support for it as it'll increase the
-  # complexity here, and only developers do upgrade from USB.
-  rm -f /var/lib/ureadahead/*
+# We have a new image, making the ureadahead pack files
+# out-of-date.  Delete the files so that ureadahead will
+# regenerate them on the next reboot.
+# WARNING: This doesn't work with upgrade from USB, rather than full
+# install/recovery. We don't have support for it as it'll increase the
+# complexity here, and only developers do upgrade from USB.
+rm -f /var/lib/ureadahead/*
 
-  # Create a file indicating that the install is completed. The file
-  # will be used in /sbin/chromeos_startup to run tasks on the next boot.
-  # See comments above about removing ureadahead files.
-  touch /mnt/stateful_partition/.install_completed
+# Create a file indicating that the install is completed. The file
+# will be used in /sbin/chromeos_startup to run tasks on the next boot.
+# See comments above about removing ureadahead files.
+touch /mnt/stateful_partition/.install_completed
 
-  # TODO: support firmware update for ARM
-  if [ ${IS_INTEL_ARCH} -eq 1 ] && ! update_firmware; then
-    # Note: This will only rollback the ChromeOS verified boot target.
-    # The assumption is that systems running firmware autoupdate
-    # are running H2C Bios. If the firmware updater crashes or writes
-    # corrupt data rather than gracefully failing, we'll probably need
-    # to recover with a recovery image.
-    echo "Firmware update failed."
-    echo "Rolling back update due to failure installing required firmware."
-    "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
-    exit 1
-  fi
+# TODO: support firmware update for ARM
+if [ ${IS_INTEL_ARCH} -eq 1 ] && ! update_firmware; then
+  # Note: This will only rollback the ChromeOS verified boot target.
+  # The assumption is that systems running firmware autoupdate
+  # are running H2C Bios. If the firmware updater crashes or writes
+  # corrupt data rather than gracefully failing, we'll probably need
+  # to recover with a recovery image.
+  echo "Firmware update failed."
+  echo "Rolling back update due to failure installing required firmware."
+  "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
+  exit 1
 fi
