@@ -398,8 +398,10 @@ class SessionManagerService
   static const char kDeviceOwnerPref[];
   static const char kIOThreadName[];
 
+  // TODO(cmasone): consider tracking job, pid and watcher in one struct.
   std::vector<ChildJobInterface*> child_jobs_;
   std::vector<int> child_pids_;
+  std::vector<guint> child_watchers_;
   bool exit_on_child_done_;
 
   gobject::SessionManager* session_manager_;

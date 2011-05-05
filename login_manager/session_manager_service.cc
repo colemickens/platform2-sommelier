@@ -355,11 +355,12 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
     child_job->Run();
     exit(1);  // Run() is not supposed to return.
   }
-  g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
-                         pid,
-                         HandleChildExit,
-                         this,
-                         NULL);
+  // TODO(cmasone): Remove the watcher when the child exits.
+  child_watchers_.push_back(g_child_watch_add_full(G_PRIORITY_HIGH_IDLE,
+                                                   pid,
+                                                   HandleChildExit,
+                                                   this,
+                                                   NULL));
   return pid;
 }
 
@@ -1028,6 +1029,10 @@ int SessionManagerService::FindChildByPid(int pid) {
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
+  // Remove child exit handlers.
+  for (size_t i = 0; i < child_watchers_.size(); ++i)
+    g_source_remove(child_watchers_[i]);
+
   vector<pair<int, uid_t> > pids_to_kill;
 
   for (size_t i = 0; i < child_pids_.size(); ++i) {
