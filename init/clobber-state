@@ -22,6 +22,7 @@ fi
 FACTORY_WIPE=$(echo "$@" | grep -sq factory && echo "factory")
 FAST_WIPE=$(echo "$@" | grep -sq fast && echo "fast")
 KEEPIMG=$(echo "$@" | grep -sq keepimg && echo "keepimg")
+FACTORY_WIPE_FIRMWARE_PID=""
 
 wipedev() {
   DEV="$1"
@@ -48,6 +49,28 @@ wipedev() {
     seek=$(($FULL_BLKS * $BLOCKS_4M))
 }
 
+# Wipe (developer) firmware if running in factory wiping mode.
+factory_wipe_firmware() {
+  if [ -n "$FACTORY_WIPE_FIRMWARE_PID" ]; then
+    # wiping already in progress; wait for complete.
+    wait "$FACTORY_WIPE_FIRMWARE_PID" || return $?
+    return 0
+  fi
+
+  local wipe_script='/usr/sbin/firmware-factory-wipe'
+  # Factory wipe doesn't occur in developer mode w.r.t firmware wiping.
+  if crossystem "devsw_boot?1" || [ ! -x "${wipe_script}" ]; then
+    return 0
+  fi
+  if [ "$FAST_WIPE" = "fast" ]; then
+    echo "Starting to wipe firmware in parallel..."
+    "${wipe_script}" & FACTORY_WIPE_FIRMWARE_PID="$!"
+  else
+    echo "Starting to wipe firmware..."
+    "${wipe_script}"
+  fi
+}
+
 # Root devs are sda3, sda5.
 # Kernel devs to go along with these are sda2, sda4 respectively.
 ROOT_DEV=$(rootdev -s)
@@ -69,6 +92,11 @@ clobber-log --preserve "$SCRIPT" "$@"
 umount /mnt/stateful_partition
 
 if [ "$FAST_WIPE" = "fast" ]; then
+  # factory_wipe_firmware can be executed in parallel.
+  if [ "$FACTORY_WIPE" = "factory" ]; then
+    factory_wipe_firmware
+  fi
+
   # Just wipe the start of the partition and remake the fs on
   # the stateful partition.
   dd bs=4M count=1 if=/dev/zero of=${STATE_DEV}
@@ -109,12 +137,7 @@ echo 3 > /proc/sys/vm/drop_caches
 # Do any board specific wiping here.
 # board_factory_wipe.sh will be installed by the board overlay if necessary.
 if [ "$FACTORY_WIPE" = "factory" ]; then
-  FIRMWARE_WIPE='/usr/sbin/firmware-factory-wipe'
-  # Factory wipe doesn't occur in developer mode w.r.t firmware wiping.
-  if [ -x "${FIRMWARE_WIPE}" ]; then
-    crossystem devsw_boot?1 || ${FIRMWARE_WIPE}
-  fi
-
+  factory_wipe_firmware
   BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
   if [ -x "${BOARD_WIPE}" ]; then
     ${BOARD_WIPE}
