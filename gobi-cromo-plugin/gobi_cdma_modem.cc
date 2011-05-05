@@ -646,6 +646,10 @@ void GobiCdmaModem::SetTechnologySpecificProperties() {
     Meid = serials.meid;
 }
 
+bool GobiCdmaModem::CheckEnableOk(DBus::Error &error) {
+  return true;
+}
+
 void GobiCdmaModem::SendActivationStateFailed() {
   DBusPropertyMap empty;
   ActivationStateChanged(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,

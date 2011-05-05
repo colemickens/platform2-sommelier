@@ -372,6 +372,10 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     ApiConnect(error);
     if (error.is_set())
       return;
+    if (!CheckEnableOk(error)) {
+      ApiDisconnect();
+      return;
+    }
     LogGobiInformation();
     ULONG firmware_id;
     ULONG technology;

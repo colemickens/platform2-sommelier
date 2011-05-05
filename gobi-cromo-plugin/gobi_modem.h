@@ -332,6 +332,7 @@ class GobiModem
   virtual void SetTechnologySpecificProperties() = 0;
   virtual void GetTechnologySpecificStatus(
       utilities::DBusPropertyMap* properties) = 0;
+  virtual bool CheckEnableOk(DBus::Error &error) = 0;
 
   // Handlers for events delivered as callbacks by the SDK. These
   // all run in the main thread.

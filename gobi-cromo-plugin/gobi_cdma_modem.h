@@ -61,6 +61,7 @@ class GobiCdmaModem
   virtual void SetTechnologySpecificProperties();
   virtual void GetTechnologySpecificStatus(
       utilities::DBusPropertyMap* properties);
+  virtual bool CheckEnableOk(DBus::Error &error);
 
 
   // ======================================================================

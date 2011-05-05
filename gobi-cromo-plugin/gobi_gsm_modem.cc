@@ -295,6 +295,38 @@ void GobiGsmModem::GetPinStatus(std::string* status,
   }
 }
 
+
+bool GobiGsmModem::CheckEnableOk(DBus::Error &error) {
+  ULONG pin_status, verify_retries_left, unblock_retries_left;
+  ULONG error_code;
+  ULONG rc = sdk_->UIMGetPINStatus(gobi::kPinId1, &pin_status,
+                                   &verify_retries_left,
+                                   &unblock_retries_left);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(UIMGetPINStatus, rc, kPinError, true);
+  const char *errname;
+  switch (pin_status) {
+    case gobi::kPinStatusNotInitialized:
+    case gobi::kPinStatusVerified:
+    case gobi::kPinStatusDisabled:
+      return true;
+    case gobi::kPinStatusEnabled:
+      error_code = gobi::kAccessToRequiredEntityNotAvailable;
+      break;
+    case gobi::kPinStatusBlocked:
+      error_code = gobi::kPinBlocked;
+      break;
+    case gobi::kPinStatusPermanentlyBlocked:
+      error_code = gobi::kPinPermanentlyBlocked;
+      break;
+  }
+  errname = QMIReturnCodeToMMError(error_code);
+  if (errname == NULL)
+    error.set(kPinError, "PIN error");
+  else
+    error.set(errname, "PIN locked");
+  return false;
+}
+
 void GobiGsmModem::SetTechnologySpecificProperties() {
   AccessTechnology = GetMmAccessTechnology();
   std::string status;
@@ -481,12 +513,19 @@ void GobiGsmModem::SendPuk(const std::string& puk,
   CHAR *pukP = const_cast<CHAR*>(puk.c_str());
   CHAR *pinP = const_cast<CHAR*>(pin.c_str());
 
+  // If we're not enabled, then we're not connected to the SDK
+  bool api_was_connected = IsApiConnected();
+  DBus::Error tmperror;
+  if (!api_was_connected)
+    ApiConnect(tmperror);
   ULONG rc = sdk_->UIMUnblockPIN(gobi::kPinId1, pukP, pinP,
                                  &verify_retries_left,
                                  &unblock_retries_left);
   LOG(INFO) << "UnblockPIN: " << rc << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;  // XXX remove
   UpdatePinStatus();
+  if (!api_was_connected)
+    ApiDisconnect();
   ENSURE_SDK_SUCCESS(UIMUnblockPIN, rc, kPinError);
 }
 
@@ -495,11 +534,18 @@ void GobiGsmModem::SendPin(const std::string& pin, DBus::Error& error) {
   ULONG unblock_retries_left;
   CHAR* pinP = const_cast<CHAR*>(pin.c_str());
 
+  // If we're not enabled, then we're not connected to the SDK
+  bool api_was_connected = IsApiConnected();
+  DBus::Error tmperror;
+  if (!api_was_connected)
+    ApiConnect(tmperror);
   ULONG rc = sdk_->UIMVerifyPIN(gobi::kPinId1, pinP, &verify_retries_left,
                                 &unblock_retries_left);
   LOG(INFO) << "VerifyPIN: " << rc << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;  // XXX remove
   UpdatePinStatus();
+  if (!api_was_connected)
+    ApiDisconnect();
   ENSURE_SDK_SUCCESS(UIMVerifyPIN, rc, kPinError);
 }
 
@@ -517,6 +563,8 @@ void GobiGsmModem::EnablePin(const std::string& pin,
   LOG(INFO) << "EnablePIN: " << rc << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;  // XXX remove
   UpdatePinStatus();
+  if (rc == gobi::kOperationHasNoEffect)
+    return;
   ENSURE_SDK_SUCCESS(UIMSetPINProtection, rc, kPinError);
 }
 
