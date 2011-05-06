@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHOS_DISKS_UDEV_DEVICE_H_
+#ifndef CROS_DISKS_UDEV_DEVICE_H_
 #define CROS_DISKS_UDEV_DEVICE_H_
 
 #include <base/basictypes.h>
@@ -46,6 +46,9 @@ class UdevDevice {
 
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
+
+  // Checks if a device is on the boot device.
+  bool IsOnBootDevice() const;
 
   // Gets the mount paths for the device.
   std::vector<std::string> GetMountPaths() const;

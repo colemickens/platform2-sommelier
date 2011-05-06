@@ -7,6 +7,9 @@
       <tp:member name="DevicePresentationHide" type="b"> </tp:member>
       <tp:member name="DeviceIsMounted" type="b"> </tp:member>
       <tp:member name="DeviceMountPaths" type="s"> </tp:member>
+      <tp:member name="DeviceIsMediaAvailable" type="b"> </tp:member>
+      <tp:member name="DeviceIsOnBootDevice" type="b"> </tp:member>
+      <tp:member name="DeviceIsVirtual" type="b"> </tp:member>
       <tp:member name="IdUuid" type="s"> </tp:member>
       <tp:member name="IdLabel" type="s"> </tp:member>
       <tp:member name="DeviceFile" type="s"> </tp:member>
@@ -32,8 +35,12 @@
       <arg name="mountOptions" type="as" direction="in">
       </arg>
     </method>
-    <method name="EnumerateDeviceFiles">
-      <arg name="disks" type="as" direction="out">
+    <method name="EnumerateDevices">
+      <arg name="devices" type="as" direction="out">
+      </arg>
+    </method>
+    <method name="EnumerateAutoMountableDevices">
+      <arg name="devices" type="as" direction="out">
       </arg>
     </method>
     <method name="GetDeviceProperties">

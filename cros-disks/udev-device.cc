@@ -6,6 +6,7 @@
 #include <base/string_util.h>
 #include <fcntl.h>
 #include <libudev.h>
+#include <rootdev/rootdev.h>
 #include <sys/statvfs.h>
 #include <fstream>
 
@@ -117,6 +118,33 @@ bool UdevDevice::IsMediaAvailable() const {
   return is_media_available;
 }
 
+bool UdevDevice::IsOnBootDevice() const {
+  // Obtain the boot device path, e.g. /dev/sda
+  char boot_device_path[PATH_MAX];
+  if (rootdev(boot_device_path, sizeof(boot_device_path), true, true)) {
+    LOG(ERROR) << "Could not determine root device";
+    // Assume it is on the boot device when there is any uncertainty.
+    // This is to prevent a device, which is potentially on the boot device,
+    // from being auto mounted and exposed to users.
+    // TODO(benchan): Find a way to eliminate the uncertainty.
+    return true;
+  }
+
+  // Compare the device file path of the current device and all its parents
+  // with the boot device path. Any match indicates that the current device
+  // is on the boot device.
+  for (struct udev_device *dev = dev_; dev;
+      dev = udev_device_get_parent(dev)) {
+    const char *dev_file = udev_device_get_devnode(dev);
+    if (dev_file) {
+      if (strncmp(boot_device_path, dev_file, PATH_MAX) == 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 std::vector<std::string> UdevDevice::GetMountPaths() const {
   const char *device_path = udev_device_get_devnode(dev_);
   if (device_path) {
@@ -159,12 +187,17 @@ Disk UdevDevice::ToDisk() const {
   disk.set_is_optical_disk(IsPropertyTrue("ID_CDROM"));
   disk.set_is_hidden(IsPropertyTrue("UDISKS_PRESENTATION_HIDE"));
   disk.set_is_media_available(IsMediaAvailable());
+  disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_drive_model(GetProperty("ID_MODEL"));
   disk.set_uuid(GetProperty("ID_FS_UUID"));
   disk.set_label(GetProperty("ID_FS_LABEL"));
   const char *sys_path = udev_device_get_syspath(dev_);
-  if (sys_path)
+  bool is_virtual = true;
+  if (sys_path) {
     disk.set_native_path(sys_path);
+    is_virtual = StartsWithASCII(sys_path, "/sys/devices/virtual/", true);
+  }
+  disk.set_is_virtual(is_virtual);
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)

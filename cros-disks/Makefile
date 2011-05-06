@@ -1,6 +1,6 @@
-# Copyright (C) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE.makefile file.
+# found in the LICENSE file.
 #
 # Top-level Makefile for cros-disks.
 
@@ -18,7 +18,8 @@ LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 dbus-c++-1 glib-2.0)
 
 CFLAGS := -Iinclude $(CFLAGS)
 CXXFLAGS := -Iinclude -I../ $(INCLUDE_DIRS) $(CXXFLAGS)
-LDFLAGS += -lbase -lchromeos -lgflags -lmetrics -ludev -lblkid $(LIB_DIRS)
+LDFLAGS += -lbase -lblkid -lchromeos -lgflags -lmetrics -lrootdev -ludev \
+	$(LIB_DIRS)
 
 cros-disks-server.h: cros-disks.xml
 	$(DBUSXX_XML2CPP) cros-disks.xml --adaptor=$@

@@ -6,13 +6,15 @@
 
 namespace cros_disks {
 
-// Keys that libcros expects to see on the wire. 
+// Keys that libcros expects to see on the wire.
 // TODO(rtc): We should probably stuff these in a shared header...
 const char kDeviceIsDrive[] = "DeviceIsDrive";
 const char kDevicePresentationHide[] = "DevicePresentationHide";
 const char kDeviceIsMounted[] = "DeviceIsMounted";
 const char kDeviceMountPaths[] = "DeviceMountPaths";
 const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
+const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
+const char kDeviceIsVirtual[] = "DeviceIsVirtual";
 const char kNativePath[] = "NativePath";
 const char kDeviceFile[] = "DeviceFile";
 const char kUuid[] = "IdUuid";
@@ -31,9 +33,11 @@ Disk::Disk()
     is_hidden_(false),
     is_mounted_(false),
     is_media_available_(false),
+    is_on_boot_device_(true),
     is_rotational_(false),
     is_optical_disk_(false),
     is_read_only_(false),
+    is_virtual_(true),
     mount_paths_(),
     native_path_(),
     device_file_(),
@@ -53,6 +57,8 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDevicePresentationHide].writer().append_bool(is_hidden());
   disk[kDeviceIsMounted].writer().append_bool(is_mounted());
   disk[kDeviceIsMediaAvailable].writer().append_bool(is_media_available());
+  disk[kDeviceIsOnBootDevice].writer().append_bool(is_on_boot_device());
+  disk[kDeviceIsVirtual].writer().append_bool(is_virtual());
   disk[kNativePath].writer().append_string(native_path().c_str());
   disk[kDeviceFile].writer().append_string(device_file().c_str());
   disk[kUuid].writer().append_string(uuid().c_str());

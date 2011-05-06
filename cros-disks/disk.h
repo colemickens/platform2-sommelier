@@ -41,6 +41,11 @@ class Disk {
     is_media_available_ = is_media_available;
   }
 
+  bool is_on_boot_device() const { return is_on_boot_device_; }
+  void set_is_on_boot_device(bool is_on_boot_device) {
+    is_on_boot_device_ = is_on_boot_device;
+  }
+
   bool is_rotational() const { return is_rotational_; }
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
@@ -51,6 +56,9 @@ class Disk {
 
   bool is_read_only() const { return is_read_only_; }
   void set_is_read_only(bool is_read_only) { is_read_only_ = is_read_only; }
+
+  bool is_virtual() const { return is_virtual_; }
+  void set_is_virtual(bool is_virtual) { is_virtual_ = is_virtual; }
 
   const std::vector<std::string>& mount_paths() const { return mount_paths_; }
   void set_mount_paths(const std::vector<std::string>& mount_paths) {
@@ -94,9 +102,11 @@ class Disk {
   bool is_hidden_;
   bool is_mounted_;
   bool is_media_available_;
+  bool is_on_boot_device_;
   bool is_rotational_;
   bool is_optical_disk_;
   bool is_read_only_;
+  bool is_virtual_;
   std::vector<std::string> mount_paths_;
   std::string native_path_;
   std::string device_file_;

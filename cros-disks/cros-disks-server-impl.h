@@ -46,9 +46,15 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
       const std::vector<std::string>& mount_options,
       DBus::Error& error); // NOLINT
 
-  // Returns a list of device files for all disk devices attached to
+  // Returns a list of device sysfs paths for all disk devices attached to
   // the system.
-  virtual std::vector<std::string> EnumerateDeviceFiles(
+  virtual std::vector<std::string> EnumerateDevices(
+      DBus::Error& error); // NOLINT
+
+  // Returns a list of device sysfs paths for all auto-mountable disk devices
+  // attached to the system. Currently, all external disk devices, which are
+  // neither on the boot device nor virtual, are considered auto-mountable.
+  virtual std::vector<std::string> EnumerateAutoMountableDevices(
       DBus::Error& error); // NOLINT
 
   // Returns properties of a disk device attached to the system.
@@ -59,6 +65,12 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   void SignalDeviceChanges();
 
  private:
+
+  // Returns a list of device sysfs paths for all disk devices attached to
+  // the system. If auto_mountable_only is true, only auto-mountable disk
+  // devices are returned.
+  std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
+
   DiskManager* disk_manager_;
 };
 } // namespace cros_disks

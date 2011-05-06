@@ -58,15 +58,30 @@ void CrosDisksServer::FilesystemUnmount(
   }
 }
 
-std::vector<std::string> CrosDisksServer::EnumerateDeviceFiles(
-    DBus::Error& error) {  // NOLINT
+std::vector<std::string> CrosDisksServer::DoEnumerateDevices(
+    bool auto_mountable_only) const {
   std::vector<Disk> disks = disk_manager_->EnumerateDisks();
   std::vector<std::string> devices;
   devices.reserve(disks.size());
   for (std::vector<Disk>::const_iterator disk_iterator(disks.begin());
-      disk_iterator != disks.end(); ++disk_iterator)
-    devices.push_back(disk_iterator->native_path());
+      disk_iterator != disks.end(); ++disk_iterator) {
+    bool disk_is_auto_mountable = !disk_iterator->is_on_boot_device() &&
+      !disk_iterator->is_virtual();
+    if (!auto_mountable_only || disk_is_auto_mountable) {
+      devices.push_back(disk_iterator->native_path());
+    }
+  }
   return devices;
+}
+
+std::vector<std::string> CrosDisksServer::EnumerateDevices(
+    DBus::Error& error) {  // NOLINT
+  return DoEnumerateDevices(false);
+}
+
+std::vector<std::string> CrosDisksServer::EnumerateAutoMountableDevices(
+    DBus::Error& error) {  // NOLINT
+  return DoEnumerateDevices(true);
 }
 
 DBusDisk CrosDisksServer::GetDeviceProperties(const std::string& device_path,
