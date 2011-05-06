@@ -4,13 +4,14 @@
 
 #include "power_manager/monitor_reconfigure.h"
 
+#include <gdk/gdkx.h>
+
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
 #include "base/logging.h"
 #include "power_manager/backlight_controller.h"
-#include "power_manager/udev_controller.h"
 
 using std::sort;
 using std::vector;
@@ -26,11 +27,6 @@ const float kInchInMm = 25.4;
 
 namespace power_manager {
 
-void MonitorReconfigureDelegate::Run(GIOChannel* /* source */,
-                                     GIOCondition /* condition */) {
-  monitor_reconfigure_->Run();
-}
-
 MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
       window_(0),
@@ -38,9 +34,7 @@ MonitorReconfigure::MonitorReconfigure()
       lcd_output_info_(NULL),
       external_output_(0),
       external_output_info_(NULL),
-      backlight_ctl_(NULL),
-      delegate_(NULL),
-      controller_(NULL) {}
+      backlight_ctl_(NULL) {}
 
 MonitorReconfigure::MonitorReconfigure(
     BacklightController* backlight_ctl)
@@ -50,18 +44,24 @@ MonitorReconfigure::MonitorReconfigure(
       lcd_output_info_(NULL),
       external_output_(0),
       external_output_info_(NULL),
-      backlight_ctl_(backlight_ctl),
-      delegate_(NULL),
-      controller_(NULL) {}
+      backlight_ctl_(backlight_ctl) {}
 
 MonitorReconfigure::~MonitorReconfigure() {
 }
 
 bool MonitorReconfigure::Init() {
-  DCHECK(delegate_ == NULL);
-  delegate_ = new MonitorReconfigureDelegate(this);
-  controller_ = new UdevController(delegate_, "drm");
-  return controller_->Init();
+  if (!XRRQueryExtension(GDK_DISPLAY(), &rr_event_base_, &rr_error_base_))
+    return false;
+
+  int rr_major_version, rr_minor_version;
+  XRRQueryVersion(GDK_DISPLAY(), &rr_major_version, &rr_minor_version);
+  XRRSelectInput(GDK_DISPLAY(),
+                 DefaultRootWindow(GDK_DISPLAY()),
+                 RRScreenChangeNotifyMask);
+
+  gdk_window_add_filter(NULL, gdk_event_filter, this);
+  LOG(INFO) << "XRandr event filter added";
+  return true;
 }
 
 void MonitorReconfigure::Run() {
@@ -249,6 +249,23 @@ bool MonitorReconfigure::DisableDevice(const XRROutputInfo* output_info) {
   Status s = XRRSetCrtcConfig(display_, screen_info_, output_info->crtc,
     CurrentTime, 0, 0, None, RR_Rotate_0, NULL, 0);
   return (s == RRSetConfigSuccess);
+}
+
+GdkFilterReturn MonitorReconfigure::gdk_event_filter(GdkXEvent* gxevent,
+                                                     GdkEvent*,
+                                                     gpointer data) {
+  XEvent* xevent = static_cast<XEvent*>(gxevent);
+  MonitorReconfigure* monitor_reconfigure =
+      static_cast<MonitorReconfigure*>(data);
+
+  if (xevent->type == monitor_reconfigure->rr_event_base_ + 
+      RRScreenChangeNotify) {
+    monitor_reconfigure->Run();
+    // Remove this event so that other programs pick it up and acts upon it.
+    return GDK_FILTER_REMOVE;
+  }
+
+  return GDK_FILTER_CONTINUE;
 }
 
 }  // namespace power_manager

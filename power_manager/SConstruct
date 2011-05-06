@@ -88,7 +88,7 @@ power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
                                               'power_constants.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split(
-    'chromeos crosapi gflags pthread dl metrics X11 Xrandr udev'))
+    'chromeos crosapi gflags pthread dl metrics X11 Xrandr'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
@@ -99,7 +99,6 @@ powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
   monitor_reconfigure.cc power_manager_service.cc resolution_selector.cc
-  udev_controller.cc
 ''')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
@@ -107,13 +106,6 @@ powerd = powerd_env.Program('powerd',
                             ['powerd_main.cc', powerd_lib, xidle, backlight,
                              power_prefs, backlight_controller, util_lib])
 Default(powerd)
-
-# Build drm tool
-udev = gdk_env.Library('udev_controller', ['udev_controller.cc'])
-udev_env = gdk_env.Clone()
-udev_env.Append(LIBS=Split('base rt pthread gflags X11 Xrandr udev'))
-drm_tool = udev_env.Program('drm-tool', ['drm-tool.cc', udev])
-Default(drm_tool)
 
 # Build privileged power daemon
 powerman_env = gdk_env.Clone()

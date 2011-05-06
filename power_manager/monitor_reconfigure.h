@@ -8,27 +8,16 @@
 #include <map>
 #include <vector>
 
+#include <gdk/gdkevents.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
 #include "power_manager/resolution_selector.h"
-#include "power_manager/udev_controller.h"
 
 namespace power_manager {
 
 class BacklightController;
 class MonitorReconfigure;
-
-// Delegate class for udev events.
-class MonitorReconfigureDelegate : public UdevDelegate {
- public:
-  MonitorReconfigureDelegate(MonitorReconfigure* monitor_reconfigure)
-    : monitor_reconfigure_(monitor_reconfigure) {}
-
-  virtual void Run(GIOChannel* source, GIOCondition condition);
- private:
-  MonitorReconfigure* monitor_reconfigure_;
-};
 
 // MonitorReconfigure is the class responsible for setting the external
 // monitor to the max resolution based on the modes supported by the native
@@ -69,6 +58,15 @@ class MonitorReconfigure {
   // Disable output to a device.
   bool DisableDevice(const XRROutputInfo* output_info);
 
+  // Callback to watch for xrandr hotplug events.
+  static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
+                                          GdkEvent* gevent,
+                                          gpointer data);
+
+  // Event and error base numbers for Xrandr.
+  int rr_event_base_;
+  int rr_error_base_;
+
   // Mapping between mode XIDs and mode information structures.
   std::map<int, XRRModeInfo*> mode_map_;
 
@@ -85,12 +83,6 @@ class MonitorReconfigure {
 
   // Not owned.
   BacklightController* backlight_ctl_;
-
-  // Delegate for the Udev controller.
-  MonitorReconfigureDelegate* delegate_;
-
-  // Udev controller.
-  UdevController* controller_;
 
   DISALLOW_COPY_AND_ASSIGN(MonitorReconfigure);
 };
