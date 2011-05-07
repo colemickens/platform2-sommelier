@@ -19,8 +19,8 @@
 #include "vpn-manager/l2tp_manager.h"
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
-DEFINE_string(client_cert_tpm_id, "", "TPM slot with client certificate");
-DEFINE_string(client_cert_tpm_slot, "", "TPM key ID for client certificate");
+DEFINE_string(client_cert_id, "", "PKCS#11 slot with client certificate");
+DEFINE_string(client_cert_slot, "", "PKCS#11 key ID for client certificate");
 DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
 DEFINE_string(remote_host, "", "VPN server hostname");
 DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
@@ -117,8 +117,8 @@ int main(int argc, char* argv[]) {
                         FLAGS_psk_file,
                         FLAGS_server_ca_file,
                         FLAGS_server_id,
-                        FLAGS_client_cert_tpm_slot,
-                        FLAGS_client_cert_tpm_id,
+                        FLAGS_client_cert_slot,
+                        FLAGS_client_cert_id,
                         FLAGS_tpm_user_pin)) {
     return 1;
   }
