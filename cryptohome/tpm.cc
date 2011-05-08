@@ -1817,7 +1817,7 @@ bool Tpm::DefineLockOnceNvram(uint32_t index, size_t length, uint32_t flags) {
     return false;
   }
 
-  if (TPM_ERROR(result = Tspi_NV_DefineSpace(nv_handle, NULL, NULL))) {
+  if (TPM_ERROR(result = Tspi_NV_DefineSpace(nv_handle, 0, 0))) {
     TPM_LOG(ERROR, result) << "Could not define NVRAM space: " << index;
     return false;
   }
