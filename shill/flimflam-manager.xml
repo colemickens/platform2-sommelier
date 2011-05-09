@@ -1,0 +1,86 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<!-- 
+     Introspection dump generated manually by poking flimflam with dbus-send
+     TODO(vlaviano): should be generated automatically during flimflam build
+     and installed somewhere where cashew and other clients can consume it.
+-->
+
+<node>
+	<interface name="org.chromium.flimflam.Manager">
+		<method name="GetProperties">
+			<arg type="a{sv}" direction="out"/>
+		</method>
+		<method name="SetProperty">
+			<arg type="s" direction="in"/>
+			<arg type="v" direction="in"/>
+		</method>
+		<method name="GetState">
+			<arg type="s" direction="out"/>
+		</method>
+		<method name="CreateProfile">
+			<arg type="s" direction="in"/>
+			<arg type="o" direction="out"/>
+		</method>
+		<method name="RemoveProfile">
+			<arg type="o" direction="in"/>
+		</method>
+		<method name="RequestScan">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="EnableTechnology">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="DisableTechnology">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="GetService">
+			<arg type="a{sv}" direction="in"/>
+			<arg type="o" direction="out"/>
+		</method>
+		<method name="GetWifiService">
+			<arg type="a{sv}" direction="in"/>
+			<arg type="o" direction="out"/>
+		</method>
+		<method name="ConfigureWifiService">
+			<arg type="a{sv}" direction="in"/>
+		</method>
+		<method name="RegisterAgent">
+			<arg type="o" direction="in"/>
+		</method>
+		<method name="UnregisterAgent">
+			<arg type="o" direction="in"/>
+		</method>
+		<method name="GetDebugTags">
+			<arg type="s" direction="out"/>
+		</method>
+		<method name="SetDebugTags">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="ListDebugTags">
+			<arg type="s" direction="out"/>
+		</method>
+		<method name="GetDebugMask">
+			<arg type="u" direction="out"/>
+		</method>
+		<method name="SetDebugMask">
+			<arg type="u" direction="in"/>
+		</method>
+		<method name="GetServiceOrder">
+			<arg type="s" direction="out"/>
+		</method>
+		<method name="SetServiceOrder">
+			<arg type="s" direction="in"/>
+		</method>
+		<signal name="PropertyChanged">
+			<arg type="s"/>
+			<arg type="v"/>
+		</signal>
+		<signal name="StateChanged">
+			<arg type="s"/>
+		</signal>
+	</interface>
+	<node name="device"/>
+	<node name="profile"/>
+</node>

@@ -7,6 +7,7 @@ CXXFLAGS ?= -fno-strict-aliasing -Wall -Wextra -Werror -Wuninitialized
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 AR ?= ar
 PKG_CONFIG ?= pkg-config
+DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 
 BASE_LIBS = -lbase -lchromeos -lgflags -lglog
@@ -21,6 +22,11 @@ TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_INCLUDE_DIRS = $(INCLUDE_DIRS)
 TEST_LIB_DIRS = $(LIB_DIRS)
 
+XMLFILES = flimflam-device.xml \
+	flimflam-manager.xml \
+	flimflam-service.xml
+
+DBUS_HEADERS = $(patsubst %.xml,%.h,$(XMLFILES))
 
 SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
@@ -42,8 +48,13 @@ TEST_OBJS = testrunner.o shill_unittest.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
 
+%.h: %.xml
+	$(DBUSXX_XML2CPP) $< --adaptor=$@
+
 .cc.o:
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
+
+$(SHILL_OBJS): $(DBUS_HEADERS)
 
 $(SHILL_LIB): $(SHILL_OBJS)
 	$(AR) rcs $@ $^
@@ -58,4 +69,4 @@ $(TEST_BIN): $(TEST_OBJS) $(SHILL_LIB)
 		$(TEST_LIBS) -o $@
 
 clean:
-	rm -rf *.o $(SHILL_BIN) $(SHILL_LIB) $(TEST_BIN)
+	rm -rf *.o $(DBUS_HEADERS) $(SHILL_BIN) $(SHILL_LIB) $(TEST_BIN)

@@ -1,0 +1,39 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<!-- 
+     Introspection dump generated manually by poking flimflam with dbus-send
+     TODO(vlaviano): should be generated automatically during flimflam build
+     and installed somewhere where cashew and other clients can consume it.
+-->
+
+<node>
+	<interface name="org.chromium.flimflam.Service">
+		<method name="GetProperties">
+			<arg type="a{sv}" direction="out"/>
+		</method>
+		<method name="SetProperty">
+			<arg type="s" direction="in"/>
+			<arg type="v" direction="in"/>
+		</method>
+		<method name="ClearProperty">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="Connect"/>
+		<method name="Disconnect"/>
+		<method name="Remove"/>
+		<method name="MoveBefore">
+			<arg type="o" direction="in"/>
+		</method>
+		<method name="MoveAfter">
+			<arg type="o" direction="in"/>
+		</method>
+		<method name="ActivateCellularModem">
+			<arg type="s" direction="in"/>
+		</method>
+		<signal name="PropertyChanged">
+			<arg type="s"/>
+			<arg type="v"/>
+		</signal>
+	</interface>
+</node>
