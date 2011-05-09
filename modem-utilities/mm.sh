@@ -57,10 +57,18 @@ modemprop () {
 	modemprops $modem | grep /$prop | awk '{print $2}'
 }
 
-modem_activation_state () {
+modem_status () {
         local modem=$1
+        local prop=$2
         if [ -n $modem ] ; then
                 dbus $modem $IMODEM_SIMPLE.GetStatus |\
-                      awk '/\/activation_state/ {print $2}'
+                      awk "/\/$prop/ {print \$2}"
+        fi
+}
+
+modem_activation_state () {
+
+        if [ -n $modem ] ; then
+                modem_status $modem activation_state
         fi
 }

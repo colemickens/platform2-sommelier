@@ -35,16 +35,21 @@ wait_for_modem_reset () {
 # Wait for a modem to reset itself and come back with a new dbus name,
 # or for the activation state to change from "1"
 # MM_MODEM_ACTIVATION_STATE_ACTIVATING to something else
+# Success is deteremined by the activation state changing or by having
+# the newly assigned mdn.
 #
 # args:
 #   $1 - dbus name of the modem before activation
 #   $2 - activation state of modem before activation call
 #   $3 - timeout in seconds
+#   $4 - new mdn
+#
 wait_for_activation_change () {
 	local modem
 	local oldmodem=$1
 	local oldstate=$2
 	local timeout=$3
+	local expected_mdn=$4
 	local status="Timed out"
 	local activation_state
 	echo -n "Waiting..."
@@ -54,18 +59,30 @@ wait_for_activation_change () {
 			status="Done"
 			break
 		fi
-		activation_state=$(modem_activation_state $modem)
-		if [ $activation_state != 1 ]; then
-			status="Done"
-			break
+		if [ -n "$modem" ] ; then
+			activation_state=$(modem_activation_state $modem)
+			if [ -n "$activation_state" ]; then
+				if [ $activation_state -gt 1 ]; then
+					status="Done"
+					break
+				fi
+			fi
 		fi
 		sleep 1
 		timeout=$((timeout - 1))
 		echo -n "."
 	done
 	activation_state=$(modem_activation_state $modem)
-	if [ -z "$activation_state" -o $activation_state -le $oldstate ] ; then
+	if [ -z "$activation_state" ] ; then
 		status="Failed"
+	elif [ $activation_state -le $oldstate ] ; then
+		status="Failed"
+	fi
+	if [ -n "$expected_mdn" ]; then
+		mdn=$(modem_status $modem mdn)
+		if [ "$expected_mdn" = "$mdn" ] ; then
+			status="Done"
+		fi
 	fi
 	echo $status
 }
@@ -81,7 +98,8 @@ activate_manual () {
 	local oldstate=$(modem_activation_state $modem)
 	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
 	  "dict:string:string:$args"
-	wait_for_activation_change $modem $oldstate 40
+	mdn=$(echo $args | sed -e s'/.*mdn,\([^,]*\).*/\1/g')
+	wait_for_activation_change $modem $oldstate 40 $mdn
 }
 
 activate () {
@@ -128,8 +146,8 @@ update_prl () {
 	$(arg_or_default modem $(modems | head -1))
 	[ -z "$modem" ] && echo "no modem found" && exit 1
 	$(needarg prlfile)
-	mdn=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/mdn/ {print $2}')
-	min=$(dbus $modem $IMODEM_SIMPLE.GetStatus | awk '/\/min/ {print $2}')
+	mdn=$(modem_status $modem mdn)
+	min=$(modem_status $modem min)
 	if [ -z "$mdn" -o -z "$min" ]; then
 		echo "Cannot update PRL: MDN/MIN are unknown"
 		exit 1
