@@ -42,4 +42,6 @@ const int kMetricBatteryTimeToEmptyMax = 1000;
 const int kMetricBatteryTimeToEmptyBuckets = 50;
 const time_t kMetricBatteryTimeToEmptyInterval = 30;  // seconds
 
+const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
+
 }  // namespace power_manager

@@ -39,6 +39,9 @@ namespace power_manager {
 
 static const char kTaggedFilePath[] = "/var/lib/power_manager";
 
+// Constants for brightness adjustment metric reporting.
+enum { kBrightnessDown, kBrightnessUp, kBrightnessEnumMax };
+
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from the window manager.
 //         This daemon is responsible for dimming of the backlight, turning
@@ -429,7 +432,8 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
       }
       daemon->IncreaseScreenBrightness(true);
-
+      daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                                           kBrightnessUp, kBrightnessEnumMax);
     } else if (keycode == daemon->key_brightness_down_ ||
                keycode == daemon->key_f6_) {
       if (keycode == daemon->key_brightness_down_) {
@@ -439,6 +443,8 @@ GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
         daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
       }
       daemon->DecreaseScreenBrightness(true, true);
+      daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                                           kBrightnessDown, kBrightnessEnumMax);
     }
   }
 

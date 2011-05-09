@@ -38,6 +38,7 @@ extern const int kMetricBatteryTimeToEmptyMin;
 extern const int kMetricBatteryTimeToEmptyMax;
 extern const int kMetricBatteryTimeToEmptyBuckets;
 extern const time_t kMetricBatteryTimeToEmptyInterval;
+extern const char kMetricBrightnessAdjust[];
 
 }  // namespace power_manager
 
