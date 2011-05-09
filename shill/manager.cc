@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string>
 
-#include "shill/shill_logging.h"
+#include <glog/logging.h>
 #include "shill/control_interface.h"
 #include "shill/manager.h"
 
@@ -18,8 +18,6 @@ Manager::Manager(ControlInterface *control_interface,
 		 EventDispatcher */* dispatcher */)
   : proxy_(control_interface->CreateManagerProxy(this)),
     running_(false) {
-  // Initialize Interface montior, so we can detect new interfaces
-  SHILL_LOG(INFO, SHILL_LOG_MANAGER) << "Manager initialized.";
 }
 
 Manager::~Manager() {

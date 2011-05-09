@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string>
 
-#include "shill/shill_logging.h"
+#include <glog/logging.h>
 #include "shill/control_interface.h"
 #include "shill/service.h"
 
@@ -22,8 +22,6 @@ Service::Service(ControlInterface *control_interface,
     configuration_(NULL),
     connection_(NULL),
     proxy_(control_interface->CreateServiceProxy(this)) {
-  // Initialize Interface montior, so we can detect new interfaces
-  SHILL_LOG(INFO, SHILL_LOG_SERVICE) << "Service %p initialized.";
 }
 
 Service::~Service() {
