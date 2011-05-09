@@ -446,54 +446,6 @@ bool Platform::Symlink(const std::string& oldpath, const std::string& newpath) {
   return true;
 }
 
-bool Platform::Exec(const std::string& command,
-                    const std::vector<std::string>& args,
-                    uid_t uid,
-                    gid_t gid) {
-  pid_t child_pid = -1;
-  child_pid = fork();
-  if (child_pid == 0) {
-    if (gid != static_cast<gid_t>(-1)) {
-      if (setresgid(gid, gid, gid)) {
-        _exit(2);
-      }
-    }
-    if (uid != static_cast<uid_t>(-1)) {
-      if (setresuid(uid, uid, uid)) {
-        _exit(1);
-      }
-    }
-    const char** local_args = (const char**) calloc(args.size() + 1,
-                                                    sizeof(char*));
-    int index = 0;
-    std::vector<std::string>::const_iterator it;
-    for (it = args.begin(); it != args.end(); ++it, ++index) {
-      local_args[index] = const_cast<char*>(it->c_str());
-    }
-    execve(command.c_str(), const_cast<char* const*>(local_args), NULL);
-    PLOG(ERROR) << "Couldn't start the command subprocess.";
-    _exit(3);
-  } else if (child_pid != -1) {
-    int status = 0;
-    do {
-      pid_t term_pid = waitpid(child_pid, &status, WUNTRACED | WCONTINUED);
-      if (term_pid == -1) {
-        return false;
-      }
-    } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-    if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-      return true;
-    }
-    LOG(ERROR) << "Command subprocess (" << command
-               << ") exited with a non-zero status. ("
-               << "status = " << WEXITSTATUS(status) << " )";
-  }
-  else {
-    PLOG(ERROR) << "Couldn't spawn a subprocess for command execution.";
-  }
-  return false;
-}
-
 bool Platform::FileExists(const std::string& path) {
   return file_util::PathExists(FilePath(path));
 }

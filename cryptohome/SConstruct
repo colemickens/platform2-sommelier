@@ -137,7 +137,11 @@ env.Append(
     CPPPATH=['.', '..'],
     CPPFLAGS=['-pie', '-fstack-protector-all', '-fPIC',
               '-fno-exceptions', '-O2', '-Wall', '-Werror'],
-    LIBS = ['base', 'chromeos', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
+    # WARNING! Dear person who thinks these library dependencies should be in
+    # the alphabetical order. No, you are wrong. Do not attempt to change the
+    # order without copious testing. In particular, the 'chromeos' dependency
+    # should appear before 'base' or bad things happen.
+    LIBS = ['chromeos', 'base', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
             'opencryptoki', 'protobuf', 'pthread', 'scrypt', 'tspi'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):

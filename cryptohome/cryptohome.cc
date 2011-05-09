@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -19,6 +19,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/syslog_logging.h>
 #include <chromeos/utility.h>
 #include <iostream>
 
@@ -35,6 +36,7 @@
 using std::string;
 
 namespace switches {
+  static const char kSyslogSwitch[] = "syslog";
   static const char kActionSwitch[] = "action";
   static const char *kActions[] = {
     "mount",
@@ -301,12 +303,12 @@ class TpmWaitLoop {
 
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
-  logging::InitLogging(NULL,
-                       logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
-                       logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
-
   CommandLine *cl = CommandLine::ForCurrentProcess();
+  if (cl->HasSwitch(switches::kSyslogSwitch))
+    chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  else
+    chromeos::InitLog(chromeos::kLogToStderr);
+
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
   g_type_init();
   chromeos::dbus::BusConnection bus = chromeos::dbus::GetSystemBusConnection();
@@ -882,7 +884,7 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_PKCS11_INIT],
       action.c_str())) {
     cryptohome::Pkcs11Init init;
-    init.Initialize();
+    return !init.Initialize();
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for(int i = 0; /* loop forever */; i++) {

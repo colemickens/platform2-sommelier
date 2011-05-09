@@ -97,49 +97,43 @@ bool Pkcs11Init::Initialize() {
 }
 
 bool Pkcs11Init::SetUpPkcs11System() {
-  Platform platform;
   // Run the pkcs11_startup script that will detect available tokens and update
   // pk_config_data appropriately. This is used later by pkcsslotd.
-  std::string startup_cmd = kPkcs11StartupPath;
-  std::string startup_args[1] = { startup_cmd };
-  std::vector<std::string> startup_arguments;
-  startup_arguments.assign(startup_args,
-                           startup_args + arraysize(startup_args));
-  // TODO(gauravsh): Consider moving to using process functions from
-  // src/common/chromeos/process.h instead.
-  //
+  process_->Reset(0);
+  process_->AddArg(kPkcs11StartupPath);
   // Note: This must be run as root so that it can create the necessary
   // directories with the correct permissions under /var/lib. Since it's a
   // and not a service daemon, we are OK with that.
-  if (!platform.Exec(startup_cmd, startup_arguments,
-                     static_cast<uid_t>(0),  // Run as root.
-                     pkcs11_group_id_))
+  process_->SetUid(static_cast<uid_t>(0));
+  process_->SetGid(pkcs11_group_id_);
+  if (process_->Run() != 0) {
+    LOG(ERROR) << "Couldn't run pkcs11 startup script: " << kPkcs11StartupPath;
     return false;
+  }
 
   // Start the slot manager daemon (pkcsslotd).
-  std::string slotd_cmd = kPkcsSlotdPath;
-  std::string slotd_args[1] = { slotd_cmd };
-  std::vector<std::string> slotd_arguments;
-  slotd_arguments.assign(slotd_args, slotd_args + arraysize(slotd_args));
+  process_->Reset(0);
+  process_->AddArg(kPkcsSlotdPath);
   // TODO(gauravsh): Figure out if pkcsslotd can be run as a different primary
   // uid.
-  if (!platform.Exec(slotd_cmd, slotd_arguments, chronos_user_id_,
-                     pkcs11_group_id_))
+  process_->SetUid(chronos_user_id_);
+  process_->SetGid(pkcs11_group_id_);
+  if(process_->Run() != 0) {
+    LOG(ERROR) << "Couldn't start the pkcs slot daemon: " << kPkcsSlotdPath;
     return false;
+  }
   return true;
 }
 
 bool Pkcs11Init::SetUpTPMToken() {
-  Platform platform;
-
   // Setup the TPM as a token.
-  std::vector<std::string> arguments;
-  arguments.assign(kPkcsSlotCmd, kPkcsSlotCmd + arraysize(kPkcsSlotCmd));
-  if (!platform.Exec(kPkcsSlotPath, arguments, chronos_user_id_,
-                     pkcs11_group_id_)) {
-    LOG(ERROR) << "Couldn't configure the tpm as a token. "
-               << kPkcsSlotPath << " " << kPkcsSlotCmd[1] << " "
-               << kPkcsSlotCmd[2] << "failed.";
+  process_->Reset(0);
+  for(unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
+    process_->AddArg(kPkcsSlotCmd[i]);
+  process_->SetUid(chronos_user_id_);
+  process_->SetGid(pkcs11_group_id_);
+  if(process_->Run() != 0) {
+    LOG(ERROR) << "Couldn't set the TPM as a token.";
     return false;
   }
 

@@ -193,18 +193,6 @@ class Platform {
   //  newpath - symlink to create which points to the source path
   virtual bool Symlink(const std::string& oldpath, const std::string& newpath);
 
-  // Executes a command with the specified arguments and waits for it to finish
-  //
-  // Parameters
-  //  command - string containing the filename of the binary to execute
-  //  args - list of arguments to pass to the run the command with
-  //  uid - effective user id to run the command with
-  //  gid - effective group id to run the command with
-  virtual bool Exec(const std::string& command,
-                    const std::vector<std::string>& args,
-                    uid_t uid,
-                    gid_t gid);
-
   // Returns true if the specified file exists.
   //
   // Parameters

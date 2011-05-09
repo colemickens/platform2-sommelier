@@ -12,6 +12,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/scoped_ptr.h>
+#include <chromeos/process.h>
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
 
@@ -20,7 +22,9 @@ namespace cryptohome {
 class Pkcs11Init {
  public:
   Pkcs11Init() : is_initialized_(false), pkcs11_group_id_(0),
-                 chronos_user_id_(0), chronos_group_id_(0) { }
+                 chronos_user_id_(0), chronos_group_id_(0),
+                 default_process_(new chromeos::ProcessImpl),
+                 process_(default_process_.get()) { }
   virtual ~Pkcs11Init() { }
 
   virtual void GetTpmTokenInfo(gchar **OUT_label,
@@ -89,6 +93,9 @@ class Pkcs11Init {
   gid_t pkcs11_group_id_;
   uid_t chronos_user_id_;
   gid_t chronos_group_id_;
+
+  scoped_ptr<chromeos::ProcessImpl> default_process_;
+  chromeos::ProcessImpl* process_;
 
   DISALLOW_COPY_AND_ASSIGN(Pkcs11Init);
 };

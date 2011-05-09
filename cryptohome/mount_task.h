@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -27,6 +27,7 @@
 #include <base/atomic_sequence_num.h>
 #include <base/thread.h>
 #include <base/waitable_event.h>
+#include <chromeos/process.h>
 #include <chromeos/utility.h>
 
 #include "cryptohome_event_source.h"
@@ -399,14 +400,17 @@ class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
 // Implements asynchronous initialization of Pkcs11.
 class MountTaskPkcs11Init : public MountTask {
  public:
+  static const std::string kPkcs11InitCmd[];
+
   MountTaskPkcs11Init(MountTaskObserver* observer, Mount* mount);
   virtual ~MountTaskPkcs11Init() { }
 
   virtual void Run();
 
  private:
-  Pkcs11Init pkcs11_init_;
   scoped_ptr<MountTaskResult> pkcs11_init_result_;
+  scoped_ptr<chromeos::ProcessImpl> default_pkcs11_initializer_;
+  chromeos::ProcessImpl* pkcs11_initializer_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskPkcs11Init);
 };
 
