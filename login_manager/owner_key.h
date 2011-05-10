@@ -9,12 +9,11 @@
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
-namespace base {
+namespace crypto {
 class RSAPrivateKey;
-class SignatureVerifier;
-}  // namespace base
+}  // namespace crypto
 
 namespace login_manager {
 class ChildJobInterface;
@@ -53,7 +52,7 @@ class OwnerKey {
   // Load key material from |pair|.
   // We will _deny_ such an attempt if we have not yet checked disk for a key,
   // or if we have already successfully loaded a key from disk.
-  virtual bool PopulateFromKeypair(base::RSAPrivateKey* pair);
+  virtual bool PopulateFromKeypair(crypto::RSAPrivateKey* pair);
 
   // Persist |key_| to disk, at |key_file_|.
   // Calling this method before checking for a key on disk is an error.

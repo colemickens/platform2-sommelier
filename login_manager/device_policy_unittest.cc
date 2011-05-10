@@ -7,7 +7,7 @@
 #include <base/file_util.h>
 #include <base/file_path.h>
 #include <base/logging.h>
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/bindings/chrome_device_policy.pb.h"

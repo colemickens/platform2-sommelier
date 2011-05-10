@@ -6,13 +6,13 @@
 
 #include <vector>
 
-#include <base/crypto/rsa_private_key.h>
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/nss_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_temp_dir.h>
+#include <crypto/nss_util.h>
+#include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
 
 namespace login_manager {
@@ -141,11 +141,11 @@ TEST_F(OwnerKeyTest, SignVerify) {
   StartUnowned();
   OwnerKey key(tmpfile_);
 
-  base::EnsureNSSInit();
-  base::OpenPersistentNSSDB();
-  scoped_ptr<base::RSAPrivateKey> pair(
-      base::RSAPrivateKey::CreateSensitive(512));
-  ASSERT_NE(pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+  crypto::EnsureNSSInit();
+  crypto::OpenPersistentNSSDB();
+  scoped_ptr<crypto::RSAPrivateKey> pair(
+      crypto::RSAPrivateKey::CreateSensitive(512));
+  ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -171,11 +171,11 @@ TEST_F(OwnerKeyTest, RotateKey) {
   StartUnowned();
   OwnerKey key(tmpfile_);
 
-  base::EnsureNSSInit();
-  base::OpenPersistentNSSDB();
-  scoped_ptr<base::RSAPrivateKey> pair(
-      base::RSAPrivateKey::CreateSensitive(512));
-  ASSERT_NE(pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+  crypto::EnsureNSSInit();
+  crypto::OpenPersistentNSSDB();
+  scoped_ptr<crypto::RSAPrivateKey> pair(
+      crypto::RSAPrivateKey::CreateSensitive(512));
+  ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -193,9 +193,9 @@ TEST_F(OwnerKeyTest, RotateKey) {
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
 
-  scoped_ptr<base::RSAPrivateKey> new_pair(
-      base::RSAPrivateKey::CreateSensitive(512));
-  ASSERT_NE(new_pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+  scoped_ptr<crypto::RSAPrivateKey> new_pair(
+      crypto::RSAPrivateKey::CreateSensitive(512));
+  ASSERT_NE(new_pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
   std::vector<uint8> new_export;
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
 

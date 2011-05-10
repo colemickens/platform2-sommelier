@@ -16,10 +16,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/ref_counted.h>
-#include <base/scoped_ptr.h>
-#include <base/thread.h>
-#include <base/waitable_event.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/threading/thread.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -58,7 +58,7 @@ class SessionManagerService
       public chromeos::dbus::AbstractDbusService {
  public:
 
-  SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
+  explicit SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
   virtual ~SessionManagerService();
 
   // If you want to call any of these setters, you should do so before calling

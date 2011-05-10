@@ -9,10 +9,10 @@
 
 #include <unistd.h>
 #include <base/file_path.h>
-#include <base/nss_util.h>
+#include <crypto/nss_util.h>
 #include <gmock/gmock.h>
 
-namespace base {
+namespace crypto {
 class RSAPrivateKey;
 }
 
@@ -24,8 +24,9 @@ class MockNssUtil : public NssUtil {
 
   MOCK_METHOD0(MightHaveKeys, bool());
   MOCK_METHOD0(OpenUserDB, bool());
-  MOCK_METHOD1(GetPrivateKey, base::RSAPrivateKey*(const std::vector<uint8>&));
-  MOCK_METHOD0(GenerateKeyPair, base::RSAPrivateKey*());
+  MOCK_METHOD1(GetPrivateKey,
+               crypto::RSAPrivateKey*(const std::vector<uint8>&));
+  MOCK_METHOD0(GenerateKeyPair, crypto::RSAPrivateKey*());
   MOCK_METHOD0(GetOwnerKeyFilePath, FilePath());
   MOCK_METHOD8(Verify, bool(const uint8* algorithm, int algorithm_len,
                             const uint8* signature, int signature_len,
@@ -33,7 +34,7 @@ class MockNssUtil : public NssUtil {
                             const uint8* public_key, int public_key_len));
   MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
                           std::vector<uint8>* OUT_signature,
-                          base::RSAPrivateKey* key));
+                          crypto::RSAPrivateKey* key));
  protected:
   MockNssUtil();
   void ExpectGetOwnerKeyFilePath();
@@ -90,7 +91,7 @@ class ShortKeyGenerator : public MockNssUtil {
  public:
   ShortKeyGenerator();
   virtual ~ShortKeyGenerator();
-  static base::RSAPrivateKey* CreateFake();
+  static crypto::RSAPrivateKey* CreateFake();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ShortKeyGenerator);

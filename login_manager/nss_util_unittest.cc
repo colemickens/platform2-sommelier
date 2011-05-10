@@ -4,10 +4,12 @@
 
 #include "login_manager/nss_util.h"
 
-#include <base/crypto/rsa_private_key.h>
-#include <base/nss_util.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
+#include <crypto/nss_util.h>
+#include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
+
+using crypto::RSAPrivateKey;
 
 namespace login_manager {
 class NssUtilTest : public ::testing::Test {
@@ -27,14 +29,14 @@ class NssUtilTest : public ::testing::Test {
 
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
-  scoped_ptr<base::RSAPrivateKey> key_pair(base::RSAPrivateKey::Create(256));
-  ASSERT_NE(key_pair.get(), reinterpret_cast<base::RSAPrivateKey*>(NULL));
+  scoped_ptr<RSAPrivateKey> key_pair(RSAPrivateKey::Create(256));
+  ASSERT_NE(key_pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 
   std::vector<uint8> public_key;
   ASSERT_TRUE(key_pair->ExportPublicKey(&public_key));
 
   EXPECT_NE(util_->GetPrivateKey(public_key),
-            reinterpret_cast<base::RSAPrivateKey*>(NULL));
+            reinterpret_cast<RSAPrivateKey*>(NULL));
 }
 
 }  // namespace login_manager

@@ -25,7 +25,7 @@ class MockOwnerKey : public OwnerKey {
   MOCK_CONST_METHOD0(IsPopulated, bool());
   MOCK_METHOD0(PopulateFromDiskIfPossible, bool());
   MOCK_METHOD1(PopulateFromBuffer, bool(const std::vector<uint8>&));
-  MOCK_METHOD1(PopulateFromKeypair, bool(base::RSAPrivateKey*));
+  MOCK_METHOD1(PopulateFromKeypair, bool(crypto::RSAPrivateKey*));
   MOCK_METHOD0(Persist, bool());
   MOCK_METHOD3(Rotate, bool(const std::vector<uint8>&, const uint8*, uint32));
   MOCK_METHOD1(ClobberCompromisedKey, bool(const std::vector<uint8>&));

@@ -21,14 +21,13 @@
 #include <utility>
 #include <vector>
 
-#include "base/base64.h"
 #include "base/basictypes.h"
 #include "base/command_line.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/message_loop_proxy.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"

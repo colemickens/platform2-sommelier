@@ -6,7 +6,7 @@
 #define LOGIN_MANAGER_REGEN_MITIGATOR_H_
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 
 namespace login_manager {

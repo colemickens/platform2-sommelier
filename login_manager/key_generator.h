@@ -6,7 +6,7 @@
 #define LOGIN_MANAGER_KEY_GENERATOR_H_
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
 namespace login_manager {
 

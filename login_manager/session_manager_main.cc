@@ -14,7 +14,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/ref_counted.h>
+#include <base/memory/ref_counted.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
@@ -93,7 +93,8 @@ int main(int argc, char* argv[]) {
   logging::InitLogging(log_file.c_str(),
                        logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
                        logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+                       logging::APPEND_TO_OLD_LOG_FILE,
+                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;

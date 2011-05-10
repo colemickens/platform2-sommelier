@@ -8,7 +8,7 @@
 #include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
-#include <base/crypto/rsa_private_key.h>
+#include <crypto/rsa_private_key.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 
@@ -40,7 +40,8 @@ int main(int argc, char* argv[]) {
   logging::InitLogging(log_file.c_str(),
                        logging::LOG_TO_BOTH_FILE_AND_SYSTEM_DEBUG_LOG,
                        logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+                       logging::APPEND_TO_OLD_LOG_FILE,
+                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
 
   if (cl->args().size() != 1) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file";
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
   if (!nss->OpenUserDB())
     PLOG(FATAL) << "Could not open/create user NSS DB";
   LOG(INFO) << "Generating Owner key.";
-  scoped_ptr<base::RSAPrivateKey> pair(nss->GenerateKeyPair());
+  scoped_ptr<crypto::RSAPrivateKey> pair(nss->GenerateKeyPair());
   if (pair.get()) {
     if (!key->PopulateFromKeypair(pair.get()))
       return 1;

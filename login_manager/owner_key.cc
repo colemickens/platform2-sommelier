@@ -4,11 +4,11 @@
 
 #include "login_manager/owner_key.h"
 
-#include <base/crypto/rsa_private_key.h>
+#include <crypto/rsa_private_key.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/nss_util.h"
@@ -88,7 +88,7 @@ bool OwnerKey::PopulateFromBuffer(const std::vector<uint8>& public_key_der) {
   return true;
 }
 
-bool OwnerKey::PopulateFromKeypair(base::RSAPrivateKey* pair) {
+bool OwnerKey::PopulateFromKeypair(crypto::RSAPrivateKey* pair) {
   std::vector<uint8> public_key_der;
   if (pair && pair->ExportPublicKey(&public_key_der))
     return PopulateFromBuffer(public_key_der);
@@ -165,7 +165,7 @@ bool OwnerKey::Sign(const uint8* data,
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature) {
   scoped_ptr<NssUtil> util(NssUtil::Create());
-  scoped_ptr<base::RSAPrivateKey> private_key(util->GetPrivateKey(key_));
+  scoped_ptr<crypto::RSAPrivateKey> private_key(util->GetPrivateKey(key_));
   if (!private_key.get())
     return false;
   if (!util->Sign(data, data_len, OUT_signature, private_key.get())) {

@@ -7,7 +7,8 @@ CXXFLAGS ?= -Wall -Werror -g
 CXXFLAGS += -DOS_CHROMEOS
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lpthread -lrt -lchromeos -lbootstat -levent -lprotobuf-lite -lbase
+BASE_LIBS = -ldl -lpthread -lrt -levent -lchromeos -lbootstat -lchrome_crypto \
+	-lbase -lprotobuf-lite
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 INCLUDE_DIRS = -I.. $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-glib-1 glib-2.0 \

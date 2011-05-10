@@ -5,15 +5,17 @@
 #include "login_manager/nss_util.h"
 
 #include <base/basictypes.h>
-#include <base/crypto/rsa_private_key.h>
-#include <base/crypto/signature_creator.h>
-#include <base/crypto/signature_verifier.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/nss_util.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
+#include <crypto/nss_util.h>
+#include <crypto/rsa_private_key.h>
+#include <crypto/signature_creator.h>
+#include <crypto/signature_verifier.h>
 #include <cros/chromeos_login.h>
+
+using crypto::RSAPrivateKey;
 
 namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
@@ -38,9 +40,9 @@ class NssUtilImpl : public NssUtil {
 
   bool OpenUserDB();
 
-  base::RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
+  RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
 
-  base::RSAPrivateKey* GenerateKeyPair();
+  RSAPrivateKey* GenerateKeyPair();
 
   FilePath GetOwnerKeyFilePath();
 
@@ -51,7 +53,7 @@ class NssUtilImpl : public NssUtil {
 
   bool Sign(const uint8* data, int data_len,
             std::vector<uint8>* OUT_signature,
-            base::RSAPrivateKey* key);
+            RSAPrivateKey* key);
  private:
   static const uint16 kKeySizeInBits;
   // Hardcoded path of the user's NSS key database.
@@ -66,7 +68,7 @@ class NssUtilImpl : public NssUtil {
 NssUtil* NssUtil::Create() {
   if (!factory_) {
     return new NssUtilImpl;
-    base::EnsureNSSInit();
+    crypto::EnsureNSSInit();
   } else {
     return factory_->CreateNssUtil();
   }
@@ -98,21 +100,21 @@ bool NssUtilImpl::OpenUserDB() {
   // TODO(cmasone): If we ever try to keep the session_manager alive across
   // user sessions, we'll need to deal with the fact that we have no way to
   // close this persistent DB.
-  base::OpenPersistentNSSDB();
+  crypto::OpenPersistentNSSDB();
   return true;
 }
 
-base::RSAPrivateKey* NssUtilImpl::GetPrivateKey(
+RSAPrivateKey* NssUtilImpl::GetPrivateKey(
     const std::vector<uint8>& public_key_der) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
     return false;
   }
-  return base::RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
+  return RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
 }
 
-base::RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
-  return base::RSAPrivateKey::CreateSensitive(kKeySizeInBits);
+RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
+  return RSAPrivateKey::CreateSensitive(kKeySizeInBits);
 }
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {
@@ -125,7 +127,7 @@ bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
                          const uint8* signature, int signature_len,
                          const uint8* data, int data_len,
                          const uint8* public_key, int public_key_len) {
-  base::SignatureVerifier verifier_;
+  crypto::SignatureVerifier verifier_;
 
   if (!verifier_.VerifyInit(algorithm, algorithm_len,
                             signature, signature_len,
@@ -142,9 +144,9 @@ bool NssUtilImpl::Verify(const uint8* algorithm, int algorithm_len,
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
 bool NssUtilImpl::Sign(const uint8* data, int data_len,
                        std::vector<uint8>* OUT_signature,
-                       base::RSAPrivateKey* key) {
-  scoped_ptr<base::SignatureCreator> signer(
-      base::SignatureCreator::Create(key));
+                       RSAPrivateKey* key) {
+  scoped_ptr<crypto::SignatureCreator> signer(
+      crypto::SignatureCreator::Create(key));
   if (!signer->Update(data, data_len))
     return false;
   return signer->Final(OUT_signature);

@@ -11,17 +11,17 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
-#include <base/crypto/rsa_private_key.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/ref_counted.h>
-#include <base/scoped_ptr.h>
-#include <base/scoped_temp_dir.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
+#include <crypto/rsa_private_key.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"

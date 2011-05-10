@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <base/ref_counted.h>
+#include <base/memory/ref_counted.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
