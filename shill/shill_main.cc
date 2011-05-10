@@ -4,60 +4,69 @@
 
 #include <time.h>
 #include <string>
-#include <syslog.h>
 
-#include "shill/shill_logging.h"
+#include <base/command_line.h>
+#include <base/file_path.h>
+#include <base/logging.h>
+#include <chromeos/syslog_logging.h>
+
 #include "shill/shill_daemon.h"
 #include "shill/dbus_control.h"
 
 using std::string;
 
-  /*
-DEFINE_string(config_dir, "",
-              "Directory to read confguration settings.");
-DEFINE_string(default_config_dir, "",
-              "Directory to read default configuration settings (Read Only).");
-  */
-namespace google {
-class LogSinkSyslog : public google::LogSink {
- public:
-  LogSinkSyslog() {
-    openlog("shill",
-            LOG_PID,  // Options
-            LOG_LOCAL3);  // 5,6,7 are taken
+namespace switches {
+
+// Don't daemon()ize; run in foreground.
+static const char kForeground[] = "foreground";
+// Directory to read confguration settings.
+static const char kConfigDir[] = "config-dir";
+// Directory to read default configuration settings (Read Only).
+static const char kDefaultConfigDir[] = "default-config-dir";
+// Flag that causes shill to show the help message and exit.
+static const char kHelp[] = "help";
+
+// The help message shown if help flag is passed to the program.
+static const char kHelpMessage[] = "\n"
+    "Available Switches: \n"
+    "  --foreground\n"
+    "    Don\'t daemon()ize; run in foreground.\n"
+    "  --config_dir\n"
+    "    Directory to read confguration settings.\n"
+    "  --default_config_dir\n"
+    "    Directory to read default configuration settings (Read Only).";
+}  // namespace switches
+
+// Always logs to the syslog and logs to stderr if
+// we are running in the foreground.
+void SetupLogging(bool foreground) {
+  int log_flags = 0;
+  log_flags |= chromeos::kLogToSyslog;
+  if (foreground) {
+    log_flags |= chromeos::kLogToStderr;
+  }
+  chromeos::InitLog(log_flags);
+}
+
+
+int main(int argc, char** argv) {
+  CommandLine::Init(argc, argv);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
+
+  // If the help flag is set, force log in foreground.
+  SetupLogging(cl->HasSwitch(switches::kForeground) ||
+               cl->HasSwitch(switches::kHelp));
+  if (cl->HasSwitch(switches::kHelp)) {
+    LOG(INFO) << switches::kHelpMessage;
+    return 0;
   }
 
-  virtual void send(LogSeverity severity, const char* /* full_filename */,
-                    const char* base_filename, int line,
-                    const struct ::tm* /* tm_time */,
-                    const char* message, size_t message_len) {
-    static const int glog_to_syslog[NUM_SEVERITIES] = {
-      LOG_INFO, LOG_WARNING, LOG_ERR, LOG_CRIT};
-    CHECK(severity < NUM_SEVERITIES && severity >= 0);
+  FilePath config_dir(cl->GetSwitchValueASCII(switches::kConfigDir));
+  FilePath default_config_dir(
+      !cl->HasSwitch(switches::kDefaultConfigDir) ?
+      shill::Config::kShillDefaultPrefsDir :
+      cl->GetSwitchValueASCII(switches::kDefaultConfigDir));
 
-    syslog(glog_to_syslog[severity],
-           "%s:%d %.*s",
-           base_filename, line, message_len, message);
-  }
-
-  virtual ~LogSinkSyslog() {
-    closelog();
-  }
-};
-}  // namespace google
-
-
-int main(int /* argc */, char** argv) {
-  /*
-  FilePath config_dir(FLAGS_config_dir);
-  FilePath default_config_dir(FLAGS_default_config_dir.empty() ?
-                              shill::Config::kShillDefaultPrefsDir :
-                              FLAGS_default_config_dir);
-  */
-  google::LogSinkSyslog syslog_sink;
-
-  google::InitGoogleLogging(argv[0]);
-  google::AddLogSink(&syslog_sink);
   shill::Config config; /* (config_dir, default_config_dir) */
 
   // TODO(pstew): This should be chosen based on config

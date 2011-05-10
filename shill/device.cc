@@ -3,11 +3,12 @@
 // found in the LICENSE file.
 
 #include <time.h>
-
 #include <stdio.h>
+
 #include <string>
 
-#include "shill/shill_logging.h"
+#include <base/logging.h>
+
 #include "shill/control_interface.h"
 #include "shill/device.h"
 
@@ -18,8 +19,9 @@ Device::Device(ControlInterface *control_interface,
 		 EventDispatcher */* dispatcher */)
   : adaptor_(control_interface->CreateDeviceAdaptor(this)),
     running_(false) {
-  // Initialize Interface montior, so we can detect new interfaces
-  SHILL_LOG(INFO, SHILL_LOG_DEVICE) << "Device initialized.";
+  // Initialize Interface monitor, so we can detect new interfaces
+  // TODO(cmasone): change this to VLOG(2) once we have it.
+  LOG(INFO) << "Device initialized.";
 }
 
 Device::~Device() {

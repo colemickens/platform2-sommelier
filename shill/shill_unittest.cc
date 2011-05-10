@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 #include <stdint.h>
 #include <glib.h>
 
-#include "base/logging.h"
+#include <base/logging.h>
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
 #include "shill/shill_daemon.h"
 #include "shill/dbus_control.h"
 

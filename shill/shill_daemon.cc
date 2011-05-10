@@ -9,7 +9,8 @@
 #include <string>
 #include <vector>
 
-#include "shill/shill_logging.h"
+#include <base/logging.h>
+
 #include "shill/shill_daemon.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_control.h"
@@ -35,7 +36,8 @@ Daemon::~Daemon() {}
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  SHILL_LOG(INFO, SHILL_LOG_DAEMON) << "Running main loop.";
+  // TODO(cmasone): change this to VLOG(1) once we have it.
+  LOG(INFO) << "Running main loop.";
   g_main_loop_run(loop);
 }
 

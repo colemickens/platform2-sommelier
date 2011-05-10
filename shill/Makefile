@@ -10,7 +10,7 @@ PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 
-BASE_LIBS = -lbase -lchromeos -lgflags -lglog
+BASE_LIBS = -lbase -lchromeos -lpthread -lrt
 BASE_INCLUDE_DIRS = -I..
 BASE_LIB_DIRS =
 
@@ -38,8 +38,7 @@ SHILL_OBJS = \
 	service.o \
 	shill_config.o \
 	shill_daemon.o \
-	shill_event.o \
-	shill_logging.o
+	shill_event.o
 
 SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o
