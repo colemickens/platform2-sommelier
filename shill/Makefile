@@ -49,7 +49,7 @@ TEST_OBJS = testrunner.o shill_unittest.o
 all: $(SHILL_BIN) $(TEST_BIN)
 
 %_cli.h: %_cli.xml
-	$(DBUSXX_XML2CPP) $< --adaptor=$@
+	$(DBUSXX_XML2CPP) $< --proxy=$@
 
 %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
