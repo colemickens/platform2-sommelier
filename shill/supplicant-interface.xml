@@ -3,35 +3,6 @@
 	  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 
 <node>
-  <interface name="fi.w1.wpa_supplicant1">
-    <method name="CreateInterface">
-      <arg name="args" type="a{sv}" direction="in"/>
-      <arg name="path" type="o" direction="out"/>
-    </method>
-    <method name="RemoveInterface">
-      <arg name="path" type="o" direction="in"/>
-    </method>
-    <method name="GetInterface">
-      <arg name="ifname" type="s" direction="in"/>
-      <arg name="path" type="o" direction="out"/>
-    </method>
-    <signal name="InterfaceAdded">
-      <arg name="path" type="o"/>
-      <arg name="properties" type="a{sv}"/>
-    </signal>
-    <signal name="InterfaceRemoved">
-      <arg name="path" type="o"/>
-    </signal>
-    <signal name="PropertiesChanged">
-      <arg name="properties" type="a{sv}"/>
-    </signal>
-    <property name="DebugLevel" type="s" access="readwrite"/>
-    <property name="DebugTimestamp" type="b" access="readwrite"/>
-    <property name="DebugShowKeys" type="b" access="readwrite"/>
-    <property name="Interfaces" type="ao" access="read"/>
-    <property name="EapMethods" type="as" access="read"/>
-  </interface>
-
   <interface name="fi.w1.wpa_supplicant1.Interface">
     <method name="Scan">
       <arg name="args" type="a{sv}" direction="in"/>
@@ -97,30 +68,6 @@
     <signal name="NetworkSelected">
       <arg name="network" type="o"/>
     </signal>
-    <signal name="PropertiesChanged">
-      <arg name="properties" type="a{sv}"/>
-    </signal>
-  </interface>
-
-  <interface name="fi.w1.wpa_supplicant1.BSS">
-    <property name="BSSID" type="ay" access="read"/>
-    <property name="SSID" type="ay" access="read"/>
-    <property name="WPA" type="a{sv}" access="read"/>
-    <property name="RSN" type="a{sv}" access="read"/>
-    <property name="IEs" type="ay" access="read"/>
-    <property name="Privacy" type="b" access="read"/>
-    <property name="Mode" type="s" access="read"/>
-    <property name="Frequency" type="q" access="read"/>
-    <property name="Rates" type="au" access="read"/>
-    <property name="Signal" type="n" access="read"/>
-    <signal name="PropertiesChanged">
-      <arg name="properties" type="a{sv}"/>
-    </signal>
-  </interface>
-
-  <interface name="fi.w1.wpa_supplicant1.Network">
-    <property name="Enabled" type="b" access="readwrite"/>
-    <property name="Properties" type="a{sv}" access="read"/>
     <signal name="PropertiesChanged">
       <arg name="properties" type="a{sv}"/>
     </signal>
