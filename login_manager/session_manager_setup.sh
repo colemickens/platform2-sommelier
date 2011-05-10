@@ -332,7 +332,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --login-profile=user \
             --no-first-run \
             --parallel-auth \
-            --scroll-pixels=4 \
+            --scroll-pixels=3 \
             --reload-killed-tabs \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
