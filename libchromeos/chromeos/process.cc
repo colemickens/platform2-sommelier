@@ -163,14 +163,14 @@ bool ProcessImpl::Start() {
         HANDLE_EINTR(close(output_handle));
       }
     }
-    if (uid_ >= 0 && setresuid(uid_, uid_, uid_) < 0) {
-      int saved_errno = errno;
-      LOG(ERROR) << "Unable to set UID to " << uid_ << ": " << saved_errno;
-      _exit(kErrorExitStatus);
-    }
     if (gid_ >= 0 && setresgid(gid_, gid_, gid_) < 0) {
       int saved_errno = errno;
       LOG(ERROR) << "Unable to set GID to " << gid_ << ": " << saved_errno;
+      _exit(kErrorExitStatus);
+    }
+    if (uid_ >= 0 && setresuid(uid_, uid_, uid_) < 0) {
+      int saved_errno = errno;
+      LOG(ERROR) << "Unable to set UID to " << uid_ << ": " << saved_errno;
       _exit(kErrorExitStatus);
     }
     execv(argv[0], &argv[0]);
