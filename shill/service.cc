@@ -21,11 +21,11 @@ Service::Service(ControlInterface *control_interface,
     auto_connect_(false),
     configuration_(NULL),
     connection_(NULL),
-    proxy_(control_interface->CreateServiceProxy(this)) {
+    adaptor_(control_interface->CreateServiceAdaptor(this)) {
 }
 
 Service::~Service() {
-  delete(proxy_);
+  delete(adaptor_);
 }
 
 }  // namespace shill

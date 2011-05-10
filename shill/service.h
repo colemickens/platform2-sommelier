@@ -54,8 +54,8 @@ class Service : public Resource {
   Connection *connection_;
   Device *interface_;
   Endpoint *endpoint_;
-  ServiceProxyInterface *proxy_;
-  friend class ServiceProxyInterface;
+  ServiceAdaptorInterface *adaptor_;
+  friend class ServiceAdaptorInterface;
 };
 
 }  // namespace shill

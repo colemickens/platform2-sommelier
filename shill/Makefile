@@ -24,7 +24,8 @@ TEST_LIB_DIRS = $(LIB_DIRS)
 
 XMLFILES = flimflam-device.xml \
 	flimflam-manager.xml \
-	flimflam-service.xml
+	flimflam-service.xml \
+	supplicant_cli.xml
 
 DBUS_HEADERS = $(patsubst %.xml,%.h,$(XMLFILES))
 
@@ -46,6 +47,9 @@ TEST_BIN = shill_unittest
 TEST_OBJS = testrunner.o shill_unittest.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
+
+%_cli.h: %_cli.xml
+	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
 %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@

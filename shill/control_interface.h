@@ -15,43 +15,43 @@ class Device;
 
 using std::string;
 
-// This is the Inteface for "partner" objects which are in charge of
-// RPC to the various core classes.
-class ProxyInterface {
+// This is the Interface for "partner" objects which are in charge of
+// handling incoming RPCs to the various core classes.
+class AdaptorInterface {
  public:
   virtual void SetProperty(const string &key, const string &value) = 0;
   virtual const string *GetProperty(const string &key) = 0;
   virtual void ClearProperty(const string &key) = 0;
-  virtual ~ProxyInterface() {}
+  virtual ~AdaptorInterface() {}
 };
 
-// These are the functions that a Manager proxy must support
-class ManagerProxyInterface {
+// These are the functions that a Manager adaptor must support
+class ManagerAdaptorInterface {
  public:
   virtual void UpdateRunning() = 0;
-  virtual ~ManagerProxyInterface() {}
+  virtual ~ManagerAdaptorInterface() {}
 };
 
-// These are the functions that a Manager proxy must support
-class ServiceProxyInterface {
+// These are the functions that a Service adaptor must support
+class ServiceAdaptorInterface {
  public:
   virtual void UpdateConnected() = 0;
-  virtual ~ServiceProxyInterface() {}
+  virtual ~ServiceAdaptorInterface() {}
 };
 
-// These are the functions that a Manager proxy must support
-class DeviceProxyInterface {
+// These are the functions that a Device adaptor must support
+class DeviceAdaptorInterface {
  public:
   virtual void UpdateEnabled() = 0;
-  virtual ~DeviceProxyInterface() {}
+  virtual ~DeviceAdaptorInterface() {}
 };
 
-// This is the Interface for an object factory that creates proxy objects
+// This is the Interface for an object factory that creates adaptor objects
 class ControlInterface {
  public:
-  virtual ManagerProxyInterface *CreateManagerProxy(Manager *manager) = 0;
-  virtual ServiceProxyInterface *CreateServiceProxy(Service *service) = 0;
-  virtual DeviceProxyInterface *CreateDeviceProxy(Device *device) = 0;
+  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
+  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
+  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) = 0;
   virtual ~ControlInterface() {}
 };
 

@@ -16,59 +16,59 @@ namespace shill {
 #define SHILL_INTERFACE "org.chromium.shill."
 #define SHILL_PATH "/org/chromium/shill/"
 
-const char ManagerDBusProxy::kInterfaceName[] = SHILL_INTERFACE "Manager";
-const char ManagerDBusProxy::kPath[] = SHILL_PATH "Manager";
-const char ServiceDBusProxy::kInterfaceName[] = SHILL_INTERFACE "Service";
-const char ServiceDBusProxy::kPath[] = SHILL_PATH "Service";
-const char DeviceDBusProxy::kInterfaceName[] = SHILL_INTERFACE "Device";
-const char DeviceDBusProxy::kPath[] = SHILL_PATH "Device";
+const char ManagerDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE "Manager";
+const char ManagerDBusAdaptor::kPath[] = SHILL_PATH "Manager";
+const char ServiceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE "Service";
+const char ServiceDBusAdaptor::kPath[] = SHILL_PATH "Service";
+const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE "Device";
+const char DeviceDBusAdaptor::kPath[] = SHILL_PATH "Device";
 
-void DBusProxy::SetProperty(const string& /* key */,
+void DBusAdaptor::SetProperty(const string& /* key */,
                             const string& /* val */) {
   // Update property hash table, and output DBus signals, if requested
 }
 
-const string *DBusProxy::GetProperty(const string & /* key */) {
+const string *DBusAdaptor::GetProperty(const string & /* key */) {
   // FIXME(pstew): Should be doing a hash table lookup
   return new string("value");
 }
 
-void DBusProxy::ClearProperty(const string & /* key */) {
+void DBusAdaptor::ClearProperty(const string & /* key */) {
   // Remove entry from hash table
 }
 
 
-ManagerDBusProxy::ManagerDBusProxy(Manager *manager)
+ManagerDBusAdaptor::ManagerDBusAdaptor(Manager *manager)
   : interface_(kInterfaceName),
     path_(kPath),
     manager_(manager) {}
 
-void ManagerDBusProxy::UpdateRunning() {}
+void ManagerDBusAdaptor::UpdateRunning() {}
 
-ServiceDBusProxy::ServiceDBusProxy(Service *service)
+ServiceDBusAdaptor::ServiceDBusAdaptor(Service *service)
   : interface_(kInterfaceName),
     path_(kPath),
     service_(service) {}
 
-void ServiceDBusProxy::UpdateConnected() {}
+void ServiceDBusAdaptor::UpdateConnected() {}
 
-DeviceDBusProxy::DeviceDBusProxy(Device *device)
+DeviceDBusAdaptor::DeviceDBusAdaptor(Device *device)
   : interface_(kInterfaceName),
     path_(kPath),
     device_(device) {}
 
-void DeviceDBusProxy::UpdateEnabled() {}
+void DeviceDBusAdaptor::UpdateEnabled() {}
 
-ManagerProxyInterface *DBusControl::CreateManagerProxy(Manager *manager) {
-  return new ManagerDBusProxy(manager);
+ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
+  return new ManagerDBusAdaptor(manager);
 }
 
-ServiceProxyInterface *DBusControl::CreateServiceProxy(Service *service) {
-  return new ServiceDBusProxy(service);
+ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
+  return new ServiceDBusAdaptor(service);
 }
 
-DeviceProxyInterface *DBusControl::CreateDeviceProxy(Device *device) {
-  return new DeviceDBusProxy(device);
+DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
+  return new DeviceDBusAdaptor(device);
 }
 
 

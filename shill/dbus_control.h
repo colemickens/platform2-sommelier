@@ -11,9 +11,9 @@ namespace shill {
 // This is the Interface for the control channel for Shill.
 class DBusControl : public ControlInterface {
  public:
-  ManagerProxyInterface *CreateManagerProxy(Manager *manager);
-  ServiceProxyInterface *CreateServiceProxy(Service *service);
-  DeviceProxyInterface *CreateDeviceProxy(Device *device);
+  ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
+  ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
+  DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
 };
 
 }  // namespace shill

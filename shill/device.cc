@@ -16,22 +16,22 @@ using std::string;
 namespace shill {
 Device::Device(ControlInterface *control_interface,
 		 EventDispatcher */* dispatcher */)
-  : proxy_(control_interface->CreateDeviceProxy(this)),
+  : adaptor_(control_interface->CreateDeviceAdaptor(this)),
     running_(false) {
 }
 
 Device::~Device() {
-  delete(proxy_);
+  delete(adaptor_);
 }
 
 void Device::Start() {
   running_ = true;
-  proxy_->UpdateEnabled();
+  adaptor_->UpdateEnabled();
 }
 
 void Device::Stop() {
   running_ = false;
-  proxy_->UpdateEnabled();
+  adaptor_->UpdateEnabled();
 }
 
 }  // namespace shill

@@ -9,8 +9,8 @@
 
 namespace shill {
 
-// Superclass for all DBus-backed Proxy objects
-class DBusProxy : public ProxyInterface {
+// Superclass for all DBus-backed Adaptor objects
+class DBusAdaptor : public AdaptorInterface {
  public:
   void SetProperty(const string &key, const string &value);
   const string *GetProperty(const string &key);
@@ -23,10 +23,11 @@ class DBusProxy : public ProxyInterface {
 
 class DBusControl;
 
-// Subclass of DBusProxy for Manager objects
-class ManagerDBusProxy : protected DBusProxy, public ManagerProxyInterface {
+// Subclass of DBusAdaptor for Manager objects
+class ManagerDBusAdaptor : protected DBusAdaptor,
+                           public ManagerAdaptorInterface {
  public:
-  explicit ManagerDBusProxy(Manager *manager);
+  explicit ManagerDBusAdaptor(Manager *manager);
   void UpdateRunning();
 
  private:
@@ -37,10 +38,11 @@ class ManagerDBusProxy : protected DBusProxy, public ManagerProxyInterface {
   Manager *manager_;
 };
 
-// Subclass of DBusProxy for Service objects
-class ServiceDBusProxy : protected DBusProxy, public ServiceProxyInterface {
+// Subclass of DBusAdaptor for Service objects
+class ServiceDBusAdaptor : protected DBusAdaptor,
+                           public ServiceAdaptorInterface {
  public:
-  explicit ServiceDBusProxy(Service *service);
+  explicit ServiceDBusAdaptor(Service *service);
   void UpdateConnected();
 
  private:
@@ -51,10 +53,11 @@ class ServiceDBusProxy : protected DBusProxy, public ServiceProxyInterface {
   Service *service_;
 };
 
-// Subclass of DBusProxy for Device objects
-class DeviceDBusProxy : protected DBusProxy, public DeviceProxyInterface {
+// Subclass of DBusAdaptor for Device objects
+class DeviceDBusAdaptor : protected DBusAdaptor,
+                          public DeviceAdaptorInterface {
  public:
-  explicit DeviceDBusProxy(Device *device);
+  explicit DeviceDBusAdaptor(Device *device);
   void UpdateEnabled();
 
  private:

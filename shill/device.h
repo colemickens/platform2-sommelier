@@ -22,9 +22,9 @@ class Device : public Resource {
   void Stop();
 
  private:
-  DeviceProxyInterface *proxy_;
+  DeviceAdaptorInterface *adaptor_;
   bool running_;
-  friend class DeviceProxyInterface;
+  friend class DeviceAdaptorInterface;
 };
 
 }  // namespace shill

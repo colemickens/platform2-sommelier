@@ -24,11 +24,11 @@ class Manager : public Resource {
   void Stop();
 
  private:
-  ManagerProxyInterface *proxy_;
+  ManagerAdaptorInterface *adaptor_;
   bool running_;
   std::vector<Device*> devices_;
   std::vector<Service*> services_;
-  friend class ManagerProxyInterface;
+  friend class ManagerAdaptorInterface;
 };
 
 }  // namespace shill
