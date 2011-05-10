@@ -6,20 +6,18 @@
 #include <string>
 #include <syslog.h>
 
-#include <base/file_path.h>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-
+#include "shill/shill_logging.h"
 #include "shill/shill_daemon.h"
 #include "shill/dbus_control.h"
 
 using std::string;
 
+  /*
 DEFINE_string(config_dir, "",
               "Directory to read confguration settings.");
 DEFINE_string(default_config_dir, "",
               "Directory to read default configuration settings (Read Only).");
-
+  */
 namespace google {
 class LogSinkSyslog : public google::LogSink {
  public:
@@ -49,28 +47,23 @@ class LogSinkSyslog : public google::LogSink {
 }  // namespace google
 
 
-int main(int argc, char** argv) {
-  google::LogSinkSyslog syslog_sink;
-
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  google::SetCommandLineOptionWithMode("min_log_level",
-                                       "0",
-                                       google::SET_FLAG_IF_DEFAULT);
-  google::InitGoogleLogging(argv[0]);
-  google::AddLogSink(&syslog_sink);
-
+int main(int /* argc */, char** argv) {
+  /*
   FilePath config_dir(FLAGS_config_dir);
   FilePath default_config_dir(FLAGS_default_config_dir.empty() ?
                               shill::Config::kShillDefaultPrefsDir :
                               FLAGS_default_config_dir);
+  */
+  google::LogSinkSyslog syslog_sink;
 
+  google::InitGoogleLogging(argv[0]);
+  google::AddLogSink(&syslog_sink);
   shill::Config config; /* (config_dir, default_config_dir) */
 
   // TODO(pstew): This should be chosen based on config
   shill::ControlInterface *control_interface = new shill::DBusControl();
 
   shill::Daemon daemon(&config, control_interface);
-  VLOG(2) << "Starting Shill daemon.";
   daemon.Run();
 
   return 0;
