@@ -9,14 +9,17 @@ AR ?= ar
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
-
-BASE_LIBS = -lbase -lchromeos -lpthread -lrt
+# libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
+# TODO(cmasone): explore if newer versions of libbase let us avoid this.
+BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt
 BASE_INCLUDE_DIRS = -I..
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
-INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags glib-2.0)
-LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs glib-2.0)
+INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags glib-2.0 \
+        gdk-2.0 gtk+-2.0)
+LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs glib-2.0 \
+        gdk-2.0 gtk+-2.0)
 
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_INCLUDE_DIRS = $(INCLUDE_DIRS)

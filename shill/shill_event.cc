@@ -5,64 +5,25 @@
 #include <stdio.h>
 #include <glib.h>
 
+#include <base/callback.h>
+#include <base/message_loop_proxy.h>
+
 #include "shill/shill_event.h"
 
 namespace shill {
 
-EventQueueItem::EventQueueItem(EventDispatcher *dispatcher)
-  : dispatcher_(dispatcher) {
-  dispatcher->RegisterCallbackQueue(this);
-}
-
-EventQueueItem::~EventQueueItem() {
-  dispatcher_->UnregisterCallbackQueue(this);
-}
-
-void EventQueueItem::AlertDispatcher() {
-  dispatcher_->ExecuteOnIdle();
-}
-
-void EventDispatcher::DispatchEvents() {
-  for (size_t idx = 0; idx < queue_list_.size(); ++idx)
-    queue_list_[idx]->Dispatch();
-}
-
-static gboolean DispatchEventsHandler(gpointer data) {
-  EventDispatcher *dispatcher = static_cast<EventDispatcher *>(data);
-  dispatcher->DispatchEvents();
-  return false;
-}
-
-void EventDispatcher::ExecuteOnIdle() {
-  g_idle_add(&DispatchEventsHandler, this);
-}
-
-void EventDispatcher::RegisterCallbackQueue(EventQueueItem *queue) {
-  queue_list_.push_back(queue);
-}
-
-void EventDispatcher::UnregisterCallbackQueue(EventQueueItem *queue) {
-  for (size_t idx = 0; idx < queue_list_.size(); ++idx) {
-    if (queue_list_[idx] == queue) {
-      queue_list_.erase(queue_list_.begin() + idx);
-      return;
-    }
-  }
-}
-
-static gboolean DispatchIOHandler(GIOChannel *chan, GIOCondition cond,
+static gboolean DispatchIOHandler(GIOChannel *chan,
+                                  GIOCondition cond,
                                   gpointer data);
 
 class GlibIOInputHandler : public IOInputHandler {
 public:
   GIOChannel *channel_;
-  Callback<InputData *> *callback_;
+  Callback1<InputData *>::Type *callback_;
   guint source_id_;
-  EventDispatcher *dispatcher_;
 
-  GlibIOInputHandler(EventDispatcher *dispatcher, int fd,
-                     Callback<InputData *> *callback) :
-    dispatcher_(dispatcher), callback_(callback) {
+  GlibIOInputHandler(int fd, Callback1<InputData*>::Type *callback)
+      : callback_(callback) {
     channel_ = g_io_channel_unix_new(fd);
     g_io_channel_set_close_on_unref(channel_, TRUE);
     source_id_ = g_io_add_watch(channel_,
@@ -78,7 +39,8 @@ public:
   }
 };
 
-static gboolean DispatchIOHandler(GIOChannel *chan, GIOCondition cond,
+static gboolean DispatchIOHandler(GIOChannel *chan,
+                                  GIOCondition cond,
                                   gpointer data) {
   GlibIOInputHandler *handler = static_cast<GlibIOInputHandler *>(data);
   unsigned char buf[4096];
@@ -100,10 +62,29 @@ static gboolean DispatchIOHandler(GIOChannel *chan, GIOCondition cond,
 
   return TRUE;
 }
+EventDispatcher::EventDispatcher()
+    : dont_use_directly_(new MessageLoopForUI),
+      message_loop_proxy_(base::MessageLoopProxy::CreateForCurrentThread()) {
+}
 
-IOInputHandler *EventDispatcher::CreateInputHandler(int fd,
-        Callback<InputData *> *callback) {
-  return new GlibIOInputHandler(this, fd, callback);
+EventDispatcher::~EventDispatcher() {}
+
+void EventDispatcher::DispatchForever() {
+  MessageLoop::current()->Run();
+}
+
+bool EventDispatcher::PostTask(Task* task) {
+  message_loop_proxy_->PostTask(FROM_HERE, task);
+}
+
+bool EventDispatcher::PostDelayedTask(Task* task, int64 delay_ms) {
+  message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
+}
+
+IOInputHandler *EventDispatcher::CreateInputHandler(
+    int fd,
+    Callback1<InputData*>::Type *callback) {
+  return new GlibIOInputHandler(fd, callback);
 }
 
 }  // namespace shill

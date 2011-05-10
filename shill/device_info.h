@@ -5,6 +5,7 @@
 #ifndef SHILL_DEVICE_INFO_
 #define SHILL_DEVICE_INFO_
 
+#include <base/callback.h>
 #include <base/hash_tables.h>
 #include <base/scoped_ptr.h>
 
@@ -28,7 +29,7 @@ class DeviceInfo {
 
   bool running_;
   EventDispatcher *dispatcher_;
-  ClassCallback<DeviceInfo, InputData *> rtnl_callback_;
+  scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;
   int rtnl_socket_;
   base::hash_map<int, Device *> devices_;
   scoped_ptr<IOInputHandler> rtnl_handler_;

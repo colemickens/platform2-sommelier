@@ -15,7 +15,10 @@
 #include <linux/rtnetlink.h>
 #include <string>
 
+#include <base/callback.h>
 #include <base/logging.h>
+#include <base/hash_tables.h>
+#include <base/scoped_ptr.h>
 
 #include "shill/control_interface.h"
 #include "shill/service.h"
@@ -27,7 +30,7 @@ namespace shill {
 DeviceInfo::DeviceInfo(EventDispatcher *dispatcher)
   : running_(false),
     dispatcher_(dispatcher),
-    rtnl_callback_(this, &DeviceInfo::ParseRTNL),
+    rtnl_callback_(NewCallback(this, &DeviceInfo::ParseRTNL)),
     rtnl_socket_(-1),
     request_flags_(0),
     request_sequence_(0) {
@@ -63,7 +66,7 @@ void DeviceInfo::Start()
   }
 
   rtnl_handler_.reset(dispatcher_->CreateInputHandler(rtnl_socket_,
-                                                      &rtnl_callback_));
+                                                      rtnl_callback_.get()));
   running_ = true;
 
   request_flags_ = REQUEST_LINK | REQUEST_ADDR | REQUEST_ROUTE;

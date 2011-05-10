@@ -18,11 +18,12 @@ class Device : public base::RefCounted<Device> {
   // A constructor for the Device object
   explicit Device(ControlInterface *control_interface,
 		  EventDispatcher *dispatcher);
+
   void Start();
   void Stop();
 
  protected:
-  ~Device();
+  virtual ~Device();
 
  private:
   DeviceAdaptorInterface *adaptor_;

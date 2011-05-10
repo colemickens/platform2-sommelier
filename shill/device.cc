@@ -8,15 +8,17 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/ref_counted.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/shill_event.h"
 
 using std::string;
 
 namespace shill {
 Device::Device(ControlInterface *control_interface,
-		 EventDispatcher */* dispatcher */)
+               EventDispatcher *dispatcher)
   : adaptor_(control_interface->CreateDeviceAdaptor(this)),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces

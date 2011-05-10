@@ -6,6 +6,8 @@
 #include <glib.h>
 
 #include <base/logging.h>
+#include <base/message_loop_proxy.h>
+#include <base/stringprintf.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -15,71 +17,77 @@
 namespace shill {
 using ::testing::Test;
 using ::testing::_;
-using ::testing::DoAll;
-using ::testing::InSequence;
+using ::testing::Gt;
 using ::testing::NotNull;
 using ::testing::Return;
-using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 
 class MockEventDispatchTester {
  public:
   explicit MockEventDispatchTester(EventDispatcher *dispatcher)
-    : dispatcher_(dispatcher),
-      triggered_(false),
-      int_callback_(new ClassCallback<MockEventDispatchTester, int>(this,
-              &MockEventDispatchTester::HandleInt)),
-      int_callback_queue_(dispatcher),
-      got_data_(false),
-      data_callback_(new ClassCallback<MockEventDispatchTester, InputData *>
-              (this, &MockEventDispatchTester::HandleData)) {
-    int_callback_queue_.AddCallback(int_callback_);
-    timer_source_ = g_timeout_add_seconds(1,
-      &MockEventDispatchTester::CallbackFunc, this);
+      : dispatcher_(dispatcher),
+        triggered_(false),
+        callback_count_(0),
+        got_data_(false),
+        data_callback_(NULL),
+        input_handler_(NULL),
+        tester_factory_(this) {
   }
 
-  ~MockEventDispatchTester() {
-    RemoveCallback();
-    delete(int_callback_);
-    g_source_remove(timer_source_);
+  void ScheduleTimedTasks() {
+    dispatcher_->PostDelayedTask(
+        tester_factory_.NewRunnableMethod(&MockEventDispatchTester::Trigger),
+        10);
+    // also set up a failsafe, so the test still exits even if something goes
+    // wrong.  The Factory owns the RunnableMethod, but we get a pointer to it.
+    failsafe_ = tester_factory_.NewRunnableMethod(
+        &MockEventDispatchTester::QuitRegardless);
+    dispatcher_->PostDelayedTask(failsafe_, 100);
   }
 
-  void TimerFunction(int counter) {
-    printf("Callback func called #%d\n", counter);
-    if (counter > 1)
-      int_callback_queue_.AddEvent(counter);
-  }
-
-  void HandleInt(int arg) {
-    printf("MockEventDispatchTester handling int %d\n", arg);
-    // Depending on the course of events, we may be called either once or
-    // twice depending on timing.  Only call the mock routine once.
+  void RescheduleUnlessTriggered() {
+    ++callback_count_;
     if (!triggered_) {
-      CallbackComplete(arg);
-      triggered_ = true;
+      dispatcher_->PostTask(
+          tester_factory_.NewRunnableMethod(
+              &MockEventDispatchTester::RescheduleUnlessTriggered));
+    } else {
+      failsafe_->Cancel();
+      QuitRegardless();
     }
   }
 
-  bool GetTrigger() { return triggered_; }
-  void ResetTrigger() { triggered_ = false; }
-  void RemoveCallback() { int_callback_queue_.RemoveCallback(int_callback_); }
+  void QuitRegardless() {
+    dispatcher_->PostTask(new MessageLoop::QuitTask);
+  }
 
+  void Trigger() {
+    LOG(INFO) << "MockEventDispatchTester handling " << callback_count_;
+    CallbackComplete(callback_count_);
+    triggered_ = true;
+  }
 
   void HandleData(InputData *inputData) {
-    printf("MockEventDispatchTester handling data len %d %.*s\n",
-           inputData->len, inputData->len, inputData->buf);
+    LOG(INFO) << "MockEventDispatchTester handling data len "
+              << base::StringPrintf("%d %.*s", inputData->len,
+                                    inputData->len, inputData->buf);
     got_data_ = true;
     IOComplete(inputData->len);
+    QuitRegardless();
   }
+
   bool GetData() { return got_data_; }
 
   void ListenIO(int fd) {
-    input_handler_ = dispatcher_->CreateInputHandler(fd, data_callback_);
+    data_callback_.reset(NewCallback(this,
+                                     &MockEventDispatchTester::HandleData));
+    input_handler_.reset(dispatcher_->CreateInputHandler(fd,
+                                                         data_callback_.get()));
   }
 
   void StopListenIO() {
     got_data_ = false;
-    delete(input_handler_);
+    input_handler_.reset(NULL);
   }
 
   MOCK_METHOD1(CallbackComplete, void(int));
@@ -87,19 +95,12 @@ class MockEventDispatchTester {
  private:
   EventDispatcher *dispatcher_;
   bool triggered_;
-  Callback<int> *int_callback_;
-  EventQueue<int>int_callback_queue_;
+  int callback_count_;
   bool got_data_;
-  Callback<InputData *> *data_callback_;
-  IOInputHandler *input_handler_;
-  int timer_source_;
-  static gboolean CallbackFunc(gpointer data) {
-    static int i = 0;
-    MockEventDispatchTester *dispatcher_test =
-      static_cast<MockEventDispatchTester *>(data);
-    dispatcher_test->TimerFunction(i++);
-    return true;
-  }
+  scoped_ptr<Callback1<InputData*>::Type> data_callback_;
+  scoped_ptr<IOInputHandler> input_handler_;
+  ScopedRunnableMethodFactory<MockEventDispatchTester> tester_factory_;
+  CancelableTask* failsafe_;
 };
 
 class ShillDaemonTest : public Test {
@@ -108,11 +109,14 @@ class ShillDaemonTest : public Test {
     : daemon_(&config_, new DBusControl()),
       dispatcher_(&daemon_.dispatcher_),
       dispatcher_test_(dispatcher_),
-      device_info_(dispatcher_) {}
+      device_info_(dispatcher_),
+      factory_(this) {
+  }
+  virtual ~ShillDaemonTest() {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
-    EXPECT_NE((Config *)NULL, daemon_.config_);
-    EXPECT_NE((ControlInterface *)NULL, daemon_.control_);
+    ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
+    ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
   }
   int DeviceInfoFlags() { return device_info_.request_flags_; }
 protected:
@@ -121,41 +125,29 @@ protected:
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
+  ScopedRunnableMethodFactory<ShillDaemonTest> factory_;
 };
 
 
 TEST_F(ShillDaemonTest, EventDispatcher) {
-  EXPECT_CALL(dispatcher_test_, CallbackComplete(2));
-
-  // Crank the glib main loop a few times until the event handler triggers
-  for (int main_loop_count = 0;
-       main_loop_count < 6 && !dispatcher_test_.GetTrigger(); ++main_loop_count)
-    g_main_context_iteration(NULL, TRUE);
-
-  EXPECT_EQ(dispatcher_test_.GetTrigger(), true);
-
-  dispatcher_test_.ResetTrigger();
-  dispatcher_test_.RemoveCallback();
-
-  // Crank the glib main loop a few more times, ensuring there is no trigger
-  for (int main_loop_count = 0;
-       main_loop_count < 6 && !dispatcher_test_.GetTrigger(); ++main_loop_count)
-    g_main_context_iteration(NULL, TRUE);
-
+  EXPECT_CALL(dispatcher_test_, CallbackComplete(Gt(0)));
+  dispatcher_test_.ScheduleTimedTasks();
+  dispatcher_test_.RescheduleUnlessTriggered();
+  dispatcher_->DispatchForever();
 
   EXPECT_CALL(dispatcher_test_, IOComplete(16));
   int pipefd[2];
-  EXPECT_EQ(pipe(pipefd), 0);
+  ASSERT_EQ(pipe(pipefd), 0);
 
   dispatcher_test_.ListenIO(pipefd[0]);
-  EXPECT_EQ(write(pipefd[1], "This is a test?!", 16), 16);
+  ASSERT_EQ(write(pipefd[1], "This is a test?!", 16), 16);
 
-  // Crank the glib main loop a few times
-  for (int main_loop_count = 0;
-       main_loop_count < 6 && !dispatcher_test_.GetData(); ++main_loop_count)
-    g_main_context_iteration(NULL, TRUE);
-
+  dispatcher_->DispatchForever();
   dispatcher_test_.StopListenIO();
+}
+
+TEST_F(ShillDaemonTest, DeviceEnumeration) {
+  // TODO(cmasone): Make this unit test use message loop primitives.
 
   // Start our own private device_info and make sure request flags clear
   device_info_.Start();

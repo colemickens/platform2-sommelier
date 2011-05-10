@@ -5,6 +5,7 @@
 #include <time.h>
 #include <string>
 
+#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
@@ -50,6 +51,7 @@ void SetupLogging(bool foreground) {
 
 
 int main(int argc, char** argv) {
+  base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
 
