@@ -88,7 +88,8 @@ get_board() {
 MAKE_DEV_READONLY=${FLAGS_FALSE}
 if [ -n "$IS_UPDATE" ] && version_less "${FLAGS_src_version}" 0.10.156.2; then
   echo "Patching new rootfs"
-  dd if=/dev/zero of="${INSTALL_DEV}" bs=1 count=2 conv=notrunc seek=1400
+  dd if=/dev/zero of="${INSTALL_DEV}" bs=1 count=2 conv=notrunc seek=1400 ||
+    true
   MAKE_DEV_READONLY=${FLAGS_TRUE}
 fi
 
@@ -300,7 +301,7 @@ echo "marking part $LEGACY_PART_NUM bootable (new)"
 
 if [ ${MAKE_DEV_READONLY} -eq ${FLAGS_TRUE} ]; then
   echo "Making dev ${INSTALL_DEV} read-only"
-  hdparm -r 1 "${INSTALL_DEV}"
+  hdparm -r 1 "${INSTALL_DEV}" || true
 fi
 
 # At this point in the script, the new partition has been marked bootable
