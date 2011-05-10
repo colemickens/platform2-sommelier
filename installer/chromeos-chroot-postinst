@@ -13,6 +13,7 @@
 . /usr/lib/shflags || exit 1
 
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
+DEFINE_boolean postcommit ${FLAGS_FALSE} "Obsolete option -- do nothing."
 DEFINE_string src_version "0.0.0.0" "Current OS version"
 
 # WARNING: do NOT change this default value without consulting adlr/nsanders.
@@ -43,6 +44,13 @@ INSTALL_DEV="$1"
 # on the same device, or if the new root is not really a root (inode != 2).
 [ $(stat -c %d /proc/1/root) -ne $(stat -c %d /) ] || exit 1
 [ $(stat -c %i /) -eq 2 ] || exit 1
+
+# Old update_engine runs this script twice, the second time passing
+# --postcommit. The second run is essentially a no-op so exit gracefully.
+#
+# TODO(petkov): Remove support for this option when we stop caring about clients
+# older than 0.9.128.8.
+[ "${FLAGS_postcommit}" -eq "${FLAGS_FALSE}" ] || exit 0
 
 # Find whole disk device.
 ROOT_DEV=$(get_block_dev_from_partition_dev ${INSTALL_DEV})
