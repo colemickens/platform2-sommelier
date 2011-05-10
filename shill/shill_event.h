@@ -97,6 +97,17 @@ class EventQueue : public EventQueueItem {
   std::vector<Arg> event_queue_;
 };
 
+struct InputData {
+  unsigned char *buf;
+  size_t len;
+};
+
+class IOInputHandler {
+ public:
+  IOInputHandler() {}
+  virtual ~IOInputHandler() {}
+};
+
 // This is the main event dispatcher.  It contains a central instance, and
 // is the entity responsible for dispatching events out of all queues to
 // their listeners during the idle loop.
@@ -106,6 +117,7 @@ class EventDispatcher {
   void ExecuteOnIdle();
   void RegisterCallbackQueue(EventQueueItem *queue);
   void UnregisterCallbackQueue(EventQueueItem *queue);
+  IOInputHandler *CreateInputHandler(int fd, Callback<InputData *> *callback);
  private:
   std::vector<EventQueueItem*> queue_list_;
 };

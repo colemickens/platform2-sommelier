@@ -25,10 +25,14 @@ using ::testing::StrictMock;
 class MockEventDispatchTester {
  public:
   explicit MockEventDispatchTester(EventDispatcher *dispatcher)
-    : triggered_(false),
+    : dispatcher_(dispatcher),
+      triggered_(false),
       int_callback_(new ClassCallback<MockEventDispatchTester, int>(this,
-		    &MockEventDispatchTester::HandleInt)),
-      int_callback_queue_(dispatcher) {
+              &MockEventDispatchTester::HandleInt)),
+      int_callback_queue_(dispatcher),
+      got_data_(false),
+      data_callback_(new ClassCallback<MockEventDispatchTester, InputData *>
+              (this, &MockEventDispatchTester::HandleData)) {
     int_callback_queue_.AddCallback(int_callback_);
     timer_source_ = g_timeout_add_seconds(1,
       &MockEventDispatchTester::CallbackFunc, this);
@@ -60,11 +64,34 @@ class MockEventDispatchTester {
   void ResetTrigger() { triggered_ = false; }
   void RemoveCallback() { int_callback_queue_.RemoveCallback(int_callback_); }
 
+
+  void HandleData(InputData *inputData) {
+    printf("MockEventDispatchTester handling data len %d %.*s\n",
+           inputData->len, inputData->len, inputData->buf);
+    got_data_ = true;
+    IOComplete(inputData->len);
+  }
+  bool GetData() { return got_data_; }
+
+  void ListenIO(int fd) {
+    input_handler_ = dispatcher_->CreateInputHandler(fd, data_callback_);
+  }
+
+  void StopListenIO() {
+    got_data_ = false;
+    delete(input_handler_);
+  }
+
   MOCK_METHOD1(CallbackComplete, void(int));
+  MOCK_METHOD1(IOComplete, void(int));
  private:
+  EventDispatcher *dispatcher_;
   bool triggered_;
   Callback<int> *int_callback_;
   EventQueue<int>int_callback_queue_;
+  bool got_data_;
+  Callback<InputData *> *data_callback_;
+  IOInputHandler *input_handler_;
   int timer_source_;
   static gboolean CallbackFunc(gpointer data) {
     static int i = 0;
@@ -111,6 +138,21 @@ TEST_F(ShillDaemonTest, EventDispatcher) {
   for (int main_loop_count = 0;
        main_loop_count < 6 && !dispatcher_test_.GetTrigger(); ++main_loop_count)
     g_main_context_iteration(NULL, TRUE);
+
+
+  EXPECT_CALL(dispatcher_test_, IOComplete(16));
+  int pipefd[2];
+  EXPECT_EQ(pipe(pipefd), 0);
+
+  dispatcher_test_.ListenIO(pipefd[0]);
+  EXPECT_EQ(write(pipefd[1], "This is a test?!", 16), 16);
+
+  // Crank the glib main loop a few times
+  for (int main_loop_count = 0;
+       main_loop_count < 6 && !dispatcher_test_.GetData(); ++main_loop_count)
+    g_main_context_iteration(NULL, TRUE);
+
+  dispatcher_test_.StopListenIO();
 }
 
 }
