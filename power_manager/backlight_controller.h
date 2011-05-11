@@ -5,17 +5,16 @@
 #ifndef POWER_MANAGER_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_BACKLIGHT_CONTROLLER_H_
 
-#include <algorithm>
-
-#include "power_manager/backlight_interface.h"
-#include "power_manager/power_prefs_interface.h"
+#include "base/basictypes.h"
 #include "power_manager/signal_callback.h"
-
-namespace power_manager {
 
 typedef int gboolean;
 
+namespace power_manager {
+
 class AmbientLightSensor;
+class BacklightInterface;
+class PowerPrefsInterface;
 
 enum PowerState {
   BACKLIGHT_ACTIVE_ON,

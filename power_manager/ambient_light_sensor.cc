@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <algorithm>
+
 #include "base/logging.h"
 
 namespace power_manager {

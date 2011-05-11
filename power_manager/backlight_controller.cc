@@ -10,19 +10,17 @@
 
 #include "base/logging.h"
 #include "power_manager/ambient_light_sensor.h"
+#include "power_manager/backlight_interface.h"
 #include "power_manager/power_constants.h"
+#include "power_manager/power_prefs_interface.h"
 
-namespace power_manager {
+namespace {
 
 // Set brightness to this value when going into idle-induced dim state.
-static const double kIdleBrightness = 10;
+const double kIdleBrightness = 10;
 
 // Minimum allowed brightness during startup.
-static const double kMinInitialBrightness = 10;
-
-// When waiting for the backlight to be turned off before turning the display,
-// wait for this time between polling the backlight value.
-static const int64 kDisplayOffDelayMS = 100;
+const double kMinInitialBrightness = 10;
 
 // Gradually change backlight level to new brightness by breaking up the
 // transition into N steps, where N = kBacklightNumSteps.
@@ -32,28 +30,32 @@ const int kBacklightNumSteps = 8;
 const int kBacklightStepTimeMS = 30;
 
 // Maximum number of brightness adjustment steps.
-static const int64 kMaxBrightnessSteps = 16;
+const int64 kMaxBrightnessSteps = 16;
 
 // String names for power states.
-static const char* PowerStateToString(PowerState state) {
+const char* PowerStateToString(power_manager::PowerState state) {
   switch (state) {
-    case BACKLIGHT_ACTIVE_ON:
+    case power_manager::BACKLIGHT_ACTIVE_ON:
       return "state(ACTIVE_ON)";
-    case BACKLIGHT_DIM:
+    case power_manager::BACKLIGHT_DIM:
       return "state(DIM)";
-    case BACKLIGHT_IDLE_OFF:
+    case power_manager::BACKLIGHT_IDLE_OFF:
       return "state(IDLE_OFF)";
-    case BACKLIGHT_ACTIVE_OFF:
+    case power_manager::BACKLIGHT_ACTIVE_OFF:
       return "state(ACTIVE_OFF)";
-    case BACKLIGHT_SUSPENDED:
+    case power_manager::BACKLIGHT_SUSPENDED:
       return "state(SUSPENDED)";
-    case BACKLIGHT_UNINITIALIZED:
+    case power_manager::BACKLIGHT_UNINITIALIZED:
       return "state(UNINITIALIZED)";
     default:
       NOTREACHED();
       return "";
   }
 }
+
+}  // namespace
+
+namespace power_manager {
 
 BacklightController::BacklightController(BacklightInterface* backlight,
                                          PowerPrefsInterface* prefs)
