@@ -20,6 +20,7 @@ class Daemon {
  public:
   explicit Daemon(Config *config, ControlInterface *control);
   ~Daemon();
+  void Start();
   void Run();
 
  private:

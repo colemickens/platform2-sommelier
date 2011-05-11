@@ -6,11 +6,13 @@
 #define SHILL_MANAGER_
 
 #include <vector>
+#include <base/scoped_ptr.h>
 
 #include "shill/resource.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 #include "shill/device.h"
+#include "shill/device_info.h"
 
 namespace shill {
 
@@ -24,7 +26,8 @@ class Manager : public Resource {
   void Stop();
 
  private:
-  ManagerAdaptorInterface *adaptor_;
+  scoped_ptr<ManagerAdaptorInterface> adaptor_;
+  DeviceInfo device_info_;
   bool running_;
   std::vector<Device*> devices_;
   std::vector<Service*> services_;

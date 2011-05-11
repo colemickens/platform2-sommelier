@@ -16,21 +16,22 @@ using std::string;
 
 namespace shill {
 Manager::Manager(ControlInterface *control_interface,
-		 EventDispatcher */* dispatcher */)
+                 EventDispatcher *dispatcher)
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
+    device_info_(dispatcher),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
   // TODO(cmasone): change this to VLOG(2) once we have it.
   LOG(INFO) << "Manager initialized.";
 }
 
-Manager::~Manager() {
-  delete(adaptor_);
-}
+Manager::~Manager() {}
 
 void Manager::Start() {
+  LOG(INFO) << "Manager started.";
   running_ = true;
   adaptor_->UpdateRunning();
+  device_info_.Start();
 }
 
 void Manager::Stop() {

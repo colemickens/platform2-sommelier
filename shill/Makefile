@@ -36,6 +36,7 @@ SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
 	dbus_control.o \
 	device.o \
+	device_info.o \
 	manager.o \
 	resource.o \
 	service.o \

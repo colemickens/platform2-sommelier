@@ -107,15 +107,18 @@ class ShillDaemonTest : public Test {
   ShillDaemonTest()
     : daemon_(&config_, new DBusControl()),
       dispatcher_(&daemon_.dispatcher_),
-      dispatcher_test_(dispatcher_) {}
+      dispatcher_test_(dispatcher_),
+      device_info_(dispatcher_) {}
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor
     EXPECT_NE((Config *)NULL, daemon_.config_);
     EXPECT_NE((ControlInterface *)NULL, daemon_.control_);
   }
+  int DeviceInfoFlags() { return device_info_.request_flags_; }
 protected:
   Config config_;
   Daemon daemon_;
+  DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;
 };
@@ -133,7 +136,7 @@ TEST_F(ShillDaemonTest, EventDispatcher) {
 
   dispatcher_test_.ResetTrigger();
   dispatcher_test_.RemoveCallback();
-  
+
   // Crank the glib main loop a few more times, ensuring there is no trigger
   for (int main_loop_count = 0;
        main_loop_count < 6 && !dispatcher_test_.GetTrigger(); ++main_loop_count)
@@ -153,6 +156,18 @@ TEST_F(ShillDaemonTest, EventDispatcher) {
     g_main_context_iteration(NULL, TRUE);
 
   dispatcher_test_.StopListenIO();
+
+  // Start our own private device_info and make sure request flags clear
+  device_info_.Start();
+  EXPECT_NE(DeviceInfoFlags(), 0);
+
+  // Crank the glib main loop a few times
+  for (int main_loop_count = 0;
+       main_loop_count < 6 && DeviceInfoFlags() != 0;
+       ++main_loop_count)
+    g_main_context_iteration(NULL, TRUE);
+
+  EXPECT_EQ(DeviceInfoFlags(), 0);
 }
 
 }
