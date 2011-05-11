@@ -8,7 +8,6 @@
 #include <vector>
 #include <base/scoped_ptr.h>
 
-#include "shill/resource.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 #include "shill/device.h"
@@ -16,7 +15,7 @@
 
 namespace shill {
 
-class Manager : public Resource {
+class Manager {
  public:
   // A constructor for the Manager object
   explicit Manager(ControlInterface *control_interface,

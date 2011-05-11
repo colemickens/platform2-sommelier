@@ -5,21 +5,24 @@
 #ifndef SHILL_DEVICE_
 #define SHILL_DEVICE_
 
-#include "shill/resource.h"
+#include <base/ref_counted.h>
+
 #include "shill/shill_event.h"
 
 namespace shill {
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public Resource {
+class Device : public base::RefCounted<Device> {
  public:
   // A constructor for the Device object
   explicit Device(ControlInterface *control_interface,
 		  EventDispatcher *dispatcher);
-  ~Device();
   void Start();
   void Stop();
+
+ protected:
+  ~Device();
 
  private:
   DeviceAdaptorInterface *adaptor_;

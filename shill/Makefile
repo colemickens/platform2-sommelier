@@ -38,7 +38,6 @@ SHILL_OBJS = \
 	device.o \
 	device_info.o \
 	manager.o \
-	resource.o \
 	service.o \
 	shill_config.o \
 	shill_daemon.o \

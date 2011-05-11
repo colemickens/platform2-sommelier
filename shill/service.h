@@ -5,7 +5,6 @@
 #ifndef SHILL_MANAGER_
 #define SHILL_MANAGER_
 
-#include "shill/resource.h"
 #include "shill/shill_event.h"
 
 namespace shill {
@@ -15,7 +14,7 @@ class Configuration;
 class Device;
 class Endpoint;
 
-class Service : public Resource {
+class Service {
  public:
   // A constructor for the Service object
   explicit Service(ControlInterface *control_interface,
