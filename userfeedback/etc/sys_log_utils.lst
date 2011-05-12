@@ -24,7 +24,7 @@ devkit-power,devkit-power -d
 dmesg,/bin/dmesg
 ec_info,/usr/share/userfeedback/scripts/get_log /var/log/ec_info.txt
 font_info,/usr/share/userfeedback/scripts/font_info
-hardware_class,/usr/bin/hardware_class
+hardware_class,crossystem hwid
 hostname,hostname
 hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
