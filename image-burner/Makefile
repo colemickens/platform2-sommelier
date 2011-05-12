@@ -1,11 +1,11 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 XXFLAGS ?= -Wall -Werror -g
 PKG_CONFIG ?= pkg-config
 
-BASE_LIBS = -lpthread -lrt -lchromeos -lz -lcrosapi -lbase -ldl -lrootdev
+BASE_LIBS = -lpthread -lrt -lchromeos -lbase -ldl -lrootdev
 LIBS = $(BASE_LIBS)
 TEST_LIBS = $(BASE_LIBS)
 INCLUDE_DIRS = -I.. \

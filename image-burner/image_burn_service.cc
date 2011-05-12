@@ -1,19 +1,17 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "image-burner/image_burn_service.h"
 
+#include <cstring>
+#include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
-#include <zlib.h>
 
 #include <base/basictypes.h>
-#include <base/file_util.h>
 #include <base/logging.h>
-#include <chromeos/dbus/service_constants.h>
-#include <cros/chromeos_cros_api.h>
-#include <cros/chromeos_mount.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <fstream>
@@ -28,14 +26,16 @@ namespace imageburn {
 const int kBurningBlockSize = 4 * 1024;  // 4 KiB
 // after every kSentSignalRatio IO operations, update signal will be emited
 const int kSentSignalRatio = 256;
-const char* kDevPath = "/dev/";
+const int kFsyncRatio = 1024;
+
+const char* kFilePathPrefix = "/dev/sd";
+const char* kRootDevicePath = "/dev/sda";
 
 ImageBurnService::ImageBurnService() : image_burner_(),
                                        main_loop_(NULL),
                                        shutting_down_(false),
                                        burning_(false) {
-  LoadLibcros();
-  LOG(INFO) << "Service initialized";
+  LOG(INFO) << "Image Burn Service initialized";
 }
 
 ImageBurnService::~ImageBurnService() {
@@ -81,6 +81,7 @@ bool ImageBurnService::Initialize() {
 }
 
 bool ImageBurnService::Reset() {
+  LOG(INFO) << "Reseting Image Burn Service";
   Cleanup();
 
   image_burner_ = reinterpret_cast<ImageBurner*>(
@@ -90,7 +91,7 @@ bool ImageBurnService::Reset() {
 
   main_loop_ = g_main_loop_new(NULL, false);
   if (!main_loop_) {
-    LOG(ERROR) << "Failed to create main loop";
+    LOG(ERROR) << "Failed to create main loop for Image Burn Service";
     return false;
   }
   return true;
@@ -101,45 +102,30 @@ bool ImageBurnService::Shutdown() {
   chromeos::dbus::AbstractDbusService::Shutdown();
 }
 
-gboolean ImageBurnService::BurnImage(gchar* from_path, gchar* to_path,
-                                     GError** error) {
-  if (burning_) {
-    g_set_error_literal(error, 0, 0, "Another burn in progress");
-    return false;
+gboolean ImageBurnService::BurnImageAsync(gchar* from_path, gchar* to_path,
+    DBusGMethodInvocation * context) {
+  std::string error_str;
+  bool success = true;
+  if (!from_path) {
+    error_str = "Source path set to NULL.";
+    success = false;
+  } else if (!to_path) {
+    error_str = "Destination path set to NULL.";
+    success = false;
   } else {
-    burning_ = true;
+    success = BurnImageImpl(from_path, to_path, &error_str);
   }
 
-  scoped_ptr<BurnArguments> args(new BurnArguments);
-  args->from_path = from_path;
-  args->to_path = to_path;
-  args->service = this;
-  g_timeout_add(1, &ImageBurnService::BurnImageTimeoutCallback, args.release());
-  return true;
-}
-
-gboolean ImageBurnService::BurnImageTimeoutCallback(gpointer data) {
-  scoped_ptr<BurnArguments> args(static_cast<BurnArguments*>(data));
-  args->service->InitiateBurning(args->from_path.c_str(),
-                                 args->to_path.c_str());
-  return false;
-}
-
-bool ImageBurnService::LoadLibcros() {
-  std::string load_error_string;
-  static bool loaded = false;
-  if (loaded) {
-    LOG(INFO) << "Already loaded libcros...";
+  if (success) {
+    dbus_g_method_return(context);
     return true;
+  } else {
+    GError* error = NULL;
+    SetError(error_str, &error);
+    dbus_g_method_return_error(context, error);
+    g_error_free(error);
+    return false;
   }
-
-  loaded = chromeos::LoadLibcros(chromeos::kCrosDefaultPath, load_error_string);
-
-  if (!loaded) {
-    LOG(ERROR) << "Problem loading chromeos shared object: "
-               << load_error_string;
-  }
-  return loaded;
 }
 
 void ImageBurnService::Cleanup() {
@@ -153,58 +139,77 @@ void ImageBurnService::Cleanup() {
   }
 }
 
+void ImageBurnService::SetError(const std::string& message, GError** error) {
+  g_set_error_literal(error, g_quark_from_static_string("image-burn-quark"), 0,
+      message.c_str());
+}
+
+bool ImageBurnService::ValidateTargetPath(const char* target_path,
+     std::string* error) {
+  if (strncmp(target_path, kRootDevicePath, strlen(kRootDevicePath)) == 0) {
+    *error = "Target path is on root device.";
+    LOG(ERROR) << *error;
+    return false;
+  }
+  int file_prefix_len = strlen(kFilePathPrefix);
+  if (strncmp(target_path, kFilePathPrefix, file_prefix_len) != 0 ||
+      strlen(target_path) == file_prefix_len) {
+    *error = "Target path is not valid file path.";
+    LOG(ERROR) << *error;
+    return false;
+  }
+  int i = file_prefix_len;
+  while (target_path[i]) {
+    if (!islower(target_path[i])) {
+      *error = "Target path is not valid file path.";
+      LOG(ERROR) << *error;
+      return false;
+    }
+    i++;
+  }
+  return true;
+}
+
+bool ImageBurnService::BurnImageImpl(const char* from_path, const char* to_path,
+    std::string* error) {
+  error->clear();
+  if (burning_) {
+    (*error) = "Another burn in progress.";
+    return false;
+  }
+  if (!ValidateTargetPath(to_path, error)){
+    return false;
+  }
+  burning_ = true;
+
+  from_path_ = from_path;
+  to_path_ = to_path;
+
+  scoped_ptr<BurnArguments> args(new BurnArguments);
+  args->from_path = from_path_.c_str();
+  args->to_path = to_path_.c_str();
+  args->service = this;
+  g_timeout_add(1, &ImageBurnService::BurnImageTimeoutCallback,
+      args.release());
+  return true;
+}
+
+// static.
+gboolean ImageBurnService::BurnImageTimeoutCallback(gpointer data) {
+  scoped_ptr<BurnArguments> args(static_cast<BurnArguments*>(data));
+  args->service->InitiateBurning(args->from_path.c_str(),
+                                 args->to_path.c_str());
+  return false;
+}
+
 void ImageBurnService::InitiateBurning(const char* from_path,
                                        const char* to_path) {
+
   std::string err;
-  bool success = UnmountAndValidateDevice(to_path);
-  if (success) {
-    success = DoBurn(from_path, to_path, &err);
-    LOG(INFO) << (success ? "Burn complete" : "Burn failed");
-  } else {
-    err = "Unable to unmount target path";
-    success = false;
-  }
+  bool success = DoBurn(from_path, to_path, &err);
 
   SendFinishedSignal(to_path, success, err.c_str());
   burning_ = false;
-}
-
-bool ImageBurnService::UnmountAndValidateDevice(const char* device_path) {
-  if (chromeos::IsBootDevicePath(device_path)) {
-    LOG(ERROR) << device_path << " is on root device";
-    return false;
-  }
-
-  LOG(INFO) << "Unmounting " << device_path;
-  chromeos::MountStatus* status = chromeos::RetrieveMountInformation();
-
-  bool success = false;
-  for (int i = 0; i < status->size; ++i) {
-    FilePath device_system_path
-      = static_cast<FilePath>(status->disks[i].systempath);
-    // system_path looks like:
-    // /sys/devices/pci0000:00/blah/blah/4:0:0:0/block/sdb/sdb1
-    if (device_system_path.DirName().BaseName().value() != "block") {
-      // Handle unpartitioned device.
-      device_system_path = device_system_path.DirName();
-    }
-    std::string device_target_path(kDevPath);
-    device_target_path.append(device_system_path.BaseName().value());
-
-    if (device_target_path.compare(device_path) == 0) {
-      success = true;  // Found a match in mount list.
-      if (status->disks[i].mountpath) {
-        success = chromeos::UnmountDevicePath(status->disks[i].path);
-        LOG(INFO) << "Unmounting " << status->disks[i].path
-                  << (success ? " succeeded" : " failed");
-      }
-      LOG(INFO) << device_path << " is a device path";
-      if (!success) break;
-    }
-  }
-
-  chromeos::FreeMountStatus(status);
-  return success;
 }
 
 bool ImageBurnService::DoBurn(const char* from_path,
@@ -214,13 +219,9 @@ bool ImageBurnService::DoBurn(const char* from_path,
 
   bool success = true;
 
-  gzFile from_file = gzopen(from_path, "rb");
+  FILE* from_file = fopen(from_path, "rb");
   if (!from_file) {
-    int gz_err = Z_OK;
-    err->append("Couldn't open " + static_cast<std::string>(from_path) +
-        "\n" + static_cast<std::string>(gzerror(from_file, &gz_err)) + "\n");
-    LOG(WARNING) << "Couldn't open " << from_path << " : " <<
-        gzerror(from_file, &gz_err);
+    ProcessFileError("Couldn't open ", from_path, err);
     success = false;
   } else {
     LOG(INFO) << from_path << " opened";
@@ -230,77 +231,78 @@ bool ImageBurnService::DoBurn(const char* from_path,
   if (success) {
     to_file = fopen(to_path, "wb");
     if (!to_file) {
-      err->append("Couldn't open" + static_cast<std::string>(to_path) +
-          "\n" + static_cast<std::string>(strerror(errno)) + "\n");
-      LOG(WARNING) << "Couldn't open" << to_path << " : " << strerror(errno);
+      ProcessFileError("Couldn't open ", to_path, err);
       success = false;
     } else {
       LOG(INFO) << to_path << " opened";
     }
   }
+
   if (success) {
     scoped_array<char> buffer(new char[kBurningBlockSize]);
-    LOG(INFO) << "a" << sizeof(buffer.get());
     int len = 0;
-    bool success = true;
     int64 total_burnt = 0;
-    int64 image_size = GetTotalImageSize(from_path);
+    int64 image_size = GetTotalImageSize(from_file);
     int i = kSentSignalRatio;
-    while ((len = gzread(from_file, buffer.get(),
-                         kBurningBlockSize*sizeof(char))) > 0) {
-       if (shutting_down_)
-         return false;
-       if (fwrite(buffer.get(), 1, len * sizeof(char), to_file) ==
-           static_cast<size_t>(len)) {
-         total_burnt += static_cast<int64>(len);
-         fflush(to_file);
-        if (i == kSentSignalRatio) {
+
+    while ((len = fread(buffer.get(), sizeof(char), kBurningBlockSize,
+        from_file)) > 0) {
+      if (shutting_down_)
+        return false;
+      if (fwrite(buffer.get(), sizeof(char), len, to_file) ==
+          static_cast<size_t>(len)) {
+        total_burnt += static_cast<int64>(len);
+
+        if (!(i %  kSentSignalRatio)) {
           SendProgressSignal(total_burnt, image_size, to_path);
+        }
+
+        if (i == kFsyncRatio) {
+          if (fsync(fileno(to_file)) != 0) {
+            success = false;
+            ProcessFileError("Unable to write to ", to_path, err);
+            break;
+          }
           i = 0;
         } else {
           ++i;
         }
       } else {
         success = false;
-        err->append("Unable to write to " + static_cast<std::string>(to_path) +
-            "\n" + static_cast<std::string>(strerror(errno)) + "\n");
-        LOG(WARNING) << "Unable to write to " << to_path << " : " <<
-            strerror(errno);
+        ProcessFileError("Unable to write to ", to_path, err);
         break;
       }
-    }
-    if (len != 0) {
-      int gz_err = Z_OK;
-      err->append(static_cast<std::string>(gzerror(from_file, &gz_err)) + "\n");
-      LOG(WARNING) << gzerror(from_file, &gz_err);
-    }
-  }
-
-  if (from_file) {
-    if ((gzclose(from_file)) != 0) {
-      success = false;
-      int gz_err = Z_OK;
-      err->append("Couldn't close " + static_cast<std::string>(from_path) +
-          "\n" + static_cast<std::string>(gzerror(from_file, &gz_err)) + "\n");
-      LOG(WARNING) << "Couldn't close" << from_path << " : " <<
-          gzerror(from_file, &gz_err);
-    } else {
-      LOG(INFO) << from_path << " closed";
     }
   }
 
   if (to_file) {
-    if (fclose(to_file) != 0) {
+   if (fclose(to_file) != 0) {
       success = false;
-      err->append("Couldn't close " + static_cast<std::string>(to_path) +
-          "\n" + static_cast<std::string>(strerror(errno)) + "\n");
-      LOG(WARNING) << "Couldn't close" << to_path << " : " << strerror(errno);
+      ProcessFileError("Couldn't close", to_path, err);
     } else {
       LOG(INFO) << to_path << " closed";
     }
   }
 
+  if (from_file) {
+    if ((fclose(from_file)) != 0) {
+      success = false;
+      ProcessFileError("Couldn't close", from_path, err);
+    } else {
+      LOG(INFO) << from_path << " closed";
+    }
+  }
+
   return success;
+}
+
+void ImageBurnService::ProcessFileError(const std::string& error,
+    const std::string& path, std::string* error_message) {
+  error_message->append(error);
+  error_message->append(path);
+  error_message->append(":");
+  error_message->append(strerror(errno));
+  LOG(WARNING) << error << path << ": " << strerror(errno);
 }
 
 void ImageBurnService::SendFinishedSignal(const char* target_path, bool success,
@@ -317,16 +319,12 @@ void ImageBurnService::SendProgressSignal(int64 amount_burnt, int64 total_size,
                 0, target_path, amount_burnt, total_size);
 }
 
-int64 ImageBurnService::GetTotalImageSize(const char* from_path) {
-  FILE* from_file = fopen(from_path, "rb");
-  int result = 0;
-  fseek(from_file, -sizeof(result), SEEK_END);
-  if (fread(&result, 1, sizeof(result), from_file) != sizeof(result)) {
-    result = 0;
-  }
-  fclose(from_file);
-  return static_cast<int64>(result);
+int64 ImageBurnService::GetTotalImageSize(FILE* file) {
+  int64 result = 0;
+  fseek(file, 0, SEEK_END);
+  result = static_cast<int64>(ftell(file));
+  fseek(file, 0, SEEK_SET);
+  return result;
 }
 
 }  // namespace imageburn
-

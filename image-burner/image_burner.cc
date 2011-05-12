@@ -1,8 +1,10 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "image-burner/image_burner.h"
+
+#include <iostream>
 
 namespace imageburn {
 
@@ -42,14 +44,13 @@ void image_burner_class_init(ImageBurnerClass *real_class) {
 
 void image_burner_init(ImageBurner *self) { }
 
-
 gboolean image_burner_burn_image(ImageBurner* self,
                                  gchar* from_path,
                                  gchar* to_path,
-                                 GError** error) {
+                                 DBusGMethodInvocation* context) {
   if (!self->service)
     return false;
-  return self->service->BurnImage(from_path, to_path, error);
+  return self->service->BurnImageAsync(from_path, to_path, context);
 }
 
 }  // namespace imageburn

@@ -1,6 +1,6 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. 
+// found in the LICENSE file.
 
 #ifndef IMAGE_BURNER_INTERFACE_H_
 #define IMAGE_BURNER_INTERFACE_H_
@@ -27,8 +27,7 @@ GType image_burner_get_type();  // defined by G_DEFINE_TYPE
 gboolean image_burner_burn_image(ImageBurner *self,
                                  gchar *from_path,
                                  gchar *to_path,
-                                 GError **error);
-
+                                 DBusGMethodInvocation* context);
 }  // namespace image_burner
 
 #endif  // IMAGE_BURNER_INTERFACE_H_

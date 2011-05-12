@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--  
-  Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+  Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
   Use of this source code is governed by a BSD-style license that can be
   found in the LICENSE file.
      
@@ -12,6 +12,7 @@
     <annotation name="org.freedesktop.DBus.GLib.CSymbol"
                 value="image_burner"/>
     <method name="BurnImage">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
       <arg type="s" name="from_path" direction="in"/>
       <arg type="s" name="to_path" direction="in"/>   
     </method>

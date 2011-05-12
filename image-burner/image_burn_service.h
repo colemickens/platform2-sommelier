@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <base/basictypes.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/service_constants.h>
 #include <string>
 
 namespace imageburn {
@@ -40,44 +41,48 @@ class ImageBurnService : public chromeos::dbus::AbstractDbusService {
   virtual ~ImageBurnService();
 
   // chromeos::dbus::AbstractDbusService implementation.
-  virtual bool Initialize();
-  virtual bool Reset();
-  virtual bool Shutdown();
   virtual const char *service_name() const;
   virtual const char *service_path() const;
   virtual const char *service_interface() const;
   virtual GObject *service_object() const;
+  virtual bool Initialize();
+  virtual bool Reset();
+  virtual bool Shutdown();
 
-  gboolean BurnImage(gchar* from_path, gchar* to_path, GError** error);
+  gboolean BurnImageAsync(gchar* from_path, gchar* to_path,
+      DBusGMethodInvocation* context);
 
  protected:
   virtual GMainLoop *main_loop() {
     return main_loop_;
   }
-
  private:
-  static bool LoadLibcros();
-  static gboolean BurnImageTimeoutCallback(gpointer data);
   void Cleanup();
+  void SetError(const std::string& message, GError** error);
+  bool ValidateTargetPath(const char* target_path, std::string* error);
+  bool BurnImageImpl(const char* from_path, const char* to_path,
+      std::string* error);
+  static gboolean BurnImageTimeoutCallback(gpointer data);
   void InitiateBurning(const char* from_path, const char* to_path);
-  bool UnmountAndValidateDevice(const char* device_path);
   bool DoBurn(const char* from_path, const char* to_path, std::string* err);
+  void ProcessFileError(const std::string& error, const std::string& path,
+                        std::string* error_message);
   void SendProgressSignal(int64 amount_burnt,
                           int64 total_size,
                           const char* target_path);
   void SendFinishedSignal(const char* target_path,
                           bool success,
                           const char* error);
-
-  // Reads last 4 bytes from gzip file (which hold uncompressed content size)
-  // maximum content size supported is 4GB.
-  int64 GetTotalImageSize(const char* from_path);
+  int64 GetTotalImageSize(FILE* file);
 
   ImageBurner* image_burner_;
   GMainLoop* main_loop_;
   guint signals_[kNumSignals];
   bool shutting_down_;
   bool burning_;
+  std::string from_path_;
+  std::string to_path_;
+  int devices_to_unmount_count_;
 };
 
 }  // namespace imageburn
