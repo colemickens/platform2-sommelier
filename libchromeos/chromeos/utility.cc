@@ -60,4 +60,20 @@ void* SecureMemset(void *v, int c, size_t n) {
   return v;
 }
 
+int SafeMemcmp(const void* s1, const void* s2, size_t n) {
+  const unsigned char* us1 = static_cast<const unsigned char*>(s1);
+  const unsigned char* us2 = static_cast<const unsigned char*>(s2);
+  int result = 0;
+
+  if (0 == n)
+    return 1;
+
+  /* Code snippet without data-dependent branch due to
+   * Nate Lawson (nate@root.org) of Root Labs. */
+  while (n--)
+    result |= *us1++ ^ *us2++;
+
+  return result != 0;
+}
+
 }  // namespace chromeos

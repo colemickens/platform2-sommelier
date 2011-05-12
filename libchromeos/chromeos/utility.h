@@ -50,6 +50,11 @@ Blob AsciiDecode(const std::string &str);
 // https://buildsecurityin.us-cert.gov/daisy/bsi-rules/home/g1/771-BSI.html
 void* SecureMemset(void *v, int c, size_t n);
 
+// Compare [n] bytes starting at [s1] with [s2] and return 0 if they match,
+// 1 if they don't. Time taken to perform the comparison is only dependent on
+// [n] and not on the relationship of the match between [s1] and [s2].
+int SafeMemcmp(const void* s1, const void* s2, size_t n);
+
 }  // namespace chromeos
 
 
