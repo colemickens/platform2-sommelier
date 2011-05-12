@@ -13,7 +13,7 @@
 #include <ctime>
 
 #include "base/file_path.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"

@@ -61,7 +61,8 @@ int main(int argc, char* argv[]) {
   logging::InitLogging(log_path.c_str(),
                        logging::LOG_ONLY_TO_FILE,
                        logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+                       logging::APPEND_TO_OLD_LOG_FILE,
+                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   FilePath prefs_dir(FLAGS_prefs_dir);
   FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
                              "/usr/share/power_manager" :

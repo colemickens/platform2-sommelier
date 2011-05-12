@@ -6,8 +6,8 @@
 #include <X11/extensions/XTest.h>
 
 #include "base/file_util.h"
-#include "base/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
+#include "base/memory/scoped_ptr.h"
+#include "base/memory/scoped_temp_dir.h"
 #include "power_manager/file_tagger.h"
 
 namespace power_manager {
@@ -19,7 +19,7 @@ class FileTaggerTest : public ::testing::Test {
   virtual void SetUp() {
     // Create a temporary directory for the test files
     temp_dir_generator_.reset(new ScopedTempDir());
-    temp_dir_generator_->CreateUniqueTempDir();
+    ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_generator_->IsValid());
     // Initialize the file tagger
     file_tagger_.reset(new FileTagger(temp_dir_generator_->path()));
