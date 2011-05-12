@@ -30,7 +30,12 @@ static bool s_accumulate;
 static bool s_log_to_syslog;
 static bool s_log_to_stderr;
 
-static bool HandleMessage(int severity, const std::string &message) {
+// TODO(cmasone): figure out if message_start can be used to help.
+static bool HandleMessage(int severity,
+                          const char* file,
+                          int line,
+                          size_t message_start,
+                          const std::string &message) {
   switch (severity) {
     case logging::LOG_INFO:
       severity = kSyslogInfo;
@@ -73,7 +78,8 @@ void InitLog(int init_flags) {
   logging::InitLogging("/dev/null",
                        logging::LOG_ONLY_TO_SYSTEM_DEBUG_LOG,
                        logging::DONT_LOCK_LOG_FILE,
-                       logging::APPEND_TO_OLD_LOG_FILE);
+                       logging::APPEND_TO_OLD_LOG_FILE,
+                       logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
   logging::SetLogMessageHandler(HandleMessage);
   s_log_to_syslog = (init_flags & kLogToSyslog) != 0;
   s_log_to_stderr = (init_flags & kLogToStderr) != 0;
