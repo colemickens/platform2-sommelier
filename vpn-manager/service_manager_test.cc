@@ -4,7 +4,7 @@
 
 #include "base/command_line.h"
 #include "base/file_util.h"
-#include "base/scoped_temp_dir.h"
+#include "base/memory/scoped_temp_dir.h"
 #include "chromeos/syslog_logging.h"
 #include "chromeos/test_helpers.h"
 #include "gmock/gmock.h"

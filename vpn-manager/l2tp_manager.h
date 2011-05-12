@@ -6,7 +6,7 @@
 #define _VPN_MANAGER_L2TP_MANAGER_H_
 
 #include "base/file_util.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "gtest/gtest_prod.h"  // for FRIEND_TEST
 #include "vpn-manager/service_manager.h"

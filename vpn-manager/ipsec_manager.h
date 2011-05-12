@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "gtest/gtest_prod.h"  // for FRIEND_TEST
 #include "vpn-manager/service_manager.h"

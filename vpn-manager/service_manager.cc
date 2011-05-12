@@ -7,7 +7,8 @@
 #include "base/eintr_wrapper.h"
 #include "base/file_util.h"
 #include "base/logging.h"
-#include "base/scoped_temp_dir.h"
+#include "base/memory/scoped_temp_dir.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 
 const FilePath* ServiceManager::temp_path_ = NULL;
@@ -50,9 +51,11 @@ void ServiceManager::OnStopped(bool was_error) {
 }
 
 void ServiceManager::InitializeDirectories(ScopedTempDir* scoped_temp_path) {
-  scoped_temp_path->CreateUniqueTempDirUnderPath(FilePath(temp_base_path_));
+  bool success =
+      scoped_temp_path->CreateUniqueTempDirUnderPath(FilePath(temp_base_path_));
   temp_path_ = &scoped_temp_path->path();
-  LOG(INFO) << "Using temporary directory " << temp_path_->value();
+  PLOG_IF(INFO, !success) << "Could not create temporary directory. ";
+  LOG_IF(INFO, success) << "Using temporary directory " << temp_path_->value();
 }
 
 void ServiceManager::WriteFdToSyslog(int fd,
@@ -67,7 +70,7 @@ void ServiceManager::WriteFdToSyslog(int fd,
   buffer[written] = '\0';
   partial_line->append(buffer);
   std::vector<std::string> lines;
-  SplitString(*partial_line, '\n', &lines);
+  base::SplitString(*partial_line, '\n', &lines);
   if (lines.empty()) {
     partial_line->clear();
   } else {

@@ -11,7 +11,7 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
-#include "base/scoped_temp_dir.h"
+#include "base/memory/scoped_temp_dir.h"
 #include "chromeos/process.h"
 #include "chromeos/syslog_logging.h"
 #include "gflags/gflags.h"
