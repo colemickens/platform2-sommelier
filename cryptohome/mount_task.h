@@ -25,8 +25,8 @@
 #define CRYPTOHOME_MOUNT_TASK_H_
 
 #include <base/atomic_sequence_num.h>
-#include <base/thread.h>
-#include <base/waitable_event.h>
+#include <base/threading/thread.h>
+#include <base/synchronization/waitable_event.h>
 #include <chromeos/process.h>
 #include <chromeos/utility.h>
 

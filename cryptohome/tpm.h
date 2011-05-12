@@ -10,9 +10,9 @@
 // TODO(wad) make more functions virtual for use in mock_tpm.h.
 
 #include <base/file_util.h>
-#include <base/lock.h>
 #include <base/logging.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/synchronization/lock.h>
 #include <chromeos/utility.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>
@@ -476,7 +476,7 @@ class Tpm {
 
   // Used to provide thread-safe access to owner_password_, as it is set in the
   // initialization background thread.
-  Lock password_sync_lock_;
+  base::Lock password_sync_lock_;
 
   // Indicates if the TPM is disabled
   bool is_disabled_;
@@ -491,7 +491,7 @@ class Tpm {
   bool is_being_owned_;
 
   static Tpm* singleton_;
-  static Lock singleton_lock_;
+  static base::Lock singleton_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(Tpm);
 };

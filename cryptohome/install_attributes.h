@@ -8,7 +8,7 @@
 #define CRYPTOHOME_INSTALL_ATTRIBUTES_H_
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 
 #include "crypto.h"

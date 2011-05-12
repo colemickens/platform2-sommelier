@@ -7,8 +7,11 @@
 #include "tpm_init.h"
 
 #include <base/logging.h>
-#include <base/platform_thread.h>
+#include <base/threading/platform_thread.h>
 #include <base/time.h>
+
+using base::kNullThreadHandle;
+using base::PlatformThread;
 
 namespace cryptohome {
 

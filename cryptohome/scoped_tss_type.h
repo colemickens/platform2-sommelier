@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 // Implements a simple framework for scoping TSS values.
-// Based on chrome's base/scoped_ptr_malloc implementation.
+// Based on chrome's base/memory/scoped_ptr_malloc implementation.
 //
 // Example usage:
 //  ScopedTssContext context_handle;

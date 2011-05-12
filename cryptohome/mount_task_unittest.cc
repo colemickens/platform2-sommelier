@@ -8,14 +8,16 @@
 
 #include <base/at_exit.h>
 #include <base/logging.h>
-#include <base/platform_thread.h>
-#include <base/thread.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/threading/platform_thread.h>
+#include <base/threading/thread.h>
 #include <base/time.h>
-#include <base/waitable_event.h>
 #include <chromeos/utility.h>
 #include <gtest/gtest.h>
 
 #include "mock_mount.h"
+
+using base::PlatformThread;
 
 namespace cryptohome {
 using std::string;

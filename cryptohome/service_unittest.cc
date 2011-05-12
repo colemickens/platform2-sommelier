@@ -7,7 +7,7 @@
 #include "service.h"
 
 #include <base/at_exit.h>
-#include <base/platform_thread.h>
+#include <base/threading/platform_thread.h>
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
@@ -18,6 +18,8 @@
 #include "mock_tpm.h"
 #include "secure_blob.h"
 #include "username_passkey.h"
+
+using base::PlatformThread;
 
 namespace cryptohome {
 using ::testing::Return;

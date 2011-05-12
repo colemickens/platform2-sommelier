@@ -9,7 +9,7 @@
 #include <openssl/sha.h>
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
 #include <chromeos/utility.h>
 

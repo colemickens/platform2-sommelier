@@ -5,7 +5,7 @@
 // TpmInit - public interface class for initializing the TPM
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 
 #include "tpm.h"
@@ -83,7 +83,7 @@ class TpmInit {
   // The background task for initializing the TPM, implemented as a
   // PlatformThread::Delegate
   scoped_ptr<TpmInitTask> tpm_init_task_;
-  PlatformThreadHandle init_thread_;
+  base::PlatformThreadHandle init_thread_;
 
   TpmInitCallback* notify_callback_;
 

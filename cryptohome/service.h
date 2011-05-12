@@ -5,8 +5,8 @@
 #define CRYPTOHOME_SERVICE_H_
 
 #include <base/logging.h>
-#include <base/scoped_ptr.h>
-#include <base/thread.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/threading/thread.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>

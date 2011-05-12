@@ -19,6 +19,7 @@
 #include <sys/wait.h>
 
 #include <base/file_util.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/utility.h>
 
@@ -27,6 +28,7 @@ extern "C" {
 #include <keyutils.h>
 }
 
+using base::SplitString;
 using std::string;
 
 namespace cryptohome {

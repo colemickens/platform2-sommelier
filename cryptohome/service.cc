@@ -11,6 +11,7 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/platform_file.h>
 #include <base/string_util.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
@@ -836,7 +837,7 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
                                             mount_->get_shadow_root().c_str(),
                                             obfuscated_user.c_str());
       FilePath vault_file(vault_path);
-      file_util::FileInfo file_info;
+      base::PlatformFileInfo file_info;
       if(!file_util::GetFileInfo(vault_file, &file_info)) {
         break;
       }

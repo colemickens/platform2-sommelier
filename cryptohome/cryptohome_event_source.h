@@ -22,7 +22,7 @@
 #ifndef CRYPTOHOME_CRYPTOHOME_EVENT_SOURCE_H_
 #define CRYPTOHOME_CRYPTOHOME_EVENT_SOURCE_H_
 
-#include <base/lock.h>
+#include <base/synchronization/lock.h>
 #include <chromeos/utility.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
@@ -90,7 +90,7 @@ class CryptohomeEventSource {
   std::vector<CryptohomeEventBase*> events_;
 
   // Used to provide thread-safe access to events_
-  Lock events_lock_;
+  base::Lock events_lock_;
 
   // Structure initialized to the static callbacks above
   static GSourceFuncs source_functions_;

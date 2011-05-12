@@ -8,7 +8,7 @@
 #include "install_attributes.h"
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/utility.h>
 #include <gmock/gmock.h>
 

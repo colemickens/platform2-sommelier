@@ -8,9 +8,9 @@
 
 #include <arpa/inet.h>
 #include <base/file_util.h>
-#include <base/platform_thread.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/threading/platform_thread.h>
 #include <base/time.h>
-#include <base/scoped_ptr.h>
 #include <openssl/rsa.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +22,8 @@
 #include "mount.h"
 #include "platform.h"
 #include "scoped_tss_type.h"
+
+using base::PlatformThread;
 
 namespace cryptohome {
 
@@ -50,7 +52,7 @@ const char kTpmOwnedWithWellKnown = 'W';
 const char kTpmOwnedWithRandom = 'R';
 
 Tpm* Tpm::singleton_ = NULL;
-Lock Tpm::singleton_lock_;
+base::Lock Tpm::singleton_lock_;
 
 Tpm* Tpm::GetSingleton() {
   // TODO(fes): Replace with a better atomic operation
