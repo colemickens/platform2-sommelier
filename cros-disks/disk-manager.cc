@@ -14,8 +14,9 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 
 #include "cros-disks/disk.h"
@@ -221,7 +222,7 @@ std::vector<std::string> DiskManager::GetFilesystems(
   std::string line;
   while (std::getline(stream, line)) {
     std::vector<std::string> tokens;
-    SplitString(line, '\t', &tokens);
+    base::SplitString(line, '\t', &tokens);
     if (tokens.size() >= 2) {
       if (tokens[0] != "nodev")
         filesystems.push_back(tokens[1]);

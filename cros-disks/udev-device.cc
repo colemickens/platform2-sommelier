@@ -8,7 +8,9 @@
 
 #include <fstream>
 
+#include <base/logging.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <rootdev/rootdev.h>
 
@@ -171,7 +173,7 @@ std::vector<std::string> UdevDevice::ParseMountPaths(
   std::string line;
   while (std::getline(stream, line)) {
     std::vector<std::string> tokens;
-    SplitString(line, ' ', &tokens);
+    base::SplitString(line, ' ', &tokens);
     if (tokens.size() >= 2) {
       if (tokens[0] == device_path)
         mount_paths.push_back(tokens[1]);
