@@ -8,7 +8,7 @@ log_msg() {
     logger -t "powerd_suspend[${PPID}]" $1
 }
 
-# these files are created by powerm | powerd and there existence means
+# these files are created by powerm | powerd and their existence means
 # event has occurred which should cancel suspend
 suspend_cancel() {
     if [ $cancel -eq 1 ] || [ -e "/var/run/power_manager/lid_opened" ] ||
@@ -86,7 +86,7 @@ fi
 
 if [ $cancel -eq 0 ]; then
     # On resume:
-    # - records the hwclock time at resume
+    # - records the hwclock time at resume. It is read by power_Resume test.
     /sbin/hwclock --utc --debug > /tmp/hwclock-on-resume &
 
     # - sends UMA metrics on resume
