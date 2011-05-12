@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include <libudev.h>
+
 #include <sstream>
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "udev-device.h"
+#include "cros-disks/udev-device.h"
 
 namespace cros_disks {
 
@@ -16,8 +17,7 @@ class UdevDeviceTest : public ::testing::Test {
  public:
   UdevDeviceTest()
     : udev_(udev_new()),
-      udev_device_(NULL)
-  {
+      udev_device_(NULL) {
     SelectUdevDeviceForTest();
     if (IsUdevDeviceAvailableForTesting())
       LOG(INFO) << "A udev device is available for testing.";
@@ -60,7 +60,6 @@ class UdevDeviceTest : public ::testing::Test {
   }
 
  private:
-
   void SelectUdevDeviceForTest() {
     if (udev_ == NULL)
       return;
@@ -163,7 +162,7 @@ TEST_F(UdevDeviceTest, GetSizeInfo) {
     device.GetSizeInfo(&total_size, &remaining_size);
     LOG(INFO) << "GetSizeInfo: total=" << total_size
       << ", remaining=" << remaining_size;
-    EXPECT_TRUE(total_size > 0);
+    EXPECT_GT(total_size, 0);
   }
 }
 

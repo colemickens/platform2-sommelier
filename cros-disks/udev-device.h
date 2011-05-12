@@ -5,12 +5,13 @@
 #ifndef CROS_DISKS_UDEV_DEVICE_H_
 #define CROS_DISKS_UDEV_DEVICE_H_
 
-#include <base/basictypes.h>
 #include <iostream>
 #include <string>
 #include <vector>
 
-#include "disk.h"
+#include <base/basictypes.h>
+
+#include "cros-disks/disk.h"
 
 struct udev_device;
 
@@ -19,7 +20,6 @@ namespace cros_disks {
 // A utility class that helps query information about a udev device.
 class UdevDevice {
  public:
-
   explicit UdevDevice(struct udev_device *dev);
   ~UdevDevice();
 
@@ -66,7 +66,7 @@ class UdevDevice {
   Disk ToDisk() const;
 
  private:
-
+  // Checks if a string contains a "1" (as Boolean true).
   bool IsValueBooleanTrue(const char *value) const;
 
   mutable struct udev_device *dev_;

@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DISK_MANAGER_H__
-#define DISK_MANAGER_H__
+#ifndef CROS_DISKS_DISK_MANAGER_H_
+#define CROS_DISKS_DISK_MANAGER_H_
 
 #include <blkid/blkid.h>
 #include <libudev.h>
 #include <sys/types.h>
+
 #include <iostream>
 #include <map>
 #include <string>
@@ -17,9 +18,9 @@ namespace cros_disks {
 
 class Disk;
 
-// The DiskManager is responsible for reading device state from udev. 
-// Said changes could be the result of a udev notification or a synchronous 
-// call to enumerate the relevant storage devices attached to the system. 
+// The DiskManager is responsible for reading device state from udev.
+// Said changes could be the result of a udev notification or a synchronous
+// call to enumerate the relevant storage devices attached to the system.
 //
 // Sample Usage:
 //
@@ -37,8 +38,7 @@ class DiskManager {
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
 
-  // Reads the changes from udev. Must be called to clear the 
-  // fd.
+  // Reads the changes from udev. Must be called to clear the fd.
   bool ProcessUdevChanges(std::string *device_path, std::string *action);
 
   // Gets a device file from the cache mapping from sysfs path to device file.
@@ -109,7 +109,6 @@ class DiskManager {
   int udev_monitor_fd() const { return udev_monitor_fd_; }
 
  private:
-
   // The root udev object.
   mutable struct udev* udev_;
 
@@ -126,6 +125,6 @@ class DiskManager {
   std::map<std::string, std::string> device_file_map_;
 };
 
-} // namespace cros_disks
+}  // namespace cros_disks
 
-#endif // DISK_MANAGER_H__
+#endif  // CROS_DISKS_DISK_MANAGER_H_

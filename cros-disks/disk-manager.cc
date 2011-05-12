@@ -2,24 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "disk-manager.h"
-#include "disk.h"
-#include "udev-device.h"
-
-#include <base/logging.h>
-#include <base/scoped_ptr.h>
-#include <base/string_number_conversions.h>
-#include <base/string_util.h>
 #include <errno.h>
 #include <libudev.h>
 #include <pwd.h>
 #include <sys/mount.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <vector>
 
+#include <base/logging.h>
+#include <base/scoped_ptr.h>
+#include <base/string_number_conversions.h>
+#include <base/string_util.h>
+
+#include "cros-disks/disk.h"
+#include "cros-disks/disk-manager.h"
+#include "cros-disks/udev-device.h"
 
 namespace cros_disks {
 
@@ -85,7 +86,7 @@ std::vector<Disk> DiskManager::EnumerateDisks() const {
     LOG(INFO) << "   Properties: ";
     struct udev_list_entry *property_list, *property_list_entry;
     property_list = udev_device_get_properties_list_entry(dev);
-    udev_list_entry_foreach (property_list_entry, property_list) {
+    udev_list_entry_foreach(property_list_entry, property_list) {
       const char *key = udev_list_entry_get_name(property_list_entry);
       const char *value = udev_list_entry_get_value(property_list_entry);
       LOG(INFO) << "      " << key << " = " << value;
@@ -555,4 +556,4 @@ bool DiskManager::Unmount(const std::string& device_path,
   return unmount_ok;
 }
 
-} // namespace cros_disks
+}  // namespace cros_disks

@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/logging.h>
-#include <gtest/gtest.h>
-
 #include <sys/mount.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <sstream>
 
-#include "disk.h"
-#include "disk-manager.h"
+#include <base/logging.h>
+#include <gtest/gtest.h>
+
+#include "cros-disks/disk.h"
+#include "cros-disks/disk-manager.h"
 
 namespace cros_disks {
 

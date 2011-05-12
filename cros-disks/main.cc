@@ -4,27 +4,28 @@
 
 // A simple daemon to detect, mount, and eject removable storage devices.
 
-#include "cros-disks-server-impl.h"
-#include "disk-manager.h"
+#include <glib.h>
+#include <glib-object.h>
+#include <libudev.h>
+
+#include <dbus-c++/glib-integration.h>
+#include <dbus-c++/util.h>
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/string_util.h>
 #include <chromeos/syslog_logging.h>
-#include <dbus-c++/glib-integration.h>
-#include <dbus-c++/util.h>
 #include <gflags/gflags.h>
-#include <glib-object.h>
-#include <glib.h>
-#include <libudev.h>
 #include <metrics/metrics_library.h>
 
+#include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/disk-manager.h"
 
 using cros_disks::CrosDisksServer;
 using cros_disks::DiskManager;
 
-DEFINE_bool(foreground, false, 
+DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
 
 // Always logs to the syslog and logs to stderr if
@@ -38,10 +39,10 @@ void SetupLogging() {
   chromeos::InitLog(log_flags);
 }
 
-// This callback will be invoked once udev has data about 
+// This callback will be invoked once udev has data about
 // new, changed, or removed devices.
-gboolean UdevCallback(GIOChannel* source, 
-                      GIOCondition condition, 
+gboolean UdevCallback(GIOChannel* source,
+                      GIOCondition condition,
                       gpointer data) {
   CrosDisksServer* server = static_cast<CrosDisksServer*>(data);
   server->SignalDeviceChanges();
@@ -58,7 +59,7 @@ int main(int argc, char** argv) {
 
   SetupLogging();
 
-  if(!FLAGS_foreground) {
+  if (!FLAGS_foreground) {
     LOG(INFO) << "Daemonizing";
     PLOG_IF(FATAL, daemon(0, 0) == 1) << "daemon() failed";
   }
@@ -68,7 +69,7 @@ int main(int argc, char** argv) {
   CHECK(loop) << "Failed to create a GMainLoop";
 
   LOG(INFO) << "Creating the dbus dispatcher";
-  DBus::Glib::BusDispatcher* dispatcher = 
+  DBus::Glib::BusDispatcher* dispatcher =
       new(std::nothrow) DBus::Glib::BusDispatcher();
   CHECK(dispatcher) << "Failed to create a dbus-dispatcher";
   DBus::default_dispatcher = dispatcher;

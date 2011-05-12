@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "disk.h"
+#include "cros-disks/disk.h"
 
 namespace cros_disks {
 
@@ -73,4 +73,4 @@ DBusDisk Disk::ToDBusFormat() const {
   return disk;
 }
 
-} // namespace cros_disks
+}  // namespace cros_disks

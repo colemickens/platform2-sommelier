@@ -2,14 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DISK_H__
-#define DISK_H__
+#ifndef CROS_DISKS_DISK_H_
+#define CROS_DISKS_DISK_H_
 
-#include <base/basictypes.h>
 #include <dbus-c++/dbus.h>  // NOLINT
+
 #include <map>
 #include <string>
 #include <vector>
+
+#include <base/basictypes.h>
 
 namespace cros_disks {
 
@@ -22,7 +24,6 @@ typedef std::vector<DBusDisk> DBusDisks;
 // be considered thread safe.
 class Disk {
  public:
-
   Disk();
   virtual ~Disk();
   DBusDisk ToDBusFormat() const;
@@ -97,7 +98,6 @@ class Disk {
   }
 
  private:
-
   bool is_drive_;
   bool is_hidden_;
   bool is_mounted_;
@@ -117,7 +117,6 @@ class Disk {
   uint64 bytes_remaining_;
 };
 
-} // namespace cros_disks
+}  // namespace cros_disks
 
-
-#endif // DISK_H__
+#endif  // CROS_DISKS_DISK_H_

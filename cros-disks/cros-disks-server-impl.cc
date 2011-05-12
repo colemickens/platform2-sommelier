@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/mount.h>
+
 #include <base/logging.h>
 
-#include "cros-disks-server-impl.h"
-#include "disk.h"
-#include "disk-manager.h"
-
-#include <sys/mount.h>
+#include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/disk.h"
+#include "cros-disks/disk-manager.h"
 
 namespace cros_disks {
 
@@ -110,4 +110,4 @@ void CrosDisksServer::SignalDeviceChanges() {
   }
 }
 
-} // namespace cros_disks
+}  // namespace cros_disks
