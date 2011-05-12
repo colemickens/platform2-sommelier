@@ -51,7 +51,7 @@ TEST(UsernamePasskeyTest, GetPasskeyTest) {
   SecureBlob passkey;
   up.GetPasskey(&passkey);
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
-  EXPECT_EQ(0, memcmp(kFakePasskey, &passkey[0], passkey.size()));
+  EXPECT_EQ(0, chromeos::SafeMemcmp(kFakePasskey, &passkey[0], passkey.size()));
 }
 
 }  // namespace cryptohome

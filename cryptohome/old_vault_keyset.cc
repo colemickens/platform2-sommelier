@@ -25,8 +25,8 @@ bool OldVaultKeyset::AssignBuffer(const SecureBlob& source) {
   OldVaultKeysetHeader header;
   memcpy(&header, &source[offset], sizeof(header));
   offset += sizeof(header);
-  if(memcmp(header.signature, kVaultKeysetSignature,
-            sizeof(header.signature))) {
+  if(chromeos::SafeMemcmp(header.signature, kVaultKeysetSignature,
+                          sizeof(header.signature))) {
     return false;
   }
   major_version_ = header.major_version;

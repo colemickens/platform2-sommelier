@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/platform_thread.h>
 #include <base/time.h>
+#include <chromeos/utility.h>
 
 namespace cryptohome {
 const uint32_t Lockbox::kReservedSizeBytes = sizeof(uint32_t);
@@ -186,9 +187,8 @@ bool Lockbox::Verify(const chromeos::Blob& blob, ErrorId* error) {
 
   DCHECK(hash.size() == kReservedDigestBytes);
   // Validate the data hash versus the stored hash.
-  if (memcmp(contents_->hash,
-             hash.data(),
-             sizeof(contents_->hash))) {
+  if (chromeos::SafeMemcmp(contents_->hash, hash.data(),
+                           sizeof(contents_->hash))) {
     LOG(ERROR) << "Verify() hash mismatch!";
     *error = kErrorIdHashMismatch;
     return false;

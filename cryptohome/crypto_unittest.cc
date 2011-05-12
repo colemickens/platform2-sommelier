@@ -41,7 +41,8 @@ class CryptoTest : public ::testing::Test {
     }
     for (unsigned int start = 0; start <= (haystack.size() - needle.size());
          start++) {
-      if (memcmp(&haystack[start], &needle[0], needle.size()) == 0) {
+      if (chromeos::SafeMemcmp(&haystack[start], &needle[0],
+                               needle.size()) == 0) {
         return true;
       }
     }

@@ -325,7 +325,7 @@ void Crypto::GetSha1(const chromeos::Blob& data, unsigned int start,
   hash->resize(sizeof(md_value));
   memcpy(hash->data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  memset(md_value, 0, sizeof(md_value));
+  chromeos::SecureMemset(md_value, 0, sizeof(md_value));
 }
 
 void Crypto::GetSha256(const chromeos::Blob& data, unsigned int start,
@@ -344,7 +344,7 @@ void Crypto::GetSha256(const chromeos::Blob& data, unsigned int start,
   hash->resize(sizeof(md_value));
   memcpy(hash->data(), md_value, sizeof(md_value));
   // Zero the stack to match expectations set by SecureBlob.
-  memset(md_value, 0, sizeof(md_value));
+  chromeos::SecureMemset(md_value, 0, sizeof(md_value));
 }
 
 bool Crypto::AesDecrypt(const chromeos::Blob& encrypted, unsigned int start,
@@ -462,8 +462,7 @@ bool Crypto::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
     const unsigned char* md_ptr =
         static_cast<const unsigned char*>(local_plain_text.const_data());
     md_ptr += final_size;
-    // TODO(fes): Port/use SafeMemcmp
-    if (memcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
+    if (chromeos::SafeMemcmp(md_ptr, md_value, SHA_DIGEST_LENGTH)) {
       LOG(ERROR) << "Digest verification failed.";
       EVP_CIPHER_CTX_cleanup(&decryption_context);
       return false;
@@ -791,7 +790,7 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
       SecureBlob pub_key_hash;
       GetSha1(pub_key, 0, pub_key.size(), &pub_key_hash);
       if ((serialized_pub_key_hash.size() != pub_key_hash.size()) ||
-          (memcmp(serialized_pub_key_hash.data(),
+          (chromeos::SafeMemcmp(serialized_pub_key_hash.data(),
                   pub_key_hash.data(),
                   pub_key_hash.size()))) {
         LOG(ERROR) << "Fatal key error--the cryptohome public key does not "
@@ -845,7 +844,8 @@ bool Crypto::DecryptVaultKeyset(const SerializedVaultKeyset& serialized,
     SecureBlob hash;
     unsigned int hash_offset = decrypted.size() - SHA_DIGEST_LENGTH;
     GetSha1(decrypted, 0, hash_offset, &hash);
-    if (memcmp(hash.data(), &decrypted[hash_offset], hash.size())) {
+    if (chromeos::SafeMemcmp(hash.data(), &decrypted[hash_offset],
+                             hash.size())) {
       LOG(ERROR) << "Scrypt hash verification failed";
       if (error) {
         *error = CE_SCRYPT_CRYPTO;

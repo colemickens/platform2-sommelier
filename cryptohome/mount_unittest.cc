@@ -342,8 +342,8 @@ TEST_F(MountTest, SystemSaltTest) {
   chromeos::Blob system_salt;
   mount.GetSystemSalt(&system_salt);
   ASSERT_TRUE((system_salt.size() == system_salt_.size()));
-  ASSERT_EQ(0, memcmp(&system_salt[0], &system_salt_[0],
-                         system_salt.size()));
+  ASSERT_EQ(0, chromeos::SafeMemcmp(&system_salt[0], &system_salt_[0],
+                                    system_salt.size()));
 }
 
 TEST_F(MountTest, MountCryptohome) {
@@ -418,7 +418,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   SecureBlob rhs;
   GetKeysetBlob(new_serialized, &rhs);
   ASSERT_EQ(lhs.size(), rhs.size());
-  ASSERT_EQ(0, memcmp(lhs.data(), rhs.data(), lhs.size()));
+  ASSERT_EQ(0, chromeos::SafeMemcmp(lhs.data(), rhs.data(), lhs.size()));
 }
 
 TEST_F(MountTest, MountCryptohomeNoCreate) {
