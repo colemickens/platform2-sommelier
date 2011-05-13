@@ -8,10 +8,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/callback.h>
+#include <base/callback_old.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
-#include <base/ref_counted.h>
-#include <base/scoped_ptr.h>
 
 namespace base {
 class MessageLoopProxy;

@@ -8,7 +8,7 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/ref_counted.h>
+#include <base/memory/ref_counted.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"

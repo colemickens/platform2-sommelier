@@ -15,14 +15,14 @@
 #include <linux/rtnetlink.h>
 #include <string>
 
-#include <base/callback.h>
-#include <base/logging.h>
+#include <base/callback_old.h>
 #include <base/hash_tables.h>
-#include <base/scoped_ptr.h>
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "shill/control_interface.h"
-#include "shill/service.h"
 #include "shill/device_info.h"
+#include "shill/service.h"
 
 using std::string;
 

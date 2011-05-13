@@ -6,7 +6,8 @@
 #define SHILL_MANAGER_
 
 #include <vector>
-#include <base/scoped_ptr.h>
+
+#include <base/memory/scoped_ptr.h>
 
 #include "shill/shill_event.h"
 #include "shill/service.h"

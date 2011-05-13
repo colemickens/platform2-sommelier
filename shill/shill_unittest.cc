@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <glib.h>
 
+#include <base/callback_old.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <base/message_loop_proxy.h>
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>

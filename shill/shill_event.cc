@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 #include <base/message_loop_proxy.h>
 
 #include "shill/shill_event.h"

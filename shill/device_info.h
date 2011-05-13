@@ -5,9 +5,9 @@
 #ifndef SHILL_DEVICE_INFO_
 #define SHILL_DEVICE_INFO_
 
-#include <base/callback.h>
+#include <base/callback_old.h>
 #include <base/hash_tables.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 
 #include "shill/shill_event.h"
 

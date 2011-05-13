@@ -5,7 +5,7 @@
 #ifndef SHILL_DEVICE_
 #define SHILL_DEVICE_
 
-#include <base/ref_counted.h>
+#include <base/memory/ref_counted.h>
 
 #include "shill/shill_event.h"
 
