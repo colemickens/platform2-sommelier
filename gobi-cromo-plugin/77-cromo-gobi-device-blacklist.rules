@@ -196,8 +196,19 @@ ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="9208", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Gobi 2000 Modem device
 ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920b", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+### Gobi 3000 modem devices sorted numerically
+
+# Qualcomm Gobi 3000 Modem device
+ATTRS{idVendor}=="05c6", ATTRS{idProduct}=="920d", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Sony Gobi 3000 Modem device
+ATTRS{idVendor}=="12D1", ATTRS{idProduct}=="14F1", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 # Novatel Gobi 3000 Modem device
 ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a021", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Dell Gobi 3000 Modem device
+ATTRS{idVendor}=="413c", ATTRS{idProduct}=="8194", ENV{ID_MM_DEVICE_IGNORE}="1"
 
 LABEL="mm_cromo_gobi_device_blacklist_end"
 
