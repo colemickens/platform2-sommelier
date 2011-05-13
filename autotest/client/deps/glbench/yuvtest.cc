@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 
 #include "main.h"
 #include "testbase.h"

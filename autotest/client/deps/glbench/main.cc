@@ -10,9 +10,7 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
-#ifdef WORKAROUND_CROSBUG14304
 #include "base/string_split.h"
-#endif
 
 #include "main.h"
 #include "utils.h"
@@ -77,11 +75,7 @@ int main(int argc, char *argv[]) {
   printDateTime();
 
   vector<string> enabled_tests;
-#ifdef WORKAROUND_CROSBUG14304
   base::SplitString(FLAGS_tests, ':', &enabled_tests);
-#else
-  SplitString(FLAGS_tests, ':', &enabled_tests);
-#endif
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
     glbench::GetClearTest(),

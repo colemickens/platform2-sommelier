@@ -11,9 +11,7 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
-#ifdef WORKAROUND_CROSBUG14304
 #include "base/string_split.h"
-#endif
 
 #include "main.h"
 #include "utils.h"
@@ -223,11 +221,7 @@ int main(int argc, char* argv[]) {
   SwapInterval(sleep_duration ? 0 : 1);
 
   std::vector<std::string> tests;
-#ifdef WORKAROUND_CROSBUG14304
   base::SplitString(FLAGS_tests, ',', &tests);
-#else
-  SplitString(FLAGS_tests, ',', &tests);
-#endif
 
   int return_code = 0;
   for (std::vector<std::string>::iterator it = tests.begin();
