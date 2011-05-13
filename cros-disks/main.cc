@@ -27,6 +27,11 @@ using cros_disks::DiskManager;
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
+DEFINE_int32(minloglevel, logging::LOG_WARNING,
+             "Messages logged at a lower level than "
+             "this don't actually get logged anywhere");
+
+static const char kUsageMessage[] = "Chromium OS Disk Daemon";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -37,6 +42,7 @@ void SetupLogging() {
     log_flags |= chromeos::kLogToStderr;
   }
   chromeos::InitLog(log_flags);
+  logging::SetMinLogLevel(FLAGS_minloglevel);
 }
 
 // This callback will be invoked once udev has data about
@@ -54,6 +60,7 @@ gboolean UdevCallback(GIOChannel* source,
 int main(int argc, char** argv) {
   ::g_type_init();
   g_thread_init(NULL);
+  google::SetUsageMessage(kUsageMessage);
   google::ParseCommandLineFlags(&argc, &argv, true);
   CommandLine::Init(argc, argv);
 
