@@ -48,7 +48,7 @@ bool XIdle::Init(XIdleMonitor* monitor) {
       XSyncFreeSystemCounterList(counters);
       if (idle_counter_ && monitor) {
         monitor_ = monitor;
-        gdk_window_add_filter(NULL, gdk_event_filter, this);
+        gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
       }
     }
   }
@@ -117,27 +117,24 @@ XSyncAlarm XIdle::CreateIdleAlarm(int64 idle_timeout_ms,
   return XSyncCreateAlarm(GDK_DISPLAY(), mask, &attr);
 }
 
-GdkFilterReturn XIdle::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
-                                        gpointer data) {
+GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
   XSyncAlarmNotifyEvent* alarm_event =
       static_cast<XSyncAlarmNotifyEvent*>(gxevent);
-  XIdle* xidle = static_cast<XIdle*>(data);
-
-  CHECK(xidle->idle_counter_);
-  CHECK(!xidle->alarms_.empty());
+  CHECK(idle_counter_);
+  CHECK(!alarms_.empty());
 
   XSyncValue value;
-  if (xevent->type == xidle->event_base_ + XSyncAlarmNotify &&
+  if (xevent->type == event_base_ + XSyncAlarmNotify &&
       alarm_event->state != XSyncAlarmDestroyed &&
-      XSyncQueryCounter(GDK_DISPLAY(), xidle->idle_counter_, &value)) {
+      XSyncQueryCounter(GDK_DISPLAY(), idle_counter_, &value)) {
     bool is_idle = !XSyncValueLessThan(alarm_event->counter_value,
                                        alarm_event->alarm_value);
     bool is_idle2 = !XSyncValueLessThan(value,
                                         alarm_event->alarm_value);
     if (is_idle == is_idle2) {
       int64 idle_time_ms = XSyncValueToInt64(alarm_event->counter_value);
-      xidle->monitor_->OnIdleEvent(is_idle, idle_time_ms);
+      monitor_->OnIdleEvent(is_idle, idle_time_ms);
     } else {
       LOG(INFO) << "Filtering out stale event";
     }

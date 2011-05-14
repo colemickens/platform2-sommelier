@@ -132,8 +132,8 @@ class BacklightController {
   //      SetBrightnessHard(52, 60);
   //      SetBrightnessHard(56, 60);
   //      SetBrightnessHard(60, 60);
-  SIGNAL_CALLBACK_2(BacklightController, gboolean, SetBrightnessHard,
-                    int64, int64);
+  SIGNAL_CALLBACK_PACKED_2(BacklightController, gboolean, SetBrightnessHard,
+                           int64, int64);
 
   // Backlight used for dimming. Non-owned.
   BacklightInterface* backlight_;

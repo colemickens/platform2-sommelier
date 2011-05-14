@@ -36,7 +36,15 @@
   }                                                   \
   RETURN METHOD();
 
-// SIGNAL_CALLBACK_[n](CLASS, RETURN, METHOD, TYPE0, TYPE1, ...)
+#define SIGNAL_CALLBACK_2(CLASS, RETURN, METHOD, ARG0, ARG1)     \
+  static RETURN METHOD ## Thunk(ARG0 sender, ARG1 one,           \
+                                void* data) {                    \
+    return reinterpret_cast<CLASS*>(data)->METHOD(sender, one);  \
+  }                                                              \
+                                                                 \
+  RETURN METHOD(ARG0, ARG1);
+
+// SIGNAL_CALLBACK_PACKED_[n](CLASS, RETURN, METHOD, TYPE0, TYPE1, ...)
 //
 // Use this to invoke an object's method that take one or more arguments.
 //   CLASS    The object's class
@@ -46,10 +54,10 @@
 //
 // Usage example:
 //   class MyClass {
-//   public:
+//    public:
 //     void Run();
-//   private:
-//     SIGNAL_CALLBACK_2(MyClass, bool, CallbackFunc, int, char*);
+//    private:
+//     SIGNAL_CALLBACK_PACKED_2(MyClass, bool, CallbackFunc, int, char*);
 //   };
 //   bool MyClass::CallbackFunc(int a, char* b) {
 //     // Do something.
@@ -62,7 +70,7 @@
 //                   CreateCallbackFuncArgs(this, value, string));
 //   }
 
-#define SIGNAL_CALLBACK_1(CLASS, RETURN, METHOD, TYPE0)              \
+#define SIGNAL_CALLBACK_PACKED_1(CLASS, RETURN, METHOD, TYPE0)       \
   struct METHOD ## Args {                                            \
     CLASS* obj;                                                      \
     TYPE0 arg0;                                                      \
@@ -83,7 +91,7 @@
   }                                                                  \
   RETURN METHOD(TYPE0);
 
-#define SIGNAL_CALLBACK_2(CLASS, RETURN, METHOD, TYPE0, TYPE1)       \
+#define SIGNAL_CALLBACK_PACKED_2(CLASS, RETURN, METHOD, TYPE0, TYPE1)\
   struct METHOD ## Args {                                            \
     CLASS* obj;                                                      \
     TYPE0 arg0;                                                      \

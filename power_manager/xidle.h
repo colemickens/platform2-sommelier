@@ -13,6 +13,7 @@
 
 #include "base/basictypes.h"
 #include "power_manager/xidle_monitor.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
@@ -71,8 +72,8 @@ class XIdle {
   // idle.
   XSyncAlarm CreateIdleAlarm(int64 idle_timeout_ms, XSyncTestType test_type);
 
-  static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
-    GdkEvent* gevent, gpointer data);
+  SIGNAL_CALLBACK_2(XIdle, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
+                    GdkEvent*);
 
   XSyncCounter idle_counter_;
   int64 min_timeout_;

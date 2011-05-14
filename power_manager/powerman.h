@@ -74,11 +74,12 @@ class PowerManDaemon {
 
   // Callback for timeout event started when lid closed to validate powerd has
   // received it successfully.
-  SIGNAL_CALLBACK_2(PowerManDaemon, gboolean, CheckLidClosed, unsigned int,
-                    unsigned int);
+  SIGNAL_CALLBACK_PACKED_2(PowerManDaemon, gboolean, CheckLidClosed,
+                           unsigned int, unsigned int);
 
   // Callback for timeout event started when input event signals suspend.
-  SIGNAL_CALLBACK_1(PowerManDaemon, gboolean, RetrySuspend, unsigned int);
+  SIGNAL_CALLBACK_PACKED_1(PowerManDaemon, gboolean, RetrySuspend,
+                           unsigned int);
 
   // Add interfaces to dbus matches for connection.
   void AddDBusMatch(DBusConnection *connection, const char *interface);

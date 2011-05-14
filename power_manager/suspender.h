@@ -61,7 +61,8 @@ class Suspender {
 
   // Timeout callback in case suspend clients do not respond in time.
   // Always returns false.
-  SIGNAL_CALLBACK_1(Suspender, gboolean, CheckSuspendTimeout, unsigned int);
+  SIGNAL_CALLBACK_PACKED_1(Suspender, gboolean, CheckSuspendTimeout,
+                           unsigned int);
 
   static void NameOwnerChangedHandler(DBusGProxy* proxy,
                                       const gchar* name,
