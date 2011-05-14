@@ -24,8 +24,7 @@ Service::Service(ControlInterface *control_interface,
     connection_(NULL),
     adaptor_(control_interface->CreateServiceAdaptor(this)) {
   // Initialize Interface montior, so we can detect new interfaces
-  // TODO(cmasone): change this to VLOG(2) once we have it.
-  LOG(INFO) << "Service initialized.";
+  VLOG(2) << "Service initialized.";
 }
 
 Service::~Service() {

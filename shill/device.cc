@@ -22,8 +22,7 @@ Device::Device(ControlInterface *control_interface,
   : adaptor_(control_interface->CreateDeviceAdaptor(this)),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
-  // TODO(cmasone): change this to VLOG(2) once we have it.
-  LOG(INFO) << "Device initialized.";
+  VLOG(2) << "Device initialized.";
 }
 
 Device::~Device() {

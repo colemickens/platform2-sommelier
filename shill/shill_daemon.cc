@@ -39,7 +39,7 @@ void Daemon::Start() {
 
 void Daemon::Run() {
   Start();
-  LOG(INFO) << "Running main loop.";
+  VLOG(1) << "Running main loop.";
   dispatcher_.DispatchForever();
 }
 

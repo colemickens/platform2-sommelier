@@ -21,8 +21,7 @@ Manager::Manager(ControlInterface *control_interface,
     device_info_(dispatcher),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
-  // TODO(cmasone): change this to VLOG(2) once we have it.
-  LOG(INFO) << "Manager initialized.";
+  VLOG(2) << "Manager initialized.";
 }
 
 Manager::~Manager() {}
