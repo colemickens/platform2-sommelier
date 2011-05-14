@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_PLATFORM_H_
 #define CRYPTOHOME_PLATFORM_H_
 
+#include <sys/stat.h>
+
 #include <base/basictypes.h>
 #include <chromeos/utility.h>
 #include <set>
@@ -141,6 +143,14 @@ class Platform {
   //   group_id - The group_id to assign ownership to
   virtual bool SetOwnership(const std::string& directory, uid_t user_id,
                             gid_t group_id);
+
+  // Calls the platform chmod() function on the given path.
+  // The path may be a directory or a file.
+  //
+  // Parameters
+  //   path - The path to change the permissions on
+  //   mode - the mode to change the permissions to
+  virtual bool SetPermissions(const std::string& path, mode_t mode);
 
   // Calls the platform chown() function recursively on the directory
   //

@@ -34,7 +34,7 @@ class Pkcs11Init {
   // necessary service daemons, and initializing the tokens.
   virtual bool Initialize();
 
-  // Start the PKCS11 service daemons.
+  // Start the PKCS#11 service daemons.
   virtual bool SetUpPkcs11System();
 
   // Initialize a PKCS#11 token and set default SO and User PINs. Will return
@@ -46,7 +46,7 @@ class Pkcs11Init {
   // to the token.
   virtual bool SetUpLinksAndPermissions();
 
-  // Check if the PKCS user token is valid.
+  // Check if the PKCS#11 user token is valid.
   virtual bool IsTokenBroken();
 
   // Remove the user's token dir. Useful when token directory is found to be
@@ -55,7 +55,7 @@ class Pkcs11Init {
 
   virtual bool is_initialized() const { return is_initialized_; }
 
-  // Sets the Pkcs11 initialization to true or false by dropping or removing
+  // Sets the PKCS#11 initialization to true or false by dropping or removing
   // the initialized file.
   virtual bool SetInitialized(bool status);
 
@@ -73,8 +73,7 @@ class Pkcs11Init {
   static const char kUserTokenDir[];
   static const char kRootTokenDir[];
   static const char kPkcs11Group[];
-  static const char kOldTokenEntry[];
-  static const std::string kPkcs11StartupPath;
+  static const char kTokenConfigFile[];
   static const std::string kPkcsSlotdPath;
   static const std::string kPkcsSlotPath;
   static const std::string kPkcsSlotCmd[];

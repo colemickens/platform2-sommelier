@@ -353,6 +353,15 @@ bool Platform::SetOwnership(const std::string& path, uid_t user_id,
   return true;
 }
 
+bool Platform::SetPermissions(const std::string& path, mode_t mode) {
+  if (chmod(path.c_str(), mode)) {
+    PLOG(ERROR) << "chmod() of " << path.c_str() << " to (" << std::oct << mode
+                << ") failed.";
+    return false;
+  }
+  return true;
+}
+
 bool Platform::SetOwnershipRecursive(const std::string& directory,
                                      uid_t user_id,
                                      gid_t group_id) {
