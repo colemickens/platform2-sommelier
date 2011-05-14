@@ -38,11 +38,9 @@ void Daemon::Start() {
 }
 
 void Daemon::Run() {
-  GMainLoop* loop = g_main_loop_new(NULL, false);
-  // TODO(cmasone): change this to VLOG(1) once we have it.
   Start();
   LOG(INFO) << "Running main loop.";
-  g_main_loop_run(loop);
+  dispatcher_.DispatchForever();
 }
 
 
