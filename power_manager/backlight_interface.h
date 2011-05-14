@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_BACKLIGHT_INTERFACE_H_
 #define POWER_MANAGER_BACKLIGHT_INTERFACE_H_
 
-#include "power_manager/signal_callback.h"
-
 #include "base/basictypes.h"
 
 namespace power_manager {
@@ -27,7 +25,7 @@ class BacklightInterface {
   virtual bool SetBrightness(int64 level) = 0;
 
  protected:
-  ~BacklightInterface() {}
+  virtual ~BacklightInterface() {}
 };
 
 }  // namespace power_manager
