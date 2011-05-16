@@ -12,7 +12,7 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/scoped_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <chromeos/process.h>
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
