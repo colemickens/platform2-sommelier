@@ -24,7 +24,7 @@ namespace shill {
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher)
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
-    device_info_(dispatcher),
+    device_info_(control_interface, dispatcher, this),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
   VLOG(2) << "Manager initialized.";

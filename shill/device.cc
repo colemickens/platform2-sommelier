@@ -18,15 +18,20 @@ using std::string;
 
 namespace shill {
 Device::Device(ControlInterface *control_interface,
-               EventDispatcher *dispatcher)
+               EventDispatcher *dispatcher,
+               const string &link_name,
+               int interface_index)
   : adaptor_(control_interface->CreateDeviceAdaptor(this)),
+    link_name_(link_name),
+    interface_index_(interface_index),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
-  VLOG(2) << "Device initialized.";
+  VLOG(2) << "Device " << link_name_ << " index " << interface_index;
 }
 
 Device::~Device() {
-  delete(adaptor_);
+  VLOG(2) << "Device " << link_name_ << " destroyed.";
+  adaptor_.reset();
 }
 
 void Device::Start() {

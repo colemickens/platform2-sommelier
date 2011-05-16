@@ -10,20 +10,29 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/dbus_control.h"
 #include "shill/device_info.h"
+#include "shill/manager.h"
 
 namespace shill {
 using ::testing::Test;
 using ::testing::_;
+using ::testing::NiceMock;
 
 class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
-    : device_info_(&dispatcher_),
+    : manager_(&control_interface_, &dispatcher_),
+      device_info_(&control_interface_, &dispatcher_, &manager_),
       factory_(this) {
   }
   int DeviceInfoFlags() { return device_info_.request_flags_; }
+  base::hash_map<int, scoped_refptr<Device> > *DeviceInfoDevices() {
+    return &device_info_.devices_;
+  }
 protected:
+  DBusControl control_interface_;
+  Manager manager_;
   DeviceInfo device_info_;
   EventDispatcher dispatcher_;
   ScopedRunnableMethodFactory<DeviceInfoTest> factory_;
@@ -43,6 +52,12 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
     g_main_context_iteration(NULL, TRUE);
 
   EXPECT_EQ(DeviceInfoFlags(), 0);
+
+  // The test machine must have a device or two...
+  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
+  EXPECT_GT(device_map->size(), 0);
+
+  // TODO(pstew): Create fake devices (simulators?) so we can do hard tests
 }
 
 }  // namespace shill

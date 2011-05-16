@@ -22,8 +22,10 @@ class MockDevice : public Device {
  public:
   // A constructor for the Device object
   MockDevice(ControlInterface *control_interface,
-             EventDispatcher *dispatcher)
-      : Device(control_interface, dispatcher) {
+             EventDispatcher *dispatcher,
+             const string &link_name,
+             int interface_index)
+      : Device(control_interface, dispatcher, link_name, interface_index) {
     ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
   }
   virtual ~MockDevice() {}

@@ -111,7 +111,7 @@ class ShillDaemonTest : public Test {
     : daemon_(&config_, new DBusControl()),
       dispatcher_(&daemon_.dispatcher_),
       dispatcher_test_(dispatcher_),
-      device_info_(dispatcher_),
+      device_info_(daemon_.control_, dispatcher_, &daemon_.manager_),
       factory_(this) {
   }
   virtual ~ShillDaemonTest() {}

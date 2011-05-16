@@ -40,11 +40,13 @@ SHILL_OBJS = \
 	dbus_control.o \
 	device.o \
 	device_info.o \
+	ethernet.o \
 	manager.o \
 	service.o \
 	shill_config.o \
 	shill_daemon.o \
-	shill_event.o
+	shill_event.o \
+	wifi.o
 
 SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o
