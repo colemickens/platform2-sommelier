@@ -21,6 +21,7 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/control_interface.h"
+#include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/service.h"
 

@@ -50,7 +50,8 @@ SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
-TEST_OBJS = testrunner.o shill_unittest.o
+TEST_OBJS = testrunner.o device_info_unittest.o manager_unittest.o \
+	shill_unittest.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
 

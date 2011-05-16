@@ -9,6 +9,7 @@
 #include <base/hash_tables.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/device.h"
 #include "shill/shill_event.h"
 
 namespace shill {
@@ -35,7 +36,7 @@ class DeviceInfo {
   scoped_ptr<IOInputHandler> rtnl_handler_;
   int request_flags_;
   uint32_t request_sequence_;
-  friend class ShillDaemonTest;
+  friend class DeviceInfoTest;
 };
 
 enum {

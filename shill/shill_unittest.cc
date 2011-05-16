@@ -120,7 +120,6 @@ class ShillDaemonTest : public Test {
     ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
     ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
   }
-  int DeviceInfoFlags() { return device_info_.request_flags_; }
 protected:
   Config config_;
   Daemon daemon_;
@@ -148,20 +147,4 @@ TEST_F(ShillDaemonTest, EventDispatcher) {
   dispatcher_test_.StopListenIO();
 }
 
-TEST_F(ShillDaemonTest, DeviceEnumeration) {
-  // TODO(cmasone): Make this unit test use message loop primitives.
-
-  // Start our own private device_info and make sure request flags clear
-  device_info_.Start();
-  EXPECT_NE(DeviceInfoFlags(), 0);
-
-  // Crank the glib main loop a few times
-  for (int main_loop_count = 0;
-       main_loop_count < 6 && DeviceInfoFlags() != 0;
-       ++main_loop_count)
-    g_main_context_iteration(NULL, TRUE);
-
-  EXPECT_EQ(DeviceInfoFlags(), 0);
-}
-
-}
+}  // namespace shill

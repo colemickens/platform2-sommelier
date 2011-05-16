@@ -16,12 +16,14 @@ using std::string;
 
 namespace shill {
 Service::Service(ControlInterface *control_interface,
-		 EventDispatcher */* dispatcher */)
+                 EventDispatcher */* dispatcher */,
+                 Device *device)
   : available_(false),
     configured_(false),
     auto_connect_(false),
     configuration_(NULL),
     connection_(NULL),
+    device_(device),
     adaptor_(control_interface->CreateServiceAdaptor(this)) {
   // Initialize Interface montior, so we can detect new interfaces
   VLOG(2) << "Service initialized.";

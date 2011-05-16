@@ -9,9 +9,9 @@
 
 namespace shill {
 
+class Device;
 class Manager;
 class Service;
-class Device;
 
 using std::string;
 
