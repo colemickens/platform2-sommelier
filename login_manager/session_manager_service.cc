@@ -316,6 +316,7 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 }
 
 bool SessionManagerService::Shutdown() {
+  DeregisterChildWatchers();
   if (session_started_) {
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:stopped";
     if (signals_[kSignalSessionStateChanged]) {
@@ -588,6 +589,7 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
                   ServiceShutdown,
                   this,
                   NULL);
+  DeregisterChildWatchers();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
   // child_job_->StopSession();
@@ -1028,10 +1030,6 @@ int SessionManagerService::FindChildByPid(int pid) {
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
-  // Remove child exit handlers.
-  for (size_t i = 0; i < child_watchers_.size(); ++i)
-    g_source_remove(child_watchers_[i]);
-
   vector<pair<int, uid_t> > pids_to_kill;
 
   for (size_t i = 0; i < child_pids_.size(); ++i) {
@@ -1055,6 +1053,13 @@ void SessionManagerService::CleanupChildren(int timeout) {
     if (!system_->ChildIsGone(pid, timeout))
       system_->kill(pid, uid, SIGABRT);
   }
+}
+
+void SessionManagerService::DeregisterChildWatchers() {
+  // Remove child exit handlers.
+  for (size_t i = 0; i < child_watchers_.size(); ++i)
+    g_source_remove(child_watchers_[i]);
+  child_watchers_.clear();
 }
 
 gboolean SessionManagerService::DeprecatedError(const char* msg,

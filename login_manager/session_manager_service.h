@@ -355,6 +355,9 @@ class SessionManagerService
   // Terminate all children, with increasing prejudice.
   void CleanupChildren(int timeout);
 
+  // De-register all child-exit handlers.
+  void DeregisterChildWatchers();
+
   // |key_| is persisted to disk, and then posts a task to |message_loop_|
   // to signal Chromium when done.
   void PersistKey();
