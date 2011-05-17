@@ -111,7 +111,9 @@ class BacklightController {
 
   // Write brightness based on current settings.
   // Returns true if the brightness was changed and false otherwise.
-  bool WriteBrightness();
+  // Set adjust_brightness_offset = true if the local brightness offset should
+  //   be set to a new value to permanently reflect the new brightness.
+  bool WriteBrightness(bool adjust_brightness_offset);
 
   // Changes the brightness to |target_level| over time.  This is used for
   // smoothing effects.
