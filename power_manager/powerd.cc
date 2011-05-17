@@ -114,7 +114,7 @@ void Daemon::Init() {
   GrabKey(key_brightness_down_, 0);
   GrabKey(key_f6_, 0);
   GrabKey(key_f7_, 0);
-  gdk_window_add_filter(NULL, gdk_event_filter, this);
+  gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterDBusMessageHandler();
   suspender_.Init(run_dir_);
@@ -416,35 +416,31 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
     daemon->OnLowBattery(info.battery_percentage);
 }
 
-GdkFilterReturn Daemon::gdk_event_filter(GdkXEvent* gxevent, GdkEvent*,
-                                         gpointer data) {
-  Daemon* daemon = static_cast<Daemon*>(data);
+GdkFilterReturn Daemon::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
 
-  if (xevent->type == KeyPress && daemon->idle_state_ == kIdleNormal) {
+  if (xevent->type == KeyPress && idle_state_ == kIdleNormal) {
     int keycode = xevent->xkey.keycode;
-    if (keycode == daemon->key_brightness_up_ ||
-               keycode == daemon->key_f7_) {
-      if (keycode == daemon->key_brightness_up_) {
+    if (keycode == key_brightness_up_ || keycode == key_f7_) {
+      if (keycode == key_brightness_up_) {
         LOG(INFO) << "Key press: Brightness up";
-      } else {  // keycode == daemon->key_f7_
+      } else {  // keycode == key_f7_
         LOG(INFO) << "Key press: F7";
-        daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
+        metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
       }
-      daemon->IncreaseScreenBrightness(true);
-      daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                                           kBrightnessUp, kBrightnessEnumMax);
-    } else if (keycode == daemon->key_brightness_down_ ||
-               keycode == daemon->key_f6_) {
-      if (keycode == daemon->key_brightness_down_) {
+      IncreaseScreenBrightness(true);
+      SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessUp,
+                                   kBrightnessEnumMax);
+    } else if (keycode == key_brightness_down_ || keycode == key_f6_) {
+      if (keycode == key_brightness_down_) {
         LOG(INFO) << "Key press: Brightness down";
-      } else {  // keycode == daemon->key_f6_
+      } else {  // keycode == key_f6_
         LOG(INFO) << "Key press: F6";
-        daemon->metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
+        metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
       }
-      daemon->DecreaseScreenBrightness(true, true);
-      daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                                           kBrightnessDown, kBrightnessEnumMax);
+      DecreaseScreenBrightness(true, true);
+      SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessDown,
+                                   kBrightnessEnumMax);
     }
   }
 
@@ -474,8 +470,9 @@ void Daemon::GrabKey(KeyCode key, uint32 mask) {
            GrabModeAsync, GrabModeAsync);
 }
 
-DBusHandlerResult Daemon::DBusMessageHandler(
-    DBusConnection*, DBusMessage* message, void* data) {
+DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection*,
+                                             DBusMessage* message,
+                                             void* data) {
   Daemon* daemon = static_cast<Daemon*>(data);
   if (dbus_message_is_signal(message, kPowerManagerInterface,
                              kRequestLockScreenSignal)) {

@@ -22,6 +22,7 @@
 #include "power_manager/inotify.h"
 #include "power_manager/power_prefs.h"
 #include "power_manager/screen_locker.h"
+#include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
 #include "power_manager/xidle.h"
 #include "power_manager/xidle_monitor.h"
@@ -110,8 +111,8 @@ class Daemon : public XIdleMonitor {
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
-  static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
-    GdkEvent* gevent, gpointer data);
+  SIGNAL_CALLBACK_2(Daemon, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
+                    GdkEvent*);
 
   // Tell X we are interested in the specified key/mask combination.
   // Capslock and Numlock are always ignored.
