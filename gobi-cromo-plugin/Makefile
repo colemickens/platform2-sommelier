@@ -7,7 +7,8 @@ INCLUDE_DIRS = $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
 
 CXXFLAGS += -fPIC -I$(INCLUDE_DIRS) -Wall -Werror -g -O0
 CFLAGS := $(CXXFLAGS)
-LDLIBS += -lbase -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt -ludev -lmetrics
+LDLIBS += -lbase -lGobiConnectionMgmt -lGobiImageMgmt -lglog -lpthread -lrt \
+          -ludev -lmetrics -lgobi3k
 
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 

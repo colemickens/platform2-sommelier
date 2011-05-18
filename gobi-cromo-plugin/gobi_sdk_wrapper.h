@@ -34,15 +34,7 @@
 #include <string>
 #include <vector>
 
-// Type Definitions
-typedef unsigned long      ULONG;
-typedef unsigned long long ULONGLONG;
-typedef signed char        INT8;
-typedef unsigned char      BYTE;
-typedef char               CHAR;
-typedef unsigned short     WORD;
-typedef unsigned short     USHORT;
-typedef const char *       LPCSTR;
+#include "gobi/GobiConnectionMgmtAPI.h"
 
 // Session state callback function
 typedef void (* tFNSessionState)(
@@ -1002,6 +994,8 @@ class Sdk {
   virtual ULONG SetOMADMAlertCallback(tFNOMADMAlert pCallback);
 
   virtual ULONG SetOMADMStateCallback(tFNOMADMState pCallback);
+
+  virtual GobiType GetDeviceType();
 
  protected:
 

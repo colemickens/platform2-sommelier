@@ -196,6 +196,9 @@ class GobiModem
   static unsigned long MapDbmToPercent(INT8 signal_strength_dbm);
   static unsigned long MapDataBearerToRfi(ULONG data_bearer_technology);
 
+  void Gobi2kSetCarrier(const std::string& carrier_name, DBus::Error& error);
+  void Gobi3kSetCarrier(const std::string& carrier_name, DBus::Error& error);
+
   // Send the return for the outstanding dbus call associated with *tag.
   void FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error);
 

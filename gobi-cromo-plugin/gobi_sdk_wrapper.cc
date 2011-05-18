@@ -25,6 +25,7 @@
 #include <glog/logging.h>
 
 #include "gobi/GobiConnectionMgmtAPI.h"
+#include "gobi/GobiImageMgmtAPI.h"
 
 namespace gobi {
 
@@ -42,6 +43,7 @@ static const char *kServiceMapping[] = {
   "QCWWANDisconnect",
 
   "+DeviceConnectivity",
+  "GetDeviceType",
   "QCWWANEnumerateDevices",
   "QCWWANGetConnectedDeviceID",
   "QCWWANCancel",  // Not exported, see CancelStartDataSession
@@ -373,6 +375,10 @@ do {                                            \
   }                                             \
 } while (0);
 
+GobiType Sdk::GetDeviceType()
+{
+  return ::GetDeviceType();
+}
 
 ULONG Sdk::QCWWANEnumerateDevices(
     BYTE *                     pDevicesSize,

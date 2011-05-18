@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <sys/wait.h>
 
+#include <gobi3k.h>
+
 extern "C" {
 #include <libudev.h>
 #include <time.h>
@@ -1045,6 +1047,17 @@ void GobiModem::ResetModem(DBus::Error& error) {
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
                            DBus::Error& error) {
+  GobiType devtype = GetDeviceType();
+
+  if (devtype == GOBITYPE_2K) {
+    Gobi2kSetCarrier(carrier_name, error);
+  } else {
+    Gobi3kSetCarrier(carrier_name, error);
+  }
+}
+
+void GobiModem::Gobi2kSetCarrier(const std::string& carrier_name,
+                                 DBus::Error& error) {
   const Carrier *carrier = handler_->server().FindCarrierByName(carrier_name);
   if (carrier == NULL) {
     // TODO(rochberg):  Do we need to sanitize this string?
@@ -1083,6 +1096,47 @@ void GobiModem::SetCarrier(const std::string& carrier_name,
     } else {
       ApiDisconnect();
     }
+  }
+}
+
+void GobiModem::Gobi3kSetCarrier(const std::string& carrier_name,
+                                 DBus::Error& error)
+{
+  gobifw_init(NULL);
+  gobifw *fw = gobifw_bycarrier(carrier_name.c_str());
+  enum gobifw_activate_status rc;
+  bool was_connected = IsApiConnected();
+  DBus::Error connect_error;
+
+  if (!fw) {
+    LOG(WARNING) << "No such carrier: " << carrier_name << ": "
+                 << gobifw_lasterror();
+    error.set(kFirmwareLoadError, gobifw_lasterror());
+    return;
+  }
+
+  if (!is_disconnected()) {
+    error.set(kFirmwareLoadError, "Cannot load firmware while connected");
+    gobifw_free(fw);
+    return;
+  }
+
+  if (was_connected)
+    ApiDisconnect();
+  rc = gobifw_activate(fw);
+  if (rc) {
+    LOG(WARNING) << "Firmware activation failed: " << gobifw_lasterror();
+    error.set(kFirmwareLoadError, gobifw_lasterror());
+  }
+
+  if (rc == GOBIFW_ACTIVATE_OK || rc == GOBIFW_ACTIVATE_ERROR_RESET) {
+    // Object is deceased. Remove it early so that we don't process any
+    // queued-up dbus calls on the now-dead device.
+    unregister_obj();
+    handler_->Remove(this);
+  } else if (rc == GOBIFW_ACTIVATE_ERROR_NORESET) {
+    if (was_connected)
+      ApiConnect(connect_error);
   }
 }
 
