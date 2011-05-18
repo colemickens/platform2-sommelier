@@ -6,7 +6,10 @@
 
 #include "gobi_cdma_modem.h"
 #include "gobi_gsm_modem.h"
+#include "gobi_2k_modem.h"
+#include "gobi_3k_modem.h"
 
+#include <base/scoped_ptr.h>
 #include <glog/logging.h>
 
 GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
@@ -37,15 +40,30 @@ GobiModem* GobiModemFactory::CreateModem(DBus::Connection& connection,
     (void)sdk->QCWWANDisconnect();
     return NULL;
   }
+  GobiType devtype = GetDeviceType();
+  scoped_ptr<GobiModemHelper> helper;
+  switch(devtype) {
+    case GOBITYPE_2K:
+      helper.reset(new Gobi2KModemHelper(sdk));
+      break;
+    case GOBITYPE_3K:
+      helper.reset(new Gobi3KModemHelper(sdk));
+      break;
+    default:
+      LOG(ERROR) << "CreateModem: cannot get device type: " << devtype;
+      (void)sdk->QCWWANDisconnect();
+      return NULL;
+  }
 
   GobiModem *modem = NULL;
   switch (technology) {
     case gobi::kConfigurationCdma:
-      modem = new GobiCdmaModem(connection, path, device, sdk);
+      modem = new GobiCdmaModem(connection, path, device, sdk,
+                                helper.release());
       LOG(INFO) << "CreateModem: CDMA modem";
       break;
     case gobi::kConfigurationUmts:
-      modem = new GobiGsmModem(connection, path, device, sdk);
+      modem = new GobiGsmModem(connection, path, device, sdk, helper.release());
       LOG(INFO) << "CreateModem: GSM modem";
       break;
     case gobi::kConfigurationUnknownTechnology:

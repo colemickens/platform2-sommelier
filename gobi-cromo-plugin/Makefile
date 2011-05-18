@@ -30,6 +30,8 @@ PLUGIN_SRCS = device_watcher.cc \
 	      gobi_cdma_modem.cc \
 	      gobi_gsm_modem.cc \
 	      gobi_modem.cc \
+	      gobi_2k_modem.cc \
+	      gobi_3k_modem.cc \
 	      gobi_modem_factory.cc \
 	      gobi_modem_handler.cc \
 	      gobi_sdk_wrapper.cc \

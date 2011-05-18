@@ -40,6 +40,10 @@
 #undef DEFINE_MM_ERROR
 
 
+const char* QMIReturnCodeToMMError(unsigned int qmicode);
+const char* QMICallFailureToMMError(unsigned int qmireason);
+unsigned int QMIReasonToMMReason(unsigned int qmireason);
+
 #define ENSURE_SDK_SUCCESS_WITH_RESULT(function, rc, errtype, result) \
     do {                                                   \
       if (rc != 0) {                                       \
@@ -82,7 +86,7 @@ class GobiModem;
 class GobiModemHandler;
 class SessionStarter;
 class InjectedFaults;
-
+class GobiModemHelper;
 
 struct PendingDisable;
 
@@ -102,7 +106,8 @@ class GobiModem
   GobiModem(DBus::Connection& connection,
             const DBus::Path& path,
             const gobi::DeviceElement &device,
-            gobi::Sdk *sdk);
+            gobi::Sdk *sdk,
+            GobiModemHelper *helper);
   virtual ~GobiModem();
 
   virtual void Init();
@@ -195,9 +200,6 @@ class GobiModem
   // TODO(cros-connectivity):  Move these to a utility class
   static unsigned long MapDbmToPercent(INT8 signal_strength_dbm);
   static unsigned long MapDataBearerToRfi(ULONG data_bearer_technology);
-
-  void Gobi2kSetCarrier(const std::string& carrier_name, DBus::Error& error);
-  void Gobi3kSetCarrier(const std::string& carrier_name, DBus::Error& error);
 
   // Send the return for the outstanding dbus call associated with *tag.
   void FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error);
@@ -326,9 +328,6 @@ class GobiModem
   };
   static gboolean SdkErrorHandler(gpointer data);
 
-  static const char* QMIReturnCodeToMMError(unsigned int qmicode);
-  static const char* QMICallFailureToMMError(unsigned int qmireason);
-  static unsigned int QMIReasonToMMReason(unsigned int qmireason);
   // Set DBus-exported properties
   void SetDeviceProperties();
   void SetModemProperties();
@@ -351,6 +350,7 @@ class GobiModem
   static GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
   gobi::Sdk *sdk_;
+  scoped_ptr<GobiModemHelper> modem_helper_;
   gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
 
@@ -424,8 +424,52 @@ class GobiModem
 
   friend class SessionStarter;
   friend class PendingDisable;
+  friend class ScopedApiConnection;
+  friend class Gobi3KModemHelper;  // a bad idea, but necessary until
+                                   // code is restructured
 
   DISALLOW_COPY_AND_ASSIGN(GobiModem);
+};
+
+class ScopedApiConnection {
+ public:
+  ScopedApiConnection(GobiModem &modem) : modem_(modem),
+                                   was_connected_(modem_.IsApiConnected()) { }
+  ~ScopedApiConnection() {
+    if (!was_connected_ && modem_.IsApiConnected())
+      modem_.ApiDisconnect();
+  }
+
+  void ApiConnect(DBus::Error& error) {
+    if (!was_connected_)
+      modem_.ApiConnect(error);
+  }
+
+  // Force an immediate disconnect independent of prior state
+  void ApiDisconnect() {
+    // Prevent auto disconnect on destruction by faking we had been connected
+    was_connected_ = true;
+    modem_.ApiDisconnect();
+  }
+
+ private:
+  GobiModem &modem_;
+  bool was_connected_;
+};
+
+class GobiModemHelper {
+ public:
+  GobiModemHelper(gobi::Sdk* sdk) : sdk_(sdk) { };
+  virtual ~GobiModemHelper() { };
+
+  virtual void SetCarrier(GobiModem *modem,
+                          GobiModemHandler *handler,
+                          const std::string& carrier_name,
+                          DBus::Error& error) = 0;
+
+  DISALLOW_COPY_AND_ASSIGN(GobiModemHelper);
+ protected:
+  gobi::Sdk* sdk_;
 };
 
 #endif  // PLUGIN_GOBI_MODEM_H_

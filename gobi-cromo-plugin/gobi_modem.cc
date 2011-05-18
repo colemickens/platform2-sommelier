@@ -14,8 +14,6 @@
 #include <stdio.h>
 #include <sys/wait.h>
 
-#include <gobi3k.h>
-
 extern "C" {
 #include <libudev.h>
 #include <time.h>
@@ -301,14 +299,17 @@ bool SuspendOkTrampoline(void *arg) {
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
                      const gobi::DeviceElement& device,
-                     gobi::Sdk* sdk)
+                     gobi::Sdk* sdk,
+                     GobiModemHelper *modem_helper)
     : DBus::ObjectAdaptor(connection, path),
       sdk_(sdk),
+      modem_helper_(modem_helper),
       last_seen_(-1),
       session_id_(0),
       signal_available_(false),
       suspending_(false),
       exiting_(false),
+      device_resetting_(false),
       session_starter_in_flight_(false),
       disconnect_time_(METRIC_BASE_NAME "Disconnect", 0, 150000, 20),
       registration_time_(METRIC_BASE_NAME "Registration", 0, 150000, 20) {
@@ -1047,97 +1048,7 @@ void GobiModem::ResetModem(DBus::Error& error) {
 
 void GobiModem::SetCarrier(const std::string& carrier_name,
                            DBus::Error& error) {
-  GobiType devtype = GetDeviceType();
-
-  if (devtype == GOBITYPE_2K) {
-    Gobi2kSetCarrier(carrier_name, error);
-  } else {
-    Gobi3kSetCarrier(carrier_name, error);
-  }
-}
-
-void GobiModem::Gobi2kSetCarrier(const std::string& carrier_name,
-                                 DBus::Error& error) {
-  const Carrier *carrier = handler_->server().FindCarrierByName(carrier_name);
-  if (carrier == NULL) {
-    // TODO(rochberg):  Do we need to sanitize this string?
-    LOG(WARNING) << "Could not parse carrier: " << carrier_name;
-    error.set(kFirmwareLoadError, "Unknown carrier name");
-    return;
-  }
-
-  LOG(INFO) << "Carrier image selection starting: " << carrier_name;
-  ULONG firmware_id;
-  ULONG technology;
-  ULONG modem_carrier_id;
-  ULONG region;
-  ULONG gps_capability;
-  ULONG rc = sdk_->GetFirmwareInfo(&firmware_id,
-                                   &technology,
-                                   &modem_carrier_id,
-                                   &region,
-                                   &gps_capability);
-  ENSURE_SDK_SUCCESS(GetFirmwareInfo, rc, kFirmwareLoadError);
-
-  if (modem_carrier_id != carrier->carrier_id()) {
-
-    // UpgradeFirmware doesn't pay attention to anything before the
-    // last /, so we don't supply it
-    std::string image_path = std::string("/") + carrier->firmware_directory();
-
-    LOG(INFO) << "Current Gobi carrier: " << modem_carrier_id
-              << ".  Carrier image selection "
-              << image_path;
-    rc = sdk_->UpgradeFirmware(const_cast<CHAR *>(image_path.c_str()));
-    if (rc != 0) {
-      LOG(WARNING) << "Carrier image selection from: "
-                   << image_path << " failed: " << rc;
-      error.set(kFirmwareLoadError, "UpgradeFirmware");
-    } else {
-      ApiDisconnect();
-    }
-  }
-}
-
-void GobiModem::Gobi3kSetCarrier(const std::string& carrier_name,
-                                 DBus::Error& error)
-{
-  gobifw_init(NULL);
-  gobifw *fw = gobifw_bycarrier(carrier_name.c_str());
-  enum gobifw_activate_status rc;
-  bool was_connected = IsApiConnected();
-  DBus::Error connect_error;
-
-  if (!fw) {
-    LOG(WARNING) << "No such carrier: " << carrier_name << ": "
-                 << gobifw_lasterror();
-    error.set(kFirmwareLoadError, gobifw_lasterror());
-    return;
-  }
-
-  if (!is_disconnected()) {
-    error.set(kFirmwareLoadError, "Cannot load firmware while connected");
-    gobifw_free(fw);
-    return;
-  }
-
-  if (was_connected)
-    ApiDisconnect();
-  rc = gobifw_activate(fw);
-  if (rc) {
-    LOG(WARNING) << "Firmware activation failed: " << gobifw_lasterror();
-    error.set(kFirmwareLoadError, gobifw_lasterror());
-  }
-
-  if (rc == GOBIFW_ACTIVATE_OK || rc == GOBIFW_ACTIVATE_ERROR_RESET) {
-    // Object is deceased. Remove it early so that we don't process any
-    // queued-up dbus calls on the now-dead device.
-    unregister_obj();
-    handler_->Remove(this);
-  } else if (rc == GOBIFW_ACTIVATE_ERROR_NORESET) {
-    if (was_connected)
-      ApiConnect(connect_error);
-  }
+  modem_helper_->SetCarrier(this, handler_, carrier_name, error);
 }
 
 uint32_t GobiModem::CommonGetSignalQuality(DBus::Error& error) {
@@ -1456,7 +1367,7 @@ bool GobiModem::StartExit() {
   return true;
 }
 
-const char* GobiModem::QMIReturnCodeToMMError(unsigned int qmicode) {
+const char* QMIReturnCodeToMMError(unsigned int qmicode) {
   switch (qmicode) {
     case gobi::kIncorrectPinId:
       return kErrorIncorrectPassword;
@@ -1475,7 +1386,7 @@ const char* GobiModem::QMIReturnCodeToMMError(unsigned int qmicode) {
 }
 
 // Map call failure reasons into ModemManager errors
-const char* GobiModem::QMICallFailureToMMError(unsigned int qmireason) {
+const char* QMICallFailureToMMError(unsigned int qmireason) {
   switch (qmireason) {
     case gobi::kReasonBadApn:
     case gobi::kReasonNotSubscribed:
@@ -1485,7 +1396,7 @@ const char* GobiModem::QMICallFailureToMMError(unsigned int qmireason) {
   }
 }
 
-unsigned int GobiModem::QMIReasonToMMReason(unsigned int qmireason) {
+unsigned int QMIReasonToMMReason(unsigned int qmireason) {
   switch (qmireason) {
     case gobi::kReasonClientEndedCall:
       return MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED;

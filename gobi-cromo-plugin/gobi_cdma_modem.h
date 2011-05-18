@@ -19,7 +19,8 @@ class GobiCdmaModem
   GobiCdmaModem(DBus::Connection& connection,
                 const DBus::Path& path,
                 const gobi::DeviceElement& device,
-                gobi::Sdk *sdk);
+                gobi::Sdk *sdk,
+                GobiModemHelper *modem_helper);
   virtual ~GobiCdmaModem();
 
   // Modem methods

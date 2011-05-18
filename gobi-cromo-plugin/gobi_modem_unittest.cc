@@ -118,7 +118,8 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmDisconnected) {
   modem_.reset(new GobiCdmaModem(connection_,
                                  path_,
                                  kDeviceElement,
-                                 &sdk));
+                                 &sdk,
+                                 NULL));
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(
@@ -142,7 +143,8 @@ TEST_F(GobiModemTest, GetSignalStrengthDbmConnected) {
   modem_.reset(new GobiCdmaModem(connection_,
                                  path_,
                                  kDeviceElement,
-                                 &sdk));
+                                 &sdk,
+                                 NULL));
   modem_->Init();
 
   EXPECT_CALL(sdk, GetSessionState(_)).WillOnce(DoAll(

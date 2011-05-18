@@ -27,8 +27,9 @@ class GobiGsmModem
   GobiGsmModem(DBus::Connection& connection,
                const DBus::Path& path,
                const gobi::DeviceElement& device,
-               gobi::Sdk *sdk)
-      : GobiModem(connection, path, device, sdk) {}
+               gobi::Sdk *sdk,
+                GobiModemHelper *modem_helper)
+      : GobiModem(connection, path, device, sdk, modem_helper) {}
   virtual ~GobiGsmModem();
 
   // DBUS Methods: Modem.Gsm.Network

@@ -480,27 +480,21 @@ void GobiGsmModem::SetAllowedMode(const uint32_t& mode,
 
 std::string GobiGsmModem::GetImei(DBus::Error& error) {
   SerialNumbers serials;
-  bool was_connected = IsApiConnected();
-  if (!was_connected)
-    ApiConnect(error);
+  ScopedApiConnection connection(*this);
+  connection.ApiConnect(error);
   if (error.is_set())
     return "";
   GetSerialNumbers(&serials, error);
-  if (!was_connected)
-    ApiDisconnect();
   return error.is_set() ? "" : serials.imei;
 }
 
 std::string GobiGsmModem::GetImsi(DBus::Error& error) {
   char imsi[kDefaultBufferSize];
-  bool was_connected = IsApiConnected();
-  if (!was_connected)
-    ApiConnect(error);
+  ScopedApiConnection connection(*this);
+  connection.ApiConnect(error);
   if (error.is_set())
     return "";
   ULONG rc = sdk_->GetIMSI(kDefaultBufferSize, imsi);
-  if (!was_connected)
-    ApiDisconnect();
   ENSURE_SDK_SUCCESS_WITH_RESULT(GetIMSI, rc, kSdkError, "");
   return imsi;
 }
@@ -514,18 +508,15 @@ void GobiGsmModem::SendPuk(const std::string& puk,
   CHAR *pinP = const_cast<CHAR*>(pin.c_str());
 
   // If we're not enabled, then we're not connected to the SDK
-  bool api_was_connected = IsApiConnected();
+  ScopedApiConnection connection(*this);
   DBus::Error tmperror;
-  if (!api_was_connected)
-    ApiConnect(tmperror);
+  connection.ApiConnect(tmperror);
   ULONG rc = sdk_->UIMUnblockPIN(gobi::kPinId1, pukP, pinP,
                                  &verify_retries_left,
                                  &unblock_retries_left);
   LOG(INFO) << "UnblockPIN: " << rc << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;  // XXX remove
   UpdatePinStatus();
-  if (!api_was_connected)
-    ApiDisconnect();
   ENSURE_SDK_SUCCESS(UIMUnblockPIN, rc, kPinError);
 }
 
@@ -535,17 +526,15 @@ void GobiGsmModem::SendPin(const std::string& pin, DBus::Error& error) {
   CHAR* pinP = const_cast<CHAR*>(pin.c_str());
 
   // If we're not enabled, then we're not connected to the SDK
-  bool api_was_connected = IsApiConnected();
+  ScopedApiConnection connection(*this);
   DBus::Error tmperror;
-  if (!api_was_connected)
-    ApiConnect(tmperror);
+  connection.ApiConnect(tmperror);
+
   ULONG rc = sdk_->UIMVerifyPIN(gobi::kPinId1, pinP, &verify_retries_left,
                                 &unblock_retries_left);
   LOG(INFO) << "VerifyPIN: " << rc << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;  // XXX remove
   UpdatePinStatus();
-  if (!api_was_connected)
-    ApiDisconnect();
   ENSURE_SDK_SUCCESS(UIMVerifyPIN, rc, kPinError);
 }
 
