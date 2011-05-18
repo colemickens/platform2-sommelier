@@ -32,6 +32,12 @@ const int kBacklightStepTimeMS = 30;
 // Maximum number of brightness adjustment steps.
 const int64 kMaxBrightnessSteps = 16;
 
+// Number of light sensor samples required to overcome temporal hysteresis.
+const int kAlsHystSamples = 4;
+
+// Backlight change (in %) required to overcome light sensor level hysteresis.
+const int kAlsHystLevel = 5;
+
 // String names for power states.
 const char* PowerStateToString(power_manager::PowerState state) {
   switch (state) {
@@ -64,6 +70,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       light_sensor_(NULL),
       als_brightness_level_(0),
       als_hysteresis_level_(0),
+      als_temporal_state_(ALS_HYST_IMMEDIATE),
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
@@ -189,6 +196,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 
   if (light_sensor_)
     light_sensor_->EnableOrDisableSensor(state_);
+  als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
   if (GDK_DISPLAY() == NULL)
     return changed_brightness;
@@ -231,14 +239,37 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
 
   als_brightness_level_ = level;
 
-  // Only a change of 5% of the brightness range will force a change.
-  int64 diff = level - als_hysteresis_level_;
+  // Force a backlight refresh immediately after returning from dim or idle.
+  if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
+    als_temporal_state_ = ALS_HYST_IDLE;
+    WriteBrightness(false);
+    return;
+  }
 
-  if (diff < 0)
-    diff = -diff;
-  if (diff >= 5)
+  // Apply level and temporal hysteresis to light sensor readings to reduce
+  // backlight changes caused by minor and transient ambient light changes.
+  int64 diff = level - als_hysteresis_level_;
+  AlsHysteresisState new_state;
+
+  if (diff < -kAlsHystLevel) {
+    new_state = ALS_HYST_DOWN;
+  } else if (diff > kAlsHystLevel) {
+    new_state = ALS_HYST_UP;
+  } else {
+    als_temporal_state_ = ALS_HYST_IDLE;
+    return;
+  }
+  if (als_temporal_state_ == new_state) {
+    als_temporal_count_++;
+  } else {
+    als_temporal_state_ = new_state;
+    als_temporal_count_ = 0;
+  }
+  if (als_temporal_count_ >= kAlsHystSamples) {
+    als_temporal_count_ = 0;
     WriteBrightness(false);  // ALS adjustment should not change brightness
                              // offset.
+  }
 }
 
 double BacklightController::Clamp(double value) {

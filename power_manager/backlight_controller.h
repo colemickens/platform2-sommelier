@@ -31,6 +31,13 @@ enum PluggedState {
   kPowerUnknown,
 };
 
+enum AlsHysteresisState {
+  ALS_HYST_IDLE,
+  ALS_HYST_DOWN,
+  ALS_HYST_UP,
+  ALS_HYST_IMMEDIATE,
+};
+
 // Control the backlight.
 class BacklightController {
  public:
@@ -151,6 +158,10 @@ class BacklightController {
 
   // Prevent small light sensor changes from updating the backlight.
   int64 als_hysteresis_level_;
+
+  // Also apply temporal hysteresis to light sensor samples.
+  AlsHysteresisState als_temporal_state_;
+  int als_temporal_count_;
 
   // User adjustable brightness offset when AC plugged.
   double plugged_brightness_offset_;
