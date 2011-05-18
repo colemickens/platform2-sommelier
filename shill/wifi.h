@@ -5,15 +5,18 @@
 #ifndef SHILL_WIFI_
 #define SHILL_WIFI_
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include "shill/device.h"
 #include "shill/shill_event.h"
+#include "shill/supplicant-process.h"
+#include "shill/supplicant-interface.h"
 
 namespace shill {
 
-// Device superclass.  Individual network interfaces types will inherit from
-// this class.
+// WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device {
  public:
   WiFi(ControlInterface *control_interface,
@@ -21,9 +24,85 @@ class WiFi : public Device {
        Manager *manager,
        const std::string& link_name,
        int interface_index);
-  ~WiFi();
-  bool TechnologyIs(Device::Technology type);
+  virtual ~WiFi();
+  virtual void Start();
+  virtual void Stop();
+  virtual bool TechnologyIs(const Technology type);
+
+  // called by SupplicantInterfaceProxy, in response to events from
+  // wpa_supplicant.
+  void BSSAdded(const ::DBus::Path &BSS,
+                const std::map<std::string, ::DBus::Variant>
+                &properties);
+  void ScanDone();
+
  private:
+  // SupplicantProcessProxy. provides access to wpa_supplicant's
+  // process-level D-Bus APIs.
+  class SupplicantProcessProxy :
+      public fi::w1::wpa_supplicant1_proxy,
+        private ::DBus::ObjectProxy  // used by dbus-c++, not WiFi
+  {
+   public:
+    explicit SupplicantProcessProxy(DBus::Connection *bus);
+
+   private:
+    // called by dbus-c++, via wpa_supplicant1_proxy interface,
+    // in response to signals from wpa_supplicant. not exposed
+    // to WiFi.
+    virtual void InterfaceAdded(
+        const ::DBus::Path &path,
+        const std::map<std::string, ::DBus::Variant> &properties);
+    virtual void InterfaceRemoved(const ::DBus::Path &path);
+    virtual void PropertiesChanged(
+        const std::map<std::string, ::DBus::Variant> &properties);
+  };
+
+  // SupplicantInterfaceProxy. provides access to wpa_supplicant's
+  // network-interface D-Bus APIs.
+  class SupplicantInterfaceProxy :
+      public fi::w1::wpa_supplicant1::Interface_proxy,
+      private ::DBus::ObjectProxy  // used by dbus-c++, not WiFi
+  {
+   public:
+    SupplicantInterfaceProxy(WiFi *wifi, DBus::Connection *bus,
+                             const ::DBus::Path &object_path);
+
+   private:
+    // called by dbus-c++, via Interface_proxy interface,
+    // in response to signals from wpa_supplicant. not exposed
+    // to WiFi.
+    virtual void ScanDone(const bool &success);
+    virtual void BSSAdded(const ::DBus::Path &BSS,
+                          const std::map<std::string, ::DBus::Variant>
+                          &properties);
+    virtual void BSSRemoved(const ::DBus::Path &BSS);
+    virtual void BlobAdded(const std::string &blobname);
+    virtual void BlobRemoved(const std::string &blobname);
+    virtual void NetworkAdded(const ::DBus::Path &network,
+                              const std::map<std::string, ::DBus::Variant>
+                              &properties);
+    virtual void NetworkRemoved(const ::DBus::Path &network);
+    virtual void NetworkSelected(const ::DBus::Path &network);
+    virtual void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
+                                   &properties);
+
+    WiFi &wifi_;
+  };
+
+  static const char kSupplicantPath[];
+  static const char kSupplicantDBusAddr[];
+  static const char kSupplicantWiFiDriver[];
+
+  DBus::Connection dbus_;
+  scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
+  scoped_ptr<SupplicantInterfaceProxy> supplicant_interface_proxy_;
+  bool scan_pending_;
+  std::vector<std::string> ssids_;
+
+  // provide WiFiTest access to scan_pending_, so it can determine
+  // if the scan completed, or timed out.
+  friend class WiFiTest;
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 
