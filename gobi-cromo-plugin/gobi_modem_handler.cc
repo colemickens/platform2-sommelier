@@ -85,6 +85,13 @@ void GobiModemHandler::MonitorDevices() {
 
 void GobiModemHandler::HandleUdevMessage(const char *action,
                                          const char *device) {
+  // udev deals in long device names (like "/dev/qcqmi0") but the qualcomm sdk
+  // deals in just basenames (like "qcqmi0"). The control paths we store in the
+  // control-path-to-device map are basenames, so only use the device's basename
+  // here.
+  if (strstr(device, "/dev/") == device)
+    device += strlen("/dev/");
+
   bool saw_changes = GetDeviceList();
   if (0 == strcmp("add" , action) && DevicePresentByControlPath(device)) {
     LOG(INFO) << "Device already present";
@@ -92,7 +99,6 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
   }
 
   if (0 == strcmp("remove", action)) {
-    RemoveDeviceByControlPath(device);
     // No need to start poller; we have acted on event
     return;
   }
@@ -104,16 +110,6 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
                                   this);
   } else {
     LOG(ERROR) << "Saw unexpected change " << action << " " << device;
-  }
-}
-
-void GobiModemHandler::RemoveDeviceByControlPath(const char *path) {
-  ControlPathToModem::iterator p = control_path_to_modem_.find(path);
-  if (p != control_path_to_modem_.end()) {
-    LOG(INFO) << "Removing device " << path;
-    RemoveDeviceByIterator(p);
-  } else {
-    LOG(INFO) << "Could not find " << path << " to remove";
   }
 }
 
