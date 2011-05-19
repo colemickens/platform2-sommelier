@@ -19,6 +19,9 @@ namespace shill {
 class ControlInterface;
 class DeviceAdaptorInterface;
 class EventDispatcher;
+class Endpoint;
+class DeviceInfo;
+class Manager;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -36,6 +39,7 @@ class Device : public base::RefCounted<Device> {
   // A constructor for the Device object
   Device(ControlInterface *control_interface,
          EventDispatcher *dispatcher,
+         Manager *manager,
          const std::string& link_name,
          int interface_index);
   virtual ~Device();
@@ -45,37 +49,21 @@ class Device : public base::RefCounted<Device> {
   virtual void Stop();
 
   virtual bool TechnologyIs(const Technology type) = 0;
+  virtual void LinkEvent(unsigned flags, unsigned change);
+  virtual void Scan();
 
  protected:
   std::vector<scoped_refptr<Service> > services_;
   std::string link_name_;
   int interface_index_;
   bool running_;
+  Manager *manager_;
 
  private:
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   friend class base::RefCounted<Device>;
   friend class DeviceAdaptorInterface;
   DISALLOW_COPY_AND_ASSIGN(Device);
-};
-
-// Non-functional Device subclass used for non-operable or blacklisted devices
-class StubDevice : public Device {
- public:
-  StubDevice(ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             const std::string& link_name,
-             int interface_index,
-             Technology technology)
-    : Device(control_interface, dispatcher, link_name, interface_index),
-    technology_(technology) {}
-  void Start() {}
-  void Stop() {}
-  bool TechnologyIs(const Technology type) { return type == technology_; }
-
- private:
-  Technology technology_;
-  DISALLOW_COPY_AND_ASSIGN(StubDevice);
 };
 
 }  // namespace shill

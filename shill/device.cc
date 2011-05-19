@@ -13,20 +13,21 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/manager.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/shill_event.h"
-
-using std::string;
 
 namespace shill {
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
-               const string &link_name,
+               Manager *manager,
+               const std::string& link_name,
                int interface_index)
-  : link_name_(link_name),
-    adaptor_(control_interface->CreateDeviceAdaptor(this)),
-    interface_index_(interface_index),
-    running_(false) {
+    : link_name_(link_name),
+      manager_(manager),
+      adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      interface_index_(interface_index),
+      running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
   VLOG(2) << "Device " << link_name_ << " index " << interface_index;
 }
@@ -38,6 +39,7 @@ Device::~Device() {
 
 void Device::Start() {
   running_ = true;
+  VLOG(2) << "Device " << link_name_ << " starting.";
   adaptor_->UpdateEnabled();
 }
 
@@ -49,6 +51,15 @@ void Device::Stop() {
 const std::string& Device::Name() const {
   // TODO(pstew): link_name is only run-time unique and won't persist
   return link_name_;
+}
+
+void Device::LinkEvent(unsigned flags, unsigned change) {
+  VLOG(2) << "Device " << link_name_ << " flags " << flags << " changed "
+          << change;
+}
+
+void Device::Scan() {
+  VLOG(2) << "Device " << link_name_ << " scan requested.";
 }
 
 }  // namespace shill

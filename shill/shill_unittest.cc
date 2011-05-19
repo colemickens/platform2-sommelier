@@ -120,7 +120,7 @@ class ShillDaemonTest : public Test {
     ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
     ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
   }
-protected:
+ protected:
   Config config_;
   Daemon daemon_;
   DeviceInfo device_info_;

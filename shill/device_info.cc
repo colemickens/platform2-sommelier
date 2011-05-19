@@ -126,9 +126,11 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   struct rtattr *rta;
   int rta_bytes;
   char *link_name = NULL;
-  Device *device;
+  scoped_refptr<Device> device;
   Device::Technology technology;
   bool is_stub = false;
+
+  VLOG(2) << __func__;
 
   if (ndev == devices_.end()) {
     rta_bytes = IFLA_PAYLOAD(hdr);
@@ -178,15 +180,12 @@ void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
   base::hash_map<int, scoped_refptr<Device> >::iterator ndev =
       devices_.find(msg->ifi_index);
   int dev_index = msg->ifi_index;
-  Device *device;
-
-  VLOG(2) << "del link index "  << dev_index << " flags " <<
-    msg->ifi_flags;
+  scoped_refptr<Device> device;
 
   if (ndev != devices_.end()) {
     device = ndev->second;
+    manager_->DeregisterDevice(device.get());
     devices_.erase(ndev);
-    manager_->DeregisterDevice(device);
   }
 }
 

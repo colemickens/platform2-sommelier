@@ -35,7 +35,7 @@ class ManagerTest : public Test {
     return (devices.size() == 1 && devices[0].get() == device);
   }
 
-protected:
+ protected:
   MockControl control_;
   Manager manager_;
   EventDispatcher dispatcher_;

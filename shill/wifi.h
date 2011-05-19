@@ -16,10 +16,11 @@ namespace shill {
 // this class.
 class WiFi : public Device {
  public:
-  explicit WiFi(ControlInterface *control_interface,
-                EventDispatcher *dispatcher,
-                const std::string &link_name,
-                int interface_index);
+  WiFi(ControlInterface *control_interface,
+       EventDispatcher *dispatcher,
+       Manager *manager,
+       const std::string& link_name,
+       int interface_index);
   ~WiFi();
   bool TechnologyIs(Device::Technology type);
  private:

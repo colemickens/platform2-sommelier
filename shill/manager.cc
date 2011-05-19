@@ -52,6 +52,10 @@ void Manager::RegisterDevice(Device *to_manage) {
       return;
   }
   devices_.push_back(scoped_refptr<Device>(to_manage));
+
+  // TODO(pstew): Should check configuration
+  if (running_)
+    to_manage->Start();
 }
 
 void Manager::DeregisterDevice(const Device *to_forget) {
@@ -93,7 +97,7 @@ void Manager::FilterByTechnology(Device::Technology tech,
   }
 }
 
-Service* Manager::FindService(const string& name) {
+Service* Manager::FindService(const std::string& name) {
   vector<scoped_refptr<Service> >::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (name == (*it)->name())

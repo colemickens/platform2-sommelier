@@ -46,9 +46,13 @@ SHILL_OBJS = \
 	device_dbus_adaptor.o \
 	device_info.o \
 	ethernet.o \
+	ethernet_service.o \
+	glib_io_handler.o \
 	ipconfig.o \
 	manager.o \
 	manager_dbus_adaptor.o \
+	rtnl_handler.o \
+	rtnl_listener.o \
 	service.o \
 	service_dbus_adaptor.o \
 	shill_config.o \

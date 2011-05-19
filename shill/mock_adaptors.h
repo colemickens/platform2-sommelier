@@ -27,7 +27,6 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   ServiceMockAdaptor() {}
   virtual ~ServiceMockAdaptor() {}
   MOCK_METHOD0(UpdateConnected, void(void));
-
 };
 
 // These are the functions that a Device adaptor must support
