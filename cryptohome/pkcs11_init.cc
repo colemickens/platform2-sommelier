@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/string_util.h>
+#include <errno.h>
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
 
@@ -90,7 +91,25 @@ bool Pkcs11Init::Initialize() {
     RemoveUserTokenDir();
     if (!SetUpLinksAndPermissions())
       return false;
-    return SetUpTPMToken();
+
+    // Drop priviledges so that the files we create here are accessible
+    // to chronos user.
+    uid_t saved_uid = geteuid();
+    gid_t saved_gid = getegid();
+    if (setegid(pkcs11_group_id_) < 0 || seteuid(chronos_user_id_) < 0) {
+      PLOG(ERROR) << "Unable to drop priviledges to " << chronos_user_id_
+                  << ":" << pkcs11_group_id_;
+      return false;
+    }
+
+    bool tpm_setup_successful = SetUpTPMToken();
+
+    if (setegid(saved_gid) < 0 || seteuid(saved_uid) < 0) {
+      PLOG(ERROR) << "Unable to restore priviledges to " << saved_uid << ":"
+                  << saved_gid;
+      return false;
+    }
+    return tpm_setup_successful;
   }
   LOG(INFO) << "PKCS#11 is already initialized.";
   return true;
@@ -130,8 +149,6 @@ bool Pkcs11Init::SetUpTPMToken() {
   process_->Reset(0);
   for(unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
     process_->AddArg(kPkcsSlotCmd[i]);
-  process_->SetUid(chronos_user_id_);
-  process_->SetGid(pkcs11_group_id_);
   if(process_->Run() != 0) {
     LOG(ERROR) << "Couldn't set the TPM as a token.";
     return false;

@@ -296,11 +296,11 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     // Do extra sanity checks before updating our state.
     if (result->return_status() && mount_->IsCryptohomeMounted() &&
         !pkcs11_init_->IsTokenBroken()) {
-      LOG(INFO) << "Pkcs#11 initialization succeeded.";
+      LOG(INFO) << "PKCS#11 initialization succeeded.";
       pkcs11_state_ = kIsInitialized;
       return;
     }
-    LOG(ERROR) << "Pkcs#11 initialization failed.";
+    LOG(ERROR) << "PKCS#11 initialization failed.";
     pkcs11_state_ = kIsFailed;
   }
 }
