@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -216,6 +216,19 @@ TEST_F(OwnerKeyTest, ClobberKey) {
   key.ClobberCompromisedKey(fake);
   ASSERT_TRUE(key.VEquals(fake));
   ASSERT_TRUE(key.Persist());
+}
+
+TEST_F(OwnerKeyTest, ResetKey) {
+  OwnerKey key(tmpfile_);
+
+  ASSERT_TRUE(key.PopulateFromDiskIfPossible());
+  ASSERT_TRUE(key.HaveCheckedDisk());
+  ASSERT_TRUE(key.IsPopulated());
+
+  key.ClobberCompromisedKey(std::vector<uint8>());
+  ASSERT_TRUE(!key.IsPopulated());
+  ASSERT_TRUE(key.Persist());
+  ASSERT_FALSE(file_util::PathExists(tmpfile_));
 }
 
 }  // namespace login_manager

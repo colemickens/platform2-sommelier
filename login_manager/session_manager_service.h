@@ -34,6 +34,7 @@
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/system_utils.h"
 #include "login_manager/upstart_signal_emitter.h"
+#include "login_manager/user_policy_service_factory.h"
 
 namespace base {
 class MessageLoopProxy;
@@ -47,6 +48,7 @@ struct SessionManager;
 class ChildJobInterface;
 class CommandLine;
 class NssUtil;
+class PolicyService;
 
 // Provides a wrapper for exporting SessionManagerInterface to
 // D-Bus and entering the glib run loop.
@@ -79,6 +81,9 @@ class SessionManagerService
     }
     void set_device_policy_service(DevicePolicyService* device_policy) {
       session_manager_service_->device_policy_ = device_policy;
+    }
+    void set_user_policy_service_factory(UserPolicyServiceFactory* factory) {
+      session_manager_service_->user_policy_factory_.reset(factory);
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
@@ -261,6 +266,31 @@ class SessionManagerService
   // Returns TRUE if the data is can be fetched, FALSE otherwise.
   gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error);
 
+  // Similar to StorePolicy above, but for user policy. |policy_blob| is a
+  // serialized PolicyFetchResponse protobuf which wraps the actual policy data
+  // along with an SHA1-RSA signature over the policy data. The policy data
+  // itself is another protobuf that specifies user policies. It's structure is
+  // opaque to session manager, the exact definition is only relevant to client
+  // code in Chrome.
+  //
+  // Calling this function attempts to persist |policy_blob| for the currently
+  // logged in user. Policy is stored in a root-owned location within the user's
+  // cryptohome (for privacy reasons). The first attempt to store policy also
+  // installs the signing key for user policy. This key is used later to verify
+  // policy updates pushed by Chrome.
+  //
+  // TODO(mnissler): Revisit this for multi-profile support, in which case
+  // there may be multiple users logged in and thus potentially multiple policy
+  // blobs.
+  //
+  // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
+  // and reports the final result of the call asynchronously through |context|.
+  gboolean StoreUserPolicy(GArray* policy_blob, DBusGMethodInvocation* context);
+
+  // Retrieves user policy for the currently logged in user and returns it in
+  // |policy_blob|. Returns TRUE if the data is can be fetched, FALSE otherwise.
+  gboolean RetrieveUserPolicy(GArray** OUT_policy_blob, GError** error);
+
   // Get information about the current session.
   gboolean RetrieveSessionState(gchar** OUT_state, gchar** OUT_user);
 
@@ -435,6 +465,8 @@ class SessionManagerService
   guint signals_[kNumSignals];
 
   scoped_refptr<DevicePolicyService> device_policy_;
+  scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
+  scoped_refptr<PolicyService> user_policy_;
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
   bool screen_locked_;

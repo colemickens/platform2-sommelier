@@ -81,6 +81,18 @@
     <method name="RetrievePolicy">
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
+    <method name="StoreUserPolicy">
+      <!-- This method is implemented asynchronously. -->
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <arg type="b" direction="out">
+        <!-- This is the return value. -->
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+    <method name="RetrieveUserPolicy">
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
     <method name="RetrieveSessionState">
       <!-- started, stopping, stopped -->
       <arg type="s" name="state" direction="out" />

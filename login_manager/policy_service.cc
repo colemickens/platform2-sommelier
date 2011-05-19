@@ -18,6 +18,7 @@
 #include "login_manager/nss_util.h"
 #include "login_manager/owner_key.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 

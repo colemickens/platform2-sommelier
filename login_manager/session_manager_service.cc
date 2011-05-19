@@ -310,6 +310,10 @@ bool SessionManagerService::Initialize() {
                                                mitigator_.get(),
                                                message_loop_);
   device_policy_->set_delegate(this);
+  user_policy_factory_.reset(
+      new UserPolicyServiceFactory(
+          getuid(),
+          message_loop_));
   return true;
 }
 
@@ -426,6 +430,8 @@ bool SessionManagerService::Shutdown() {
   }
 
   device_policy_->PersistPolicySync();
+  if (user_policy_.get())
+    user_policy_->PersistPolicySync();
   message_loop_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;
@@ -600,6 +606,13 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     return *OUT_done = FALSE;
   }
 
+  // Initialize user policy.
+  user_policy_ = user_policy_factory_->Create(email_address);
+  if (!user_policy_.get() || !user_policy_->Initialize()) {
+    LOG(ERROR) << "User policy failed to initialize.";
+    return *OUT_done = FALSE;
+  }
+
   // Send each user login event to UMA (right before we start session
   // since the metrics library does not log events in guest mode).
   int dev_mode = system_->IsDevMode();
@@ -675,6 +688,7 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
   // child_job_->StopSession();
+  // user_policy_.reset();
   // session_started_ = false;
   return *OUT_done = TRUE;
 }
@@ -711,6 +725,37 @@ gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
   return RetrievePolicyFromService(device_policy_.get(),
                                    OUT_policy_blob,
                                    error);
+}
+
+gboolean SessionManagerService::StoreUserPolicy(
+    GArray* policy_blob,
+    DBusGMethodInvocation* context) {
+  if (session_started_ && user_policy_.get()) {
+    return user_policy_->Store(reinterpret_cast<uint8*>(policy_blob->data),
+                               policy_blob->len,
+                               new DBusGMethodCompletion(context),
+                               PolicyService::KEY_INSTALL_NEW |
+                               PolicyService::KEY_ROTATE) ? TRUE : FALSE;
+  }
+
+  const char msg[] = "Cannot store user policy before session is started.";
+  LOG(ERROR) << msg;
+  system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, context, msg);
+  return FALSE;
+}
+
+gboolean SessionManagerService::RetrieveUserPolicy(GArray** OUT_policy_blob,
+                                                   GError** error) {
+  if (session_started_ && user_policy_.get()) {
+    return RetrievePolicyFromService(user_policy_.get(),
+                                     OUT_policy_blob,
+                                     error);
+  }
+
+  const char msg[] = "Cannot retrieve user policy before session is started.";
+  LOG(ERROR) << msg;
+  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
+  return FALSE;
 }
 
 gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,

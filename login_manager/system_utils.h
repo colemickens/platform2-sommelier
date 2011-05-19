@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -52,6 +52,9 @@ class SystemUtils {
                                            int32* file_size_32);
 
   virtual bool EnsureAndReturnSafeSize(int64 size_64, int32* size_32);
+
+  // Removes a file.
+  virtual bool RemoveFile(const FilePath& filename);
 
   // Atomically writes the given buffer into the file, overwriting any
   // data that was previously there.  Returns the number of bytes

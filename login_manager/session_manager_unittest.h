@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -24,6 +24,7 @@ class MockDevicePolicyService;
 class MockFileChecker;
 class MockMetrics;
 class MockMitigator;
+class MockPolicyService;
 class MockUpstartSignalEmitter;
 
 // Used as a base class for other SessionManagerService unittests.
@@ -48,6 +49,10 @@ class SessionManagerTest : public ::testing::Test {
   // |job2| can be NULL.
   void InitManager(MockChildJob* job1, MockChildJob* job2);
 
+  // Creates a user policy service. This function handles calls to the mocked
+  // user policy factory.
+  PolicyService* CreateUserPolicyService();
+
   // Sets up expectations for common things that happen during startup and
   // shutdown of SessionManagerService and calls manager_->Run().
   void SimpleRunManager();
@@ -58,6 +63,9 @@ class SessionManagerTest : public ::testing::Test {
   // Sets up expectations for policy stuff we do at startup.
   void ExpectPolicySetup();
 
+  // Sets up expecations for creating the user policy service.
+  void ExpectUserPolicySetup();
+
   scoped_refptr<SessionManagerService> manager_;
   SystemUtils real_utils_;
   MockSystemUtils utils_;
@@ -66,6 +74,7 @@ class SessionManagerTest : public ::testing::Test {
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;
+  MockPolicyService* user_policy_service_;
   bool must_destroy_mocks_;
   ScopedTempDir tmpdir_;
 

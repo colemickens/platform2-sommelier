@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -102,6 +102,13 @@ bool OwnerKey::Persist() {
   if (!have_replaced_ && file_util::PathExists(key_file_)) {
     LOG(ERROR) << "Tried to overwrite owner key!";
     return false;
+  }
+
+  // Remove the key if it has been cleared.
+  if (key_.empty()) {
+    bool removed = utils_->RemoveFile(key_file_);
+    PLOG_IF(ERROR, !removed) << "Failed to delete " << key_file_.value();
+    return removed;
   }
 
   if (!utils_->AtomicFileWrite(key_file_,

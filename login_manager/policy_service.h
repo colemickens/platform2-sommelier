@@ -159,14 +159,6 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   // reporting the status through |completion|.
   void OnPolicyPersisted(Completion* completion, bool status);
 
-  // Takes care of inidicating asynchronous call completion on the UI thread.
-  // Calls completion->Success() or completion->Failure() depending on |status|,
-  // and sets the error code and message appropriately.
-  void CompleteCall(Completion* completion,
-                    bool status,
-                    ChromeOSLoginError code,
-                    const std::string& msg);
-
  private:
   scoped_ptr<PolicyStore> policy_store_;
   scoped_ptr<OwnerKey> policy_key_;

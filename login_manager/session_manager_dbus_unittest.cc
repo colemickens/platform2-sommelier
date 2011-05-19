@@ -21,8 +21,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 
-#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
+#include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
@@ -30,6 +30,7 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_system_utils.h"
 
 using ::testing::AnyNumber;
@@ -76,6 +77,8 @@ class SessionManagerDBusTest : public SessionManagerTest {
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(false));
 
+    ExpectUserPolicySetup();
+
     EXPECT_CALL(*metrics_, SendLoginUserType(false, guest, for_owner))
         .Times(1);
 
@@ -121,6 +124,8 @@ class SessionManagerDBusTest : public SessionManagerTest {
 
     manager_->set_uid(getuid());
     manager_->test_api().set_keygen(gen);
+
+    ExpectUserPolicySetup();
 
     EXPECT_CALL(utils_,
                 BroadcastSignal(_, _, SessionManagerService::kStarted, _))
@@ -421,6 +426,76 @@ TEST_F(SessionManagerDBusTest, RetrievePolicy) {
   ScopedError error;
   EXPECT_EQ(TRUE, manager_->RetrievePolicy(&out_blob,
                                            &Resetter(&error).lvalue()));
+  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  EXPECT_TRUE(
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
+  g_array_free(out_blob, TRUE);
+}
+
+TEST_F(SessionManagerDBusTest, StoreUserPolicyNoSession) {
+  TrivialInitManager();
+  MockUtils();
+  EXPECT_CALL(utils_, SetAndSendGError(_, _, _));
+
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  EXPECT_EQ(FALSE, manager_->StoreUserPolicy(policy_blob, NULL));
+  g_array_free(policy_blob, TRUE);
+}
+
+TEST_F(SessionManagerDBusTest, StoreUserPolicySessionStarted) {
+  MockChildJob* job = CreateTrivialMockJob();
+  MockUtils();
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSession(email, job);
+  manager_->StartSession(email, nothing, &out, NULL);
+
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  EXPECT_CALL(*user_policy_service_,
+              Store(CastEq(fake_policy),
+                    fake_policy.size(),
+                    _,
+                    PolicyService::KEY_ROTATE |
+                    PolicyService::KEY_INSTALL_NEW))
+      .WillOnce(Return(true));
+  EXPECT_EQ(TRUE, manager_->StoreUserPolicy(policy_blob, NULL));
+  g_array_free(policy_blob, TRUE);
+}
+
+TEST_F(SessionManagerDBusTest, RetrieveUserPolicyNoSession) {
+  TrivialInitManager();
+  MockUtils();
+
+  GArray* out_blob = NULL;
+  ScopedError error;
+  EXPECT_EQ(FALSE, manager_->RetrieveUserPolicy(&out_blob,
+                                                &Resetter(&error).lvalue()));
+  EXPECT_FALSE(out_blob);
+}
+
+TEST_F(SessionManagerDBusTest, RetrieveUserPolicySessionStarted) {
+  MockChildJob* job = CreateTrivialMockJob();
+  MockUtils();
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSession(email, job);
+  manager_->StartSession(email, nothing, &out, NULL);
+
+  const std::string fake_policy("fake policy");
+  const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*user_policy_service_, Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
+                      Return(true)));
+  GArray* out_blob = NULL;
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->RetrieveUserPolicy(&out_blob,
+                                               &Resetter(&error).lvalue()));
   EXPECT_EQ(fake_policy.size(), out_blob->len);
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));

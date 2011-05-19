@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,6 +14,7 @@
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_system_utils.h"
+#include "login_manager/mock_user_policy_service_factory.h"
 
 // Per the gmock documentation, the vast majority of the time spent on
 // compiling a mock class is in generating its constructor and
@@ -68,5 +69,9 @@ MockPolicyStore::~MockPolicyStore() {}
 
 MockSystemUtils::MockSystemUtils() {}
 MockSystemUtils::~MockSystemUtils() {}
+
+MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
+  : UserPolicyServiceFactory(0, NULL) {}
+MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}
 
 }  // namespace login_manager

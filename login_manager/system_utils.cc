@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -110,6 +110,10 @@ bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
     return false;
   *size_32 = static_cast<int32>(size_64);
   return true;
+}
+
+bool SystemUtils::RemoveFile(const FilePath& filename) {
+  return file_util::Delete(filename, false);
 }
 
 bool SystemUtils::AtomicFileWrite(const FilePath& filename,

@@ -19,10 +19,14 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
+#include "login_manager/mock_policy_service.h"
+#include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_upstart_signal_emitter.h"
+#include "login_manager/mock_user_policy_service_factory.h"
 
 using ::testing::AtMost;
 using ::testing::Invoke;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::WithArgs;
 using ::testing::_;
@@ -49,6 +53,7 @@ SessionManagerTest::SessionManagerTest()
       mitigator_(new MockMitigator),
       upstart_(new MockUpstartSignalEmitter),
       device_policy_service_(new MockDevicePolicyService),
+      user_policy_service_(NULL),
       must_destroy_mocks_(true) {
 }
 
@@ -94,6 +99,13 @@ void SessionManagerTest::InitManager(MockChildJob* job1, MockChildJob* job2) {
   manager_->test_api().set_login_metrics(metrics_);
 }
 
+PolicyService* SessionManagerTest::CreateUserPolicyService() {
+  user_policy_service_ = new MockPolicyService();
+  EXPECT_CALL(*user_policy_service_, Initialize())
+      .WillOnce(Return(true));
+  return user_policy_service_;
+}
+
 void SessionManagerTest::SimpleRunManager() {
   ExpectPolicySetup();
   EXPECT_CALL(utils_,
@@ -122,6 +134,21 @@ void SessionManagerTest::ExpectPolicySetup() {
       .WillOnce(Return(true));
   EXPECT_CALL(*device_policy_service_, PersistPolicySync())
       .WillOnce(Return(true));
+  if (user_policy_service_) {
+    EXPECT_CALL(*user_policy_service_, PersistPolicySync())
+        .WillOnce(Return(true));
+  }
+}
+
+void SessionManagerTest::ExpectUserPolicySetup() {
+  // Pretend user policy initializes successfully.
+  MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
+  EXPECT_CALL(*factory, Create(_))
+      .Times(AtMost(1))
+      .WillRepeatedly(
+          InvokeWithoutArgs(this,
+                            &SessionManagerTest::CreateUserPolicyService));
+  manager_->test_api().set_user_policy_service_factory(factory);
 }
 
 }  // namespace login_manager
