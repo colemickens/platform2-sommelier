@@ -4,8 +4,9 @@
 
 #include "login_manager/device_policy.h"
 
-#include <base/file_util.h>
+#include <base/basictypes.h>
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
@@ -51,14 +52,6 @@ class DevicePolicyTest : public ::testing::Test {
   }
 
   virtual void TearDown() {
-  }
-
-  void CheckExpectedPolicy(DevicePolicy* store) {
-    std::string serialized;
-    ASSERT_TRUE(policy_.SerializeToString(&serialized));
-    std::string serialized_from;
-    ASSERT_TRUE(store->SerializeToString(&serialized_from));
-    EXPECT_EQ(serialized, serialized_from);
   }
 
   void ExtractPolicyValue(const DevicePolicy& pol,
@@ -155,46 +148,6 @@ class DevicePolicyTest : public ::testing::Test {
 
 // static
 const char DevicePolicyTest::kDefaultPolicy[] = "the policy";
-
-TEST_F(DevicePolicyTest, CreateEmptyStore) {
-  StartFresh();
-  DevicePolicy store(tmpfile_);
-  ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty policy.
-  std::string serialized;
-  EXPECT_TRUE(store.SerializeToString(&serialized));
-  EXPECT_TRUE(serialized.empty());
-}
-
-TEST_F(DevicePolicyTest, FailBrokenStore) {
-  FilePath bad_file;
-  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &bad_file));
-  DevicePolicy store(bad_file);
-  ASSERT_FALSE(store.LoadOrCreate());
-}
-
-TEST_F(DevicePolicyTest, VerifyPolicyStorage) {
-  CheckExpectedPolicy(store_.get());
-}
-
-TEST_F(DevicePolicyTest, VerifyPolicyUpdate) {
-  CheckExpectedPolicy(store_.get());
-
-  enterprise_management::PolicyFetchResponse new_policy;
-  new_policy.set_error_message("new policy");
-  store_->Set(new_policy);
-
-  std::string new_out;
-  ASSERT_TRUE(store_->SerializeToString(&new_out));
-  std::string new_value;
-  ASSERT_TRUE(new_policy.SerializeToString(&new_value));
-  EXPECT_EQ(new_value, new_out);
-}
-
-TEST_F(DevicePolicyTest, LoadStoreFromDisk) {
-  DevicePolicy store2(tmpfile_);
-  ASSERT_TRUE(store2.LoadOrCreate());
-  CheckExpectedPolicy(&store2);
-}
 
 TEST_F(DevicePolicyTest, FreshPolicy) {
   StartFresh();
