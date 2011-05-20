@@ -251,11 +251,7 @@ if [ -s $TOUCH_LIST_PATH ] ; then
   fi
 fi
 
-# TODO(crosbug.com/14277): Make this a default.
-PKCS11_FLAGS=
-if [ -r "/home/chronos/.cryptohome-init-pkcs11" ]; then
-  PKCS11_FLAGS=--load-opencryptoki
-fi
+PKCS11_FLAGS=--load-opencryptoki
 
 # Use OpenGL acceleration flags except on ARM
 if [ "$(uname -m)" != "armv7l" ] ; then
