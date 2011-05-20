@@ -37,7 +37,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                 public CryptohomeEventSourceSink,
                 public TpmInit::TpmInitCallback {
  public:
-  Service(bool enable_pkcs11_init);
+  Service();
   virtual ~Service();
 
   // From chromeos::dbus::AbstractDbusService
@@ -223,8 +223,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<cryptohome::InstallAttributes> default_install_attrs_;
   cryptohome::InstallAttributes* install_attrs_;
   int update_user_activity_period_;
-  // Flag indicating if PKCS#11 initialization via cryptohomed is enabled.
-  bool enable_pkcs11_init_;
   // Flag indicating if PKCS#11 is ready.
   typedef enum {
     kUninitialized = 0,  // PKCS#11 initialization hasn't been attempted.
@@ -239,7 +237,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Sequence id of an asynchronous mount request that must trigger
   // a pkcs11 init request.
   int async_mount_pkcs11_init_sequence_id_;
-  bool tpminit_must_pkcs11_init_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

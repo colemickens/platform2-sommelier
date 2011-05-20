@@ -1,4 +1,4 @@
-// Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,11 +29,6 @@ namespace switches {
 static const char *kNoCloseOnDaemonize = "noclose";
 }  // namespace switches
 
-// Enable PKCS#11 initialization via cryptohomed
-// TODO(gauravsh): crosbug.com/14277 Remove this code once this
-// feature is stabilized.
-static const char *kEnablePkcs11Path = "/home/chronos/.cryptohome-init-pkcs11";
-
 int main(int argc, char **argv) {
   ::g_type_init();
   base::AtExitManager exit_manager;
@@ -47,8 +42,7 @@ int main(int argc, char **argv) {
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
   cryptohome::Platform platform;
-  bool enable_pkcs11_init = platform.FileExists(kEnablePkcs11Path);
-  cryptohome::Service service(enable_pkcs11_init);
+  cryptohome::Service service;
   if (!service.Initialize()) {
     LOG(FATAL) << "Service initialization failed";
     return 1;

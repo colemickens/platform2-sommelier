@@ -80,7 +80,7 @@ class TpmInitStatus : public CryptohomeEventBase {
   bool status_;
 };
 
-Service::Service(bool enable_pkcs11_init)
+Service::Service()
     : loop_(NULL),
       cryptohome_(NULL),
       system_salt_(),
@@ -99,10 +99,8 @@ Service::Service(bool enable_pkcs11_init)
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
-      enable_pkcs11_init_(enable_pkcs11_init),
       pkcs11_state_(kUninitialized),
-      async_mount_pkcs11_init_sequence_id_(-1),
-      tpminit_must_pkcs11_init_(false) {
+      async_mount_pkcs11_init_sequence_id_(-1) {
 }
 
 Service::~Service() {
@@ -200,12 +198,6 @@ void Service::InitializeInstallAttributes(bool first_time) {
 }
 
 void Service::InitializePkcs11() {
-  // Do nothing if PKCS#11 initialization via cryptohomed is not enabled.
-  if (!enable_pkcs11_init_) {
-    LOG(WARNING) << "PKCS#11 initialization not enabled. Skipping.";
-    return;
-  }
-
   Tpm* tpm = const_cast<Tpm*>(mount_->get_crypto()->get_tpm());
   // Wait for ownership if there is a working TPM.
   if (tpm && tpm->IsEnabled() && !tpm->IsOwned()) {
