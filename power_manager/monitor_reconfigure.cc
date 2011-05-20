@@ -17,13 +17,15 @@ using std::sort;
 using std::vector;
 
 namespace {
+
 // Name of the internal output.
 const char kLcdOutputName[] = "LVDS1";
 // The screen DPI we pass to X11.
 const float kScreenDpi = 96.0;
 // An inch in mm.
 const float kInchInMm = 25.4;
-}
+
+}  // namespace
 
 namespace power_manager {
 
@@ -59,7 +61,7 @@ bool MonitorReconfigure::Init() {
                  DefaultRootWindow(GDK_DISPLAY()),
                  RRScreenChangeNotifyMask);
 
-  gdk_window_add_filter(NULL, gdk_event_filter, this);
+  gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   LOG(INFO) << "XRandr event filter added";
   return true;
 }
@@ -251,20 +253,14 @@ bool MonitorReconfigure::DisableDevice(const XRROutputInfo* output_info) {
   return (s == RRSetConfigSuccess);
 }
 
-GdkFilterReturn MonitorReconfigure::gdk_event_filter(GdkXEvent* gxevent,
-                                                     GdkEvent*,
-                                                     gpointer data) {
+GdkFilterReturn MonitorReconfigure::GdkEventFilter(GdkXEvent* gxevent,
+                                                   GdkEvent*) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
-  MonitorReconfigure* monitor_reconfigure =
-      static_cast<MonitorReconfigure*>(data);
-
-  if (xevent->type == monitor_reconfigure->rr_event_base_ + 
-      RRScreenChangeNotify) {
-    monitor_reconfigure->Run();
+  if (xevent->type == rr_event_base_ + RRScreenChangeNotify) {
+    Run();
     // Remove this event so that other programs pick it up and acts upon it.
     return GDK_FILTER_REMOVE;
   }
-
   return GDK_FILTER_CONTINUE;
 }
 

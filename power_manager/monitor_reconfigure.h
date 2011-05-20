@@ -5,29 +5,31 @@
 #ifndef POWER_MANAGER_MONITOR_RECONFIGURE_H_
 #define POWER_MANAGER_MONITOR_RECONFIGURE_H_
 
-#include <map>
-#include <vector>
-
 #include <gdk/gdkevents.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/Xrandr.h>
 
+#include <map>
+#include <vector>
+
+#include "base/basictypes.h"
 #include "power_manager/resolution_selector.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
 class BacklightController;
 class MonitorReconfigure;
 
-// MonitorReconfigure is the class responsible for setting the external
-// monitor to the max resolution based on the modes supported by the native
-// monitor and the external monitor.
+// MonitorReconfigure is the class responsible for setting the external monitor
+// to the max resolution based on the modes supported by the native monitor and
+// the external monitor.
 class MonitorReconfigure {
  public:
   // We need a default constructor for unit tests.
   MonitorReconfigure();
-  // |backlight_ctl| is a pointer to the backlight controller for the
-  // internal screen.
+  // |backlight_ctl| is a pointer to the backlight controller for the internal
+  // screen.
   MonitorReconfigure(BacklightController* backlight_ctl);
   ~MonitorReconfigure();
 
@@ -59,9 +61,8 @@ class MonitorReconfigure {
   bool DisableDevice(const XRROutputInfo* output_info);
 
   // Callback to watch for xrandr hotplug events.
-  static GdkFilterReturn gdk_event_filter(GdkXEvent* gxevent,
-                                          GdkEvent* gevent,
-                                          gpointer data);
+  SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
+                    GdkXEvent*, GdkEvent*);
 
   // Event and error base numbers for Xrandr.
   int rr_event_base_;
