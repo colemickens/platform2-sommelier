@@ -10,7 +10,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/dbus_control.h"
+#include "shill/mock_control.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_service.h"
@@ -36,7 +36,7 @@ class ManagerTest : public Test {
   }
 
 protected:
-  DBusControl control_;
+  MockControl control_;
   Manager manager_;
   EventDispatcher dispatcher_;
   ScopedRunnableMethodFactory<ManagerTest> factory_;

@@ -14,6 +14,7 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
+#include "shill/dbus_adaptor.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 

@@ -14,7 +14,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/shill_daemon.h"
-#include "shill/dbus_control.h"
+#include "shill/mock_control.h"
 
 namespace shill {
 using ::testing::Test;
@@ -108,7 +108,7 @@ class MockEventDispatchTester {
 class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
-    : daemon_(&config_, new DBusControl()),
+    : daemon_(&config_, new MockControl()),
       dispatcher_(&daemon_.dispatcher_),
       dispatcher_test_(dispatcher_),
       device_info_(daemon_.control_, dispatcher_, &daemon_.manager_),

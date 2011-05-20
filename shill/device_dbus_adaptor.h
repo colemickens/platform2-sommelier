@@ -1,0 +1,46 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_DEVICE_DBUS_ADAPTOR_H_
+#define SHILL_DEVICE_DBUS_ADAPTOR_H_
+
+#include <map>
+#include <string>
+
+#include <base/basictypes.h>
+
+#include "shill/adaptor_interfaces.h"
+#include "shill/dbus_adaptor.h"
+#include "shill/flimflam-device.h"
+
+namespace shill {
+class Device;
+
+// Subclass of DBusAdaptor for Device objects
+class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
+                          public DBusAdaptor,
+                          public DeviceAdaptorInterface {
+ public:
+  static const char kInterfaceName[];
+  static const char kPath[];
+
+  DeviceDBusAdaptor(DBus::Connection& conn, Device *device);
+  virtual ~DeviceDBusAdaptor();
+  void UpdateEnabled();
+
+  // Implementation of Device_adaptor
+  std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
+  void SetProperty(const std::string& ,
+                   const ::DBus::Variant& ,
+                   ::DBus::Error &error);
+  void ProposeScan(::DBus::Error &error);
+  ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
+
+ private:
+  Device *device_;
+  DISALLOW_COPY_AND_ASSIGN(DeviceDBusAdaptor);
+};
+
+}  // namespace shill
+#endif  // SHILL_DEVICE_DBUS_ADAPTOR_H_

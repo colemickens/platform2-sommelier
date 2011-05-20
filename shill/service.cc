@@ -11,6 +11,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/service.h"
+#include "shill/service_dbus_adaptor.h"
 
 using std::string;
 

@@ -16,9 +16,9 @@ BASE_INCLUDE_DIRS = -I..
 BASE_LIB_DIRS =
 
 LIBS = $(BASE_LIBS)
-INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags glib-2.0 \
-        gdk-2.0 gtk+-2.0)
-LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs glib-2.0 \
+INCLUDE_DIRS = $(BASE_INCLUDE_DIRS) $(shell $(PKG_CONFIG) --cflags dbus-c++-1 \
+	glib-2.0 gdk-2.0 gtk+-2.0)
+LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
         gdk-2.0 gtk+-2.0)
 
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
@@ -39,10 +39,13 @@ SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
 	dbus_control.o \
 	device.o \
+	device_dbus_adaptor.o \
 	device_info.o \
 	ethernet.o \
 	manager.o \
+	manager_dbus_adaptor.o \
 	service.o \
+	service_dbus_adaptor.o \
 	shill_config.o \
 	shill_daemon.o \
 	shill_event.o \
@@ -53,7 +56,7 @@ SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = testrunner.o device_info_unittest.o manager_unittest.o \
-	shill_unittest.o
+	shill_unittest.o mock_control.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
 

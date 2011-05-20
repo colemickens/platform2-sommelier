@@ -12,6 +12,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/device_dbus_adaptor.h"
 #include "shill/shill_event.h"
 
 using std::string;
