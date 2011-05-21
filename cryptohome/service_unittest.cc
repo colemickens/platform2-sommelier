@@ -61,7 +61,7 @@ class ServiceInterfaceTest : public ::testing::Test {
 class ServiceSubclass : public Service {
  public:
   ServiceSubclass()
-    : Service(false),
+    : Service(),
       completed_tasks_() { }
   virtual ~ServiceSubclass() { }
 
@@ -79,7 +79,7 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
   EXPECT_CALL(mount, TestCredentials(_))
       .WillOnce(Return(true));
 
-  Service service(false);
+  Service service;
   service.set_mount(&mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
@@ -144,7 +144,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 TEST(Standalone, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
   NiceMock<MockMount> mount;
-  Service service(false);
+  Service service;
   service.set_mount(&mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
