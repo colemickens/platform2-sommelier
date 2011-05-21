@@ -42,7 +42,7 @@ do_install() {
 
 cmd_update_firmware() {
   local CHROMEOS_FIRMWARE_UPDATE="/usr/sbin/chromeos-firmwareupdate"
-  local UPDATE_OPTION="--rw-ab-together"
+  local UPDATE_OPTION="--mode=recovery"
 
   case "$1" in
     --factory* )
@@ -64,7 +64,7 @@ cmd_update_firmware() {
   # sudo to follow new magic for granting root permission.
 
   if [ -s $CHROMEOS_FIRMWARE_UPDATE ]; then
-    sudo $CHROMEOS_FIRMWARE_UPDATE $UPDATE_OPTION
+    sudo $CHROMEOS_FIRMWARE_UPDATE --force $UPDATE_OPTION
   else
     echo "There is no firmware update in current system."
   fi
