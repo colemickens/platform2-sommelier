@@ -100,6 +100,7 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
 
   if (0 == strcmp("remove", action)) {
     // No need to start poller; we have acted on event
+    RemoveDeviceByControlPath(device);
     return;
   }
 
@@ -110,6 +111,16 @@ void GobiModemHandler::HandleUdevMessage(const char *action,
                                   this);
   } else {
     LOG(ERROR) << "Saw unexpected change " << action << " " << device;
+  }
+}
+
+void GobiModemHandler::RemoveDeviceByControlPath(const char *path) {
+  ControlPathToModem::iterator p = control_path_to_modem_.find(path);
+  if (p != control_path_to_modem_.end()) {
+    LOG(INFO) << "Removing device " << path;
+    RemoveDeviceByIterator(p);
+  } else {
+    LOG(INFO) << "Could not find " << path << " to remove";
   }
 }
 

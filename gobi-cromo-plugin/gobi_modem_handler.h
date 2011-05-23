@@ -44,6 +44,7 @@ class GobiModemHandler : public ModemHandler {
   typedef std::map<std::string, GobiModem *> ControlPathToModem;
 
   bool DevicePresentByControlPath(const char *path);
+  void RemoveDeviceByControlPath(const char *path);
 
   ControlPathToModem::iterator
       RemoveDeviceByIterator(ControlPathToModem::iterator p);
