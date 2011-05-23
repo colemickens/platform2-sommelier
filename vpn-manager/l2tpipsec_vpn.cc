@@ -112,8 +112,15 @@ int main(int argc, char* argv[]) {
 
   ServiceManager::InitializeDirectories(&temp_dir);
 
+  struct sockaddr remote_address;
+  if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,
+                                             &remote_address)) {
+    LOG(ERROR) << "Unable to resolve hostname " << FLAGS_remote_host;
+    return 1;
+  }
+
   if (!ipsec.Initialize(1,
-                        FLAGS_remote_host,
+                        remote_address,
                         FLAGS_psk_file,
                         FLAGS_server_ca_file,
                         FLAGS_server_id,
@@ -122,7 +129,7 @@ int main(int argc, char* argv[]) {
                         FLAGS_tpm_user_pin)) {
     return 1;
   }
-  if (!l2tp.Initialize(FLAGS_remote_host)) {
+  if (!l2tp.Initialize(remote_address)) {
     return 1;
   }
   ServiceManager::SetLayerOrder(&ipsec, &l2tp);

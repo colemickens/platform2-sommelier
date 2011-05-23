@@ -4,6 +4,8 @@
 
 #include "vpn-manager/l2tp_manager.h"
 
+#include <stdlib.h>  // for setenv()
+
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -25,6 +27,9 @@ DEFINE_string(user, "", "user name");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 const char kL2tpConnectionName[] = "managed";
+// Environment variable available to ppp plugin to know the resolved address
+// of the L2TP server.
+const char kLnsAddress[] = "LNS_ADDRESS";
 const char kPppInterfacePath[] = "/sys/class/net/ppp0";
 
 using ::chromeos::ProcessImpl;
@@ -37,8 +42,13 @@ L2tpManager::L2tpManager()
       l2tpd_(new ProcessImpl) {
 }
 
-bool L2tpManager::Initialize(const std::string& remote_host) {
-  remote_host_ = remote_host;
+bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
+  if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
+    LOG(ERROR) << "Unable to convert sockaddr to name for remote host";
+    return false;
+  }
+  remote_address_ = remote_address;
+
   if (FLAGS_user.empty()) {
     LOG(ERROR) << "l2tp layer requires user name";
     return false;
@@ -66,7 +76,7 @@ std::string L2tpManager::FormatL2tpdConfiguration(
     const std::string& ppp_config_path) {
   std::string l2tpd_config;
   l2tpd_config.append(StringPrintf("[lac %s]\n", kL2tpConnectionName));
-  AddString(&l2tpd_config, "lns", remote_host_);
+  AddString(&l2tpd_config, "lns", remote_address_text_);
   AddBool(&l2tpd_config, "require chap", FLAGS_require_chap);
   AddBool(&l2tpd_config, "refuse pap", FLAGS_refuse_pap);
   AddBool(&l2tpd_config, "require authentication",
@@ -151,6 +161,11 @@ bool L2tpManager::Start() {
   }
   l2tpd_control_path_ = temp_path()->Append("l2tpd.control");
   file_util::Delete(l2tpd_control_path_, false);
+
+  if (!FLAGS_pppd_plugin.empty()) {
+    // Pass the resolved LNS address to the plugin.
+    setenv(kLnsAddress, remote_address_text_.c_str(), 1);
+  }
 
   l2tpd_->Reset(0);
   l2tpd_->AddArg(L2TPD);

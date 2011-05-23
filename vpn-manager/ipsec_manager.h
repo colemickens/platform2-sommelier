@@ -6,6 +6,7 @@
 #define _VPN_MANAGER_IPSEC_MANAGER_H_
 
 #include <string>
+#include <sys/socket.h>
 
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
@@ -25,12 +26,12 @@ class IpsecManager : public ServiceManager {
   IpsecManager();
 
   // Initialize the object to control IKE version |ike_version| daemon,
-  // connecting to the give |remote_hostname|, with given paths to
+  // connecting to the given |remote_address|, with given paths to
   // pre-shared key file |psk_file|, server certificate authority file
   // |server_ca_file|, client key file |client_key_file|, and client
   // certificate file |client_cert_file|.
   bool Initialize(int ike_version,
-                  const std::string& remote_host,
+                  const struct sockaddr& remote_address,
                   const std::string& psk_file,
                   const std::string& server_ca_file,
                   const std::string& server_id,
@@ -67,11 +68,6 @@ class IpsecManager : public ServiceManager {
 
   bool ReadCertificateSubject(const FilePath& filepath,
                               std::string* output);
-  bool ConvertSockAddrToIPString(const struct sockaddr& socket_address,
-                                 std::string* output);
-  bool GetAddressesFromRemoteHost(const std::string& remote_hostname,
-                                  std::string* remote_address_text,
-                                  std::string* local_address_text);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
   bool WriteConfigFiles();
@@ -105,8 +101,10 @@ class IpsecManager : public ServiceManager {
   std::string ipsec_prefix_;
   // File containing starter process's process id.
   std::string starter_pid_file_;
-  // Remote hostname of IPsec connection.
-  std::string remote_host_;
+  // Remote address of IPsec connection.
+  struct sockaddr remote_address_;
+  // Remote address of IPsec connection (as a string).
+  std::string remote_address_text_;
   // File containing the IPsec pre-shared key.
   std::string psk_file_;
   // File containing the server certificate authority in DER format.

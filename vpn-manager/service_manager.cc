@@ -4,6 +4,9 @@
 
 #include "vpn-manager/service_manager.h"
 
+#include <arpa/inet.h>  // for inet_ntop and inet_pton
+#include <netdb.h>  // for getaddrinfo
+
 #include "base/eintr_wrapper.h"
 #include "base/file_util.h"
 #include "base/logging.h"
@@ -80,4 +83,87 @@ void ServiceManager::WriteFdToSyslog(int fd,
   for (size_t i = 0; i < lines.size(); ++i) {
     LOG(INFO) << prefix << lines[i];
   }
+}
+
+bool ServiceManager::ResolveNameToSockAddr(const std::string& name,
+                                           struct sockaddr* address) {
+  struct addrinfo *address_info;
+  int s = getaddrinfo(name.c_str(), NULL, NULL, &address_info);
+  if (s != 0) {
+    LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
+    return false;
+  }
+  *address = *address_info->ai_addr;
+  freeaddrinfo(address_info);
+  return true;
+}
+
+bool ServiceManager::ConvertIPStringToSockAddr(
+    const std::string& address_text,
+    struct sockaddr* address) {
+  struct addrinfo hint_info = {};
+  struct addrinfo *address_info;
+  hint_info.ai_flags = AI_NUMERICHOST;
+  int s = getaddrinfo(address_text.c_str(), NULL, &hint_info, &address_info);
+  if (s != 0) {
+    LOG(ERROR) << "getaddrinfo failed: " << gai_strerror(s);
+    return false;
+  }
+  *address = *address_info->ai_addr;
+  freeaddrinfo(address_info);
+  return true;
+}
+
+bool ServiceManager::ConvertSockAddrToIPString(
+    const struct sockaddr& address,
+    std::string* address_text) {
+  char str[INET6_ADDRSTRLEN] = { 0 };
+  switch (address.sa_family) {
+    case AF_INET:
+      if (!inet_ntop(AF_INET, &reinterpret_cast<const sockaddr_in*>(
+              &address)->sin_addr, str, INET6_ADDRSTRLEN)) {
+        PLOG(ERROR) << "inet_ntop failed";
+        return false;
+      }
+      break;
+    case AF_INET6:
+      if (!inet_ntop(AF_INET6, &reinterpret_cast<const sockaddr_in6*>(
+              &address)->sin6_addr, str, INET6_ADDRSTRLEN)) {
+        PLOG(ERROR) << "inet_ntop failed";
+        return false;
+      }
+      break;
+    default:
+      LOG(ERROR) << "Unknown address family";
+      return false;
+  }
+  *address_text = str;
+  return true;
+}
+
+bool ServiceManager::GetLocalAddressFromRemote(
+    const struct sockaddr& remote_address,
+    struct sockaddr* local_address) {
+  int sock = HANDLE_EINTR(socket(AF_INET, SOCK_DGRAM, 0));
+  if (sock < 0) {
+    LOG(ERROR) << "Unable to create socket";
+    return false;
+  }
+  if (HANDLE_EINTR(connect(sock, &remote_address,
+                           sizeof(struct sockaddr))) != 0) {
+    LOG(ERROR) << "Unable to connect";
+    HANDLE_EINTR(close(sock));
+    return false;
+  }
+  bool result = false;
+  socklen_t addr_len = sizeof(*local_address);
+  if (getsockname(sock, local_address, &addr_len) != 0) {
+    PLOG(ERROR) << "getsockname failed on socket";
+    goto error_label;
+  }
+  result = true;
+
+ error_label:
+  HANDLE_EINTR(close(sock));
+  return result;
 }

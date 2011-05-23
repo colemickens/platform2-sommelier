@@ -28,7 +28,9 @@ class L2tpManagerTest : public ::testing::Test {
     ServiceManager::temp_path_ = new FilePath(test_path_);
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
-    remote_hostname_ = "vpnserver";
+    remote_address_text_ = "1.2.3.4";
+    ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
+                                              &remote_address_);
     control_path_ = test_path_.Append("control");
     pppd_config_path_ = test_path_.Append("pppd.config");
     ppp_interface_path_ = test_path_.Append("ppp0");
@@ -38,11 +40,12 @@ class L2tpManagerTest : public ::testing::Test {
     l2tp_.ppp_interface_path_ = ppp_interface_path_;
     FLAGS_pppd_plugin = "";
     FLAGS_user = "me";
-    EXPECT_TRUE(l2tp_.Initialize(remote_hostname_));
+    EXPECT_TRUE(l2tp_.Initialize(remote_address_));
   }
 
  protected:
-  std::string remote_hostname_;
+  std::string remote_address_text_;
+  struct sockaddr remote_address_;
   FilePath test_path_;
   FilePath control_path_;
   FilePath pppd_config_path_;
@@ -52,17 +55,17 @@ class L2tpManagerTest : public ::testing::Test {
 };
 
 TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
-  static const char kBaseExpected[] =
+  std::string expected = StringPrintf(
       "[lac managed]\n"
-      "lns = vpnserver\n"
+      "lns = %s\n"
       "require chap = yes\n"
       "refuse pap = yes\n"
       "require authentication = yes\n"
       "name = me\n"
       "ppp debug = yes\n"
       "pppoptfile = test/pppd.config\n"
-      "length bit = yes\n";
-  EXPECT_EQ(kBaseExpected,
+      "length bit = yes\n", remote_address_text_.c_str());
+  EXPECT_EQ(expected,
             l2tp_.FormatL2tpdConfiguration(pppd_config_path_.value()));
 }
 

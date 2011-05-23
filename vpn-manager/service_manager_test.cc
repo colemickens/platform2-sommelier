@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <sys/socket.h>
+
 #include "base/command_line.h"
 #include "base/file_util.h"
 #include "base/memory/scoped_temp_dir.h"
@@ -139,6 +141,19 @@ TEST_F(ServiceManagerTest, WriteFdToSyslog) {
 
   close(mypipe[0]);
   close(mypipe[1]);
+}
+
+TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
+  struct sockaddr remote_address;
+  struct sockaddr local_address;
+  std::string local_address_text;
+  EXPECT_TRUE(ServiceManager::ConvertIPStringToSockAddr("127.0.0.1",
+                                                        &remote_address));
+  EXPECT_TRUE(ServiceManager::GetLocalAddressFromRemote(remote_address,
+                                                        &local_address));
+  EXPECT_TRUE(ServiceManager::ConvertSockAddrToIPString(local_address,
+                                                        &local_address_text));
+  EXPECT_EQ("127.0.0.1", local_address_text);
 }
 
 int main(int argc, char** argv) {

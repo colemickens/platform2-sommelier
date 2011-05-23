@@ -5,6 +5,8 @@
 #ifndef _VPN_MANAGER_L2TP_MANAGER_H_
 #define _VPN_MANAGER_L2TP_MANAGER_H_
 
+#include <sys/socket.h>
+
 #include "base/file_util.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
@@ -29,7 +31,7 @@ class L2tpManager : public ServiceManager {
   // Initialize the object using |remote_host|.  Returns false if
   // an illegal set of parameters has been given.  Has no side effects
   // other than setting up the object.
-  bool Initialize(const std::string& remote_host);
+  bool Initialize(const sockaddr& remote_address);
 
   virtual bool Start();
   virtual void Stop();
@@ -65,8 +67,10 @@ class L2tpManager : public ServiceManager {
   int output_fd_;
   // Start time of the l2tp daemon.
   base::TimeTicks start_ticks_;
-  // Remote host for L2TP connection.
-  std::string remote_host_;
+  // Remote address for L2TP connection.
+  struct sockaddr remote_address_;
+  // Remote address for L2TP connection (as a string).
+  std::string remote_address_text_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
   // Path to a file whose existence indicates the ppp device is up.

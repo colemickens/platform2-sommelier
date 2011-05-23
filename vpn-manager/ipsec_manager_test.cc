@@ -33,7 +33,9 @@ class IpsecManagerTest : public ::testing::Test {
     file_util::CreateDirectory(test_path_);
     stateful_container_ = test_path_.Append("etc");
     file_util::CreateDirectory(stateful_container_);
-    remote_ = "vpnserver";
+    remote_address_text_ = "1.2.3.4";
+    ASSERT_TRUE(ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
+                                                          &remote_address_));
     ServiceManager::temp_path_ = new FilePath(test_path_);
     psk_file_ = test_path_.Append("psk").value();
     server_ca_file_ = test_path_.Append("server.ca").value();
@@ -55,7 +57,6 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_.ipsec_run_path_ = ipsec_run_path_;
     ipsec_.ipsec_up_file_ = ipsec_up_file_;
     ipsec_.force_local_address_ = "5.6.7.8";
-    ipsec_.force_remote_address_ = "1.2.3.4";
   }
 
   void SetStartStarterExpectations(bool already_running);
@@ -73,7 +74,8 @@ class IpsecManagerTest : public ::testing::Test {
   IpsecManager ipsec_;
   FilePath stateful_container_;
   FilePath test_path_;
-  std::string remote_;
+  std::string remote_address_text_;
+  struct sockaddr remote_address_;
   std::string psk_file_;
   std::string server_ca_file_;
   std::string server_id_;
@@ -87,10 +89,10 @@ class IpsecManagerTest : public ::testing::Test {
 
 void IpsecManagerTest::DoInitialize(int ike_version, bool use_psk) {
   if (use_psk) {
-    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_, psk_file_,
+    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_address_, psk_file_,
                                   "", "", "", "", ""));
   } else {
-    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_, "",
+    ASSERT_TRUE(ipsec_.Initialize(ike_version, remote_address_, "",
                                   server_ca_file_, server_id_,
                                   client_cert_tpm_slot_, client_cert_tpm_id_,
                                   tpm_user_pin_));
@@ -117,18 +119,13 @@ void IpsecManagerTest::SetStartStarterExpectations(bool already_running) {
   EXPECT_CALL(*starter_, pid()).WillOnce(Return(kMockStarterPid));
 }
 
-TEST_F(IpsecManagerTest, InitializeBadRemote) {
-  EXPECT_FALSE(ipsec_.Initialize(1, "", psk_file_, "", "", "", "", ""));
-  EXPECT_TRUE(FindLog("Missing remote"));
-}
-
 TEST_F(IpsecManagerTest, InitializeNoAuth) {
-  EXPECT_FALSE(ipsec_.Initialize(1, remote_, "", "", "", "", "", ""));
+  EXPECT_FALSE(ipsec_.Initialize(1, remote_address_, "", "", "", "", "", ""));
   EXPECT_TRUE(FindLog("Must specify either PSK or certificates"));
 }
 
 TEST_F(IpsecManagerTest, InitializeNotBoth) {
-  EXPECT_FALSE(ipsec_.Initialize(1, remote_,
+  EXPECT_FALSE(ipsec_.Initialize(1, remote_address_,
                                  psk_file_,
                                  server_ca_file_,
                                  server_id_,
@@ -139,12 +136,13 @@ TEST_F(IpsecManagerTest, InitializeNotBoth) {
 }
 
 TEST_F(IpsecManagerTest, InitializeUnsupportedVersion) {
-  EXPECT_FALSE(ipsec_.Initialize(3, remote_, psk_file_, "", "", "", "", ""));
+  EXPECT_FALSE(ipsec_.Initialize(3, remote_address_, psk_file_, "", "", "",
+                                 "", ""));
   EXPECT_TRUE(FindLog("Unsupported IKE version"));
 }
 
 TEST_F(IpsecManagerTest, InitializeIkev2WithCertificates) {
-  EXPECT_FALSE(ipsec_.Initialize(2, remote_, "",
+  EXPECT_FALSE(ipsec_.Initialize(2, remote_address_, "",
                                  server_ca_file_,
                                  server_id_,
                                  client_cert_tpm_slot_,
@@ -203,17 +201,6 @@ class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
 TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {
 }
 
-TEST_F(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost) {
-  ipsec_.force_local_address_ = NULL;
-  std::string local_address;
-  std::string remote_address;
-  EXPECT_TRUE(ipsec_.GetAddressesFromRemoteHost("localhost",
-                                                &remote_address,
-                                                &local_address));
-  EXPECT_EQ("127.0.0.1", local_address);
-  EXPECT_EQ("127.0.0.1", remote_address);
-}
-
 TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   FilePath input(psk_file_);
   const char psk[] = "pAssword\n";
@@ -254,7 +241,7 @@ void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
       "\tleft=\"\%defaultroute\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
-      "\tright=\"vpnserver\"\n"
+      "\tright=\"1.2.3.4\"\n"
       "\trightprotoport=\"17/1701\"\n"
       "\ttype=\"transport\"\n"
       "\tauto=\"start\"\n";
@@ -318,7 +305,7 @@ void IpsecManagerTestIkeV1Certs::CheckStarter(const std::string& actual) {
       "\tleftcert=\"\%smartcard0:0a\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
-      "\tright=\"vpnserver\"\n"
+      "\tright=\"1.2.3.4\"\n"
       "\trightca=\"C=US, O=simonjam, CN=rootca\"\n"
       "\trightid=\"CN=vpnserver\"\n"
       "\trightprotoport=\"17/1701\"\n"
