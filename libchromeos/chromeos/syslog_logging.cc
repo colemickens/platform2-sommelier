@@ -11,6 +11,7 @@
 // We need to #undef at least these two before including base/logging.h.  The
 // others are included to be consistent.
 namespace {
+const int kSyslogDebug    = LOG_DEBUG;
 const int kSyslogInfo     = LOG_INFO;
 const int kSyslogWarning  = LOG_WARNING;
 const int kSyslogError    = LOG_ERR;
@@ -19,7 +20,7 @@ const int kSyslogCritical = LOG_CRIT;
 #undef LOG_INFO
 #undef LOG_WARNING
 #undef LOG_ERR
-#undef LOG_INFO
+#undef LOG_CRIT
 }  // namespace
 
 #include <base/logging.h>
@@ -30,7 +31,6 @@ static bool s_accumulate;
 static bool s_log_to_syslog;
 static bool s_log_to_stderr;
 
-// TODO(cmasone): figure out if message_start can be used to help.
 static bool HandleMessage(int severity,
                           const char* file,
                           int line,
@@ -53,18 +53,13 @@ static bool HandleMessage(int severity,
     case logging::LOG_FATAL:
       severity = kSyslogCritical;
       break;
+
+    default:
+      severity = kSyslogDebug;
+      break;
   }
 
-  // The first "] " should be the end of the header added by the logging
-  // code.  The meat of the message is two characters after that.
-  size_t pos = message.find("] ");
-  if (pos != std::string::npos && message.length() > pos + 2) {
-    pos += 2;
-  } else {
-    pos = 0;
-  }
-
-  const char* str = message.c_str() + pos;
+  const char* str = message.c_str() + message_start;
 
   if (s_log_to_syslog)
     syslog(severity, "%s", str);
