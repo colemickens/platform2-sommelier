@@ -21,10 +21,6 @@ suspend_cancel() {
 }
 
 cleanup_for_resume() {
-    if [ $force_usb_autosuspend -eq 1 ]; then
-        # disable autosuspend for USB devices if we set it before suspend.
-        for i in /sys/bus/usb/devices/*/power/level; do echo on > $i; done
-    fi
     rm -f "/var/run/power_manager/lid_opened"
     rm -f "/var/run/power_manager/user_active"
 }
@@ -49,22 +45,17 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
 
 # - stores the current power status
 power_status_on_suspend=/tmp/power-status-on-suspend
-force_usb_autosuspend=0
 /usr/bin/devkit-power -d \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend
 else
     echo OnAC > $power_status_on_suspend
-    if suspend_cancel; then
-        log_msg "Cancel suspend at USB autosuspend"
-    else
-        # - enables autosuspend for USB devices. This shaves about 300ms
-        #   from resume time.
-        force_usb_autosuspend=1
-        for i in /sys/bus/usb/devices/*/power/level; do echo auto > $i; done
-    fi
 fi
+
+# Disable USB-Persist to save 500ms
+# (by not waiting for USB devices to reset and resume)
+for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
 
 # - deletes hwclock snapshot from previous resumes
 rm -f /tmp/hwclock-on-resume
