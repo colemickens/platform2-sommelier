@@ -33,6 +33,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/bootstat.h"
+#include "metrics/metrics_library.h"
 
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
@@ -127,6 +128,8 @@ const char SessionManagerService::kLegalCharacters[] =
 const char SessionManagerService::kIncognitoUser[] = "";
 // static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
+// static
+const char SessionManagerService::kLoginUserTypeMetric[] = "Login.UserType";
 // static
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
@@ -487,6 +490,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     *OUT_done = FALSE;
     return FALSE;
   }
+
   // If the current user is the owner, and isn't whitelisted or set
   // as the cros.device.owner pref, then do so.
   bool can_access_key = CurrentUserHasOwnerKey(key_->public_key_der(), error);
@@ -496,11 +500,22 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // Now, the flip side...if we believe the current user to be the owner
   // based on the cros.owner.device setting, and he DOESN'T have the private
   // half of the public key, we must mitigate.
-  if (policy_->CurrentUserIsOwner(current_user_) && !can_access_key) {
+  bool userIsOwner = policy_->CurrentUserIsOwner(current_user_);
+  if (userIsOwner && !can_access_key) {
     if (!(*OUT_done = mitigator_->Mitigate(key_.get())))
       return FALSE;
   }
 
+  // Send each user login event to UMA (right before we start session
+  // since AreMetricsEnabled returns false in guest mode).
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  if (current_user_ == kIncognitoUser)
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 0, 2);
+  else if (userIsOwner)
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 1, 2);
+  else
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 2, 2);
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(
           "start-user-session",

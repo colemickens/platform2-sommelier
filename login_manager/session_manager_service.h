@@ -400,6 +400,7 @@ class SessionManagerService
   static const char kEmailSeparator;
   static const char kLegalCharacters[];
   static const char kIncognitoUser[];
+  static const char kLoginUserTypeMetric[];
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char kIOThreadName[];
