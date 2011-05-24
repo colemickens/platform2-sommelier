@@ -218,7 +218,7 @@ mode_dev_fwcheck() {
 
   local fw_version="$(crossystem fwid)"
   local ec_info="$(mosys -k ec info 2>/dev/null)" || ec_info=""
-  ec_version="$(eval "$ec_info"; echo "$fw_version")"
+  ec_version="$(fw_version="Unknown"; eval "$ec_info"; echo "$fw_version")"
 
   local notify_update=0
   if [ "$SHELLBALL_FWVERSION" != "$fw_version" ] &&
