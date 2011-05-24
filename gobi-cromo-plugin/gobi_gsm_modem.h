@@ -58,6 +58,7 @@ class GobiGsmModem
                          const std::string& new_pin,
                          DBus::Error& error);
   virtual std::string GetOperatorId(DBus::Error& error);
+  virtual std::string GetSpn(DBus::Error& error);
 
   // DBUS Methods: Modem.Gsm.SMS
   virtual void Delete(const uint32_t& index, DBus::Error &error);

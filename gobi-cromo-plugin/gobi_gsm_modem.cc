@@ -595,6 +595,17 @@ std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
   return MakeOperatorCode(mcc, mnc);
 }
 
+std::string GobiGsmModem::GetSpn(DBus::Error& error) {
+  std::string result;
+  WORD mcc, mnc, sid, nid;
+  CHAR netname[32];
+
+  ULONG rc = sdk_->GetHomeNetwork(&mcc, &mnc,
+                                  sizeof(netname), netname, &sid, &nid);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
+  return netname;
+}
+
 //======================================================================
 // DBUS Methods: Modem.Gsm.SMS
 
