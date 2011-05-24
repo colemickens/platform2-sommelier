@@ -154,10 +154,12 @@ for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
   if os.environ.has_key(key):
     env['ENV'][key] = os.environ[key]
 
+pkgconfig = os.environ.get('PKG_CONFIG', 'pkg-config')
+
 env['BUILDERS']['ProtocolBuffer'] = proto_builder
 
 env.Append(LIBPATH = ['.'])
-env.ParseConfig('pkg-config --cflags --libs ' \
+env.ParseConfig(pkgconfig + ' --cflags --libs ' \
                 'dbus-1 dbus-glib-1 glib-2.0 gdk-2.0 gtk+-2.0 nss')
 env.ProtocolBuffer('vault_keyset.pb.cc', 'vault_keyset.proto')
 env.ProtocolBuffer('tpm_status.pb.cc', 'tpm_status.proto')
