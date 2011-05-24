@@ -249,7 +249,6 @@ void Sdk::Init() {
 }
 
 void Sdk::InjectFaultSdkError(int error) {
-  LOG(WARNING) << "Injecting sdk  error" << error;
   fault_inject_sdk_error_ = error;
 }
 

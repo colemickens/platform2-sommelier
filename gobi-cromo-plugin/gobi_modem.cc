@@ -567,6 +567,10 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
   scoped_ptr<PendingDisable> scoped_disable(pending_disable_.release());
 
   session_starter_in_flight_ = false;
+  if (injected_faults_["ConnectFailsWithErrorSendingQmiRequest"]) {
+    LOG(ERROR) << "Fault injection: Making StartDataSession return QMI error";
+    starter->return_value_ = gobi::kErrorSendingQmiRequest;
+  }
 
   DBus::Error error;
   if (starter->return_value_ == 0) {
@@ -582,7 +586,6 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
       ULONG rc = sdk_->StopDataSession(session_id_);
       if (rc != 0) {
         LOG(ERROR) << "Could not disconnect: " << rc;
-        // TODO(connectivity):  Should we reset the modem here?
       }
       // SessionStateHandler will clear session_id_
     }
@@ -590,13 +593,28 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
     LOG(WARNING) << "StartDataSession failed: " << starter->return_value_;
     const char* err_name;
     const char* err_msg;
-    if (starter->return_value_ == gobi::kCallFailed) {
-      LOG(WARNING) << "Failure Reason " <<  starter->failure_reason_;
-      err_name = QMICallFailureToMMError(starter->failure_reason_);
-      err_msg = "Connect failed";
-    } else {
-      err_name = kConnectError;
-      err_msg = "StartDataSession";
+    switch (starter->return_value_) {
+      case gobi::kCallFailed:
+        LOG(WARNING) << "Failure Reason " <<  starter->failure_reason_;
+        err_name = QMICallFailureToMMError(starter->failure_reason_);
+        err_msg = "Connect failed";
+        break;
+      case gobi::kErrorSendingQmiRequest:
+      case gobi::kErrorReceivingQmiRequest:
+        if (scoped_disable == NULL) {
+          // Normally the SDK enqueues an SdkErrorHandler event when
+          // it sees these errors.  But, since these errors occur
+          // benignly on StartDataSession cancellation, the SDK
+          // doesn't do that automatically for StartDataSession. If we
+          // have no cancellation, then this is a for-real problem,
+          // and we reboot cromo
+          SinkSdkError(path(), "StartDataSession", starter->return_value_);
+        }
+        // fall through
+      default:
+        err_name = kConnectError;
+        err_msg = "StartDataSession";
+        break;
     }
     error.set(err_name, err_msg);
   }
@@ -1198,14 +1216,18 @@ void GobiModem::SetAutomaticTracking(const bool& service_enable,
 void GobiModem::InjectFault(const std::string& name,
                             const int32_t &value,
                             DBus::Error& error) {
-  if (name == "SdkError") {
+  if (name == "ClearFaults") {
+    LOG(ERROR) << "Clearing injected faults";
+    sdk_->InjectFaultSdkError(0);
+    injected_faults_.clear();
+  } else if (name == "SdkError") {
+    LOG(ERROR) << "Injecting fault:  All Sdk calls will return " << value;
     sdk_->InjectFaultSdkError(value);
   } else {
     LOG(ERROR) << "Injecting fault " << name << ": " << value;
     injected_faults_[name] = value;
   }
 }
-
 
 void GobiModem::SinkSdkError(const std::string& modem_path,
                              const std::string& sdk_function,
