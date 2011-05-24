@@ -72,7 +72,7 @@ HELP='
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
 
- route [-n]
+ route [-n] [-6]
   Display the routing tables.
 
  set_apn [-n <network-id>] [-u <username>] [-p <password>] <apn>
@@ -498,6 +498,8 @@ cmd_route() {
   while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
     if [ "$1" = "-n" ]; then
       option="$option -n"
+    elif [ "$1" = "-6" ]; then
+      option="$option -6"
     else
       echo "Unknown option: $1"
       return 1
