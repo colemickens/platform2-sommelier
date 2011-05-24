@@ -149,6 +149,15 @@ bool UdevDevice::IsOnBootDevice() const {
   return false;
 }
 
+bool UdevDevice::IsVirtual() const {
+  const char *sys_path = udev_device_get_syspath(dev_);
+  if (sys_path) {
+    return StartsWithASCII(sys_path, "/sys/devices/virtual/", true);
+  }
+  // To be safe, mark it as virtual device if sys path cannot be determined.
+  return true;
+}
+
 std::vector<std::string> UdevDevice::GetMountPaths() const {
   const char *device_path = udev_device_get_devnode(dev_);
   if (device_path) {
@@ -192,16 +201,14 @@ Disk UdevDevice::ToDisk() const {
   disk.set_is_hidden(IsPropertyTrue("UDISKS_PRESENTATION_HIDE"));
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_is_on_boot_device(IsOnBootDevice());
+  disk.set_is_virtual(IsVirtual());
   disk.set_drive_model(GetProperty("ID_MODEL"));
   disk.set_uuid(GetProperty("ID_FS_UUID"));
   disk.set_label(GetProperty("ID_FS_LABEL"));
+
   const char *sys_path = udev_device_get_syspath(dev_);
-  bool is_virtual = true;
-  if (sys_path) {
+  if (sys_path)
     disk.set_native_path(sys_path);
-    is_virtual = StartsWithASCII(sys_path, "/sys/devices/virtual/", true);
-  }
-  disk.set_is_virtual(is_virtual);
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)

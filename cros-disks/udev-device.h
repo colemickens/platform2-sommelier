@@ -50,6 +50,9 @@ class UdevDevice {
   // Checks if a device is on the boot device.
   bool IsOnBootDevice() const;
 
+  // Checks if a device is a virtual device.
+  bool IsVirtual() const;
+
   // Gets the mount paths for the device.
   std::vector<std::string> GetMountPaths() const;
 

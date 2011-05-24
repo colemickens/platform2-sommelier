@@ -114,10 +114,19 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
   LOG(INFO) << "   Subsystem: " << udev_device_get_subsystem(dev);
   LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
-  *device_path = udev_device_get_syspath(dev);
-  *action = udev_device_get_action(dev);
+
+  bool report_changes = false;
+  // Ignore boot device or virtual device changes, which should not be
+  // sent to the Chrome browser.
+  UdevDevice udev(dev);
+  if (!udev.IsOnBootDevice() && !udev.IsVirtual()) {
+    *device_path = udev_device_get_syspath(dev);
+    *action = udev_device_get_action(dev);
+    report_changes = true;
+  }
+
   udev_device_unref(dev);
-  return true;
+  return report_changes;
 }
 
 bool DiskManager::GetDiskByDevicePath(const std::string& device_path,

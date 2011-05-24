@@ -104,9 +104,11 @@ void CrosDisksServer::SignalDeviceChanges() {
       DeviceAdded(device_path);
     } else if (action == "remove") {
       DeviceRemoved(device_path);
-    } else if (action == "change") {
-      DeviceChanged(device_path);
     }
+    // To prevent Chrome from popping up the file browser tab for
+    // change events not related to disk mounting, udev change events
+    // are not retransmitted as DBus signals here, but by FilesystemMount
+    // instead.
   }
 }
 
