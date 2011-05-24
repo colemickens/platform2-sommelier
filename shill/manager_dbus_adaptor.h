@@ -59,11 +59,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   void RegisterAgent(const ::DBus::Path& , ::DBus::Error &error);
   void UnregisterAgent(const ::DBus::Path& , ::DBus::Error &error);
 
-  std::string GetDebugTags(::DBus::Error &error);
-  void SetDebugTags(const std::string& , ::DBus::Error &error);
-  std::string ListDebugTags(::DBus::Error &error);
-  uint32_t GetDebugMask(::DBus::Error &error);
-  void SetDebugMask(const uint32_t& , ::DBus::Error &error);
+  int32_t GetDebugLevel(::DBus::Error &error);
+  void SetDebugLevel(const int32_t& mask, ::DBus::Error &error);
 
   std::string GetServiceOrder(::DBus::Error &error);
   void SetServiceOrder(const std::string& , ::DBus::Error &error);

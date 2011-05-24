@@ -7,6 +7,8 @@
 #include <map>
 #include <string>
 
+#include <base/logging.h>
+
 using std::map;
 using std::string;
 
@@ -107,24 +109,16 @@ void ManagerDBusAdaptor::UnregisterAgent(const ::DBus::Path& ,
                                          ::DBus::Error &error) {
 }
 
-string ManagerDBusAdaptor::GetDebugTags(::DBus::Error &error) {
-  return string();
+int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &error) {
+  return logging::GetMinLogLevel();
 }
 
-void ManagerDBusAdaptor::SetDebugTags(const string& ,
+void ManagerDBusAdaptor::SetDebugLevel(const int32_t& level,
                                       ::DBus::Error &error) {
-}
-
-string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &error) {
-  return string();
-}
-
-uint32_t ManagerDBusAdaptor::GetDebugMask(::DBus::Error &error) {
-  return 0;
-}
-
-void ManagerDBusAdaptor::SetDebugMask(const uint32_t& ,
-                                      ::DBus::Error &error) {
+  if (level < logging::LOG_NUM_SEVERITIES)
+    logging::SetMinLogLevel(level);
+  else
+    LOG(WARNING) << "Ignoring attempt to set log level to " << level;
 }
 
 string ManagerDBusAdaptor::GetServiceOrder(::DBus::Error &error) {

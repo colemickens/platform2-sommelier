@@ -52,20 +52,12 @@
 		<method name="UnregisterAgent">
 			<arg type="o" direction="in"/>
 		</method>
-		<method name="GetDebugTags">
-			<arg type="s" direction="out"/>
+		<method name="GetDebugLevel">
+			<arg type="i" direction="out"/>
 		</method>
-		<method name="SetDebugTags">
-			<arg type="s" direction="in"/>
-		</method>
-		<method name="ListDebugTags">
-			<arg type="s" direction="out"/>
-		</method>
-		<method name="GetDebugMask">
-			<arg type="u" direction="out"/>
-		</method>
-		<method name="SetDebugMask">
-			<arg type="u" direction="in"/>
+		<method name="SetDebugLevel">
+		        <!-- -N enables VLOG(N) and lower. -->
+			<arg type="i" direction="in"/>
 		</method>
 		<method name="GetServiceOrder">
 			<arg type="s" direction="out"/>

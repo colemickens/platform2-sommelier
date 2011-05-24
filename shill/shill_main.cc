@@ -9,6 +9,7 @@
 #include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
@@ -27,6 +28,8 @@ static const char kConfigDir[] = "config-dir";
 static const char kDefaultConfigDir[] = "default-config-dir";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
+// LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.
+static const char kLogLevel[] = "log-level";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
@@ -36,7 +39,13 @@ static const char kHelpMessage[] = "\n"
     "  --config_dir\n"
     "    Directory to read confguration settings.\n"
     "  --default_config_dir\n"
-    "    Directory to read default configuration settings (Read Only).";
+    "    Directory to read default configuration settings (Read Only)."
+    "  --log-level=N\n"
+    "    LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.\n"
+    "  --v=N\n"
+    "    Enables VLOG(N) and below.\n"
+    "  --vmodule=\"*file_pattern*=1,certain_file.cc=2\".\n"
+    "    Enable VLOG() at different levels in different files/modules.\n";
 }  // namespace switches
 
 // Always logs to the syslog and logs to stderr if
@@ -62,6 +71,16 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
     return 0;
+  }
+  if (cl->HasSwitch(switches::kLogLevel)) {
+    std::string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
+    int level = 0;
+    if (base::StringToInt(log_level, &level) &&
+        level >= 0 && level < logging::LOG_NUM_SEVERITIES) {
+      logging::SetMinLogLevel(level);
+    } else {
+      LOG(WARNING) << "Bad log level: " << log_level;
+    }
   }
 
   FilePath config_dir(cl->GetSwitchValueASCII(switches::kConfigDir));
