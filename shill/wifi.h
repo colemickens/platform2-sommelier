@@ -5,6 +5,8 @@
 #ifndef SHILL_WIFI_
 #define SHILL_WIFI_
 
+#include <string>
+
 #include "shill/device.h"
 #include "shill/shill_event.h"
 
@@ -16,7 +18,7 @@ class WiFi : public Device {
  public:
   explicit WiFi(ControlInterface *control_interface,
                 EventDispatcher *dispatcher,
-                const string &link_name,
+                const std::string &link_name,
                 int interface_index);
   ~WiFi();
   bool TechnologyIs(Device::Technology type);

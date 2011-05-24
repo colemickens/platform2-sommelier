@@ -5,6 +5,8 @@
 #ifndef SHILL_ETHERNET_
 #define SHILL_ETHERNET_
 
+#include <string>
+
 #include "shill/device.h"
 #include "shill/shill_event.h"
 
@@ -16,7 +18,7 @@ class Ethernet : public Device {
  public:
   explicit Ethernet(ControlInterface *control_interface,
                     EventDispatcher *dispatcher,
-                    const string &link_name,
+                    const std::string& link_name,
                     int interface_index);
   ~Ethernet();
   bool TechnologyIs(Device::Technology type);

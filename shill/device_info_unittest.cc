@@ -13,6 +13,7 @@
 #include "shill/dbus_control.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
+#include "shill/mock_control.h"
 
 namespace shill {
 using ::testing::Test;
@@ -31,7 +32,7 @@ class DeviceInfoTest : public Test {
     return &device_info_.devices_;
   }
 protected:
-  DBusControl control_interface_;
+  MockControl control_interface_;
   Manager manager_;
   DeviceInfo device_info_;
   EventDispatcher dispatcher_;

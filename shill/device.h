@@ -5,6 +5,7 @@
 #ifndef SHILL_DEVICE_
 #define SHILL_DEVICE_
 
+#include <string>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -35,7 +36,7 @@ class Device : public base::RefCounted<Device> {
   // A constructor for the Device object
   Device(ControlInterface *control_interface,
          EventDispatcher *dispatcher,
-         const string &link_name,
+         const std::string& link_name,
          int interface_index);
   virtual ~Device();
 
@@ -46,7 +47,7 @@ class Device : public base::RefCounted<Device> {
 
  protected:
   std::vector<scoped_refptr<Service> > services_;
-  string link_name_;
+  std::string link_name_;
   int interface_index_;
   bool running_;
 
@@ -62,7 +63,7 @@ class StubDevice : public Device {
  public:
   StubDevice(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
-             const string link_name,
+             const std::string& link_name,
              int interface_index,
              Technology technology)
     : Device(control_interface, dispatcher, link_name, interface_index),

@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_DEVICE_
 #define SHILL_MOCK_DEVICE_
 
+#include <string>
+
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
@@ -23,7 +25,7 @@ class MockDevice : public Device {
   // A constructor for the Device object
   MockDevice(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
-             const string &link_name,
+             const std::string &link_name,
              int interface_index)
       : Device(control_interface, dispatcher, link_name, interface_index) {
     ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
