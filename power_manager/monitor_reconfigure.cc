@@ -19,7 +19,7 @@ using std::vector;
 namespace {
 
 // Name of the internal output.
-const char kLcdOutputName[] = "LVDS1";
+const char kLcdOutputName[] = "LVDS";
 // The screen DPI we pass to X11.
 const float kScreenDpi = 96.0;
 // An inch in mm.
@@ -72,25 +72,44 @@ void MonitorReconfigure::Run() {
   external_output_ = 0;
   external_output_info_ = NULL;
   display_ = XOpenDisplay(NULL);
-  CHECK(display_) << "Could not open display";
+
+  // Give up if we can't open the display.
+  if (!display_) {
+    LOG(WARNING) << "Could not open display";
+    return;
+  }
 
   window_ = RootWindow(display_, DefaultScreen(display_));
   screen_info_ = XRRGetScreenResources(display_, window_);
+
+  // Give up if we can't obtain the XRandr information.
+  if (!screen_info_) {
+    LOG(WARNING) << "Could not get XRandr information";
+    XCloseDisplay(display_);
+    return;
+  }
 
   for (int i = 0; i < screen_info_->nmode; ++i) {
     XRRModeInfo* current_mode = &screen_info_->modes[i];
     mode_map_[current_mode->id] = current_mode;
   }
-  DetermineOutputs();
+
+  // Give up if we can't find any outputs.
+  if (!DetermineOutputs()) {
+    LOG(WARNING) << "Unable to determine outputs";
+    XRRFreeScreenResources(screen_info_);
+    return;
+  }
+
   vector<ResolutionSelector::Mode> lcd_modes;
   SortModesByResolution(lcd_output_, &lcd_modes);
   DCHECK(!lcd_modes.empty());
 
   vector<ResolutionSelector::Mode> external_modes;
-  if (IsExternalMonitorConnected()) {
+  if (external_output_info_->connection == RR_Connected)
     SortModesByResolution(external_output_, &external_modes);
-    DCHECK(!external_modes.empty());
-  }
+  else
+    external_modes.clear();
 
   ResolutionSelector selector;
   ResolutionSelector::Mode lcd_resolution;
@@ -102,7 +121,6 @@ void MonitorReconfigure::Run() {
                                      &lcd_resolution,
                                      &external_resolution,
                                      &screen_resolution));
-  CHECK(!lcd_resolution.name.empty() || !external_resolution.name.empty());
 
   // Disable the backlight before resizing anything on the screen.
   if (lcd_resolution.name.empty())
@@ -137,41 +155,53 @@ void MonitorReconfigure::Run() {
   XUngrabServer(display_);
   XSync(display_, False);
 
-  XRRFreeOutputInfo(lcd_output_info_);
-  XRRFreeOutputInfo(external_output_info_);
-  XRRFreeScreenResources(screen_info_);
-
   // Enable the backlight. We do not want to do this before the resize is
   // done so that we can hide the resize when going off->on.
   if (!lcd_resolution.name.empty())
     backlight_ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
 
+  if (lcd_output_info_)
+    XRRFreeOutputInfo(lcd_output_info_);
+  if (external_output_info_)
+    XRRFreeOutputInfo(external_output_info_);
+  XRRFreeScreenResources(screen_info_);
+
   XCloseDisplay(display_);
 }
 
-void MonitorReconfigure::DetermineOutputs() {
-  CHECK(screen_info_->noutput > 1) << "Expected at least two outputs";
-  CHECK(!lcd_output_info_);
-  CHECK(!external_output_info_);
+bool MonitorReconfigure::DetermineOutputs() {
+  lcd_output_ = 0;
+  external_output_ = 0;
 
-  RROutput first_output = screen_info_->outputs[0];
-  RROutput second_output = screen_info_->outputs[1];
+  if (screen_info_->noutput == 0) {
+    LOG(WARNING) << "No outputs found\n";
+    return false;
+  }
 
-  XRROutputInfo* first_output_info =
-      XRRGetOutputInfo(display_, screen_info_, first_output);
-  XRROutputInfo* second_output_info =
-      XRRGetOutputInfo(display_, screen_info_, second_output);
+  // Take the first two outputs and assign the first to
+  // the panel and the second to the external output.
+  lcd_output_ = screen_info_->outputs[0];
+  lcd_output_info_ = XRRGetOutputInfo(display_, screen_info_, lcd_output_);
 
-  if (strcmp(first_output_info->name, kLcdOutputName) == 0) {
-    lcd_output_ = first_output;
-    lcd_output_info_ = first_output_info;
-    external_output_ = second_output;
-    external_output_info_ = second_output_info;
-  } else {
-    lcd_output_ = second_output;
-    lcd_output_info_ = second_output_info;
-    external_output_ = first_output;
-    external_output_info_ = first_output_info;
+  if (screen_info_->noutput > 1) {
+    external_output_ = screen_info_->outputs[1];
+    external_output_info_ = XRRGetOutputInfo(display_,
+                                             screen_info_,
+                                             external_output_);
+ 
+    // If the second found outputs matches "LVDS*" use it for panel instead.
+    if (strncmp(external_output_info_->name,
+                kLcdOutputName,
+                strlen(kLcdOutputName)) == 0) {
+      RROutput tmp_output = lcd_output_;
+      XRROutputInfo* tmp_output_info = lcd_output_info_;
+
+      lcd_output_ = external_output_;
+      lcd_output_info_ = external_output_info_;
+
+      external_output_ = tmp_output;
+      external_output_info_ = tmp_output_info;
+    }
   }
 
   LOG(INFO) << "LCD name: " << lcd_output_info_->name << " (xid "
@@ -182,17 +212,17 @@ void MonitorReconfigure::DetermineOutputs() {
               << " (xid " << mode->id << ")";
   }
 
-  LOG(INFO) << "External name: " << external_output_info_->name
-            << " (xid " << external_output_ << ")";
-  for (int i = 0; i < external_output_info_->nmode; ++i) {
-    XRRModeInfo* mode = mode_map_[external_output_info_->modes[i]];
-    LOG(INFO) << "  Mode: " << mode->width << "x" << mode->height
-              << " (xid " << mode->id << ")";
+  if (external_output_) {
+    LOG(INFO) << "External name: " << external_output_info_->name
+              << " (xid " << external_output_ << ")";
+    for (int i = 0; i < external_output_info_->nmode; ++i) {
+      XRRModeInfo* mode = mode_map_[external_output_info_->modes[i]];
+      LOG(INFO) << "  Mode: " << mode->width << "x" << mode->height
+                << " (xid " << mode->id << ")";
+    }
   }
-}
 
-bool MonitorReconfigure::IsExternalMonitorConnected() {
-  return (external_output_info_->connection == RR_Connected);
+  return true;
 }
 
 void MonitorReconfigure::SortModesByResolution(
@@ -240,11 +270,12 @@ bool MonitorReconfigure::SetScreenResolution(
                      resolution.height,
                      resolution.width * kInchInMm / kScreenDpi,
                      resolution.height * kInchInMm / kScreenDpi);
-
   return true;
 }
 
 bool MonitorReconfigure::DisableDevice(const XRROutputInfo* output_info) {
+  if (!output_info)
+    return true;
   if (!output_info->crtc)
     return true;
   LOG(INFO) << "Disabling output " << output_info->name;

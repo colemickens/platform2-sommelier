@@ -41,7 +41,7 @@ class MonitorReconfigure {
 
  private:
   // Initializes the |lcd_output_| and |external_output_| members.
-  void DetermineOutputs();
+  bool DetermineOutputs();
 
   // Returns whether an external monitor is connected.
   bool IsExternalMonitorConnected();
