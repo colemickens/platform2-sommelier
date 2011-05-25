@@ -60,6 +60,7 @@ namespace switches {
     "install_attributes_get",
     "install_attributes_finalize",
     "pkcs11_init",
+    "pkcs11_token_status",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -82,7 +83,8 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_SET,
     ACTION_INSTALL_ATTRIBUTES_GET,
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
-    ACTION_PKCS11_INIT };
+    ACTION_PKCS11_INIT,
+    ACTION_PKCS11_TOKEN_STATUS };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
@@ -885,6 +887,15 @@ int main(int argc, char **argv) {
       action.c_str())) {
     cryptohome::Pkcs11Init init;
     return !init.Initialize();
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
+      action.c_str())) {
+    cryptohome::Pkcs11Init init;
+    if (init.IsUserTokenBroken()) {
+      printf("User token looks broken!\n");
+      return 1;
+    }
+    printf("User token looks OK!\n");
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for(int i = 0; /* loop forever */; i++) {

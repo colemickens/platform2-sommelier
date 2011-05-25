@@ -6,6 +6,8 @@
 
 #include "pkcs11_init.h"
 
+#include <string.h>
+
 #include <iostream>
 
 #include <base/logging.h>
@@ -315,7 +317,7 @@ bool Pkcs11Init::SetUserTokenFilePermissions() {
   mode_t stmapfile_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;  // ug+rw
   std::string stmapfile = StringPrintf("%s/.stmapfile", kUserTokenDir);
   if (!platform_->SetPermissions(stmapfile, stmapfile_perms)) {
-    LOG(ERROR) << "Couldn't set file permissions for " << stmapfile_perms;
+    LOG(ERROR) << "Couldn't set file permissions for " << stmapfile;
     return false;
   }
 
@@ -323,19 +325,27 @@ bool Pkcs11Init::SetUserTokenFilePermissions() {
 }
 
 bool Pkcs11Init::RemoveUserTokenDir() {
-  if (platform_->DirectoryExists(kUserTokenDir)) {
-    return platform_->DeleteFile(kUserTokenDir, true);
+  if (platform_->DirectoryExists(kUserTokenDir) &&
+      !platform_->DeleteFile(kUserTokenDir, true)) {
+    PLOG(ERROR) << "Could not delete existing user token directory: "
+                << kUserTokenDir;
+    return false;
   }
   return true;
 }
 
 bool Pkcs11Init::IsUserTokenBroken() {
-  // A non-existent token is also broken.
-  if (!platform_->FileExists(StringPrintf("%s/NVTOK.DAT", kUserTokenDir)))
+  if (!platform_->FileExists(kTpmOwnedFile)) {
+    LOG(WARNING) << "TPM is not owned, token can not be valid.";
+    return true;
+  }
+
+  // Check if our "it is initialized" special file is there.
+  if (!platform_->FileExists(kPkcs11InitializedFile))
     return true;
 
-  if (!platform_->FileExists(kTpmOwnedFile)) {
-    LOG(WARNING) << "TPM is not owned, token can't valid.";
+  if (!CheckTokenInSlot(kDefaultTpmSlotId, kDefaultLabel)) {
+    LOG(WARNING) << "Token failed basic sanity checks. Can not be valid.";
     return true;
   }
 
@@ -354,11 +364,6 @@ bool Pkcs11Init::IsUserTokenBroken() {
       LOG(WARNING) << *it;
     return true;
   }
-
-  // At this point, we are done with basic sanity checking.
-  // Now check if our "it is initialized" special file is still there.
-  if (!platform_->FileExists(kPkcs11InitializedFile))
-    return true;
 
   LOG(INFO) << "PKCS#11 token looks ok.";
   return false;
@@ -394,6 +399,7 @@ bool Pkcs11Init::SetPin(CK_SLOT_ID slot_id, CK_USER_TYPE user,
 
   rv = C_Login(session_handle, user, old_pin, old_pin_len);
   if (rv != CKR_OK) {
+    C_CloseAllSessions(slot_id);
     LOG(ERROR) << "Couldn't login using the old pin.";
     LOG(ERROR) << "C_Login returned error code 0x" << std::hex << rv;
     return false;
@@ -412,6 +418,58 @@ bool Pkcs11Init::SetPin(CK_SLOT_ID slot_id, CK_USER_TYPE user,
     return false;
   }
 
+  return true;
+}
+
+bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
+                                  const CK_CHAR* expected_label) {
+  CK_RV rv;
+  CK_SESSION_HANDLE session_handle = 0;
+  CK_SESSION_INFO session_info;
+  CK_TOKEN_INFO token_info;
+
+  rv = C_Initialize(NULL);
+  if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
+    LOG(WARNING) << "C_Initialize failed while checking token: "
+                 << std::hex << rv;
+    return false;
+  }
+
+  rv = C_OpenSession(slot_id, CKF_RW_SESSION | CKF_SERIAL_SESSION,
+                     NULL, NULL,
+                     &session_handle);
+  if (rv != CKR_OK) {
+    LOG(WARNING) << "Could not open session on slot " << slot_id
+                 << " while checking token." << std::hex << rv;
+    C_CloseAllSessions(slot_id);
+    return false;
+  }
+
+  memset(&session_info, 0, sizeof(session_info));
+  rv = C_GetSessionInfo(session_handle, &session_info);
+  if (rv != CKR_OK || session_info.slotID != slot_id) {
+    LOG(WARNING) << "Could not get session info on " << slot_id
+                 << " while checking token: " << std::hex << rv;
+    C_CloseAllSessions(slot_id);
+    return false;
+  }
+
+  rv = C_GetTokenInfo(slot_id, &token_info);
+  if (rv != CKR_OK || !(token_info.flags & CKF_TOKEN_INITIALIZED)) {
+    LOG(WARNING) << "Could not get token info on " << slot_id
+                 << " while checking token: " << std::hex << rv;
+    C_CloseAllSessions(slot_id);
+    return false;
+  }
+
+  if (strncmp(reinterpret_cast<const char*>(expected_label),
+              reinterpret_cast<const char*>(token_info.label), kMaxLabelLen)) {
+    LOG(WARNING) << "Token Label (" << token_info.label << ") does not match "
+                 << "expected label (expected_label)";
+    return false;
+  }
+
+  C_CloseAllSessions(slot_id);
   return true;
 }
 

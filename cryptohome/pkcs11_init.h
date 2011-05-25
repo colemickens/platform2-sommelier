@@ -105,6 +105,11 @@ class Pkcs11Init {
               CK_CHAR_PTR old_pin, CK_ULONG old_pin_len,
               CK_CHAR_PTR new_pin, CK_ULONG new_pin_len);
 
+  // Returns true if a token in a the given |slot_id| passes basic sanity
+  // checks. This includes checking if the |expected_label| matches
+  // the actual token label.
+  bool CheckTokenInSlot(CK_SLOT_ID slot_id, const CK_CHAR* expected_label);
+
   bool is_initialized_;
 
   gid_t pkcs11_group_id_;
