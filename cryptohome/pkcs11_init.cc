@@ -14,8 +14,6 @@
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
 
-#include "platform.h"
-
 
 namespace cryptohome {
 
@@ -67,69 +65,73 @@ void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
 }
 
 bool Pkcs11Init::Initialize() {
-  Platform platform;
   // Determine required uid and gids.
-  if (!platform.GetGroupId(kPkcs11Group, &pkcs11_group_id_)) {
+  if (!platform_->GetGroupId(kPkcs11Group, &pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't get the group ID for group " << kPkcs11Group;
     return false;
   }
-  if (!platform.GetUserId(kDefaultSharedUser, &chronos_user_id_,
+  if (!platform_->GetUserId(kDefaultSharedUser, &chronos_user_id_,
                           &chronos_group_id_)) {
     LOG(ERROR) << "Couldn't get the user/group ID for user "
                << kDefaultSharedUser;
     return false;
   }
 
-  bool pkcs11_init_required = false;
-  if (IsTokenBroken()) {
-    pkcs11_init_required = true;
-    LOG(INFO) << "Broken or uninitialized token. Removing user token dir "
-              << kUserTokenDir << " just to be safe.";
-    RemoveUserTokenDir();
-    if (!SetUpLinksAndPermissions())
-      return false;
-
-    // Setup the TPM as a token.
-    process_->Reset(0);
-    for(unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
-      process_->AddArg(kPkcsSlotCmd[i]);
-    process_->SetUid(chronos_user_id_);
-    process_->SetGid(pkcs11_group_id_);
-    if(process_->Run() != 0) {
-      LOG(ERROR) << "Couldn't set the TPM as a token.";
-      return false;
-    }
-  }
-
-  if (!SetUpPkcs11System())
+  if (!platform_->DirectoryExists(kOpencryptokiDir) &&
+      !SetupOpencryptokiDirectory())
     return false;
 
-  if (pkcs11_init_required) {
-    // Drop priviledges so that the files we create here are accessible
-    // to chronos user.
-    uid_t saved_uid = geteuid();
-    gid_t saved_gid = getegid();
-    if (setegid(pkcs11_group_id_) < 0 || seteuid(chronos_user_id_) < 0) {
-      PLOG(ERROR) << "Unable to drop priviledges to " << chronos_user_id_
-                  << ":" << pkcs11_group_id_;
-      return false;
-    }
+  if(!ConfigureTPMAsToken())
+    return false;
 
-    bool tpm_setup_successful = SetUpTPMToken();
+  // Slot daemon can only be started after the opencryptki directory has
+  // correctly been setup and the TPM is initialized to be used as the slot 0
+  // token.
+  if (!StartPkcs11Daemon())
+    return false;
 
-    if (setegid(saved_gid) < 0 || seteuid(saved_uid) < 0) {
-      PLOG(ERROR) << "Unable to restore priviledges to " << saved_uid << ":"
-                  << saved_gid;
+  if (IsUserTokenBroken()) {
+    LOG(WARNING) << "User token will be reinitialized.";
+
+    if (!SetupUserTokenDirectory())
       return false;
-    }
-    return tpm_setup_successful;
+
+    // PIN initialization needs to be performed as chronos:pkcs11.
+    uid_t saved_uid;
+    gid_t saved_gid;
+    if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
+                                 &saved_gid))
+      return false;
+    bool success = SetUserTokenPins();
+    if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
+      return false;
+    return success;
   }
+
   LOG(INFO) << "PKCS#11 is already initialized.";
   return true;
 }
 
-bool Pkcs11Init::SetUpPkcs11System() {
-  // Start the slot manager daemon (pkcsslotd).
+bool Pkcs11Init::ConfigureTPMAsToken() {
+  // Remove old token config file.
+  if (platform_->FileExists(kTokenConfigFile) &&
+      !platform_->DeleteFile(kTokenConfigFile, false))
+    return false;
+
+  // Setup the TPM as a token.
+  process_->Reset(0);
+  for(unsigned int i = 0; i < arraysize(kPkcsSlotCmd); i++)
+    process_->AddArg(kPkcsSlotCmd[i]);
+  process_->SetUid(chronos_user_id_);
+  process_->SetGid(pkcs11_group_id_);
+  if(process_->Run() != 0) {
+    LOG(ERROR) << "Couldn't set the TPM as a token.";
+    return false;
+  }
+  return true;
+}
+
+bool Pkcs11Init::StartPkcs11Daemon() {
   process_->Reset(0);
   process_->AddArg(kPkcsSlotdPath);
   // TODO(gauravsh): Figure out if pkcsslotd can be run as a different primary
@@ -143,7 +145,7 @@ bool Pkcs11Init::SetUpPkcs11System() {
   return true;
 }
 
-bool Pkcs11Init::SetUpTPMToken() {
+bool Pkcs11Init::SetUserTokenPins() {
   CK_RV rv = C_Initialize(NULL);
   if (rv != CKR_CRYPTOKI_ALREADY_INITIALIZED && rv != CKR_OK) {
     LOG(ERROR) << "C_Initialize returned error code 0x" << std::hex << rv;
@@ -193,10 +195,9 @@ bool Pkcs11Init::SetUpTPMToken() {
   return SetInitialized(true);
 }
 
-bool Pkcs11Init::SetUpLinksAndPermissions() {
-  Platform platform;
+bool Pkcs11Init::SetupOpencryptokiDirectory() {
   std::string opencryptoki_tpm = StringPrintf("%s/tpm", kOpencryptokiDir);
-  if (!platform.CreateDirectory(opencryptoki_tpm)) {
+  if (!platform_->CreateDirectory(opencryptoki_tpm)) {
     LOG(ERROR) << "Couldn't create openCryptoki token directory "
                << opencryptoki_tpm;
     return false;
@@ -205,50 +206,58 @@ bool Pkcs11Init::SetUpLinksAndPermissions() {
   // Ensure symbolic links for the token directories are correctly setup.
   // TODO(gauravsh): (crosbug.com/7284) Patch openCryptoki so that this is no
   // longer necessary.
-  if (!platform.Symlink(std::string(kUserTokenDir),
-                        std::string(kUserTokenLink)))
+  if (!platform_->Symlink(std::string(kUserTokenDir),
+                          std::string(kUserTokenLink)))
     return false;
 
-  if (!platform.Symlink(std::string(kRootTokenDir),
-                        std::string(kRootTokenLink)))
+  if (!platform_->Symlink(std::string(kRootTokenDir),
+                          std::string(kRootTokenLink)))
     return false;
 
-  // Remove old token configuration file.
-  if (platform.FileExists(kTokenConfigFile) &&
-      !platform.DeleteFile(kTokenConfigFile, false))
-    return false;
-
-  // Create token directory, since initialization neither creates or populates
-  // it.
-  std::string token_obj_dir = StringPrintf("%s/TOK_OBJ", kUserTokenDir);
-  if (!platform.DirectoryExists(token_obj_dir) &&
-      !platform.CreateDirectory(token_obj_dir))
-    return false;
-
-  // Set correct permissions on opencryptoki directory (root:$PKCS11_GROUP_ID).
-  if (!platform.SetOwnershipRecursive(std::string(kOpencryptokiDir),
-                                      static_cast<uid_t>(0),  // Root uid is 0.
-                                      pkcs11_group_id_)) {
+  // Set correct ownership on the directory (root:$PKCS11_GROUP_ID).
+  if (!platform_->SetOwnership(std::string(kOpencryptokiDir),
+                               static_cast<uid_t>(0),  // Root uid is 0.
+                               pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't set file ownership for " << kOpencryptokiDir;
     return false;
   }
-  // Make the opencryptoki directory group writable.
-  mode_t opencryptoki_dir_perms = S_IRUSR | S_IWUSR | S_IXUSR |
-      S_IRGRP | S_IWGRP | S_IXGRP;   // ug + rwx
-  if (!platform.SetPermissions(std::string(kOpencryptokiDir),
-                               opencryptoki_dir_perms)) {
-    LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
-    return false;
-  }
-  if (!platform.SetPermissions(opencryptoki_tpm,
-                               opencryptoki_dir_perms)) {
-    LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
+
+  if (!platform_->SetOwnership(opencryptoki_tpm,
+                               static_cast<uid_t>(0),  // Root uid is 0.
+                               pkcs11_group_id_)) {
+    LOG(ERROR) << "Couldn't set file ownership for " << kOpencryptokiDir;
     return false;
   }
 
+  // Make the directory group writable.
+  mode_t opencryptoki_dir_perms = S_IRUSR | S_IWUSR | S_IXUSR |
+      S_IRGRP | S_IWGRP | S_IXGRP;   // ug + rwx
+  if (!platform_->SetPermissions(std::string(kOpencryptokiDir),
+                                 opencryptoki_dir_perms)) {
+    LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
+    return false;
+  }
+  if (!platform_->SetPermissions(opencryptoki_tpm,
+                                 opencryptoki_dir_perms)) {
+    LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
+    return false;
+  }
+  return true;
+}
+
+bool Pkcs11Init::SetupUserTokenDirectory() {
+  LOG(INFO) << "Removing user token dir: " << kUserTokenDir;
+  RemoveUserTokenDir();
+  // Create token directory, since initialization neither creates or populates
+  // it.
+  std::string token_obj_dir = StringPrintf("%s/TOK_OBJ", kUserTokenDir);
+  if (!platform_->DirectoryExists(token_obj_dir) &&
+      !platform_->CreateDirectory(token_obj_dir))
+    return false;
+
   // Setup permissions on the user token directory to ensure that users can
   // access their own data.
-  if (!platform.SetOwnershipRecursive(std::string(kUserTokenDir),
+  if (!platform_->SetOwnershipRecursive(std::string(kUserTokenDir),
                                       chronos_user_id_,
                                       pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't set file ownership for " << kUserTokenDir;
@@ -258,26 +267,32 @@ bool Pkcs11Init::SetUpLinksAndPermissions() {
   return true;
 }
 
-bool Pkcs11Init::IsTokenBroken() {
-  Platform platform;
+bool Pkcs11Init::RemoveUserTokenDir() {
+  if (platform_->DirectoryExists(kUserTokenDir)) {
+    return platform_->DeleteFile(kUserTokenDir, true);
+  }
+  return true;
+}
+
+bool Pkcs11Init::IsUserTokenBroken() {
   // A non-existent token is also broken.
-  if (!platform.FileExists(StringPrintf("%s/NVTOK.DAT", kUserTokenDir)))
+  if (!platform_->FileExists(StringPrintf("%s/NVTOK.DAT", kUserTokenDir)))
     return true;
 
-  if (!platform.FileExists(kTpmOwnedFile)) {
+  if (!platform_->FileExists(kTpmOwnedFile)) {
     LOG(WARNING) << "TPM is not owned, token can't valid.";
     return true;
   }
 
-  if (!platform.FileExists(StringPrintf("%s/PRIVATE_ROOT_KEY.pem",
+  if (!platform_->FileExists(StringPrintf("%s/PRIVATE_ROOT_KEY.pem",
                                         kUserTokenDir)) ||
-      !platform.FileExists(StringPrintf("%s/TOK_OBJ/70000000",
+      !platform_->FileExists(StringPrintf("%s/TOK_OBJ/70000000",
                                         kUserTokenDir))) {
     LOG(WARNING) << "PKCS#11 token is missing some files. Possibly not yet "
                  << "initialized? TOK_OBJ contents were: ";
     // Log the contents of what was observed in exists in the TOK_OBJ directory.
     std::vector<std::string> tok_file_list;
-    platform.EnumerateFiles(StringPrintf("%s/TOK_OBJ/",  kUserTokenDir), true,
+    platform_->EnumerateFiles(StringPrintf("%s/TOK_OBJ/",  kUserTokenDir), true,
                             &tok_file_list);
     for (std::vector<std::string>::iterator it = tok_file_list.begin();
          it != tok_file_list.end(); ++it)
@@ -287,32 +302,23 @@ bool Pkcs11Init::IsTokenBroken() {
 
   // At this point, we are done with basic sanity checking.
   // Now check if our "it is initialized" special file is still there.
-  if (!platform.FileExists(kPkcs11InitializedFile))
+  if (!platform_->FileExists(kPkcs11InitializedFile))
     return true;
 
   LOG(INFO) << "PKCS#11 token looks ok.";
   return false;
 }
 
-bool Pkcs11Init::RemoveUserTokenDir() {
-  Platform platform;
-  if (platform.DirectoryExists(kUserTokenDir)) {
-    return platform.DeleteFile(kUserTokenDir, true);
-  }
-  return true;
-}
-
 bool Pkcs11Init::SetInitialized(bool status) {
-  Platform platform;
   if (!status) {
     // Remove initialization state.
-    platform.DeleteFile(kPkcs11InitializedFile, false);
+    platform_->DeleteFile(kPkcs11InitializedFile, false);
     is_initialized_ = false;
     return true;
   }
 
   chromeos::Blob empty_blob;
-  if (!platform.WriteFile(kPkcs11InitializedFile, empty_blob))
+  if (!platform_->WriteFile(kPkcs11InitializedFile, empty_blob))
     return false;
   is_initialized_ = true;
   return true;

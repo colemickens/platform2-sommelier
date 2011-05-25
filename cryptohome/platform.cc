@@ -535,4 +535,18 @@ bool Platform::EnumerateFiles(const std::string& path,
   return true;
 }
 
+bool Platform::SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
+                            gid_t* saved_gid) {
+  if (saved_uid)
+    *saved_uid = geteuid();
+  if (saved_gid)
+    *saved_gid = getegid();
+  if (setegid(gid) < 0 || seteuid(uid) < 0) {
+    PLOG(ERROR) << "Unable to set priviledges to " << uid
+                << ":" << gid;
+    return false;
+  }
+  return true;
+}
+
 } // namespace cryptohome

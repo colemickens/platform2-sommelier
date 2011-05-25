@@ -17,12 +17,16 @@
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
 
+#include "platform.h"
+
 namespace cryptohome {
 
 class Pkcs11Init {
  public:
   Pkcs11Init() : is_initialized_(false), pkcs11_group_id_(0),
                  chronos_user_id_(0), chronos_group_id_(0),
+                 default_platform_(new Platform),
+                 platform_(default_platform_.get()),
                  default_process_(new chromeos::ProcessImpl),
                  process_(default_process_.get()) { }
   virtual ~Pkcs11Init() { }
@@ -34,24 +38,31 @@ class Pkcs11Init {
   // necessary service daemons, and initializing the tokens.
   virtual bool Initialize();
 
-  // Start the PKCS#11 service daemons.
-  virtual bool SetUpPkcs11System();
+  // Configures the TPM as a PKCS#11 token on slot 0.
+  virtual bool ConfigureTPMAsToken();
 
-  // Initialize a PKCS#11 token and set default SO and User PINs. Will return
-  // false if the token was found to be already initialized.
-  virtual bool SetUpTPMToken();
+  // Start the PKCS#11 slot daemon.
+  virtual bool StartPkcs11Daemon();
 
-  // Sets the correct symlinks to the user's opencryptoki token dir. Also,
-  // sets permissions correctly for all the files and directory corresponding
-  // to the token.
-  virtual bool SetUpLinksAndPermissions();
+  // Configure the TPM token with our default SO and User PINs. Will return
+  // false on failure.
+  virtual bool SetUserTokenPins();
 
-  // Check if the PKCS#11 user token is valid.
-  virtual bool IsTokenBroken();
+  // Sets up the necessary opencryptoki directories (/var/lib/opencryptoki/
+  // {,tpm}), symlinks (under /var/lib/opencryptoki/tpm) and sets the
+  // appropriate permissions.
+  virtual bool SetupOpencryptokiDirectory();
 
   // Remove the user's token dir. Useful when token directory is found to be
   // corrupted.
   virtual bool RemoveUserTokenDir();
+
+  // Sets up the necessary user token directories (in /home/chronos/user/.tpm)
+  // and sets the appropriate permissions.
+  virtual bool SetupUserTokenDirectory();
+
+  // Check if the User's PKCS#11 token is valid.
+  virtual bool IsUserTokenBroken();
 
   virtual bool is_initialized() const { return is_initialized_; }
 
@@ -92,6 +103,9 @@ class Pkcs11Init {
   gid_t pkcs11_group_id_;
   uid_t chronos_user_id_;
   gid_t chronos_group_id_;
+
+  scoped_ptr<Platform> default_platform_;
+  Platform* platform_;
 
   scoped_ptr<chromeos::ProcessImpl> default_process_;
   chromeos::ProcessImpl* process_;
