@@ -47,15 +47,18 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          Device *device);
+          Device *device,
+          const std::string& name);
   virtual ~Service();
   virtual void Connect() = 0;
   virtual void Disconnect() = 0;
-  const std::string& name() { return name_; }
-  void set_name(const std::string& name) { name_ = name; }
+
+  // Returns a string that is guaranteed to uniquely identify this
+  // Service instance.
+  virtual const std::string& UniqueName() { return name_; }
 
  private:
-  std::string name_;
+  const std::string name_;
   bool available_;
   bool configured_;
   bool auto_connect_;

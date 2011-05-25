@@ -17,21 +17,14 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 
-using ::testing::_;
-using ::testing::Return;
-
 class MockDevice : public Device {
  public:
-  // A constructor for the Device object
   MockDevice(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
-             const std::string& link_name,
-             int interface_index)
-      : Device(control_interface, dispatcher, NULL, link_name,
-               interface_index) {
-    ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
-  }
-  virtual ~MockDevice() {}
+             Manager *manager,
+             const std::string &link_name,
+             int interface_index);
+  virtual ~MockDevice();
 
   MOCK_METHOD0(Start, void(void));
   MOCK_METHOD0(Stop, void(void));

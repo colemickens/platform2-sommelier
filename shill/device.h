@@ -43,7 +43,6 @@ class Device : public base::RefCounted<Device> {
          const std::string& link_name,
          int interface_index);
   virtual ~Device();
-  const std::string& Name() const;
 
   virtual void Start();
   virtual void Stop();
@@ -51,6 +50,10 @@ class Device : public base::RefCounted<Device> {
   virtual bool TechnologyIs(const Technology type) = 0;
   virtual void LinkEvent(unsigned flags, unsigned change);
   virtual void Scan();
+
+  // Returns a string that is guaranteed to uniquely identify this
+  // Device instance.
+  const std::string& UniqueName() const;
 
  protected:
   std::vector<scoped_refptr<Service> > services_;

@@ -100,7 +100,7 @@ void Manager::FilterByTechnology(Device::Technology tech,
 Service* Manager::FindService(const std::string& name) {
   vector<scoped_refptr<Service> >::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (name == (*it)->name())
+    if (name == (*it)->UniqueName())
       return it->get();
   }
 }

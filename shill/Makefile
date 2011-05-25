@@ -72,6 +72,8 @@ TEST_OBJS = \
 	ipconfig_unittest.o \
 	manager_unittest.o \
 	mock_control.o \
+	mock_device.o \
+	mock_service.o \
 	shill_unittest.o \
 	testrunner.o
 

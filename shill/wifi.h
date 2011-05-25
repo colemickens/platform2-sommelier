@@ -32,8 +32,7 @@ class WiFi : public Device {
   // called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(const ::DBus::Path &BSS,
-                const std::map<std::string, ::DBus::Variant>
-                &properties);
+                const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
 
  private:

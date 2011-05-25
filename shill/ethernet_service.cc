@@ -25,8 +25,9 @@ using std::string;
 namespace shill {
 EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
-                                 Ethernet *device)
-    : Service(control_interface, dispatcher, device),
+                                 Ethernet *device,
+                                 const std::string& name)
+    : Service(control_interface, dispatcher, device, name),
       ethernet_(device) {
 }
 

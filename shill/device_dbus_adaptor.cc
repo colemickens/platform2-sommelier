@@ -8,19 +8,20 @@
 #include <map>
 #include <string>
 
+#include "shill/device.h"
+
 using std::map;
 using std::string;
 
 namespace shill {
 
-// TODO(cmasone): Figure out if we should be trying to own sub-interfaces.
 // static
-const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;  // ".Device";
+const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
-const char DeviceDBusAdaptor::kPath[] = SHILL_PATH "/Device";
+const char DeviceDBusAdaptor::kPath[] = "/device/";
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection& conn, Device *device)
-    : DBusAdaptor(conn, string(kPath) + string("/") + device->Name()),
+    : DBusAdaptor(conn, kPath + device->UniqueName()),
       device_(device) {
 }
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {}

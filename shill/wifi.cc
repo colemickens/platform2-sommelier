@@ -112,10 +112,13 @@ WiFi::WiFi(ControlInterface *control_interface,
            Manager *manager,
            const std::string& link_name,
            int interface_index)
-    : Device(control_interface, dispatcher, manager, link_name,
+    : Device(control_interface,
+             dispatcher,
+             manager,
+             link_name,
              interface_index),
       dbus_(DBus::Connection::SystemBus()), scan_pending_(false) {
-  VLOG(2) << "WiFi device " << link_name << " initialized.";
+  VLOG(2) << "WiFi device " << link_name_ << " initialized.";
 }
 
 WiFi::~WiFi() {

@@ -43,13 +43,19 @@ class ManagerTest : public Test {
 };
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  scoped_refptr<MockDevice> mock_device(
-      new NiceMock<MockDevice>(&control_, &dispatcher_, "null0", -1));
+  scoped_refptr<MockDevice> mock_device(new NiceMock<MockDevice>(&control_,
+                                                                 &dispatcher_,
+                                                                 &manager_,
+                                                                 "null0",
+                                                                 -1));
   ON_CALL(*mock_device.get(), TechnologyIs(Device::kEthernet))
       .WillByDefault(Return(true));
 
-  scoped_refptr<MockDevice> mock_device2(
-      new NiceMock<MockDevice>(&control_, &dispatcher_, "null1", -1));
+  scoped_refptr<MockDevice> mock_device2(new NiceMock<MockDevice>(&control_,
+                                                                  &dispatcher_,
+                                                                  &manager_,
+                                                                  "null1",
+                                                                  -1));
   ON_CALL(*mock_device2.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
 
@@ -61,13 +67,19 @@ TEST_F(ManagerTest, DeviceRegistration) {
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  scoped_refptr<MockDevice> mock_device(
-      new NiceMock<MockDevice>(&control_, &dispatcher_, "null2", -1));
+  scoped_refptr<MockDevice> mock_device(new NiceMock<MockDevice>(&control_,
+                                                                 &dispatcher_,
+                                                                 &manager_,
+                                                                 "null2",
+                                                                 -1));
   ON_CALL(*mock_device.get(), TechnologyIs(Device::kEthernet))
       .WillByDefault(Return(true));
 
-  scoped_refptr<MockDevice> mock_device2(
-      new NiceMock<MockDevice>(&control_, &dispatcher_, "null2", -1));
+  scoped_refptr<MockDevice> mock_device2(new NiceMock<MockDevice>(&control_,
+                                                                  &dispatcher_,
+                                                                  &manager_,
+                                                                  "null2",
+                                                                  -1));
   ON_CALL(*mock_device2.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
 
@@ -85,17 +97,24 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
-  scoped_refptr<MockDevice> device(new MockDevice(&control_, &dispatcher_,
-                                                  "null3", -1));
+  scoped_refptr<MockDevice> device(new MockDevice(&control_,
+                                                  &dispatcher_,
+                                                  &manager_,
+                                                  "null3",
+                                                  -1));
   const char kService1[] = "service1";
   const char kService2[] = "wifi_service2";
   scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(&control_, &dispatcher_, device.get()));
-  mock_service->set_name(kService1);
+      new NiceMock<MockService>(&control_,
+                                &dispatcher_,
+                                device.get(),
+                                kService1));
 
   scoped_refptr<MockService> mock_service2(
-      new NiceMock<MockService>(&control_, &dispatcher_, device.get()));
-  mock_service2->set_name(kService2);
+      new NiceMock<MockService>(&control_,
+                                &dispatcher_,
+                                device.get(),
+                                kService2));
 
   manager_.RegisterService(mock_service.get());
   manager_.RegisterService(mock_service2.get());

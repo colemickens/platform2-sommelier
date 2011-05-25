@@ -48,7 +48,7 @@ void Device::Stop() {
   adaptor_->UpdateEnabled();
 }
 
-const std::string& Device::Name() const {
+const std::string& Device::UniqueName() const {
   // TODO(pstew): link_name is only run-time unique and won't persist
   return link_name_;
 }

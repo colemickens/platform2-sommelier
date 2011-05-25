@@ -21,7 +21,7 @@ IPConfig::~IPConfig() {
 }
 
 const string &IPConfig::GetDeviceName() const {
-  return device().Name();
+  return device().UniqueName();
 }
 
 }  // namespace shill

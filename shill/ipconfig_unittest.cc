@@ -12,7 +12,7 @@ using ::testing::Test;
 class IPConfigTest : public Test {
  public:
   IPConfigTest() :
-      device_(new MockDevice(&control_interface_, NULL, "testname", 0)) {}
+      device_(new MockDevice(&control_interface_, NULL, NULL, "testname", 0)) {}
 
  protected:
   MockControl control_interface_;

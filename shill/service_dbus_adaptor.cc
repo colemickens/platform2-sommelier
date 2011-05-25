@@ -7,20 +7,20 @@
 #include <map>
 #include <string>
 
+#include "shill/service.h"
+
 using std::map;
 using std::string;
 
 namespace shill {
 
-// TODO(cmasone): Figure out if we should be trying to own sub-interfaces.
 // static
 const char ServiceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// ".Service";
 // static
-const char ServiceDBusAdaptor::kPath[] = SHILL_PATH "/Service";
+const char ServiceDBusAdaptor::kPath[] = "/service/";
 
 ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection& conn, Service *service)
-    : DBusAdaptor(conn, kPath),
+    : DBusAdaptor(conn, kPath + service->UniqueName()),
       service_(service) {}
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {}
 

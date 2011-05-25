@@ -15,17 +15,14 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 
-using ::testing::_;
-using ::testing::Return;
-
 class MockService : public Service {
  public:
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              Device *interface)
-      : Service(control_interface, dispatcher, interface) { }
-  virtual ~MockService() {}
+              Device *interface,
+              const std::string& name);
+  virtual ~MockService();
 
   MOCK_METHOD0(Connect, void(void));
   MOCK_METHOD0(Disconnect, void(void));

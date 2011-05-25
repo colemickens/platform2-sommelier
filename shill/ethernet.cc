@@ -21,18 +21,26 @@
 #include "shill/ethernet_service.h"
 #include "shill/rtnl_handler.h"
 
+using std::string;
+
 namespace shill {
 Ethernet::Ethernet(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Manager *manager,
                    const std::string& link_name,
                    int interface_index)
-    : Device(control_interface, dispatcher, manager, link_name,
+    : Device(control_interface,
+             dispatcher,
+             manager,
+             link_name,
              interface_index),
-      service_(new EthernetService(control_interface, dispatcher, this)),
+      service_(new EthernetService(control_interface,
+                                   dispatcher,
+                                   this,
+                                   "service-" + link_name)),
       link_up_(false),
       service_registered_(false) {
-  VLOG(2) << "Ethernet device " << link_name << " initialized.";
+  VLOG(2) << "Ethernet device " << link_name_ << " initialized.";
 }
 
 Ethernet::~Ethernet() {

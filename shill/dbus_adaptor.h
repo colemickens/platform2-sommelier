@@ -19,7 +19,7 @@ namespace shill {
 // Superclass for all DBus-backed Adaptor objects
 class DBusAdaptor : public DBus::ObjectAdaptor {
  public:
-  DBusAdaptor(DBus::Connection& conn, const DBus::Path& object_path)
+  DBusAdaptor(DBus::Connection& conn, const std::string& object_path)
       : DBus::ObjectAdaptor(conn, object_path) {
   }
   virtual ~DBusAdaptor() {}
