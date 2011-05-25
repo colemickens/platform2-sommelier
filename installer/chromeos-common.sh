@@ -439,6 +439,15 @@ list_usb_disks() {
   done
 }
 
+list_mmc_disks() {
+  local mmc
+  for mmc in /sys/block/mmcblk*; do
+    if readlink -f ${mmc}/device | grep -q mmc; then
+      echo ${mmc##*/}
+    fi
+  done
+}
+
 get_disk_info() {
   # look for a "given" file somewhere in the path upwards from the device
   local dev_path=/sys/block/${1}/device
