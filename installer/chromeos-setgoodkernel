@@ -14,19 +14,11 @@ else
   local sudo=sudo
 fi
 
-# Detect and work around lack of guid from uboot.
-# TODO(clchiou): fix, see crosbug.com/15268
-if [ "$(uname -m)" = "armv7l" ]; then
-  rootfsnum=$(get_partition_number $(rootdev -s))
-  base_dev=$(get_block_dev_from_partition_dev $(rootdev -s))
-  kern_dev=$(make_partition_dev ${base_dev} $(( $rootfsnum - 1 )) )
-else
-  # Extract the kernel partition's UniqueGuid from the command line.
-  guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+# Extract the kernel partition's UniqueGuid from the command line.
+guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
 
-  # Look through all the known devices to find that one partition.
-  kern_dev=$($sudo cgpt find -1 -u $guid)
-fi
+# Look through all the known devices to find that one partition.
+kern_dev=$($sudo cgpt find -1 -u $guid)
 
 # Split the kernel device in the base device and paritition number.
 base_dev=$(get_block_dev_from_partition_dev $kern_dev)
