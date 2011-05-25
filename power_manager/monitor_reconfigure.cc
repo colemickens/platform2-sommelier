@@ -188,7 +188,7 @@ bool MonitorReconfigure::DetermineOutputs() {
     external_output_info_ = XRRGetOutputInfo(display_,
                                              screen_info_,
                                              external_output_);
- 
+
     // If the second found outputs matches "LVDS*" use it for panel instead.
     if (strncmp(external_output_info_->name,
                 kLcdOutputName,
