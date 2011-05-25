@@ -1,16 +1,16 @@
 #!/bin/sh
 
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
 # This script executes each line in a flat file of commands.
-# The first parameter to this script needs to be either 'feedback' or
+# The first parameter to this script needs to be either 'feedback', 'network' or
 # 'sysinfo'; this indicates the context the script was called in. This value
 # will be set in the environment variable SYSLOG_CONTEXT which can be picked
 # up by the scripts that are run from the list file. The list files need to
-# have the extension .lst
-#
+# have the extension .<context>.lst. We use .sysinfo.lst for feedback context,
+# too.
 #
 # Goes through a file line by line ignoring '#' style comments
 # and whitespace.
@@ -31,18 +31,15 @@
 #       and can be examined by any script
 #  $2 - The directory to pick up the scripts from (defaults to ../etc)
 #
+
 simple_line_executor() {
+  # We process only lines where there exists non-space charachter before # (or
+  # the end of the line).
+  filter='^[^#]*[^#[:space:]]'
+
   # Do not exit in case a script wasn't found or threw an error.
-  while i=`line`
+  grep -E ${filter} ${1} 2> /dev/null | while i=`line`
   do
-    if [ ${#i} -eq 0 ]; then
-      continue
-    fi
-
-   if expr "${i}" : '[ \t]*#' >/dev/null; then
-     continue
-   fi
-
     # Split the line into a key and value.
     local key="$(echo ${i} | awk -F, '{ print $1 }')"
     local value="$(echo ${i} | awk -F, '{ print $2 }')"
@@ -62,13 +59,14 @@ simple_line_executor() {
     fi
     echo '"""'
 
-  done < ${1}
+  done
 }
 
 SYSLOG_CONTEXT=${1}
 if [ "${SYSLOG_CONTEXT}" = "feedback" ] ; then
   logger -t user_feedback "User invoked user feedback"
-elif [ "${SYSLOG_CONTEXT}" != "sysinfo" ]; then
+elif [ "${SYSLOG_CONTEXT}" != "sysinfo" && \
+       "${SYSLOG_CONTEXT}" != "network" ]; then
   SYSLOG_CONTEXT="sysinfo"
 fi
 export SYSLOG_CONTEXT
@@ -79,12 +77,17 @@ else
   SCRIPTS_DIR="$(dirname "$0")/../etc"
 fi
 
-# Dump the key-val pairs from lsb-release.
-cat /etc/lsb-release
+local lst_files
+if [ "${SYSLOG_CONTEXT}" = "network" ]; then
+  lst_files=`ls ${SCRIPTS_DIR}/*.network.lst`
+else
+  # Dump the key-val pairs from lsb-release.
+  cat /etc/lsb-release
+  lst_files=`ls ${SCRIPTS_DIR}/*.sysinfo.lst`
+fi
 
 # Run the listing scripts
-for file in $(ls ${SCRIPTS_DIR}/*.lst)
+for file in ${lst_files}
 do
   simple_line_executor ${file}
 done
-
