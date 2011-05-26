@@ -15,6 +15,8 @@ xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
 # terminates once X is ready.
 ( trap 'exit 0' USR1 ; xstart.sh ${XAUTH_FILE} & wait ) &
 
+# File to store firmware information derived from crossystem.
+BIOS_INFO_FILE="/var/log/bios_info.txt"
 
 export USER=chronos
 export DATA_DIR=/home/${USER}
@@ -140,41 +142,63 @@ rm -f ${DATA_DIR}/SingletonSocket
 # Need to do this before user can request in chrome
 # moved here to keep out of critical boot path
 
-# Function for showing switch info (CHSW in Firmware High-Level Spec)
+# Function for showing switch info as reported by crossystem
+#
+# $1 - crossystem parameter
+# $2 - string to return if the value is 0
+# $3 - string to return if the value is 1
+#
+# if $(crossystem $1) reports something else - return 'failure'
 swstate () {
-  if [ $(($1 & $2)) -ne 0 ]; then
-    echo "$3 $4"; else echo "$3 $5"
-  fi
+  case "$(crossystem $1)" in
+    (0) echo $2;;
+    (1) echo $3;;
+    (*) echo 'failure'
+  esac
 }
 
-# Function for showing boot reason (BINF in Firmware High-Level Spec)
+# Function for showing boot reason as reported by crossystem.
 bootreason () {
-  echo -n "Boot reason ($1): "
-  case $1 in
-  1) echo "Normal";;
-  2) echo "Developer mode";;
-  3) echo "Recovery, button pressed";;
-  4) echo "Recovery, from developer mode";;
-  5) echo "Recovery, no valid RW firmware";;
-  6) echo "Recovery, no OS";;
-  7) echo "Recovery, bad kernel signature";;
-  8) echo "Recovery, requested by OS";;
-  9) echo "OS-initiated s3 debug mode";;
-  10) echo "S3 resume failed";;
-  11) echo "Recovery, TPM error";;
+  local reason=$(crossystem 'recovery_reason')
+
+  echo -n "($reason): "
+  case "$reason" in
+    (0)   echo "$(crossystem 'mainfw_type')";;
+    (1)   echo 'Legacy firmware recovery request';;
+    (2)   echo 'User pressed recovery button';;
+    (3)   echo 'Both RW firmware sections invalid';;
+    (4)   echo 'S3 resume failed';;
+    (5)   echo 'RO firmware reported TPM error';;
+    (6)   echo 'Verified boot shared data initialization error';;
+    (7)   echo 'S3Resume() test error';;
+    (8)   echo 'LoadFirmwareSetup() test error';;
+    (8)   echo 'LoadFirmware() test error';;
+    (63)  echo 'Unknown RO firmware error';;
+    (65)  echo 'User requested recovery at dev warning screen';;
+    (66)  echo 'No valid kernel detected';;
+    (67)  echo 'Kernel failed signature check';;
+    (68)  echo 'RW firmware reported TPM error';;
+    (69)  echo 'Developer RW firmware with the developer switch off';;
+    (70)  echo 'RW firmware shared data error';;
+    (71)  echo 'LoadKernel() test error';;
+    (127) echo 'Unknown RW firmware error';;
+    (129) echo 'DM verity failure';;
+    (191) echo 'Unknown kernel error';;
+    (193) echo 'Recovery mode test from user-mode';;
+    (255) echo 'Unknown user mode error';;
   esac
 }
 
 if [ -x /usr/sbin/mosys ]; then
-  # If a command is not available on a platform, mosys will fail with
+  # If a sub-command is not available on a platform, mosys will fail with
   # a non-zero exit code (EXIT_FAILURE) and print the help menu. For example,
   # this will happen if a "mosys smbios" sub-command is run on ARM since ARM
   # platforms do not support SMBIOS. If mosys fails, delete the output file to
   # avoid placing non-relevent or confusing output in /var/log.
 
-  mosys -l smbios info bios > /var/log/bios_info.txt
+  mosys -l smbios info bios > ${BIOS_INFO_FILE}
   if [ $? -ne 0 ]; then
-    rm -f /var/log/bios_info.txt
+    rm -f ${BIOS_INFO_FILE}
   fi
 
   echo "ec info since last boot" > /var/log/ec_info.txt
@@ -182,25 +206,21 @@ if [ -x /usr/sbin/mosys ]; then
   if [ $? -ne 0 ]; then
     rm -f /var/log/ec_info.txt
   fi
+else
+  echo "version              | $(crossystem ro_fwid)" > ${BIOS_INFO_FILE}
 fi
 
-if [ -f /sys/devices/platform/chromeos_acpi/CHSW ]; then
-  # still some firmware out there without the read-only version
-  if [ -f /sys/devices/platform/chromeos_acpi/FRID ]; then
-     echo "ro bios version      |" \
-          `cat /sys/devices/platform/chromeos_acpi/FRID`
-  fi
-  chsw=`cat /sys/devices/platform/chromeos_acpi/CHSW`
+while true; do  # Use while/break to have the entire block dumped into a file.
+  echo "ro bios version      | $(crossystem ro_fwid)"
   echo "Boot switch status:"
-  swstate $chsw 2 "  Recovery button" pressed released
-  swstate $chsw 32 "  Developer mode:" selected "not enabled"
-  swstate $chsw 512 "  RO firmware:" writeable protected
-  bootreason `cat /sys/devices/platform/chromeos_acpi/BINF.0`
-  echo "Boot firmware " `cat /sys/devices/platform/chromeos_acpi/BINF.1`
-  echo "Active EC code: " `cat /sys/devices/platform/chromeos_acpi/BINF.2`
-else
-  echo "Non-Chrome OS firmware: no chromeos_acpi switch device was found"
-fi >> /var/log/bios_info.txt
+  echo "  Recovery button: $(swstate 'recoverysw_boot' 'released' 'pressed')"
+  echo "  Developer mode:  $(swstate 'devsw_boot' 'not enabled' 'selected')"
+  echo "  RO firmware:     $(swstate 'wpsw_boot' 'protected' 'writeable')"
+  echo "Boot reason $(bootreason)"
+  echo "Boot firmware: $(crossystem 'mainfw_act')"
+  echo "Active EC code: $(crossystem 'ecfw_act')"
+  break
+done >> ${BIOS_INFO_FILE}
 
 # Set an environment variable to prevent Flash asserts from crashing the plugin
 # process.
