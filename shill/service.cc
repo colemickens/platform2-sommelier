@@ -30,8 +30,6 @@ Service::Service(ControlInterface *control_interface,
   VLOG(2) << "Service initialized.";
 }
 
-Service::~Service() {
-  delete(adaptor_);
-}
+Service::~Service() {}
 
 }  // namespace shill

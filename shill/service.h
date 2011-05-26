@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 
 namespace shill {
 
@@ -62,7 +63,7 @@ class Service : public base::RefCounted<Service> {
   Connection *connection_;
   Device *device_;
   Endpoint *endpoint_;
-  ServiceAdaptorInterface *adaptor_;
+  scoped_ptr<ServiceAdaptorInterface> adaptor_;
   friend class ServiceAdaptorInterface;
 };
 
