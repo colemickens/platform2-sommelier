@@ -14,6 +14,7 @@
 #include "shill/device_info.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/rtnl_handler.h"
 
 namespace shill {
 using ::testing::Test;
@@ -23,15 +24,14 @@ using ::testing::NiceMock;
 class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
-    : manager_(&control_interface_, &dispatcher_),
-      device_info_(&control_interface_, &dispatcher_, &manager_),
-      factory_(this) {
+      : manager_(&control_interface_, &dispatcher_),
+        device_info_(&control_interface_, &dispatcher_, &manager_),
+        factory_(this) {
   }
-  int DeviceInfoFlags() { return device_info_.request_flags_; }
   base::hash_map<int, scoped_refptr<Device> > *DeviceInfoDevices() {
     return &device_info_.devices_;
   }
-protected:
+ protected:
   MockControl control_interface_;
   Manager manager_;
   DeviceInfo device_info_;
@@ -42,22 +42,48 @@ protected:
 TEST_F(DeviceInfoTest, DeviceEnumeration) {
   // TODO(cmasone): Make this unit test use message loop primitives.
 
-  // Start our own private device_info and make sure request flags clear
+  // Start our own private device_info
   device_info_.Start();
-  EXPECT_NE(DeviceInfoFlags(), 0);
+  RTNLHandler::GetInstance()->Start(&dispatcher_);
+
+  // Peek in at the map of devices
+  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
 
   // Crank the glib main loop a few times
   for (int main_loop_count = 0;
-       main_loop_count < 6 && DeviceInfoFlags() != 0;
+       main_loop_count < 6 && device_map->size() == 0;
        ++main_loop_count)
     g_main_context_iteration(NULL, TRUE);
 
-  EXPECT_EQ(DeviceInfoFlags(), 0);
-
   // The test machine must have a device or two...
-  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
   EXPECT_GT(device_map->size(), 0);
 
+  device_info_.Stop();
+  RTNLHandler::GetInstance()->Stop();
+  // TODO(pstew): Create fake devices (simulators?) so we can do hard tests
+}
+
+TEST_F(DeviceInfoTest, DeviceEnumerationReverse) {
+  // TODO(cmasone): Make this unit test use message loop primitives.
+
+  // Start our own private device_info _after_ RTNLHandler has been started
+  RTNLHandler::GetInstance()->Start(&dispatcher_);
+  device_info_.Start();
+
+  // Peek in at the map of devices
+  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
+
+  // Crank the glib main loop a few times
+  for (int main_loop_count = 0;
+       main_loop_count < 6 && device_map->size() == 0;
+       ++main_loop_count)
+    g_main_context_iteration(NULL, TRUE);
+
+  // The test machine must have a device or two...
+  EXPECT_GT(device_map->size(), 0);
+
+  RTNLHandler::GetInstance()->Stop();
+  device_info_.Stop();
   // TODO(pstew): Create fake devices (simulators?) so we can do hard tests
 }
 

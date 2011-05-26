@@ -25,8 +25,11 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/device_stub.h"
 #include "shill/ethernet.h"
 #include "shill/manager.h"
+#include "shill/rtnl_handler.h"
+#include "shill/rtnl_listener.h"
 #include "shill/service.h"
 #include "shill/wifi.h"
 
@@ -50,105 +53,23 @@ const char *DeviceInfo::kModemDrivers[] = {
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
                        Manager *manager)
-  : running_(false),
-    control_interface_(control_interface),
-    dispatcher_(dispatcher),
-    manager_(manager),
-    rtnl_callback_(NewCallback(this, &DeviceInfo::ParseRTNL)),
-    rtnl_socket_(-1),
-    request_flags_(0),
-    request_sequence_(0) {}
-
-DeviceInfo::~DeviceInfo() {
-  Stop();
+    : control_interface_(control_interface),
+      dispatcher_(dispatcher),
+      manager_(manager),
+      link_callback_(NewCallback(this, &DeviceInfo::LinkMsgHandler)),
+      link_listener_(NULL) {
 }
 
-void DeviceInfo::Start()
-{
-  struct sockaddr_nl addr;
+DeviceInfo::~DeviceInfo() {}
 
-  if (running_)
-    return;
-
-  rtnl_socket_ = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
-  if (rtnl_socket_ < 0) {
-    LOG(ERROR) << "Failed to open rtnl socket";
-    return;
-  }
-
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
-  addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
-
-  if (bind(rtnl_socket_, reinterpret_cast<struct sockaddr *>(&addr),
-           sizeof(addr)) < 0) {
-    close(rtnl_socket_);
-    rtnl_socket_ = -1;
-    LOG(ERROR) << "RTNL socket bind failed";
-    return;
-  }
-
-  rtnl_handler_.reset(dispatcher_->CreateInputHandler(rtnl_socket_,
-                                                      rtnl_callback_.get()));
-  running_ = true;
-
-  request_flags_ = REQUEST_LINK | REQUEST_ADDR | REQUEST_ROUTE;
-  NextRequest(request_sequence_);
-
-  VLOG(2) << "DeviceInfo started";
+void DeviceInfo::Start() {
+  link_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestLink, link_callback_.get()));
+  RTNLHandler::GetInstance()->RequestDump(RTNLHandler::kRequestLink);
 }
 
-void DeviceInfo::Stop()
-{
-  if (!running_)
-    return;
-
-  rtnl_handler_.reset(NULL);
-  close(rtnl_socket_);
-  running_ = false;
-}
-
-void DeviceInfo::NextRequest(uint32_t seq) {
-  struct rtnl_request {
-    struct nlmsghdr hdr;
-    struct rtgenmsg msg;
-  } req;
-  struct sockaddr_nl addr;
-  int flag = 0;
-
-  if (seq != request_sequence_)
-    return;
-
-  request_sequence_++;
-  memset(&req, 0, sizeof(req));
-
-  req.hdr.nlmsg_len = sizeof(req);
-  req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-  req.hdr.nlmsg_pid = 0;
-  req.hdr.nlmsg_seq = request_sequence_;
-  req.msg.rtgen_family = AF_INET;
-
-  if ((request_flags_ & REQUEST_LINK) != 0) {
-    req.hdr.nlmsg_type = RTM_GETLINK;
-    flag = REQUEST_LINK;
-  } else if ((request_flags_ & REQUEST_ADDR) != 0) {
-    req.hdr.nlmsg_type = RTM_GETADDR;
-    flag = REQUEST_ADDR;
-  } else if ((request_flags_ & REQUEST_ROUTE) != 0) {
-    req.hdr.nlmsg_type = RTM_GETROUTE;
-    flag = REQUEST_ROUTE;
-  } else
-    return;
-
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
-
-  if (sendto(rtnl_socket_, &req, sizeof(req), 0,
-             reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
-    LOG(ERROR) << "RTNL sendto failed";
-    return;
-  }
-  request_flags_ &= ~flag;
+void DeviceInfo::Stop() {
+  link_listener_.reset(NULL);
 }
 
 Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
@@ -196,7 +117,7 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
   return Device::kEthernet;
 }
 
-void DeviceInfo::AddLinkMsg(struct nlmsghdr *hdr) {
+void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
   base::hash_map<int, scoped_refptr<Device> >::iterator ndev =
       devices_.find(msg->ifi_index);
@@ -208,9 +129,6 @@ void DeviceInfo::AddLinkMsg(struct nlmsghdr *hdr) {
   Device *device;
   Device::Technology technology;
   bool is_stub = false;
-
-  VLOG(2) << "add link index "  << dev_index << " flags " <<
-    msg->ifi_flags;
 
   if (ndev == devices_.end()) {
     rta_bytes = IFLA_PAYLOAD(hdr);
@@ -224,19 +142,22 @@ void DeviceInfo::AddLinkMsg(struct nlmsghdr *hdr) {
       }
     }
 
+    VLOG(2) << "add link index "  << dev_index << " name " << link_name;
+
     if (link_name != NULL)
       technology = GetDeviceTechnology(link_name);
 
     switch (technology) {
     case Device::kEthernet:
-      device = new Ethernet(control_interface_, dispatcher_,
+      device = new Ethernet(control_interface_, dispatcher_, manager_,
                             link_name, dev_index);
       break;
     case Device::kWifi:
-      device = new WiFi(control_interface_, dispatcher_, link_name, dev_index);
+      device = new WiFi(control_interface_, dispatcher_, manager_,
+                        link_name, dev_index);
       break;
     default:
-      device = new StubDevice(control_interface_, dispatcher_,
+      device = new DeviceStub(control_interface_, dispatcher_, manager_,
                               link_name, dev_index, technology);
       is_stub = true;
     }
@@ -249,10 +170,10 @@ void DeviceInfo::AddLinkMsg(struct nlmsghdr *hdr) {
     device = ndev->second;
   }
 
-  // TODO(pstew): Send the the flags change upwards to the device
+  device->LinkEvent(msg->ifi_flags, msg->ifi_change);
 }
 
-void DeviceInfo::DelLinkMsg(struct nlmsghdr *hdr) {
+void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
   base::hash_map<int, scoped_refptr<Device> >::iterator ndev =
       devices_.find(msg->ifi_index);
@@ -269,74 +190,11 @@ void DeviceInfo::DelLinkMsg(struct nlmsghdr *hdr) {
   }
 }
 
-void DeviceInfo::AddAddrMsg(struct nlmsghdr *hdr) {
-  struct ifaddrmsg *msg = reinterpret_cast<struct ifaddrmsg *>(NLMSG_DATA(hdr));
-  VLOG(2) << "add addrmsg family "  << (int) msg->ifa_family << " index " <<
-    msg->ifa_index;
-}
-
-void DeviceInfo::DelAddrMsg(struct nlmsghdr *hdr) {
-  struct ifaddrmsg *msg = reinterpret_cast<struct ifaddrmsg *>(NLMSG_DATA(hdr));
-  VLOG(2) << "del addrmsg family "  << (int) msg->ifa_family << " index " <<
-    msg->ifa_index;
-}
-
-void DeviceInfo::AddRouteMsg(struct nlmsghdr *hdr) {
-  struct rtmsg *msg = reinterpret_cast<struct rtmsg *>(NLMSG_DATA(hdr));
-  VLOG(2) << "add routemsg family "  << (int) msg->rtm_family << " table " <<
-    (int) msg->rtm_table << " proto " << (int) msg->rtm_protocol;
-}
-
-void DeviceInfo::DelRouteMsg(struct nlmsghdr *hdr) {
-  struct rtmsg *msg = reinterpret_cast<struct rtmsg *>(NLMSG_DATA(hdr));
-  VLOG(2) << "del routemsg family "  << (int) msg->rtm_family << " table " <<
-    (int) msg->rtm_table << " proto " << (int) msg->rtm_protocol;
-}
-
-void DeviceInfo::ParseRTNL(InputData *data) {
-  unsigned char *buf = data->buf;
-  unsigned char *end = buf + data->len;
-
-  while (buf < end) {
-    struct nlmsghdr *hdr = reinterpret_cast<struct nlmsghdr *>(buf);
-    struct nlmsgerr *err;
-
-    if (!NLMSG_OK(hdr, end - buf))
-      break;
-
-    switch (hdr->nlmsg_type) {
-    case NLMSG_NOOP:
-    case NLMSG_OVERRUN:
-      return;
-    case NLMSG_DONE:
-      NextRequest(hdr->nlmsg_seq);
-      return;
-    case NLMSG_ERROR:
-      err = reinterpret_cast<nlmsgerr *>(NLMSG_DATA(hdr));
-      LOG(ERROR) << "error " << -err->error << " (" << strerror(-err->error) <<
-                 ")";
-      return;
-    case RTM_NEWLINK:
-      AddLinkMsg(hdr);
-      break;
-    case RTM_DELLINK:
-      DelLinkMsg(hdr);
-      break;
-    case RTM_NEWADDR:
-      AddAddrMsg(hdr);
-      break;
-    case RTM_DELADDR:
-      DelAddrMsg(hdr);
-      break;
-    case RTM_NEWROUTE:
-      AddRouteMsg(hdr);
-      break;
-    case RTM_DELROUTE:
-      DelRouteMsg(hdr);
-      break;
-    }
-
-    buf += hdr->nlmsg_len;
+void DeviceInfo::LinkMsgHandler(struct nlmsghdr *hdr) {
+  if (hdr->nlmsg_type == RTM_NEWLINK) {
+    AddLinkMsgHandler(hdr);
+  } else if (hdr->nlmsg_type == RTM_DELLINK) {
+    DelLinkMsgHandler(hdr);
   }
 }
 

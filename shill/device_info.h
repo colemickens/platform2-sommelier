@@ -12,7 +12,7 @@
 
 #include "shill/device.h"
 
-#include "shill/shill_event.h"
+#include "shill/rtnl_listener.h"
 
 struct nlmsghdr;
 
@@ -28,6 +28,7 @@ class DeviceInfo {
   ~DeviceInfo();
   void Start();
   void Stop();
+  static DeviceInfo *GetInstance();
   static Device::Technology GetDeviceTechnology(const char *interface_name);
 
  private:
@@ -35,32 +36,17 @@ class DeviceInfo {
   static const char *kInterfaceDriver;
   static const char *kModemDrivers[];
 
-  void ParseRTNL(InputData *data);
-  void NextRequest(uint32_t seq);
-  void AddLinkMsg(struct nlmsghdr *hdr);
-  void DelLinkMsg(struct nlmsghdr *hdr);
-  void AddAddrMsg(struct nlmsghdr *hdr);
-  void DelAddrMsg(struct nlmsghdr *hdr);
-  void AddRouteMsg(struct nlmsghdr *hdr);
-  void DelRouteMsg(struct nlmsghdr *hdr);
+  void AddLinkMsgHandler(struct nlmsghdr *hdr);
+  void DelLinkMsgHandler(struct nlmsghdr *hdr);
+  void LinkMsgHandler(struct nlmsghdr *hdr);
 
-  bool running_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;
-  scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;
-  int rtnl_socket_;
   base::hash_map<int, scoped_refptr<Device> > devices_;
-  scoped_ptr<IOInputHandler> rtnl_handler_;
-  int request_flags_;
-  uint32_t request_sequence_;
+  scoped_ptr<Callback1<struct nlmsghdr *>::Type> link_callback_;
+  scoped_ptr<RTNLListener> link_listener_;
   friend class DeviceInfoTest;
-};
-
-enum {
-  REQUEST_LINK = 1,
-  REQUEST_ADDR = 2,
-  REQUEST_ROUTE = 4
 };
 
 }  // namespace shill

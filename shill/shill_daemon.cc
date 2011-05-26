@@ -14,6 +14,7 @@
 #include "shill/shill_daemon.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_control.h"
+#include "shill/rtnl_handler.h"
 
 using std::max;
 using std::min;
@@ -34,6 +35,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
 Daemon::~Daemon() {}
 
 void Daemon::Start() {
+  RTNLHandler::GetInstance()->Start(&dispatcher_);
   manager_.Start();
 }
 
