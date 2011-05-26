@@ -13,23 +13,14 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 
+#include "shill/io_handler.h"
+
 namespace base {
 class MessageLoopProxy;
 }  // namespace base
 class Task;
 
 namespace shill {
-
-struct InputData {
-  unsigned char *buf;
-  size_t len;
-};
-
-class IOInputHandler {
- public:
-  IOInputHandler() {}
-  virtual ~IOInputHandler() {}
-};
 
 // This is the main event dispatcher.  It contains a central instance, and
 // is the entity responsible for dispatching events out of all queues to
