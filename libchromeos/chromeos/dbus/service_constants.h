@@ -1,6 +1,7 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 #ifndef CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 #define CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 
@@ -11,86 +12,87 @@
 GQuark chromeos_login_error_quark();
 
 namespace cryptohome {
-extern const char *kCryptohomeInterface;
-extern const char *kCryptohomeServicePath;
-extern const char *kCryptohomeServiceName;
+extern const char* kCryptohomeInterface;
+extern const char* kCryptohomeServicePath;
+extern const char* kCryptohomeServiceName;
 // Methods
-extern const char *kCryptohomeCheckKey;
-extern const char *kCryptohomeMigrateKey;
-extern const char *kCryptohomeRemove;
-extern const char *kCryptohomeGetSystemSalt;
-extern const char *kCryptohomeIsMounted;
-extern const char *kCryptohomeMount;
-extern const char *kCryptohomeMountGuest;
-extern const char *kCryptohomeUnmount;
-extern const char *kCryptohomeTpmIsReady;
-extern const char *kCryptohomeTpmIsEnabled;
-extern const char *kCryptohomeTpmIsOwned;
-extern const char *kCryptohomeTpmIsBeingOwned;
-extern const char *kCryptohomeTpmGetPassword;
-extern const char *kCryptohomeTpmCanAttemptOwnership;
-extern const char *kCryptohomeTpmClearStoredPassword;
-extern const char *kCryptohomePkcs11GetTpmTokenInfo;
-extern const char *kCryptohomePkcs11IsTpmTokenReady;
-extern const char *kCryptohomeAsyncCheckKey;
-extern const char *kCryptohomeAsyncMigrateKey;
-extern const char *kCryptohomeAsyncMount;
-extern const char *kCryptohomeAsyncMountGuest;
-extern const char *kCryptohomeAsyncRemove;
-extern const char *kCryptohomeGetStatusString;
-extern const char *kCryptohomeRemoveTrackedSubdirectories;
-extern const char *kCryptohomeAsyncRemoveTrackedSubdirectories;
-extern const char *kCryptohomeDoAutomaticFreeDiskSpaceControl;
-extern const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
-extern const char *kCryptohomeAsyncDoesUsersExist;
-extern const char *kCryptohomeAsyncSetOwnerUser;
-extern const char *kCryptohomeInstallAttributesGet;
-extern const char *kCryptohomeInstallAttributesSet;
-extern const char *kCryptohomeInstallAttributesCount;
-extern const char *kCryptohomeInstallAttributesFinalize;
-extern const char *kCryptohomeInstallAttributesIsReady;
-extern const char *kCryptohomeInstallAttributesIsSecure;
-extern const char *kCryptohomeInstallAttributesIsInvalid;
-extern const char *kCryptohomeInstallAttributesIsFirstInstall;
+extern const char* kCryptohomeCheckKey;
+extern const char* kCryptohomeMigrateKey;
+extern const char* kCryptohomeRemove;
+extern const char* kCryptohomeGetSystemSalt;
+extern const char* kCryptohomeIsMounted;
+extern const char* kCryptohomeMount;
+extern const char* kCryptohomeMountGuest;
+extern const char* kCryptohomeUnmount;
+extern const char* kCryptohomeTpmIsReady;
+extern const char* kCryptohomeTpmIsEnabled;
+extern const char* kCryptohomeTpmIsOwned;
+extern const char* kCryptohomeTpmIsBeingOwned;
+extern const char* kCryptohomeTpmGetPassword;
+extern const char* kCryptohomeTpmCanAttemptOwnership;
+extern const char* kCryptohomeTpmClearStoredPassword;
+extern const char* kCryptohomePkcs11GetTpmTokenInfo;
+extern const char* kCryptohomePkcs11IsTpmTokenReady;
+extern const char* kCryptohomeAsyncCheckKey;
+extern const char* kCryptohomeAsyncMigrateKey;
+extern const char* kCryptohomeAsyncMount;
+extern const char* kCryptohomeAsyncMountGuest;
+extern const char* kCryptohomeAsyncRemove;
+extern const char* kCryptohomeGetStatusString;
+extern const char* kCryptohomeRemoveTrackedSubdirectories;
+extern const char* kCryptohomeAsyncRemoveTrackedSubdirectories;
+extern const char* kCryptohomeDoAutomaticFreeDiskSpaceControl;
+extern const char* kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
+extern const char* kCryptohomeAsyncDoesUsersExist;
+extern const char* kCryptohomeAsyncSetOwnerUser;
+extern const char* kCryptohomeInstallAttributesGet;
+extern const char* kCryptohomeInstallAttributesSet;
+extern const char* kCryptohomeInstallAttributesCount;
+extern const char* kCryptohomeInstallAttributesFinalize;
+extern const char* kCryptohomeInstallAttributesIsReady;
+extern const char* kCryptohomeInstallAttributesIsSecure;
+extern const char* kCryptohomeInstallAttributesIsInvalid;
+extern const char* kCryptohomeInstallAttributesIsFirstInstall;
 // Signals
-extern const char *kSignalAsyncCallStatus;
-extern const char *kSignalTpmInitStatus;
-extern const char *kSignalCleanupUsersRemoved;
+extern const char* kSignalAsyncCallStatus;
+extern const char* kSignalTpmInitStatus;
+extern const char* kSignalCleanupUsersRemoved;
 }  // namespace cryptohome
 
 namespace imageburn {
-extern const char *kImageBurnServiceName;
-extern const char *kImageBurnServicePath;
-extern const char *kImageBurnServiceInterface;
+extern const char* kImageBurnServiceName;
+extern const char* kImageBurnServicePath;
+extern const char* kImageBurnServiceInterface;
 //Methods
-extern const char *kBurnImage;
+extern const char* kBurnImage;
 //Signals
-extern const char *kSignalBurnFinishedName;
-extern const char *kSignalBurnUpdateName;
+extern const char* kSignalBurnFinishedName;
+extern const char* kSignalBurnUpdateName;
 } // namespace imageburn
 
 namespace login_manager {
-extern const char *kSessionManagerInterface;
-extern const char *kSessionManagerServicePath;
-extern const char *kSessionManagerServiceName;
+extern const char* kSessionManagerInterface;
+extern const char* kSessionManagerServicePath;
+extern const char* kSessionManagerServiceName;
 // Methods
-extern const char *kSessionManagerEmitLoginPromptReady;
-extern const char *kSessionManagerEmitLoginPromptVisible;
-extern const char *kSessionManagerStartSession;
-extern const char *kSessionManagerStopSession;
-extern const char *kSessionManagerRestartJob;
-extern const char *kSessionManagerRestartEntd;
-extern const char *kSessionManagerSetOwnerKey;
-extern const char *kSessionManagerUnwhitelist;
-extern const char *kSessionManagerCheckWhitelist;
-extern const char *kSessionManagerEnumerateWhitelisted;
-extern const char *kSessionManagerWhitelist;
-extern const char *kSessionManagerStoreProperty;
-extern const char *kSessionManagerRetrieveProperty;
-extern const char *kSessionManagerStorePolicy;
-extern const char *kSessionManagerRetrievePolicy;
+extern const char* kSessionManagerEmitLoginPromptReady;
+extern const char* kSessionManagerEmitLoginPromptVisible;
+extern const char* kSessionManagerStartSession;
+extern const char* kSessionManagerStopSession;
+extern const char* kSessionManagerRestartJob;
+extern const char* kSessionManagerRestartEntd;
+extern const char* kSessionManagerSetOwnerKey;
+extern const char* kSessionManagerUnwhitelist;
+extern const char* kSessionManagerCheckWhitelist;
+extern const char* kSessionManagerEnumerateWhitelisted;
+extern const char* kSessionManagerWhitelist;
+extern const char* kSessionManagerStoreProperty;
+extern const char* kSessionManagerRetrieveProperty;
+extern const char* kSessionManagerStorePolicy;
+extern const char* kSessionManagerRetrievePolicy;
+extern const char* kSessionManagerRetrieveSessionState;
 // Signals
-extern const char *kSessionManagerSessionStateChanged;
+extern const char* kSessionManagerSessionStateChanged;
 
 // Also, conforming to GError conventions
 typedef enum {
@@ -112,9 +114,9 @@ typedef enum {
 }  // namespace login_manager
 
 namespace speech_synthesis {
-extern const char *kSpeechSynthesizerInterface;
-extern const char *kSpeechSynthesizerServicePath;
-extern const char *kSpeechSynthesizerServiceName;
+extern const char* kSpeechSynthesizerInterface;
+extern const char* kSpeechSynthesizerServicePath;
+extern const char* kSpeechSynthesizerServiceName;
 }  // namespace speech_synthesis
 
 namespace chromium {
@@ -134,8 +136,8 @@ extern const char* kWhitelistChangeCompleteSignal;
 
 namespace power_manager {
 extern const char* kPowerManagerInterface;
-extern const char *kPowerManagerServicePath;
-extern const char *kPowerManagerServiceName;
+extern const char* kPowerManagerServicePath;
+extern const char* kPowerManagerServiceName;
 // Methods
 extern const char* kPowerManagerDecreaseScreenBrightness;
 extern const char* kPowerManagerIncreaseScreenBrightness;
@@ -157,11 +159,11 @@ extern const char* kPowerStateChangedSignal;
 }  // namespace power_manager
 
 namespace chromeos {
-extern const char *kLibCrosServiceName;
-extern const char *kLibCrosServicePath;
-extern const char *kLibCrosServiceInterface;
+extern const char* kLibCrosServiceName;
+extern const char* kLibCrosServicePath;
+extern const char* kLibCrosServiceInterface;
 // Methods
-extern const char *kResolveNetworkProxy;
+extern const char* kResolveNetworkProxy;
 } // namespace chromeos
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_

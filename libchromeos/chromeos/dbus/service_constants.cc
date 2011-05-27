@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,100 +9,101 @@ GQuark chromeos_login_error_quark() {
 }
 
 namespace cryptohome {
-const char *kCryptohomeInterface = "org.chromium.CryptohomeInterface";
-const char *kCryptohomeServiceName = "org.chromium.Cryptohome";
-const char *kCryptohomeServicePath = "/org/chromium/Cryptohome";
+const char* kCryptohomeInterface = "org.chromium.CryptohomeInterface";
+const char* kCryptohomeServiceName = "org.chromium.Cryptohome";
+const char* kCryptohomeServicePath = "/org/chromium/Cryptohome";
 // Methods
-const char *kCryptohomeCheckKey = "CheckKey";
-const char *kCryptohomeMigrateKey = "MigrateKey";
-const char *kCryptohomeRemove = "Remove";
-const char *kCryptohomeGetSystemSalt = "GetSystemSalt";
-const char *kCryptohomeIsMounted = "IsMounted";
-const char *kCryptohomeMount = "Mount";
-const char *kCryptohomeMountGuest = "MountGuest";
-const char *kCryptohomeUnmount = "Unmount";
-const char *kCryptohomeTpmIsReady = "TpmIsReady";
-const char *kCryptohomeTpmIsEnabled = "TpmIsEnabled";
-const char *kCryptohomeTpmIsOwned = "TpmIsOwned";
-const char *kCryptohomeTpmIsBeingOwned = "TpmIsBeingOwned";
-const char *kCryptohomeTpmGetPassword = "TpmGetPassword";
-const char *kCryptohomeTpmCanAttemptOwnership = "TpmCanAttemptOwnership";
-const char *kCryptohomeTpmClearStoredPassword = "TpmClearStoredPassword";
-const char *kCryptohomePkcs11GetTpmTokenInfo = "Pkcs11GetTpmTokenInfo";
-const char *kCryptohomePkcs11IsTpmTokenReady = "Pkcs11IsTpmTokenReady";
-const char *kCryptohomeAsyncCheckKey = "AsyncCheckKey";
-const char *kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
-const char *kCryptohomeAsyncMount = "AsyncMount";
-const char *kCryptohomeAsyncMountGuest = "AsyncMountGuest";
-const char *kCryptohomeAsyncRemove = "AsyncRemove";
-const char *kCryptohomeGetStatusString = "GetStatusString";
-const char *kCryptohomeRemoveTrackedSubdirectories =
+const char* kCryptohomeCheckKey = "CheckKey";
+const char* kCryptohomeMigrateKey = "MigrateKey";
+const char* kCryptohomeRemove = "Remove";
+const char* kCryptohomeGetSystemSalt = "GetSystemSalt";
+const char* kCryptohomeIsMounted = "IsMounted";
+const char* kCryptohomeMount = "Mount";
+const char* kCryptohomeMountGuest = "MountGuest";
+const char* kCryptohomeUnmount = "Unmount";
+const char* kCryptohomeTpmIsReady = "TpmIsReady";
+const char* kCryptohomeTpmIsEnabled = "TpmIsEnabled";
+const char* kCryptohomeTpmIsOwned = "TpmIsOwned";
+const char* kCryptohomeTpmIsBeingOwned = "TpmIsBeingOwned";
+const char* kCryptohomeTpmGetPassword = "TpmGetPassword";
+const char* kCryptohomeTpmCanAttemptOwnership = "TpmCanAttemptOwnership";
+const char* kCryptohomeTpmClearStoredPassword = "TpmClearStoredPassword";
+const char* kCryptohomePkcs11GetTpmTokenInfo = "Pkcs11GetTpmTokenInfo";
+const char* kCryptohomePkcs11IsTpmTokenReady = "Pkcs11IsTpmTokenReady";
+const char* kCryptohomeAsyncCheckKey = "AsyncCheckKey";
+const char* kCryptohomeAsyncMigrateKey = "AsyncMigrateKey";
+const char* kCryptohomeAsyncMount = "AsyncMount";
+const char* kCryptohomeAsyncMountGuest = "AsyncMountGuest";
+const char* kCryptohomeAsyncRemove = "AsyncRemove";
+const char* kCryptohomeGetStatusString = "GetStatusString";
+const char* kCryptohomeRemoveTrackedSubdirectories =
     "RemoveTrackedSubdirectories";
-const char *kCryptohomeAsyncRemoveTrackedSubdirectories =
+const char* kCryptohomeAsyncRemoveTrackedSubdirectories =
     "AsyncRemoveTrackedSubdirectories";
-const char *kCryptohomeDoAutomaticFreeDiskSpaceControl =
+const char* kCryptohomeDoAutomaticFreeDiskSpaceControl =
     "DoAutomaticFreeDiskSpaceControl";
-const char *kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl =
+const char* kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl =
     "AsyncDoAutomaticFreeDiskSpaceControl";
-const char *kCryptohomeAsyncDoesUsersExist = "AsyncDoesUsersExist";
-const char *kCryptohomeAsyncSetOwnerUser = "AsyncSetOwnerUser";
-const char *kCryptohomeInstallAttributesGet = "InstallAttributesGet";
-const char *kCryptohomeInstallAttributesSet = "InstallAttributesSet";
-const char *kCryptohomeInstallAttributesCount = "InstallAttributesCount";
-const char *kCryptohomeInstallAttributesFinalize = "InstallAttributesFinalize";
-const char *kCryptohomeInstallAttributesIsReady = "InstallAttributesIsReady";
-const char *kCryptohomeInstallAttributesIsSecure = "InstallAttributesIsSecure";
-const char *kCryptohomeInstallAttributesIsInvalid =
+const char* kCryptohomeAsyncDoesUsersExist = "AsyncDoesUsersExist";
+const char* kCryptohomeAsyncSetOwnerUser = "AsyncSetOwnerUser";
+const char* kCryptohomeInstallAttributesGet = "InstallAttributesGet";
+const char* kCryptohomeInstallAttributesSet = "InstallAttributesSet";
+const char* kCryptohomeInstallAttributesCount = "InstallAttributesCount";
+const char* kCryptohomeInstallAttributesFinalize = "InstallAttributesFinalize";
+const char* kCryptohomeInstallAttributesIsReady = "InstallAttributesIsReady";
+const char* kCryptohomeInstallAttributesIsSecure = "InstallAttributesIsSecure";
+const char* kCryptohomeInstallAttributesIsInvalid =
     "InstallAttributesIsInvalid";
-const char *kCryptohomeInstallAttributesIsFirstInstall =
+const char* kCryptohomeInstallAttributesIsFirstInstall =
     "InstallAttributesIsFirstInstall";
 
 // Signals
-const char *kSignalAsyncCallStatus = "AsyncCallStatus";
-const char *kSignalTpmInitStatus = "TpmInitStatus";
-const char *kSignalCleanupUsersRemoved = "CleanupUsersRemoved";
+const char* kSignalAsyncCallStatus = "AsyncCallStatus";
+const char* kSignalTpmInitStatus = "TpmInitStatus";
+const char* kSignalCleanupUsersRemoved = "CleanupUsersRemoved";
 }  // namespace cryptohome
 
 namespace imageburn {
-const char *kImageBurnServiceName = "org.chromium.ImageBurner";
-const char *kImageBurnServicePath = "/org/chromium/ImageBurner";
-const char *kImageBurnServiceInterface = "org.chromium.ImageBurnerInterface";
+const char* kImageBurnServiceName = "org.chromium.ImageBurner";
+const char* kImageBurnServicePath = "/org/chromium/ImageBurner";
+const char* kImageBurnServiceInterface = "org.chromium.ImageBurnerInterface";
 //Methods
-const char *kBurnImage = "BurnImage";
+const char* kBurnImage = "BurnImage";
 //Signals
-const char *kSignalBurnFinishedName = "burn_finished";
-const char *kSignalBurnUpdateName = "burn_progress_update";
+const char* kSignalBurnFinishedName = "burn_finished";
+const char* kSignalBurnUpdateName = "burn_progress_update";
 } // namespace imageburn
 
 namespace login_manager {
-const char *kSessionManagerInterface = "org.chromium.SessionManagerInterface";
-const char *kSessionManagerServiceName = "org.chromium.SessionManager";
-const char *kSessionManagerServicePath = "/org/chromium/SessionManager";
+const char* kSessionManagerInterface = "org.chromium.SessionManagerInterface";
+const char* kSessionManagerServiceName = "org.chromium.SessionManager";
+const char* kSessionManagerServicePath = "/org/chromium/SessionManager";
 // Methods
-const char *kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
-const char *kSessionManagerEmitLoginPromptVisible = "EmitLoginPromptVisible";
-const char *kSessionManagerStartSession = "StartSession";
-const char *kSessionManagerStopSession = "StopSession";
-const char *kSessionManagerRestartJob = "RestartJob";
-const char *kSessionManagerRestartEntd = "RestartEntd";
-const char *kSessionManagerSetOwnerKey = "SetOwnerKey";
-const char *kSessionManagerUnwhitelist = "Unwhitelist";
-const char *kSessionManagerCheckWhitelist = "CheckWhitelist";
-const char *kSessionManagerEnumerateWhitelisted = "EnumerateWhitelisted";
-const char *kSessionManagerWhitelist = "Whitelist";
-const char *kSessionManagerStoreProperty = "StoreProperty";
-const char *kSessionManagerRetrieveProperty = "RetrieveProperty";
-const char *kSessionManagerStorePolicy = "StorePolicy";
-const char *kSessionManagerRetrievePolicy = "RetrievePolicy";
+const char* kSessionManagerEmitLoginPromptReady = "EmitLoginPromptReady";
+const char* kSessionManagerEmitLoginPromptVisible = "EmitLoginPromptVisible";
+const char* kSessionManagerStartSession = "StartSession";
+const char* kSessionManagerStopSession = "StopSession";
+const char* kSessionManagerRestartJob = "RestartJob";
+const char* kSessionManagerRestartEntd = "RestartEntd";
+const char* kSessionManagerSetOwnerKey = "SetOwnerKey";
+const char* kSessionManagerUnwhitelist = "Unwhitelist";
+const char* kSessionManagerCheckWhitelist = "CheckWhitelist";
+const char* kSessionManagerEnumerateWhitelisted = "EnumerateWhitelisted";
+const char* kSessionManagerWhitelist = "Whitelist";
+const char* kSessionManagerStoreProperty = "StoreProperty";
+const char* kSessionManagerRetrieveProperty = "RetrieveProperty";
+const char* kSessionManagerStorePolicy = "StorePolicy";
+const char* kSessionManagerRetrievePolicy = "RetrievePolicy";
+const char* kSessionManagerRetrieveSessionState = "RetrieveSessionState";
 // Signals
-const char *kSessionManagerSessionStateChanged = "SessionStateChanged";
+const char* kSessionManagerSessionStateChanged = "SessionStateChanged";
 }  // namespace login_manager
 
 namespace speech_synthesis {
-const char *kSpeechSynthesizerInterface =
+const char* kSpeechSynthesizerInterface =
     "org.chromium.SpeechSynthesizerInterface";
-const char *kSpeechSynthesizerServicePath = "/org/chromium/SpeechSynthesizer";
-const char *kSpeechSynthesizerServiceName = "org.chromium.SpeechSynthesizer";
+const char* kSpeechSynthesizerServicePath = "/org/chromium/SpeechSynthesizer";
+const char* kSpeechSynthesizerServiceName = "org.chromium.SpeechSynthesizer";
 }  // namespace speech_synthesis
 
 namespace chromium {
@@ -142,10 +143,10 @@ const char* kPowerStateChangedSignal = "PowerStateChanged";
 }  // namespace power_manager
 
 namespace chromeos {
-const char *kLibCrosServiceName = "org.chromium.LibCrosService";
-const char *kLibCrosServicePath = "/org/chromium/LibCrosService";
-const char *kLibCrosServiceInterface =
+const char* kLibCrosServiceName = "org.chromium.LibCrosService";
+const char* kLibCrosServicePath = "/org/chromium/LibCrosService";
+const char* kLibCrosServiceInterface =
     "org.chromium.LibCrosServiceInterface";
 // Methods
-const char *kResolveNetworkProxy = "ResolveNetworkProxy";
+const char* kResolveNetworkProxy = "ResolveNetworkProxy";
 } // namespace chromeos
