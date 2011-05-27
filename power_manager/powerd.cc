@@ -117,6 +117,7 @@ void Daemon::Init() {
   gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterDBusMessageHandler();
+  RetrieveSessionState();
   suspender_.Init(run_dir_);
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
   file_tagger_.Init();
@@ -654,7 +655,7 @@ void Daemon::OnPowerStateChange(const char* state) {
 
 void Daemon::OnSessionStateChange(const char* state, const char* user) {
   if (!state || !user) {
-    LOG(DFATAL) << "Got session state change signal with missing state or user";
+    LOG(DFATAL) << "Got session state change with missing state or user";
     return;
   }
 
@@ -739,6 +740,40 @@ void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
   // Monitor reconfigure will set the backlight if needed.
   monitor_reconfigure_->Run();
+}
+
+void Daemon::RetrieveSessionState() {
+  DBusGConnection* connection =
+      chromeos::dbus::GetSystemBusConnection().g_connection();
+  CHECK(connection);
+
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
+      connection,
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface);
+
+  GError* error = NULL;
+  gchar* state = NULL;
+  gchar* user = NULL;
+  if (dbus_g_proxy_call(proxy,
+                        login_manager::kSessionManagerRetrieveSessionState,
+                        &error,
+                        G_TYPE_INVALID,
+                        G_TYPE_STRING,
+                        &state,
+                        G_TYPE_STRING,
+                        &user,
+                        G_TYPE_INVALID)) {
+    OnSessionStateChange(state, user);
+    g_free(state);
+    g_free(user);
+  } else {
+    LOG(ERROR) << "Unable to retrieve session state from session manager: "
+               << error->message;
+    g_error_free(error);
+  }
+  g_object_unref(proxy);
 }
 
 }  // namespace power_manager

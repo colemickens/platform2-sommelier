@@ -92,6 +92,7 @@ void SendSignalToSessionManager(const char* signal) {
   if (!dbus_g_proxy_call(proxy, signal, &error, G_TYPE_INVALID,
                          G_TYPE_INVALID)) {
     LOG(ERROR) << "Error sending signal: " << error->message;
+    g_error_free(error);
   }
   g_object_unref(proxy);
 }

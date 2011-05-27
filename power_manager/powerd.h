@@ -93,19 +93,19 @@ class Daemon : public XIdleMonitor {
   enum ShutdownState { kShutdownNone, kShutdownRestarting,
                        kShutdownPowerOff };
 
-  // Read settings from disk
+  // Reads settings from disk
   void ReadSettings();
 
-  // Read lock screen settings
+  // Reads lock screen settings
   void ReadLockScreenSettings();
 
-  // Initialize metrics
+  // Initializes metrics
   void MetricInit();
 
-  // Update our idle state based on the provided |idle_time_ms|
+  // Updates our idle state based on the provided |idle_time_ms|
   void SetIdleState(int64 idle_time_ms);
 
-  // Setup idle timers, adding the provided offset to all timeouts
+  // Sets up idle timers, adding the provided offset to all timeouts
   // starting with the state provided except the locking timeout.
   void SetIdleOffset(int64 offset_ms, IdleState state);
 
@@ -114,7 +114,7 @@ class Daemon : public XIdleMonitor {
   SIGNAL_CALLBACK_2(Daemon, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
                     GdkEvent*);
 
-  // Tell X we are interested in the specified key/mask combination.
+  // Tells X we are interested in the specified key/mask combination.
   // Capslock and Numlock are always ignored.
   void GrabKey(KeyCode key, uint32 mask);
 
@@ -124,10 +124,10 @@ class Daemon : public XIdleMonitor {
                                               DBusMessage* message,
                                               void* data);
 
-  // Register the dbus message handler with appropriate dbus events.
+  // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
 
-  // Check for extremely low battery condition.
+  // Checks for extremely low battery condition.
   void OnLowBattery(double battery_percentage);
 
   // Timeout handler for clean shutdown. If we don't hear back from
@@ -135,12 +135,13 @@ class Daemon : public XIdleMonitor {
   // go through with the shutdown now.
   SIGNAL_CALLBACK_0(Daemon, gboolean, CleanShutdownTimedOut);
 
-  // Handle power state changes from powerd_suspend.
+  // Handles power state changes from powerd_suspend.
   // |state| is "on" when resuming from suspend.
   void OnPowerStateChange(const char* state);
 
-  // Handle a D-Bus signal from the session manager telling us that the
-  // session state has changed.
+  // Handles information from the session manager about the session state.
+  // Invoked by RetrieveSessionState() and also in response to
+  // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
 
   void StartCleanShutdown();
@@ -152,7 +153,7 @@ class Daemon : public XIdleMonitor {
                                     unsigned int mask,
                                     gpointer data);
 
-  // Send a D-Bus signal announcing that the screen brightness has been set to
+  // Sends a D-Bus signal announcing that the screen brightness has been set to
   // its current level, given as a percentage between 0 and 100.
   // |user_initiated| specifies whether this brightness change was requested by
   // the user (i.e. brightness keys) instead of being automatic (e.g. idle, AC
@@ -215,6 +216,10 @@ class Daemon : public XIdleMonitor {
 
   // Called by dbus handler when resume signal is received
   void HandleResume();
+
+  // Sends a synchronous D-Bus request to the session manager to retrieve the
+  // session state and updates |current_user_| based on the response.
+  void RetrieveSessionState();
 
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
