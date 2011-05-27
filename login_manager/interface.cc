@@ -153,6 +153,11 @@ gboolean session_manager_retrieve_policy(SessionManager *self,
                                          GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RetrievePolicy, OUT_policy_blob, error);
 }
+gboolean session_manager_retrieve_session_state(SessionManager *self,
+                                                gchar** OUT_state,
+                                                gchar** OUT_user) {
+  SESSION_MANAGER_WRAP_METHOD(RetrieveSessionState, OUT_state, OUT_user);
+}
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD(LockScreen, error);

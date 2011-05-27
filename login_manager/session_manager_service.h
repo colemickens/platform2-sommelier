@@ -248,6 +248,9 @@ class SessionManagerService
   // Returns TRUE if the data is can be fetched, FALSE otherwise.
   gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error);
 
+  // Get information about the current session.
+  gboolean RetrieveSessionState(gchar** OUT_state, gchar** OUT_user);
+
   // Handles LockScreen request from PowerManager. It switches itself to
   // lock mode, and emit LockScreen signal to Chromium Browser.
   gboolean LockScreen(GError** error);

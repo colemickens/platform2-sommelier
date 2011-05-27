@@ -704,6 +704,14 @@ gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
   return TRUE;
 }
 
+gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
+                                                     gchar** OUT_user) {
+  *OUT_state = g_strdup(session_started_ ? "started" : "stopped");
+  *OUT_user = g_strdup(session_started_ && !current_user_.empty() ?
+                       current_user_.c_str() : "");
+  return TRUE;
+}
+
 gboolean SessionManagerService::LockScreen(GError** error) {
   screen_locked_ = TRUE;
   system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
