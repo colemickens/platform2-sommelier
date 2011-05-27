@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+	  "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+
+<node name="/org/chromium/dhcpcd">
+  <interface name="org.chromium.dhcpcd">
+    <method name="GetVersion">
+      <arg name="version" direction="out" type="s"/>
+    </method>
+    <method name="GetInterfaces">
+      <arg name="interfaces" direction="out" type="a{sa{sv}}"/>
+    </method>
+    <method name="GetStatus">
+      <arg name="Status" direction="out" type="s"/>
+    </method>
+    <method name="Rebind">
+      <arg name="interface" direction="in" type="s"/>
+    </method>
+    <method name="Release">
+      <arg name="interface" direction="in" type="s"/>
+    </method>
+    <method name="Stop">
+      <arg name="interface" direction="in" type="s"/>
+    </method>
+    <signal name="Event">
+      <arg name="configuration" type="usa{sv}"/>
+    </signal>
+    <signal name="StatusChanged">
+      <arg name="status" type="us"/>
+    </signal>
+  </interface>
+</node>

@@ -25,15 +25,19 @@ TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_INCLUDE_DIRS = $(INCLUDE_DIRS)
 TEST_LIB_DIRS = $(LIB_DIRS)
 
-XMLFILES = flimflam-device.xml \
-	flimflam-manager.xml \
-	flimflam-service.xml \
-	supplicant-bss.xml \
-	supplicant-interface.xml \
-	supplicant-network.xml \
-	supplicant-supplicant.xml
+DBUS_ADAPTOR_HEADERS = \
+	flimflam-device.h \
+	flimflam-manager.h \
+	flimflam-service.h
 
-DBUS_HEADERS = $(patsubst %.xml,%.h,$(XMLFILES))
+DBUS_PROXY_HEADERS = \
+	dhcpcd.h \
+	supplicant-bss.h \
+	supplicant-interface.h \
+	supplicant-network.h \
+	supplicant-supplicant.h
+
+DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
 
 SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
@@ -60,10 +64,10 @@ TEST_OBJS = testrunner.o device_info_unittest.o manager_unittest.o \
 
 all: $(SHILL_BIN) $(TEST_BIN)
 
-supplicant-%.h: supplicant-%.xml
+$(DBUS_PROXY_HEADERS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
 
-flimflam-%.h: flimflam-%.xml
+$(DBUS_ADAPTOR_HEADERS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
 .cc.o:
