@@ -87,11 +87,8 @@ class OwnerKey {
                     uint32 data_len,
                     std::vector<uint8>* OUT_signature);
 
-  // Runs |generator| in a child process.  Returns pid of the child.
-  virtual int StartGeneration(ChildJobInterface* generator);
-
   // Returned reference will be empty if we haven't populated |key_| yet.
-  const std::vector<uint8>& public_key_der() const {
+  virtual const std::vector<uint8>& public_key_der() const {
     return key_;
   }
 

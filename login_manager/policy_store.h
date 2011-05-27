@@ -39,8 +39,6 @@ class PolicyStore {
   // Returns false if there's an error while writing data.
   virtual bool Persist();
 
-  virtual bool SerializeToString(std::string* output) const;
-
   // Clobber the stored policy with new data.
   virtual void Set(const enterprise_management::PolicyFetchResponse& policy);
 

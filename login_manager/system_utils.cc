@@ -19,14 +19,16 @@
 #include <base/logging.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <base/time.h>
-#include <chromeos/process.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/process.h>
 
 namespace login_manager {
 //static
 const char SystemUtils::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
+const char SystemUtils::kSignalSuccess[] = "success";
+const char SystemUtils::kSignalFailure[] = "failure";
 
 SystemUtils::SystemUtils() {}
 SystemUtils::~SystemUtils() {}
@@ -114,6 +116,12 @@ bool SystemUtils::TouchResetFile() {
 void SystemUtils::SendSignalToChromium(const char* signal_name,
                                        const char* payload) {
   SendSignalTo(chromium::kChromiumInterface, signal_name, payload);
+}
+
+void SystemUtils::SendStatusSignalToChromium(const char* signal_name,
+                                             bool status) {
+  SendSignalTo(chromium::kChromiumInterface, signal_name,
+               status ? kSignalSuccess : kSignalFailure);
 }
 
 void SystemUtils::SendSignalToPowerManager(const char* signal_name) {

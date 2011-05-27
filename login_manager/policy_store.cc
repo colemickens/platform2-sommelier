@@ -41,14 +41,10 @@ bool PolicyStore::Persist() {
   SystemUtils utils;
   std::string polstr;
   if (!policy_.SerializeToString(&polstr)) {
-    LOG(ERROR) << "Could not be serialize policy!";
+    LOG(ERROR) << "Could not serialize policy!";
     return false;
   }
   return utils.AtomicFileWrite(policy_path_, polstr.c_str(), polstr.length());
-}
-
-bool PolicyStore::SerializeToString(std::string* output) const {
-  return policy_.SerializeToString(output);
 }
 
 void PolicyStore::Set(

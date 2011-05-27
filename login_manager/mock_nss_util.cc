@@ -5,6 +5,7 @@
 #include "login_manager/mock_nss_util.h"
 
 #include <unistd.h>
+
 #include <base/logging.h>
 #include <crypto/rsa_private_key.h>
 
@@ -16,12 +17,7 @@ using ::testing::_;
 MockNssUtil::MockNssUtil() {}
 MockNssUtil::~MockNssUtil() {}
 
-void MockNssUtil::ExpectGetOwnerKeyFilePath() {
-  EXPECT_CALL(*this, GetOwnerKeyFilePath()).WillOnce(Return(FilePath("")));
-}
-
 KeyCheckUtil::KeyCheckUtil() {
-  ExpectGetOwnerKeyFilePath();
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
   EXPECT_CALL(*this, GetPrivateKey(_))
@@ -30,7 +26,6 @@ KeyCheckUtil::KeyCheckUtil() {
 KeyCheckUtil::~KeyCheckUtil() {}
 
 KeyFailUtil::KeyFailUtil() {
-  ExpectGetOwnerKeyFilePath();
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
   EXPECT_CALL(*this, GetPrivateKey(_))
@@ -39,14 +34,12 @@ KeyFailUtil::KeyFailUtil() {
 KeyFailUtil::~KeyFailUtil() {}
 
 SadNssUtil::SadNssUtil() {
-  ExpectGetOwnerKeyFilePath();
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
 }
 SadNssUtil::~SadNssUtil() {}
 
 EmptyNssUtil::EmptyNssUtil() {
-  ExpectGetOwnerKeyFilePath();
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(false));
 }
 EmptyNssUtil::~EmptyNssUtil() {}
@@ -66,7 +59,6 @@ crypto::RSAPrivateKey* ShortKeyGenerator::CreateFake() {
 }
 
 ShortKeyUtil::ShortKeyUtil() {
-  ExpectGetOwnerKeyFilePath();
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
   EXPECT_CALL(*this, GenerateKeyPair()).Times(1);

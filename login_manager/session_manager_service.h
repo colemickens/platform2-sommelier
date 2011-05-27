@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/waitable_event.h>
@@ -25,7 +26,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "login_manager/child_job.h"
-#include "login_manager/device_policy.h"
+#include "login_manager/device_policy_service.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/owner_key.h"
@@ -73,11 +74,8 @@ class SessionManagerService
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_.reset(utils);
     }
-    void set_ownerkey(OwnerKey* key) {
-      session_manager_service_->key_.reset(key);
-    }
-    void set_policy(DevicePolicy* store) {
-      session_manager_service_->policy_.reset(store);
+    void set_device_policy_service(DevicePolicyService* device_policy) {
+      session_manager_service_->device_policy_ = device_policy;
     }
     void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
       session_manager_service_->upstart_signal_emitter_.reset(emitter);
@@ -85,7 +83,6 @@ class SessionManagerService
     void set_keygen(KeyGenerator* gen) {
       session_manager_service_->gen_.reset(gen);
     }
-
     // Sets whether the the manager exits when a child finishes.
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
@@ -270,12 +267,6 @@ class SessionManagerService
   // start was successful.
   gboolean RestartEntd(GError** error);
 
-  // Ensures that the public key in |buf| is legitimately paired with
-  // a private key held by the current user, signs and stores some
-  // ownership-related metadata, and then stores this key off as the
-  // new device Owner key.
-  void ValidateAndStoreOwnerKey(const std::string& buf);
-
   // |data| is a SessionManagerService*
   static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
@@ -302,12 +293,6 @@ class SessionManagerService
   enum Signals {
     kSignalSessionStateChanged,
     kNumSignals
-  };
-
-  enum SigReturnCode {
-    SUCCESS = 0,
-    NO_KEY,
-    SIGNATURE_FAIL
   };
 
   static void do_nothing(int sig) {}
@@ -361,23 +346,9 @@ class SessionManagerService
   // De-register all child-exit handlers.
   void DeregisterChildWatchers();
 
-  // |key_| is persisted to disk, and then posts a task to |message_loop_|
-  // to signal Chromium when done.
-  void PersistKey();
-
   // |policy_| is persisted to disk, then |event| is signaled when
   // done.  This is used to provide synchronous, threadsafe persisting.
   void PersistPolicySync(base::WaitableEvent* event);
-
-  // |policy_| is persisted to disk, and then a task is posted to
-  // ||message_loop_| to complete the StorePolicy DBus method call.
-  void PersistPolicyReturn(DBusGMethodInvocation* ctxt);
-
-  // |policy_| is persisted to disk, and then posts a task to |message_loop_|
-  // to signal Chromium when done.
-  void PersistPolicy();
-
-  void StartKeyGeneration();
 
   // Uses |system_| to send |signal_name| to Chromium.  Attaches a payload
   // to the signal indicating the status of |succeeded|.
@@ -390,11 +361,6 @@ class SessionManagerService
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
-
-  SigReturnCode VerifyHelper(const std::string& data,
-                             const char* sig,
-                             uint32 sig_len);
-  SigReturnCode VerifyHelperArray(const std::string& data, GArray* sig);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;
@@ -417,9 +383,6 @@ class SessionManagerService
   scoped_refptr<base::MessageLoopProxy> message_loop_;
 
   scoped_ptr<SystemUtils> system_;
-  scoped_ptr<DevicePolicy> policy_;
-  scoped_ptr<NssUtil> nss_;
-  scoped_ptr<OwnerKey> key_;
   scoped_ptr<KeyGenerator> gen_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
@@ -433,6 +396,7 @@ class SessionManagerService
   // A thread on which to perform blocking operations
   base::Thread io_thread_;
 
+  scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
   bool screen_locked_;
@@ -442,7 +406,6 @@ class SessionManagerService
   bool shutting_down_;
   bool shutdown_already_;
 
-  friend class TestAPI;
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };
 }  // namespace login_manager

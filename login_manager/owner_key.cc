@@ -4,11 +4,11 @@
 
 #include "login_manager/owner_key.h"
 
-#include <crypto/rsa_private_key.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <crypto/rsa_private_key.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/nss_util.h"
@@ -173,15 +173,6 @@ bool OwnerKey::Sign(const uint8* data,
     return false;
   }
   return true;
-}
-
-int OwnerKey::StartGeneration(ChildJobInterface* generator) {
-  int pid = fork();
-  if (pid == 0) {
-    generator->Run();
-    exit(1);  // Run() is not supposed to return.
-  }
-  return pid;
 }
 
 }  // namespace login_manager

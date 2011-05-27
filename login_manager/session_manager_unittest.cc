@@ -5,6 +5,7 @@
 #include "login_manager/session_manager_service.h"
 
 #include <errno.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
@@ -14,8 +15,8 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
@@ -23,38 +24,27 @@
 #include <chromeos/glib/object.h>
 #include <crypto/rsa_private_key.h>
 
+#include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
 #include "login_manager/mock_child_job.h"
-#include "login_manager/mock_device_policy.h"
+#include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_mitigator.h"
-#include "login_manager/mock_nss_util.h"
-#include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_upstart_signal_emitter.h"
-#include "login_manager/system_utils.h"
-
-namespace em = enterprise_management;
 
 namespace login_manager {
-using ::testing::A;
 using ::testing::AnyNumber;
-using ::testing::AtMost;
-using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
-using chromeos::glib::ScopedError;
 using chromeos::Resetter;
-
-MATCHER_P(CastEq, str, "") {                                            \
-  return std::string(reinterpret_cast<const char*>(arg)) == str;        \
-}
+using chromeos::glib::ScopedError;
 
 static const char kCheckedFile[] = "/tmp/checked_file";
 static const char kUptimeFile[] = "/tmp/uptime-chrome-exec";
@@ -76,6 +66,7 @@ class SessionManagerTest : public ::testing::Test {
         file_checker_(new MockFileChecker(kCheckedFile)),
         mitigator_(new MockMitigator),
         upstart_(new MockUpstartSignalEmitter),
+        device_policy_service_(new MockDevicePolicyService),
         must_destroy_mocks_(true) {
   }
 
@@ -91,30 +82,16 @@ class SessionManagerTest : public ::testing::Test {
     file_util::Delete(disk, false);
   }
 
-  virtual void SetUp() {
-    property_ = StringPrintf("%s=%s", kPropName, kPropValue);
-    char sig[] = "signature";
-    int len = strlen(sig);
-    sig[2] = '\0';  // to make sure we can handle NULL inside a signature.
-    fake_sig_ = CreateArray(sig, len);
-  }
-
   virtual void TearDown() {
-    // just to be sure...
-    NssUtil::set_factory(NULL);
-    g_array_free(fake_sig_, TRUE);
     must_destroy_mocks_ = !manager_;
     manager_ = NULL;
   }
 
   void SimpleRunManager() {
-    SimpleRunManager(new MockDevicePolicy);
-  }
-
-  void SimpleRunManager(MockDevicePolicy* policy) {
-    EXPECT_CALL(*policy, Persist())
+    EXPECT_CALL(*device_policy_service_, Initialize())
         .WillOnce(Return(true));
-    manager_->test_api().set_policy(policy);
+    EXPECT_CALL(*device_policy_service_, PersistPolicySync())
+        .WillOnce(Return(true));
     manager_->Run();
   }
 
@@ -122,8 +99,6 @@ class SessionManagerTest : public ::testing::Test {
   // NOT const so that they can be passed to methods that implement dbus calls,
   // which (of necessity) take bare gchar*.
   static char kFakeEmail[];
-  static char kPropName[];
-  static char kPropValue[];
   static const pid_t kDummyPid;
 
   // Creates the manager with the jobs. Mocks the file checker.
@@ -148,6 +123,7 @@ class SessionManagerTest : public ::testing::Test {
     manager_->set_mitigator(mitigator_);
     manager_->test_api().set_exit_on_child_done(true);
     manager_->test_api().set_upstart_signal_emitter(upstart_);
+    manager_->test_api().set_device_policy_service(device_policy_service_);
   }
 
   void MockUtils() {
@@ -157,21 +133,30 @@ class SessionManagerTest : public ::testing::Test {
   void ExpectStartSession(const std::string& email_string, MockChildJob* job) {
     EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
-    MockOwnerKey* key = new MockOwnerKey;
-    EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-        .WillRepeatedly(Return(true));
-    // Expect an attempt to check whether this user is the owner; respond
-    // as though he is not.
-    MockDevicePolicy* policy = new MockDevicePolicy;
-    EXPECT_CALL(*policy, CurrentUserIsOwner(StrEq(email_string)))
+    // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_,
+                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(false),
+                        Return(true)));
+    // Confirm that the key is present.
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(false));
-    manager_->test_api().set_policy(policy);
-    // Confirm that the device is owned.
-    EXPECT_CALL(*key, HaveCheckedDisk())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*key, IsPopulated())
-        .WillOnce(Return(true));
-    manager_->test_api().set_ownerkey(key);
+  }
+
+  void ExpectStartOwnerSession(const std::string& email_string) {
+    MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+    EXPECT_CALL(*job, StartSession(email_string))
+        .Times(1);
+
+    // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_,
+                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(true),
+                        Return(true)));
+
+    // Confirm that the key is present.
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
+        .WillOnce(Return(false));
   }
 
   void ExpectStartSessionUnowned(const std::string& email_string) {
@@ -179,74 +164,31 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
 
-    MockOwnerKey* key = new MockOwnerKey;
-    EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-        .WillRepeatedly(Return(true));
+    // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_,
+                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(false),
+                        Return(true)));
+
+    // Indidcate that there is no owner key in order to trigger a new one to be
+    // generated.
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
+        .WillOnce(Return(true));
 
     MockKeyGenerator* gen = new MockKeyGenerator;
-    EXPECT_CALL(*gen, Start(_, key, _))
+    EXPECT_CALL(*gen, Start(_, _))
         .WillRepeatedly(Return(true));
-
-    // Now, expect an attempt to check whether this user is the owner; respond
-    // as though there isn't one.
-    // Confirm that the device is NOT owned.
-    EXPECT_CALL(*key, HaveCheckedDisk())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*key, IsPopulated())
-        .WillOnce(Return(false));
 
     manager_->set_uid(getuid());
-    manager_->test_api().set_ownerkey(key);
     manager_->test_api().set_keygen(gen);
-  }
-
-  void ExpectStartSessionForOwner(const std::string& email_string,
-                                  MockOwnerKey* key,
-                                  bool has_key) {
-    MockDevicePolicy* policy = new MockDevicePolicy;
-    ON_CALL(*key, PopulateFromDiskIfPossible())
-        .WillByDefault(Return(true));
-    int persist_times = 1;
-    if (has_key) {
-      // First, mimic attempt to whitelist the owner and set the
-      // device owner pref.
-      EXPECT_CALL(*policy, StoreOwnerProperties(key, StrEq(email_string), _))
-          .Times(1);
-      persist_times = 3;
-    }
-    // Now, expect an attempt to check whether this user is the owner;
-    // respond as though he is.
-    EXPECT_CALL(*policy, CurrentUserIsOwner(StrEq(email_string)))
-        .WillOnce(Return(true));
-    // Confirm that the device is owned.
-    EXPECT_CALL(*key, HaveCheckedDisk())
-        .Times(AtMost(1))
-        .WillRepeatedly(Return(true));
-    EXPECT_CALL(*key, IsPopulated())
-        .Times(AtMost(2))
-        .WillRepeatedly(Return(true));
-
-    EXPECT_CALL(*policy, Persist())
-        .WillOnce(Return(true));
-    manager_->test_api().set_policy(policy);
   }
 
   void ExpectDeprecatedCall() {
     EXPECT_CALL(*(utils_.get()),
-                SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                     StrEq("failure")))
+                SendStatusSignalToChromium(
+                    chromium::kPropertyChangeCompleteSignal, false))
         .Times(1);
     MockUtils();
-
-    MockOwnerKey* key = new MockOwnerKey;
-    MockDevicePolicy* policy = new MockDevicePolicy;
-    EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-        .WillOnce(Return(true));
-    manager_->test_api().set_ownerkey(key);
-
-    EXPECT_CALL(*policy, Persist())
-        .WillOnce(Return(true));
-    manager_->test_api().set_policy(policy);
   }
 
   void StartFakeSession() {
@@ -316,21 +258,18 @@ class SessionManagerTest : public ::testing::Test {
   MockFileChecker* file_checker_;
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
+  MockDevicePolicyService* device_policy_service_;
   bool must_destroy_mocks_;
-  std::string property_;
-  GArray* fake_sig_;
 };
 
 // static
 char SessionManagerTest::kFakeEmail[] = "cmasone@whaaat.org";
-char SessionManagerTest::kPropName[] = "name";
-char SessionManagerTest::kPropValue[] = "value";
 const pid_t SessionManagerTest::kDummyPid = 4;
 
 
 TEST_F(SessionManagerTest, NoLoopTest) {
   MockChildJob* job = CreateTrivialMockJob(NEVER);
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild) {
@@ -343,7 +282,7 @@ TEST_F(SessionManagerTest, BadExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild1) {
@@ -363,7 +302,7 @@ TEST_F(SessionManagerTest, BadExitChild1) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, BadExitChild2) {
@@ -383,7 +322,7 @@ TEST_F(SessionManagerTest, BadExitChild2) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(BadExitAfterSleep));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild) {
@@ -395,7 +334,7 @@ TEST_F(SessionManagerTest, CleanExitChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, CleanExitChild2) {
@@ -417,23 +356,7 @@ TEST_F(SessionManagerTest, CleanExitChild2) {
   EXPECT_CALL(*job2, ShouldStop())
       .WillOnce(Return(true));
 
-  SimpleRunManager(new MockDevicePolicy);
-}
-
-TEST_F(SessionManagerTest, LoadOwnerKey) {
-  MockChildJob* job = CreateTrivialMockJob(ONCE);
-  EXPECT_CALL(*job, RecordTime())
-      .Times(1);
-  ON_CALL(*job, Run())
-      .WillByDefault(Invoke(CleanExit));
-
-  MockOwnerKey* key = new MockOwnerKey;
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-
-  manager_->test_api().set_ownerkey(key);
-
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, LockedExit) {
@@ -458,7 +381,7 @@ TEST_F(SessionManagerTest, LockedExit) {
   ON_CALL(*job2, Run())
       .WillByDefault(Invoke(RunAndSleep));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, MustStopChild) {
@@ -471,7 +394,7 @@ TEST_F(SessionManagerTest, MustStopChild) {
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(BadExit));
 
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, KeygenTest) {
@@ -549,7 +472,8 @@ TEST_F(SessionManagerTest, SessionStartedCleanup) {
   MockUtils();
 
   ExpectStartSession(email, job);
-  manager_->StartSession(email, nothing, &out, NULL);
+  ScopedError error;
+  manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
   SimpleRunManager();
 }
 
@@ -570,7 +494,8 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanup) {
   MockUtils();
 
   ExpectStartSession(email, job);
-  manager_->StartSession(email, nothing, &out, NULL);
+  ScopedError error;
+  manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
   SimpleRunManager();
 }
 
@@ -612,22 +537,20 @@ TEST_F(SessionManagerTest, HonorShouldNeverKill) {
 }
 
 TEST_F(SessionManagerTest, StartSession) {
-  MockFactory<KeyFailUtil> factory;
-  NssUtil::set_factory(&factory);
-
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
 
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   ExpectStartSession(email, job);
-  manager_->StartSession(email, nothing, &out, NULL);
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->StartSession(email,
+                                         nothing,
+                                         &out,
+                                         &Resetter(&error).lvalue()));
 }
 
 TEST_F(SessionManagerTest, StartSessionNew) {
-  MockFactory<KeyFailUtil> factory;
-  NssUtil::set_factory(&factory);
-
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
@@ -637,64 +560,49 @@ TEST_F(SessionManagerTest, StartSessionNew) {
                                          nothing,
                                          &out,
                                          &Resetter(&error).lvalue()));
-
-  SimpleRunManager();
 }
 
-TEST_F(SessionManagerTest, StartOwnerSession) {
-  MockFactory<KeyCheckUtil> factory;  // Returns private key successfully.
-  NssUtil::set_factory(&factory);
-
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-
+TEST_F(SessionManagerTest, StartSessionInvalidUser) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*job, StartSession(email))
-      .Times(1);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  ExpectStartSessionForOwner(email, key, true);
-  manager_->test_api().set_ownerkey(key);
-
-  manager_->StartSession(email, nothing, &out, NULL);
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, StartOwnerSessionNoKeyNoRecover) {
-  MockFactory<KeyFailUtil> factory;
-  NssUtil::set_factory(&factory);
-
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  MockOwnerKey* key = new MockOwnerKey;
-  ExpectStartSessionForOwner(email, key, false);
-  EXPECT_CALL(*mitigator_, Mitigate(key))
-      .WillOnce(Return(false));
-  manager_->test_api().set_ownerkey(key);
-
-  bool ret_code = manager_->StartSession(email, nothing, &out, NULL);
-  EXPECT_FALSE(ret_code);
-  EXPECT_EQ(ret_code, out);
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, StartSessionError) {
-  MockChildJob* job = CreateTrivialMockJob(ALWAYS);
   gboolean out;
   gchar email[] = "user";
   gchar nothing[] = "";
-  GError* error = NULL;
-  manager_->StartSession(email, nothing, &out, &error);
+  ScopedError error;
+  EXPECT_EQ(FALSE, manager_->StartSession(email,
+                                          nothing,
+                                          &out,
+                                          &Resetter(&error).lvalue()));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, error->code);
-  g_error_free(error);
+}
+
+TEST_F(SessionManagerTest, StartSessionDevicePolicyFailure) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ScopedError error;
+
+  // Upon the owner login check, return an error.
+  EXPECT_CALL(*device_policy_service_,
+              CheckAndHandleOwnerLogin(StrEq(email), _, _))
+      .WillOnce(Return(false));
+
+  EXPECT_EQ(FALSE, manager_->StartSession(email,
+                                          nothing,
+                                          &out,
+                                          &Resetter(&error).lvalue()));
+}
+
+TEST_F(SessionManagerTest, StartOwnerSession) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartOwnerSession(email);
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->StartSession(email,
+                                         nothing,
+                                         &out,
+                                         &Resetter(&error).lvalue()));
 }
 
 TEST_F(SessionManagerTest, StopSession) {
@@ -718,137 +626,10 @@ TEST_F(SessionManagerTest, StatsRecorded) {
       .WillOnce(Return(false));
   ON_CALL(*job, GetName())
       .WillByDefault(Return(std::string("foo")));
-  SimpleRunManager(new MockDevicePolicy);
+  SimpleRunManager();
   LOG(INFO) << "Finished the run!";
   EXPECT_TRUE(file_util::PathExists(uptime));
   EXPECT_TRUE(file_util::PathExists(disk));
-}
-
-TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                   StrEq("failure")))
-      .Times(1);
-  MockUtils();
-
-  GError* error = NULL;
-  GArray* fake_key = CreateArray(kPropValue, strlen(kPropValue));
-  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key, &error));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, error->code);
-  g_array_free(fake_key, TRUE);
-  g_error_free(error);
-}
-
-TEST_F(SessionManagerTest, ValidateAndStoreOwnerKey) {
-  MockFactory<KeyCheckUtil> factory;
-  NssUtil::set_factory(&factory);
-
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                   StrEq("success")))
-      .Times(1);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kPropertyChangeCompleteSignal,
-                                   StrEq("success")))
-      .Times(1);
-  MockUtils();
-  EXPECT_CALL(*mitigator_, Mitigating())
-      .WillRepeatedly(Return(false));
-
-  std::vector<uint8> pub_key;
-  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  MockDevicePolicy* policy = new MockDevicePolicy;
-
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, Persist())
-      .WillOnce(Return(true));
-  manager_->test_api().set_ownerkey(key);
-
-  EXPECT_CALL(*policy, Persist())
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*policy, StoreOwnerProperties(key, StrEq(kFakeEmail), _))
-      .WillOnce(Return(true));
-  manager_->test_api().set_policy(policy);
-
-  StartFakeSession();
-  manager_->ValidateAndStoreOwnerKey(kPropValue);
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, ValidateAndFailToStoreOwnerKey) {
-  MockFactory<KeyCheckUtil> factory;
-  NssUtil::set_factory(&factory);
-
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                   StrEq("failure")))
-      .Times(1);
-  MockUtils();
-  EXPECT_CALL(*mitigator_, Mitigating())
-      .WillRepeatedly(Return(false));
-
-  std::vector<uint8> pub_key;
-  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  MockDevicePolicy* policy = new MockDevicePolicy;
-
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, PopulateFromBuffer(pub_key))
-      .WillOnce(Return(false));
-  manager_->test_api().set_ownerkey(key);
-
-  EXPECT_CALL(*policy, Persist())
-      .WillOnce(Return(true));
-  manager_->test_api().set_policy(policy);
-
-  StartFakeSession();
-  manager_->ValidateAndStoreOwnerKey(kPropValue);
-  manager_->Run();
-}
-
-TEST_F(SessionManagerTest, ValidateAndFailToClobberOwnerKey) {
-  MockFactory<KeyCheckUtil> factory;
-  NssUtil::set_factory(&factory);
-
-  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                   StrEq("failure")))
-      .Times(1);
-  MockUtils();
-  EXPECT_CALL(*mitigator_, Mitigating())
-      .WillRepeatedly(Return(true));
-
-  std::vector<uint8> pub_key;
-  NssUtil::BlobFromBuffer(kPropValue, &pub_key);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  MockDevicePolicy* policy = new MockDevicePolicy;
-
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, ClobberCompromisedKey(pub_key))
-      .WillOnce(Return(false));
-  manager_->test_api().set_ownerkey(key);
-
-  EXPECT_CALL(*policy, Persist())
-      .WillOnce(Return(true));
-  manager_->test_api().set_policy(policy);
-
-  StartFakeSession();
-  manager_->ValidateAndStoreOwnerKey(kPropValue);
-  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, DeprecatedMethod) {
@@ -857,55 +638,23 @@ TEST_F(SessionManagerTest, DeprecatedMethod) {
   ScopedError error;
   EXPECT_EQ(FALSE, manager_->DeprecatedError("", &Resetter(&error).lvalue()));
   EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  manager_->Run();
+  SimpleRunManager();
 }
 
-
-TEST_F(SessionManagerTest, StorePolicy) {
-  enterprise_management::PolicyFetchResponse fake_policy;
-  fake_policy.set_policy_data(kPropName);
-  fake_policy.set_policy_data_signature(kPropValue);
-  fake_policy.set_new_public_key(kPropName);
-  fake_policy.set_new_public_key_signature(kPropValue);
+TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-
-  MockOwnerKey* key = new MockOwnerKey;
-  MockDevicePolicy* policy = new MockDevicePolicy;
-  EXPECT_CALL(*key, PopulateFromDiskIfPossible())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, PopulateFromBuffer(_))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, IsPopulated())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, Verify(CastEq(kPropName), strlen(kPropName),
-                           CastEq(kPropValue), strlen(kPropValue)))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*key, Equals(StrEq(kPropName)))
-      .WillOnce(Return(false));
-  EXPECT_CALL(*key, Persist())
-      .WillOnce(Return(true));
-  manager_->test_api().set_ownerkey(key);
-
-  EXPECT_CALL(*policy, Persist())
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
-  EXPECT_CALL(*policy, Set(_))
-      .Times(1);
-  manager_->test_api().set_policy(policy);
-
   EXPECT_CALL(*(utils_.get()),
-              SendSignalToChromium(chromium::kOwnerKeySetSignal,
-                                   StrEq("success")))
+              SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, false))
       .Times(1);
   MockUtils();
 
-  std::string pol_str = fake_policy.SerializeAsString();
-  ASSERT_FALSE(pol_str.empty());
-  GArray* policy_array = CreateArray(pol_str.c_str(), pol_str.length());
-  EXPECT_EQ(TRUE, manager_->StorePolicy(policy_array, NULL));
-  manager_->Run();
-  g_array_free(policy_array, TRUE);
+  GError* error = NULL;
+  const char fake_key_data[] = "fake_key";
+  GArray* fake_key = CreateArray(fake_key_data, strlen(fake_key_data));
+  EXPECT_EQ(FALSE, manager_->SetOwnerKey(fake_key, &error));
+  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, error->code);
+  g_array_free(fake_key, TRUE);
+  g_error_free(error);
 }
 
 TEST_F(SessionManagerTest, EnableChromeTesting) {
@@ -950,6 +699,46 @@ TEST_F(SessionManagerTest, EnableChromeTesting) {
   manager_->test_api().set_child_pid(0, kDummyPid);
   EXPECT_TRUE(manager_->EnableChromeTesting(false, args2, &file_path, NULL));
   EXPECT_EQ(std::string(testing_path), std::string(file_path));
+}
+
+TEST_F(SessionManagerTest, StorePolicyNoSession) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  int flags = PolicyService::KEY_ROTATE |
+              PolicyService::KEY_INSTALL_NEW |
+              PolicyService::KEY_CLOBBER;
+  EXPECT_CALL(*device_policy_service_, Store(policy_blob, NULL, flags))
+      .WillOnce(Return(TRUE));
+  EXPECT_EQ(TRUE, manager_->StorePolicy(policy_blob, NULL));
+  g_array_free(policy_blob, TRUE);
+}
+
+TEST_F(SessionManagerTest, StorePolicySessionStarted) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  manager_->test_api().set_session_started(true, "user@somewhere");
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  int flags = PolicyService::KEY_ROTATE;
+  EXPECT_CALL(*device_policy_service_, Store(policy_blob, NULL, flags))
+      .WillOnce(Return(TRUE));
+  EXPECT_EQ(TRUE, manager_->StorePolicy(policy_blob, NULL));
+  g_array_free(policy_blob, TRUE);
+}
+
+TEST_F(SessionManagerTest, RetrievePolicy) {
+  MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  EXPECT_CALL(*device_policy_service_, Retrieve(_, _))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob),
+                      Return(TRUE)));
+  GArray* out_blob;
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->RetrievePolicy(&out_blob,
+                                           &Resetter(&error).lvalue()));
+  EXPECT_EQ(out_blob, policy_blob);
+  g_array_free(policy_blob, TRUE);
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {

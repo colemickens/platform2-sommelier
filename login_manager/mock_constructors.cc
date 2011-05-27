@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/message_loop_proxy.h>
+
 #include "login_manager/mock_child_job.h"
-#include "login_manager/mock_device_policy.h"
+#include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_system_utils.h"
 
 // Per the gmock documentation, the vast majority of the time spent on
@@ -29,11 +32,12 @@ MockChildJob::MockChildJob() {
 }
 MockChildJob::~MockChildJob() {}
 
-MockDevicePolicy::MockDevicePolicy() : DevicePolicy(FilePath("")) {}
-MockDevicePolicy::~MockDevicePolicy() {}
+MockDevicePolicyService::MockDevicePolicyService()
+  : DevicePolicyService(NULL, NULL, NULL, NULL, NULL, NULL, NULL) {}
+MockDevicePolicyService::~MockDevicePolicyService() {}
 
-MockFileChecker::MockFileChecker(std::string filename) : FileChecker(filename) {
-}
+MockFileChecker::MockFileChecker(std::string filename)
+  : FileChecker(filename) {}
 MockFileChecker::~MockFileChecker() {}
 
 MockKeyGenerator::MockKeyGenerator() {}
@@ -44,6 +48,9 @@ MockMitigator::~MockMitigator() {}
 
 MockOwnerKey::MockOwnerKey() : OwnerKey(FilePath("")) {}
 MockOwnerKey::~MockOwnerKey() {}
+
+MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
+MockPolicyStore::~MockPolicyStore() {}
 
 MockSystemUtils::MockSystemUtils() {}
 MockSystemUtils::~MockSystemUtils() {}

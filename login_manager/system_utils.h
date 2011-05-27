@@ -5,15 +5,16 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib.h>
-#include <glib.h>
 #include <unistd.h>
+
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus.h>
+#include <glib.h>
 
 class FilePath;
 
@@ -55,6 +56,10 @@ class SystemUtils {
   virtual void SendSignalToChromium(const char* signal_name,
                                     const char* payload);
 
+  // Same as above, but accepts a boolean status that'll be encoded as
+  // |kSignalSuccess| and |kSignalFailure| respectively.
+  virtual void SendStatusSignalToChromium(const char* signal_name, bool status);
+
   // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
   //                API out of the session_manager.
   // http://code.google.com/p/chromium-os/issues/detail?id=5929
@@ -79,6 +84,10 @@ class SystemUtils {
  private:
   // If this file exists on the next boot, the stateful partition will be wiped.
   static const char kResetFile[];
+
+  // Strings for encoding boolean status in signals.
+  static const char kSignalSuccess[];
+  static const char kSignalFailure[];
 
   // Sends |signal_name| to |interface, optionally adding |payload|
   // as an arg if it is not NULL.

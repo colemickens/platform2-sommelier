@@ -31,9 +31,9 @@ PROTO_HEADERS = $(patsubst %.cc,%.h,$(PROTO_BINDINGS))
 PROTO_OBJS = $(BINDINGS)/chrome_device_policy.pb.o \
 	$(BINDINGS)/device_management_backend.pb.o
 
-COMMON_OBJS = child_job.o device_policy.o interface.o key_generator.o \
-	nss_util.o owner_key.o owner_key_loss_mitigator.o policy_store.o \
-	regen_mitigator.o session_manager_service.o system_utils.o \
+COMMON_OBJS = child_job.o device_policy_service.o interface.o key_generator.o \
+	nss_util.o owner_key.o owner_key_loss_mitigator.o policy_service.o \
+	policy_store.o regen_mitigator.o session_manager_service.o system_utils.o \
 	upstart_signal_emitter.o $(PROTO_OBJS)
 
 KEYGEN_BIN = keygen
@@ -44,11 +44,11 @@ SESSION_OBJS = session_manager_main.o
 
 TEST_BIN = session_manager_unittest
 TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
-	device_policy_unittest.o key_generator_unittest.o \
+	device_policy_service_unittest.o key_generator_unittest.o \
 	mock_constructors.o mock_nss_util.o nss_util_unittest.o \
-	owner_key_unittest.o policy_store_unittest.o regen_mitigator_unittest.o \
-	session_manager_unittest.o session_manager_static_unittest.o \
-	system_utils_unittest.o
+	owner_key_unittest.o policy_service_unittest.cc policy_store_unittest.o \
+	regen_mitigator_unittest.o session_manager_unittest.o \
+	session_manager_static_unittest.o system_utils_unittest.o
 
 ROOT_FILES = use_webui_login
 

@@ -24,7 +24,7 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator,
 RegenMitigator::~RegenMitigator() {}
 
 bool RegenMitigator::Mitigate(OwnerKey* key) {
-  return mitigating_ = generator_->Start(set_uid_ ? uid_ : 0, key, manager_);
+  return mitigating_ = generator_->Start(set_uid_ ? uid_ : 0, manager_);
 }
 
 bool RegenMitigator::Mitigating() {

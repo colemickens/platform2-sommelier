@@ -11,14 +11,13 @@
 
 namespace login_manager {
 class ChildJobInterface;
-class OwnerKey;
 class SessionManagerService;
 
 class MockKeyGenerator : public KeyGenerator {
  public:
   MockKeyGenerator();
   virtual ~MockKeyGenerator();
-  MOCK_METHOD3(Start, bool(uid_t, OwnerKey*, SessionManagerService*));
+  MOCK_METHOD2(Start, bool(uid_t, SessionManagerService*));
 };
 }  // namespace login_manager
 

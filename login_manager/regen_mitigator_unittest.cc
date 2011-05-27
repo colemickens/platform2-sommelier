@@ -4,8 +4,8 @@
 
 #include "login_manager/regen_mitigator.h"
 
-#include <unistd.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <base/memory/ref_counted.h>
 #include <gtest/gtest.h>
@@ -43,7 +43,7 @@ class RegenMitigatorTest : public ::testing::Test {
 TEST_F(RegenMitigatorTest, Mitigate) {
   MockKeyGenerator gen;
   MockOwnerKey key;
-  EXPECT_CALL(gen, Start(getuid(), &key, manager_.get()))
+  EXPECT_CALL(gen, Start(getuid(), manager_.get()))
       .WillOnce(Return(true));
   RegenMitigator mitigator(&gen, true, getuid(), manager_.get());
   EXPECT_TRUE(mitigator.Mitigate(&key));

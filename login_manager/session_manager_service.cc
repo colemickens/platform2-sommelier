@@ -26,8 +26,8 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
-#include "base/message_loop_proxy.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/message_loop_proxy.h"
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
@@ -40,7 +40,7 @@
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/nss_util.h"
-#include "login_manager/owner_key.h"
+#include "login_manager/policy_store.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
 // modifying the files afterward.
@@ -152,16 +152,13 @@ SessionManagerService::SessionManagerService(
       exit_on_child_done_(false),
       session_manager_(NULL),
       main_loop_(g_main_loop_new(NULL, FALSE)),
+      dont_use_directly_(new MessageLoopForUI),
+      message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
       system_(new SystemUtils),
-      policy_(new DevicePolicy(FilePath(DevicePolicy::kDefaultPath))),
-      nss_(NssUtil::Create()),
-      key_(new OwnerKey(nss_->GetOwnerKeyFilePath())),
       gen_(new KeyGenerator),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       io_thread_(kIOThreadName),
-      dont_use_directly_(new MessageLoopForUI),
-      message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
@@ -178,9 +175,6 @@ SessionManagerService::~SessionManagerService() {
 
   // Remove this in case it was added by StopSession().
   g_idle_remove_by_data(this);
-
-  // Remove this in case it was added by SetOwnerKey().
-  g_idle_remove_by_data(key_.get());
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
@@ -219,9 +213,13 @@ bool SessionManagerService::Initialize() {
                    G_TYPE_STRING);  // current user
 
   LOG(INFO) << "SessionManagerService starting";
-  if (!policy_->LoadOrCreate())
-    LOG(ERROR) << "Could not load existing policy.  Continuing anyway...";
-  return Reset();
+  if (!Reset())
+    return false;
+
+  device_policy_ = DevicePolicyService::Create(mitigator_.get(),
+                                               message_loop_,
+                                               io_thread_.message_loop_proxy());
+  return true;
 }
 
 bool SessionManagerService::Register(
@@ -303,7 +301,7 @@ bool SessionManagerService::Run() {
 
   // TODO(cmasone): A corrupted owner key means that the user needs to go
   //                to recovery mode.  How to tell them that from here?
-  CHECK(key_->PopulateFromDiskIfPossible());
+  CHECK(device_policy_->Initialize());
   MessageLoop::current()->Run();
   CleanupChildren(kKillTimeout);
 
@@ -329,13 +327,7 @@ bool SessionManagerService::Shutdown() {
     }
   }
 
-  // Even if we haven't gotten around to processing a persist task.
-  base::WaitableEvent event(true, false);
-  io_thread_.message_loop()->PostTask(
-      FROM_HERE, NewRunnableMethod(this,
-                                   &SessionManagerService::PersistPolicySync,
-                                   &event));
-  event.Wait();
+  device_policy_->PersistPolicySync();
   io_thread_.Stop();
   message_loop_->PostTask(FROM_HERE, new MessageLoop::QuitTask());
   LOG(INFO) << "SessionManagerService quitting run loop";
@@ -491,19 +483,14 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     return FALSE;
   }
 
-  // If the current user is the owner, and isn't whitelisted or set
-  // as the cros.device.owner pref, then do so.
-  bool can_access_key = CurrentUserHasOwnerKey(key_->public_key_der(), error);
-  if (can_access_key) {
-    policy_->StoreOwnerProperties(key_.get(), current_user_, NULL);
-  }
-  // Now, the flip side...if we believe the current user to be the owner
-  // based on the cros.owner.device setting, and he DOESN'T have the private
-  // half of the public key, we must mitigate.
-  bool userIsOwner = policy_->CurrentUserIsOwner(current_user_);
-  if (userIsOwner && !can_access_key) {
-    if (!(*OUT_done = mitigator_->Mitigate(key_.get())))
-      return FALSE;
+  // Check whether the current user is the owner, and if so make sure she is
+  // whitelisted and has an owner key.
+  bool user_is_owner = false;
+  if (!device_policy_->CheckAndHandleOwnerLogin(current_user_,
+                                                &user_is_owner,
+                                                error)) {
+    *OUT_done = FALSE;
+    return FALSE;
   }
 
   // Send each user login event to UMA (right before we start session
@@ -512,7 +499,7 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   metrics_lib.Init();
   if (current_user_ == kIncognitoUser)
     metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 0, 2);
-  else if (userIsOwner)
+  else if (user_is_owner)
     metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 1, 2);
   else
     metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 2, 2);
@@ -534,9 +521,8 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
                     signals_[kSignalSessionStateChanged],
                     0, "started", current_user_.c_str());
     }
-    if (key_->HaveCheckedDisk() && !key_->IsPopulated() &&
-        current_user_ != kIncognitoUser) {
-      gen_->Start(set_uid_ ? uid_ : 0, key_.get(), this);
+    if (device_policy_->KeyMissing() && current_user_ != kIncognitoUser) {
+      gen_->Start(set_uid_ ? uid_ : 0, this);
     }
   }
 
@@ -557,39 +543,13 @@ void SessionManagerService::HandleKeygenExit(GPid pid,
         FilePath(file_util::GetHomeDir().AppendASCII(
             KeyGenerator::kTemporaryKeyFilename)),
         &key);
-    manager->ValidateAndStoreOwnerKey(key);
+    manager->device_policy_->ValidateAndStoreOwnerKey(manager->current_user_,
+                                                      key);
   } else {
     if (WIFSIGNALED(status))
       LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
     else
       LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
-  }
-}
-
-void SessionManagerService::ValidateAndStoreOwnerKey(const std::string& buf) {
-  std::vector<uint8> pub_key;
-  NssUtil::BlobFromBuffer(buf, &pub_key);
-
-  if (!CurrentUserHasOwnerKey(pub_key, NULL)) {
-    SendSignal(chromium::kOwnerKeySetSignal, false);
-    return;
-  }
-
-  // If we're not mitigating a key loss, we should be able to populate |key_|.
-  // If we're mitigating a key loss, we should be able to clobber |key_|.
-  if ((!mitigator_->Mitigating() && !key_->PopulateFromBuffer(pub_key)) ||
-      (mitigator_->Mitigating() && !key_->ClobberCompromisedKey(pub_key))) {
-    SendSignal(chromium::kOwnerKeySetSignal, false);
-    return;
-  }
-  io_thread_.message_loop()->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
-  if (policy_->StoreOwnerProperties(key_.get(), current_user_, NULL)) {
-    io_thread_.message_loop()->PostTask(
-        FROM_HERE,
-        NewRunnableMethod(this, &SessionManagerService::PersistPolicy));
-  } else {
-    LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
 }
 
@@ -630,93 +590,15 @@ void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
 
 gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
                                             DBusGMethodInvocation* context) {
-  std::string policy_str(policy_blob->data, policy_blob->len);
-  em::PolicyFetchResponse policy;
-  if (!policy.ParseFromString(policy_str) ||
-      !policy.has_policy_data() ||
-      !policy.has_policy_data_signature()) {
-    const char msg[] = "Unable to parse policy protobuf.";
-    LOG(ERROR) << msg;
-    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, context, msg);
-    return FALSE;
-  }
-
-  // Determine if the policy has pushed a new owner key and, if so, set it.
-  if (policy.has_new_public_key() && !key_->Equals(policy.new_public_key())) {
-    // The policy contains a new key, and it is different from |key_|.
-    std::vector<uint8> der;
-    nss_->BlobFromBuffer(policy.new_public_key(), &der);
-
-    if (session_started_) {
-      bool rotated = false;
-      if (policy.has_new_public_key_signature()) {
-        // Graceful key rotation.
-        std::vector<uint8> sig;
-        nss_->BlobFromBuffer(policy.new_public_key_signature(), &sig);
-        rotated = key_->Rotate(der, sig);
-      }
-      if (!rotated) {
-        const char msg[] = "Failed attempted key rotation!";
-        LOG(ERROR) << msg;
-        system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-                                 context,
-                                 msg);
-        return FALSE;
-      }
-    } else {
-      // Force a new key, regardless of whether we have one or not.
-      if (key_->IsPopulated()) {
-        key_->ClobberCompromisedKey(der);
-        LOG(INFO) << "Clobbered existing key outside of session";
-      } else {
-        CHECK(key_->PopulateFromBuffer(der));  // Should be unable to fail.
-        LOG(INFO) << "Setting key outside of session";
-      }
-    }
-    // If here, need to persit new key to disk.  Already loaded key into memory.
-    io_thread_.message_loop()->PostTask(
-        FROM_HERE, NewRunnableMethod(this, &SessionManagerService::PersistKey));
-  }
-
-  // Validate signature on policy and persist to disk
-  const std::string& sig = policy.policy_data_signature();
-  SessionManagerService::SigReturnCode verify_result =
-      VerifyHelper(policy.policy_data(), sig.c_str(), sig.length());
-  if (verify_result == NO_KEY) {
-    NOTREACHED() << "Should have set the key earlier in this function!";
-    return FALSE;
-  } else if (verify_result == SIGNATURE_FAIL) {
-    const char msg[] = "Signature could not be verified in StorePolicy.";
-    LOG(ERROR) << msg;
-    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, context, msg);
-    return FALSE;
-  }
-  policy_->Set(policy);
-  io_thread_.message_loop()->PostTask(
-      FROM_HERE, NewRunnableMethod(this,
-                                   &SessionManagerService::PersistPolicyReturn,
-                                   context));
-  return TRUE;
+  int flags = PolicyService::KEY_ROTATE;
+  if (!session_started_)
+    flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
+  return device_policy_->Store(policy_blob, context, flags);
 }
 
 gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
                                                GError** error) {
-  std::string polstr;
-  if (!policy_->SerializeToString(&polstr)) {
-    const char msg[] = "Unable to serialize policy protobuf.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
-    return FALSE;
-  }
-  *OUT_policy_blob = g_array_sized_new(FALSE, FALSE, 1, polstr.length());
-  if (!*OUT_policy_blob) {
-    const char msg[] = "Unable to allocate memory for response.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-    return FALSE;
-  }
-  g_array_append_vals(*OUT_policy_blob, polstr.c_str(), polstr.length());
-  return TRUE;
+  return device_policy_->Retrieve(OUT_policy_blob, error);
 }
 
 gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
@@ -878,40 +760,6 @@ gboolean SessionManagerService::ServiceShutdown(gpointer data) {
   return FALSE;  // So that the event source that called this gets removed.
 }
 
-void SessionManagerService::PersistKey() {
-  LOG(INFO) << "Persisting Owner key to disk.";
-  bool what_happened = key_->Persist();
-  message_loop_->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
-                                   chromium::kOwnerKeySetSignal,
-                                   what_happened));
-}
-
-void SessionManagerService::PersistPolicySync(base::WaitableEvent* event) {
-  policy_->Persist();
-  LOG(INFO) << "Persisted policy to disk.";
-  event->Signal();
-}
-
-void SessionManagerService::PersistPolicyReturn(DBusGMethodInvocation* ctxt) {
-  LOG(INFO) << "Persisting policy to disk.";
-  bool what_happened = policy_->Persist();
-  message_loop_->PostTask(
-      FROM_HERE, NewRunnableMethod(this,
-                                   &SessionManagerService::SendBooleanReply,
-                                   ctxt,
-                                   what_happened));
-}
-
-void SessionManagerService::PersistPolicy() {
-  LOG(INFO) << "Persisting policy to disk.";
-  bool what_happened = policy_->Persist();
-  message_loop_->PostTask(
-      FROM_HERE, NewRunnableMethod(this, &SessionManagerService::SendSignal,
-                                   chromium::kPropertyChangeCompleteSignal,
-                                   what_happened));
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
 
@@ -1005,26 +853,6 @@ void SessionManagerService::SetupHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-gboolean SessionManagerService::CurrentUserHasOwnerKey(
-    const std::vector<uint8>& pub_key,
-    GError** error) {
-  if (!nss_->MightHaveKeys())
-    return FALSE;
-  if (!nss_->OpenUserDB()) {
-    const char msg[] = "Could not open the current user's NSS database.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
-    return FALSE;
-  }
-  if (!nss_->GetPrivateKey(pub_key)) {
-    const char msg[] = "Could not verify that public key belongs to the owner.";
-    LOG(WARNING) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
-    return FALSE;
-  }
-  return TRUE;
-}
-
 gboolean SessionManagerService::ValidateAndCacheUserEmail(
     const gchar* email_address,
     GError** error) {
@@ -1093,29 +921,9 @@ gboolean SessionManagerService::DeprecatedError(const char* msg,
   return FALSE;
 }
 
-SessionManagerService::SigReturnCode
-SessionManagerService::VerifyHelperArray(const std::string& data, GArray* sig) {
-  return VerifyHelper(data, sig->data, sig->len);
-}
-
-SessionManagerService::SigReturnCode
-SessionManagerService::VerifyHelper(const std::string& data,
-                                    const char* sig,
-                                    uint32 sig_len) {
-  if (!key_->IsPopulated())
-    return NO_KEY;
-  if (!key_->Verify(reinterpret_cast<const uint8*>(data.c_str()),
-                    data.length(),
-                    reinterpret_cast<const uint8*>(sig),
-                    sig_len)) {
-    return SIGNATURE_FAIL;
-  }
-  return SUCCESS;
-}
-
 void SessionManagerService::SendSignal(const char signal_name[],
                                        bool succeeded) {
-  system_->SendSignalToChromium(signal_name, succeeded ? "success" : "failure");
+  system_->SendStatusSignalToChromium(signal_name, succeeded);
 }
 
 // static

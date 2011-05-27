@@ -12,7 +12,6 @@ namespace login_manager {
 
 class ChildJobInterface;
 class MockChildJob;
-class OwnerKey;
 class SessionManagerService;
 
 class KeyGenerator {
@@ -25,10 +24,13 @@ class KeyGenerator {
   // Use |key| to start the generation of a new Owner keypair as user |uid|.
   // Upon success, hands off ownership of the key generation job to |manager|
   // and returns true.
-  virtual bool Start(uid_t uid, OwnerKey* key, SessionManagerService* manager);
+  virtual bool Start(uid_t uid, SessionManagerService* manager);
 
   void InjectMockKeygenJob(MockChildJob* keygen);  // Takes ownership.
  private:
+  // Forks a process for |job| and returns the PID.
+  virtual int RunJob(ChildJobInterface* job);
+
   static const char kKeygenExecutable[];
 
   scoped_ptr<ChildJobInterface> keygen_job_;

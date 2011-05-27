@@ -8,6 +8,7 @@
 #include "login_manager/nss_util.h"
 
 #include <unistd.h>
+
 #include <base/file_path.h>
 #include <crypto/nss_util.h>
 #include <gmock/gmock.h>
@@ -20,6 +21,7 @@ namespace login_manager {
 
 class MockNssUtil : public NssUtil {
  public:
+  MockNssUtil();
   virtual ~MockNssUtil();
 
   MOCK_METHOD0(MightHaveKeys, bool());
@@ -35,24 +37,9 @@ class MockNssUtil : public NssUtil {
   MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
                           std::vector<uint8>* OUT_signature,
                           crypto::RSAPrivateKey* key));
- protected:
-  MockNssUtil();
-  void ExpectGetOwnerKeyFilePath();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);
-};
-
-template<typename T>
-class MockFactory : public NssUtil::Factory {
- public:
-  MockFactory() {}
-  ~MockFactory() {}
-  NssUtil* CreateNssUtil() {
-    return new T;
-  }
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockFactory);
 };
 
 class KeyCheckUtil : public MockNssUtil {

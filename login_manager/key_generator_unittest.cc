@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 #include "login_manager/mock_child_job.h"
-#include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/session_manager_service.h"
 
@@ -58,15 +57,9 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
       .WillByDefault(Invoke(CleanExit));
   int keygen_pid = 8;
 
-  MockOwnerKey key;
-  EXPECT_CALL(key, PopulateFromDiskIfPossible())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(key, StartGeneration(k_job))
-      .WillOnce(Return(keygen_pid));
-
   KeyGenerator keygen;
   keygen.InjectMockKeygenJob(k_job);  // Takes ownership.
-  EXPECT_TRUE(keygen.Start(getuid(), &key, manager_.get()));
+  EXPECT_TRUE(keygen.Start(getuid(), manager_.get()));
 }
 
 }  // namespace login_manager

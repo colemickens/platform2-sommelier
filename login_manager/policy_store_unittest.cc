@@ -36,7 +36,7 @@ class PolicyStoreTest : public ::testing::Test {
     std::string serialized;
     ASSERT_TRUE(policy.SerializeToString(&serialized));
     std::string serialized_from;
-    ASSERT_TRUE(store->SerializeToString(&serialized_from));
+    ASSERT_TRUE(store->Get().SerializeToString(&serialized_from));
     EXPECT_EQ(serialized, serialized_from);
   }
 
@@ -51,8 +51,7 @@ TEST_F(PolicyStoreTest, CreateEmptyStore) {
   PolicyStore store(tmpfile_);
   ASSERT_TRUE(store.LoadOrCreate());  // Should create an empty policy.
   std::string serialized;
-  EXPECT_TRUE(store.SerializeToString(&serialized));
-  EXPECT_TRUE(serialized.empty());
+  CheckExpectedPolicy(&store, em::PolicyFetchResponse());
 }
 
 TEST_F(PolicyStoreTest, FailBrokenStore) {

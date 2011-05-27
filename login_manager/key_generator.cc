@@ -4,6 +4,8 @@
 
 #include "login_manager/key_generator.h"
 
+#include <unistd.h>
+
 #include <base/file_util.h>
 
 #include "login_manager/child_job.h"
@@ -21,7 +23,6 @@ KeyGenerator::KeyGenerator() {}
 KeyGenerator::~KeyGenerator() {}
 
 bool KeyGenerator::Start(uid_t uid,
-                         OwnerKey* key,
                          SessionManagerService* manager) {
   if (!keygen_job_.get()) {
     LOG(INFO) << "Creating keygen job";
@@ -34,7 +35,7 @@ bool KeyGenerator::Start(uid_t uid,
 
   if (uid != 0)
     keygen_job_->SetDesiredUid(uid);
-  int pid = key->StartGeneration(keygen_job_.get());
+  int pid = RunJob(keygen_job_.get());
   if (pid < 0)
     return false;
 
@@ -45,6 +46,15 @@ bool KeyGenerator::Start(uid_t uid,
                          NULL);
   manager->AdoptChild(keygen_job_.release(), pid);
   return true;
+}
+
+int KeyGenerator::RunJob(ChildJobInterface* job) {
+  int pid = fork();
+  if (pid == 0) {
+    job->Run();
+    exit(1);  // Run() is not supposed to return.
+  }
+  return pid;
 }
 
 void KeyGenerator::InjectMockKeygenJob(MockChildJob* keygen) {
