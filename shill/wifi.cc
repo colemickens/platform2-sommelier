@@ -62,8 +62,8 @@ WiFi::SupplicantInterfaceProxy::SupplicantInterfaceProxy(
     const WiFiRefPtr &wifi,
     DBus::Connection *bus,
     const ::DBus::Path &object_path)
-    : wifi_(wifi),
-      DBus::ObjectProxy(*bus, object_path, kSupplicantDBusAddr) {}
+    : DBus::ObjectProxy(*bus, object_path, kSupplicantDBusAddr),
+      wifi_(wifi) {}
 
 void WiFi::SupplicantInterfaceProxy::ScanDone(const bool& success) {
   LOG(INFO) << __func__ << " " << success;

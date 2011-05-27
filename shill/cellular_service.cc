@@ -24,8 +24,8 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  const CellularRefPtr &device,
                                  const string &name)
     : Service(control_interface, dispatcher, name),
-      cellular_(device),
       strength_(0),
+      cellular_(device),
       type_(flimflam::kTypeCellular) {
 
   store_.RegisterConstString(flimflam::kActivationStateProperty,

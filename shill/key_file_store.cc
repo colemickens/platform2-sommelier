@@ -71,9 +71,13 @@ bool KeyFileStore::Close() {
                << glib_->ConvertErrorToMessage(error);
     success = false;
   }
-  if (success && file_util::WriteFile(path_, data, length) != length) {
-    LOG(ERROR) << "Failed to store key file: " << path_.value();
-    success = false;
+  if (success) {
+    int written = file_util::WriteFile(path_, data, length);
+    if (written < 0 ||
+        static_cast<unsigned int>(written) != length) {
+      LOG(ERROR) << "Failed to store key file: " << path_.value();
+      success = false;
+    }
   }
   glib_->Free(data);
   return success;

@@ -25,11 +25,11 @@ void EventDispatcher::DispatchForever() {
 }
 
 bool EventDispatcher::PostTask(Task* task) {
-  message_loop_proxy_->PostTask(FROM_HERE, task);
+  return message_loop_proxy_->PostTask(FROM_HERE, task);
 }
 
 bool EventDispatcher::PostDelayedTask(Task* task, int64 delay_ms) {
-  message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
+  return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
 }
 
 IOInputHandler *EventDispatcher::CreateInputHandler(

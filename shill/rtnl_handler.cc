@@ -34,10 +34,10 @@ namespace shill {
 RTNLHandler::RTNLHandler()
     : running_(false),
       in_request_(false),
-      rtnl_callback_(NewCallback(this, &RTNLHandler::ParseRTNL)),
       rtnl_socket_(-1),
       request_flags_(0),
-      request_sequence_(0) {
+      request_sequence_(0),
+      rtnl_callback_(NewCallback(this, &RTNLHandler::ParseRTNL)) {
   VLOG(2) << "RTNLHandler created";
 }
 
@@ -213,7 +213,7 @@ void RTNLHandler::ParseRTNL(InputData *data) {
     struct nlmsghdr *hdr = reinterpret_cast<struct nlmsghdr *>(buf);
     struct nlmsgerr *err;
 
-    if (!NLMSG_OK(hdr, end - buf))
+    if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
     switch (hdr->nlmsg_type) {

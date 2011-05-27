@@ -37,11 +37,11 @@ Device::Device(ControlInterface *control_interface,
                int interface_index)
     : powered_(true),
       reconnect_(true),
+      interface_index_(interface_index),
+      running_(false),
       manager_(manager),
       link_name_(link_name),
-      adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      interface_index_(interface_index),
-      running_(false) {
+      adaptor_(control_interface->CreateDeviceAdaptor(this)) {
 
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
 

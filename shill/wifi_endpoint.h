@@ -51,7 +51,7 @@ class WiFiEndpoint : public Endpoint {
   std::string bssid_string_;
   std::string bssid_hex_;
   int16_t signal_strength_;
-  uint32_t network_mode_;
+  int32_t network_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiEndpoint);
 };

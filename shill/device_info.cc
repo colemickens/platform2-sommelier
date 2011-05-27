@@ -127,7 +127,7 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   int rta_bytes;
   char *link_name = NULL;
   DeviceRefPtr device;
-  Device::Technology technology;
+  Device::Technology technology = Device::kUnknown;
   bool is_stub = false;
 
   VLOG(2) << __func__;

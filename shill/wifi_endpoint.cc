@@ -78,7 +78,10 @@ int16_t WiFiEndpoint::signal_strength() const {
 }
 
 uint32_t WiFiEndpoint::network_mode() const {
-  return network_mode_;
+  if (network_mode_ < 0)
+    return 0;
+  else
+    return network_mode_;
 }
 
 int32_t WiFiEndpoint::parse_mode(const std::string &mode_string) {

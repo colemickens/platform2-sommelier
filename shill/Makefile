@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 
 CXX ?= g++
-CXXFLAGS ?= -fno-strict-aliasing -Wall -Wextra -Werror -Wuninitialized
+CXXFLAGS ?= -fno-strict-aliasing
+CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized
+# disable some errors, which occur repeateadly the dbus-c++ headers.
+CXXFLAGS += -Wno-ignored-qualifiers -Wno-unused
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 AR ?= ar
 PKG_CONFIG ?= pkg-config
