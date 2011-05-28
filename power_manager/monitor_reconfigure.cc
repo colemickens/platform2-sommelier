@@ -106,7 +106,8 @@ void MonitorReconfigure::Run() {
   DCHECK(!lcd_modes.empty());
 
   vector<ResolutionSelector::Mode> external_modes;
-  if (external_output_info_->connection == RR_Connected)
+  if (external_output_info_ &&
+      external_output_info_->connection == RR_Connected)
     SortModesByResolution(external_output_, &external_modes);
   else
     external_modes.clear();
