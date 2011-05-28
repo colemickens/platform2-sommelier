@@ -205,11 +205,16 @@ void Daemon::SetPlugged(bool plugged) {
   CHECK(idle_.GetIdleTime(&idle_time_ms));
   // If the screen is on, and the user plugged or unplugged the computer,
   // we should wait a bit before turning off the screen.
-  // If the screen is off, don't immediately suspend.
+  // If the screen is off, don't immediately suspend, wait another
+  // suspend timeout.
+  // If the idle state is unknown, this is the powerd startup condition, so
+  // we ignore any idle time from before powerd starts.
   if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
     SetIdleOffset(idle_time_ms, kIdleNormal);
   else if (idle_state_ == kIdleScreenOff)
     SetIdleOffset(idle_time_ms, kIdleSuspend);
+  else if (idle_state_ == kIdleUnknown)
+    SetIdleOffset(idle_time_ms, kIdleNormal);
   else
     SetIdleOffset(0, kIdleNormal);
 
