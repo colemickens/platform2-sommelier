@@ -29,7 +29,7 @@ class PowerPrefsInterface {
   virtual bool SetDouble(const char* name, double value) = 0;
 
  protected:
-  ~PowerPrefsInterface() {}
+  virtual ~PowerPrefsInterface() {}
 };
 
 }  // namespace power_manager

@@ -18,7 +18,7 @@ class XIdleMonitor {
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) = 0;
 
  protected:
-  ~XIdleMonitor() {}
+  virtual ~XIdleMonitor() {}
 };
 
 }  // namespace power_manager

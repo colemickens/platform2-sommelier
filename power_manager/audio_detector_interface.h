@@ -14,11 +14,11 @@ class AudioDetectorInterface {
   // sets |is_active| to false.
   //
   // On success, returns true; Returns false if the audio state could not be
-  // determined or the audio file could not be read. 
+  // determined or the audio file could not be read.
   virtual bool GetAudioStatus(bool* is_active) = 0;
 
  protected:
-  ~AudioDetectorInterface() {}
+  virtual ~AudioDetectorInterface() {}
 };
 
 }  // namespace power_manager
