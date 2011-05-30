@@ -90,6 +90,8 @@ extern const char* kSessionManagerStoreProperty;
 extern const char* kSessionManagerRetrieveProperty;
 extern const char* kSessionManagerStorePolicy;
 extern const char* kSessionManagerRetrievePolicy;
+extern const char* kSessionManagerStoreUserPolicy;
+extern const char* kSessionManagerRetrieveUserPolicy;
 extern const char* kSessionManagerRetrieveSessionState;
 // Signals
 extern const char* kSessionManagerSessionStateChanged;

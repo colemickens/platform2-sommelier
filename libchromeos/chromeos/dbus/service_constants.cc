@@ -94,6 +94,8 @@ const char* kSessionManagerStoreProperty = "StoreProperty";
 const char* kSessionManagerRetrieveProperty = "RetrieveProperty";
 const char* kSessionManagerStorePolicy = "StorePolicy";
 const char* kSessionManagerRetrievePolicy = "RetrievePolicy";
+const char* kSessionManagerStoreUserPolicy = "StoreUserPolicy";
+const char* kSessionManagerRetrieveUserPolicy = "RetrieveUserPolicy";
 const char* kSessionManagerRetrieveSessionState = "RetrieveSessionState";
 // Signals
 const char* kSessionManagerSessionStateChanged = "SessionStateChanged";
