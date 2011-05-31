@@ -46,6 +46,7 @@ SHILL_OBJS = \
 	device_dbus_adaptor.o \
 	device_info.o \
 	ethernet.o \
+	ipconfig.o \
 	manager.o \
 	manager_dbus_adaptor.o \
 	service.o \
@@ -59,8 +60,13 @@ SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
-TEST_OBJS = testrunner.o device_info_unittest.o manager_unittest.o \
-	shill_unittest.o mock_control.o
+TEST_OBJS = \
+	device_info_unittest.o \
+	ipconfig_unittest.o \
+	manager_unittest.o \
+	mock_control.o \
+	shill_unittest.o \
+	testrunner.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
 

@@ -39,7 +39,7 @@ class Device : public base::RefCounted<Device> {
          const std::string& link_name,
          int interface_index);
   virtual ~Device();
-  const std::string& Name();
+  const std::string& Name() const;
 
   virtual void Start();
   virtual void Stop();
