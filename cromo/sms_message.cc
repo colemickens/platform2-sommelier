@@ -8,10 +8,18 @@
 
 #include "utilities.h"
 
-static const uint8_t kIntlE164NumberFormat = 0x91;
-static const uint8_t kAlphaFormat = 0xd0;
-static const uint8_t kDataCodingSchemeGsm7 = 0;
-static const uint8_t kDataCodingSchemeUcs2 = 8;
+static const uint8_t kMsgTypeMask          = 0x03;
+static const uint8_t kMsgTypeDeliver       = 0x00;
+
+static const uint8_t kTypeOfAddrNumMask    = 0x70;
+static const uint8_t kTypeOfAddrNumIntl    = 0x10;
+static const uint8_t kTypeOfAddrNumAlpha   = 0x50;
+static const uint8_t kTypeOfAddrIntlE164   = 0x91;
+
+static const uint8_t kDataCodingSchemeMask = 0xec;
+static const uint8_t kDataCodingSchemeGsm7 = 0x00;
+static const uint8_t kDataCodingSchemeUcs2 = 0x08;
+
 static const uint8_t kSmscTimestampLen = 7;
 static const size_t  kMinPduLen = 7 + kSmscTimestampLen;
 
@@ -58,8 +66,6 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
 }
 
 SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
-  utilities::DumpHex(pdu, pdu_len);
-
   // Make sure the PDU is of a valid size
   if (pdu_len < kMinPduLen) {
     LOG(INFO) << "PDU too short: " << pdu_len << " vs. " << kMinPduLen;
@@ -119,36 +125,26 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
     return NULL;
   }
 
-  // now do some validity checks on the values of several fields in the PDU
-
   // smsc number format must be international, E.164
-  if (pdu[1] != kIntlE164NumberFormat) {
-    LOG(INFO) << "Invalid SMSC address format: " << std::hex << (int)pdu[1]
-              << " vs. " << std::hex << kIntlE164NumberFormat;
+  if (pdu[1] != kTypeOfAddrIntlE164) {
+    LOG(INFO) << "Invalid SMSC address format: "
+              << std::hex << (int)pdu[1] << " vs. "
+              << std::hex << kTypeOfAddrIntlE164;
     return NULL;
   }
-  // we only handle SMS-DELIVER messages, with more-messages-to-send false
-  if ((pdu[msg_start_offset] & 0x07) != 0x04) {
-    LOG(INFO) << "Unhandled message type: " << std::hex
-              << (int)pdu[msg_start_offset] << " vs. 0x04";
+
+  // we only handle SMS-DELIVER messages
+  if ((pdu[msg_start_offset] & kMsgTypeMask) != kMsgTypeDeliver) {
+    LOG(INFO) << "Unhandled message type: "
+              << std::hex << (int)(pdu[msg_start_offset] & kMsgTypeMask)
+              << " vs. " << std::hex << kMsgTypeDeliver;
     return NULL;
   }
-  // we only handle E164 and ALPHA sender address formats
+
   uint8_t sender_addr_type = pdu[msg_start_offset + 2];
-  if (sender_addr_type != kIntlE164NumberFormat &&
-      sender_addr_type != kAlphaFormat) {
-    LOG(INFO) << "Unhandled sender address format: " << std::hex <<
-              sender_addr_type;
-    return NULL;
-  }
-  // we only handle the basic protocol identifier
-  if (pdu[tp_pid_offset] != 0) {
-    LOG(INFO) << "Unhandled protocol identifier: " << std::hex
-              << (int)pdu[tp_pid_offset] << " vs. 0x00";
-    return NULL;
-  }
-  // for data coding scheme, we only handle the default alphabet, i.e. GSM7
-  uint8_t dcs = pdu[tp_pid_offset+1] & 0x0ec;
+
+  // for data coding scheme, we only handle GSM7 and UCS2
+  uint8_t dcs = pdu[tp_pid_offset+1] & kDataCodingSchemeMask;
   if (dcs != kDataCodingSchemeGsm7 && dcs != kDataCodingSchemeUcs2) {
     LOG(INFO) << "Unhandled data coding scheme: " << std::hex
               << (int)pdu[tp_pid_offset+1];
@@ -158,10 +154,13 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   std::string smsc_addr = SemiOctetsToBcdString(&pdu[2],
                                                 smsc_addr_num_octets-1);
   std::string sender_addr;
-  if (sender_addr_type == kIntlE164NumberFormat)
+  if ((sender_addr_type & kTypeOfAddrNumMask) != kTypeOfAddrNumAlpha) {
     sender_addr = SemiOctetsToBcdString(&pdu[msg_start_offset+3],
                                         sender_addr_num_octets);
-  else {
+    if ((sender_addr_type & kTypeOfAddrNumMask) == kTypeOfAddrNumIntl) {
+      sender_addr = "+" + sender_addr;
+    }
+  } else {
     uint8_t *bytes = new uint8_t[sender_addr_num_octets+1];
     bytes[0] = (sender_addr_num_digits * 4) / 7;
     memcpy(&bytes[1], &pdu[msg_start_offset+3], sender_addr_num_octets);

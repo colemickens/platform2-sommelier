@@ -37,12 +37,47 @@ const uint8_t pdu2[] = {
   0x42, 0x04, 0x35, 0x04, 0x41, 0x04, 0x42
 };
 
+const uint8_t pdu3[] = {
+  0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
+  0x04, 0x0b, 0x91, 0x81, 0x00, 0x55, 0x15, 0x12,
+  0xf2, 0x00, 0x00, 0x11, 0x10, 0x10, 0x21, 0x43,
+  0x65, 0x00, 0x0a, 0xe8, 0x32, 0x9b, 0xfd, 0x46,
+  0x97, 0xd9, 0xec, 0x37
+};
+
+/* pid is nonzero (00 -> ff) */
+const uint8_t pdu3_nzpid[] = {
+  0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
+  0x04, 0x0b, 0x91, 0x81, 0x00, 0x55, 0x15, 0x12,
+  0xf2, 0xff, 0x00, 0x11, 0x10, 0x10, 0x21, 0x43,
+  0x65, 0x00, 0x0a, 0xe8, 0x32, 0x9b, 0xfd, 0x46,
+  0x97, 0xd9, 0xec, 0x37
+};
+
+/* mms is clear (04 -> 00) */
+const uint8_t pdu3_mms[] = {
+  0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
+  0x00, 0x0b, 0x91, 0x81, 0x00, 0x55, 0x15, 0x12,
+  0xf2, 0x00, 0x00, 0x11, 0x10, 0x10, 0x21, 0x43,
+  0x65, 0x00, 0x0a, 0xe8, 0x32, 0x9b, 0xfd, 0x46,
+  0x97, 0xd9, 0xec, 0x37
+};
+
+/* number is natl (91 -> 81) */
+const uint8_t pdu3_natl[] = {
+  0x07, 0x91, 0x21, 0x43, 0x65, 0x87, 0x09, 0xf1,
+  0x04, 0x0b, 0x81, 0x81, 0x00, 0x55, 0x15, 0x12,
+  0xf2, 0x00, 0x00, 0x11, 0x10, 0x10, 0x21, 0x43,
+  0x65, 0x00, 0x0a, 0xe8, 0x32, 0x9b, 0xfd, 0x46,
+  0x97, 0xd9, 0xec, 0x37
+};
+
 TEST(SmsMessage, CreateFromPdu) {
   SmsMessage* sms = SmsMessage::CreateMessage(pdu1, sizeof(pdu1));
 
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("12404492164", sms->smsc_address());
-  EXPECT_EQ("16175927198", sms->sender_address());
+  EXPECT_EQ("+16175927198", sms->sender_address());
   EXPECT_EQ("110228115050-08", sms->timestamp());
   EXPECT_EQ("Here's a longer message [{with some extended characters}] "
             "thrown in, such as £ and ΩΠΨ and §¿ as well.", sms->text());
@@ -56,6 +91,46 @@ TEST(SmsMessage, CreateFromPduWithAlphaSenderAndUcs2Text) {
   EXPECT_EQ("InternetSMS", sms->sender_address());
   EXPECT_EQ("110329192004+05", sms->timestamp());
   EXPECT_EQ("тест", sms->text());
+}
+
+TEST(SmsMessage, CreateFromPdu3) {
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu3, sizeof(pdu3));
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("12345678901", sms->smsc_address());
+  EXPECT_EQ("+18005551212", sms->sender_address());
+  EXPECT_EQ("110101123456+00", sms->timestamp());
+  EXPECT_EQ("hellohello", sms->text());
+}
+
+TEST(SmsMessage, CreateFromPdu3WithNonzeroPid) {
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu3_nzpid, sizeof(pdu3_nzpid));
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("12345678901", sms->smsc_address());
+  EXPECT_EQ("+18005551212", sms->sender_address());
+  EXPECT_EQ("110101123456+00", sms->timestamp());
+  EXPECT_EQ("hellohello", sms->text());
+}
+
+TEST(SmsMessage, CreateFromPdu3WithMms) {
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu3_mms, sizeof(pdu3_mms));
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("12345678901", sms->smsc_address());
+  EXPECT_EQ("+18005551212", sms->sender_address());
+  EXPECT_EQ("110101123456+00", sms->timestamp());
+  EXPECT_EQ("hellohello", sms->text());
+}
+
+TEST(SmsMessage, CreateFromPdu3WithNatlNumber) {
+  SmsMessage* sms = SmsMessage::CreateMessage(pdu3_natl, sizeof(pdu3_natl));
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_EQ("12345678901", sms->smsc_address());
+  EXPECT_EQ("18005551212", sms->sender_address()); /* no plus */
+  EXPECT_EQ("110101123456+00", sms->timestamp());
+  EXPECT_EQ("hellohello", sms->text());
 }
 
 int main(int argc, char* argv[]) {
