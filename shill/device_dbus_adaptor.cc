@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/device.h"
 #include "shill/device_dbus_adaptor.h"
 
 #include <map>
@@ -19,7 +20,7 @@ const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;  // ".Device";
 const char DeviceDBusAdaptor::kPath[] = SHILL_PATH "/Device";
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection& conn, Device *device)
-    : DBusAdaptor(conn, kPath),
+    : DBusAdaptor(conn, string(kPath) + string("/") + device->Name()),
       device_(device) {
 }
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {}

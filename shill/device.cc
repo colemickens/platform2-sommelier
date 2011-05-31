@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include <string>
+#include <sstream>
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -22,8 +23,8 @@ Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                const string &link_name,
                int interface_index)
-  : adaptor_(control_interface->CreateDeviceAdaptor(this)),
-    link_name_(link_name),
+  : link_name_(link_name),
+    adaptor_(control_interface->CreateDeviceAdaptor(this)),
     interface_index_(interface_index),
     running_(false) {
   // Initialize Interface monitor, so we can detect new interfaces
@@ -43,6 +44,11 @@ void Device::Start() {
 void Device::Stop() {
   running_ = false;
   adaptor_->UpdateEnabled();
+}
+
+const std::string& Device::Name() {
+  // TODO(pstew): link_name is only run-time unique and won't persist
+  return link_name_;
 }
 
 }  // namespace shill

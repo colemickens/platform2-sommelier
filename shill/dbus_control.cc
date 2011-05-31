@@ -19,32 +19,30 @@ DBusControl::DBusControl() {}
 DBusControl::~DBusControl() {}
 
 ManagerAdaptorInterface *DBusControl::CreateManagerAdaptor(Manager *manager) {
-  EnsureDispatcher();
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(ManagerDBusAdaptor::kInterfaceName);
-  return new(std::nothrow) ManagerDBusAdaptor(conn, manager);
+  EnsureConnection();
+  connection_->request_name(ManagerDBusAdaptor::kInterfaceName);
+  return new(std::nothrow) ManagerDBusAdaptor(*(connection_.get()), manager);
 }
 
 ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
-  EnsureDispatcher();
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(ServiceDBusAdaptor::kInterfaceName);
-  return new(std::nothrow) ServiceDBusAdaptor(conn, service);
+  EnsureConnection();
+  connection_->request_name(ServiceDBusAdaptor::kInterfaceName);
+  return new(std::nothrow) ServiceDBusAdaptor(*(connection_.get()), service);
 }
 
 DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
-  EnsureDispatcher();
-  DBus::Connection conn = DBus::Connection::SystemBus();
-  conn.request_name(DeviceDBusAdaptor::kInterfaceName);
-  return new(std::nothrow) DeviceDBusAdaptor(conn, device);
+  EnsureConnection();
+  connection_->request_name(DeviceDBusAdaptor::kInterfaceName);
+  return new(std::nothrow) DeviceDBusAdaptor(*(connection_.get()), device);
 }
 
-void DBusControl::EnsureDispatcher() {
-  if (!dispatcher_.get()) {
+void DBusControl::EnsureConnection() {
+  if (!connection_.get()) {
     dispatcher_.reset(new(std::nothrow) DBus::Glib::BusDispatcher());
     CHECK(dispatcher_.get()) << "Failed to create a dbus-dispatcher";
     DBus::default_dispatcher = dispatcher_.get();
     dispatcher_->attach(NULL);
+    connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   }
 }
 

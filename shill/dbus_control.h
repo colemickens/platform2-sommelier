@@ -23,8 +23,9 @@ class DBusControl : public ControlInterface {
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
 
  private:
-  void EnsureDispatcher();
+  void EnsureConnection();
   scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
+  scoped_ptr<DBus::Connection> connection_;
 };
 
 }  // namespace shill
