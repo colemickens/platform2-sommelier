@@ -5,17 +5,12 @@
 # found in the LICENSE file.
 
 
-# The kernel mounts /proc and /sys during initialization, prior
+# The kernel mounts /proc, /sys and /dev during initialization, prior
 # to starting init.
 
 # Mount /tmp first, so that bootstat can record output right away.
 mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
 bootstat pre-startup
-
-# Since we defer udev until later in the boot process, we pre-populate /dev
-# with the set of devices needed for X and other early services to run.
-mount -n -t tmpfs -o noexec,nosuid,mode=0755 udev /dev
-cp -a -f /lib/chromiumos/devices/* /dev
 
 IS_FACTORY_MODE=
 if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
@@ -37,6 +32,13 @@ if [ -x /usr/bin/ply-image ]; then
   fi
 fi
 
+# X depends on these being the right permissions/mode and we don't
+# have udev up early enough to do that yet. This is a hack that will
+# go away.  chromium-os:15995
+chmod 0660 /dev/fb0 /dev/dri/card0
+chgrp video /dev/fb0 /dev/dri/card0
+
+mkdir -p /dev/shm /dev/pts
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
