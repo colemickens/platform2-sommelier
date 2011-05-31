@@ -243,12 +243,11 @@ fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
 VERITY=/bin/verity
-table="${verity_preamble},"$(sudo "${VERITY}" create \
-        ${verity_depth} \
-        "${verity_algorithm}" \
-        "${rootfs_image}" \
-        $((rootfs_sectors / 8)) \
-        ${tempfile})
+table="${verity_preamble},"$(sudo "${VERITY}" mode=create \
+        "alg=${verity_algorithm}" \
+        "payload=${rootfs_image}" \
+        "payload_blocks="$((rootfs_sectors / 8)) \
+        "hashtree=${tempfile}")
 
 expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
 generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
