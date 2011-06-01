@@ -130,8 +130,12 @@ elif [ -z "$FLAGS_payload_image" ]; then
 
   if [ "$FLAGS_skip_src_removable" -eq "${FLAGS_FALSE}" ]; then
     if [ "$(cat /sys/block/${SRC#/dev/}/removable)" != "1" ]; then
-      echo "Error: Source does not look like a removable device: $SRC"
-      exit 1
+      # Work around ARM kernel bug http://crosbug.com/14871
+      # Removable flag is implemented inconsistantly for ARM sdcard reader.
+      if [ "${SRC}" != "/dev/mmcblk1" ]; then
+        echo "Error: Source does not look like a removable device: $SRC"
+        exit 1
+      fi
     fi
   fi
 else
