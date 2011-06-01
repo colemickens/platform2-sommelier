@@ -342,7 +342,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-gview \
             --enable-logging \
             --enable-login-images \
-            --use-spdy=off \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
