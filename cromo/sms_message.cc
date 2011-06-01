@@ -40,7 +40,7 @@ static char NibbleToChar(uint8_t nibble) {
     case 12: return 'a';
     case 13: return 'b';
     case 14: return 'c';
-    case 0xff: return '\0';  // padding nibble
+    case 15: return '\0';  // padding nibble
   }
   return '\0';
 }
