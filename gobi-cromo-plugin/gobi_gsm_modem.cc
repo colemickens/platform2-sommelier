@@ -595,6 +595,14 @@ std::string GobiGsmModem::GetSpn(DBus::Error& error) {
   return netname;
 }
 
+std::string GobiGsmModem::GetMsIsdn(DBus::Error& error) {
+  char mdn[kDefaultBufferSize], min[kDefaultBufferSize];
+  ULONG rc = sdk_->GetVoiceNumber(kDefaultBufferSize, mdn,
+                            kDefaultBufferSize, min);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetVoiceNumber, rc, kSdkError, "");
+  return mdn;
+}
+
 //======================================================================
 // DBUS Methods: Modem.Gsm.SMS
 
