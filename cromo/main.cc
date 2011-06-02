@@ -97,13 +97,11 @@ static gboolean setup_signals(void* arg) {
 
 static void block_signals(void) {
   sigset_t sigs;
-  int res;
 
   sigemptyset(&sigs);
   sigaddset(&sigs, SIGTERM);
   sigaddset(&sigs, SIGINT);
-  res = pthread_sigmask(SIG_BLOCK, &sigs, NULL);
-  LOG(INFO) << "signals blocked";
+  pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 }
 
 namespace google {
