@@ -215,7 +215,7 @@ while true; do  # Use while/break to have the entire block dumped into a file.
   echo "Boot switch status:"
   echo "  Recovery button: $(swstate 'recoverysw_boot' 'released' 'pressed')"
   echo "  Developer mode:  $(swstate 'devsw_boot' 'not enabled' 'selected')"
-  echo "  RO firmware:     $(swstate 'wpsw_boot' 'protected' 'writeable')"
+  echo "  RO firmware:     $(swstate 'wpsw_boot' 'writeable' 'protected')"
   echo "Boot reason $(bootreason)"
   echo "Boot firmware: $(crossystem 'mainfw_act')"
   echo "Active EC code: $(crossystem 'ecfw_act')"
