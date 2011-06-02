@@ -22,8 +22,10 @@ class DBusControl : public ControlInterface {
   ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
 
- private:
   void EnsureConnection();
+  DBus::Connection *connection() { return connection_.get(); }
+
+ private:
   scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
   scoped_ptr<DBus::Connection> connection_;
 };

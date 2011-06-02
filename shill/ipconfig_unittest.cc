@@ -20,7 +20,7 @@ class IPConfigTest : public Test {
 };
 
 TEST_F(IPConfigTest, GetDeviceNameTest) {
-  scoped_refptr<IPConfig> ipconfig(new IPConfig(device_.get()));
+  scoped_refptr<IPConfig> ipconfig(new IPConfig(*device_));
   EXPECT_EQ("testname", ipconfig->GetDeviceName());
 }
 

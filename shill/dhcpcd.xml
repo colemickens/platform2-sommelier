@@ -23,10 +23,13 @@
       <arg name="interface" direction="in" type="s"/>
     </method>
     <signal name="Event">
-      <arg name="configuration" type="usa{sv}"/>
+      <arg name="pid" type="u"/>
+      <arg name="reason" type="s"/>
+      <arg name="configuration" type="a{sv}"/>
     </signal>
     <signal name="StatusChanged">
-      <arg name="status" type="us"/>
+      <arg name="pid" type="u"/>
+      <arg name="status" type="s"/>
     </signal>
   </interface>
 </node>

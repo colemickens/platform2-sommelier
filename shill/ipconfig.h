@@ -17,17 +17,17 @@ class Device;
 // class.
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
-  explicit IPConfig(const Device *device);
+  explicit IPConfig(const Device &device);
   virtual ~IPConfig();
 
-  const Device *device() const { return device_; }
+  const Device &device() const { return device_; }
 
   const std::string &GetDeviceName() const;
 
  private:
   friend class base::RefCounted<IPConfig>;
 
-  const Device *device_;
+  const Device &device_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

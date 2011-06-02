@@ -45,6 +45,9 @@ SHILL_OBJS = \
 	device.o \
 	device_dbus_adaptor.o \
 	device_info.o \
+	dhcp_config.o \
+	dhcp_provider.o \
+	dhcpcd_proxy.o \
 	ethernet.o \
 	ethernet_service.o \
 	glib_io_handler.o \

@@ -12,7 +12,7 @@ using std::string;
 
 namespace shill {
 
-IPConfig::IPConfig(const Device *device) : device_(device) {
+IPConfig::IPConfig(const Device &device) : device_(device) {
   VLOG(2) << "IPConfig created.";
 }
 
@@ -21,7 +21,7 @@ IPConfig::~IPConfig() {
 }
 
 const string &IPConfig::GetDeviceName() const {
-  return device()->Name();
+  return device().Name();
 }
 
 }  // namespace shill
