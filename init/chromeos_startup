@@ -20,16 +20,14 @@ fi
 # Splash screen! Unless we are in noninteractive mode.
 # TODO(sosa@chromium.org) - Use kernel flag
 BOOT_SPLASH_PID=
-if [ -x /usr/bin/ply-image ]; then
-  if [ -z "$IS_FACTORY_MODE" ]; then
-    # Moblin trick: Disable blinking cursor. Without this a splash screen
-    # will show a distinct cursor shape even when the cursor is set to none.
-    echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
-    /usr/bin/ply-image --gamma /usr/share/color/bin/internal_display.bin \
-      /usr/share/chromeos-assets/images/boot_splash.png \
-      0 0 /usr/share/chromeos-assets/images/boot_splash_frame*.png &
-    BOOT_SPLASH_PID="$!"
-  fi
+if [ -z "$IS_FACTORY_MODE" ]; then
+  # Moblin trick: Disable blinking cursor. Without this a splash screen
+  # will show a distinct cursor shape even when the cursor is set to none.
+  echo 0 > /sys/devices/virtual/graphics/fbcon/cursor_blink
+  ply-image --gamma /usr/share/color/bin/internal_display.bin \
+    /usr/share/chromeos-assets/images/boot_splash.png \
+    /usr/share/chromeos-assets/images/boot_splash_frame*.png &
+  BOOT_SPLASH_PID="$!"
 fi
 
 # X depends on these being the right permissions/mode and we don't
