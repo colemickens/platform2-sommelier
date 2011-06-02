@@ -39,12 +39,12 @@ class MonitorReconfigure {
   // Main entry point.
   void Run();
 
+  // Returns whether an external monitor is connected.
+  bool is_projecting() const { return is_projecting_; }
+
  private:
   // Initializes the |lcd_output_| and |external_output_| members.
   bool DetermineOutputs();
-
-  // Returns whether an external monitor is connected.
-  bool IsExternalMonitorConnected();
 
   // Sorts |output_info|'s modes by decreasing number of pixels, storing the
   // results in |modes_out|.
@@ -81,6 +81,9 @@ class MonitorReconfigure {
 
   RROutput external_output_;
   XRROutputInfo* external_output_info_;
+
+  // Are we projecting?
+  bool is_projecting_;
 
   // Not owned.
   BacklightController* backlight_ctl_;

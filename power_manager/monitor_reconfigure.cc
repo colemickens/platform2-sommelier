@@ -36,6 +36,7 @@ MonitorReconfigure::MonitorReconfigure()
       lcd_output_info_(NULL),
       external_output_(0),
       external_output_info_(NULL),
+      is_projecting_(false),
       backlight_ctl_(NULL) {}
 
 MonitorReconfigure::MonitorReconfigure(
@@ -46,6 +47,7 @@ MonitorReconfigure::MonitorReconfigure(
       lcd_output_info_(NULL),
       external_output_(0),
       external_output_info_(NULL),
+      is_projecting_(false),
       backlight_ctl_(backlight_ctl) {}
 
 MonitorReconfigure::~MonitorReconfigure() {
@@ -143,11 +145,14 @@ void MonitorReconfigure::Run() {
   // trying to set the screen to a smaller size than what the now-unplugged
   // device was using.
   // Otherwise enable the external device if appropriate.
-  if (external_resolution.name.empty())
+  if (external_resolution.name.empty()) {
     DisableDevice(external_output_info_);
-  else
+    is_projecting_ = false;
+  } else {
     SetDeviceResolution(external_output_, external_output_info_,
                         external_resolution);
+    is_projecting_ = true;
+  }
 
   // Set the fb resolution.
   SetScreenResolution(screen_resolution);
