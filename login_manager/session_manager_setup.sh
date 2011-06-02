@@ -99,16 +99,27 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen=login"
 fi
 
+WEBUI_LOGIN=
+# If file exists, use webui login. We also are currently forcing the intial
+# screen to be the login screen. This is due to WebUI OOBE not being
+# completed. Once the WebUI OOBE is working we can remove this.
+if [ -f /root/.use_webui_login ] ; then
+  SKIP_OOBE="--login-screen=login"
+  WEBUI_LOGIN="--webui-login"
+fi
+
 # For recovery image, do NOT display OOBE or login window
 if [ -f /mnt/stateful_partition/.recovery ]; then
   # Verify recovery UI HTML file exists
   if [ -f /usr/share/misc/recovery_ui.html ]; then
     SKIP_OOBE="--login-screen=html file:///usr/share/misc/recovery_ui.html"
+    WEBUI_LOGIN=
   else
     # Fall back to displaying a blank screen
     # the magic string "test:nowindow" comes from
     # src/chrome/browser/chromeos/login/wizard_controller.cc
     SKIP_OOBE="--login-screen=test:nowindow"
+    WEBUI_LOGIN=
   fi
 fi
 
@@ -356,5 +367,6 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
+            ${WEBUI_LOGIN} \
             ${PKCS11_FLAGS} \
 -- "$WM_SCRIPT"

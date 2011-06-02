@@ -50,7 +50,9 @@ TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
 	session_manager_unittest.o session_manager_static_unittest.o \
 	system_utils_unittest.o
 
-all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN)
+ROOT_FILES = use_webui_login
+
+all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(ROOT_FILES)
 
 $(PROTO_HEADERS): %.h: %.cc
 
@@ -73,6 +75,9 @@ $(TEST_BIN): $(TEST_OBJS)
 		$(COMMON_OBJS) $(NEED_PROTO_OBJS) $(TEST_LIBS) $(LDFLAGS) \
 		-o $(TEST_BIN)
 
+$(ROOT_FILES):
+	touch $(ROOT_FILES)
+
 .cc.o:
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
@@ -91,4 +96,4 @@ $(PROTO_BINDINGS): $(BINDINGS) $(PROTO_DEFS)
 	protoc --proto_path=$(PROTO_PATH) --cpp_out=$(BINDINGS) $(PROTO_DEFS)
 
 clean:
-	rm -rf *.o $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(BINDINGS)
+	rm -rf *.o $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(BINDINGS) $(ROOT_FILES)
