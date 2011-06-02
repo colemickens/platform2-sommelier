@@ -25,9 +25,15 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  ServiceDBusAdaptor(DBus::Connection& conn, Service *service);
+  ServiceDBusAdaptor(DBus::Connection* conn, Service *service);
   virtual ~ServiceDBusAdaptor();
+
+  // Implementation of ServiceAdaptorInterface.
   void UpdateConnected();
+  void EmitBoolChanged(const std::string& name, bool value);
+  void EmitUintChanged(const std::string& name, uint32 value);
+  void EmitIntChanged(const std::string& name, int value);
+  void EmitStringChanged(const std::string& name, const std::string& value);
 
   // Implementation of Service_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);

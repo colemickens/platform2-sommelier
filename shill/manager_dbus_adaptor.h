@@ -25,9 +25,16 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  ManagerDBusAdaptor(DBus::Connection& conn, Manager *manager);
+  ManagerDBusAdaptor(DBus::Connection *conn, Manager *manager);
   virtual ~ManagerDBusAdaptor();
+
+  // Implementation of ManagerAdaptorInterface.
   void UpdateRunning();
+  void EmitBoolChanged(const std::string& name, bool value);
+  void EmitUintChanged(const std::string& name, uint32 value);
+  void EmitIntChanged(const std::string& name, int value);
+  void EmitStringChanged(const std::string& name, const std::string& value);
+  void EmitStateChanged(const std::string& new_state);
 
   // Implementation of Manager_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);

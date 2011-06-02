@@ -20,13 +20,31 @@ const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
 const char DeviceDBusAdaptor::kPath[] = "/device/";
 
-DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection& conn, Device *device)
+DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)
     : DBusAdaptor(conn, kPath + device->UniqueName()),
       device_(device) {
 }
+
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {}
 
 void DeviceDBusAdaptor::UpdateEnabled() {}
+
+void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+  PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
+}
+
+void DeviceDBusAdaptor::EmitUintChanged(const std::string& name, uint32 value) {
+  PropertyChanged(name, DBusAdaptor::UInt32ToVariant(value));
+}
+
+void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+  PropertyChanged(name, DBusAdaptor::IntToVariant(value));
+}
+
+void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
+                                          const std::string& value) {
+  PropertyChanged(name, DBusAdaptor::StringToVariant(value));
+}
 
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {

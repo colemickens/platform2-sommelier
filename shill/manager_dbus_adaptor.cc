@@ -12,20 +12,40 @@ using std::string;
 
 namespace shill {
 
-// TODO(cmasone): Figure out if we should be trying to own sub-interfaces.
 // static
 const char ManagerDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
-// ".Manager";
 // static
 const char ManagerDBusAdaptor::kPath[] = SHILL_PATH "/Manager";
 
-ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection& conn, Manager *manager)
+ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection* conn, Manager *manager)
     : DBusAdaptor(conn, kPath),
       manager_(manager) {
 }
 ManagerDBusAdaptor::~ManagerDBusAdaptor() {}
 
 void ManagerDBusAdaptor::UpdateRunning() {}
+
+void ManagerDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+  PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
+}
+
+void ManagerDBusAdaptor::EmitUintChanged(const std::string& name,
+                                         uint32 value) {
+  PropertyChanged(name, DBusAdaptor::UInt32ToVariant(value));
+}
+
+void ManagerDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+  PropertyChanged(name, DBusAdaptor::IntToVariant(value));
+}
+
+void ManagerDBusAdaptor::EmitStringChanged(const std::string& name,
+                                           const std::string& value) {
+  PropertyChanged(name, DBusAdaptor::StringToVariant(value));
+}
+
+void ManagerDBusAdaptor::EmitStateChanged(const std::string& new_state) {
+  StateChanged(new_state);
+}
 
 map<string, ::DBus::Variant> ManagerDBusAdaptor::GetProperties(
     ::DBus::Error &error) {

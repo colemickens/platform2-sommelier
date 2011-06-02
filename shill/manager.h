@@ -18,6 +18,10 @@
 
 namespace shill {
 
+class ControlInterface;
+class ManagerAdaptorInterface;
+class EventDispatcher;
+
 class Manager {
  public:
   // A constructor for the Manager object

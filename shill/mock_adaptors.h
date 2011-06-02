@@ -19,6 +19,12 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   ManagerMockAdaptor() {}
   virtual ~ManagerMockAdaptor() {}
   MOCK_METHOD0(UpdateRunning, void(void));
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
+  MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+
+  MOCK_METHOD1(EmitStateChanged, void(const std::string&));
 };
 
 // These are the functions that a Service adaptor must support
@@ -27,6 +33,10 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
   ServiceMockAdaptor() {}
   virtual ~ServiceMockAdaptor() {}
   MOCK_METHOD0(UpdateConnected, void(void));
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
+  MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 };
 
 // These are the functions that a Device adaptor must support
@@ -35,6 +45,10 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   DeviceMockAdaptor() {}
   virtual ~DeviceMockAdaptor() {}
   MOCK_METHOD0(UpdateEnabled, void(void));
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
+  MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 };
 
 }  // namespace shill

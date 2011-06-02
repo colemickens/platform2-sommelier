@@ -34,7 +34,6 @@ Device::Device(ControlInterface *control_interface,
 
 Device::~Device() {
   VLOG(2) << "Device " << link_name_ << " destroyed.";
-  adaptor_.reset();
 }
 
 void Device::Start() {

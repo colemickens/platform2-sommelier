@@ -41,6 +41,7 @@ DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
 
 SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
+	dbus_adaptor.o \
 	dbus_control.o \
 	device.o \
 	device_dbus_adaptor.o \
@@ -68,6 +69,7 @@ SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = \
+	dbus_adaptor_unittest.o \
 	device_info_unittest.o \
 	ipconfig_unittest.o \
 	manager_unittest.o \

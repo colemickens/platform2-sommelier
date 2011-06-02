@@ -10,7 +10,6 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "shill/dbus_control.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"

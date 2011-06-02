@@ -7,27 +7,50 @@
 
 #include <string>
 
+#include <base/basictypes.h>
+
 namespace shill {
 
 // These are the functions that a Manager adaptor must support
 class ManagerAdaptorInterface {
  public:
-  virtual void UpdateRunning() = 0;
   virtual ~ManagerAdaptorInterface() {}
+  virtual void UpdateRunning() = 0;
+
+  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string& name, int value) = 0;
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value) = 0;
+
+  virtual void EmitStateChanged(const std::string& new_state) = 0;
 };
 
 // These are the functions that a Service adaptor must support
 class ServiceAdaptorInterface {
  public:
-  virtual void UpdateConnected() = 0;
   virtual ~ServiceAdaptorInterface() {}
+  virtual void UpdateConnected() = 0;
+
+  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string& name, int value) = 0;
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value) = 0;
 };
 
 // These are the functions that a Device adaptor must support
 class DeviceAdaptorInterface {
  public:
-  virtual void UpdateEnabled() = 0;
   virtual ~DeviceAdaptorInterface() {}
+
+  virtual void UpdateEnabled() = 0;
+
+  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string& name, int value) = 0;
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value) = 0;
 };
 
 }  // namespace shill

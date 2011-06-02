@@ -19,12 +19,31 @@ const char ServiceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
 const char ServiceDBusAdaptor::kPath[] = "/service/";
 
-ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection& conn, Service *service)
+ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn, Service *service)
     : DBusAdaptor(conn, kPath + service->UniqueName()),
       service_(service) {}
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {}
 
 void ServiceDBusAdaptor::UpdateConnected() {}
+
+void ServiceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
+  PropertyChanged(name, DBusAdaptor::BoolToVariant(value));
+}
+
+void ServiceDBusAdaptor::EmitUintChanged(const std::string& name,
+                                         uint32 value) {
+  PropertyChanged(name, DBusAdaptor::UInt32ToVariant(value));
+}
+
+void ServiceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
+  PropertyChanged(name, DBusAdaptor::IntToVariant(value));
+}
+
+void ServiceDBusAdaptor::EmitStringChanged(const std::string& name,
+                                           const std::string& value) {
+  PropertyChanged(name, DBusAdaptor::StringToVariant(value));
+
+}
 
 map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {

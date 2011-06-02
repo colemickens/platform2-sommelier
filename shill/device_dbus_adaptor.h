@@ -25,11 +25,17 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  DeviceDBusAdaptor(DBus::Connection& conn, Device *device);
+  DeviceDBusAdaptor(DBus::Connection* conn, Device *device);
   virtual ~DeviceDBusAdaptor();
-  void UpdateEnabled();
 
-  // Implementation of Device_adaptor
+  // Implementation of DeviceAdaptorInterface.
+  void UpdateEnabled();
+  void EmitBoolChanged(const std::string& name, bool value);
+  void EmitUintChanged(const std::string& name, uint32 value);
+  void EmitIntChanged(const std::string& name, int value);
+  void EmitStringChanged(const std::string& name, const std::string& value);
+
+  // Implementation of Device_adaptor.
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
   void SetProperty(const std::string& ,
                    const ::DBus::Variant& ,

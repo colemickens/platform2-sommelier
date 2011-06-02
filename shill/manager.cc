@@ -10,11 +10,12 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
-#include "shill/dbus_adaptor.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
