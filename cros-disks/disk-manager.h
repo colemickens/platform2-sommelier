@@ -11,12 +11,14 @@
 
 #include <iostream>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
 namespace cros_disks {
 
 class Disk;
+class UdevDevice;
 
 // The DiskManager is responsible for reading device state from udev.
 // Said changes could be the result of a udev notification or a synchronous
@@ -32,14 +34,34 @@ class Disk;
 // and should not be considered thread safe.
 class DiskManager {
  public:
+  // Device/disk related events.
+  enum EventType {
+    kIgnored,
+    kDeviceAdded,
+    kDeviceScanned,
+    kDeviceRemoved,
+    kDiskAdded,
+    kDiskAddedAfterRemoved,
+    kDiskChanged,
+    kDiskRemoved,
+  };
+
   DiskManager();
   virtual ~DiskManager();
 
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
 
+  // Determines a device/disk event from a udev block device change.
+  EventType ProcessBlockDeviceEvent(const UdevDevice& device,
+      const char *action);
+
+  // Determines a device/disk event from a udev SCSI device change.
+  EventType ProcessScsiDeviceEvent(const UdevDevice& device,
+      const char *action);
+
   // Reads the changes from udev. Must be called to clear the fd.
-  bool ProcessUdevChanges(std::string *device_path, std::string *action);
+  bool ProcessUdevChanges(std::string *device_path, EventType *event_type);
 
   // Gets a device file from the cache mapping from sysfs path to device file.
   std::string GetDeviceFileFromCache(const std::string& device_path) const;
@@ -120,6 +142,12 @@ class DiskManager {
 
   // blkid_cache object.
   blkid_cache blkid_cache_;
+
+  // A set of device sysfs paths detected by the udev monitor.
+  std::set<std::string> devices_detected_;
+
+  // A set of disk sysfs paths detected by the udev monitor.
+  std::set<std::string> disks_detected_;
 
   // A cache mapping device sysfs path to device file.
   std::map<std::string, std::string> device_file_map_;

@@ -57,8 +57,20 @@
       <arg name="device" type="s" direction="out">
       </arg>
     </signal>
-    <signal name="DeviceChanged">
+    <signal name="DeviceScanned">
       <arg name="device" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskAdded">
+      <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskRemoved">
+      <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="DiskChanged">
+      <arg name="disk" type="s" direction="out">
       </arg>
     </signal>
     <method name="IsAlive">
