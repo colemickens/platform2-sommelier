@@ -4,6 +4,7 @@
 
 #include <time.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <map>
 #include <string>
@@ -23,6 +24,8 @@ namespace shill {
 const char WiFi::kSupplicantPath[]       = "/fi/w1/wpa_supplicant1";
 const char WiFi::kSupplicantDBusAddr[]   = "fi.w1.wpa_supplicant1";
 const char WiFi::kSupplicantWiFiDriver[] = "nl80211";
+const char WiFi::kSupplicantErrorInterfaceExists[] =
+    "fi.w1.wpa_supplicant1.InterfaceExists";
 
 WiFi::SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection *bus)
     : DBus::ObjectProxy(*bus, kSupplicantPath, kSupplicantDBusAddr) {}
@@ -125,24 +128,44 @@ WiFi::~WiFi() {
 }
 
 void WiFi::Start() {
-  std::map<string, DBus::Variant> create_interface_args;
-  std::map<string, DBus::Variant> scan_args;
   ::DBus::Path interface_path;
 
   supplicant_process_proxy_.reset(new SupplicantProcessProxy(&dbus_));
-  create_interface_args["Ifname"].writer().append_string(link_name_.c_str());
-  create_interface_args["Driver"].writer().append_string(kSupplicantWiFiDriver);
-  // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
-  // (file with pkcs config info)
-  interface_path =
-      supplicant_process_proxy_->CreateInterface(create_interface_args);
-  // TODO(quiche) if CreateInterface failed: call GetInterface instead
-  LOG(INFO) << "creating SupplicantInterfaceProxy.";
+  try {
+    std::map<string, DBus::Variant> create_interface_args;
+    create_interface_args["Ifname"].writer().
+        append_string(link_name_.c_str());
+    create_interface_args["Driver"].writer().
+        append_string(kSupplicantWiFiDriver);
+    // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
+    // (file with pkcs config info)
+    interface_path =
+        supplicant_process_proxy_->CreateInterface(create_interface_args);
+  } catch (const DBus::Error e) {  // NOLINT
+    if (!strcmp(e.name(), kSupplicantErrorInterfaceExists)) {
+      interface_path =
+          supplicant_process_proxy_->GetInterface(link_name_);
+    } else {
+      // XXX
+    }
+  }
+
   supplicant_interface_proxy_.reset(
       new SupplicantInterfaceProxy(this, &dbus_, interface_path));
+
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
-  scan_args["Type"].writer().append_string("active");
+
+  // clear out any networks that might previously have been configured
+  // for this interface.
+  supplicant_interface_proxy_->RemoveAllNetworks();
+
+  // flush interface's BSS cache, so that we get BSSAdded signals for
+  // all BSSes (not just new ones since the last scan).
+  supplicant_interface_proxy_->FlushBSS(0);
+
   LOG(INFO) << "initiating Scan.";
+  std::map<string, DBus::Variant> scan_args;
+  scan_args["Type"].writer().append_string("active");
   // TODO(quiche) indicate scanning in UI
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;

@@ -16,6 +16,8 @@
     <method name="RemoveNetwork">
       <arg name="network" type="o" direction="in"/>
     </method>
+    <method name="RemoveAllNetworks">
+    </method>
     <method name="SelectNetwork">
       <arg name="network" type="o" direction="in"/>
     </method>
@@ -29,6 +31,9 @@
     <method name="GetBlob">
       <arg name="name" type="s" direction="in"/>
       <arg name="data" type="ay" direction="out"/>
+    </method>
+    <method name="FlushBSS">
+      <arg name="age" type="u" direction="in"/>
     </method>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>

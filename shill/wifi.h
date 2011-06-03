@@ -92,6 +92,7 @@ class WiFi : public Device {
   static const char kSupplicantPath[];
   static const char kSupplicantDBusAddr[];
   static const char kSupplicantWiFiDriver[];
+  static const char kSupplicantErrorInterfaceExists[];
 
   DBus::Connection dbus_;
   scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
