@@ -31,6 +31,7 @@ const char kPartitionSlave[] = "PartitionSlave";
 Disk::Disk()
   : is_drive_(false),
     is_hidden_(false),
+    is_auto_mountable_(false),
     is_mounted_(false),
     is_media_available_(false),
     is_on_boot_device_(true),

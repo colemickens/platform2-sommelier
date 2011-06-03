@@ -18,6 +18,10 @@
 
 namespace cros_disks {
 
+static const char* kNonAutoMountableFilesystemLabels[] = {
+  "C-ROOT", "C-STATE", NULL
+};
+
 UdevDevice::UdevDevice(struct udev_device *dev)
     : dev_(dev) {
 
@@ -122,6 +126,25 @@ bool UdevDevice::IsMediaAvailable() const {
   return is_media_available;
 }
 
+bool UdevDevice::IsAutoMountable() const {
+  if (IsOnBootDevice() || IsVirtual())
+    return false;
+
+  // TODO(benchan): Find a better way to filter out Chrome OS specific
+  // partitions instead of excluding partitions with certain labels
+  // (e.g. C-ROOT, C-STATE).
+  std::string filesystem_label = GetProperty("ID_FS_LABEL");
+  if (!filesystem_label.empty()) {
+    for (const char** label = kNonAutoMountableFilesystemLabels;
+        *label; ++label) {
+      if (strcmp(*label, filesystem_label.c_str()) == 0) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 bool UdevDevice::IsOnBootDevice() const {
   // Obtain the boot device path, e.g. /dev/sda
   char boot_device_path[PATH_MAX];
@@ -194,6 +217,7 @@ std::vector<std::string> UdevDevice::ParseMountPaths(
 Disk UdevDevice::ToDisk() const {
   Disk disk;
 
+  disk.set_is_auto_mountable(IsAutoMountable());
   disk.set_is_read_only(IsAttributeTrue("ro"));
   disk.set_is_drive(HasAttribute("range"));
   disk.set_is_rotational(HasProperty("ID_ATA_ROTATION_RATE_RPM"));

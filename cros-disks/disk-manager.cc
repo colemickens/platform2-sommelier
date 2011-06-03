@@ -117,10 +117,11 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
 
   bool report_changes = false;
-  // Ignore boot device or virtual device changes, which should not be
-  // sent to the Chrome browser.
+  // Ignore change events from boot devices, virtual devices,
+  // or Chrome OS specific partitions, which should not be sent
+  // to the Chrome browser.
   UdevDevice udev(dev);
-  if (!udev.IsOnBootDevice() && !udev.IsVirtual()) {
+  if (udev.IsAutoMountable()) {
     *device_path = udev_device_get_syspath(dev);
     *action = udev_device_get_action(dev);
     report_changes = true;

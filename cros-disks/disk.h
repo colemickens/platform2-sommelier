@@ -34,6 +34,11 @@ class Disk {
   bool is_hidden() const { return is_hidden_; }
   void set_is_hidden(bool is_hidden) { is_hidden_ = is_hidden; }
 
+  bool is_auto_mountable() const { return is_auto_mountable_; }
+  void set_is_auto_mountable(bool is_auto_mountable) {
+    is_auto_mountable_ = is_auto_mountable;
+  }
+
   bool is_mounted() const { return is_mounted_; }
   void set_is_mounted(bool is_mounted) { is_mounted_ = is_mounted; }
 
@@ -100,6 +105,7 @@ class Disk {
  private:
   bool is_drive_;
   bool is_hidden_;
+  bool is_auto_mountable_;
   bool is_mounted_;
   bool is_media_available_;
   bool is_on_boot_device_;

@@ -65,9 +65,7 @@ std::vector<std::string> CrosDisksServer::DoEnumerateDevices(
   devices.reserve(disks.size());
   for (std::vector<Disk>::const_iterator disk_iterator(disks.begin());
       disk_iterator != disks.end(); ++disk_iterator) {
-    bool disk_is_auto_mountable = !disk_iterator->is_on_boot_device() &&
-      !disk_iterator->is_virtual();
-    if (!auto_mountable_only || disk_is_auto_mountable) {
+    if (!auto_mountable_only || disk_iterator->is_auto_mountable()) {
       devices.push_back(disk_iterator->native_path());
     }
   }
