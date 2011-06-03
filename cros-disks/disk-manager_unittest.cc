@@ -212,6 +212,15 @@ TEST_F(DiskManagerTest, ExtractSupportedMountOptions) {
   EXPECT_TRUE(manager.ExtractMountOptions(options, &mount_flags, &mount_data));
   EXPECT_EQ(expected_mount_flags, mount_flags);
   EXPECT_EQ("", mount_data);
+
+  // options: nodev, rw, nosuid, noexec, sync
+  options.push_back("sync");
+  mount_flags = 0;
+  mount_data = "";
+  expected_mount_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_SYNCHRONOUS;
+  EXPECT_TRUE(manager.ExtractMountOptions(options, &mount_flags, &mount_data));
+  EXPECT_EQ(expected_mount_flags, mount_flags);
+  EXPECT_EQ("", mount_data);
 }
 
 TEST_F(DiskManagerTest, ExtractUnsupportedMountOptions) {

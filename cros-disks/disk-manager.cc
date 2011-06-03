@@ -35,6 +35,7 @@ static const char kMountOptionReadWrite[] = "rw";
 static const char kMountOptionNoDev[] = "nodev";
 static const char kMountOptionNoExec[] = "noexec";
 static const char kMountOptionNoSuid[] = "nosuid";
+static const char kMountOptionSynchronous[] = "sync";
 static const char kUnmountOptionForce[] = "force";
 static const char kMountRootPrefix[] = "/media/";
 static const char kFallbackMountPath[] = "/media/disk";
@@ -329,6 +330,8 @@ bool DiskManager::ExtractMountOptions(const std::vector<std::string>& options,
       *mount_flags |= MS_NOEXEC;
     } else if (option == kMountOptionNoSuid) {
       *mount_flags |= MS_NOSUID;
+    } else if (option == kMountOptionSynchronous) {
+      *mount_flags |= MS_SYNCHRONOUS;
     } else {
       LOG(ERROR) << "Got unsupported mount option: " << option;
       return false;
