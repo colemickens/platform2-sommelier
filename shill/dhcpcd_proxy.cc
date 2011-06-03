@@ -8,7 +8,9 @@
 
 #include "shill/dhcp_provider.h"
 
+using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -38,8 +40,12 @@ void DHCPCDListener::EventSignal(const DBus::SignalMessage &signal) {
     return;
   }
   config->InitProxy(&conn(), signal.sender());
-  // TODO(petkov): Process and dispatch the signal to the appropriate DHCP
-  // configuration.
+
+  string reason;
+  ri >> reason;
+  DHCPConfig::Configuration configuration;
+  ri >> configuration;
+  config->ProcessEventSignal(reason, configuration);
 }
 
 void DHCPCDListener::StatusChangedSignal(const DBus::SignalMessage &signal) {
@@ -74,15 +80,14 @@ void DHCPCDProxy::DoRebind(const string &interface) {
   Rebind(interface);
 }
 
-void DHCPCDProxy::Event(
-    const uint32_t& pid,
-    const std::string& reason,
-    const std::map< std::string, DBus::Variant >& configuration) {
+void DHCPCDProxy::Event(const uint32_t &pid,
+                        const std::string &reason,
+                        const DHCPConfig::Configuration &configuration) {
   NOTREACHED();
 }
 
-void DHCPCDProxy::StatusChanged(const uint32_t& pid,
-                                const std::string& status) {
+void DHCPCDProxy::StatusChanged(const uint32_t &pid,
+                                const std::string &status) {
   NOTREACHED();
 }
 

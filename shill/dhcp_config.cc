@@ -4,15 +4,29 @@
 
 #include "shill/dhcp_config.h"
 
+#include <arpa/inet.h>
+
 #include <base/logging.h>
 #include <glib.h>
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
 
+using std::string;
+using std::vector;
+
 namespace shill {
 
+const char DHCPConfig::kConfigurationKeyBroadcastAddress[] = "BroadcastAddress";
+const char DHCPConfig::kConfigurationKeyDNS[] = "DomainNameServers";
+const char DHCPConfig::kConfigurationKeyDomainName[] = "DomainName";
+const char DHCPConfig::kConfigurationKeyDomainSearch[] = "DomainSearch";
+const char DHCPConfig::kConfigurationKeyIPAddress[] = "IPAddress";
+const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
+const char DHCPConfig::kConfigurationKeyRouters[] = "Routers";
+const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
+
 
 DHCPConfig::DHCPConfig(DHCPProvider *provider, const Device &device)
     : IPConfig(device),
@@ -53,6 +67,18 @@ void DHCPConfig::InitProxy(DBus::Connection *connection, const char *service) {
   }
 }
 
+void DHCPConfig::ProcessEventSignal(const std::string &reason,
+                                    const Configuration &configuration) {
+  LOG(INFO) << "Event reason: " << reason;
+
+  IPConfig::Properties properties;
+  if (!ParseConfiguration(configuration, &properties)) {
+    LOG(ERROR) << "Unable to parse the new DHCP configuration -- ignored.";
+    return;
+  }
+  UpdateProperties(properties);
+}
+
 bool DHCPConfig::Start() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
 
@@ -80,6 +106,78 @@ bool DHCPConfig::Start() {
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
   provider_->BindPID(pid_, DHCPConfigRefPtr(this));
   // TODO(petkov): Add an exit watch to cleanup w/ g_spawn_close_pid.
+  return true;
+}
+
+string DHCPConfig::GetIPv4AddressString(unsigned int address) {
+  char str[INET_ADDRSTRLEN];
+  if (inet_ntop(AF_INET, &address, str, arraysize(str))) {
+    return str;
+  }
+  LOG(ERROR) << "Unable to convert IPv4 address to string: " << address;
+  return "";
+}
+
+bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
+                                    IPConfig::Properties *properties) {
+  VLOG(2) << __func__;
+  for (Configuration::const_iterator it = configuration.begin();
+       it != configuration.end(); ++it) {
+    const string &key = it->first;
+    const DBus::Variant &value = it->second;
+    VLOG(2) << "Processing key: " << key;
+    if (key == kConfigurationKeyIPAddress) {
+      properties->address = GetIPv4AddressString(value.reader().get_uint32());
+      if (properties->address.empty()) {
+        return false;
+      }
+    } else if (key == kConfigurationKeySubnetCIDR) {
+      properties->subnet_cidr = value.reader().get_byte();
+    } else if (key == kConfigurationKeyBroadcastAddress) {
+      properties->broadcast_address =
+          GetIPv4AddressString(value.reader().get_uint32());
+      if (properties->broadcast_address.empty()) {
+        return false;
+      }
+    } else if (key == kConfigurationKeyRouters) {
+      vector<unsigned int> routers;
+      DBus::MessageIter reader = value.reader();
+      reader >> routers;
+      if (routers.empty()) {
+        LOG(ERROR) << "No routers provided.";
+        return false;
+      }
+      properties->gateway = GetIPv4AddressString(routers[0]);
+      if (properties->gateway.empty()) {
+        return false;
+      }
+    } else if (key == kConfigurationKeyDNS) {
+      vector<unsigned int> servers;
+      DBus::MessageIter reader = value.reader();
+      reader >> servers;
+      vector<string> dns_servers;
+      for (vector<unsigned int>::const_iterator it = servers.begin();
+           it != servers.end(); ++it) {
+        string server = GetIPv4AddressString(*it);
+        if (server.empty()) {
+          return false;
+        }
+        properties->dns_servers.push_back(server);
+      }
+    } else if (key == kConfigurationKeyDomainName) {
+      properties->domain_name = value.reader().get_string();
+    } else if (key == kConfigurationKeyDomainSearch) {
+      DBus::MessageIter reader = value.reader();
+      reader >> properties->domain_search;
+    } else if (key == kConfigurationKeyMTU) {
+      int mtu = value.reader().get_uint16();
+      if (mtu >= 576) {
+        properties->mtu = mtu;
+      }
+    } else {
+      VLOG(2) << "Key ignored.";
+    }
+  }
   return true;
 }
 

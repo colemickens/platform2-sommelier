@@ -24,4 +24,17 @@ const string &IPConfig::GetDeviceName() const {
   return device().UniqueName();
 }
 
+bool IPConfig::Request() {
+  return false;
+}
+
+bool IPConfig::Renew() {
+  return false;
+}
+
+void IPConfig::UpdateProperties(const Properties &properties) {
+  properties_ = properties;
+  // TODO(petkov): Notify listeners about the new properties.
+}
+
 }  // namespace shill

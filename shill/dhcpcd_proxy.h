@@ -52,10 +52,10 @@ class DHCPCDProxy : public DHCPProxyInterface,
   // unused because signals are dispatched directly to the DHCP configuration
   // instance by the signal listener.
   virtual void Event(
-      const uint32_t& pid,
-      const std::string& reason,
-      const std::map< std::string, DBus::Variant >& configuration);
-  virtual void StatusChanged(const uint32_t& pid, const std::string& status);
+      const uint32_t &pid,
+      const std::string &reason,
+      const DHCPConfig::Configuration &configuration);
+  virtual void StatusChanged(const uint32_t &pid, const std::string &status);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DHCPCDProxy);

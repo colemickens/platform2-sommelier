@@ -6,6 +6,7 @@
 #define SHILL_DHCP_CONFIG_
 
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <dbus-c++/connection.h>
 
 #include "shill/ipconfig.h"
@@ -20,6 +21,17 @@ typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
 class DHCPConfig : public IPConfig {
  public:
+  typedef std::map<std::string, DBus::Variant> Configuration;
+
+  static const char kConfigurationKeyBroadcastAddress[];
+  static const char kConfigurationKeyDNS[];
+  static const char kConfigurationKeyDomainName[];
+  static const char kConfigurationKeyDomainSearch[];
+  static const char kConfigurationKeyIPAddress[];
+  static const char kConfigurationKeyMTU[];
+  static const char kConfigurationKeyRouters[];
+  static const char kConfigurationKeySubnetCIDR[];
+
   DHCPConfig(DHCPProvider *provider, const Device &device);
   virtual ~DHCPConfig();
 
@@ -31,11 +43,27 @@ class DHCPConfig : public IPConfig {
   // |service|.
   void InitProxy(DBus::Connection *connection, const char *service);
 
+  // Processes an Event signal from dhcpcd.
+  void ProcessEventSignal(const std::string &reason,
+                          const Configuration &configuration);
+
  private:
+  FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
+  FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+
   static const char kDHCPCDPath[];
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
+
+  // Parses |configuration| into |properties|. Returns true on success, and
+  // false otherwise.
+  bool ParseConfiguration(const Configuration& configuration,
+                          IPConfig::Properties *properties);
+
+  // Returns the string representation of the IP address |address|, or an
+  // empty string on failure.
+  std::string GetIPv4AddressString(unsigned int address);
 
   DHCPProvider *provider_;
 
