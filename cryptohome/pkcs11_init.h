@@ -61,6 +61,11 @@ class Pkcs11Init {
   // and sets the appropriate permissions.
   virtual bool SetupUserTokenDirectory();
 
+  // Sets ownership and permissions on NVTOK.DAT, PUBLIC_ROOT_KEY.pem,
+  // and PRIVATE_ROOT_KEY.pem in the user token directory, and files under
+  // the token objects directory.
+  virtual bool SetUserTokenFilePermissions();
+
   // Check if the User's PKCS#11 token is valid.
   virtual bool IsUserTokenBroken();
 
@@ -80,7 +85,9 @@ class Pkcs11Init {
   static const CK_CHAR kDefaultLabel[];
   static const char kOpencryptokiDir[];
   static const char kUserTokenLink[];
+  static const char kIPsecTokenLink[];
   static const char kRootTokenLink[];
+  static const char kUserDir[];
   static const char kUserTokenDir[];
   static const char kRootTokenDir[];
   static const char kPkcs11Group[];

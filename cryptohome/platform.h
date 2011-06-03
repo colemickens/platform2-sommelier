@@ -162,6 +162,16 @@ class Platform {
                                      uid_t user_id,
                                      gid_t group_id);
 
+  // Calls the platform chmod() function recursively on the directory
+  //
+  // Parameters
+  //   directory - The directory to change the permissions on
+  //   dir_mode - the directory mode to change the permissions to
+  //   file_mode - the file mode to change the permissions to
+  virtual bool SetPermissionsRecursive(const std::string& directory,
+                                       mode_t dir_mode,
+                                       mode_t file_mode);
+
   // Sets the current umask, returning the old mask
   //
   // Parameters

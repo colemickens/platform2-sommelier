@@ -31,7 +31,9 @@ const CK_CHAR Pkcs11Init::kDefaultUserPin[] = "111111";
 const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
 const char Pkcs11Init::kOpencryptokiDir[] = "/var/lib/opencryptoki";
 const char Pkcs11Init::kUserTokenLink[] = "/var/lib/opencryptoki/tpm/chronos";
+const char Pkcs11Init::kIPsecTokenLink[] = "/var/lib/opencryptoki/tpm/ipsec";
 const char Pkcs11Init::kRootTokenLink[] = "/var/lib/opencryptoki/tpm/root";
+const char Pkcs11Init::kUserDir[] = "/home/chronos/user";
 const char Pkcs11Init::kUserTokenDir[] = "/home/chronos/user/.tpm";
 const char Pkcs11Init::kRootTokenDir[] = "./chronos";
 const char Pkcs11Init::kPkcs11Group[] = "pkcs11";
@@ -102,7 +104,7 @@ bool Pkcs11Init::Initialize() {
     if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
                                  &saved_gid))
       return false;
-    bool success = SetUserTokenPins();
+    bool success = SetUserTokenPins() && SetUserTokenFilePermissions();
     if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
       return false;
     return success;
@@ -210,6 +212,10 @@ bool Pkcs11Init::SetupOpencryptokiDirectory() {
                           std::string(kUserTokenLink)))
     return false;
 
+  if (!platform_->Symlink(std::string(kUserTokenDir),
+                          std::string(kIPsecTokenLink)))
+    return false;
+
   if (!platform_->Symlink(std::string(kRootTokenDir),
                           std::string(kRootTokenLink)))
     return false;
@@ -257,10 +263,51 @@ bool Pkcs11Init::SetupUserTokenDirectory() {
 
   // Setup permissions on the user token directory to ensure that users can
   // access their own data.
+  mode_t user_dir_perms = S_IRWXU | S_IXGRP;  // u+rwx g+x
+  if (!platform_->SetOwnership(std::string(kUserDir),
+                               chronos_user_id_,
+                               pkcs11_group_id_)) {
+    LOG(ERROR) << "Couldn't set file ownership for " << kUserDir;
+    return false;
+  }
+  if (!platform_->SetPermissions(std::string(kUserDir), user_dir_perms)) {
+    LOG(ERROR) << "Couldn't set file permissions for " << kUserDir;
+    return false;
+  }
+
   if (!platform_->SetOwnershipRecursive(std::string(kUserTokenDir),
                                       chronos_user_id_,
                                       pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't set file ownership for " << kUserTokenDir;
+    return false;
+  }
+
+  return true;
+}
+
+bool Pkcs11Init::SetUserTokenFilePermissions() {
+  if (!platform_->SetOwnershipRecursive(kUserTokenDir,
+                                        chronos_user_id_,
+                                        pkcs11_group_id_)) {
+    LOG(ERROR) << "Couldn't set file ownership for " << kUserTokenDir;
+    return false;
+  }
+
+  mode_t dir_perms = S_IRWXU | S_IRGRP | S_IXGRP;  // u+rwx g+rx
+  mode_t file_perms = S_IRUSR | S_IWUSR | S_IRGRP;  // u+rw g+r
+  if (!platform_->SetPermissionsRecursive(kUserTokenDir,
+                                          dir_perms,
+                                          file_perms)) {
+    LOG(ERROR) << "Couldn't set file permissions for " << kUserTokenDir;
+    return false;
+  }
+
+  // For pkcs11 group to be able to read data from the token, the map file for
+  // communicating with pkcsslotd also needs to be writable by pkcs11 group.
+  mode_t stmapfile_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;  // ug+rw
+  std::string stmapfile = StringPrintf("%s/.stmapfile", kUserTokenDir);
+  if (!platform_->SetPermissions(stmapfile, stmapfile_perms)) {
+    LOG(ERROR) << "Couldn't set file permissions for " << stmapfile_perms;
     return false;
   }
 

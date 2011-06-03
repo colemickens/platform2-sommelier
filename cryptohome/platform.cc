@@ -397,6 +397,41 @@ bool Platform::SetOwnershipRecursive(const std::string& directory,
   return true;
 }
 
+bool Platform::SetPermissionsRecursive(const std::string& directory,
+                                       mode_t dir_mode,
+                                       mode_t file_mode) {
+  std::vector<std::string> to_recurse;
+  to_recurse.push_back(directory);
+  while (to_recurse.size()) {
+    std::string current_dir = to_recurse.back();
+    to_recurse.pop_back();
+
+    FilePath next_path;
+
+    // Push the subdirectories to the back of the vector
+    file_util::FileEnumerator dir_enumerator(
+        FilePath(current_dir),
+        false,  // do not recurse into subdirectories.
+        file_util::FileEnumerator::DIRECTORIES);
+    while (!(next_path = dir_enumerator.Next()).empty()) {
+      to_recurse.push_back(next_path.value());
+    }
+
+    // Handle the files
+    file_util::FileEnumerator file_enumerator(FilePath(current_dir), false,
+                                              file_util::FileEnumerator::FILES);
+    while (!(next_path = file_enumerator.Next()).empty()) {
+      if (!SetPermissions(next_path.value(), file_mode))
+        return false;
+    }
+
+    // Set permissions on the directory itself
+    if (!SetPermissions(current_dir, dir_mode))
+      return false;
+  }
+  return true;
+}
+
 int Platform::SetMask(int new_mask) {
   return umask(new_mask);
 }
