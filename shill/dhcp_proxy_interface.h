@@ -5,12 +5,16 @@
 #ifndef SHILL_DHCP_PROXY_INTERFACE_
 #define SHILL_DHCP_PROXY_INTERFACE_
 
+#include <string>
+
 namespace shill {
 
 // These are the functions that a DHCP proxy and listener must support.
 class DHCPProxyInterface {
  public:
   virtual ~DHCPProxyInterface() {}
+
+  virtual void DoRebind(const std::string &interface) = 0;
 };
 
 class DHCPListenerInterface {

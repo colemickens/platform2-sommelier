@@ -22,7 +22,7 @@ class DBusControl : public ControlInterface {
   ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
 
-  void EnsureConnection();
+  void Init();
   DBus::Connection *connection() { return connection_.get(); }
 
  private:

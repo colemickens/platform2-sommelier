@@ -39,7 +39,6 @@ DBUS_PROXY_HEADERS = \
 
 DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
 
-SHILL_LIB = shill_lib.a
 SHILL_OBJS = \
 	dbus_adaptor.o \
 	dbus_control.o \
@@ -93,23 +92,20 @@ $(DBUS_ADAPTOR_HEADERS): %.h: %.xml
 
 $(SHILL_OBJS): $(DBUS_HEADERS)
 
-$(SHILL_LIB): $(SHILL_OBJS)
-	$(AR) rcs $@ $^
-
-$(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
+$(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(LDFLAGS) $^ $(LIBS) \
-	-o $@
+		-o $@
 
 $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
-$(TEST_BIN): $(TEST_OBJS) $(SHILL_LIB)
+$(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_INCLUDE_DIRS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ \
 		$(TEST_LIBS) -o $@
 
 # NB(quiche): statically link gmock, gtest, as test device will not have them
 wifi_integrationtest: CXXFLAGS += -DUNIT_TEST
-wifi_integrationtest: wifi_integrationtest.o $(SHILL_LIB)
+wifi_integrationtest: wifi_integrationtest.o $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_INCLUDE_DIRS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ \
 		$(BASE_LIBS) -Wl,-Bstatic -lgmock -lgtest -Wl,-Bdynamic -o $@
 
 clean:
-	rm -rf *.o $(DBUS_HEADERS) $(SHILL_BIN) $(SHILL_LIB) $(TEST_BIN)
+	rm -rf *.o $(DBUS_HEADERS) $(SHILL_BIN) $(TEST_BIN)

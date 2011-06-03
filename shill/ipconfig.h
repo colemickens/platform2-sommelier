@@ -24,6 +24,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   const std::string &GetDeviceName() const;
 
+  // Request or renew IP configuration. Return true on success, false otherwise.
+  virtual bool Request() { return false; }
+  virtual bool Renew() { return false; }
+
  private:
   friend class base::RefCounted<IPConfig>;
 

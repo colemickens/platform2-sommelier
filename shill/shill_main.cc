@@ -11,8 +11,9 @@
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
 
-#include "shill/shill_daemon.h"
 #include "shill/dbus_control.h"
+#include "shill/dhcp_provider.h"
+#include "shill/shill_daemon.h"
 
 using std::string;
 
@@ -72,9 +73,11 @@ int main(int argc, char** argv) {
   shill::Config config; /* (config_dir, default_config_dir) */
 
   // TODO(pstew): This should be chosen based on config
-  shill::ControlInterface *control_interface = new shill::DBusControl();
+  shill::DBusControl *dbus_control = new shill::DBusControl();
+  dbus_control->Init();
+  shill::DHCPProvider::GetInstance()->Init(dbus_control->connection());
 
-  shill::Daemon daemon(&config, control_interface);
+  shill::Daemon daemon(&config, dbus_control);
   daemon.Run();
 
   return 0;
