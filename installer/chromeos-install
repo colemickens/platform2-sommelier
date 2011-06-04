@@ -206,6 +206,13 @@ TMPFILE=/tmp/install-temp-file
 TMPMNT=/tmp/install-mount-point
 mkdir -p ${TMPMNT}
 
+# Clean any mounts that might be present to avoid
+# aliasing access to block devices.
+prepare_disk() {
+  sudo initctl stop cros-disks || true
+  sudo umount -f /media/* || true
+}
+
 # Like mount but keeps track of the current mounts so that they can be cleaned
 # up automatically.
 tracked_mount() {
@@ -320,6 +327,9 @@ KERNEL_IMG_OFFSET=0
 ROOTFS_IMG_OFFSET=0
 OEM_IMG_OFFSET=0
 ESP_IMG_OFFSET=0
+
+# Clean media browser mounts if they've popped up.
+prepare_disk
 
 # What do we expect & require to have on the source device?
 if [ -r "$FLAGS_gpt_layout" ]; then
