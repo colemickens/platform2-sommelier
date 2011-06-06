@@ -6,6 +6,7 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
 #include <grp.h>
 #include <secder.h>
@@ -122,6 +123,7 @@ void SessionManagerService::GracefulShutdownHandler(int signal) {
 
   RAW_CHECK(g_shutdown_pipe_write_fd != -1);
   RAW_CHECK(g_shutdown_pipe_read_fd != -1);
+
   size_t bytes_written = 0;
   do {
     int rv = HANDLE_EINTR(
@@ -328,7 +330,7 @@ bool SessionManagerService::Run() {
   }
 
   int pipefd[2];
-  int ret = pipe(pipefd);
+  int ret = pipe2(pipefd, O_CLOEXEC);
   if (ret < 0) {
     PLOG(DFATAL) << "Failed to create pipe";
   } else {
