@@ -80,13 +80,13 @@ void ChildJob::Run() {
   if (exit_code)
     exit(exit_code);
 
+  logging::CloseLogFile();  // So child does not inherit logging FD.
+
   char const** argv = CreateArgv();
   int ret = execv(argv[0], const_cast<char* const*>(argv));
 
   // Should never get here, unless we couldn't exec the command.
-  LOG(ERROR) <<
-      StringPrintf(
-          "Error (%d) executing %s: %s", ret, argv[0], strerror(errno));
+  PLOG(ERROR) << "Error executing " << argv[0];
   exit(kCantExec);
 }
 
