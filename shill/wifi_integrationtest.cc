@@ -41,6 +41,7 @@ std::string device_name;
 class WiFiTest : public Test {
  public:
   WiFiTest() : timed_out_(false) {
+    dbus_control_.Init();
     wifi_ = new WiFi(&dbus_control_, NULL, NULL, device_name,
                      kInterfaceIndexUnknown);
   }
