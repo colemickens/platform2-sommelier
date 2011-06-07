@@ -148,10 +148,11 @@ update_firmware() {
     FIRMWARE_UPDATE_ARGS=" $FIRMWARE_UPDATE_MODE "
     echo "Updating firmware ($FIRMWARE_UPDATE_ARGS)"
     env INSTALL_ROOT=/ "${FIRMWARE_UPDATE_SCRIPT}" ${FIRMWARE_UPDATE_ARGS}
+    FW_RC="$?"
     # Next step after postinst may take a lot of time (eg, disk wiping)
     # and people may confuse that as 'firmware update takes a long wait',
     # we explicitly prompt here.
-    if [ "$?" -eq 0 ]; then
+    if [ "$FW_RC" -eq 0 ]; then
       echo "Firmware update complete."
       if [ "$(mosys platform name)" = "Mario" ] &&
           [ -n "${RECHECK_AFTER_UPDATE}" ]; then
@@ -194,6 +195,9 @@ update_firmware() {
         rm -rf $SCRATCHDIR
         echo "Kernel subkey check completed."
       fi
+    elif [ "$FW_RC" -eq 3 ]; then
+      echo "Firmware can't update b/c booted from B"
+      return 3
     else
       return 1  # error
     fi
@@ -334,14 +338,19 @@ rm -f /var/lib/ureadahead/*
 touch /mnt/stateful_partition/.install_completed
 
 # TODO: support firmware update for ARM
-if [ ${IS_INTEL_ARCH} -eq 1 ] && ! update_firmware; then
-  # Note: This will only rollback the ChromeOS verified boot target.
-  # The assumption is that systems running firmware autoupdate
-  # are running H2C Bios. If the firmware updater crashes or writes
-  # corrupt data rather than gracefully failing, we'll probably need
-  # to recover with a recovery image.
-  echo "Firmware update failed."
-  echo "Rolling back update due to failure installing required firmware."
-  "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
-  exit 1
+if [ ${IS_INTEL_ARCH} -eq 1 ]; then
+  update_firmware
+  FW_RC="$?"
+  if [ "$FW_RC" -ne 0 ]; then
+    # Note: This will only rollback the ChromeOS verified boot target.
+    # The assumption is that systems running firmware autoupdate
+    # are running H2C Bios. If the firmware updater crashes or writes
+    # corrupt data rather than gracefully failing, we'll probably need
+    # to recover with a recovery image.
+    echo "Firmware update failed."
+    echo "Rolling back update due to failure installing required firmware."
+    "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
+    echo exit "$FW_RC" from postinst
+    exit "$FW_RC"
+  fi
 fi
