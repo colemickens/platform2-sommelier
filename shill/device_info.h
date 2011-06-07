@@ -43,7 +43,7 @@ class DeviceInfo {
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;
-  base::hash_map<int, scoped_refptr<Device> > devices_;
+  base::hash_map<int, DeviceRefPtr> devices_;
   scoped_ptr<Callback1<struct nlmsghdr *>::Type> link_callback_;
   scoped_ptr<RTNLListener> link_listener_;
   friend class DeviceInfoTest;

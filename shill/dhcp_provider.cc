@@ -27,7 +27,7 @@ void DHCPProvider::Init(DBus::Connection *connection) {
   listener_.reset(new DHCPCDListener(this, connection));
 }
 
-DHCPConfigRefPtr DHCPProvider::CreateConfig(const Device &device) {
+DHCPConfigRefPtr DHCPProvider::CreateConfig(DeviceConstRefPtr device) {
   VLOG(2) << __func__;
   return DHCPConfigRefPtr(new DHCPConfig(this, device));
 }

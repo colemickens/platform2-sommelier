@@ -23,7 +23,7 @@ class DHCPConfigTest : public Test {
 };
 
 TEST_F(DHCPConfigTest, GetIPv4AddressString) {
-  DHCPConfigRefPtr config(new DHCPConfig(NULL, *device_));
+  DHCPConfigRefPtr config(new DHCPConfig(NULL, device_));
   EXPECT_EQ("255.255.255.255", config->GetIPv4AddressString(0xffffffff));
   EXPECT_EQ("0.0.0.0", config->GetIPv4AddressString(0));
   EXPECT_EQ("1.2.3.4", config->GetIPv4AddressString(0x04030201));
@@ -69,7 +69,7 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
   conf[DHCPConfig::kConfigurationKeyMTU].writer().append_uint16(600);
   conf["UnknownKey"] = DBus::Variant();
 
-  DHCPConfigRefPtr config(new DHCPConfig(NULL, *device_));
+  DHCPConfigRefPtr config(new DHCPConfig(NULL, device_));
   IPConfig::Properties properties;
   ASSERT_TRUE(config->ParseConfiguration(conf, &properties));
   EXPECT_EQ("4.3.2.1", properties.address);

@@ -119,14 +119,14 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
 
 void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  base::hash_map<int, scoped_refptr<Device> >::iterator ndev =
+  base::hash_map<int, DeviceRefPtr>::iterator ndev =
       devices_.find(msg->ifi_index);
   int bytes = IFLA_PAYLOAD(hdr);
   int dev_index = msg->ifi_index;
   struct rtattr *rta;
   int rta_bytes;
   char *link_name = NULL;
-  scoped_refptr<Device> device;
+  DeviceRefPtr device;
   Device::Technology technology;
   bool is_stub = false;
 
@@ -177,10 +177,10 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
 
 void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  base::hash_map<int, scoped_refptr<Device> >::iterator ndev =
+  base::hash_map<int, DeviceRefPtr>::iterator ndev =
       devices_.find(msg->ifi_index);
   int dev_index = msg->ifi_index;
-  scoped_refptr<Device> device;
+  DeviceRefPtr device;
 
   if (ndev != devices_.end()) {
     device = ndev->second;

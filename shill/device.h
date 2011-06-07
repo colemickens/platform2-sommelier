@@ -11,21 +11,26 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/device_config_interface.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
 class ControlInterface;
+class Device;
 class DeviceAdaptorInterface;
+class DeviceInfo;
 class EventDispatcher;
 class Endpoint;
-class DeviceInfo;
 class Manager;
+
+typedef scoped_refptr<const Device> DeviceConstRefPtr;
+typedef scoped_refptr<Device> DeviceRefPtr;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public base::RefCounted<Device> {
+class Device : public DeviceConfigInterface {
  public:
   enum Technology {
     kEthernet,
@@ -51,12 +56,15 @@ class Device : public base::RefCounted<Device> {
   virtual void LinkEvent(unsigned flags, unsigned change);
   virtual void Scan();
 
+  // Implementation of DeviceConfigInterface
+  virtual void ConfigIP() {}
+
   // Returns a string that is guaranteed to uniquely identify this
   // Device instance.
   const std::string& UniqueName() const;
 
  protected:
-  std::vector<scoped_refptr<Service> > services_;
+  std::vector<ServiceRefPtr> services_;
   std::string link_name_;
   int interface_index_;
   bool running_;
@@ -64,7 +72,6 @@ class Device : public base::RefCounted<Device> {
 
  private:
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
-  friend class base::RefCounted<Device>;
   friend class DeviceAdaptorInterface;
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

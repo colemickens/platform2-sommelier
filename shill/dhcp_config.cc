@@ -28,7 +28,7 @@ const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 
 
-DHCPConfig::DHCPConfig(DHCPProvider *provider, const Device &device)
+DHCPConfig::DHCPConfig(DHCPProvider *provider, DeviceConstRefPtr device)
     : IPConfig(device),
       provider_(provider),
       pid_(0) {

@@ -12,10 +12,10 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
+#include "shill/device.h"
 #include "shill/flimflam-device.h"
 
 namespace shill {
-class Device;
 
 // Subclass of DBusAdaptor for Device objects
 class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
@@ -25,7 +25,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  DeviceDBusAdaptor(DBus::Connection* conn, Device *device);
+  DeviceDBusAdaptor(DBus::Connection* conn, DeviceRefPtr device);
   virtual ~DeviceDBusAdaptor();
 
   // Implementation of DeviceAdaptorInterface.
@@ -44,7 +44,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
 
  private:
-  Device *device_;
+  DeviceRefPtr device_;
   DISALLOW_COPY_AND_ASSIGN(DeviceDBusAdaptor);
 };
 

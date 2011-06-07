@@ -20,7 +20,7 @@ using std::string;
 
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
-                         Device *device,
+                         DeviceConfigInterfaceRefPtr device,
                          const std::string& name)
     : Service(control_interface, dispatcher, device, string("mock-" + name)) {
 }

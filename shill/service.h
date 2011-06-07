@@ -10,15 +10,20 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/device_config_interface.h"
+
 namespace shill {
 
 class Connection;
 class Configuration;
 class ControlInterface;
-class Device;
 class Endpoint;
 class EventDispatcher;
+class Service;
 class ServiceAdaptorInterface;
+
+typedef scoped_refptr<const Service> ServiceConstRefPtr;
+typedef scoped_refptr<Service> ServiceRefPtr;
 
 class Service : public base::RefCounted<Service> {
  public:
@@ -47,7 +52,7 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          Device *device,
+          DeviceConfigInterfaceRefPtr config_interface,
           const std::string& name);
   virtual ~Service();
   virtual void Connect() = 0;
@@ -64,7 +69,7 @@ class Service : public base::RefCounted<Service> {
   bool auto_connect_;
   Configuration *configuration_;
   Connection *connection_;
-  Device *device_;
+  DeviceConfigInterfaceRefPtr config_interface_;
   Endpoint *endpoint_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   friend class ServiceAdaptorInterface;

@@ -46,42 +46,42 @@ void Manager::Stop() {
   adaptor_->UpdateRunning();
 }
 
-void Manager::RegisterDevice(Device *to_manage) {
-  vector<scoped_refptr<Device> >::iterator it;
+void Manager::RegisterDevice(DeviceRefPtr to_manage) {
+  vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
-    if (to_manage == it->get())
+    if (to_manage.get() == it->get())
       return;
   }
-  devices_.push_back(scoped_refptr<Device>(to_manage));
+  devices_.push_back(to_manage);
 
   // TODO(pstew): Should check configuration
   if (running_)
     to_manage->Start();
 }
 
-void Manager::DeregisterDevice(const Device *to_forget) {
-  vector<scoped_refptr<Device> >::iterator it;
+void Manager::DeregisterDevice(DeviceConstRefPtr to_forget) {
+  vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
-    if (to_forget == it->get()) {
+    if (to_forget.get() == it->get()) {
       devices_.erase(it);
       return;
     }
   }
 }
 
-void Manager::RegisterService(Service *to_manage) {
-  vector<scoped_refptr<Service> >::iterator it;
+void Manager::RegisterService(ServiceRefPtr to_manage) {
+  vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_manage == it->get())
+    if (to_manage.get() == it->get())
       return;
   }
-  services_.push_back(scoped_refptr<Service>(to_manage));
+  services_.push_back(to_manage);
 }
 
-void Manager::DeregisterService(const Service *to_forget) {
-  vector<scoped_refptr<Service> >::iterator it;
+void Manager::DeregisterService(ServiceConstRefPtr to_forget) {
+  vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_forget == it->get()) {
+    if (to_forget.get() == it->get()) {
       services_.erase(it);
       return;
     }
@@ -89,9 +89,9 @@ void Manager::DeregisterService(const Service *to_forget) {
 }
 
 void Manager::FilterByTechnology(Device::Technology tech,
-                                 vector<scoped_refptr<Device> > *found) {
+                                 vector<DeviceRefPtr> *found) {
   CHECK(found);
-  vector<scoped_refptr<Device> >::iterator it;
+  vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if ((*it)->TechnologyIs(tech))
       found->push_back(*it);
@@ -99,7 +99,7 @@ void Manager::FilterByTechnology(Device::Technology tech,
 }
 
 Service* Manager::FindService(const std::string& name) {
-  vector<scoped_refptr<Service> >::iterator it;
+  vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (name == (*it)->UniqueName())
       return it->get();

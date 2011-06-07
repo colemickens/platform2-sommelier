@@ -29,7 +29,7 @@ class Ethernet : public Device {
 
  private:
   bool service_registered_;
-  scoped_refptr<EthernetService> service_;
+  ServiceRefPtr service_;
   DISALLOW_COPY_AND_ASSIGN(Ethernet);
 };
 

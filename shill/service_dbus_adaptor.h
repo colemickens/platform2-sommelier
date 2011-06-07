@@ -13,9 +13,9 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/flimflam-service.h"
+#include "shill/service.h"
 
 namespace shill {
-class Service;
 
 // Subclass of DBusAdaptor for Service objects
 class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
@@ -25,7 +25,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  ServiceDBusAdaptor(DBus::Connection* conn, Service *service);
+  ServiceDBusAdaptor(DBus::Connection* conn, ServiceRefPtr service);
   virtual ~ServiceDBusAdaptor();
 
   // Implementation of ServiceAdaptorInterface.
@@ -49,7 +49,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   void ActivateCellularModem(const std::string& , ::DBus::Error &error);
 
  private:
-  Service *service_;
+  ServiceRefPtr service_;
   DISALLOW_COPY_AND_ASSIGN(ServiceDBusAdaptor);
 };
 

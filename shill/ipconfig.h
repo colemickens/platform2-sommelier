@@ -10,9 +10,9 @@
 
 #include <base/memory/ref_counted.h>
 
-namespace shill {
+#include "shill/device.h"
 
-class Device;
+namespace shill {
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -31,10 +31,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
     int mtu;
   };
 
-  explicit IPConfig(const Device &device);
+  explicit IPConfig(DeviceConstRefPtr device);
   virtual ~IPConfig();
 
-  const Device &device() const { return device_; }
+  DeviceConstRefPtr device() const { return device_; }
   const std::string &GetDeviceName() const;
 
   // Updates the IP configuration properties and notifies registered listeners
@@ -50,7 +50,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool Renew();
 
  private:
-  const Device &device_;
+  DeviceConstRefPtr device_;
   Properties properties_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);

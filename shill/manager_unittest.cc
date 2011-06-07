@@ -30,7 +30,7 @@ class ManagerTest : public Test {
   }
 
   bool IsDeviceRegistered(Device *device, Device::Technology tech) {
-    vector<scoped_refptr<Device> > devices;
+    vector<DeviceRefPtr> devices;
     manager_.FilterByTechnology(tech, &devices);
     return (devices.size() == 1 && devices[0].get() == device);
   }

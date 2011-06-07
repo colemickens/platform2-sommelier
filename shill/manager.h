@@ -31,14 +31,14 @@ class Manager {
   void Start();
   void Stop();
 
-  void RegisterDevice(Device *to_manage);
-  void DeregisterDevice(const Device *to_forget);
+  void RegisterDevice(DeviceRefPtr to_manage);
+  void DeregisterDevice(DeviceConstRefPtr to_forget);
 
-  void RegisterService(Service *to_manage);
-  void DeregisterService(const Service *to_forget);
+  void RegisterService(ServiceRefPtr to_manage);
+  void DeregisterService(ServiceConstRefPtr to_forget);
 
   void FilterByTechnology(Device::Technology tech,
-                          std::vector<scoped_refptr<Device> > *found);
+                          std::vector<DeviceRefPtr> *found);
 
   Service* FindService(const std::string& name);
 
@@ -46,8 +46,8 @@ class Manager {
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   bool running_;
-  std::vector<scoped_refptr<Device> > devices_;
-  std::vector<scoped_refptr<Service> > services_;
+  std::vector<DeviceRefPtr> devices_;
+  std::vector<ServiceRefPtr> services_;
   friend class ManagerAdaptorInterface;
 };
 

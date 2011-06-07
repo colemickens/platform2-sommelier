@@ -9,6 +9,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <dbus-c++/connection.h>
 
+#include "shill/device.h"
 #include "shill/ipconfig.h"
 
 namespace shill {
@@ -32,7 +33,7 @@ class DHCPConfig : public IPConfig {
   static const char kConfigurationKeyRouters[];
   static const char kConfigurationKeySubnetCIDR[];
 
-  DHCPConfig(DHCPProvider *provider, const Device &device);
+  DHCPConfig(DHCPProvider *provider, DeviceConstRefPtr device);
   virtual ~DHCPConfig();
 
   // Inherited from IPConfig.

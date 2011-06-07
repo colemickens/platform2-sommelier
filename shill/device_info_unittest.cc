@@ -27,7 +27,7 @@ class DeviceInfoTest : public Test {
         device_info_(&control_interface_, &dispatcher_, &manager_),
         factory_(this) {
   }
-  base::hash_map<int, scoped_refptr<Device> > *DeviceInfoDevices() {
+  base::hash_map<int, DeviceRefPtr> *DeviceInfoDevices() {
     return &device_info_.devices_;
   }
  protected:
@@ -46,7 +46,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   RTNLHandler::GetInstance()->Start(&dispatcher_);
 
   // Peek in at the map of devices
-  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
+  base::hash_map<int, DeviceRefPtr> *device_map = DeviceInfoDevices();
 
   // Crank the glib main loop a few times
   for (int main_loop_count = 0;
@@ -70,7 +70,7 @@ TEST_F(DeviceInfoTest, DeviceEnumerationReverse) {
   device_info_.Start();
 
   // Peek in at the map of devices
-  base::hash_map<int, scoped_refptr<Device> > *device_map = DeviceInfoDevices();
+  base::hash_map<int, DeviceRefPtr> *device_map = DeviceInfoDevices();
 
   // Crank the glib main loop a few times
   for (int main_loop_count = 0;

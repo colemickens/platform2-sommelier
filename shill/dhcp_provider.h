@@ -11,6 +11,7 @@
 #include <base/memory/singleton.h>
 #include <dbus-c++/connection.h>
 
+#include "shill/device.h"
 #include "shill/dhcp_config.h"
 
 namespace shill {
@@ -37,7 +38,7 @@ class DHCPProvider {
   // Creates a new DHCPConfig for |device|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
   // DHCPConfig::Renew.
-  DHCPConfigRefPtr CreateConfig(const Device &device);
+  DHCPConfigRefPtr CreateConfig(DeviceConstRefPtr device);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.

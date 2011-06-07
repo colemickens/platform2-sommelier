@@ -16,11 +16,11 @@ class IPConfigTest : public Test {
 
  protected:
   MockControl control_interface_;
-  scoped_refptr<MockDevice> device_;
+  scoped_refptr<const MockDevice> device_;
 };
 
 TEST_F(IPConfigTest, GetDeviceNameTest) {
-  scoped_refptr<IPConfig> ipconfig(new IPConfig(*device_));
+  scoped_refptr<IPConfig> ipconfig(new IPConfig(device_));
   EXPECT_EQ("testname", ipconfig->GetDeviceName());
 }
 
