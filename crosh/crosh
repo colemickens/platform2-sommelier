@@ -213,115 +213,125 @@ cmd_ssh() {
   rm -rf "$home/.ssh"
 
   if [ ! -z "$1" ]; then
-    # Sets the username and host directly. We accept either 'user host' or
-    # 'user@host'.
+    # Sets the username, host, and optionally port directly.  We accept:
+    # 'user host', 'user host port', 'user@host', or 'user@host port'.
     local at_pos=$(expr index "$1" '@')
     if [ $at_pos = 0 ]; then
       user="$1"
       host="$2"
+      if [ ! -z "$3" ]; then
+        port="$3"
+      fi
     else
       user=$(substr "$1" "0" $(expr "$at_pos" - 1))
       host=$(substr "$1" "$at_pos")
+      if [ ! -z "$2" ]; then
+        port="$2"
+      fi
     fi
   fi
 
-  while [ 1 ]; do
-    if ! shell_read "ssh> " line; then continue; fi
-    local space_pos=$(expr index "$line" ' ')
-    if [ $space_pos = 0 ]; then
-      cmd="$line"
-    else
-      cmd=$(substr "$line" "0" "$space_pos")
-      params=$(substr "$line" "$space_pos")
-    fi
-
-    case "$cmd" in
-
-    key)
-      if check_keyfile "$params"; then
-        (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
-        chmod 600 "$HOME/.ssh/key-$id"
-        idfile="-i $HOME/.ssh/key-$id"
+  if [ -z "$user" -o -z "$host" ]; then
+    while [ 1 ]; do
+      if ! shell_read "ssh> " line; then return; fi
+      local space_pos=$(expr index "$line" ' ')
+      if [ $space_pos = 0 ]; then
+        cmd="$line"
       else
-        echo "File '$params' is not a valid key file. Key files must reside"
-        echo "under /media or $HOME. Key files in the Downloads directory may"
-        echo "be specified with an unqualified name."
+        cmd=$(substr "$line" "0" "$space_pos")
+        params=$(substr "$line" "$space_pos")
       fi
-      ;;
 
-    dynamic-forward)
-      if ! check_dforward "$params"; then
-        echo "Invalid forward '$params'."
-        echo "Note that the local port number must be in 8000-8999."
-      else
-        dforwards="$dforwards -D$params"
-      fi
-      ;;
+      case "$cmd" in
 
-    forward)
-      if ! check_forward "$params"; then
-        echo "Invalid forward '$params'"
-        echo "Note that the local port number must be in 8000-8999."
-      else
-        forwards="$forwards -L$params"
-      fi
-      ;;
+      key)
+        if check_keyfile "$params"; then
+          (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
+          chmod 600 "$HOME/.ssh/key-$id"
+          idfile="-i $HOME/.ssh/key-$id"
+        else
+          echo "File '$params' is not a valid key file. Key files must reside"
+          echo "under /media or $HOME. Key files in the Downloads directory may"
+          echo "be specified with an unqualified name."
+        fi
+        ;;
 
-    nocmd)
-      nocmd="-N"
-      ;;
+      dynamic-forward)
+        if ! check_dforward "$params"; then
+          echo "Invalid forward '$params'."
+          echo "Note that the local port number must be in 8000-8999."
+        else
+          dforwards="$dforwards -D$params"
+        fi
+        ;;
 
-    port)
-      if ! check_digits "$params"; then
-        echo "Invalid port '$params'"
-      else
-        port="$params"
-      fi
-      ;;
+      forward)
+        if ! check_forward "$params"; then
+          echo "Invalid forward '$params'"
+          echo "Note that the local port number must be in 8000-8999."
+        else
+          forwards="$forwards -L$params"
+        fi
+        ;;
 
-    user)
-      user="$params"
-      ;;
+      nocmd)
+        nocmd="-N"
+        ;;
 
-    host)
-      host="$params"
-      ;;
+      port)
+        if ! check_digits "$params"; then
+          echo "Invalid port '$params'"
+        else
+          port="$params"
+        fi
+        ;;
 
-    quit)
-      break
-      ;;
+      user)
+        user="$params"
+        ;;
 
-    connect)
-      if [ -z "$user" ]; then
-        echo "No username given."
-      elif [ -z "$host" ]; then
-        echo "No host given."
-      elif ! check_username "$user"; then
-        echo "Invalid username '$user'"
-      elif ! check_hostname "$host"; then
-        echo "Invalid hostname '$host'"
-      else
-        ssh $defopts $idfile $dforwards $forwards $nocmd -p "$port" \
-            -l "$user" "$host"
-      fi
-      ;;
+      host)
+        host="$params"
+        ;;
 
-    *)
-      echo "connect                       - connect"
-      echo "dynamic-forward port          - dynamic socks proxy (-D)"
-      echo "forward port:host:port        - static port forward (-L)"
-      echo "help                          - this"
-      echo "host <hostname>               - remote hostname"
-      echo "key <file>                    - sets private key to use (-i)"
-      echo "nocmd                         - don't execute command (-N)"
-      echo "port <num>                    - port on remote host (-p)"
-      echo "quit                          - exit ssh subsystem"
-      echo "user <username>               - username on remote host"
-      echo "Note that this program can only bind local ports in the range"
-      echo "8000-8999, inclusive."
-      ;;
-    esac
-  done
+      quit)
+        return
+        ;;
+
+      connect)
+        break
+        ;;
+
+      *)
+        echo "connect                       - connect"
+        echo "dynamic-forward port          - dynamic socks proxy (-D)"
+        echo "forward port:host:port        - static port forward (-L)"
+        echo "help                          - this"
+        echo "host <hostname>               - remote hostname"
+        echo "key <file>                    - sets private key to use (-i)"
+        echo "nocmd                         - don't execute command (-N)"
+        echo "port <num>                    - port on remote host (-p)"
+        echo "quit                          - exit ssh subsystem"
+        echo "user <username>               - username on remote host"
+        echo "Note that this program can only bind local ports in the range"
+        echo "8000-8999, inclusive."
+        ;;
+      esac
+    done
+  fi
+
+  if [ -z "$user" ]; then
+    echo "No username given."
+  elif [ -z "$host" ]; then
+    echo "No host given."
+  elif ! check_username "$user"; then
+    echo "Invalid username '$user'"
+  elif ! check_hostname "$host" || check_ipv6 "$host"; then
+    echo "Invalid hostname '$host'"
+  else
+    ssh $defopts $idfile $dforwards $forwards $nocmd \
+        -p "$port" -l "$user" "$host"
+  fi
 }
 
 cmd_ssh_forget_host() {
