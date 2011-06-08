@@ -55,7 +55,6 @@ class WiFiTest : public Test {
   }
 
   ~WiFiTest() {
-    wifi_->Release();
   }
 
   static gboolean TimeoutHandler(void *test_instance) {
@@ -65,7 +64,7 @@ class WiFiTest : public Test {
 
  protected:
   DBusControl dbus_control_;
-  WiFi *wifi_;
+  scoped_refptr<WiFi> wifi_;
   bool timed_out_;
 };
 

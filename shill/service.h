@@ -78,6 +78,9 @@ class Service : public base::RefCounted<Service>,
   // Service instance.
   virtual const std::string& UniqueName() { return name_; }
 
+ protected:
+  EventDispatcher *dispatcher_;
+
  private:
   const std::string name_;
   bool available_;
@@ -89,6 +92,7 @@ class Service : public base::RefCounted<Service>,
   Endpoint *endpoint_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   friend class ServiceAdaptorInterface;
+  DISALLOW_COPY_AND_ASSIGN(Service);
 };
 
 }  // namespace shill

@@ -23,10 +23,11 @@ using std::vector;
 
 namespace shill {
 Service::Service(ControlInterface *control_interface,
-                 EventDispatcher */* dispatcher */,
+                 EventDispatcher *dispatcher,
                  DeviceConfigInterfaceRefPtr config_interface,
                  const string& name)
-    : name_(name),
+    : dispatcher_(dispatcher),
+      name_(name),
       available_(false),
       configured_(false),
       auto_connect_(false),

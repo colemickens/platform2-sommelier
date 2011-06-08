@@ -11,21 +11,27 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/shill_event.h"
+#include "shill/wifi_endpoint.h"
+#include "shill/wifi_service.h"
 
 #include "shill/wifi.h"
 
 using std::string;
 
 namespace shill {
-const char WiFi::kSupplicantPath[]       = "/fi/w1/wpa_supplicant1";
-const char WiFi::kSupplicantDBusAddr[]   = "fi.w1.wpa_supplicant1";
-const char WiFi::kSupplicantWiFiDriver[] = "nl80211";
+const char WiFi::kSupplicantPath[]        = "/fi/w1/wpa_supplicant1";
+const char WiFi::kSupplicantDBusAddr[]    = "fi.w1.wpa_supplicant1";
+const char WiFi::kSupplicantWiFiDriver[]  = "nl80211";
 const char WiFi::kSupplicantErrorInterfaceExists[] =
     "fi.w1.wpa_supplicant1.InterfaceExists";
+const char WiFi::kSupplicantKeyModeNone[] = "NONE";
+
+unsigned int WiFi::service_id_serial_ = 0;
 
 WiFi::SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection *bus)
     : DBus::ObjectProxy(*bus, kSupplicantPath, kSupplicantDBusAddr) {}
@@ -113,14 +119,18 @@ void WiFi::SupplicantInterfaceProxy::PropertiesChanged(
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Manager *manager,
-           const std::string& link_name,
+           const string& link_name,
            int interface_index)
     : Device(control_interface,
              dispatcher,
              manager,
              link_name,
              interface_index),
-      dbus_(DBus::Connection::SystemBus()), scan_pending_(false) {
+      task_factory_(this),
+      control_interface_(control_interface),
+      dispatcher_(dispatcher),
+      dbus_(DBus::Connection::SystemBus()),
+      scan_pending_(false) {
   VLOG(2) << "WiFi device " << link_name_ << " initialized.";
 }
 
@@ -145,6 +155,7 @@ void WiFi::Start() {
     if (!strcmp(e.name(), kSupplicantErrorInterfaceExists)) {
       interface_path =
           supplicant_process_proxy_->GetInterface(link_name_);
+      // XXX crash here, if device missing?
     } else {
       // XXX
     }
@@ -172,23 +183,6 @@ void WiFi::Start() {
   Device::Start();
 }
 
-void WiFi::BSSAdded(
-    const ::DBus::Path &BSS,
-    const std::map<string, ::DBus::Variant> &properties) {
-  std::vector<uint8_t> ssid = properties.find("SSID")->second;
-  ssids_.push_back(string(ssid.begin(), ssid.end()));
-}
-
-void WiFi::ScanDone() {
-  LOG(INFO) << __func__;
-
-  scan_pending_ = false;
-  for (std::vector<string>::iterator i(ssids_.begin());
-       i != ssids_.end(); ++i) {
-    LOG(INFO) << "found SSID " << *i;
-  }
-}
-
 void WiFi::Stop() {
   LOG(INFO) << __func__;
   // XXX
@@ -197,6 +191,81 @@ void WiFi::Stop() {
 
 bool WiFi::TechnologyIs(const Device::Technology type) {
   return type == Device::kWifi;
+}
+
+void WiFi::BSSAdded(
+    const ::DBus::Path &BSS,
+    const std::map<string, ::DBus::Variant> &properties) {
+  // TODO(quiche): write test to verify correct behavior in the case
+  // where we get multiple BSSAdded events for a single endpoint.
+  // (old Endpoint's refcount should fall to zero, and old Endpoint
+  // should be destroyed)
+  //
+  // note: we assume that BSSIDs are unique across endpoints. this
+  // means that if an AP reuses the same BSSID for multiple SSIDs, we
+  // lose.
+  WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
+  endpoint_by_bssid_[endpoint->bssid_hex()] = endpoint;
+}
+
+void WiFi::ScanDone() {
+  LOG(INFO) << __func__;
+
+  // defer handling of scan result processing, because that processing
+  // may require the the registration of new D-Bus objects. and such
+  // registration can't be done in the context of a D-Bus signal
+  // handler.
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::RealScanDone));
+}
+
+::DBus::Path WiFi::AddNetwork(
+    const std::map<string, ::DBus::Variant> &args) {
+  return supplicant_interface_proxy_->AddNetwork(args);
+}
+
+void WiFi::SelectNetwork(const ::DBus::Path &network) {
+  supplicant_interface_proxy_->SelectNetwork(network);
+}
+
+void WiFi::RealScanDone() {
+  LOG(INFO) << __func__;
+
+  scan_pending_ = false;
+
+  // TODO(quiche): group endpoints into services, instead of creating
+  // a service for every endpoint.
+  for (EndpointMap::iterator i(endpoint_by_bssid_.begin());
+       i != endpoint_by_bssid_.end(); ++i) {
+    const WiFiEndpoint &endpoint(*(i->second));
+    string service_id_private;
+
+    service_id_private =
+        endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
+    if (service_by_private_id_.find(service_id_private) ==
+        service_by_private_id_.end()) {
+      unsigned int new_service_id_serial = service_id_serial_++;
+      string service_name(base::UintToString(new_service_id_serial));
+
+      LOG(INFO) << "found new endpoint. "
+                << "ssid: " << endpoint.ssid_string() << ", "
+                << "bssid: " << endpoint.bssid_string() << ", "
+                << "signal: " << endpoint.signal_strength() << ", "
+                << "service name: " << "/service/" << service_name;
+
+      // XXX key mode should reflect endpoint params (not always use
+      // kSupplicantKeyModeNone)
+      ServiceRefPtr service(
+          new WiFiService(control_interface_, dispatcher_, this,
+                          endpoint.ssid(), endpoint.network_mode(),
+                          kSupplicantKeyModeNone, service_name));
+      services_.push_back(service);
+      service_by_private_id_[service_id_private] = service;
+    }
+  }
+
+  // TODO(quiche): register new services with manager
+  // TODO(quiche): unregister removed services from manager
 }
 
 }  // namespace shill

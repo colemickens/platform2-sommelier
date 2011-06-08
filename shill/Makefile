@@ -50,6 +50,7 @@ SHILL_OBJS = \
 	dhcp_config.o \
 	dhcp_provider.o \
 	dhcpcd_proxy.o \
+	endpoint.o \
 	error.o \
 	ethernet.o \
 	ethernet_service.o \
@@ -66,7 +67,9 @@ SHILL_OBJS = \
 	shill_config.o \
 	shill_daemon.o \
 	shill_event.o \
-	wifi.o
+	wifi.o \
+	wifi_endpoint.o \
+	wifi_service.o
 
 SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o

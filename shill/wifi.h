@@ -16,6 +16,10 @@
 
 namespace shill {
 
+class WiFiEndpoint;
+typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
+typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;
+
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device {
  public:
@@ -34,6 +38,11 @@ class WiFi : public Device {
   void BSSAdded(const ::DBus::Path &BSS,
                 const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
+
+  // called by WiFiService, to effect changes to wpa_supplicant
+  ::DBus::Path AddNetwork(
+      const std::map<std::string, ::DBus::Variant> &args);
+  void SelectNetwork(const ::DBus::Path &network);
 
  private:
   // SupplicantProcessProxy. provides access to wpa_supplicant's
@@ -89,16 +98,27 @@ class WiFi : public Device {
     WiFi &wifi_;
   };
 
+  typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
+  typedef std::map<const std::string, ServiceRefPtr> ServiceMap;
+
   static const char kSupplicantPath[];
   static const char kSupplicantDBusAddr[];
   static const char kSupplicantWiFiDriver[];
   static const char kSupplicantErrorInterfaceExists[];
+  static const char kSupplicantKeyModeNone[];
 
+  void RealScanDone();
+
+  static unsigned int service_id_serial_;
+  ScopedRunnableMethodFactory<WiFi> task_factory_;
+  ControlInterface *control_interface_;
+  EventDispatcher *dispatcher_;
   DBus::Connection dbus_;
   scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxy> supplicant_interface_proxy_;
   bool scan_pending_;
-  std::vector<std::string> ssids_;
+  EndpointMap endpoint_by_bssid_;
+  ServiceMap service_by_private_id_;
 
   // provide WiFiTest access to scan_pending_, so it can determine
   // if the scan completed, or timed out.

@@ -1,0 +1,48 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_WIFI_SERVICE_
+#define SHILL_WIFI_SERVICE_
+
+#include <string>
+#include <vector>
+
+#include "shill/wifi.h"
+#include "shill/shill_event.h"
+#include "shill/service.h"
+#include "shill/supplicant-interface.h"
+
+namespace shill {
+
+class WiFiService : public Service {
+ public:
+  WiFiService(ControlInterface *control_interface,
+              EventDispatcher *dispatcher,
+              WiFi *device,
+              const std::vector<uint8_t> ssid,
+              uint32_t mode,
+              const std::string &key_management,
+              const std::string &name);
+  ~WiFiService();
+  void Connect();
+  void Disconnect();
+
+ private:
+  static const char kSupplicantPropertySSID[];
+  static const char kSupplicantPropertyNetworkMode[];
+  static const char kSupplicantPropertyKeyMode[];
+
+  void RealConnect();
+
+  ScopedRunnableMethodFactory<WiFiService> task_factory_;
+  WiFi *wifi_;
+  const std::vector<uint8_t> ssid_;
+  uint32_t mode_;
+  const std::string key_management_;
+  DISALLOW_COPY_AND_ASSIGN(WiFiService);
+};
+
+}  // namespace shill
+
+#endif  // SHILL_WIFI_SERVICE_
