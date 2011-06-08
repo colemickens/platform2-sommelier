@@ -49,8 +49,29 @@ void GobiGsmModem::RegistrationStateHandler() {
   LOG(INFO) << "RegistrationStateHandler";
   GetGsmRegistrationInfo(&registration_status,
                          &operator_code, &operator_name, error);
-  if (!error)
+  if (!error) {
+    MMModemState mm_modem_state;
     RegistrationInfo(registration_status, operator_code, operator_name);
+    switch (registration_status) {
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE:
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED:
+        mm_modem_state = MM_MODEM_STATE_ENABLED;
+        break;
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
+        mm_modem_state = MM_MODEM_STATE_REGISTERED;
+        break;
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING:
+        mm_modem_state = MM_MODEM_STATE_SEARCHING;
+        break;
+      case MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN:
+        mm_modem_state = MM_MODEM_STATE_ENABLED; // ???
+        break;
+    }
+    if (mm_modem_state != MM_MODEM_STATE_REGISTERED ||
+        mm_state() <= MM_MODEM_STATE_SEARCHING)
+      SetMmState(mm_modem_state, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+  }
 }
 
 #define MASKVAL(cap) (1 << static_cast<int>(cap))
@@ -116,11 +137,13 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
   // Sometimes when we lose registration, we don't get a
   // RegistrationStateChange callback, but we often do get
   // a DataCapabilitiesHandler callback!
-  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE)
+  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE) {
     RegistrationInfo(registration_status, operator_code, operator_name);
-  else
+    SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+  } else {
     SendNetworkTechnologySignal(
         DataCapabilitiesToMmAccessTechnology(num_data_caps, data_caps));
+  }
 }
 
 void GobiGsmModem::DataBearerTechnologyHandler(ULONG technology) {

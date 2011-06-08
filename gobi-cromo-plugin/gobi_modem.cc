@@ -305,6 +305,7 @@ GobiModem::GobiModem(DBus::Connection& connection,
       sdk_(sdk),
       modem_helper_(modem_helper),
       last_seen_(-1),
+      mm_state_(MM_MODEM_STATE_UNKNOWN),
       session_id_(0),
       signal_available_(false),
       suspending_(false),
@@ -322,14 +323,11 @@ void GobiModem::Init() {
   metrics_lib_->Init();
 
   // Initialize DBus object properties
-  Enabled = false;
   IpMethod = MM_MODEM_IP_METHOD_DHCP;
   UnlockRequired = "";
   UnlockRetries = 999;
   SetDeviceProperties();
   SetModemProperties();
-
-  carrier_ = handler_->server().FindCarrierNoOp();
 
   for (int i = 0; i < GOBI_EVENT_MAX; i++) {
     event_enabled[i] = false;
@@ -380,11 +378,6 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       return;
     }
     LogGobiInformation();
-    ULONG firmware_id;
-    ULONG technology;
-    ULONG carrier_id;
-    ULONG region;
-    ULONG gps_capability;
 
     ULONG rc = sdk_->SetPower(gobi::kOnline);
     metrics_lib_->SendEnumToUMA(METRIC_BASE_NAME "SetPower",
@@ -396,32 +389,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       ApiDisconnect();
       return;
     }
-    rc = sdk_->GetFirmwareInfo(&firmware_id,
-                               &technology,
-                               &carrier_id,
-                               &region,
-                               &gps_capability);
-    if (rc != 0) {
-      error.set(kSdkError, "GetFirmwareInfo");
-      LOG(WARNING) << "GetFirmwareInfo failed : " << rc;
-      ApiDisconnect();
-      return;
-    }
-
-    const Carrier *carrier =
-        handler_->server().FindCarrierByCarrierId(carrier_id);
-
-    if (carrier != NULL) {
-      LOG(INFO) << "Current carrier is " << carrier->name()
-                << " (" << carrier->carrier_id() << ")";
-      carrier_ = carrier;
-    } else {
-      LOG(WARNING) << "Unknown carrier, id=" << carrier_id;
-    }
-    Enabled = true;
-    registration_time_.Start();    // Stopped in
-                                   // GobiCdmaModem::RegistrationStateHandler,
-                                   // if appropriate
+    SetMmState(MM_MODEM_STATE_ENABLING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   } else if (!enable && Enabled()) {
     if (session_starter_in_flight_) {
       LOG(INFO) << "Disable while connect in flight";
@@ -442,8 +410,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       LOG(WARNING) << "SetPower failed : " << rc;
       return;
     }
-    ApiDisconnect();
-    Enabled = false;
+    SetMmState(MM_MODEM_STATE_DISABLING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 }
 
@@ -545,6 +512,7 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
                                                username,
                                                password);
   session_starter_in_flight_ = true;
+  SetMmState(MM_MODEM_STATE_CONNECTING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   starter->StartDataSession(error);
 
   return_later(&starter->continuation_tag_);
@@ -626,13 +594,21 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
 
   if (!error.is_set()) {
     // TODO(ellyjones): stop guessing about MM_MODEM_STATE_CONNECTING here.
-    StateChanged(MM_MODEM_STATE_REGISTERED, MM_MODEM_STATE_CONNECTED, 0);
+    SetMmState(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 
   if (scoped_disable != NULL) {
     DBus::Error disable_error;
     Enable(false, disable_error);
     FinishDeferredCall(&scoped_disable->disable_tag_, disable_error);
+  }
+}
+
+void GobiModem::SetMmState(uint32_t new_state, uint32_t reason) {
+  if (new_state != mm_state_) {
+    StateChanged(mm_state_, new_state, reason);
+    State = new_state;
+    mm_state_ = new_state;
   }
 }
 
@@ -738,20 +714,18 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   ULONG carrier_id;
   ULONG region;
   ULONG gps_capability;
+  const Carrier *carrier = NULL;
   rc = sdk_->GetFirmwareInfo(&firmware_id,
                              &technology_id,
                              &carrier_id,
                              &region,
                              &gps_capability);
   if (rc == 0) {
-    if (carrier_id != carrier_->carrier_id()) {
-      LOG(ERROR) << "Inconsistent carrier: id = " << carrier_id;
-      std::ostringstream s;
-      s << "inconsistent: " << carrier_id << " vs. " << carrier_->carrier_id();
-      result["carrier"].writer().append_string(s.str().c_str());
-    } else {
-      result["carrier"].writer().append_string(carrier_->name());
-    }
+    carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
+    if (carrier != NULL)
+      result["carrier"].writer().append_string(carrier->name());
+    else
+      LOG(WARNING) << "Carrier lookup failed for ID " << carrier_id;
 
     // TODO(ers) we'd like to return "operator_name", but the
     // SDK provides no apparent means of determining it.
@@ -764,18 +738,8 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
     else
       technology = "unknown";
     result["technology"].writer().append_string(technology);
-  }
-
-  if (session_starter_in_flight_) {
-    // If there's a connect request in flight, then we won't be able
-    // to call GetSessionState; it's part of the same service group.
-    result["state"].writer().append_uint32(MM_MODEM_STATE_CONNECTING);
   } else {
-    ULONG session_state;
-    rc = sdk_->GetSessionState(&session_state);
-    if (rc == 0) {
-      result["state"].writer().append_uint32(QCStateToMMState(session_state));
-    }
+    LOG(WARNING) << "GetFirmwareInfo failed: " << rc;
   }
 
   char mdn[kDefaultBufferSize], min[kDefaultBufferSize];
@@ -795,7 +759,8 @@ DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   }
 
   GetTechnologySpecificStatus(&result);
-  carrier_-> ModifyModemStatusReturn(&result);
+  if (carrier != NULL)
+    carrier-> ModifyModemStatusReturn(&result);
 
   return result;
 }
@@ -821,10 +786,6 @@ static void MobileIPStatusCallback(ULONG status) {
   LOG(INFO) << "MobileIPStatusCallback: " << status;
 }
 
-static void PowerCallback(ULONG mode) {
-  LOG(INFO) << "PowerCallback: " << mode;
-}
-
 static void LURejectCallback(ULONG domain, ULONG cause) {
   LOG(INFO) << "LURejectCallback: domain " << domain << " cause " << cause;
 }
@@ -836,11 +797,11 @@ static void PDSStateCallback(ULONG enabled, ULONG tracking) {
 
 void GobiModem::RegisterCallbacks() {
   sdk_->SetMobileIPStatusCallback(MobileIPStatusCallback);
-  sdk_->SetPowerCallback(PowerCallback);
   sdk_->SetRFInfoCallback(RFInfoCallbackTrampoline);
   sdk_->SetLURejectCallback(LURejectCallback);
   sdk_->SetPDSStateCallback(PDSStateCallback);
 
+  sdk_->SetPowerCallback(PowerCallbackTrampoline);
   sdk_->SetSessionStateCallback(SessionStateCallbackTrampoline);
   sdk_->SetDataBearerCallback(DataBearerCallbackTrampoline);
   sdk_->SetRoamingIndicatorCallback(RoamingIndicatorCallbackTrampoline);
@@ -895,7 +856,7 @@ void GobiModem::ApiConnect(DBus::Error& error) {
               "Only one modem can be connected via Api");
     return;
   }
-
+  LOG(INFO) << "Connecting to QCWWAN";
   pthread_mutex_lock(&modem_mutex_.mutex_);
   connected_modem_ = this;
   pthread_mutex_unlock(&modem_mutex_.mutex_);
@@ -1021,6 +982,7 @@ void GobiModem::PowerCycle(DBus::Error &error) {
 
 void GobiModem::ResetModem(DBus::Error& error) {
   Enabled = false;
+  SetMmState(MM_MODEM_STATE_DISABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   LOG(INFO) << "Offline";
 
   // Resetting the modem will cause it to disappear and reappear.
@@ -1129,23 +1091,38 @@ void GobiModem::GetSignalStrengthDbm(int& output,
 }
 
 // Set properties for which a connection to the SDK is required
-// to obtain the needed information. Since this is called before
+// to obtain the needed information. If this is called before
 // the modem is enabled, we connect to the SDK, get the properties
-// we need, and then disconnect from the SDK.
-// pre-condition: Enabled == false
+// we need, and then disconnect from the SDK. Otherwise, we
+// stay connected.
 void GobiModem::SetModemProperties() {
-  DBus::Error connect_error;
+  DBus::Error error;
 
-  ApiConnect(connect_error);
-  if (connect_error.is_set()) {
+  ApiConnect(error);
+  if (error.is_set()) {
     Type = MM_MODEM_TYPE_CDMA;
     return;
+  }
+
+  ULONG power_mode;
+  ULONG rc = sdk_->GetPower(&power_mode);
+  if (rc != 0)
+    LOG(INFO) << "Cannot determine initial power mode: Error " << rc;
+  else {
+    LOG(INFO) << "Initial power mode: " << power_mode;
+    if (power_mode == gobi::kOnline) {
+      Enabled = true;
+      State = mm_state_ = MM_MODEM_STATE_ENABLED;
+    } else {
+      Enabled = false;
+      State = mm_state_ = MM_MODEM_STATE_DISABLED;
+    }
   }
 
   ULONG u1, u2, u3, u4;
   BYTE radioInterfaces[10];
   ULONG numRadioInterfaces = sizeof(radioInterfaces)/sizeof(BYTE);
-  ULONG rc = sdk_->GetDeviceCapabilities(&u1, &u2, &u3, &u4,
+  rc = sdk_->GetDeviceCapabilities(&u1, &u2, &u3, &u4,
                                          &numRadioInterfaces,
                                          radioInterfaces);
   if (rc == 0) {
@@ -1159,7 +1136,8 @@ void GobiModem::SetModemProperties() {
     }
   }
   SetTechnologySpecificProperties();
-  ApiDisconnect();
+  if (mm_state_ != MM_MODEM_STATE_ENABLED)
+    ApiDisconnect();
 }
 
 // DBUS message handler.
@@ -1224,6 +1202,15 @@ gboolean GobiModem::SignalStrengthCallback(gpointer data) {
   return FALSE;
 }
 
+gboolean GobiModem::PowerCallback(gpointer data) {
+  CallbackArgs* args = static_cast<CallbackArgs*>(data);
+  GobiModem* modem = handler_->LookupByDbusPath(*args->path);
+  delete args;
+  if (modem != NULL)
+    modem->PowerModeHandler();
+  return FALSE;
+}
+
 gboolean GobiModem::SessionStateCallback(gpointer data) {
   SessionStateArgs* args = static_cast<SessionStateArgs*>(data);
   GobiModem* modem = handler_->LookupByDbusPath(*args->path);
@@ -1260,6 +1247,27 @@ gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
   return FALSE;
 }
 
+void GobiModem::PowerModeHandler() {
+  ULONG power_mode;
+  ULONG rc = sdk_->GetPower(&power_mode);
+  if (rc != 0) {
+    LOG(INFO) << "Cannot determine power mode: Error " << rc;
+    return;
+  }
+  LOG(INFO) << "PowerModeHandler: " << power_mode;
+  if (power_mode == gobi::kOnline) {
+    Enabled = true;
+    SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    registration_time_.Start();    // Stopped in
+                                   // GobiCdmaModem::RegistrationStateHandler,
+                                   // if appropriate
+  } else {
+    ApiDisconnect();
+    Enabled = false;
+    SetMmState(MM_MODEM_STATE_DISABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+  }
+}
+
 void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
   LOG(INFO) << "SessionStateHandler state: " << state
             << " reason: "
@@ -1278,7 +1286,7 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
       reason = MM_MODEM_STATE_CHANGED_REASON_SUSPEND;
     // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
-    StateChanged(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_REGISTERED, reason);
+    SetMmState(MM_MODEM_STATE_REGISTERED, reason);
   } else if (state == gobi::kConnected) {
     // Nothing to do here; this is handled in SessionStarterDoneCallback
   }

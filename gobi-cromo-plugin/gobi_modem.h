@@ -117,6 +117,9 @@ class GobiModem
     last_seen_ = scan_count;
   }
 
+  uint32_t mm_state() { return mm_state_; }
+  void SetMmState(uint32_t new_state, uint32_t reason);
+
   static void set_handler(GobiModemHandler* handler) { handler_ = handler; }
 
   // Called by the SDK wrapper when it receives an error that requires
@@ -263,6 +266,11 @@ class GobiModem
     // ignore the supplied argument
     PostCallbackRequest(RegistrationStateCallback, new CallbackArgs());
   }
+  static void PowerCallbackTrampoline(ULONG power_mode) {
+    // ignore the supplied argument
+    PostCallbackRequest(PowerCallback, new CallbackArgs());
+  }
+  static gboolean PowerCallback(gpointer data);
 
   static void RFInfoCallbackTrampoline(ULONG iface, ULONG bandclass,
                                        ULONG channel) {
@@ -346,6 +354,7 @@ class GobiModem
 
   virtual void SessionStateHandler(ULONG state, ULONG session_end_reason);
   virtual void DataBearerTechnologyHandler(ULONG technology);
+  virtual void PowerModeHandler();
 
   static GobiModemHandler *handler_;
   // Wraps the Gobi SDK for dependency injection
@@ -353,6 +362,9 @@ class GobiModem
   scoped_ptr<GobiModemHelper> modem_helper_;
   gobi::DeviceElement device_;
   int last_seen_;  // Updated every scan where the modem is present
+  // Mirrors the DBus "State" property. This variable exists because
+  // the DBus properties are essentially write-only.
+  uint32_t mm_state_;
 
   ULONG session_id_;
   bool signal_available_;
@@ -372,8 +384,6 @@ class GobiModem
 
   bool session_starter_in_flight_;
   scoped_ptr<PendingDisable> pending_disable_;
-
-  const Carrier *carrier_;
 
   friend class GobiModemTest;
 

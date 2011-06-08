@@ -74,8 +74,29 @@ int GobiCdmaModem::GetMmActivationState() {
     return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   }
 
+  ULONG firmware_id;
+  ULONG technology_id;
+  ULONG carrier_id;
+  ULONG region;
+  ULONG gps_capability;
+  const Carrier *carrier = NULL;
+  rc = sdk_->GetFirmwareInfo(&firmware_id,
+                             &technology_id,
+                             &carrier_id,
+                             &region,
+                             &gps_capability);
+  if (rc == 0) {
+    carrier = handler_->server().FindCarrierByCarrierId(carrier_id);
+    if (carrier == NULL)
+      LOG(WARNING) << "Carrier lookup failed for ID " << carrier_id;
+  } else {
+    LOG(WARNING) << "GetFirmwareInfo failed: " << rc;
+  }
+  if (carrier == NULL)
+    return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+
   // Is the modem de-activated, or is there an activation in flight?
-  switch (carrier_->activation_method()) {
+  switch (carrier->activation_method()) {
     case Carrier::kOmadm: {
         ULONG session_state;
         ULONG session_type;
@@ -618,15 +639,20 @@ void GobiCdmaModem::RegistrationStateHandler() {
   uint32_t cdma_1x_state;
   uint32_t evdo_state;
   DBus::Error error;
+  bool registered = false;
 
   GetRegistrationState(cdma_1x_state, evdo_state, error);
   if (error.is_set())
     return;
   if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
       evdo_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+    registered = true;
     registration_time_.Stop();
   }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
+  if (registered && mm_state() <= MM_MODEM_STATE_SEARCHING)
+    SetMmState(MM_MODEM_STATE_REGISTERED,
+               MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
 
   // TODO(ers) check data bearer technology and notify if appropriate.
 
