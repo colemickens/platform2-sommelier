@@ -45,7 +45,7 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
 
 # - stores the current power status
 power_status_on_suspend=/tmp/power-status-on-suspend
-/usr/bin/devkit-power -d \
+/usr/bin/upower -d \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend
