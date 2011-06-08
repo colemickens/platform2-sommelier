@@ -166,4 +166,146 @@ extern const char* kLibCrosServiceInterface;
 extern const char* kResolveNetworkProxy;
 } // namespace chromeos
 
+namespace flimflam {
+// Flimflam D-Bus service identifiers.
+extern const char* kFlimflamManagerInterface;
+extern const char* kFlimflamServiceInterface;
+extern const char* kFlimflamServiceName;
+extern const char* kFlimflamIPConfigInterface;
+extern const char* kFlimflamDeviceInterface;
+extern const char* kFlimflamProfileInterface;
+extern const char* kFlimflamNetworkInterface;
+
+// Flimflam function names.
+extern const char* kGetPropertiesFunction;
+extern const char* kSetPropertyFunction;
+extern const char* kClearPropertyFunction;
+extern const char* kConnectFunction;
+extern const char* kDisconnectFunction;
+extern const char* kRequestScanFunction;
+extern const char* kGetWifiServiceFunction;
+extern const char* kGetVPNServiceFunction;
+extern const char* kEnableTechnologyFunction;
+extern const char* kDisableTechnologyFunction;
+extern const char* kAddIPConfigFunction;
+extern const char* kRemoveConfigFunction;
+extern const char* kGetEntryFunction;
+extern const char* kDeleteEntryFunction;
+extern const char* kActivateCellularModemFunction;
+extern const char* kRequirePinFunction;
+extern const char* kEnterPinFunction;
+extern const char* kUnblockPinFunction;
+extern const char* kChangePinFunction;
+extern const char* kProposeScanFunction;
+extern const char* kRegisterFunction;
+
+// Flimflam property names.
+extern const char* kSecurityProperty;
+extern const char* kPassphraseProperty;
+extern const char* kIdentityProperty;
+extern const char* kCertPathProperty; // DEPRECATED
+extern const char* kOfflineModeProperty;
+extern const char* kSignalStrengthProperty;
+extern const char* kNameProperty;
+extern const char* kTypeProperty;
+extern const char* kUnknownString;
+extern const char* kAutoConnectProperty;
+extern const char* kModeProperty;
+extern const char* kActiveProfileProperty;
+extern const char* kSSIDProperty;
+extern const char* kDevicesProperty;
+extern const char* kNetworksProperty;
+extern const char* kConnectedProperty;
+extern const char* kWifiChannelProperty;
+extern const char* kScanIntervalProperty;
+extern const char* kPoweredProperty;
+extern const char* kHostProperty;
+extern const char* kDBusConnectionProperty;
+extern const char* kDBusObjectProperty;
+
+// Flimflam device info property names.
+extern const char* kIPConfigsProperty;
+extern const char* kCertpathSettingsPrefix;
+
+// Flimflam EAP service properties
+extern const char* kEAPEAPProperty;
+extern const char* kEAPClientCertProperty;
+extern const char* kEAPCertIDProperty;
+extern const char* kEAPKeyIDProperty;
+extern const char* kEAPPINProperty;
+
+// Flimflam VPN service properties
+extern const char* kVPNDomainProperty;
+
+// Flimflam monitored properties
+extern const char* kMonitorPropertyChanged;
+
+// Flimflam type options.
+extern const char* kTypeWifi;
+
+// Flimflam mode options.
+extern const char* kModeManaged;
+
+// IPConfig property names.
+extern const char* kMethodProperty;
+extern const char* kAddressProperty;
+extern const char* kMtuProperty;
+extern const char* kPrefixlenProperty;
+extern const char* kBroadcastProperty;
+extern const char* kPeerAddressProperty;
+extern const char* kGatewayProperty;
+extern const char* kDomainNameProperty;
+extern const char* kNameServersProperty;
+
+// IPConfig type options.
+extern const char* kTypeIPv4;
+extern const char* kTypeIPv6;
+extern const char* kTypeDHCP;
+extern const char* kTypeBOOTP;
+extern const char* kTypeZeroConf;
+extern const char* kTypeDHCP6;
+extern const char* kTypePPP;
+}  // namespace flimflam
+
+namespace cashew {
+// Cashew D-Bus service identifiers.
+extern const char* kCashewServiceName;
+extern const char* kCashewServicePath;
+extern const char* kCashewServiceInterface;
+
+// Cashew function names.
+extern const char* kRequestDataPlanFunction;
+extern const char* kRetrieveDataPlanFunction;
+
+// Cashew signals.
+extern const char* kMonitorDataPlanUpdate;
+
+// Cashew data plan properties
+extern const char* kCellularPlanNameProperty;
+extern const char* kCellularPlanTypeProperty;
+extern const char* kCellularPlanUpdateTimeProperty;
+extern const char* kCellularPlanStartProperty;
+extern const char* kCellularPlanEndProperty;
+extern const char* kCellularPlanDataBytesProperty;
+extern const char* kCellularDataBytesUsedProperty;
+
+// Cashew Data Plan types
+extern const char* kCellularDataPlanUnlimited;
+extern const char* kCellularDataPlanMeteredPaid;
+extern const char* kCellularDataPlanMeteredBase;
+}  // namespace cashew
+
+namespace modemmanager {
+// ModemManager D-Bus service identifiers
+extern const char* kModemManagerSMSInterface;
+
+// ModemManager function names.
+extern const char* kSMSGetFunction;
+extern const char* kSMSDeleteFunction;
+extern const char* kSMSListFunction;
+
+// ModemManager monitored signals
+extern const char* kSMSReceivedSignal;
+}  // namespace modemmanager
+
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_

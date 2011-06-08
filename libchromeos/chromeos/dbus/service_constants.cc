@@ -150,3 +150,147 @@ const char* kLibCrosServiceInterface =
 // Methods
 const char* kResolveNetworkProxy = "ResolveNetworkProxy";
 } // namespace chromeos
+
+
+namespace flimflam {
+// Flimflam D-Bus service identifiers.
+const char* kFlimflamManagerInterface = "org.chromium.flimflam.Manager";
+const char* kFlimflamServiceInterface = "org.chromium.flimflam.Service";
+const char* kFlimflamServiceName = "org.chromium.flimflam";
+const char* kFlimflamIPConfigInterface = "org.chromium.flimflam.IPConfig";
+const char* kFlimflamDeviceInterface = "org.chromium.flimflam.Device";
+const char* kFlimflamProfileInterface = "org.chromium.flimflam.Profile";
+const char* kFlimflamNetworkInterface = "org.chromium.flimflam.Network";
+
+// Flimflam function names.
+const char* kGetPropertiesFunction = "GetProperties";
+const char* kSetPropertyFunction = "SetProperty";
+const char* kClearPropertyFunction = "ClearProperty";
+const char* kConnectFunction = "Connect";
+const char* kDisconnectFunction = "Disconnect";
+const char* kRequestScanFunction = "RequestScan";
+const char* kGetWifiServiceFunction = "GetWifiService";
+const char* kGetVPNServiceFunction = "GetVPNService";
+const char* kEnableTechnologyFunction = "EnableTechnology";
+const char* kDisableTechnologyFunction = "DisableTechnology";
+const char* kAddIPConfigFunction = "AddIPConfig";
+const char* kRemoveConfigFunction = "Remove";
+const char* kGetEntryFunction = "GetEntry";
+const char* kDeleteEntryFunction = "DeleteEntry";
+const char* kActivateCellularModemFunction = "ActivateCellularModem";
+const char* kRequirePinFunction = "RequirePin";
+const char* kEnterPinFunction = "EnterPin";
+const char* kUnblockPinFunction = "UnblockPin";
+const char* kChangePinFunction = "ChangePin";
+const char* kProposeScanFunction = "ProposeScan";
+const char* kRegisterFunction = "Register";
+
+// Flimflam property names.
+const char* kSecurityProperty = "Security";
+const char* kPassphraseProperty = "Passphrase";
+const char* kIdentityProperty = "Identity";
+const char* kCertPathProperty = "CertPath"; // DEPRECATED
+const char* kOfflineModeProperty = "OfflineMode";
+const char* kSignalStrengthProperty = "Strength";
+const char* kNameProperty = "Name";
+const char* kTypeProperty = "Type";
+const char* kUnknownString = "UNKNOWN";
+const char* kAutoConnectProperty = "AutoConnect";
+const char* kModeProperty = "Mode";
+const char* kActiveProfileProperty = "ActiveProfile";
+const char* kSSIDProperty = "SSID";
+const char* kDevicesProperty = "Devices";
+const char* kNetworksProperty = "Networks";
+const char* kConnectedProperty = "Connected";
+const char* kWifiChannelProperty = "WiFi.Channel";
+const char* kScanIntervalProperty = "ScanInterval";
+const char* kPoweredProperty = "Powered";
+const char* kHostProperty = "Host";
+const char* kDBusConnectionProperty = "DBus.Connection";
+const char* kDBusObjectProperty = "DBus.Object";
+
+// Flimflam device info property names.
+const char* kIPConfigsProperty = "IPConfigs";
+const char* kCertpathSettingsPrefix = "SETTINGS:";
+
+// Flimflam EAP service properties
+const char* kEAPEAPProperty = "EAP.EAP";
+const char* kEAPClientCertProperty = "EAP.ClientCert";
+const char* kEAPCertIDProperty = "EAP.CertID";
+const char* kEAPKeyIDProperty = "EAP.KeyID";
+const char* kEAPPINProperty = "EAP.PIN";
+
+// Flimflam VPN service properties
+const char* kVPNDomainProperty = "VPN.Domain";
+
+// Flimflam monitored properties
+const char* kMonitorPropertyChanged = "PropertyChanged";
+
+// Flimflam type options.
+const char* kTypeWifi = "wifi";
+
+// Flimflam mode options.
+const char* kModeManaged = "managed";
+
+// IPConfig property names.
+const char* kMethodProperty = "Method";
+const char* kAddressProperty = "Address";
+const char* kMtuProperty = "Mtu";
+const char* kPrefixlenProperty = "Prefixlen";
+const char* kBroadcastProperty = "Broadcast";
+const char* kPeerAddressProperty = "PeerAddress";
+const char* kGatewayProperty = "Gateway";
+const char* kDomainNameProperty = "DomainName";
+const char* kNameServersProperty = "NameServers";
+
+// IPConfig type options.
+const char* kTypeIPv4 = "ipv4";
+const char* kTypeIPv6 = "ipv6";
+const char* kTypeDHCP = "dhcp";
+const char* kTypeBOOTP = "bootp";
+const char* kTypeZeroConf = "zeroconf";
+const char* kTypeDHCP6 = "dhcp6";
+const char* kTypePPP = "ppp";
+}  // namespace flimflam
+
+namespace cashew {
+// Cashew D-Bus service identifiers.
+const char* kCashewServiceName = "org.chromium.Cashew";
+const char* kCashewServicePath = "/org/chromium/Cashew";
+const char* kCashewServiceInterface = "org.chromium.Cashew";
+
+// Cashew function names.
+const char* kRequestDataPlanFunction = "RequestDataPlansUpdate";
+const char* kRetrieveDataPlanFunction = "GetDataPlans";
+
+// Cashew properties monitored by flimflam.
+const char* kMonitorDataPlanUpdate = "DataPlansUpdate";
+
+// Cashew data plan properties
+const char* kCellularPlanNameProperty = "CellularPlanName";
+const char* kCellularPlanTypeProperty = "CellularPlanType";
+const char* kCellularPlanUpdateTimeProperty = "CellularPlanUpdateTime";
+const char* kCellularPlanStartProperty = "CellularPlanStart";
+const char* kCellularPlanEndProperty = "CellularPlanEnd";
+const char* kCellularPlanDataBytesProperty = "CellularPlanDataBytes";
+const char* kCellularDataBytesUsedProperty = "CellularDataBytesUsed";
+
+// Cashew Data Plan types
+const char* kCellularDataPlanUnlimited = "UNLIMITED";
+const char* kCellularDataPlanMeteredPaid = "METERED_PAID";
+const char* kCellularDataPlanMeteredBase = "METERED_BASE";
+}  // namespace cashew
+
+namespace modemmanager {
+// ModemManager D-Bus service identifiers
+const char* kModemManagerSMSInterface =
+    "org.freedesktop.ModemManager.Modem.Gsm.SMS";
+
+// ModemManager function names.
+const char* kSMSGetFunction = "Get";
+const char* kSMSDeleteFunction = "Delete";
+const char* kSMSListFunction = "List";
+
+// ModemManager monitored signals
+const char* kSMSReceivedSignal = "SmsReceived";
+}  // namespace modemmanager
