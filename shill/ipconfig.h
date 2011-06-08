@@ -8,11 +8,18 @@
 #include <string>
 #include <vector>
 
+#include <base/callback_old.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 
 namespace shill {
+
+class IPConfig;
+
+typedef scoped_refptr<IPConfig> IPConfigRefPtr;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -37,9 +44,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
   DeviceConstRefPtr device() const { return device_; }
   const std::string &GetDeviceName() const;
 
-  // Updates the IP configuration properties and notifies registered listeners
-  // about the event.
-  void UpdateProperties(const Properties &properties);
+  // Registers a callback that's executed every time the configuration
+  // properties change. Takes ownership of |callback|. Pass NULL to remove a
+  // callback. The callback's argument is a pointer to this IP configuration
+  // instance allowing clients to more easily manage multiple IP configurations.
+  void RegisterUpdateCallback(Callback1<IPConfigRefPtr>::Type *callback);
 
   const Properties &properties() const { return properties_; }
 
@@ -49,9 +58,18 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool Request();
   virtual bool Renew();
 
+ protected:
+  // Updates the IP configuration properties and notifies registered listeners
+  // about the event.
+  void UpdateProperties(const Properties &properties);
+
  private:
+  FRIEND_TEST(IPConfigTest, UpdateCallback);
+  FRIEND_TEST(IPConfigTest, UpdateProperties);
+
   DeviceConstRefPtr device_;
   Properties properties_;
+  scoped_ptr<Callback1<IPConfigRefPtr>::Type> update_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

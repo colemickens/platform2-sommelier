@@ -34,7 +34,14 @@ bool IPConfig::Renew() {
 
 void IPConfig::UpdateProperties(const Properties &properties) {
   properties_ = properties;
-  // TODO(petkov): Notify listeners about the new properties.
+  if (update_callback_.get()) {
+    update_callback_->Run(this);
+  }
+}
+
+void IPConfig::RegisterUpdateCallback(
+    Callback1<IPConfigRefPtr>::Type *callback) {
+  update_callback_.reset(callback);
 }
 
 }  // namespace shill
