@@ -42,11 +42,11 @@ void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
         kMetricIdleMax, kMetricIdleBuckets);
 
     int64 event_delta_ms = event_delta.InMilliseconds();
-    if (idle_state_ == kIdleScreenOff) {
+    if (backlight_controller_->state() == BACKLIGHT_IDLE_OFF) {
       SendMetricWithPowerState(kMetricIdleAfterScreenOffName, event_delta_ms,
           kMetricIdleAfterScreenOffMin, kMetricIdleAfterScreenOffMax,
           kMetricIdleAfterScreenOffBuckets);
-    } else if (idle_state_ == kIdleDim) {
+    } else if (backlight_controller_->state() == BACKLIGHT_DIM) {
       SendMetricWithPowerState(kMetricIdleAfterDimName, event_delta_ms,
           kMetricIdleAfterDimMin, kMetricIdleAfterDimMax,
           kMetricIdleAfterDimBuckets);
@@ -63,7 +63,7 @@ void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
   double level;
-  if (idle_state_ == Daemon::kIdleNormal &&
+  if (backlight_controller_->state() == BACKLIGHT_ACTIVE &&
       backlight_controller_->GetCurrentBrightness(&level)) {
     SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(level),
                                  kMetricBacklightLevelMax);

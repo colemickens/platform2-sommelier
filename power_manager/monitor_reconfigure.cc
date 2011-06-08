@@ -127,7 +127,7 @@ void MonitorReconfigure::Run() {
 
   // Disable the backlight before resizing anything on the screen.
   if (lcd_resolution.name.empty())
-    backlight_ctl_->SetPowerState(BACKLIGHT_ACTIVE_OFF);
+    backlight_ctl_->SetPowerState(BACKLIGHT_IDLE_OFF);
 
   // Grab the server during mode changes.
   XGrabServer(display_);
@@ -164,7 +164,7 @@ void MonitorReconfigure::Run() {
   // Enable the backlight. We do not want to do this before the resize is
   // done so that we can hide the resize when going off->on.
   if (!lcd_resolution.name.empty())
-    backlight_ctl_->SetPowerState(BACKLIGHT_ACTIVE_ON);
+    backlight_ctl_->SetPowerState(BACKLIGHT_ACTIVE);
 
   if (lcd_output_info_)
     XRRFreeOutputInfo(lcd_output_info_);

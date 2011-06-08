@@ -59,9 +59,9 @@ class DaemonTest : public Test {
     EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
     EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
     EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-        .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                        SetArgumentPointee<1>(kMaxBrightness),
-                        Return(true)));
+        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
+                              SetArgumentPointee<1>(kMaxBrightness),
+                              Return(true)));
     prefs_.SetInt64(kPluggedBrightnessOffset, kPluggedBrightness);
     prefs_.SetInt64(kUnpluggedBrightnessOffset, kUnpluggedBrightness);
     prefs_.SetInt64(kAlsBrightnessLevel, kAlsBrightness);
@@ -83,6 +83,12 @@ class DaemonTest : public Test {
   // Adds a metrics library mock expectation that the specified enum
   // metric will be generated.
   void ExpectEnumMetric(const std::string& name, int sample, int max) {
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
+        .Times(1)
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
+  }
+  void ExpectEnumMetric2(const std::string& name, int sample, int max) {
     EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
         .Times(1)
         .WillOnce(Return(true))
@@ -341,22 +347,18 @@ TEST_F(DaemonTest, SendMetricWithPowerState) {
 }
 
 TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
-  daemon_.idle_state_ = Daemon::kIdleDim;
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
-  daemon_.idle_state_ = Daemon::kIdleNormal;
   daemon_.plugged_state_ = kPowerDisconnected;
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
+  daemon_.SetPlugged(kPowerDisconnected);
+  daemon_.backlight_controller_->OnPlugEvent(kPowerDisconnected);
+  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_DIM);
+  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
+  daemon_.plugged_state_ = kPowerDisconnected;
+
   ExpectEnumMetric("Power.BacklightLevelOnBattery",
                    kDefaultBrightness, kMaxBrightness);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
   daemon_.plugged_state_ = kPowerConnected;
-  EXPECT_CALL(backlight_, GetBrightness(NotNull(), NotNull()))
-      .WillOnce(DoAll(SetArgumentPointee<0>(kDefaultBrightness),
-                      SetArgumentPointee<1>(kMaxBrightness),
-                      Return(true)));
   ExpectEnumMetric("Power.BacklightLevelOnAC",
                    kDefaultBrightness, kMaxBrightness);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);

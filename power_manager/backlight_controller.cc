@@ -41,14 +41,14 @@ const int kAlsHystLevel = 5;
 // String names for power states.
 const char* PowerStateToString(power_manager::PowerState state) {
   switch (state) {
-    case power_manager::BACKLIGHT_ACTIVE_ON:
-      return "state(ACTIVE_ON)";
+    case power_manager::BACKLIGHT_ACTIVE:
+      return "state(ACTIVE)";
     case power_manager::BACKLIGHT_DIM:
       return "state(DIM)";
+    case power_manager::BACKLIGHT_ALREADY_DIMMED:
+      return "state(ALREADY_DIMMED)";
     case power_manager::BACKLIGHT_IDLE_OFF:
       return "state(IDLE_OFF)";
-    case power_manager::BACKLIGHT_ACTIVE_OFF:
-      return "state(ACTIVE_OFF)";
     case power_manager::BACKLIGHT_SUSPENDED:
       return "state(SUSPENDED)";
     case power_manager::BACKLIGHT_UNINITIALIZED:
@@ -117,22 +117,14 @@ bool BacklightController::GetTargetBrightness(double* level) {
 void BacklightController::IncreaseBrightness() {
   if (!is_initialized_)
     return;
-  if (!ReadBrightness())
-    return;
+//  if (!ReadBrightness())
+//    return;
 
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
   double new_brightness = ClampToMin(local_brightness_ + step_size);
 
   if (new_brightness != local_brightness_) {
-    // This gets out of backlight off state when minimum brightness is zero.
-    if (local_brightness_ == 0) {
-      // Do not call SetPowerState because that calls ReadBrightness and
-      // WriteBrightness.  This function already calls both; hence, it should
-      // directly set the power state.
-      state_ = BACKLIGHT_ACTIVE_ON;
-    }
-
     // Allow large swing in |brightness_offset_| for absolute brightness
     // outside of clamped brightness region.
     double absolute_brightness = als_brightness_level_ + *brightness_offset_;
@@ -144,8 +136,8 @@ void BacklightController::IncreaseBrightness() {
 void BacklightController::DecreaseBrightness(bool allow_off) {
   if (!is_initialized_)
     return;
-  if (!ReadBrightness())
-    return;
+//  if (!ReadBrightness())
+//    return;
 
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
@@ -157,10 +149,6 @@ void BacklightController::DecreaseBrightness(bool allow_off) {
     // already at a nonzero minimum. (Can go one step lower to zero.)
     if (allow_off && (new_brightness == 0 ||
                       (new_brightness == min_percent_ && min_percent_ > 0))) {
-      // Do not call SetPowerState because that calls ReadBrightness and
-      // WriteBrightness.  This function already calls both; hence, it should
-      // directly set the power state.
-      state_ = BACKLIGHT_ACTIVE_OFF;
       // Explicitly et new brightness to zero in case backlight was adjusted
       // from min -> 0.
       new_brightness = 0;
@@ -180,34 +168,40 @@ bool BacklightController::SetPowerState(PowerState new_state) {
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
 
   // If backlight is turned off, do not transition to dim or off states.
-  // From ACTIVE_OFF state only transition to ACTIVE_ON and SUSPEND states.
-  if (state_ == BACKLIGHT_ACTIVE_OFF && (new_state == BACKLIGHT_IDLE_OFF ||
-                                         new_state == BACKLIGHT_DIM))
+  // From ACTIVE_OFF state only transition to ACTIVE and SUSPEND states.
+  if (IsBacklightActiveOff() && (new_state == BACKLIGHT_IDLE_OFF ||
+                                 new_state == BACKLIGHT_DIM ||
+                                 new_state == BACKLIGHT_ALREADY_DIMMED))
     return false;
+
+  // Do not go to dim if backlight is already dimmed.
+  if (new_state == BACKLIGHT_DIM &&
+      local_brightness_ < ClampToMin(kIdleBrightness))
+    new_state = BACKLIGHT_ALREADY_DIMMED;
 
   LOG(INFO) << PowerStateToString(state_) << " -> "
             << PowerStateToString(new_state);
 
-  if (new_state != BACKLIGHT_ACTIVE_OFF && new_state != BACKLIGHT_ACTIVE_ON)
+  if (new_state != BACKLIGHT_ACTIVE)
     ReadBrightness();
   state_ = new_state;
 
-  bool changed_brightness = WriteBrightness(true);
+  WriteBrightness(true);
 
   if (light_sensor_)
     light_sensor_->EnableOrDisableSensor(state_);
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
   if (GDK_DISPLAY() == NULL)
-    return changed_brightness;
+    return true;
   if (!DPMSCapable(GDK_DISPLAY())) {
     LOG(WARNING) << "X Server is not DPMS capable";
   } else {
     CHECK(DPMSEnable(GDK_DISPLAY()));
-    if (new_state == BACKLIGHT_ACTIVE_ON)
+    if (new_state == BACKLIGHT_ACTIVE)
       CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
   }
-  return changed_brightness;
+  return true;
 }
 
 bool BacklightController::OnPlugEvent(bool is_plugged) {
@@ -234,7 +228,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
 
   // Do not use ALS to adjust the backlight brightness if the backlight is
   // turned off.
-  if (state_ == BACKLIGHT_ACTIVE_OFF || state_ == BACKLIGHT_IDLE_OFF)
+  if (state_ == BACKLIGHT_IDLE_OFF || IsBacklightActiveOff())
     return;
 
   als_brightness_level_ = level;
@@ -286,6 +280,10 @@ double BacklightController::RawBrightnessToLocalBrightness(int64 raw_level) {
 
 int64 BacklightController::LocalBrightnessToRawBrightness(double local_level) {
   return lround(local_level * max_ / max_percent_);
+}
+
+bool BacklightController::IsBacklightActiveOff() {
+  return state_ == BACKLIGHT_ACTIVE && local_brightness_ == 0;
 }
 
 void BacklightController::ReadPrefs() {
@@ -381,11 +379,17 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
     return false;
   CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
   double old_brightness = local_brightness_;
-  if (state_ == BACKLIGHT_ACTIVE_ON) {
+  if (state_ == BACKLIGHT_ACTIVE || state_ == BACKLIGHT_ALREADY_DIMMED) {
     local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);
-    // Do not turn off backlight in this state.
-    if (local_brightness_ == 0)
-      local_brightness_ = 1;
+    // Do not turn off backlight if this is a "soft" adjustment -- e.g. due to
+    // ALS change.
+    // Also, do not turn off the backlight if it has been dimmed and idled.
+    if (!adjust_brightness_offset || state_ == BACKLIGHT_ALREADY_DIMMED) {
+      if (local_brightness_ == 0 && old_brightness > 0)
+        local_brightness_ = 1;
+      else if (local_brightness_ > 0 && old_brightness == 0)
+        local_brightness_ = 0;
+    }
     // Adjust offset in case brightness was changed.
     if (adjust_brightness_offset)
       *brightness_offset_ = local_brightness_ - als_brightness_level_;
@@ -393,7 +397,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
     // When in dimmed state, set to dim level only if it results in a reduction
     // of system brightness.  Also, make sure idle brightness is not lower than
     // the minimum brightness.
-    if (local_brightness_ > ClampToMin(kIdleBrightness)) {
+    if (old_brightness > ClampToMin(kIdleBrightness)) {
       local_brightness_ = ClampToMin(kIdleBrightness);
     } else {
       LOG(INFO) << "Not dimming because backlight is already dim.";
@@ -401,8 +405,7 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
       // below the minimum brightness.
       local_brightness_ = ClampToMin(local_brightness_);
     }
-  } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_ACTIVE_OFF ||
-             state_ == BACKLIGHT_SUSPENDED) {
+  } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED) {
     local_brightness_ = 0;
   }
   als_hysteresis_level_ = als_brightness_level_;

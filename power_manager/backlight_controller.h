@@ -17,10 +17,10 @@ class BacklightInterface;
 class PowerPrefsInterface;
 
 enum PowerState {
-  BACKLIGHT_ACTIVE_ON,
+  BACKLIGHT_ACTIVE,
   BACKLIGHT_DIM,
+  BACKLIGHT_ALREADY_DIMMED,
   BACKLIGHT_IDLE_OFF,
-  BACKLIGHT_ACTIVE_OFF,
   BACKLIGHT_SUSPENDED,
   BACKLIGHT_UNINITIALIZED
 };
@@ -63,6 +63,8 @@ class BacklightController {
 
   double local_brightness() const { return local_brightness_; }
 
+  PowerState state() const { return state_; }
+
   // Initialize the object.
   bool Init();
 
@@ -84,8 +86,8 @@ class BacklightController {
   // impossible for the user to see.
   void DecreaseBrightness(bool allow_off);
 
-  // Turn the backlight on or off.  Returns true if the brightness was changed
-  // and false otherwise.
+  // Turn the backlight on or off.  Returns true if the state was successfully
+  // changed, and false otherwise.
   bool SetPowerState(PowerState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
@@ -107,6 +109,9 @@ class BacklightController {
   // Converts between [0, 100] and [0, |max_|] brightness scales.
   double RawBrightnessToLocalBrightness(int64 raw_level);
   int64 LocalBrightnessToRawBrightness(double local_level);
+
+  // Returns whether the user has manually turned backlight down to zero.
+  bool IsBacklightActiveOff();
 
   void ReadPrefs();
   void WritePrefs();

@@ -56,7 +56,7 @@ class IdleDimmerTest : public Test {
 
   virtual void SetUp() {
     backlight_ctl_.OnPlugEvent(true);
-    backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
+    backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
   }
 
  protected:
@@ -98,7 +98,7 @@ TEST_F(IdleDimmerTest, TestDuplicateIdleEvent) {
 TEST_F(IdleDimmerTest, TestNonIdle) {
   EXPECT_CALL(backlight_, SetBrightness(kPluggedBrightness))
       .Times(0);
-  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
+  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
 }
 
 // Test that OnIdleEvent sets the brightness appropriately when the
@@ -117,7 +117,7 @@ TEST_F(IdleDimmerTest, TestIdleTransition) {
                             Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kDefaultBrightness+2))
       .WillRepeatedly(Return(true));
-  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
+  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
 }
 
 // Test that OnIdleEvent sets the brightness appropriately when the
@@ -137,7 +137,7 @@ TEST_F(IdleDimmerTest, TestOverflowIdleTransition) {
                             Return(true)));
   EXPECT_CALL(backlight_, SetBrightness(kMaxBrightness))
       .WillRepeatedly(Return(true));
-  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE_ON);
+  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
 }
 
 }  // namespace power_manager

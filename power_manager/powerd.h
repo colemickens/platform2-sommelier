@@ -251,7 +251,6 @@ class Daemon : public XIdleMonitor {
   bool lock_on_idle_suspend_;
   bool use_xscreensaver_;
   PluggedState plugged_state_;
-  IdleState idle_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
   ScreenLocker locker_;

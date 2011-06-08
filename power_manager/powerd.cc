@@ -67,7 +67,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       enforce_lock_(false),
       use_xscreensaver_(false),
       plugged_state_(kPowerUnknown),
-      idle_state_(kIdleUnknown),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(kShutdownNone),
       suspender_(&locker_, &file_tagger_),
@@ -207,13 +206,14 @@ void Daemon::SetPlugged(bool plugged) {
   // we should wait a bit before turning off the screen.
   // If the screen is off, don't immediately suspend, wait another
   // suspend timeout.
-  // If the idle state is unknown, this is the powerd startup condition, so
+  // If the state is uninitialized, this is the powerd startup condition, so
   // we ignore any idle time from before powerd starts.
-  if (idle_state_ == kIdleNormal || idle_state_ == kIdleDim)
+  if (backlight_controller_->state() == BACKLIGHT_ACTIVE ||
+      backlight_controller_->state() == BACKLIGHT_DIM)
     SetIdleOffset(idle_time_ms, kIdleNormal);
-  else if (idle_state_ == kIdleScreenOff)
+  else if (backlight_controller_->state() == BACKLIGHT_IDLE_OFF)
     SetIdleOffset(idle_time_ms, kIdleSuspend);
-  else if (idle_state_ == kIdleUnknown)
+  else if (backlight_controller_->state() == BACKLIGHT_UNINITIALIZED)
     SetIdleOffset(idle_time_ms, kIdleNormal);
   else
     SetIdleOffset(0, kIdleNormal);
@@ -328,7 +328,7 @@ void Daemon::SetActive() {
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   CHECK(plugged_state_ != kPowerUnknown);
-  if (is_idle && kIdleNormal == idle_state_ &&
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_ACTIVE &&
       dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
     int64 video_time_ms = 0;
     bool video_is_playing = false;
@@ -340,11 +340,13 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (video_is_playing)
       SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
   }
-  if (is_idle && kIdleDim == idle_state_ && !util::OOBECompleted()) {
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_DIM &&
+      !util::OOBECompleted()) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
     SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
-  if (is_idle && kIdleScreenOff == idle_state_ && idle_time_ms >= suspend_ms_) {
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_IDLE_OFF &&
+      idle_time_ms >= suspend_ms_) {
     // Delay suspend if audio is active.
     bool audio_is_playing = false;
     // TODO(sque): Add a CHECK once AudioDetector is more flexible and supports
@@ -370,42 +372,33 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
 void Daemon::SetIdleState(int64 idle_time_ms) {
   bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
-    LOG(INFO) << "state = kIdleSuspend";
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement
     // fade from suspend, we would want to have this state to make sure the
     // backlight is set to zero when suspended.
     changed_brightness =
         backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
-    idle_state_ = kIdleSuspend;
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
     if (util::LoggedIn() &&
         backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
-      idle_state_ = kIdleScreenOff;
-      LOG(INFO) << "state = kIdleScreenOff";
       changed_brightness = true;
     }
   } else if (idle_time_ms >= dim_ms_) {
-    if (backlight_controller_->SetPowerState(BACKLIGHT_DIM)) {
-      idle_state_ = kIdleDim;
-      LOG(INFO) << "state = kIdleDim";
+    if (backlight_controller_->SetPowerState(BACKLIGHT_DIM))
       changed_brightness = true;
-    }
-  } else if (idle_state_ != kIdleNormal) {
-    if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE_ON)) {
-      if (idle_state_ == kIdleSuspend) {
+  } else if (backlight_controller_->state() != BACKLIGHT_ACTIVE) {
+    if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
+      if (backlight_controller_->state() == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_)
                               .Append(util::kUserActiveFile));
         suspender_.CancelSuspend();
       }
-      idle_state_ = kIdleNormal;
-      LOG(INFO) << "state = kIdleNormal";
       changed_brightness = true;
     }
   }
   if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
-      idle_state_ != kIdleSuspend) {
+      backlight_controller_->state() != BACKLIGHT_SUSPENDED) {
     locker_.LockScreen();
   }
 
@@ -425,7 +418,12 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
 GdkFilterReturn Daemon::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
   XEvent* xevent = static_cast<XEvent*>(gxevent);
 
-  if (xevent->type == KeyPress && idle_state_ == kIdleNormal) {
+  if (xevent->type == KeyPress)
+    LOG(INFO) << backlight_controller_->state();
+  if (xevent->type == KeyPress &&
+      (backlight_controller_->state() == BACKLIGHT_ACTIVE ||
+       backlight_controller_->state() == BACKLIGHT_ALREADY_DIMMED)) {
+    SetIdleState(0);
     int keycode = xevent->xkey.keycode;
     if (keycode == key_brightness_up_ || keycode == key_f7_) {
       if (keycode == key_brightness_up_) {
