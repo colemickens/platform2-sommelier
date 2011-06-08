@@ -25,7 +25,7 @@ DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
 DEFINE_string(remote_host, "", "VPN server hostname");
 DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
 DEFINE_string(server_id, "", "ID expected from server");
-DEFINE_string(tpm_user_pin, "", "User PIN for TPM");
+DEFINE_string(user_pin, "", "PKCS#11 User PIN");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 // True if a signal has requested termination.
@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
                         FLAGS_server_id,
                         FLAGS_client_cert_slot,
                         FLAGS_client_cert_id,
-                        FLAGS_tpm_user_pin)) {
+                        FLAGS_user_pin)) {
     return 1;
   }
   if (!l2tp.Initialize(remote_address)) {

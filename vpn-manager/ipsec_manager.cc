@@ -67,9 +67,9 @@ bool IpsecManager::Initialize(int ike_version,
                               const std::string& psk_file,
                               const std::string& server_ca_file,
                               const std::string& server_id,
-                              const std::string& client_cert_tpm_slot,
-                              const std::string& client_cert_tpm_id,
-                              const std::string& tpm_user_pin) {
+                              const std::string& client_cert_slot,
+                              const std::string& client_cert_id,
+                              const std::string& user_pin) {
   if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
     LOG(ERROR) << "Unable to convert sockaddr to name for remote host";
     return false;
@@ -78,8 +78,8 @@ bool IpsecManager::Initialize(int ike_version,
 
   if (psk_file.empty()) {
     if (server_ca_file.empty() && server_id.empty() &&
-        client_cert_tpm_slot.empty() && client_cert_tpm_id.empty() &&
-        tpm_user_pin.empty()) {
+        client_cert_slot.empty() && client_cert_id.empty() &&
+        user_pin.empty()) {
       LOG(ERROR) << "Must specify either PSK or certificates for IPsec layer";
       return false;
     }
@@ -103,35 +103,35 @@ bool IpsecManager::Initialize(int ike_version,
     }
     server_ca_file_ = server_ca_file;
 
-    if (server_id.empty()) {
-      LOG(ERROR) << "Must specify an ID for the server";
-      return false;
-    }
-    server_id_ = server_id;
+    // Do not require a server ID to be specified, but use it if so.
+    if (server_id.empty())
+      server_id_ = "%usepeercert";
+    else
+      server_id_ = server_id;
 
-    if (client_cert_tpm_slot.empty()) {
+    if (client_cert_slot.empty()) {
       LOG(ERROR) << "Must specify the slot containing the certificate";
       return false;
     }
-    client_cert_tpm_slot_ = client_cert_tpm_slot;
+    client_cert_slot_ = client_cert_slot;
 
-    if (client_cert_tpm_id.empty()) {
-      LOG(ERROR) << "Must specify the key ID for the certificate";
+    if (client_cert_id.empty()) {
+      LOG(ERROR) << "Must specify the PKCS#11 ID for the certificate";
       return false;
     }
-    client_cert_tpm_id_ = client_cert_tpm_id;
+    client_cert_id_ = client_cert_id;
 
-    if (tpm_user_pin.empty()) {
-      LOG(ERROR) << "Must specify user PIN for TPM to use certificate";
+    if (user_pin.empty()) {
+      LOG(ERROR) << "Must specify the PKCS#11 user PIN for the certificate";
       return false;
     }
-    tpm_user_pin_ = tpm_user_pin;
+    user_pin_ = user_pin;
   } else {
     if (!server_ca_file.empty() ||
         !server_id.empty() ||
-        !client_cert_tpm_slot.empty() ||
-        !client_cert_tpm_id.empty() ||
-        !tpm_user_pin.empty()) {
+        !client_cert_slot.empty() ||
+        !client_cert_id.empty() ||
+        !user_pin.empty()) {
       LOG(ERROR) << "Specified both PSK and certificates for IPsec layer";
       return false;
     }
@@ -187,9 +187,9 @@ bool IpsecManager::FormatSecrets(std::string* formatted) {
   std::string secret;
   if (psk_file_.empty()) {
     secret_mode = StringPrintf("PIN %%smartcard%s:%s",
-                               client_cert_tpm_slot_.c_str(),
-                               client_cert_tpm_id_.c_str());
-    secret = tpm_user_pin_;
+                               client_cert_slot_.c_str(),
+                               client_cert_id_.c_str());
+    secret = user_pin_;
   } else {
     secret_mode = "PSK";
     if (!file_util::ReadFileToString(FilePath(psk_file_), &secret)) {
@@ -279,10 +279,10 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendBoolSetting(&config, "pfs", FLAGS_pfs);
   AppendBoolSetting(&config, "rekey", FLAGS_rekey);
   AppendStringSetting(&config, "left", "%defaultroute");
-  if (!client_cert_tpm_slot_.empty()) {
+  if (!client_cert_slot_.empty()) {
     std::string smartcard = StringPrintf("%%smartcard%s:%s",
-                                         client_cert_tpm_slot_.c_str(),
-                                         client_cert_tpm_id_.c_str());
+                                         client_cert_slot_.c_str(),
+                                         client_cert_id_.c_str());
     AppendStringSetting(&config, "leftcert", smartcard);
   }
   AppendStringSetting(&config, "leftprotoport", FLAGS_leftprotoport);

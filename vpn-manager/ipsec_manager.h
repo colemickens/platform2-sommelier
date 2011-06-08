@@ -113,12 +113,12 @@ class IpsecManager : public ServiceManager {
   std::string server_ca_subject_;
   // ID that server must send to identify itself.
   std::string server_id_;
-  // Slot where the client certificate resides in the TPM.
-  std::string client_cert_tpm_slot_;
-  // Key ID of the client certificate residing in the TPM.
-  std::string client_cert_tpm_id_;
-  // User PIN to access the TPM.
-  std::string tpm_user_pin_;
+  // PKCS#11 slot containing the client certificate.
+  std::string client_cert_slot_;
+  // PKCS#11 object id of the client certificate.
+  std::string client_cert_id_;
+  // PKCS#11 user PIN needed to get the client certificate.
+  std::string user_pin_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
   // Time when ipsec was started.
