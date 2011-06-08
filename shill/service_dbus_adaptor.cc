@@ -19,11 +19,13 @@ const char ServiceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
 const char ServiceDBusAdaptor::kPath[] = "/service/";
 
-ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn,
-                                       ServiceRefPtr service)
+ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn, Service *service)
     : DBusAdaptor(conn, kPath + service->UniqueName()),
       service_(service) {}
-ServiceDBusAdaptor::~ServiceDBusAdaptor() {}
+
+ServiceDBusAdaptor::~ServiceDBusAdaptor() {
+  service_ = NULL;
+}
 
 void ServiceDBusAdaptor::UpdateConnected() {}
 

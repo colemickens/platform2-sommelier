@@ -20,13 +20,14 @@ const char DeviceDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
 const char DeviceDBusAdaptor::kPath[] = "/device/";
 
-DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn,
-                                     DeviceRefPtr device)
+DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)
     : DBusAdaptor(conn, kPath + device->UniqueName()),
       device_(device) {
 }
 
-DeviceDBusAdaptor::~DeviceDBusAdaptor() {}
+DeviceDBusAdaptor::~DeviceDBusAdaptor() {
+  device_ = NULL;
+}
 
 void DeviceDBusAdaptor::UpdateEnabled() {}
 

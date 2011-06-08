@@ -15,9 +15,14 @@
 #include "shill/flimflam-manager.h"
 
 namespace shill {
+
 class Manager;
 
 // Subclass of DBusAdaptor for Manager objects
+// There is a 1:1 mapping between Manager and ManagerDBusAdaptor
+// instances.  Furthermore, the Manager owns the ManagerDBusAdaptor
+// and manages its lifetime, so we're OK with ManagerDBusAdaptor
+// having a bare pointer to its owner manager.
 class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                            public DBusAdaptor,
                            public ManagerAdaptorInterface {

@@ -23,7 +23,10 @@ ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection* conn, Manager *manager)
     : DBusAdaptor(conn, kPath),
       manager_(manager) {
 }
-ManagerDBusAdaptor::~ManagerDBusAdaptor() {}
+
+ManagerDBusAdaptor::~ManagerDBusAdaptor() {
+  manager_ = NULL;
+}
 
 void ManagerDBusAdaptor::UpdateRunning() {}
 

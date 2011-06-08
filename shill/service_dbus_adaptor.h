@@ -13,11 +13,16 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/flimflam-service.h"
-#include "shill/service.h"
 
 namespace shill {
 
+class Service;
+
 // Subclass of DBusAdaptor for Service objects
+// There is a 1:1 mapping between Service and ServiceDBusAdaptor
+// instances.  Furthermore, the Service owns the ServiceDBusAdaptor
+// and manages its lifetime, so we're OK with ServiceDBusAdaptor
+// having a bare pointer to its owner service.
 class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
                            public DBusAdaptor,
                            public ServiceAdaptorInterface {
@@ -25,7 +30,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   static const char kInterfaceName[];
   static const char kPath[];
 
-  ServiceDBusAdaptor(DBus::Connection* conn, ServiceRefPtr service);
+  ServiceDBusAdaptor(DBus::Connection* conn, Service *service);
   virtual ~ServiceDBusAdaptor();
 
   // Implementation of ServiceAdaptorInterface.
@@ -49,7 +54,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   void ActivateCellularModem(const std::string& , ::DBus::Error &error);
 
  private:
-  ServiceRefPtr service_;
+  Service *service_;
   DISALLOW_COPY_AND_ASSIGN(ServiceDBusAdaptor);
 };
 
