@@ -28,9 +28,6 @@ namespace cros_disks {
 // TODO(benchan): Refactor DiskManager to move functionalities like
 // processing mount/unmount options into separate classes.
 
-static const char kBlockSubsystem[] = "block";
-static const char kScsiSubsystem[] = "scsi";
-static const char kScsiDevice[] = "scsi_device";
 // TODO(benchan): Infer the current user/group from session manager
 // instead of hardcoding as chronos
 static const char kMountDefaultUser[] = "chronos";
@@ -42,9 +39,6 @@ static const char kMountOptionSynchronous[] = "sync";
 static const char kUnmountOptionForce[] = "force";
 static const char kMountRootPrefix[] = "/media/";
 static const char kFallbackMountPath[] = "/media/disk";
-static const char kUdevAddAction[] = "add";
-static const char kUdevChangeAction[] = "change";
-static const char kUdevRemoveAction[] = "remove";
 static const unsigned kMaxNumMountTrials = 10000;
 static const unsigned kFallbackPasswordBufferSize = 16384;
 static const char* const kFilesystemsWithMountUserAndGroupId[] = {
@@ -61,10 +55,7 @@ DiskManager::DiskManager()
 
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-      kBlockSubsystem, NULL);
-  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-      kScsiSubsystem, kScsiDevice);
+  udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_, "block", NULL);
   udev_monitor_enable_receiving(udev_monitor_);
   udev_monitor_fd_ = udev_monitor_get_fd(udev_monitor_);
 }
@@ -78,7 +69,7 @@ std::vector<Disk> DiskManager::EnumerateDisks() const {
   std::vector<Disk> disks;
 
   struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
-  udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
+  udev_enumerate_add_match_subsystem(enumerate, "block");
   udev_enumerate_scan_devices(enumerate);
 
   struct udev_list_entry *device_list, *device_list_entry;
@@ -112,77 +103,12 @@ std::vector<Disk> DiskManager::EnumerateDisks() const {
   return disks;
 }
 
-DiskManager::EventType DiskManager::ProcessBlockDeviceEvent(
-    const UdevDevice& device, const char *action) {
-  EventType event_type = kIgnored;
-  std::string device_path = device.NativePath();
-
-  bool disk_added = false;
-  bool disk_removed = false;
-  if (strcmp(action, kUdevAddAction) == 0) {
-    disk_added = true;
-  } else if (strcmp(action, kUdevRemoveAction) == 0) {
-    disk_removed = true;
-  } else if (strcmp(action, kUdevChangeAction) == 0) {
-    // For removable devices like CD-ROM, an eject request event
-    // is treated as disk removal, while a media change event with
-    // media available is treated as disk insertion.
-    if (device.IsPropertyTrue("DISK_EJECT_REQUEST")) {
-      disk_removed = true;
-    } else if (device.IsPropertyTrue("DISK_MEDIA_CHANGE")) {
-      if (device.IsMediaAvailable()) {
-        disk_added = true;
-      }
-    }
-  }
-
-  if (disk_added) {
-    std::set<std::string>::const_iterator disk_iter =
-      disks_detected_.find(device_path);
-    if (disk_iter != disks_detected_.end()) {
-      // Disk already exists, so remove it and then add it again.
-      event_type = kDiskAddedAfterRemoved;
-    } else {
-      disks_detected_.insert(device_path);
-      event_type = kDiskAdded;
-    }
-  } else if (disk_removed) {
-    disks_detected_.erase(device_path);
-    event_type = kDiskRemoved;
-  }
-  return event_type;
-}
-
-DiskManager::EventType DiskManager::ProcessScsiDeviceEvent(
-    const UdevDevice& device, const char *action) {
-  EventType event_type = kIgnored;
-  std::string device_path = device.NativePath();
-
-  std::set<std::string>::const_iterator device_iter;
-  if (strcmp(action, kUdevAddAction) == 0) {
-    device_iter = devices_detected_.find(device_path);
-    if (device_iter != devices_detected_.end()) {
-      event_type = kDeviceScanned;
-    } else {
-      devices_detected_.insert(device_path);
-      event_type = kDeviceAdded;
-    }
-  } else if (strcmp(action, kUdevRemoveAction) == 0) {
-    device_iter = devices_detected_.find(device_path);
-    if (device_iter != devices_detected_.end()) {
-      devices_detected_.erase(device_iter);
-      event_type = kDeviceRemoved;
-    }
-  }
-  return event_type;
-}
-
 bool DiskManager::ProcessUdevChanges(std::string *device_path,
-    DiskManager::EventType *event_type) {
+    std::string *action) {
   struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
   CHECK(dev) << "Unknown udev device";
-  CHECK(device_path) << "Invalid device path argument";
-  CHECK(event_type) << "Invalid event type argument";
+  CHECK(device_path) << "Invalid device path";
+  CHECK(action) << "Unknown device action";
   LOG(INFO) << "Got Device";
   LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
   LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -190,33 +116,19 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
   LOG(INFO) << "   Devtype: " << udev_device_get_devtype(dev);
   LOG(INFO) << "   Action: " << udev_device_get_action(dev);
 
-  const char *sys_path = udev_device_get_syspath(dev);
-  const char *subsystem = udev_device_get_subsystem(dev);
-  const char *action = udev_device_get_action(dev);
-  if (!sys_path || !subsystem || !action) {
-    udev_device_unref(dev);
-    return false;
-  }
-
-  device_path->assign(sys_path);
-  *event_type = kIgnored;
-
+  bool report_changes = false;
   // Ignore change events from boot devices, virtual devices,
   // or Chrome OS specific partitions, which should not be sent
   // to the Chrome browser.
   UdevDevice udev(dev);
   if (udev.IsAutoMountable()) {
-    // udev_monitor_ only monitors block or scsi device changes, so
-    // subsystem is either "block" or "scsi".
-    if (strcmp(subsystem, kBlockSubsystem) == 0) {
-      *event_type = ProcessBlockDeviceEvent(udev, action);
-    } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-      *event_type = ProcessScsiDeviceEvent(udev, action);
-    }
+    *device_path = udev_device_get_syspath(dev);
+    *action = udev_device_get_action(dev);
+    report_changes = true;
   }
 
   udev_device_unref(dev);
-  return true;
+  return report_changes;
 }
 
 bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
@@ -230,7 +142,7 @@ bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
   bool disk_found = false;
 
   struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
-  udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
+  udev_enumerate_add_match_subsystem(enumerate, "block");
   udev_enumerate_scan_devices(enumerate);
 
   struct udev_list_entry *device_list, *device_list_entry;

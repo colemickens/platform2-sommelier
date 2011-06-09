@@ -52,14 +52,11 @@ class UdevDevice {
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
 
-  // Checks if the device is on the boot device.
+  // Checks if a device is on the boot device.
   bool IsOnBootDevice() const;
 
-  // Checks if the device is a virtual device.
+  // Checks if a device is a virtual device.
   bool IsVirtual() const;
-
-  // Gets the native sysfs path of the device.
-  std::string NativePath() const;
 
   // Gets the mount paths for the device.
   std::vector<std::string> GetMountPaths() const;

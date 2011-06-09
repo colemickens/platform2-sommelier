@@ -181,11 +181,6 @@ bool UdevDevice::IsVirtual() const {
   return true;
 }
 
-std::string UdevDevice::NativePath() const {
-  const char *sys_path = udev_device_get_syspath(dev_);
-  return sys_path ? sys_path : "";
-}
-
 std::vector<std::string> UdevDevice::GetMountPaths() const {
   const char *device_path = udev_device_get_devnode(dev_);
   if (device_path) {
@@ -234,7 +229,10 @@ Disk UdevDevice::ToDisk() const {
   disk.set_drive_model(GetProperty("ID_MODEL"));
   disk.set_uuid(GetProperty("ID_FS_UUID"));
   disk.set_label(GetProperty("ID_FS_LABEL"));
-  disk.set_native_path(NativePath());
+
+  const char *sys_path = udev_device_get_syspath(dev_);
+  if (sys_path)
+    disk.set_native_path(sys_path);
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)

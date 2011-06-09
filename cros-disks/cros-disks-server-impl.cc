@@ -37,7 +37,7 @@ std::string CrosDisksServer::FilesystemMount(
   std::string mount_path;
   if (disk_manager_->Mount(device_path, filesystem_type, mount_options,
         &mount_path)) {
-    DiskChanged(device_path);
+    DeviceChanged(device_path);
   } else {
     std::string message = "Could not mount device " + device_path;
     LOG(ERROR) << message;
@@ -96,34 +96,17 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const std::string& device_path,
 
 void CrosDisksServer::SignalDeviceChanges() {
   std::string device_path;
-  DiskManager::EventType event_type;
-  if (disk_manager_->ProcessUdevChanges(&device_path, &event_type)) {
-    switch (event_type) {
-      case DiskManager::kDeviceAdded:
-        DeviceAdded(device_path);
-        break;
-      case DiskManager::kDeviceScanned:
-        DeviceScanned(device_path);
-        break;
-      case DiskManager::kDeviceRemoved:
-        DeviceRemoved(device_path);
-        break;
-      case DiskManager::kDiskAdded:
-        DiskAdded(device_path);
-        break;
-      case DiskManager::kDiskAddedAfterRemoved:
-        DiskRemoved(device_path);
-        DiskAdded(device_path);
-        break;
-      case DiskManager::kDiskChanged:
-        DiskChanged(device_path);
-        break;
-      case DiskManager::kDiskRemoved:
-        DiskRemoved(device_path);
-        break;
-      default:
-        break;
+  std::string action;
+  if (disk_manager_->ProcessUdevChanges(&device_path, &action)) {
+    if (action == "add") {
+      DeviceAdded(device_path);
+    } else if (action == "remove") {
+      DeviceRemoved(device_path);
     }
+    // To prevent Chrome from popping up the file browser tab for
+    // change events not related to disk mounting, udev change events
+    // are not retransmitted as DBus signals here, but by FilesystemMount
+    // instead.
   }
 }
 
