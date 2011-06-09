@@ -14,6 +14,7 @@
 
 #include "shill/dbus_control.h"
 #include "shill/dhcp_provider.h"
+#include "shill/glib.h"
 #include "shill/shill_daemon.h"
 
 using std::string;
@@ -94,7 +95,8 @@ int main(int argc, char** argv) {
   // TODO(pstew): This should be chosen based on config
   shill::DBusControl *dbus_control = new shill::DBusControl();
   dbus_control->Init();
-  shill::DHCPProvider::GetInstance()->Init(dbus_control->connection());
+  shill::GLib glib;
+  shill::DHCPProvider::GetInstance()->Init(dbus_control->connection(), &glib);
 
   shill::Daemon daemon(&config, dbus_control);
   daemon.Run();

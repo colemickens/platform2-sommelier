@@ -17,6 +17,7 @@ namespace shill {
 class DHCPConfig;
 class DHCPProvider;
 class DHCPProxyInterface;
+class GLibInterface;
 
 typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
@@ -33,7 +34,9 @@ class DHCPConfig : public IPConfig {
   static const char kConfigurationKeyRouters[];
   static const char kConfigurationKeySubnetCIDR[];
 
-  DHCPConfig(DHCPProvider *provider, DeviceConstRefPtr device);
+  DHCPConfig(DHCPProvider *provider,
+             DeviceConstRefPtr device,
+             GLibInterface *glib);
   virtual ~DHCPConfig();
 
   // Inherited from IPConfig.
@@ -51,6 +54,7 @@ class DHCPConfig : public IPConfig {
  private:
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+  FRIEND_TEST(DHCPConfigTest, Start);
 
   static const char kDHCPCDPath[];
 
@@ -74,6 +78,8 @@ class DHCPConfig : public IPConfig {
 
   // The proxy for communicating with the DHCP client.
   scoped_ptr<DHCPProxyInterface> proxy_;
+
+  GLibInterface *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

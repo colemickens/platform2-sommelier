@@ -7,10 +7,10 @@
 #include <arpa/inet.h>
 
 #include <base/logging.h>
-#include <glib.h>
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
+#include "shill/glib_interface.h"
 
 using std::string;
 using std::vector;
@@ -28,10 +28,13 @@ const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 
 
-DHCPConfig::DHCPConfig(DHCPProvider *provider, DeviceConstRefPtr device)
+DHCPConfig::DHCPConfig(DHCPProvider *provider,
+                       DeviceConstRefPtr device,
+                       GLibInterface *glib)
     : IPConfig(device),
       provider_(provider),
-      pid_(0) {
+      pid_(0),
+      glib_(glib) {
   VLOG(2) << __func__ << ": " << GetDeviceName();
 }
 
@@ -91,20 +94,20 @@ bool DHCPConfig::Start() {
   envp[0] = NULL;
 
   GPid pid = 0;
-  if (!g_spawn_async(NULL,
-                     argv,
-                     envp,
-                     G_SPAWN_DO_NOT_REAP_CHILD,
-                     NULL,
-                     NULL,
-                     &pid,
-                     NULL)) {
+  if (!glib_->SpawnAsync(NULL,
+                         argv,
+                         envp,
+                         G_SPAWN_DO_NOT_REAP_CHILD,
+                         NULL,
+                         NULL,
+                         &pid,
+                         NULL)) {
     LOG(ERROR) << "Unable to spawn " << kDHCPCDPath;
     return false;
   }
   pid_ = pid;
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
-  provider_->BindPID(pid_, DHCPConfigRefPtr(this));
+  provider_->BindPID(pid_, this);
   // TODO(petkov): Add an exit watch to cleanup w/ g_spawn_close_pid.
   return true;
 }
@@ -140,9 +143,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
         return false;
       }
     } else if (key == kConfigurationKeyRouters) {
-      vector<unsigned int> routers;
-      DBus::MessageIter reader = value.reader();
-      reader >> routers;
+      vector<unsigned int> routers = value.operator vector<unsigned int>();
       if (routers.empty()) {
         LOG(ERROR) << "No routers provided.";
         return false;
@@ -152,10 +153,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
         return false;
       }
     } else if (key == kConfigurationKeyDNS) {
-      vector<unsigned int> servers;
-      DBus::MessageIter reader = value.reader();
-      reader >> servers;
-      vector<string> dns_servers;
+      vector<unsigned int> servers = value.operator vector<unsigned int>();
       for (vector<unsigned int>::const_iterator it = servers.begin();
            it != servers.end(); ++it) {
         string server = GetIPv4AddressString(*it);
@@ -167,8 +165,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
     } else if (key == kConfigurationKeyDomainName) {
       properties->domain_name = value.reader().get_string();
     } else if (key == kConfigurationKeyDomainSearch) {
-      DBus::MessageIter reader = value.reader();
-      reader >> properties->domain_search;
+      properties->domain_search = value.operator vector<string>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.reader().get_uint16();
       if (mtu >= 576) {

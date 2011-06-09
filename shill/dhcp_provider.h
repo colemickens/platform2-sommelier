@@ -10,6 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/singleton.h>
 #include <dbus-c++/connection.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 #include "shill/dhcp_config.h"
@@ -33,7 +34,7 @@ class DHCPProvider {
   // Initializes the provider singleton. This method hooks up a D-Bus signal
   // listener to |connection| that catches signals from spawned DHCP clients and
   // dispatches them to the appropriate DHCP configuration instance.
-  void Init(DBus::Connection *connection);
+  void Init(DBus::Connection *connection, GLibInterface *glib);
 
   // Creates a new DHCPConfig for |device|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -55,6 +56,8 @@ class DHCPProvider {
 
  private:
   friend struct DefaultSingletonTraits<DHCPProvider>;
+  FRIEND_TEST(DHCPConfigTest, Start);
+
   typedef std::map<unsigned int, DHCPConfigRefPtr> PIDConfigMap;
 
   // Private to ensure that this behaves as a singleton.
@@ -67,6 +70,8 @@ class DHCPProvider {
 
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;
+
+  GLibInterface *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPProvider);
 };

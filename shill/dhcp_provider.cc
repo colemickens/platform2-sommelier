@@ -10,7 +10,7 @@
 
 namespace shill {
 
-DHCPProvider::DHCPProvider() {
+DHCPProvider::DHCPProvider() : glib_(NULL) {
   VLOG(2) << __func__;
 }
 
@@ -22,14 +22,16 @@ DHCPProvider* DHCPProvider::GetInstance() {
   return Singleton<DHCPProvider>::get();
 }
 
-void DHCPProvider::Init(DBus::Connection *connection) {
+void DHCPProvider::Init(DBus::Connection *connection,
+                        GLibInterface *glib) {
   VLOG(2) << __func__;
   listener_.reset(new DHCPCDListener(this, connection));
+  glib_ = glib;
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(DeviceConstRefPtr device) {
   VLOG(2) << __func__;
-  return DHCPConfigRefPtr(new DHCPConfig(this, device));
+  return DHCPConfigRefPtr(new DHCPConfig(this, device, glib_));
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(unsigned int pid) {
