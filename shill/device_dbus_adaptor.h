@@ -44,8 +44,18 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   void SetProperty(const std::string& ,
                    const ::DBus::Variant& ,
                    ::DBus::Error &error);
+  void ClearProperty(const std::string& , ::DBus::Error &error);
   void ProposeScan(::DBus::Error &error);
   ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
+  void Register(const std::string& , ::DBus::Error &error);
+  void RequirePin(const std::string& , const bool& , ::DBus::Error &error);
+  void EnterPin(const std::string& , ::DBus::Error &error);
+  void UnblockPin(const std::string& ,
+                  const std::string& ,
+                  ::DBus::Error &error);
+  void ChangePin(const std::string& ,
+                 const std::string& ,
+                 ::DBus::Error &error);
 
  private:
   Device *device_;

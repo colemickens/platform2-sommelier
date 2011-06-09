@@ -24,8 +24,16 @@
 			<arg type="o" direction="out"/>
 		</method>
 		<method name="RemoveProfile">
-			<arg type="o" direction="in"/>
+			<arg type="s" direction="in"/>
 		</method>
+		<method name="PushProfile">
+			<arg type="s" direction="in"/>
+			<arg type="o" direction="out"/>
+		</method>
+		<method name="PopProfile">
+			<arg type="s" direction="in"/>
+		</method>
+		<method name="PopAnyProfile"/>
 		<method name="RequestScan">
 			<arg type="s" direction="in"/>
 		</method>
@@ -45,6 +53,10 @@
 		</method>
 		<method name="ConfigureWifiService">
 			<arg type="a{sv}" direction="in"/>
+		</method>
+		<method name="GetVPNService">
+			<arg type="a{sv}" direction="in"/>
+			<arg type="o" direction="out"/>
 		</method>
 		<method name="RegisterAgent">
 			<arg type="o" direction="in"/>
@@ -75,4 +87,5 @@
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>
+	<node name="service"/>
 </node>

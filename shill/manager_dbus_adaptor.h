@@ -48,7 +48,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                    ::DBus::Error &error);
   std::string GetState(::DBus::Error &error);
   ::DBus::Path CreateProfile(const std::string& name, ::DBus::Error &error);
-  void RemoveProfile(const ::DBus::Path& path, ::DBus::Error &error);
+  void RemoveProfile(const std::string& name, ::DBus::Error &error);
+  ::DBus::Path PushProfile(const std::string& , ::DBus::Error &error);
+  void PopProfile(const std::string& , ::DBus::Error &error);
+  void PopAnyProfile(::DBus::Error &error);
   void RequestScan(const std::string& , ::DBus::Error &error);
 
   void EnableTechnology(const std::string& , ::DBus::Error &error);
@@ -60,6 +63,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                               ::DBus::Error &error);
   void ConfigureWifiService(const std::map<std::string, ::DBus::Variant>& ,
                             ::DBus::Error &error);
+  ::DBus::Path GetVPNService(const std::map< std::string, ::DBus::Variant>& ,
+                             ::DBus::Error &error);
 
   void RegisterAgent(const ::DBus::Path& , ::DBus::Error &error);
   void UnregisterAgent(const ::DBus::Path& , ::DBus::Error &error);

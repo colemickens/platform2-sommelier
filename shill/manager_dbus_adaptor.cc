@@ -71,8 +71,19 @@ string ManagerDBusAdaptor::GetState(::DBus::Error &error) {
   return ::DBus::Path();
 }
 
-void ManagerDBusAdaptor::RemoveProfile(const ::DBus::Path& path,
+void ManagerDBusAdaptor::RemoveProfile(const string& name,
                                        ::DBus::Error &error) {
+}
+
+::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string& ,
+                                             ::DBus::Error &error) {
+  return ::DBus::Path();
+}
+
+void ManagerDBusAdaptor::PopProfile(const std::string& , ::DBus::Error &error) {
+}
+
+void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
 }
 
 void ManagerDBusAdaptor::RequestScan(const string& ,
@@ -102,6 +113,12 @@ void ManagerDBusAdaptor::DisableTechnology(const string& ,
 void ManagerDBusAdaptor::ConfigureWifiService(
     const map<string, ::DBus::Variant>& ,
     ::DBus::Error &error) {
+}
+
+::DBus::Path ManagerDBusAdaptor::GetVPNService(
+    const map<string, ::DBus::Variant>& ,
+    ::DBus::Error &error) {
+  return ::DBus::Path();
 }
 
 void ManagerDBusAdaptor::RegisterAgent(const ::DBus::Path& ,

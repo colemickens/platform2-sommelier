@@ -27,7 +27,9 @@ TEST_LIB_DIRS = $(LIB_DIRS)
 
 DBUS_ADAPTOR_HEADERS = \
 	flimflam-device.h \
+	flimflam-ipconfig.h \
 	flimflam-manager.h \
+	flimflam-profile.h \
 	flimflam-service.h
 
 DBUS_PROXY_HEADERS = \

@@ -8,7 +8,7 @@
 -->
 
 <node>
-	<interface name="org.chromium.flimflam.Device">
+	<interface name="org.chromium.flimflam.Profile">
 		<method name="GetProperties">
 			<arg type="a{sv}" direction="out"/>
 		</method>
@@ -16,30 +16,11 @@
 			<arg type="s" direction="in"/>
 			<arg type="v" direction="in"/>
 		</method>
-		<method name="ClearProperty">
+		<method name="GetEntry">
 			<arg type="s" direction="in"/>
+			<arg type="a{sv}" direction="out"/>
 		</method>
-		<method name="ProposeScan"/>
-		<method name="AddIPConfig">
-			<arg type="s" direction="in"/>
-			<arg type="o" direction="out"/>
-		</method>
-		<method name="Register">
-			<arg type="s" direction="in"/>
-		</method>
-		<method name="RequirePin">
-			<arg type="s" direction="in"/>
-			<arg type="b" direction="in"/>
-		</method>
-		<method name="EnterPin">
-			<arg type="s" direction="in"/>
-		</method>
-		<method name="UnblockPin">
-			<arg type="s" direction="in"/>
-			<arg type="s" direction="in"/>
-		</method>
-		<method name="ChangePin">
-			<arg type="s" direction="in"/>
+		<method name="DeleteEntry">
 			<arg type="s" direction="in"/>
 		</method>
 		<signal name="PropertyChanged">

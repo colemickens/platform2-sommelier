@@ -58,12 +58,37 @@ void DeviceDBusAdaptor::SetProperty(const string& ,
                                     ::DBus::Error &error) {
 }
 
+void DeviceDBusAdaptor::ClearProperty(const std::string& ,
+                                      ::DBus::Error &error) {
+}
+
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 }
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
                                             ::DBus::Error &error) {
   return ::DBus::Path();
+}
+
+void DeviceDBusAdaptor::Register(const std::string& , ::DBus::Error &error) {
+}
+
+void DeviceDBusAdaptor::RequirePin(const std::string& ,
+                                   const bool& ,
+                                   ::DBus::Error &error) {
+}
+
+void DeviceDBusAdaptor::EnterPin(const std::string& , ::DBus::Error &error) {
+}
+
+void DeviceDBusAdaptor::UnblockPin(const std::string& ,
+                                   const std::string& ,
+                                   ::DBus::Error &error) {
+}
+
+void DeviceDBusAdaptor::ChangePin(const std::string& ,
+                                  const std::string& ,
+                                  ::DBus::Error &error) {
 }
 
 }  // namespace shill
