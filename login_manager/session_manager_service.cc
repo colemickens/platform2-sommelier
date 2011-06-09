@@ -1066,7 +1066,7 @@ void SessionManagerService::CleanupChildren(int timeout) {
 
     const uid_t uid = job->IsDesiredUidSet() ? job->GetDesiredUid() : getuid();
     pids_to_kill.push_back(make_pair(pid, uid));
-    system_->kill(pid, uid, (session_started_ ? SIGTERM : SIGKILL));
+    system_->kill(pid, uid, SIGTERM);
   }
 
   for (vector<pair<int, uid_t> >::const_iterator it = pids_to_kill.begin();

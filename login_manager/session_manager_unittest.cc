@@ -63,7 +63,14 @@ static const char kDiskFile[] = "/tmp/disk-chrome-exec";
 // compatible with void Run()
 static void BadExit() { _exit(1); }
 static void BadExitAfterSleep() { sleep(1); _exit(1); }
-static void RunAndSleep() { while (true) { sleep(1); } };
+static void RunAndSleep() {
+  // Re-set signal handler so that we just die on SIGTERM.
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = SIG_DFL;
+  RAW_CHECK(sigaction(SIGTERM, &action, NULL) == 0);
+  while (true) { sleep(1); }
+};
 static void CleanExit() { _exit(0); }
 
 // Used as a base class for the tests in this file.
@@ -509,7 +516,7 @@ TEST_F(SessionManagerTest, SessionNotStartedCleanup) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
@@ -523,7 +530,7 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanup) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
