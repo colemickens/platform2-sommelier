@@ -337,20 +337,16 @@ rm -f /var/lib/ureadahead/*
 # See comments above about removing ureadahead files.
 touch /mnt/stateful_partition/.install_completed
 
-# TODO: support firmware update for ARM
-if [ ${IS_INTEL_ARCH} -eq 1 ]; then
-  update_firmware
-  FW_RC="$?"
-  if [ "$FW_RC" -ne 0 ]; then
-    # Note: This will only rollback the ChromeOS verified boot target.
-    # The assumption is that systems running firmware autoupdate
-    # are running H2C Bios. If the firmware updater crashes or writes
-    # corrupt data rather than gracefully failing, we'll probably need
-    # to recover with a recovery image.
-    echo "Firmware update failed."
-    echo "Rolling back update due to failure installing required firmware."
-    "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV
-    echo exit "$FW_RC" from postinst
-    exit "$FW_RC"
-  fi
+FW_RC=0
+update_firmware || FW_RC="$?"
+if [ "$FW_RC" -ne 0 ]; then
+  # Note: This will only rollback the ChromeOS verified boot target.
+  # The assumption is that systems running firmware autoupdate
+  # are not running legacy (non-ChromeOS) firmware. If the firmware
+  # updater crashes or writes corrupt data rather than gracefully
+  # failing, we'll probably need to recover with a recovery image.
+  echo "Firmware update failed (error code: $FW_RC)."
+  echo "Rolling back update due to failure installing required firmware."
+  "$GPT" add -i $NEW_KERN_NUM -P 0 -S 0 -T 0 $ROOT_DEV || true
+  exit "$FW_RC"
 fi
