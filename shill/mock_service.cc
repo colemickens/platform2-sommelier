@@ -22,7 +22,7 @@ MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          DeviceConfigInterfaceRefPtr device,
                          const std::string& name)
-    : Service(control_interface, dispatcher, device, string("mock-" + name)) {
+    : Service(control_interface, dispatcher, device, name) {
 }
 
 MockService::~MockService() {}

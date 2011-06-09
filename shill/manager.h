@@ -40,7 +40,7 @@ class Manager {
   void FilterByTechnology(Device::Technology tech,
                           std::vector<DeviceRefPtr> *found);
 
-  Service* FindService(const std::string& name);
+  ServiceRefPtr FindService(const std::string& name);
 
  private:
   scoped_ptr<ManagerAdaptorInterface> adaptor_;

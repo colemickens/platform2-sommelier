@@ -116,11 +116,11 @@ TEST_F(ManagerTest, ServiceRegistration) {
                                 device.get(),
                                 kService2));
 
-  manager_.RegisterService(mock_service.get());
-  manager_.RegisterService(mock_service2.get());
+  manager_.RegisterService(mock_service);
+  manager_.RegisterService(mock_service2);
 
-  EXPECT_TRUE(manager_.FindService(kService1));
-  EXPECT_TRUE(manager_.FindService(kService2));
+  EXPECT_TRUE(manager_.FindService(kService1).get() != NULL);
+  EXPECT_TRUE(manager_.FindService(kService2).get() != NULL);
 }
 
 }  // namespace shill

@@ -98,12 +98,14 @@ void Manager::FilterByTechnology(Device::Technology tech,
   }
 }
 
-Service* Manager::FindService(const std::string& name) {
+ServiceRefPtr Manager::FindService(const std::string& name) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (name == (*it)->UniqueName())
-      return it->get();
+    if (name == (*it)->UniqueName()) {
+      return *it;
+    }
   }
+  return NULL;
 }
 
 }  // namespace shill
