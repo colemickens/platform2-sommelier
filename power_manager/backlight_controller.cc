@@ -117,8 +117,6 @@ bool BacklightController::GetTargetBrightness(double* level) {
 void BacklightController::IncreaseBrightness() {
   if (!is_initialized_)
     return;
-//  if (!ReadBrightness())
-//    return;
 
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
@@ -136,8 +134,6 @@ void BacklightController::IncreaseBrightness() {
 void BacklightController::DecreaseBrightness(bool allow_off) {
   if (!is_initialized_)
     return;
-//  if (!ReadBrightness())
-//    return;
 
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
@@ -236,6 +232,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   // Force a backlight refresh immediately after returning from dim or idle.
   if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
     als_temporal_state_ = ALS_HYST_IDLE;
+    LOG(INFO) << "Ambient light sensor-triggered brightness adjustment."
     WriteBrightness(false);
     return;
   }
@@ -261,6 +258,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   }
   if (als_temporal_count_ >= kAlsHystSamples) {
     als_temporal_count_ = 0;
+    LOG(INFO) << "Ambient light sensor-triggered brightness adjustment."
     WriteBrightness(false);  // ALS adjustment should not change brightness
                              // offset.
   }
