@@ -42,6 +42,9 @@ class MonitorReconfigure {
   // Returns whether an external monitor is connected.
   bool is_projecting() const { return is_projecting_; }
 
+  // Sets projection callback function and data.
+  void SetProjectionCallback(void (*func)(void*), void* data);
+
  private:
   // Initializes the |lcd_output_| and |external_output_| members.
   bool DetermineOutputs();
@@ -84,6 +87,11 @@ class MonitorReconfigure {
 
   // Are we projecting?
   bool is_projecting_;
+
+  // Callback that is invoked when projection status |is_projecting_| changes.
+  void (*projection_callback_)(void*);
+  // Used for passing data to the callback.
+  void* projection_callback_data_;
 
   // Not owned.
   BacklightController* backlight_ctl_;

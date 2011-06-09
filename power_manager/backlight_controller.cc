@@ -375,7 +375,8 @@ bool BacklightController::ReadBrightness() {
 bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
   if (!is_initialized_)
     return false;
-  CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
+  if (!brightness_offset_)
+    return false;
   double old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE || state_ == BACKLIGHT_ALREADY_DIMMED) {
     local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);

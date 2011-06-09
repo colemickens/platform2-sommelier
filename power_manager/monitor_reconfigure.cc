@@ -37,6 +37,8 @@ MonitorReconfigure::MonitorReconfigure()
       external_output_(0),
       external_output_info_(NULL),
       is_projecting_(false),
+      projection_callback_(NULL),
+      projection_callback_data_(NULL),
       backlight_ctl_(NULL) {}
 
 MonitorReconfigure::MonitorReconfigure(
@@ -48,6 +50,8 @@ MonitorReconfigure::MonitorReconfigure(
       external_output_(0),
       external_output_info_(NULL),
       is_projecting_(false),
+      projection_callback_(NULL),
+      projection_callback_data_(NULL),
       backlight_ctl_(backlight_ctl) {}
 
 MonitorReconfigure::~MonitorReconfigure() {
@@ -65,6 +69,10 @@ bool MonitorReconfigure::Init() {
 
   gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   LOG(INFO) << "XRandr event filter added";
+
+  // Call Run() on startup to setup screens and initialize display info.
+  Run();
+
   return true;
 }
 
@@ -140,6 +148,8 @@ void MonitorReconfigure::Run() {
   else
     SetDeviceResolution(lcd_output_, lcd_output_info_, lcd_resolution);
 
+  const bool was_projecting = is_projecting_;
+
   // If there's no external output connected, disable the device before we try
   // to set the screen resolution; otherwise xrandr will complain if we're
   // trying to set the screen to a smaller size than what the now-unplugged
@@ -161,6 +171,9 @@ void MonitorReconfigure::Run() {
   XUngrabServer(display_);
   XSync(display_, False);
 
+  if (was_projecting != is_projecting_ && projection_callback_ != NULL)
+    projection_callback_(projection_callback_data_);
+
   // Enable the backlight. We do not want to do this before the resize is
   // done so that we can hide the resize when going off->on.
   if (!lcd_resolution.name.empty())
@@ -173,6 +186,12 @@ void MonitorReconfigure::Run() {
   XRRFreeScreenResources(screen_info_);
 
   XCloseDisplay(display_);
+}
+
+void MonitorReconfigure::SetProjectionCallback(void (*func)(void*),
+                                               void* data) {
+  projection_callback_ = func;
+  projection_callback_data_ = data;
 }
 
 bool MonitorReconfigure::DetermineOutputs() {

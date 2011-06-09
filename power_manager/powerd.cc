@@ -13,7 +13,6 @@
 #include <X11/XF86keysym.h>
 
 #include <algorithm>
-#include <string>
 #include <vector>
 
 #include "base/file_util.h"
@@ -30,6 +29,7 @@
 #include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
 
+using std::map;
 using std::max;
 using std::min;
 using std::string;
@@ -38,6 +38,9 @@ using std::vector;
 namespace power_manager {
 
 static const char kTaggedFilePath[] = "/var/lib/power_manager";
+
+// Timeouts are multiplied by this factor when projecting to external display.
+static const int64 kProjectionTimeoutFactor = 2;
 
 // Constants for brightness adjustment metric reporting.
 enum { kBrightnessDown, kBrightnessUp, kBrightnessEnumMax };
@@ -121,6 +124,8 @@ void Daemon::Init() {
   CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
   file_tagger_.Init();
   backlight_controller_->SetMinimumBrightness(min_backlight_percent_);
+  monitor_reconfigure_->SetProjectionCallback(
+      &AdjustIdleTimeoutsForProjectionThunk, this);
 }
 
 void Daemon::ReadSettings() {
@@ -174,6 +179,18 @@ void Daemon::ReadSettings() {
   CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + react_ms_);
   CHECK(default_lock_ms_ >= unplugged_off_ms_ + react_ms_);
   CHECK(default_lock_ms_ >= plugged_off_ms_ + react_ms_);
+
+  // Store unmodified timeout values for switching between projecting and non-
+  // projecting timeouts.
+  base_timeout_values_[kPluggedDimMs]       = plugged_dim_ms_;
+  base_timeout_values_[kPluggedOffMs]       = plugged_off_ms_;
+  base_timeout_values_[kPluggedSuspendMs]   = plugged_suspend_ms_;
+  base_timeout_values_[kUnpluggedDimMs]     = unplugged_dim_ms_;
+  base_timeout_values_[kUnpluggedOffMs]     = unplugged_off_ms_;
+  base_timeout_values_[kUnpluggedSuspendMs] = unplugged_suspend_ms_;
+
+  if (monitor_reconfigure_->is_projecting())
+    AdjustIdleTimeoutsForProjection();
 }
 
 void Daemon::ReadLockScreenSettings() {
@@ -254,6 +271,7 @@ void Daemon::StartCleanShutdown() {
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
+  AdjustIdleTimeoutsForProjection();
   int64 prev_dim_ms = dim_ms_;
   int64 prev_off_ms = off_ms_;
   LOG(INFO) << "offset_ms_ = " << offset_ms;
@@ -777,6 +795,27 @@ void Daemon::RetrieveSessionState() {
     g_error_free(error);
   }
   g_object_unref(proxy);
+}
+
+void Daemon::AdjustIdleTimeoutsForProjection() {
+  plugged_dim_ms_       = base_timeout_values_[kPluggedDimMs];
+  plugged_off_ms_       = base_timeout_values_[kPluggedOffMs];
+  plugged_suspend_ms_   = base_timeout_values_[kPluggedSuspendMs];
+  unplugged_dim_ms_     = base_timeout_values_[kUnpluggedDimMs];
+  unplugged_off_ms_     = base_timeout_values_[kUnpluggedOffMs];
+  unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMs];
+
+  if (monitor_reconfigure_->is_projecting()) {
+    LOG(INFO) << "External display projection: Doubling idle times.";
+    plugged_dim_ms_ *= kProjectionTimeoutFactor;
+    plugged_off_ms_ *= kProjectionTimeoutFactor;
+    if (plugged_suspend_ms_ != INT64_MAX)
+      plugged_suspend_ms_ *= kProjectionTimeoutFactor;
+    unplugged_dim_ms_ *= kProjectionTimeoutFactor;
+    unplugged_off_ms_ *= kProjectionTimeoutFactor;
+    if (unplugged_suspend_ms_ != INT64_MAX)
+      unplugged_suspend_ms_ *= kProjectionTimeoutFactor;
+  }
 }
 
 }  // namespace power_manager

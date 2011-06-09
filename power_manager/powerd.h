@@ -8,6 +8,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include <map>
 #include <string>
 
 #include <ctime>
@@ -221,6 +222,10 @@ class Daemon : public XIdleMonitor {
   // session state and updates |current_user_| based on the response.
   void RetrieveSessionState();
 
+  // Sets idle timeouts based on whether the system is projecting to an
+  // external display.
+  SIGNAL_CALLBACK_0(Daemon, void, AdjustIdleTimeoutsForProjection);
+
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -284,6 +289,11 @@ class Daemon : public XIdleMonitor {
   // User whose session is currently active, or empty if no session is
   // active or we're in guest mode.
   std::string current_user_;
+
+  // Stores normal timeout values, to be used for switching between projecting
+  // and non-projecting timeouts.  Map keys are variable names found in
+  // power_constants.h.
+  std::map<std::string, int64> base_timeout_values_;
 };
 
 }  // namespace power_manager
