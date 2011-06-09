@@ -42,8 +42,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
 
   // Implementation of Service_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string& ,
-                   const ::DBus::Variant& ,
+  void SetProperty(const std::string& name,
+                   const ::DBus::Variant& value,
                    ::DBus::Error &error);
   void ClearProperty(const std::string& , ::DBus::Error &error);
   void Connect(::DBus::Error &error);

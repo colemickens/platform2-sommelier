@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/manager.h"
+
 #include <time.h>
 #include <stdio.h>
 
@@ -15,7 +17,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/manager.h"
+#include "shill/error.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
@@ -106,6 +108,20 @@ ServiceRefPtr Manager::FindService(const std::string& name) {
     }
   }
   return NULL;
+}
+
+bool Manager::SetBoolProperty(const string& name, bool value, Error *error) {
+  VLOG(2) << "Setting " << name << " as a bool.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Manager::SetStringProperty(const string& name,
+                                const string& value,
+                                Error *error) {
+  VLOG(2) << "Setting " << name << " as a string.";
+  // TODO(cmasone): Set actual properties.
+  return true;
 }
 
 }  // namespace shill

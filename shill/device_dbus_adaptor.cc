@@ -9,6 +9,7 @@
 #include <string>
 
 #include "shill/device.h"
+#include "shill/error.h"
 
 using std::map;
 using std::string;
@@ -36,11 +37,11 @@ void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
 }
 
 void DeviceDBusAdaptor::EmitUintChanged(const std::string& name, uint32 value) {
-  PropertyChanged(name, DBusAdaptor::UInt32ToVariant(value));
+  PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
-  PropertyChanged(name, DBusAdaptor::IntToVariant(value));
+  PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
@@ -53,9 +54,10 @@ map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
   return map<string, ::DBus::Variant>();
 }
 
-void DeviceDBusAdaptor::SetProperty(const string& ,
-                                    const ::DBus::Variant& ,
+void DeviceDBusAdaptor::SetProperty(const string& name,
+                                    const ::DBus::Variant& value,
                                     ::DBus::Error &error) {
+  DBusAdaptor::DispatchOnType(device_, name, value, error);
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string& ,

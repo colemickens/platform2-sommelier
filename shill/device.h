@@ -8,10 +8,12 @@
 #include <string>
 #include <vector>
 
+#include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/device_config_interface.h"
+#include "shill/property_store_interface.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
 
@@ -21,8 +23,9 @@ class ControlInterface;
 class Device;
 class DeviceAdaptorInterface;
 class DeviceInfo;
-class EventDispatcher;
 class Endpoint;
+class Error;
+class EventDispatcher;
 class Manager;
 
 typedef scoped_refptr<const Device> DeviceConstRefPtr;
@@ -30,7 +33,7 @@ typedef scoped_refptr<Device> DeviceRefPtr;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public DeviceConfigInterface {
+class Device : public DeviceConfigInterface, public PropertyStoreInterface {
  public:
   enum Technology {
     kEthernet,
@@ -58,6 +61,16 @@ class Device : public DeviceConfigInterface {
 
   // Implementation of DeviceConfigInterface
   virtual void ConfigIP() {}
+
+  // Implementation of PropertyStoreInterface
+  bool SetBoolProperty(const std::string& name, bool value, Error *error);
+  bool SetInt16Property(const std::string& name, int16 value, Error *error);
+  bool SetInt32Property(const std::string& name, int32 value, Error *error);
+  bool SetStringProperty(const std::string& name,
+                         const std::string& value,
+                         Error *error);
+  bool SetUint16Property(const std::string& name, uint16 value, Error *error);
+  bool SetUint32Property(const std::string& name, uint32 value, Error *error);
 
   // Returns a string that is guaranteed to uniquely identify this
   // Device instance.

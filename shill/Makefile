@@ -50,6 +50,7 @@ SHILL_OBJS = \
 	dhcp_config.o \
 	dhcp_provider.o \
 	dhcpcd_proxy.o \
+	error.o \
 	ethernet.o \
 	ethernet_service.o \
 	glib.o \
@@ -57,6 +58,7 @@ SHILL_OBJS = \
 	ipconfig.o \
 	manager.o \
 	manager_dbus_adaptor.o \
+	property_store_interface.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	service.o \

@@ -13,16 +13,18 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/property_store_interface.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
 class ControlInterface;
-class ManagerAdaptorInterface;
+class Error;
 class EventDispatcher;
+class ManagerAdaptorInterface;
 
-class Manager {
+class Manager : public PropertyStoreInterface {
  public:
   // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
@@ -41,6 +43,13 @@ class Manager {
                           std::vector<DeviceRefPtr> *found);
 
   ServiceRefPtr FindService(const std::string& name);
+
+  // Implementation of PropertyStoreInterface
+  bool SetBoolProperty(const std::string& name, bool value, Error *error);
+
+  bool SetStringProperty(const std::string& name,
+                         const std::string& value,
+                         Error *error);
 
  private:
   scoped_ptr<ManagerAdaptorInterface> adaptor_;

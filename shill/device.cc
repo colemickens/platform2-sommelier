@@ -6,22 +6,26 @@
 #include <stdio.h>
 
 #include <string>
-#include <sstream>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
-#include "shill/manager.h"
 #include "shill/device_dbus_adaptor.h"
+#include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/shill_event.h"
+
+using std::string;
+using std::vector;
 
 namespace shill {
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Manager *manager,
-               const std::string& link_name,
+               const string& link_name,
                int interface_index)
     : link_name_(link_name),
       manager_(manager),
@@ -47,11 +51,6 @@ void Device::Stop() {
   adaptor_->UpdateEnabled();
 }
 
-const std::string& Device::UniqueName() const {
-  // TODO(pstew): link_name is only run-time unique and won't persist
-  return link_name_;
-}
-
 void Device::LinkEvent(unsigned flags, unsigned change) {
   VLOG(2) << "Device " << link_name_ << " flags " << flags << " changed "
           << change;
@@ -59,6 +58,57 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
 
 void Device::Scan() {
   VLOG(2) << "Device " << link_name_ << " scan requested.";
+}
+
+bool Device::SetBoolProperty(const string& name, bool value, Error *error) {
+  VLOG(2) << "Setting " << name << " as a bool.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Device::SetInt16Property(const std::string& name,
+                              int16 value,
+                              Error *error) {
+  VLOG(2) << "Setting " << name << " as an int16.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Device::SetInt32Property(const std::string& name,
+                              int32 value,
+                              Error *error) {
+  VLOG(2) << "Setting " << name << " as an int32.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Device::SetStringProperty(const string& name,
+                               const string& value,
+                               Error *error) {
+  VLOG(2) << "Setting " << name << " as a string.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Device::SetUint16Property(const std::string& name,
+                               uint16 value,
+                               Error *error) {
+  VLOG(2) << "Setting " << name << " as a uint16.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+bool Device::SetUint32Property(const std::string& name,
+                               uint32 value,
+                               Error *error) {
+  VLOG(2) << "Setting " << name << " as a uint32.";
+  // TODO(cmasone): Set actual properties.
+  return true;
+}
+
+const string& Device::UniqueName() const {
+  // TODO(pstew): link_name is only run-time unique and won't persist
+  return link_name_;
 }
 
 }  // namespace shill

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <dbus-c++/dbus.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
@@ -35,45 +36,45 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
 
   // Implementation of ManagerAdaptorInterface.
   void UpdateRunning();
-  void EmitBoolChanged(const std::string& name, bool value);
-  void EmitUintChanged(const std::string& name, uint32 value);
-  void EmitIntChanged(const std::string& name, int value);
-  void EmitStringChanged(const std::string& name, const std::string& value);
-  void EmitStateChanged(const std::string& new_state);
+  void EmitBoolChanged(const std::string &name, bool value);
+  void EmitUintChanged(const std::string &name, uint32 value);
+  void EmitIntChanged(const std::string &name, int value);
+  void EmitStringChanged(const std::string &name, const std::string &value);
+  void EmitStateChanged(const std::string &new_state);
 
   // Implementation of Manager_adaptor
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string& name,
-                   const ::DBus::Variant& value,
+  void SetProperty(const std::string &name,
+                   const ::DBus::Variant &value,
                    ::DBus::Error &error);
   std::string GetState(::DBus::Error &error);
-  ::DBus::Path CreateProfile(const std::string& name, ::DBus::Error &error);
-  void RemoveProfile(const std::string& name, ::DBus::Error &error);
-  ::DBus::Path PushProfile(const std::string& , ::DBus::Error &error);
-  void PopProfile(const std::string& , ::DBus::Error &error);
+  ::DBus::Path CreateProfile(const std::string &name, ::DBus::Error &error);
+  void RemoveProfile(const std::string &name, ::DBus::Error &error);
+  ::DBus::Path PushProfile(const std::string &, ::DBus::Error &error);
+  void PopProfile(const std::string &, ::DBus::Error &error);
   void PopAnyProfile(::DBus::Error &error);
-  void RequestScan(const std::string& , ::DBus::Error &error);
+  void RequestScan(const std::string &, ::DBus::Error &error);
 
-  void EnableTechnology(const std::string& , ::DBus::Error &error);
-  void DisableTechnology(const std::string& , ::DBus::Error &error);
+  void EnableTechnology(const std::string &, ::DBus::Error &error);
+  void DisableTechnology(const std::string &, ::DBus::Error &error);
 
-  ::DBus::Path GetService(const std::map<std::string, ::DBus::Variant>& ,
+  ::DBus::Path GetService(const std::map<std::string, ::DBus::Variant> &,
                           ::DBus::Error &error);
-  ::DBus::Path GetWifiService(const std::map<std::string, ::DBus::Variant>& ,
+  ::DBus::Path GetWifiService(const std::map<std::string, ::DBus::Variant> &,
                               ::DBus::Error &error);
-  void ConfigureWifiService(const std::map<std::string, ::DBus::Variant>& ,
+  void ConfigureWifiService(const std::map<std::string, ::DBus::Variant> &,
                             ::DBus::Error &error);
-  ::DBus::Path GetVPNService(const std::map< std::string, ::DBus::Variant>& ,
+  ::DBus::Path GetVPNService(const std::map< std::string, ::DBus::Variant> &,
                              ::DBus::Error &error);
 
-  void RegisterAgent(const ::DBus::Path& , ::DBus::Error &error);
-  void UnregisterAgent(const ::DBus::Path& , ::DBus::Error &error);
+  void RegisterAgent(const ::DBus::Path &, ::DBus::Error &error);
+  void UnregisterAgent(const ::DBus::Path &, ::DBus::Error &error);
 
   int32_t GetDebugLevel(::DBus::Error &error);
-  void SetDebugLevel(const int32_t& mask, ::DBus::Error &error);
+  void SetDebugLevel(const int32_t &level, ::DBus::Error &error);
 
   std::string GetServiceOrder(::DBus::Error &error);
-  void SetServiceOrder(const std::string& , ::DBus::Error &error);
+  void SetServiceOrder(const std::string &, ::DBus::Error &error);
 
  private:
   Manager *manager_;

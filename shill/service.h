@@ -6,11 +6,14 @@
 #define SHILL_SERVICE_
 
 #include <string>
+#include <map>
+#include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/device_config_interface.h"
+#include "shill/property_store_interface.h"
 
 namespace shill {
 
@@ -18,6 +21,7 @@ class Connection;
 class Configuration;
 class ControlInterface;
 class Endpoint;
+class Error;
 class EventDispatcher;
 class Service;
 class ServiceAdaptorInterface;
@@ -25,7 +29,8 @@ class ServiceAdaptorInterface;
 typedef scoped_refptr<const Service> ServiceConstRefPtr;
 typedef scoped_refptr<Service> ServiceRefPtr;
 
-class Service : public base::RefCounted<Service> {
+class Service : public base::RefCounted<Service>,
+                public PropertyStoreInterface {
  public:
   enum ConnectFailure {
     kServiceFailureUnknown,
@@ -57,6 +62,17 @@ class Service : public base::RefCounted<Service> {
   virtual ~Service();
   virtual void Connect() = 0;
   virtual void Disconnect() = 0;
+
+  // Implementation of PropertyStoreInterface
+  bool SetBoolProperty(const std::string& name, bool value, Error *error);
+  bool SetInt32Property(const std::string& name, int32 value, Error *error);
+  bool SetStringProperty(const std::string& name,
+                         const std::string& value,
+                         Error *error);
+  bool SetStringmapProperty(const std::string& name,
+                            const std::map<std::string, std::string>& values,
+                            Error *error);
+  bool SetUint8Property(const std::string& name, uint8 value, Error *error);
 
   // Returns a string that is guaranteed to uniquely identify this
   // Service instance.

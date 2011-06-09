@@ -7,6 +7,9 @@
 #include <map>
 #include <string>
 
+#include <base/logging.h>
+
+#include "shill/error.h"
 #include "shill/service.h"
 
 using std::map;
@@ -35,11 +38,11 @@ void ServiceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
 
 void ServiceDBusAdaptor::EmitUintChanged(const std::string& name,
                                          uint32 value) {
-  PropertyChanged(name, DBusAdaptor::UInt32ToVariant(value));
+  PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitIntChanged(const std::string& name, int value) {
-  PropertyChanged(name, DBusAdaptor::IntToVariant(value));
+  PropertyChanged(name, DBusAdaptor::Int32ToVariant(value));
 }
 
 void ServiceDBusAdaptor::EmitStringChanged(const std::string& name,
@@ -53,9 +56,10 @@ map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
   return map<string, ::DBus::Variant>();
 }
 
-void ServiceDBusAdaptor::SetProperty(const string& ,
-                                     const ::DBus::Variant& ,
+void ServiceDBusAdaptor::SetProperty(const string& name,
+                                     const ::DBus::Variant& value,
                                      ::DBus::Error &error) {
+  DBusAdaptor::DispatchOnType(service_, name, value, error);
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string& , ::DBus::Error &error) {

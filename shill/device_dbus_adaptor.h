@@ -41,8 +41,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
 
   // Implementation of Device_adaptor.
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string& ,
-                   const ::DBus::Variant& ,
+  void SetProperty(const std::string& name,
+                   const ::DBus::Variant& value,
                    ::DBus::Error &error);
   void ClearProperty(const std::string& , ::DBus::Error &error);
   void ProposeScan(::DBus::Error &error);
