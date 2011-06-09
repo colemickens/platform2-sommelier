@@ -54,6 +54,8 @@ ROOT_FILES = use_webui_login
 
 all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(ROOT_FILES)
 
+login_manager: $(KEYGEN_BIN) $(SESSION_BIN) $(ROOT_FILES)
+
 $(PROTO_HEADERS): %.h: %.cc
 
 $(COMMON_OBJS): $(PROTO_HEADERS)
