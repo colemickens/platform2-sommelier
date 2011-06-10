@@ -15,6 +15,7 @@ class DHCPProxyInterface {
   virtual ~DHCPProxyInterface() {}
 
   virtual void DoRebind(const std::string &interface) = 0;
+  virtual void DoRelease(const std::string &interface) = 0;
 };
 
 class DHCPListenerInterface {

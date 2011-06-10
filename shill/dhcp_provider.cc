@@ -31,14 +31,14 @@ void DHCPProvider::Init(DBus::Connection *connection,
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(DeviceConstRefPtr device) {
   VLOG(2) << __func__;
-  return DHCPConfigRefPtr(new DHCPConfig(this, device, glib_));
+  return new DHCPConfig(this, device, glib_);
 }
 
-DHCPConfigRefPtr DHCPProvider::GetConfig(unsigned int pid) {
+DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   VLOG(2) << __func__;
   PIDConfigMap::iterator it = configs_.find(pid);
   if (it == configs_.end()) {
-    return DHCPConfigRefPtr(NULL);
+    return NULL;
   }
   return it->second;
 }

@@ -7,9 +7,9 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <dbus-c++/connection.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <dbus-c++/connection.h>
 
 #include "shill/device.h"
 #include "shill/ipconfig.h"
@@ -55,10 +55,18 @@ class DHCPConfig : public IPConfig {
                           const Configuration &configuration);
 
  private:
+  friend class DHCPConfigTest;
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+  FRIEND_TEST(DHCPConfigTest, ReleaseIP);
+  FRIEND_TEST(DHCPConfigTest, RenewIP);
+  FRIEND_TEST(DHCPConfigTest, RequestIP);
+  FRIEND_TEST(DHCPConfigTest, Restart);
+  FRIEND_TEST(DHCPConfigTest, RestartNoClient);
   FRIEND_TEST(DHCPConfigTest, StartFail);
   FRIEND_TEST(DHCPConfigTest, StartSuccess);
+  FRIEND_TEST(DHCPConfigTest, Stop);
+  FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   static const char kDHCPCDPath[];
   static const char kDHCPCDPathFormatLease[];
@@ -69,6 +77,10 @@ class DHCPConfig : public IPConfig {
 
   // Stops dhcpcd if running.
   void Stop();
+
+  // Stops dhcpcd if already running and then starts it. Returns true on success
+  // and false otherwise.
+  bool Restart();
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
@@ -82,6 +94,8 @@ class DHCPConfig : public IPConfig {
   // Called when the dhcpcd client process exits.
   static void ChildWatchCallback(GPid pid, gint status, gpointer data);
 
+  // Cleans up remaining state from a running client, if any, including freeing
+  // its GPid, exit watch callback, and state files.
   void CleanupClientState();
 
   DHCPProvider *provider_;

@@ -47,6 +47,7 @@ class DHCPCDProxy : public DHCPProxyInterface,
 
   // Inherited from DHCPProxyInterface.
   virtual void DoRebind(const std::string &interface);
+  virtual void DoRelease(const std::string &interface);
 
   // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks are
   // unused because signals are dispatched directly to the DHCP configuration

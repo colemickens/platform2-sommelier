@@ -43,7 +43,7 @@ class DHCPProvider {
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.
-  DHCPConfigRefPtr GetConfig(unsigned int pid);
+  DHCPConfigRefPtr GetConfig(int pid);
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
@@ -56,7 +56,8 @@ class DHCPProvider {
 
  private:
   friend struct DefaultSingletonTraits<DHCPProvider>;
-  FRIEND_TEST(DHCPConfigTest, StartSuccess);
+  friend class DHCPProviderTest;
+  FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
 

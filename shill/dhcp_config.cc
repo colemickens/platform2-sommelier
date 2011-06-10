@@ -49,16 +49,7 @@ DHCPConfig::~DHCPConfig() {
   // Don't leave behind dhcpcd running.
   Stop();
 
-  // Somehow we got destroyed before the client died, most likely at exit. Make
-  // sure we don't get any callbacks to the destroyed instance.
-  if (child_watch_tag_) {
-    glib_->SourceRemove(child_watch_tag_);
-    child_watch_tag_ = 0;
-  }
-  if (pid_) {
-    glib_->SpawnClosePID(pid_);
-    pid_ = 0;
-  }
+  // Make sure we don't get any callbacks to the destroyed instance.
   CleanupClientState();
 }
 
@@ -68,16 +59,19 @@ bool DHCPConfig::RequestIP() {
     return Start();
   }
   if (!proxy_.get()) {
-    LOG(ERROR)
-        << "Unable to acquire destination address before receiving request.";
-    return false;
+    LOG(ERROR) << "Unable to request IP before acquiring destination.";
+    return Restart();
   }
   return RenewIP();
 }
 
 bool DHCPConfig::RenewIP() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
-  if (!pid_ || !proxy_.get()) {
+  if (!pid_) {
+    return false;
+  }
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Unable to renew IP before acquiring destination.";
     return false;
   }
   proxy_->DoRebind(GetDeviceName());
@@ -86,7 +80,16 @@ bool DHCPConfig::RenewIP() {
 
 bool DHCPConfig::ReleaseIP() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
-  // TODO(petkov): Implement D-Bus calls to Release and stop the process.
+  if (!pid_) {
+    return true;
+  }
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Unable to release IP before acquiring destination.";
+    return false;
+  }
+  proxy_->DoRelease(GetDeviceName());
+  Stop();
+  return true;
 }
 
 void DHCPConfig::InitProxy(DBus::Connection *connection, const char *service) {
@@ -110,30 +113,30 @@ void DHCPConfig::ProcessEventSignal(const std::string &reason,
 bool DHCPConfig::Start() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
 
-  char *argv[4], *envp[1];
-  argv[0] = const_cast<char *>(kDHCPCDPath);
-  argv[1] = const_cast<char *>("-B");  // foreground
-  argv[2] = const_cast<char *>(GetDeviceName().c_str());
-  argv[3] = NULL;
+  char *argv[4] = {
+    const_cast<char *>(kDHCPCDPath),
+    const_cast<char *>("-B"),  // foreground
+    const_cast<char *>(GetDeviceName().c_str()),
+    NULL
+  };
+  char *envp[1] = { NULL };
 
-  envp[0] = NULL;
-
-  GPid pid = 0;
+  CHECK(!pid_);
   if (!glib_->SpawnAsync(NULL,
                          argv,
                          envp,
                          G_SPAWN_DO_NOT_REAP_CHILD,
                          NULL,
                          NULL,
-                         &pid,
+                         &pid_,
                          NULL)) {
     LOG(ERROR) << "Unable to spawn " << kDHCPCDPath;
     return false;
   }
-  pid_ = pid;
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
   provider_->BindPID(pid_, this);
-  child_watch_tag_ = glib_->ChildWatchAdd(pid, ChildWatchCallback, this);
+  CHECK(!child_watch_tag_);
+  child_watch_tag_ = glib_->ChildWatchAdd(pid_, ChildWatchCallback, this);
   return true;
 }
 
@@ -142,6 +145,21 @@ void DHCPConfig::Stop() {
     VLOG(2) << "Terminating " << pid_;
     PLOG_IF(ERROR, kill(pid_, SIGTERM) < 0);
   }
+}
+
+bool DHCPConfig::Restart() {
+  // Check to ensure that this instance doesn't get destroyed in the middle of
+  // this call. If stopping a running client while there's only one reference to
+  // this instance, we will end up destroying it when the PID is unbound from
+  // the Provider. Since the Provider doesn't invoke Restart, this would mean
+  // that Restart was erroneously executed through a bare reference.
+  CHECK(!pid_ || !HasOneRef());
+  Stop();
+  if (pid_) {
+    provider_->UnbindPID(pid_);
+  }
+  CleanupClientState();
+  return Start();
 }
 
 string DHCPConfig::GetIPv4AddressString(unsigned int address) {
@@ -226,6 +244,14 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
 }
 
 void DHCPConfig::CleanupClientState() {
+  if (child_watch_tag_) {
+    glib_->SourceRemove(child_watch_tag_);
+    child_watch_tag_ = 0;
+  }
+  if (pid_) {
+    glib_->SpawnClosePID(pid_);
+    pid_ = 0;
+  }
   file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatLease,
                                                     GetDeviceName().c_str())),
                     false);

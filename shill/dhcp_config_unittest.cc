@@ -10,6 +10,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 
 using std::string;
@@ -33,12 +34,16 @@ class DHCPConfigTest : public Test {
                                NULL,
                                kDeviceName,
                                0)),
-        config_(new DHCPConfig(DHCPProvider::GetInstance(), device_, &glib_)) {}
+        proxy_(new MockDHCPProxy()),
+        config_(new DHCPConfig(DHCPProvider::GetInstance(), device_, &glib_)) {
+    config_->proxy_.reset(proxy_);  // pass ownership
+  }
 
  protected:
   MockGLib glib_;
   MockControl control_interface_;
   scoped_refptr<MockDevice> device_;
+  MockDHCPProxy * const proxy_;
   DHCPConfigRefPtr config_;
 };
 
@@ -108,6 +113,66 @@ TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_EQ(0, config_->pid_);
 }
 
+TEST_F(DHCPConfigTest, ReleaseIP) {
+  config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
+  EXPECT_CALL(*proxy_, DoRelease(kDeviceName)).Times(1);
+  EXPECT_TRUE(config_->ReleaseIP());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, RenewIP) {
+  config_->pid_ = 456;
+  EXPECT_CALL(*proxy_, DoRebind(kDeviceName)).Times(1);
+  EXPECT_TRUE(config_->RenewIP());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, RequestIP) {
+  config_->pid_ = 567;
+  EXPECT_CALL(*proxy_, DoRebind(kDeviceName)).Times(1);
+  EXPECT_TRUE(config_->RenewIP());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, Restart) {
+  const int kPID1 = 1 << 17;  // Ensure unknown positive PID.
+  const int kPID2 = 987;
+  const unsigned int kTag1 = 11;
+  const unsigned int kTag2 = 22;
+  config_->pid_ = kPID1;
+  config_->child_watch_tag_ = kTag1;
+  DHCPProvider::GetInstance()->BindPID(kPID1, config_);
+  EXPECT_CALL(glib_, SourceRemove(kTag1)).WillOnce(Return(true));
+  EXPECT_CALL(glib_, SpawnClosePID(kPID1)).Times(1);
+  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID2), Return(true)));
+  EXPECT_CALL(glib_, ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
+  EXPECT_TRUE(config_->Restart());
+  EXPECT_EQ(kPID2, config_->pid_);
+  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID2).get());
+  EXPECT_EQ(kTag2, config_->child_watch_tag_);
+  DHCPProvider::GetInstance()->UnbindPID(kPID2);
+  config_->pid_ = 0;
+  config_->child_watch_tag_ = 0;
+}
+
+TEST_F(DHCPConfigTest, RestartNoClient) {
+  const int kPID = 777;
+  const unsigned int kTag = 66;
+  EXPECT_CALL(glib_, SourceRemove(_)).Times(0);
+  EXPECT_CALL(glib_, SpawnClosePID(_)).Times(0);
+  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  EXPECT_CALL(glib_, ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_TRUE(config_->Restart());
+  EXPECT_EQ(kPID, config_->pid_);
+  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
+  EXPECT_EQ(kTag, config_->child_watch_tag_);
+  DHCPProvider::GetInstance()->UnbindPID(kPID);
+  config_->pid_ = 0;
+  config_->child_watch_tag_ = 0;
+}
+
 TEST_F(DHCPConfigTest, StartSuccess) {
   const int kPID = 123456;
   const unsigned int kTag = 55;
@@ -116,9 +181,8 @@ TEST_F(DHCPConfigTest, StartSuccess) {
   EXPECT_CALL(glib_, ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config_->Start());
   EXPECT_EQ(kPID, config_->pid_);
-  DHCPProvider *provider = DHCPProvider::GetInstance();
-  ASSERT_TRUE(provider->configs_.find(kPID) != provider->configs_.end());
-  EXPECT_EQ(config_.get(), provider->configs_.find(kPID)->second.get());
+  EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
+  EXPECT_EQ(kTag, config_->child_watch_tag_);
 
   ScopedTempDir temp_dir;
   config_->root_ = temp_dir.path();
@@ -135,8 +199,18 @@ TEST_F(DHCPConfigTest, StartSuccess) {
 
   EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);
   DHCPConfig::ChildWatchCallback(kPID, 0, config_.get());
+  EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
   EXPECT_FALSE(file_util::PathExists(pid_file));
   EXPECT_FALSE(file_util::PathExists(lease_file));
+}
+
+TEST_F(DHCPConfigTest, Stop) {
+  // Ensure no crashes.
+  const int kPID = 1 << 17;  // Ensure unknown positive PID.
+  config_->Stop();
+  config_->pid_ = kPID;
+  config_->Stop();
+  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);  // Invoked by destuctor.
 }
 
 }  // namespace shill

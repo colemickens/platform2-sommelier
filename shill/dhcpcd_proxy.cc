@@ -80,6 +80,10 @@ void DHCPCDProxy::DoRebind(const string &interface) {
   Rebind(interface);
 }
 
+void DHCPCDProxy::DoRelease(const string &interface) {
+  Release(interface);
+}
+
 void DHCPCDProxy::Event(const uint32_t &pid,
                         const std::string &reason,
                         const DHCPConfig::Configuration &configuration) {
