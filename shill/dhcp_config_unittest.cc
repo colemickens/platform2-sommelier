@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/file_util.h>
+#include <base/memory/scoped_temp_dir.h>
+#include <base/stringprintf.h>
+
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
 #include "shill/mock_control.h"
@@ -17,10 +21,18 @@ using testing::Test;
 
 namespace shill {
 
+namespace {
+const char kDeviceName[] = "testdevicename";
+}  // namespace {}
+
 class DHCPConfigTest : public Test {
  public:
   DHCPConfigTest()
-      : device_(new MockDevice(&control_interface_, NULL, NULL, "testname", 0)),
+      : device_(new MockDevice(&control_interface_,
+                               NULL,
+                               NULL,
+                               kDeviceName,
+                               0)),
         config_(new DHCPConfig(DHCPProvider::GetInstance(), device_, &glib_)) {}
 
  protected:
@@ -88,20 +100,43 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
   EXPECT_EQ(600, properties.mtu);
 }
 
-TEST_F(DHCPConfigTest, Start) {
+TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
+  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).Times(0);
   EXPECT_FALSE(config_->Start());
   EXPECT_EQ(0, config_->pid_);
+}
 
-  const unsigned int kPID = 1234;
+TEST_F(DHCPConfigTest, StartSuccess) {
+  const int kPID = 123456;
+  const unsigned int kTag = 55;
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
+  EXPECT_CALL(glib_, ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config_->Start());
   EXPECT_EQ(kPID, config_->pid_);
   DHCPProvider *provider = DHCPProvider::GetInstance();
   ASSERT_TRUE(provider->configs_.find(kPID) != provider->configs_.end());
-  EXPECT_EQ(config_.get(), provider->configs_.find(1234)->second.get());
+  EXPECT_EQ(config_.get(), provider->configs_.find(kPID)->second.get());
+
+  ScopedTempDir temp_dir;
+  config_->root_ = temp_dir.path();
+  FilePath varrun = temp_dir.path().Append("var/run");
+  EXPECT_TRUE(file_util::CreateDirectory(varrun));
+  FilePath pid_file =
+      varrun.Append(base::StringPrintf("dhcpcd-%s.pid", kDeviceName));
+  FilePath lease_file =
+      varrun.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
+  EXPECT_EQ(0, file_util::WriteFile(pid_file, "", 0));
+  EXPECT_EQ(0, file_util::WriteFile(lease_file, "", 0));
+  ASSERT_TRUE(file_util::PathExists(pid_file));
+  ASSERT_TRUE(file_util::PathExists(lease_file));
+
+  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);
+  DHCPConfig::ChildWatchCallback(kPID, 0, config_.get());
+  EXPECT_FALSE(file_util::PathExists(pid_file));
+  EXPECT_FALSE(file_util::PathExists(lease_file));
 }
 
 }  // namespace shill

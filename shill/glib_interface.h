@@ -14,6 +14,12 @@ class GLibInterface {
  public:
   virtual ~GLibInterface() {}
 
+  // g_child_watch_add
+  virtual guint ChildWatchAdd(GPid pid,
+                              GChildWatchFunc function,
+                              gpointer data) = 0;
+  // g_source_remove
+  virtual gboolean SourceRemove(guint tag) = 0;
   // g_spawn_async
   virtual gboolean SpawnAsync(const gchar *working_directory,
                               gchar **argv,
@@ -23,6 +29,8 @@ class GLibInterface {
                               gpointer user_data,
                               GPid *child_pid,
                               GError **error) = 0;
+  // g_spawn_close_pid
+  virtual void SpawnClosePID(GPid pid) = 0;
 };
 
 }  // namespace shill

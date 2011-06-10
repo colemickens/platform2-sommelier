@@ -47,18 +47,18 @@ class DHCPProvider {
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  void BindPID(unsigned int pid, DHCPConfigRefPtr config);
+  void BindPID(int pid, DHCPConfigRefPtr config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in
   // destruction of the DHCP config instance if its reference count goes to 0.
-  void UnbindPID(unsigned int pid);
+  void UnbindPID(int pid);
 
  private:
   friend struct DefaultSingletonTraits<DHCPProvider>;
-  FRIEND_TEST(DHCPConfigTest, Start);
+  FRIEND_TEST(DHCPConfigTest, StartSuccess);
 
-  typedef std::map<unsigned int, DHCPConfigRefPtr> PIDConfigMap;
+  typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
 
   // Private to ensure that this behaves as a singleton.
   DHCPProvider();

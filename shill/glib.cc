@@ -6,6 +6,16 @@
 
 namespace shill {
 
+guint GLib::ChildWatchAdd(GPid pid,
+                          GChildWatchFunc function,
+                          gpointer data) {
+  return g_child_watch_add(pid, function, data);
+}
+
+gboolean GLib::SourceRemove(guint tag) {
+  return g_source_remove(tag);
+}
+
 gboolean GLib::SpawnAsync(const gchar *working_directory,
                           gchar **argv,
                           gchar **envp,
@@ -22,6 +32,10 @@ gboolean GLib::SpawnAsync(const gchar *working_directory,
                        user_data,
                        child_pid,
                        error);
+}
+
+void GLib::SpawnClosePID(GPid pid) {
+  g_spawn_close_pid(pid);
 }
 
 }  // namespace shill

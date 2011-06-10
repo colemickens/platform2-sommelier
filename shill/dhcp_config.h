@@ -5,7 +5,9 @@
 #ifndef SHILL_DHCP_CONFIG_
 #define SHILL_DHCP_CONFIG_
 
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <dbus-c++/connection.h>
 
@@ -40,8 +42,9 @@ class DHCPConfig : public IPConfig {
   virtual ~DHCPConfig();
 
   // Inherited from IPConfig.
-  virtual bool Request();
-  virtual bool Renew();
+  virtual bool RequestIP();
+  virtual bool RenewIP();
+  virtual bool ReleaseIP();
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
@@ -54,12 +57,18 @@ class DHCPConfig : public IPConfig {
  private:
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
-  FRIEND_TEST(DHCPConfigTest, Start);
+  FRIEND_TEST(DHCPConfigTest, StartFail);
+  FRIEND_TEST(DHCPConfigTest, StartSuccess);
 
   static const char kDHCPCDPath[];
+  static const char kDHCPCDPathFormatLease[];
+  static const char kDHCPCDPathFormatPID[];
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
+
+  // Stops dhcpcd if running.
+  void Stop();
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
@@ -70,14 +79,25 @@ class DHCPConfig : public IPConfig {
   // empty string on failure.
   std::string GetIPv4AddressString(unsigned int address);
 
+  // Called when the dhcpcd client process exits.
+  static void ChildWatchCallback(GPid pid, gint status, gpointer data);
+
+  void CleanupClientState();
+
   DHCPProvider *provider_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.
-  unsigned int pid_;
+  int pid_;
+
+  // Child exit watch callback source tag.
+  unsigned int child_watch_tag_;
 
   // The proxy for communicating with the DHCP client.
   scoped_ptr<DHCPProxyInterface> proxy_;
+
+  // Root file path, used for testing.
+  FilePath root_;
 
   GLibInterface *glib_;
 

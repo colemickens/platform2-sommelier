@@ -52,11 +52,12 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   const Properties &properties() const { return properties_; }
 
-  // Request or renew IP configuration. Return true on success, false
+  // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
   // failure.
-  virtual bool Request();
-  virtual bool Renew();
+  virtual bool RequestIP();
+  virtual bool RenewIP();
+  virtual bool ReleaseIP();
 
  protected:
   // Updates the IP configuration properties and notifies registered listeners

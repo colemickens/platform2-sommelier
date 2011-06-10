@@ -28,12 +28,16 @@ TEST_F(IPConfigTest, GetDeviceName) {
   EXPECT_EQ("testname", ipconfig_->GetDeviceName());
 }
 
-TEST_F(IPConfigTest, Request) {
-  EXPECT_FALSE(ipconfig_->Request());
+TEST_F(IPConfigTest, RequestIP) {
+  EXPECT_FALSE(ipconfig_->RequestIP());
 }
 
-TEST_F(IPConfigTest, Renew) {
-  EXPECT_FALSE(ipconfig_->Renew());
+TEST_F(IPConfigTest, RenewIP) {
+  EXPECT_FALSE(ipconfig_->RenewIP());
+}
+
+TEST_F(IPConfigTest, ReleaseIP) {
+  EXPECT_FALSE(ipconfig_->ReleaseIP());
 }
 
 TEST_F(IPConfigTest, UpdateProperties) {

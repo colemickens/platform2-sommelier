@@ -43,12 +43,12 @@ DHCPConfigRefPtr DHCPProvider::GetConfig(unsigned int pid) {
   return it->second;
 }
 
-void DHCPProvider::BindPID(unsigned int pid, DHCPConfigRefPtr config) {
+void DHCPProvider::BindPID(int pid, DHCPConfigRefPtr config) {
   VLOG(2) << __func__ << " pid: " << pid;
   configs_[pid] = config;
 }
 
-void DHCPProvider::UnbindPID(unsigned int pid) {
+void DHCPProvider::UnbindPID(int pid) {
   VLOG(2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
 }

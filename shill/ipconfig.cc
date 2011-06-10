@@ -24,11 +24,15 @@ const string &IPConfig::GetDeviceName() const {
   return device()->UniqueName();
 }
 
-bool IPConfig::Request() {
+bool IPConfig::RequestIP() {
   return false;
 }
 
-bool IPConfig::Renew() {
+bool IPConfig::RenewIP() {
+  return false;
+}
+
+bool IPConfig::ReleaseIP() {
   return false;
 }
 

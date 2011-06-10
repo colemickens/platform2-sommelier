@@ -13,6 +13,10 @@ namespace shill {
 
 class MockGLib : public GLibInterface {
  public:
+  MOCK_METHOD3(ChildWatchAdd, guint(GPid pid,
+                                    GChildWatchFunc function,
+                                    gpointer data));
+  MOCK_METHOD1(SourceRemove, gboolean(guint tag));
   MOCK_METHOD8(SpawnAsync, gboolean(const gchar *working_directory,
                                     gchar **argv,
                                     gchar **envp,
@@ -21,6 +25,7 @@ class MockGLib : public GLibInterface {
                                     gpointer user_data,
                                     GPid *child_pid,
                                     GError **error));
+  MOCK_METHOD1(SpawnClosePID, void(GPid pid));
 };
 
 }  // namespace shill

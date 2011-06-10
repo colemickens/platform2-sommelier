@@ -6,7 +6,9 @@
 
 #include <arpa/inet.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
@@ -26,7 +28,8 @@ const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
 const char DHCPConfig::kConfigurationKeyRouters[] = "Routers";
 const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
-
+const char DHCPConfig::kDHCPCDPathFormatLease[] = "var/run/dhcpcd-%s.lease";
+const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
 
 DHCPConfig::DHCPConfig(DHCPProvider *provider,
                        DeviceConstRefPtr device,
@@ -34,15 +37,32 @@ DHCPConfig::DHCPConfig(DHCPProvider *provider,
     : IPConfig(device),
       provider_(provider),
       pid_(0),
+      child_watch_tag_(0),
+      root_("/"),
       glib_(glib) {
   VLOG(2) << __func__ << ": " << GetDeviceName();
 }
 
 DHCPConfig::~DHCPConfig() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
+
+  // Don't leave behind dhcpcd running.
+  Stop();
+
+  // Somehow we got destroyed before the client died, most likely at exit. Make
+  // sure we don't get any callbacks to the destroyed instance.
+  if (child_watch_tag_) {
+    glib_->SourceRemove(child_watch_tag_);
+    child_watch_tag_ = 0;
+  }
+  if (pid_) {
+    glib_->SpawnClosePID(pid_);
+    pid_ = 0;
+  }
+  CleanupClientState();
 }
 
-bool DHCPConfig::Request() {
+bool DHCPConfig::RequestIP() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
   if (!pid_) {
     return Start();
@@ -52,16 +72,21 @@ bool DHCPConfig::Request() {
         << "Unable to acquire destination address before receiving request.";
     return false;
   }
-  return Renew();
+  return RenewIP();
 }
 
-bool DHCPConfig::Renew() {
+bool DHCPConfig::RenewIP() {
   VLOG(2) << __func__ << ": " << GetDeviceName();
   if (!pid_ || !proxy_.get()) {
     return false;
   }
   proxy_->DoRebind(GetDeviceName());
   return true;
+}
+
+bool DHCPConfig::ReleaseIP() {
+  VLOG(2) << __func__ << ": " << GetDeviceName();
+  // TODO(petkov): Implement D-Bus calls to Release and stop the process.
 }
 
 void DHCPConfig::InitProxy(DBus::Connection *connection, const char *service) {
@@ -108,8 +133,15 @@ bool DHCPConfig::Start() {
   pid_ = pid;
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
   provider_->BindPID(pid_, this);
-  // TODO(petkov): Add an exit watch to cleanup w/ g_spawn_close_pid.
+  child_watch_tag_ = glib_->ChildWatchAdd(pid, ChildWatchCallback, this);
   return true;
+}
+
+void DHCPConfig::Stop() {
+  if (pid_) {
+    VLOG(2) << "Terminating " << pid_;
+    PLOG_IF(ERROR, kill(pid_, SIGTERM) < 0);
+  }
 }
 
 string DHCPConfig::GetIPv4AddressString(unsigned int address) {
@@ -176,6 +208,30 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
     }
   }
   return true;
+}
+
+void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
+  VLOG(2) << "pid " << pid << " exit status " << status;
+  DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
+  config->child_watch_tag_ = 0;
+
+  CHECK_EQ(pid, config->pid_);
+  config->glib_->SpawnClosePID(pid);
+  config->pid_ = 0;
+
+  config->CleanupClientState();
+
+  // |config| instance may be destroyed after this call.
+  config->provider_->UnbindPID(pid);
+}
+
+void DHCPConfig::CleanupClientState() {
+  file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatLease,
+                                                    GetDeviceName().c_str())),
+                    false);
+  file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatPID,
+                                                    GetDeviceName().c_str())),
+                    false);
 }
 
 }  // namespace shill

@@ -12,6 +12,10 @@ namespace shill {
 // A concrete implementation of the GLib interface.
 class GLib : public GLibInterface {
  public:
+  virtual guint ChildWatchAdd(GPid pid,
+                              GChildWatchFunc function,
+                              gpointer data);
+  virtual gboolean SourceRemove(guint tag);
   virtual gboolean SpawnAsync(const gchar *working_directory,
                               gchar **argv,
                               gchar **envp,
@@ -20,6 +24,7 @@ class GLib : public GLibInterface {
                               gpointer user_data,
                               GPid *child_pid,
                               GError **error);
+  virtual void SpawnClosePID(GPid pid);
 };
 
 }  // namespace shill
