@@ -431,7 +431,7 @@ void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
     mdn = ExtractString(properties, "mdn", "",  error);
     min = ExtractString(properties, "min", "", error);
     mnha = ExtractString(properties, "mnha", NULL, error);
-    mnaaa = ExtractString(properties, "mnhaaa", NULL, error);
+    mnaaa = ExtractString(properties, "mnaaa", NULL, error);
   } catch (DBus::Error e) {
     error = e;
     return;
