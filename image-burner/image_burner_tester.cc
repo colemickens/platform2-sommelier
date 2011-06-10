@@ -93,10 +93,6 @@ class TestClient {
       std::fwrite(&i, sizeof(i), 1, foo_source);
     std::fclose(foo_source);
 
-    AddTest(kImgSrc, "/usr/local/chromeos_image.bin.zip", false);
-    AddTest(kImgSrc, "/dev/sda", false);
-    AddTest(kImgSrc, "/dev/sda1", false);
-    AddTest(kImgSrc, "/dev/sdb1", false);
     AddTest(kImgSrc, "/dev/sdb", true);
 
     tests_it_ = tests_.begin();

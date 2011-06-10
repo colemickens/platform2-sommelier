@@ -28,7 +28,7 @@ gboolean image_burner_burn_image(ImageBurner *self,
                                  gchar *from_path,
                                  gchar *to_path,
                                  DBusGMethodInvocation* context);
-}  // namespace image_burner
+}  // namespace imageburn.
 
 #endif  // IMAGE_BURNER_INTERFACE_H_
 

@@ -7,12 +7,14 @@ PKG_CONFIG ?= pkg-config
 
 BASE_LIBS = -lpthread -lrt -lchromeos -lbase -ldl -lrootdev
 LIBS = $(BASE_LIBS)
-TEST_LIBS = $(BASE_LIBS)
+UNITTEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
+
 INCLUDE_DIRS = -I.. \
-	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1)
+	$(shell $(PKG_CONFIG) --cflags gobject-2.0 dbus-1 dbus-glib-1 )
 LIB_DIRS = $(shell $(PKG_CONFIG) --libs gobject-2.0 dbus-1 dbus-glib-1 )
 
-IMAGEBURN_COMMON_OBJS = image_burn_service.o  image_burner.o
+COMMON_OBJS = image_burner_utils.o image_burner_impl.o
+IMAGEBURN_COMMON_OBJS = $(COMMON_OBJS) image_burn_service.o  image_burner.o
 
 DBUS_SOURCE = image_burner.xml
 DBUS_SOURCE_BASENAME = image_burner
@@ -26,7 +28,7 @@ IMAGEBURN_OBJS = $(IMAGEBURN_COMMON_OBJS) image_burner_main.o
 
 BINDINGS_DIR = bindings
 
-all: $(IMAGEBURN_BIN)
+all: $(IMAGEBURN_BIN) $(TESTER_BIN) $(UNITTEST_BIN)
 
 $(IMAGEBURN_OBJS) : $(DBUS_SERVER) $(DBUS_MARSHAL_HEADER)
 
@@ -51,6 +53,14 @@ $(DBUS_MARSHAL_HEADER) : $(DBUS_MARSHAL_LIST)
 clean:
 	rm -rf *.o $(BINDINGS_DIR) $(DBUS_MARSHAL_HEADER)
 
+UNITTEST_BIN = unittest_runner
+
+UNITTEST_OBJS = unittest_runner.o image_burner_impl_unittest.o \
+	image_burner_utils.o image_burner_impl.o
+
+$(UNITTEST_BIN): $(UNITTEST_OBJS)
+	$(CXX) $(CXXFLAGS) $(UNITTEST_OBJS) $(UNITTEST_LIBS) $(LDFLAGS) \
+	-o $(UNITTEST_BIN)
 
 #to be removed
 DBUS_CLIENT = bindings/client.h
@@ -63,7 +73,7 @@ $(TESTER_OBJS) : $(DBUS_CLIENT) $(DBUS_MARSHAL_SOURCE)
 
 $(TESTER_BIN): $(TESTER_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(TESTER_OBJS) \
-	$(TEST_LIBS) $(LDFLAGS) -o $(TESTER_BIN)
+	$(BASE_LIBS) $(LDFLAGS) -o $(TESTER_BIN)
 
 $(DBUS_CLIENT): $(DBUS_SOURCE) $(BINDINGS_DIR)
 	dbus-binding-tool --mode=glib-client \
