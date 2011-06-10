@@ -92,6 +92,11 @@ class DiskManager {
   // Gets the mount directory name for a disk.
   std::string GetMountDirectoryName(const Disk& disk) const;
 
+  // Creates a specified directory if it does not exist.
+  // If the specified directory already exists, this function tries to
+  // reuse it if the directory is empty and not being used.
+  bool CreateDirectory(const std::string& path) const;
+
   // Creates a mount directory for a given disk.
   std::string CreateMountDirectory(const Disk& disk,
       const std::string& target_path) const;

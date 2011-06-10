@@ -344,6 +344,14 @@ std::string DiskManager::GetMountDirectoryName(const Disk& disk) const {
   return mount_path;
 }
 
+bool DiskManager::CreateDirectory(const std::string& path) const {
+  // Reuse the target path if it already exists and is empty.
+  // rmdir handles the cases when the target path exists but
+  // is not empty, is already mounted or is used by some process.
+  rmdir(path.c_str());
+  return (mkdir(path.c_str(), S_IRWXU) == 0);
+}
+
 std::string DiskManager::CreateMountDirectory(const Disk& disk,
     const std::string& target_path) const {
   // Construct the mount path as follows:
@@ -359,7 +367,7 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
   //     be created, try suffixing it with a number.
 
   if (!target_path.empty()) {
-    if (mkdir(target_path.c_str(), S_IRWXU) != 0) {
+    if (!CreateDirectory(target_path)) {
       LOG(ERROR) << "Failed to create directory '" << target_path
         << "' (errno=" << errno << ")";
       return std::string();
@@ -370,7 +378,7 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
   unsigned suffix = 1;
   std::string mount_path = GetMountDirectoryName(disk);
   std::string mount_path_prefix = mount_path + "_";
-  while (mkdir(mount_path.c_str(), S_IRWXU) != 0) {
+  while (!CreateDirectory(mount_path)) {
     if (suffix == kMaxNumMountTrials) {
       mount_path.clear();
       break;
