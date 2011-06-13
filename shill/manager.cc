@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
@@ -29,8 +30,24 @@ Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher)
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
-    running_(false) {
+    running_(false),
+    offline_mode_(false),
+    state_(flimflam::kStateOffline) {
   // Initialize Interface monitor, so we can detect new interfaces
+  known_properties_.push_back(flimflam::kStateProperty);
+  known_properties_.push_back(flimflam::kAvailableTechnologiesProperty);
+  known_properties_.push_back(flimflam::kEnabledTechnologiesProperty);
+  known_properties_.push_back(flimflam::kConnectedTechnologiesProperty);
+  known_properties_.push_back(flimflam::kDefaultTechnologyProperty);
+  known_properties_.push_back(flimflam::kCheckPortalListProperty);
+  known_properties_.push_back(flimflam::kCountryProperty);
+  known_properties_.push_back(flimflam::kOfflineModeProperty);
+  known_properties_.push_back(flimflam::kPortalURLProperty);
+  known_properties_.push_back(flimflam::kActiveProfileProperty);
+  known_properties_.push_back(flimflam::kProfilesProperty);
+  known_properties_.push_back(flimflam::kDevicesProperty);
+  known_properties_.push_back(flimflam::kServicesProperty);
+  known_properties_.push_back(flimflam::kServiceWatchListProperty);
   VLOG(2) << "Manager initialized.";
 }
 
@@ -110,18 +127,49 @@ ServiceRefPtr Manager::FindService(const std::string& name) {
   return NULL;
 }
 
+bool Manager::Contains(const std::string &property) {
+  vector<string>::iterator it;
+  for (it = known_properties_.begin(); it != known_properties_.end(); ++it) {
+    if (property == *it)
+      return true;
+  }
+  return false;
+}
+
 bool Manager::SetBoolProperty(const string& name, bool value, Error *error) {
   VLOG(2) << "Setting " << name << " as a bool.";
-  // TODO(cmasone): Set actual properties.
-  return true;
+  bool set = false;
+  if (name == flimflam::kOfflineModeProperty) {
+    offline_mode_ = value;
+    set = true;
+  }
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W bool.");
+  return set;
 }
 
 bool Manager::SetStringProperty(const string& name,
                                 const string& value,
                                 Error *error) {
   VLOG(2) << "Setting " << name << " as a string.";
-  // TODO(cmasone): Set actual properties.
-  return true;
+  bool set = false;
+  if (name == flimflam::kActiveProfileProperty) {
+    active_profile_ = value;
+    set = true;
+  } else if (name == flimflam::kCountryProperty) {
+    country_ = value;
+    set = true;
+  } else if (name == flimflam::kPortalURLProperty) {
+    portal_url_ = value;
+    set = true;
+  } else if (name == flimflam::kCheckPortalListProperty) {
+    // parse string, update all services of specified technologies.
+    set = true;
+  }
+
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W string.");
+  return set;
 }
 
 }  // namespace shill

@@ -42,6 +42,8 @@ DBUS_PROXY_HEADERS = \
 DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
 
 SHILL_OBJS = \
+	cellular.o \
+	cellular_service.o \
 	dbus_adaptor.o \
 	dbus_control.o \
 	device.o \
@@ -86,6 +88,7 @@ TEST_OBJS = \
 	mock_control.o \
 	mock_device.o \
 	mock_service.o \
+	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o
 

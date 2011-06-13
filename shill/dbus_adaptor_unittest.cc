@@ -15,20 +15,22 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_property_store.h"
 #include "shill/mock_service.h"
+#include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
 
 using std::map;
 using std::string;
 using std::vector;
-using ::testing::Test;
 using ::testing::_;
-using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrEq;
+using ::testing::Test;
 
 namespace shill {
 
-class DBusAdaptorTest : public Test {
+class DBusAdaptorTest : public PropertyStoreTest {
  public:
   DBusAdaptorTest()
       : ex_bool(true),
@@ -39,7 +41,6 @@ class DBusAdaptorTest : public Test {
         ex_int32(-65536),
         ex_string("something"),
         ex_strings(1, ex_string),
-        manager_(&control_interface_, &dispatcher_),
         device_(new MockDevice(&control_interface_,
                                &dispatcher_,
                                &manager_,
@@ -51,15 +52,15 @@ class DBusAdaptorTest : public Test {
                                  "mock")) {
     ex_stringmap[ex_string] = ex_string;
 
-    bool_v = DBusAdaptor::BoolToVariant(ex_bool);
-    byte_v = DBusAdaptor::ByteToVariant(ex_byte);
-    uint16_v = DBusAdaptor::Uint16ToVariant(ex_uint16);
-    uint32_v = DBusAdaptor::Uint32ToVariant(ex_uint32);
-    int16_v = DBusAdaptor::Int16ToVariant(ex_int16);
-    int32_v = DBusAdaptor::Int32ToVariant(ex_int32);
-    string_v = DBusAdaptor::StringToVariant(ex_string);
-    stringmap_v = DBusAdaptor::StringmapToVariant(ex_stringmap);
-    strings_v = DBusAdaptor::StringsToVariant(ex_strings);
+    bool_v_ = DBusAdaptor::BoolToVariant(ex_bool);
+    byte_v_ = DBusAdaptor::ByteToVariant(ex_byte);
+    uint16_v_ = DBusAdaptor::Uint16ToVariant(ex_uint16);
+    uint32_v_ = DBusAdaptor::Uint32ToVariant(ex_uint32);
+    int16_v_ = DBusAdaptor::Int16ToVariant(ex_int16);
+    int32_v_ = DBusAdaptor::Int32ToVariant(ex_int32);
+    string_v_ = DBusAdaptor::StringToVariant(ex_string);
+    stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap);
+    strings_v_ = DBusAdaptor::StringsToVariant(ex_strings);
   }
 
   virtual ~DBusAdaptorTest() {}
@@ -74,118 +75,88 @@ class DBusAdaptorTest : public Test {
   map<string, string> ex_stringmap;
   vector<string> ex_strings;
 
-  ::DBus::Variant bool_v;
-  ::DBus::Variant byte_v;
-  ::DBus::Variant uint16_v;
-  ::DBus::Variant uint32_v;
-  ::DBus::Variant int16_v;
-  ::DBus::Variant int32_v;
-  ::DBus::Variant string_v;
-  ::DBus::Variant stringmap_v;
-  ::DBus::Variant strings_v;
-
  protected:
-  MockControl control_interface_;
-  EventDispatcher dispatcher_;
-  Manager manager_;
   DeviceRefPtr device_;
   ServiceRefPtr service_;
 };
 
 TEST_F(DBusAdaptorTest, Conversions) {
   EXPECT_EQ(0, DBusAdaptor::BoolToVariant(0).reader().get_bool());
-  EXPECT_EQ(ex_bool, bool_v.reader().get_bool());
+  EXPECT_EQ(ex_bool, bool_v_.reader().get_bool());
 
   EXPECT_EQ(0, DBusAdaptor::ByteToVariant(0).reader().get_byte());
-  EXPECT_EQ(ex_byte, byte_v.reader().get_byte());
+  EXPECT_EQ(ex_byte, byte_v_.reader().get_byte());
 
   EXPECT_EQ(0, DBusAdaptor::Uint16ToVariant(0).reader().get_uint16());
-  EXPECT_EQ(ex_uint16, uint16_v.reader().get_uint16());
+  EXPECT_EQ(ex_uint16, uint16_v_.reader().get_uint16());
 
   EXPECT_EQ(0, DBusAdaptor::Int16ToVariant(0).reader().get_int16());
-  EXPECT_EQ(ex_int16, int16_v.reader().get_int16());
+  EXPECT_EQ(ex_int16, int16_v_.reader().get_int16());
 
   EXPECT_EQ(0, DBusAdaptor::Uint32ToVariant(0).reader().get_uint32());
-  EXPECT_EQ(ex_uint32, uint32_v.reader().get_uint32());
+  EXPECT_EQ(ex_uint32, uint32_v_.reader().get_uint32());
 
   EXPECT_EQ(0, DBusAdaptor::Int32ToVariant(0).reader().get_int32());
-  EXPECT_EQ(ex_int32, int32_v.reader().get_int32());
+  EXPECT_EQ(ex_int32, int32_v_.reader().get_int32());
 
   EXPECT_EQ(string(""), DBusAdaptor::StringToVariant("").reader().get_string());
-  EXPECT_EQ(ex_string, string_v.reader().get_string());
+  EXPECT_EQ(ex_string, string_v_.reader().get_string());
 
   EXPECT_EQ(ex_stringmap[ex_string],
-            (stringmap_v.operator map<string, string>()[ex_string]));
-  EXPECT_EQ(ex_strings[0], strings_v.operator vector<string>()[0]);
+            (stringmap_v_.operator map<string, string>()[ex_string]));
+  EXPECT_EQ(ex_strings[0], strings_v_.operator vector<string>()[0]);
 }
 
 TEST_F(DBusAdaptorTest, Signatures) {
-  EXPECT_TRUE(DBusAdaptor::IsBool(bool_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsByte(byte_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsInt16(int16_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsInt32(int32_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsString(string_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsStringmap(stringmap_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsUint16(uint16_v.signature()));
-  EXPECT_TRUE(DBusAdaptor::IsUint32(uint32_v.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsBool(bool_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsByte(byte_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsInt16(int16_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsInt32(int32_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsString(string_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsStringmap(stringmap_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsUint16(uint16_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsUint32(uint32_v_.signature()));
 
-  EXPECT_FALSE(DBusAdaptor::IsBool(byte_v.signature()));
-  EXPECT_FALSE(DBusAdaptor::IsStrings(string_v.signature()));
+  EXPECT_FALSE(DBusAdaptor::IsBool(byte_v_.signature()));
+  EXPECT_FALSE(DBusAdaptor::IsStrings(string_v_.signature()));
 }
 
 TEST_F(DBusAdaptorTest, Dispatch) {
+  MockPropertyStore store;
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_, "", bool_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_, "", string_v, error));
 
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", strings_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", int16_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", int32_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", uint16_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", uint32_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", stringmap_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", byte_v, error));
+  EXPECT_CALL(store, Contains(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(store, SetBoolProperty("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetInt16Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetInt32Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetStringProperty("", _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(store, SetStringmapProperty("", _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(store, SetStringsProperty("", _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(store, SetUint8Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetUint16Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetUint32Property("", _, _)).WillOnce(Return(true));
 
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", bool_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", string_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", int16_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", int32_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", uint16_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(), "", uint32_v, error));
+  string string_path("/false/path");
+  ::DBus::Path path(string_path);
+  ::DBus::Variant path_v = DBusAdaptor::PathToVariant(path);
+  EXPECT_CALL(store, SetStringProperty("", StrEq(string_path), _))
+      .WillOnce(Return(true));
 
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(), "", byte_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           "",
-                                           strings_v,
-                                           error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           "",
-                                           stringmap_v,
-                                           error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", bool_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", path_v, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", string_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", strings_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", int16_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", int32_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint16_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint32_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", stringmap_v_, error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", byte_v_, error));
 
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(), "", bool_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(), "", byte_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(), "", string_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(), "", int32_v, error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
-                                          "",
-                                          stringmap_v,
-                                          error));
-
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(), "", int16_v, error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
-                                           "",
-                                           uint16_v,
-                                           error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
-                                           "",
-                                           uint32_v,
-                                           error));
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
-                                           "",
-                                           strings_v,
-                                           error));
 }
 
 }  // namespace shill

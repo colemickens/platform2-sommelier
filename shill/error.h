@@ -31,6 +31,7 @@ class Error {
     kPinError,
     kNumErrors
   };
+  static const char * const kErrorNames[kNumErrors];
 
   Error(Type type, const std::string& message);
   virtual ~Error();
@@ -40,8 +41,6 @@ class Error {
   void ToDBusError(::DBus::Error *error);
 
  private:
-  static const char * const kErrorNames[kNumErrors];
-
   Type type_;
   std::string message_;
 

@@ -119,19 +119,19 @@ void WiFi::SupplicantInterfaceProxy::PropertiesChanged(
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Manager *manager,
-           const string& link_name,
+           const string& link,
            int interface_index)
     : Device(control_interface,
              dispatcher,
              manager,
-             link_name,
+             link,
              interface_index),
       task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       dbus_(DBus::Connection::SystemBus()),
       scan_pending_(false) {
-  VLOG(2) << "WiFi device " << link_name << " initialized.";
+  VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 
 WiFi::~WiFi() {

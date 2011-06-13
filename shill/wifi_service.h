@@ -28,6 +28,12 @@ class WiFiService : public Service {
   void Connect();
   void Disconnect();
 
+  // Implementation of PropertyStoreInterface
+  bool Contains(const std::string &property);
+
+ protected:
+  virtual std::string CalculateState() { return "idle"; }
+
  private:
   static const char kSupplicantPropertySSID[];
   static const char kSupplicantPropertyNetworkMode[];
@@ -35,11 +41,24 @@ class WiFiService : public Service {
 
   void RealConnect();
 
+  // Properties
+  std::string passphrase_;
+  bool need_passphrase_;
+  std::string security_;
+  uint8 strength_;
+  const std::string type_;
+  // TODO(cmasone): see if the below can be pulled from the endpoint associated
+  // with this service instead.
+  std::string auth_mode_;
+  bool hidden_ssid_;
+  uint16 frequency_;
+  uint16 physical_mode_;
+  uint16 hex_ssid_;
+
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFi *wifi_;
   const std::vector<uint8_t> ssid_;
   uint32_t mode_;
-  const std::string key_management_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };
 

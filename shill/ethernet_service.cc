@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -29,8 +30,11 @@ EthernetService::EthernetService(ControlInterface *control_interface,
                                  Ethernet *device,
                                  const string &name)
     : Service(control_interface, dispatcher, device, name),
-      ethernet_(device) {
+      ethernet_(device),
+      type_(flimflam::kTypeEthernet) {
   set_auto_connect(true);
+
+  RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
 EthernetService::~EthernetService() { }

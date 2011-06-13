@@ -26,6 +26,7 @@ class MockService : public Service {
 
   MOCK_METHOD0(Connect, void(void));
   MOCK_METHOD0(Disconnect, void(void));
+  MOCK_METHOD0(CalculateState, std::string(void));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockService);

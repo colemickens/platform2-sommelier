@@ -66,7 +66,9 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetProperties(
 void ManagerDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  DBusAdaptor::DispatchOnType(manager_, name, value, error);
+  if (DBusAdaptor::DispatchOnType(manager_, name, value, error)) {
+    PropertyChanged(name, value);
+  }
 }
 
 string ManagerDBusAdaptor::GetState(::DBus::Error &error) {

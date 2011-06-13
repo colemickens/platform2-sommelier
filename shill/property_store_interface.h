@@ -19,6 +19,8 @@ class PropertyStoreInterface {
  public:
   virtual ~PropertyStoreInterface();
 
+  virtual bool Contains(const std::string& property) = 0;
+
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
   // so that they may be shared with libcros.

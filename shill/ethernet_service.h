@@ -26,8 +26,13 @@ class EthernetService : public Service {
   ~EthernetService();
   void Connect();
   void Disconnect();
+
+ protected:
+  virtual std::string CalculateState() { return "idle"; }
+
  private:
   Ethernet *ethernet_;
+  const std::string type_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);
 };
 

@@ -67,14 +67,16 @@ class Device : public DeviceConfigInterface, public PropertyStoreInterface {
   virtual void ConfigIP() {}
 
   // Implementation of PropertyStoreInterface
-  bool SetBoolProperty(const std::string& name, bool value, Error *error);
-  bool SetInt16Property(const std::string& name, int16 value, Error *error);
-  bool SetInt32Property(const std::string& name, int32 value, Error *error);
-  bool SetStringProperty(const std::string& name,
-                         const std::string& value,
-                         Error *error);
-  bool SetUint16Property(const std::string& name, uint16 value, Error *error);
-  bool SetUint32Property(const std::string& name, uint32 value, Error *error);
+  virtual bool Contains(const std::string &property);
+  virtual bool SetBoolProperty(const std::string& name,
+                               bool value,
+                               Error *error);
+  virtual bool SetInt32Property(const std::string& name,
+                                int32 value,
+                                Error *error);
+  virtual bool SetUint16Property(const std::string& name,
+                                 uint16 value,
+                                 Error *error);
 
   const std::string &link_name() const { return link_name_; }
 
@@ -102,6 +104,7 @@ class Device : public DeviceConfigInterface, public PropertyStoreInterface {
   bool running_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
+  std::vector<std::string> known_properties_;
 
  private:
   friend class DeviceAdaptorInterface;

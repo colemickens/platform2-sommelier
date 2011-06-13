@@ -35,6 +35,10 @@ bool DBusAdaptor::DispatchOnType(PropertyStoreInterface *store,
                                  const string &name,
                                  const ::DBus::Variant &value,
                                  ::DBus::Error &error) {
+  if (!store->Contains(name)) {
+    Error(Error::kInvalidProperty, name + " is invalid.").ToDBusError(&error);
+    return false;
+  }
   bool set = false;
   Error e(Error::kInvalidArguments, "Could not write " + name);
 
@@ -46,6 +50,8 @@ bool DBusAdaptor::DispatchOnType(PropertyStoreInterface *store,
     set = store->SetInt16Property(name, value.reader().get_int16(), &e);
   else if (DBusAdaptor::IsInt32(value.signature()))
     set = store->SetInt32Property(name, value.reader().get_int32(), &e);
+  else if (DBusAdaptor::IsPath(value.signature()))
+    set = store->SetStringProperty(name, value.reader().get_path(), &e);
   else if (DBusAdaptor::IsString(value.signature()))
     set = store->SetStringProperty(name, value.reader().get_string(), &e);
   else if (DBusAdaptor::IsStringmap(value.signature()))
@@ -91,6 +97,13 @@ bool DBusAdaptor::DispatchOnType(PropertyStoreInterface *store,
 ::DBus::Variant DBusAdaptor::Int32ToVariant(int32 value) {
   ::DBus::Variant v;
   v.writer().append_int32(value);
+  return v;
+}
+
+// static
+::DBus::Variant DBusAdaptor::PathToVariant(const ::DBus::Path &value) {
+  ::DBus::Variant v;
+  v.writer().append_path(value.c_str());
   return v;
 }
 
@@ -150,6 +163,11 @@ bool DBusAdaptor::IsInt16(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsInt32(::DBus::Signature signature) {
   return signature == ::DBus::type<int32>::sig();
+}
+
+// static
+bool DBusAdaptor::IsPath(::DBus::Signature signature) {
+  return signature == ::DBus::type< ::DBus::Path >::sig();
 }
 
 // static
