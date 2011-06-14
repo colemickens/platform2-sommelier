@@ -195,6 +195,10 @@ check_keyfile() {
   (expr "$1" : '^[^/]*$' > /dev/null)
 }
 
+check_ssh_host() {
+  check_hostname "$1" || check_ipv6 "$1";
+}
+
 cmd_ssh() {
   local user=""
   local host=""
@@ -326,7 +330,7 @@ cmd_ssh() {
     echo "No host given."
   elif ! check_username "$user"; then
     echo "Invalid username '$user'"
-  elif ! check_hostname "$host" || check_ipv6 "$host"; then
+  elif ! check_ssh_host "$host"; then
     echo "Invalid hostname '$host'"
   else
     ssh $defopts $idfile $dforwards $forwards $nocmd \
