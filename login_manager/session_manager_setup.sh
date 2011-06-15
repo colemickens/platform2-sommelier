@@ -85,6 +85,7 @@ CHROME="/opt/google/chrome/chrome"
 # Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
 # updated to contain the new name.  See http://crosbug.com/7901 for more info.
 WM_SCRIPT="/sbin/window-manager-session.sh"
+CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
 # xdg-open is used to open downloaded files.
 # It runs sensible-browser, which uses $BROWSER.
@@ -134,6 +135,15 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
   ulimit -c unlimited
   echo "/mnt/stateful_partition/var/coredumps/core.%e.%p" > \
     /proc/sys/kernel/core_pattern
+fi
+
+# Remove consent file if it had at one point been created by this script.
+if [ -f "$CONSENT_FILE" ]; then
+  CONSENT_USER_GROUP=$(stat -c %U:%G "$CONSENT_FILE")
+  # normally, the consent file would be owned by "chronos:chronos".
+  if [ "$CONSENT_USER_GROUP" = "root:root" ]; then
+    rm -f "$CONSENT_FILE"
+  fi
 fi
 
 # We need to delete these files as Chrome may have left them around from
