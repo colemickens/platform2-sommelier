@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
   server_conn.request_name("org.chromium.CrosDisks");
 
   DiskManager manager;
+  manager.RegisterDefaultFilesystems();
   CrosDisksServer* server = new(std::nothrow) CrosDisksServer(server_conn,
                                                               &manager);
   CHECK(server) << "Failed to create the cros-disks server";
