@@ -32,12 +32,6 @@ if [ -z "$IS_FACTORY_MODE" ]; then
   BOOT_SPLASH_PID="$!"
 fi
 
-# X depends on these being the right permissions/mode and we don't
-# have udev up early enough to do that yet. This is a hack that will
-# go away.  chromium-os:15995
-chmod 0660 /dev/fb0 /dev/dri/card0
-chgrp video /dev/fb0 /dev/dri/card0
-
 mkdir -p /dev/shm /dev/pts
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
