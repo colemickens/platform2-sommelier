@@ -201,40 +201,203 @@ extern const char* kChangePinFunction;
 extern const char* kProposeScanFunction;
 extern const char* kRegisterFunction;
 
-// Flimflam property names.
+// Flimflam Service property names.
 extern const char* kSecurityProperty;
+extern const char* kPriorityProperty;
 extern const char* kPassphraseProperty;
 extern const char* kIdentityProperty;
-extern const char* kCertPathProperty; // DEPRECATED
-extern const char* kOfflineModeProperty;
+extern const char* kAuthorityPathProperty;
+extern const char* kPassphraseRequiredProperty;
+extern const char* kSaveCredentialsProperty;
 extern const char* kSignalStrengthProperty;
 extern const char* kNameProperty;
+extern const char* kStateProperty;
 extern const char* kTypeProperty;
-extern const char* kUnknownString;
+extern const char* kDeviceProperty;
+extern const char* kProfileProperty;
+extern const char* kConnectivityStateProperty;
+extern const char* kFavoriteProperty;
+extern const char* kConnectableProperty;
 extern const char* kAutoConnectProperty;
+extern const char* kIsActiveProperty;
 extern const char* kModeProperty;
-extern const char* kActiveProfileProperty;
-extern const char* kSSIDProperty;
-extern const char* kDevicesProperty;
-extern const char* kNetworksProperty;
-extern const char* kConnectedProperty;
-extern const char* kWifiChannelProperty;
-extern const char* kScanIntervalProperty;
-extern const char* kPoweredProperty;
+extern const char* kErrorProperty;
+extern const char* kProviderProperty;
 extern const char* kHostProperty;
-extern const char* kDBusConnectionProperty;
-extern const char* kDBusObjectProperty;
+extern const char* kDomainProperty;
+extern const char* kProxyConfigProperty;
+extern const char* kCheckPortalProperty;
+extern const char* kSSIDProperty;
+extern const char* kConnectedProperty;
 
-// Flimflam device info property names.
-extern const char* kIPConfigsProperty;
-extern const char* kCertpathSettingsPrefix;
+// Flimflam Wifi Service property names.
+extern const char* kWifiHexSsid;
+extern const char* kWifiFrequency;
+extern const char* kWifiHiddenSsid;
+extern const char* kWifiPhyMode;
+extern const char* kWifiAuthMode;
+extern const char* kWifiChannelProperty;
 
-// Flimflam EAP service properties
+// Flimflam EAP property names.
+extern const char* kEapIdentityProperty;
 extern const char* kEAPEAPProperty;
+extern const char* kEapPhase2AuthProperty;
+extern const char* kEapAnonymousIdentityProperty;
 extern const char* kEAPClientCertProperty;
 extern const char* kEAPCertIDProperty;
+extern const char* kEapClientCertNssProperty;
+extern const char* kEapPrivateKeyProperty;
+extern const char* kEapPrivateKeyPasswordProperty;
 extern const char* kEAPKeyIDProperty;
+extern const char* kEapCaCertProperty;
+extern const char* kEapCaCertIDProperty;
+extern const char* kEapCaCertNssProperty;
+extern const char* kEapUseSystemCAsProperty;
 extern const char* kEAPPINProperty;
+extern const char* kEapPasswordProperty;
+extern const char* kEapKeyMgmtProperty;
+
+// Flimflam Cellular Service property names.
+extern const char* kActivationStateProperty;
+extern const char* kNetworkTechnologyProperty;
+extern const char* kRoamingStateProperty;
+extern const char* kOperatorNameProperty;
+extern const char* kOperatorCodeProperty;
+extern const char* kServingOperatorProperty;
+extern const char* kPaymentURLProperty;
+extern const char* kUsageURLProperty;
+extern const char* kCellularApnProperty;
+extern const char* kCellularLastGoodApnProperty;
+
+// Flimflam Manager property names.
+extern const char* kProfilesProperty;
+extern const char* kServicesProperty;
+extern const char* kServiceWatchListProperty;
+extern const char* kAvailableTechnologiesProperty;
+extern const char* kEnabledTechnologiesProperty;
+extern const char* kConnectedTechnologiesProperty;
+extern const char* kDefaultTechnologyProperty;
+extern const char* kOfflineModeProperty;
+extern const char* kActiveProfileProperty;
+extern const char* kDevicesProperty;
+extern const char* kCheckPortalListProperty;
+extern const char* kCountryProperty;
+extern const char* kPortalURLProperty;
+
+// Flimflam Profile property names.
+extern const char* kEntriesProperty;
+
+// Flimflam Device property names.
+extern const char* kScanningProperty;
+extern const char* kPoweredProperty;
+extern const char* kNetworksProperty;
+extern const char* kScanIntervalProperty;
+extern const char* kBgscanMethodProperty;
+extern const char* kBgscanShortIntervalProperty;
+extern const char* kDBusConnectionProperty;
+extern const char* kDBusObjectProperty;
+extern const char* kBgscanSignalThresholdProperty;
+
+// Flimflam Cellular Device property names.
+extern const char* kCarrierProperty;
+extern const char* kCellularAllowRoamingProperty;
+extern const char* kHomeProviderProperty;
+extern const char* kMeidProperty;
+extern const char* kImeiProperty;
+extern const char* kImsiProperty;
+extern const char* kEsnProperty;
+extern const char* kMdnProperty;
+extern const char* kMinProperty;
+extern const char* kModelIDProperty;
+extern const char* kManufacturerProperty;
+extern const char* kFirmwareRevisionProperty;
+extern const char* kHardwareRevisionProperty;
+extern const char* kPRLVersionProperty;
+extern const char* kSelectedNetworkProperty;
+extern const char* kSupportNetworkScanProperty;
+extern const char* kFoundNetworksProperty;
+extern const char* kIPConfigsProperty;
+
+// Flimflam state options.
+extern const char* kStateIdle;
+extern const char* kStateCarrier;
+extern const char* kStateAssociation;
+extern const char* kStateConfiguration;
+extern const char* kStateReady;
+extern const char* kStatePortal;
+extern const char* kStateOffline;
+extern const char* kStateOnline;
+extern const char* kStateDisconnect;
+extern const char* kStateFailure;
+extern const char* kStateActivationFailure;
+
+// Flimflam property names for SIMLock status.
+extern const char* kSIMLockStatusProperty;
+extern const char* kSIMLockTypeProperty;
+extern const char* kSIMLockRetriesLeftProperty;
+
+// Flimflam property names for Cellular.FoundNetworks.
+extern const char* kLongNameProperty;
+extern const char* kStatusProperty;
+extern const char* kShortNameProperty;
+extern const char* kTechnologyProperty;
+
+// Flimflam SIMLock status types.
+extern const char* kSIMLockPin;
+extern const char* kSIMLockPuk;
+
+// APN info property names.
+extern const char* kApnProperty;
+extern const char* kNetworkIdProperty;
+extern const char* kUsernameProperty;
+extern const char* kPasswordProperty;
+
+// Operator info property names.
+extern const char* kOperatorNameKey;
+extern const char* kOperatorCodeKey;
+extern const char* kOperatorCountryKey;
+
+// Flimflam network technology options.
+extern const char* kNetworkTechnology1Xrtt;
+extern const char* kNetworkTechnologyEvdo;
+extern const char* kNetworkTechnologyGprs;
+extern const char* kNetworkTechnologyEdge;
+extern const char* kNetworkTechnologyUmts;
+extern const char* kNetworkTechnologyHspa;
+extern const char* kNetworkTechnologyHspaPlus;
+extern const char* kNetworkTechnologyLte;
+extern const char* kNetworkTechnologyLteAdvanced;
+
+// Flimflam roaming state options
+extern const char* kRoamingStateHome;
+extern const char* kRoamingStateRoaming;
+extern const char* kRoamingStateUnknown;
+
+// Flimflam activation state options
+extern const char* kActivationStateActivated;
+extern const char* kActivationStateActivating;
+extern const char* kActivationStateNotActivated;
+extern const char* kActivationStatePartiallyActivated;
+extern const char* kActivationStateUnknown;
+
+// Flimflam EAP method options.
+extern const char* kEapMethodPEAP;
+extern const char* kEapMethodTLS;
+extern const char* kEapMethodTTLS;
+extern const char* kEapMethodLEAP;
+
+// Flimflam EAP phase 2 auth options.
+extern const char* kEapPhase2AuthPEAPMD5;
+extern const char* kEapPhase2AuthPEAPMSCHAPV2;
+extern const char* kEapPhase2AuthTTLSMD5;
+extern const char* kEapPhase2AuthTTLSMSCHAPV2;
+extern const char* kEapPhase2AuthTTLSMSCHAP;
+extern const char* kEapPhase2AuthTTLSPAP;
+extern const char* kEapPhase2AuthTTLSCHAP;
+
+// Flimflam VPN provider types.
+extern const char* kProviderL2tpIpsec;
+extern const char* kProviderOpenVpn;
 
 // Flimflam VPN service properties
 extern const char* kVPNDomainProperty;
@@ -243,10 +406,31 @@ extern const char* kVPNDomainProperty;
 extern const char* kMonitorPropertyChanged;
 
 // Flimflam type options.
+extern const char* kTypeEthernet;
 extern const char* kTypeWifi;
+extern const char* kTypeWimax;
+extern const char* kTypeBluetooth;
+extern const char* kTypeCellular;
+extern const char* kTypeVPN;
 
 // Flimflam mode options.
 extern const char* kModeManaged;
+extern const char* kModeAdhoc;
+
+// Flimflam security options.
+extern const char* kSecurityWpa;
+extern const char* kSecurityWep;
+extern const char* kSecurityRsn;
+extern const char* kSecurity8021x;
+extern const char* kSecurityPsk;
+extern const char* kSecurityNone;
+
+// Flimflam L2TPIPsec property names.
+extern const char* kL2TPIPSecCACertNSSProperty;
+extern const char* kL2TPIPSecClientCertIDProperty;
+extern const char* kL2TPIPSecPSKProperty;
+extern const char* kL2TPIPSecUserProperty;
+extern const char* kL2TPIPSecPasswordProperty;
 
 // IPConfig property names.
 extern const char* kMethodProperty;
@@ -267,6 +451,30 @@ extern const char* kTypeBOOTP;
 extern const char* kTypeZeroConf;
 extern const char* kTypeDHCP6;
 extern const char* kTypePPP;
+
+// Flimflam error options.
+extern const char* kErrorOutOfRange;
+extern const char* kErrorPinMissing;
+extern const char* kErrorDhcpFailed;
+extern const char* kErrorConnectFailed;
+extern const char* kErrorBadPassphrase;
+extern const char* kErrorBadWEPKey;
+extern const char* kErrorActivationFailed;
+extern const char* kErrorNeedEvdo;
+extern const char* kErrorNeedHomeNetwork;
+extern const char* kErrorOtaspFailed;
+extern const char* kErrorAaaFailed;
+extern const char* kErrorInternal;
+extern const char* kErrorDNSLookupFailed;
+extern const char* kErrorHTTPGetFailed;
+
+// Flimflam error messages.
+extern const char* kErrorPassphraseRequiredMsg;
+extern const char* kErrorIncorrectPinMsg;
+extern const char* kErrorPinBlockedMsg;
+extern const char* kErrorPinRequiredMsg;
+
+extern const char* kUnknownString;
 }  // namespace flimflam
 
 namespace cashew {
