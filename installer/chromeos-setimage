@@ -200,21 +200,9 @@ if [ -z "${FLAGS_kernel_image}" ]; then
 fi
 
 # Grab the contents of dm="" and trim off the preamble.
-# TODO(kwaters): dump_kernel_config segfaults on ARM.  We use this to know that
-# we need to scrape the u-boot header.  This needs to be cleaned up once
-# verified root works on the ARM kernel.
 DUMP_KERNEL_CONFIG=/usr/bin/dump_kernel_config
 table=
-if ! KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}"); then
-  # FIXME(kwaters): Terrible hack to extract the kernel config from the uboot
-  # header.  There is a 64 byte u-boot header, followed by the size of the
-  # script as a uint32_t, followed by (uint32_t)0.  So, the script itself
-  # starts 72 bytes into the image.
-  dd if="${kernel_image}" of="${tempfile}" bs=1 count=512 skip=72
-  KERNEL_CONFIG=$(sed -n '/setenv bootargs/{s/setenv bootargs *//;p}' \
-                  "${tempfile}")
-fi
-
+KERNEL_CONFIG=$(sudo "${DUMP_KERNEL_CONFIG}" "${kernel_image}")
 # Use the root to determine if verification should be happening.
 kernel_root="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*root=\([^ ]*\).*/\1/g')"
 # Unless specified, the kernel root should dictate whether we are verified
@@ -254,7 +242,6 @@ if [ ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_FALSE} ]; then
 fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
-# TODO(wad) take preamble from dump_kernel_config.
 VERITY=/bin/verity
 table="${verity_preamble},"$(sudo "${VERITY}" create \
         ${verity_depth} \
