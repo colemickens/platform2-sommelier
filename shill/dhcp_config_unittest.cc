@@ -113,6 +113,82 @@ TEST_F(DHCPConfigTest, StartFail) {
   EXPECT_EQ(0, config_->pid_);
 }
 
+namespace {
+
+class UpdateCallbackTest {
+ public:
+  UpdateCallbackTest(const string &message,
+                     IPConfigRefPtr ipconfig,
+                     bool success)
+      : message_(message),
+        ipconfig_(ipconfig),
+        success_(success),
+        called_(false) {}
+
+  void Callback(IPConfigRefPtr ipconfig, bool success) {
+    called_ = true;
+    EXPECT_EQ(ipconfig_.get(), ipconfig.get()) << message_;
+    EXPECT_EQ(success_, success) << message_;
+  }
+
+  bool called() const { return called_; }
+
+ private:
+  const string message_;
+  IPConfigRefPtr ipconfig_;
+  bool success_;
+  bool called_;
+};
+
+}  // namespace {}
+
+TEST_F(DHCPConfigTest, ProcessEventSignalFail) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+      0x01020304);
+  UpdateCallbackTest callback_test(DHCPConfig::kReasonFail, config_, false);
+  config_->RegisterUpdateCallback(
+      NewCallback(&callback_test, &UpdateCallbackTest::Callback));
+  config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
+  EXPECT_TRUE(callback_test.called());
+  EXPECT_TRUE(config_->properties().address.empty());
+}
+
+TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
+  static const char * const kReasons[] =  {
+    DHCPConfig::kReasonBound,
+    DHCPConfig::kReasonRebind,
+    DHCPConfig::kReasonReboot,
+    DHCPConfig::kReasonRenew
+  };
+  for (size_t r = 0; r < arraysize(kReasons); r++) {
+    DHCPConfig::Configuration conf;
+    string message = string(kReasons[r]) + " failed";
+    conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(r);
+    UpdateCallbackTest callback_test(message, config_, true);
+    config_->RegisterUpdateCallback(
+        NewCallback(&callback_test, &UpdateCallbackTest::Callback));
+    config_->ProcessEventSignal(kReasons[r], conf);
+    EXPECT_TRUE(callback_test.called()) << message;
+    EXPECT_EQ(base::StringPrintf("%u.0.0.0", r), config_->properties().address)
+        << message;
+  }
+}
+
+TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
+  DHCPConfig::Configuration conf;
+  conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
+      0x01020304);
+  static const char kReasonUnknown[] = "UNKNOWN_REASON";
+  UpdateCallbackTest callback_test(kReasonUnknown, config_, false);
+  config_->RegisterUpdateCallback(
+      NewCallback(&callback_test, &UpdateCallbackTest::Callback));
+  config_->ProcessEventSignal(kReasonUnknown, conf);
+  EXPECT_FALSE(callback_test.called());
+  EXPECT_TRUE(config_->properties().address.empty());
+}
+
+
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   EXPECT_CALL(*proxy_, DoRelease(kDeviceName)).Times(1);

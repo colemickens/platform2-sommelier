@@ -30,6 +30,12 @@ const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
 const char DHCPConfig::kDHCPCDPathFormatLease[] = "var/run/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] = "var/run/dhcpcd-%s.pid";
+const char DHCPConfig::kReasonBound[] = "BOUND";
+const char DHCPConfig::kReasonFail[] = "FAIL";
+const char DHCPConfig::kReasonRebind[] = "REBIND";
+const char DHCPConfig::kReasonReboot[] = "REBOOT";
+const char DHCPConfig::kReasonRenew[] = "RENEW";
+
 
 DHCPConfig::DHCPConfig(DHCPProvider *provider,
                        DeviceConstRefPtr device,
@@ -98,16 +104,24 @@ void DHCPConfig::InitProxy(DBus::Connection *connection, const char *service) {
   }
 }
 
-void DHCPConfig::ProcessEventSignal(const std::string &reason,
+void DHCPConfig::ProcessEventSignal(const string &reason,
                                     const Configuration &configuration) {
   LOG(INFO) << "Event reason: " << reason;
-
-  IPConfig::Properties properties;
-  if (!ParseConfiguration(configuration, &properties)) {
-    LOG(ERROR) << "Unable to parse the new DHCP configuration -- ignored.";
+  if (reason == kReasonFail) {
+    LOG(ERROR) << "Received failure event from DHCP client.";
+    UpdateProperties(IPConfig::Properties(), false);
     return;
   }
-  UpdateProperties(properties);
+  if (reason != kReasonBound &&
+      reason != kReasonRebind &&
+      reason != kReasonReboot &&
+      reason != kReasonRenew) {
+    LOG(WARNING) << "Event ignored.";
+    return;
+  }
+  IPConfig::Properties properties;
+  CHECK(ParseConfiguration(configuration, &properties));
+  UpdateProperties(properties, true);
 }
 
 bool DHCPConfig::Start() {
@@ -232,11 +246,7 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
   VLOG(2) << "pid " << pid << " exit status " << status;
   DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
   config->child_watch_tag_ = 0;
-
   CHECK_EQ(pid, config->pid_);
-  config->glib_->SpawnClosePID(pid);
-  config->pid_ = 0;
-
   config->CleanupClientState();
 
   // |config| instance may be destroyed after this call.
@@ -252,6 +262,7 @@ void DHCPConfig::CleanupClientState() {
     glib_->SpawnClosePID(pid_);
     pid_ = 0;
   }
+  proxy_.reset();
   file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatLease,
                                                     GetDeviceName().c_str())),
                     false);

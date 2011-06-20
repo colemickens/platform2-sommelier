@@ -36,7 +36,7 @@ DHCPConfigRefPtr DHCPProvider::CreateConfig(DeviceConstRefPtr device) {
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   VLOG(2) << __func__;
-  PIDConfigMap::iterator it = configs_.find(pid);
+  PIDConfigMap::const_iterator it = configs_.find(pid);
   if (it == configs_.end()) {
     return NULL;
   }

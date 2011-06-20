@@ -36,15 +36,15 @@ bool IPConfig::ReleaseIP() {
   return false;
 }
 
-void IPConfig::UpdateProperties(const Properties &properties) {
+void IPConfig::UpdateProperties(const Properties &properties, bool success) {
   properties_ = properties;
   if (update_callback_.get()) {
-    update_callback_->Run(this);
+    update_callback_->Run(this, success);
   }
 }
 
 void IPConfig::RegisterUpdateCallback(
-    Callback1<IPConfigRefPtr>::Type *callback) {
+    Callback2<IPConfigRefPtr, bool>::Type *callback) {
   update_callback_.reset(callback);
 }
 

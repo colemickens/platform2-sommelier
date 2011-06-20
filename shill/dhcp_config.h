@@ -27,15 +27,6 @@ class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
-  static const char kConfigurationKeyBroadcastAddress[];
-  static const char kConfigurationKeyDNS[];
-  static const char kConfigurationKeyDomainName[];
-  static const char kConfigurationKeyDomainSearch[];
-  static const char kConfigurationKeyIPAddress[];
-  static const char kConfigurationKeyMTU[];
-  static const char kConfigurationKeyRouters[];
-  static const char kConfigurationKeySubnetCIDR[];
-
   DHCPConfig(DHCPProvider *provider,
              DeviceConstRefPtr device,
              GLibInterface *glib);
@@ -58,6 +49,9 @@ class DHCPConfig : public IPConfig {
   friend class DHCPConfigTest;
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
+  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalFail);
+  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
+  FRIEND_TEST(DHCPConfigTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
@@ -68,9 +62,24 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, Stop);
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
+  static const char kConfigurationKeyBroadcastAddress[];
+  static const char kConfigurationKeyDNS[];
+  static const char kConfigurationKeyDomainName[];
+  static const char kConfigurationKeyDomainSearch[];
+  static const char kConfigurationKeyIPAddress[];
+  static const char kConfigurationKeyMTU[];
+  static const char kConfigurationKeyRouters[];
+  static const char kConfigurationKeySubnetCIDR[];
+
   static const char kDHCPCDPath[];
   static const char kDHCPCDPathFormatLease[];
   static const char kDHCPCDPathFormatPID[];
+
+  static const char kReasonBound[];
+  static const char kReasonFail[];
+  static const char kReasonRebind[];
+  static const char kReasonReboot[];
+  static const char kReasonRenew[];
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();

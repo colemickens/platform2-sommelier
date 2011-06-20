@@ -46,9 +46,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   // Registers a callback that's executed every time the configuration
   // properties change. Takes ownership of |callback|. Pass NULL to remove a
-  // callback. The callback's argument is a pointer to this IP configuration
-  // instance allowing clients to more easily manage multiple IP configurations.
-  void RegisterUpdateCallback(Callback1<IPConfigRefPtr>::Type *callback);
+  // callback. The callback's first argument is a pointer to this IP
+  // configuration instance allowing clients to more easily manage multiple IP
+  // configurations. The callback's second argument is set to false if IP
+  // configuration failed.
+  void RegisterUpdateCallback(Callback2<IPConfigRefPtr, bool>::Type *callback);
 
   const Properties &properties() const { return properties_; }
 
@@ -61,8 +63,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
  protected:
   // Updates the IP configuration properties and notifies registered listeners
-  // about the event.
-  void UpdateProperties(const Properties &properties);
+  // about the event. |success| is set to false if the IP configuration failed.
+  void UpdateProperties(const Properties &properties, bool success);
 
  private:
   FRIEND_TEST(IPConfigTest, UpdateCallback);
@@ -70,7 +72,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   DeviceConstRefPtr device_;
   Properties properties_;
-  scoped_ptr<Callback1<IPConfigRefPtr>::Type> update_callback_;
+  scoped_ptr<Callback2<IPConfigRefPtr, bool>::Type> update_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };
