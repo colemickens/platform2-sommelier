@@ -11,8 +11,10 @@
 #include <gmock/gmock.h>
 
 #include "shill/device_info.h"
+#include "shill/dhcp_provider.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_glib.h"
 #include "shill/rtnl_handler.h"
 
 namespace shill {
@@ -26,11 +28,13 @@ class DeviceInfoTest : public Test {
       : manager_(&control_interface_, &dispatcher_),
         device_info_(&control_interface_, &dispatcher_, &manager_),
         factory_(this) {
+    DHCPProvider::GetInstance()->glib_ = &glib_;
   }
   base::hash_map<int, DeviceRefPtr> *DeviceInfoDevices() {
     return &device_info_.devices_;
   }
  protected:
+  MockGLib glib_;
   MockControl control_interface_;
   Manager manager_;
   DeviceInfo device_info_;

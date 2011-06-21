@@ -55,6 +55,8 @@ class DHCPProvider {
  private:
   friend struct DefaultSingletonTraits<DHCPProvider>;
   friend class DHCPProviderTest;
+  friend class DeviceInfoTest;
+  friend class DeviceTest;
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
@@ -64,7 +66,7 @@ class DHCPProvider {
   virtual ~DHCPProvider();
 
   // A single listener is used to catch signals from all DHCP clients and
-  // dispatch them to the appropriate proxy.
+  // dispatch them to the appropriate DHCP configuration instance.
   scoped_ptr<DHCPListenerInterface> listener_;
 
   // A map that binds PIDs to DHCP configuration instances.

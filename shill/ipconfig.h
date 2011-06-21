@@ -64,6 +64,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void UpdateProperties(const Properties &properties, bool success);
 
  private:
+  FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
+  FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 

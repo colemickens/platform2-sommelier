@@ -78,6 +78,7 @@ TEST_BIN = shill_unittest
 TEST_OBJS = \
 	dbus_adaptor_unittest.o \
 	device_info_unittest.o \
+	device_unittest.o \
 	dhcp_config_unittest.o \
 	dhcp_provider_unittest.o \
 	ipconfig_unittest.o \

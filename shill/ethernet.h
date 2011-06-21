@@ -15,21 +15,23 @@ namespace shill {
 
 class Ethernet : public Device {
  public:
-  explicit Ethernet(ControlInterface *control_interface,
-                    EventDispatcher *dispatcher,
-                    Manager *manager,
-                    const std::string& link_name,
-                    int interface_index);
+  Ethernet(ControlInterface *control_interface,
+           EventDispatcher *dispatcher,
+           Manager *manager,
+           const std::string& link_name,
+           int interface_index);
   ~Ethernet();
+
   void Start();
   void Stop();
   bool TechnologyIs(Device::Technology type);
-  void LinkEvent(unsigned flags, unsigned change);
-  bool link_up_;
+  void LinkEvent(unsigned int flags, unsigned int change);
 
  private:
   bool service_registered_;
   ServiceRefPtr service_;
+  bool link_up_;
+
   DISALLOW_COPY_AND_ASSIGN(Ethernet);
 };
 

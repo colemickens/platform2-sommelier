@@ -76,7 +76,10 @@ class Service : public base::RefCounted<Service>,
 
   // Returns a string that is guaranteed to uniquely identify this
   // Service instance.
-  virtual const std::string& UniqueName() { return name_; }
+  virtual const std::string &UniqueName() { return name_; }
+
+  bool auto_connect() const { return auto_connect_; }
+  void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
  protected:
   EventDispatcher *dispatcher_;

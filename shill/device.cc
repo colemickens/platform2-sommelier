@@ -14,6 +14,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_dbus_adaptor.h"
+#include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/shill_event.h"
@@ -25,10 +26,10 @@ namespace shill {
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Manager *manager,
-               const string& link_name,
+               const string &link_name,
                int interface_index)
-    : link_name_(link_name),
-      manager_(manager),
+    : manager_(manager),
+      link_name_(link_name),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       interface_index_(interface_index),
       running_(false) {
@@ -49,6 +50,10 @@ void Device::Start() {
 void Device::Stop() {
   running_ = false;
   adaptor_->UpdateEnabled();
+}
+
+bool Device::TechnologyIs(const Technology type) {
+  return false;
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
@@ -108,7 +113,28 @@ bool Device::SetUint32Property(const std::string& name,
 
 const string& Device::UniqueName() const {
   // TODO(pstew): link_name is only run-time unique and won't persist
-  return link_name_;
+  return link_name();
+}
+
+void Device::DestroyIPConfig() {
+  if (ipconfig_.get()) {
+    ipconfig_->ReleaseIP();
+    ipconfig_ = NULL;
+  }
+}
+
+bool Device::AcquireDHCPConfig() {
+  DestroyIPConfig();
+  ipconfig_ = DHCPProvider::GetInstance()->CreateConfig(link_name());
+  ipconfig_->RegisterUpdateCallback(
+      NewCallback(this, &Device::IPConfigUpdatedCallback));
+  return ipconfig_->RequestIP();
+}
+
+void Device::IPConfigUpdatedCallback(IPConfigRefPtr ipconfig, bool success) {
+  // TODO(petkov): Use DeviceInfo to configure IP, etc. -- maybe through
+  // ConfigIP? Also, maybe allow forwarding the callback to interested listeners
+  // (e.g., the Manager).
 }
 
 }  // namespace shill
