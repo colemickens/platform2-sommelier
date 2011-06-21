@@ -3,29 +3,28 @@
 // found in the LICENSE file.
 
 #include <base/callback_old.h>
+#include <gtest/gtest.h>
 
 #include "shill/ipconfig.h"
-#include "shill/mock_control.h"
-#include "shill/mock_device.h"
 
 using testing::Test;
 
 namespace shill {
 
+namespace {
+const char kDeviceName[] = "testdevice";
+}  // namespace {}
+
 class IPConfigTest : public Test {
  public:
-  IPConfigTest()
-      : device_(new MockDevice(&control_interface_, NULL, NULL, "testname", 0)),
-        ipconfig_(new IPConfig(device_)) {}
+  IPConfigTest() : ipconfig_(new IPConfig(kDeviceName)) {}
 
  protected:
-  MockControl control_interface_;
-  scoped_refptr<const MockDevice> device_;
   IPConfigRefPtr ipconfig_;
 };
 
-TEST_F(IPConfigTest, GetDeviceName) {
-  EXPECT_EQ("testname", ipconfig_->GetDeviceName());
+TEST_F(IPConfigTest, DeviceName) {
+  EXPECT_EQ(kDeviceName, ipconfig_->device_name());
 }
 
 TEST_F(IPConfigTest, RequestIP) {

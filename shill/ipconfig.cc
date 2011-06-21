@@ -6,22 +6,16 @@
 
 #include <base/logging.h>
 
-#include "shill/device.h"
-
 using std::string;
 
 namespace shill {
 
-IPConfig::IPConfig(DeviceConstRefPtr device) : device_(device) {
-  VLOG(2) << "IPConfig created.";
+IPConfig::IPConfig(const std::string &device_name) : device_name_(device_name) {
+  VLOG(2) << __func__ << " device: " << device_name;
 }
 
 IPConfig::~IPConfig() {
-  VLOG(2) << "IPConfig destroyed.";
-}
-
-const string &IPConfig::GetDeviceName() const {
-  return device()->UniqueName();
+  VLOG(2) << __func__ << " device: " << device_name();
 }
 
 bool IPConfig::RequestIP() {

@@ -8,8 +8,6 @@
 
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
-#include "shill/mock_control.h"
-#include "shill/mock_device.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 
@@ -29,20 +27,15 @@ const char kDeviceName[] = "testdevicename";
 class DHCPConfigTest : public Test {
  public:
   DHCPConfigTest()
-      : device_(new MockDevice(&control_interface_,
-                               NULL,
-                               NULL,
+      : proxy_(new MockDHCPProxy()),
+        config_(new DHCPConfig(DHCPProvider::GetInstance(),
                                kDeviceName,
-                               0)),
-        proxy_(new MockDHCPProxy()),
-        config_(new DHCPConfig(DHCPProvider::GetInstance(), device_, &glib_)) {
+                               &glib_)) {
     config_->proxy_.reset(proxy_);  // pass ownership
   }
 
  protected:
   MockGLib glib_;
-  MockControl control_interface_;
-  scoped_refptr<MockDevice> device_;
   MockDHCPProxy * const proxy_;
   DHCPConfigRefPtr config_;
 };

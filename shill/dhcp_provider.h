@@ -12,20 +12,18 @@
 #include <dbus-c++/connection.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/device.h"
 #include "shill/dhcp_config.h"
 
 namespace shill {
 
 class DHCPListenerInterface;
-class Device;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
 // entrypoint. Once the provider is initialized through its Init method, DHCP
 // configurations for devices can be obtained through its CreateConfig
 // method. For example, a single DHCP configuration request can be initiated as:
 //
-// DHCPProvider::GetInstance()->CreateConfig(device)->Request();
+// DHCPProvider::GetInstance()->CreateConfig(device_name)->Request();
 class DHCPProvider {
  public:
   // This is a singleton -- use DHCPProvider::GetInstance()->Foo()
@@ -36,10 +34,10 @@ class DHCPProvider {
   // dispatches them to the appropriate DHCP configuration instance.
   void Init(DBus::Connection *connection, GLibInterface *glib);
 
-  // Creates a new DHCPConfig for |device|. The DHCP configuration for the
+  // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
   // DHCPConfig::Renew.
-  DHCPConfigRefPtr CreateConfig(DeviceConstRefPtr device);
+  DHCPConfigRefPtr CreateConfig(const std::string &device_name);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.

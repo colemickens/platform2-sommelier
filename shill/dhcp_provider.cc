@@ -8,6 +8,8 @@
 
 #include "shill/dhcpcd_proxy.h"
 
+using std::string;
+
 namespace shill {
 
 DHCPProvider::DHCPProvider() : glib_(NULL) {
@@ -29,13 +31,13 @@ void DHCPProvider::Init(DBus::Connection *connection,
   glib_ = glib;
 }
 
-DHCPConfigRefPtr DHCPProvider::CreateConfig(DeviceConstRefPtr device) {
-  VLOG(2) << __func__;
-  return new DHCPConfig(this, device, glib_);
+DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name) {
+  VLOG(2) << __func__ << " device: " << device_name;
+  return new DHCPConfig(this, device_name, glib_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
-  VLOG(2) << __func__;
+  VLOG(2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
   if (it == configs_.end()) {
     return NULL;

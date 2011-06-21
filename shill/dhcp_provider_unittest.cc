@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "shill/dhcp_provider.h"
-#include "shill/mock_control.h"
-#include "shill/mock_device.h"
 #include "shill/mock_glib.h"
 
 using testing::Test;
@@ -17,28 +15,20 @@ const char kDeviceName[] = "testdevicename";
 
 class DHCPProviderTest : public Test {
  public:
-  DHCPProviderTest()
-      : device_(new MockDevice(&control_interface_,
-                               NULL,
-                               NULL,
-                               kDeviceName,
-                               0)),
-        provider_(DHCPProvider::GetInstance()) {
+  DHCPProviderTest() : provider_(DHCPProvider::GetInstance()) {
     provider_->glib_ = &glib_;
   }
 
  protected:
   MockGLib glib_;
-  MockControl control_interface_;
-  scoped_refptr<MockDevice> device_;
   DHCPProvider *provider_;
 };
 
 TEST_F(DHCPProviderTest, CreateConfig) {
-  DHCPConfigRefPtr config = provider_->CreateConfig(device_);
+  DHCPConfigRefPtr config = provider_->CreateConfig(kDeviceName);
   EXPECT_TRUE(config.get());
   EXPECT_EQ(&glib_, config->glib_);
-  EXPECT_EQ(kDeviceName, config->GetDeviceName());
+  EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
 }
 

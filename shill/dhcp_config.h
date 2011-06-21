@@ -11,7 +11,6 @@
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/device.h"
 #include "shill/ipconfig.h"
 
 namespace shill {
@@ -28,7 +27,7 @@ class DHCPConfig : public IPConfig {
   typedef std::map<std::string, DBus::Variant> Configuration;
 
   DHCPConfig(DHCPProvider *provider,
-             DeviceConstRefPtr device,
+             const std::string &device_name,
              GLibInterface *glib);
   virtual ~DHCPConfig();
 

@@ -38,19 +38,19 @@ const char DHCPConfig::kReasonRenew[] = "RENEW";
 
 
 DHCPConfig::DHCPConfig(DHCPProvider *provider,
-                       DeviceConstRefPtr device,
+                       const string &device_name,
                        GLibInterface *glib)
-    : IPConfig(device),
+    : IPConfig(device_name),
       provider_(provider),
       pid_(0),
       child_watch_tag_(0),
       root_("/"),
       glib_(glib) {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name;
 }
 
 DHCPConfig::~DHCPConfig() {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name();
 
   // Don't leave behind dhcpcd running.
   Stop();
@@ -60,7 +60,7 @@ DHCPConfig::~DHCPConfig() {
 }
 
 bool DHCPConfig::RequestIP() {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
   }
@@ -72,7 +72,7 @@ bool DHCPConfig::RequestIP() {
 }
 
 bool DHCPConfig::RenewIP() {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name();
   if (!pid_) {
     return false;
   }
@@ -80,12 +80,12 @@ bool DHCPConfig::RenewIP() {
     LOG(ERROR) << "Unable to renew IP before acquiring destination.";
     return false;
   }
-  proxy_->DoRebind(GetDeviceName());
+  proxy_->DoRebind(device_name());
   return true;
 }
 
 bool DHCPConfig::ReleaseIP() {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name();
   if (!pid_) {
     return true;
   }
@@ -93,7 +93,7 @@ bool DHCPConfig::ReleaseIP() {
     LOG(ERROR) << "Unable to release IP before acquiring destination.";
     return false;
   }
-  proxy_->DoRelease(GetDeviceName());
+  proxy_->DoRelease(device_name());
   Stop();
   return true;
 }
@@ -125,12 +125,12 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
 }
 
 bool DHCPConfig::Start() {
-  VLOG(2) << __func__ << ": " << GetDeviceName();
+  VLOG(2) << __func__ << ": " << device_name();
 
   char *argv[4] = {
     const_cast<char *>(kDHCPCDPath),
     const_cast<char *>("-B"),  // foreground
-    const_cast<char *>(GetDeviceName().c_str()),
+    const_cast<char *>(device_name().c_str()),
     NULL
   };
   char *envp[1] = { NULL };
@@ -264,10 +264,10 @@ void DHCPConfig::CleanupClientState() {
   }
   proxy_.reset();
   file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatLease,
-                                                    GetDeviceName().c_str())),
+                                                    device_name().c_str())),
                     false);
   file_util::Delete(root_.Append(base::StringPrintf(kDHCPCDPathFormatPID,
-                                                    GetDeviceName().c_str())),
+                                                    device_name().c_str())),
                     false);
 }
 

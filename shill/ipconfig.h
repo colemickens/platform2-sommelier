@@ -13,8 +13,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/device.h"
-
 namespace shill {
 
 class IPConfig;
@@ -38,11 +36,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
     int mtu;
   };
 
-  explicit IPConfig(DeviceConstRefPtr device);
+  explicit IPConfig(const std::string &device_name);
   virtual ~IPConfig();
 
-  DeviceConstRefPtr device() const { return device_; }
-  const std::string &GetDeviceName() const;
+  const std::string &device_name() const { return device_name_; }
 
   // Registers a callback that's executed every time the configuration
   // properties change. Takes ownership of |callback|. Pass NULL to remove a
@@ -70,7 +67,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 
-  DeviceConstRefPtr device_;
+  const std::string device_name_;
   Properties properties_;
   scoped_ptr<Callback2<IPConfigRefPtr, bool>::Type> update_callback_;
 
