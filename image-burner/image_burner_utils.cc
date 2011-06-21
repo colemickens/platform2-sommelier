@@ -6,6 +6,7 @@
 
 #include <cstring>
 #include <errno.h>
+#include <fcntl.h>
 #include <rootdev/rootdev.h>
 
 #include <base/logging.h>
@@ -26,9 +27,14 @@ BurnWriter::~BurnWriter() {
 }
 
 bool BurnWriter::Open(const char* path) {
-  file_ = fopen(path, "wb");
+  if (file_)
+    Close();
+  DCHECK(!file_);
+  int fd = open(path, O_WRONLY);
+  if (fd >= 0)
+    file_ = fdopen(fd, "wb");
   if (!file_) {
-    LOG(ERROR) << "Couldn't open target path " << path << " : "
+    LOG(ERROR) << "Couldn't open target path " << path << ": "
                << strerror(errno);
     return false;
   } else {
@@ -42,9 +48,10 @@ bool BurnWriter::Close() {
     if (fclose(file_) != 0) {
       LOG(ERROR) << "Couldn't close target file: " << strerror(errno);
       return false;
-   } else {
+    } else {
       LOG(INFO) << "Target file closed";
     }
+    file_ = 0;
   }
   return true;
 }
@@ -76,9 +83,11 @@ BurnReader::~BurnReader() {
 }
 
 bool BurnReader::Open(const char* path) {
+  if (file_)
+    Close();
   file_ = fopen(path, "rb");
   if (!file_) {
-    LOG(ERROR) << "Couldn't open source path " << path << " : "
+    LOG(ERROR) << "Couldn't open source path " << path << ": "
                << strerror(errno);
     return false;
   } else {
@@ -92,9 +101,10 @@ bool BurnReader::Close() {
     if (fclose(file_) != 0) {
       LOG(ERROR) << "Couldn't close source file: " << strerror(errno);
       return false;
-   } else {
+    } else {
       LOG(INFO) << "Source file closed";
     }
+    file_ = NULL;
   }
   return true;
 }
