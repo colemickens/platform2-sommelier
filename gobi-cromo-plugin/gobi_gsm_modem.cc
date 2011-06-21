@@ -13,6 +13,8 @@
 
 #include <sstream>
 
+static const uint32_t kPinRetriesNotKnown = 999;
+
 //======================================================================
 // Construct and destruct
 GobiGsmModem::~GobiGsmModem() {
@@ -264,7 +266,7 @@ uint32_t GobiGsmModem::GetMmAccessTechnology() {
       reinterpret_cast<ULONG*>(data_caps));
 }
 
-void GobiGsmModem::GetPinStatus(std::string* status,
+bool GobiGsmModem::GetPinStatus(std::string* status,
                                 uint32_t* retries_left) {
   ULONG pin_status, verify_retries_left, unblock_retries_left;
   DBus::Error error;
@@ -272,7 +274,7 @@ void GobiGsmModem::GetPinStatus(std::string* status,
   ULONG rc = sdk_->UIMGetPINStatus(gobi::kPinId1, &pin_status,
                                    &verify_retries_left,
                                    &unblock_retries_left);
-  ENSURE_SDK_SUCCESS(UIMGetPINStatus, rc, kPinError);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(UIMGetPINStatus, rc, kPinError, false);
   LOG(INFO) << "pin_status " << pin_status << " vrl " << verify_retries_left
             << " url " << unblock_retries_left;
   if (pin_status == gobi::kPinStatusPermanentlyBlocked) {
@@ -288,11 +290,12 @@ void GobiGsmModem::GetPinStatus(std::string* status,
       if (verify_retries_left != gobi::kPinRetriesLeftUnknown)
         *retries_left = verify_retries_left;
       else
-        *retries_left = 999;
+        *retries_left = kPinRetriesNotKnown;
   } else if (pin_status == gobi::kPinStatusEnabled) {
       *status = "sim-pin";
       *retries_left = verify_retries_left;
   }
+  return true;
 }
 
 
@@ -302,7 +305,7 @@ bool GobiGsmModem::CheckEnableOk(DBus::Error &error) {
   ULONG rc = sdk_->UIMGetPINStatus(gobi::kPinId1, &pin_status,
                                    &verify_retries_left,
                                    &unblock_retries_left);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(UIMGetPINStatus, rc, kPinError, true);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(UIMGetPINStatus, rc, kPinError, false);
   const char *errname;
   switch (pin_status) {
     case gobi::kPinStatusNotInitialized:
@@ -331,8 +334,8 @@ void GobiGsmModem::SetTechnologySpecificProperties() {
   AccessTechnology = GetMmAccessTechnology();
   std::string status;
   uint32_t retries_left;
-  GetPinStatus(&status, &retries_left);
-  LOG(INFO) << "GetPinStatus1: \"" << status << "\" " << retries_left;
+  if (!GetPinStatus(&status, &retries_left))
+    retries_left = kPinRetriesNotKnown;
   UnlockRequired = status;
   UnlockRetries = retries_left;
   // TODO(ers) also need to set AllowedModes property. For the Gsm.Card
@@ -343,8 +346,8 @@ void GobiGsmModem::UpdatePinStatus() {
   std::string status;
   uint32_t retries_left;
 
-  GetPinStatus(&status, &retries_left);
-  LOG(INFO) << "GetPinStatus2: \"" << status << "\" " << retries_left;
+  if (!GetPinStatus(&status, &retries_left))
+    return;
 
   UnlockRequired = status;
   UnlockRetries = retries_left;

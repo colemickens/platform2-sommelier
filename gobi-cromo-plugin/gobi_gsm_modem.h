@@ -121,7 +121,7 @@ class GobiGsmModem
 
  private:
   void SendNetworkTechnologySignal(uint32_t mm_access_tech);
-  void GetPinStatus(std::string* status, uint32_t* retries_left);
+  bool GetPinStatus(std::string* status, uint32_t* retries_left);
   void UpdatePinStatus();
   uint32_t GetMmAccessTechnology();
 
