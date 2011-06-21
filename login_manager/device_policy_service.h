@@ -43,13 +43,13 @@ class DevicePolicyService : public PolicyService {
   // Returns true on success. Fills in |error| upon encountering an error.
   virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
                                         bool* is_owner,
-                                        GError** error);
+                                        Error* error);
 
-  // Ensures that the public key in |buf| is legitimately paired with
-  // a private key held by the current user, signs and stores some
-  // ownership-related metadata, and then stores this key off as the
-  // new device owner key.
-  virtual void ValidateAndStoreOwnerKey(const std::string& current_user,
+  // Ensures that the public key in |buf| is legitimately paired with a private
+  // key held by the current user, signs and stores some ownership-related
+  // metadata, and then stores this key off as the new device owner key. Returns
+  // true if successful, false otherwise
+  virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
                                         const std::string& buf);
 
   // Checks whether the key is missing.
@@ -66,7 +66,6 @@ class DevicePolicyService : public PolicyService {
   // Takes ownership of |policy_store|, |policy_key|, |system_utils|, and |nss|.
   DevicePolicyService(PolicyStore* policy_store,
                       OwnerKey* policy_key,
-                      SystemUtils* system_utils,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       const scoped_refptr<base::MessageLoopProxy>& io_loop,
                       NssUtil* nss,
@@ -79,22 +78,15 @@ class DevicePolicyService : public PolicyService {
   // Returns false on failure, with |error| set appropriately. |error| can be
   // NULL, should you wish to ignore the particulars.
   bool StoreOwnerProperties(const std::string& current_user,
-                            GError** error);
+                            Error* error);
 
   // Checks the user's NSS database to see if she has the private key.
   bool CurrentUserHasOwnerKey(const std::vector<uint8>& key,
-                              GError** error);
+                              Error* error);
 
   // Returns true if the current user is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.
   bool CurrentUserIsOwner(const std::string& current_user);
-
-  // Sends a signal to chromium.
-  void SendSignal(const char* signal_name, bool status);
-
-  // Overrides that additionally send notifications to chromium.
-  virtual void PersistKeyOnIOLoop(bool* result);
-  virtual void PersistPolicyOnIOLoop(base::WaitableEvent* event, bool* result);
 
   scoped_ptr<NssUtil> nss_;
   OwnerKeyLossMitigator* mitigator_;

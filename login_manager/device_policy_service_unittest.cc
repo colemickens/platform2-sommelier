@@ -12,7 +12,6 @@
 #include <base/basictypes.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <chromeos/dbus/dbus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -22,14 +21,10 @@
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_owner_key.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/mock_system_utils.h"
 
 namespace em = enterprise_management;
 
 using google::protobuf::RepeatedPtrField;
-
-using chromeos::Resetter;
-using chromeos::glib::ScopedError;
 
 using testing::AtLeast;
 using testing::DoAll;
@@ -93,11 +88,10 @@ class DevicePolicyServiceTest : public ::testing::Test {
   void InitService(NssUtil* nss) {
     key_ = new StrictMock<MockOwnerKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    system_ = new MockSystemUtils;
     mitigator_.reset(new MockMitigator);
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::CreateForCurrentThread());
-    service_ = new DevicePolicyService(store_, key_, system_,
+    service_ = new DevicePolicyService(store_, key_,
                                        message_loop, message_loop,
                                        nss,
                                        mitigator_.get());
@@ -187,27 +181,14 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
-  void ExpectChromiumSignal(const char* signal, bool status) {
-    EXPECT_CALL(*system_, SendStatusSignalToChromium(signal, status))
-        .Times(1);
-  }
-
   void ExpectPersistKeyAndPolicy() {
     Mock::VerifyAndClearExpectations(key_);
     Mock::VerifyAndClearExpectations(store_);
 
     EXPECT_CALL(*key_, Persist())
         .WillOnce(Return(true));
-    EXPECT_CALL(*system_,
-                SendStatusSignalToChromium(
-                    chromium::kOwnerKeySetSignal,
-                    true));
     EXPECT_CALL(*store_, Persist())
         .WillOnce(Return(true));
-    EXPECT_CALL(*system_,
-                SendStatusSignalToChromium(
-                    chromium::kPropertyChangeCompleteSignal,
-                    true));
     loop_.RunAllPending();
   }
 
@@ -228,7 +209,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   // occur without the test failing.
   StrictMock<MockOwnerKey>* key_;
   StrictMock<MockPolicyStore>* store_;
-  MockSystemUtils* system_;
   scoped_ptr<MockMitigator> mitigator_;
 
   scoped_refptr<DevicePolicyService> service_;
@@ -246,11 +226,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -269,11 +249,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -294,11 +274,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_TRUE(is_owner);
   EXPECT_NO_FATAL_FAILURE(CheckNewOwnerSettings(settings));
 }
@@ -312,11 +292,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("regular_user@somewhere",
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_FALSE(is_owner);
 }
 
@@ -329,11 +309,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_FALSE(is_owner);
 }
 
@@ -348,11 +328,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
       .InSequence(s)
       .WillOnce(Return(true));
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
                                                  &is_owner,
-                                                 &Resetter(&error).lvalue()));
+                                                 &error));
   EXPECT_TRUE(is_owner);
 }
 
@@ -366,11 +346,11 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
       .InSequence(s)
       .WillOnce(Return(false));
 
-  ScopedError error;
+  PolicyService::Error error;
   bool is_owner = false;
   EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
                                                   &is_owner,
-                                                  &Resetter(&error).lvalue()));
+                                                  &error));
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
@@ -431,7 +411,6 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
   InitService(new KeyFailUtil);
 
-  ExpectChromiumSignal(chromium::kOwnerKeySetSignal, false);
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
 
@@ -445,7 +424,6 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
   EXPECT_CALL(*key_, PopulateFromBuffer(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(false));
-  ExpectChromiumSignal(chromium::kOwnerKeySetSignal, false);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
@@ -460,7 +438,6 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
   EXPECT_CALL(*key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(false));
-  ExpectChromiumSignal(chromium::kOwnerKeySetSignal, false);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
@@ -468,7 +445,6 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NssFailure) {
   InitService(new SadNssUtil);
 
-  ExpectChromiumSignal(chromium::kOwnerKeySetSignal, false);
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
 

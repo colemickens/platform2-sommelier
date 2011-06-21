@@ -10,6 +10,7 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_system_utils.h"
 
@@ -33,7 +34,7 @@ MockChildJob::MockChildJob() {
 MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
-  : DevicePolicyService(NULL, NULL, NULL, NULL, NULL, NULL, NULL) {}
+  : DevicePolicyService(NULL, NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)
@@ -48,6 +49,16 @@ MockMitigator::~MockMitigator() {}
 
 MockOwnerKey::MockOwnerKey() : OwnerKey(FilePath("")) {}
 MockOwnerKey::~MockOwnerKey() {}
+
+MockPolicyService::MockPolicyService()
+  : PolicyService(NULL, NULL, NULL, NULL) {}
+MockPolicyService::~MockPolicyService() {}
+
+MockPolicyServiceCompletion::MockPolicyServiceCompletion() {}
+MockPolicyServiceCompletion::~MockPolicyServiceCompletion() {}
+
+MockPolicyServiceDelegate::MockPolicyServiceDelegate() {}
+MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
 MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}

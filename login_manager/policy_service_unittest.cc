@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/threading/thread.h>
@@ -18,8 +16,8 @@
 
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/mock_system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -32,8 +30,10 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 using ::testing::_;
 
+namespace {
+
 MATCHER_P(CastEq, str, "") {
-  return std::string(reinterpret_cast<const char*>(arg)) == str;
+  return std::equal(str.begin(), str.end(), reinterpret_cast<const char*>(arg));
 }
 
 MATCHER_P(VectorEq, str, "") {
@@ -46,6 +46,8 @@ MATCHER_P(PolicyEq, str, "") {
   return arg.SerializeToString(&arg_policy) && arg_policy == str;
 }
 
+}  // namespace
+
 namespace login_manager {
 
 class PolicyServiceTest : public testing::Test {
@@ -54,23 +56,16 @@ class PolicyServiceTest : public testing::Test {
       : fake_data_("fake_data"),
         fake_sig_("fake_signature"),
         fake_key_("fake_key"),
-        fake_key_sig_("fake_key_signature"),
-        policy_blob_(NULL) {
+        fake_key_sig_("fake_key_signature") {
   }
 
   virtual void SetUp() {
     key_ = new StrictMock<MockOwnerKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    system_ = new MockSystemUtils;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::CreateForCurrentThread());
-    service_ = new PolicyService(store_, key_, system_,
-                                 message_loop, message_loop);
-  }
-
-  virtual void TearDown() {
-    if (policy_blob_)
-      g_array_free(policy_blob_, TRUE);
+    service_ = new PolicyService(store_, key_, message_loop, message_loop);
+    service_->set_delegate(&delegate_);
   }
 
   void InitPolicy(const std::string& data,
@@ -88,10 +83,8 @@ class PolicyServiceTest : public testing::Test {
       policy_proto_.set_new_public_key_signature(key_signature);
 
     ASSERT_TRUE(policy_proto_.SerializeToString(&policy_str_));
-    policy_blob_ =
-        g_array_sized_new(FALSE, FALSE, sizeof(char), policy_str_.size());
-    ASSERT_TRUE(policy_blob_);
-    g_array_append_vals(policy_blob_, policy_str_.c_str(), policy_str_.size());
+    policy_data_ = reinterpret_cast<const uint8*>(policy_str_.c_str());
+    policy_len_ = policy_str_.size();
   }
 
   void ExpectVerifyAndSetPolicy(Sequence& sequence) {
@@ -107,12 +100,15 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*key_, Persist())
         .InSequence(sequence)
         .WillOnce(Return(true));
+    EXPECT_CALL(delegate_, OnKeyPersisted(true));
   }
 
   void ExpectPersistPolicy(Sequence& sequence) {
     EXPECT_CALL(*store_, Persist())
         .InSequence(sequence)
         .WillOnce(Return(true));
+    EXPECT_CALL(completion_, Success()).Times(1);
+    EXPECT_CALL(delegate_, OnPolicyPersisted(true));
   }
 
   void ExpectKeyEqualsFalse(Sequence& sequence) {
@@ -131,9 +127,11 @@ class PolicyServiceTest : public testing::Test {
     EXPECT_CALL(*key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Set(_)).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    EXPECT_CALL(*system_, SetAndSendGError(code, _, _)).Times(1);
+    EXPECT_CALL(completion_, Success()).Times(0);
+    EXPECT_CALL(completion_, Failure(_)).Times(1);
 
-    EXPECT_EQ(FALSE, service_->Store(policy_blob_, NULL, flags));
+    EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_,
+                                 flags));
     loop_.RunAllPending();
   }
 
@@ -152,7 +150,8 @@ class PolicyServiceTest : public testing::Test {
   // Various representations of the policy protobuf.
   em::PolicyFetchResponse policy_proto_;
   std::string policy_str_;
-  GArray* policy_blob_;
+  const uint8* policy_data_;
+  uint32 policy_len_;
 
   MessageLoop loop_;
 
@@ -160,7 +159,8 @@ class PolicyServiceTest : public testing::Test {
   // occur without the test failing.
   StrictMock<MockOwnerKey>* key_;
   StrictMock<MockPolicyStore>* store_;
-  MockSystemUtils* system_;
+  MockPolicyServiceDelegate delegate_;
+  MockPolicyServiceCompletion completion_;
 
   scoped_refptr<PolicyService> service_;
 };
@@ -194,7 +194,8 @@ TEST_F(PolicyServiceTest, Store) {
   ExpectKeyPopulated(s1, true);
   ExpectVerifyAndSetPolicy(s2);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -255,7 +256,8 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
   ExpectKeyPopulated(s1, true);
   ExpectVerifyAndSetPolicy(s2);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -277,8 +279,8 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
   ExpectKeyPopulated(s1, true);
   ExpectVerifyAndSetPolicy(s2);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL,
-                                  PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              PolicyService::KEY_CLOBBER));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -298,7 +300,8 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   ExpectKeyPopulated(s2, true);
   ExpectVerifyAndSetPolicy(s3);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -329,7 +332,8 @@ TEST_F(PolicyServiceTest, StoreRotation) {
   ExpectKeyPopulated(s1, true);
   ExpectVerifyAndSetPolicy(s2);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL, kAllKeyFlags));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              kAllKeyFlags));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -351,8 +355,8 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
   ExpectKeyPopulated(s1, true);
   ExpectVerifyAndSetPolicy(s2);
 
-  EXPECT_EQ(TRUE, service_->Store(policy_blob_, NULL,
-                                  PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_,
+                              PolicyService::KEY_CLOBBER));
 
   Mock::VerifyAndClearExpectations(key_);
   Mock::VerifyAndClearExpectations(store_);
@@ -403,15 +407,11 @@ TEST_F(PolicyServiceTest, Retrieve) {
   EXPECT_CALL(*store_, Get())
       .WillOnce(ReturnRef(policy_proto_));
 
-  GArray* out_policy = NULL;
-  GError* error = NULL;
-  EXPECT_EQ(TRUE, service_->Retrieve(&out_policy, &error));
-  ASSERT_TRUE(out_policy);
-  ASSERT_FALSE(error);
-  ASSERT_EQ(policy_str_.size(), out_policy->len);
+  std::vector<uint8> policy_data;
+  EXPECT_TRUE(service_->Retrieve(&policy_data));
+  ASSERT_EQ(policy_str_.size(), policy_data.size());
   EXPECT_TRUE(std::equal(policy_str_.begin(), policy_str_.end(),
-                         out_policy->data));
-  g_array_free(out_policy, TRUE);
+                         policy_data.begin()));
 }
 
 class PolicyServiceThreadTest : public testing::Test {
@@ -424,11 +424,11 @@ class PolicyServiceThreadTest : public testing::Test {
   virtual void SetUp() {
     key_ = new StrictMock<MockOwnerKey>;
     store_ = new StrictMock<MockPolicyStore>;
-    system_ = new MockSystemUtils;
     service_ =
-        new PolicyService(store_, key_, system_,
+        new PolicyService(store_, key_,
                           base::MessageLoopProxy::CreateForCurrentThread(),
                           io_thread_.message_loop_proxy());
+    service_->set_delegate(&delegate_);
   }
 
   MessageLoop main_loop_;
@@ -438,7 +438,7 @@ class PolicyServiceThreadTest : public testing::Test {
   // occur without the test failing.
   StrictMock<MockOwnerKey>* key_;
   StrictMock<MockPolicyStore>* store_;
-  MockSystemUtils* system_;
+  MockPolicyServiceDelegate delegate_;
 
   scoped_refptr<PolicyService> service_;
 
@@ -449,14 +449,16 @@ class PolicyServiceThreadTest : public testing::Test {
 TEST_F(PolicyServiceThreadTest, PersistPolicySyncSuccess) {
   EXPECT_CALL(*store_, Persist())
       .WillOnce(Return(true));
-  EXPECT_TRUE(service_->PersistPolicySync());
+  service_->PersistPolicySync();
+  EXPECT_CALL(delegate_, OnPolicyPersisted(true));
   main_loop_.RunAllPending();
 }
 
 TEST_F(PolicyServiceThreadTest, PersistPolicySyncFailure) {
   EXPECT_CALL(*store_, Persist())
       .WillOnce(Return(false));
-  EXPECT_FALSE(service_->PersistPolicySync());
+  service_->PersistPolicySync();
+  EXPECT_CALL(delegate_, OnPolicyPersisted(false));
   main_loop_.RunAllPending();
 }
 

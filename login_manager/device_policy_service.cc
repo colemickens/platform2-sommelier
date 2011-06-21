@@ -16,7 +16,6 @@
 #include "login_manager/owner_key.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_store.h"
-#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -40,7 +39,6 @@ DevicePolicyService* DevicePolicyService::Create(
   NssUtil* nss = NssUtil::Create();
   return new DevicePolicyService(new PolicyStore(FilePath(kPolicyPath)),
                                  new OwnerKey(nss->GetOwnerKeyFilePath()),
-                                 new SystemUtils,
                                  main_loop,
                                  io_loop,
                                  nss,
@@ -50,7 +48,7 @@ DevicePolicyService* DevicePolicyService::Create(
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
     const std::string& current_user,
     bool* is_owner,
-    GError** error) {
+    Error* error) {
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
   bool can_access_key = CurrentUserHasOwnerKey(key()->public_key_der(), error);
@@ -68,41 +66,39 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   return true;
 }
 
-void DevicePolicyService::ValidateAndStoreOwnerKey(
+bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
     const std::string& buf) {
   std::vector<uint8> pub_key;
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
-  if (!CurrentUserHasOwnerKey(pub_key, NULL)) {
-    SendSignal(chromium::kOwnerKeySetSignal, false);
-    return;
-  }
+  Error error;
+  if (!CurrentUserHasOwnerKey(pub_key, &error))
+   return false;
 
   // If we're not mitigating a key loss, we should be able to populate |key_|.
   // If we're mitigating a key loss, we should be able to clobber |key_|.
   if ((!mitigator_->Mitigating() && !key()->PopulateFromBuffer(pub_key)) ||
       (mitigator_->Mitigating() && !key()->ClobberCompromisedKey(pub_key))) {
-    SendSignal(chromium::kOwnerKeySetSignal, false);
-    return;
+    return false;
   }
   PersistKey();
-  if (StoreOwnerProperties(current_user, NULL)) {
+  if (StoreOwnerProperties(current_user, &error)) {
     PersistPolicy();
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
+  return true;
 }
 
 DevicePolicyService::DevicePolicyService(
     PolicyStore* policy_store,
     OwnerKey* policy_key,
-    SystemUtils* system_utils,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     const scoped_refptr<base::MessageLoopProxy>& io_loop,
     NssUtil* nss,
     OwnerKeyLossMitigator* mitigator)
-    : PolicyService(policy_store, policy_key, system_utils, main_loop, io_loop),
+    : PolicyService(policy_store, policy_key, main_loop, io_loop),
       nss_(nss),
       mitigator_(mitigator) {
 }
@@ -112,7 +108,7 @@ bool DevicePolicyService::KeyMissing() {
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
-                                               GError** error) {
+                                               Error* error) {
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData poldata;
   if (policy.has_policy_data())
@@ -161,7 +157,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
     const char err_msg[] = "Could not sign policy containing new owner data.";
     LOG_IF(ERROR, error) << err_msg;
     LOG_IF(WARNING, !error) << err_msg;
-    system()->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
+    error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
     return false;
   }
 
@@ -177,21 +173,20 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   return true;
 }
 
-bool DevicePolicyService::CurrentUserHasOwnerKey(
-    const std::vector<uint8>& key,
-    GError** error) {
+bool DevicePolicyService::CurrentUserHasOwnerKey(const std::vector<uint8>& key,
+                                                 Error* error) {
   if (!nss_->MightHaveKeys())
     return false;
   if (!nss_->OpenUserDB()) {
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
-    system()->SetGError(error, CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
+    error->Set(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
     return false;
   }
   if (!nss_->GetPrivateKey(key)) {
     const char msg[] = "Could not verify that public key belongs to the owner.";
     LOG(WARNING) << msg;
-    system()->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+    error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
     return false;
   }
   return true;
@@ -208,37 +203,6 @@ bool DevicePolicyService::CurrentUserIsOwner(const std::string& current_user) {
             poldata.username() == current_user);
   }
   return false;
-}
-
-void DevicePolicyService::SendSignal(const char* signal_name, bool status) {
-  system()->SendStatusSignalToChromium(signal_name, status);
-}
-
-void DevicePolicyService::PersistKeyOnIOLoop(bool* result) {
-  bool status;
-  PolicyService::PersistKeyOnIOLoop(&status);
-  main_loop()->PostTask(
-      FROM_HERE,
-      NewRunnableMethod(this,
-                        &DevicePolicyService::SendSignal,
-                        chromium::kOwnerKeySetSignal,
-                        status));
-  if (result)
-    *result = status;
-}
-
-void DevicePolicyService::PersistPolicyOnIOLoop(base::WaitableEvent* event,
-                                                bool* result) {
-  bool status;
-  PolicyService::PersistPolicyOnIOLoop(event, &status);
-  main_loop()->PostTask(
-      FROM_HERE,
-      NewRunnableMethod(this,
-                        &DevicePolicyService::SendSignal,
-                        chromium::kPropertyChangeCompleteSignal,
-                        status));
-  if (result)
-    *result = status;
 }
 
 }  // namespace login_manager

@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
+#include <base/stl_util-inl.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task.h>
 
@@ -20,17 +21,38 @@ namespace em = enterprise_management;
 
 namespace login_manager {
 
+PolicyService::Error::Error()
+    : code_(CHROMEOS_LOGIN_ERROR_DECODE_FAIL) {
+}
+
+PolicyService::Error::Error(ChromeOSLoginError code,
+                            const std::string& message)
+    : code_(code),
+      message_(message) {
+}
+
+void PolicyService::Error::Set(ChromeOSLoginError code,
+                               const std::string& message) {
+  code_ = code;
+  message_ = message;
+}
+
+PolicyService::Completion::~Completion() {
+}
+
+PolicyService::Delegate::~Delegate() {
+}
+
 PolicyService::PolicyService(
     PolicyStore* policy_store,
     OwnerKey* policy_key,
-    SystemUtils* system_utils,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     const scoped_refptr<base::MessageLoopProxy>& io_loop)
     : policy_store_(policy_store),
       policy_key_(policy_key),
-      system_(system_utils),
       main_loop_(main_loop),
-      io_loop_(io_loop) {
+      io_loop_(io_loop),
+      delegate_(NULL) {
 }
 
 PolicyService::~PolicyService() {
@@ -50,19 +72,69 @@ bool PolicyService::Initialize() {
   return true;
 }
 
-gboolean PolicyService::Store(GArray* policy_blob,
-                              DBusGMethodInvocation* context,
-                              int flags) {
+bool PolicyService::Store(const uint8* policy_blob,
+                          uint32 len,
+                          Completion* completion,
+                          int flags) {
   em::PolicyFetchResponse policy;
-  if (!policy.ParseFromArray(policy_blob->data, policy_blob->len) ||
+  if (!policy.ParseFromArray(policy_blob, len) ||
       !policy.has_policy_data() ||
       !policy.has_policy_data_signature()) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, context, msg);
+    completion->Failure(Error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg));
     return FALSE;
   }
 
+  return StorePolicy(policy, completion, flags);
+}
+
+bool PolicyService::Retrieve(std::vector<uint8>* policy_blob) {
+  const em::PolicyFetchResponse& policy = store()->Get();
+  policy_blob->resize(policy.ByteSize());
+  uint8* start = vector_as_array(policy_blob);
+  uint8* end = policy.SerializeWithCachedSizesToArray(start);
+  return (end - start == policy_blob->size());
+}
+
+bool PolicyService::PersistPolicySync() {
+  base::WaitableEvent event(true, false);
+  io_loop_->PostTask(FROM_HERE,
+                     NewRunnableMethod(this,
+                                       &PolicyService::PersistPolicyOnIOLoop,
+                                       static_cast<Completion*>(NULL),
+                                       &event));
+  event.Wait();
+}
+
+void PolicyService::PersistKey() {
+  io_loop_->PostTask(
+      FROM_HERE,
+      NewRunnableMethod(this,
+                        &PolicyService::PersistKeyOnIOLoop));
+}
+
+void PolicyService::PersistPolicy() {
+  io_loop_->PostTask(
+      FROM_HERE,
+      NewRunnableMethod(this,
+                        &PolicyService::PersistPolicyOnIOLoop,
+                        static_cast<Completion*>(NULL),
+                        static_cast<base::WaitableEvent*>(NULL)));
+}
+
+void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
+  io_loop_->PostTask(
+      FROM_HERE,
+      NewRunnableMethod(this,
+                        &PolicyService::PersistPolicyOnIOLoop,
+                        completion,
+                        static_cast<base::WaitableEvent*>(NULL)));
+}
+
+bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
+                                Completion* completion,
+                                int flags) {
   // Determine if the policy has pushed a new owner key and, if so, set it.
   if (policy.has_new_public_key() && !key()->Equals(policy.new_public_key())) {
     // The policy contains a new key, and it is different from |key_|.
@@ -90,10 +162,8 @@ gboolean PolicyService::Store(GArray* policy_blob,
     if (!installed) {
       const char msg[] = "Failed to install policy key!";
       LOG(ERROR) << msg;
-      system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,
-                                context,
-                                msg);
-      return FALSE;
+      completion->Failure(Error(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg));
+      return false;
     }
 
     // If here, need to persist the key just loaded into memory to disk.
@@ -109,123 +179,60 @@ gboolean PolicyService::Store(GArray* policy_blob,
                      sig.size())) {
     const char msg[] = "Signature could not be verified.";
     LOG(ERROR) << msg;
-    system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, context, msg);
-    return FALSE;
+    completion->Failure(Error(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg));
+    return false;
   }
 
   store()->Set(policy);
-  PersistPolicyWithContext(context);
-  return TRUE;
+  PersistPolicyWithCompletion(completion);
+  return true;
 }
 
-gboolean PolicyService::Retrieve(GArray** policy_blob, GError** error) {
-  const em::PolicyFetchResponse& policy = store()->Get();
-  int size = policy.ByteSize();
-  *policy_blob = g_array_sized_new(FALSE, FALSE, sizeof(uint8), size);
-  if (!*policy_blob) {
-    const char msg[] = "Unable to allocate memory for response.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-    return FALSE;
-  }
-  g_array_set_size(*policy_blob, size);
-  uint8* start = reinterpret_cast<uint8*>((*policy_blob)->data);
-  uint8* end = policy.SerializeWithCachedSizesToArray(start);
-  return (end - start == (*policy_blob)->len) ? TRUE : FALSE;
-}
-
-bool PolicyService::PersistPolicySync() {
-  // Even if we haven't gotten around to processing a persist task.
-  base::WaitableEvent event(true, false);
-  bool result;
-  io_loop_->PostTask(FROM_HERE,
-                     NewRunnableMethod(this,
-                                       &PolicyService::PersistPolicyOnIOLoop,
-                                       &event,
-                                       &result));
-  event.Wait();
-  return result;
-}
-
-void PolicyService::PersistKey() {
-  io_loop_->PostTask(
-      FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistKeyOnIOLoop,
-                        static_cast<bool*>(NULL)));
-}
-
-void PolicyService::PersistPolicy() {
-  base::WaitableEvent* event = NULL;
-  bool* result = NULL;
-  io_loop_->PostTask(
-      FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyOnIOLoop,
-                        event,
-                        result));
-}
-
-void PolicyService::PersistPolicyWithContext(DBusGMethodInvocation* context) {
-  io_loop_->PostTask(
-      FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyWithContextOnIOLoop,
-                        context));
-}
-
-void PolicyService::PersistKeyOnIOLoop(bool* result) {
+void PolicyService::PersistKeyOnIOLoop() {
   DCHECK(io_loop_->BelongsToCurrentThread());
   bool status = key()->Persist();
+  main_loop_->PostTask(FROM_HERE,
+                       NewRunnableMethod(this,
+                                         &PolicyService::OnKeyPersisted,
+                                         status));
+}
+
+void PolicyService::PersistPolicyOnIOLoop(Completion* completion,
+                                          base::WaitableEvent* event) {
+  DCHECK(io_loop_->BelongsToCurrentThread());
+  bool status = store()->Persist();
+  if (event)
+    event->Signal();
+  main_loop_->PostTask(FROM_HERE,
+                       NewRunnableMethod(this,
+                                         &PolicyService::OnPolicyPersisted,
+                                         completion,
+                                         status));
+}
+
+void PolicyService::OnKeyPersisted(bool status) {
   if (status)
     LOG(INFO) << "Persisted policy key to disk.";
   else
     LOG(ERROR) << "Failed to persist policy key to disk.";
-  if (result)
-    *result = status;
+  if (delegate_)
+    delegate_->OnKeyPersisted(status);
 }
 
-void PolicyService::PersistPolicyOnIOLoop(base::WaitableEvent* event,
-                                          bool* result) {
-  DCHECK(io_loop_->BelongsToCurrentThread());
-  bool status = store()->Persist();
-  if (status)
-    LOG(INFO) << "Persisted policy to disk.";
-  else
-    LOG(ERROR) << "Failed to persist policy to disk.";
-  if (result)
-    *result = status;
-  if (event)
-    event->Signal();
-}
-
-void PolicyService::PersistPolicyWithContextOnIOLoop(
-    DBusGMethodInvocation* context) {
-  DCHECK(io_loop_->BelongsToCurrentThread());
-  bool status = store()->Persist();
-  std::string msg = "Failed to persist policy data to disk.";
-  if (!status)
-    LOG(ERROR) << msg;
-  if (context) {
-    main_loop_->PostTask(FROM_HERE,
-                         NewRunnableMethod(this,
-                                           &PolicyService::CompleteDBusCall,
-                                           context,
-                                           status,
-                                           CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,
-                                           msg));
-  }
-}
-
-void PolicyService::CompleteDBusCall(DBusGMethodInvocation* context,
-                                     bool status,
-                                     ChromeOSLoginError code,
-                                     const std::string& msg) {
+void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
   if (status) {
-    dbus_g_method_return(context, true);
+    LOG(INFO) << "Persisted policy to disk.";
+    if (completion)
+      completion->Success();
   } else {
-    system_->SetAndSendGError(code, context, msg.c_str());
+    std::string msg = "Failed to persist policy to disk.";
+    LOG(ERROR) << msg;
+    if (completion)
+      completion->Failure(Error(CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg));
   }
+
+  if (delegate_)
+    delegate_->OnPolicyPersisted(status);
 }
 
 }  // namespace login_manager

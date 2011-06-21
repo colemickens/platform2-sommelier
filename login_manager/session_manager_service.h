@@ -56,7 +56,8 @@ class NssUtil;
 // SHA1 with RSA encryption.
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
-      public chromeos::dbus::AbstractDbusService {
+      public chromeos::dbus::AbstractDbusService,
+      public login_manager::PolicyService::Delegate {
  public:
 
   explicit SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
@@ -122,6 +123,10 @@ class SessionManagerService
   virtual bool Initialize();
   virtual bool Register(const chromeos::dbus::BusConnection &conn);
   virtual bool Reset();
+
+  // login_manager::PolicyService::Delegate implementation:
+  virtual void OnPolicyPersisted(bool success);
+  virtual void OnKeyPersisted(bool success);
 
   // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
@@ -361,6 +366,12 @@ class SessionManagerService
   // If the child believes it should be stopped (as opposed to not run anymore)
   // we actually exit the Service as well.
   bool ShouldStopChild(ChildJobInterface* child_job);
+
+  // Load the policy blob from |service| and write it to |policy_blob|. Returns
+  // TRUE if the data is can be fetched, FALSE otherwise and sets |error|.
+  gboolean RetrievePolicyFromService(PolicyService* service,
+                                     GArray** policy_blob,
+                                     GError** error);
 
   static const uint32 kMaxEmailSize;
   static const char kEmailSeparator;

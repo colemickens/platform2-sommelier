@@ -10,6 +10,8 @@
 #include <signal.h>
 #include <unistd.h>
 
+#include <algorithm>
+
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/file_path.h>
@@ -35,7 +37,6 @@
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_upstart_signal_emitter.h"
 
-namespace login_manager {
 using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -55,6 +56,16 @@ static void BadExit() { _exit(1); }
 static void BadExitAfterSleep() { sleep(1); _exit(1); }
 static void RunAndSleep() { while (true) { sleep(1); } };
 static void CleanExit() { _exit(0); }
+
+namespace {
+
+MATCHER_P(CastEq, str, "") {
+  return std::equal(str.begin(), str.end(), reinterpret_cast<const char*>(arg));
+}
+
+}  // namespace
+
+namespace login_manager {
 
 // Used as a base class for the tests in this file.
 // Gives useful shared functionality.
@@ -189,6 +200,13 @@ class SessionManagerTest : public ::testing::Test {
                     chromium::kPropertyChangeCompleteSignal, false))
         .Times(1);
     MockUtils();
+  }
+
+  void ExpectStorePolicy(MockDevicePolicyService* service,
+                         const std::string& policy,
+                         int flags) {
+    EXPECT_CALL(*service, Store(CastEq(policy), policy.size(), _, flags))
+        .WillOnce(Return(true));
   }
 
   void StartFakeSession() {
@@ -705,11 +723,11 @@ TEST_F(SessionManagerTest, StorePolicyNoSession) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   const std::string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  int flags = PolicyService::KEY_ROTATE |
-              PolicyService::KEY_INSTALL_NEW |
-              PolicyService::KEY_CLOBBER;
-  EXPECT_CALL(*device_policy_service_, Store(policy_blob, NULL, flags))
-      .WillOnce(Return(TRUE));
+  ExpectStorePolicy(device_policy_service_,
+                    fake_policy,
+                    PolicyService::KEY_ROTATE |
+                    PolicyService::KEY_INSTALL_NEW |
+                    PolicyService::KEY_CLOBBER);
   EXPECT_EQ(TRUE, manager_->StorePolicy(policy_blob, NULL));
   g_array_free(policy_blob, TRUE);
 }
@@ -719,9 +737,9 @@ TEST_F(SessionManagerTest, StorePolicySessionStarted) {
   manager_->test_api().set_session_started(true, "user@somewhere");
   const std::string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  int flags = PolicyService::KEY_ROTATE;
-  EXPECT_CALL(*device_policy_service_, Store(policy_blob, NULL, flags))
-      .WillOnce(Return(TRUE));
+  ExpectStorePolicy(device_policy_service_,
+                    fake_policy,
+                    PolicyService::KEY_ROTATE);
   EXPECT_EQ(TRUE, manager_->StorePolicy(policy_blob, NULL));
   g_array_free(policy_blob, TRUE);
 }
@@ -729,16 +747,18 @@ TEST_F(SessionManagerTest, StorePolicySessionStarted) {
 TEST_F(SessionManagerTest, RetrievePolicy) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   const std::string fake_policy("fake policy");
-  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_CALL(*device_policy_service_, Retrieve(_, _))
-      .WillOnce(DoAll(SetArgumentPointee<0>(policy_blob),
-                      Return(TRUE)));
+  const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*device_policy_service_, Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
+                      Return(true)));
   GArray* out_blob;
   ScopedError error;
   EXPECT_EQ(TRUE, manager_->RetrievePolicy(&out_blob,
                                            &Resetter(&error).lvalue()));
-  EXPECT_EQ(out_blob, policy_blob);
-  g_array_free(policy_blob, TRUE);
+  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  EXPECT_TRUE(
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
+  g_array_free(out_blob, TRUE);
 }
 
 TEST_F(SessionManagerTest, RestartJobUnknownPid) {

@@ -70,6 +70,47 @@ using std::vector;
 int g_shutdown_pipe_write_fd = -1;
 int g_shutdown_pipe_read_fd = -1;
 
+// PolicyService::Completion implementation that forwards the result to a DBus
+// invocation context.
+class DBusGMethodCompletion : public PolicyService::Completion {
+ public:
+  // Takes ownership of |context|.
+  DBusGMethodCompletion(DBusGMethodInvocation* context);
+  virtual ~DBusGMethodCompletion();
+
+  virtual void Success();
+  virtual void Failure(const PolicyService::Error& error);
+
+ private:
+  DBusGMethodInvocation* context_;
+
+  DISALLOW_COPY_AND_ASSIGN(DBusGMethodCompletion);
+};
+
+DBusGMethodCompletion::DBusGMethodCompletion(DBusGMethodInvocation* context)
+    : context_(context) {
+}
+
+DBusGMethodCompletion::~DBusGMethodCompletion() {
+  if (context_) {
+    NOTREACHED() << "Unfinished DBUS call!";
+    dbus_g_method_return(context_, false);
+  }
+}
+
+void DBusGMethodCompletion::Success() {
+  dbus_g_method_return(context_, true);
+  context_ = NULL;
+  delete this;
+}
+
+void DBusGMethodCompletion::Failure(const PolicyService::Error& error) {
+  SystemUtils system;
+  system.SetAndSendGError(error.code(), context_, error.message().c_str());
+  context_ = NULL;
+  delete this;
+}
+
 // static
 // Common code between SIG{HUP, INT, TERM}Handler.
 void SessionManagerService::GracefulShutdownHandler(int signal) {
@@ -217,6 +258,7 @@ bool SessionManagerService::Initialize() {
   device_policy_ = DevicePolicyService::Create(mitigator_.get(),
                                                message_loop_,
                                                io_thread_.message_loop_proxy());
+  device_policy_->set_delegate(this);
   return true;
 }
 
@@ -268,6 +310,15 @@ bool SessionManagerService::Reset() {
   dont_use_directly_.reset(new MessageLoopForUI);
   message_loop_ = base::MessageLoopProxy::CreateForCurrentThread();
   return true;
+}
+
+void SessionManagerService::OnPolicyPersisted(bool success) {
+  system_->SendStatusSignalToChromium(chromium::kPropertyChangeCompleteSignal,
+                                      success);
+}
+
+void SessionManagerService::OnKeyPersisted(bool success) {
+  system_->SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, success);
 }
 
 bool SessionManagerService::Run() {
@@ -484,11 +535,14 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   // Check whether the current user is the owner, and if so make sure she is
   // whitelisted and has an owner key.
   bool user_is_owner = false;
+  PolicyService::Error policy_error;
   if (!device_policy_->CheckAndHandleOwnerLogin(current_user_,
                                                 &user_is_owner,
-                                                error)) {
-    *OUT_done = FALSE;
-    return FALSE;
+                                                &policy_error)) {
+    system_->SetGError(error,
+                       policy_error.code(),
+                       policy_error.message().c_str());
+    return *OUT_done = FALSE;
   }
 
   // Send each user login event to UMA (right before we start session
@@ -590,12 +644,17 @@ gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  return device_policy_->Store(policy_blob, context, flags);
+  return device_policy_->Store(reinterpret_cast<uint8*>(policy_blob->data),
+                               policy_blob->len,
+                               new DBusGMethodCompletion(context),
+                               flags) ? TRUE : FALSE;
 }
 
 gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
                                                GError** error) {
-  return device_policy_->Retrieve(OUT_policy_blob, error);
+  return RetrievePolicyFromService(device_policy_.get(),
+                                   OUT_policy_blob,
+                                   error);
 }
 
 gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
@@ -942,6 +1001,31 @@ std::vector<std::vector<std::string> > SessionManagerService::GetArgLists(
     arg_lists.push_back(arg_list);
   }
   return arg_lists;
+}
+
+gboolean SessionManagerService::RetrievePolicyFromService(
+    PolicyService* service,
+    GArray** policy_blob,
+    GError** error) {
+  std::vector<uint8> policy_data;
+  if (service->Retrieve(&policy_data)) {
+    *policy_blob = g_array_sized_new(FALSE, FALSE, sizeof(uint8),
+                                     policy_data.size());
+    if (!*policy_blob) {
+      const char msg[] = "Unable to allocate memory for response.";
+      LOG(ERROR) << msg;
+      system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+      return FALSE;
+    }
+    g_array_append_vals(*policy_blob,
+                        vector_as_array(&policy_data), policy_data.size());
+    return TRUE;
+  }
+
+  const char msg[] = "Failed to retrieve policy data.";
+  LOG(ERROR) << msg;
+  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+  return FALSE;
 }
 
 }  // namespace login_manager
