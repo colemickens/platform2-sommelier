@@ -9,14 +9,12 @@
 #include <map>
 #include <vector>
 
-
-#include <base/hash_tables.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
-#include "shill/device_config_interface.h"
 #include "shill/accessor_interface.h"
-#include "shill/property_store_interface.h"
+#include "shill/device_config_interface.h"
+#include "shill/property_store.h"
 
 namespace shill {
 
@@ -33,7 +31,7 @@ typedef scoped_refptr<const Service> ServiceConstRefPtr;
 typedef scoped_refptr<Service> ServiceRefPtr;
 
 class Service : public base::RefCounted<Service>,
-                public PropertyStoreInterface {
+                public PropertyStore {
  public:
   enum ConnectFailure {
     kServiceFailureUnknown,
@@ -86,8 +84,7 @@ class Service : public base::RefCounted<Service>,
 
   virtual bool IsActive() { return false; }
 
-  // Implementation of PropertyStoreInterface
-  virtual bool Contains(const std::string &property);
+  // Implementation of PropertyStore
   virtual bool SetBoolProperty(const std::string &name,
                                bool value,
                                Error *error);
@@ -112,30 +109,12 @@ class Service : public base::RefCounted<Service>,
  protected:
   virtual std::string CalculateState() = 0;
 
-  void RegisterBool(const std::string &name, bool *prop);
-  void RegisterConstBool(const std::string &name, const bool *prop);
   void RegisterDerivedBool(const std::string &name,
                            bool(Service::*get)(void),
                            bool(Service::*set)(const bool&));
-  void RegisterInt32(const std::string &name, int32 *prop);
-  void RegisterString(const std::string &name, std::string *prop);
-  void RegisterConstString(const std::string &name, const std::string *prop);
   void RegisterDerivedString(const std::string &name,
                              std::string(Service::*get)(void),
                              bool(Service::*set)(const std::string&));
-  void RegisterStringmap(const std::string &name,
-                         std::map<std::string, std::string> *prop);
-  void RegisterConstStringmap(const std::string &name,
-                              const std::map<std::string, std::string> *prop);
-  void RegisterConstUint8(const std::string &name, const uint8 *prop);
-  void RegisterConstUint16(const std::string &name, const uint16 *prop);
-
-  base::hash_map<std::string, BoolAccessor> bool_properties_;
-  base::hash_map<std::string, Int32Accessor> int32_properties_;
-  base::hash_map<std::string, StringAccessor> string_properties_;
-  base::hash_map<std::string, StringmapAccessor> stringmap_properties_;
-  base::hash_map<std::string, Uint8Accessor> uint8_properties_;
-  base::hash_map<std::string, Uint16Accessor> uint16_properties_;
 
   // Properties
   bool auto_connect_;

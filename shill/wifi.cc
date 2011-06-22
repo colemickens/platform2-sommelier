@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -134,6 +135,12 @@ WiFi::WiFi(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       dbus_(DBus::Connection::SystemBus()),
       scan_pending_(false) {
+  // TODO(quiche): Decide if scan_pending_ is close enough to
+  // "currently scanning" that we don't care, or if we want to track
+  // scan pending/currently scanning/no scan scheduled as a tri-state
+  // kind of thing.
+  RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
+  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 

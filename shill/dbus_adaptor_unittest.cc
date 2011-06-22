@@ -33,14 +33,22 @@ namespace shill {
 class DBusAdaptorTest : public PropertyStoreTest {
  public:
   DBusAdaptorTest()
-      : ex_bool(true),
-        ex_byte(0xff),
-        ex_uint16(65535),
-        ex_uint32(2000000),
-        ex_int16(-32768),
-        ex_int32(-65536),
-        ex_string("something"),
-        ex_strings(1, ex_string),
+      : ex_bool_(true),
+        ex_byte_(0xff),
+        ex_uint16_(65535),
+        ex_uint32_(2000000),
+        ex_int16_(-32768),
+        ex_int32_(-65536),
+        ex_string_("something"),
+        ex_strings_(1, ex_string_),
+        bool_v_(DBusAdaptor::BoolToVariant(ex_bool_)),
+        byte_v_(DBusAdaptor::ByteToVariant(ex_byte_)),
+        uint16_v_(DBusAdaptor::Uint16ToVariant(ex_uint16_)),
+        uint32_v_(DBusAdaptor::Uint32ToVariant(ex_uint32_)),
+        int16_v_(DBusAdaptor::Int16ToVariant(ex_int16_)),
+        int32_v_(DBusAdaptor::Int32ToVariant(ex_int32_)),
+        string_v_(DBusAdaptor::StringToVariant(ex_string_)),
+        strings_v_(DBusAdaptor::StringsToVariant(ex_strings_)),
         device_(new MockDevice(&control_interface_,
                                &dispatcher_,
                                &manager_,
@@ -50,61 +58,64 @@ class DBusAdaptorTest : public PropertyStoreTest {
                                  &dispatcher_,
                                  device_,
                                  "mock")) {
-    ex_stringmap[ex_string] = ex_string;
-
-    bool_v_ = DBusAdaptor::BoolToVariant(ex_bool);
-    byte_v_ = DBusAdaptor::ByteToVariant(ex_byte);
-    uint16_v_ = DBusAdaptor::Uint16ToVariant(ex_uint16);
-    uint32_v_ = DBusAdaptor::Uint32ToVariant(ex_uint32);
-    int16_v_ = DBusAdaptor::Int16ToVariant(ex_int16);
-    int32_v_ = DBusAdaptor::Int32ToVariant(ex_int32);
-    string_v_ = DBusAdaptor::StringToVariant(ex_string);
-    stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap);
-    strings_v_ = DBusAdaptor::StringsToVariant(ex_strings);
+    ex_stringmap_[ex_string_] = ex_string_;
+    stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
   }
 
   virtual ~DBusAdaptorTest() {}
 
-  bool ex_bool;
-  uint8 ex_byte;
-  uint16 ex_uint16;
-  uint32 ex_uint32;
-  int16 ex_int16;
-  int32 ex_int32;
-  string ex_string;
-  map<string, string> ex_stringmap;
-  vector<string> ex_strings;
-
  protected:
+  bool ex_bool_;
+  uint8 ex_byte_;
+  uint16 ex_uint16_;
+  uint32 ex_uint32_;
+  int16 ex_int16_;
+  int32 ex_int32_;
+  string ex_string_;
+  map<string, string> ex_stringmap_;
+  vector<map<string, string> > ex_stringmaps_;
+  vector<string> ex_strings_;
+
+  ::DBus::Variant bool_v_;
+  ::DBus::Variant byte_v_;
+  ::DBus::Variant int16_v_;
+  ::DBus::Variant int32_v_;
+  ::DBus::Variant string_v_;
+  ::DBus::Variant stringmap_v_;
+  ::DBus::Variant stringmaps_v_;
+  ::DBus::Variant strings_v_;
+  ::DBus::Variant uint16_v_;
+  ::DBus::Variant uint32_v_;
+
   DeviceRefPtr device_;
   ServiceRefPtr service_;
 };
 
 TEST_F(DBusAdaptorTest, Conversions) {
-  EXPECT_EQ(0, DBusAdaptor::BoolToVariant(0).reader().get_bool());
-  EXPECT_EQ(ex_bool, bool_v_.reader().get_bool());
+  EXPECT_EQ(0, PropertyStoreTest::kBoolV.reader().get_bool());
+  EXPECT_EQ(ex_bool_, bool_v_.reader().get_bool());
 
-  EXPECT_EQ(0, DBusAdaptor::ByteToVariant(0).reader().get_byte());
-  EXPECT_EQ(ex_byte, byte_v_.reader().get_byte());
+  EXPECT_EQ(0, PropertyStoreTest::kByteV.reader().get_byte());
+  EXPECT_EQ(ex_byte_, byte_v_.reader().get_byte());
 
-  EXPECT_EQ(0, DBusAdaptor::Uint16ToVariant(0).reader().get_uint16());
-  EXPECT_EQ(ex_uint16, uint16_v_.reader().get_uint16());
+  EXPECT_EQ(0, PropertyStoreTest::kUint16V.reader().get_uint16());
+  EXPECT_EQ(ex_uint16_, uint16_v_.reader().get_uint16());
 
-  EXPECT_EQ(0, DBusAdaptor::Int16ToVariant(0).reader().get_int16());
-  EXPECT_EQ(ex_int16, int16_v_.reader().get_int16());
+  EXPECT_EQ(0, PropertyStoreTest::kInt16V.reader().get_int16());
+  EXPECT_EQ(ex_int16_, int16_v_.reader().get_int16());
 
-  EXPECT_EQ(0, DBusAdaptor::Uint32ToVariant(0).reader().get_uint32());
-  EXPECT_EQ(ex_uint32, uint32_v_.reader().get_uint32());
+  EXPECT_EQ(0, PropertyStoreTest::kUint32V.reader().get_uint32());
+  EXPECT_EQ(ex_uint32_, uint32_v_.reader().get_uint32());
 
-  EXPECT_EQ(0, DBusAdaptor::Int32ToVariant(0).reader().get_int32());
-  EXPECT_EQ(ex_int32, int32_v_.reader().get_int32());
+  EXPECT_EQ(0, PropertyStoreTest::kInt32V.reader().get_int32());
+  EXPECT_EQ(ex_int32_, int32_v_.reader().get_int32());
 
-  EXPECT_EQ(string(""), DBusAdaptor::StringToVariant("").reader().get_string());
-  EXPECT_EQ(ex_string, string_v_.reader().get_string());
+  EXPECT_EQ(string(""), PropertyStoreTest::kStringV.reader().get_string());
+  EXPECT_EQ(ex_string_, string_v_.reader().get_string());
 
-  EXPECT_EQ(ex_stringmap[ex_string],
-            (stringmap_v_.operator map<string, string>()[ex_string]));
-  EXPECT_EQ(ex_strings[0], strings_v_.operator vector<string>()[0]);
+  EXPECT_EQ(ex_stringmap_[ex_string_],
+            (stringmap_v_.operator map<string, string>()[ex_string_]));
+  EXPECT_EQ(ex_strings_[0], strings_v_.operator vector<string>()[0]);
 }
 
 TEST_F(DBusAdaptorTest, Signatures) {

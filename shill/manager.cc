@@ -11,6 +11,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -19,6 +20,7 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
+#include "shill/property_accessor.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
@@ -34,20 +36,33 @@ Manager::Manager(ControlInterface *control_interface,
     offline_mode_(false),
     state_(flimflam::kStateOffline) {
   // Initialize Interface monitor, so we can detect new interfaces
-  known_properties_.push_back(flimflam::kStateProperty);
-  known_properties_.push_back(flimflam::kAvailableTechnologiesProperty);
-  known_properties_.push_back(flimflam::kEnabledTechnologiesProperty);
-  known_properties_.push_back(flimflam::kConnectedTechnologiesProperty);
-  known_properties_.push_back(flimflam::kDefaultTechnologyProperty);
-  known_properties_.push_back(flimflam::kCheckPortalListProperty);
-  known_properties_.push_back(flimflam::kCountryProperty);
-  known_properties_.push_back(flimflam::kOfflineModeProperty);
-  known_properties_.push_back(flimflam::kPortalURLProperty);
-  known_properties_.push_back(flimflam::kActiveProfileProperty);
-  known_properties_.push_back(flimflam::kProfilesProperty);
-  known_properties_.push_back(flimflam::kDevicesProperty);
-  known_properties_.push_back(flimflam::kServicesProperty);
-  known_properties_.push_back(flimflam::kServiceWatchListProperty);
+  RegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
+                         &Manager::AvailableTechnologies,
+                         NULL);
+  RegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
+                         &Manager::ConnectedTechnologies,
+                         NULL);
+  RegisterDerivedString(flimflam::kDefaultTechnologyProperty,
+                        &Manager::DefaultTechnology,
+                        NULL);
+  RegisterString(flimflam::kCheckPortalListProperty, &check_portal_list_);
+  RegisterString(flimflam::kCountryProperty, &country_);
+  RegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
+                         &Manager::EnabledTechnologies,
+                         NULL);
+  RegisterBool(flimflam::kOfflineModeProperty, &offline_mode_);
+  RegisterString(flimflam::kPortalURLProperty, &portal_url_);
+  RegisterDerivedString(flimflam::kStateProperty,
+                        &Manager::CalculateState,
+                        NULL);
+
+  // TODO(cmasone): Add support for R/O properties that return DBus object paths
+  // known_properties_.push_back(flimflam::kActiveProfileProperty);
+  // known_properties_.push_back(flimflam::kProfilesProperty);
+  // known_properties_.push_back(flimflam::kDevicesProperty);
+  // known_properties_.push_back(flimflam::kServicesProperty);
+  // known_properties_.push_back(flimflam::kServiceWatchListProperty);
+
   VLOG(2) << "Manager initialized.";
 }
 
@@ -127,22 +142,10 @@ ServiceRefPtr Manager::FindService(const std::string& name) {
   return NULL;
 }
 
-bool Manager::Contains(const std::string &property) {
-  vector<string>::iterator it;
-  for (it = known_properties_.begin(); it != known_properties_.end(); ++it) {
-    if (property == *it)
-      return true;
-  }
-  return false;
-}
-
 bool Manager::SetBoolProperty(const string& name, bool value, Error *error) {
   VLOG(2) << "Setting " << name << " as a bool.";
-  bool set = false;
-  if (name == flimflam::kOfflineModeProperty) {
-    offline_mode_ = value;
-    set = true;
-  }
+  bool set = (ContainsKey(bool_properties_, name) &&
+              bool_properties_[name]->Set(value));
   if (!set && error)
     error->Populate(Error::kInvalidArguments, name + " is not a R/W bool.");
   return set;
@@ -152,24 +155,48 @@ bool Manager::SetStringProperty(const string& name,
                                 const string& value,
                                 Error *error) {
   VLOG(2) << "Setting " << name << " as a string.";
-  bool set = false;
-  if (name == flimflam::kActiveProfileProperty) {
-    active_profile_ = value;
-    set = true;
-  } else if (name == flimflam::kCountryProperty) {
-    country_ = value;
-    set = true;
-  } else if (name == flimflam::kPortalURLProperty) {
-    portal_url_ = value;
-    set = true;
-  } else if (name == flimflam::kCheckPortalListProperty) {
-    // parse string, update all services of specified technologies.
-    set = true;
-  }
-
+  bool set = (ContainsKey(string_properties_, name) &&
+              string_properties_[name]->Set(value));
   if (!set && error)
     error->Populate(Error::kInvalidArguments, name + " is not a R/W string.");
   return set;
+}
+
+void Manager::RegisterDerivedString(const string &name,
+                                    string(Manager::*get)(void),
+                                    bool(Manager::*set)(const string&)) {
+  string_properties_[name] =
+      StringAccessor(new CustomAccessor<Manager, string>(this, get, set));
+}
+
+void Manager::RegisterDerivedStrings(
+    const string &name,
+    std::vector<string>(Manager::*get)(void),
+    bool(Manager::*set)(const vector<string>&)) {
+  strings_properties_[name] =
+      StringsAccessor(new CustomAccessor<Manager, vector<string> >(this,
+                                                                   get,
+                                                                   set));
+}
+
+string Manager::CalculateState() {
+  return flimflam::kStateOffline;
+}
+
+vector<string> Manager::AvailableTechnologies() {
+  return vector<string>();
+}
+
+vector<string> Manager::ConnectedTechnologies() {
+  return vector<string>();
+}
+
+string Manager::DefaultTechnology() {
+  return "";
+}
+
+vector<string> Manager::EnabledTechnologies() {
+  return vector<string>();
 }
 
 }  // namespace shill

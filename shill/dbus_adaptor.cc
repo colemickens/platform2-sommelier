@@ -11,7 +11,7 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
-#include "shill/property_store_interface.h"
+#include "shill/property_store.h"
 
 using std::map;
 using std::string;
@@ -31,7 +31,7 @@ DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
 DBusAdaptor::~DBusAdaptor() {}
 
 // static
-bool DBusAdaptor::DispatchOnType(PropertyStoreInterface *store,
+bool DBusAdaptor::DispatchOnType(PropertyStore *store,
                                  const string &name,
                                  const ::DBus::Variant &value,
                                  ::DBus::Error &error) {
@@ -117,6 +117,15 @@ bool DBusAdaptor::DispatchOnType(PropertyStoreInterface *store,
 // static
 ::DBus::Variant DBusAdaptor::StringmapToVariant(
     const map<string, string> &value) {
+  ::DBus::Variant v;
+  ::DBus::MessageIter writer = v.writer();
+  writer << value;
+  return v;
+}
+
+// static
+::DBus::Variant DBusAdaptor::StringmapsToVariant(
+    const vector<map<string, string> > &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;

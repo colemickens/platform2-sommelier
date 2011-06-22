@@ -31,9 +31,6 @@ class WiFiService : public Service {
   const std::string &key_management() const;
   const std::vector<uint8_t> &ssid() const;
 
-  // Implementation of PropertyStoreInterface
-  bool Contains(const std::string &property);
-
  protected:
   virtual std::string CalculateState() { return "idle"; }
 

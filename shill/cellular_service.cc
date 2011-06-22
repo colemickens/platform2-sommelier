@@ -52,10 +52,4 @@ void CellularService::Connect() { }
 
 void CellularService::Disconnect() { }
 
-bool CellularService::Contains(const string &property) {
-  return (Service::Contains(property) ||
-          uint8_properties_.find(property) != uint8_properties_.end() ||
-          stringmap_properties_.find(property) != stringmap_properties_.end());
-}
-
 }  // namespace shill

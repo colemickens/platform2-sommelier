@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular_service.h"
 #include "shill/control_interface.h"
@@ -34,6 +35,27 @@ Cellular::Cellular(ControlInterface *control_interface,
                                    this,
                                    "service-" + link)),
       service_registered_(false) {
+  RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+
+  RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
+  RegisterConstString(flimflam::kCarrierProperty, &carrier_);
+  RegisterConstString(flimflam::kMeidProperty, &meid_);
+  RegisterConstString(flimflam::kImeiProperty, &imei_);
+  RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  RegisterConstString(flimflam::kEsnProperty, &esn_);
+  RegisterConstString(flimflam::kMdnProperty, &mdn_);
+  RegisterConstString(flimflam::kMinProperty, &min_);
+  RegisterConstString(flimflam::kModelIDProperty, &model_id_);
+  RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
+  RegisterConstString(flimflam::kFirmwareRevisionProperty, &firmware_revision_);
+  RegisterConstString(flimflam::kHardwareRevisionProperty, &hardware_revision_);
+  RegisterConstInt16(flimflam::kPRLVersionProperty, &prl_version_);
+
+  // TODO(cmasone): Deal with these compound properties
+  // known_properties_.push_back(flimflam::kSIMLockStatusProperty);
+  // known_properties_.push_back(flimflam::kFoundNetworksProperty);
+
   VLOG(2) << "Cellular device " << link_name() << " initialized.";
 }
 

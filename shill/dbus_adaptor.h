@@ -17,29 +17,31 @@ namespace shill {
 #define SHILL_INTERFACE "org.chromium.flimflam"
 #define SHILL_PATH "/org/chromium/flimflam"
 
-class PropertyStoreInterface;
+class PropertyStore;
 
 // Superclass for all DBus-backed Adaptor objects
 class DBusAdaptor : public DBus::ObjectAdaptor {
  public:
-  DBusAdaptor(DBus::Connection* conn, const std::string& object_path);
+  DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
 
-  static bool DispatchOnType(PropertyStoreInterface *store,
-                             const std::string& name,
-                             const ::DBus::Variant& value,
+  static bool DispatchOnType(PropertyStore *store,
+                             const std::string &name,
+                             const ::DBus::Variant &value,
                              ::DBus::Error &error);
 
   static ::DBus::Variant BoolToVariant(bool value);
   static ::DBus::Variant ByteToVariant(uint8 value);
   static ::DBus::Variant Int16ToVariant(int16 value);
   static ::DBus::Variant Int32ToVariant(int32 value);
-  static ::DBus::Variant PathToVariant(const ::DBus::Path& value);
-  static ::DBus::Variant StringToVariant(const std::string& value);
+  static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
+  static ::DBus::Variant StringToVariant(const std::string &value);
   static ::DBus::Variant StringmapToVariant(
-      const std::map<std::string, std::string>& value);
+      const std::map<std::string, std::string> &value);
+  static ::DBus::Variant StringmapsToVariant(
+      const std::vector<std::map<std::string, std::string> > &value);
   static ::DBus::Variant StringsToVariant(
-      const std::vector<std::string>& value);
+      const std::vector<std::string> &value);
   static ::DBus::Variant Uint16ToVariant(uint16 value);
   static ::DBus::Variant Uint32ToVariant(uint32 value);
 

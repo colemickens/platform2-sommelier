@@ -30,7 +30,7 @@ using ::testing::Test;
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
-using std::vector;
+using ::testing::Values;
 
 class ManagerTest : public PropertyStoreTest {
  public:
@@ -141,40 +141,53 @@ TEST_F(ManagerTest, Dispatch) {
   ::DBus::Error error;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
                                           flimflam::kOfflineModeProperty,
-                                          bool_v_,
+                                          PropertyStoreTest::kBoolV,
                                           error));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
-                                          flimflam::kActiveProfileProperty,
-                                          string_v_,
+                                          flimflam::kCountryProperty,
+                                          PropertyStoreTest::kStringV,
                                           error));
 
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", bool_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", strings_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", int16_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", int32_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", uint16_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", uint32_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", stringmap_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", byte_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-
+  // Attempt to write with value of wrong type should return InvalidArgs.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
-                                           flimflam::kActiveProfileProperty,
-                                           bool_v_,
+                                           flimflam::kCountryProperty,
+                                           PropertyStoreTest::kBoolV,
                                            error));
   EXPECT_EQ(invalid_args_, error.name());
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
                                            flimflam::kOfflineModeProperty,
-                                           string_v_,
+                                           PropertyStoreTest::kStringV,
                                            error));
   EXPECT_EQ(invalid_args_, error.name());
+
+  // Attempt to write R/O property should return InvalidArgs.
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+      &manager_,
+      flimflam::kEnabledTechnologiesProperty,
+      PropertyStoreTest::kStringsV,
+      error));
+  EXPECT_EQ(invalid_args_, error.name());
 }
+
+TEST_P(ManagerTest, TestProperty) {
+  // Ensure that an attempt to write unknown properties returns InvalidProperty.
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
+  EXPECT_EQ(invalid_prop_, error.name());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    ManagerTestInstance,
+    ManagerTest,
+    Values(PropertyStoreTest::kBoolV,
+           PropertyStoreTest::kByteV,
+           PropertyStoreTest::kStringV,
+           PropertyStoreTest::kInt16V,
+           PropertyStoreTest::kInt32V,
+           PropertyStoreTest::kUint16V,
+           PropertyStoreTest::kUint32V,
+           PropertyStoreTest::kStringsV,
+           PropertyStoreTest::kStringmapV,
+           PropertyStoreTest::kStringmapsV));
 
 }  // namespace shill

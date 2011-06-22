@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_PROPERTY_STORE_
 #define SHILL_MOCK_PROPERTY_STORE_
 
-#include "shill/property_store_interface.h"
+#include "shill/property_store.h"
 
 #include <map>
 #include <string>
@@ -17,7 +17,7 @@ namespace shill {
 
 class Error;
 
-class MockPropertyStore : public PropertyStoreInterface {
+class MockPropertyStore : public PropertyStore {
  public:
   MockPropertyStore() {}
   virtual ~MockPropertyStore() {}

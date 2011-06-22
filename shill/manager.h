@@ -13,7 +13,7 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/property_store_interface.h"
+#include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
 
@@ -24,7 +24,7 @@ class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 
-class Manager : public PropertyStoreInterface {
+class Manager : public PropertyStore {
  public:
   // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
@@ -44,8 +44,7 @@ class Manager : public PropertyStoreInterface {
 
   ServiceRefPtr FindService(const std::string& name);
 
-  // Implementation of PropertyStoreInterface
-  virtual bool Contains(const std::string &property);
+  // Implementation of PropertyStore
   virtual bool SetBoolProperty(const std::string &name,
                                bool value,
                                Error *error);
@@ -53,17 +52,32 @@ class Manager : public PropertyStoreInterface {
                                  const std::string &value,
                                  Error *error);
 
+ protected:
+  void RegisterDerivedString(const std::string &name,
+                             std::string(Manager::*get)(void),
+                             bool(Manager::*set)(const std::string&));
+  void RegisterDerivedStrings(
+      const std::string &name,
+      std::vector<std::string>(Manager::*get)(void),
+      bool(Manager::*set)(const std::vector<std::string>&));
+
  private:
+  std::string CalculateState();
+  std::vector<std::string> AvailableTechnologies();
+  std::vector<std::string> ConnectedTechnologies();
+  std::string DefaultTechnology();
+  std::vector<std::string> EnabledTechnologies();
+
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   bool running_;
-  std::vector<std::string> known_properties_;
   std::vector<DeviceRefPtr> devices_;
   std::vector<ServiceRefPtr> services_;
 
-  // Properties to be get/set via PropertyStoreInterface calls.
+  // Properties to be get/set via PropertyStore calls.
   bool offline_mode_;
   std::string state_;
+  std::string check_portal_list_;
   std::string country_;
   std::string portal_url_;
 

@@ -17,43 +17,33 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/property_store_interface.h"
+#include "shill/property_store.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
-class PropertyStoreTest : public ::testing::Test {
+class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
  public:
-  PropertyStoreTest()
-      : bool_v_(DBusAdaptor::BoolToVariant(0)),
-        byte_v_(DBusAdaptor::ByteToVariant(0)),
-        uint16_v_(DBusAdaptor::Uint16ToVariant(0)),
-        uint32_v_(DBusAdaptor::Uint32ToVariant(0)),
-        int16_v_(DBusAdaptor::Int16ToVariant(0)),
-        int32_v_(DBusAdaptor::Int32ToVariant(0)),
-        string_v_(DBusAdaptor::StringToVariant("")),
-        stringmap_v_(DBusAdaptor::StringmapToVariant(
-            std::map<std::string, std::string>())),
-        strings_v_(DBusAdaptor::StringsToVariant(
-            std::vector<std::string>(1, ""))),
-        manager_(&control_interface_, &dispatcher_),
-        invalid_args_(Error::kErrorNames[Error::kInvalidArguments]),
-        invalid_prop_(Error::kErrorNames[Error::kInvalidProperty]) {
-  }
+  // In real code, it's frowned upon to have non-POD static members, as there
+  // can be ordering issues if your constructors have side effects.
+  // These constructors don't, and declaring these as static lets me
+  // autogenerate a bunch of unit test code that I would otherwise need to
+  // copypasta.  So I think it's safe and worth it.
+  static const ::DBus::Variant kBoolV;
+  static const ::DBus::Variant kByteV;
+  static const ::DBus::Variant kInt16V;
+  static const ::DBus::Variant kInt32V;
+  static const ::DBus::Variant kStringV;
+  static const ::DBus::Variant kStringmapV;
+  static const ::DBus::Variant kStringmapsV;
+  static const ::DBus::Variant kStringsV;
+  static const ::DBus::Variant kUint16V;
+  static const ::DBus::Variant kUint32V;
 
-  virtual ~PropertyStoreTest() {}
+  PropertyStoreTest();
+  virtual ~PropertyStoreTest();
 
  protected:
-  ::DBus::Variant bool_v_;
-  ::DBus::Variant byte_v_;
-  ::DBus::Variant uint16_v_;
-  ::DBus::Variant uint32_v_;
-  ::DBus::Variant int16_v_;
-  ::DBus::Variant int32_v_;
-  ::DBus::Variant string_v_;
-  ::DBus::Variant stringmap_v_;
-  ::DBus::Variant strings_v_;
-
   MockControl control_interface_;
   EventDispatcher dispatcher_;
   Manager manager_;

@@ -61,7 +61,7 @@ SHILL_OBJS = \
 	ipconfig.o \
 	manager.o \
 	manager_dbus_adaptor.o \
-	property_store_interface.o \
+	property_store.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	service.o \
@@ -78,6 +78,7 @@ SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = \
+	cellular_unittest.o \
 	dbus_adaptor_unittest.o \
 	device_info_unittest.o \
 	device_unittest.o \
@@ -88,6 +89,7 @@ TEST_OBJS = \
 	mock_control.o \
 	mock_device.o \
 	mock_service.o \
+	property_store_unittest.o \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o

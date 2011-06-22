@@ -29,63 +29,74 @@ using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
+using ::testing::Values;
 
 namespace shill {
 
 class ServiceTest : public PropertyStoreTest {
  public:
-  ServiceTest() {}
+  ServiceTest()
+      : service_(new MockService(&control_interface_,
+                                 &dispatcher_,
+                                 new MockDevice(&control_interface_,
+                                                &dispatcher_,
+                                                &manager_,
+                                                "mock-device",
+                                                0),
+                                 "mock-service")) {
+  }
+
   virtual ~ServiceTest() {}
+
+ protected:
+  ServiceRefPtr service_;
 };
 
 TEST_F(ServiceTest, Dispatch) {
-  DeviceRefPtr device(new MockDevice(&control_interface_,
-                                     &dispatcher_,
-                                     &manager_,
-                                     "mock-device",
-                                     0));
-  ServiceRefPtr service(new MockService(&control_interface_,
-                                        &dispatcher_,
-                                        device.get(),
-                                        "mock-service"));
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service.get(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kSaveCredentialsProperty,
-                                          bool_v_,
+                                          PropertyStoreTest::kBoolV,
                                           error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service.get(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kPriorityProperty,
-                                          int32_v_,
+                                          PropertyStoreTest::kInt32V,
                                           error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service.get(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kEAPEAPProperty,
-                                          string_v_,
+                                          PropertyStoreTest::kStringV,
                                           error));
 
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(),
+  // Ensure that an attempt to write a R/O property returns InvalidArgs error.
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
                                            flimflam::kFavoriteProperty,
-                                           bool_v_,
+                                           PropertyStoreTest::kBoolV,
                                            error));
   EXPECT_EQ(invalid_args_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(), "", int16_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(), "", int32_v_, error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(),
+}
+
+TEST_P(ServiceTest, TestProperty) {
+  // Ensure that an attempt to write unknown properties returns InvalidProperty.
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
                                            "",
-                                           uint16_v_,
-                                           error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(),
-                                           "",
-                                           uint32_v_,
-                                           error));
-  EXPECT_EQ(invalid_prop_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service.get(),
-                                           "",
-                                           strings_v_,
+                                           GetParam(),
                                            error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
+
+INSTANTIATE_TEST_CASE_P(
+    ServiceTestInstance,
+    ServiceTest,
+    Values(PropertyStoreTest::kBoolV,
+           PropertyStoreTest::kByteV,
+           PropertyStoreTest::kStringV,
+           PropertyStoreTest::kInt16V,
+           PropertyStoreTest::kInt32V,
+           PropertyStoreTest::kUint16V,
+           PropertyStoreTest::kUint32V,
+           PropertyStoreTest::kStringsV,
+           PropertyStoreTest::kStringmapV,
+           PropertyStoreTest::kStringmapsV));
 
 }  // namespace shill

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/device.h"
+#include "shill/cellular.h"
 
 #include <map>
 #include <string>
@@ -14,13 +14,10 @@
 #include <gmock/gmock.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/dhcp_provider.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
-#include "shill/mock_glib.h"
 #include "shill/property_store_unittest.h"
-#include "shill/shill_event.h"
 
 using std::map;
 using std::string;
@@ -33,39 +30,29 @@ using ::testing::Values;
 
 namespace shill {
 
-namespace {
-const char kDeviceName[] = "testdevice";
-}  // namespace {}
-
-class DeviceTest : public PropertyStoreTest {
+class CellularTest : public PropertyStoreTest {
  public:
-  DeviceTest()
-      : device_(new Device(&control_interface_, NULL, NULL, kDeviceName, 0)) {
-    DHCPProvider::GetInstance()->glib_ = &glib_;
+  CellularTest()
+      : device_(new Cellular(&control_interface_, NULL, NULL, "3G", 0)) {
   }
-  virtual ~DeviceTest() {}
+  virtual ~CellularTest() {}
 
  protected:
-  MockGLib glib_;
-  MockControl control_interface_;
   DeviceRefPtr device_;
 };
 
-TEST_F(DeviceTest, Contains) {
+TEST_F(CellularTest, Contains) {
   EXPECT_TRUE(device_->Contains(flimflam::kNameProperty));
   EXPECT_FALSE(device_->Contains(""));
 }
 
-TEST_F(DeviceTest, Dispatch) {
+TEST_F(CellularTest, Dispatch) {
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kPoweredProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kBgscanMethodProperty,
-                                          PropertyStoreTest::kStringV,
-                                          error));
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+      device_.get(),
+      flimflam::kCellularAllowRoamingProperty,
+      PropertyStoreTest::kBoolV,
+      error));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(
       device_.get(),
       flimflam::kBgscanSignalThresholdProperty,
@@ -82,9 +69,19 @@ TEST_F(DeviceTest, Dispatch) {
                                            PropertyStoreTest::kStringV,
                                            error));
   EXPECT_EQ(invalid_args_, error.name());
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                           flimflam::kCarrierProperty,
+                                           PropertyStoreTest::kStringV,
+                                           error));
+  EXPECT_EQ(invalid_args_, error.name());
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                           flimflam::kPRLVersionProperty,
+                                           PropertyStoreTest::kInt16V,
+                                           error));
+  EXPECT_EQ(invalid_args_, error.name());
 }
 
-TEST_P(DeviceTest, TestProperty) {
+TEST_P(CellularTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
@@ -92,8 +89,8 @@ TEST_P(DeviceTest, TestProperty) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    DeviceTestInstance,
-    DeviceTest,
+    CellularTestInstance,
+    CellularTest,
     Values(PropertyStoreTest::kBoolV,
            PropertyStoreTest::kByteV,
            PropertyStoreTest::kStringV,
@@ -104,32 +101,5 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kStringsV,
            PropertyStoreTest::kStringmapV,
            PropertyStoreTest::kStringmapsV));
-
-TEST_F(DeviceTest, TechnologyIs) {
-  EXPECT_FALSE(device_->TechnologyIs(Device::kEthernet));
-}
-
-TEST_F(DeviceTest, DestroyIPConfig) {
-  ASSERT_FALSE(device_->ipconfig_.get());
-  device_->ipconfig_ = new IPConfig(kDeviceName);
-  device_->DestroyIPConfig();
-  ASSERT_FALSE(device_->ipconfig_.get());
-}
-
-TEST_F(DeviceTest, DestroyIPConfigNULL) {
-  ASSERT_FALSE(device_->ipconfig_.get());
-  device_->DestroyIPConfig();
-  ASSERT_FALSE(device_->ipconfig_.get());
-}
-
-TEST_F(DeviceTest, AcquireDHCPConfig) {
-  device_->ipconfig_ = new IPConfig("randomname");
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(false));
-  EXPECT_FALSE(device_->AcquireDHCPConfig());
-  ASSERT_TRUE(device_->ipconfig_.get());
-  EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
-  EXPECT_TRUE(device_->ipconfig_->update_callback_.get());
-}
 
 }  // namespace shill

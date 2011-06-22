@@ -29,9 +29,6 @@ class CellularService : public Service {
   void Connect();
   void Disconnect();
 
-  // Implementation of PropertyStoreInterface
-  bool Contains(const std::string &property);
-
  protected:
   virtual std::string CalculateState() { return "idle"; }
 

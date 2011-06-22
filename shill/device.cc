@@ -10,6 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -30,38 +31,37 @@ Device::Device(ControlInterface *control_interface,
                Manager *manager,
                const string &link_name,
                int interface_index)
-    : manager_(manager),
+    : bgscan_short_interval_(0),
+      bgscan_signal_threshold_(0),
+      powered_(true),
+      reconnect_(true),
+      scan_interval_(0),
+      manager_(manager),
       link_name_(link_name),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
       interface_index_(interface_index),
       running_(false) {
-  known_properties_.push_back(flimflam::kNameProperty);
-  known_properties_.push_back(flimflam::kTypeProperty);
-  known_properties_.push_back(flimflam::kPoweredProperty);
-  known_properties_.push_back(flimflam::kScanningProperty);
-  // known_properties_.push_back(flimflam::kReconnectProperty);
-  known_properties_.push_back(flimflam::kScanIntervalProperty);
-  known_properties_.push_back(flimflam::kBgscanMethodProperty);
-  known_properties_.push_back(flimflam::kBgscanShortIntervalProperty);
-  known_properties_.push_back(flimflam::kBgscanSignalThresholdProperty);
-  known_properties_.push_back(flimflam::kNetworksProperty);
-  known_properties_.push_back(flimflam::kIPConfigsProperty);
-  known_properties_.push_back(flimflam::kCellularAllowRoamingProperty);
-  known_properties_.push_back(flimflam::kCarrierProperty);
-  known_properties_.push_back(flimflam::kMeidProperty);
-  known_properties_.push_back(flimflam::kImeiProperty);
-  known_properties_.push_back(flimflam::kImsiProperty);
-  known_properties_.push_back(flimflam::kEsnProperty);
-  known_properties_.push_back(flimflam::kMdnProperty);
-  known_properties_.push_back(flimflam::kModelIDProperty);
-  known_properties_.push_back(flimflam::kManufacturerProperty);
-  known_properties_.push_back(flimflam::kFirmwareRevisionProperty);
-  known_properties_.push_back(flimflam::kHardwareRevisionProperty);
-  known_properties_.push_back(flimflam::kPRLVersionProperty);
-  known_properties_.push_back(flimflam::kSIMLockStatusProperty);
-  known_properties_.push_back(flimflam::kFoundNetworksProperty);
-  known_properties_.push_back(flimflam::kDBusConnectionProperty);
-  known_properties_.push_back(flimflam::kDBusObjectProperty);
+
+  RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
+  RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
+  RegisterUint16(flimflam::kBgscanShortIntervalProperty,
+                 &bgscan_short_interval_);
+  RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
+                &bgscan_signal_threshold_);
+  // TODO(cmasone): Chrome doesn't use this...does anyone?
+  // RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
+  RegisterConstString(flimflam::kNameProperty, &link_name_);
+  RegisterBool(flimflam::kPoweredProperty, &powered_);
+  // TODO(cmasone): Chrome doesn't use this...does anyone?
+  // RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
+  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+
+  // TODO(cmasone): Add support for R/O properties that return DBus object paths
+  // known_properties_.push_back(flimflam::kDBusConnectionProperty);
+  // known_properties_.push_back(flimflam::kDBusObjectProperty);
+  // known_properties_.push_back(flimflam::kIPConfigsProperty);
+  // known_properties_.push_back(flimflam::kNetworksProperty);
+
   // Initialize Interface monitor, so we can detect new interfaces
   VLOG(2) << "Device " << link_name_ << " index " << interface_index;
 }
@@ -94,35 +94,46 @@ void Device::Scan() {
   VLOG(2) << "Device " << link_name_ << " scan requested.";
 }
 
-bool Device::Contains(const std::string &property) {
-  vector<string>::iterator it;
-  for (it = known_properties_.begin(); it != known_properties_.end(); ++it) {
-    if (property == *it)
-      return true;
-  }
-  return false;
-}
-
 bool Device::SetBoolProperty(const string& name, bool value, Error *error) {
   VLOG(2) << "Setting " << name << " as a bool.";
-  // TODO(cmasone): Set actual properties.
-  return true;
+  bool set = (ContainsKey(bool_properties_, name) &&
+              bool_properties_[name]->Set(value));
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W bool.");
+  return set;
 }
 
 bool Device::SetInt32Property(const std::string& name,
                               int32 value,
                               Error *error) {
   VLOG(2) << "Setting " << name << " as an int32.";
-  // TODO(cmasone): Set actual properties.
-  return true;
+  bool set = (ContainsKey(int32_properties_, name) &&
+              int32_properties_[name]->Set(value));
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W int32.");
+  return set;
 }
 
 bool Device::SetUint16Property(const std::string& name,
                                uint16 value,
                                Error *error) {
   VLOG(2) << "Setting " << name << " as a uint16.";
-  // TODO(cmasone): Set actual properties.
-  return true;
+  bool set = (ContainsKey(uint16_properties_, name) &&
+              uint16_properties_[name]->Set(value));
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W uint16.");
+  return set;
+}
+
+bool Device::SetStringProperty(const string& name,
+                               const string& value,
+                               Error *error) {
+  VLOG(2) << "Setting " << name << " as a string.";
+  bool set = (ContainsKey(string_properties_, name) &&
+              string_properties_[name]->Set(value));
+  if (!set && error)
+    error->Populate(Error::kInvalidArguments, name + " is not a R/W string.");
+  return set;
 }
 
 const string& Device::UniqueName() const {

@@ -119,6 +119,7 @@ class WiFi : public Device {
   scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxy> supplicant_interface_proxy_;
   bool scan_pending_;
+  uint16 scan_interval_;
   EndpointMap endpoint_by_bssid_;
   ServiceMap service_by_private_id_;
 

@@ -15,7 +15,7 @@
 
 #include "shill/device_config_interface.h"
 #include "shill/ipconfig.h"
-#include "shill/property_store_interface.h"
+#include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
 
@@ -35,7 +35,9 @@ typedef scoped_refptr<Device> DeviceRefPtr;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public DeviceConfigInterface, public PropertyStoreInterface {
+// DeviceConfigInterface is RefCounted, so this class and derived classes
+// are as well.
+class Device : public DeviceConfigInterface, public PropertyStore {
  public:
   enum Technology {
     kEthernet,
@@ -66,8 +68,7 @@ class Device : public DeviceConfigInterface, public PropertyStoreInterface {
   // Implementation of DeviceConfigInterface
   virtual void ConfigIP() {}
 
-  // Implementation of PropertyStoreInterface
-  virtual bool Contains(const std::string &property);
+  // Implementation of PropertyStore
   virtual bool SetBoolProperty(const std::string& name,
                                bool value,
                                Error *error);
@@ -76,6 +77,9 @@ class Device : public DeviceConfigInterface, public PropertyStoreInterface {
                                 Error *error);
   virtual bool SetUint16Property(const std::string& name,
                                  uint16 value,
+                                 Error *error);
+  virtual bool SetStringProperty(const std::string &name,
+                                 const std::string &value,
                                  Error *error);
 
   const std::string &link_name() const { return link_name_; }
@@ -99,12 +103,24 @@ class Device : public DeviceConfigInterface, public PropertyStoreInterface {
   // request was successfully sent.
   bool AcquireDHCPConfig();
 
+  void RegisterDerivedString(const std::string &name,
+                             std::string(Device::*get)(void),
+                             bool(Device::*set)(const std::string&));
+
+  // Properties
+  std::string hardware_address_;
+  std::string bgscan_method_;
+  uint16 bgscan_short_interval_;
+  int32 bgscan_signal_threshold_;
+  bool powered_;  // TODO(pstew): Is this what |running_| is for?
+  bool reconnect_;
+  uint16 scan_interval_;
+
   std::vector<ServiceRefPtr> services_;
   int interface_index_;
   bool running_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
-  std::vector<std::string> known_properties_;
 
  private:
   friend class DeviceAdaptorInterface;

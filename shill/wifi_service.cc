@@ -66,11 +66,6 @@ void WiFiService::Disconnect() {
   // XXX remove from favorite networks list?
 }
 
-bool WiFiService::Contains(const string &property) {
-  return (Service::Contains(property) ||
-          uint16_properties_.find(property) != uint16_properties_.end());
-}
-
 uint32_t WiFiService::mode() const {
   return mode_;
 }
