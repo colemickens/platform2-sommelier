@@ -29,6 +29,9 @@ const char WiFi::kSupplicantDBusAddr[]    = "fi.w1.wpa_supplicant1";
 const char WiFi::kSupplicantWiFiDriver[]  = "nl80211";
 const char WiFi::kSupplicantErrorInterfaceExists[] =
     "fi.w1.wpa_supplicant1.InterfaceExists";
+const char WiFi::kSupplicantPropertySSID[]        = "ssid";
+const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
+const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
 const char WiFi::kSupplicantKeyModeNone[] = "NONE";
 
 unsigned int WiFi::service_id_serial_ = 0;
@@ -219,13 +222,25 @@ void WiFi::ScanDone() {
       task_factory_.NewRunnableMethod(&WiFi::RealScanDone));
 }
 
-::DBus::Path WiFi::AddNetwork(
-    const std::map<string, ::DBus::Variant> &args) {
-  return supplicant_interface_proxy_->AddNetwork(args);
-}
+void WiFi::ConnectTo(const WiFiService &service) {
+  std::map<string, DBus::Variant> add_network_args;
+  DBus::MessageIter writer;
+  DBus::Path network_path;
 
-void WiFi::SelectNetwork(const ::DBus::Path &network) {
-  supplicant_interface_proxy_->SelectNetwork(network);
+  add_network_args[kSupplicantPropertyNetworkMode].writer().
+      append_uint32(service.mode());
+  add_network_args[kSupplicantPropertyKeyMode].writer().
+      append_string(service.key_management().c_str());
+  // TODO(quiche): figure out why we can't use operator<< without the
+  // temporary variable.
+  writer = add_network_args[kSupplicantPropertySSID].writer();
+  writer << service.ssid();
+  // TODO(quiche): set scan_ssid=1, like flimflam does?
+
+  network_path =
+      supplicant_interface_proxy_->AddNetwork(add_network_args);
+  supplicant_interface_proxy_->SelectNetwork(network_path);
+  // XXX add to favorite networks list?
 }
 
 void WiFi::RealScanDone() {

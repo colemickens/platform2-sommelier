@@ -17,9 +17,6 @@
 using std::string;
 
 namespace shill {
-const char WiFiService::kSupplicantPropertySSID[]        = "ssid";
-const char WiFiService::kSupplicantPropertyNetworkMode[] = "mode";
-const char WiFiService::kSupplicantPropertyKeyMode[]     = "key_mgmt";
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
@@ -74,24 +71,20 @@ bool WiFiService::Contains(const string &property) {
           uint16_properties_.find(property) != uint16_properties_.end());
 }
 
+uint32_t WiFiService::mode() const {
+  return mode_;
+}
+
+const std::string &WiFiService::key_management() const {
+  return eap_.key_management;
+}
+
+const std::vector<uint8_t> &WiFiService::ssid() const {
+  return ssid_;
+}
+
 void WiFiService::RealConnect() {
-  std::map<string, DBus::Variant> add_network_args;
-  DBus::MessageIter mi;
-  DBus::Path network_path;
-
-  add_network_args[kSupplicantPropertyNetworkMode].writer().
-      append_uint32(mode_);
-  add_network_args[kSupplicantPropertyKeyMode].writer().
-      append_string(eap_.key_management.c_str());
-  // TODO(quiche): figure out why we can't use operator<< without the
-  // temporary variable.
-  mi = add_network_args[kSupplicantPropertySSID].writer();
-  mi << ssid_;
-  // TODO(quiche): set scan_ssid=1, like flimflam does?
-
-  network_path = wifi_->AddNetwork(add_network_args);
-  wifi_->SelectNetwork(network_path);
-  // XXX add to favorite networks list?
+  wifi_->ConnectTo(*this);
 }
 
 }  // namespace shill

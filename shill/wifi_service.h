@@ -27,6 +27,9 @@ class WiFiService : public Service {
   ~WiFiService();
   void Connect();
   void Disconnect();
+  uint32_t mode() const;
+  const std::string &key_management() const;
+  const std::vector<uint8_t> &ssid() const;
 
   // Implementation of PropertyStoreInterface
   bool Contains(const std::string &property);
@@ -35,10 +38,6 @@ class WiFiService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
-  static const char kSupplicantPropertySSID[];
-  static const char kSupplicantPropertyNetworkMode[];
-  static const char kSupplicantPropertyKeyMode[];
-
   void RealConnect();
 
   // Properties
@@ -58,7 +57,7 @@ class WiFiService : public Service {
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFi *wifi_;
   const std::vector<uint8_t> ssid_;
-  uint32_t mode_;
+  const uint32_t mode_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };
 

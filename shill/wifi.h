@@ -17,6 +17,7 @@
 namespace shill {
 
 class WiFiEndpoint;
+class WiFiService;
 typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
 typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;
 
@@ -39,10 +40,8 @@ class WiFi : public Device {
                 const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
 
-  // called by WiFiService, to effect changes to wpa_supplicant
-  ::DBus::Path AddNetwork(
-      const std::map<std::string, ::DBus::Variant> &args);
-  void SelectNetwork(const ::DBus::Path &network);
+  // called by WiFiService
+  void ConnectTo(const WiFiService &service);
 
  private:
   // SupplicantProcessProxy. provides access to wpa_supplicant's
@@ -105,6 +104,9 @@ class WiFi : public Device {
   static const char kSupplicantDBusAddr[];
   static const char kSupplicantWiFiDriver[];
   static const char kSupplicantErrorInterfaceExists[];
+  static const char kSupplicantPropertySSID[];
+  static const char kSupplicantPropertyNetworkMode[];
+  static const char kSupplicantPropertyKeyMode[];
   static const char kSupplicantKeyModeNone[];
 
   void RealScanDone();
