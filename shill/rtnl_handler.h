@@ -22,6 +22,8 @@ struct nlmsghdr;
 
 namespace shill {
 
+class IPConfig;
+
 // This singleton class is responsible for interacting with the RTNL
 // subsystem.  RTNL provides (among other things) access to interface
 // discovery (add/remove events), interface state monitoring and the
@@ -52,11 +54,17 @@ class RTNLHandler {
   // Remove a previously added RTNL event listener
   void RemoveListener(RTNLListener *to_remove);
 
-  // Set flags on a network interface that has an kernel index of
+  // Set flags on a network interface that has a kernel index of
   // 'interface_index'.  Only the flags bits set in 'change' will
   // be set, and they will be set to the corresponding bit in 'flags'.
   void SetInterfaceFlags(int interface_index, unsigned int flags,
                          unsigned int change);
+  // Set address of a network interface that has a kernel index of
+  // 'interface_index'.
+  bool AddInterfaceAddress(int interface_index, const IPConfig &config);
+  // Remove address from a network interface that has a kernel index of
+  // 'interface_index'.
+  bool RemoveInterfaceAddress(int interface_index, const IPConfig &config);
   // Request that various tables (link, address, routing) tables be
   // exhaustively dumped via RTNL.  As results arrive from the kernel
   // they will be broadcast to all listeners.  The possible values
@@ -74,6 +82,8 @@ class RTNLHandler {
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
   void ParseRTNL(InputData *data);
+  bool AddressRequest(int interface_index, int cmd, int flags,
+                      const IPConfig &config);
 
   bool running_;
   bool in_request_;

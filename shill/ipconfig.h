@@ -23,9 +23,18 @@ typedef scoped_refptr<IPConfig> IPConfigRefPtr;
 // class.
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
-  struct Properties {
-    Properties() : subnet_cidr(0), mtu(0) {}
+  enum AddressFamily {
+    kAddressFamilyUnknown,
+    kAddressFamilyIPv4,
+    kAddressFamilyIPv6
+  };
 
+  struct Properties {
+    Properties() : address_family(kAddressFamilyUnknown),
+                   subnet_cidr(0),
+                   mtu(0) {}
+
+    AddressFamily address_family;
     std::string address;
     int subnet_cidr;
     std::string broadcast_address;

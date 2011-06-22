@@ -188,6 +188,7 @@ string DHCPConfig::GetIPv4AddressString(unsigned int address) {
 bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
                                     IPConfig::Properties *properties) {
   VLOG(2) << __func__;
+  properties->address_family = IPConfig::kAddressFamilyIPv4;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;

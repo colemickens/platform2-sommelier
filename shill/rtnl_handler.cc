@@ -22,6 +22,7 @@
 #include <base/memory/singleton.h>
 
 #include "shill/io_handler.h"
+#include "shill/ipconfig.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/shill_event.h"
@@ -243,6 +244,93 @@ void RTNLHandler::ParseRTNL(InputData *data) {
 
     buf += hdr->nlmsg_len;
   }
+}
+
+static bool AddAtribute(struct nlmsghdr *hdr, int max_msg_size, int attr_type,
+                        const void *attr_data, int attr_len) {
+  int len = RTA_LENGTH(attr_len);
+  int new_msg_size = NLMSG_ALIGN(hdr->nlmsg_len) + RTA_ALIGN(len);
+  struct rtattr *rt_attr;
+
+  if (new_msg_size > max_msg_size)
+    return false;
+
+  rt_attr = reinterpret_cast<struct rtattr *> (reinterpret_cast<unsigned char *>
+                                               (hdr) +
+                                               NLMSG_ALIGN(hdr->nlmsg_len));
+  rt_attr->rta_type = attr_type;
+  rt_attr->rta_len = len;
+  memcpy(RTA_DATA(rt_attr), attr_data, attr_len);
+  hdr->nlmsg_len = new_msg_size;
+  return true;
+}
+
+bool RTNLHandler::AddressRequest(int interface_index, int cmd, int flags,
+                                 const IPConfig &ipconfig) {
+  const IPConfig::Properties &properties = ipconfig.properties();
+  int address_family;
+  int address_size;
+  unsigned char *attrs, *attrs_end;
+  int max_msg_size;
+  struct {
+    struct nlmsghdr   hdr;
+    struct ifaddrmsg  ifa;
+    unsigned char     attrs[256];
+  } req;
+  union {
+    in_addr ip4;
+    in6_addr in6;
+  } addr;
+
+  if (properties.address_family == IPConfig::kAddressFamilyIPv4) {
+    address_family = AF_INET;
+    address_size = sizeof(struct in_addr);
+  } else if (properties.address_family == IPConfig::kAddressFamilyIPv6) {
+    address_family = AF_INET6;
+    address_size = sizeof(struct in6_addr);
+  } else
+    return false;
+
+  request_sequence_++;
+  memset(&req, 0, sizeof(req));
+  req.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+  req.hdr.nlmsg_flags = NLM_F_REQUEST | flags;
+  req.hdr.nlmsg_type = cmd;
+  req.ifa.ifa_family = address_family;
+  req.ifa.ifa_index = interface_index;
+
+  max_msg_size = req.hdr.nlmsg_len + sizeof(req.attrs);
+
+  // TODO(pstew): This code only works for Ethernet-like setups,
+  //              not with devices that have a peer address like PPP.
+  if (inet_pton(address_family, properties.address.c_str(), &addr) <= 0 ||
+      !AddAtribute(&req.hdr, max_msg_size, IFA_LOCAL, &addr, address_size))
+    return false;
+
+  if (inet_pton(address_family, properties.broadcast_address.c_str(),
+                &addr) <= 0 ||
+      !AddAtribute(&req.hdr, max_msg_size, IFA_BROADCAST, &addr, address_size))
+    return false;
+
+  req.ifa.ifa_prefixlen = properties.subnet_cidr;
+
+  if (send(rtnl_socket_, &req, req.hdr.nlmsg_len, 0) < 0) {
+    LOG(ERROR) << "RTNL sendto failed: " << strerror(errno);
+    return false;
+  }
+
+  return true;
+}
+
+bool RTNLHandler::AddInterfaceAddress(int interface_index,
+                                      const IPConfig &ipconfig) {
+  return AddressRequest(interface_index, RTM_NEWADDR, NLM_F_CREATE | NLM_F_EXCL,
+                        ipconfig);
+}
+
+bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
+                                         const IPConfig &ipconfig) {
+  return AddressRequest(interface_index, RTM_DELADDR, 0, ipconfig);
 }
 
 }  // namespace shill

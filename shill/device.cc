@@ -18,6 +18,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/rtnl_handler.h"
 #include "shill/shill_event.h"
 
 using std::string;
@@ -131,6 +132,8 @@ const string& Device::UniqueName() const {
 
 void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
+    RTNLHandler::GetInstance()->RemoveInterfaceAddress(interface_index_,
+                                                       *ipconfig_);
     ipconfig_->ReleaseIP();
     ipconfig_ = NULL;
   }
@@ -148,6 +151,10 @@ void Device::IPConfigUpdatedCallback(IPConfigRefPtr ipconfig, bool success) {
   // TODO(petkov): Use DeviceInfo to configure IP, etc. -- maybe through
   // ConfigIP? Also, maybe allow forwarding the callback to interested listeners
   // (e.g., the Manager).
+  if (success) {
+      RTNLHandler::GetInstance()->AddInterfaceAddress(interface_index_,
+                                                      *ipconfig);
+  }
 }
 
 }  // namespace shill
