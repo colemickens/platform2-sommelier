@@ -9,8 +9,8 @@
 
 #include <base/basictypes.h>
 
-#include "shill/cellular_service.h"
 #include "shill/device.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 
 namespace shill {

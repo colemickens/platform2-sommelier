@@ -12,11 +12,12 @@
 #include <dbus-c++/connection.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/dhcp_config.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 
 class DHCPListenerInterface;
+class GLib;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
 // entrypoint. Once the provider is initialized through its Init method, DHCP
@@ -45,7 +46,7 @@ class DHCPProvider {
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  void BindPID(int pid, DHCPConfigRefPtr config);
+  void BindPID(int pid, const DHCPConfigRefPtr &config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in

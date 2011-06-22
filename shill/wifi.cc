@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi.h"
+
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,8 +21,6 @@
 #include "shill/shill_event.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
-
-#include "shill/wifi.h"
 
 using std::string;
 
@@ -59,16 +59,16 @@ void WiFi::SupplicantProcessProxy::PropertiesChanged(
 }
 
 WiFi::SupplicantInterfaceProxy::SupplicantInterfaceProxy(
-    WiFi *wifi,
+    const WiFiRefPtr &wifi,
     DBus::Connection *bus,
     const ::DBus::Path &object_path)
-    : wifi_(*wifi),
+    : wifi_(wifi),
       DBus::ObjectProxy(*bus, object_path, kSupplicantDBusAddr) {}
 
 void WiFi::SupplicantInterfaceProxy::ScanDone(const bool& success) {
   LOG(INFO) << __func__ << " " << success;
   if (success) {
-    wifi_.ScanDone();
+    wifi_->ScanDone();
   }
 }
 
@@ -76,7 +76,7 @@ void WiFi::SupplicantInterfaceProxy::BSSAdded(
     const ::DBus::Path &BSS,
     const std::map<string, ::DBus::Variant> &properties) {
   LOG(INFO) << __func__;
-  wifi_.BSSAdded(BSS, properties);
+  wifi_->BSSAdded(BSS, properties);
 }
 
 void WiFi::SupplicantInterfaceProxy::BSSRemoved(const ::DBus::Path &BSS) {
@@ -205,6 +205,8 @@ void WiFi::Start() {
 void WiFi::Stop() {
   LOG(INFO) << __func__;
   // XXX
+  supplicant_interface_proxy_.reset(NULL);
+  supplicant_process_proxy_.reset(NULL);
   Device::Stop();
 }
 

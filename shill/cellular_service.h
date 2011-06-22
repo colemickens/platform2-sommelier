@@ -11,19 +11,17 @@
 #include <base/basictypes.h>
 
 #include "shill/cellular.h"
-#include "shill/device.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
 namespace shill {
 
-class Cellular;
-
 class CellularService : public Service {
  public:
   CellularService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
-                  Cellular *device,
+                  const CellularRefPtr &device,
                   const std::string& name);
   ~CellularService();
   void Connect();
@@ -45,7 +43,7 @@ class CellularService : public Service {
   std::map<std::string, std::string> last_good_apn_info_;
 
  private:
-  Cellular *cellular_;
+  CellularRefPtr cellular_;
   const std::string type_;
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };

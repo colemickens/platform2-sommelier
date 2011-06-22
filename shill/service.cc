@@ -15,7 +15,6 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
-#include "shill/device_config_interface.h"
 #include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
@@ -28,7 +27,6 @@ using std::vector;
 namespace shill {
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 DeviceConfigInterfaceRefPtr config_interface,
                  const string& name)
     : auto_connect_(false),
       connectable_(false),
@@ -41,7 +39,6 @@ Service::Service(ControlInterface *control_interface,
       configured_(false),
       configuration_(NULL),
       connection_(NULL),
-      config_interface_(config_interface),
       adaptor_(control_interface->CreateServiceAdaptor(this)) {
 
   RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);

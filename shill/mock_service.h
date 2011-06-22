@@ -20,7 +20,6 @@ class MockService : public Service {
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              DeviceConfigInterfaceRefPtr interface,
               const std::string& name);
   virtual ~MockService();
 

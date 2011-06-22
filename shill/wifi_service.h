@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include "shill/wifi.h"
-#include "shill/shill_event.h"
+#include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/shill_event.h"
 #include "shill/supplicant-interface.h"
 
 namespace shill {
@@ -19,7 +19,7 @@ class WiFiService : public Service {
  public:
   WiFiService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              WiFi *device,
+              const WiFiRefPtr &device,
               const std::vector<uint8_t> ssid,
               uint32_t mode,
               const std::string &key_management,
@@ -52,7 +52,7 @@ class WiFiService : public Service {
   uint16 hex_ssid_;
 
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
-  WiFi *wifi_;
+  WiFiRefPtr wifi_;
   const std::vector<uint8_t> ssid_;
   const uint32_t mode_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);

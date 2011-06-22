@@ -17,7 +17,6 @@
 #include "shill/ethernet_service.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device.h"
 #include "shill/mock_service.h"
 #include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
@@ -38,11 +37,6 @@ class ServiceTest : public PropertyStoreTest {
   ServiceTest()
       : service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 new MockDevice(&control_interface_,
-                                                &dispatcher_,
-                                                &manager_,
-                                                "mock-device",
-                                                0),
                                  "mock-service")) {
   }
 

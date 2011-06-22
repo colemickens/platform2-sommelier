@@ -33,11 +33,11 @@ class Manager : public PropertyStore {
   void Start();
   void Stop();
 
-  void RegisterDevice(DeviceRefPtr to_manage);
-  void DeregisterDevice(DeviceConstRefPtr to_forget);
+  void RegisterDevice(const DeviceRefPtr &to_manage);
+  void DeregisterDevice(const DeviceConstRefPtr &to_forget);
 
-  void RegisterService(ServiceRefPtr to_manage);
-  void DeregisterService(ServiceConstRefPtr to_forget);
+  void RegisterService(const ServiceRefPtr &to_manage);
+  void DeregisterService(const ServiceConstRefPtr &to_forget);
 
   void FilterByTechnology(Device::Technology tech,
                           std::vector<DeviceRefPtr> *found);

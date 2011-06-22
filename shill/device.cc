@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/device.h"
+
 #include <time.h>
 #include <stdio.h>
 
@@ -14,12 +16,14 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
-#include "shill/device.h"
 #include "shill/device_dbus_adaptor.h"
+#include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
+#include "shill/service.h"
 #include "shill/shill_event.h"
 
 using std::string;
@@ -149,7 +153,8 @@ bool Device::AcquireDHCPConfig() {
   return ipconfig_->RequestIP();
 }
 
-void Device::IPConfigUpdatedCallback(IPConfigRefPtr ipconfig, bool success) {
+void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
+                                     bool success) {
   // TODO(petkov): Use DeviceInfo to configure IP, etc. -- maybe through
   // ConfigIP? Also, maybe allow forwarding the callback to interested listeners
   // (e.g., the Manager).

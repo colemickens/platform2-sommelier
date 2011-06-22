@@ -13,7 +13,6 @@
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/accessor_interface.h"
-#include "shill/device_config_interface.h"
 #include "shill/property_store.h"
 
 namespace shill {
@@ -24,11 +23,7 @@ class ControlInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
-class Service;
 class ServiceAdaptorInterface;
-
-typedef scoped_refptr<const Service> ServiceConstRefPtr;
-typedef scoped_refptr<Service> ServiceRefPtr;
 
 class Service : public base::RefCounted<Service>,
                 public PropertyStore {
@@ -76,7 +71,6 @@ class Service : public base::RefCounted<Service>,
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          DeviceConfigInterfaceRefPtr config_interface,
           const std::string& name);
   virtual ~Service();
   virtual void Connect() = 0;
@@ -142,8 +136,6 @@ class Service : public base::RefCounted<Service>,
   bool configured_;
   Configuration *configuration_;
   Connection *connection_;
-  DeviceConfigInterfaceRefPtr config_interface_;
-  Endpoint *endpoint_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
 
   friend class ServiceAdaptorInterface;

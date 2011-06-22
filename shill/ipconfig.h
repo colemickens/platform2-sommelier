@@ -13,11 +13,9 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/refptr_types.h"
+
 namespace shill {
-
-class IPConfig;
-
-typedef scoped_refptr<IPConfig> IPConfigRefPtr;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -56,7 +54,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // configuration instance allowing clients to more easily manage multiple IP
   // configurations. The callback's second argument is set to false if IP
   // configuration failed.
-  void RegisterUpdateCallback(Callback2<IPConfigRefPtr, bool>::Type *callback);
+  void RegisterUpdateCallback(
+      Callback2<const IPConfigRefPtr&, bool>::Type *callback);
 
   const Properties &properties() const { return properties_; }
 
@@ -80,7 +79,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   const std::string device_name_;
   Properties properties_;
-  scoped_ptr<Callback2<IPConfigRefPtr, bool>::Type> update_callback_;
+  scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

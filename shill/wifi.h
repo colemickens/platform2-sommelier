@@ -10,16 +10,14 @@
 #include <vector>
 
 #include "shill/device.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 #include "shill/supplicant-process.h"
 #include "shill/supplicant-interface.h"
 
 namespace shill {
 
-class WiFiEndpoint;
 class WiFiService;
-typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
-typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;
 
 // WiFi class. Specialization of Device for WiFi.
 class WiFi : public Device {
@@ -72,7 +70,8 @@ class WiFi : public Device {
       private ::DBus::ObjectProxy  // used by dbus-c++, not WiFi
   {
    public:
-    SupplicantInterfaceProxy(WiFi *wifi, DBus::Connection *bus,
+    SupplicantInterfaceProxy(const WiFiRefPtr &wifi,
+                             DBus::Connection *bus,
                              const ::DBus::Path &object_path);
 
    private:
@@ -94,7 +93,7 @@ class WiFi : public Device {
     virtual void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
                                    &properties);
 
-    WiFi &wifi_;
+    WiFiRefPtr wifi_;
   };
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;

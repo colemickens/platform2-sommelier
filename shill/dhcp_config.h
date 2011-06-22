@@ -15,12 +15,9 @@
 
 namespace shill {
 
-class DHCPConfig;
 class DHCPProvider;
 class DHCPProxyInterface;
 class GLib;
-
-typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
 class DHCPConfig : public IPConfig {
  public:

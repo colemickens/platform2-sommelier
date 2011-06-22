@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
 
 using std::string;
@@ -44,7 +45,7 @@ DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   return it->second;
 }
 
-void DHCPProvider::BindPID(int pid, DHCPConfigRefPtr config) {
+void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr &config) {
   VLOG(2) << __func__ << " pid: " << pid;
   configs_[pid] = config;
 }

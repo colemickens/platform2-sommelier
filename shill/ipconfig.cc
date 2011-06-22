@@ -38,7 +38,7 @@ void IPConfig::UpdateProperties(const Properties &properties, bool success) {
 }
 
 void IPConfig::RegisterUpdateCallback(
-    Callback2<IPConfigRefPtr, bool>::Type *callback) {
+    Callback2<const IPConfigRefPtr&, bool>::Type *callback) {
   update_callback_.reset(callback);
 }
 

@@ -21,9 +21,9 @@ using std::string;
 namespace shill {
 CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
-                                 Cellular *device,
+                                 const CellularRefPtr &device,
                                  const string &name)
-    : Service(control_interface, dispatcher, device, name),
+    : Service(control_interface, dispatcher, name),
       cellular_(device),
       strength_(0),
       type_(flimflam::kTypeCellular) {

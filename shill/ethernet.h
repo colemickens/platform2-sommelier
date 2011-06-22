@@ -8,8 +8,8 @@
 #include <string>
 
 #include "shill/device.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
-#include "shill/ethernet_service.h"
 
 namespace shill {
 

@@ -37,10 +37,10 @@ class ManagerTest : public PropertyStoreTest {
   ManagerTest() : factory_(this) {}
   virtual ~ManagerTest() {}
 
-  bool IsDeviceRegistered(Device *device, Device::Technology tech) {
+  bool IsDeviceRegistered(const DeviceRefPtr &device, Device::Technology tech) {
     vector<DeviceRefPtr> devices;
     manager_.FilterByTechnology(tech, &devices);
-    return (devices.size() == 1 && devices[0].get() == device);
+    return (devices.size() == 1 && devices[0].get() == device.get());
   }
 
  protected:
@@ -74,8 +74,8 @@ TEST_F(ManagerTest, DeviceRegistration) {
   manager_.RegisterDevice(mock_device.get());
   manager_.RegisterDevice(mock_device2.get());
 
-  EXPECT_TRUE(IsDeviceRegistered(mock_device.get(), Device::kEthernet));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device2.get(), Device::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device, Device::kEthernet));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device2, Device::kWifi));
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
@@ -100,14 +100,14 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   manager_.RegisterDevice(mock_device.get());
   manager_.RegisterDevice(mock_device2.get());
 
-  ASSERT_TRUE(IsDeviceRegistered(mock_device.get(), Device::kEthernet));
-  ASSERT_TRUE(IsDeviceRegistered(mock_device2.get(), Device::kWifi));
+  ASSERT_TRUE(IsDeviceRegistered(mock_device, Device::kEthernet));
+  ASSERT_TRUE(IsDeviceRegistered(mock_device2, Device::kWifi));
 
   manager_.DeregisterDevice(mock_device.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device.get(), Device::kEthernet));
+  EXPECT_FALSE(IsDeviceRegistered(mock_device, Device::kEthernet));
 
   manager_.DeregisterDevice(mock_device2.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device2.get(), Device::kWifi));
+  EXPECT_FALSE(IsDeviceRegistered(mock_device2, Device::kWifi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
@@ -121,13 +121,11 @@ TEST_F(ManagerTest, ServiceRegistration) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                device.get(),
                                 kService1));
 
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                device.get(),
                                 kService2));
 
   manager_.RegisterService(mock_service);

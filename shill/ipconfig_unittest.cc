@@ -70,12 +70,12 @@ namespace {
 
 class UpdateCallbackTest {
  public:
-  UpdateCallbackTest(IPConfigRefPtr ipconfig, bool success)
+  UpdateCallbackTest(const IPConfigRefPtr &ipconfig, bool success)
       : ipconfig_(ipconfig),
         success_(success),
         called_(false) {}
 
-  void Callback(IPConfigRefPtr ipconfig, bool success) {
+  void Callback(const IPConfigRefPtr &ipconfig, bool success) {
     called_ = true;
     EXPECT_EQ(ipconfig_.get(), ipconfig.get());
     EXPECT_EQ(success_, success);

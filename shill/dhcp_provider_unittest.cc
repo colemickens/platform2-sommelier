@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include "shill/dhcp_provider.h"
+
+#include "shill/dhcp_config.h"
 #include "shill/mock_glib.h"
 
 using testing::Test;

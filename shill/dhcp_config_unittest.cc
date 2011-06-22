@@ -111,14 +111,14 @@ namespace {
 class UpdateCallbackTest {
  public:
   UpdateCallbackTest(const string &message,
-                     IPConfigRefPtr ipconfig,
+                     const IPConfigRefPtr &ipconfig,
                      bool success)
       : message_(message),
         ipconfig_(ipconfig),
         success_(success),
         called_(false) {}
 
-  void Callback(IPConfigRefPtr ipconfig, bool success) {
+  void Callback(const IPConfigRefPtr &ipconfig, bool success) {
     called_ = true;
     EXPECT_EQ(ipconfig_.get(), ipconfig.get()) << message_;
     EXPECT_EQ(success_, success) << message_;

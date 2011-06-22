@@ -13,7 +13,6 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/endpoint.h"
-#include "shill/service.h"
 #include "shill/shill_event.h"
 
 namespace shill {

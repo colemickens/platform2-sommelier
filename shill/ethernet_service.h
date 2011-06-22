@@ -8,20 +8,17 @@
 #include <base/basictypes.h>
 
 #include "shill/ethernet.h"
-#include "shill/device.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
 namespace shill {
 
-
-class Ethernet;
-
 class EthernetService : public Service {
  public:
   EthernetService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
-                  Ethernet *device,
+                  const EthernetRefPtr &device,
                   const std::string& name);
   ~EthernetService();
   void Connect();
@@ -31,7 +28,7 @@ class EthernetService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
-  Ethernet *ethernet_;
+  EthernetRefPtr ethernet_;
   const std::string type_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);
 };

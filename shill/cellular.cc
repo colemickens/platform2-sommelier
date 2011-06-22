@@ -68,7 +68,7 @@ void Cellular::Start() {
 }
 
 void Cellular::Stop() {
-  manager_->DeregisterService(service_.get());
+  manager_->DeregisterService(service_);
   Device::Stop();
 }
 

@@ -80,7 +80,7 @@ void Manager::Stop() {
   adaptor_->UpdateRunning();
 }
 
-void Manager::RegisterDevice(DeviceRefPtr to_manage) {
+void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -93,7 +93,7 @@ void Manager::RegisterDevice(DeviceRefPtr to_manage) {
     to_manage->Start();
 }
 
-void Manager::DeregisterDevice(DeviceConstRefPtr to_forget) {
+void Manager::DeregisterDevice(const DeviceConstRefPtr &to_forget) {
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
@@ -103,7 +103,7 @@ void Manager::DeregisterDevice(DeviceConstRefPtr to_forget) {
   }
 }
 
-void Manager::RegisterService(ServiceRefPtr to_manage) {
+void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -112,7 +112,7 @@ void Manager::RegisterService(ServiceRefPtr to_manage) {
   services_.push_back(to_manage);
 }
 
-void Manager::DeregisterService(ServiceConstRefPtr to_forget) {
+void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget.get() == it->get()) {

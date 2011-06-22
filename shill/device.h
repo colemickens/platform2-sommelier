@@ -13,16 +13,14 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/device_config_interface.h"
 #include "shill/ipconfig.h"
 #include "shill/property_store.h"
-#include "shill/service.h"
+#include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
 class ControlInterface;
-class Device;
 class DeviceAdaptorInterface;
 class DeviceInfo;
 class Endpoint;
@@ -30,14 +28,9 @@ class Error;
 class EventDispatcher;
 class Manager;
 
-typedef scoped_refptr<const Device> DeviceConstRefPtr;
-typedef scoped_refptr<Device> DeviceRefPtr;
-
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-// DeviceConfigInterface is RefCounted, so this class and derived classes
-// are as well.
-class Device : public DeviceConfigInterface, public PropertyStore {
+class Device : public base::RefCounted<Device>, public PropertyStore {
  public:
   enum Technology {
     kEthernet,
@@ -65,7 +58,6 @@ class Device : public DeviceConfigInterface, public PropertyStore {
   virtual void LinkEvent(unsigned flags, unsigned change);
   virtual void Scan();
 
-  // Implementation of DeviceConfigInterface
   virtual void ConfigIP() {}
 
   // Implementation of PropertyStore
@@ -122,7 +114,7 @@ class Device : public DeviceConfigInterface, public PropertyStore {
   friend class DeviceAdaptorInterface;
 
   // Callback invoked on every IP configuration update.
-  void IPConfigUpdatedCallback(IPConfigRefPtr ipconfig, bool success);
+  void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success);
 
   const std::string link_name_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
