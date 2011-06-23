@@ -16,7 +16,7 @@ In developer mode, it is possible to
 
 * To set a password for 'chronos', run the following as root:
 
-echo "chronos:$(openssl passwd -1)" > /mnt/stateful_partition/etc/devmode.passwd
+chromeos-setdevpasswd
 
 If you are having trouble booting a self-signed kernel, you may need to
 install the developer firmware.  To do so, run the following as root:
