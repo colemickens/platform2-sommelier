@@ -1,5 +1,0 @@
-wifi_integrationtest:
-- should be run as root
-- should be run on a system with wpa_supplicant running
-- will either report scan results, or fail by timing out after 10 seconds
-- to specify device name, use --device-name=<name>

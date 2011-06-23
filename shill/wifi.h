@@ -122,9 +122,6 @@ class WiFi : public Device {
   EndpointMap endpoint_by_bssid_;
   ServiceMap service_by_private_id_;
 
-  // provide WiFiTest access to scan_pending_, so it can determine
-  // if the scan completed, or timed out.
-  friend class WiFiTest;
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 

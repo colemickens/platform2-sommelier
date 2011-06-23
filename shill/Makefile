@@ -93,7 +93,6 @@ TEST_OBJS = \
 	testrunner.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
-integration_tests: wifi_integrationtest
 
 $(DBUS_PROXY_HEADERS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
@@ -114,12 +113,6 @@ $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_INCLUDE_DIRS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ \
 		$(TEST_LIBS) -o $@
-
-# NB(quiche): statically link gmock, gtest, as test device will not have them
-wifi_integrationtest: CXXFLAGS += -DUNIT_TEST
-wifi_integrationtest: wifi_integrationtest.o $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(TEST_INCLUDE_DIRS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ \
-		$(BASE_LIBS) -Wl,-Bstatic -lgmock -lgtest -Wl,-Bdynamic -o $@
 
 clean:
 	rm -rf *.o $(DBUS_HEADERS) $(SHILL_BIN) $(TEST_BIN)
