@@ -24,8 +24,7 @@ DHCPProvider* DHCPProvider::GetInstance() {
   return Singleton<DHCPProvider>::get();
 }
 
-void DHCPProvider::Init(DBus::Connection *connection,
-                        GLibInterface *glib) {
+void DHCPProvider::Init(DBus::Connection *connection, GLib *glib) {
   VLOG(2) << __func__;
   listener_.reset(new DHCPCDListener(this, connection));
   glib_ = glib;

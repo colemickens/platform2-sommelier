@@ -18,7 +18,7 @@ namespace shill {
 class DHCPConfig;
 class DHCPProvider;
 class DHCPProxyInterface;
-class GLibInterface;
+class GLib;
 
 typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
@@ -28,7 +28,7 @@ class DHCPConfig : public IPConfig {
 
   DHCPConfig(DHCPProvider *provider,
              const std::string &device_name,
-             GLibInterface *glib);
+             GLib *glib);
   virtual ~DHCPConfig();
 
   // Inherited from IPConfig.
@@ -121,7 +121,7 @@ class DHCPConfig : public IPConfig {
   // Root file path, used for testing.
   FilePath root_;
 
-  GLibInterface *glib_;
+  GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);
 };

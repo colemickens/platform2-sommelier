@@ -12,7 +12,7 @@
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
-#include "shill/glib_interface.h"
+#include "shill/glib.h"
 
 using std::string;
 using std::vector;
@@ -39,7 +39,7 @@ const char DHCPConfig::kReasonRenew[] = "RENEW";
 
 DHCPConfig::DHCPConfig(DHCPProvider *provider,
                        const string &device_name,
-                       GLibInterface *glib)
+                       GLib *glib)
     : IPConfig(device_name),
       provider_(provider),
       pid_(0),

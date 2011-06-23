@@ -7,11 +7,11 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/glib_interface.h"
+#include "shill/glib.h"
 
 namespace shill {
 
-class MockGLib : public GLibInterface {
+class MockGLib : public GLib {
  public:
   MOCK_METHOD3(ChildWatchAdd, guint(GPid pid,
                                     GChildWatchFunc function,

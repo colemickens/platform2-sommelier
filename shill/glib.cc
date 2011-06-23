@@ -6,6 +6,8 @@
 
 namespace shill {
 
+GLib::~GLib() {}
+
 guint GLib::ChildWatchAdd(GPid pid,
                           GChildWatchFunc function,
                           gpointer data) {

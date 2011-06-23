@@ -32,7 +32,7 @@ class DHCPProvider {
   // Initializes the provider singleton. This method hooks up a D-Bus signal
   // listener to |connection| that catches signals from spawned DHCP clients and
   // dispatches them to the appropriate DHCP configuration instance.
-  void Init(DBus::Connection *connection, GLibInterface *glib);
+  void Init(DBus::Connection *connection, GLib *glib);
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -72,7 +72,7 @@ class DHCPProvider {
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;
 
-  GLibInterface *glib_;
+  GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPProvider);
 };
