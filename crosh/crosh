@@ -210,8 +210,7 @@ cmd_ssh() {
   local id=$(uuidgen)
 
   local defopts="-e none -F /etc/ssh/ssh_config"
-  local home="$(getent passwd "$USER" | cut -f6 -d':')"
-  rm -rf "$home/.ssh"
+  rm -rf "$HOME/.ssh"
 
   if [ ! -z "$1" ]; then
     # Sets the username, host, and optionally port directly.  We accept:
