@@ -105,6 +105,8 @@ bool Pkcs11Init::Initialize() {
                                  &saved_gid))
       return false;
     bool success = SetUserTokenPins() && SetUserTokenFilePermissions();
+    if (!SetInitialized(success))
+      success = false;
     if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
       return false;
     return success;
@@ -194,7 +196,7 @@ bool Pkcs11Init::SetUserTokenPins() {
   }
 
   LOG(INFO) << "Token initialization complete.";
-  return SetInitialized(true);
+  return true;
 }
 
 bool Pkcs11Init::SetupOpencryptokiDirectory() {
