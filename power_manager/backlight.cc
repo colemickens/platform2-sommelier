@@ -21,43 +21,32 @@ namespace power_manager {
 
 Backlight::Backlight() {}
 
-bool Backlight::Init() {
-  FilePath base_path("/sys/class/backlight");
-  DIR* dir = opendir(base_path.value().c_str());
+bool Backlight::Init(const FilePath& base_path,
+                     const FilePath::StringType& pattern) {
+  int64 max = 0;
+  FilePath dir_path;
+  file_util::FileEnumerator dir_enumerator(base_path, false,
+      file_util::FileEnumerator::DIRECTORIES, pattern);
 
-#if !defined(OS_LINUX) && !defined(OS_MACOSX) && !defined(OS_FREEBSD)
-  #error Port warning: depending on the definition of struct dirent, \
-         additional space for pathname may be needed
-#endif
+  // Find the backlight interface with greatest granularity (highest max).
+  for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+       check_path = dir_enumerator.Next()) {
+    FilePath check_name = check_path.BaseName();
+    std::string str_check_name = check_name.value();
 
-  if (dir) {
-    struct dirent dent_buf;
-    struct dirent* dent;
-    int64 max = 0;
-    FilePath dir_path;
-
-    // Find the backlight interface with greatest granularity (highest max).
-    while (readdir_r(dir, &dent_buf, &dent) == 0 && dent) {
-      if (dent->d_name[0] && dent->d_name[0] != '.') {
-        FilePath check_path = base_path.Append(dent->d_name);
-        int64 check_max = CheckBacklightFiles(check_path);
-        if (check_max > max) {
-          max = check_max;
-          dir_path = check_path;
-        }
+    if (str_check_name[0] != '.') {
+      int64 check_max = CheckBacklightFiles(check_path);
+      if (check_max > max) {
+        max = check_max;
+        dir_path = check_path;
       }
     }
-    closedir(dir);
+  }
 
-    // Restore path names to those of the selected interface.
-    if (max > 0) {
-      brightness_path_ = dir_path.Append("brightness");
-      actual_brightness_path_ = dir_path.Append("actual_brightness");
-      max_brightness_path_ = dir_path.Append("max_brightness");
-      return true;
-    }
-  } else {
-    LOG(WARNING) << "Can't open " << base_path.value();
+  // Restore path names to those of the selected interface.
+  if (max > 0) {
+    CheckBacklightFiles(dir_path);
+    return true;
   }
 
   LOG(WARNING) << "Can't init backlight interface";
@@ -72,11 +61,19 @@ int64 Backlight::CheckBacklightFiles(const FilePath& dir_path) {
   max_brightness_path_ = dir_path.Append("max_brightness");
   if (!file_util::PathExists(max_brightness_path_)) {
     LOG(WARNING) << "Can't find " << max_brightness_path_.value();
-  } else if (!file_util::PathExists(actual_brightness_path_)) {
-    LOG(WARNING) << "Can't find " << actual_brightness_path_.value();
+    return 0;
   } else if (access(brightness_path_.value().c_str(), R_OK | W_OK)) {
     LOG(WARNING) << "Can't write to " << brightness_path_.value();
-  } else if (GetBrightness(&level, &max_level)) {
+    return 0;
+  }
+
+  // Technically all screen backlights should implement actual_brightness, but
+  // we'll handle ones that don't.  This allows us to work with keyboard
+  // backlights too.
+  if (!file_util::PathExists(actual_brightness_path_))
+    actual_brightness_path_ = brightness_path_;
+
+  if (GetBrightness(&level, &max_level)) {
     return max_level;
   } // Else GetBrightness logs a warning for us.  No need to do it here.
 

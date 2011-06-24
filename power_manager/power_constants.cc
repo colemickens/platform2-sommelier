@@ -32,4 +32,7 @@ const char kReactMs[] = "react_ms";
 // The minimum delta between timers to avoid timer precision issues.
 const char kFuzzMs[] = "fuzz_ms";
 
+const char kBacklightPath[] = "/sys/class/backlight";
+const char kBacklightPattern[] = "*";
+
 }  // namespace power_manager

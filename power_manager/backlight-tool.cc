@@ -10,6 +10,7 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "power_manager/backlight.h"
+#include "power_manager/power_constants.h"
 
 // backlight-tool: A simple tool to get and set the brightness level of the
 //                 display backlight.
@@ -24,7 +25,8 @@ int main(int argc, char* argv[]) {
   CHECK(!FLAGS_get_brightness || !FLAGS_get_max_brightness) <<
       "-get_brightness and -get_max_brightness are mutually exclusive";
   power_manager::Backlight backlight;
-  CHECK(backlight.Init());
+  CHECK(backlight.Init(FilePath(power_manager::kBacklightPath),
+                       power_manager::kBacklightPattern));
   if (FLAGS_get_brightness || FLAGS_get_max_brightness) {
     int64 level, max;
     CHECK(backlight.GetBrightness(&level, &max));

@@ -29,6 +29,8 @@ extern const char kPluggedSuspendMs[];
 extern const char kMinBacklightPercent[];
 extern const char kReactMs[];
 extern const char kFuzzMs[];
+extern const char kBacklightPath[];
+extern const char kBacklightPattern[];
 
 }  // namespace power_manager
 

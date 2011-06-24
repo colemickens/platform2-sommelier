@@ -33,8 +33,14 @@ class Backlight : public BacklightInterface {
 
   // Initialize the backlight object.
   //
+  // The |base_path| specifies the directory to look for backlights.  The
+  // |pattern| is a glob pattern to help find the right backlight.
+  // Expected values for parameters look like:
+  //   base: "/sys/class/backlight", pattern: "*"
+  //   base: "/sys/class/leds", pattern: "*:kbd_backlight"
+  //
   // On success, return true; otherwise return false.
-  bool Init();
+  bool Init(const FilePath& base_path, const FilePath::StringType& pattern);
 
   // Overridden from BacklightInterface:
   virtual bool GetBrightness(int64* level, int64* max);

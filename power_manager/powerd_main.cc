@@ -20,6 +20,7 @@
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
+#include "power_manager/power_constants.h"
 #include "power_manager/power_manager_service.h"
 #include "power_manager/powerd.h"
 #include "power_manager/video_detector.h"
@@ -94,7 +95,9 @@ int main(int argc, char* argv[]) {
       << "LoadLibcros('" << chromeos::kCrosDefaultPath << "') failed: " << err;
   gdk_init(&argc, &argv);
   power_manager::Backlight backlight;
-  LOG_IF(WARNING, !backlight.Init()) << "Cannot initialize backlight";
+  LOG_IF(WARNING, !backlight.Init(FilePath(power_manager::kBacklightPath),
+                                  power_manager::kBacklightPattern))
+      << "Cannot initialize backlight";
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
   LOG_IF(WARNING, !backlight_ctl.Init()) << "Cannot initialize backlight "
       "controller";
