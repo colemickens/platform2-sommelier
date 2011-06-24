@@ -59,6 +59,7 @@ SHILL_OBJS = \
 	glib.o \
 	glib_io_handler.o \
 	ipconfig.o \
+	key_file_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \
 	property_store.o \
@@ -85,6 +86,7 @@ TEST_OBJS = \
 	dhcp_config_unittest.o \
 	dhcp_provider_unittest.o \
 	ipconfig_unittest.o \
+	key_file_store_unittest.o \
 	manager_unittest.o \
 	mock_control.o \
 	mock_device.o \
