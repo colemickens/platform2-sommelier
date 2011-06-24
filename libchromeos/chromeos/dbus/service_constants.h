@@ -143,6 +143,8 @@ extern const char* kPowerManagerServiceName;
 // Methods
 extern const char* kPowerManagerDecreaseScreenBrightness;
 extern const char* kPowerManagerIncreaseScreenBrightness;
+extern const char* kPowerManagerDecreaseKeyboardBrightness;
+extern const char* kPowerManagerIncreaseKeyboardBrightness;
 // Signals
 extern const char* kRequestLockScreenSignal;
 extern const char* kRequestRestartSignal;
@@ -157,6 +159,7 @@ extern const char* kUnregisterSuspendDelay;
 extern const char* kSuspendDelay;
 extern const char* kSuspendReady;
 extern const char* kBrightnessChangedSignal;
+extern const char* kKeyboardBrightnessChangedSignal;
 extern const char* kPowerStateChangedSignal;
 }  // namespace power_manager
 

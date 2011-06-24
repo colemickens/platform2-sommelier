@@ -127,6 +127,10 @@ const char* kPowerManagerServiceName = "org.chromium.PowerManager";
 // Methods
 const char* kPowerManagerDecreaseScreenBrightness = "DecreaseScreenBrightness";
 const char* kPowerManagerIncreaseScreenBrightness = "IncreaseScreenBrightness";
+const char* kPowerManagerDecreaseKeyboardBrightness =
+    "DecreaseKeyboardBrightness";
+const char* kPowerManagerIncreaseKeyboardBrightness =
+    "IncreaseKeyboardBrightness";
 // Signals
 const char* kRequestLockScreenSignal = "RequestLockScreen";
 const char* kRequestRestartSignal = "RequestRestart";
@@ -141,6 +145,7 @@ const char* kUnregisterSuspendDelay = "UnregisterSuspendDelay";
 const char* kSuspendDelay = "SuspendDelay";
 const char* kSuspendReady = "SuspendReady";
 const char* kBrightnessChangedSignal = "BrightnessChanged";
+const char* kKeyboardBrightnessChangedSignal = "KeyboardBrightnessChanged";
 const char* kPowerStateChangedSignal = "PowerStateChanged";
 }  // namespace power_manager
 
