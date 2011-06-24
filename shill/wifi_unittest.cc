@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular.h"
+#include "shill/wifi.h"
 
 #include <map>
 #include <string>
@@ -30,28 +30,32 @@ using ::testing::Values;
 
 namespace shill {
 
-class CellularTest : public PropertyStoreTest {
+class WiFiTest : public PropertyStoreTest {
  public:
-  CellularTest()
-      : device_(new Cellular(&control_interface_, NULL, NULL, "3G", 0)) {
+  WiFiTest()
+      : device_(new WiFi(&control_interface_, NULL, NULL, "wifi", 0)) {
   }
-  virtual ~CellularTest() {}
+  virtual ~WiFiTest() {}
 
  protected:
   DeviceRefPtr device_;
 };
 
-TEST_F(CellularTest, Contains) {
+TEST_F(WiFiTest, Contains) {
   EXPECT_TRUE(device_->Contains(flimflam::kNameProperty));
   EXPECT_FALSE(device_->Contains(""));
 }
 
-TEST_F(CellularTest, Dispatch) {
+TEST_F(WiFiTest, Dispatch) {
   ::DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+                                          flimflam::kBgscanMethodProperty,
+                                          PropertyStoreTest::kStringV,
+                                          error));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(
       device_.get(),
-      flimflam::kCellularAllowRoamingProperty,
-      PropertyStoreTest::kBoolV,
+      flimflam::kBgscanSignalThresholdProperty,
+      PropertyStoreTest::kInt32V,
       error));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
                                           flimflam::kScanIntervalProperty,
@@ -60,23 +64,13 @@ TEST_F(CellularTest, Dispatch) {
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kAddressProperty,
-                                           PropertyStoreTest::kStringV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kCarrierProperty,
-                                           PropertyStoreTest::kStringV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kPRLVersionProperty,
-                                           PropertyStoreTest::kInt16V,
+                                           flimflam::kScanningProperty,
+                                           PropertyStoreTest::kBoolV,
                                            error));
   EXPECT_EQ(invalid_args_, error.name());
 }
 
-TEST_P(CellularTest, TestProperty) {
+TEST_P(WiFiTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
@@ -84,8 +78,8 @@ TEST_P(CellularTest, TestProperty) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    CellularTestInstance,
-    CellularTest,
+    WiFiTestInstance,
+    WiFiTest,
     Values(PropertyStoreTest::kBoolV,
            PropertyStoreTest::kByteV,
            PropertyStoreTest::kStringV,

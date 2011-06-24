@@ -62,19 +62,6 @@ TEST_F(DeviceTest, Dispatch) {
                                           flimflam::kPoweredProperty,
                                           PropertyStoreTest::kBoolV,
                                           error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kBgscanMethodProperty,
-                                          PropertyStoreTest::kStringV,
-                                          error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
-      device_.get(),
-      flimflam::kBgscanSignalThresholdProperty,
-      PropertyStoreTest::kInt32V,
-      error));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kScanIntervalProperty,
-                                          PropertyStoreTest::kUint16V,
-                                          error));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),

@@ -31,11 +31,8 @@ Device::Device(ControlInterface *control_interface,
                Manager *manager,
                const string &link_name,
                int interface_index)
-    : bgscan_short_interval_(0),
-      bgscan_signal_threshold_(0),
-      powered_(true),
+    : powered_(true),
       reconnect_(true),
-      scan_interval_(0),
       manager_(manager),
       link_name_(link_name),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
@@ -43,18 +40,12 @@ Device::Device(ControlInterface *control_interface,
       running_(false) {
 
   RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
-  RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
-  RegisterUint16(flimflam::kBgscanShortIntervalProperty,
-                 &bgscan_short_interval_);
-  RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
-                &bgscan_signal_threshold_);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
   RegisterConstString(flimflam::kNameProperty, &link_name_);
   RegisterBool(flimflam::kPoweredProperty, &powered_);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
-  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
   // TODO(cmasone): Add support for R/O properties that return DBus object paths
   // known_properties_.push_back(flimflam::kDBusConnectionProperty);

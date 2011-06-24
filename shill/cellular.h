@@ -28,6 +28,9 @@ class Cellular : public Device {
   bool TechnologyIs(Device::Technology type);
 
  private:
+  ServiceRefPtr service_;
+  bool service_registered_;
+
   // Properties
   bool allow_roaming_;
   std::string carrier_;
@@ -42,12 +45,9 @@ class Cellular : public Device {
   std::string firmware_revision_;
   std::string hardware_revision_;
   int16 prl_version_;
-
   bool scanning_;
   uint16 scan_interval_;
 
-  bool service_registered_;
-  ServiceRefPtr service_;
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };
 

@@ -109,12 +109,8 @@ class Device : public DeviceConfigInterface, public PropertyStore {
 
   // Properties
   std::string hardware_address_;
-  std::string bgscan_method_;
-  uint16 bgscan_short_interval_;
-  int32 bgscan_signal_threshold_;
   bool powered_;  // TODO(pstew): Is this what |running_| is for?
   bool reconnect_;
-  uint16 scan_interval_;
 
   std::vector<ServiceRefPtr> services_;
   int interface_index_;

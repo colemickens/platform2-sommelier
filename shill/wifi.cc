@@ -133,8 +133,16 @@ WiFi::WiFi(ControlInterface *control_interface,
       task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
-      dbus_(DBus::Connection::SystemBus()),
-      scan_pending_(false) {
+      bgscan_short_interval_(0),
+      bgscan_signal_threshold_(0),
+      scan_pending_(false),
+      scan_interval_(0) {
+  RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
+  RegisterUint16(flimflam::kBgscanShortIntervalProperty,
+                 &bgscan_short_interval_);
+  RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
+                &bgscan_signal_threshold_);
+
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
   // scan pending/currently scanning/no scan scheduled as a tri-state
@@ -148,9 +156,10 @@ WiFi::~WiFi() {
 }
 
 void WiFi::Start() {
+  dbus_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   ::DBus::Path interface_path;
 
-  supplicant_process_proxy_.reset(new SupplicantProcessProxy(&dbus_));
+  supplicant_process_proxy_.reset(new SupplicantProcessProxy(dbus_.get()));
   try {
     std::map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
@@ -172,7 +181,7 @@ void WiFi::Start() {
   }
 
   supplicant_interface_proxy_.reset(
-      new SupplicantInterfaceProxy(this, &dbus_, interface_path));
+      new SupplicantInterfaceProxy(this, dbus_.get(), interface_path));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
 

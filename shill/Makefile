@@ -94,7 +94,8 @@ TEST_OBJS = \
 	property_store_unittest.o \
 	service_unittest.o \
 	shill_unittest.o \
-	testrunner.o
+	testrunner.o \
+	wifi_unittest.o
 
 all: $(SHILL_BIN) $(TEST_BIN)
 

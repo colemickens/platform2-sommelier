@@ -115,13 +115,18 @@ class WiFi : public Device {
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
-  DBus::Connection dbus_;
+  scoped_ptr<DBus::Connection> dbus_;
   scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxy> supplicant_interface_proxy_;
-  bool scan_pending_;
-  uint16 scan_interval_;
   EndpointMap endpoint_by_bssid_;
   ServiceMap service_by_private_id_;
+
+  // Properties
+  std::string bgscan_method_;
+  uint16 bgscan_short_interval_;
+  int32 bgscan_signal_threshold_;
+  bool scan_pending_;
+  uint16 scan_interval_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
