@@ -33,6 +33,14 @@ const char SystemUtils::kSignalFailure[] = "failure";
 SystemUtils::SystemUtils() {}
 SystemUtils::~SystemUtils() {}
 
+int SystemUtils::IsDevMode() {
+  int dev_mode_code = system("crossystem cros_debug?0");
+  if (WIFEXITED(dev_mode_code)) {
+    return WEXITSTATUS(dev_mode_code);
+  }
+  return -1;
+}
+
 int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
   LOG(INFO) << "Sending " << signal << " to " << pid << " as " << owner;
   uid_t uid, euid, suid;
