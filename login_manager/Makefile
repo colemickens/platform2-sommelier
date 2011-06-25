@@ -51,7 +51,7 @@ TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
 	regen_mitigator_unittest.o session_manager_unittest.o \
 	session_manager_static_unittest.o system_utils_unittest.o
 
-ROOT_FILES = use_webui_login
+ROOT_FILES = use_webui_login use_touchui
 
 all: $(KEYGEN_BIN) $(SESSION_BIN) $(TEST_BIN) $(ROOT_FILES)
 

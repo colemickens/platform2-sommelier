@@ -274,13 +274,17 @@ if [ -n "$REGISTER_PLUGINS" ]; then
   REGISTER_PLUGINS="--register-pepper-plugins=$REGISTER_PLUGINS"
 fi
 
-# Look to see if there are touch devices.
-TOUCH_LIST_PATH=/etc/touch-devices
-TOUCH_DEVICES=
-if [ -s $TOUCH_LIST_PATH ] ; then
-  DEVICE_LIST="$(cat $TOUCH_LIST_PATH)"
-  if [ "${DEVICE_LIST%%[,0-9]*}" = "" ] ; then
-    TOUCH_DEVICES="--touch-devices='$DEVICE_LIST'"
+TOUCH_UI_FLAGS=
+if [ -f /root/.use_touchui ] ; then
+  # chrome://keyboard relies on experimental APIs.
+  TOUCH_UI_FLAGS="--enable-experimental-extension-apis"
+  # Look to see if there are touch devices.
+  TOUCH_LIST_PATH=/etc/touch-devices
+  if [ -s $TOUCH_LIST_PATH ] ; then
+    DEVICE_LIST="$(cat $TOUCH_LIST_PATH)"
+    if [ "${DEVICE_LIST%%[,0-9]*}" = "" ] ; then
+      TOUCH_UI_FLAGS="$TOUCH_UI_FLAGS --touch-devices='$DEVICE_LIST'"
+    fi
   fi
 fi
 
@@ -364,7 +368,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --reload-killed-tabs \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
-            "$TOUCH_DEVICES" \
+            "$TOUCH_UI_FLAGS" \
             ${ACCELERATED_FLAGS} \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
