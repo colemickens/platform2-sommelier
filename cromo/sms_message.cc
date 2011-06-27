@@ -16,10 +16,6 @@ static const uint8_t kTypeOfAddrNumIntl    = 0x10;
 static const uint8_t kTypeOfAddrNumAlpha   = 0x50;
 static const uint8_t kTypeOfAddrIntlE164   = 0x91;
 
-static const uint8_t kDataCodingSchemeMask = 0xec;
-static const uint8_t kDataCodingSchemeGsm7 = 0x00;
-static const uint8_t kDataCodingSchemeUcs2 = 0x08;
-
 static const uint8_t kSmscTimestampLen = 7;
 static const size_t  kMinPduLen = 7 + kSmscTimestampLen;
 
@@ -68,7 +64,7 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
 SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   // Make sure the PDU is of a valid size
   if (pdu_len < kMinPduLen) {
-    LOG(INFO) << "PDU too short: " << pdu_len << " vs. " << kMinPduLen;
+    LOG(INFO) << "PDU too short: have " << pdu_len << " need " << kMinPduLen;
     return NULL;
   }
 
@@ -81,10 +77,10 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   //  1 octet  - length of sender address in decimal digits (semi-octets)
   //  1 octet  - type of sender address (value 0x91 is international E.164)
   //  variable - sender address
-  //  1 octet  - protocol identifier (value = 0)
-  //  1 octet  - data coding scheme (value 0 is GSM7, 8 is UCS2)
+  //  1 octet  - protocol identifier
+  //  1 octet  - data coding scheme
   //  7 octets - SMSC timestamp
-  //  1 octet  - user data length in septets
+  //  1 octet  - user data length (in septets for GSM7, else octets)
   //  variable - user data (body of message)
 
   // Do a bunch of validity tests first so we can bail out early
@@ -96,7 +92,7 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   uint8_t variable_length_items = smsc_addr_num_octets;
 
   if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: " << pdu_len << " vs. "
+    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
               << variable_length_items + kMinPduLen;
     return NULL;
   }
@@ -109,7 +105,7 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   uint8_t sender_addr_num_octets = (sender_addr_num_digits + 1) >> 1;
   variable_length_items += sender_addr_num_octets;
   if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: " << pdu_len << " vs. "
+    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
               << variable_length_items + kMinPduLen;
     return NULL;
   }
@@ -120,34 +116,81 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   variable_length_items += (7 * (user_data_num_septets + 1 )) / 8;
 
   if (pdu_len < variable_length_items + kMinPduLen) {
-    LOG(INFO) << "PDU too short: " << pdu_len << " vs. "
+    LOG(INFO) << "PDU too short: have " << pdu_len << " need "
               << variable_length_items + kMinPduLen;
     return NULL;
   }
 
   // smsc number format must be international, E.164
   if (pdu[1] != kTypeOfAddrIntlE164) {
-    LOG(INFO) << "Invalid SMSC address format: "
-              << std::hex << (int)pdu[1] << " vs. "
+    LOG(INFO) << "Invalid SMSC address format: have "
+              << std::hex << (int)pdu[1] << " need "
               << std::hex << kTypeOfAddrIntlE164;
     return NULL;
   }
 
   // we only handle SMS-DELIVER messages
   if ((pdu[msg_start_offset] & kMsgTypeMask) != kMsgTypeDeliver) {
-    LOG(INFO) << "Unhandled message type: "
+    LOG(INFO) << "Unhandled message type: have "
               << std::hex << (int)(pdu[msg_start_offset] & kMsgTypeMask)
-              << " vs. " << std::hex << kMsgTypeDeliver;
+              << " need " << std::hex << kMsgTypeDeliver;
     return NULL;
   }
 
   uint8_t sender_addr_type = pdu[msg_start_offset + 2];
 
-  // for data coding scheme, we only handle GSM7 and UCS2
-  uint8_t dcs = pdu[tp_pid_offset+1] & kDataCodingSchemeMask;
-  if (dcs != kDataCodingSchemeGsm7 && dcs != kDataCodingSchemeUcs2) {
-    LOG(INFO) << "Unhandled data coding scheme: " << std::hex
-              << (int)pdu[tp_pid_offset+1];
+  uint8_t dcs = pdu[tp_pid_offset+1];
+  enum {dcs_unknown, dcs_gsm7, dcs_ucs2, dcs_8bit} scheme = dcs_unknown;
+
+  switch ((dcs >> 4) & 0xf) {
+    // General data coding group
+    case 0: case 1:
+    case 2: case 3:
+      switch (dcs & 0x0c) {
+        case 0x8:
+          scheme = dcs_ucs2;
+          break;
+        case 0:
+        case 0xc0:    // reserved - spec says to treat it as default alphabet
+          scheme = dcs_gsm7;
+          break;
+        case 0x4:
+          scheme = dcs_8bit;
+          break;
+      }
+      break;
+
+    // Message waiting group (default alphabet)
+    case 0xc:
+    case 0xd:
+      scheme = dcs_gsm7;
+      break;
+
+    // Message waiting group (UCS2 alphabet)
+    case 0xe:
+      scheme = dcs_ucs2;
+      break;
+
+    // Data coding/message class group
+    case 0xf:
+      switch (dcs & 0x04) {
+        case 0:
+          scheme = dcs_gsm7;
+          break;
+        case 0x4:
+          scheme = dcs_8bit;
+          break;
+      }
+      break;
+
+    // Reserved coding group values - spec says to treat it as default alphabet
+    default:
+      scheme = dcs_gsm7;
+      break;
+  }
+
+  if (scheme == dcs_unknown) {
+    LOG(INFO) << "Unhandled data coding scheme: " << std::hex << (int)dcs;
     return NULL;
   }
 
@@ -171,10 +214,30 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   std::string sc_timestamp = SemiOctetsToBcdString(&pdu[tp_pid_offset+2],
                                                    kSmscTimestampLen-1);
   std::string msg_text;
-  if (dcs == kDataCodingSchemeGsm7)
-    msg_text = utilities::Gsm7ToUtf8String(&pdu[user_data_offset]);
+  size_t num_data_octets;
+  size_t data_octets_available;
+
+  data_octets_available = pdu_len - (user_data_offset + 1);
+  if (scheme == dcs_gsm7)
+    num_data_octets = (pdu[user_data_offset] * 7 + 7)/8;
+  else if (scheme == dcs_ucs2)
+    num_data_octets = pdu[user_data_offset];
   else
+    num_data_octets = pdu[user_data_offset];
+
+  if (data_octets_available < num_data_octets) {
+    LOG(INFO) << "Specified user data length (" << num_data_octets
+              << ") exceeds data available";
+    return NULL;
+  }
+
+  if (scheme == dcs_gsm7)
+    msg_text = utilities::Gsm7ToUtf8String(&pdu[user_data_offset]);
+  else if (scheme == dcs_ucs2)
     msg_text = utilities::Ucs2ToUtf8String(&pdu[user_data_offset]);
+  else  // 8-bit data: just copy it as-is
+    msg_text.assign(reinterpret_cast<const char *>(&pdu[user_data_offset+1]),
+                    num_data_octets);
 
   // The last two semi-octets of the timestamp indicate an offset from
   // GMT, and are handled differently than the first 12 semi-octets.
