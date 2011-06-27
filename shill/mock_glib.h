@@ -13,6 +13,8 @@ namespace shill {
 
 class MockGLib : public GLib {
  public:
+  MOCK_METHOD2(Base64Decode, guchar *(const gchar *text, gsize *out_len));
+  MOCK_METHOD2(Base64Encode, gchar *(const guchar *data, gsize len));
   MOCK_METHOD3(ChildWatchAdd, guint(GPid pid,
                                     GChildWatchFunc function,
                                     gpointer data));

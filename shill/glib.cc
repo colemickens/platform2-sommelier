@@ -20,6 +20,14 @@ std::string GLib::ConvertErrorToMessage(GError *error) {
   return message;
 }
 
+guchar *GLib::Base64Decode(const gchar *text, gsize *out_len) {
+  return g_base64_decode(text, out_len);
+}
+
+gchar *GLib::Base64Encode(const guchar *data, gsize len) {
+  return g_base64_encode(data, len);
+}
+
 guint GLib::ChildWatchAdd(GPid pid,
                           GChildWatchFunc function,
                           gpointer data) {

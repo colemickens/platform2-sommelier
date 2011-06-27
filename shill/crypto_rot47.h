@@ -5,8 +5,6 @@
 #ifndef SHILL_CRYPTO_ROT47_
 #define SHILL_CRYPTO_ROT47_
 
-#include <string>
-
 #include "shill/crypto_interface.h"
 
 namespace shill {

@@ -19,6 +19,10 @@ class GLib {
   // Converts GLib's |error| to a string message and frees the GError object.
   virtual std::string ConvertErrorToMessage(GError *error);
 
+  // g_base64_decode
+  virtual guchar *Base64Decode(const gchar *text, gsize *out_len);
+  // g_base64_encode
+  virtual gchar *Base64Encode(const guchar *data, gsize len);
   // g_child_watch_add
   virtual guint ChildWatchAdd(GPid pid,
                               GChildWatchFunc function,
