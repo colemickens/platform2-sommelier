@@ -60,7 +60,7 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
   std::vector<std::string> options;
   options.push_back("this_is_an_invalid_option");
   MountOptions mount_options;
-  mount_options.Initialize(options, false, false, "", "");
+  mount_options.Initialize(options, false, "", "");
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
       "tmpfs", mount_options);
   EXPECT_FALSE(mounter.Mount());

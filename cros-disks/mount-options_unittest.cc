@@ -34,13 +34,13 @@ TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
 
   // options: ro
   options.push_back("ro");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(true, mount_options.IsReadOnlyOptionSet());
 
   // options: rw
   options.clear();
   options.push_back("rw");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(false, mount_options.IsReadOnlyOptionSet());
 }
 
@@ -55,14 +55,14 @@ TEST_F(MountOptionsTest, SetReadOnlyOption) {
 
   // options: ro
   options.push_back("ro");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   mount_options.SetReadOnlyOption();
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: rw
   options.clear();
   options.push_back("rw");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   mount_options.SetReadOnlyOption();
   EXPECT_EQ(expected_string, mount_options.ToString());
 }
@@ -77,65 +77,65 @@ TEST_F(MountOptionsTest, ToString) {
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: ro (default)
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: ro, nodev
   expected_string = "nodev,ro";
   options.push_back("nodev");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw
   expected_string = "nodev,rw";
   options.push_back("rw");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid
   expected_string = "nodev,nosuid,rw";
   options.push_back("nosuid");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec
   expected_string = "nodev,nosuid,noexec,rw";
   options.push_back("noexec");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec, sync
   expected_string = "nodev,nosuid,noexec,sync,rw";
   options.push_back("sync");
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec, sync
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   // ignore user and group ID
-  expected_string = "nodev,nosuid,noexec,sync,ro";
-  mount_options.Initialize(options, true, false, "1000", "1001");
+  expected_string = "nodev,nosuid,noexec,sync,rw";
+  mount_options.Initialize(options, false, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec, sync
-  // force read-only with default uid=1000, gid=1001
-  expected_string = "nodev,nosuid,noexec,sync,ro,uid=1000,gid=1001";
-  mount_options.Initialize(options, true, true, "1000", "1001");
+  // default uid=1000, gid=1001
+  expected_string = "nodev,nosuid,noexec,sync,rw,uid=1000,gid=1001";
+  mount_options.Initialize(options, true, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   // ignore user and group ID
   options.push_back("uid=2000");
   options.push_back("gid=2001");
-  expected_string = "nodev,nosuid,noexec,sync,ro";
-  mount_options.Initialize(options, true, false, "1000", "1001");
+  expected_string = "nodev,nosuid,noexec,sync,rw";
+  mount_options.Initialize(options, false, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
   // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
-  // force read-only with default uid=1000, gid=1001
-  expected_string = "nodev,nosuid,noexec,sync,ro,uid=2000,gid=2001";
-  mount_options.Initialize(options, true, true, "1000", "1001");
+  // default uid=1000, gid=1001
+  expected_string = "nodev,nosuid,noexec,sync,rw,uid=2000,gid=2001";
+  mount_options.Initialize(options, true, "1000", "1001");
   EXPECT_EQ(expected_string, mount_options.ToString());
 }
 
@@ -154,7 +154,7 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   EXPECT_EQ(expected_data, flags_and_data.second);
 
   // options: ro (default)
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
@@ -162,7 +162,7 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: ro, nodev
   options.push_back("nodev");
   expected_flags = MS_RDONLY | MS_NODEV;
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
@@ -170,7 +170,7 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: nodev, rw
   options.push_back("rw");
   expected_flags = MS_NODEV;
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
@@ -178,7 +178,7 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: nodev, rw, nosuid
   options.push_back("nosuid");
   expected_flags = MS_NODEV | MS_NOSUID;
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
@@ -186,7 +186,7 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: nodev, rw, nosuid, noexec
   options.push_back("noexec");
   expected_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC;
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
@@ -194,44 +194,44 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   // options: nodev, rw, nosuid, noexec, sync
   options.push_back("sync");
   expected_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_SYNCHRONOUS;
-  mount_options.Initialize(options, false, false, "", "");;
+  mount_options.Initialize(options, false, "", "");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
 
   // options: nodev, rw, nosuid, noexec, sync
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   // ignore user and group ID
-  expected_flags = MS_RDONLY | MS_NODEV | MS_NOSUID | MS_NOEXEC |
+  expected_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC |
     MS_SYNCHRONOUS;
-  mount_options.Initialize(options, true, false, "1000", "1001");
+  mount_options.Initialize(options, false, "1000", "1001");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
 
   // options: nodev, rw, nosuid, noexec, sync
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   expected_data = "uid=1000,gid=1001";
-  mount_options.Initialize(options, true, true, "1000", "1001");
+  mount_options.Initialize(options, true, "1000", "1001");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
 
   // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   // ignore user and group ID
   options.push_back("uid=2000");
   options.push_back("gid=2001");
   expected_data = "";
-  mount_options.Initialize(options, true, false, "1000", "1001");
+  mount_options.Initialize(options, false, "1000", "1001");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
 
   // options: nodev, rw, nosuid, noexec, sync, uid=2000, gid=2001
-  // force read-only with default uid=1000, gid=1001
+  // default uid=1000, gid=1001
   expected_data = "uid=2000,gid=2001";
-  mount_options.Initialize(options, true, true, "1000", "1001");
+  mount_options.Initialize(options, true, "1000", "1001");
   flags_and_data = mount_options.ToMountFlagsAndData();
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);

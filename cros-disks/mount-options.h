@@ -26,9 +26,6 @@ class MountOptions {
 
   // Initializes the mount options with a list of option strings.
   //
-  // If force_read_only is set to true, the read-only option is set even
-  // if a read-write option is found in the option strings.
-  //
   // If set_user_and_group_id is set to true, uid and gid options are set
   // if provided.
   //
@@ -36,7 +33,7 @@ class MountOptions {
   // mount options if no uid option is found in the option strings.
   // default_group_id is handled similarly.
   void Initialize(const std::vector<std::string>& options,
-      bool force_read_only, bool set_user_and_group_id,
+      bool set_user_and_group_id,
       const std::string& default_user_id,
       const std::string& default_group_id);
 

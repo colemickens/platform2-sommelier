@@ -70,6 +70,8 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   disk.set_device_file("/dev/sda1");
 
   Filesystem filesystem("vfat");
+  filesystem.AddExtraMountOption("utf8");
+  filesystem.AddExtraMountOption("shortname=mixed");
 
   std::string target_path = "/media/disk";
 
@@ -84,7 +86,8 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
-  EXPECT_EQ("nodev,noexec,nosuid,rw", mounter->mount_options().ToString());
+  EXPECT_EQ("nodev,noexec,nosuid,utf8,shortname=mixed,rw",
+      mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, EnumerateDisks) {

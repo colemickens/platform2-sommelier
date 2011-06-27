@@ -6,6 +6,7 @@
 #define CROS_DISKS_FILESYSTEM_H_
 
 #include <string>
+#include <vector>
 
 namespace cros_disks {
 
@@ -20,6 +21,19 @@ class Filesystem {
   }
   void set_accepts_user_and_group_id(bool accepts_user_and_group_id) {
     accepts_user_and_group_id_ = accepts_user_and_group_id;
+  }
+
+  const std::vector<std::string>& extra_mount_options() const {
+    return extra_mount_options_;
+  }
+  void set_extra_mount_options(
+      const std::vector<std::string>& extra_mount_options) {
+    extra_mount_options_ = extra_mount_options;
+  }
+
+  // Adds an option to the list of extra mount options.
+  void AddExtraMountOption(const std::string& option) {
+    extra_mount_options_.push_back(option);
   }
 
   bool is_mounted_read_only() const { return is_mounted_read_only_; }
@@ -46,6 +60,9 @@ class Filesystem {
   // This variable is set to true if default user and group ID can be
   // specified for mounting the fileystem.
   bool accepts_user_and_group_id_;
+
+  // Extra mount options to specify when mounting the filesystem.
+  std::vector<std::string> extra_mount_options_;
 
   // This variable is set to true if the filesystem should be mounted
   // as read-only.

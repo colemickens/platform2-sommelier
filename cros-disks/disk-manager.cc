@@ -506,17 +506,11 @@ bool DiskManager::Unmount(const std::string& device_path,
 
 void DiskManager::RegisterDefaultFilesystems() {
   // TODO(benchan): Perhaps these settings can be read from a config file.
-  Filesystem fat_fs("fat");
-  fat_fs.set_accepts_user_and_group_id(true);
-  RegisterFilesystem(fat_fs);
-
   Filesystem vfat_fs("vfat");
   vfat_fs.set_accepts_user_and_group_id(true);
+  vfat_fs.AddExtraMountOption("shortname=mixed");
+  vfat_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(vfat_fs);
-
-  Filesystem msdos_fs("msdos");
-  msdos_fs.set_accepts_user_and_group_id(true);
-  RegisterFilesystem(msdos_fs);
 
   Filesystem hfsplus_fs("hfsplus");
   hfsplus_fs.set_accepts_user_and_group_id(true);
@@ -525,11 +519,13 @@ void DiskManager::RegisterDefaultFilesystems() {
   Filesystem iso9660_fs("iso9660");
   iso9660_fs.set_is_mounted_read_only(true);
   iso9660_fs.set_accepts_user_and_group_id(true);
+  iso9660_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(iso9660_fs);
 
   Filesystem udf_fs("udf");
   udf_fs.set_is_mounted_read_only(true);
   udf_fs.set_accepts_user_and_group_id(true);
+  udf_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(udf_fs);
 
   Filesystem ext2_fs("ext2");
@@ -549,8 +545,13 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
 Mounter* DiskManager::CreateMounter(const Disk& disk,
     const Filesystem& filesystem, const std::string& target_path,
     const std::vector<std::string>& options) const {
-  bool force_read_only = filesystem.is_mounted_read_only() ||
-    disk.is_read_only() || disk.is_optical_disk();
+  const std::vector<std::string>& extra_options =
+    filesystem.extra_mount_options();
+  std::vector<std::string> extended_options;
+  extended_options.reserve(options.size() + extra_options.size());
+  extended_options.assign(options.begin(), options.end());
+  extended_options.insert(extended_options.end(),
+      extra_options.begin(), extra_options.end());
 
   std::string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
@@ -564,8 +565,13 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   }
 
   MountOptions mount_options;
-  mount_options.Initialize(options, force_read_only,
-      set_user_and_group_id, default_user_id, default_group_id);
+  mount_options.Initialize(extended_options, set_user_and_group_id,
+      default_user_id, default_group_id);
+
+  if (filesystem.is_mounted_read_only() ||
+      disk.is_read_only() || disk.is_optical_disk()) {
+    mount_options.SetReadOnlyOption();
+  }
 
   Mounter* mounter;
   if (filesystem.requires_external_mounter()) {

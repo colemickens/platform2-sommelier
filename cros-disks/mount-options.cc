@@ -20,7 +20,7 @@ const char MountOptions::kOptionReadWrite[] = "rw";
 const char MountOptions::kOptionSynchronous[] = "sync";
 
 void MountOptions::Initialize(const std::vector<std::string>& options,
-    bool force_read_only, bool set_user_and_group_id,
+    bool set_user_and_group_id,
     const std::string& default_user_id, const std::string& default_group_id) {
   options_.clear();
   options_.reserve(options.size());
@@ -45,7 +45,7 @@ void MountOptions::Initialize(const std::vector<std::string>& options,
     }
   }
 
-  if (force_read_only || option_read_only || !option_read_write) {
+  if (option_read_only || !option_read_write) {
     options_.push_back(kOptionReadOnly);
   } else {
     options_.push_back(kOptionReadWrite);

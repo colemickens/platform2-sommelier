@@ -45,7 +45,7 @@ class MounterTest : public ::testing::Test {
 };
 
 TEST_F(MounterTest, MountReadOnlySucceeded) {
-  mount_options_.Initialize(options_, false, false, "", "");
+  mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_,
       filesystem_type_, mount_options_);
 
@@ -57,7 +57,7 @@ TEST_F(MounterTest, MountReadOnlySucceeded) {
 }
 
 TEST_F(MounterTest, MountReadOnlyFailed) {
-  mount_options_.Initialize(options_, false, false, "", "");
+  mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_,
       filesystem_type_, mount_options_);
 
@@ -70,7 +70,7 @@ TEST_F(MounterTest, MountReadOnlyFailed) {
 
 TEST_F(MounterTest, MountReadWriteSucceeded) {
   options_.push_back("rw");
-  mount_options_.Initialize(options_, false, false, "", "");
+  mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_,
       filesystem_type_, mount_options_);
 
@@ -83,7 +83,7 @@ TEST_F(MounterTest, MountReadWriteSucceeded) {
 
 TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
   options_.push_back("rw");
-  mount_options_.Initialize(options_, false, false, "", "");
+  mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_,
       filesystem_type_, mount_options_);
 
@@ -98,7 +98,7 @@ TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
 
 TEST_F(MounterTest, MountReadWriteAndReadOnlyFailed) {
   options_.push_back("rw");
-  mount_options_.Initialize(options_, false, false, "", "");
+  mount_options_.Initialize(options_, false, "", "");
   MounterUnderTest mounter(source_path_, target_path_,
       filesystem_type_, mount_options_);
 
