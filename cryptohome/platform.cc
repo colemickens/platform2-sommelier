@@ -92,6 +92,12 @@ bool Platform::Mount(const std::string& from, const std::string& to,
   return true;
 }
 
+bool Platform::Bind(const std::string& from, const std::string& to) {
+  if (mount(from.c_str(), to.c_str(), NULL, mount_options_ | MS_BIND, NULL))
+    return false;
+  return true;
+}
+
 bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
   if (lazy) {
     if (umount2(path.c_str(), MNT_DETACH)) {
@@ -567,6 +573,18 @@ bool Platform::EnumerateFiles(const std::string& path,
                                      file_util::FileEnumerator::FILES);
   for (FilePath path = dir_enum.Next(); !path.empty(); path = dir_enum.Next())
     file_list->push_back(path.value());
+  return true;
+}
+
+bool Platform::EnumerateDirectoryEntries(const std::string& path,
+                                         bool recursive,
+                                         std::vector<std::string>* ent_list) {
+  file_util::FileEnumerator::FILE_TYPE ft = static_cast<typeof(ft)>(
+    file_util::FileEnumerator::FILES | file_util::FileEnumerator::DIRECTORIES |
+    file_util::FileEnumerator::SHOW_SYM_LINKS);
+  file_util::FileEnumerator ent_enum(FilePath(path), recursive, ft);
+  for (FilePath path = ent_enum.Next(); !path.empty(); path = ent_enum.Next())
+    ent_list->push_back(path.value());
   return true;
 }
 
