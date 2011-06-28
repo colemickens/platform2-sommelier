@@ -196,20 +196,21 @@ update_prl () {
 	# the script does. A specific example is the Downloads folder,
 	# which only the "chronos" user has access to. To work
 	# around this problem, we copy the PRL file to /tmp.
-	if ! echo "$prlfile" | grep -q '^/tmp/'; then
-		prlbase=${prlfile##*/}
-		cp $prlfile /tmp/$prlbase
-		if [ $? -ne 0 ]; then
-			echo "Cannot copy PRL file \"$prlfile\" to temp directory"
-			exit 1
-		fi
-		prlfile=/tmp/$prlbase
+	local tmpfile=$(mktemp --tmpdir prl.XXXXXXXXXX)
+	trap "rm -f $tmpfile" 1 2 13 15
+	cp $prlfile $tmpfile
+	if [ $? -ne 0 ]; then
+		echo "Cannot copy \"$prlfile\" to \"$tmpfile\" directory"
+		rm -f $tmpfile
+		exit 1
 	fi
+	chmod 644 $tmpfile
 	local oldstate=$(modem_activation_state $modem)
-        args="mdn,$mdn,min,$min,prlfile,$prlfile"
+	args="mdn,$mdn,min,$min,prlfile,$tmpfile"
 	dbus "$modem" $IMODEM_CDMA.ActivateManualDebug \
 	  "dict:string:string:$args"
-        wait_for_modem_reset $modem 40
+	wait_for_modem_reset $modem 40
+	rm -f $tmpfile
 }
 
 usage () {
