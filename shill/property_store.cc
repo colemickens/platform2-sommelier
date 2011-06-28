@@ -91,6 +91,42 @@ bool PropertyStore::SetUint32Property(const std::string& name,
   return ReturnError(name, error);
 }
 
+PropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter() {
+  return PropertyConstIterator<bool>(bool_properties_);
+}
+
+PropertyConstIterator<int16> PropertyStore::GetInt16PropertiesIter() {
+  return PropertyConstIterator<int16>(int16_properties_);
+}
+
+PropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter() {
+  return PropertyConstIterator<int32>(int32_properties_);
+}
+
+PropertyConstIterator<std::string> PropertyStore::GetStringPropertiesIter() {
+  return PropertyConstIterator<std::string>(string_properties_);
+}
+
+PropertyConstIterator<Stringmap> PropertyStore::GetStringmapPropertiesIter() {
+  return PropertyConstIterator<Stringmap>(stringmap_properties_);
+}
+
+PropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter() {
+  return PropertyConstIterator<Strings>(strings_properties_);
+}
+
+PropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter() {
+  return PropertyConstIterator<uint8>(uint8_properties_);
+}
+
+PropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter() {
+  return PropertyConstIterator<uint16>(uint16_properties_);
+}
+
+PropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter() {
+  return PropertyConstIterator<uint32>(uint32_properties_);
+}
+
 void PropertyStore::RegisterBool(const string &name, bool *prop) {
   bool_properties_[name] = BoolAccessor(new PropertyAccessor<bool>(prop));
 }

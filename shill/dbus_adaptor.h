@@ -28,7 +28,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor {
   static bool DispatchOnType(PropertyStore *store,
                              const std::string &name,
                              const ::DBus::Variant &value,
-                             ::DBus::Error &error);
+                             ::DBus::Error *error);
+  static bool GetProperties(PropertyStore *store,
+                            std::map<std::string, ::DBus::Variant> *out,
+                            ::DBus::Error *error);
 
   static ::DBus::Variant BoolToVariant(bool value);
   static ::DBus::Variant ByteToVariant(uint8 value);

@@ -56,25 +56,46 @@ TEST_F(DeviceTest, Contains) {
   EXPECT_FALSE(device_->Contains(""));
 }
 
+TEST_F(DeviceTest, GetProperties) {
+  map<string, ::DBus::Variant> props;
+  Error error(Error::kInvalidProperty, "");
+  {
+    ::DBus::Error dbus_error;
+    bool expected = true;
+    device_->SetBoolProperty(flimflam::kPoweredProperty, expected, &error);
+    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kPoweredProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kPoweredProperty].reader().get_bool(),
+              expected);
+  }
+  {
+    ::DBus::Error dbus_error;
+    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
+              string(kDeviceName));
+  }
+}
+
 TEST_F(DeviceTest, Dispatch) {
   ::DBus::Error error;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
                                           flimflam::kPoweredProperty,
                                           PropertyStoreTest::kBoolV,
-                                          error));
+                                          &error));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
-                                           error));
+                                           &error));
   EXPECT_EQ(invalid_args_, error.name());
 }
 
 TEST_P(DeviceTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

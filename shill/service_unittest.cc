@@ -46,27 +46,77 @@ class ServiceTest : public PropertyStoreTest {
   ServiceRefPtr service_;
 };
 
-TEST_F(ServiceTest, Dispatch) {
-  ::DBus::Error e1, e2, e3, e4;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
-                                          flimflam::kSaveCredentialsProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          e1));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
-                                          flimflam::kPriorityProperty,
-                                          PropertyStoreTest::kInt32V,
-                                          e2));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
-                                          flimflam::kEAPEAPProperty,
-                                          PropertyStoreTest::kStringV,
-                                          e3));
+TEST_F(ServiceTest, GetProperties) {
+  map<string, ::DBus::Variant> props;
+  Error error(Error::kInvalidProperty, "");
+  {
+    ::DBus::Error dbus_error;
+    string expected("portal_list");
+    service_->SetStringProperty(flimflam::kCheckPortalProperty,
+                                expected,
+                                &error);
+    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kCheckPortalProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kCheckPortalProperty].reader().get_string(),
+              expected);
+  }
+  {
+    ::DBus::Error dbus_error;
+    bool expected = true;
+    service_->SetBoolProperty(flimflam::kAutoConnectProperty, expected, &error);
+    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kAutoConnectProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
+              expected);
+  }
+  {
+    ::DBus::Error dbus_error;
+    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kConnectableProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kConnectableProperty].reader().get_bool(), false);
+  }
+  {
+    ::DBus::Error dbus_error;
+    int32 expected = 127;
+    service_->SetInt32Property(flimflam::kPriorityProperty, expected, &error);
+    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kPriorityProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kPriorityProperty].reader().get_int32(),
+              expected);
+  }
+}
 
+TEST_F(ServiceTest, Dispatch) {
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+                                            flimflam::kSaveCredentialsProperty,
+                                            PropertyStoreTest::kBoolV,
+                                            &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+                                            flimflam::kPriorityProperty,
+                                            PropertyStoreTest::kInt32V,
+                                            &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+                                            flimflam::kEAPEAPProperty,
+                                            PropertyStoreTest::kStringV,
+                                            &error));
+  }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
-                                           flimflam::kFavoriteProperty,
-                                           PropertyStoreTest::kBoolV,
-                                           e4));
-  EXPECT_EQ(invalid_args_, e4.name());
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
+                                             flimflam::kFavoriteProperty,
+                                             PropertyStoreTest::kBoolV,
+                                             &error));
+    EXPECT_EQ(invalid_args_, error.name());
+  }
 }
 
 TEST_P(ServiceTest, TestProperty) {
@@ -75,7 +125,7 @@ TEST_P(ServiceTest, TestProperty) {
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
                                            "",
                                            GetParam(),
-                                           error));
+                                           &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

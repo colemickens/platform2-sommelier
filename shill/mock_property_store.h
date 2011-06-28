@@ -28,12 +28,11 @@ class MockPropertyStore : public PropertyStore {
   MOCK_METHOD3(SetStringProperty, bool(const std::string&,
                                        const std::string&,
                                        Error*));
-  MOCK_METHOD3(SetStringmapProperty,
-               bool(const std::string&,
-                    const std::map<std::string, std::string>&,
-                    Error*));
+  MOCK_METHOD3(SetStringmapProperty, bool(const std::string&,
+                                          const Stringmap&,
+                                          Error*));
   MOCK_METHOD3(SetStringsProperty, bool(const std::string&,
-                                        const std::vector<std::string>&,
+                                        const Strings&,
                                         Error*));
   MOCK_METHOD3(SetUint8Property, bool(const std::string&, uint8, Error*));
   MOCK_METHOD3(SetUint16Property, bool(const std::string&, uint16, Error*));

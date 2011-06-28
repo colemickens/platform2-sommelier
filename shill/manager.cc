@@ -169,14 +169,11 @@ void Manager::RegisterDerivedString(const string &name,
       StringAccessor(new CustomAccessor<Manager, string>(this, get, set));
 }
 
-void Manager::RegisterDerivedStrings(
-    const string &name,
-    std::vector<string>(Manager::*get)(void),
-    bool(Manager::*set)(const vector<string>&)) {
+void Manager::RegisterDerivedStrings(const string &name,
+                                     Strings(Manager::*get)(void),
+                                     bool(Manager::*set)(const Strings&)) {
   strings_properties_[name] =
-      StringsAccessor(new CustomAccessor<Manager, vector<string> >(this,
-                                                                   get,
-                                                                   set));
+      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set));
 }
 
 string Manager::CalculateState() {

@@ -40,13 +40,13 @@ const ::DBus::Variant PropertyStoreTest::kStringV =
     DBusAdaptor::StringToVariant("");
 // static
 const ::DBus::Variant PropertyStoreTest::kStringmapV =
-    DBusAdaptor::StringmapToVariant(map<string, string>());
+    DBusAdaptor::StringmapToVariant(Stringmap());
 // static
 const ::DBus::Variant PropertyStoreTest::kStringmapsV =
     DBusAdaptor::StringmapsToVariant(vector<map<string, string> >());
 // static
 const ::DBus::Variant PropertyStoreTest::kStringsV =
-    DBusAdaptor::StringsToVariant(vector<string>(1, ""));
+    DBusAdaptor::StringsToVariant(Strings(1, ""));
 // static
 const ::DBus::Variant PropertyStoreTest::kUint16V =
     DBusAdaptor::Uint16ToVariant(0);

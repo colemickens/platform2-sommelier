@@ -47,33 +47,43 @@ TEST_F(WiFiTest, Contains) {
 }
 
 TEST_F(WiFiTest, Dispatch) {
-  ::DBus::Error e1, e2, e3, e4;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kBgscanMethodProperty,
-                                          PropertyStoreTest::kStringV,
-                                          e1));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
-      device_.get(),
-      flimflam::kBgscanSignalThresholdProperty,
-      PropertyStoreTest::kInt32V,
-      e2));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kScanIntervalProperty,
-                                          PropertyStoreTest::kUint16V,
-                                          e3));
-
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+                                            flimflam::kBgscanMethodProperty,
+                                            PropertyStoreTest::kStringV,
+                                            &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+        device_.get(),
+        flimflam::kBgscanSignalThresholdProperty,
+        PropertyStoreTest::kInt32V,
+        &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+                                            flimflam::kScanIntervalProperty,
+                                            PropertyStoreTest::kUint16V,
+                                            &error));
+  }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kScanningProperty,
-                                           PropertyStoreTest::kBoolV,
-                                           e4));
-  EXPECT_EQ(invalid_args_, e4.name());
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                             flimflam::kScanningProperty,
+                                             PropertyStoreTest::kBoolV,
+                                             &error));
+    EXPECT_EQ(invalid_args_, error.name());
+  }
 }
 
 TEST_P(WiFiTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

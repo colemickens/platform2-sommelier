@@ -34,16 +34,17 @@ class AccessorInterface {
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);
 };
 
+typedef std::vector<std::string> Strings;
+typedef std::map<std::string, std::string> Stringmap;
+
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
 typedef std::tr1::shared_ptr<AccessorInterface<bool> > BoolAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<int16> > Int16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<int32> > Int32Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<std::string> > StringAccessor;
-typedef std::tr1::shared_ptr<
-    AccessorInterface<std::map<std::string, std::string> > > StringmapAccessor;
-typedef std::tr1::shared_ptr<
-    AccessorInterface<std::vector<std::string> > > StringsAccessor;
+typedef std::tr1::shared_ptr<AccessorInterface<Stringmap> > StringmapAccessor;
+typedef std::tr1::shared_ptr<AccessorInterface<Strings> > StringsAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint8> > Uint8Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint16> > Uint16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint32> > Uint32Accessor;

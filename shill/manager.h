@@ -56,10 +56,9 @@ class Manager : public PropertyStore {
   void RegisterDerivedString(const std::string &name,
                              std::string(Manager::*get)(void),
                              bool(Manager::*set)(const std::string&));
-  void RegisterDerivedStrings(
-      const std::string &name,
-      std::vector<std::string>(Manager::*get)(void),
-      bool(Manager::*set)(const std::vector<std::string>&));
+  void RegisterDerivedStrings(const std::string &name,
+                              Strings(Manager::*get)(void),
+                              bool(Manager::*set)(const Strings&));
 
  private:
   std::string CalculateState();

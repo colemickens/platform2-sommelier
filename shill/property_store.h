@@ -12,6 +12,7 @@
 #include <base/basictypes.h>
 
 #include "shill/accessor_interface.h"
+#include "shill/property_iterator.h"
 
 namespace shill {
 
@@ -65,6 +66,17 @@ class PropertyStore {
   virtual bool SetUint32Property(const std::string& name,
                                  uint32 value,
                                  Error *error);
+
+  // Accessors for iterators over property maps.
+  PropertyConstIterator<bool> GetBoolPropertiesIter();
+  PropertyConstIterator<int16> GetInt16PropertiesIter();
+  PropertyConstIterator<int32> GetInt32PropertiesIter();
+  PropertyConstIterator<std::string> GetStringPropertiesIter();
+  PropertyConstIterator<Stringmap> GetStringmapPropertiesIter();
+  PropertyConstIterator<Strings> GetStringsPropertiesIter();
+  PropertyConstIterator<uint8> GetUint8PropertiesIter();
+  PropertyConstIterator<uint16> GetUint16PropertiesIter();
+  PropertyConstIterator<uint32> GetUint32PropertiesIter();
 
  protected:
   PropertyStore();

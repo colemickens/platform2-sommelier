@@ -47,39 +47,52 @@ TEST_F(CellularTest, Contains) {
 }
 
 TEST_F(CellularTest, Dispatch) {
-  ::DBus::Error e1, e2, e3, e4, e5;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(
-      device_.get(),
-      flimflam::kCellularAllowRoamingProperty,
-      PropertyStoreTest::kBoolV,
-      e1));
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
-                                          flimflam::kScanIntervalProperty,
-                                          PropertyStoreTest::kUint16V,
-                                          e2));
-
-  // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kAddressProperty,
-                                           PropertyStoreTest::kStringV,
-                                           e3));
-  EXPECT_EQ(invalid_args_, e3.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kCarrierProperty,
-                                           PropertyStoreTest::kStringV,
-                                           e4));
-  EXPECT_EQ(invalid_args_, e4.name());
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
-                                           flimflam::kPRLVersionProperty,
-                                           PropertyStoreTest::kInt16V,
-                                           e5));
-  EXPECT_EQ(invalid_args_, e5.name());
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(
+        device_.get(),
+        flimflam::kCellularAllowRoamingProperty,
+        PropertyStoreTest::kBoolV,
+        &error));
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+                                            flimflam::kScanIntervalProperty,
+                                            PropertyStoreTest::kUint16V,
+                                            &error));
+  }
+  // Ensure that attempting to write a R/O property returns InvalidArgs error.
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                             flimflam::kAddressProperty,
+                                             PropertyStoreTest::kStringV,
+                                             &error));
+    EXPECT_EQ(invalid_args_, error.name());
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                             flimflam::kCarrierProperty,
+                                             PropertyStoreTest::kStringV,
+                                             &error));
+    EXPECT_EQ(invalid_args_, error.name());
+  }
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+                                             flimflam::kPRLVersionProperty,
+                                             PropertyStoreTest::kInt16V,
+                                             &error));
+    EXPECT_EQ(invalid_args_, error.name());
+  }
 }
 
 TEST_P(CellularTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 
