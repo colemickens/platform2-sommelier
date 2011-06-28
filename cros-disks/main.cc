@@ -21,9 +21,13 @@
 
 #include "cros-disks/cros-disks-server-impl.h"
 #include "cros-disks/disk-manager.h"
+#include "cros-disks/power-manager-proxy.h"
+#include "cros-disks/session-manager-proxy.h"
 
 using cros_disks::CrosDisksServer;
 using cros_disks::DiskManager;
+using cros_disks::PowerManagerProxy;
+using cros_disks::SessionManagerProxy;
 
 DEFINE_bool(foreground, false,
             "Don't daemon()ize; run in foreground.");
@@ -75,22 +79,23 @@ int main(int argc, char** argv) {
   GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
   CHECK(loop) << "Failed to create a GMainLoop";
 
-  LOG(INFO) << "Creating the dbus dispatcher";
-  DBus::Glib::BusDispatcher* dispatcher =
-      new(std::nothrow) DBus::Glib::BusDispatcher();
-  CHECK(dispatcher) << "Failed to create a dbus-dispatcher";
-  DBus::default_dispatcher = dispatcher;
-  dispatcher->attach(NULL);
+  LOG(INFO) << "Creating the D-Bus dispatcher";
+  DBus::Glib::BusDispatcher dispatcher;
+  DBus::default_dispatcher = &dispatcher;
+  dispatcher.attach(NULL);
 
-  LOG(INFO) << "creating server";
+  LOG(INFO) << "Creating the cros-disks server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
   server_conn.request_name("org.chromium.CrosDisks");
-
   DiskManager manager;
   manager.RegisterDefaultFilesystems();
-  CrosDisksServer* server = new(std::nothrow) CrosDisksServer(server_conn,
-                                                              &manager);
-  CHECK(server) << "Failed to create the cros-disks server";
+  CrosDisksServer cros_disks_server(server_conn, &manager);
+
+  LOG(INFO) << "Creating a power manager proxy";
+  PowerManagerProxy power_manager_proxy(&server_conn, &cros_disks_server);
+
+  LOG(INFO) << "Creating a session manager proxy";
+  SessionManagerProxy session_manager_proxy(&server_conn, &cros_disks_server);
 
   LOG(INFO) << "Initializing the metrics library";
   MetricsLibrary metrics_lib;
@@ -101,14 +106,12 @@ int main(int argc, char** argv) {
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
                       UdevCallback,
-                      server,
+                      &cros_disks_server,
                       NULL);
   g_main_loop_run(loop);
 
   LOG(INFO) << "Cleaining up and exiting";
   g_main_loop_unref(loop);
-  delete server;
-  delete dispatcher;
 
   return 0;
 }

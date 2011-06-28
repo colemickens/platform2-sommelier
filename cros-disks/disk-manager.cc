@@ -100,9 +100,9 @@ std::vector<Disk> DiskManager::EnumerateDisks() const {
   return disks;
 }
 
-DiskManager::EventType DiskManager::ProcessBlockDeviceEvent(
+DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
     const UdevDevice& device, const char *action) {
-  EventType event_type = kIgnored;
+  DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
   std::string device_path = device.NativePath();
 
   bool disk_added = false;
@@ -129,48 +129,46 @@ DiskManager::EventType DiskManager::ProcessBlockDeviceEvent(
       disks_detected_.find(device_path);
     if (disk_iter != disks_detected_.end()) {
       // Disk already exists, so remove it and then add it again.
-      event_type = kDiskAddedAfterRemoved;
+      event_type = DeviceEvent::kDiskAddedAfterRemoved;
     } else {
       disks_detected_.insert(device_path);
-      event_type = kDiskAdded;
+      event_type = DeviceEvent::kDiskAdded;
     }
   } else if (disk_removed) {
     disks_detected_.erase(device_path);
-    event_type = kDiskRemoved;
+    event_type = DeviceEvent::kDiskRemoved;
   }
   return event_type;
 }
 
-DiskManager::EventType DiskManager::ProcessScsiDeviceEvent(
+DeviceEvent::EventType DiskManager::ProcessScsiDeviceEvent(
     const UdevDevice& device, const char *action) {
-  EventType event_type = kIgnored;
+  DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
   std::string device_path = device.NativePath();
 
   std::set<std::string>::const_iterator device_iter;
   if (strcmp(action, kUdevAddAction) == 0) {
     device_iter = devices_detected_.find(device_path);
     if (device_iter != devices_detected_.end()) {
-      event_type = kDeviceScanned;
+      event_type = DeviceEvent::kDeviceScanned;
     } else {
       devices_detected_.insert(device_path);
-      event_type = kDeviceAdded;
+      event_type = DeviceEvent::kDeviceAdded;
     }
   } else if (strcmp(action, kUdevRemoveAction) == 0) {
     device_iter = devices_detected_.find(device_path);
     if (device_iter != devices_detected_.end()) {
       devices_detected_.erase(device_iter);
-      event_type = kDeviceRemoved;
+      event_type = DeviceEvent::kDeviceRemoved;
     }
   }
   return event_type;
 }
 
-bool DiskManager::ProcessUdevChanges(std::string *device_path,
-    DiskManager::EventType *event_type) {
+bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
   struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
   CHECK(dev) << "Unknown udev device";
-  CHECK(device_path) << "Invalid device path argument";
-  CHECK(event_type) << "Invalid event type argument";
+  CHECK(event) << "Invalid device event object";
   LOG(INFO) << "Got Device";
   LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
   LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -186,8 +184,8 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
     return false;
   }
 
-  device_path->assign(sys_path);
-  *event_type = kIgnored;
+  event->device_path = sys_path;
+  event->event_type = DeviceEvent::kIgnored;
 
   // Ignore change events from boot devices, virtual devices,
   // or Chrome OS specific partitions, which should not be sent
@@ -197,9 +195,9 @@ bool DiskManager::ProcessUdevChanges(std::string *device_path,
     // udev_monitor_ only monitors block or scsi device changes, so
     // subsystem is either "block" or "scsi".
     if (strcmp(subsystem, kBlockSubsystem) == 0) {
-      *event_type = ProcessBlockDeviceEvent(udev, action);
+      event->event_type = ProcessBlockDeviceEvent(udev, action);
     } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-      *event_type = ProcessScsiDeviceEvent(udev, action);
+      event->event_type = ProcessScsiDeviceEvent(udev, action);
     }
   }
 

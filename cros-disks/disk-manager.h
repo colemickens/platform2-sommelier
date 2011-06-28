@@ -17,6 +17,8 @@
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/device-event.h"
+
 namespace cros_disks {
 
 class Disk;
@@ -38,26 +40,15 @@ class UdevDevice;
 // and should not be considered thread safe.
 class DiskManager {
  public:
-  // Device/disk related events.
-  enum EventType {
-    kIgnored,
-    kDeviceAdded,
-    kDeviceScanned,
-    kDeviceRemoved,
-    kDiskAdded,
-    kDiskAddedAfterRemoved,
-    kDiskChanged,
-    kDiskRemoved,
-  };
-
   DiskManager();
   virtual ~DiskManager();
 
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
 
-  // Reads the changes from udev. Must be called to clear the fd.
-  bool ProcessUdevChanges(std::string *device_path, EventType *event_type);
+  // Reads the changes from udev and converts the changes into a device event.
+  // Returns true on success. Must be called to clear the fd.
+  bool GetDeviceEvent(DeviceEvent* event);
 
   // Gets the filesystem type of a device.
   std::string GetFilesystemTypeOfDevice(const std::string& device_path);
@@ -119,11 +110,11 @@ class DiskManager {
   std::string GetDeviceFileFromCache(const std::string& device_path) const;
 
   // Determines a device/disk event from a udev block device change.
-  EventType ProcessBlockDeviceEvent(const UdevDevice& device,
+  DeviceEvent::EventType ProcessBlockDeviceEvent(const UdevDevice& device,
       const char *action);
 
   // Determines a device/disk event from a udev SCSI device change.
-  EventType ProcessScsiDeviceEvent(const UdevDevice& device,
+  DeviceEvent::EventType ProcessScsiDeviceEvent(const UdevDevice& device,
       const char *action);
 
   // The root udev object.

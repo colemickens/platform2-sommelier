@@ -9,10 +9,14 @@
 #include <vector>
 
 #include "cros-disks/cros-disks-server.h"
+#include "cros-disks/device-event-queue.h"
 #include "cros-disks/disk.h"
+#include "cros-disks/power-manager-observer.h"
+#include "cros-disks/session-manager-observer.h"
 
 namespace cros_disks {
 
+class DeviceEvent;
 class DiskManager;
 
 // The d-bus server for the cros-disks daemon.
@@ -29,9 +33,12 @@ class DiskManager;
 //
 class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::IntrospectableAdaptor,
-                        public DBus::ObjectAdaptor {
+                        public DBus::ObjectAdaptor,
+                        public PowerManagerObserver,
+                        public SessionManagerObserver {
  public:
-  CrosDisksServer(DBus::Connection& connection, DiskManager* disk_manager);
+  CrosDisksServer(DBus::Connection& connection,  // NOLINT
+      DiskManager* disk_manager);
   virtual ~CrosDisksServer();
 
   // A method for checking if the daemon is running. Always returns true.
@@ -66,13 +73,43 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // Emits appropriate DBus signals notifying device changes.
   void SignalDeviceChanges();
 
+  // Implements the PowerManagerObserver interface to handle the event
+  // when the screen is locked.
+  virtual void OnScreenIsLocked();
+
+  // Implements the PowerManagerObserver interface to handle the event
+  // when the screen is unlocked.
+  virtual void OnScreenIsUnlocked();
+
+  // Implements the SessionManagerObserver interface to handle the event
+  // when the session has been started.
+  virtual void OnSessionStarted(const std::string& user);
+
+  // Implements the SessionManagerObserver interface to handle the event
+  // when the session has been stopped.
+  virtual void OnSessionStopped(const std::string& user);
+
  private:
+  // Dispatches a device event by emitting the corresponding D-Bus signal.
+  void DispatchDeviceEvent(const DeviceEvent& event);
+
+  // Dispatches all queued device events by emitting the corresponding
+  // D-Bus signals.
+  void DispatchQueuedDeviceEvents();
+
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system. If auto_mountable_only is true, only auto-mountable disk
   // devices are returned.
   std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
 
+  // A list of deferred disk events to be fired.
+  DeviceEventQueue device_event_queue_;
+
   DiskManager* disk_manager_;
+
+  // This variable is set to true if any new device event should be queued
+  // instead of being dispatched immediately.
+  bool is_device_event_queued_;
 };
 
 }  // namespace cros_disks

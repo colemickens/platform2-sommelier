@@ -2,11 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cros-disks/cros-disks-server-impl.h"
+
 #include <sys/mount.h>
+
+#include <list>
 
 #include <base/logging.h>
 
-#include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/device-event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk-manager.h"
 
@@ -16,10 +20,11 @@ namespace cros_disks {
 static const char* kServicePath = "/org/chromium/CrosDisks";
 static const char* kServiceErrorName = "org.chromium.CrosDisks.Error";
 
-CrosDisksServer::CrosDisksServer(DBus::Connection& connection,
+CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
     DiskManager* disk_manager)
     : DBus::ObjectAdaptor(connection, kServicePath),
-      disk_manager_(disk_manager) {
+      disk_manager_(disk_manager),
+      is_device_event_queued_(true) {
 }
 
 CrosDisksServer::~CrosDisksServer() { }
@@ -95,35 +100,74 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const std::string& device_path,
 }
 
 void CrosDisksServer::SignalDeviceChanges() {
-  std::string device_path;
-  DiskManager::EventType event_type;
-  if (disk_manager_->ProcessUdevChanges(&device_path, &event_type)) {
-    switch (event_type) {
-      case DiskManager::kDeviceAdded:
-        DeviceAdded(device_path);
-        break;
-      case DiskManager::kDeviceScanned:
-        DeviceScanned(device_path);
-        break;
-      case DiskManager::kDeviceRemoved:
-        DeviceRemoved(device_path);
-        break;
-      case DiskManager::kDiskAdded:
-        DiskAdded(device_path);
-        break;
-      case DiskManager::kDiskAddedAfterRemoved:
-        DiskRemoved(device_path);
-        DiskAdded(device_path);
-        break;
-      case DiskManager::kDiskChanged:
-        DiskChanged(device_path);
-        break;
-      case DiskManager::kDiskRemoved:
-        DiskRemoved(device_path);
-        break;
-      default:
-        break;
+  DeviceEvent event;
+  if (disk_manager_->GetDeviceEvent(&event)) {
+    if (is_device_event_queued_) {
+      device_event_queue_.Add(event);
+    } else {
+      DispatchDeviceEvent(event);
     }
+  }
+}
+
+void CrosDisksServer::OnScreenIsLocked() {
+  LOG(INFO) << "Screen is locked";
+  is_device_event_queued_ = true;
+}
+
+void CrosDisksServer::OnScreenIsUnlocked() {
+  LOG(INFO) << "Screen is unlocked";
+  DispatchQueuedDeviceEvents();
+  is_device_event_queued_ = false;
+}
+
+void CrosDisksServer::OnSessionStarted(const std::string& user) {
+  LOG(INFO) << "Session started";
+  DispatchQueuedDeviceEvents();
+  is_device_event_queued_ = false;
+}
+
+void CrosDisksServer::OnSessionStopped(const std::string& user) {
+  LOG(INFO) << "Session stopped";
+  is_device_event_queued_ = true;
+}
+
+void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
+  switch (event.event_type) {
+    case DeviceEvent::kDeviceAdded:
+      DeviceAdded(event.device_path);
+      break;
+    case DeviceEvent::kDeviceScanned:
+      DeviceScanned(event.device_path);
+      break;
+    case DeviceEvent::kDeviceRemoved:
+      DeviceRemoved(event.device_path);
+      break;
+    case DeviceEvent::kDiskAdded:
+      DiskAdded(event.device_path);
+      break;
+    case DeviceEvent::kDiskAddedAfterRemoved:
+      DiskRemoved(event.device_path);
+      DiskAdded(event.device_path);
+      break;
+    case DeviceEvent::kDiskChanged:
+      DiskChanged(event.device_path);
+      break;
+    case DeviceEvent::kDiskRemoved:
+      DiskRemoved(event.device_path);
+      break;
+    default:
+      break;
+  }
+}
+
+void CrosDisksServer::DispatchQueuedDeviceEvents() {
+  const DeviceEvent* event;
+  while ((event = device_event_queue_.Head()) != NULL) {
+    LOG(INFO) << "Dispatch queued event: type=" << event->event_type
+      << " device='" << event->device_path << "'";
+    DispatchDeviceEvent(*event);
+    device_event_queue_.Remove();
   }
 }
 
