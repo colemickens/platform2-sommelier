@@ -72,7 +72,7 @@ get_last_message_timestamp() {
 #   Power.FirmwareResumeTimeOnBattery
 send_suspend_resume_time() {
   # On suspend, powerd_suspend stores the power status to a file.
-  local power_status_on_suspend=/tmp/power-status-on-suspend
+  local power_status_on_suspend=/var/log/metrics/power-status-on-suspend
   [ -r $power_status_on_suspend ] || return
 
   # Greps the timestamps.

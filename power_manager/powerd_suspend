@@ -12,7 +12,7 @@ log_msg() {
 # event has occurred which should cancel suspend
 suspend_cancel() {
     if [ $cancel -eq 1 ] || [ -e "/var/run/power_manager/lid_opened" ] ||
-        [ -e "/var/run/power_manager/user_active" ]; then
+        [ -e "/var/run/power_manager/chronos/user_active" ]; then
         cancel=1
         return 0
     else
@@ -22,7 +22,7 @@ suspend_cancel() {
 
 cleanup_for_resume() {
     rm -f "/var/run/power_manager/lid_opened"
-    rm -f "/var/run/power_manager/user_active"
+    rm -f "/var/run/power_manager/chronos/user_active"
 }
 
 parse_args() {
@@ -44,7 +44,7 @@ cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
-power_status_on_suspend=/tmp/power-status-on-suspend
+power_status_on_suspend=/var/log/metrics/power-status-on-suspend
 /usr/bin/upower -d \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
@@ -58,7 +58,7 @@ fi
 for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
 
 # - deletes hwclock snapshot from previous resumes
-rm -f /tmp/hwclock-on-resume
+rm -f /var/run/power_manager/hwclock-on-resume
 
 # - suspends the cryptohome device
 #CRYPTOHOME=/dev/mapper/cryptohome
@@ -78,7 +78,7 @@ fi
 if [ $cancel -eq 0 ]; then
     # On resume:
     # - records the hwclock time at resume. It is read by power_Resume test.
-    /sbin/hwclock --utc --debug > /tmp/hwclock-on-resume &
+    /sbin/hwclock --utc --debug > /var/run/power_manager/hwclock-on-resume &
 
     # - sends UMA metrics on resume
     /usr/bin/send_metrics_on_resume &
