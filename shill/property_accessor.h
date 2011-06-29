@@ -6,6 +6,7 @@
 #define SHILL_PROPERTY_ACCESSOR_
 
 #include <base/basictypes.h>
+#include <base/logging.h>
 
 #include "shill/accessor_interface.h"
 
