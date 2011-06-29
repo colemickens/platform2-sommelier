@@ -47,33 +47,33 @@ TEST_F(CellularTest, Contains) {
 }
 
 TEST_F(CellularTest, Dispatch) {
-  ::DBus::Error error;
+  ::DBus::Error e1, e2, e3, e4, e5;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(
       device_.get(),
       flimflam::kCellularAllowRoamingProperty,
       PropertyStoreTest::kBoolV,
-      error));
+      e1));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
                                           flimflam::kScanIntervalProperty,
                                           PropertyStoreTest::kUint16V,
-                                          error));
+                                          e2));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e3));
+  EXPECT_EQ(invalid_args_, e3.name());
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
                                            flimflam::kCarrierProperty,
                                            PropertyStoreTest::kStringV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e4));
+  EXPECT_EQ(invalid_args_, e4.name());
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
                                            flimflam::kPRLVersionProperty,
                                            PropertyStoreTest::kInt16V,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e5));
+  EXPECT_EQ(invalid_args_, e5.name());
 }
 
 TEST_P(CellularTest, TestProperty) {

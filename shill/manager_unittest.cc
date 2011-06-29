@@ -136,35 +136,35 @@ TEST_F(ManagerTest, ServiceRegistration) {
 }
 
 TEST_F(ManagerTest, Dispatch) {
-  ::DBus::Error error;
+  ::DBus::Error e1, e2, e3, e4, e5;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
                                           flimflam::kOfflineModeProperty,
                                           PropertyStoreTest::kBoolV,
-                                          error));
+                                          e1));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
                                           flimflam::kCountryProperty,
                                           PropertyStoreTest::kStringV,
-                                          error));
+                                          e2));
 
   // Attempt to write with value of wrong type should return InvalidArgs.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
                                            flimflam::kCountryProperty,
                                            PropertyStoreTest::kBoolV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e3));
+  EXPECT_EQ(invalid_args_, e3.name());
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
                                            flimflam::kOfflineModeProperty,
                                            PropertyStoreTest::kStringV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e4));
+  EXPECT_EQ(invalid_args_, e4.name());
 
   // Attempt to write R/O property should return InvalidArgs.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(
       &manager_,
       flimflam::kEnabledTechnologiesProperty,
       PropertyStoreTest::kStringsV,
-      error));
-  EXPECT_EQ(invalid_args_, error.name());
+      e5));
+  EXPECT_EQ(invalid_args_, e5.name());
 }
 
 TEST_P(ManagerTest, TestProperty) {

@@ -47,26 +47,26 @@ class ServiceTest : public PropertyStoreTest {
 };
 
 TEST_F(ServiceTest, Dispatch) {
-  ::DBus::Error error;
+  ::DBus::Error e1, e2, e3, e4;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kSaveCredentialsProperty,
                                           PropertyStoreTest::kBoolV,
-                                          error));
+                                          e1));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kPriorityProperty,
                                           PropertyStoreTest::kInt32V,
-                                          error));
+                                          e2));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
                                           flimflam::kEAPEAPProperty,
                                           PropertyStoreTest::kStringV,
-                                          error));
+                                          e3));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
                                            flimflam::kFavoriteProperty,
                                            PropertyStoreTest::kBoolV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e4));
+  EXPECT_EQ(invalid_args_, e4.name());
 }
 
 TEST_P(ServiceTest, TestProperty) {

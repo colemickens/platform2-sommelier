@@ -47,27 +47,27 @@ TEST_F(WiFiTest, Contains) {
 }
 
 TEST_F(WiFiTest, Dispatch) {
-  ::DBus::Error error;
+  ::DBus::Error e1, e2, e3, e4;
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
                                           flimflam::kBgscanMethodProperty,
                                           PropertyStoreTest::kStringV,
-                                          error));
+                                          e1));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(
       device_.get(),
       flimflam::kBgscanSignalThresholdProperty,
       PropertyStoreTest::kInt32V,
-      error));
+      e2));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
                                           flimflam::kScanIntervalProperty,
                                           PropertyStoreTest::kUint16V,
-                                          error));
+                                          e3));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
                                            flimflam::kScanningProperty,
                                            PropertyStoreTest::kBoolV,
-                                           error));
-  EXPECT_EQ(invalid_args_, error.name());
+                                           e4));
+  EXPECT_EQ(invalid_args_, e4.name());
 }
 
 TEST_P(WiFiTest, TestProperty) {

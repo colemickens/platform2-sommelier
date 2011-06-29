@@ -44,7 +44,7 @@ void Error::Populate(Type type, const std::string& message) {
 
 void Error::ToDBusError(::DBus::Error *error) {
   if (type_ < Error::kNumErrors)
-    *error = ::DBus::Error(kErrorNames[type_], message_.c_str());
+    error->set(kErrorNames[type_], message_.c_str());
 }
 
 }  // namespace shill
