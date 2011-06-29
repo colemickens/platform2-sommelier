@@ -16,6 +16,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
 #include "shill/manager.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
@@ -74,6 +75,13 @@ TEST_F(DeviceTest, GetProperties) {
     ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
     EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
               string(kDeviceName));
+  }
+  {
+    ::DBus::Error dbus_error;
+    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kDBusObjectProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kDBusObjectProperty].reader().get_string(),
+              string(DeviceMockAdaptor::kRpcId));
   }
 }
 

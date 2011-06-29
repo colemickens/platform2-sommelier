@@ -80,10 +80,13 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
   // instance.
   const std::string &UniqueName() const;
 
+  std::string GetRpcIdentifier();
+
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
+  FRIEND_TEST(DeviceTest, GetProperties);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.

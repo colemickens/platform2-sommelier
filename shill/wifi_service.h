@@ -37,6 +37,8 @@ class WiFiService : public Service {
  private:
   void RealConnect();
 
+  std::string GetDeviceRpcId();
+
   // Properties
   std::string passphrase_;
   bool need_passphrase_;

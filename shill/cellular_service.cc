@@ -52,4 +52,8 @@ void CellularService::Connect() { }
 
 void CellularService::Disconnect() { }
 
+std::string CellularService::GetDeviceRpcId() {
+  return cellular_->GetRpcIdentifier();
+}
+
 }  // namespace shill

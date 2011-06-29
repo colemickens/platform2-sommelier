@@ -21,6 +21,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
+#include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
@@ -44,6 +45,9 @@ Device::Device(ControlInterface *control_interface,
       running_(false) {
 
   RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
+  RegisterDerivedString(flimflam::kDBusObjectProperty,
+                        &Device::GetRpcIdentifier,
+                        NULL);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
   RegisterConstString(flimflam::kNameProperty, &link_name_);
@@ -53,7 +57,6 @@ Device::Device(ControlInterface *control_interface,
 
   // TODO(cmasone): Add support for R/O properties that return DBus object paths
   // known_properties_.push_back(flimflam::kDBusConnectionProperty);
-  // known_properties_.push_back(flimflam::kDBusObjectProperty);
   // known_properties_.push_back(flimflam::kIPConfigsProperty);
   // known_properties_.push_back(flimflam::kNetworksProperty);
 
@@ -136,6 +139,10 @@ const string& Device::UniqueName() const {
   return link_name();
 }
 
+string Device::GetRpcIdentifier() {
+  return adaptor_->GetRpcIdentifier();
+}
+
 void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
     RTNLHandler::GetInstance()->RemoveInterfaceAddress(interface_index_,
@@ -151,6 +158,13 @@ bool Device::AcquireDHCPConfig() {
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();
+}
+
+void Device::RegisterDerivedString(const string &name,
+                                    string(Device::*get)(void),
+                                    bool(Device::*set)(const string&)) {
+  string_properties_[name] =
+      StringAccessor(new CustomAccessor<Device, string>(this, get, set));
 }
 
 void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,

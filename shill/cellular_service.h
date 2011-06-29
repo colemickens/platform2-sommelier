@@ -10,7 +10,6 @@
 
 #include <base/basictypes.h>
 
-#include "shill/cellular.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
@@ -43,6 +42,8 @@ class CellularService : public Service {
   std::map<std::string, std::string> last_good_apn_info_;
 
  private:
+  std::string GetDeviceRpcId();
+
   CellularRefPtr cellular_;
   const std::string type_;
   DISALLOW_COPY_AND_ASSIGN(CellularService);

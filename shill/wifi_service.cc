@@ -82,4 +82,8 @@ void WiFiService::RealConnect() {
   wifi_->ConnectTo(*this);
 }
 
+string WiFiService::GetDeviceRpcId() {
+  return wifi_->GetRpcIdentifier();
+}
+
 }  // namespace shill

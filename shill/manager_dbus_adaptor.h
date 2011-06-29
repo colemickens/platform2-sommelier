@@ -35,6 +35,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   virtual ~ManagerDBusAdaptor();
 
   // Implementation of ManagerAdaptorInterface.
+  virtual const std::string &GetRpcIdentifier() { return path(); }
   void UpdateRunning();
   void EmitBoolChanged(const std::string &name, bool value);
   void EmitUintChanged(const std::string &name, uint32 value);

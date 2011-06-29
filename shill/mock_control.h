@@ -5,15 +5,26 @@
 #ifndef SHILL_MOCK_CONTROL_
 #define SHILL_MOCK_CONTROL_
 
+#include <base/scoped_ptr.h>
+
 #include "shill/control_interface.h"
 
 namespace shill {
-// This is the Interface for the control channel for Shill.
+// An implementation of the Shill RPC-channel-interface-factory interface that
+// returns mocks.
 class MockControl : public ControlInterface {
  public:
+  MockControl();
+  virtual ~MockControl();
+
+  // Each of these can be called once.  Ownership of the appropriate
+  // interface pointer is given up upon call.
   ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
   ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockControl);
 };
 
 }  // namespace shill

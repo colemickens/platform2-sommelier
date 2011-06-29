@@ -16,8 +16,12 @@ namespace shill {
 // These are the functions that a Manager adaptor must support
 class ManagerMockAdaptor : public ManagerAdaptorInterface {
  public:
-  ManagerMockAdaptor() {}
-  virtual ~ManagerMockAdaptor() {}
+  static const char kRpcId[];
+
+  ManagerMockAdaptor();
+  virtual ~ManagerMockAdaptor();
+  virtual const std::string &GetRpcIdentifier();
+
   MOCK_METHOD0(UpdateRunning, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
@@ -25,30 +29,47 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
 
   MOCK_METHOD1(EmitStateChanged, void(const std::string&));
+
+ private:
+  const std::string rpc_id;
 };
 
 // These are the functions that a Service adaptor must support
 class ServiceMockAdaptor : public ServiceAdaptorInterface {
  public:
-  ServiceMockAdaptor() {}
-  virtual ~ServiceMockAdaptor() {}
+  static const char kRpcId[];
+
+  ServiceMockAdaptor();
+  virtual ~ServiceMockAdaptor();
+  virtual const std::string &GetRpcIdentifier();
+
   MOCK_METHOD0(UpdateConnected, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+
+ private:
+  const std::string rpc_id;
 };
 
 // These are the functions that a Device adaptor must support
 class DeviceMockAdaptor : public DeviceAdaptorInterface {
  public:
-  DeviceMockAdaptor() {}
-  virtual ~DeviceMockAdaptor() {}
+  static const char kRpcId[];
+
+  DeviceMockAdaptor();
+  virtual ~DeviceMockAdaptor();
+  virtual const std::string &GetRpcIdentifier();
+
   MOCK_METHOD0(UpdateEnabled, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+
+ private:
+  const std::string rpc_id;
 };
 
 }  // namespace shill

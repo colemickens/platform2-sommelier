@@ -7,6 +7,10 @@
 
 namespace shill {
 
+MockControl::MockControl() {}
+
+MockControl::~MockControl() {}
+
 ManagerAdaptorInterface *MockControl::CreateManagerAdaptor(Manager *manager) {
   return new ManagerMockAdaptor();
 }

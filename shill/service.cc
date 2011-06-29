@@ -44,7 +44,9 @@ Service::Service(ControlInterface *control_interface,
   RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
   RegisterString(flimflam::kCheckPortalProperty, &check_portal_);
   RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
-  RegisterDerivedString(flimflam::kDeviceProperty, &Service::DeviceRPCID, NULL);
+  RegisterDerivedString(flimflam::kDeviceProperty,
+                        &Service::GetDeviceRpcId,
+                        NULL);
 
   RegisterString(flimflam::kEapIdentityProperty, &eap_.identity);
   RegisterString(flimflam::kEAPEAPProperty, &eap_.eap);
@@ -70,7 +72,7 @@ Service::Service(ControlInterface *control_interface,
   RegisterConstString(flimflam::kNameProperty, &name_);
   RegisterInt32(flimflam::kPriorityProperty, &priority_);
   RegisterDerivedString(flimflam::kProfileProperty,
-                        &Service::ProfileRPCID,
+                        &Service::GetProfileRpcId,
                         NULL);
   RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
   RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);

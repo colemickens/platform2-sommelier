@@ -94,6 +94,7 @@ TEST_OBJS = \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	manager_unittest.o \
+	mock_adaptors.o \
 	mock_control.o \
 	mock_device.o \
 	mock_service.o \

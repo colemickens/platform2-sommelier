@@ -34,6 +34,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   virtual ~ServiceDBusAdaptor();
 
   // Implementation of ServiceAdaptorInterface.
+  virtual const std::string &GetRpcIdentifier() { return path(); }
   void UpdateConnected();
   void EmitBoolChanged(const std::string& name, bool value);
   void EmitUintChanged(const std::string& name, uint32 value);

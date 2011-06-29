@@ -43,4 +43,8 @@ void EthernetService::Connect() { }
 
 void EthernetService::Disconnect() { }
 
+std::string EthernetService::GetDeviceRpcId() {
+  return ethernet_->GetRpcIdentifier();
+}
+
 }  // namespace shill

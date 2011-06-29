@@ -15,6 +15,11 @@ namespace shill {
 class ManagerAdaptorInterface {
  public:
   virtual ~ManagerAdaptorInterface() {}
+
+  // Getter for the opaque identifier that represents this object on the
+  // RPC interface to which the implementation is adapting.
+  virtual const std::string &GetRpcIdentifier() = 0;
+
   virtual void UpdateRunning() = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
@@ -30,6 +35,11 @@ class ManagerAdaptorInterface {
 class ServiceAdaptorInterface {
  public:
   virtual ~ServiceAdaptorInterface() {}
+
+  // Getter for the opaque identifier that represents this object on the
+  // RPC interface to which the implementation is adapting.
+  virtual const std::string &GetRpcIdentifier() = 0;
+
   virtual void UpdateConnected() = 0;
 
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
@@ -43,6 +53,10 @@ class ServiceAdaptorInterface {
 class DeviceAdaptorInterface {
  public:
   virtual ~DeviceAdaptorInterface() {}
+
+  // Getter for the opaque identifier that represents this object on the
+  // RPC interface to which the implementation is adapting.
+  virtual const std::string &GetRpcIdentifier() = 0;
 
   virtual void UpdateEnabled() = 0;
 

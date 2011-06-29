@@ -16,6 +16,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/ethernet_service.h"
 #include "shill/manager.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_service.h"
 #include "shill/property_store_unittest.h"
@@ -34,19 +35,29 @@ namespace shill {
 
 class ServiceTest : public PropertyStoreTest {
  public:
+  static const char kMockServiceName[];
+  static const char kMockDeviceRpcId[];
+
   ServiceTest()
       : service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 "mock-service")) {
+                                 kMockServiceName)) {
   }
 
   virtual ~ServiceTest() {}
 
  protected:
-  ServiceRefPtr service_;
+  scoped_refptr<MockService> service_;
 };
 
+const char ServiceTest::kMockServiceName[] = "mock-service";
+
+const char ServiceTest::kMockDeviceRpcId[] = "mock-device-rpc";
+
 TEST_F(ServiceTest, GetProperties) {
+  EXPECT_CALL(*service_.get(), CalculateState()).WillRepeatedly(Return(""));
+  EXPECT_CALL(*service_.get(), GetDeviceRpcId())
+      .WillRepeatedly(Return(ServiceTest::kMockDeviceRpcId));
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
   {
@@ -83,6 +94,13 @@ TEST_F(ServiceTest, GetProperties) {
     ASSERT_FALSE(props.find(flimflam::kPriorityProperty) == props.end());
     EXPECT_EQ(props[flimflam::kPriorityProperty].reader().get_int32(),
               expected);
+  }
+  {
+    ::DBus::Error dbus_error;
+    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kDeviceProperty) == props.end());
+    EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_string(),
+              string(ServiceTest::kMockDeviceRpcId));
   }
 }
 

@@ -7,7 +7,6 @@
 
 #include <base/basictypes.h>
 
-#include "shill/ethernet.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
@@ -28,6 +27,8 @@ class EthernetService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
+  std::string GetDeviceRpcId();
+
   EthernetRefPtr ethernet_;
   const std::string type_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);

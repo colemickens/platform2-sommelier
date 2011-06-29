@@ -124,10 +124,9 @@ class Service : public base::RefCounted<Service>,
   EventDispatcher *dispatcher_;
 
  private:
-  std::string DeviceRPCID() {
-    return "";  // Will need to call Device to get this.
-  }
-  std::string ProfileRPCID() {
+  virtual std::string GetDeviceRpcId() = 0;
+
+  std::string GetProfileRpcId() {
     return "";  // Will need to call Profile to get this.
   }
 
