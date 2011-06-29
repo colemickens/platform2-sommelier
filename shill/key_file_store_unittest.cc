@@ -16,6 +16,11 @@ using testing::Test;
 
 namespace shill {
 
+namespace {
+const char kPlainText[] = "This is a test!";
+const char kROT47Text[] = "rot47:%9:D :D 2 E6DEP";
+}  // namespace {}
+
 class KeyFileStoreTest : public Test {
  public:
   KeyFileStoreTest() : store_(&glib_) {}
@@ -55,6 +60,7 @@ TEST_F(KeyFileStoreTest, OpenClose) {
 
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.key_file_);
+  EXPECT_EQ(1, store_.crypto_.cryptos_.size());
   ASSERT_TRUE(store_.Close());
   EXPECT_FALSE(store_.key_file_);
 
@@ -285,6 +291,35 @@ TEST_F(KeyFileStoreTest, SetInt) {
                                "%s=%d\n"
                                "%s=%d\n",
                                kGroup, kKey1, kValue1, kKey2, kValue2),
+            ReadKeyFile());
+}
+
+TEST_F(KeyFileStoreTest, GetCryptedString) {
+  static const char kGroup[] = "crypto-group";
+  static const char kKey[] = "secret";
+  WriteKeyFile(base::StringPrintf("[%s]\n"
+                                  "%s=%s\n",
+                                  kGroup, kKey, kROT47Text));
+  ASSERT_TRUE(store_.Open());
+  string value;
+  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, &value));
+  EXPECT_EQ(kPlainText, value);
+  EXPECT_FALSE(store_.GetCryptedString("something-else", kKey, &value));
+  EXPECT_FALSE(store_.GetCryptedString(kGroup, "non-secret", &value));
+  EXPECT_TRUE(store_.GetCryptedString(kGroup, kKey, NULL));
+  ASSERT_TRUE(store_.Close());
+}
+
+TEST_F(KeyFileStoreTest, SetCryptedString) {
+  static const char kGroup[] = "crypted-string-group";
+  static const char kKey[] = "test-string";
+  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_.SetCryptedString(kGroup, kKey, kPlainText));
+  ASSERT_TRUE(store_.Close());
+  EXPECT_EQ(base::StringPrintf("\n"
+                               "[%s]\n"
+                               "%s=%s\n",
+                               kGroup, kKey, kROT47Text),
             ReadKeyFile());
 }
 

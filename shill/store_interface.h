@@ -77,6 +77,19 @@ class StoreInterface {
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value) = 0;
+
+  // Gets and decrypts string |value| associated with |group|:|key|. Returns
+  // true on success and false on failure (including when |group|:|key| is not
+  // present in the store).
+  virtual bool GetCryptedString(const std::string &group,
+                                const std::string &key,
+                                std::string *value) = 0;
+
+  // Associates |group|:|key| with a string |value| after encrypting it. Returns
+  // true on success, false otherwise.
+  virtual bool SetCryptedString(const std::string &group,
+                                const std::string &key,
+                                const std::string &value) = 0;
 };
 
 }  // namespace shill

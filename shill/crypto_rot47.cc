@@ -10,6 +10,8 @@ namespace shill {
 
 const char CryptoROT47::kID[] = "rot47";
 
+CryptoROT47::CryptoROT47() {}
+
 string CryptoROT47::GetID() {
   return kID;
 }

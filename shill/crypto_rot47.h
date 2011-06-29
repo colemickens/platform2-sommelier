@@ -5,6 +5,8 @@
 #ifndef SHILL_CRYPTO_ROT47_
 #define SHILL_CRYPTO_ROT47_
 
+#include <base/basictypes.h>
+
 #include "shill/crypto_interface.h"
 
 namespace shill {
@@ -14,10 +16,15 @@ class CryptoROT47 : public CryptoInterface {
  public:
   static const char kID[];
 
+  CryptoROT47();
+
   // Inherited from CryptoInterface.
   virtual std::string GetID();
   virtual bool Encrypt(const std::string &plaintext, std::string *ciphertext);
   virtual bool Decrypt(const std::string &ciphertext, std::string *plaintext);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CryptoROT47);
 };
 
 }  // namespace shill

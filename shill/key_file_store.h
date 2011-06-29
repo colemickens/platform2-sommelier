@@ -8,6 +8,7 @@
 #include <base/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/crypto_provider.h"
 #include "shill/glib.h"
 #include "shill/store_interface.h"
 
@@ -49,6 +50,12 @@ class KeyFileStore : public StoreInterface {
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value);
+  virtual bool GetCryptedString(const std::string &group,
+                                const std::string &key,
+                                std::string *value);
+  virtual bool SetCryptedString(const std::string &group,
+                                const std::string &key,
+                                const std::string &value);
 
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
@@ -57,8 +64,11 @@ class KeyFileStore : public StoreInterface {
   void ReleaseKeyFile();
 
   GLib *glib_;
+  CryptoProvider crypto_;
   GKeyFile *key_file_;
   FilePath path_;
+
+  DISALLOW_COPY_AND_ASSIGN(KeyFileStore);
 };
 
 }  // namespace shill

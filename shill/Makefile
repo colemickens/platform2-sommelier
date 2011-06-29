@@ -45,6 +45,7 @@ SHILL_OBJS = \
 	cellular.o \
 	cellular_service.o \
 	crypto_des_cbc.o \
+	crypto_provider.o \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
@@ -83,6 +84,7 @@ TEST_BIN = shill_unittest
 TEST_OBJS = \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \
+	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
 	dbus_adaptor_unittest.o \
 	device_info_unittest.o \

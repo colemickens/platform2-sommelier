@@ -12,7 +12,10 @@ using std::string;
 
 namespace shill {
 
-KeyFileStore::KeyFileStore(GLib *glib) : glib_(glib), key_file_(NULL) {}
+KeyFileStore::KeyFileStore(GLib *glib)
+    : glib_(glib),
+      crypto_(glib),
+      key_file_(NULL) {}
 
 KeyFileStore::~KeyFileStore() {
   ReleaseKeyFile();
@@ -28,6 +31,7 @@ void KeyFileStore::ReleaseKeyFile() {
 bool KeyFileStore::Open() {
   CHECK(!path_.empty());
   CHECK(!key_file_);
+  crypto_.Init();
   key_file_ = glib_->KeyFileNew();
   int64 file_size = 0;
   if (!file_util::GetFileSize(path_, &file_size) || file_size == 0) {
@@ -109,7 +113,7 @@ bool KeyFileStore::DeleteGroup(const string &group) {
   GError *error = NULL;
   glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
   if (error) {
-    LOG(ERROR) << "Failed to delete group " << group << "): "
+    LOG(ERROR) << "Failed to delete group " << group << ": "
                << glib_->ConvertErrorToMessage(error);
     return false;
   }
@@ -190,6 +194,24 @@ bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
   CHECK(key_file_);
   glib_->KeyFileSetInteger(key_file_, group.c_str(), key.c_str(), value);
   return true;
+}
+
+bool KeyFileStore::GetCryptedString(const string &group,
+                                    const string &key,
+                                    string *value) {
+  if (!GetString(group, key, value)) {
+    return false;
+  }
+  if (value) {
+    *value = crypto_.Decrypt(*value);
+  }
+  return true;
+}
+
+bool KeyFileStore::SetCryptedString(const string &group,
+                                    const string &key,
+                                    const string &value) {
+  return SetString(group, key, crypto_.Encrypt(value));
 }
 
 }  // namespace shill

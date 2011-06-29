@@ -7,6 +7,7 @@
 
 #include <vector>
 
+#include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/crypto_interface.h"
@@ -22,7 +23,7 @@ class CryptoDESCBC : public CryptoInterface {
  public:
   static const char kID[];
 
-  CryptoDESCBC(GLib *glib);
+  explicit CryptoDESCBC(GLib *glib);
 
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
   // the DES initialization vector to the second to last |kBlockSize| bytes of
@@ -48,6 +49,8 @@ class CryptoDESCBC : public CryptoInterface {
   GLib *glib_;
   std::vector<char> key_;
   std::vector<char> iv_;
+
+  DISALLOW_COPY_AND_ASSIGN(CryptoDESCBC);
 };
 
 }  // namespace shill
