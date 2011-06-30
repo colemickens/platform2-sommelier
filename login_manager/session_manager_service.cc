@@ -33,12 +33,12 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/bootstat.h"
+#include "metrics/metrics_library.h"
 
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
 #include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
-#include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_store.h"
 
@@ -128,6 +128,8 @@ const char SessionManagerService::kLegalCharacters[] =
 const char SessionManagerService::kIncognitoUser[] = "";
 // static
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
+// static
+const char SessionManagerService::kLoginUserTypeMetric[] = "Login.UserType";
 // static
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
@@ -492,14 +494,15 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
   }
 
   // Send each user login event to UMA (right before we start session
-  // since the metrics library does not log events in guest mode).
-  int dev_mode = system_->IsDevMode();
-  if (dev_mode > -1) {
-    LoginMetrics login_metrics;
-    login_metrics.SendLoginUserType(dev_mode,
-                                    current_user_ == kIncognitoUser,
-                                    user_is_owner);
-  }
+  // since AreMetricsEnabled returns false in guest mode).
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+  if (current_user_ == kIncognitoUser)
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 0, 2);
+  else if (user_is_owner)
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 1, 2);
+  else
+    metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, 2, 2);
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(
           "start-user-session",

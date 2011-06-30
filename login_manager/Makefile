@@ -32,10 +32,9 @@ PROTO_OBJS = $(BINDINGS)/chrome_device_policy.pb.o \
 	$(BINDINGS)/device_management_backend.pb.o
 
 COMMON_OBJS = child_job.o device_policy_service.o interface.o key_generator.o \
-	login_metrics.o nss_util.o owner_key.o owner_key_loss_mitigator.o \
-	policy_service.o policy_store.o regen_mitigator.o \
-	session_manager_service.o system_utils.o upstart_signal_emitter.o \
-	$(PROTO_OBJS)
+	nss_util.o owner_key.o owner_key_loss_mitigator.o policy_service.o \
+	policy_store.o regen_mitigator.o session_manager_service.o system_utils.o \
+	upstart_signal_emitter.o $(PROTO_OBJS)
 
 KEYGEN_BIN = keygen
 KEYGEN_OBJS = keygen.o nss_util.o owner_key.o system_utils.o

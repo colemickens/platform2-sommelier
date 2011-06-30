@@ -29,9 +29,6 @@ class SystemUtils {
   // root privs, MAKE SURE YOUR suid == 0.
   virtual int kill(pid_t pid, uid_t owner, int signal);
 
-  // Returns 0 if normal mode, 1 if developer mode, -1 if error.
-  virtual int IsDevMode();
-
   // Returns: true if child specified by |child_spec| exited,
   //          false if we time out.
   virtual bool ChildIsGone(pid_t child_spec, int timeout);

@@ -18,7 +18,6 @@ class MockSystemUtils : public SystemUtils {
   MockSystemUtils();
   ~MockSystemUtils();
   MOCK_METHOD3(kill, int(pid_t pid, uid_t uid, int signal));
-  MOCK_METHOD0(IsDevMode, int(void));
   MOCK_METHOD2(ChildIsGone, bool(pid_t child_spec, int timeout));
   MOCK_METHOD2(EnsureAndReturnSafeFileSize,
                bool(const FilePath& file, int32* file_size_32));
