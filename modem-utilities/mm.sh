@@ -3,7 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Library for talking to ModemManager from sh. Copied (ugh) from flimflam.
+# Library for talking to ModemManager from sh. Forked (ugh) from
+# flimflam/test, which has diverged and still exists.
 
 MM=${MM:-/org/chromium/ModemManager}
 IDBUS=org.freedesktop.DBus

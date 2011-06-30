@@ -1,0 +1,92 @@
+#!/bin/dash
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+. /usr/lib/connectivity-common.sh
+
+OCF=org.chromium.flimflam
+
+# Simplifies calls to dbus-send
+# TODO:	 harmonize this with the dbus in ./modem
+dbus () {
+	local dest=$1
+	local obj=$2
+	local meth=$3
+	shift 3
+
+	dbus-send --system --print-reply --fixed \
+		--dest=$dest $obj $meth "$@"
+}
+
+# returns a list of flimflam objects of the specified kind
+get_flimflam_objects () {
+	# NB: add s to pluralize kind
+	local kind=${1}s
+	local filter=$2
+
+	dbus ${OCF} / ${OCF}.Manager.GetProperties \
+		| extract_dbus_match ${kind} \
+		| grep ${filter}
+}
+
+print_properties () {
+	local kind=${1}
+	local object=${2}
+	dbus ${OCF} ${object} ${OCF}.${kind}.GetProperties | stripindexes
+}
+
+die () {
+	echo $* > /dev/stderr
+	exit 1
+}
+
+normalize_kind () {
+	local kind=${1%s}		  # remove trailing s
+	case $kind in
+		[Ss]ervice)
+			echo -n Service
+			;;
+		[Dd]evice)
+			echo -n Device
+			;;
+		*)
+			die Did not understand connection manager entity $kind
+			;;
+	esac
+}
+
+show () {
+	$(needarg raw_kind)
+	$(arg_or_default filter .)
+
+	local kind=$(normalize_kind "${raw_kind}")
+	local objects="$(get_flimflam_objects ${kind} ${filter})"
+
+	for object in ${objects}; do
+		echo $object
+		print_properties ${kind} ${object}
+		echo
+	done
+}
+
+usage() {
+	cat <<EOF
+Usage: $0 <command> [args...]
+  show {Devices|Services|Networks} [-filter regex]
+	Show these objects and their properties: If filter is supplied,
+	use it to filter object names.
+EOF
+	exit
+}
+
+$(needarg cmd)
+case "$cmd" in
+	show)
+		show "$@"
+		;;
+	*)
+		usage
+		;;
+esac

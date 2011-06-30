@@ -7,5 +7,7 @@ all:
 
 install:
 	install -D mm.sh $(DESTDIR)/usr/lib/mm.sh
-	install -D modem $(DESTDIR)/usr/bin/modem
+	install -D connectivity-common.sh $(DESTDIR)/usr/lib/connectivity-common.sh
 
+	install -D modem $(DESTDIR)/usr/bin/modem
+	install -D connectivity $(DESTDIR)/usr/bin/connectivity
