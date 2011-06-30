@@ -201,10 +201,10 @@ cmd_ssh() {
   local line
   local cmd
   local params
+  local exit
   local id=$(uuidgen)
 
   local defopts="-e none -F /etc/ssh/ssh_config"
-  rm -rf "$HOME/.ssh"
 
   if [ ! -z "$1" ]; then
     # Sets the username, host, and optionally port directly.  We accept:
@@ -227,7 +227,12 @@ cmd_ssh() {
 
   if [ -z "$user" -o -z "$host" ]; then
     while [ 1 ]; do
-      if ! shell_read "ssh> " line; then return; fi
+      if ! shell_read "ssh> " line; then
+        echo;
+        exit=1;
+        break
+      fi
+
       local space_pos=$(expr index "$line" ' ')
       if [ $space_pos = 0 ]; then
         cmd="$line"
@@ -240,6 +245,8 @@ cmd_ssh() {
 
       key)
         if check_keyfile "$params"; then
+          mkdir -p -m 600 "$HOME/.ssh";
+          trap "rm -f $HOME/.ssh/key-$id" EXIT;
           (cd "$HOME/Downloads" ; cp -- "$params" "$HOME/.ssh/key-$id")
           chmod 600 "$HOME/.ssh/key-$id"
           idfile="-i $HOME/.ssh/key-$id"
@@ -288,8 +295,9 @@ cmd_ssh() {
         host="$params"
         ;;
 
-      quit)
-        return
+      exit)
+        exit=1
+        break
         ;;
 
       connect)
@@ -305,7 +313,7 @@ cmd_ssh() {
         echo "key <file>                    - sets private key to use (-i)"
         echo "nocmd                         - don't execute command (-N)"
         echo "port <num>                    - port on remote host (-p)"
-        echo "quit                          - exit ssh subsystem"
+        echo "exit                          - exit ssh subsystem"
         echo "user <username>               - username on remote host"
         echo "Note that this program can only bind local ports in the range"
         echo "8000-8999, inclusive."
@@ -314,17 +322,24 @@ cmd_ssh() {
     done
   fi
 
-  if [ -z "$user" ]; then
-    echo "No username given."
-  elif [ -z "$host" ]; then
-    echo "No host given."
-  elif ! check_username "$user"; then
-    echo "Invalid username '$user'"
-  elif ! check_ssh_host "$host"; then
-    echo "Invalid hostname '$host'"
-  else
-    ssh $defopts $idfile $dforwards $forwards $nocmd \
-        -p "$port" -l "$user" "$host"
+  if [ -z "$exit" ]; then
+    if [ -z "$user" ]; then
+      echo "No username given."
+    elif [ -z "$host" ]; then
+      echo "No host given."
+    elif ! check_username "$user"; then
+      echo "Invalid username '$user'"
+    elif ! check_ssh_host "$host"; then
+      echo "Invalid hostname '$host'"
+    else
+      ssh $defopts $idfile $dforwards $forwards $nocmd \
+          -p "$port" -l "$user" "$host"
+    fi
+  fi
+
+  if [ -n "$idfile" ]; then
+    rm "$HOME/.ssh/key-$id";
+    trap - EXIT;
   fi
 }
 
