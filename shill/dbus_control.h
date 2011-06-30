@@ -18,10 +18,11 @@ class DBusControl : public ControlInterface {
   DBusControl();
   virtual ~DBusControl();
 
-  ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
-  ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
-  DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
-  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
+  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
+  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *ipconfig);
+  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
+  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
+  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
 
   void Init();
   DBus::Connection *connection() { return connection_.get(); }

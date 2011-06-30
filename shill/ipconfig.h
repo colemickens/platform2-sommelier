@@ -13,13 +13,17 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/property_store.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
+class ControlInterface;
+class Error;
+class IPConfigAdaptorInterface;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
-class IPConfig : public base::RefCounted<IPConfig> {
+class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
  public:
   enum AddressFamily {
     kAddressFamilyUnknown,
@@ -72,11 +76,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void UpdateProperties(const Properties &properties, bool success);
 
  private:
+  friend class IPConfigAdaptorInterface;
+
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 
+  scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   const std::string device_name_;
   Properties properties_;
   scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;

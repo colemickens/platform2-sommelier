@@ -72,6 +72,26 @@ class ProfileAdaptorInterface {
  public:
   virtual ~ProfileAdaptorInterface() {}
 
+  // Getter for the opaque identifier that represents this object on the
+  // RPC interface to which the implementation is adapting.
+  virtual const std::string &GetRpcIdentifier() = 0;
+
+  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string& name, int value) = 0;
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value) = 0;
+};
+
+// These are the functions that an IPConfig adaptor must support
+class IPConfigAdaptorInterface {
+ public:
+  virtual ~IPConfigAdaptorInterface() {}
+
+  // Getter for the opaque identifier that represents this object on the
+  // RPC interface to which the implementation is adapting.
+  virtual const std::string &GetRpcIdentifier() = 0;
+
   virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
   virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
   virtual void EmitIntChanged(const std::string& name, int value) = 0;

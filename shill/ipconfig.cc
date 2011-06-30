@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+#include "shill/adaptor_interfaces.h"
+
 using std::string;
 
 namespace shill {

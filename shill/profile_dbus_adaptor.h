@@ -37,25 +37,28 @@ class ProfileDBusAdaptor : public org::chromium::flimflam::Profile_adaptor,
   virtual ~ProfileDBusAdaptor();
 
   // Implementation of ProfileAdaptorInterface.
-  void EmitBoolChanged(const std::string &name, bool value);
-  void EmitUintChanged(const std::string &name, uint32 value);
-  void EmitIntChanged(const std::string &name, int value);
-  void EmitStringChanged(const std::string &name, const std::string &value);
-  void EmitStateChanged(const std::string &new_state);
+  virtual const std::string &GetRpcIdentifier() { return path(); }
+  virtual void EmitBoolChanged(const std::string &name, bool value);
+  virtual void EmitUintChanged(const std::string &name, uint32 value);
+  virtual void EmitIntChanged(const std::string &name, int value);
+  virtual void EmitStringChanged(const std::string &name,
+                                 const std::string &value);
 
   // Implementation of Profile_adaptor
-  std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string &name,
-                   const ::DBus::Variant &value,
-                   ::DBus::Error &error);
+  virtual std::map<std::string, ::DBus::Variant> GetProperties(
+      ::DBus::Error &error);
+  virtual void SetProperty(const std::string &name,
+                           const ::DBus::Variant &value,
+                           ::DBus::Error &error);
 
   // Gets an "Entry", which is apparently a different set of properties than
   // those returned by GetProperties.
-  std::map< std::string, ::DBus::Variant> GetEntry(const std::string& ,
-                                                   ::DBus::Error &error);
+  virtual std::map< std::string, ::DBus::Variant> GetEntry(
+      const std::string& ,
+      ::DBus::Error &error);
 
   // Deletes an Entry.
-  void DeleteEntry(const std::string& , ::DBus::Error &error);
+  virtual void DeleteEntry(const std::string& , ::DBus::Error &error);
 
  private:
   Profile *profile_;

@@ -9,6 +9,8 @@ namespace shill {
 
 class Device;
 class DeviceAdaptorInterface;
+class IPConfig;
+class IPConfigAdaptorInterface;
 class Manager;
 class ManagerAdaptorInterface;
 class Profile;
@@ -20,10 +22,12 @@ class ServiceAdaptorInterface;
 class ControlInterface {
  public:
   virtual ~ControlInterface() {}
-  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
-  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
   virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) = 0;
+  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(
+      IPConfig *ipconfig) = 0;
+  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
+  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
 };
 
 }  // namespace shill

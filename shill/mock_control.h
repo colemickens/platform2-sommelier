@@ -19,10 +19,11 @@ class MockControl : public ControlInterface {
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
-  ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
-  ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
-  DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
-  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
+  virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
+  virtual IPConfigAdaptorInterface *CreateIPConfigAdaptor(IPConfig *config);
+  virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
+  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
+  virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockControl);

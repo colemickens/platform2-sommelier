@@ -9,6 +9,24 @@
 namespace shill {
 
 // static
+const char DeviceMockAdaptor::kRpcId[] = "device-rpc";
+
+DeviceMockAdaptor::DeviceMockAdaptor() : rpc_id(kRpcId) {}
+
+DeviceMockAdaptor::~DeviceMockAdaptor() {}
+
+const std::string &DeviceMockAdaptor::GetRpcIdentifier() { return rpc_id; }
+
+// static
+const char IPConfigMockAdaptor::kRpcId[] = "ipconfig-rpc";
+
+IPConfigMockAdaptor::IPConfigMockAdaptor() : rpc_id(kRpcId) {}
+
+IPConfigMockAdaptor::~IPConfigMockAdaptor() {}
+
+const std::string &IPConfigMockAdaptor::GetRpcIdentifier() { return rpc_id; }
+
+// static
 const char ManagerMockAdaptor::kRpcId[] = "manager-rpc";
 
 ManagerMockAdaptor::ManagerMockAdaptor() : rpc_id(kRpcId) {}
@@ -18,6 +36,15 @@ ManagerMockAdaptor::~ManagerMockAdaptor() {}
 const std::string &ManagerMockAdaptor::GetRpcIdentifier() { return rpc_id; }
 
 // static
+const char ProfileMockAdaptor::kRpcId[] = "profile-rpc";
+
+ProfileMockAdaptor::ProfileMockAdaptor() : rpc_id(kRpcId) {}
+
+ProfileMockAdaptor::~ProfileMockAdaptor() {}
+
+const std::string &ProfileMockAdaptor::GetRpcIdentifier() { return rpc_id; }
+
+// static
 const char ServiceMockAdaptor::kRpcId[] = "service-rpc";
 
 ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id(kRpcId) {}
@@ -25,14 +52,4 @@ ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id(kRpcId) {}
 ServiceMockAdaptor::~ServiceMockAdaptor() {}
 
 const std::string &ServiceMockAdaptor::GetRpcIdentifier() { return rpc_id; }
-
-// static
-const char DeviceMockAdaptor::kRpcId[] = "device-rpc";
-
-DeviceMockAdaptor::DeviceMockAdaptor() : rpc_id(kRpcId) {}
-
-DeviceMockAdaptor::~DeviceMockAdaptor() {}
-
-const std::string &DeviceMockAdaptor::GetRpcIdentifier() { return rpc_id; }
-
 }  // namespace shill

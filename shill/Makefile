@@ -62,6 +62,7 @@ SHILL_OBJS = \
 	glib.o \
 	glib_io_handler.o \
 	ipconfig.o \
+	ipconfig_dbus_adaptor.o \
 	key_file_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \

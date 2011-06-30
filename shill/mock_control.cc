@@ -11,20 +11,24 @@ MockControl::MockControl() {}
 
 MockControl::~MockControl() {}
 
-ManagerAdaptorInterface *MockControl::CreateManagerAdaptor(Manager *manager) {
-  return new ManagerMockAdaptor();
-}
-
-ServiceAdaptorInterface *MockControl::CreateServiceAdaptor(Service *service) {
-  return new ServiceMockAdaptor();
-}
-
 DeviceAdaptorInterface *MockControl::CreateDeviceAdaptor(Device *device) {
   return new DeviceMockAdaptor();
 }
 
+IPConfigAdaptorInterface *MockControl::CreateIPConfigAdaptor(IPConfig *config) {
+  return new IPConfigMockAdaptor();
+}
+
+ManagerAdaptorInterface *MockControl::CreateManagerAdaptor(Manager *manager) {
+  return new ManagerMockAdaptor();
+}
+
 ProfileAdaptorInterface *MockControl::CreateProfileAdaptor(Profile *profile) {
   return new ProfileMockAdaptor();
+}
+
+ServiceAdaptorInterface *MockControl::CreateServiceAdaptor(Service *service) {
+  return new ServiceMockAdaptor();
 }
 
 }  // namespace shill
