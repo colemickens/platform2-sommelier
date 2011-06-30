@@ -647,7 +647,7 @@ void GobiCdmaModem::RegistrationStateHandler() {
   if (cdma_1x_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
       evdo_state != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     registered = true;
-    registration_time_.Stop();
+    registration_time_.StopIfStarted();
   }
   RegistrationStateChanged(cdma_1x_state, evdo_state);
   if (registered && mm_state() <= MM_MODEM_STATE_SEARCHING)
