@@ -9,6 +9,7 @@
 
 using std::set;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -193,6 +194,46 @@ bool KeyFileStore::GetInt(const string &group, const string &key, int *value) {
 bool KeyFileStore::SetInt(const string &group, const string &key, int value) {
   CHECK(key_file_);
   glib_->KeyFileSetInteger(key_file_, group.c_str(), key.c_str(), value);
+  return true;
+}
+
+bool KeyFileStore::GetStringList(const string &group,
+                                 const string &key,
+                                 vector<string> *value) {
+  CHECK(key_file_);
+  gsize length = 0;
+  GError *error = NULL;
+  gchar **data = glib_->KeyFileGetStringList(key_file_,
+                                             group.c_str(),
+                                             key.c_str(),
+                                             &length,
+                                             &error);
+  if (!data) {
+    LOG(ERROR) << "Failed to lookup (" << group << ":" << key << "): "
+               << glib_->ConvertErrorToMessage(error);
+    return false;
+  }
+  if (value) {
+    value->assign(data, data + length);
+  }
+  glib_->Strfreev(data);
+  return true;
+}
+
+bool KeyFileStore::SetStringList(const string &group,
+                                 const string &key,
+                                 const vector<string> &value) {
+  CHECK(key_file_);
+  vector<const char *> list;
+  for (vector<string>::const_iterator it = value.begin();
+       it != value.end(); ++it) {
+    list.push_back(it->c_str());
+  }
+  glib_->KeyFileSetStringList(key_file_,
+                              group.c_str(),
+                              key.c_str(),
+                              list.data(),
+                              list.size());
   return true;
 }
 

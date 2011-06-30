@@ -12,6 +12,7 @@
 
 using std::set;
 using std::string;
+using std::vector;
 using testing::Test;
 
 namespace shill {
@@ -294,6 +295,121 @@ TEST_F(KeyFileStoreTest, SetInt) {
             ReadKeyFile());
 }
 
+TEST_F(KeyFileStoreTest, GetStringList) {
+  static const char kGroup[] = "string-lists";
+  static const char kKeyEmpty[] = "empty";
+  static const char kKeyEmptyValue[] = "empty-value";
+  static const char kKeyValueEmpty[] = "value-empty";
+  static const char kKeyValueEmptyValue[] = "value-empty-value";
+  static const char kKeyValues[] = "values";
+  static const char kValue[] = "value";
+  static const char kValue2[] = "value2";
+  static const char kValue3[] = "value3";
+  WriteKeyFile(base::StringPrintf("[%s]\n"
+                                  "%s=\n"
+                                  "%s=;%s\n"
+                                  "%s=%s;;\n"
+                                  "%s=%s;;%s\n"
+                                  "%s=%s;%s;%s\n",
+                                  kGroup,
+                                  kKeyEmpty,
+                                  kKeyEmptyValue, kValue,
+                                  kKeyValueEmpty, kValue,
+                                  kKeyValueEmptyValue, kValue, kValue2,
+                                  kKeyValues, kValue, kValue2, kValue3));
+  ASSERT_TRUE(store_.Open());
+
+  vector<string> value;
+
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, &value));
+  ASSERT_EQ(3, value.size());
+  EXPECT_EQ(kValue, value[0]);
+  EXPECT_EQ(kValue2, value[1]);
+  EXPECT_EQ(kValue3, value[2]);
+
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyEmptyValue, &value));
+  ASSERT_EQ(2, value.size());
+  EXPECT_EQ("", value[0]);
+  EXPECT_EQ(kValue, value[1]);
+
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValueEmpty, &value));
+  ASSERT_EQ(2, value.size());
+  EXPECT_EQ(kValue, value[0]);
+  EXPECT_EQ("", value[1]);
+
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyEmpty, &value));
+  ASSERT_EQ(0, value.size());
+
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValueEmptyValue, &value));
+  ASSERT_EQ(3, value.size());
+  EXPECT_EQ(kValue, value[0]);
+  EXPECT_EQ("", value[1]);
+  EXPECT_EQ(kValue2, value[2]);
+
+  EXPECT_FALSE(store_.GetStringList("unknown-string-lists", kKeyEmpty, &value));
+  EXPECT_FALSE(store_.GetStringList(kGroup, "some-key", &value));
+  EXPECT_TRUE(store_.GetStringList(kGroup, kKeyValues, NULL));
+  ASSERT_TRUE(store_.Close());
+}
+
+TEST_F(KeyFileStoreTest, SetStringList) {
+  static const char kGroup[] = "strings";
+  static const char kKeyEmpty[] = "e";
+  static const char kKeyEmptyValue[] = "ev";
+  static const char kKeyValueEmpty[] = "ve";
+  static const char kKeyValueEmptyValue[] = "vev";
+  static const char kKeyValues[] = "v";
+  static const char kValue[] = "abc";
+  static const char kValue2[] = "pqr";
+  static const char kValue3[] = "xyz";
+  ASSERT_TRUE(store_.Open());
+  {
+    vector<string> value;
+    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyEmpty, value));
+  }
+  {
+    vector<string> value;
+    value.push_back("");
+    value.push_back(kValue);
+    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyEmptyValue, value));
+  }
+  {
+    vector<string> value;
+    value.push_back(kValue);
+    value.push_back("");
+    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValueEmpty, value));
+  }
+  {
+    vector<string> value;
+    value.push_back(kValue);
+    value.push_back("");
+    value.push_back(kValue2);
+    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValueEmptyValue, value));
+  }
+  {
+    vector<string> value;
+    value.push_back(kValue);
+    value.push_back(kValue2);
+    value.push_back(kValue3);
+    ASSERT_TRUE(store_.SetStringList(kGroup, kKeyValues, value));
+  }
+  ASSERT_TRUE(store_.Close());
+  EXPECT_EQ(base::StringPrintf("\n"
+                               "[%s]\n"
+                               "%s=\n"
+                               "%s=;%s;\n"
+                               "%s=%s;;\n"
+                               "%s=%s;;%s;\n"
+                               "%s=%s;%s;%s;\n",
+                               kGroup,
+                               kKeyEmpty,
+                               kKeyEmptyValue, kValue,
+                               kKeyValueEmpty, kValue,
+                               kKeyValueEmptyValue, kValue, kValue2,
+                               kKeyValues, kValue, kValue2, kValue3),
+            ReadKeyFile());
+}
+
 TEST_F(KeyFileStoreTest, GetCryptedString) {
   static const char kGroup[] = "crypto-group";
   static const char kKey[] = "secret";
@@ -329,6 +445,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   static const char kGroupC[] = "triangle";
   static const char kGroupX[] = "pentagon";
   static const char kKeyString[] = "color";
+  static const char kKeyStringList[] = "alternative-colors";
   static const char kKeyInt[] = "area";
   static const char kKeyBool[] = "visible";
   static const char kValueStringA[] = "blue";
@@ -340,9 +457,11 @@ TEST_F(KeyFileStoreTest, Combo) {
   const int kValueIntBNew = 333;
   WriteKeyFile(base::StringPrintf("[%s]\n"
                                   "%s=%s\n"
+                                  "%s=%s;%s\n"
                                   "%s=%d\n"
                                   "[%s]\n"
                                   "%s=%s\n"
+                                  "%s=%s;%s\n"
                                   "%s=%d\n"
                                   "%s=true\n"
                                   "[%s]\n"
@@ -350,9 +469,11 @@ TEST_F(KeyFileStoreTest, Combo) {
                                   "%s=false\n",
                                   kGroupA,
                                   kKeyString, kValueStringA,
+                                  kKeyStringList, kValueStringB, kValueStringC,
                                   kKeyInt, kValueIntA,
                                   kGroupB,
                                   kKeyString, kValueStringB,
+                                  kKeyStringList, kValueStringA, kValueStringC,
                                   kKeyInt, kValueIntB,
                                   kKeyBool,
                                   kGroupC,
@@ -380,6 +501,18 @@ TEST_F(KeyFileStoreTest, Combo) {
     EXPECT_EQ(kValueStringA, value);
     EXPECT_TRUE(store_.GetString(kGroupC, kKeyString, &value));
     EXPECT_EQ(kValueStringC, value);
+  }
+  {
+    vector<string> value;
+    EXPECT_TRUE(store_.GetStringList(kGroupB, kKeyStringList, &value));
+    ASSERT_EQ(2, value.size());
+    EXPECT_EQ(kValueStringA, value[0]);
+    EXPECT_EQ(kValueStringC, value[1]);
+    EXPECT_TRUE(store_.GetStringList(kGroupA, kKeyStringList, &value));
+    ASSERT_EQ(2, value.size());
+    EXPECT_EQ(kValueStringB, value[0]);
+    EXPECT_EQ(kValueStringC, value[1]);
+    EXPECT_FALSE(store_.GetStringList(kGroupC, kKeyStringList, &value));
   }
   {
     int value = 0;
@@ -414,6 +547,9 @@ TEST_F(KeyFileStoreTest, Combo) {
   EXPECT_TRUE(store_.SetBool(kGroupB, kKeyBool, false));
   EXPECT_TRUE(store_.SetInt(kGroupB, kKeyInt, kValueIntBNew));
   EXPECT_TRUE(store_.SetString(kGroupC, kKeyString, kValueStringCNew));
+  store_.SetStringList(kGroupB,
+                       kKeyStringList,
+                       vector<string>(1, kValueStringB));
 
   EXPECT_TRUE(store_.DeleteKey(kGroupB, kKeyString));
   EXPECT_FALSE(store_.DeleteKey(kGroupB, kKeyString));
@@ -425,7 +561,14 @@ TEST_F(KeyFileStoreTest, Combo) {
     EXPECT_TRUE(store_.GetString(kGroupC, kKeyString, &value));
     EXPECT_EQ(kValueStringCNew, value);
   }
-
+  {
+    vector<string> value;
+    EXPECT_TRUE(store_.GetStringList(kGroupB, kKeyStringList, &value));
+    ASSERT_EQ(1, value.size());
+    EXPECT_EQ(kValueStringB, value[0]);
+    EXPECT_FALSE(store_.GetStringList(kGroupA, kKeyStringList, &value));
+    EXPECT_FALSE(store_.GetStringList(kGroupC, kKeyStringList, &value));
+  }
   {
     int value = 0;
     EXPECT_TRUE(store_.GetInt(kGroupB, kKeyInt, &value));
@@ -433,7 +576,6 @@ TEST_F(KeyFileStoreTest, Combo) {
     EXPECT_FALSE(store_.GetInt(kGroupA, kKeyInt, &value));
     EXPECT_FALSE(store_.GetInt(kGroupC, kKeyInt, &value));
   }
-
   {
     bool value = false;
     EXPECT_TRUE(store_.GetBool(kGroupB, kKeyBool, &value));
@@ -446,6 +588,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   ASSERT_TRUE(store_.Close());
   EXPECT_EQ(base::StringPrintf("\n"
                                "[%s]\n"
+                               "%s=%s;\n"
                                "%s=%d\n"
                                "%s=false\n"
                                "\n"
@@ -453,6 +596,7 @@ TEST_F(KeyFileStoreTest, Combo) {
                                "%s=%s\n"
                                "%s=false\n",
                                kGroupB,
+                               kKeyStringList, kValueStringB,
                                kKeyInt, kValueIntBNew,
                                kKeyBool,
                                kGroupC,

@@ -75,6 +75,14 @@ gchar *GLib::KeyFileGetString(GKeyFile *key_file,
   return g_key_file_get_string(key_file, group_name, key, error);
 }
 
+gchar **GLib::KeyFileGetStringList(GKeyFile *key_file,
+                                   const gchar *group_name,
+                                   const gchar *key,
+                                   gsize *length,
+                                   GError **error) {
+  return g_key_file_get_string_list(key_file, group_name, key, length, error);
+}
+
 gboolean GLib::KeyFileHasGroup(GKeyFile *key_file,
                                const gchar *group_name) {
   return g_key_file_has_group(key_file, group_name);
@@ -116,6 +124,14 @@ void GLib::KeyFileSetString(GKeyFile *key_file,
                             const gchar *key,
                             const gchar *string) {
   g_key_file_set_string(key_file, group_name, key, string);
+}
+
+void GLib::KeyFileSetStringList(GKeyFile *key_file,
+                                const gchar *group_name,
+                                const gchar *key,
+                                const gchar * const list[],
+                                gsize length) {
+  g_key_file_set_string_list(key_file, group_name, key, list, length);
 }
 
 gchar *GLib::KeyFileToData(GKeyFile *key_file,

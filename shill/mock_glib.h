@@ -34,6 +34,11 @@ class MockGLib : public GLib {
                                          const gchar *group_name,
                                          const gchar *key,
                                          GError **error));
+  MOCK_METHOD5(KeyFileGetStringList, gchar **(GKeyFile *key_file,
+                                              const gchar *group_name,
+                                              const gchar *key,
+                                              gsize *length,
+                                              GError **error));
   MOCK_METHOD2(KeyFileHasGroup, gboolean(GKeyFile *key_file,
                                          const gchar *group_name));
   MOCK_METHOD4(KeyFileLoadFromFile, gboolean(GKeyFile *key_file,
@@ -60,6 +65,11 @@ class MockGLib : public GLib {
                                       const gchar *group_name,
                                       const gchar *key,
                                       const gchar *string));
+  MOCK_METHOD5(KeyFileSetStringList, void(GKeyFile *key_file,
+                                          const gchar *group_name,
+                                          const gchar *key,
+                                          const gchar * const list[],
+                                          gsize length));
   MOCK_METHOD3(KeyFileToData, gchar *(GKeyFile *key_file,
                                       gsize *length,
                                       GError **error));

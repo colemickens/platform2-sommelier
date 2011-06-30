@@ -49,6 +49,12 @@ class GLib {
                                   const gchar *group_name,
                                   const gchar *key,
                                   GError **error);
+  // g_key_file_get_string_list
+  virtual gchar **KeyFileGetStringList(GKeyFile *key_file,
+                                       const gchar *group_name,
+                                       const gchar *key,
+                                       gsize *length,
+                                       GError **error);
   // g_key_file_has_group
   virtual gboolean KeyFileHasGroup(GKeyFile *key_file,
                                    const gchar *group_name);
@@ -83,6 +89,12 @@ class GLib {
                                 const gchar *group_name,
                                 const gchar *key,
                                 const gchar *string);
+  // g_key_file_set_string_list
+  virtual void KeyFileSetStringList(GKeyFile *key_file,
+                                    const gchar *group_name,
+                                    const gchar *key,
+                                    const gchar * const list[],
+                                    gsize length);
   // g_key_file_to_data
   virtual gchar *KeyFileToData(GKeyFile *key_file,
                                gsize *length,

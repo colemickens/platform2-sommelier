@@ -7,6 +7,7 @@
 
 #include <set>
 #include <string>
+#include <vector>
 
 namespace shill {
 
@@ -77,6 +78,19 @@ class StoreInterface {
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value) = 0;
+
+  // Gets a string list |value| associated with |group|:|key|. Returns true on
+  // success and false on failure (including when |group|:|key| is not present
+  // in the store).
+  virtual bool GetStringList(const std::string &group,
+                             const std::string &key,
+                             std::vector<std::string> *value) = 0;
+
+  // Associates |group|:|key| with a string list |value|. Returns true on
+  // success, false otherwise.
+  virtual bool SetStringList(const std::string &group,
+                             const std::string &key,
+                             const std::vector<std::string> &value) = 0;
 
   // Gets and decrypts string |value| associated with |group|:|key|. Returns
   // true on success and false on failure (including when |group|:|key| is not

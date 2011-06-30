@@ -19,7 +19,7 @@ namespace shill {
 // of the key file format.
 class KeyFileStore : public StoreInterface {
  public:
-  KeyFileStore(GLib *glib);
+  explicit KeyFileStore(GLib *glib);
   virtual ~KeyFileStore();
 
   void set_path(const FilePath &path) { path_ = path; }
@@ -50,13 +50,18 @@ class KeyFileStore : public StoreInterface {
   virtual bool SetInt(const std::string &group,
                       const std::string &key,
                       int value);
+  virtual bool GetStringList(const std::string &group,
+                             const std::string &key,
+                             std::vector<std::string> *value);
+  virtual bool SetStringList(const std::string &group,
+                             const std::string &key,
+                             const std::vector<std::string> &value);
   virtual bool GetCryptedString(const std::string &group,
                                 const std::string &key,
                                 std::string *value);
   virtual bool SetCryptedString(const std::string &group,
                                 const std::string &key,
                                 const std::string &value);
-
  private:
   FRIEND_TEST(KeyFileStoreTest, OpenClose);
   FRIEND_TEST(KeyFileStoreTest, OpenFail);
