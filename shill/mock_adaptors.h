@@ -72,5 +72,16 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   const std::string rpc_id;
 };
 
+// These are the functions that a Profile adaptor must support
+class ProfileMockAdaptor : public ProfileAdaptorInterface {
+ public:
+  ProfileMockAdaptor() {}
+  virtual ~ProfileMockAdaptor() {}
+  MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
+  MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
+  MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
+  MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+};
+
 }  // namespace shill
 #endif  // SHILL_MOCK_ADAPTORS_

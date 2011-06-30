@@ -11,6 +11,7 @@
 #include "shill/dbus_control.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/manager_dbus_adaptor.h"
+#include "shill/profile_dbus_adaptor.h"
 #include "shill/service_dbus_adaptor.h"
 
 namespace shill {
@@ -31,6 +32,11 @@ ServiceAdaptorInterface *DBusControl::CreateServiceAdaptor(Service *service) {
 DeviceAdaptorInterface *DBusControl::CreateDeviceAdaptor(Device *device) {
   connection_->request_name(DeviceDBusAdaptor::kInterfaceName);
   return new(std::nothrow) DeviceDBusAdaptor(connection_.get(), device);
+}
+
+ProfileAdaptorInterface *DBusControl::CreateProfileAdaptor(Profile *profile) {
+  connection_->request_name(ProfileDBusAdaptor::kInterfaceName);
+  return new(std::nothrow) ProfileDBusAdaptor(connection_.get(), profile);
 }
 
 void DBusControl::Init() {

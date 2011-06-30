@@ -21,6 +21,7 @@ class DBusControl : public ControlInterface {
   ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
   ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
+  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
 
   void Init();
   DBus::Connection *connection() { return connection_.get(); }

@@ -67,5 +67,17 @@ class DeviceAdaptorInterface {
                                  const std::string& value) = 0;
 };
 
+// These are the functions that a Profile adaptor must support
+class ProfileAdaptorInterface {
+ public:
+  virtual ~ProfileAdaptorInterface() {}
+
+  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string& name, int value) = 0;
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value) = 0;
+};
+
 }  // namespace shill
 #endif  // SHILL_ADAPTOR_INTERFACES_

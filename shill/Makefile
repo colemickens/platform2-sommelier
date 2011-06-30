@@ -65,6 +65,8 @@ SHILL_OBJS = \
 	key_file_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \
+	profile.o \
+	profile_dbus_adaptor.o \
 	property_store.o \
 	rtnl_handler.o \
 	rtnl_listener.o \

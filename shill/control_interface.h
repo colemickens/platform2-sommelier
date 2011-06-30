@@ -11,16 +11,19 @@ class Device;
 class DeviceAdaptorInterface;
 class Manager;
 class ManagerAdaptorInterface;
+class Profile;
+class ProfileAdaptorInterface;
 class Service;
 class ServiceAdaptorInterface;
 
 // This is the Interface for an object factory that creates adaptor objects
 class ControlInterface {
  public:
+  virtual ~ControlInterface() {}
   virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
   virtual DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device) = 0;
-  virtual ~ControlInterface() {}
+  virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
 };
 
 }  // namespace shill

@@ -23,4 +23,8 @@ DeviceAdaptorInterface *MockControl::CreateDeviceAdaptor(Device *device) {
   return new DeviceMockAdaptor();
 }
 
+ProfileAdaptorInterface *MockControl::CreateProfileAdaptor(Profile *profile) {
+  return new ProfileMockAdaptor();
+}
+
 }  // namespace shill

@@ -22,6 +22,7 @@ class MockControl : public ControlInterface {
   ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager);
   ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
   DeviceAdaptorInterface *CreateDeviceAdaptor(Device *device);
+  ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockControl);
