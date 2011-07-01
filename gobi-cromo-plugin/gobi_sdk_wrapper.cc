@@ -91,6 +91,7 @@ static const char *kServiceMapping[] = {
   "GetACCOLC",
   "SetACCOLC",
   "GetANAAAAuthenticationStatus",
+  "GetPLMNName",
 
   "+DeviceManagement",
   "GetDeviceCapabilities",
@@ -945,6 +946,20 @@ ULONG Sdk::SetACCOLC(
   return cw.CheckReturn(::SetACCOLC(
       pSPC,
       accolc));
+}
+
+ULONG Sdk::GetPLMNName(
+    USHORT                     mcc,
+    USHORT                     mnc,
+    ULONG *                    pNamesSize,
+    BYTE *                     pNames) {
+  CallWrapper cw(this, "GetPLMNName");
+  RETURN_IF_CALL_WRAPPER_LOCKED(cw);
+  return cw.CheckReturn(::GetPLMNName(
+      mcc,
+      mnc,
+      pNamesSize,
+      pNames));
 }
 
 ULONG Sdk::GetDeviceCapabilities(

@@ -620,6 +620,12 @@ class Sdk {
       CHAR *                     pSPC,
       BYTE                       accolc);
 
+  virtual ULONG GetPLMNName(
+      USHORT                     mcc,
+      USHORT                     mnc,
+      ULONG *                    pNamesSize,
+      BYTE *                     pNames);
+
   virtual ULONG GetDeviceCapabilities(
       ULONG *                    pMaxTXChannelRate,
       ULONG *                    pMaxRXChannelRate,
