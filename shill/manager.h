@@ -66,6 +66,11 @@ class Manager : public PropertyStore {
   std::vector<std::string> ConnectedTechnologies();
   std::string DefaultTechnology();
   std::vector<std::string> EnabledTechnologies();
+  std::vector<std::string> EnumerateDevices();
+  // TODO(cmasone): these two should be implemented by asking the currently
+  // active profile, once we have such a thing.
+  std::vector<std::string> EnumerateAvailableServices();
+  std::vector<std::string> EnumerateWatchedServices();
 
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;

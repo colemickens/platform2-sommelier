@@ -34,7 +34,19 @@ using ::testing::Values;
 
 class ManagerTest : public PropertyStoreTest {
  public:
-  ManagerTest() : factory_(this) {}
+  ManagerTest()
+      : factory_(this),
+        mock_device_(new NiceMock<MockDevice>(&control_interface_,
+                                              &dispatcher_,
+                                              &manager_,
+                                              "null0",
+                                              -1)),
+        mock_device2_(new NiceMock<MockDevice>(&control_interface_,
+                                               &dispatcher_,
+                                               &manager_,
+                                               "null1",
+                                               -1)) {
+  }
   virtual ~ManagerTest() {}
 
   bool IsDeviceRegistered(const DeviceRefPtr &device, Device::Technology tech) {
@@ -45,6 +57,8 @@ class ManagerTest : public PropertyStoreTest {
 
  protected:
   ScopedRunnableMethodFactory<ManagerTest> factory_;
+  scoped_refptr<MockDevice> mock_device_;
+  scoped_refptr<MockDevice> mock_device2_;
 };
 
 TEST_F(ManagerTest, Contains) {
@@ -53,69 +67,38 @@ TEST_F(ManagerTest, Contains) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  scoped_refptr<MockDevice> mock_device(
-      new NiceMock<MockDevice>(&control_interface_,
-                               &dispatcher_,
-                               &manager_,
-                               "null0",
-                               -1));
-  ON_CALL(*mock_device.get(), TechnologyIs(Device::kEthernet))
+  ON_CALL(*mock_device_.get(), TechnologyIs(Device::kEthernet))
+      .WillByDefault(Return(true));
+  ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
 
-  scoped_refptr<MockDevice> mock_device2(
-      new NiceMock<MockDevice>(&control_interface_,
-                               &dispatcher_,
-                               &manager_,
-                               "null1",
-                               -1));
-  ON_CALL(*mock_device2.get(), TechnologyIs(Device::kWifi))
-      .WillByDefault(Return(true));
+  manager_.RegisterDevice(mock_device_.get());
+  manager_.RegisterDevice(mock_device2_.get());
 
-  manager_.RegisterDevice(mock_device.get());
-  manager_.RegisterDevice(mock_device2.get());
-
-  EXPECT_TRUE(IsDeviceRegistered(mock_device, Device::kEthernet));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device2, Device::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  scoped_refptr<MockDevice> mock_device(
-      new NiceMock<MockDevice>(&control_interface_,
-                               &dispatcher_,
-                               &manager_,
-                               "null2",
-                               -1));
-  ON_CALL(*mock_device.get(), TechnologyIs(Device::kEthernet))
+  ON_CALL(*mock_device_.get(), TechnologyIs(Device::kEthernet))
+      .WillByDefault(Return(true));
+  ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
 
-  scoped_refptr<MockDevice> mock_device2(
-      new NiceMock<MockDevice>(&control_interface_,
-                               &dispatcher_,
-                               &manager_,
-                               "null2",
-                               -1));
-  ON_CALL(*mock_device2.get(), TechnologyIs(Device::kWifi))
-      .WillByDefault(Return(true));
+  manager_.RegisterDevice(mock_device_.get());
+  manager_.RegisterDevice(mock_device2_.get());
 
-  manager_.RegisterDevice(mock_device.get());
-  manager_.RegisterDevice(mock_device2.get());
+  ASSERT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
+  ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 
-  ASSERT_TRUE(IsDeviceRegistered(mock_device, Device::kEthernet));
-  ASSERT_TRUE(IsDeviceRegistered(mock_device2, Device::kWifi));
+  manager_.DeregisterDevice(mock_device_.get());
+  EXPECT_FALSE(IsDeviceRegistered(mock_device_, Device::kEthernet));
 
-  manager_.DeregisterDevice(mock_device.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device, Device::kEthernet));
-
-  manager_.DeregisterDevice(mock_device2.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device2, Device::kWifi));
+  manager_.DeregisterDevice(mock_device2_.get());
+  EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
-  scoped_refptr<MockDevice> device(new MockDevice(&control_interface_,
-                                                  &dispatcher_,
-                                                  &manager_,
-                                                  "null3",
-                                                  -1));
   const char kService1[] = "service1";
   const char kService2[] = "wifi_service2";
   scoped_refptr<MockService> mock_service(
@@ -158,6 +141,22 @@ TEST_F(ManagerTest, GetProperties) {
     EXPECT_EQ(props[flimflam::kOfflineModeProperty].reader().get_bool(),
               expected);
   }
+}
+
+TEST_F(ManagerTest, GetDevicesProperty) {
+  manager_.RegisterDevice(mock_device_.get());
+  manager_.RegisterDevice(mock_device2_.get());
+  {
+    map<string, ::DBus::Variant> props;
+    ::DBus::Error dbus_error;
+    bool expected = true;
+    DBusAdaptor::GetProperties(&manager_, &props, &dbus_error);
+    ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
+    Strings devices =
+        props[flimflam::kDevicesProperty].operator vector<string>();
+    EXPECT_EQ(2, devices.size());
+  }
+
 }
 
 TEST_F(ManagerTest, Dispatch) {

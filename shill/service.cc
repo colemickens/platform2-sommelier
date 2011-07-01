@@ -131,6 +131,10 @@ bool Service::SetStringmapProperty(const string& name,
   return set;
 }
 
+string Service::GetRpcIdentifier() {
+  return adaptor_->GetRpcIdentifier();
+}
+
 void Service::RegisterDerivedBool(const string &name,
                                   bool(Service::*get)(void),
                                   bool(Service::*set)(const bool&)) {

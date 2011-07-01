@@ -97,6 +97,8 @@ class Service : public base::RefCounted<Service>,
   // Service instance.
   virtual const std::string &UniqueName() { return name_; }
 
+  std::string GetRpcIdentifier();
+
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 

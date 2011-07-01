@@ -57,12 +57,19 @@ Manager::Manager(ControlInterface *control_interface,
                         &Manager::CalculateState,
                         NULL);
 
+  RegisterDerivedStrings(flimflam::kDevicesProperty,
+                         &Manager::EnumerateDevices,
+                         NULL);
+  RegisterDerivedStrings(flimflam::kServicesProperty,
+                         &Manager::EnumerateAvailableServices,
+                         NULL);
+  RegisterDerivedStrings(flimflam::kServiceWatchListProperty,
+                         &Manager::EnumerateWatchedServices,
+                         NULL);
+
   // TODO(cmasone): Add support for R/O properties that return DBus object paths
   // known_properties_.push_back(flimflam::kActiveProfileProperty);
   // known_properties_.push_back(flimflam::kProfilesProperty);
-  // known_properties_.push_back(flimflam::kDevicesProperty);
-  // known_properties_.push_back(flimflam::kServicesProperty);
-  // known_properties_.push_back(flimflam::kServiceWatchListProperty);
 
   VLOG(2) << "Manager initialized.";
 }
@@ -195,6 +202,33 @@ string Manager::DefaultTechnology() {
 
 vector<string> Manager::EnabledTechnologies() {
   return vector<string>();
+}
+
+vector<string> Manager::EnumerateDevices() {
+  vector<string> device_rpc_ids;
+  for (vector<DeviceRefPtr>::const_iterator it = devices_.begin();
+       it != devices_.end();
+       ++it) {
+    device_rpc_ids.push_back((*it)->GetRpcIdentifier());
+  }
+  return device_rpc_ids;
+}
+
+vector<string> Manager::EnumerateAvailableServices() {
+  // TODO(cmasone): This should, instead, be returned by calling into the
+  // currently active profile.
+  vector<string> service_rpc_ids;
+  for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    service_rpc_ids.push_back((*it)->GetRpcIdentifier());
+  }
+  return service_rpc_ids;
+}
+
+vector<string> Manager::EnumerateWatchedServices() {
+  // TODO(cmasone): Implement this for real by querying the active profile.
+  return EnumerateAvailableServices();
 }
 
 }  // namespace shill
