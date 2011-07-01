@@ -5,11 +5,14 @@
 #include <base/file_util.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_adaptor.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
+#include "shill/property_store_unittest.h"
 
 using std::string;
 using std::vector;
@@ -24,7 +27,7 @@ namespace {
 const char kDeviceName[] = "testdevicename";
 }  // namespace {}
 
-class DHCPConfigTest : public Test {
+class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
@@ -280,6 +283,20 @@ TEST_F(DHCPConfigTest, Stop) {
   config_->pid_ = kPID;
   config_->Stop();
   EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);  // Invoked by destuctor.
+}
+
+TEST_F(DHCPConfigTest, Dispatch) {
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(config_.get(),
+                                          flimflam::kMtuProperty,
+                                          PropertyStoreTest::kInt32V,
+                                          NULL));
+  ::DBus::Error error;
+  // Ensure that an attempt to write a R/O property returns InvalidArgs error.
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(config_.get(),
+                                           flimflam::kAddressProperty,
+                                           PropertyStoreTest::kStringV,
+                                           &error));
+  EXPECT_EQ(invalid_args_, error.name());
 }
 
 }  // namespace shill

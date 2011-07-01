@@ -9,6 +9,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
@@ -46,6 +47,7 @@ DHCPConfig::DHCPConfig(DHCPProvider *provider,
       child_watch_tag_(0),
       root_("/"),
       glib_(glib) {
+  RegisterConstString(flimflam::kAddressProperty, &(properties().address));
   VLOG(2) << __func__ << ": " << device_name;
 }
 
@@ -188,6 +190,7 @@ string DHCPConfig::GetIPv4AddressString(unsigned int address) {
 bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
                                     IPConfig::Properties *properties) {
   VLOG(2) << __func__;
+  properties->method = flimflam::kTypeDHCP;
   properties->address_family = IPConfig::kAddressFamilyIPv4;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {

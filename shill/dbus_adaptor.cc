@@ -67,7 +67,7 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
   else
     NOTREACHED();
 
-  if (!set)
+  if (!set && error)
     e.ToDBusError(error);
   return set;
 }

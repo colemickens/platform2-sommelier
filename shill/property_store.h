@@ -89,10 +89,9 @@ class PropertyStore {
   void RegisterConstInt32(const std::string &name, const int32 *prop);
   void RegisterString(const std::string &name, std::string *prop);
   void RegisterConstString(const std::string &name, const std::string *prop);
-  void RegisterStringmap(const std::string &name,
-                         std::map<std::string, std::string> *prop);
-  void RegisterConstStringmap(const std::string &name,
-                              const std::map<std::string, std::string> *prop);
+  void RegisterStringmap(const std::string &name, Stringmap *prop);
+  void RegisterConstStringmap(const std::string &name, const Stringmap *prop);
+  void RegisterStrings(const std::string &name, Strings *prop);
   void RegisterConstUint8(const std::string &name, const uint8 *prop);
   void RegisterUint16(const std::string &name, uint16 *prop);
   void RegisterConstUint16(const std::string &name, const uint16 *prop);

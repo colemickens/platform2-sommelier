@@ -74,18 +74,14 @@ Service::Service(ControlInterface *control_interface,
   RegisterDerivedString(flimflam::kProfileProperty,
                         &Service::GetProfileRpcId,
                         NULL);
+  // RegisterDerivedString(flimflam::kProfileProperty, &Getter, &Setter);
+  // TODO(cmasone): Create VPN Service with this property
+  // RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
   RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
   RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
   RegisterDerivedString(flimflam::kStateProperty,
                         &Service::CalculateState,
                         NULL);
-
-  // TODO(cmasone): Create VPN Service with this property
-  // RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
-
-  // TODO(cmasone): Add support for R/O properties that return DBus object paths
-  // flimflam::kDeviceProperty, flimflam::kProfileProperty
-
   VLOG(2) << "Service initialized.";
 }
 

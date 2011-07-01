@@ -163,16 +163,20 @@ void PropertyStore::RegisterConstString(const string &name,
       StringAccessor(new ConstPropertyAccessor<string>(prop));
 }
 
-void PropertyStore::RegisterStringmap(const string &name,
-                                      map<string, string> *prop) {
+void PropertyStore::RegisterStringmap(const string &name, Stringmap *prop) {
   stringmap_properties_[name] =
-      StringmapAccessor(new PropertyAccessor<map<string, string> >(prop));
+      StringmapAccessor(new PropertyAccessor<Stringmap>(prop));
 }
 
 void PropertyStore::RegisterConstStringmap(const string &name,
-                                           const map<string, string> *prop) {
+                                           const Stringmap *prop) {
   stringmap_properties_[name] =
-      StringmapAccessor(new ConstPropertyAccessor<map<string, string> >(prop));
+      StringmapAccessor(new ConstPropertyAccessor<Stringmap>(prop));
+}
+
+void PropertyStore::RegisterStrings(const string &name, Strings *prop) {
+  strings_properties_[name] =
+      StringsAccessor(new PropertyAccessor<Strings>(prop));
 }
 
 void PropertyStore::RegisterConstUint8(const string &name, const uint8 *prop) {

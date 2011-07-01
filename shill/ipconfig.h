@@ -38,13 +38,15 @@ class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
 
     AddressFamily address_family;
     std::string address;
-    int subnet_cidr;
+    int32 subnet_cidr;
     std::string broadcast_address;
-    std::string gateway;
     std::vector<std::string> dns_servers;
     std::string domain_name;
     std::vector<std::string> domain_search;
-    int mtu;
+    std::string gateway;
+    std::string method;
+    std::string peer_address;
+    int32 mtu;
   };
 
   explicit IPConfig(const std::string &device_name);
@@ -71,6 +73,14 @@ class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
   virtual bool RequestIP();
   virtual bool RenewIP();
   virtual bool ReleaseIP();
+
+  // Implementation of PropertyStore
+  virtual bool SetInt32Property(const std::string& name,
+                                int32 value,
+                                Error *error);
+  virtual bool SetStringProperty(const std::string &name,
+                                 const std::string &value,
+                                 Error *error);
 
  protected:
   // Updates the IP configuration properties and notifies registered listeners
