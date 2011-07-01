@@ -6,13 +6,13 @@
 
 #include <sys/mount.h>
 
-#include <list>
-
 #include <base/logging.h>
 
 #include "cros-disks/device-event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk-manager.h"
+#include "cros-disks/format-manager.h"
+
 
 namespace cros_disks {
 
@@ -21,15 +21,45 @@ static const char* kServicePath = "/org/chromium/CrosDisks";
 static const char* kServiceErrorName = "org.chromium.CrosDisks.Error";
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
-    DiskManager* disk_manager)
+    DiskManager* disk_manager,
+    FormatManager * format_manager)
     : DBus::ObjectAdaptor(connection, kServicePath),
       disk_manager_(disk_manager),
+      format_manager_(format_manager),
       is_device_event_queued_(true) {
+
+  format_manager_->set_parent(this);
 }
 
 CrosDisksServer::~CrosDisksServer() { }
 
 bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
+  return true;
+}
+
+std::string CrosDisksServer::GetDeviceFilesystem(const std::string& device_path,
+    ::DBus::Error& error) {  // NOLINT
+  return disk_manager_->GetFilesystemTypeOfDevice(device_path);
+}
+
+void CrosDisksServer::SignalFormattingFinished(const std::string& device_path,
+    int status) {
+  if (status) {
+    FormattingFinished(device_path, false);
+    LOG(ERROR) << "Could not format device '" << device_path
+      << "'. Formatting process failed with an exit code " << status;
+  } else {
+    FormattingFinished(device_path, true);
+  }
+}
+
+bool CrosDisksServer::FormatDevice(const std::string& device_path,
+      const std::string& filesystem, ::DBus::Error &error) {  // NOLINT
+  if (!format_manager_->StartFormatting(device_path, filesystem)) {
+    LOG(ERROR) << "Could not format device " << device_path
+      << " as file system '" << filesystem << "'";
+    return false;
+  }
   return true;
 }
 

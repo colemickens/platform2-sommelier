@@ -49,6 +49,35 @@
       <arg name="device" type="a{sv}" direction="out" tp:type="DiskDevices">
       </arg>
     </method>
+    <method name="FormatDevice">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
+      <arg name="filesystem" type="s" direction="in">
+      </arg>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          This variable indicates that the formatting was succesfully
+          initialized, rather than successfully finished.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="GetDeviceFilesystem">
+      <arg name="devicePath" type="s" direction="in">
+      </arg>
+      <arg name="result" type="s" direction="out">
+      </arg>
+    </method>
+    <method name="IsAlive">
+      <tp:docstring>
+        Test method to verify that CrosDisks service is working.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out">
+        <tp:docstring>
+          Boolean indicating whether CrosDisks service is alive.
+        </tp:docstring>
+      </arg>
+    </method>
+
     <signal name="DeviceAdded">
       <arg name="device" type="s" direction="out">
       </arg>
@@ -73,15 +102,11 @@
       <arg name="disk" type="s" direction="out">
       </arg>
     </signal>
-    <method name="IsAlive">
-      <tp:docstring>
-        Test method to verify that CrosDisks service is working.
-      </tp:docstring>
-      <arg name="result" type="b" direction="out">
-        <tp:docstring>
-          Boolean indicating whether CrosDisks service is alive.
-        </tp:docstring>
+    <signal name="FormattingFinished">
+      <arg name="device" type="s" direction="out">
       </arg>
-    </method>
+      <arg name="success" type="b" direction="out">
+      </arg>
+    </signal>
   </interface>
 </node>

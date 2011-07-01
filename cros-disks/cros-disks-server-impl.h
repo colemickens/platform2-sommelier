@@ -18,6 +18,7 @@ namespace cros_disks {
 
 class DeviceEvent;
 class DiskManager;
+class FormatManager;
 
 // The d-bus server for the cros-disks daemon.
 //
@@ -25,9 +26,10 @@ class DiskManager;
 //
 // DBus::Connection server_conn = DBus::Connection::SystemBus();
 // server_conn.request_name("org.chromium.CrosDisks");
-// DiskManager manager;
-// CrosDisksServer* server = new(std::nothrow) CrosDisksServer(server_conn,
-//                                                             &manager);
+// DiskManager disk_manager;
+// FormatManager format_manager;
+// CrosDisksServer* server = new(std::nothrow)
+//     CrosDisksServer(server_conn, &disk_manager, &format_manager);
 //
 // At this point the server should be attached to the main loop.
 //
@@ -38,8 +40,25 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public SessionManagerObserver {
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
-      DiskManager* disk_manager);
+      DiskManager* disk_manager,
+      FormatManager* format_manager);
   virtual ~CrosDisksServer();
+
+  // Called by FormatManager when the formatting is finished
+  virtual void SignalFormattingFinished(const std::string& device_path,
+      int status);
+
+  // Returns filesystem of a device. In case of any error (unrecognised device,
+  // unrecognised file system returns empty string
+  virtual std::string GetDeviceFilesystem(const std::string& device_path,
+      ::DBus::Error &error);  // NOLINT
+
+  // A method for asynchronous formating device using specified file system.
+  // Assumes device path is vaild (should it be invaild singal
+  // FormattingFinished(false) will be sent)
+  // Return true if formatting is successfully INITIALIZED, rather than finished
+  virtual bool FormatDevice(const std::string& device_path,
+      const std::string& filesystem, ::DBus::Error &error);  // NOLINT
 
   // A method for checking if the daemon is running. Always returns true.
   virtual bool IsAlive(DBus::Error& error);  // NOLINT
@@ -106,6 +125,8 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   DeviceEventQueue device_event_queue_;
 
   DiskManager* disk_manager_;
+
+  FormatManager* format_manager_;
 
   // This variable is set to true if any new device event should be queued
   // instead of being dispatched immediately.

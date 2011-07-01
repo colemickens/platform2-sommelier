@@ -21,11 +21,13 @@
 
 #include "cros-disks/cros-disks-server-impl.h"
 #include "cros-disks/disk-manager.h"
+#include "cros-disks/format-manager.h"
 #include "cros-disks/power-manager-proxy.h"
 #include "cros-disks/session-manager-proxy.h"
 
 using cros_disks::CrosDisksServer;
 using cros_disks::DiskManager;
+using cros_disks::FormatManager;
 using cros_disks::PowerManagerProxy;
 using cros_disks::SessionManagerProxy;
 
@@ -87,9 +89,12 @@ int main(int argc, char** argv) {
   LOG(INFO) << "Creating the cros-disks server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
   server_conn.request_name("org.chromium.CrosDisks");
-  DiskManager manager;
-  manager.RegisterDefaultFilesystems();
-  CrosDisksServer cros_disks_server(server_conn, &manager);
+
+  DiskManager disk_manager;
+  FormatManager format_manager;
+  disk_manager.RegisterDefaultFilesystems();
+  CrosDisksServer cros_disks_server(server_conn, &disk_manager,
+      &format_manager);
 
   LOG(INFO) << "Creating a power manager proxy";
   PowerManagerProxy power_manager_proxy(&server_conn, &cros_disks_server);
@@ -102,7 +107,7 @@ int main(int argc, char** argv) {
   metrics_lib.Init();
 
   // Setup a monitor
-  g_io_add_watch_full(g_io_channel_unix_new(manager.udev_monitor_fd()),
+  g_io_add_watch_full(g_io_channel_unix_new(disk_manager.udev_monitor_fd()),
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
                       UdevCallback,
