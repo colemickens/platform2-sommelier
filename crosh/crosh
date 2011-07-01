@@ -86,6 +86,10 @@ HELP='
  set_apn -c
   Clear the APN to be used, so that the default APN will be used instead.
 
+ set_arpgw <true | false>
+  Turn on extra network state checking to make sure the default gateway
+  is reachable.
+
  ssh [optional args...]
   Starts the ssh subsystem if invoked without any arguments.
   "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
@@ -489,6 +493,10 @@ cmd_ff_debug(){
 
 cmd_wpa_debug(){
   /usr/bin/wpa_debug "$@"
+}
+
+cmd_set_arpgw(){
+  /usr/bin/set_arpgw "$@"
 }
 
 cmd_network_logging(){
