@@ -52,6 +52,8 @@ class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
 
   const std::string &device_name() const { return device_name_; }
 
+  std::string GetRpcIdentifier();
+
   // Registers a callback that's executed every time the configuration
   // properties change. Takes ownership of |callback|. Pass NULL to remove a
   // callback. The callback's first argument is a pointer to this IP

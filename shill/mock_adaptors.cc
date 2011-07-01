@@ -10,12 +10,21 @@ namespace shill {
 
 // static
 const char DeviceMockAdaptor::kRpcId[] = "device-rpc";
+// static
+const char DeviceMockAdaptor::kRpcConnId[] = "device-rpc-conn";
 
-DeviceMockAdaptor::DeviceMockAdaptor() : rpc_id(kRpcId) {}
+DeviceMockAdaptor::DeviceMockAdaptor()
+    : rpc_id(kRpcId),
+      rpc_conn_id(kRpcConnId) {
+}
 
 DeviceMockAdaptor::~DeviceMockAdaptor() {}
 
 const std::string &DeviceMockAdaptor::GetRpcIdentifier() { return rpc_id; }
+
+const std::string &DeviceMockAdaptor::GetRpcConnectionIdentifier() {
+  return rpc_conn_id;
+}
 
 // static
 const char IPConfigMockAdaptor::kRpcId[] = "ipconfig-rpc";

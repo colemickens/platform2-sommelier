@@ -17,10 +17,12 @@ namespace shill {
 class DeviceMockAdaptor : public DeviceAdaptorInterface {
  public:
   static const char kRpcId[];
+  static const char kRpcConnId[];
 
   DeviceMockAdaptor();
   virtual ~DeviceMockAdaptor();
   virtual const std::string &GetRpcIdentifier();
+  virtual const std::string &GetRpcConnectionIdentifier();
 
   MOCK_METHOD0(UpdateEnabled, void(void));
   MOCK_METHOD2(EmitBoolChanged, void(const std::string&, bool));
@@ -30,6 +32,7 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
 
  private:
   const std::string rpc_id;
+  const std::string rpc_conn_id;
 };
 
 // These are the functions that a IPConfig adaptor must support

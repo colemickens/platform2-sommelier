@@ -101,6 +101,9 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
   void RegisterDerivedString(const std::string &name,
                              std::string(Device::*get)(void),
                              bool(Device::*set)(const std::string&));
+  void RegisterDerivedStrings(const std::string &name,
+                              Strings(Device::*get)(void),
+                              bool(Device::*set)(const Strings&));
 
   // Properties
   std::string hardware_address_;
@@ -118,6 +121,9 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
 
   // Callback invoked on every IP configuration update.
   void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success);
+
+  std::vector<std::string> AvailableIPConfigs();
+  std::string GetRpcConnectionIdentifier();
 
   const std::string link_name_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;

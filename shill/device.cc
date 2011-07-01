@@ -45,19 +45,23 @@ Device::Device(ControlInterface *control_interface,
       running_(false) {
 
   RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
+  RegisterDerivedString(flimflam::kDBusConnectionProperty,
+                        &Device::GetRpcConnectionIdentifier,
+                        NULL);
   RegisterDerivedString(flimflam::kDBusObjectProperty,
                         &Device::GetRpcIdentifier,
                         NULL);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
+  RegisterDerivedStrings(flimflam::kIPConfigsProperty,
+                         &Device::AvailableIPConfigs,
+                         NULL);
   RegisterConstString(flimflam::kNameProperty, &link_name_);
   RegisterBool(flimflam::kPoweredProperty, &powered_);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // RegisterConstBool(flimflam::kReconnectProperty, &reconnect_);
 
-  // TODO(cmasone): Add support for R/O properties that return DBus object paths
-  // known_properties_.push_back(flimflam::kDBusConnectionProperty);
-  // known_properties_.push_back(flimflam::kIPConfigsProperty);
+  // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
   // known_properties_.push_back(flimflam::kNetworksProperty);
 
   // Initialize Interface monitor, so we can detect new interfaces
@@ -167,6 +171,13 @@ void Device::RegisterDerivedString(const string &name,
       StringAccessor(new CustomAccessor<Device, string>(this, get, set));
 }
 
+void Device::RegisterDerivedStrings(const string &name,
+                                     Strings(Device::*get)(void),
+                                     bool(Device::*set)(const Strings&)) {
+  strings_properties_[name] =
+      StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set));
+}
+
 void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
                                      bool success) {
   // TODO(petkov): Use DeviceInfo to configure IP, etc. -- maybe through
@@ -176,6 +187,15 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
       RTNLHandler::GetInstance()->AddInterfaceAddress(interface_index_,
                                                       *ipconfig);
   }
+}
+
+vector<string> Device::AvailableIPConfigs() {
+  string id = (ipconfig_.get() ? ipconfig_->GetRpcIdentifier() : string());
+  return vector<string>(1, id);
+}
+
+string Device::GetRpcConnectionIdentifier() {
+  return adaptor_->GetRpcConnectionIdentifier();
 }
 
 }  // namespace shill

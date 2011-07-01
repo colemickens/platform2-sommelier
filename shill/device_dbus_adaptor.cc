@@ -23,11 +23,19 @@ const char DeviceDBusAdaptor::kPath[] = "/device/";
 
 DeviceDBusAdaptor::DeviceDBusAdaptor(DBus::Connection* conn, Device *device)
     : DBusAdaptor(conn, kPath + device->UniqueName()),
-      device_(device) {
+      device_(device),
+      connection_name_(conn->unique_name()) {
 }
 
 DeviceDBusAdaptor::~DeviceDBusAdaptor() {
   device_ = NULL;
+}
+const std::string &DeviceDBusAdaptor::GetRpcIdentifier() {
+  return path();
+}
+
+const std::string &DeviceDBusAdaptor::GetRpcConnectionIdentifier() {
+  return connection_name_;
 }
 
 void DeviceDBusAdaptor::UpdateEnabled() {}

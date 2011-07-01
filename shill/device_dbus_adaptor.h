@@ -33,12 +33,14 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual ~DeviceDBusAdaptor();
 
   // Implementation of DeviceAdaptorInterface.
-  virtual const std::string &GetRpcIdentifier() { return path(); }
-  void UpdateEnabled();
-  void EmitBoolChanged(const std::string& name, bool value);
-  void EmitUintChanged(const std::string& name, uint32 value);
-  void EmitIntChanged(const std::string& name, int value);
-  void EmitStringChanged(const std::string& name, const std::string& value);
+  virtual const std::string &GetRpcIdentifier();
+  virtual const std::string &GetRpcConnectionIdentifier();
+  virtual void UpdateEnabled();
+  virtual void EmitBoolChanged(const std::string& name, bool value);
+  virtual void EmitUintChanged(const std::string& name, uint32 value);
+  virtual void EmitIntChanged(const std::string& name, int value);
+  virtual void EmitStringChanged(const std::string& name,
+                                 const std::string& value);
 
   // Implementation of Device_adaptor.
   std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
@@ -60,6 +62,7 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
 
  private:
   Device *device_;
+  const std::string connection_name_;
   DISALLOW_COPY_AND_ASSIGN(DeviceDBusAdaptor);
 };
 

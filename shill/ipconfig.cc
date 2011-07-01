@@ -20,6 +20,10 @@ IPConfig::~IPConfig() {
   VLOG(2) << __func__ << " device: " << device_name();
 }
 
+string IPConfig::GetRpcIdentifier() {
+  return adaptor_->GetRpcIdentifier();
+}
+
 bool IPConfig::RequestIP() {
   return false;
 }
