@@ -1,1 +1,0 @@
-ACTION=="add|remove|change", SUBSYSTEM=="power_supply", RUN+="/usr/bin/power_supply_changed"

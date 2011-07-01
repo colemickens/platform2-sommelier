@@ -6,7 +6,6 @@
 
 #include <cmath>
 #include <gdk/gdkx.h>
-#include <glib-object.h>
 #include <stdint.h>
 #include <sys/inotify.h>
 #include <X11/extensions/dpms.h>
@@ -22,14 +21,12 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "chromeos/glib/object.h"
 #include "cros/chromeos_wm_ipc_enums.h"
 #include "power_manager/audio_detector_interface.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_button_handler.h"
 #include "power_manager/power_constants.h"
-#include "power_manager/power_supply.h"
 #include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
 
@@ -38,17 +35,9 @@ using std::min;
 using std::string;
 using std::vector;
 
-namespace {
-
-const char kTaggedFilePath[] = "/var/lib/power_manager";
-
-const char kPowerStatusPath[] = "/sys/class/power_supply";
-
-const int64 kBatteryPollIntervalMs = 30000;
-
-} // namespace
-
 namespace power_manager {
+
+static const char kTaggedFilePath[] = "/var/lib/power_manager";
 
 // Constants for brightness adjustment metric reporting.
 enum { kBrightnessDown, kBrightnessUp, kBrightnessEnumMax };
@@ -82,7 +71,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       shutdown_state_(kShutdownNone),
       suspender_(&locker_, &file_tagger_),
       run_dir_(run_dir),
-      power_supply_(FilePath(kPowerStatusPath)),
       power_button_handler_(new PowerButtonHandler(this)),
       battery_discharge_rate_metric_last_(0),
       battery_remaining_charge_metric_last_(0),
@@ -130,9 +118,7 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   RetrieveSessionState();
   suspender_.Init(run_dir_);
-  power_supply_.Init();
-  power_supply_.GetPowerStatus(&power_status_);
-  OnPowerEvent(this, power_status_);
+  CHECK(chromeos::MonitorPowerStatus(&OnPowerEvent, this));
   file_tagger_.Init();
   backlight_controller_->SetMinimumBrightness(min_backlight_percent_);
 }
@@ -205,7 +191,6 @@ void Daemon::ReadLockScreenSettings() {
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  g_timeout_add(kBatteryPollIntervalMs, PollPowerSupplyThunk, this);
   g_main_loop_run(loop);
 }
 
@@ -489,7 +474,7 @@ void Daemon::GrabKey(KeyCode key, uint32 mask) {
            GrabModeAsync, GrabModeAsync);
 }
 
-DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
+DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection*,
                                              DBusMessage* message,
                                              void* data) {
   Daemon* daemon = static_cast<Daemon*>(data);
@@ -562,76 +547,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
     daemon->OnPowerStateChange(state);
-    // Other dbus clients may be interested in consuming this signal.
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    "PowerSupplyChange")) {
-    LOG(INFO) << "Power supply change event";
-    daemon->PollPowerSupply();
-    // Other dbus clients may be interested in consuming this signal.
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  } else if (dbus_message_is_method_call(message,
-                                         kPowerManagerInterface,
-                                         "GetProperty")) {
-    LOG(INFO) << "Power supply property request";
-    DBusError error;
-    dbus_error_init(&error);
-    char *property_name = NULL;
-    if (dbus_message_get_args(message, &error,
-                              DBUS_TYPE_STRING, &property_name,
-                              DBUS_TYPE_INVALID) == FALSE) {
-      LOG(WARNING) << "Failed reading args from Get method call: "
-                   << error.message;
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-
-    std::string property = property_name;
-    int dbus_type;
-    union {
-      double double_value;
-      bool bool_value;
-      int64 int64_value;
-      int32 int32_value;
-    } power_value;
-
-    // Determine type and value of the property being requested.
-    if (property == "line_power_on") {
-      power_value.bool_value = daemon->power_status_.line_power_on;
-      dbus_type = DBUS_TYPE_BOOLEAN;
-    } else if (property == "battery_energy") {
-      power_value.double_value = daemon->power_status_.battery_energy;
-      dbus_type = DBUS_TYPE_DOUBLE;
-    } else if (property == "battery_energy_rate") {
-      power_value.double_value = daemon->power_status_.battery_energy_rate;
-      dbus_type = DBUS_TYPE_DOUBLE;
-    } else if (property == "battery_voltage") {
-      power_value.double_value = daemon->power_status_.battery_voltage;
-      dbus_type = DBUS_TYPE_DOUBLE;
-    } else if (property == "battery_time_to_empty") {
-      power_value.int64_value = daemon->power_status_.battery_time_to_empty;
-      dbus_type = DBUS_TYPE_INT64;
-    } else if (property == "battery_time_to_full") {
-      power_value.int64_value = daemon->power_status_.battery_time_to_full;
-      dbus_type = DBUS_TYPE_INT64;
-    } else if (property == "battery_percentage") {
-      power_value.double_value = daemon->power_status_.battery_percentage;
-      dbus_type = DBUS_TYPE_DOUBLE;
-    } else if (property == "battery_is_present") {
-      power_value.bool_value = daemon->power_status_.battery_is_present;
-      dbus_type = DBUS_TYPE_BOOLEAN;
-    } else if (property == "battery_state") {
-      power_value.int32_value = daemon->power_status_.battery_state;
-      dbus_type = DBUS_TYPE_INT32;
-    } else {
-      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-    }
-    DBusMessage *reply = dbus_message_new_method_return(message);
-    CHECK(reply != NULL);
-    dbus_message_append_args(reply, dbus_type, &power_value, DBUS_TYPE_INVALID);
-    if (!dbus_connection_send(connection, reply, NULL))
-      LOG(WARNING) << "Failed to send reply message.";
-
-    // Other dbus clients may be interested in consuming this signal.
+    // other dbus clients may be interested in consuming this signal
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   } else if (dbus_message_is_signal(
                  message,
@@ -670,10 +586,6 @@ void Daemon::RegisterDBusMessageHandler() {
       StringPrintf("type='signal', interface='%s', member='%s'",
                    login_manager::kSessionManagerInterface,
                    login_manager::kSessionManagerSessionStateChanged));
-  matches.push_back(
-      StringPrintf("type='method_call', interface='%s', path='%s'",
-                   kPowerManagerInterface,
-                   kPowerManagerServicePath));
 
   for (vector<string>::const_iterator it = matches.begin();
        it != matches.end(); ++it) {
@@ -689,22 +601,6 @@ void Daemon::RegisterDBusMessageHandler() {
   CHECK(dbus_connection_add_filter(connection, &DBusMessageHandler, this,
                                    NULL));
   LOG(INFO) << "D-Bus monitoring started";
-}
-
-gboolean Daemon::PollPowerSupply() {
-  power_supply_.GetPowerStatus(&power_status_);
-  OnPowerEvent(this, power_status_);
-  // Send a signal once the power supply status has been obtained.
-  DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
-                                                 kPowerManagerInterface,
-                                                 "PowerSupplyPoll");
-  CHECK(message != NULL);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  if (!dbus_connection_send(connection, message, NULL))
-    LOG(WARNING) << "Sending battery poll signal failed.";
-  // Always repeat polling.
-  return true;
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {

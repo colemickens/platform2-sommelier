@@ -99,8 +99,7 @@ powerd_env.DBusClient('power_manager_bindings_client.h', 'power_manager.xml')
 powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
-  monitor_reconfigure.cc power_manager_service.cc power_supply.cc
-  resolution_selector.cc
+  monitor_reconfigure.cc power_manager_service.cc resolution_selector.cc
 ''')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
@@ -164,11 +163,6 @@ file_tagger_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
 deps = [testrunner, 'file_tagger_unittest.cc', powerd_lib,
         util_lib, xidle, backlight_controller, backlight, power_prefs]
 tests.append(file_tagger_unittest_env.Program('file_tagger_unittest', deps))
-power_supply_unittest_env = powerd_env.Clone()
-power_supply_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
-deps = [testrunner, 'power_supply_unittest.cc', powerd_lib, power_prefs,
-        util_lib]
-tests.append(power_supply_unittest_env.Program('power_supply_unittest', deps))
 powerman_unittest_env = powerman_env.Clone()
 powerman_unittest_env.Append(LIBS=Split('gtest gmock'))
 deps = [testrunner, 'powerman_unittest.cc', powerman_lib, util_lib, power_prefs]

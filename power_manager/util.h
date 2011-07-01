@@ -29,7 +29,6 @@ extern const char* kPowerButtonUp;
 
 // broadcast signals
 extern const char* kPowerStateChanged;
-extern const char* kPowerSupplyChanged;
 
 // files to signal powerd_suspend whether suspend should be cancelled
 extern const char* kLidOpenFile;
