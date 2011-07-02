@@ -62,8 +62,8 @@ class ManagerTest : public PropertyStoreTest {
 };
 
 TEST_F(ManagerTest, Contains) {
-  EXPECT_TRUE(manager_.Contains(flimflam::kStateProperty));
-  EXPECT_FALSE(manager_.Contains(""));
+  EXPECT_TRUE(manager_.store()->Contains(flimflam::kStateProperty));
+  EXPECT_FALSE(manager_.store()->Contains(""));
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
@@ -124,10 +124,10 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     string expected("portal_list");
-    manager_.SetStringProperty(flimflam::kCheckPortalListProperty,
-                               expected,
-                               &error);
-    DBusAdaptor::GetProperties(&manager_, &props, &dbus_error);
+    manager_.store()->SetStringProperty(flimflam::kCheckPortalListProperty,
+                                        expected,
+                                        &error);
+    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kCheckPortalListProperty) == props.end());
     EXPECT_EQ(props[flimflam::kCheckPortalListProperty].reader().get_string(),
               expected);
@@ -135,8 +135,10 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    manager_.SetBoolProperty(flimflam::kOfflineModeProperty, expected, &error);
-    DBusAdaptor::GetProperties(&manager_, &props, &dbus_error);
+    manager_.store()->SetBoolProperty(flimflam::kOfflineModeProperty,
+                                      expected,
+                                      &error);
+    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
     EXPECT_EQ(props[flimflam::kOfflineModeProperty].reader().get_bool(),
               expected);
@@ -150,26 +152,25 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
     bool expected = true;
-    DBusAdaptor::GetProperties(&manager_, &props, &dbus_error);
+    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
     Strings devices =
         props[flimflam::kDevicesProperty].operator vector<string>();
     EXPECT_EQ(2, devices.size());
   }
-
 }
 
 TEST_F(ManagerTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager_.store(),
                                             flimflam::kOfflineModeProperty,
                                             PropertyStoreTest::kBoolV,
                                             &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(&manager_,
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager_.store(),
                                             flimflam::kCountryProperty,
                                             PropertyStoreTest::kStringV,
                                             &error));
@@ -177,7 +178,7 @@ TEST_F(ManagerTest, Dispatch) {
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
                                              flimflam::kCountryProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
@@ -185,7 +186,7 @@ TEST_F(ManagerTest, Dispatch) {
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_,
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
                                              flimflam::kOfflineModeProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
@@ -195,7 +196,7 @@ TEST_F(ManagerTest, Dispatch) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::DispatchOnType(
-        &manager_,
+        manager_.store(),
         flimflam::kEnabledTechnologiesProperty,
         PropertyStoreTest::kStringsV,
         &error));
@@ -206,7 +207,10 @@ TEST_F(ManagerTest, Dispatch) {
 TEST_P(ManagerTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
+                                           "",
+                                           GetParam(),
+                                           &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

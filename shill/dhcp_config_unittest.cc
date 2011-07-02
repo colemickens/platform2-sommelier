@@ -286,13 +286,13 @@ TEST_F(DHCPConfigTest, Stop) {
 }
 
 TEST_F(DHCPConfigTest, Dispatch) {
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(config_.get(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(config_->store(),
                                           flimflam::kMtuProperty,
                                           PropertyStoreTest::kInt32V,
                                           NULL));
   ::DBus::Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(config_.get(),
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(config_->store(),
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
                                            &error));

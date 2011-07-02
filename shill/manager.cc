@@ -12,7 +12,6 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -37,35 +36,36 @@ Manager::Manager(ControlInterface *control_interface,
     offline_mode_(false),
     state_(flimflam::kStateOffline) {
   // Initialize Interface monitor, so we can detect new interfaces
-  RegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
-                         &Manager::AvailableTechnologies,
-                         NULL);
-  RegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
-                         &Manager::ConnectedTechnologies,
-                         NULL);
-  RegisterDerivedString(flimflam::kDefaultTechnologyProperty,
-                        &Manager::DefaultTechnology,
-                        NULL);
-  RegisterString(flimflam::kCheckPortalListProperty, &check_portal_list_);
-  RegisterString(flimflam::kCountryProperty, &country_);
-  RegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
-                         &Manager::EnabledTechnologies,
-                         NULL);
-  RegisterBool(flimflam::kOfflineModeProperty, &offline_mode_);
-  RegisterString(flimflam::kPortalURLProperty, &portal_url_);
-  RegisterDerivedString(flimflam::kStateProperty,
-                        &Manager::CalculateState,
-                        NULL);
+  HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
+                             &Manager::AvailableTechnologies,
+                             NULL);
+  HelpRegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
+                             &Manager::ConnectedTechnologies,
+                             NULL);
+  HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
+                            &Manager::DefaultTechnology,
+                            NULL);
+  store_.RegisterString(flimflam::kCheckPortalListProperty,
+                        &check_portal_list_);
+  store_.RegisterString(flimflam::kCountryProperty, &country_);
+  HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
+                             &Manager::EnabledTechnologies,
+                             NULL);
+  store_.RegisterBool(flimflam::kOfflineModeProperty, &offline_mode_);
+  store_.RegisterString(flimflam::kPortalURLProperty, &portal_url_);
+  HelpRegisterDerivedString(flimflam::kStateProperty,
+                            &Manager::CalculateState,
+                            NULL);
 
-  RegisterDerivedStrings(flimflam::kDevicesProperty,
-                         &Manager::EnumerateDevices,
-                         NULL);
-  RegisterDerivedStrings(flimflam::kServicesProperty,
-                         &Manager::EnumerateAvailableServices,
-                         NULL);
-  RegisterDerivedStrings(flimflam::kServiceWatchListProperty,
-                         &Manager::EnumerateWatchedServices,
-                         NULL);
+  HelpRegisterDerivedStrings(flimflam::kDevicesProperty,
+                             &Manager::EnumerateDevices,
+                             NULL);
+  HelpRegisterDerivedStrings(flimflam::kServicesProperty,
+                             &Manager::EnumerateAvailableServices,
+                             NULL);
+  HelpRegisterDerivedStrings(flimflam::kServiceWatchListProperty,
+                             &Manager::EnumerateWatchedServices,
+                             NULL);
 
   // TODO(cmasone): Add support for R/O properties that return DBus object paths
   // known_properties_.push_back(flimflam::kActiveProfileProperty);
@@ -150,38 +150,20 @@ ServiceRefPtr Manager::FindService(const std::string& name) {
   return NULL;
 }
 
-bool Manager::SetBoolProperty(const string& name, bool value, Error *error) {
-  VLOG(2) << "Setting " << name << " as a bool.";
-  bool set = (ContainsKey(bool_properties_, name) &&
-              bool_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W bool.");
-  return set;
-}
-
-bool Manager::SetStringProperty(const string& name,
-                                const string& value,
-                                Error *error) {
-  VLOG(2) << "Setting " << name << " as a string.";
-  bool set = (ContainsKey(string_properties_, name) &&
-              string_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W string.");
-  return set;
-}
-
-void Manager::RegisterDerivedString(const string &name,
+void Manager::HelpRegisterDerivedString(const string &name,
                                     string(Manager::*get)(void),
                                     bool(Manager::*set)(const string&)) {
-  string_properties_[name] =
-      StringAccessor(new CustomAccessor<Manager, string>(this, get, set));
+  store_.RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<Manager, string>(this, get, set)));
 }
 
-void Manager::RegisterDerivedStrings(const string &name,
+void Manager::HelpRegisterDerivedStrings(const string &name,
                                      Strings(Manager::*get)(void),
                                      bool(Manager::*set)(const Strings&)) {
-  strings_properties_[name] =
-      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set));
+  store_.RegisterDerivedStrings(
+      name,
+      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set)));
 }
 
 string Manager::CalculateState() {

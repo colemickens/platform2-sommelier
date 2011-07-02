@@ -42,22 +42,22 @@ class CellularTest : public PropertyStoreTest {
 };
 
 TEST_F(CellularTest, Contains) {
-  EXPECT_TRUE(device_->Contains(flimflam::kNameProperty));
-  EXPECT_FALSE(device_->Contains(""));
+  EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));
+  EXPECT_FALSE(device_->store()->Contains(""));
 }
 
 TEST_F(CellularTest, Dispatch) {
   {
     ::DBus::Error error;
     EXPECT_TRUE(DBusAdaptor::DispatchOnType(
-        device_.get(),
+        device_->store(),
         flimflam::kCellularAllowRoamingProperty,
         PropertyStoreTest::kBoolV,
         &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->store(),
                                             flimflam::kScanIntervalProperty,
                                             PropertyStoreTest::kUint16V,
                                             &error));
@@ -65,7 +65,7 @@ TEST_F(CellularTest, Dispatch) {
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
                                              flimflam::kAddressProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
@@ -73,7 +73,7 @@ TEST_F(CellularTest, Dispatch) {
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
                                              flimflam::kCarrierProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
@@ -81,7 +81,7 @@ TEST_F(CellularTest, Dispatch) {
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
                                              flimflam::kPRLVersionProperty,
                                              PropertyStoreTest::kInt16V,
                                              &error));
@@ -92,7 +92,10 @@ TEST_F(CellularTest, Dispatch) {
 TEST_P(CellularTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
+                                           "",
+                                           GetParam(),
+                                           &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

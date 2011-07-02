@@ -35,22 +35,24 @@ Cellular::Cellular(ControlInterface *control_interface,
                                    this,
                                    "service-" + link)),
       service_registered_(false) {
-  RegisterConstBool(flimflam::kScanningProperty, &scanning_);
-  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  store_.RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
-  RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
-  RegisterConstString(flimflam::kCarrierProperty, &carrier_);
-  RegisterConstString(flimflam::kMeidProperty, &meid_);
-  RegisterConstString(flimflam::kImeiProperty, &imei_);
-  RegisterConstString(flimflam::kImsiProperty, &imsi_);
-  RegisterConstString(flimflam::kEsnProperty, &esn_);
-  RegisterConstString(flimflam::kMdnProperty, &mdn_);
-  RegisterConstString(flimflam::kMinProperty, &min_);
-  RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
-  RegisterConstString(flimflam::kFirmwareRevisionProperty, &firmware_revision_);
-  RegisterConstString(flimflam::kHardwareRevisionProperty, &hardware_revision_);
-  RegisterConstInt16(flimflam::kPRLVersionProperty, &prl_version_);
+  store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
+  store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
+  store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
+  store_.RegisterConstString(flimflam::kImeiProperty, &imei_);
+  store_.RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  store_.RegisterConstString(flimflam::kEsnProperty, &esn_);
+  store_.RegisterConstString(flimflam::kMdnProperty, &mdn_);
+  store_.RegisterConstString(flimflam::kMinProperty, &min_);
+  store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
+  store_.RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
+  store_.RegisterConstString(flimflam::kFirmwareRevisionProperty,
+                             &firmware_revision_);
+  store_.RegisterConstString(flimflam::kHardwareRevisionProperty,
+                             &hardware_revision_);
+  store_.RegisterConstInt16(flimflam::kPRLVersionProperty, &prl_version_);
 
   // TODO(cmasone): Deal with these compound properties
   // known_properties_.push_back(flimflam::kSIMLockStatusProperty);

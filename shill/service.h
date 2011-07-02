@@ -25,8 +25,7 @@ class Error;
 class EventDispatcher;
 class ServiceAdaptorInterface;
 
-class Service : public base::RefCounted<Service>,
-                public PropertyStore {
+class Service : public base::RefCounted<Service> {
  public:
   enum ConnectFailure {
     kServiceFailureUnknown,
@@ -78,21 +77,6 @@ class Service : public base::RefCounted<Service>,
 
   virtual bool IsActive() { return false; }
 
-  // Implementation of PropertyStore
-  virtual bool SetBoolProperty(const std::string &name,
-                               bool value,
-                               Error *error);
-  virtual bool SetInt32Property(const std::string &name,
-                                int32 value,
-                                Error *error);
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
-  virtual bool SetStringmapProperty(
-      const std::string &name,
-      const std::map<std::string, std::string> &values,
-      Error *error);
-
   // Returns a string that is guaranteed to uniquely identify this
   // Service instance.
   virtual const std::string &UniqueName() { return name_; }
@@ -102,13 +86,15 @@ class Service : public base::RefCounted<Service>,
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
+  PropertyStore *store() { return &store_; }
+
  protected:
   virtual std::string CalculateState() = 0;
 
-  void RegisterDerivedBool(const std::string &name,
+  void HelpRegisterDerivedBool(const std::string &name,
                            bool(Service::*get)(void),
                            bool(Service::*set)(const bool&));
-  void RegisterDerivedString(const std::string &name,
+  void HelpRegisterDerivedString(const std::string &name,
                              std::string(Service::*get)(void),
                              bool(Service::*set)(const std::string&));
 
@@ -122,6 +108,8 @@ class Service : public base::RefCounted<Service>,
   int32 priority_;
   std::string proxy_config_;
   bool save_credentials_;
+
+  PropertyStore store_;
 
   EventDispatcher *dispatcher_;
 

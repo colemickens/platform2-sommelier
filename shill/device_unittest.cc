@@ -53,8 +53,8 @@ class DeviceTest : public PropertyStoreTest {
 };
 
 TEST_F(DeviceTest, Contains) {
-  EXPECT_TRUE(device_->Contains(flimflam::kNameProperty));
-  EXPECT_FALSE(device_->Contains(""));
+  EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));
+  EXPECT_FALSE(device_->store()->Contains(""));
 }
 
 TEST_F(DeviceTest, GetProperties) {
@@ -63,29 +63,31 @@ TEST_F(DeviceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    device_->SetBoolProperty(flimflam::kPoweredProperty, expected, &error);
-    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    device_->store()->SetBoolProperty(flimflam::kPoweredProperty,
+                                      expected,
+                                      &error);
+    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kPoweredProperty) == props.end());
     EXPECT_EQ(props[flimflam::kPoweredProperty].reader().get_bool(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kNameProperty) == props.end());
     EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
               string(kDeviceName));
   }
   {
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDBusObjectProperty) == props.end());
     EXPECT_EQ(props[flimflam::kDBusObjectProperty].reader().get_string(),
               string(DeviceMockAdaptor::kRpcId));
   }
   {
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_.get(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDBusConnectionProperty) == props.end());
     EXPECT_EQ(props[flimflam::kDBusConnectionProperty].reader().get_string(),
               string(DeviceMockAdaptor::kRpcConnId));
@@ -94,13 +96,13 @@ TEST_F(DeviceTest, GetProperties) {
 
 TEST_F(DeviceTest, Dispatch) {
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_.get(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->store(),
                                           flimflam::kPoweredProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_.get(),
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
                                            &error));
@@ -110,7 +112,10 @@ TEST_F(DeviceTest, Dispatch) {
 TEST_P(DeviceTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&manager_, "", GetParam(), &error));
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
+                                           "",
+                                           GetParam(),
+                                           &error));
   EXPECT_EQ(invalid_prop_, error.name());
 }
 

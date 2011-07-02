@@ -34,7 +34,7 @@ EthernetService::EthernetService(ControlInterface *control_interface,
       type_(flimflam::kTypeEthernet) {
   set_auto_connect(true);
 
-  RegisterConstString(flimflam::kTypeProperty, &type_);
+  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
 EthernetService::~EthernetService() { }

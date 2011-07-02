@@ -47,7 +47,8 @@ DHCPConfig::DHCPConfig(DHCPProvider *provider,
       child_watch_tag_(0),
       root_("/"),
       glib_(glib) {
-  RegisterConstString(flimflam::kAddressProperty, &(properties().address));
+  store_.RegisterConstString(flimflam::kAddressProperty,
+                             &(properties().address));
   VLOG(2) << __func__ << ": " << device_name;
 }
 

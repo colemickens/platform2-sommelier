@@ -137,18 +137,18 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_(0),
       scan_pending_(false),
       scan_interval_(0) {
-  RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
-  RegisterUint16(flimflam::kBgscanShortIntervalProperty,
+  store_.RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
+  store_.RegisterUint16(flimflam::kBgscanShortIntervalProperty,
                  &bgscan_short_interval_);
-  RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
+  store_.RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
                 &bgscan_signal_threshold_);
 
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
   // scan pending/currently scanning/no scan scheduled as a tri-state
   // kind of thing.
-  RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
-  RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  store_.RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
+  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 

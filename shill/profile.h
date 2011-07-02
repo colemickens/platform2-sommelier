@@ -20,23 +20,19 @@ class ControlInterface;
 class Error;
 class ProfileAdaptorInterface;
 
-class Profile : public PropertyStore {
+class Profile {
  public:
   explicit Profile(ControlInterface *control_interface);
   virtual ~Profile();
 
-  // Implementation of PropertyStore
-  virtual bool SetBoolProperty(const std::string &name,
-                               bool value,
-                               Error *error);
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
+  PropertyStore *store() { return &store_; }
 
  private:
   scoped_ptr<ProfileAdaptorInterface> adaptor_;
 
   // Properties to be get/set via PropertyStore calls.
+
+  PropertyStore store_;
 
   friend class ProfileAdaptorInterface;
 };

@@ -56,14 +56,14 @@ void IPConfigDBusAdaptor::EmitStringChanged(const string &name,
 map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;
-  DBusAdaptor::GetProperties(ipconfig_, &properties, &error);
+  DBusAdaptor::GetProperties(ipconfig_->store(), &properties, &error);
   return properties;
 }
 
 void IPConfigDBusAdaptor::SetProperty(const string &name,
                                       const ::DBus::Variant &value,
                                       ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(ipconfig_, name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(ipconfig_->store(), name, value, &error)) {
     PropertyChanged(name, value);
   }
 }

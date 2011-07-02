@@ -24,7 +24,7 @@ class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 
-class Manager : public PropertyStore {
+class Manager {
  public:
   // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
@@ -44,21 +44,7 @@ class Manager : public PropertyStore {
 
   ServiceRefPtr FindService(const std::string& name);
 
-  // Implementation of PropertyStore
-  virtual bool SetBoolProperty(const std::string &name,
-                               bool value,
-                               Error *error);
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
-
- protected:
-  void RegisterDerivedString(const std::string &name,
-                             std::string(Manager::*get)(void),
-                             bool(Manager::*set)(const std::string&));
-  void RegisterDerivedStrings(const std::string &name,
-                              Strings(Manager::*get)(void),
-                              bool(Manager::*set)(const Strings&));
+  PropertyStore *store() { return &store_; }
 
  private:
   std::string CalculateState();
@@ -72,6 +58,13 @@ class Manager : public PropertyStore {
   std::vector<std::string> EnumerateAvailableServices();
   std::vector<std::string> EnumerateWatchedServices();
 
+  void HelpRegisterDerivedString(const std::string &name,
+                             std::string(Manager::*get)(void),
+                             bool(Manager::*set)(const std::string&));
+  void HelpRegisterDerivedStrings(const std::string &name,
+                              Strings(Manager::*get)(void),
+                              bool(Manager::*set)(const Strings&));
+
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   bool running_;
@@ -84,6 +77,8 @@ class Manager : public PropertyStore {
   std::string check_portal_list_;
   std::string country_;
   std::string portal_url_;
+
+  PropertyStore store_;
 
   std::string active_profile_;  // This is supposed to be, essentially,
                                 // an RPC-visible object handle

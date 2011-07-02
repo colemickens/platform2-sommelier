@@ -61,14 +61,14 @@ void ManagerDBusAdaptor::EmitStateChanged(const string &new_state) {
 map<string, ::DBus::Variant> ManagerDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;
-  DBusAdaptor::GetProperties(manager_, &properties, &error);
+  DBusAdaptor::GetProperties(manager_->store(), &properties, &error);
   return properties;
 }
 
 void ManagerDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(manager_, name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(manager_->store(), name, value, &error)) {
     PropertyChanged(name, value);
   }
 }

@@ -54,14 +54,14 @@ void ServiceDBusAdaptor::EmitStringChanged(const std::string& name,
 map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;
-  DBusAdaptor::GetProperties(service_, &properties, &error);
+  DBusAdaptor::GetProperties(service_->store(), &properties, &error);
   return properties;
 }
 
 void ServiceDBusAdaptor::SetProperty(const string& name,
                                      const ::DBus::Variant& value,
                                      ::DBus::Error &error) {
-  DBusAdaptor::DispatchOnType(service_, name, value, &error);
+  DBusAdaptor::DispatchOnType(service_->store(), name, value, &error);
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string& , ::DBus::Error &error) {

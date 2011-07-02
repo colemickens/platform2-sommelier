@@ -55,14 +55,14 @@ void ProfileDBusAdaptor::EmitStringChanged(const string &name,
 map<string, ::DBus::Variant> ProfileDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;
-  DBusAdaptor::GetProperties(profile_, &properties, &error);
+  DBusAdaptor::GetProperties(profile_->store(), &properties, &error);
   return properties;
 }
 
 void ProfileDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(profile_, name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(profile_->store(), name, value, &error)) {
     PropertyChanged(name, value);
   }
 }

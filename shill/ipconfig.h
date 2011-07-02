@@ -23,7 +23,7 @@ class IPConfigAdaptorInterface;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
-class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
+class IPConfig : public base::RefCounted<IPConfig> {
  public:
   enum AddressFamily {
     kAddressFamilyUnknown,
@@ -74,18 +74,14 @@ class IPConfig : public PropertyStore, public base::RefCounted<IPConfig> {
   virtual bool RenewIP();
   virtual bool ReleaseIP();
 
-  // Implementation of PropertyStore
-  virtual bool SetInt32Property(const std::string& name,
-                                int32 value,
-                                Error *error);
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
+  PropertyStore *store() { return &store_; }
 
  protected:
   // Updates the IP configuration properties and notifies registered listeners
   // about the event. |success| is set to false if the IP configuration failed.
   void UpdateProperties(const Properties &properties, bool success);
+
+  PropertyStore store_;
 
  private:
   friend class IPConfigAdaptorInterface;

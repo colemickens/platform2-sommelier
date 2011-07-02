@@ -60,14 +60,14 @@ void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;
-  DBusAdaptor::GetProperties(device_, &properties, &error);
+  DBusAdaptor::GetProperties(device_->store(), &properties, &error);
   return properties;
 }
 
 void DeviceDBusAdaptor::SetProperty(const string& name,
                                     const ::DBus::Variant& value,
                                     ::DBus::Error &error) {
-  DBusAdaptor::DispatchOnType(device_, name, value, &error);
+  DBusAdaptor::DispatchOnType(device_->store(), name, value, &error);
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string& ,

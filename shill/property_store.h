@@ -20,6 +20,7 @@ class Error;
 
 class PropertyStore {
  public:
+  PropertyStore();
   virtual ~PropertyStore();
 
   virtual bool Contains(const std::string& property);
@@ -78,9 +79,6 @@ class PropertyStore {
   PropertyConstIterator<uint16> GetUint16PropertiesIter();
   PropertyConstIterator<uint32> GetUint32PropertiesIter();
 
- protected:
-  PropertyStore();
-
   void RegisterBool(const std::string &name, bool *prop);
   void RegisterConstBool(const std::string &name, const bool *prop);
   void RegisterInt16(const std::string &name, int16 *prop);
@@ -96,6 +94,14 @@ class PropertyStore {
   void RegisterUint16(const std::string &name, uint16 *prop);
   void RegisterConstUint16(const std::string &name, const uint16 *prop);
 
+  void RegisterDerivedBool(const std::string &name,
+                           const BoolAccessor &accessor);
+  void RegisterDerivedString(const std::string &name,
+                             const StringAccessor &accessor);
+  void RegisterDerivedStrings(const std::string &name,
+                              const StringsAccessor &accessor);
+
+ private:
   // These are std::maps instead of something cooler because the common
   // operation is iterating through them and returning all properties.
   std::map<std::string, BoolAccessor> bool_properties_;
@@ -107,9 +113,6 @@ class PropertyStore {
   std::map<std::string, Uint8Accessor> uint8_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;
-
- private:
-  bool ReturnError(const std::string& name, Error *error);
 
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);
 };

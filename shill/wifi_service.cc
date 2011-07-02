@@ -33,19 +33,19 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   eap_.key_management = key_management;
 
   // TODO(cmasone): Figure out if mode_ should be a string or what
-  // RegisterString(flimflam::kModeProperty, &mode_);
-  RegisterString(flimflam::kPassphraseProperty, &passphrase_);
-  RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
-  RegisterConstString(flimflam::kSecurityProperty, &security_);
+  // store_.RegisterString(flimflam::kModeProperty, &mode_);
+  store_.RegisterString(flimflam::kPassphraseProperty, &passphrase_);
+  store_.RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
+  store_.RegisterConstString(flimflam::kSecurityProperty, &security_);
 
-  RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
-  RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
-  RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
-  RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
-  RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
+  store_.RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
+  store_.RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
+  store_.RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
+  store_.RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
+  store_.RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
 
-  RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  RegisterConstString(flimflam::kTypeProperty, &type_);
+  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
+  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
 WiFiService::~WiFiService() {

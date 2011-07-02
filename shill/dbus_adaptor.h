@@ -55,12 +55,14 @@ class DBusAdaptor : public DBus::ObjectAdaptor {
   static bool IsPath(::DBus::Signature signature);
   static bool IsString(::DBus::Signature signature);
   static bool IsStringmap(::DBus::Signature signature);
+  static bool IsStringmaps(::DBus::Signature signature);
   static bool IsStrings(::DBus::Signature signature);
   static bool IsUint16(::DBus::Signature signature);
   static bool IsUint32(::DBus::Signature signature);
 
  private:
   static const char kStringmapSig[];
+  static const char kStringmapsSig[];
   static const char kStringsSig[];
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };

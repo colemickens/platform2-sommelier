@@ -30,7 +30,7 @@ class Manager;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
-class Device : public base::RefCounted<Device>, public PropertyStore {
+class Device : public base::RefCounted<Device> {
  public:
   enum Technology {
     kEthernet,
@@ -60,27 +60,15 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
 
   virtual void ConfigIP() {}
 
-  // Implementation of PropertyStore
-  virtual bool SetBoolProperty(const std::string& name,
-                               bool value,
-                               Error *error);
-  virtual bool SetInt32Property(const std::string& name,
-                                int32 value,
-                                Error *error);
-  virtual bool SetUint16Property(const std::string& name,
-                                 uint16 value,
-                                 Error *error);
-  virtual bool SetStringProperty(const std::string &name,
-                                 const std::string &value,
-                                 Error *error);
+  std::string GetRpcIdentifier();
 
   const std::string &link_name() const { return link_name_; }
+
+  PropertyStore *store() { return &store_; }
 
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
   const std::string &UniqueName() const;
-
-  std::string GetRpcIdentifier();
 
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
@@ -98,10 +86,10 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
   // request was successfully sent.
   bool AcquireDHCPConfig();
 
-  void RegisterDerivedString(const std::string &name,
+  void HelpRegisterDerivedString(const std::string &name,
                              std::string(Device::*get)(void),
                              bool(Device::*set)(const std::string&));
-  void RegisterDerivedStrings(const std::string &name,
+  void HelpRegisterDerivedStrings(const std::string &name,
                               Strings(Device::*get)(void),
                               bool(Device::*set)(const Strings&));
 
@@ -109,6 +97,8 @@ class Device : public base::RefCounted<Device>, public PropertyStore {
   std::string hardware_address_;
   bool powered_;  // TODO(pstew): Is this what |running_| is for?
   bool reconnect_;
+
+  PropertyStore store_;
 
   std::vector<ServiceRefPtr> services_;
   int interface_index_;

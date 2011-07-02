@@ -63,10 +63,10 @@ TEST_F(ServiceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     string expected("portal_list");
-    service_->SetStringProperty(flimflam::kCheckPortalProperty,
-                                expected,
-                                &error);
-    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    service_->store()->SetStringProperty(flimflam::kCheckPortalProperty,
+                                         expected,
+                                         &error);
+    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kCheckPortalProperty) == props.end());
     EXPECT_EQ(props[flimflam::kCheckPortalProperty].reader().get_string(),
               expected);
@@ -74,30 +74,34 @@ TEST_F(ServiceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    service_->SetBoolProperty(flimflam::kAutoConnectProperty, expected, &error);
-    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    service_->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
+                                       expected,
+                                       &error);
+    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kAutoConnectProperty) == props.end());
     EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kConnectableProperty) == props.end());
     EXPECT_EQ(props[flimflam::kConnectableProperty].reader().get_bool(), false);
   }
   {
     ::DBus::Error dbus_error;
     int32 expected = 127;
-    service_->SetInt32Property(flimflam::kPriorityProperty, expected, &error);
-    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    service_->store()->SetInt32Property(flimflam::kPriorityProperty,
+                                        expected,
+                                        &error);
+    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kPriorityProperty) == props.end());
     EXPECT_EQ(props[flimflam::kPriorityProperty].reader().get_int32(),
               expected);
   }
   {
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(service_.get(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDeviceProperty) == props.end());
     EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_string(),
               string(ServiceTest::kMockDeviceRpcId));
@@ -107,21 +111,21 @@ TEST_F(ServiceTest, GetProperties) {
 TEST_F(ServiceTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->store(),
                                             flimflam::kSaveCredentialsProperty,
                                             PropertyStoreTest::kBoolV,
                                             &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->store(),
                                             flimflam::kPriorityProperty,
                                             PropertyStoreTest::kInt32V,
                                             &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_.get(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(service_->store(),
                                             flimflam::kEAPEAPProperty,
                                             PropertyStoreTest::kStringV,
                                             &error));
@@ -129,7 +133,7 @@ TEST_F(ServiceTest, Dispatch) {
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->store(),
                                              flimflam::kFavoriteProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
@@ -140,7 +144,7 @@ TEST_F(ServiceTest, Dispatch) {
 TEST_P(ServiceTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_.get(),
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(service_->store(),
                                            "",
                                            GetParam(),
                                            &error));

@@ -22,6 +22,8 @@ namespace shill {
 // static
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
 // static
+const char DBusAdaptor::kStringmapsSig[] = "aa{ss}";
+// static
 const char DBusAdaptor::kStringsSig[] = "as";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
@@ -35,10 +37,6 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
                                  const string &name,
                                  const ::DBus::Variant &value,
                                  ::DBus::Error *error) {
-  if (!store->Contains(name)) {
-    Error(Error::kInvalidProperty, name + " is invalid.").ToDBusError(error);
-    return false;
-  }
   bool set = false;
   Error e(Error::kInvalidArguments, "Could not write " + name);
 
@@ -58,6 +56,8 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
     set = store->SetStringmapProperty(name,
                                       value.operator map<string, string>(),
                                       &e);
+  else if (DBusAdaptor::IsStringmaps(value.signature()))
+    VLOG(1) << " can't yet handle setting type " << value.signature();
   else if (DBusAdaptor::IsStrings(value.signature()))
     set = store->SetStringsProperty(name, value.operator vector<string>(), &e);
   else if (DBusAdaptor::IsUint16(value.signature()))
@@ -65,10 +65,14 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
   else if (DBusAdaptor::IsUint32(value.signature()))
     set = store->SetUint32Property(name, value.reader().get_uint32(), &e);
   else
-    NOTREACHED();
+    NOTREACHED() << " unknown type: " << value.signature();
 
-  if (!set && error)
-    e.ToDBusError(error);
+  if (!set && error) {
+    if (!store->Contains(name))
+      Error(Error::kInvalidProperty, name + " is invalid.").ToDBusError(error);
+    else
+      e.ToDBusError(error);
+  }
   return set;
 }
 
@@ -239,6 +243,11 @@ bool DBusAdaptor::IsString(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsStringmap(::DBus::Signature signature) {
   return signature == DBusAdaptor::kStringmapSig;
+}
+
+// static
+bool DBusAdaptor::IsStringmaps(::DBus::Signature signature) {
+  return signature == DBusAdaptor::kStringmapsSig;
 }
 
 // static
