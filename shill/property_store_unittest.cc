@@ -22,6 +22,7 @@
 using std::string;
 using std::map;
 using std::vector;
+using ::testing::Values;
 
 namespace shill {
 
@@ -61,5 +62,27 @@ PropertyStoreTest::PropertyStoreTest()
 }
 
 PropertyStoreTest::~PropertyStoreTest() {}
+
+TEST_P(PropertyStoreTest, TestProperty) {
+  // Ensure that an attempt to write unknown properties returns InvalidProperty.
+  PropertyStore store;
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(&store, "", GetParam(), &error));
+  EXPECT_EQ(invalid_prop_, error.name());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    PropertyStoreTestInstance,
+    PropertyStoreTest,
+    Values(PropertyStoreTest::kBoolV,
+           PropertyStoreTest::kByteV,
+           PropertyStoreTest::kStringV,
+           PropertyStoreTest::kInt16V,
+           PropertyStoreTest::kInt32V,
+           PropertyStoreTest::kUint16V,
+           PropertyStoreTest::kUint32V,
+           PropertyStoreTest::kStringsV,
+           PropertyStoreTest::kStringmapV,
+           PropertyStoreTest::kStringmapsV));
 
 }  // namespace shill

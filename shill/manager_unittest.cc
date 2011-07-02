@@ -30,7 +30,6 @@ using ::testing::Test;
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::Values;
 
 class ManagerTest : public PropertyStoreTest {
  public:
@@ -203,29 +202,5 @@ TEST_F(ManagerTest, Dispatch) {
     EXPECT_EQ(invalid_args_, error.name());
   }
 }
-
-TEST_P(ManagerTest, TestProperty) {
-  // Ensure that an attempt to write unknown properties returns InvalidProperty.
-  ::DBus::Error error;
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
-                                           "",
-                                           GetParam(),
-                                           &error));
-  EXPECT_EQ(invalid_prop_, error.name());
-}
-
-INSTANTIATE_TEST_CASE_P(
-    ManagerTestInstance,
-    ManagerTest,
-    Values(PropertyStoreTest::kBoolV,
-           PropertyStoreTest::kByteV,
-           PropertyStoreTest::kStringV,
-           PropertyStoreTest::kInt16V,
-           PropertyStoreTest::kInt32V,
-           PropertyStoreTest::kUint16V,
-           PropertyStoreTest::kUint32V,
-           PropertyStoreTest::kStringsV,
-           PropertyStoreTest::kStringmapV,
-           PropertyStoreTest::kStringmapsV));
 
 }  // namespace shill
