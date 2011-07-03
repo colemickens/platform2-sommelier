@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/accessor_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/property_store.h"
@@ -171,8 +172,7 @@ bool DBusAdaptor::GetProperties(PropertyStore *store,
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringmapToVariant(
-    const map<string, string> &value) {
+::DBus::Variant DBusAdaptor::StringmapToVariant(const Stringmap &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -180,8 +180,7 @@ bool DBusAdaptor::GetProperties(PropertyStore *store,
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringmapsToVariant(
-    const vector<map<string, string> > &value) {
+::DBus::Variant DBusAdaptor::StringmapsToVariant(const Stringmaps &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
@@ -189,10 +188,19 @@ bool DBusAdaptor::GetProperties(PropertyStore *store,
 }
 
 // static
-::DBus::Variant DBusAdaptor::StringsToVariant(const vector<string> &value) {
+::DBus::Variant DBusAdaptor::StringsToVariant(const Strings &value) {
   ::DBus::Variant v;
   ::DBus::MessageIter writer = v.writer();
   writer << value;
+  return v;
+}
+
+// static
+::DBus::Variant DBusAdaptor::StrIntPairToVariant(const StrIntPair &value) {
+  ::DBus::Variant v;
+  ::DBus::MessageIter writer = v.writer();
+  writer << value.string_property();
+  writer << value.uint_property();
   return v;
 }
 

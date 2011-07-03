@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <dbus-c++/dbus.h>
@@ -19,8 +20,9 @@
 #include "shill/property_store.h"
 #include "shill/shill_event.h"
 
-using std::string;
+using std::make_pair;
 using std::map;
+using std::string;
 using std::vector;
 using ::testing::Values;
 
@@ -44,10 +46,14 @@ const ::DBus::Variant PropertyStoreTest::kStringmapV =
     DBusAdaptor::StringmapToVariant(Stringmap());
 // static
 const ::DBus::Variant PropertyStoreTest::kStringmapsV =
-    DBusAdaptor::StringmapsToVariant(vector<map<string, string> >());
+    DBusAdaptor::StringmapsToVariant(Stringmaps());
 // static
 const ::DBus::Variant PropertyStoreTest::kStringsV =
     DBusAdaptor::StringsToVariant(Strings(1, ""));
+// static
+const ::DBus::Variant PropertyStoreTest::kStrIntPairV =
+    DBusAdaptor::StrIntPairToVariant(StrIntPair(make_pair("", ""),
+                                                make_pair("", 12)));
 // static
 const ::DBus::Variant PropertyStoreTest::kUint16V =
     DBusAdaptor::Uint16ToVariant(0);
@@ -79,10 +85,11 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kStringV,
            PropertyStoreTest::kInt16V,
            PropertyStoreTest::kInt32V,
-           PropertyStoreTest::kUint16V,
-           PropertyStoreTest::kUint32V,
-           PropertyStoreTest::kStringsV,
            PropertyStoreTest::kStringmapV,
-           PropertyStoreTest::kStringmapsV));
+           PropertyStoreTest::kStringmapsV,
+           PropertyStoreTest::kStringsV,
+           PropertyStoreTest::kStrIntPairV,
+           PropertyStoreTest::kUint16V,
+           PropertyStoreTest::kUint32V));
 
 }  // namespace shill

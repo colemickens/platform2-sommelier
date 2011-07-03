@@ -87,11 +87,11 @@ class Device : public base::RefCounted<Device> {
   bool AcquireDHCPConfig();
 
   void HelpRegisterDerivedString(const std::string &name,
-                             std::string(Device::*get)(void),
-                             bool(Device::*set)(const std::string&));
+                                 std::string(Device::*get)(void),
+                                 bool(Device::*set)(const std::string&));
   void HelpRegisterDerivedStrings(const std::string &name,
-                              Strings(Device::*get)(void),
-                              bool(Device::*set)(const Strings&));
+                                  Strings(Device::*get)(void),
+                                  bool(Device::*set)(const Strings&));
 
   // Properties
   std::string hardware_address_;

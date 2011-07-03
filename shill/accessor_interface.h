@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 #include <tr1/memory>
+#include <utility>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -34,8 +35,35 @@ class AccessorInterface {
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);
 };
 
+// This class stores two dissimilar named properties, one named string
+// property and one named unsigned integer property.
+class StrIntPair {
+ public:
+  StrIntPair() {}
+  StrIntPair(std::pair<std::string, std::string> string_prop,
+             std::pair<std::string, uint32> uint_prop) {
+    string_property_[string_prop.first] = string_prop.second;
+    uint_property_[uint_prop.first] = uint_prop.second;
+  }
+  ~StrIntPair() {}
+
+  const std::map<std::string, std::string> &string_property() const {
+    return string_property_;
+  }
+  const std::map<std::string, uint32> &uint_property() const {
+    return uint_property_;
+  }
+
+ private:
+  // These are stored as maps because it's way easier to coerce them to
+  // the right DBus types than if they were pairs.
+  std::map<std::string, std::string> string_property_;
+  std::map<std::string, uint32> uint_property_;
+};
+
 typedef std::vector<std::string> Strings;
 typedef std::map<std::string, std::string> Stringmap;
+typedef std::vector<Stringmap> Stringmaps;
 
 // Using a smart pointer here allows pointers to classes derived from
 // AccessorInterface<> to be stored in maps and other STL container types.
@@ -44,7 +72,9 @@ typedef std::tr1::shared_ptr<AccessorInterface<int16> > Int16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<int32> > Int32Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<std::string> > StringAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<Stringmap> > StringmapAccessor;
+typedef std::tr1::shared_ptr<AccessorInterface<Stringmaps> > StringmapsAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<Strings> > StringsAccessor;
+typedef std::tr1::shared_ptr<AccessorInterface<StrIntPair> > StrIntPairAccessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint8> > Uint8Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint16> > Uint16Accessor;
 typedef std::tr1::shared_ptr<AccessorInterface<uint32> > Uint32Accessor;

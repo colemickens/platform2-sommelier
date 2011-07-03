@@ -12,6 +12,8 @@
 #include <base/basictypes.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/accessor_interface.h"
+
 namespace shill {
 
 #define SHILL_INTERFACE "org.chromium.flimflam"
@@ -39,12 +41,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor {
   static ::DBus::Variant Int32ToVariant(int32 value);
   static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
   static ::DBus::Variant StringToVariant(const std::string &value);
-  static ::DBus::Variant StringmapToVariant(
-      const std::map<std::string, std::string> &value);
-  static ::DBus::Variant StringmapsToVariant(
-      const std::vector<std::map<std::string, std::string> > &value);
-  static ::DBus::Variant StringsToVariant(
-      const std::vector<std::string> &value);
+  static ::DBus::Variant StringmapToVariant(const Stringmap &value);
+  static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);
+  static ::DBus::Variant StringsToVariant(const Strings &value);
+  static ::DBus::Variant StrIntPairToVariant(const StrIntPair &value);
   static ::DBus::Variant Uint16ToVariant(uint16 value);
   static ::DBus::Variant Uint32ToVariant(uint32 value);
 

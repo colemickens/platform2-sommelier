@@ -74,6 +74,8 @@ class PropertyStore {
   PropertyConstIterator<int32> GetInt32PropertiesIter();
   PropertyConstIterator<std::string> GetStringPropertiesIter();
   PropertyConstIterator<Stringmap> GetStringmapPropertiesIter();
+  PropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter();
+  PropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter();
   PropertyConstIterator<Strings> GetStringsPropertiesIter();
   PropertyConstIterator<uint8> GetUint8PropertiesIter();
   PropertyConstIterator<uint16> GetUint16PropertiesIter();
@@ -90,6 +92,8 @@ class PropertyStore {
   void RegisterStringmap(const std::string &name, Stringmap *prop);
   void RegisterConstStringmap(const std::string &name, const Stringmap *prop);
   void RegisterStrings(const std::string &name, Strings *prop);
+  void RegisterConstStrings(const std::string &name, const Strings *prop);
+  void RegisterUint8(const std::string &name, uint8 *prop);
   void RegisterConstUint8(const std::string &name, const uint8 *prop);
   void RegisterUint16(const std::string &name, uint16 *prop);
   void RegisterConstUint16(const std::string &name, const uint16 *prop);
@@ -98,8 +102,12 @@ class PropertyStore {
                            const BoolAccessor &accessor);
   void RegisterDerivedString(const std::string &name,
                              const StringAccessor &accessor);
+  void RegisterDerivedStringmaps(const std::string &name,
+                                 const StringmapsAccessor &accessor);
   void RegisterDerivedStrings(const std::string &name,
                               const StringsAccessor &accessor);
+  void RegisterDerivedStrIntPair(const std::string &name,
+                                 const StrIntPairAccessor &accessor);
 
  private:
   // These are std::maps instead of something cooler because the common
@@ -109,7 +117,9 @@ class PropertyStore {
   std::map<std::string, Int32Accessor> int32_properties_;
   std::map<std::string, StringAccessor> string_properties_;
   std::map<std::string, StringmapAccessor> stringmap_properties_;
+  std::map<std::string, StringmapsAccessor> stringmaps_properties_;
   std::map<std::string, StringsAccessor> strings_properties_;
+  std::map<std::string, StrIntPairAccessor> strintpair_properties_;
   std::map<std::string, Uint8Accessor> uint8_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;

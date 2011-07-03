@@ -25,16 +25,18 @@ PropertyStore::PropertyStore() {}
 
 PropertyStore::~PropertyStore() {}
 
-bool PropertyStore::Contains(const std::string &property) {
-  return (bool_properties_.find(property) != bool_properties_.end() ||
-          int16_properties_.find(property) != int16_properties_.end() ||
-          int32_properties_.find(property) != int32_properties_.end() ||
-          string_properties_.find(property) != string_properties_.end() ||
-          stringmap_properties_.find(property) != stringmap_properties_.end() ||
-          strings_properties_.find(property) != strings_properties_.end() ||
-          uint8_properties_.find(property) != uint8_properties_.end() ||
-          uint16_properties_.find(property) != uint16_properties_.end() ||
-          uint32_properties_.find(property) != uint32_properties_.end());
+bool PropertyStore::Contains(const std::string &prop) {
+  return (bool_properties_.find(prop) != bool_properties_.end() ||
+          int16_properties_.find(prop) != int16_properties_.end() ||
+          int32_properties_.find(prop) != int32_properties_.end() ||
+          string_properties_.find(prop) != string_properties_.end() ||
+          stringmap_properties_.find(prop) != stringmap_properties_.end() ||
+          stringmaps_properties_.find(prop) != stringmaps_properties_.end() ||
+          strintpair_properties_.find(prop) != strintpair_properties_.end() ||
+          strings_properties_.find(prop) != strings_properties_.end() ||
+          uint8_properties_.find(prop) != uint8_properties_.end() ||
+          uint16_properties_.find(prop) != uint16_properties_.end() ||
+          uint32_properties_.find(prop) != uint32_properties_.end());
 }
 
 bool PropertyStore::SetBoolProperty(const std::string& name,
@@ -161,6 +163,10 @@ PropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter() {
   return PropertyConstIterator<Strings>(strings_properties_);
 }
 
+PropertyConstIterator<StrIntPair> PropertyStore::GetStrIntPairPropertiesIter() {
+  return PropertyConstIterator<StrIntPair>(strintpair_properties_);
+}
+
 PropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter() {
   return PropertyConstIterator<uint8>(uint8_properties_);
 }
@@ -225,6 +231,16 @@ void PropertyStore::RegisterStrings(const string &name, Strings *prop) {
       StringsAccessor(new PropertyAccessor<Strings>(prop));
 }
 
+void PropertyStore::RegisterConstStrings(const string &name,
+                                         const Strings *prop) {
+  strings_properties_[name] =
+      StringsAccessor(new ConstPropertyAccessor<Strings>(prop));
+}
+
+void PropertyStore::RegisterUint8(const string &name, uint8 *prop) {
+  uint8_properties_[name] = Uint8Accessor(new PropertyAccessor<uint8>(prop));
+}
+
 void PropertyStore::RegisterConstUint8(const string &name, const uint8 *prop) {
   uint8_properties_[name] =
       Uint8Accessor(new ConstPropertyAccessor<uint8>(prop));
@@ -253,6 +269,16 @@ void PropertyStore::RegisterDerivedString(const std::string &name,
 void PropertyStore::RegisterDerivedStrings(const std::string &name,
                                            const StringsAccessor &accessor) {
   strings_properties_[name] = accessor;
+}
+
+void PropertyStore::RegisterDerivedStringmaps(const std::string &name,
+                                              const StringmapsAccessor &acc) {
+  stringmaps_properties_[name] = acc;
+}
+
+void PropertyStore::RegisterDerivedStrIntPair(const std::string &name,
+                                              const StrIntPairAccessor &acc) {
+  strintpair_properties_[name] = acc;
 }
 
 }  // namespace shill

@@ -146,16 +146,16 @@ bool Device::AcquireDHCPConfig() {
 }
 
 void Device::HelpRegisterDerivedString(const string &name,
-                                    string(Device::*get)(void),
-                                    bool(Device::*set)(const string&)) {
+                                       string(Device::*get)(void),
+                                       bool(Device::*set)(const string&)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Device, string>(this, get, set)));
 }
 
 void Device::HelpRegisterDerivedStrings(const string &name,
-                                     Strings(Device::*get)(void),
-                                     bool(Device::*set)(const Strings&)) {
+                                        Strings(Device::*get)(void),
+                                        bool(Device::*set)(const Strings&)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));
