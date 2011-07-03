@@ -71,16 +71,6 @@ chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 # temporary hack to tell cryptohome that we're doing chrome-login
 touch /tmp/doing-chrome-login
 
-# TODO: Remove auto_proxy environment variable when proxy settings
-# are exposed in the UI.
-if [ -f /home/chronos/var/default_proxy ] ; then
-  export auto_proxy=$(cat /home/chronos/var/default_proxy)
-else
-  if [ -f /etc/default_proxy ] ; then
-    export auto_proxy=$(cat /etc/default_proxy)
-  fi
-fi
-
 CHROME="/opt/google/chrome/chrome"
 # Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
 # updated to contain the new name.  See http://crosbug.com/7901 for more info.
