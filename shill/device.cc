@@ -44,6 +44,27 @@ Device::Device(ControlInterface *control_interface,
       running_(false) {
 
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
+
+  // flimflam::kBgscanMethodProperty: Registered in WiFi
+  // flimflam::kBgscanShortIntervalProperty: Registered in WiFi
+  // flimflam::kBgscanSignalThresholdProperty: Registered in WiFi
+
+  // flimflam::kCellularAllowRoamingProperty: Registered in Cellular
+  // flimflam::kCarrierProperty: Registered in Cellular
+  // flimflam::kEsnProperty: Registered in Cellular
+  // flimflam::kImeiProperty: Registered in Cellular
+  // flimflam::kImsiProperty: Registered in Cellular
+  // flimflam::kManufacturerProperty: Registered in Cellular
+  // flimflam::kMdnProperty: Registered in Cellular
+  // flimflam::kMeidProperty: Registered in Cellular
+  // flimflam::kMinProperty: Registered in Cellular
+  // flimflam::kModelIDProperty: Registered in Cellular
+  // flimflam::kFirmwareRevisionProperty: Registered in Cellular
+  // flimflam::kHardwareRevisionProperty: Registered in Cellular
+  // flimflam::kPRLVersionProperty: Registered in Cellular
+  // flimflam::kSIMLockStatusProperty: Registered in Cellular
+  // flimflam::kFoundNetworksProperty: Registered in Cellular
+
   HelpRegisterDerivedString(flimflam::kDBusConnectionProperty,
                             &Device::GetRpcConnectionIdentifier,
                             NULL);
@@ -63,7 +84,10 @@ Device::Device(ControlInterface *control_interface,
   // TODO(cmasone): Figure out what shill concept maps to flimflam's "Network".
   // known_properties_.push_back(flimflam::kNetworksProperty);
 
-  // Initialize Interface monitor, so we can detect new interfaces
+  // flimflam::kScanningProperty: Registered in WiFi, Cellular
+  // flimflam::kScanIntervalProperty: Registered in WiFi, Cellular
+
+  // TODO(pstew): Initialize Interface monitor, so we can detect new interfaces
   VLOG(2) << "Device " << link_name_ << " index " << interface_index;
 }
 

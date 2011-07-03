@@ -35,7 +35,6 @@ Manager::Manager(ControlInterface *control_interface,
     running_(false),
     offline_mode_(false),
     state_(flimflam::kStateOffline) {
-  // Initialize Interface monitor, so we can detect new interfaces
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
                              NULL);
@@ -67,7 +66,7 @@ Manager::Manager(ControlInterface *control_interface,
                              &Manager::EnumerateWatchedServices,
                              NULL);
 
-  // TODO(cmasone): Add support for R/O properties that return DBus object paths
+  // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kActiveProfileProperty);
   // known_properties_.push_back(flimflam::kProfilesProperty);
 

@@ -41,6 +41,16 @@ Service::Service(ControlInterface *control_interface,
       adaptor_(control_interface->CreateServiceAdaptor(this)) {
 
   store_.RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
+
+  // flimflam::kActivationStateProperty: Registered in CellularService
+  // flimflam::kCellularApnProperty: Registered in CellularService
+  // flimflam::kCellularLastGoodApnProperty: Registered in CellularService
+  // flimflam::kNetworkTechnologyProperty: Registered in CellularService
+  // flimflam::kOperatorNameProperty: Registered in CellularService
+  // flimflam::kOperatorCodeProperty: Registered in CellularService
+  // flimflam::kRoamingStateProperty: Registered in CellularService
+  // flimflam::kPaymentURLProperty: Registered in CellularService
+
   store_.RegisterString(flimflam::kCheckPortalProperty, &check_portal_);
   store_.RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
   HelpRegisterDerivedString(flimflam::kDeviceProperty,
@@ -69,19 +79,30 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
   HelpRegisterDerivedBool(flimflam::kIsActiveProperty,
                           &Service::IsActive, NULL);
+  // flimflam::kModeProperty: Registered in WiFiService
   store_.RegisterConstString(flimflam::kNameProperty, &name_);
+  // flimflam::kPassphraseProperty: Registered in WiFiService
+  // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
   HelpRegisterDerivedString(flimflam::kProfileProperty,
                             &Service::GetProfileRpcId,
                             NULL);
-  // HelpRegisterDerivedString(flimflam::kProfileProperty, &Getter, &Setter);
+  store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
   // TODO(cmasone): Create VPN Service with this property
   // store_.RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
-  store_.RegisterString(flimflam::kProxyConfigProperty, &proxy_config_);
+
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
+  // flimflam::kSecurityProperty: Registered in WiFiService
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Service::CalculateState,
                             NULL);
+  // flimflam::kSignalStrengthProperty: Registered in WiFi/CellularService
+  // flimflam::kTypeProperty: Registered in all derived classes.
+  // flimflam::kWifiAuthMode: Registered in WiFiService
+  // flimflam::kWifiHiddenSsid: Registered in WiFiService
+  // flimflam::kWifiFrequency: Registered in WiFiService
+  // flimflam::kWifiPhyMode: Registered in WiFiService
+  // flimflam::kWifiHexSsid: Registered in WiFiService
   VLOG(2) << "Service initialized.";
 }
 

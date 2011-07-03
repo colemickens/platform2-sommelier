@@ -35,28 +35,28 @@ Cellular::Cellular(ControlInterface *control_interface,
                                    this,
                                    "service-" + link)),
       service_registered_(false) {
-  store_.RegisterConstBool(flimflam::kScanningProperty, &scanning_);
-  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
-
-  store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
   store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
-  store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
-  store_.RegisterConstString(flimflam::kImeiProperty, &imei_);
-  store_.RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
   store_.RegisterConstString(flimflam::kEsnProperty, &esn_);
-  store_.RegisterConstString(flimflam::kMdnProperty, &mdn_);
-  store_.RegisterConstString(flimflam::kMinProperty, &min_);
-  store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  store_.RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
   store_.RegisterConstString(flimflam::kFirmwareRevisionProperty,
                              &firmware_revision_);
   store_.RegisterConstString(flimflam::kHardwareRevisionProperty,
                              &hardware_revision_);
+  store_.RegisterConstString(flimflam::kImeiProperty, &imei_);
+  store_.RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  store_.RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
+  store_.RegisterConstString(flimflam::kMdnProperty, &mdn_);
+  store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
+  store_.RegisterConstString(flimflam::kMinProperty, &min_);
+  store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
   store_.RegisterConstInt16(flimflam::kPRLVersionProperty, &prl_version_);
 
   // TODO(cmasone): Deal with these compound properties
   // known_properties_.push_back(flimflam::kSIMLockStatusProperty);
   // known_properties_.push_back(flimflam::kFoundNetworksProperty);
+
+  store_.RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
   VLOG(2) << "Cellular device " << link_name() << " initialized.";
 }

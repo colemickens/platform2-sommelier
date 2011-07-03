@@ -37,15 +37,14 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kPassphraseProperty, &passphrase_);
   store_.RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store_.RegisterConstString(flimflam::kSecurityProperty, &security_);
+  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
+  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 
   store_.RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
   store_.RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store_.RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store_.RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store_.RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
-
-  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
 WiFiService::~WiFiService() {

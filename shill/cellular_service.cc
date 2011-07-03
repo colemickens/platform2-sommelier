@@ -30,21 +30,19 @@ CellularService::CellularService(ControlInterface *control_interface,
 
   store_.RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
-  store_.RegisterConstString(flimflam::kOperatorNameProperty, &operator_name_);
-  store_.RegisterConstString(flimflam::kOperatorCodeProperty, &operator_code_);
-  store_.RegisterConstString(flimflam::kNetworkTechnologyProperty,
-                             &network_tech_);
-  store_.RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
-  store_.RegisterConstString(flimflam::kPaymentURLProperty, &payment_url_);
 
   store_.RegisterStringmap(flimflam::kCellularApnProperty, &apn_info_);
   store_.RegisterConstStringmap(flimflam::kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
 
+  store_.RegisterConstString(flimflam::kNetworkTechnologyProperty,
+                             &network_tech_);
+  store_.RegisterConstString(flimflam::kOperatorNameProperty, &operator_name_);
+  store_.RegisterConstString(flimflam::kOperatorCodeProperty, &operator_code_);
+  store_.RegisterConstString(flimflam::kPaymentURLProperty, &payment_url_);
+  store_.RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
+
   store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  //  HelpRegisterDerivedString(flimflam::kStateProperty,
-  //                    &Service::CalculateState,
-  //                    NULL);
   store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
