@@ -10,6 +10,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -26,6 +27,15 @@ class ManagerAdaptorInterface;
 
 class Manager {
  public:
+  struct Properties {
+   public:
+    Properties() : offline_mode(false) {}
+    bool offline_mode;
+    std::string check_portal_list;
+    std::string country;
+    std::string portal_url;
+  };
+
   // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
           EventDispatcher *dispatcher);
@@ -72,12 +82,7 @@ class Manager {
   std::vector<ServiceRefPtr> services_;
 
   // Properties to be get/set via PropertyStore calls.
-  bool offline_mode_;
-  std::string state_;
-  std::string check_portal_list_;
-  std::string country_;
-  std::string portal_url_;
-
+  Properties props_;
   PropertyStore store_;
 
   std::string active_profile_;  // This is supposed to be, essentially,

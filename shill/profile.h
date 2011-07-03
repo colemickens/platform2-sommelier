@@ -27,14 +27,20 @@ class Profile {
 
   PropertyStore *store() { return &store_; }
 
+ protected:
+  // Properties to be get/set via PropertyStore calls that must also be visible
+  // in subclasses.
+  PropertyStore store_;
+
  private:
+  friend class ProfileAdaptorInterface;
+
   scoped_ptr<ProfileAdaptorInterface> adaptor_;
 
   // Properties to be get/set via PropertyStore calls.
+  std::string name_;
 
-  PropertyStore store_;
-
-  friend class ProfileAdaptorInterface;
+  DISALLOW_COPY_AND_ASSIGN(Profile);
 };
 
 }  // namespace shill

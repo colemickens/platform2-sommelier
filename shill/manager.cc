@@ -32,33 +32,30 @@ Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher)
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
-    running_(false),
-    offline_mode_(false),
-    state_(flimflam::kStateOffline) {
+    running_(false) {
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
                              NULL);
+  store_.RegisterString(flimflam::kCheckPortalListProperty,
+                        &props_.check_portal_list);
   HelpRegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
                              &Manager::ConnectedTechnologies,
                              NULL);
+  store_.RegisterString(flimflam::kCountryProperty, &props_.country);
   HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
                             NULL);
-  store_.RegisterString(flimflam::kCheckPortalListProperty,
-                        &check_portal_list_);
-  store_.RegisterString(flimflam::kCountryProperty, &country_);
-  HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
-                             &Manager::EnabledTechnologies,
-                             NULL);
-  store_.RegisterBool(flimflam::kOfflineModeProperty, &offline_mode_);
-  store_.RegisterString(flimflam::kPortalURLProperty, &portal_url_);
-  HelpRegisterDerivedString(flimflam::kStateProperty,
-                            &Manager::CalculateState,
-                            NULL);
-
   HelpRegisterDerivedStrings(flimflam::kDevicesProperty,
                              &Manager::EnumerateDevices,
                              NULL);
+  HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
+                             &Manager::EnabledTechnologies,
+                             NULL);
+  store_.RegisterBool(flimflam::kOfflineModeProperty, &props_.offline_mode);
+  store_.RegisterString(flimflam::kPortalURLProperty, &props_.portal_url);
+  HelpRegisterDerivedString(flimflam::kStateProperty,
+                            &Manager::CalculateState,
+                            NULL);
   HelpRegisterDerivedStrings(flimflam::kServicesProperty,
                              &Manager::EnumerateAvailableServices,
                              NULL);

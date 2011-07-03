@@ -52,6 +52,7 @@ SHILL_OBJS = \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
+	default_profile.o \
 	device.o \
 	device_dbus_adaptor.o \
 	device_info.o \
@@ -93,6 +94,7 @@ TEST_OBJS = \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
 	dbus_adaptor_unittest.o \
+	default_profile_unittest.o \
 	device_info_unittest.o \
 	device_unittest.o \
 	dhcp_config_unittest.o \
