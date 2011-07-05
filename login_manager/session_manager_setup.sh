@@ -26,9 +26,11 @@ export SHELL=/bin/sh
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export GTK_IM_MODULE=ibus
-# Change the directory for ibus-daemon socket file from ~/.config/ibus/bus to
-# /tmp/.ibus_socket to fix crosbug.com/16501.
-export IBUS_ADDRESS_FILE=/tmp/.ibus-socket/ibus-socket-file
+# Change the directory for ibus-daemon socket file from ~/.config/ibus/bus/ to
+# /tmp/.ibus-socket-<unique random string>/ to fix crosbug.com/16501 and 17270.
+export IBUS_ADDRESS_FILE=\
+"$(sudo -u ${USER} /bin/mktemp -d /tmp/.ibus-socket-XXXXXXXXXX)\
+/ibus-socket-file"
 # By default, libdbus treats all warnings as fatal errors. That's too strict.
 export DBUS_FATAL_WARNINGS=0
 
