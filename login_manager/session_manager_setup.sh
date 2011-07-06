@@ -68,9 +68,6 @@ xauth -q -f ${XAUTHORITY} add :0 . ${MCOOKIE} &&
 mkdir -p ${LOGIN_PROFILE_DIR}
 chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 
-# temporary hack to tell cryptohome that we're doing chrome-login
-touch /tmp/doing-chrome-login
-
 CHROME="/opt/google/chrome/chrome"
 # Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
 # updated to contain the new name.  See http://crosbug.com/7901 for more info.
