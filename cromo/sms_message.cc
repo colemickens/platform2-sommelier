@@ -10,6 +10,7 @@
 
 static const uint8_t kMsgTypeMask          = 0x03;
 static const uint8_t kMsgTypeDeliver       = 0x00;
+static const uint8_t kTpUdhi               = 0x40;
 
 static const uint8_t kTypeOfAddrNumMask    = 0x70;
 static const uint8_t kTypeOfAddrNumIntl    = 0x10;
@@ -81,6 +82,7 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   //  1 octet  - data coding scheme
   //  7 octets - SMSC timestamp
   //  1 octet  - user data length (in septets for GSM7, else octets)
+  //  variable (0 or more octets) user data header
   //  variable - user data (body of message)
 
   // Do a bunch of validity tests first so we can bail out early
@@ -111,8 +113,8 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   }
 
   uint8_t tp_pid_offset = msg_start_offset + 3 + sender_addr_num_octets;
-  uint8_t user_data_offset = tp_pid_offset + 2 + kSmscTimestampLen;
-  uint8_t user_data_num_septets = pdu[user_data_offset];
+  uint8_t user_data_len_offset = tp_pid_offset + 2 + kSmscTimestampLen;
+  uint8_t user_data_num_septets = pdu[user_data_len_offset];
   variable_length_items += (7 * (user_data_num_septets + 1 )) / 8;
 
   if (pdu_len < variable_length_items + kMinPduLen) {
@@ -151,7 +153,7 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
           scheme = dcs_ucs2;
           break;
         case 0:
-        case 0xc0:    // reserved - spec says to treat it as default alphabet
+        case 0xc:    // reserved - spec says to treat it as default alphabet
           scheme = dcs_gsm7;
           break;
         case 0x4:
@@ -194,8 +196,8 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
     return NULL;
   }
 
-  std::string smsc_addr = SemiOctetsToBcdString(&pdu[2],
-                                                smsc_addr_num_octets-1);
+  std::string smsc_addr = "+" + SemiOctetsToBcdString(&pdu[2],
+                                                      smsc_addr_num_octets-1);
   std::string sender_addr;
   if ((sender_addr_type & kTypeOfAddrNumMask) != kTypeOfAddrNumAlpha) {
     sender_addr = SemiOctetsToBcdString(&pdu[msg_start_offset+3],
@@ -204,26 +206,23 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
       sender_addr = "+" + sender_addr;
     }
   } else {
-    uint8_t *bytes = new uint8_t[sender_addr_num_octets+1];
-    bytes[0] = (sender_addr_num_digits * 4) / 7;
-    memcpy(&bytes[1], &pdu[msg_start_offset+3], sender_addr_num_octets);
-    sender_addr = utilities::Gsm7ToUtf8String(bytes);
-    delete [] bytes;
+    size_t datalen = (sender_addr_num_digits * 4) / 7;
+    sender_addr = utilities::Gsm7ToUtf8String(&pdu[msg_start_offset+3],
+                                              datalen, 0);
   }
 
-  std::string sc_timestamp = SemiOctetsToBcdString(&pdu[tp_pid_offset+2],
-                                                   kSmscTimestampLen-1);
   std::string msg_text;
   size_t num_data_octets;
   size_t data_octets_available;
 
-  data_octets_available = pdu_len - (user_data_offset + 1);
+  data_octets_available = pdu_len - (user_data_len_offset + 1);
+
   if (scheme == dcs_gsm7)
-    num_data_octets = (pdu[user_data_offset] * 7 + 7)/8;
+    num_data_octets = (pdu[user_data_len_offset] * 7 + 7)/8;
   else if (scheme == dcs_ucs2)
-    num_data_octets = pdu[user_data_offset];
+    num_data_octets = pdu[user_data_len_offset];
   else
-    num_data_octets = pdu[user_data_offset];
+    num_data_octets = pdu[user_data_len_offset];
 
   if (data_octets_available < num_data_octets) {
     LOG(INFO) << "Specified user data length (" << num_data_octets
@@ -231,22 +230,50 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
     return NULL;
   }
 
-  if (scheme == dcs_gsm7)
-    msg_text = utilities::Gsm7ToUtf8String(&pdu[user_data_offset]);
-  else if (scheme == dcs_ucs2)
-    msg_text = utilities::Ucs2ToUtf8String(&pdu[user_data_offset]);
-  else  // 8-bit data: just copy it as-is
-    msg_text.assign(reinterpret_cast<const char *>(&pdu[user_data_offset+1]),
-                    num_data_octets);
+  uint8_t user_data_header_len = 0;
+  uint8_t msg_body_offset = user_data_len_offset + 1;
+  uint8_t user_data_offset = user_data_len_offset+1;
+  size_t user_data_len = pdu[user_data_len_offset];
+  uint8_t bit_offset = 0;
 
+  if ((pdu[msg_start_offset] & kTpUdhi) == kTpUdhi)
+    user_data_header_len = pdu[user_data_offset] + 1;
+  if (scheme == dcs_gsm7) {
+    if (user_data_header_len != 0) {
+      size_t len_adjust = (user_data_header_len * 8 + 6) / 7;
+      user_data_len -= len_adjust;
+      bit_offset = len_adjust * 7 - user_data_header_len * 8;
+      msg_body_offset += user_data_header_len;
+    }
+    msg_text = utilities::Gsm7ToUtf8String(&pdu[msg_body_offset],
+                                           user_data_len,
+                                           bit_offset);
+  } else if (scheme == dcs_ucs2) {
+    if (user_data_header_len != 0) {
+      user_data_len -= user_data_header_len;
+      msg_body_offset += user_data_header_len;
+    }
+    msg_text = utilities::Ucs2ToUtf8String(&pdu[msg_body_offset],
+                                           user_data_len);
+  } else {  // 8-bit data: just copy it as-is
+    if (user_data_header_len != 0) {
+      user_data_len -= user_data_header_len;
+      msg_body_offset += user_data_header_len;
+    }
+    msg_text.assign(reinterpret_cast<const char *>(&pdu[msg_body_offset]),
+                    user_data_len);
+  }
+
+  std::string sc_timestamp = SemiOctetsToBcdString(&pdu[tp_pid_offset+2],
+                                                   kSmscTimestampLen-1);
   // The last two semi-octets of the timestamp indicate an offset from
-  // GMT, and are handled differently than the first 12 semi-octets.
-  uint8_t toff_octet = pdu[tp_pid_offset+1+kSmscTimestampLen];
-  sc_timestamp += (toff_octet & 0x8) ? '-' : '+';
-  uint8_t offset_in_hours =
-      ((toff_octet & 0x7) << 4 | (toff_octet & 0xf0) >> 4) / 4;
-  sc_timestamp += (char)((offset_in_hours / 10) + '0');
-  sc_timestamp += (char)((offset_in_hours % 10) + '0');
+  // GMT, where bit 3 of the first semi-octet is interpreted as a sign bit
+  uint8_t tzoff_octet = pdu[tp_pid_offset+1+kSmscTimestampLen];
+  char sign = (tzoff_octet & 0x8) ? '-' : '+';
+  sc_timestamp += sign;
+  int quarter_hours = (tzoff_octet & 0x7) * 10 + ((tzoff_octet >> 4) & 0xf);
+  sc_timestamp += (quarter_hours / 40) + '0';
+  sc_timestamp += (quarter_hours / 4) % 10 + '0';
 
   return new SmsMessage(smsc_addr, sender_addr, sc_timestamp, msg_text);
 }

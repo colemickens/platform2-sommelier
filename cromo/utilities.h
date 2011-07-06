@@ -48,10 +48,17 @@ bool HexEsnToDecimal(const std::string& esn_hex, std::string* out);
 // GSM-7 is a 7-bit character set, and in SMS messages, the 7-bit
 // septets are packed into an array of 8-bit octets.
 //
-// The first byte of the input array gives the length of the converted
-// data in septets, i.e., it is the number of GSM-7 septets that
-// will result after the array is unpacked.
-std::string Gsm7ToUtf8String(const uint8_t* gsm7);
+// The |num_septets| argument gives the length of the input data
+// in septets, i.e., it is the number of GSM-7 septets that will
+// result after the array is unpacked. This may be greater than
+// the number of UTF-8 characters in the output, since characters
+// in the GSM-7 extension set are represented by two septets.
+//
+// The bit_offset argument gives the starting bit offset within the
+// first octet of the first 7-bit character.
+std::string Gsm7ToUtf8String(const uint8_t* gsm7,
+                             size_t num_septets,
+                             uint8_t bit_offset);
 
 // Converts a string of characters encoded using UTF-8 into an
 // array of bytes which is result of converting the string into
@@ -62,10 +69,10 @@ std::vector<uint8_t> Utf8StringToGsm7(const std::string& input);
 // Converts an array of bytes containing text in the UCS-2 encoding
 // into a UTF-8 encoded string.
 //
-// The first byte of the input array gives the length of the converted
-// data in octets. Dividing this number by 2 gives the number of
+// The |length| argument gives the length of the input data
+// in octets. Dividing this number by 2 gives the number of
 // characters in the text.
-std::string Ucs2ToUtf8String(const uint8_t* ucs2);
+std::string Ucs2ToUtf8String(const uint8_t* ucs2, size_t length);
 
 // Convert a UTF-8 encoded string to a byte array encoding
 // the string as UCS-2.

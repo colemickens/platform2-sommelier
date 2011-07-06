@@ -138,18 +138,23 @@ static std::map<std::pair<uint8_t, uint8_t>,char> Utf8ToGsm7Map;
  * the string into septets, then mapping each character to its UTF-8
  * equivalent.
  */
-std::string Gsm7ToUtf8String(const uint8_t* gsm7) {
-  size_t datalen = *gsm7++;
-  uint8_t* septets = new uint8_t[datalen];
+std::string Gsm7ToUtf8String(const uint8_t* gsm7,
+                             size_t num_septets,
+                             uint8_t bit_offset) {
+  uint8_t* septets = new uint8_t[num_septets];
   uint8_t saved_bits = 0;
   size_t written = 0;
   uint8_t* cp = septets;
   int i = 0;
 
   // unpack
-  while (written < datalen) {
-    for (int j = 0; written < datalen && j < 7; j++) {
-      uint8_t octet = gsm7[i];
+  while (written < num_septets) {
+    for (int j = 0; written < num_septets && j < 7; j++) {
+      uint8_t octet;
+      if (bit_offset == 0)
+        octet = gsm7[i];
+      else
+        octet = (gsm7[i] << bit_offset) | gsm7[i+1] >> (8 - bit_offset);
       uint8_t mask = 0xff >> (j + 1);
       uint8_t c = ((octet & mask) << j) | saved_bits;
       *cp++ = c;
@@ -157,7 +162,7 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7) {
       saved_bits = (octet & ~mask) >> (7 - j);
       ++i;
     }
-    if (written < datalen) {
+    if (written < num_septets) {
       *cp++ = saved_bits;
       ++written;
     }
@@ -273,9 +278,9 @@ std::vector<uint8_t> Utf8StringToGsm7(const std::string& input) {
   return octets;
 }
 
-std::string Ucs2ToUtf8String(const uint8_t *ucs2) {
+std::string Ucs2ToUtf8String(const uint8_t *ucs2, size_t length) {
   std::string str;
-  uint8_t num_chars = *ucs2++ >> 1;
+  uint8_t num_chars = length >> 1;
 
   for (int i = 0; i < num_chars; ++i) {
     uint16_t ucs2char = ucs2[0] << 8 | ucs2[1];

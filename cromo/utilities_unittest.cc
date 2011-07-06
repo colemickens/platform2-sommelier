@@ -132,7 +132,8 @@ TEST(Utilities, Gsm7ToUtf8) {
   std::string out;
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
-    out = Gsm7ToUtf8String(gsm7_test_data[i].packed_gsm7);
+    out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
+                           gsm7_test_data[i].packed_gsm7[0], 0);
     EXPECT_EQ(gsm7_test_data[i].utf8_string, out);
   }
 
@@ -157,7 +158,7 @@ TEST(Utilities, Utf8Gsm7RoundTrip) {
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
     gsm7_out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
-    utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
+    utf8_out = Gsm7ToUtf8String(&gsm7_out[1], gsm7_out[0], 0);
     EXPECT_EQ(gsm7_test_data[i].utf8_string, utf8_out);
   }
 }
@@ -169,13 +170,28 @@ TEST(Utilities, Gsm7Utf8RoundTrip) {
   std::string utf8_out;
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
-    utf8_out = Gsm7ToUtf8String(gsm7_test_data[i].packed_gsm7);
+    utf8_out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
+                                gsm7_test_data[i].packed_gsm7[0],
+                                0);
     gsm7_out = Utf8StringToGsm7(utf8_out);
     EXPECT_EQ(gsm7_test_data[i].packed_gsm7_size, gsm7_out.size());
     EXPECT_EQ(
         0, memcmp(&gsm7_out[0], gsm7_test_data[i].packed_gsm7,
                   gsm7_out.size()));
   }
+}
+
+// packed GSM-7 encoding starting at a 3-bit offset
+const uint8_t gsm1_bit_offset[] = {
+  10, 0x1d, 0x06, 0x53, 0x7f, 0xa8, 0xd2, 0xfb, 0x3d, 0x86, 0xe0
+};
+
+TEST(Utilities, Gsm7ToUtf8BitOffset) {
+  using utilities::Gsm7ToUtf8String;
+  std::string out;
+
+  out = Gsm7ToUtf8String(&gsm1_bit_offset[1], gsm1_bit_offset[0], 3);
+  EXPECT_EQ("hellohello", out);
 }
 
 TEST(Utilities, Gsm7InvalidCharacter) {
@@ -187,7 +203,7 @@ TEST(Utilities, Gsm7InvalidCharacter) {
 
   utf8_input = "This |±| text '©' has |½| non-GSM7 characters";
   gsm7_out = Utf8StringToGsm7(utf8_input);
-  utf8_out = Gsm7ToUtf8String(&gsm7_out[0]);
+  utf8_out = Gsm7ToUtf8String(&gsm7_out[1], gsm7_out[0], 0);
   // Expect the text to have spaces where the invalid characters were.
   EXPECT_EQ("This | | text ' ' has | | non-GSM7 characters", utf8_out);
 }
@@ -224,7 +240,8 @@ TEST(Utilities, Ucs2ToUtf8) {
   std::string out;
 
   for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
-    out = Ucs2ToUtf8String(ucs2_test_data[i].ucs2_string);
+    out = Ucs2ToUtf8String(&ucs2_test_data[i].ucs2_string[1],
+                           ucs2_test_data[i].ucs2_string[0]);
     EXPECT_EQ(ucs2_test_data[i].utf8_string, out);
   }
 }
@@ -248,7 +265,7 @@ TEST(Utilities, Utf8Ucs2RoundTrip) {
 
   for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
     ucs2_out = Utf8StringToUcs2(ucs2_test_data[i].utf8_string);
-    utf8_out = Ucs2ToUtf8String(&ucs2_out[0]);
+    utf8_out = Ucs2ToUtf8String(&ucs2_out[1], ucs2_out[0]);
     EXPECT_EQ(ucs2_test_data[i].utf8_string, utf8_out);
   }
 }
@@ -260,7 +277,8 @@ TEST(Utilities, Ucs2Utf8RoundTrip) {
   std::string utf8_out;
 
   for (int i = 0; ucs2_test_data[i].ucs2_string != NULL; ++i) {
-    utf8_out = Ucs2ToUtf8String(ucs2_test_data[i].ucs2_string);
+    utf8_out = Ucs2ToUtf8String(&ucs2_test_data[i].ucs2_string[1],
+                                ucs2_test_data[i].ucs2_string[0]);
     ucs2_out = Utf8StringToUcs2(utf8_out);
     EXPECT_EQ(ucs2_test_data[i].ucs2_size, ucs2_out.size());
     EXPECT_EQ(
