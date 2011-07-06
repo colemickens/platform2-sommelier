@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -74,7 +74,7 @@ static void append_logdata(const char* input_path,
                              output_name_prefix,
                              BOOTSTAT_MAX_EVENT_LEN - 1, event_name);
   assert(output_path_len < sizeof(output_path));
-  ofd = open(output_path, O_WRONLY | O_APPEND | O_CREAT,
+  ofd = open(output_path, O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW,
              kFileCreationMode);
   if (ofd < 0) {
     (void)close(ifd);
