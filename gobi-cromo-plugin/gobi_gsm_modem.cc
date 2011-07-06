@@ -612,13 +612,48 @@ std::string GobiGsmModem::GetOperatorId(DBus::Error& error) {
 
 std::string GobiGsmModem::GetSpn(DBus::Error& error) {
   std::string result;
-  WORD mcc, mnc, sid, nid;
-  CHAR netname[32];
 
-  ULONG rc = sdk_->GetHomeNetwork(&mcc, &mnc,
-                                  sizeof(netname), netname, &sid, &nid);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetHomeNetwork, rc, kSdkError, result);
-  return netname;
+  BYTE names[256];
+  ULONG namesLen = sizeof(names);
+
+  ULONG rc = sdk_->GetPLMNName(0, 0, &namesLen, names);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetPLMNName, rc, kSdkError, result);
+
+  if (namesLen < 2) {
+    LOG(WARNING) << "GetSpn: name structure too short"
+                 << " (" << namesLen << " < 2)";
+    return "";
+  }
+
+  size_t spnLen = names[1];
+
+  if (namesLen - 2 < (ULONG)spnLen) {
+    LOG(WARNING) << "GetSpn: SPN length too long"
+                 << " (" << (ULONG)spnLen << " < " << namesLen << " - 2)";
+    return "";
+  }
+
+  switch (names[0]) {
+  case 0x00: // ASCII
+    {
+      const char *spnAscii = (const char *)names + 2;
+      result = std::string(spnAscii, spnLen);
+    }
+    break;
+  case 0x01: // UCS2
+    {
+      const uint8_t *spnUcs2 = (const uint8_t *)names + 2;
+      result = std::string(utilities::Ucs2ToUtf8String(spnUcs2, spnLen));
+    }
+    break;
+  default:
+    LOG(WARNING) << "GetSpn: invalid encoding byte " << names[0];
+    break;
+  }
+
+  LOG(INFO) << " GetSpn: returning \"" << result << "\"";
+
+  return result;
 }
 
 std::string GobiGsmModem::GetMsIsdn(DBus::Error& error) {
