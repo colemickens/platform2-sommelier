@@ -33,6 +33,8 @@ lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 meminfo,cat /proc/meminfo
 mm-status,/usr/share/userfeedback/scripts/mm-status
+network-devices,/usr/bin/connectivity show devices
+network-services,/usr/bin/connectivity show services
 powerd.LATEST,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.LATEST
 powerd.out,/usr/share/userfeedback/scripts/get_log /var/log/power_manager/powerd.out
 ps,/bin/ps ux
