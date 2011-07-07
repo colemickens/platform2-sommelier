@@ -80,8 +80,10 @@ HELP='
  set_apn -c
   Clear the APN to be used, so that the default APN will be used instead.
 
- ssh
-  Starts the ssh subsystem.
+ ssh [optional args...]
+  Starts the ssh subsystem if invoked without any arguments.
+  "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
+  or "ssh <user>@<host> <port>" connect without entering the subsystem.
 
  ssh_forget_host
   Remove a host from the list of known ssh hosts.  This command displays
