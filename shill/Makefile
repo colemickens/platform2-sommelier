@@ -106,6 +106,7 @@ TEST_OBJS = \
 	mock_control.o \
 	mock_device.o \
 	mock_service.o \
+	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
 	service_unittest.o \

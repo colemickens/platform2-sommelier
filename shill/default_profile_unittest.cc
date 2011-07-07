@@ -23,12 +23,13 @@ namespace shill {
 
 class DefaultProfileTest : public PropertyStoreTest {
  public:
-  DefaultProfileTest() : profile_(&control_interface_, properties_) {}
+  DefaultProfileTest() : profile_(&control_interface_, &glib_, properties_) {}
 
   virtual ~DefaultProfileTest() {}
 
  protected:
   DefaultProfile profile_;
+  GLib glib_;
   Manager::Properties properties_;
 };
 

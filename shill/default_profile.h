@@ -23,6 +23,7 @@ class ControlInterface;
 class DefaultProfile : public Profile {
  public:
   DefaultProfile(ControlInterface *control_interface,
+                 GLib *glib,
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
