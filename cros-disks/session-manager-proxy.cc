@@ -9,6 +9,8 @@
 
 #include "cros-disks/session-manager-observer.h"
 
+using std::string;
+
 namespace cros_disks {
 
 SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection,
@@ -29,7 +31,7 @@ SessionManagerProxy::~SessionManagerProxy() {
 void SessionManagerProxy::OnSessionStateChanged(
     const DBus::SignalMessage& signal) {
   DBus::MessageIter reader = signal.reader();
-  std::string state, user;
+  string state, user;
   reader >> state >> user;
   if (state == "started") {
     observer_->OnSessionStarted(user);

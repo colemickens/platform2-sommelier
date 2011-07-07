@@ -5,6 +5,8 @@
 #ifndef CROS_DISKS_EXTERNAL_MOUNTER_H_
 #define CROS_DISKS_EXTERNAL_MOUNTER_H_
 
+#include <string>
+
 #include "cros-disks/mounter.h"
 
 namespace cros_disks {

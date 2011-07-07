@@ -11,17 +11,17 @@
 #include "cros-disks/mounter.h"
 #include "cros-disks/mount-options.h"
 
-namespace cros_disks {
+using std::string;
+using std::vector;
+using testing::Return;
 
-using ::testing::Return;
+namespace cros_disks {
 
 // A mock mounter class for testing the mounter base class.
 class MounterUnderTest : public Mounter {
  public:
-  MounterUnderTest(const std::string& source_path,
-      const std::string& target_path,
-      const std::string& filesystem_type,
-      const MountOptions& mount_options)
+  MounterUnderTest(const string& source_path, const string& target_path,
+      const string& filesystem_type, const MountOptions& mount_options)
     : Mounter(source_path, target_path, filesystem_type, mount_options) {
   }
 
@@ -37,11 +37,11 @@ class MounterTest : public ::testing::Test {
     filesystem_type_ = "vfat";
   }
 
-  std::string filesystem_type_;
-  std::string source_path_;
-  std::string target_path_;
+  string filesystem_type_;
+  string source_path_;
+  string target_path_;
   MountOptions mount_options_;
-  std::vector<std::string> options_;
+  vector<string> options_;
 };
 
 TEST_F(MounterTest, MountReadOnlySucceeded) {

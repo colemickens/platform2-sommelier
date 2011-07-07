@@ -10,6 +10,10 @@
 
 #include <base/string_util.h>
 
+using std::pair;
+using std::string;
+using std::vector;
+
 namespace cros_disks {
 
 const char MountOptions::kOptionNoDev[] = "nodev";
@@ -19,19 +23,19 @@ const char MountOptions::kOptionReadOnly[] = "ro";
 const char MountOptions::kOptionReadWrite[] = "rw";
 const char MountOptions::kOptionSynchronous[] = "sync";
 
-void MountOptions::Initialize(const std::vector<std::string>& options,
+void MountOptions::Initialize(const vector<string>& options,
     bool set_user_and_group_id,
-    const std::string& default_user_id, const std::string& default_group_id) {
+    const string& default_user_id, const string& default_group_id) {
   options_.clear();
   options_.reserve(options.size());
 
   bool option_read_only = false, option_read_write = false;
-  std::string option_user_id, option_group_id;
+  string option_user_id, option_group_id;
 
-  for (std::vector<std::string>::const_iterator
+  for (vector<string>::const_iterator
       option_iterator = options.begin(); option_iterator != options.end();
       ++option_iterator) {
-    const std::string& option = *option_iterator;
+    const string& option = *option_iterator;
     if (option == kOptionReadOnly) {
       option_read_only = true;
     } else if (option == kOptionReadWrite) {
@@ -67,10 +71,10 @@ void MountOptions::Initialize(const std::vector<std::string>& options,
 }
 
 bool MountOptions::IsReadOnlyOptionSet() const {
-  for (std::vector<std::string>::const_reverse_iterator
+  for (vector<string>::const_reverse_iterator
       option_iterator = options_.rbegin(); option_iterator != options_.rend();
       ++option_iterator) {
-    const std::string& option = *option_iterator;
+    const string& option = *option_iterator;
     if (option == kOptionReadOnly)
       return true;
 
@@ -85,16 +89,16 @@ void MountOptions::SetReadOnlyOption() {
       kOptionReadWrite, kOptionReadOnly);
 }
 
-std::pair<unsigned long, std::string>
+pair<unsigned long, string>
 MountOptions::ToMountFlagsAndData() const {
   unsigned long flags = MS_RDONLY;
-  std::vector<std::string> data;
+  vector<string> data;
   data.reserve(options_.size());
 
-  for (std::vector<std::string>::const_iterator
+  for (vector<string>::const_iterator
       option_iterator = options_.begin(); option_iterator != options_.end();
       ++option_iterator) {
-    const std::string& option = *option_iterator;
+    const string& option = *option_iterator;
     if (option == kOptionReadOnly) {
       flags |= MS_RDONLY;
     } else if (option == kOptionReadWrite) {
@@ -114,7 +118,7 @@ MountOptions::ToMountFlagsAndData() const {
   return std::make_pair(flags, JoinString(data, ','));
 }
 
-std::string MountOptions::ToString() const {
+string MountOptions::ToString() const {
   return options_.empty() ? kOptionReadOnly : JoinString(options_, ',');
 }
 

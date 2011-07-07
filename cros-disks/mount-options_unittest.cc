@@ -12,6 +12,10 @@
 
 #include "cros-disks/mount-options.h"
 
+using std::pair;
+using std::string;
+using std::vector;
+
 namespace cros_disks {
 
 class MountOptionsTest : public ::testing::Test {
@@ -27,7 +31,7 @@ class MountOptionsTest : public ::testing::Test {
 
 TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
   MountOptions mount_options;
-  std::vector<std::string> options;
+  vector<string> options;
 
   // default construction
   EXPECT_EQ(true, mount_options.IsReadOnlyOptionSet());
@@ -46,8 +50,8 @@ TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
 
 TEST_F(MountOptionsTest, SetReadOnlyOption) {
   MountOptions mount_options;
-  std::vector<std::string> options;
-  std::string expected_string = "ro";
+  vector<string> options;
+  string expected_string = "ro";
 
   // default construction
   mount_options.SetReadOnlyOption();
@@ -69,8 +73,8 @@ TEST_F(MountOptionsTest, SetReadOnlyOption) {
 
 TEST_F(MountOptionsTest, ToString) {
   MountOptions mount_options;
-  std::vector<std::string> options;
-  std::string expected_string;
+  vector<string> options;
+  string expected_string;
 
   // default construction
   expected_string = "ro";
@@ -141,10 +145,10 @@ TEST_F(MountOptionsTest, ToString) {
 
 TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   MountOptions mount_options;
-  std::vector<std::string> options;
+  vector<string> options;
   unsigned long expected_flags;
-  std::string expected_data;
-  std::pair<unsigned long, std::string> flags_and_data;
+  string expected_data;
+  pair<unsigned long, string> flags_and_data;
 
   // default construction
   expected_flags = MS_RDONLY;

@@ -10,6 +10,8 @@
 
 #include "cros-disks/device-event.h"
 
+using std::list;
+
 namespace cros_disks {
 
 DeviceEventQueue::DeviceEventQueue() {
@@ -29,7 +31,7 @@ void DeviceEventQueue::Add(const DeviceEvent& event) {
       event.event_type == DeviceEvent::kDeviceScanned)
     return;
 
-  for (std::list<DeviceEvent>::iterator last_event_iterator = events_.begin();
+  for (list<DeviceEvent>::iterator last_event_iterator = events_.begin();
       last_event_iterator != events_.end(); ++last_event_iterator) {
     const DeviceEvent& last_event = *last_event_iterator;
 

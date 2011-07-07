@@ -11,6 +11,11 @@
 
 #include "cros-disks/udev-device.h"
 
+using std::ostream;
+using std::string;
+using std::stringstream;
+using std::vector;
+
 namespace cros_disks {
 
 class UdevDeviceTest : public ::testing::Test {
@@ -48,8 +53,8 @@ class UdevDeviceTest : public ::testing::Test {
     return (udev_ != NULL && udev_device_ != NULL);
   }
 
-  static std::ostream& GenerateTestMountFileContent(std::ostream& stream) {
-    stream << "rootfs / rootfs rw 0 0\n"
+  static ostream* GenerateTestMountFileContent(ostream* stream) {
+    *stream << "rootfs / rootfs rw 0 0\n"
       << "none /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0\n"
       << "none /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n"
       << "/dev/sda1 /boot ext2 rw,relatime,errors=continue 0 0\n"
@@ -83,8 +88,7 @@ class UdevDeviceTest : public ::testing::Test {
         if (device_path) {
           LOG(INFO) << "SelectUdevDeviceForTest: checking if '"
             << device_path << "' is mounted";
-          std::vector<std::string> mount_paths =
-            UdevDevice::GetMountPaths(device_path);
+          vector<string> mount_paths = UdevDevice::GetMountPaths(device_path);
           if (!mount_paths.empty()) {
             LOG(INFO) << "SelectUdevDeviceForTest: use '" << device_path
               << "' for testing";
@@ -169,25 +173,25 @@ TEST_F(UdevDeviceTest, GetSizeInfo) {
 TEST_F(UdevDeviceTest, GetMountPaths) {
   if (IsUdevDeviceAvailableForTesting()) {
     UdevDevice device(udev_device());
-    std::vector<std::string> mount_paths = device.GetMountPaths();
+    vector<string> mount_paths = device.GetMountPaths();
     EXPECT_FALSE(mount_paths.empty());
   }
 }
 
 TEST_F(UdevDeviceTest, ParseMountPathsReturnsNoPaths) {
-  std::stringstream stream;
-  GenerateTestMountFileContent(stream);
+  stringstream stream;
+  GenerateTestMountFileContent(&stream);
 
-  std::vector<std::string> mount_paths;
+  vector<string> mount_paths;
   mount_paths = UdevDevice::ParseMountPaths("/dev/sdc1", stream);
   EXPECT_EQ(0, mount_paths.size());
 }
 
 TEST_F(UdevDeviceTest, ParseMountPathsReturnsOnePath) {
-  std::stringstream stream;
-  GenerateTestMountFileContent(stream);
+  stringstream stream;
+  GenerateTestMountFileContent(&stream);
 
-  std::vector<std::string> mount_paths;
+  vector<string> mount_paths;
   mount_paths = UdevDevice::ParseMountPaths("/dev/sdb1", stream);
   EXPECT_EQ(1, mount_paths.size());
   if (mount_paths.size() == 1) {
@@ -196,10 +200,10 @@ TEST_F(UdevDeviceTest, ParseMountPathsReturnsOnePath) {
 }
 
 TEST_F(UdevDeviceTest, ParseMountPathsReturnsMultiplePaths) {
-  std::stringstream stream;
-  GenerateTestMountFileContent(stream);
+  stringstream stream;
+  GenerateTestMountFileContent(&stream);
 
-  std::vector<std::string> mount_paths;
+  vector<string> mount_paths;
   mount_paths = UdevDevice::ParseMountPaths("/dev/sda1", stream);
   EXPECT_EQ(2, mount_paths.size());
   if (mount_paths.size() == 2) {

@@ -11,16 +11,19 @@
 
 #include <base/logging.h>
 
+using std::pair;
+using std::string;
+
 namespace cros_disks {
 
-SystemMounter::SystemMounter(const std::string& source_path,
-    const std::string& target_path, const std::string& filesystem_type,
+SystemMounter::SystemMounter(const string& source_path,
+    const string& target_path, const string& filesystem_type,
     const MountOptions& mount_options)
   : Mounter(source_path, target_path, filesystem_type, mount_options) {
 }
 
 bool SystemMounter::MountImpl() {
-  std::pair<unsigned long, std::string> flags_and_data =
+  pair<unsigned long, string> flags_and_data =
     mount_options().ToMountFlagsAndData();
   if (mount(source_path().c_str(), target_path().c_str(),
         filesystem_type().c_str(), flags_and_data.first,

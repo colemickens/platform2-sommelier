@@ -11,6 +11,8 @@
 #include "cros-disks/device-event.h"
 #include "cros-disks/device-event-queue.h"
 
+using std::list;
+
 namespace cros_disks {
 
 class DeviceEventQueueTest : public ::testing::Test {
@@ -31,7 +33,7 @@ class DeviceEventQueueTest : public ::testing::Test {
   }
 
   DeviceEventQueue queue_;
-  std::list<DeviceEvent> expected_events_;
+  list<DeviceEvent> expected_events_;
 };
 
 TEST_F(DeviceEventQueueTest, Constructor) {

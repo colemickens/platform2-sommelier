@@ -24,6 +24,11 @@
 #include "cros-disks/system-mounter.h"
 #include "cros-disks/udev-device.h"
 
+using std::map;
+using std::set;
+using std::string;
+using std::vector;
+
 namespace cros_disks {
 
 static const char kBlockSubsystem[] = "block";
@@ -62,8 +67,8 @@ DiskManager::~DiskManager() {
   udev_unref(udev_);
 }
 
-std::vector<Disk> DiskManager::EnumerateDisks() const {
-  std::vector<Disk> disks;
+vector<Disk> DiskManager::EnumerateDisks() const {
+  vector<Disk> disks;
 
   struct udev_enumerate *enumerate = udev_enumerate_new(udev_);
   udev_enumerate_add_match_subsystem(enumerate, kBlockSubsystem);
@@ -103,7 +108,7 @@ std::vector<Disk> DiskManager::EnumerateDisks() const {
 DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
     const UdevDevice& device, const char *action) {
   DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  std::string device_path = device.NativePath();
+  string device_path = device.NativePath();
 
   bool disk_added = false;
   bool disk_removed = false;
@@ -125,7 +130,7 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
   }
 
   if (disk_added) {
-    std::set<std::string>::const_iterator disk_iter =
+    set<string>::const_iterator disk_iter =
       disks_detected_.find(device_path);
     if (disk_iter != disks_detected_.end()) {
       // Disk already exists, so remove it and then add it again.
@@ -144,9 +149,9 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
 DeviceEvent::EventType DiskManager::ProcessScsiDeviceEvent(
     const UdevDevice& device, const char *action) {
   DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  std::string device_path = device.NativePath();
+  string device_path = device.NativePath();
 
-  std::set<std::string>::const_iterator device_iter;
+  set<string>::const_iterator device_iter;
   if (strcmp(action, kUdevAddAction) == 0) {
     device_iter = devices_detected_.find(device_path);
     if (device_iter != devices_detected_.end()) {
@@ -205,7 +210,7 @@ bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
   return true;
 }
 
-bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
+bool DiskManager::GetDiskByDevicePath(const string& device_path,
     Disk *disk) const {
   if (device_path.empty())
     return false;
@@ -244,16 +249,14 @@ bool DiskManager::GetDiskByDevicePath(const std::string& device_path,
   return disk_found;
 }
 
-std::string DiskManager::GetDeviceFileFromCache(
-    const std::string& device_path) const {
-  std::map<std::string, std::string>::const_iterator map_iterator =
+string DiskManager::GetDeviceFileFromCache(const string& device_path) const {
+  map<string, string>::const_iterator map_iterator =
     device_file_map_.find(device_path);
   return (map_iterator != device_file_map_.end()) ? map_iterator->second : "";
 }
 
-std::string DiskManager::GetFilesystemTypeOfDevice(
-    const std::string& device_path) {
-  std::string filesystem_type;
+string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
+  string filesystem_type;
   if (blkid_cache_ != NULL || blkid_get_cache(&blkid_cache_, NULL) == 0) {
     blkid_dev dev =
       blkid_get_dev(blkid_cache_, device_path.c_str(), BLKID_DEV_NORMAL);
@@ -268,7 +271,7 @@ std::string DiskManager::GetFilesystemTypeOfDevice(
   return filesystem_type;
 }
 
-bool DiskManager::GetUserAndGroupId(const std::string& username,
+bool DiskManager::GetUserAndGroupId(const string& username,
     uid_t *uid, gid_t *gid) const {
   long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (buffer_size <= 0) {
@@ -294,11 +297,11 @@ bool DiskManager::GetUserAndGroupId(const std::string& username,
   return true;
 }
 
-std::string DiskManager::GetMountDirectoryName(const Disk& disk) const {
-  std::string mount_path;
+string DiskManager::GetMountDirectoryName(const Disk& disk) const {
+  string mount_path;
   if (!disk.label().empty()) {
     mount_path = disk.label();
-    std::replace(mount_path.begin(), mount_path.end(), '/', '_');
+    replace(mount_path.begin(), mount_path.end(), '/', '_');
     mount_path = kMountRootPrefix + mount_path;
   } else if (!disk.uuid().empty()) {
     mount_path = kMountRootPrefix + disk.uuid();
@@ -308,7 +311,7 @@ std::string DiskManager::GetMountDirectoryName(const Disk& disk) const {
   return mount_path;
 }
 
-bool DiskManager::CreateDirectory(const std::string& path) const {
+bool DiskManager::CreateDirectory(const string& path) const {
   // Reuse the target path if it already exists and is empty.
   // rmdir handles the cases when the target path exists but
   // is not empty, is already mounted or is used by some process.
@@ -316,8 +319,8 @@ bool DiskManager::CreateDirectory(const std::string& path) const {
   return (mkdir(path.c_str(), S_IRWXU) == 0);
 }
 
-std::string DiskManager::CreateMountDirectory(const Disk& disk,
-    const std::string& target_path) const {
+string DiskManager::CreateMountDirectory(const Disk& disk,
+    const string& target_path) const {
   // Construct the mount path as follows:
   // (1) If a target path is specified, use it.
   // (2) If the disk has a non-empty label,
@@ -333,14 +336,14 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
   if (!target_path.empty()) {
     if (!CreateDirectory(target_path)) {
       PLOG(ERROR) << "Failed to create directory '" << target_path << "'";
-      return std::string();
+      return string();
     }
     return target_path;
   }
 
   unsigned suffix = 1;
-  std::string mount_path = GetMountDirectoryName(disk);
-  std::string mount_path_prefix = mount_path + "_";
+  string mount_path = GetMountDirectoryName(disk);
+  string mount_path_prefix = mount_path + "_";
   while (!CreateDirectory(mount_path)) {
     if (suffix == kMaxNumMountTrials) {
       mount_path.clear();
@@ -353,16 +356,16 @@ std::string DiskManager::CreateMountDirectory(const Disk& disk,
   return mount_path;
 }
 
-bool DiskManager::ExtractUnmountOptions(
-    const std::vector<std::string>& options, int *unmount_flags) const {
+bool DiskManager::ExtractUnmountOptions(const vector<string>& options,
+    int *unmount_flags) const {
   if (unmount_flags == NULL)
     return false;
 
   *unmount_flags = 0;
-  for (std::vector<std::string>::const_iterator
+  for (vector<string>::const_iterator
       option_iterator = options.begin(); option_iterator != options.end();
       ++option_iterator) {
-    const std::string& option = *option_iterator;
+    const string& option = *option_iterator;
     if (option == kUnmountOptionForce) {
       *unmount_flags |= MNT_FORCE;
     } else {
@@ -373,11 +376,9 @@ bool DiskManager::ExtractUnmountOptions(
   return true;
 }
 
-bool DiskManager::Mount(const std::string& device_path,
-    const std::string& filesystem_type,
-    const std::vector<std::string>& options,
-    std::string *mount_path) {
-
+bool DiskManager::Mount(const string& device_path,
+    const string& filesystem_type, const vector<string>& options,
+    string *mount_path) {
   if (device_path.empty()) {
     LOG(ERROR) << "Invalid device path.";
     return false;
@@ -394,7 +395,7 @@ bool DiskManager::Mount(const std::string& device_path,
     return false;
   }
 
-  const std::string& device_file = disk.device_file();
+  const string& device_file = disk.device_file();
   if (device_file.empty()) {
     LOG(ERROR) << "'" << device_path << "' does not have a device file.";
     return false;
@@ -407,7 +408,7 @@ bool DiskManager::Mount(const std::string& device_path,
   device_file_map_[disk.native_path()] = device_file;
 
   // If no explicit filesystem type is given, try to determine it via blkid.
-  std::string device_filesystem_type = filesystem_type.empty() ?
+  string device_filesystem_type = filesystem_type.empty() ?
     GetFilesystemTypeOfDevice(device_file) : filesystem_type;
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
@@ -415,7 +416,7 @@ bool DiskManager::Mount(const std::string& device_path,
     return false;
   }
 
-  std::map<std::string, Filesystem>::const_iterator filesystem_iterator =
+  map<string, Filesystem>::const_iterator filesystem_iterator =
     filesystems_.find(device_filesystem_type);
   if (filesystem_iterator == filesystems_.end()) {
     LOG(ERROR) << "File system type '" << device_filesystem_type
@@ -423,7 +424,7 @@ bool DiskManager::Mount(const std::string& device_path,
     return false;
   }
 
-  std::string mount_target = mount_path ? *mount_path : std::string();
+  string mount_target = mount_path ? *mount_path : string();
   mount_target = CreateMountDirectory(disk, mount_target);
   if (mount_target.empty()) {
     LOG(ERROR) << "Failed to create mount directory for '"
@@ -445,15 +446,15 @@ bool DiskManager::Mount(const std::string& device_path,
   return true;
 }
 
-bool DiskManager::Unmount(const std::string& device_path,
-    const std::vector<std::string>& options) {
+bool DiskManager::Unmount(const string& device_path,
+    const vector<string>& options) {
 
   if (device_path.empty()) {
     LOG(ERROR) << "Invalid device path.";
     return false;
   }
 
-  std::string device_file = GetDeviceFileFromCache(device_path);
+  string device_file = GetDeviceFileFromCache(device_path);
   if (device_file.empty()) {
     Disk disk;
     if (GetDiskByDevicePath(device_path, &disk)) {
@@ -469,7 +470,7 @@ bool DiskManager::Unmount(const std::string& device_path,
   // Obtain the mount paths from /proc/mounts, instead of using
   // udev_enumerate_scan_devices, as the device node may no longer exist after
   // device removal.
-  std::vector<std::string> mount_paths =
+  vector<string> mount_paths =
     UdevDevice::GetMountPaths(device_file);
   if (mount_paths.empty()) {
     LOG(ERROR) << "'" << device_path << "' is not mounted.";
@@ -483,7 +484,7 @@ bool DiskManager::Unmount(const std::string& device_path,
   }
 
   bool unmount_ok = true;
-  for (std::vector<std::string>::const_iterator
+  for (vector<string>::const_iterator
       path_iterator = mount_paths.begin();
       path_iterator != mount_paths.end(); ++path_iterator) {
     if (umount2(path_iterator->c_str(), unmount_flags) == 0) {
@@ -541,17 +542,17 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
 }
 
 Mounter* DiskManager::CreateMounter(const Disk& disk,
-    const Filesystem& filesystem, const std::string& target_path,
-    const std::vector<std::string>& options) const {
-  const std::vector<std::string>& extra_options =
+    const Filesystem& filesystem, const string& target_path,
+    const vector<string>& options) const {
+  const vector<string>& extra_options =
     filesystem.extra_mount_options();
-  std::vector<std::string> extended_options;
+  vector<string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
   extended_options.assign(options.begin(), options.end());
   extended_options.insert(extended_options.end(),
       extra_options.begin(), extra_options.end());
 
-  std::string default_user_id, default_group_id;
+  string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
   if (set_user_and_group_id) {
     uid_t uid;
@@ -582,7 +583,7 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   return mounter;
 }
 
-bool DiskManager::RemoveDirectory(const std::string& path) const {
+bool DiskManager::RemoveDirectory(const string& path) const {
   if (rmdir(path.c_str()) != 0) {
     PLOG(WARNING) << "Failed to remove directory '" << path << "'";
     return false;

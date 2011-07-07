@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <chromeos/process.h>
 
+using std::string;
+
 namespace cros_disks {
 
 // Expected locations of an external mount program
@@ -18,14 +20,14 @@ static const char* kMountProgramPaths[] = {
   "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount"
 };
 
-ExternalMounter::ExternalMounter(const std::string& source_path,
-    const std::string& target_path, const std::string& filesystem_type,
+ExternalMounter::ExternalMounter(const string& source_path,
+    const string& target_path, const string& filesystem_type,
     const MountOptions& mount_options)
   : Mounter(source_path, target_path, filesystem_type, mount_options) {
 }
 
 bool ExternalMounter::MountImpl() {
-  std::string mount_program = GetMountProgramPath();
+  string mount_program = GetMountProgramPath();
   if (mount_program.empty()) {
     LOG(WARNING) << "Could not find an external mount program.";
     return false;
@@ -35,7 +37,7 @@ bool ExternalMounter::MountImpl() {
   mount_process.AddArg(mount_program);
   mount_process.AddArg("-t");
   mount_process.AddArg(filesystem_type());
-  std::string options_string = mount_options().ToString();
+  string options_string = mount_options().ToString();
   if (!options_string.empty()) {
     mount_process.AddArg("-o");
     mount_process.AddArg(options_string);
@@ -52,13 +54,13 @@ bool ExternalMounter::MountImpl() {
   return true;
 }
 
-std::string ExternalMounter::GetMountProgramPath() const {
+string ExternalMounter::GetMountProgramPath() const {
   for (size_t i = 0; i < arraysize(kMountProgramPaths); ++i) {
-    std::string path = kMountProgramPaths[i];
+    string path = kMountProgramPaths[i];
     if (file_util::PathExists(FilePath(path)))
       return path;
   }
-  return std::string();
+  return string();
 }
 
 }  // namespace cros_disks

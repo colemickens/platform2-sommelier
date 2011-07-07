@@ -4,11 +4,17 @@
 
 #include <sys/mount.h>
 
+#include <string>
+#include <vector>
+
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount-options.h"
 #include "cros-disks/system-mounter.h"
+
+using std::string;
+using std::vector;
 
 namespace cros_disks {
 
@@ -51,7 +57,7 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
 TEST_F(SystemMounterTest, RunAsRootMountWithInvalidMountOptions) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  std::vector<std::string> options;
+  vector<string> options;
   options.push_back("this_is_an_invalid_option");
   MountOptions mount_options;
   mount_options.Initialize(options, false, "", "");

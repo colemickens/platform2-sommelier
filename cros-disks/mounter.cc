@@ -6,11 +6,12 @@
 
 #include <base/logging.h>
 
+using std::string;
+
 namespace cros_disks {
 
-Mounter::Mounter(const std::string& source_path,
-    const std::string& target_path, const std::string& filesystem_type,
-    const MountOptions& mount_options)
+Mounter::Mounter(const string& source_path, const string& target_path,
+    const string& filesystem_type, const MountOptions& mount_options)
   : filesystem_type_(filesystem_type),
     source_path_(source_path),
     target_path_(target_path),

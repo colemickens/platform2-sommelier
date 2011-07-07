@@ -16,6 +16,11 @@
 
 #include "cros-disks/udev-device.h"
 
+using std::ifstream;
+using std::istream;
+using std::string;
+using std::vector;
+
 namespace cros_disks {
 
 static const char* kNonAutoMountableFilesystemLabels[] = {
@@ -37,7 +42,7 @@ bool UdevDevice::IsValueBooleanTrue(const char *value) const {
   return value && strcmp(value, "1") == 0;
 }
 
-std::string UdevDevice::GetAttribute(const char *key) const {
+string UdevDevice::GetAttribute(const char *key) const {
   const char *value = udev_device_get_sysattr_value(dev_, key);
   return (value) ? value : "";
 }
@@ -52,7 +57,7 @@ bool UdevDevice::HasAttribute(const char *key) const {
   return value != NULL;
 }
 
-std::string UdevDevice::GetProperty(const char *key) const {
+string UdevDevice::GetProperty(const char *key) const {
   const char *value = udev_device_get_property_value(dev_, key);
   return (value) ? value : "";
 }
@@ -73,7 +78,7 @@ void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
 
   // If the device is mounted, obtain the total and remaining size in bytes
   // using statvfs.
-  std::vector<std::string> mount_paths = GetMountPaths();
+  vector<string> mount_paths = GetMountPaths();
   if (!mount_paths.empty()) {
     struct statvfs stat;
     if (statvfs(mount_paths[0].c_str(), &stat) == 0) {
@@ -133,7 +138,7 @@ bool UdevDevice::IsAutoMountable() const {
   // TODO(benchan): Find a better way to filter out Chrome OS specific
   // partitions instead of excluding partitions with certain labels
   // (e.g. C-ROOT, C-STATE).
-  std::string filesystem_label = GetProperty("ID_FS_LABEL");
+  string filesystem_label = GetProperty("ID_FS_LABEL");
   if (!filesystem_label.empty()) {
     for (const char** label = kNonAutoMountableFilesystemLabels;
         *label; ++label) {
@@ -181,35 +186,34 @@ bool UdevDevice::IsVirtual() const {
   return true;
 }
 
-std::string UdevDevice::NativePath() const {
+string UdevDevice::NativePath() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   return sys_path ? sys_path : "";
 }
 
-std::vector<std::string> UdevDevice::GetMountPaths() const {
+vector<string> UdevDevice::GetMountPaths() const {
   const char *device_path = udev_device_get_devnode(dev_);
   if (device_path) {
     return GetMountPaths(device_path);
   }
-  return std::vector<std::string>();
+  return vector<string>();
 }
 
-std::vector<std::string> UdevDevice::GetMountPaths(
-    const std::string& device_path) {
-  std::ifstream fs("/proc/mounts");
+vector<string> UdevDevice::GetMountPaths(const string& device_path) {
+  ifstream fs("/proc/mounts");
   if (fs.is_open()) {
     return ParseMountPaths(device_path, fs);
   }
   LOG(ERROR) << "Unable to parse /proc/mounts";
-  return std::vector<std::string>();
+  return vector<string>();
 }
 
-std::vector<std::string> UdevDevice::ParseMountPaths(
-    const std::string& device_path, std::istream& stream) {
-  std::vector<std::string> mount_paths;
-  std::string line;
+vector<string> UdevDevice::ParseMountPaths(const string& device_path,
+    istream& stream) {
+  vector<string> mount_paths;
+  string line;
   while (std::getline(stream, line)) {
-    std::vector<std::string> tokens;
+    vector<string> tokens;
     base::SplitString(line, ' ', &tokens);
     if (tokens.size() >= 2) {
       if (tokens[0] == device_path)
@@ -240,7 +244,7 @@ Disk UdevDevice::ToDisk() const {
   if (dev_file)
     disk.set_device_file(dev_file);
 
-  std::vector<std::string> mount_paths = GetMountPaths();
+  vector<string> mount_paths = GetMountPaths();
   disk.set_is_mounted(!mount_paths.empty());
   disk.set_mount_paths(mount_paths);
 

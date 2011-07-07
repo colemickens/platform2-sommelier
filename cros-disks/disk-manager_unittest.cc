@@ -13,6 +13,10 @@
 #include "cros-disks/filesystem.h"
 #include "cros-disks/mounter.h"
 
+using std::map;
+using std::string;
+using std::vector;
+
 namespace cros_disks {
 
 class DiskManagerTest : public ::testing::Test {
@@ -23,14 +27,14 @@ class DiskManagerTest : public ::testing::Test {
 TEST_F(DiskManagerTest, CreateDirectory) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  std::string target_path = temp_dir.path().value() + "/disk";
+  string target_path = temp_dir.path().value() + "/disk";
   EXPECT_TRUE(manager_.CreateDirectory(target_path));
 }
 
 TEST_F(DiskManagerTest, CreateExistingEmptyDirectory) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  std::string target_path = temp_dir.path().value() + "/disk";
+  string target_path = temp_dir.path().value() + "/disk";
   EXPECT_TRUE(manager_.CreateDirectory(target_path));
   // Create the same directory again should succeed
   // since it is empty and not in use.
@@ -49,9 +53,9 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   filesystem.set_mount_type("ntfs-3g");
   filesystem.set_requires_external_mounter(true);
 
-  std::string target_path = "/media/disk";
+  string target_path = "/media/disk";
 
-  std::vector<std::string> options;
+  vector<string> options;
   options.push_back("rw");
   options.push_back("nodev");
   options.push_back("noexec");
@@ -73,9 +77,9 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   filesystem.AddExtraMountOption("utf8");
   filesystem.AddExtraMountOption("shortname=mixed");
 
-  std::string target_path = "/media/disk";
+  string target_path = "/media/disk";
 
-  std::vector<std::string> options;
+  vector<string> options;
   options.push_back("rw");
   options.push_back("nodev");
   options.push_back("noexec");
@@ -91,12 +95,12 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
 }
 
 TEST_F(DiskManagerTest, EnumerateDisks) {
-  std::vector<Disk> disks = manager_.EnumerateDisks();
+  vector<Disk> disks = manager_.EnumerateDisks();
 }
 
 TEST_F(DiskManagerTest, GetDeviceFileFromCache) {
-  std::string device_path = "/sys/block/sda";
-  std::string device_file = "/dev/sda";
+  string device_path = "/sys/block/sda";
+  string device_file = "/dev/sda";
 
   EXPECT_EQ("", manager_.GetDeviceFileFromCache(device_path));
   // Mimic the device file being added to the cache.
@@ -106,7 +110,7 @@ TEST_F(DiskManagerTest, GetDeviceFileFromCache) {
 
 TEST_F(DiskManagerTest, GetDiskByDevicePath) {
   Disk disk;
-  std::string device_path = "/dev/sda";
+  string device_path = "/dev/sda";
   EXPECT_TRUE(manager_.GetDiskByDevicePath(device_path, &disk));
   EXPECT_EQ(device_path, disk.device_file());
 
@@ -117,13 +121,13 @@ TEST_F(DiskManagerTest, GetDiskByDevicePath) {
 
 TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
   Disk disk;
-  std::string device_path = "/dev/nonexistent-path";
+  string device_path = "/dev/nonexistent-path";
   EXPECT_FALSE(manager_.GetDiskByDevicePath(device_path, &disk));
 }
 
 TEST_F(DiskManagerTest, GetFilesystemTypeOfNonexistentDevice) {
-  std::string device_path = "/dev/nonexistent-path";
-  std::string filesystem_type = manager_.GetFilesystemTypeOfDevice(device_path);
+  string device_path = "/dev/nonexistent-path";
+  string filesystem_type = manager_.GetFilesystemTypeOfDevice(device_path);
   EXPECT_EQ("", filesystem_type);
 }
 
@@ -144,7 +148,7 @@ TEST_F(DiskManagerTest, GetUserAndGroupIdForNonExistentUser) {
 TEST_F(DiskManagerTest, ExtractSupportedUnmountOptions) {
   int unmount_flags = 0;
   int expected_unmount_flags = MNT_FORCE;
-  std::vector<std::string> options;
+  vector<string> options;
   options.push_back("force");
   EXPECT_TRUE(manager_.ExtractUnmountOptions(options, &unmount_flags));
   EXPECT_EQ(expected_unmount_flags, unmount_flags);
@@ -152,14 +156,14 @@ TEST_F(DiskManagerTest, ExtractSupportedUnmountOptions) {
 
 TEST_F(DiskManagerTest, ExtractUnsupportedUnmountOptions) {
   int unmount_flags = 0;
-  std::vector<std::string> options;
+  vector<string> options;
   options.push_back("foo");
   EXPECT_FALSE(manager_.ExtractUnmountOptions(options, &unmount_flags));
 }
 
 TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithoutLabelOrUuid) {
   Disk disk;
-  std::string mount_path = manager_.GetMountDirectoryName(disk);
+  string mount_path = manager_.GetMountDirectoryName(disk);
   EXPECT_EQ("/media/disk", mount_path);
 }
 
@@ -167,7 +171,7 @@ TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithLabel) {
   Disk disk;
   disk.set_label("My Disk");
   disk.set_uuid("1A2B-3C4D");
-  std::string mount_path = manager_.GetMountDirectoryName(disk);
+  string mount_path = manager_.GetMountDirectoryName(disk);
   EXPECT_EQ("/media/My Disk", mount_path);
 }
 
@@ -175,51 +179,51 @@ TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithLabelWithSlashes) {
   Disk disk;
   disk.set_label("This/Is/My/Disk");
   disk.set_uuid("1A2B-3C4D");
-  std::string mount_path = manager_.GetMountDirectoryName(disk);
+  string mount_path = manager_.GetMountDirectoryName(disk);
   EXPECT_EQ("/media/This_Is_My_Disk", mount_path);
 }
 
 TEST_F(DiskManagerTest, GetMountDirectoryNameForDiskWithUuid) {
   Disk disk;
   disk.set_uuid("1A2B-3C4D");
-  std::string mount_path = manager_.GetMountDirectoryName(disk);
+  string mount_path = manager_.GetMountDirectoryName(disk);
   EXPECT_EQ("/media/1A2B-3C4D", mount_path);
 }
 
 TEST_F(DiskManagerTest, CreateMountDirectoryAlreadyExists) {
   Disk disk;
-  std::string mount_path = manager_.CreateMountDirectory(disk, "/proc");
+  string mount_path = manager_.CreateMountDirectory(disk, "/proc");
   EXPECT_EQ("", mount_path);
 }
 
 TEST_F(DiskManagerTest, CreateMountDirectoryWithGivenName) {
   Disk disk;
-  std::string target_path = "/tmp/cros-disks-test";
-  std::string mount_path = manager_.CreateMountDirectory(disk, target_path);
+  string target_path = "/tmp/cros-disks-test";
+  string mount_path = manager_.CreateMountDirectory(disk, target_path);
   EXPECT_EQ(target_path, mount_path);
   EXPECT_EQ(0, rmdir(target_path.c_str()));
 }
 
 TEST_F(DiskManagerTest, MountDiskWithInvalidDevicePath) {
-  std::string device_path = "";
-  std::string mount_path = "/tmp/cros-disks-test";
-  std::string filesystem_type = "ext3";
-  std::vector<std::string> options;
+  string device_path = "";
+  string mount_path = "/tmp/cros-disks-test";
+  string filesystem_type = "ext3";
+  vector<string> options;
   EXPECT_FALSE(manager_.Mount(device_path, filesystem_type, options,
         &mount_path));
 }
 
 TEST_F(DiskManagerTest, MountDiskAlreadyMounted) {
-  std::string device_path = "/proc";
-  std::string mount_path = "/tmp/cros-disks-test";
-  std::string filesystem_type = "ext3";
-  std::vector<std::string> options;
+  string device_path = "/proc";
+  string mount_path = "/tmp/cros-disks-test";
+  string filesystem_type = "ext3";
+  vector<string> options;
   EXPECT_FALSE(manager_.Mount(device_path, filesystem_type, options,
         &mount_path));
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {
-  std::map<std::string, Filesystem>& filesystems = manager_.filesystems_;
+  map<string, Filesystem>& filesystems = manager_.filesystems_;
   EXPECT_EQ(0, filesystems.size());
   EXPECT_TRUE(filesystems.find("nonexistent") == filesystems.end());
 
@@ -251,14 +255,14 @@ TEST_F(DiskManagerTest, RemoveDirectoryWithoutPermission) {
 }
 
 TEST_F(DiskManagerTest, UnmountDiskWithInvalidDevicePath) {
-  std::string device_path = "";
-  std::vector<std::string> options;
+  string device_path = "";
+  vector<string> options;
   EXPECT_FALSE(manager_.Unmount(device_path, options));
 }
 
 TEST_F(DiskManagerTest, UnmountDiskWithNonexistentDevicePath) {
-  std::string device_path = "/dev/nonexistent-path";
-  std::vector<std::string> options;
+  string device_path = "/dev/nonexistent-path";
+  vector<string> options;
   EXPECT_FALSE(manager_.Unmount(device_path, options));
 }
 

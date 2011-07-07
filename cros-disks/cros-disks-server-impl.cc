@@ -13,6 +13,8 @@
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
 
+using std::string;
+using std::vector;
 
 namespace cros_disks {
 
@@ -31,18 +33,19 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
   format_manager_->set_parent(this);
 }
 
-CrosDisksServer::~CrosDisksServer() { }
+CrosDisksServer::~CrosDisksServer() {
+}
 
 bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
   return true;
 }
 
-std::string CrosDisksServer::GetDeviceFilesystem(const std::string& device_path,
+string CrosDisksServer::GetDeviceFilesystem(const string& device_path,
     ::DBus::Error& error) {  // NOLINT
   return disk_manager_->GetFilesystemTypeOfDevice(device_path);
 }
 
-void CrosDisksServer::SignalFormattingFinished(const std::string& device_path,
+void CrosDisksServer::SignalFormattingFinished(const string& device_path,
     int status) {
   if (status) {
     FormattingFinished(device_path, false);
@@ -53,8 +56,8 @@ void CrosDisksServer::SignalFormattingFinished(const std::string& device_path,
   }
 }
 
-bool CrosDisksServer::FormatDevice(const std::string& device_path,
-      const std::string& filesystem, ::DBus::Error &error) {  // NOLINT
+bool CrosDisksServer::FormatDevice(const string& device_path,
+      const string& filesystem, ::DBus::Error &error) {  // NOLINT
   if (!format_manager_->StartFormatting(device_path, filesystem)) {
     LOG(ERROR) << "Could not format device " << device_path
       << " as file system '" << filesystem << "'";
@@ -63,42 +66,36 @@ bool CrosDisksServer::FormatDevice(const std::string& device_path,
   return true;
 }
 
-std::string CrosDisksServer::FilesystemMount(
-    const std::string& device_path,
-    const std::string& filesystem_type,
-    const std::vector<std::string>& mount_options,
+string CrosDisksServer::FilesystemMount(const string& device_path,
+    const string& filesystem_type, const vector<string>& mount_options,
     DBus::Error& error) {  // NOLINT
-
-  std::string mount_path;
+  string mount_path;
   if (disk_manager_->Mount(device_path, filesystem_type, mount_options,
         &mount_path)) {
     DiskChanged(device_path);
   } else {
-    std::string message = "Could not mount device " + device_path;
+    string message = "Could not mount device " + device_path;
     LOG(ERROR) << message;
     error.set(kServiceErrorName, message.c_str());
   }
   return mount_path;
 }
 
-void CrosDisksServer::FilesystemUnmount(
-    const std::string& device_path,
-    const std::vector<std::string>& mount_options,
-    DBus::Error& error) {  // NOLINT
-
+void CrosDisksServer::FilesystemUnmount(const string& device_path,
+    const vector<string>& mount_options, DBus::Error& error) {  // NOLINT
   if (!disk_manager_->Unmount(device_path, mount_options)) {
-    std::string message = "Could not unmount device " + device_path;
+    string message = "Could not unmount device " + device_path;
     LOG(ERROR) << message;
     error.set(kServiceErrorName, message.c_str());
   }
 }
 
-std::vector<std::string> CrosDisksServer::DoEnumerateDevices(
+vector<string> CrosDisksServer::DoEnumerateDevices(
     bool auto_mountable_only) const {
-  std::vector<Disk> disks = disk_manager_->EnumerateDisks();
-  std::vector<std::string> devices;
+  vector<Disk> disks = disk_manager_->EnumerateDisks();
+  vector<string> devices;
   devices.reserve(disks.size());
-  for (std::vector<Disk>::const_iterator disk_iterator(disks.begin());
+  for (vector<Disk>::const_iterator disk_iterator(disks.begin());
       disk_iterator != disks.end(); ++disk_iterator) {
     if (!auto_mountable_only || disk_iterator->is_auto_mountable()) {
       devices.push_back(disk_iterator->native_path());
@@ -107,22 +104,21 @@ std::vector<std::string> CrosDisksServer::DoEnumerateDevices(
   return devices;
 }
 
-std::vector<std::string> CrosDisksServer::EnumerateDevices(
+vector<string> CrosDisksServer::EnumerateDevices(
     DBus::Error& error) {  // NOLINT
   return DoEnumerateDevices(false);
 }
 
-std::vector<std::string> CrosDisksServer::EnumerateAutoMountableDevices(
+vector<string> CrosDisksServer::EnumerateAutoMountableDevices(
     DBus::Error& error) {  // NOLINT
   return DoEnumerateDevices(true);
 }
 
-DBusDisk CrosDisksServer::GetDeviceProperties(const std::string& device_path,
+DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
     DBus::Error& error) {  // NOLINT
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
-    std::string message = "Could not get the properties of device "
-      + device_path;
+    string message = "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
     error.set(kServiceErrorName, message.c_str());
   }
@@ -151,13 +147,13 @@ void CrosDisksServer::OnScreenIsUnlocked() {
   is_device_event_queued_ = false;
 }
 
-void CrosDisksServer::OnSessionStarted(const std::string& user) {
+void CrosDisksServer::OnSessionStarted(const string& user) {
   LOG(INFO) << "Session started";
   DispatchQueuedDeviceEvents();
   is_device_event_queued_ = false;
 }
 
-void CrosDisksServer::OnSessionStopped(const std::string& user) {
+void CrosDisksServer::OnSessionStopped(const string& user) {
   LOG(INFO) << "Session stopped";
   is_device_event_queued_ = true;
 }
