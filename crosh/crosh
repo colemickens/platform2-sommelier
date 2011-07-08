@@ -441,14 +441,17 @@ cmd_network_logging(){
       "wifi")
         echo; /usr/bin/ff_debug service+wifi+inet+device+manager
         echo; /usr/bin/wpa_debug msgdump
+        echo; /usr/bin/mm_debug info
         ;;
       "cellular")
         echo; /usr/bin/ff_debug service+modem+device+manager
         echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/mm_debug debug
         ;;
       "ethernet")
         echo; /usr/bin/ff_debug service+ethernet+device+manager
         echo; /usr/bin/wpa_debug info
+        echo; /usr/bin/mm_debug info
         ;;
       "--help")
         echo "Usage: network_logging <wifi | cellular | ethernet>"
