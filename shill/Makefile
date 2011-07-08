@@ -112,6 +112,7 @@ TEST_OBJS = \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
+	rtnl_listener_unittest.o \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \

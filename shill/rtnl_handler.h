@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/singleton.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 
@@ -77,6 +78,8 @@ class RTNLHandler {
  private:
   friend class DeviceInfoTest;
   friend struct DefaultSingletonTraits<RTNLHandler>;
+  FRIEND_TEST(RTNLListenerTest, NoRun);
+  FRIEND_TEST(RTNLListenerTest, Run);
 
   // Private to ensure that this behaves as a singleton.
   RTNLHandler();
