@@ -49,7 +49,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
     return FALSE;
   }
 
-  InputData input_data = { buf, len };
+  InputData input_data(buf, len);
   handler->callback_->Run(&input_data);
 
   return TRUE;

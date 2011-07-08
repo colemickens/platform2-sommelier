@@ -15,6 +15,7 @@
 #include "shill/dbus_control.h"
 #include "shill/dhcp_provider.h"
 #include "shill/glib.h"
+#include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
 using std::string;

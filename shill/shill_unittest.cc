@@ -13,6 +13,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 #include "shill/mock_control.h"
 

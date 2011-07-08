@@ -11,6 +11,7 @@
 #include <base/hash_tables.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/singleton.h>
 
 #include "shill/device.h"
 
@@ -23,28 +24,30 @@ struct nlmsghdr;
 namespace shill {
 
 class IPConfig;
+class Sockets;
 
-// This singleton class is responsible for interacting with the RTNL
-// subsystem.  RTNL provides (among other things) access to interface
-// discovery (add/remove events), interface state monitoring and the
-// ability to change interace flags.  Similar functionality also exists
-// for IP address configuration for interfaces and IP routing tables.
+// This singleton class is responsible for interacting with the RTNL subsystem.
+// RTNL provides (among other things) access to interface discovery (add/remove
+// events), interface state monitoring and the ability to change interace flags.
+// Similar functionality also exists for IP address configuration for interfaces
+// and IP routing tables.
 //
-// RTNLHandler provides access to these events through a callback
-// system and provides utility functions to make changes to interface,
-// address and routing state.
+// RTNLHandler provides access to these events through a callback system and
+// provides utility functions to make changes to interface, address and routing
+// state.
 class RTNLHandler {
  public:
-  RTNLHandler();
-  ~RTNLHandler();
+  static const int kRequestLink = 1;
+  static const int kRequestAddr = 2;
+  static const int kRequestRoute = 4;
 
   // Since this is a singleton, use RTNHandler::GetInstance()->Foo()
   static RTNLHandler *GetInstance();
 
-  // This starts the event-monitoring function of the RTNL handler.
-  // This function requires an EventDispatcher pointer so it can add
-  // itself to the event loop.
-  void Start(EventDispatcher *dispatcher);
+  // This starts the event-monitoring function of the RTNL handler. This
+  // function requires an EventDispatcher pointer so it can add itself to the
+  // event loop.
+  void Start(EventDispatcher *dispatcher, Sockets *sockets);
   // This stops the event-monitoring function of the RTNL handler
   void Stop();
 
@@ -71,11 +74,14 @@ class RTNLHandler {
   // (multiple can be ORred together) are below.
   void RequestDump(int request_flags);
 
-  static const int kRequestLink = 1;
-  static const int kRequestAddr = 2;
-  static const int kRequestRoute = 4;
-
  private:
+  friend class DeviceInfoTest;
+  friend struct DefaultSingletonTraits<RTNLHandler>;
+
+  // Private to ensure that this behaves as a singleton.
+  RTNLHandler();
+  virtual ~RTNLHandler();
+
   // Dispatches an rtnl message to all listeners
   void DispatchEvent(int type, struct nlmsghdr *hdr);
   // Send the next table-dump request to the kernel
@@ -85,7 +91,7 @@ class RTNLHandler {
   bool AddressRequest(int interface_index, int cmd, int flags,
                       const IPConfig &config);
 
-  bool running_;
+  Sockets *sockets_;
   bool in_request_;
 
   int rtnl_socket_;
@@ -96,7 +102,6 @@ class RTNLHandler {
   scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;
   scoped_ptr<IOInputHandler> rtnl_handler_;
 
-  friend class RTNLHandlerTest;
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };
 

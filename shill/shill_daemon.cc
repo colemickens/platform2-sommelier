@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -35,7 +35,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
 Daemon::~Daemon() {}
 
 void Daemon::Start() {
-  RTNLHandler::GetInstance()->Start(&dispatcher_);
+  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
   manager_.Start();
 }
 

@@ -81,6 +81,7 @@ SHILL_OBJS = \
 	shill_config.o \
 	shill_daemon.o \
 	shill_event.o \
+	sockets.o \
 	wifi.o \
 	wifi_endpoint.o \
 	wifi_service.o

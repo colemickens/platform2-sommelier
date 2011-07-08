@@ -121,7 +121,6 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
   base::hash_map<int, DeviceRefPtr>::iterator ndev =
       devices_.find(msg->ifi_index);
-  int bytes = IFLA_PAYLOAD(hdr);
   int dev_index = msg->ifi_index;
   struct rtattr *rta;
   int rta_bytes;
@@ -146,8 +145,9 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
 
     VLOG(2) << "add link index "  << dev_index << " name " << link_name;
 
-    if (link_name != NULL)
+    if (link_name) {
       technology = GetDeviceTechnology(link_name);
+    }
 
     switch (technology) {
     case Device::kEthernet:

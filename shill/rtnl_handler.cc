@@ -16,23 +16,21 @@
 #include <fcntl.h>
 #include <string>
 
-#include <base/callback_old.h>
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/memory/singleton.h>
 
 #include "shill/io_handler.h"
 #include "shill/ipconfig.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/shill_event.h"
+#include "shill/sockets.h"
 
 using std::string;
 
 namespace shill {
 
 RTNLHandler::RTNLHandler()
-    : running_(false),
+    : sockets_(NULL),
       in_request_(false),
       rtnl_socket_(-1),
       request_flags_(0),
@@ -50,13 +48,14 @@ RTNLHandler* RTNLHandler::GetInstance() {
   return Singleton<RTNLHandler>::get();
 }
 
-void RTNLHandler::Start(EventDispatcher *dispatcher) {
+void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
   struct sockaddr_nl addr;
 
-  if (running_)
+  if (sockets_) {
     return;
+  }
 
-  rtnl_socket_ = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+  rtnl_socket_ = sockets->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
   if (rtnl_socket_ < 0) {
     LOG(ERROR) << "Failed to open rtnl socket";
     return;
@@ -66,9 +65,10 @@ void RTNLHandler::Start(EventDispatcher *dispatcher) {
   addr.nl_family = AF_NETLINK;
   addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
-  if (bind(rtnl_socket_, reinterpret_cast<struct sockaddr *>(&addr),
-           sizeof(addr)) < 0) {
-    close(rtnl_socket_);
+  if (sockets->Bind(rtnl_socket_,
+                    reinterpret_cast<struct sockaddr *>(&addr),
+                    sizeof(addr)) < 0) {
+    sockets->Close(rtnl_socket_);
     rtnl_socket_ = -1;
     LOG(ERROR) << "RTNL socket bind failed";
     return;
@@ -76,22 +76,20 @@ void RTNLHandler::Start(EventDispatcher *dispatcher) {
 
   rtnl_handler_.reset(dispatcher->CreateInputHandler(rtnl_socket_,
                                                      rtnl_callback_.get()));
-  running_ = true;
+  sockets_ = sockets;
 
   NextRequest(request_sequence_);
-
-  VLOG(2) << "RTNLHandler started";
   VLOG(2) << "RTNLHandler started";
 }
 
 void RTNLHandler::Stop() {
-  if (!running_)
+  if (!sockets_)
     return;
 
   rtnl_handler_.reset(NULL);
-  close(rtnl_socket_);
-  running_ = false;
+  sockets_->Close(rtnl_socket_);
   in_request_ = false;
+  sockets_ = NULL;
   VLOG(2) << "RTNLHandler stopped";
 }
 
@@ -135,7 +133,7 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
   req.msg.ifi_flags = flags;
   req.msg.ifi_change = change;
 
-  if (send(rtnl_socket_, &req, sizeof(req), 0) < 0) {
+  if (sockets_->Send(rtnl_socket_, &req, sizeof(req), 0) < 0) {
     LOG(ERROR) << "RTNL sendto failed: " << strerror(errno);
   }
 }
@@ -145,7 +143,7 @@ void RTNLHandler::RequestDump(int request_flags) {
 
   VLOG(2) << "RTNLHandler got request to dump " << request_flags;
 
-  if (!in_request_ && running_)
+  if (!in_request_ && sockets_)
     NextRequest(request_sequence_);
 }
 
@@ -164,8 +162,8 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   struct sockaddr_nl addr;
   int flag = 0;
 
-  VLOG(2) << "RTNLHandler nextrequest " << seq << " " << request_sequence_ <<
-    " " << request_flags_;
+  VLOG(2) << "RTNLHandler nextrequest " << seq << " " << request_sequence_
+          << " " << request_flags_;
 
   if (seq != request_sequence_)
     return;
@@ -196,8 +194,12 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   memset(&addr, 0, sizeof(addr));
   addr.nl_family = AF_NETLINK;
 
-  if (sendto(rtnl_socket_, &req, sizeof(req), 0,
-             reinterpret_cast<struct sockaddr *>(&addr), sizeof(addr)) < 0) {
+  if (sockets_->SendTo(rtnl_socket_,
+                       &req,
+                       sizeof(req),
+                       0,
+                       reinterpret_cast<struct sockaddr *>(&addr),
+                       sizeof(addr)) < 0) {
     LOG(ERROR) << "RTNL sendto failed";
     return;
   }
@@ -314,7 +316,7 @@ bool RTNLHandler::AddressRequest(int interface_index, int cmd, int flags,
 
   req.ifa.ifa_prefixlen = properties.subnet_cidr;
 
-  if (send(rtnl_socket_, &req, req.hdr.nlmsg_len, 0) < 0) {
+  if (sockets_->Send(rtnl_socket_, &req, req.hdr.nlmsg_len, 0) < 0) {
     LOG(ERROR) << "RTNL sendto failed: " << strerror(errno);
     return false;
   }
