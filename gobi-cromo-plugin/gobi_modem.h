@@ -88,7 +88,7 @@ class SessionStarter;
 class InjectedFaults;
 class GobiModemHelper;
 
-struct PendingDisable;
+struct PendingEnable;
 
 class GobiModem
     : public Modem,
@@ -383,7 +383,9 @@ class GobiModem
   bool device_resetting_;
 
   bool session_starter_in_flight_;
-  scoped_ptr<PendingDisable> pending_disable_;
+  scoped_ptr<PendingEnable> pending_enable_;
+
+  bool EnableHelper(const bool& enable, DBus::Error& error);
 
   friend class GobiModemTest;
 
@@ -433,7 +435,7 @@ class GobiModem
   FRIEND_TEST(GobiModemTest, GetSignalStrengthDbmConnected);
 
   friend class SessionStarter;
-  friend class PendingDisable;
+  friend class PendingEnable;
   friend class ScopedApiConnection;
   friend class Gobi3KModemHelper;  // a bad idea, but necessary until
                                    // code is restructured

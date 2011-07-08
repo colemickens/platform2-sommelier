@@ -205,19 +205,22 @@ class SessionStarter {
   friend class GobiModem;
 };
 
-// Tracks a call to disable that we cannot respond to immmediately
-// (because a long-running connect is already in progress).
-struct PendingDisable {
-  PendingDisable() {}
-  DBus::Tag disable_tag_;
+// Tracks a call to Enable (enable or disable) because the Enable
+// operation waits for the PowerCallback, or because we cannot respond
+// immmediately (because a long-running connect is already in
+// progress)
+struct PendingEnable {
+  PendingEnable(bool enable) : enable_(enable) {}
+  DBus::Tag tag_;
   // NB: contrary to our style guide, this throws an exception that
   // dbus catches
-  void RecordDisableAndReturnLater(GobiModem *modem) {
-    modem->return_later(&disable_tag_);
+  void RecordEnableAndReturnLater(GobiModem *modem) {
+    modem->return_later(&tag_);
   }
-  virtual ~PendingDisable() {}
+  virtual ~PendingEnable() {}
+  const bool enable_;
  private:
-  DISALLOW_COPY_AND_ASSIGN(PendingDisable);
+  DISALLOW_COPY_AND_ASSIGN(PendingEnable);
 };
 
 unsigned long GobiModem::MapDbmToPercent(INT8 signal_strength_dbm) {
@@ -347,6 +350,7 @@ void GobiModem::Init() {
 }
 
 GobiModem::~GobiModem() {
+  CHECK(pending_enable_ == NULL);
   handler_->server().start_exit_hooks().Del(hooks_name_);
   handler_->server().exit_ok_hooks().Del(hooks_name_);
   handler_->server().UnregisterStartSuspend(hooks_name_);
@@ -366,16 +370,36 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
   return METRIC_INDEX_NONE;
 }
 
-// DBUS Methods: Modem
-void GobiModem::Enable(const bool& enable, DBus::Error& error) {
-  LOG(INFO) << "Enable: " << Enabled() << " => " << enable;
+// EnableHelper
+//
+// Enable or Disable (poweroff) the modem based on the enable flag.
+// Calling the GOBI SetPower API does not immediately change the power
+// level of the modem, it merely starts the process.  Once the power
+// level has changed, the PowerModeHandler is invoked, and
+// PowerModeHandler finishes updating the state of the modem and
+// disconnecting from the Qualcomm API when the modem is disabled.
+//
+// There are several failure modes which include failing to
+// communicate with the gobi API and failing to communicate with the
+// module.
+//
+// Returns:
+//   true -  to indicate either that SetPower operation has started and
+//           powerModeHandler will be called later, or that
+//           CancelDataSession has been called and
+//           SessionStarterDoneCallback will be called later.
+//   false - the dbus error has been set because the operation could
+//           not be completed, or the operation would have no effect.
+//
+bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
+{
   if (enable && !Enabled()) {
     ApiConnect(error);
     if (error.is_set())
-      return;
+      return false;
     if (!CheckEnableOk(error)) {
       ApiDisconnect();
-      return;
+      return false;
     }
     LogGobiInformation();
 
@@ -387,30 +411,50 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
       error.set(kSdkError, "SetPower");
       LOG(WARNING) << "SetPower failed : " << rc;
       ApiDisconnect();
-      return;
+      return false;
     }
     SetMmState(MM_MODEM_STATE_ENABLING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    return true;
   } else if (!enable && Enabled()) {
     if (session_starter_in_flight_) {
       LOG(INFO) << "Disable while connect in flight";
-      if (pending_disable_ != NULL) {
-        // We could in theory have a queue of in-flight disables if we
-        // needed to.
-        error.set(kModeError, "Already have a pending disable");
-      } else {
-        SessionStarter::CancelDataSession(sdk_);
-        pending_disable_.reset(new PendingDisable());
-        pending_disable_->RecordDisableAndReturnLater(this);
-        CHECK(false) << "Not reached";
-      }
+      SessionStarter::CancelDataSession(sdk_);
+      return true;
     }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
       error.set(kSdkError, "SetPower");
       LOG(WARNING) << "SetPower failed : " << rc;
-      return;
+      return false;
     }
     SetMmState(MM_MODEM_STATE_DISABLING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    return true;
+  }
+  // The operation is already done!
+  LOG(WARNING) << "Operation Enable(" << enable
+               << ") has no effect on modem in state: " << Enabled();
+  return false;
+}
+
+// DBUS Methods: Modem
+void GobiModem::Enable(const bool& enable, DBus::Error& error) {
+  bool operation_pending;
+
+  LOG(INFO) << "Enable: " << Enabled() << " => " << enable;
+
+  if (pending_enable_ != NULL) {
+    LOG(INFO) << "Already have a pending Enable operation";
+    error.set(kModeError, "Already have a pending Enable operation");
+    return;
+  }
+  operation_pending = EnableHelper(enable, error);
+  if (operation_pending) {
+    CHECK(pending_enable_ == NULL);
+    CHECK(!error);
+    // Cleaned up in PowerModeHandler or SessionStarterDoneCallback
+    pending_enable_.reset(new PendingEnable(enable));
+    pending_enable_->RecordEnableAndReturnLater(this);
+    CHECK(false) << "Not reached";
   }
 }
 
@@ -487,6 +531,13 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
     error.set(kConnectError, "Modem is disabled");
     return;
   }
+  if (pending_enable_ != NULL) {
+    LOG(WARNING) << "Connect while modem "
+                 << (pending_enable_->enable_ ? "enabling" : "disabling")
+                 << ".";
+    error.set(kConnectError, "Enable operation in progress");
+    return;
+  }
   if (exiting_) {
     LOG(WARNING) << "Connect when exiting";
     error.set(kConnectError, "Cromo is exiting");
@@ -535,7 +586,6 @@ void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
 
 void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
   scoped_ptr<SessionStarter> starter(starter_raw);  // Take ownership
-  scoped_ptr<PendingDisable> scoped_disable(pending_disable_.release());
 
   session_starter_in_flight_ = false;
   if (injected_faults_["ConnectFailsWithErrorSendingQmiRequest"]) {
@@ -551,7 +601,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
 
     session_id_ = starter->session_id_;
 
-    if (scoped_disable != NULL) {
+    if (pending_enable_ != NULL) {
       error.set(kConnectError, "StartDataSession Cancelled");
       LOG(INFO) << "Cancellation arrived after connect succeeded";
       ULONG rc = sdk_->StopDataSession(session_id_);
@@ -572,7 +622,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
         break;
       case gobi::kErrorSendingQmiRequest:
       case gobi::kErrorReceivingQmiRequest:
-        if (scoped_disable == NULL) {
+        if (pending_enable_ == NULL) {
           // Normally the SDK enqueues an SdkErrorHandler event when
           // it sees these errors.  But, since these errors occur
           // benignly on StartDataSession cancellation, the SDK
@@ -597,10 +647,18 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
     SetMmState(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 
-  if (scoped_disable != NULL) {
+  if (pending_enable_ != NULL) {
     DBus::Error disable_error;
-    Enable(false, disable_error);
-    FinishDeferredCall(&scoped_disable->disable_tag_, disable_error);
+    bool operation_pending;
+    CHECK(pending_enable_->enable_ == false);
+    operation_pending = EnableHelper(false, disable_error);
+    CHECK(operation_pending || disable_error);
+    if (disable_error) {
+      scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
+      FinishDeferredCall(&scoped_enable->tag_, disable_error);
+    }
+    // NOTE: if !disable_error, there is nothing to do, because
+    // PowerModeHandler will evenutally return a value.
   }
 }
 
@@ -1249,22 +1307,30 @@ gboolean GobiModem::DataBearerTechnologyCallback(gpointer data) {
 
 void GobiModem::PowerModeHandler() {
   ULONG power_mode;
+  DBus::Error error;
   ULONG rc = sdk_->GetPower(&power_mode);
   if (rc != 0) {
     LOG(INFO) << "Cannot determine power mode: Error " << rc;
-    return;
-  }
-  LOG(INFO) << "PowerModeHandler: " << power_mode;
-  if (power_mode == gobi::kOnline) {
-    Enabled = true;
-    SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
-    registration_time_.Start();    // Stopped in
-                                   // GobiCdmaModem::RegistrationStateHandler,
-                                   // if appropriate
+    error.set(kSdkError, "GetPowerMode");
   } else {
-    ApiDisconnect();
-    Enabled = false;
-    SetMmState(MM_MODEM_STATE_DISABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    LOG(INFO) << "PowerModeHandler: " << power_mode;
+    if (power_mode == gobi::kOnline) {
+      Enabled = true;
+      SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+      registration_time_.Start();    // Stopped in
+      // GobiCdmaModem::RegistrationStateHandler,
+      // if appropriate
+    } else {
+      ApiDisconnect();
+      Enabled = false;
+      SetMmState(MM_MODEM_STATE_DISABLED,
+                 MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    }
+  }
+  if (pending_enable_ != NULL) {
+    scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
+    FinishDeferredCall(&scoped_enable->tag_, error);
+    LOG(INFO) << "PowerModeHandler: finishing deferred call";
   }
 }
 
