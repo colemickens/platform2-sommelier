@@ -10,6 +10,7 @@
 #include <dbus/dbus.h>
 #include <glog/logging.h>
 #include <mm/mm-modem.h>
+#include <syslog.h>
 
 #include "carrier.h"
 #include "modem_handler.h"
@@ -23,6 +24,7 @@ const char* CromoServer::kServicePath = "/org/chromium/ModemManager";
 static const char* kDBusInterface = "org.freedesktop.DBus";
 static const char* kDBusPath = "/org/freedesktop/DBus";
 static const char* kDBusListNames = "ListNames";
+static const char* kDBusInvalidArgs = "org.freedesktop.DBus.Error.InvalidArgs";
 
 // Returns the current time, in milliseconds, from an unspecified epoch.
 // TODO(ellyjones): duplicated in some plugins. Figure out how to refactor that.
@@ -69,6 +71,28 @@ vector<DBus::Path> CromoServer::EnumerateDevices(DBus::Error& error) {
     allpaths.insert(allpaths.end(), paths.begin(), paths.end());
   }
   return allpaths;
+}
+
+void CromoServer::SetLogging(const std::string& level, DBus::Error& error) {
+  int mask = 0;
+  const char *cstr = level.c_str();
+
+  if (strcasecmp(cstr, "debug") == 0) {
+    mask = LOG_UPTO(LOG_DEBUG);
+  } else if (strcasecmp(cstr, "info") == 0) {
+    mask = LOG_UPTO(LOG_INFO);
+  } else if (strcasecmp(cstr, "warn")  == 0) {
+    mask = LOG_UPTO(LOG_WARNING);
+  } else if (strcasecmp(cstr, "error") == 0) {
+    mask = LOG_UPTO(LOG_ERR);
+  } else {
+    std::string msg(std::string("Invalid Logging Level: ") + level);
+    LOG(ERROR) << msg;
+    error.set(kDBusInvalidArgs, msg.c_str());
+    return;
+  }
+  setlogmask(mask);
+  LOG(INFO) << "logging level set to: " << level;
 }
 
 void CromoServer::AddModemHandler(ModemHandler* handler) {

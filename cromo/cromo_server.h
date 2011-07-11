@@ -46,7 +46,7 @@ class CromoServer
   // ModemManager DBUS API methods.
   std::vector<DBus::Path> EnumerateDevices(DBus::Error& error);
   void ScanDevices(DBus::Error& error) {}
-  void SetLogging(const std::string& level, DBus::Error& error) {}
+  void SetLogging(const std::string& level, DBus::Error& error);
 
   static const char* kServiceName;
   static const char* kServicePath;

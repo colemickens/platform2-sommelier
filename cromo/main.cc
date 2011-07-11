@@ -111,6 +111,7 @@ class LogSinkSyslog : public google::LogSink {
     openlog("cromo",
             LOG_PID,  // Options
             LOG_LOCAL3);  // 5,6,7 are taken
+    setlogmask(LOG_UPTO(LOG_INFO));
   }
 
   virtual void send(LogSeverity severity, const char* full_filename,
