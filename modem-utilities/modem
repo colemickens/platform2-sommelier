@@ -160,6 +160,28 @@ update_prl () {
 	rm -f $tmpfile
 }
 
+set_carrier () {
+	local modem
+	local mm
+	mm=$(modemmanagers | grep chromium)
+	[ -z "$mm" ] && echo "no compatible modem found" && exit 1
+	$(arg_or_default modem $(modems | head -1))
+	[ -z "$modem" ] && echo "no modem found" && exit 1
+	$(needarg carrier)
+
+	echo Setting carrier to "$carrier".  This could take up to two minutes.
+	echo Using modem "$modem"
+
+	dbus-send                                           \
+	    --reply-timeout=120000                          \
+	    --system                                        \
+	    --print-reply                                   \
+	    --dest=$DEST                                    \
+	    "$modem"                                        \
+	    org.chromium.ModemManager.Modem.Gobi.SetCarrier \
+	    "string:$carrier"
+}
+
 usage () {
 	echo "Usage: $0 <command> [args...]"
 	echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
@@ -168,6 +190,7 @@ usage () {
 	echo "  factory-reset [-modem <modem>] [<spc>]       Factory-reset the modem"
 	echo "  status                                       Display modem status"
 	echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
+	echo "  set-carrier [-modem <modem>] <carrier-name>  Set modem carrier firmware"
 	exit 0
 }
 
@@ -190,6 +213,9 @@ case "$cmd" in
 		;;
 	update-prl)
 		update_prl "$@"
+		;;
+	set-carrier)
+		set_carrier "$@"
 		;;
 	*)
 		usage

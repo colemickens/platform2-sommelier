@@ -8,6 +8,7 @@
 
 MM=${MM:-/org/chromium/ModemManager}
 IDBUS=org.freedesktop.DBus
+DBUS=/org/freedesktop/DBus
 IDBUS_PROPERTIES=$IDBUS.Properties
 IMM=org.freedesktop.ModemManager
 IMODEM=$IMM.Modem
@@ -34,6 +35,12 @@ dbus () {
 
 modems () {
 	dbus $MM $IMM.EnumerateDevices | awk '{print $2}'
+}
+
+modemmanagers () {
+	dbus-send --system --print-reply --fixed \
+	--dest=$IDBUS $DBUS $IDBUS.ListNames \
+	| awk '/ModemManager/ { print $2 }'
 }
 
 modemprops () {
