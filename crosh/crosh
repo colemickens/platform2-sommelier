@@ -30,6 +30,9 @@ fi
 # Please keep the help text in alphabetical order!
 #
 HELP='
+ connectivity
+  Shows connectivity status.  "connectivity help" for more details
+
  enterprise_ca_approve [--allow-self-signed] <url>
   Approve an enterprise certificate authority.  The <url> option should be
   an http or https url to your enterprise Certificate Authority in PEM
@@ -574,6 +577,10 @@ cmd_modem_set_carrier() {
 
 cmd_set_apn() {
   /usr/bin/set_apn "$@"
+}
+
+cmd_connectivity() {
+  /usr/bin/connectivity "$@"
 }
 
 cmd_autest() {
