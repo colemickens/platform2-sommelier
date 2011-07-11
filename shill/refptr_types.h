@@ -9,7 +9,6 @@
 
 namespace shill {
 
-// Device and derived classes.
 class Device;
 typedef scoped_refptr<const Device> DeviceConstRefPtr;
 typedef scoped_refptr<Device> DeviceRefPtr;
@@ -26,7 +25,6 @@ class WiFi;
 typedef scoped_refptr<const WiFi> WiFiConstRefPtr;
 typedef scoped_refptr<WiFi> WiFiRefPtr;
 
-// Endpoint and derived classes.
 class Endpoint;
 typedef scoped_refptr<const Endpoint> EndpointConstRefPtr;
 typedef scoped_refptr<Endpoint> EndpointRefPtr;
@@ -35,7 +33,6 @@ class WiFiEndpoint;
 typedef scoped_refptr<const WiFiEndpoint> WiFiEndpointConstRefPtr;
 typedef scoped_refptr<WiFiEndpoint> WiFiEndpointRefPtr;
 
-// Service and derived classes.
 class Service;
 typedef scoped_refptr<const Service> ServiceConstRefPtr;
 typedef scoped_refptr<Service> ServiceRefPtr;
@@ -52,12 +49,17 @@ class WiFiService;
 typedef scoped_refptr<const WiFiService> WiFiServiceConstRefPtr;
 typedef scoped_refptr<WiFiService> WiFiServiceRefPtr;
 
-// IPConfig and derived classes.
 class IPConfig;
 typedef scoped_refptr<IPConfig> IPConfigRefPtr;
 
 class DHCPConfig;
 typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
+
+class Profile;
+typedef scoped_refptr<Profile> ProfileRefPtr;
+
+class Entry;
+typedef scoped_refptr<Entry> EntryRefPtr;
 
 }  // namespace shill
 

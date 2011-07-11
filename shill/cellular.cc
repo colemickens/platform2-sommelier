@@ -15,7 +15,9 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/entry.h"
 #include "shill/manager.h"
+#include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/shill_event.h"
 
@@ -96,7 +98,9 @@ Cellular::Cellular(ControlInterface *control_interface,
       service_(new CellularService(control_interface,
                                    dispatcher,
                                    this,
-                                   "service-" + link)),
+                                   manager->ActiveProfile(),
+                                   new Entry(manager->ActiveProfile()->name()),
+                                   "service-" + link_name())),
       service_registered_(false) {
   store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);

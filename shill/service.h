@@ -14,6 +14,7 @@
 
 #include "shill/accessor_interface.h"
 #include "shill/property_store.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 
@@ -25,6 +26,12 @@ class Error;
 class EventDispatcher;
 class ServiceAdaptorInterface;
 
+// A Service is a uniquely named entity, which the system can
+// connect in order to begin sending and receiving network traffic.
+// All Services are bound to an Entry, which represents the persistable
+// state of the Service.  If the Entry is populated at the time of Service
+// creation, that information is used to prime the Service.  If not, the Entry
+// becomes populated over time.
 class Service : public base::RefCounted<Service> {
  public:
   enum ConnectFailure {
@@ -48,28 +55,12 @@ class Service : public base::RefCounted<Service> {
     kServiceStateDisconnected,
     kServiceStateFailure
   };
-  struct EapCredentials {
-    EapCredentials() : use_system_cas(false) {}
-    std::string identity;
-    std::string eap;
-    std::string inner_eap;
-    std::string anonymous_identity;
-    std::string client_cert;
-    std::string cert_id;
-    std::string private_key;
-    std::string private_key_password;
-    std::string key_id;
-    std::string ca_cert;
-    std::string ca_cert_id;
-    bool use_system_cas;
-    std::string pin;
-    std::string password;
-    std::string key_management;
-  };
 
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
+          const ProfileRefPtr &profile,
+          const EntryRefPtr &entry,
           const std::string& name);
   virtual ~Service();
   virtual void Connect() = 0;
@@ -92,23 +83,23 @@ class Service : public base::RefCounted<Service> {
   virtual std::string CalculateState() = 0;
 
   void HelpRegisterDerivedBool(const std::string &name,
-                           bool(Service::*get)(void),
-                           bool(Service::*set)(const bool&));
+                               bool(Service::*get)(void),
+                               bool(Service::*set)(const bool&));
   void HelpRegisterDerivedString(const std::string &name,
-                             std::string(Service::*get)(void),
-                             bool(Service::*set)(const std::string&));
+                                 std::string(Service::*get)(void),
+                                 bool(Service::*set)(const std::string&));
 
   // Properties
   bool auto_connect_;
   std::string check_portal_;
   bool connectable_;
-  EapCredentials eap_;
   std::string error_;
   bool favorite_;
   int32 priority_;
   std::string proxy_config_;
-  bool save_credentials_;
 
+  ProfileRefPtr profile_;
+  EntryRefPtr entry_;
   PropertyStore store_;
 
   EventDispatcher *dispatcher_;

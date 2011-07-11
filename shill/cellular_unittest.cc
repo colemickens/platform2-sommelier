@@ -32,7 +32,7 @@ namespace shill {
 class CellularTest : public PropertyStoreTest {
  public:
   CellularTest()
-      : device_(new Cellular(&control_interface_, NULL, NULL, "3G", 0)) {
+      : device_(new Cellular(&control_interface_, NULL, &manager_, "3G", 0)) {
   }
   virtual ~CellularTest() {}
 

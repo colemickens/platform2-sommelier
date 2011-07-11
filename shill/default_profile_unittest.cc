@@ -23,12 +23,14 @@ namespace shill {
 
 class DefaultProfileTest : public PropertyStoreTest {
  public:
-  DefaultProfileTest() : profile_(&control_interface_, &glib_, properties_) {}
+  DefaultProfileTest()
+      : profile_(new DefaultProfile(&control_interface_, &glib_, properties_)) {
+  }
 
   virtual ~DefaultProfileTest() {}
 
  protected:
-  DefaultProfile profile_;
+  ProfileRefPtr profile_;
   GLib glib_;
   Manager::Properties properties_;
 };
@@ -38,7 +40,7 @@ TEST_F(DefaultProfileTest, GetProperties) {
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(profile_.store(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
     EXPECT_FALSE(props[flimflam::kOfflineModeProperty].reader().get_bool());
   }
@@ -46,16 +48,16 @@ TEST_F(DefaultProfileTest, GetProperties) {
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(profile_.store(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(profile_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
     EXPECT_TRUE(props[flimflam::kOfflineModeProperty].reader().get_bool());
   }
   {
     Error error(Error::kInvalidProperty, "");
     EXPECT_FALSE(
-        profile_.store()->SetBoolProperty(flimflam::kOfflineModeProperty,
-                                          true,
-                                          &error));
+        profile_->store()->SetBoolProperty(flimflam::kOfflineModeProperty,
+                                           true,
+                                           &error));
   }
 }
 

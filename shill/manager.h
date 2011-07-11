@@ -14,6 +14,7 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/glib.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
@@ -43,6 +44,8 @@ class Manager {
   void Start();
   void Stop();
 
+  const ProfileRefPtr &ActiveProfile();
+
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceConstRefPtr &to_forget);
 
@@ -67,26 +70,27 @@ class Manager {
   // active profile, once we have such a thing.
   std::vector<std::string> EnumerateAvailableServices();
   std::vector<std::string> EnumerateWatchedServices();
+  std::string GetActiveProfileName();
 
   void HelpRegisterDerivedString(const std::string &name,
-                             std::string(Manager::*get)(void),
-                             bool(Manager::*set)(const std::string&));
+                                 std::string(Manager::*get)(void),
+                                 bool(Manager::*set)(const std::string&));
   void HelpRegisterDerivedStrings(const std::string &name,
-                              Strings(Manager::*get)(void),
-                              bool(Manager::*set)(const Strings&));
+                                  Strings(Manager::*get)(void),
+                                  bool(Manager::*set)(const Strings&));
 
+  GLib glib_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   bool running_;
   std::vector<DeviceRefPtr> devices_;
   std::vector<ServiceRefPtr> services_;
+  std::vector<ProfileRefPtr> profiles_;
+  ProfileRefPtr ephemeral_profile_;
 
   // Properties to be get/set via PropertyStore calls.
   Properties props_;
   PropertyStore store_;
-
-  std::string active_profile_;  // This is supposed to be, essentially,
-                                // an RPC-visible object handle
 
   friend class ManagerAdaptorInterface;
 };

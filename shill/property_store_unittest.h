@@ -17,6 +17,7 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_glib.h"
 #include "shill/property_store.h"
 #include "shill/shill_event.h"
 
@@ -48,6 +49,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   MockControl control_interface_;
   EventDispatcher dispatcher_;
   Manager manager_;
+  MockGLib glib_;
   std::string invalid_args_;
   std::string invalid_prop_;
 };

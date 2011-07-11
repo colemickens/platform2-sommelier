@@ -5,6 +5,7 @@
 #ifndef SHILL_PROFILE_
 #define SHILL_PROFILE_
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,7 @@ class Error;
 class GLib;
 class ProfileAdaptorInterface;
 
-class Profile {
+class Profile : public base::RefCounted<Profile> {
  public:
   struct Identifier {
     std::string user;  // Empty for global.
@@ -38,7 +39,16 @@ class Profile {
   Profile(ControlInterface *control_interface, GLib *glib);
   virtual ~Profile();
 
+  const std::string &name() { return name_; }
+
   PropertyStore *store() { return &store_; }
+
+  // Begin managing the persistence of |entry|, addressable by |entry_name|.
+  void AdoptEntry(const std::string &entry_name, const EntryRefPtr &entry);
+
+  virtual bool MoveToActiveProfile(const std::string &entry_name) {
+    return false;
+  }
 
   // Parses a profile identifier. There're two acceptable forms of the |raw|
   // identifier: "identifier" and "~user/identifier". Both "user" and
@@ -62,9 +72,16 @@ class Profile {
   // in subclasses.
   PropertyStore store_;
 
+  // Entries representing services that are persisted to disk.
+  // A std::map because we will need random access for GetEntry(), but usually
+  // will want to iterate over all Entries.
+  std::map<std::string, EntryRefPtr> entries_;
+
  private:
   friend class ProfileAdaptorInterface;
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
+  // TODO(cmasone): once we can add entries organically, take this out.
+  FRIEND_TEST(ServiceTest, MoveEntry);
 
   static bool IsValidIdentifierToken(const std::string &token);
 

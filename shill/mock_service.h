@@ -8,6 +8,7 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
+#include "shill/refptr_types.h"
 #include "shill/service.h"
 
 namespace shill {
@@ -20,6 +21,8 @@ class MockService : public Service {
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
+              const ProfileRefPtr &profile,
+              const EntryRefPtr &entry,
               const std::string& name);
   virtual ~MockService();
 

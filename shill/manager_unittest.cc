@@ -14,8 +14,11 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/entry.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_glib.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
@@ -103,11 +106,15 @@ TEST_F(ManagerTest, ServiceRegistration) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
+                                new MockProfile(&control_interface_, &glib_),
+                                new Entry("mock"),
                                 kService1));
 
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
+                                new MockProfile(&control_interface_, &glib_),
+                                new Entry("mock"),
                                 kService2));
 
   manager_.RegisterService(mock_service);

@@ -10,18 +10,21 @@
 #include <base/stringprintf.h>
 #include <gmock/gmock.h>
 
+#include "shill/refptr_types.h"
+
+using std::string;
+
 namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
 
-using ::testing::Return;
-using std::string;
-
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
-                         const std::string& name)
-    : Service(control_interface, dispatcher, name) {
+                         const ProfileRefPtr &profile,
+                         const EntryRefPtr &entry,
+                         const string& name)
+    : Service(control_interface, dispatcher, profile, entry, name) {
 }
 
 MockService::~MockService() {}

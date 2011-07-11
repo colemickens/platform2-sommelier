@@ -60,6 +60,7 @@ SHILL_OBJS = \
 	dhcp_provider.o \
 	dhcpcd_proxy.o \
 	endpoint.o \
+	ephemeral_profile.o \
 	error.o \
 	ethernet.o \
 	ethernet_service.o \
@@ -105,6 +106,7 @@ TEST_OBJS = \
 	mock_adaptors.o \
 	mock_control.o \
 	mock_device.o \
+	mock_profile.o \
 	mock_service.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \

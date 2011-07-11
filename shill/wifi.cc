@@ -18,6 +18,9 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/entry.h"
+#include "shill/manager.h"
+#include "shill/profile.h"
 #include "shill/shill_event.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
@@ -289,9 +292,15 @@ void WiFi::RealScanDone() {
       // XXX key mode should reflect endpoint params (not always use
       // kSupplicantKeyModeNone)
       ServiceRefPtr service(
-          new WiFiService(control_interface_, dispatcher_, this,
-                          endpoint.ssid(), endpoint.network_mode(),
-                          kSupplicantKeyModeNone, service_name));
+          new WiFiService(control_interface_,
+                          dispatcher_,
+                          this,
+                          manager_->ActiveProfile(),
+                          new Entry(manager_->ActiveProfile()->name()),
+                          endpoint.ssid(),
+                          endpoint.network_mode(),
+                          kSupplicantKeyModeNone,
+                          service_name));
       services_.push_back(service);
       service_by_private_id_[service_id_private] = service;
     }

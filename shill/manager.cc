@@ -17,9 +17,11 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
+#include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
+#include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
@@ -33,6 +35,9 @@ Manager::Manager(ControlInterface *control_interface,
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
     running_(false) {
+  HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
+                            &Manager::GetActiveProfileName,
+                            NULL);
   HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
                              &Manager::AvailableTechnologies,
                              NULL);
@@ -64,8 +69,9 @@ Manager::Manager(ControlInterface *control_interface,
                              NULL);
 
   // TODO(cmasone): Wire these up once we actually put in profile support.
-  // known_properties_.push_back(flimflam::kActiveProfileProperty);
   // known_properties_.push_back(flimflam::kProfilesProperty);
+
+  profiles_.push_back(new DefaultProfile(control_interface, &glib_, props_));
 
   VLOG(2) << "Manager initialized.";
 }
@@ -82,6 +88,10 @@ void Manager::Start() {
 void Manager::Stop() {
   running_ = false;
   adaptor_->UpdateRunning();
+}
+
+const ProfileRefPtr &Manager::ActiveProfile() {
+  return profiles_.back();
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
@@ -207,6 +217,10 @@ vector<string> Manager::EnumerateAvailableServices() {
 vector<string> Manager::EnumerateWatchedServices() {
   // TODO(cmasone): Implement this for real by querying the active profile.
   return EnumerateAvailableServices();
+}
+
+string Manager::GetActiveProfileName() {
+  return ActiveProfile()->name();
 }
 
 }  // namespace shill
