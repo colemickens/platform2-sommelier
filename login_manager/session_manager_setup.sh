@@ -28,6 +28,8 @@ export DISPLAY=:0.0
 export GTK_IM_MODULE=ibus
 # Change the directory for ibus-daemon socket file from ~/.config/ibus/bus/ to
 # /tmp/.ibus-socket-<unique random string>/ to fix crosbug.com/16501 and 17270.
+# Every time when you change IBUS_ADDRESS_FILE, you should also update the
+# variable in desktopui_ImeTest.py in autotest.git not to break IME autotests.
 export IBUS_ADDRESS_FILE=\
 "$(sudo -u ${USER} /bin/mktemp -d /tmp/.ibus-socket-XXXXXXXXXX)\
 /ibus-socket-file"
