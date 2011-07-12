@@ -11,6 +11,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
 #include "shill/property_store.h"
@@ -25,6 +26,7 @@ class Endpoint;
 class Error;
 class EventDispatcher;
 class ServiceAdaptorInterface;
+class StoreInterface;
 
 // A Service is a uniquely named entity, which the system can
 // connect in order to begin sending and receiving network traffic.
@@ -34,6 +36,10 @@ class ServiceAdaptorInterface;
 // becomes populated over time.
 class Service : public base::RefCounted<Service> {
  public:
+  static const char kCheckPortalAuto[];
+  static const char kCheckPortalFalse[];
+  static const char kCheckPortalTrue[];
+
   enum ConnectFailure {
     kServiceFailureUnknown,
     kServiceFailureActivationFailure,
@@ -80,16 +86,26 @@ class Service : public base::RefCounted<Service> {
           const ProfileRefPtr &profile,
           const std::string& name);
   virtual ~Service();
+
   virtual void Connect() = 0;
   virtual void Disconnect() = 0;
 
   virtual bool IsActive() { return false; }
 
-  // Returns a string that is guaranteed to uniquely identify this
-  // Service instance.
-  virtual const std::string &UniqueName() { return name_; }
+  // Returns a string that is guaranteed to uniquely identify this Service
+  // instance.
+  const std::string &UniqueName() { return name_; }
 
   std::string GetRpcIdentifier();
+
+  // Returns the unique persistent storage identifier for the service.
+  std::string GetStorageIdentifier();
+
+  // Loads the service from persistent |storage|. Returns true on success.
+  virtual bool Load(StoreInterface *storage);
+
+  // Saves the service to persistent |storage|. Returns true on success.
+  virtual bool Save(StoreInterface *storage);
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
@@ -97,6 +113,8 @@ class Service : public base::RefCounted<Service> {
   PropertyStore *store() { return &store_; }
 
  protected:
+  static const int kPriorityNone = 0;
+
   virtual std::string CalculateState() = 0;
 
   void HelpRegisterDerivedBool(const std::string &name,
@@ -105,6 +123,18 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterDerivedString(const std::string &name,
                                  std::string(Service::*get)(void),
                                  bool(Service::*set)(const std::string&));
+
+  // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
+  // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
+  // value is encrypted.
+  void SaveString(StoreInterface *storage,
+                  const std::string &key,
+                  const std::string &value,
+                  bool crypted,
+                  bool save);
+
+  void LoadEapCredentials(StoreInterface *storage);
+  void SaveEapCredentials(StoreInterface *storage);
 
   // Properties
   bool auto_connect_;
@@ -123,6 +153,37 @@ class Service : public base::RefCounted<Service> {
   EventDispatcher *dispatcher_;
 
  private:
+  friend class ServiceAdaptorInterface;
+  FRIEND_TEST(ServiceTest, Constructor);
+  FRIEND_TEST(ServiceTest, Save);
+  FRIEND_TEST(ServiceTest, SaveString);
+  FRIEND_TEST(ServiceTest, SaveStringCrypted);
+  FRIEND_TEST(ServiceTest, SaveStringDontSave);
+  FRIEND_TEST(ServiceTest, SaveStringEmpty);
+
+  static const char kStorageAutoConnect[];
+  static const char kStorageCheckPortal[];
+  static const char kStorageEapAnonymousIdentity[];
+  static const char kStorageEapCACert[];
+  static const char kStorageEapCACertID[];
+  static const char kStorageEapCertID[];
+  static const char kStorageEapClientCert[];
+  static const char kStorageEapEap[];
+  static const char kStorageEapIdentity[];
+  static const char kStorageEapInnerEap[];
+  static const char kStorageEapKeyID[];
+  static const char kStorageEapKeyManagement[];
+  static const char kStorageEapPIN[];
+  static const char kStorageEapPassword[];
+  static const char kStorageEapPrivateKey[];
+  static const char kStorageEapPrivateKeyPassword[];
+  static const char kStorageEapUseSystemCAs[];
+  static const char kStorageFavorite[];
+  static const char kStorageName[];
+  static const char kStoragePriority[];
+  static const char kStorageProxyConfig[];
+  static const char kStorageSaveCredentials[];
+
   virtual std::string GetDeviceRpcId() = 0;
 
   std::string GetProfileRpcId() {
@@ -136,7 +197,6 @@ class Service : public base::RefCounted<Service> {
   Connection *connection_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
 
-  friend class ServiceAdaptorInterface;
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

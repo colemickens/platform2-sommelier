@@ -20,16 +20,19 @@
 #include "shill/mock_control.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
+#include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
 
 using std::map;
 using std::string;
 using std::vector;
-using ::testing::_;
-using ::testing::NiceMock;
-using ::testing::Return;
-using ::testing::Test;
+using testing::_;
+using testing::AtLeast;
+using testing::NiceMock;
+using testing::Return;
+using testing::StrictMock;
+using testing::Test;
 
 namespace shill {
 
@@ -57,6 +60,11 @@ const char ServiceTest::kMockServiceName[] = "mock-service";
 const char ServiceTest::kMockDeviceRpcId[] = "mock-device-rpc";
 
 const char ServiceTest::kProfileName[] = "profile";
+
+TEST_F(ServiceTest, Constructor) {
+  EXPECT_TRUE(service_->save_credentials_);
+  EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+}
 
 TEST_F(ServiceTest, GetProperties) {
   EXPECT_CALL(*service_.get(), CalculateState()).WillRepeatedly(Return(""));
@@ -183,6 +191,73 @@ TEST_F(ServiceTest, MoveService) {
     EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
               expected);
   }
+}
+
+TEST_F(ServiceTest, GetStorageIdentifier) {
+  EXPECT_EQ(kMockServiceName, service_->GetStorageIdentifier());
+}
+
+TEST_F(ServiceTest, Load) {
+  NiceMock<MockStore> storage;
+  const string id = kMockServiceName;
+  EXPECT_CALL(storage, ContainsGroup(id)).WillOnce(Return(true));
+  EXPECT_CALL(storage, GetString(id, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->Load(&storage));
+}
+
+TEST_F(ServiceTest, LoadFail) {
+  StrictMock<MockStore> storage;
+  const string id = kMockServiceName;
+  EXPECT_CALL(storage, ContainsGroup(kMockServiceName)).WillOnce(Return(false));
+  EXPECT_FALSE(service_->Load(&storage));
+}
+
+TEST_F(ServiceTest, SaveString) {
+  MockStore storage;
+  static const char kKey[] = "test-key";
+  static const char kData[] = "test-data";
+  EXPECT_CALL(storage, SetString(kMockServiceName, kKey, kData))
+      .WillOnce(Return(true));
+  service_->SaveString(&storage, kKey, kData, false, true);
+}
+
+TEST_F(ServiceTest, SaveStringCrypted) {
+  MockStore storage;
+  static const char kKey[] = "test-key";
+  static const char kData[] = "test-data";
+  EXPECT_CALL(storage, SetCryptedString(kMockServiceName, kKey, kData))
+      .WillOnce(Return(true));
+  service_->SaveString(&storage, kKey, kData, true, true);
+}
+
+TEST_F(ServiceTest, SaveStringDontSave) {
+  MockStore storage;
+  static const char kKey[] = "test-key";
+  EXPECT_CALL(storage, DeleteKey(kMockServiceName, kKey))
+      .WillOnce(Return(true));
+  service_->SaveString(&storage, kKey, "data", false, false);
+}
+
+TEST_F(ServiceTest, SaveStringEmpty) {
+  MockStore storage;
+  static const char kKey[] = "test-key";
+  EXPECT_CALL(storage, DeleteKey(kMockServiceName, kKey))
+      .WillOnce(Return(true));
+  service_->SaveString(&storage, kKey, "", true, true);
+}
+
+TEST_F(ServiceTest, Save) {
+  NiceMock<MockStore> storage;
+  const string id = kMockServiceName;
+  EXPECT_CALL(storage, SetString(id, _, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, DeleteKey(id, _))
+      .Times(AtLeast(1))
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(service_->Save(&storage));
 }
 
 }  // namespace shill
