@@ -14,7 +14,6 @@
 #include <gmock/gmock.h>
 
 #include "shill/dbus_adaptor.h"
-#include "shill/entry.h"
 #include "shill/ethernet_service.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
@@ -38,14 +37,12 @@ class ServiceTest : public PropertyStoreTest {
  public:
   static const char kMockServiceName[];
   static const char kMockDeviceRpcId[];
-  static const char kEntryName[];
   static const char kProfileName[];
 
   ServiceTest()
       : service_(new MockService(&control_interface_,
                                  &dispatcher_,
                                  new MockProfile(&control_interface_, &glib_),
-                                 new Entry(kEntryName),
                                  kMockServiceName)) {
   }
 
@@ -58,8 +55,6 @@ class ServiceTest : public PropertyStoreTest {
 const char ServiceTest::kMockServiceName[] = "mock-service";
 
 const char ServiceTest::kMockDeviceRpcId[] = "mock-device-rpc";
-
-const char ServiceTest::kEntryName[] = "entry";
 
 const char ServiceTest::kProfileName[] = "profile";
 
@@ -150,36 +145,40 @@ TEST_F(ServiceTest, Dispatch) {
   }
 }
 
-TEST_F(ServiceTest, MoveEntry) {
-  // Create a Profile with an Entry in it that should back our Service.
-  EntryRefPtr entry(new Entry(kProfileName));
+TEST_F(ServiceTest, MoveService) {
+  // I want to ensure that the Profiles are managing this Service object
+  // lifetime properly, so I can't hold a ref to it here.
   ProfileRefPtr profile(new Profile(&control_interface_, &glib_));
-  profile->entries_[kEntryName] = entry;
+  {
+    ServiceRefPtr s2(
+        new MockService(&control_interface_,
+                        &dispatcher_,
+                        new MockProfile(&control_interface_, &glib_),
+                        kMockServiceName));
+    profile->services_[kMockServiceName] = s2;
+  }
 
-  scoped_refptr<MockService> service(new MockService(&control_interface_,
-                                                     &dispatcher_,
-                                                     profile,
-                                                     entry,
-                                                     kMockServiceName));
-  // Now, move the entry to another profile.
+  // Now, move the service to another profile.
   ProfileRefPtr profile2(new Profile(&control_interface_, &glib_));
-  map<string, EntryRefPtr>::iterator it = profile->entries_.find(kEntryName);
-  ASSERT_TRUE(it != profile->entries_.end());
+  map<string, ServiceRefPtr>::iterator it =
+      profile->services_.find(kMockServiceName);
+  ASSERT_TRUE(it != profile->services_.end());
 
-  profile2->AdoptEntry(it->first, it->second);
-  profile->entries_.erase(it);
-  // Force destruction of the original Profile, to ensure that the Entry
+  profile2->AdoptService(it->first, it->second);
+  // Force destruction of the original Profile, to ensure that the Service
   // is kept alive and populated with data.
   profile = NULL;
   {
+    map<string, ServiceRefPtr>::iterator it =
+        profile2->services_.find(kMockServiceName);
     Error error(Error::kInvalidProperty, "");
     ::DBus::Error dbus_error;
     map<string, ::DBus::Variant> props;
     bool expected = true;
-    service->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
-                                      expected,
-                                      &error);
-    DBusAdaptor::GetProperties(service->store(), &props, &dbus_error);
+    it->second->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
+                                         expected,
+                                         &error);
+    DBusAdaptor::GetProperties(it->second->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kAutoConnectProperty) == props.end());
     EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
               expected);

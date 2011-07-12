@@ -22,9 +22,8 @@ class EventDispatcher;
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          const ProfileRefPtr &profile,
-                         const EntryRefPtr &entry,
                          const string& name)
-    : Service(control_interface, dispatcher, profile, entry, name) {
+    : Service(control_interface, dispatcher, profile, name) {
 }
 
 MockService::~MockService() {}

@@ -21,7 +21,6 @@ class WiFiService : public Service {
               EventDispatcher *dispatcher,
               const WiFiRefPtr &device,
               const ProfileRefPtr &profile,
-              const EntryRefPtr &entry,
               const std::vector<uint8_t> ssid,
               uint32_t mode,
               const std::string &key_management,

@@ -55,12 +55,29 @@ class Service : public base::RefCounted<Service> {
     kServiceStateDisconnected,
     kServiceStateFailure
   };
+  struct EapCredentials {
+    EapCredentials() : use_system_cas(false) {}
+    std::string identity;
+    std::string eap;
+    std::string inner_eap;
+    std::string anonymous_identity;
+    std::string client_cert;
+    std::string cert_id;
+    std::string private_key;
+    std::string private_key_password;
+    std::string key_id;
+    std::string ca_cert;
+    std::string ca_cert_id;
+    bool use_system_cas;
+    std::string pin;
+    std::string password;
+    std::string key_management;
+  };
 
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
           const ProfileRefPtr &profile,
-          const EntryRefPtr &entry,
           const std::string& name);
   virtual ~Service();
   virtual void Connect() = 0;
@@ -97,9 +114,10 @@ class Service : public base::RefCounted<Service> {
   bool favorite_;
   int32 priority_;
   std::string proxy_config_;
+  bool save_credentials_;
+  EapCredentials eap_;  // Only saved if |save_credentials_| is true.
 
   ProfileRefPtr profile_;
-  EntryRefPtr entry_;
   PropertyStore store_;
 
   EventDispatcher *dispatcher_;
