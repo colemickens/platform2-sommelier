@@ -22,6 +22,7 @@ class CellularService : public Service {
                   EventDispatcher *dispatcher,
                   const CellularRefPtr &device,
                   const ProfileRefPtr &profile,
+                  const EntryRefPtr &entry,
                   const std::string& name);
   ~CellularService();
   void Connect();

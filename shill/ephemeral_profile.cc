@@ -11,6 +11,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/entry.h"
 #include "shill/manager.h"
 
 using std::map;
@@ -27,12 +28,12 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 
 EphemeralProfile::~EphemeralProfile() {}
 
-bool EphemeralProfile::MoveToActiveProfile(const std::string &name) {
-  map<string, ServiceRefPtr>::iterator it = services_.find(name);
-  if (it == services_.end())
+bool EphemeralProfile::MoveToActiveProfile(const std::string &entry_name) {
+  map<string, EntryRefPtr>::iterator it = entries_.find(entry_name);
+  if (it == entries_.end())
     return false;
-  manager_->ActiveProfile()->AdoptService(name, it->second);
-  services_.erase(it);
+  manager_->ActiveProfile()->AdoptEntry(entry_name, it->second);
+  entries_.erase(it);
   return true;
 }
 

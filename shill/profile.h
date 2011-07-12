@@ -43,10 +43,10 @@ class Profile : public base::RefCounted<Profile> {
 
   PropertyStore *store() { return &store_; }
 
-  // Begin managing the persistence of |service|, addressable by |name|.
-  void AdoptService(const std::string &name, const ServiceRefPtr &service);
+  // Begin managing the persistence of |entry|, addressable by |entry_name|.
+  void AdoptEntry(const std::string &entry_name, const EntryRefPtr &entry);
 
-  virtual bool MoveToActiveProfile(const std::string &name) {
+  virtual bool MoveToActiveProfile(const std::string &entry_name) {
     return false;
   }
 
@@ -74,14 +74,14 @@ class Profile : public base::RefCounted<Profile> {
 
   // Entries representing services that are persisted to disk.
   // A std::map because we will need random access for GetEntry(), but usually
-  // will want to iterate over all Services.
-  std::map<std::string, ServiceRefPtr> services_;
+  // will want to iterate over all Entries.
+  std::map<std::string, EntryRefPtr> entries_;
 
  private:
   friend class ProfileAdaptorInterface;
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
-  // TODO(cmasone): once we can add services organically, take this out.
-  FRIEND_TEST(ServiceTest, MoveService);
+  // TODO(cmasone): once we can add entries organically, take this out.
+  FRIEND_TEST(ServiceTest, MoveEntry);
 
   static bool IsValidIdentifierToken(const std::string &token);
 

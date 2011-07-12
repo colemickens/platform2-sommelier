@@ -14,6 +14,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/entry.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
@@ -106,12 +107,14 @@ TEST_F(ManagerTest, ServiceRegistration) {
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
                                 new MockProfile(&control_interface_, &glib_),
+                                new Entry("mock"),
                                 kService1));
 
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
                                 new MockProfile(&control_interface_, &glib_),
+                                new Entry("mock"),
                                 kService2));
 
   manager_.RegisterService(mock_service);

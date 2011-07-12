@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/entry.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -59,6 +60,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
         service_(new MockService(&control_interface_,
                                  &dispatcher_,
                                  new MockProfile(&control_interface_, &glib_),
+                                 new Entry("mock"),
                                  "mock")) {
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);

@@ -19,6 +19,7 @@ class EthernetService : public Service {
                   EventDispatcher *dispatcher,
                   const EthernetRefPtr &device,
                   const ProfileRefPtr &profile,
+                  const EntryRefPtr &entry,
                   const std::string& name);
   ~EthernetService();
   void Connect();

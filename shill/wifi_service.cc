@@ -11,6 +11,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/entry.h"
 #include "shill/shill_event.h"
 #include "shill/wifi.h"
 
@@ -22,27 +23,28 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          const WiFiRefPtr &device,
                          const ProfileRefPtr &profile,
+                         const EntryRefPtr &entry,
                          const std::vector<uint8_t> ssid,
                          uint32_t mode,
                          const std::string &key_management,
                          const std::string &name)
-    : Service(control_interface, dispatcher, profile, name),
+    : Service(control_interface, dispatcher, profile, entry, name),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid),
       mode_(mode) {
-  eap_.key_management = key_management;
+  entry_->eap.key_management = key_management;
 
   // TODO(cmasone): Figure out if mode_ should be a string or what
-  // store_.RegisterString(flimflam::kModeProperty, &mode_);
+  // store_.RegisterString(flimflam::kModeProperty, &entry_->mode);
   store_.RegisterString(flimflam::kPassphraseProperty, &passphrase_);
   store_.RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
-  store_.RegisterConstString(flimflam::kSecurityProperty, &security_);
+  store_.RegisterConstString(flimflam::kSecurityProperty, &entry_->security);
   store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store_.RegisterConstString(flimflam::kTypeProperty, &type_);
 
   store_.RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
-  store_.RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
+  store_.RegisterConstBool(flimflam::kWifiHiddenSsid, &entry_->hidden_ssid);
   store_.RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store_.RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store_.RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
@@ -71,7 +73,7 @@ uint32_t WiFiService::mode() const {
 }
 
 const std::string &WiFiService::key_management() const {
-  return eap_.key_management;
+  return entry_->eap.key_management;
 }
 
 const std::vector<uint8_t> &WiFiService::ssid() const {

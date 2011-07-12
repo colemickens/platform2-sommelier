@@ -22,6 +22,7 @@ class MockService : public Service {
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
               const ProfileRefPtr &profile,
+              const EntryRefPtr &entry,
               const std::string& name);
   virtual ~MockService();
 

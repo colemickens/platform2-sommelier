@@ -12,6 +12,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/entry.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
 
@@ -44,9 +45,10 @@ Profile::Profile(ControlInterface *control_interface,
 
 Profile::~Profile() {}
 
-void Profile::AdoptService(const std::string &name,
-                           const ServiceRefPtr &service) {
-  services_[name] = service;
+void Profile::AdoptEntry(const std::string &entry_name,
+                         const EntryRefPtr &entry) {
+  entry->profile_name = name();
+  entries_[entry_name] = entry;
 }
 
 bool Profile::IsValidIdentifierToken(const std::string &token) {
