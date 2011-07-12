@@ -18,7 +18,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
-#include "shill/entry.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/shill_event.h"
@@ -296,7 +295,6 @@ void WiFi::RealScanDone() {
                           dispatcher_,
                           this,
                           manager_->ActiveProfile(),
-                          new Entry(manager_->ActiveProfile()->name()),
                           endpoint.ssid(),
                           endpoint.network_mode(),
                           kSupplicantKeyModeNone,

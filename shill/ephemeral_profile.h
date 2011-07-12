@@ -29,7 +29,7 @@ class EphemeralProfile : public Profile {
                    Manager *manager);
   virtual ~EphemeralProfile();
 
-  virtual bool MoveToActiveProfile(const std::string &entry_name);
+  virtual bool MoveToActiveProfile(const std::string &name);
 
  private:
   Manager *manager_;

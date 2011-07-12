@@ -55,8 +55,8 @@ class DeviceInfoTest : public Test {
   void AddLink();
 
  protected:
-  static const int kTestSocket = 123;
-  static const int kTestDeviceIndex = 123456;
+  static const int kTestSocket;
+  static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
 
   void StartRTNLHandler();
@@ -71,6 +71,8 @@ class DeviceInfoTest : public Test {
   ScopedRunnableMethodFactory<DeviceInfoTest> task_factory_;
 };
 
+const int DeviceInfoTest::kTestSocket = 123;
+const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
 
 void DeviceInfoTest::StartRTNLHandler() {

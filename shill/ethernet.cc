@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/ethernet.h"
+
 #include <time.h>
 #include <stdio.h>
 #include <netinet/ether.h>
@@ -16,8 +18,6 @@
 #include "shill/device_info.h"
 #include "shill/manager.h"
 #include "shill/shill_event.h"
-#include "shill/entry.h"
-#include "shill/ethernet.h"
 #include "shill/ethernet_service.h"
 #include "shill/profile.h"
 #include "shill/rtnl_handler.h"
@@ -41,7 +41,6 @@ Ethernet::Ethernet(ControlInterface *control_interface,
                                    dispatcher,
                                    this,
                                    manager->ActiveProfile(),
-                                   new Entry(manager->ActiveProfile()->name()),
                                    "service-" + link_name)),
       link_up_(false) {
   VLOG(2) << "Ethernet device " << link_name << " initialized.";
