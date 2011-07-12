@@ -76,9 +76,10 @@ if [ "$ROOTDEV_RET_CODE" = "0" ]; then
 fi
 
 # DEVMODE is used to determine if we're booted in developer mode,
-# by checking only the developer and recovery switch states.
+# by checking the kernel commandline or the hardware developer switch (both
+# via crossystem cros_debug).
 # Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
-crossystem devsw_boot?1 recoverysw_boot?0
+crossystem cros_debug?1
 DEVMODE=$((! $?))
 
 # Check if we need to perform firmware update.
@@ -240,8 +241,14 @@ mount -n --bind /mnt/stateful_partition/home /home
 #mod_for_test#mount -n -o remount,exec,suid /tmp
 
 # Mount stateful partition for dev packages
-# TODO(sosa@chromium.org) - Use $DEVMODE value?
-if [ -f /root/.dev_mode ] ; then
+# TODO(arkaitzr@chromium.org) - Only use DEVMODE when cros_debug is
+# correctly set in a test VM after updating itself to itself (that is, it does
+# not fail cros_au_test_harness).
+if [ "$DEVMODE" = "1" -o -f /root/.dev_mode ]; then
+  # Create dev_image directory in base images in developer mode.
+  if [ ! -d /mnt/stateful_partition/dev_image ]; then
+    mkdir -p -m 0755 /mnt/stateful_partition/dev_image
+  fi
   # Mount and then remount to enable exec/suid
   mount -n --bind /mnt/stateful_partition/dev_image /usr/local
   mount -n -o remount,exec,suid /usr/local
