@@ -18,7 +18,6 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
@@ -45,7 +44,7 @@ class ServiceTest : public PropertyStoreTest {
   ServiceTest()
       : service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 new MockProfile(&control_interface_, &glib_),
+                                 &manager_,
                                  kMockServiceName)) {
   }
 
@@ -150,46 +149,6 @@ TEST_F(ServiceTest, Dispatch) {
                                              PropertyStoreTest::kBoolV,
                                              &error));
     EXPECT_EQ(invalid_args_, error.name());
-  }
-}
-
-TEST_F(ServiceTest, MoveService) {
-  // I want to ensure that the Profiles are managing this Service object
-  // lifetime properly, so I can't hold a ref to it here.
-  ProfileRefPtr profile(new Profile(&control_interface_, &glib_));
-  {
-    ServiceRefPtr s2(
-        new MockService(&control_interface_,
-                        &dispatcher_,
-                        new MockProfile(&control_interface_, &glib_),
-                        kMockServiceName));
-    profile->services_[kMockServiceName] = s2;
-  }
-
-  // Now, move the service to another profile.
-  ProfileRefPtr profile2(new Profile(&control_interface_, &glib_));
-  map<string, ServiceRefPtr>::iterator it =
-      profile->services_.find(kMockServiceName);
-  ASSERT_TRUE(it != profile->services_.end());
-
-  profile2->AdoptService(it->first, it->second);
-  // Force destruction of the original Profile, to ensure that the Service
-  // is kept alive and populated with data.
-  profile = NULL;
-  {
-    map<string, ServiceRefPtr>::iterator it =
-        profile2->services_.find(kMockServiceName);
-    Error error(Error::kInvalidProperty, "");
-    ::DBus::Error dbus_error;
-    map<string, ::DBus::Variant> props;
-    bool expected = true;
-    it->second->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
-                                         expected,
-                                         &error);
-    DBusAdaptor::GetProperties(it->second->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kAutoConnectProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
-              expected);
   }
 }
 

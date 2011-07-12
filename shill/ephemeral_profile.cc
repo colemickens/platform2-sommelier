@@ -21,19 +21,13 @@ namespace shill {
 EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
                                    GLib *glib,
                                    Manager *manager)
-    : Profile(control_interface, glib),
-      manager_(manager) {
+    : Profile(control_interface, glib, manager) {
 }
 
 EphemeralProfile::~EphemeralProfile() {}
 
-bool EphemeralProfile::MoveToActiveProfile(const std::string &name) {
-  map<string, ServiceRefPtr>::iterator it = services_.find(name);
-  if (it == services_.end())
-    return false;
-  manager_->ActiveProfile()->AdoptService(name, it->second);
-  services_.erase(it);
-  return true;
+void EphemeralProfile::Finalize() {
+  services_.clear();
 }
 
 }  // namespace shill

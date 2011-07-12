@@ -25,6 +25,7 @@ class ControlInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
+class Manager;
 class ServiceAdaptorInterface;
 class StoreInterface;
 
@@ -83,7 +84,7 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          const ProfileRefPtr &profile,
+          Manager *manager,
           const std::string& name);
   virtual ~Service();
 
@@ -94,9 +95,9 @@ class Service : public base::RefCounted<Service> {
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
-  const std::string &UniqueName() { return name_; }
+  const std::string &UniqueName() const { return name_; }
 
-  std::string GetRpcIdentifier();
+  virtual std::string GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
   std::string GetStorageIdentifier();
@@ -109,6 +110,9 @@ class Service : public base::RefCounted<Service> {
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
+
+  const ProfileRefPtr &profile() const;
+  void set_profile(const ProfileRefPtr &p);
 
   PropertyStore *store() { return &store_; }
 
@@ -196,6 +200,7 @@ class Service : public base::RefCounted<Service> {
   Configuration *configuration_;
   Connection *connection_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
+  Manager *manager_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

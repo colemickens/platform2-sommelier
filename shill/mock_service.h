@@ -15,20 +15,22 @@ namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
+class Manager;
 
 class MockService : public Service {
  public:
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              const ProfileRefPtr &profile,
+              Manager *manager,
               const std::string& name);
   virtual ~MockService();
 
-  MOCK_METHOD0(Connect, void(void));
-  MOCK_METHOD0(Disconnect, void(void));
-  MOCK_METHOD0(CalculateState, std::string(void));
-  MOCK_METHOD0(GetDeviceRpcId, std::string(void));
+  MOCK_METHOD0(Connect, void());
+  MOCK_METHOD0(Disconnect, void());
+  MOCK_METHOD0(CalculateState, std::string());
+  MOCK_METHOD0(GetDeviceRpcId, std::string());
+  MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
  private:
   DISALLOW_COPY_AND_ASSIGN(MockService);
 };

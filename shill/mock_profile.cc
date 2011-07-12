@@ -18,8 +18,10 @@ class ControlInterface;
 class GLib;
 class Manager;
 
-MockProfile::MockProfile(ControlInterface *control_interface, GLib *glib)
-    : Profile(control_interface, glib) {
+MockProfile::MockProfile(ControlInterface *control_interface,
+                         GLib *glib,
+                         Manager *manager)
+    : Profile(control_interface, glib, manager) {
 }
 
 MockProfile::~MockProfile() {}

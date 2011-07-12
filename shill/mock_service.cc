@@ -13,17 +13,20 @@
 #include "shill/refptr_types.h"
 
 using std::string;
+using testing::Return;
 
 namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
+class Manager;
 
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
-                         const ProfileRefPtr &profile,
+                         Manager *manager,
                          const string& name)
-    : Service(control_interface, dispatcher, profile, name) {
+    : Service(control_interface, dispatcher, manager, name) {
+  ON_CALL(*this, GetRpcIdentifier()).WillByDefault(Return(""));
 }
 
 MockService::~MockService() {}

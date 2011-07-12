@@ -47,6 +47,8 @@ class Manager {
   void Stop();
 
   const ProfileRefPtr &ActiveProfile();
+  bool MoveToActiveProfile(const ProfileRefPtr &from,
+                           const ServiceRefPtr &to_move);
 
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceConstRefPtr &to_forget);
@@ -58,6 +60,7 @@ class Manager {
                           std::vector<DeviceRefPtr> *found);
 
   ServiceRefPtr FindService(const std::string& name);
+  std::vector<std::string> EnumerateAvailableServices();
 
   PropertyStore *store() { return &store_; }
 
@@ -68,9 +71,7 @@ class Manager {
   std::string DefaultTechnology();
   std::vector<std::string> EnabledTechnologies();
   std::vector<std::string> EnumerateDevices();
-  // TODO(cmasone): these two should be implemented by asking the currently
-  // active profile, once we have such a thing.
-  std::vector<std::string> EnumerateAvailableServices();
+  // TODO(cmasone): This should be implemented by filtering |services_|.
   std::vector<std::string> EnumerateWatchedServices();
   std::string GetActiveProfileName();
 
@@ -86,6 +87,7 @@ class Manager {
   ModemInfo modem_info_;
   bool running_;
   std::vector<DeviceRefPtr> devices_;
+  // We store Services in a vector, because we want to keep them sorted.
   std::vector<ServiceRefPtr> services_;
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;

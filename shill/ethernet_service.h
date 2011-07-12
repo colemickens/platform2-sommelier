@@ -13,12 +13,16 @@
 
 namespace shill {
 
+class ControlInterface;
+class EventDispatcher;
+class Manager;
+
 class EthernetService : public Service {
  public:
   EthernetService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
+                  Manager *manager,
                   const EthernetRefPtr &device,
-                  const ProfileRefPtr &profile,
                   const std::string& name);
   ~EthernetService();
   void Connect();

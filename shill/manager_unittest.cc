@@ -4,12 +4,15 @@
 
 #include "shill/manager.h"
 
+#include <set>
+
 #include <glib.h>
 
 #include <base/callback_old.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
+#include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -23,9 +26,9 @@
 #include "shill/shill_event.h"
 
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
-
 
 namespace shill {
 using ::testing::Test;
@@ -35,6 +38,8 @@ using ::testing::Return;
 
 class ManagerTest : public PropertyStoreTest {
  public:
+  static const char kMockServiceName[];
+
   ManagerTest()
       : factory_(this),
         mock_device_(new NiceMock<MockDevice>(&control_interface_,
@@ -61,6 +66,8 @@ class ManagerTest : public PropertyStoreTest {
   scoped_refptr<MockDevice> mock_device_;
   scoped_refptr<MockDevice> mock_device2_;
 };
+
+const char ManagerTest::kMockServiceName[] = "mock-service";
 
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager_.store()->Contains(flimflam::kStateProperty));
@@ -105,17 +112,25 @@ TEST_F(ManagerTest, ServiceRegistration) {
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                new MockProfile(&control_interface_, &glib_),
+                                &manager_,
                                 kService1));
-
+  EXPECT_CALL(*mock_service.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(kService1));
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                new MockProfile(&control_interface_, &glib_),
+                                &manager_,
                                 kService2));
+  EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(kService2));
 
   manager_.RegisterService(mock_service);
   manager_.RegisterService(mock_service2);
+
+  vector<string> rpc_ids = manager_.EnumerateAvailableServices();
+  set<string> ids(rpc_ids.begin(), rpc_ids.end());
+  EXPECT_EQ(ids.count(mock_service->GetRpcIdentifier()), 1);
+  EXPECT_EQ(ids.count(mock_service2->GetRpcIdentifier()), 1);
 
   EXPECT_TRUE(manager_.FindService(kService1).get() != NULL);
   EXPECT_TRUE(manager_.FindService(kService2).get() != NULL);
@@ -160,6 +175,43 @@ TEST_F(ManagerTest, GetDevicesProperty) {
     Strings devices =
         props[flimflam::kDevicesProperty].operator vector<string>();
     EXPECT_EQ(2, devices.size());
+  }
+}
+
+TEST_F(ManagerTest, MoveService) {
+  // I want to ensure that the Profiles are managing this Service object
+  // lifetime properly, so I can't hold a ref to it here.
+  ProfileRefPtr profile(new Profile(&control_interface_, &glib_, &manager_));
+  {
+    ServiceRefPtr s2(
+        new MockService(&control_interface_,
+                        &dispatcher_,
+                        &manager_,
+                        kMockServiceName));
+    profile->AdoptService(s2);
+    s2->set_profile(profile);
+  }
+
+  // Now, move the |service| to another profile.
+  manager_.MoveToActiveProfile(profile, profile->FindService(kMockServiceName));
+
+  // Force destruction of the original Profile, to ensure that the Service
+  // is kept alive and populated with data.
+  profile = NULL;
+  {
+    ServiceRefPtr serv(manager_.ActiveProfile()->FindService(kMockServiceName));
+    ASSERT_TRUE(serv.get() != NULL);
+    Error error(Error::kInvalidProperty, "");
+    ::DBus::Error dbus_error;
+    map<string, ::DBus::Variant> props;
+    bool expected = true;
+    serv->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
+                                   expected,
+                                   &error);
+    DBusAdaptor::GetProperties(serv->store(), &props, &dbus_error);
+    ASSERT_TRUE(ContainsKey(props, flimflam::kAutoConnectProperty));
+    EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
+              expected);
   }
 }
 

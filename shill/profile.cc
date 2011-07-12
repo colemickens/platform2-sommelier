@@ -4,18 +4,25 @@
 
 #include "shill/profile.h"
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
+#include <base/stl_util-inl.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
 
+using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -23,8 +30,10 @@ const char Profile::kGlobalStorageDir[] = "/var/cache/flimflam";
 const char Profile::kUserStorageDirFormat[] = "/home/%s/user/flimflam";
 
 Profile::Profile(ControlInterface *control_interface,
-                 GLib *glib)
-    : adaptor_(control_interface->CreateProfileAdaptor(this)),
+                 GLib *glib,
+                 Manager *manager)
+    : manager_(manager),
+      adaptor_(control_interface->CreateProfileAdaptor(this)),
       storage_(glib) {
   // flimflam::kCheckPortalListProperty: Registered in DefaultProfile
   // flimflam::kCountryProperty: Registered in DefaultProfile
@@ -33,20 +42,58 @@ Profile::Profile(ControlInterface *control_interface,
   // flimflam::kOfflineModeProperty: Registered in DefaultProfile
   // flimflam::kPortalURLProperty: Registered in DefaultProfile
 
-  // TODO(cmasone): Implement these once we figure out where Profiles fit.
-  // HelpRegisterDerivedStrings(flimflam::kServicesProperty,
-  //                            &Manager::EnumerateAvailableServices,
-  //                            NULL);
+  HelpRegisterDerivedStrings(flimflam::kServicesProperty,
+                             &Profile::EnumerateAvailableServices,
+                             NULL);
   // HelpRegisterDerivedStrings(flimflam::kEntriesProperty,
-  //                            &Manager::EnumerateEntries,
+  //                            &Profile::EnumerateEntries,
   //                            NULL);
 }
 
 Profile::~Profile() {}
 
-void Profile::AdoptService(const std::string &name,
-                           const ServiceRefPtr &service) {
-  services_[name] = service;
+bool Profile::AdoptService(const ServiceRefPtr &service) {
+  if (ContainsKey(services_, service->UniqueName()))
+    return false;
+  service->set_profile(this);
+  services_[service->UniqueName()] = service;
+  return true;
+}
+
+bool Profile::AbandonService(const string &name) {
+  map<string, ServiceRefPtr>::iterator to_abandon = services_.find(name);
+  if (to_abandon != services_.end()) {
+    services_.erase(to_abandon);
+    return true;
+  }
+  return false;
+}
+
+bool Profile::DemoteService(const string &name) {
+  map<string, ServiceRefPtr>::iterator to_demote = services_.find(name);
+  if (to_demote == services_.end())
+    return false;
+  return true;  // TODO(cmasone): mark |to_demote| as inactive or something.
+}
+
+bool Profile::MergeService(const ServiceRefPtr &service) {
+  map<string, ServiceRefPtr>::iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    if (Mergeable(it->second, service))
+      return true;  // TODO(cmasone): Perform merge.
+  }
+  return false;
+}
+
+ServiceRefPtr Profile::FindService(const std::string& name) {
+  if (ContainsKey(services_, name))
+    return services_[name];
+  return NULL;
+}
+
+void Profile::Finalize() {
+  // TODO(cmasone): Flush all of |services_| to disk if needed.
+  services_.clear();
 }
 
 bool Profile::IsValidIdentifierToken(const std::string &token) {
@@ -104,6 +151,27 @@ bool Profile::GetStoragePath(const Identifier &identifier, FilePath *path) {
   *path = dir.Append(base::StringPrintf("%s.profile",
                                         identifier.identifier.c_str()));
   return true;
+}
+
+vector<string> Profile::EnumerateAvailableServices() {
+  return manager_->EnumerateAvailableServices();
+}
+
+vector<string> Profile::EnumerateEntries() {
+  vector<string> rpc_ids;
+  map<string, ServiceRefPtr>::const_iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    rpc_ids.push_back(it->second->GetRpcIdentifier());
+  }
+  return rpc_ids;
+}
+
+void Profile::HelpRegisterDerivedStrings(const string &name,
+                                     Strings(Profile::*get)(void),
+                                     bool(Profile::*set)(const Strings&)) {
+  store_.RegisterDerivedStrings(
+      name,
+      StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));
 }
 
 }  // namespace shill

@@ -24,7 +24,10 @@ namespace shill {
 class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
-      : profile_(new DefaultProfile(&control_interface_, &glib_, properties_)) {
+      : profile_(new DefaultProfile(&control_interface_,
+                                    &glib_,
+                                    &manager_,
+                                    properties_)) {
   }
 
   virtual ~DefaultProfileTest() {}

@@ -39,8 +39,8 @@ Ethernet::Ethernet(ControlInterface *control_interface,
       service_registered_(false),
       service_(new EthernetService(control_interface,
                                    dispatcher,
+                                   manager,
                                    this,
-                                   manager->ActiveProfile(),
                                    "service-" + link_name)),
       link_up_(false) {
   VLOG(2) << "Ethernet device " << link_name << " initialized.";

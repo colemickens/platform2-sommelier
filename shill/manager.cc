@@ -20,6 +20,7 @@
 #include "shill/default_profile.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -36,7 +37,8 @@ Manager::Manager(ControlInterface *control_interface,
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
     modem_info_(control_interface, dispatcher, this, glib),
-    running_(false) {
+    running_(false),
+    ephemeral_profile_(new EphemeralProfile(control_interface, glib, this)) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileName,
                             NULL);
@@ -73,12 +75,20 @@ Manager::Manager(ControlInterface *control_interface,
   // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kProfilesProperty);
 
-  profiles_.push_back(new DefaultProfile(control_interface, glib, props_));
-
+  profiles_.push_back(new DefaultProfile(control_interface,
+                                         glib,
+                                         this,
+                                         props_));
   VLOG(2) << "Manager initialized.";
 }
 
-Manager::~Manager() {}
+Manager::~Manager() {
+  vector<ProfileRefPtr>::iterator it;
+  for (it = profiles_.begin(); it != profiles_.end(); ++it) {
+    (*it)->Finalize();
+  }
+  ephemeral_profile_->Finalize();
+}
 
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
@@ -97,6 +107,12 @@ void Manager::Stop() {
 
 const ProfileRefPtr &Manager::ActiveProfile() {
   return profiles_.back();
+}
+
+bool Manager::MoveToActiveProfile(const ProfileRefPtr &from,
+                                  const ServiceRefPtr &to_move) {
+  return ActiveProfile()->AdoptService(to_move) &&
+      from->AbandonService(to_move->UniqueName());
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
@@ -123,18 +139,30 @@ void Manager::DeregisterDevice(const DeviceConstRefPtr &to_forget) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
+  // This should look for |to_manage| in the real profiles and, if found,
+  // do...something...to merge the meaningful state, I guess.
+
+  // If not found, add it to the ephemeral profile
+  ephemeral_profile_->AdoptService(to_manage);
+
+  // Now add to OUR list.
+  // TODO(cmasone): Keep this list sorted.
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_manage.get() == it->get())
+    if (to_manage->UniqueName() == (*it)->UniqueName())
       return;
   }
   services_.push_back(to_manage);
 }
 
 void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
+  // If the service is in the ephemeral profile, destroy it.
+  if (!ephemeral_profile_->AbandonService(to_forget->UniqueName())) {
+    // if it's in one of the real profiles...um...I guess mark it unconnectable?
+  }
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_forget.get() == it->get()) {
+    if (to_forget->UniqueName() == (*it)->UniqueName()) {
       services_.erase(it);
       return;
     }
@@ -154,9 +182,8 @@ void Manager::FilterByTechnology(Device::Technology tech,
 ServiceRefPtr Manager::FindService(const std::string& name) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (name == (*it)->UniqueName()) {
+    if (name == (*it)->UniqueName())
       return *it;
-    }
   }
   return NULL;
 }
@@ -208,8 +235,6 @@ vector<string> Manager::EnumerateDevices() {
 }
 
 vector<string> Manager::EnumerateAvailableServices() {
-  // TODO(cmasone): This should, instead, be returned by calling into the
-  // currently active profile.
   vector<string> service_rpc_ids;
   for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
@@ -220,7 +245,7 @@ vector<string> Manager::EnumerateAvailableServices() {
 }
 
 vector<string> Manager::EnumerateWatchedServices() {
-  // TODO(cmasone): Implement this for real by querying the active profile.
+  // TODO(cmasone): Filter this list for services in appropriate states.
   return EnumerateAvailableServices();
 }
 

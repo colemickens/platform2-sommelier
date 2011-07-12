@@ -14,8 +14,9 @@ namespace shill {
 
 DefaultProfile::DefaultProfile(ControlInterface *control_interface,
                                GLib *glib,
+                               Manager *manager,
                                const Manager::Properties &manager_props)
-    : Profile(control_interface, glib) {
+    : Profile(control_interface, glib, manager) {
   store_.RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store_.RegisterConstString(flimflam::kCountryProperty,

@@ -24,6 +24,7 @@ namespace shill {
 class ControlInterface;
 class Error;
 class GLib;
+class Manager;
 class ProfileAdaptorInterface;
 
 class Profile : public base::RefCounted<Profile> {
@@ -36,19 +37,38 @@ class Profile : public base::RefCounted<Profile> {
   static const char kGlobalStorageDir[];
   static const char kUserStorageDirFormat[];
 
-  Profile(ControlInterface *control_interface, GLib *glib);
+  Profile(ControlInterface *control_interface, GLib *glib, Manager *manager);
   virtual ~Profile();
 
   const std::string &name() { return name_; }
 
   PropertyStore *store() { return &store_; }
 
-  // Begin managing the persistence of |service|, addressable by |name|.
-  void AdoptService(const std::string &name, const ServiceRefPtr &service);
+  // Begin managing the persistence of |service|.
+  // Returns true if |service| is new to this profile and was added,
+  // false if the |service| already existed.
+  bool AdoptService(const ServiceRefPtr &service);
 
-  virtual bool MoveToActiveProfile(const std::string &name) {
-    return false;
-  }
+  // Cease managing the persistence of the Service named |name|.
+  // Returns true if |name| was found and abandoned, false if not found.
+  bool AbandonService(const std::string &name);
+
+  // Continue persisting the Service named |name|, but don't consider it
+  // usable for connectivity.
+  // Returns true if |name| was found and demoted, false if not found.
+  bool DemoteService(const std::string &name);
+
+  // Determine if |service| represents a service that's already in |services_|.
+  // If so, merge them smartly and return true.  If not, return false.
+  bool MergeService(const ServiceRefPtr &service);
+
+  ServiceRefPtr FindService(const std::string& name);
+
+  std::vector<std::string> EnumerateAvailableServices();
+  std::vector<std::string> EnumerateEntries();
+
+  // Flush any pending entry info to disk and stop managing service persistence.
+  virtual void Finalize();
 
   // Parses a profile identifier. There're two acceptable forms of the |raw|
   // identifier: "identifier" and "~user/identifier". Both "user" and
@@ -68,13 +88,12 @@ class Profile : public base::RefCounted<Profile> {
   static bool GetStoragePath(const Identifier &identifier, FilePath *path);
 
  protected:
+  Manager *manager_;
+
   // Properties to be get/set via PropertyStore calls that must also be visible
   // in subclasses.
   PropertyStore store_;
 
-  // Entries representing services that are persisted to disk.
-  // A std::map because we will need random access for GetEntry(), but usually
-  // will want to iterate over all Services.
   std::map<std::string, ServiceRefPtr> services_;
 
  private:
@@ -84,6 +103,15 @@ class Profile : public base::RefCounted<Profile> {
   FRIEND_TEST(ServiceTest, MoveService);
 
   static bool IsValidIdentifierToken(const std::string &token);
+
+  // Returns true if |candidate| can be merged into |service|.
+  bool Mergeable(const ServiceRefPtr &service, const ServiceRefPtr &candiate) {
+    return false;
+  }
+
+  void HelpRegisterDerivedStrings(const std::string &name,
+                                  Strings(Profile::*get)(void),
+                                  bool(Profile::*set)(const Strings&));
 
   scoped_ptr<ProfileAdaptorInterface> adaptor_;
 

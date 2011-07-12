@@ -20,7 +20,9 @@ class Manager;
 
 class MockProfile : public Profile {
  public:
-  MockProfile(ControlInterface *control_interface, GLib *glib);
+  MockProfile(ControlInterface *control_interface,
+              GLib *glib,
+              Manager *manager);
   virtual ~MockProfile();
 
   MOCK_METHOD1(MoveToActiveProfile, bool(const std::string &));

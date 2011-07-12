@@ -58,7 +58,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
                                0)),
         service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 new MockProfile(&control_interface_, &glib_),
+                                 &manager_,
                                  "mock")) {
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);

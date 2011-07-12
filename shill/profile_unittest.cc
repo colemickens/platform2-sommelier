@@ -4,15 +4,32 @@
 
 #include "shill/profile.h"
 
+#include <string>
+#include <vector>
+
 #include <base/string_util.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_profile.h"
+#include "shill/mock_service.h"
+#include "shill/property_store_unittest.h"
+
+using std::set;
 using std::string;
-using testing::Test;
+using std::vector;
+using testing::Return;
+using testing::StrictMock;
 
 namespace shill {
 
-class ProfileTest : public Test {
+class ProfileTest : public PropertyStoreTest {
+ public:
+  ProfileTest()
+      : profile_(new Profile(&control_interface_, &glib_, &manager_)) {
+  }
+
+ protected:
+  ProfileRefPtr profile_;
 };
 
 TEST_F(ProfileTest, IsValidIdentifierToken) {
@@ -80,6 +97,69 @@ TEST_F(ProfileTest, GetStoragePath) {
   identifier.user = kUser;
   EXPECT_TRUE(Profile::GetStoragePath(identifier, &path));
   EXPECT_EQ("/home/chronos/user/flimflam/someprofile.profile", path.value());
+}
+
+TEST_F(ProfileTest, ServiceManagement) {
+  const char kService1[] = "service1";
+  const char kService2[] = "wifi_service2";
+  {
+    ServiceRefPtr service1(
+        new StrictMock<MockService>(&control_interface_,
+                                    &dispatcher_,
+                                    &manager_,
+                                    kService1));
+    ServiceRefPtr service2(
+        new StrictMock<MockService>(&control_interface_,
+                                    &dispatcher_,
+                                    &manager_,
+                                    kService2));
+    ASSERT_TRUE(profile_->AdoptService(service1));
+    ASSERT_TRUE(profile_->AdoptService(service2));
+    ASSERT_FALSE(profile_->AdoptService(service1));
+  }
+  ASSERT_TRUE(profile_->FindService(kService1).get() != NULL);
+  ASSERT_TRUE(profile_->FindService(kService2).get() != NULL);
+
+  ASSERT_TRUE(profile_->AbandonService(kService1));
+  ASSERT_TRUE(profile_->FindService(kService1).get() == NULL);
+  ASSERT_TRUE(profile_->FindService(kService2).get() != NULL);
+
+  ASSERT_FALSE(profile_->AbandonService(kService1));
+  ASSERT_TRUE(profile_->AbandonService(kService2));
+  ASSERT_TRUE(profile_->FindService(kService1).get() == NULL);
+  ASSERT_TRUE(profile_->FindService(kService2).get() == NULL);
+}
+
+TEST_F(ProfileTest, EntryEnumeration) {
+  const char *kServices[] = { "service1",
+                              "wifi_service2" };
+  scoped_refptr<MockService> service1(
+      new StrictMock<MockService>(&control_interface_,
+                                  &dispatcher_,
+                                  &manager_,
+                                  kServices[0]));
+  EXPECT_CALL(*service1.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(kServices[0]));
+  scoped_refptr<MockService> service2(
+      new StrictMock<MockService>(&control_interface_,
+                                  &dispatcher_,
+                                  &manager_,
+                                  kServices[1]));
+  EXPECT_CALL(*service2.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(kServices[1]));
+  ASSERT_TRUE(profile_->AdoptService(service1));
+  ASSERT_TRUE(profile_->AdoptService(service2));
+
+  ASSERT_EQ(profile_->EnumerateEntries().size(), 2);
+
+  ASSERT_TRUE(profile_->AbandonService(kServices[0]));
+  ASSERT_EQ(profile_->EnumerateEntries()[0], kServices[1]);
+
+  ASSERT_FALSE(profile_->AbandonService(kServices[0]));
+  ASSERT_EQ(profile_->EnumerateEntries()[0], kServices[1]);
+
+  ASSERT_TRUE(profile_->AbandonService(kServices[1]));
+  ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
 }
 
 } // namespace shill

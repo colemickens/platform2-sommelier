@@ -293,8 +293,8 @@ void WiFi::RealScanDone() {
       ServiceRefPtr service(
           new WiFiService(control_interface_,
                           dispatcher_,
+                          manager_,
                           this,
-                          manager_->ActiveProfile(),
                           endpoint.ssid(),
                           endpoint.network_mode(),
                           kSupplicantKeyModeNone,

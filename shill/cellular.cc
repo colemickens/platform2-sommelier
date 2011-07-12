@@ -96,8 +96,8 @@ Cellular::Cellular(ControlInterface *control_interface,
              interface_index),
       service_(new CellularService(control_interface,
                                    dispatcher,
+                                   manager,
                                    this,
-                                   manager->ActiveProfile(),
                                    "service-" + link_name())),
       service_registered_(false) {
   store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);

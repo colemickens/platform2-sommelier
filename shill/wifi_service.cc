@@ -20,13 +20,13 @@ namespace shill {
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
+                         Manager *manager,
                          const WiFiRefPtr &device,
-                         const ProfileRefPtr &profile,
                          const std::vector<uint8_t> ssid,
                          uint32_t mode,
                          const std::string &key_management,
                          const std::string &name)
-    : Service(control_interface, dispatcher, profile, name),
+    : Service(control_interface, dispatcher, manager, name),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid),

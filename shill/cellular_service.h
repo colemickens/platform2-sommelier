@@ -16,12 +16,16 @@
 
 namespace shill {
 
+class ControlInterface;
+class EventDispatcher;
+class Manager;
+
 class CellularService : public Service {
  public:
   CellularService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
+                  Manager *manager,
                   const CellularRefPtr &device,
-                  const ProfileRefPtr &profile,
                   const std::string& name);
   ~CellularService();
   void Connect();

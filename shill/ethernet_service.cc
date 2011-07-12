@@ -28,10 +28,10 @@ namespace shill {
 
 EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
+                                 Manager *manager,
                                  const EthernetRefPtr &device,
-                                 const ProfileRefPtr &profile,
                                  const string &name)
-    : Service(control_interface, dispatcher, profile, name),
+    : Service(control_interface, dispatcher, manager, name),
       ethernet_(device),
       type_(flimflam::kTypeEthernet) {
   set_auto_connect(true);

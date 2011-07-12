@@ -10,7 +10,6 @@
 
 #include <base/memory/scoped_ptr.h>
 
-#include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
@@ -19,6 +18,7 @@
 namespace shill {
 
 class ControlInterface;
+class Manager;
 
 // An in-memory profile that is not persisted to disk, but allows the
 // promotion of entries contained herein to the currently active profile.
@@ -29,10 +29,10 @@ class EphemeralProfile : public Profile {
                    Manager *manager);
   virtual ~EphemeralProfile();
 
-  virtual bool MoveToActiveProfile(const std::string &name);
+  // Merely stop managing service persistence; flush nothing to disk.
+  virtual void Finalize();
 
  private:
-  Manager *manager_;
   DISALLOW_COPY_AND_ASSIGN(EphemeralProfile);
 };
 

@@ -17,6 +17,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
@@ -58,7 +59,7 @@ const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 const ProfileRefPtr &profile,
+                 Manager *manager,
                  const string& name)
     : auto_connect_(false),
       check_portal_(kCheckPortalAuto),
@@ -66,14 +67,14 @@ Service::Service(ControlInterface *control_interface,
       favorite_(false),
       priority_(kPriorityNone),
       save_credentials_(true),
-      profile_(profile),
       dispatcher_(dispatcher),
       name_(name),
       available_(false),
       configured_(false),
       configuration_(NULL),
       connection_(NULL),
-      adaptor_(control_interface->CreateServiceAdaptor(this)) {
+      adaptor_(control_interface->CreateServiceAdaptor(this)),
+      manager_(manager) {
 
   store_.RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
 
@@ -144,7 +145,7 @@ Service::Service(ControlInterface *control_interface,
 
 Service::~Service() {}
 
-string Service::GetRpcIdentifier() {
+string Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
@@ -312,5 +313,9 @@ bool Service::Save(StoreInterface *storage) {
 
   return true;
 }
+
+const ProfileRefPtr &Service::profile() const { return profile_; }
+
+void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 }  // namespace shill
