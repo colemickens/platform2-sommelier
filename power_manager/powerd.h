@@ -6,7 +6,9 @@
 #define POWER_DAEMON_H_
 
 #include <dbus/dbus-glib-lowlevel.h>
+#include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <libudev.h>
 
 #include <map>
 #include <string>
@@ -16,12 +18,15 @@
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
+#include "chromeos/dbus/dbus.h"
+#include "chromeos/glib/object.h"
 #include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/file_tagger.h"
 #include "power_manager/inotify.h"
 #include "power_manager/power_prefs.h"
+#include "power_manager/power_supply.h"
 #include "power_manager/screen_locker.h"
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
@@ -119,6 +124,14 @@ class Daemon : public XIdleMonitor {
   // Capslock and Numlock are always ignored.
   void GrabKey(KeyCode key, uint32 mask);
 
+  // Handles power supply udev events.
+  static gboolean UdevEventHandler(GIOChannel* source,
+                                   GIOCondition condition,
+                                   gpointer data);
+
+  // Registers udev event handler with GIO.
+  void RegisterUdevEventHandler();
+
   // Standard handler for dbus messages. |data| contains a pointer to a
   // Daemon object.
   static DBusHandlerResult DBusMessageHandler(DBusConnection*,
@@ -127,6 +140,10 @@ class Daemon : public XIdleMonitor {
 
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
+
+  // Reads power supply status at regular intervals, and sends a signal to
+  // indicate that fresh power supply data is available.
+  SIGNAL_CALLBACK_0(Daemon, gboolean, PollPowerSupply);
 
   // Checks for extremely low battery condition.
   void OnLowBattery(double battery_percentage);
@@ -261,6 +278,7 @@ class Daemon : public XIdleMonitor {
   ScreenLocker locker_;
   Suspender suspender_;
   FilePath run_dir_;
+  PowerSupply power_supply_;
   scoped_ptr<PowerButtonHandler> power_button_handler_;
 
   // Timestamp the last generated battery discharge rate metric.
@@ -294,6 +312,16 @@ class Daemon : public XIdleMonitor {
   // and non-projecting timeouts.  Map keys are variable names found in
   // power_constants.h.
   std::map<std::string, int64> base_timeout_values_;
+
+  // Keep a local copy of power status reading from power_supply.  This way,
+  // requests for each field of the power status can be read directly from
+  // this struct.  Otherwise we'd have to read the whole struct from
+  // power_supply since it doesn't support reading individual fields.
+  chromeos::PowerStatus power_status_;
+
+  // For listening to udev events.
+  struct udev_monitor* udev_monitor_;
+  struct udev* udev_;
 };
 
 }  // namespace power_manager

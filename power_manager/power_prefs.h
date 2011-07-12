@@ -26,6 +26,9 @@ class PowerPrefs : public PowerPrefsInterface {
   virtual bool GetDouble(const char* name, double* value);
   virtual bool SetDouble(const char* name, double value);
 
+  const FilePath& pref_path() const { return pref_path_; }
+  const FilePath& default_path() const { return default_path_; }
+
  private:
   FilePath pref_path_;
   FilePath default_path_;

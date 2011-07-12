@@ -51,6 +51,7 @@ const char* kPowerButtonUp = "PowerButtonUp";
 
 // broadcast signals
 const char* kPowerStateChanged = "PowerStateChanged";
+const char* kPowerSupplyChanged = "PowerSupplyChanged";
 
 // files to signal powerd_suspend whether suspend should be cancelled
 const char* kLidOpenFile = "lid_opened";
