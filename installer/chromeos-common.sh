@@ -103,7 +103,6 @@ locate_gpt() {
 # Return: nothing
 # Side effects: Sets these global variables describing the GPT partitions
 #   (all units are 512-byte sectors):
-#   NUM_RWFW_SECTORS
 #   NUM_ESP_SECTORS
 #   NUM_KERN_SECTORS
 #   NUM_OEM_SECTORS
@@ -111,7 +110,6 @@ locate_gpt() {
 #   NUM_ROOTFS_SECTORS
 #   NUM_STATEFUL_SECTORS
 #   START_ESP
-#   START_RWFW
 #   START_KERN_A
 #   START_KERN_B
 #   START_OEM
@@ -143,11 +141,11 @@ install_gpt() {
   #   PMBR (512 bytes)
   #   Primary GPT Header (512 bytes)
   #   Primary GPT Table (16KiB)
-  #   Read/Write firmware (9MiB - 17KiB)              partition 11
   #     Kernel C (placeholder for future use only)    partition 6
   #     Rootfs C (placeholder for future use only)    partition 7
   #     future use                                    partition 9
   #     future use                                    partition 10
+  #     future use                                    partition 11
   #   Kernel A                                        partition 2
   #   Kernel B                                        partition 4
   #   OEM Customization (16MiB)                       partition 8
@@ -179,7 +177,6 @@ install_gpt() {
   local max_oem_sectors=32768         # 16MiB
   local max_reserved_sectors=131072   # 64MiB
   local max_esp_sectors=32768         # 16MiB
-  local max_rwfw_sectors=18398        # 9MiB - 17KiB
   local min_stateful_sectors=262144   # 128MiB, expands to fill available space
 
   local num_pmbr_sectors=1
@@ -188,8 +185,10 @@ install_gpt() {
   local num_footer_sectors=$(($num_gpt_hdr_sectors + $num_gpt_table_sectors))
   local num_header_sectors=$(($num_pmbr_sectors + $num_footer_sectors))
 
-  local start_rwfw=$(($num_header_sectors))
-  local start_kern_c=$(($start_rwfw + $max_rwfw_sectors))
+  # In order to align to a 4096-byte boundary, there should be several empty
+  # sectors available following the header. We'll pack the single-sector-sized
+  # unused partitions in there.
+  local start_kern_c=$(($num_header_sectors))
   local num_kern_c_sectors=1
   local kern_c_priority=0
   local start_rootfs_c=$(($start_kern_c + 1))
@@ -205,8 +204,9 @@ install_gpt() {
     num_future_sectors_10=$((512 * 1024 * 1024 / 512))  # 512 MiB
   fi
   local start_future_10=$(($start_future_9 + $num_future_sectors_9))
+  local start_future_11=$(($start_future_10 + $num_future_sectors_10))
 
-  local start_useful=$(roundup $(($start_future_10 + $num_future_sectors)))
+  local start_useful=$(roundup $(($start_future_11 + $num_future_sectors)))
 
   locate_gpt
 
@@ -224,11 +224,9 @@ install_gpt() {
     NUM_ROOTFS_SECTORS=$max_rootfs_sectors
     NUM_OEM_SECTORS=$max_oem_sectors
     NUM_ESP_SECTORS=$max_esp_sectors
-    NUM_RWFW_SECTORS=$max_rwfw_sectors
     NUM_RESERVED_SECTORS=$max_reserved_sectors
 
     # Where do things go?
-    START_RWFW=$start_rwfw
     START_KERN_A=$start_useful
     local num_kern_a_sectors=$NUM_KERN_SECTORS
     local kern_a_priority=0
@@ -254,10 +252,10 @@ install_gpt() {
     # Just a local file.
     local sudo=
 
-    # We're just going to fill partitions 1, 2, 3, 4, 8, 11, and 12. The others
-    # will be present but as small as possible. The disk layout isn't crucial
-    # here, because we won't be able to upgrade this image in-place as it's
-    # only for installation purposes.
+    # We're just going to fill partitions 1, 2, 3, 4, 8, and 12. The others will
+    # be present but as small as possible. The disk layout isn't crucial here,
+    # because we won't be able to upgrade this image in-place as it's only for
+    # installation purposes.
     NUM_STATEFUL_SECTORS=$(roundup $stateful_img_sectors)
     NUM_KERN_SECTORS=$max_kern_sectors
     local num_kern_a_sectors=$NUM_KERN_SECTORS
@@ -270,10 +268,8 @@ install_gpt() {
     local num_rootfs_b_sectors=1
     NUM_OEM_SECTORS=$max_oem_sectors
     NUM_ESP_SECTORS=$(roundup $esp_img_sectors)
-    NUM_RWFW_SECTORS=$max_rwfw_sectors
     NUM_RESERVED_SECTORS=1
 
-    START_RWFW=$start_rwfw
     START_KERN_A=$start_useful
     START_ROOTFS_A=$(($START_KERN_A + $NUM_KERN_SECTORS))
     START_STATEFUL=$(($START_ROOTFS_A + $NUM_ROOTFS_SECTORS))
@@ -342,8 +338,8 @@ install_gpt() {
   $sudo $GPT add -b ${start_future_10} -s ${num_future_sectors_10} \
     -t reserved -l "reserved" ${outdev}
 
-  $sudo $GPT add -b ${start_rwfw} -s ${NUM_RWFW_SECTORS} \
-    -t firmware -l "RWFW" ${outdev}
+  $sudo $GPT add -b ${start_future_11} -s ${num_future_sectors} \
+    -t reserved -l "reserved" ${outdev}
 
   $sudo $GPT add -b ${START_ESP} -s ${NUM_ESP_SECTORS} \
     -t efi -l "EFI-SYSTEM" ${outdev}
