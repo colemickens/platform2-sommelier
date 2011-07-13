@@ -206,10 +206,34 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
   if (is_plugged) {
     brightness_offset_ = &plugged_brightness_offset_;
     plugged_state_ = kPowerConnected;
+    // If unplugged brightness is set to greater than plugged brightness,
+    // increase the plugged brightness so that it is not less than unplugged
+    // brightness.  Otherwise there will be an unnatural decrease in brightness
+    // when the user switches from battery to AC power.
+    // If the backlight is in active-but-off state, plugging in AC power
+    // shouldn't exit the state.  The plugged brightness should be set to off as
+    // well.
+    if (IsBacklightActiveOff() ||
+        unplugged_brightness_offset_ > plugged_brightness_offset_)
+      plugged_brightness_offset_ = unplugged_brightness_offset_;
   } else {
     brightness_offset_ = &unplugged_brightness_offset_;
     plugged_state_ = kPowerDisconnected;
+    // If plugged brightness is set to less than unplugged brightness, reduce
+    // the unplugged brightness so that it is not greater than plugged
+    // brightness.  Otherwise there will be an unnatural increase in brightness
+    // when the user switches from AC to battery power.
+    if (plugged_brightness_offset_ < unplugged_brightness_offset_)
+      unplugged_brightness_offset_ = plugged_brightness_offset_;
   }
+
+  // Adjust new offset to make sure the plug/unplug transition doesn't turn off
+  // the screen.  If the backlight is in active-but-off state, don't make this
+  // adjustment.
+  if (!IsBacklightActiveOff() &&
+      *brightness_offset_ + als_brightness_level_ < 1)
+    *brightness_offset_ = 1 - als_brightness_level_;
+
   return WriteBrightness(true);
 }
 
@@ -311,37 +335,11 @@ void BacklightController::ReadPrefs() {
 void BacklightController::WritePrefs() {
   if (!is_initialized_)
     return;
-  bool store_plugged_brightness = false;
-  bool store_unplugged_brightness = false;
   // Do not store brightness that falls below a particular threshold, so that
   // when powerd restarts, the screen does not appear to be off.
-  if (plugged_state_ == kPowerConnected) {
-    store_plugged_brightness = true;
-    // If plugged brightness is set to less than unplugged brightness, reduce
-    // the unplugged brightness so that it is not greater than plugged
-    // brightness.  Otherwise there will be an unnatural increase in brightness
-    // when the user switches from AC to battery power.
-    if (plugged_brightness_offset_ < unplugged_brightness_offset_) {
-      unplugged_brightness_offset_ = plugged_brightness_offset_;
-      store_unplugged_brightness = true;
-    }
-  } else if (plugged_state_ == kPowerDisconnected) {
-    store_unplugged_brightness = true;
-    // If unplugged brightness is set to greater than plugged brightness,
-    // increase the plugged brightness so that it is not less than unplugged
-    // brightness.  Otherwise there will be an unnatural decrease in brightness
-    // when the user switches from battery to AC power.
-    if (unplugged_brightness_offset_ > plugged_brightness_offset_) {
-      plugged_brightness_offset_ = unplugged_brightness_offset_;
-      store_plugged_brightness = true;
-    }
-  }
-
-  // Store the brightness levels to preference files.
-  if (store_plugged_brightness)
+  if (plugged_state_ == kPowerConnected)
     prefs_->SetDouble(kPluggedBrightnessOffset, plugged_brightness_offset_);
-
-  if (store_unplugged_brightness)
+  else if (plugged_state_ == kPowerDisconnected)
     prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
 }
 
