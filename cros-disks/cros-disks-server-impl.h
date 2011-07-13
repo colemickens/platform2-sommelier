@@ -35,6 +35,7 @@ class FormatManager;
 //
 class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::IntrospectableAdaptor,
+                        public DBus::PropertiesAdaptor,
                         public DBus::ObjectAdaptor,
                         public PowerManagerObserver,
                         public SessionManagerObserver {
@@ -115,6 +116,14 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // Dispatches all queued device events by emitting the corresponding
   // D-Bus signals.
   void DispatchQueuedDeviceEvents();
+
+  // Initializes DBus properties.
+  void InitializeProperties();
+
+  // Overrides PropertiesAdaptor::on_set_property to handle
+  // org.freedesktop.DBus.Properties.Set calls.
+  virtual void on_set_property(DBus::InterfaceAdaptor& interface,  // NOLINT
+      const std::string& property, const DBus::Variant& value);
 
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system. If auto_mountable_only is true, only auto-mountable disk

@@ -125,6 +125,29 @@ TEST_F(DiskManagerTest, GetDiskByNonexistentDevicePath) {
   EXPECT_FALSE(manager_.GetDiskByDevicePath(device_path, &disk));
 }
 
+TEST_F(DiskManagerTest, GetFilesystem) {
+  const Filesystem* null_pointer = NULL;
+
+  EXPECT_EQ(null_pointer, manager_.GetFilesystem("nonexistent-fs"));
+
+  Filesystem normal_fs("normal-fs");
+  EXPECT_EQ(null_pointer, manager_.GetFilesystem(normal_fs.type()));
+  manager_.RegisterFilesystem(normal_fs);
+  manager_.set_experimental_features_enabled(false);
+  EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
+  manager_.set_experimental_features_enabled(true);
+  EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
+
+  Filesystem experimental_fs("experimental-fs");
+  experimental_fs.set_is_experimental(true);
+  EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
+  manager_.RegisterFilesystem(experimental_fs);
+  manager_.set_experimental_features_enabled(false);
+  EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
+  manager_.set_experimental_features_enabled(true);
+  EXPECT_NE(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
+}
+
 TEST_F(DiskManagerTest, GetFilesystemTypeOfNonexistentDevice) {
   string device_path = "/dev/nonexistent-path";
   string filesystem_type = manager_.GetFilesystemTypeOfDevice(device_path);

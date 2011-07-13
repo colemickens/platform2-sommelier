@@ -36,6 +36,11 @@ class Filesystem {
     extra_mount_options_.push_back(option);
   }
 
+  bool is_experimental() const { return is_experimental_; }
+  void set_is_experimental(bool is_experimental) {
+    is_experimental_ = is_experimental;
+  }
+
   bool is_mounted_read_only() const { return is_mounted_read_only_; }
   void set_is_mounted_read_only(bool is_mounted_read_only) {
     is_mounted_read_only_ = is_mounted_read_only;
@@ -63,6 +68,10 @@ class Filesystem {
 
   // Extra mount options to specify when mounting the filesystem.
   std::vector<std::string> extra_mount_options_;
+
+  // This variable is set to true if the filesystem should be enabled
+  // only if the disk manager allows experimental features.
+  bool is_experimental_;
 
   // This variable is set to true if the filesystem should be mounted
   // as read-only.

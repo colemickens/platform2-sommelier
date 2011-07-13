@@ -49,8 +49,8 @@ static const unsigned kFallbackPasswordBufferSize = 16384;
 DiskManager::DiskManager()
     : udev_(udev_new()),
       udev_monitor_fd_(0),
-      blkid_cache_(NULL) {
-
+      blkid_cache_(NULL),
+      experimental_features_enabled_(false) {
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
@@ -255,6 +255,20 @@ string DiskManager::GetDeviceFileFromCache(const string& device_path) const {
   return (map_iterator != device_file_map_.end()) ? map_iterator->second : "";
 }
 
+const Filesystem* DiskManager::GetFilesystem(
+    const std::string& filesystem_type) const {
+  map<string, Filesystem>::const_iterator filesystem_iterator =
+    filesystems_.find(filesystem_type);
+  if (filesystem_iterator == filesystems_.end())
+    return NULL;
+
+  if (!experimental_features_enabled_ &&
+      filesystem_iterator->second.is_experimental())
+    return NULL;
+
+  return &filesystem_iterator->second;
+}
+
 string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
   string filesystem_type;
   if (blkid_cache_ != NULL || blkid_get_cache(&blkid_cache_, NULL) == 0) {
@@ -416,9 +430,8 @@ bool DiskManager::Mount(const string& device_path,
     return false;
   }
 
-  map<string, Filesystem>::const_iterator filesystem_iterator =
-    filesystems_.find(device_filesystem_type);
-  if (filesystem_iterator == filesystems_.end()) {
+  const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
+  if (filesystem == NULL) {
     LOG(ERROR) << "File system type '" << device_filesystem_type
       << "' on device '" << device_path << "' is not supported.";
     return false;
@@ -432,7 +445,7 @@ bool DiskManager::Mount(const string& device_path,
     return false;
   }
 
-  scoped_ptr<Mounter> mounter(CreateMounter(disk, filesystem_iterator->second,
+  scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem,
         mount_target, options));
   if (!mounter->Mount()) {
     LOG(ERROR) << "Failed to mount '" << device_path << "' to '"
@@ -510,6 +523,14 @@ void DiskManager::RegisterDefaultFilesystems() {
   vfat_fs.AddExtraMountOption("shortname=mixed");
   vfat_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(vfat_fs);
+
+  Filesystem ntfs_fs("ntfs");
+  ntfs_fs.set_mount_type("ntfs-3g");
+  ntfs_fs.set_is_experimental(true);
+  ntfs_fs.set_is_mounted_read_only(true);
+  ntfs_fs.set_accepts_user_and_group_id(true);
+  ntfs_fs.set_requires_external_mounter(true);
+  RegisterFilesystem(ntfs_fs);
 
   Filesystem hfsplus_fs("hfsplus");
   hfsplus_fs.set_accepts_user_and_group_id(true);

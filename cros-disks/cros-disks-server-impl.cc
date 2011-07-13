@@ -19,8 +19,11 @@ using std::vector;
 namespace cros_disks {
 
 // TODO(rtc): this should probably be a flag.
-static const char* kServicePath = "/org/chromium/CrosDisks";
-static const char* kServiceErrorName = "org.chromium.CrosDisks.Error";
+// TODO(benchan): move these to common/chromeos/dbus/service_constants.
+static const char kServicePath[] = "/org/chromium/CrosDisks";
+static const char kServiceErrorName[] = "org.chromium.CrosDisks.Error";
+static const char kPropertyExperimentalFeaturesEnabled[] =
+  "ExperimentalFeaturesEnabled";
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
     DiskManager* disk_manager,
@@ -29,7 +32,10 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
       disk_manager_(disk_manager),
       format_manager_(format_manager),
       is_device_event_queued_(true) {
+  CHECK(disk_manager_) << "Invalid disk manager object";
+  CHECK(format_manager_) << "Invalid format manager object";
 
+  InitializeProperties();
   format_manager_->set_parent(this);
 }
 
@@ -194,6 +200,26 @@ void CrosDisksServer::DispatchQueuedDeviceEvents() {
       << " device='" << event->device_path << "'";
     DispatchDeviceEvent(*event);
     device_event_queue_.Remove();
+  }
+}
+
+void CrosDisksServer::InitializeProperties() {
+  try {
+    DBus::Variant value;
+    value.writer().append_bool(disk_manager_->experimental_features_enabled());
+    CrosDisks_adaptor::set_property(kPropertyExperimentalFeaturesEnabled,
+        value);
+  } catch (const DBus::Error& e) {
+    LOG(FATAL) << "Failed to initialize properties: " << e.what();
+  }
+}
+
+void CrosDisksServer::on_set_property(
+    DBus::InterfaceAdaptor& interface,  // NOLINT
+    const std::string& property, const DBus::Variant& value) {
+  if (property == kPropertyExperimentalFeaturesEnabled) {
+    disk_manager_->set_experimental_features_enabled(
+        value.reader().get_bool());
   }
 }
 

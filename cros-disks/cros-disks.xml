@@ -78,6 +78,8 @@
       </arg>
     </method>
 
+    <property name="ExperimentalFeaturesEnabled" type="b" access="readwrite"/>
+
     <signal name="DeviceAdded">
       <arg name="device" type="s" direction="out">
       </arg>

@@ -50,6 +50,10 @@ class DiskManager {
   // Returns true on success. Must be called to clear the fd.
   bool GetDeviceEvent(DeviceEvent* event);
 
+  // Returns a Filesystem object if a given filesystem type is supported.
+  // Otherwise, it returns NULL.
+  const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
+
   // Gets the filesystem type of a device.
   std::string GetFilesystemTypeOfDevice(const std::string& device_path);
 
@@ -96,6 +100,13 @@ class DiskManager {
   // Removes a directory.
   bool RemoveDirectory(const std::string& path) const;
 
+  bool experimental_features_enabled() const {
+    return experimental_features_enabled_;
+  }
+  void set_experimental_features_enabled(bool experimental_features_enabled) {
+    experimental_features_enabled_ = experimental_features_enabled;
+  }
+
   // A file descriptor that can be select()ed or poll()ed for system changes.
   int udev_monitor_fd() const { return udev_monitor_fd_; }
 
@@ -137,6 +148,10 @@ class DiskManager {
 
   // A cache mapping device sysfs path to device file.
   std::map<std::string, std::string> device_file_map_;
+
+  // This variable is set to true if the disk manager enables
+  // experimental features.
+  bool experimental_features_enabled_;
 
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;
