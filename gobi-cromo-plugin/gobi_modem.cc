@@ -393,7 +393,11 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
 //
 bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
 {
-  if (enable && !Enabled()) {
+  if (enable && Enabled()) {
+    ScopedApiConnection connection(*this);
+    connection.ApiConnect(error);
+    CheckEnableOk(error);
+  } else if (enable && !Enabled()) {
     ApiConnect(error);
     if (error.is_set())
       return false;
@@ -431,8 +435,13 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
     return true;
   }
   // The operation is already done!
-  LOG(WARNING) << "Operation Enable(" << enable
-               << ") has no effect on modem in state: " << Enabled();
+  if (!error)
+    LOG(WARNING) << "Operation Enable(" << enable
+                 << ") has no effect on modem in state: " << Enabled();
+  else
+    LOG(WARNING) << "Operation Enable(" << enable
+                 << ") on modem in state: " << Enabled()
+                 << " returning error \"" << error.message() << "\"";
   return false;
 }
 
