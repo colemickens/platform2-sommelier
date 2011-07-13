@@ -100,7 +100,7 @@ powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
   screen_locker.cc suspender.cc video_detector.cc metrics_constants.cc
   monitor_reconfigure.cc power_manager_service.cc power_supply.cc
-  resolution_selector.cc udev_controller.cc
+  resolution_selector.cc
 ''')
 util_lib = powerd_env.Library('util_lib', ['util.cc', 'inotify.cc']);
 powerd_lib = powerd_env.Library('powerd_lib', powerd_sources)
