@@ -101,6 +101,15 @@ if [ -f /root/.use_webui_login ] ; then
   WEBUI_LOGIN="--webui-login"
 fi
 
+# To force WebUI OOBE. This works ok with test images as they
+# are always started with OOBE.
+if [ -f /root/.test_webui_oobe ] ; then
+  rm -f "${DATA_DIR}/.oobe_completed"
+  rm -f "${DATA_DIR}/Local State"
+  SKIP_OOBE=
+  WEBUI_LOGIN="--webui-login --allow-webui-oobe"
+fi
+
 # For recovery image, do NOT display OOBE or login window
 if [ -f /mnt/stateful_partition/.recovery ]; then
   # Verify recovery UI HTML file exists
