@@ -9,14 +9,17 @@
 #include <string>
 #include <vector>
 
+#include <dbus-c++/dbus.h>
+
 #include "shill/device.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
-#include "shill/supplicant-process.h"
-#include "shill/supplicant-interface.h"
+#include "shill/supplicant_proxy_factory.h"
 
 namespace shill {
 
+class SupplicantInterfaceProxyInterface;
+class SupplicantProcessProxyInterface;
 class WiFiService;
 
 // WiFi class. Specialization of Device for WiFi.
@@ -41,61 +44,9 @@ class WiFi : public Device {
   // called by WiFiService
   void ConnectTo(const WiFiService &service);
 
+  static void set_proxy_factory(SupplicantProxyFactory *factory);
+
  private:
-  // SupplicantProcessProxy. provides access to wpa_supplicant's
-  // process-level D-Bus APIs.
-  class SupplicantProcessProxy :
-      public fi::w1::wpa_supplicant1_proxy,
-        private ::DBus::ObjectProxy  // used by dbus-c++, not WiFi
-  {
-   public:
-    explicit SupplicantProcessProxy(DBus::Connection *bus);
-
-   private:
-    // called by dbus-c++, via wpa_supplicant1_proxy interface,
-    // in response to signals from wpa_supplicant. not exposed
-    // to WiFi.
-    virtual void InterfaceAdded(
-        const ::DBus::Path &path,
-        const std::map<std::string, ::DBus::Variant> &properties);
-    virtual void InterfaceRemoved(const ::DBus::Path &path);
-    virtual void PropertiesChanged(
-        const std::map<std::string, ::DBus::Variant> &properties);
-  };
-
-  // SupplicantInterfaceProxy. provides access to wpa_supplicant's
-  // network-interface D-Bus APIs.
-  class SupplicantInterfaceProxy :
-      public fi::w1::wpa_supplicant1::Interface_proxy,
-      private ::DBus::ObjectProxy  // used by dbus-c++, not WiFi
-  {
-   public:
-    SupplicantInterfaceProxy(const WiFiRefPtr &wifi,
-                             DBus::Connection *bus,
-                             const ::DBus::Path &object_path);
-
-   private:
-    // called by dbus-c++, via Interface_proxy interface,
-    // in response to signals from wpa_supplicant. not exposed
-    // to WiFi.
-    virtual void ScanDone(const bool &success);
-    virtual void BSSAdded(const ::DBus::Path &BSS,
-                          const std::map<std::string, ::DBus::Variant>
-                          &properties);
-    virtual void BSSRemoved(const ::DBus::Path &BSS);
-    virtual void BlobAdded(const std::string &blobname);
-    virtual void BlobRemoved(const std::string &blobname);
-    virtual void NetworkAdded(const ::DBus::Path &network,
-                              const std::map<std::string, ::DBus::Variant>
-                              &properties);
-    virtual void NetworkRemoved(const ::DBus::Path &network);
-    virtual void NetworkSelected(const ::DBus::Path &network);
-    virtual void PropertiesChanged(const std::map<std::string, ::DBus::Variant>
-                                   &properties);
-
-    WiFiRefPtr wifi_;
-  };
-
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, ServiceRefPtr> ServiceMap;
 
@@ -110,13 +61,13 @@ class WiFi : public Device {
 
   void RealScanDone();
 
+  static SupplicantProxyFactory *proxy_factory;
   static unsigned int service_id_serial_;
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
-  scoped_ptr<DBus::Connection> dbus_;
-  scoped_ptr<SupplicantProcessProxy> supplicant_process_proxy_;
-  scoped_ptr<SupplicantInterfaceProxy> supplicant_interface_proxy_;
+  scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
+  scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
   EndpointMap endpoint_by_bssid_;
   ServiceMap service_by_private_id_;
 

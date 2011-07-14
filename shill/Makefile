@@ -86,6 +86,9 @@ SHILL_OBJS = \
 	shill_daemon.o \
 	shill_event.o \
 	sockets.o \
+	supplicant_interface_proxy.o \
+	supplicant_process_proxy.o \
+	supplicant_proxy_factory.o \
 	wifi.o \
 	wifi_endpoint.o \
 	wifi_service.o

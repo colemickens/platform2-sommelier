@@ -21,6 +21,8 @@
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/shill_event.h"
+#include "shill/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant_process_proxy_interface.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 
@@ -37,89 +39,8 @@ const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
 const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
 const char WiFi::kSupplicantKeyModeNone[] = "NONE";
 
+SupplicantProxyFactory *WiFi::proxy_factory = NULL;
 unsigned int WiFi::service_id_serial_ = 0;
-
-WiFi::SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection *bus)
-    : DBus::ObjectProxy(*bus, kSupplicantPath, kSupplicantDBusAddr) {}
-
-void WiFi::SupplicantProcessProxy::InterfaceAdded(
-    const ::DBus::Path& path,
-    const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantProcessProxy::InterfaceRemoved(const ::DBus::Path& path) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantProcessProxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant>& properties) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-WiFi::SupplicantInterfaceProxy::SupplicantInterfaceProxy(
-    const WiFiRefPtr &wifi,
-    DBus::Connection *bus,
-    const ::DBus::Path &object_path)
-    : DBus::ObjectProxy(*bus, object_path, kSupplicantDBusAddr),
-      wifi_(wifi) {}
-
-void WiFi::SupplicantInterfaceProxy::ScanDone(const bool& success) {
-  LOG(INFO) << __func__ << " " << success;
-  if (success) {
-    wifi_->ScanDone();
-  }
-}
-
-void WiFi::SupplicantInterfaceProxy::BSSAdded(
-    const ::DBus::Path &BSS,
-    const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
-  wifi_->BSSAdded(BSS, properties);
-}
-
-void WiFi::SupplicantInterfaceProxy::BSSRemoved(const ::DBus::Path &BSS) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::BlobAdded(const string &blobname) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::BlobRemoved(const string &blobname) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::NetworkAdded(
-    const ::DBus::Path &network,
-    const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::NetworkRemoved(
-    const ::DBus::Path &network) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::NetworkSelected(
-    const ::DBus::Path &network) {
-  LOG(INFO) << __func__;
-  // XXX
-}
-
-void WiFi::SupplicantInterfaceProxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant> &properties) {
-  LOG(INFO) << __func__;
-  // XXX
-}
 
 // NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
@@ -154,14 +75,14 @@ WiFi::WiFi(ControlInterface *control_interface,
   VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 
-WiFi::~WiFi() {
-}
+WiFi::~WiFi() {}
 
 void WiFi::Start() {
-  dbus_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   ::DBus::Path interface_path;
 
-  supplicant_process_proxy_.reset(new SupplicantProcessProxy(dbus_.get()));
+  supplicant_process_proxy_.reset(
+      proxy_factory->CreateProcessProxy(
+          kSupplicantPath, kSupplicantDBusAddr));
   try {
     std::map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
@@ -183,7 +104,8 @@ void WiFi::Start() {
   }
 
   supplicant_interface_proxy_.reset(
-      new SupplicantInterfaceProxy(this, dbus_.get(), interface_path));
+      proxy_factory->CreateInterfaceProxy(
+          this, interface_path, kSupplicantDBusAddr));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
 
@@ -261,6 +183,11 @@ void WiFi::ConnectTo(const WiFiService &service) {
       supplicant_interface_proxy_->AddNetwork(add_network_args);
   supplicant_interface_proxy_->SelectNetwork(network_path);
   // XXX add to favorite networks list?
+}
+
+// static
+void WiFi::set_proxy_factory(SupplicantProxyFactory *new_factory) {
+  proxy_factory = new_factory;
 }
 
 void WiFi::RealScanDone() {
