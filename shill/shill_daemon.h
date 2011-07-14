@@ -13,10 +13,11 @@ namespace shill {
 
 class Config;
 class ControlInterface;
+class GLib;
 
 class Daemon {
  public:
-  Daemon(Config *config, ControlInterface *control);
+  Daemon(Config *config, ControlInterface *control, GLib *glib);
   ~Daemon();
 
   void Start();

@@ -10,12 +10,13 @@
 #include <base/memory/ref_counted.h>
 #include <base/message_loop_proxy.h>
 #include <base/stringprintf.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
+#include "shill/mock_control.h"
+#include "shill/mock_glib.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
-#include "shill/mock_control.h"
 
 namespace shill {
 using ::testing::Test;
@@ -109,11 +110,11 @@ class MockEventDispatchTester {
 class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
-    : daemon_(&config_, new MockControl()),
-      device_info_(daemon_.control_, dispatcher_, &daemon_.manager_),
-      dispatcher_(&daemon_.dispatcher_),
-      dispatcher_test_(dispatcher_),
-      factory_(this) {
+      : daemon_(&config_, new MockControl(), &glib_),
+        device_info_(daemon_.control_, dispatcher_, &daemon_.manager_),
+        dispatcher_(&daemon_.dispatcher_),
+        dispatcher_test_(dispatcher_),
+        factory_(this) {
   }
   virtual ~ShillDaemonTest() {}
   virtual void SetUp() {
@@ -123,6 +124,7 @@ class ShillDaemonTest : public Test {
   }
  protected:
   Config config_;
+  MockGLib glib_;
   Daemon daemon_;
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;

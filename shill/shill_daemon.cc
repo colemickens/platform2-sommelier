@@ -28,10 +28,10 @@ static const char kTaggedFilePath[] = "/var/lib/shill";
 // Daemon: Main for connection manager.  Starts main process and holds event
 // loop.
 
-Daemon::Daemon(Config *config, ControlInterface *control)
+Daemon::Daemon(Config *config, ControlInterface *control, GLib *glib)
   : config_(config),
     control_(control),
-    manager_(control_, &dispatcher_) { }
+    manager_(control_, &dispatcher_, glib) { }
 Daemon::~Daemon() {}
 
 void Daemon::Start() {

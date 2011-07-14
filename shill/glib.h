@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <gio/gio.h>
 #include <glib.h>
 
 namespace shill {
@@ -23,6 +24,16 @@ class GLib {
   virtual guchar *Base64Decode(const gchar *text, gsize *out_len);
   // g_base64_encode
   virtual gchar *Base64Encode(const guchar *data, gsize len);
+  // g_bus_unwatch_name
+  virtual void BusUnwatchName(guint watcher_id);
+  // g_bus_watch_name
+  virtual guint BusWatchName(GBusType bus_type,
+                             const gchar *name,
+                             GBusNameWatcherFlags flags,
+                             GBusNameAppearedCallback name_appeared_handler,
+                             GBusNameVanishedCallback name_vanished_handler,
+                             gpointer user_data,
+                             GDestroyNotify user_data_free_func);
   // g_child_watch_add
   virtual guint ChildWatchAdd(GPid pid,
                               GChildWatchFunc function,
@@ -114,6 +125,8 @@ class GLib {
   virtual void SpawnClosePID(GPid pid);
   // g_strfreev
   virtual void Strfreev(gchar **str_array);
+  // g_type_init
+  virtual void TypeInit();
 };
 
 }  // namespace shill

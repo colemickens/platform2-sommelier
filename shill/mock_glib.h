@@ -15,6 +15,15 @@ class MockGLib : public GLib {
  public:
   MOCK_METHOD2(Base64Decode, guchar *(const gchar *text, gsize *out_len));
   MOCK_METHOD2(Base64Encode, gchar *(const guchar *data, gsize len));
+  MOCK_METHOD1(BusUnwatchName, void(guint watcher_id));
+  MOCK_METHOD7(BusWatchName,
+               guint(GBusType bus_type,
+                     const gchar *name,
+                     GBusNameWatcherFlags flags,
+                     GBusNameAppearedCallback name_appeared_handler,
+                     GBusNameVanishedCallback name_vanished_handler,
+                     gpointer user_data,
+                     GDestroyNotify user_data_free_func));
   MOCK_METHOD3(ChildWatchAdd, guint(GPid pid,
                                     GChildWatchFunc function,
                                     gpointer data));
@@ -84,6 +93,7 @@ class MockGLib : public GLib {
                                     GError **error));
   MOCK_METHOD1(SpawnClosePID, void(GPid pid));
   MOCK_METHOD1(Strfreev, void(gchar **str_array));
+  MOCK_METHOD0(TypeInit, void());
 };
 
 }  // namespace shill

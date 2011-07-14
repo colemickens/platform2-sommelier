@@ -31,9 +31,11 @@ using std::vector;
 
 namespace shill {
 Manager::Manager(ControlInterface *control_interface,
-                 EventDispatcher *dispatcher)
+                 EventDispatcher *dispatcher,
+                 GLib *glib)
   : adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
+    modem_info_(control_interface, dispatcher, this, glib),
     running_(false) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileName,
@@ -71,7 +73,7 @@ Manager::Manager(ControlInterface *control_interface,
   // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kProfilesProperty);
 
-  profiles_.push_back(new DefaultProfile(control_interface, &glib_, props_));
+  profiles_.push_back(new DefaultProfile(control_interface, glib, props_));
 
   VLOG(2) << "Manager initialized.";
 }
@@ -83,11 +85,14 @@ void Manager::Start() {
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();
+  modem_info_.Start();
 }
 
 void Manager::Stop() {
   running_ = false;
   adaptor_->UpdateRunning();
+  modem_info_.Stop();
+  device_info_.Stop();
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() {

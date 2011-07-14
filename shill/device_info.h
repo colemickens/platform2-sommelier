@@ -26,12 +26,15 @@ class DeviceInfo {
              EventDispatcher *dispatcher,
              Manager *manager);
   ~DeviceInfo();
+
   void Start();
   void Stop();
-  static DeviceInfo *GetInstance();
+
   static Device::Technology GetDeviceTechnology(const char *interface_name);
 
  private:
+  friend class DeviceInfoTest;
+
   static const char *kInterfaceUevent;
   static const char *kInterfaceDriver;
   static const char *kModemDrivers[];
@@ -46,7 +49,6 @@ class DeviceInfo {
   base::hash_map<int, DeviceRefPtr> devices_;
   scoped_ptr<Callback1<struct nlmsghdr *>::Type> link_callback_;
   scoped_ptr<RTNLListener> link_listener_;
-  friend class DeviceInfoTest;
 };
 
 }  // namespace shill

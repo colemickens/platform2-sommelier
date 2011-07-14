@@ -42,7 +42,7 @@ class TestEventDispatcher : public EventDispatcher {
 class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
-      : manager_(&control_interface_, &dispatcher_),
+      : manager_(&control_interface_, &dispatcher_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &manager_),
         task_factory_(this) {
     DHCPProvider::GetInstance()->glib_ = &glib_;

@@ -97,9 +97,10 @@ int main(int argc, char** argv) {
   shill::DBusControl *dbus_control = new shill::DBusControl();
   dbus_control->Init();
   shill::GLib glib;
+  glib.TypeInit();
   shill::DHCPProvider::GetInstance()->Init(dbus_control->connection(), &glib);
 
-  shill::Daemon daemon(&config, dbus_control);
+  shill::Daemon daemon(&config, dbus_control, &glib);
   daemon.Run();
 
   return 0;

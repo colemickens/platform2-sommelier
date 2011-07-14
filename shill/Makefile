@@ -71,6 +71,8 @@ SHILL_OBJS = \
 	key_file_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \
+	modem_info.o \
+	modem_manager.o \
 	profile.o \
 	profile_dbus_adaptor.o \
 	property_store.o \
@@ -109,6 +111,8 @@ TEST_OBJS = \
 	mock_device.o \
 	mock_profile.o \
 	mock_service.o \
+	modem_info_unittest.o \
+	modem_manager_unittest.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \

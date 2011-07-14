@@ -62,7 +62,7 @@ const ::DBus::Variant PropertyStoreTest::kUint32V =
     DBusAdaptor::Uint32ToVariant(0);
 
 PropertyStoreTest::PropertyStoreTest()
-    : manager_(&control_interface_, &dispatcher_),
+    : manager_(&control_interface_, &dispatcher_, &glib_),
       invalid_args_(Error::kErrorNames[Error::kInvalidArguments]),
       invalid_prop_(Error::kErrorNames[Error::kInvalidProperty]) {
 }

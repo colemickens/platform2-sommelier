@@ -14,7 +14,7 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/glib.h"
+#include "shill/modem_info.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
@@ -25,6 +25,7 @@ class ControlInterface;
 class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
+class GLib;
 
 class Manager {
  public:
@@ -39,7 +40,8 @@ class Manager {
 
   // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
-          EventDispatcher *dispatcher);
+          EventDispatcher *dispatcher,
+          GLib *glib);
   virtual ~Manager();
   void Start();
   void Stop();
@@ -79,9 +81,9 @@ class Manager {
                                   Strings(Manager::*get)(void),
                                   bool(Manager::*set)(const Strings&));
 
-  GLib glib_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
+  ModemInfo modem_info_;
   bool running_;
   std::vector<DeviceRefPtr> devices_;
   std::vector<ServiceRefPtr> services_;

@@ -28,6 +28,26 @@ gchar *GLib::Base64Encode(const guchar *data, gsize len) {
   return g_base64_encode(data, len);
 }
 
+void GLib::BusUnwatchName(guint watcher_id) {
+  g_bus_unwatch_name(watcher_id);
+}
+
+guint GLib::BusWatchName(GBusType bus_type,
+                         const gchar *name,
+                         GBusNameWatcherFlags flags,
+                         GBusNameAppearedCallback name_appeared_handler,
+                         GBusNameVanishedCallback name_vanished_handler,
+                         gpointer user_data,
+                         GDestroyNotify user_data_free_func) {
+  return g_bus_watch_name(bus_type,
+                          name,
+                          flags,
+                          name_appeared_handler,
+                          name_vanished_handler,
+                          user_data,
+                          user_data_free_func);
+}
+
 guint GLib::ChildWatchAdd(GPid pid,
                           GChildWatchFunc function,
                           gpointer data) {
@@ -168,6 +188,10 @@ void GLib::SpawnClosePID(GPid pid) {
 
 void GLib::Strfreev(gchar **str_array) {
   g_strfreev(str_array);
+}
+
+void GLib::TypeInit() {
+  g_type_init();
 }
 
 }  // namespace shill
