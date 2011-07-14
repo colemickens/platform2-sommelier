@@ -128,10 +128,13 @@ void WiFi::Start() {
 
 void WiFi::Stop() {
   LOG(INFO) << __func__;
-  // XXX
-  supplicant_interface_proxy_.reset(NULL);
-  supplicant_process_proxy_.reset(NULL);
+  // TODO(quiche): remove interface from supplicant
+  supplicant_interface_proxy_.reset();  // breaks a reference cycle
+  supplicant_process_proxy_.reset();
+  endpoint_by_bssid_.clear();
+  service_by_private_id_.clear();       // breaks reference cycles
   Device::Stop();
+  // XXX anything else to do?
 }
 
 bool WiFi::TechnologyIs(const Device::Technology type) {
@@ -212,7 +215,7 @@ void WiFi::RealScanDone() {
 
       // XXX key mode should reflect endpoint params (not always use
       // kSupplicantKeyModeNone)
-      ServiceRefPtr service(
+      WiFiServiceRefPtr service(
           new WiFiService(control_interface_,
                           dispatcher_,
                           manager_,

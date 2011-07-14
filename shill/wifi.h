@@ -45,7 +45,7 @@ class WiFi : public Device {
 
  private:
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
-  typedef std::map<const std::string, ServiceRefPtr> ServiceMap;
+  typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
 
   static const char kSupplicantPath[];
   static const char kSupplicantDBusAddr[];
@@ -74,6 +74,7 @@ class WiFi : public Device {
   bool scan_pending_;
   uint16 scan_interval_;
 
+  friend class WiFiMainTest;  // access to supplicant_*_proxy_ fields
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 

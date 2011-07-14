@@ -70,7 +70,6 @@ class SupplicantInterfaceProxy
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(SupplicantInterfaceProxy);
-
 };
 
 }  // namespace shill
