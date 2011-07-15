@@ -34,6 +34,10 @@ Daemon::Daemon(Config *config, ControlInterface *control, GLib *glib)
     manager_(control_, &dispatcher_, glib) { }
 Daemon::~Daemon() {}
 
+void Daemon::AddDeviceToBlackList(const string &device_name) {
+  manager_.AddDeviceToBlackList(device_name);
+}
+
 void Daemon::Start() {
   RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
   manager_.Start();

@@ -5,6 +5,9 @@
 #ifndef SHILL_DEVICE_INFO_
 #define SHILL_DEVICE_INFO_
 
+#include <set>
+#include <string>
+
 #include <base/callback_old.h>
 #include <base/hash_tables.h>
 #include <base/memory/ref_counted.h>
@@ -27,6 +30,7 @@ class DeviceInfo {
              Manager *manager);
   ~DeviceInfo();
 
+  void AddDeviceToBlackList(const std::string &device_name);
   void Start();
   void Stop();
 
@@ -49,6 +53,7 @@ class DeviceInfo {
   base::hash_map<int, DeviceRefPtr> devices_;
   scoped_ptr<Callback1<struct nlmsghdr *>::Type> link_callback_;
   scoped_ptr<RTNLListener> link_listener_;
+  std::set<std::string> black_list_;
 };
 
 }  // namespace shill

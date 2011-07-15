@@ -5,6 +5,8 @@
 #ifndef SHILL_DAEMON_H_
 #define SHILL_DAEMON_H_
 
+#include <string>
+
 #include "shill/manager.h"
 #include "shill/shill_event.h"
 #include "shill/sockets.h"
@@ -20,6 +22,7 @@ class Daemon {
   Daemon(Config *config, ControlInterface *control, GLib *glib);
   ~Daemon();
 
+  void AddDeviceToBlackList(const std::string &device_name);
   void Start();
   void Run();
 

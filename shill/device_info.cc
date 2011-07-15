@@ -20,6 +20,7 @@
 #include <base/hash_tables.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stl_util-inl.h>
 #include <base/stringprintf.h>
 
 #include "shill/control_interface.h"
@@ -61,6 +62,10 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
 }
 
 DeviceInfo::~DeviceInfo() {}
+
+void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
+  black_list_.insert(device_name);
+}
 
 void DeviceInfo::Start() {
   link_listener_.reset(
@@ -146,7 +151,11 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
     VLOG(2) << "add link index "  << dev_index << " name " << link_name;
 
     if (link_name) {
-      technology = GetDeviceTechnology(link_name);
+      if (ContainsKey(black_list_, link_name)) {
+        technology = Device::kBlacklisted;
+      } else {
+        technology = GetDeviceTechnology(link_name);
+      }
     }
 
     switch (technology) {

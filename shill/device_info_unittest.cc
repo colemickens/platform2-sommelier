@@ -156,4 +156,21 @@ TEST_F(DeviceInfoTest, DeviceEnumerationReverse) {
   device_info_.Stop();
 }
 
+TEST_F(DeviceInfoTest, DeviceBlackList) {
+  device_info_.AddDeviceToBlackList(kTestDeviceName);
+  device_info_.Start();
+  EXPECT_CALL(sockets_, SendTo(_, _, _, _, _, _));
+  StartRTNLHandler();
+  AddLink();
+
+  // Peek in at the map of devices
+  base::hash_map<int, DeviceRefPtr> *device_map(DeviceInfoDevices());
+  ASSERT_TRUE(ContainsKey(*device_map, kTestDeviceIndex));
+  EXPECT_TRUE(device_map->find(kTestDeviceIndex)->second->TechnologyIs(
+      Device::kBlacklisted));
+
+  StopRTNLHandler();
+  device_info_.Stop();
+}
+
 }  // namespace shill

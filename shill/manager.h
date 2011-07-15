@@ -43,6 +43,8 @@ class Manager {
           EventDispatcher *dispatcher,
           GLib *glib);
   virtual ~Manager();
+
+  void AddDeviceToBlackList(const std::string &device_name);
   void Start();
   void Stop();
 

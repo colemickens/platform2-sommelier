@@ -36,7 +36,7 @@ class Device : public base::RefCounted<Device> {
     kEthernet,
     kWifi,
     kCellular,
-    kBlackListed,
+    kBlacklisted,
     kUnknown,
     kNumTechnologies
   };

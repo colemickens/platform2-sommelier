@@ -90,6 +90,10 @@ Manager::~Manager() {
   ephemeral_profile_->Finalize();
 }
 
+void Manager::AddDeviceToBlackList(const string &device_name) {
+  device_info_.AddDeviceToBlackList(device_name);
+}
+
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
   running_ = true;
