@@ -45,6 +45,7 @@ DBUS_PROXY_HEADERS = \
 DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
 
 SHILL_OBJS = \
+	byte_string.o \
 	cellular.o \
 	cellular_service.o \
 	crypto_des_cbc.o \
@@ -93,6 +94,7 @@ SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = \
+	byte_string_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
