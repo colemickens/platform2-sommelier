@@ -72,7 +72,7 @@ WiFi::WiFi(ControlInterface *control_interface,
   // kind of thing.
   store_.RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
   store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
-  VLOG(2) << "WiFi device " << link_name() << " initialized.";
+  VLOG(2) << "WiFi device " << link_name_ << " initialized.";
 }
 
 WiFi::~WiFi() {}
@@ -86,7 +86,7 @@ void WiFi::Start() {
   try {
     std::map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
-        append_string(link_name().c_str());
+        append_string(link_name_.c_str());
     create_interface_args["Driver"].writer().
         append_string(kSupplicantWiFiDriver);
     // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
@@ -96,7 +96,7 @@ void WiFi::Start() {
   } catch (const DBus::Error e) {  // NOLINT
     if (!strcmp(e.name(), kSupplicantErrorInterfaceExists)) {
       interface_path =
-          supplicant_process_proxy_->GetInterface(link_name());
+          supplicant_process_proxy_->GetInterface(link_name_);
       // XXX crash here, if device missing?
     } else {
       // XXX

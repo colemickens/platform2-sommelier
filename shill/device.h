@@ -62,8 +62,6 @@ class Device : public base::RefCounted<Device> {
 
   std::string GetRpcIdentifier();
 
-  const std::string &link_name() const { return link_name_; }
-
   PropertyStore *store() { return &store_; }
 
   // Returns a string that is guaranteed to uniquely identify this Device
@@ -103,6 +101,7 @@ class Device : public base::RefCounted<Device> {
   std::vector<ServiceRefPtr> services_;
   int interface_index_;
   bool running_;
+  const std::string link_name_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
 
@@ -115,7 +114,6 @@ class Device : public base::RefCounted<Device> {
   std::vector<std::string> AvailableIPConfigs();
   std::string GetRpcConnectionIdentifier();
 
-  const std::string link_name_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);

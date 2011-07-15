@@ -31,13 +31,18 @@ const char Profile::kUserStorageDirFormat[] = "/home/%s/user/flimflam";
 
 Profile::Profile(ControlInterface *control_interface,
                  GLib *glib,
-                 Manager *manager)
+                 Manager *manager,
+                 const Identifier &name,
+                 bool connect_to_rpc)
     : manager_(manager),
-      adaptor_(control_interface->CreateProfileAdaptor(this)),
+      name_(name),
       storage_(glib) {
+  if (connect_to_rpc)
+    adaptor_.reset(control_interface->CreateProfileAdaptor(this));
+
   // flimflam::kCheckPortalListProperty: Registered in DefaultProfile
   // flimflam::kCountryProperty: Registered in DefaultProfile
-  store_.RegisterConstString(flimflam::kNameProperty, &name_);
+  store_.RegisterConstString(flimflam::kNameProperty, &name_.identifier);
 
   // flimflam::kOfflineModeProperty: Registered in DefaultProfile
   // flimflam::kPortalURLProperty: Registered in DefaultProfile
@@ -45,12 +50,20 @@ Profile::Profile(ControlInterface *control_interface,
   HelpRegisterDerivedStrings(flimflam::kServicesProperty,
                              &Profile::EnumerateAvailableServices,
                              NULL);
-  // HelpRegisterDerivedStrings(flimflam::kEntriesProperty,
-  //                            &Profile::EnumerateEntries,
-  //                            NULL);
+  HelpRegisterDerivedStrings(flimflam::kEntriesProperty,
+                             &Profile::EnumerateEntries,
+                             NULL);
 }
 
 Profile::~Profile() {}
+
+string Profile::GetFriendlyName() {
+  return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
+}
+
+string Profile::GetRpcIdentifier() {
+  return adaptor_->GetRpcIdentifier();
+}
 
 bool Profile::AdoptService(const ServiceRefPtr &service) {
   if (ContainsKey(services_, service->UniqueName()))
@@ -135,11 +148,6 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   parsed->user = "";
   parsed->identifier = raw;
   return true;
-}
-
-string Profile::GetRpcPath(const Identifier &identifier) {
-  string user = identifier.user.empty() ? "" : identifier.user + "/";
-  return "/profile/" + user + identifier.identifier;
 }
 
 bool Profile::GetStoragePath(const Identifier &identifier, FilePath *path) {

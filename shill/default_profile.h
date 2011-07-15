@@ -29,6 +29,8 @@ class DefaultProfile : public Profile {
   virtual ~DefaultProfile();
 
  private:
+  static const char kDefaultId[];
+
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);
 };
 

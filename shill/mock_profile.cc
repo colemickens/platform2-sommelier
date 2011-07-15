@@ -21,7 +21,14 @@ class Manager;
 MockProfile::MockProfile(ControlInterface *control_interface,
                          GLib *glib,
                          Manager *manager)
-    : Profile(control_interface, glib, manager) {
+    : Profile(control_interface, glib, manager, Identifier("mock"), false) {
+}
+
+MockProfile::MockProfile(ControlInterface *control_interface,
+                         GLib *glib,
+                         Manager *manager,
+                         const std::string &identifier)
+    : Profile(control_interface, glib, manager, Identifier(identifier), false) {
 }
 
 MockProfile::~MockProfile() {}

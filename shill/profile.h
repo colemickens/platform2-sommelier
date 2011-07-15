@@ -30,6 +30,12 @@ class ProfileAdaptorInterface;
 class Profile : public base::RefCounted<Profile> {
  public:
   struct Identifier {
+    Identifier() {}
+    explicit Identifier(const std::string &i) : identifier(i) {}
+    Identifier(const std::string &u, const std::string &i)
+        : user(u),
+          identifier(i) {
+    }
     std::string user;  // Empty for global.
     std::string identifier;
   };
@@ -37,10 +43,16 @@ class Profile : public base::RefCounted<Profile> {
   static const char kGlobalStorageDir[];
   static const char kUserStorageDirFormat[];
 
-  Profile(ControlInterface *control_interface, GLib *glib, Manager *manager);
+  Profile(ControlInterface *control_interface,
+          GLib *glib,
+          Manager *manager,
+          const Identifier &name,
+          bool connect_to_rpc);
   virtual ~Profile();
 
-  const std::string &name() { return name_; }
+  std::string GetFriendlyName();
+
+  std::string GetRpcIdentifier();
 
   PropertyStore *store() { return &store_; }
 
@@ -76,11 +88,6 @@ class Profile : public base::RefCounted<Profile> {
   // on success.
   static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
 
-  // Returns the RPC object path for a profile identified by
-  // |identifier|. |identifier| must be a valid identifier, possibly parsed and
-  // validated through Profile::ParseIdentifier.
-  static std::string GetRpcPath(const Identifier &identifier);
-
   // Sets |path| to the persistent store file path for a profile identified by
   // |identifier|. Returns true on success, and false if unable to determine an
   // appropriate file location. |identifier| must be a valid identifier,
@@ -113,13 +120,14 @@ class Profile : public base::RefCounted<Profile> {
                                   Strings(Profile::*get)(void),
                                   bool(Profile::*set)(const Strings&));
 
-  scoped_ptr<ProfileAdaptorInterface> adaptor_;
+
+  // Properties to be gotten via PropertyStore calls.
+  Identifier name_;
 
   // Persistent store associated with the profile.
   KeyFileStore storage_;
 
-  // Properties to be get/set via PropertyStore calls.
-  std::string name_;
+  scoped_ptr<ProfileAdaptorInterface> adaptor_;
 
   DISALLOW_COPY_AND_ASSIGN(Profile);
 };

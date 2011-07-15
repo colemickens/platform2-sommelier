@@ -181,7 +181,8 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 TEST_F(ManagerTest, MoveService) {
   // I want to ensure that the Profiles are managing this Service object
   // lifetime properly, so I can't hold a ref to it here.
-  ProfileRefPtr profile(new Profile(&control_interface_, &glib_, &manager_));
+  ProfileRefPtr profile(
+      new MockProfile(&control_interface_, &glib_, &manager_, ""));
   {
     ServiceRefPtr s2(
         new MockService(&control_interface_,

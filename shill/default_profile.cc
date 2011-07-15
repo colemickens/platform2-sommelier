@@ -11,12 +11,13 @@
 #include "shill/manager.h"
 
 namespace shill {
+const char DefaultProfile::kDefaultId[] = "default";
 
 DefaultProfile::DefaultProfile(ControlInterface *control_interface,
                                GLib *glib,
                                Manager *manager,
                                const Manager::Properties &manager_props)
-    : Profile(control_interface, glib, manager) {
+    : Profile(control_interface, glib, manager, Identifier(kDefaultId), true) {
   store_.RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store_.RegisterConstString(flimflam::kCountryProperty,

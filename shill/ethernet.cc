@@ -70,7 +70,7 @@ bool Ethernet::TechnologyIs(const Device::Technology type) {
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
-    LOG(INFO) << link_name() << " is up; should start L3!";
+    LOG(INFO) << link_name_ << " is up; should start L3!";
     link_up_ = true;
     manager_->RegisterService(service_);
     if (service_->auto_connect()) {

@@ -25,7 +25,7 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest()
-      : profile_(new Profile(&control_interface_, &glib_, &manager_)) {
+      : profile_(new MockProfile(&control_interface_, &glib_, &manager_, "")) {
   }
 
  protected:
@@ -74,16 +74,17 @@ TEST_F(ProfileTest, ParseIdentifier) {
   EXPECT_EQ(kIdentifier2, identifier.identifier);
 }
 
-TEST_F(ProfileTest, GetRpcPath) {
+TEST_F(ProfileTest, GetFriendlyName) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
-  static const char kPathPrefix[] = "/profile/";
-  Profile::Identifier identifier;
-  identifier.identifier = kIdentifier;
-  EXPECT_EQ(string(kPathPrefix) + kIdentifier, Profile::GetRpcPath(identifier));
-  identifier.user = kUser;
-  EXPECT_EQ(string(kPathPrefix) + kUser + "/" + kIdentifier,
-            Profile::GetRpcPath(identifier));
+  Profile::Identifier id;
+  id.identifier = kIdentifier;
+  ProfileRefPtr profile(
+      new Profile(&control_interface_, &glib_, &manager_, id, false));
+  EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
+  id.user = kUser;
+  profile = new Profile(&control_interface_, &glib_, &manager_, id, false);
+  EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
 TEST_F(ProfileTest, GetStoragePath) {

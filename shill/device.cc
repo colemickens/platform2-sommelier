@@ -39,8 +39,8 @@ Device::Device(ControlInterface *control_interface,
       reconnect_(true),
       interface_index_(interface_index),
       running_(false),
-      manager_(manager),
       link_name_(link_name),
+      manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)) {
 
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
@@ -125,7 +125,7 @@ string Device::GetRpcIdentifier() {
 
 const string& Device::UniqueName() const {
   // TODO(pstew): link_name is only run-time unique and won't persist
-  return link_name();
+  return link_name_;
 }
 
 void Device::DestroyIPConfig() {
@@ -139,7 +139,7 @@ void Device::DestroyIPConfig() {
 
 bool Device::AcquireDHCPConfig() {
   DestroyIPConfig();
-  ipconfig_ = DHCPProvider::GetInstance()->CreateConfig(link_name());
+  ipconfig_ = DHCPProvider::GetInstance()->CreateConfig(link_name_);
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();

@@ -250,7 +250,7 @@ vector<string> Manager::EnumerateWatchedServices() {
 }
 
 string Manager::GetActiveProfileName() {
-  return ActiveProfile()->name();
+  return ActiveProfile()->GetFriendlyName();
 }
 
 }  // namespace shill

@@ -23,9 +23,11 @@ class MockProfile : public Profile {
   MockProfile(ControlInterface *control_interface,
               GLib *glib,
               Manager *manager);
+  MockProfile(ControlInterface *control_interface,
+              GLib *glib,
+              Manager *manager,
+              const std::string &identifier);
   virtual ~MockProfile();
-
-  MOCK_METHOD1(MoveToActiveProfile, bool(const std::string &));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProfile);

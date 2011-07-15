@@ -26,7 +26,7 @@ const char ProfileDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 const char ProfileDBusAdaptor::kPath[] = "/profile/";
 
 ProfileDBusAdaptor::ProfileDBusAdaptor(DBus::Connection* conn, Profile *profile)
-    : DBusAdaptor(conn, kPath),
+    : DBusAdaptor(conn, kPath + profile->GetFriendlyName()),
       profile_(profile) {
 }
 
