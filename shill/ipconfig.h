@@ -13,6 +13,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/ip_address.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 
@@ -25,18 +26,13 @@ class IPConfigAdaptorInterface;
 // class.
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
-  enum AddressFamily {
-    kAddressFamilyUnknown,
-    kAddressFamilyIPv4,
-    kAddressFamilyIPv6
-  };
 
   struct Properties {
-    Properties() : address_family(kAddressFamilyUnknown),
+    Properties() : address_family(IPAddress::kAddressFamilyUnknown),
                    subnet_cidr(0),
                    mtu(0) {}
 
-    AddressFamily address_family;
+    IPAddress::Family address_family;
     std::string address;
     int32 subnet_cidr;
     std::string broadcast_address;

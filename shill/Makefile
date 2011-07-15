@@ -67,6 +67,7 @@ SHILL_OBJS = \
 	ethernet_service.o \
 	glib.o \
 	glib_io_handler.o \
+	ip_address.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
 	key_file_store.o \
@@ -105,6 +106,7 @@ TEST_OBJS = \
 	device_unittest.o \
 	dhcp_config_unittest.o \
 	dhcp_provider_unittest.o \
+	ip_address_unittest.o \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	manager_unittest.o \

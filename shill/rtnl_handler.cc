@@ -19,6 +19,7 @@
 #include <base/logging.h>
 
 #include "shill/io_handler.h"
+#include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
@@ -284,10 +285,10 @@ bool RTNLHandler::AddressRequest(int interface_index, int cmd, int flags,
     in6_addr in6;
   } addr;
 
-  if (properties.address_family == IPConfig::kAddressFamilyIPv4) {
+  if (properties.address_family == IPAddress::kAddressFamilyIPv4) {
     address_family = AF_INET;
     address_size = sizeof(struct in_addr);
-  } else if (properties.address_family == IPConfig::kAddressFamilyIPv6) {
+  } else if (properties.address_family == IPAddress::kAddressFamilyIPv6) {
     address_family = AF_INET6;
     address_size = sizeof(struct in6_addr);
   } else

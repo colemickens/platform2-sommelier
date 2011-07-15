@@ -14,6 +14,7 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
 #include "shill/glib.h"
+#include "shill/ip_address.h"
 
 using std::string;
 using std::vector;
@@ -192,7 +193,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
                                     IPConfig::Properties *properties) {
   VLOG(2) << __func__;
   properties->method = flimflam::kTypeDHCP;
-  properties->address_family = IPConfig::kAddressFamilyIPv4;
+  properties->address_family = IPAddress::kAddressFamilyIPv4;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;

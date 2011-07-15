@@ -14,6 +14,7 @@ namespace shill {
 // Provides a holder of a string of bytes
 class ByteString {
  public:
+  ByteString() {}
   ByteString(const ByteString &b) : data_(b.data_) {}
   explicit ByteString(size_t length) : data_(length) {}
   ByteString(const unsigned char *data, size_t length)
