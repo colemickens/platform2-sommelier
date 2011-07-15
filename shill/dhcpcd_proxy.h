@@ -15,6 +15,8 @@ namespace shill {
 
 class DHCPProvider;
 
+// TODO(petkov): Convert this to match ModemManagerProxy model.
+
 // The DHCPCD listener is a singleton proxy that listens to signals from all
 // DHCP clients and dispatches them through the DHCP provider to the appropriate
 // client based on the PID.

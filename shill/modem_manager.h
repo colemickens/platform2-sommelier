@@ -6,6 +6,7 @@
 #define SHILL_MODEM_MANAGER_
 
 #include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/glib.h"
@@ -15,6 +16,7 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
+class ModemManagerProxyInterface;
 
 // Handles a modem manager service and creates and destroys cellular devices.
 class ModemManager {
@@ -63,8 +65,8 @@ class ModemManager {
   const std::string path_;
   guint watcher_id_;
 
-  // DBus service owner.
-  std::string owner_;
+  std::string owner_;  // DBus service owner.
+  scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy.
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

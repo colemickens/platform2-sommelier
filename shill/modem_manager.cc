@@ -6,6 +6,9 @@
 
 #include <base/logging.h>
 
+#include "shill/modem_manager_proxy.h"
+#include "shill/proxy_factory.h"
+
 using std::string;
 
 namespace shill {
@@ -30,6 +33,7 @@ ModemManager::~ModemManager() {
 void ModemManager::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service_;
   CHECK_EQ(0, watcher_id_);
+  // TODO(petkov): Implement DBus name watching through dbus-c++.
   watcher_id_ = glib_->BusWatchName(G_BUS_TYPE_SYSTEM,
                                     service_.c_str(),
                                     G_BUS_NAME_WATCHER_FLAGS_NONE,
@@ -50,12 +54,13 @@ void ModemManager::Stop() {
 
 void ModemManager::Connect(const string &owner) {
   owner_ = owner;
-  // TODO(petkov): Create a proxy to the manager and enumerate its devices.
+  proxy_.reset(
+      ProxyFactory::factory()->CreateModemManagerProxy(this, path_, owner_));
 }
 
 void ModemManager::Disconnect() {
   owner_.clear();
-  // TODO(petkov): Destroy manager's proxy and its devices.
+  proxy_.reset();
 }
 
 void ModemManager::OnAppear(GDBusConnection *connection,

@@ -7,8 +7,11 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_modem_manager_proxy.h"
 #include "shill/modem_manager.h"
+#include "shill/proxy_factory.h"
 
+using std::string;
 using testing::_;
 using testing::Return;
 using testing::StrEq;
@@ -25,13 +28,34 @@ class ModemManagerTest : public Test {
                        &control_interface_,
                        &dispatcher_,
                        &manager_,
-                       &glib_) {}
+                       &glib_),
+        proxy_factory_(&proxy_) {
+    ProxyFactory::set_factory(&proxy_factory_);
+  }
 
   virtual void TearDown() {
     modem_manager_.watcher_id_ = 0;
+    ModemManagerProxyInterface *proxy = modem_manager_.proxy_.release();
+    EXPECT_TRUE(proxy == NULL || proxy == &proxy_);
+    ProxyFactory::set_factory(NULL);
   }
 
  protected:
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    TestProxyFactory(ModemManagerProxyInterface *proxy) : proxy_(proxy) {}
+
+    virtual ModemManagerProxyInterface *CreateModemManagerProxy(
+        ModemManager *manager,
+        const string &path,
+        const string &service) {
+      return proxy_;
+    }
+
+   private:
+    ModemManagerProxyInterface *proxy_;
+  };
+
   static const char kService[];
   static const char kPath[];
 
@@ -40,6 +64,8 @@ class ModemManagerTest : public Test {
   EventDispatcher dispatcher_;
   Manager manager_;
   ModemManager modem_manager_;
+  MockModemManagerProxy proxy_;
+  TestProxyFactory proxy_factory_;
 };
 
 const char ModemManagerTest::kService[] = "test.dbus.service";

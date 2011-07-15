@@ -15,6 +15,7 @@
 #include "shill/dbus_control.h"
 #include "shill/dhcp_provider.h"
 #include "shill/glib.h"
+#include "shill/proxy_factory.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 #include "shill/supplicant_proxy_factory.h"
@@ -97,6 +98,9 @@ int main(int argc, char** argv) {
 
   shill::SupplicantProxyFactory live_proxy_factory;
   shill::WiFi::set_proxy_factory(&live_proxy_factory);
+
+  shill::ProxyFactory proxy_factory;
+  shill::ProxyFactory::set_factory(&proxy_factory);
 
   // TODO(pstew): This should be chosen based on config
   shill::DBusControl *dbus_control = new shill::DBusControl();

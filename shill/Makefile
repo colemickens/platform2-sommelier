@@ -8,7 +8,6 @@ CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized
 # disable some errors, which occur repeateadly the dbus-c++ headers.
 CXXFLAGS += -Wno-ignored-qualifiers -Wno-unused
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
-AR ?= ar
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 
@@ -25,7 +24,6 @@ LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
 	gdk-2.0 gtk+-2.0)
 
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
-TEST_INCLUDE_DIRS = $(INCLUDE_DIRS)
 TEST_LIB_DIRS = $(LIB_DIRS)
 
 DBUS_ADAPTOR_HEADERS = \
@@ -37,6 +35,7 @@ DBUS_ADAPTOR_HEADERS = \
 
 DBUS_PROXY_HEADERS = \
 	dhcpcd.h \
+	mm.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
@@ -75,9 +74,11 @@ SHILL_OBJS = \
 	manager_dbus_adaptor.o \
 	modem_info.o \
 	modem_manager.o \
+	modem_manager_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
 	property_store.o \
+	proxy_factory.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	service.o \
@@ -129,7 +130,12 @@ TEST_OBJS = \
 	testrunner.o \
 	wifi_unittest.o
 
+.PHONY: all clean
+
 all: $(SHILL_BIN) $(TEST_BIN)
+
+mm.xml: $(SYSROOT)/usr/share/dbus-1/interfaces/org.freedesktop.ModemManager.xml
+	cat $< > $@
 
 $(DBUS_PROXY_HEADERS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
@@ -148,8 +154,7 @@ $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
 
 $(TEST_BIN): CXXFLAGS += -DUNIT_TEST
 $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
-	$(CXX) $(CXXFLAGS) $(TEST_INCLUDE_DIRS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ \
-		$(TEST_LIBS) -o $@
+	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
-	rm -rf *.o $(DBUS_HEADERS) $(SHILL_BIN) $(TEST_BIN)
+	rm -rf *.o mm.xml $(DBUS_HEADERS) $(SHILL_BIN) $(TEST_BIN)
