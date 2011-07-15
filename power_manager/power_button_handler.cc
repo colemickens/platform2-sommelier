@@ -111,6 +111,7 @@ void PowerButtonHandler::HandleButtonUp() {
 gboolean PowerButtonHandler::OnLockTimeout() {
   lock_timeout_id_ = 0;
   daemon_->locker()->LockScreen();
+  daemon_->BrightenScreenIfOff();
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
   lock_to_shutdown_timeout_id_ =
       g_timeout_add(kLockToShutdownTimeoutMs,

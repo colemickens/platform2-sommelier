@@ -414,6 +414,8 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
       }
       changed_brightness = true;
     }
+  } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
+    BrightenScreenIfOff();
   }
   if (idle_time_ms >= lock_ms_ && util::LoggedIn() &&
       backlight_controller_->state() != BACKLIGHT_SUSPENDED) {
@@ -477,6 +479,11 @@ void Daemon::DecreaseScreenBrightness(bool allow_off, bool user_initiated) {
 void Daemon::IncreaseScreenBrightness(bool user_initiated) {
   backlight_controller_->IncreaseBrightness();
   SendBrightnessChangedSignal(user_initiated);
+}
+
+void Daemon::BrightenScreenIfOff() {
+  if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
+    backlight_controller_->IncreaseBrightness();
 }
 
 void Daemon::GrabKey(KeyCode key, uint32 mask) {

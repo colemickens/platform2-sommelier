@@ -242,6 +242,10 @@ void BacklightController::SetMinimumBrightness(int64 level) {
   min_ = LocalBrightnessToRawBrightness(level);
 }
 
+bool BacklightController::IsBacklightActiveOff() {
+  return state_ == BACKLIGHT_ACTIVE && local_brightness_ == 0;
+}
+
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   if (!is_initialized_)
     return;
@@ -302,10 +306,6 @@ double BacklightController::RawBrightnessToLocalBrightness(int64 raw_level) {
 
 int64 BacklightController::LocalBrightnessToRawBrightness(double local_level) {
   return lround(local_level * max_ / max_percent_);
-}
-
-bool BacklightController::IsBacklightActiveOff() {
-  return state_ == BACKLIGHT_ACTIVE && local_brightness_ == 0;
 }
 
 void BacklightController::ReadPrefs() {
