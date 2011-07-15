@@ -94,6 +94,7 @@ SHILL_OBJS = \
 	proxy_factory.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
+	rtnl_message.o \
 	service.o \
 	service_dbus_adaptor.o \
 	shill_config.o \
@@ -141,6 +142,7 @@ TEST_OBJS = \
 	property_store_unittest.o \
 	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
+	rtnl_message_unittest.o \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \

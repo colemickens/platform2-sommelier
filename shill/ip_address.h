@@ -15,11 +15,10 @@ namespace shill {
 
 class IPAddress {
  public:
-  enum Family {
-    kAddressFamilyUnknown,
-    kAddressFamilyIPv4 = AF_INET,
-    kAddressFamilyIPv6 = AF_INET6
-  };
+  typedef unsigned char Family;
+  static const Family kAddressFamilyUnknown = AF_UNSPEC;
+  static const Family kAddressFamilyIPv4 = AF_INET;
+  static const Family kAddressFamilyIPv6 = AF_INET6;
 
   explicit IPAddress(Family family);
   IPAddress(Family family, const ByteString &address);

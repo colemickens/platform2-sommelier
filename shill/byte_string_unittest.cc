@@ -16,6 +16,7 @@ namespace {
 const unsigned char kTest1[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 const unsigned char kTest2[] = { 1, 2, 3, 4 };
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
+const char kTest4[] = "Hello world";
 }  // namespace {}
 
 class ByteStringTest : public Test {
@@ -63,8 +64,16 @@ TEST_F(ByteStringTest, NonEmpty) {
   EXPECT_FALSE(bs2.Equals(bs1));
   EXPECT_FALSE(bs3.Equals(bs1));
 
-  ByteString bs4(kTest1, sizeof(kTest1));
-  EXPECT_TRUE(bs4.Equals(bs1));
+  ByteString bs4(kTest4, false);
+  EXPECT_EQ(strlen(kTest4), bs4.GetLength());
+  EXPECT_EQ(0, memcmp(kTest4, bs4.GetData(), bs4.GetLength()));
+
+  ByteString bs5(kTest4, true);
+  EXPECT_EQ(strlen(kTest4) + 1, bs5.GetLength());
+  EXPECT_EQ(0, memcmp(kTest4, bs5.GetData(), bs5.GetLength()));
+
+  ByteString bs6(kTest1, sizeof(kTest1));
+  EXPECT_TRUE(bs6.Equals(bs1));
 }
 
 TEST_F(ByteStringTest, UInt32) {
@@ -94,6 +103,23 @@ TEST_F(ByteStringTest, UInt32) {
 #else
   EXPECT_TRUE(bs1.Equals(bs3));
 #endif
+}
+
+TEST_F(ByteStringTest, Resize) {
+  ByteString bs1(kTest2, sizeof(kTest2));
+  uint32 val;
+
+  bs1.Resize(sizeof(kTest2) + 10);
+  EXPECT_EQ(sizeof(kTest2) + 10, bs1.GetLength());
+  EXPECT_TRUE(bs1.GetData() != NULL);
+  EXPECT_EQ(0, memcmp(bs1.GetData(), kTest2, sizeof(kTest2)));
+  for (size_t i = sizeof(kTest2); i < sizeof(kTest2) + 10; ++i) {
+    EXPECT_EQ(0, bs1.GetData()[i]);
+  }
+
+  bs1.Resize(sizeof(kTest2) - 2);
+  EXPECT_EQ(sizeof(kTest2) - 2, bs1.GetLength());
+  EXPECT_EQ(0, memcmp(bs1.GetData(), kTest2, sizeof(kTest2) - 2));
 }
 
 }  // namespace shill

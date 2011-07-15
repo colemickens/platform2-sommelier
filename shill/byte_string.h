@@ -5,6 +5,7 @@
 #ifndef SHILL_BYTE_STRING_
 #define SHILL_BYTE_STRING_
 
+#include <string>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -19,6 +20,12 @@ class ByteString {
   explicit ByteString(size_t length) : data_(length) {}
   ByteString(const unsigned char *data, size_t length)
       : data_(data, data + length) {}
+  ByteString(const std::string &data, bool copy_terminator)
+    : data_(reinterpret_cast<const unsigned char *>(data.c_str()),
+            reinterpret_cast<const unsigned char *>(data.c_str() +
+                                                    data.length() +
+                                                    (copy_terminator ?
+                                                     1 : 0))) {}
 
   ByteString &operator=(const ByteString &b) {
     data_ = b.data_;
@@ -43,6 +50,10 @@ class ByteString {
 
   bool IsZero() const;
   bool Equals(const ByteString &b) const;
+  void Append(const ByteString &b);
+  void Resize(int size) {
+    data_.resize(size, 0);
+  }
 
  private:
   std::vector<unsigned char> data_;

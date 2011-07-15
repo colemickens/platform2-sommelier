@@ -1,0 +1,296 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/rtnl_message.h"
+
+#include <base/logging.h>
+
+#include <sys/socket.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
+namespace shill {
+
+struct RTNLHeader {
+  RTNLHeader() {
+    memset(this, 0, sizeof(*this));
+  }
+  struct nlmsghdr hdr;
+  union {
+    struct ifinfomsg ifi;
+    struct ifaddrmsg ifa;
+    struct rtmsg rtm;
+    struct rtgenmsg gen;
+  };
+};
+
+RTNLMessage::RTNLMessage()
+    : type_(kMessageTypeUnknown),
+      mode_(kMessageModeUnknown),
+      flags_(0),
+      interface_index_(0),
+      family_(IPAddress::kAddressFamilyUnknown) {}
+
+RTNLMessage::RTNLMessage(MessageType type,
+                         MessageMode mode,
+                         unsigned int flags,
+                         uint32 seq,
+                         uint32 pid,
+                         int interface_index,
+                         IPAddress::Family family)
+    : type_(type),
+      mode_(mode),
+      flags_(flags),
+      seq_(seq),
+      pid_(pid),
+      interface_index_(interface_index),
+      family_(family) {}
+
+bool RTNLMessage::Decode(const ByteString &msg) {
+  bool ret = DecodeInternal(msg);
+  if (!ret) {
+    mode_ = kMessageModeUnknown;
+    type_ = kMessageTypeUnknown;
+  }
+  return ret;
+}
+
+bool RTNLMessage::DecodeInternal(const ByteString &msg) {
+  const RTNLHeader *hdr =
+      reinterpret_cast<const RTNLHeader *>(msg.GetConstData());
+
+  if (msg.GetLength() < sizeof(hdr->hdr) ||
+      msg.GetLength() < hdr->hdr.nlmsg_len)
+    return false;
+
+  MessageMode mode = kMessageModeUnknown;
+  switch (hdr->hdr.nlmsg_type) {
+  case RTM_NEWLINK:
+  case RTM_NEWADDR:
+  case RTM_NEWROUTE:
+    mode = kMessageModeAdd;
+    break;
+
+  case RTM_DELLINK:
+  case RTM_DELADDR:
+  case RTM_DELROUTE:
+    mode = kMessageModeDelete;
+    break;
+
+  default:
+    return false;
+  }
+
+  rtattr *attr_data = NULL;
+  int attr_length = 0;
+
+  switch (hdr->hdr.nlmsg_type) {
+  case RTM_NEWLINK:
+  case RTM_DELLINK:
+    if (!DecodeLink(hdr, mode, &attr_data, &attr_length))
+      return false;
+    break;
+
+  case RTM_NEWADDR:
+  case RTM_DELADDR:
+    if (!DecodeAddress(hdr, mode, &attr_data, &attr_length))
+      return false;
+    break;
+
+  case RTM_NEWROUTE:
+  case RTM_DELROUTE:
+    if (!DecodeRoute(hdr, mode, &attr_data, &attr_length))
+      return false;
+    break;
+
+  default:
+    NOTREACHED();
+  }
+
+  flags_ = hdr->hdr.nlmsg_flags;
+  seq_ = hdr->hdr.nlmsg_seq;
+  pid_ = hdr->hdr.nlmsg_pid;
+
+  while (attr_data && RTA_OK(attr_data, attr_length)) {
+    SetAttribute(
+        attr_data->rta_type,
+        ByteString(reinterpret_cast<unsigned char *>(RTA_DATA(attr_data)),
+                   RTA_PAYLOAD(attr_data)));
+    attr_data = RTA_NEXT(attr_data, attr_length);
+  }
+
+  if (attr_length) {
+    // We hit a parse error while going through the attributes
+    attributes_.clear();
+    return false;
+  }
+
+  return true;
+}
+
+bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
+                             MessageMode mode,
+                             rtattr **attr_data,
+                             int *attr_length) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifi))) {
+    return false;
+  }
+
+  mode_ = mode;
+  *attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
+  *attr_length = IFLA_PAYLOAD(&hdr->hdr);
+
+  type_ = kMessageTypeLink;
+  family_ = hdr->ifi.ifi_family;
+  interface_index_ = hdr->ifi.ifi_index;
+  set_link_status(LinkStatus(hdr->ifi.ifi_type,
+                             hdr->ifi.ifi_flags,
+                             hdr->ifi.ifi_change));
+  return true;
+}
+
+bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
+                                MessageMode mode,
+                                rtattr **attr_data,
+                                int *attr_length) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifa))) {
+    return false;
+  }
+  mode_ = mode;
+  *attr_data = IFA_RTA(NLMSG_DATA(&hdr->hdr));
+  *attr_length = IFA_PAYLOAD(&hdr->hdr);
+
+  type_ = kMessageTypeAddress;
+  family_ = hdr->ifa.ifa_family;
+  interface_index_ = hdr->ifa.ifa_index;
+  set_address_status(AddressStatus(hdr->ifa.ifa_prefixlen,
+                                   hdr->ifa.ifa_flags,
+                                   hdr->ifa.ifa_scope));
+  return true;
+}
+
+bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
+                              MessageMode mode,
+                              rtattr **attr_data,
+                              int *attr_length) {
+  if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->rtm))) {
+    return false;
+  }
+  mode_ = mode;
+  *attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
+  *attr_length = RTM_PAYLOAD(&hdr->hdr);
+
+  type_ = kMessageTypeRoute;
+  family_ = hdr->rtm.rtm_family;
+  set_route_status(RouteStatus(hdr->rtm.rtm_dst_len,
+                               hdr->rtm.rtm_src_len,
+                               hdr->rtm.rtm_table,
+                               hdr->rtm.rtm_protocol,
+                               hdr->rtm.rtm_scope,
+                               hdr->rtm.rtm_type,
+                               hdr->rtm.rtm_flags));
+  return true;
+}
+
+ByteString RTNLMessage::Encode() {
+  if (type_ != kMessageTypeLink &&
+      type_ != kMessageTypeAddress &&
+      type_ != kMessageTypeRoute) {
+    return ByteString();
+  }
+
+  RTNLHeader hdr;
+  hdr.hdr.nlmsg_flags = flags_;
+  hdr.hdr.nlmsg_seq = seq_;
+  hdr.hdr.nlmsg_pid = pid_;
+  hdr.hdr.nlmsg_seq = 0;
+
+  if (mode_ == kMessageModeGet) {
+    if (type_ == kMessageTypeLink) {
+      hdr.hdr.nlmsg_type = RTM_GETLINK;
+    } else if (type_ == kMessageTypeAddress) {
+      hdr.hdr.nlmsg_type = RTM_GETADDR;
+    } else if (type_ == kMessageTypeRoute) {
+      hdr.hdr.nlmsg_type = RTM_GETROUTE;
+    }
+    hdr.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr.gen));
+    hdr.gen.rtgen_family = family_;
+  } else {
+    switch (type_) {
+    case kMessageTypeLink:
+      EncodeLink(&hdr);
+      break;
+
+    case kMessageTypeAddress:
+      EncodeAddress(&hdr);
+      break;
+
+    case kMessageTypeRoute:
+      EncodeRoute(&hdr);
+      break;
+
+    default:
+      NOTREACHED();
+    }
+  }
+
+  size_t header_length = hdr.hdr.nlmsg_len;
+  ByteString attributes;
+
+  base::hash_map<uint16, ByteString>::iterator attr;
+  for (attr = attributes_.begin(); attr != attributes_.end(); ++attr) {
+    size_t len = RTA_LENGTH(attr->second.GetLength());
+    hdr.hdr.nlmsg_len = NLMSG_ALIGN(hdr.hdr.nlmsg_len) + RTA_ALIGN(len);
+
+    struct rtattr rt_attr = { len, attr->first };
+    ByteString attr_header(reinterpret_cast<unsigned char *>(&rt_attr),
+                           sizeof(rt_attr));
+    attr_header.Resize(RTA_ALIGN(attr_header.GetLength()));
+    attributes.Append(attr_header);
+
+    ByteString attr_data(attr->second);
+    attr_data.Resize(RTA_ALIGN(attr_data.GetLength()));
+    attributes.Append(attr_data);
+  }
+
+  ByteString packet(reinterpret_cast<unsigned char *>(&hdr), header_length);
+  packet.Append(attributes);
+
+  return packet;
+}
+
+void RTNLMessage::EncodeLink(RTNLHeader *hdr) {
+  hdr->hdr.nlmsg_type = (mode_ == kMessageModeAdd) ? RTM_NEWLINK : RTM_DELLINK;
+  hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifi));
+  hdr->ifi.ifi_family = family_;
+  hdr->ifi.ifi_type = link_status_.type;
+  hdr->ifi.ifi_flags = link_status_.flags;
+  hdr->ifi.ifi_change = link_status_.change;
+}
+
+void RTNLMessage::EncodeAddress(RTNLHeader *hdr) {
+  hdr->hdr.nlmsg_type = (mode_ == kMessageModeAdd) ? RTM_NEWADDR : RTM_DELADDR;
+  hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifa));
+  hdr->ifa.ifa_family = family_;
+  hdr->ifa.ifa_prefixlen = address_status_.prefix_len;
+  hdr->ifa.ifa_flags = address_status_.flags;
+  hdr->ifa.ifa_scope = address_status_.scope;
+  hdr->ifa.ifa_index = interface_index_;
+}
+
+void RTNLMessage::EncodeRoute(RTNLHeader *hdr) {
+  hdr->hdr.nlmsg_type =
+      (mode_ == kMessageModeAdd) ? RTM_NEWROUTE : RTM_DELROUTE;
+  hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->rtm));
+  hdr->rtm.rtm_family = family_;
+  hdr->rtm.rtm_dst_len = route_status_.dst_prefix;
+  hdr->rtm.rtm_src_len = route_status_.src_prefix;
+  hdr->rtm.rtm_table = route_status_.table;
+  hdr->rtm.rtm_protocol = route_status_.protocol;
+  hdr->rtm.rtm_scope = route_status_.scope;
+  hdr->rtm.rtm_type = route_status_.type;
+  hdr->rtm.rtm_flags = route_status_.flags;
+}
+
+}  // namespace shill

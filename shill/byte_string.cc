@@ -49,4 +49,8 @@ bool ByteString::Equals(const ByteString &b) const {
   return data_ == b.data_;
 }
 
+void ByteString::Append(const ByteString &b) {
+  data_.insert(data_.end(), b.data_.begin(), b.data_.end());
+}
+
 }  // namespace shill
