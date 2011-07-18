@@ -132,12 +132,15 @@ void GobiGsmModem::DataCapabilitiesHandler(BYTE num_data_caps,
   std::string operator_name;
   DBus::Error error;
 
-  GetGsmRegistrationInfo(&registration_status,
-                         &operator_code, &operator_name, error);
   // Sometimes when we lose registration, we don't get a
   // RegistrationStateChange callback, but we often do get
   // a DataCapabilitiesHandler callback!
-  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE) {
+  GetGsmRegistrationInfo(&registration_status,
+                         &operator_code, &operator_name, error);
+  if (registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE ||
+      registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING ||
+       registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED ||
+       registration_status == MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN) {
     RegistrationInfo(registration_status, operator_code, operator_name);
     SetMmState(MM_MODEM_STATE_ENABLED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   } else {
