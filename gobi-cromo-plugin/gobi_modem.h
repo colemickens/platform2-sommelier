@@ -389,8 +389,13 @@ class GobiModem
 
   friend class GobiModemTest;
 
-  bool is_disconnected() { return session_id_ == 0; }
+  // Return true if a data session is in the process of starting or
+  // has started
+  bool is_connecting_or_connected();
 
+  // Force a disconnect of a data session, or stop the process of
+  // starting a datasession
+  bool ForceDisconnect();
   bool StartExit();
   bool ExitOk();
   bool StartSuspend();

@@ -25,8 +25,9 @@ void Gobi3KModemHelper::SetCarrier(GobiModem *modem,
     return;
   }
 
-  if (!modem->is_disconnected()) {
-    error.set(kFirmwareLoadError, "Cannot load firmware while connected");
+  if (modem->is_connecting_or_connected()) {
+    error.set(kFirmwareLoadError,
+              "Cannot load firmware while connected or connecting");
     gobifw_free(fw);
     return;
   }

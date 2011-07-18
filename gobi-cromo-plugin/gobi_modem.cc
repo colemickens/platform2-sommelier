@@ -291,12 +291,12 @@ bool StartExitTrampoline(void *arg) {
 
 bool ExitOkTrampoline(void *arg) {
   GobiModem *modem = static_cast<GobiModem*>(arg);
-  return modem->is_disconnected();
+  return !modem->is_connecting_or_connected();
 }
 
 bool SuspendOkTrampoline(void *arg) {
   GobiModem *modem = static_cast<GobiModem*>(arg);
-  return modem->is_disconnected();
+  return !modem->is_connecting_or_connected();
 }
 
 GobiModem::GobiModem(DBus::Connection& connection,
@@ -1443,11 +1443,7 @@ void GobiModem::SetDeviceProperties()
 
 bool GobiModem::StartExit() {
   exiting_ = true;
-  if (session_id_)
-    sdk_->StopDataSession(session_id_);
-
-  LOG(INFO) << "StartExit: session id " << session_id_;
-  return true;
+  return ForceDisconnect();
 }
 
 const char* QMIReturnCodeToMMError(unsigned int qmicode) {
@@ -1488,12 +1484,28 @@ unsigned int QMIReasonToMMReason(unsigned int qmireason) {
   }
 }
 
+// Return true if a data session has started, or is in the process of starting.
+bool GobiModem::is_connecting_or_connected() {
+  return session_starter_in_flight_ || session_id_;
+}
+
+// Force a disconnect of a data session, or stop the process of
+// starting a datasession
+bool GobiModem::ForceDisconnect() {
+  if (session_id_) {
+    LOG(INFO) << "ForceDisconnect: Stopping data session";
+    sdk_->StopDataSession(session_id_);
+  } else if (session_starter_in_flight_) {
+    LOG(INFO) << "ForceDisconnect: Canceling StartDataSession";
+    SessionStarter::CancelDataSession(sdk_);
+  }
+  return true;
+}
+
 bool GobiModem::StartSuspend() {
   LOG(INFO) << "StartSuspend";
   suspending_ = true;
-  if (session_id_)
-    sdk_->StopDataSession(session_id_);
-  return true;
+  return ForceDisconnect();
 }
 
 bool StartSuspendTrampoline(void *arg) {
