@@ -187,21 +187,21 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
 
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
-  EXPECT_CALL(*proxy_, DoRelease(kDeviceName)).Times(1);
+  EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   EXPECT_TRUE(config_->ReleaseIP());
   config_->pid_ = 0;
 }
 
 TEST_F(DHCPConfigTest, RenewIP) {
   config_->pid_ = 456;
-  EXPECT_CALL(*proxy_, DoRebind(kDeviceName)).Times(1);
+  EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   EXPECT_TRUE(config_->RenewIP());
   config_->pid_ = 0;
 }
 
 TEST_F(DHCPConfigTest, RequestIP) {
   config_->pid_ = 567;
-  EXPECT_CALL(*proxy_, DoRebind(kDeviceName)).Times(1);
+  EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   EXPECT_TRUE(config_->RenewIP());
   config_->pid_ = 0;
 }

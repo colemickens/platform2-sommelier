@@ -13,8 +13,8 @@ namespace shill {
 
 class MockDHCPProxy : public DHCPProxyInterface {
  public:
-  MOCK_METHOD1(DoRebind, void(const std::string &interface));
-  MOCK_METHOD1(DoRelease, void(const std::string &interface));
+  MOCK_METHOD1(Rebind, void(const std::string &interface));
+  MOCK_METHOD1(Release, void(const std::string &interface));
 };
 
 }  // namespace shill

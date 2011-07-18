@@ -18,7 +18,8 @@ class ModemManager;
 // and owner name |service|.
 class ModemManagerProxy : public ModemManagerProxyInterface {
  public:
-  ModemManagerProxy(ModemManager *manager,
+  ModemManagerProxy(DBus::Connection *connection,
+                    ModemManager *manager,
                     const std::string &path,
                     const std::string &service);
   virtual ~ModemManagerProxy();
@@ -30,8 +31,8 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   class Proxy : public org::freedesktop::ModemManager_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemManager *manager,
-          DBus::Connection *connection,
+    Proxy(DBus::Connection *connection,
+          ModemManager *manager,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -47,7 +48,6 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  DBus::Connection connection_;
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManagerProxy);

@@ -15,32 +15,36 @@ namespace shill {
 
 class DHCPProvider;
 
-// TODO(petkov): Convert this to match ModemManagerProxy model.
-
 // The DHCPCD listener is a singleton proxy that listens to signals from all
 // DHCP clients and dispatches them through the DHCP provider to the appropriate
 // client based on the PID.
-class DHCPCDListener : public DHCPListenerInterface,
-                       public DBus::InterfaceProxy,
-                       public DBus::ObjectProxy {
+class DHCPCDListener {
  public:
-  explicit DHCPCDListener(DHCPProvider *provider,
-                          DBus::Connection *connection);
+  DHCPCDListener(DBus::Connection *connection, DHCPProvider *provider);
 
  private:
-  void EventSignal(const DBus::SignalMessage &signal);
-  void StatusChangedSignal(const DBus::SignalMessage &signal);
+  class Proxy : public DBus::InterfaceProxy,
+                public DBus::ObjectProxy {
+   public:
+    Proxy(DBus::Connection *connection, DHCPProvider *provider);
 
-  DHCPProvider *provider_;
+   private:
+    void EventSignal(const DBus::SignalMessage &signal);
+    void StatusChangedSignal(const DBus::SignalMessage &signal);
+
+    DHCPProvider *provider_;
+
+    DISALLOW_COPY_AND_ASSIGN(Proxy);
+  };
+
+  Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPCDListener);
 };
 
 // There's a single DHCPCD proxy per DHCP client identified by its process id
-// and service name.
-class DHCPCDProxy : public DHCPProxyInterface,
-                    public org::chromium::dhcpcd_proxy,
-                    public DBus::ObjectProxy {
+// and service name |service|.
+class DHCPCDProxy : public DHCPProxyInterface {
  public:
   static const char kDBusInterfaceName[];
   static const char kDBusPath[];
@@ -48,19 +52,30 @@ class DHCPCDProxy : public DHCPProxyInterface,
   DHCPCDProxy(DBus::Connection *connection, const char *service);
 
   // Inherited from DHCPProxyInterface.
-  virtual void DoRebind(const std::string &interface);
-  virtual void DoRelease(const std::string &interface);
-
-  // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks are
-  // unused because signals are dispatched directly to the DHCP configuration
-  // instance by the signal listener.
-  virtual void Event(
-      const uint32_t &pid,
-      const std::string &reason,
-      const DHCPConfig::Configuration &configuration);
-  virtual void StatusChanged(const uint32_t &pid, const std::string &status);
+  virtual void Rebind(const std::string &interface);
+  virtual void Release(const std::string &interface);
 
  private:
+  class Proxy : public org::chromium::dhcpcd_proxy,
+                public DBus::ObjectProxy {
+   public:
+    Proxy(DBus::Connection *connection, const char *service);
+
+   private:
+    // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks
+    // are unused because signals are dispatched directly to the DHCP
+    // configuration instance by the signal listener.
+    virtual void Event(
+        const uint32_t &pid,
+        const std::string &reason,
+        const DHCPConfig::Configuration &configuration);
+    virtual void StatusChanged(const uint32_t &pid, const std::string &status);
+
+    DISALLOW_COPY_AND_ASSIGN(Proxy);
+  };
+
+  Proxy proxy_;
+
   DISALLOW_COPY_AND_ASSIGN(DHCPCDProxy);
 };
 

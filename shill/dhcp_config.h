@@ -7,7 +7,7 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
-#include <dbus-c++/connection.h>
+#include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -35,7 +35,7 @@ class DHCPConfig : public IPConfig {
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
-  void InitProxy(DBus::Connection *connection, const char *service);
+  void InitProxy(const char *service);
 
   // Processes an Event signal from dhcpcd.
   void ProcessEventSignal(const std::string &reason,

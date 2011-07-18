@@ -15,6 +15,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/glib.h"
 #include "shill/ip_address.h"
+#include "shill/proxy_factory.h"
 
 using std::string;
 using std::vector;
@@ -84,7 +85,7 @@ bool DHCPConfig::RenewIP() {
     LOG(ERROR) << "Unable to renew IP before acquiring destination.";
     return false;
   }
-  proxy_->DoRebind(device_name());
+  proxy_->Rebind(device_name());
   return true;
 }
 
@@ -97,14 +98,14 @@ bool DHCPConfig::ReleaseIP() {
     LOG(ERROR) << "Unable to release IP before acquiring destination.";
     return false;
   }
-  proxy_->DoRelease(device_name());
+  proxy_->Release(device_name());
   Stop();
   return true;
 }
 
-void DHCPConfig::InitProxy(DBus::Connection *connection, const char *service) {
+void DHCPConfig::InitProxy(const char *service) {
   if (!proxy_.get()) {
-    proxy_.reset(new DHCPCDProxy(connection, service));
+    proxy_.reset(ProxyFactory::factory()->CreateDHCPProxy(service));
   }
 }
 

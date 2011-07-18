@@ -94,17 +94,20 @@ int main(int argc, char** argv) {
 
   shill::Config config; /* (config_dir, default_config_dir) */
 
+  // TODO(pstew): This should be chosen based on config
+  scoped_ptr<shill::DBusControl> dbus_control(new shill::DBusControl());
+  dbus_control->Init();
+
   shill::ProxyFactory proxy_factory;
+  proxy_factory.Init();
   shill::ProxyFactory::set_factory(&proxy_factory);
 
-  // TODO(pstew): This should be chosen based on config
-  shill::DBusControl *dbus_control = new shill::DBusControl();
-  dbus_control->Init();
   shill::GLib glib;
   glib.TypeInit();
-  shill::DHCPProvider::GetInstance()->Init(dbus_control->connection(), &glib);
 
-  shill::Daemon daemon(&config, dbus_control, &glib);
+  shill::DHCPProvider::GetInstance()->Init(&glib);
+
+  shill::Daemon daemon(&config, dbus_control.get(), &glib);
   daemon.Run();
 
   return 0;

@@ -9,18 +9,14 @@
 
 namespace shill {
 
-// These are the functions that a DHCP proxy and listener must support.
+// These are the methods that a DHCP proxy must support. The interface is
+// provided so that it can be mocked in tests.
 class DHCPProxyInterface {
  public:
   virtual ~DHCPProxyInterface() {}
 
-  virtual void DoRebind(const std::string &interface) = 0;
-  virtual void DoRelease(const std::string &interface) = 0;
-};
-
-class DHCPListenerInterface {
- public:
-  virtual ~DHCPListenerInterface() {}
+  virtual void Rebind(const std::string &interface) = 0;
+  virtual void Release(const std::string &interface) = 0;
 };
 
 }  // namespace shill

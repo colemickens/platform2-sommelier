@@ -22,6 +22,7 @@ class SupplicantInterfaceProxy
     : public SupplicantInterfaceProxyInterface {
  public:
   SupplicantInterfaceProxy(const WiFiRefPtr &wifi,
+                           DBus::Connection *bus,
                            const ::DBus::Path &object_path,
                            const char *dbus_addr);
   virtual ~SupplicantInterfaceProxy();
@@ -38,8 +39,10 @@ class SupplicantInterfaceProxy
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,
     public ::DBus::ObjectProxy {
    public:
-    Proxy(const WiFiRefPtr &wifi, DBus::Connection *bus,
-          const ::DBus::Path &object_path, const char *dbus_addr);
+    Proxy(const WiFiRefPtr &wifi,
+          DBus::Connection *bus,
+          const ::DBus::Path &object_path,
+          const char *dbus_addr);
     virtual ~Proxy();
 
    private:
@@ -64,7 +67,6 @@ class SupplicantInterfaceProxy
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  DBus::Connection connection_;
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(SupplicantInterfaceProxy);

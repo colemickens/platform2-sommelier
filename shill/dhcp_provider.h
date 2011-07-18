@@ -6,17 +6,17 @@
 #define SHILL_DHCP_PROVIDER_
 
 #include <map>
+#include <string>
 
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/singleton.h>
-#include <dbus-c++/connection.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
 
 namespace shill {
 
-class DHCPListenerInterface;
+class DHCPCDListener;
 class GLib;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
@@ -31,9 +31,9 @@ class DHCPProvider {
   static DHCPProvider *GetInstance();
 
   // Initializes the provider singleton. This method hooks up a D-Bus signal
-  // listener to |connection| that catches signals from spawned DHCP clients and
-  // dispatches them to the appropriate DHCP configuration instance.
-  void Init(DBus::Connection *connection, GLib *glib);
+  // listener that catches signals from spawned DHCP clients and dispatches them
+  // to the appropriate DHCP configuration instance.
+  void Init(GLib *glib);
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -68,7 +68,7 @@ class DHCPProvider {
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.
-  scoped_ptr<DHCPListenerInterface> listener_;
+  scoped_ptr<DHCPCDListener> listener_;
 
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;

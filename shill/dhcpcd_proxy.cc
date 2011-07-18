@@ -8,7 +8,6 @@
 
 #include "shill/dhcp_provider.h"
 
-using std::map;
 using std::string;
 using std::vector;
 
@@ -17,17 +16,21 @@ namespace shill {
 const char DHCPCDProxy::kDBusInterfaceName[] = "org.chromium.dhcpcd";
 const char DHCPCDProxy::kDBusPath[] = "/org/chromium/dhcpcd";
 
-DHCPCDListener::DHCPCDListener(DHCPProvider *provider,
-                               DBus::Connection *connection)
+DHCPCDListener::DHCPCDListener(DBus::Connection *connection,
+                               DHCPProvider *provider)
+    : proxy_(connection, provider) {}
+
+DHCPCDListener::Proxy::Proxy(DBus::Connection *connection,
+                             DHCPProvider *provider)
     : DBus::InterfaceProxy(DHCPCDProxy::kDBusInterfaceName),
       DBus::ObjectProxy(*connection, DHCPCDProxy::kDBusPath),
       provider_(provider) {
   VLOG(2) << __func__;
-  connect_signal(DHCPCDListener, Event, EventSignal);
-  connect_signal(DHCPCDListener, StatusChanged, StatusChangedSignal);
+  connect_signal(DHCPCDListener::Proxy, Event, EventSignal);
+  connect_signal(DHCPCDListener::Proxy, StatusChanged, StatusChangedSignal);
 }
 
-void DHCPCDListener::EventSignal(const DBus::SignalMessage &signal) {
+void DHCPCDListener::Proxy::EventSignal(const DBus::SignalMessage &signal) {
   VLOG(2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
@@ -39,7 +42,7 @@ void DHCPCDListener::EventSignal(const DBus::SignalMessage &signal) {
     LOG(ERROR) << "Unknown DHCP client PID " << pid;
     return;
   }
-  config->InitProxy(&conn(), signal.sender());
+  config->InitProxy(signal.sender());
 
   string reason;
   ri >> reason;
@@ -48,7 +51,8 @@ void DHCPCDListener::EventSignal(const DBus::SignalMessage &signal) {
   config->ProcessEventSignal(reason, configuration);
 }
 
-void DHCPCDListener::StatusChangedSignal(const DBus::SignalMessage &signal) {
+void DHCPCDListener::Proxy::StatusChangedSignal(
+    const DBus::SignalMessage &signal) {
   VLOG(2) << __func__;
   DBus::MessageIter ri = signal.reader();
   unsigned int pid;
@@ -62,36 +66,39 @@ void DHCPCDListener::StatusChangedSignal(const DBus::SignalMessage &signal) {
     LOG(ERROR) << "Unknown DHCP client PID " << pid;
     return;
   }
-  config->InitProxy(&conn(), signal.sender());
+  config->InitProxy(signal.sender());
 }
 
-DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection,
-                         const char *service)
-    : DBus::ObjectProxy(*connection, kDBusPath, service) {
+DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const char *service)
+    : proxy_(connection, service) {
   VLOG(2) << "DHCPCDProxy(service=" << service << ").";
+}
 
+void DHCPCDProxy::Rebind(const string &interface) {
+  proxy_.Rebind(interface);
+}
+
+void DHCPCDProxy::Release(const string &interface) {
+  proxy_.Release(interface);
+}
+
+DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,
+                          const char *service)
+    : DBus::ObjectProxy(*connection, kDBusPath, service) {
   // Don't catch signals directly in this proxy because they will be dispatched
-  // to us by the DHCPCD listener.
+  // to the client by the DHCPCD listener.
   _signals.erase("Event");
   _signals.erase("StatusChanged");
 }
 
-void DHCPCDProxy::DoRebind(const string &interface) {
-  Rebind(interface);
-}
-
-void DHCPCDProxy::DoRelease(const string &interface) {
-  Release(interface);
-}
-
-void DHCPCDProxy::Event(const uint32_t &pid,
-                        const std::string &reason,
-                        const DHCPConfig::Configuration &configuration) {
+void DHCPCDProxy::Proxy::Event(const uint32_t &pid,
+                               const std::string &reason,
+                               const DHCPConfig::Configuration &configuration) {
   NOTREACHED();
 }
 
-void DHCPCDProxy::StatusChanged(const uint32_t &pid,
-                                const std::string &status) {
+void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &pid,
+                                       const std::string &status) {
   NOTREACHED();
 }
 

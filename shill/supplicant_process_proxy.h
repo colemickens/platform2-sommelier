@@ -17,8 +17,11 @@ namespace shill {
 
 class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
-  SupplicantProcessProxy(const char *dbus_path, const char *dbus_addr);
+  SupplicantProcessProxy(DBus::Connection *bus,
+                         const char *dbus_path,
+                         const char *dbus_addr);
   virtual ~SupplicantProcessProxy();
+
   virtual ::DBus::Path CreateInterface(
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void RemoveInterface(const ::DBus::Path &path);
@@ -28,8 +31,7 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
   class Proxy : public fi::w1::wpa_supplicant1_proxy,
     public ::DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *bus, const char *dbus_path,
-          const char *dbus_addr);
+    Proxy(DBus::Connection *bus, const char *dbus_path, const char *dbus_addr);
     virtual ~Proxy();
 
    private:
@@ -45,7 +47,6 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 
-  DBus::Connection connection_;
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(SupplicantProcessProxy);

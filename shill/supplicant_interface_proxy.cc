@@ -19,10 +19,10 @@ namespace shill {
 
 SupplicantInterfaceProxy::SupplicantInterfaceProxy(
     const WiFiRefPtr &wifi,
+    DBus::Connection *bus,
     const ::DBus::Path &object_path,
     const char *dbus_addr)
-    : connection_(DBus::Connection::SystemBus()),
-      proxy_(wifi, &connection_, object_path, dbus_addr) {}
+    : proxy_(wifi, bus, object_path, dbus_addr) {}
 
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 

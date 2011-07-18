@@ -15,10 +15,10 @@ using std::string;
 
 namespace shill {
 
-SupplicantProcessProxy::SupplicantProcessProxy(
-    const char *dbus_path, const char *dbus_addr)
-    : connection_(DBus::Connection::SystemBus()),
-      proxy_(&connection_, dbus_path, dbus_addr) {}
+SupplicantProcessProxy::SupplicantProcessProxy(DBus::Connection *bus,
+                                               const char *dbus_path,
+                                               const char *dbus_addr)
+    : proxy_(bus, dbus_path, dbus_addr) {}
 
 SupplicantProcessProxy::~SupplicantProcessProxy() {}
 

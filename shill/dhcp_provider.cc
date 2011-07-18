@@ -8,6 +8,7 @@
 
 #include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
+#include "shill/proxy_factory.h"
 
 using std::string;
 
@@ -25,9 +26,10 @@ DHCPProvider* DHCPProvider::GetInstance() {
   return Singleton<DHCPProvider>::get();
 }
 
-void DHCPProvider::Init(DBus::Connection *connection, GLib *glib) {
+void DHCPProvider::Init(GLib *glib) {
   VLOG(2) << __func__;
-  listener_.reset(new DHCPCDListener(this, connection));
+  listener_.reset(
+      new DHCPCDListener(ProxyFactory::factory()->connection(), this));
   glib_ = glib;
 }
 

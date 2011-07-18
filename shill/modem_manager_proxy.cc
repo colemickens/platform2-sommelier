@@ -11,11 +11,11 @@ using std::vector;
 
 namespace shill {
 
-ModemManagerProxy::ModemManagerProxy(ModemManager *manager,
+ModemManagerProxy::ModemManagerProxy(DBus::Connection *connection,
+                                     ModemManager *manager,
                                      const string &path,
                                      const string &service)
-    : connection_(DBus::Connection::SystemBus()),
-      proxy_(manager, &connection_, path, service) {}
+    : proxy_(connection, manager, path, service) {}
 
 ModemManagerProxy::~ModemManagerProxy() {}
 
@@ -23,8 +23,8 @@ vector<DBus::Path> ModemManagerProxy::EnumerateDevices() {
   return proxy_.EnumerateDevices();
 }
 
-ModemManagerProxy::Proxy::Proxy(ModemManager *manager,
-                                DBus::Connection *connection,
+ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
+                                ModemManager *manager,
                                 const string &path,
                                 const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),

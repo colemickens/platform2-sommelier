@@ -81,7 +81,7 @@ void WiFi::Start() {
   ::DBus::Path interface_path;
 
   supplicant_process_proxy_.reset(
-      ProxyFactory::factory()->CreateProcessProxy(
+      ProxyFactory::factory()->CreateSupplicantProcessProxy(
           kSupplicantPath, kSupplicantDBusAddr));
   try {
     std::map<string, DBus::Variant> create_interface_args;
@@ -104,7 +104,7 @@ void WiFi::Start() {
   }
 
   supplicant_interface_proxy_.reset(
-      ProxyFactory::factory()->CreateInterfaceProxy(
+      ProxyFactory::factory()->CreateSupplicantInterfaceProxy(
           this, interface_path, kSupplicantDBusAddr));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
