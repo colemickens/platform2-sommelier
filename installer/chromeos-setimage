@@ -234,6 +234,14 @@ if [ -z "${rootfs_image}" ]; then
   rootfs_image="${ROOT_LOOP}"
 fi
 
+# Maintain cros_debug flag in developer and test images.
+# This code is copied from src/scripts/update_bootloaders.sh.
+# See also sed commands below.
+cros_flags="cros_legacy"
+if grep -q 'cros_debug' /proc/cmdline; then
+  cros_flags="cros_legacy cros_debug"
+fi
+
 # Update the root filesystem to ensure it can be mounted if rw access is
 # expected.  We never disable it going back to verification here since
 # we don't want to change a pre-created image at all if it is verified.
@@ -283,8 +291,11 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_grub_cfg" ]; then
   test ${FLAGS_enable_rootfs_verification} -eq ${FLAGS_TRUE} && \
     grubid=$((newimg+2))
   echo "Updating the verified boot config and grub boot default: $grubid"
+  # Changes to this sed command must also be made in
+  # scr/scripts/update_bootloaders.sh.
   sed -e "s/^set default=.*/set default=${grubid}/" \
       -e "s|DMTABLE${newimg_letter}|${table}|g" \
+      -e "s|cros_legacy|${cros_flags}|g" \
     $FLAGS_update_grub_cfg > ${tempfile}
   # TODO(wad) Break grub.cfg into multiple files if possible.
   #   Because grub.cfg is monolithic when we update from a templated
@@ -316,8 +327,11 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_syslinux_cfg" ]; then
   # 3 and 5 are the current rootfs a and b partitions
   DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
   DST_PART_B=$(make_partition_dev ${FLAGS_dst} 5)
+  # Changes to this sed command must also be made in
+  # scr/scripts/update_bootloaders.sh.
   sed -e "s|HDROOTA|${DST_PART_A}|g;s|HDROOTB|${DST_PART_B}|g" \
       -e "s|DMTABLEA|${table}|g;s|DMTABLEB|${table}|g" \
+      -e "s|cros_legacy|${cros_flags}|g" \
     $FLAGS_update_syslinux_cfg > ${tempfile}
   # Even though we replace both A and B, we're only updating the file
   # that is relevant to the setimage request so we won't put an invalid
