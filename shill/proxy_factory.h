@@ -8,13 +8,16 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <dbus-c++/dbus.h>
+
+#include "shill/refptr_types.h"
 
 namespace shill {
 
 class ModemManager;
 class ModemManagerProxyInterface;
-
-// TODO(petkov): Merge supplicant proxy factory into this one.
+class SupplicantInterfaceProxyInterface;
+class SupplicantProcessProxyInterface;
 
 // Global DBus proxy factory that can be mocked out in tests.
 class ProxyFactory {
@@ -26,6 +29,15 @@ class ProxyFactory {
       ModemManager *manager,
       const std::string &path,
       const std::string &service);
+
+  virtual SupplicantProcessProxyInterface *CreateProcessProxy(
+      const char *dbus_path,
+      const char *dbus_addr);
+
+  virtual SupplicantInterfaceProxyInterface *CreateInterfaceProxy(
+      const WiFiRefPtr &wifi,
+      const DBus::Path &object_path,
+      const char *dbus_addr);
 
   static ProxyFactory *factory() { return factory_; }
   static void set_factory(ProxyFactory *factory) { factory_ = factory; }

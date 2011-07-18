@@ -20,6 +20,7 @@
 #include "shill/device.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
+#include "shill/proxy_factory.h"
 #include "shill/shill_event.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
@@ -39,7 +40,6 @@ const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
 const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
 const char WiFi::kSupplicantKeyModeNone[] = "NONE";
 
-SupplicantProxyFactory *WiFi::proxy_factory = NULL;
 unsigned int WiFi::service_id_serial_ = 0;
 
 // NB: we assume supplicant is already running. [quiche.20110518]
@@ -81,7 +81,7 @@ void WiFi::Start() {
   ::DBus::Path interface_path;
 
   supplicant_process_proxy_.reset(
-      proxy_factory->CreateProcessProxy(
+      ProxyFactory::factory()->CreateProcessProxy(
           kSupplicantPath, kSupplicantDBusAddr));
   try {
     std::map<string, DBus::Variant> create_interface_args;
@@ -104,7 +104,7 @@ void WiFi::Start() {
   }
 
   supplicant_interface_proxy_.reset(
-      proxy_factory->CreateInterfaceProxy(
+      ProxyFactory::factory()->CreateInterfaceProxy(
           this, interface_path, kSupplicantDBusAddr));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
@@ -183,11 +183,6 @@ void WiFi::ConnectTo(const WiFiService &service) {
       supplicant_interface_proxy_->AddNetwork(add_network_args);
   supplicant_interface_proxy_->SelectNetwork(network_path);
   // XXX add to favorite networks list?
-}
-
-// static
-void WiFi::set_proxy_factory(SupplicantProxyFactory *new_factory) {
-  proxy_factory = new_factory;
 }
 
 void WiFi::RealScanDone() {

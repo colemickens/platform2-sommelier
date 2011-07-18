@@ -18,8 +18,6 @@
 #include "shill/proxy_factory.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
-#include "shill/supplicant_proxy_factory.h"
-#include "shill/wifi.h"
 
 using std::string;
 
@@ -95,9 +93,6 @@ int main(int argc, char** argv) {
       cl->GetSwitchValueASCII(switches::kDefaultConfigDir));
 
   shill::Config config; /* (config_dir, default_config_dir) */
-
-  shill::SupplicantProxyFactory live_proxy_factory;
-  shill::WiFi::set_proxy_factory(&live_proxy_factory);
 
   shill::ProxyFactory proxy_factory;
   shill::ProxyFactory::set_factory(&proxy_factory);

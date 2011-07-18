@@ -14,7 +14,6 @@
 #include "shill/device.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
-#include "shill/supplicant_proxy_factory.h"
 
 namespace shill {
 
@@ -44,8 +43,6 @@ class WiFi : public Device {
   // called by WiFiService
   void ConnectTo(const WiFiService &service);
 
-  static void set_proxy_factory(SupplicantProxyFactory *factory);
-
  private:
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, ServiceRefPtr> ServiceMap;
@@ -61,7 +58,6 @@ class WiFi : public Device {
 
   void RealScanDone();
 
-  static SupplicantProxyFactory *proxy_factory;
   static unsigned int service_id_serial_;
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   ControlInterface *control_interface_;
