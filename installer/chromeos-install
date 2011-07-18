@@ -402,6 +402,7 @@ fi
 install_gpt ${DST} ${ROOTFS_IMG_SECTORS} ${STATEFUL_IMG_SECTORS} \
   ${PMBRCODE} ${ESP_IMG_SECTORS} false default \
   ${FLAGS_large_test_partitions}
+sudo /sbin/blockdev --rereadpt ${DST}
 
 # TODO(tgao): add support for arm recovery
 
