@@ -26,6 +26,9 @@ LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
 
+DBUS_BINDINGS_DIR = dbus_bindings
+DBUS_BINDINGS_MODEM_MANAGER = $(DBUS_BINDINGS_DIR)/modem_manager.xml
+
 DBUS_ADAPTOR_HEADERS = \
 	flimflam-device.h \
 	flimflam-ipconfig.h \
@@ -35,13 +38,16 @@ DBUS_ADAPTOR_HEADERS = \
 
 DBUS_PROXY_HEADERS = \
 	dhcpcd.h \
-	mm.h \
+	modem_manager.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
 	supplicant-process.h
 
-DBUS_HEADERS = $(DBUS_ADAPTOR_HEADERS) $(DBUS_PROXY_HEADERS)
+DBUS_ADAPTOR_BINDINGS = \
+	$(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
+DBUS_PROXY_BINDINGS = $(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
+DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
 SHILL_OBJS = \
 	byte_string.o \
@@ -133,19 +139,20 @@ TEST_OBJS = \
 
 all: $(SHILL_BIN) $(TEST_BIN)
 
-mm.xml: $(SYSROOT)/usr/share/dbus-1/interfaces/org.freedesktop.ModemManager.xml
+$(DBUS_BINDINGS_MODEM_MANAGER): \
+	$(SYSROOT)/usr/share/dbus-1/interfaces/org.freedesktop.ModemManager.xml
 	cat $< > $@
 
-$(DBUS_PROXY_HEADERS): %.h: %.xml
+$(DBUS_PROXY_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
 
-$(DBUS_ADAPTOR_HEADERS): %.h: %.xml
+$(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
 .cc.o:
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
 
-$(SHILL_OBJS): $(DBUS_HEADERS)
+$(SHILL_OBJS): $(DBUS_BINDINGS)
 
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(INCLUDE_DIRS) $(LIB_DIRS) $(LDFLAGS) $^ $(LIBS) \
@@ -156,4 +163,5 @@ $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
-	rm -rf *.o mm.xml $(DBUS_HEADERS) $(SHILL_BIN) $(TEST_BIN)
+	rm -rf *.o $(DBUS_BINDINGS_MODEM_MANAGER) $(DBUS_BINDINGS) \
+		$(SHILL_BIN) $(TEST_BIN)

@@ -10,7 +10,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/supplicant-interface.h"
+#include "shill/dbus_bindings/supplicant-interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/refptr_types.h"
 

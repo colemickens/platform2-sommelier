@@ -7,9 +7,9 @@
 
 #include <base/basictypes.h>
 
+#include "shill/dbus_bindings/dhcpcd.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_proxy_interface.h"
-#include "shill/dhcpcd.h"
 
 namespace shill {
 

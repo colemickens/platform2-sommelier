@@ -7,7 +7,7 @@
 
 #include <base/basictypes.h>
 
-#include "shill/mm.h"
+#include "shill/dbus_bindings/modem_manager.h"
 #include "shill/modem_manager_proxy_interface.h"
 
 namespace shill {

@@ -12,7 +12,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus_adaptor.h"
-#include "shill/flimflam-service.h"
+#include "shill/dbus_bindings/flimflam-service.h"
 
 namespace shill {
 

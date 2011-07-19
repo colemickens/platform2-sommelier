@@ -10,8 +10,8 @@
 
 #include <base/basictypes.h>
 
-#include "supplicant-process.h"
-#include "supplicant_process_proxy_interface.h"
+#include "shill/dbus_bindings/supplicant-process.h"
+#include "shill/supplicant_process_proxy_interface.h"
 
 namespace shill {
 
