@@ -5,6 +5,7 @@
 #include "shill/dhcp_provider.h"
 
 #include "shill/dhcp_config.h"
+#include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 
 using testing::Test;
@@ -19,9 +20,11 @@ class DHCPProviderTest : public Test {
  public:
   DHCPProviderTest() : provider_(DHCPProvider::GetInstance()) {
     provider_->glib_ = &glib_;
+    provider_->control_interface_ = &control_;
   }
 
  protected:
+  MockControl control_;
   MockGLib glib_;
   DHCPProvider *provider_;
 };

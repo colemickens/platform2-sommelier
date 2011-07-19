@@ -45,7 +45,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
     int32 mtu;
   };
 
-  explicit IPConfig(const std::string &device_name);
+  IPConfig(ControlInterface *control_interface, const std::string &device_name);
   virtual ~IPConfig();
 
   const std::string &device_name() const { return device_name_; }
@@ -87,8 +87,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 
-  scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   const std::string device_name_;
+  scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
 

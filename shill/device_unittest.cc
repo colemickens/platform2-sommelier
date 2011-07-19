@@ -42,6 +42,7 @@ class DeviceTest : public PropertyStoreTest {
   DeviceTest()
       : device_(new Device(&control_interface_, NULL, NULL, kDeviceName, 0)) {
     DHCPProvider::GetInstance()->glib_ = &glib_;
+    DHCPProvider::GetInstance()->control_interface_ = &control_interface_;
   }
   virtual ~DeviceTest() {}
 
@@ -114,7 +115,7 @@ TEST_F(DeviceTest, TechnologyIs) {
 
 TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_FALSE(device_->ipconfig_.get());
-  device_->ipconfig_ = new IPConfig(kDeviceName);
+  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
 }
@@ -126,7 +127,7 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 }
 
 TEST_F(DeviceTest, AcquireDHCPConfig) {
-  device_->ipconfig_ = new IPConfig("randomname");
+  device_->ipconfig_ = new IPConfig(&control_interface_, "randomname");
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(device_->AcquireDHCPConfig());

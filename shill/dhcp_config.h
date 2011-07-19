@@ -15,6 +15,7 @@
 
 namespace shill {
 
+class ControlInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
 class GLib;
@@ -23,7 +24,8 @@ class DHCPConfig : public IPConfig {
  public:
   typedef std::map<std::string, DBus::Variant> Configuration;
 
-  DHCPConfig(DHCPProvider *provider,
+  DHCPConfig(ControlInterface *control_interface,
+             DHCPProvider *provider,
              const std::string &device_name,
              GLib *glib);
   virtual ~DHCPConfig();

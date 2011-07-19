@@ -8,13 +8,17 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/control_interface.h"
 #include "shill/error.h"
 
 using std::string;
 
 namespace shill {
 
-IPConfig::IPConfig(const std::string &device_name) : device_name_(device_name) {
+IPConfig::IPConfig(ControlInterface *control_interface,
+                   const std::string &device_name)
+    : device_name_(device_name),
+      adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
   // Address might be R/O or not, depending on the type of IPconfig, so
   // we'll leave this up to the subclasses.
   // Register(Const?)String(flimflam::kAddressProperty, &properties_.address);

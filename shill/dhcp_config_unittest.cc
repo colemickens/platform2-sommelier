@@ -10,6 +10,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
+#include "shill/mock_control.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/property_store_unittest.h"
@@ -31,7 +32,8 @@ class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
-        config_(new DHCPConfig(DHCPProvider::GetInstance(),
+        config_(new DHCPConfig(&control_,
+                               DHCPProvider::GetInstance(),
                                kDeviceName,
                                &glib_)) {
     config_->proxy_.reset(proxy_);  // pass ownership
@@ -40,6 +42,7 @@ class DHCPConfigTest : public PropertyStoreTest {
  protected:
   MockGLib glib_;
   MockDHCPProxy * const proxy_;
+  MockControl control_;
   DHCPConfigRefPtr config_;
 };
 

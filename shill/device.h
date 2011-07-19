@@ -62,11 +62,13 @@ class Device : public base::RefCounted<Device> {
 
   std::string GetRpcIdentifier();
 
-  PropertyStore *store() { return &store_; }
+  const std::string &FriendlyName() const;
 
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
   const std::string &UniqueName() const;
+
+  PropertyStore *store() { return &store_; }
 
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
@@ -102,6 +104,7 @@ class Device : public base::RefCounted<Device> {
   int interface_index_;
   bool running_;
   const std::string link_name_;
+  const std::string unique_id_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
 

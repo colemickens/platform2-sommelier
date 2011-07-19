@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
   shill::GLib glib;
   glib.TypeInit();
 
-  shill::DHCPProvider::GetInstance()->Init(&glib);
+  shill::DHCPProvider::GetInstance()->Init(dbus_control.get(), &glib);
 
   shill::Daemon daemon(&config, dbus_control.get(), &glib);
 

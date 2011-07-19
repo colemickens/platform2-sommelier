@@ -40,6 +40,7 @@ Device::Device(ControlInterface *control_interface,
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
+      unique_id_(link_name),
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)) {
 
@@ -123,9 +124,12 @@ string Device::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
 
-const string& Device::UniqueName() const {
-  // TODO(pstew): link_name is only run-time unique and won't persist
+const string& Device::FriendlyName() const {
   return link_name_;
+}
+
+const string& Device::UniqueName() const {
+  return unique_id_;
 }
 
 void Device::DestroyIPConfig() {

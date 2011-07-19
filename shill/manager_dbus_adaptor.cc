@@ -23,7 +23,7 @@ namespace shill {
 // static
 const char ManagerDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
-const char ManagerDBusAdaptor::kPath[] = SHILL_PATH "/Manager";
+const char ManagerDBusAdaptor::kPath[] = "/";
 
 ManagerDBusAdaptor::ManagerDBusAdaptor(DBus::Connection* conn, Manager *manager)
     : DBusAdaptor(conn, kPath),

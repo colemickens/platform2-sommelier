@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "shill/control_interface.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/proxy_factory.h"
@@ -26,16 +27,17 @@ DHCPProvider* DHCPProvider::GetInstance() {
   return Singleton<DHCPProvider>::get();
 }
 
-void DHCPProvider::Init(GLib *glib) {
+void DHCPProvider::Init(ControlInterface *control_interface, GLib *glib) {
   VLOG(2) << __func__;
   listener_.reset(
       new DHCPCDListener(ProxyFactory::factory()->connection(), this));
   glib_ = glib;
+  control_interface_ = control_interface;
 }
 
 DHCPConfigRefPtr DHCPProvider::CreateConfig(const string &device_name) {
   VLOG(2) << __func__ << " device: " << device_name;
-  return new DHCPConfig(this, device_name, glib_);
+  return new DHCPConfig(control_interface_, this, device_name, glib_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

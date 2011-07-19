@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/ipconfig.h"
+
 #include <base/callback_old.h>
 #include <gtest/gtest.h>
 
-#include "shill/ipconfig.h"
+#include "shill/mock_control.h"
 
 using testing::Test;
 
@@ -17,9 +19,10 @@ const char kDeviceName[] = "testdevice";
 
 class IPConfigTest : public Test {
  public:
-  IPConfigTest() : ipconfig_(new IPConfig(kDeviceName)) {}
+  IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
 
  protected:
+  MockControl control_;
   IPConfigRefPtr ipconfig_;
 };
 

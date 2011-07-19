@@ -23,11 +23,11 @@ namespace shill {
 // static
 const char IPConfigDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
-const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
+const char IPConfigDBusAdaptor::kPath[] = "/device/";
 
 IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection* conn,
                                          IPConfig *config)
-    : DBusAdaptor(conn, kPath),
+    : DBusAdaptor(conn, kPath + config->device_name() + "_ipconfig"),
       ipconfig_(config) {
 }
 

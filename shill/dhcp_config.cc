@@ -40,10 +40,11 @@ const char DHCPConfig::kReasonReboot[] = "REBOOT";
 const char DHCPConfig::kReasonRenew[] = "RENEW";
 
 
-DHCPConfig::DHCPConfig(DHCPProvider *provider,
+DHCPConfig::DHCPConfig(ControlInterface *control_interface,
+                       DHCPProvider *provider,
                        const string &device_name,
                        GLib *glib)
-    : IPConfig(device_name),
+    : IPConfig(control_interface, device_name),
       provider_(provider),
       pid_(0),
       child_watch_tag_(0),
