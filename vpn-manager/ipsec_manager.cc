@@ -33,6 +33,7 @@ DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
 DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+const char kDefaultCertSlot[] = "0";
 const char kIpsecConnectionName[] = "ipsec_managed";
 const char kIpsecGroupName[] = "ipsec";
 const char kIpsecRunPath[] = "/var/run/ipsec";
@@ -78,7 +79,7 @@ bool IpsecManager::Initialize(int ike_version,
 
   if (psk_file.empty()) {
     if (server_ca_file.empty() && server_id.empty() &&
-        client_cert_slot.empty() && client_cert_id.empty() &&
+        client_cert_id.empty() &&
         user_pin.empty()) {
       LOG(ERROR) << "Must specify either PSK or certificates for IPsec layer";
       return false;
@@ -110,10 +111,10 @@ bool IpsecManager::Initialize(int ike_version,
       server_id_ = server_id;
 
     if (client_cert_slot.empty()) {
-      LOG(ERROR) << "Must specify the slot containing the certificate";
-      return false;
+      client_cert_slot_ = kDefaultCertSlot;
+    } else {
+      client_cert_slot_ = client_cert_slot;
     }
-    client_cert_slot_ = client_cert_slot;
 
     if (client_cert_id.empty()) {
       LOG(ERROR) << "Must specify the PKCS#11 ID for the certificate";

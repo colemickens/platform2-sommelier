@@ -187,6 +187,22 @@ TEST_F(IpsecManagerTest, PollNothingIfRunning) {
   EXPECT_EQ(-1, ipsec_.Poll());
 }
 
+TEST_F(IpsecManagerTest, FormatSecretsNoSlot) {
+  client_cert_tpm_slot_ = "";
+  DoInitialize(1, false);
+  std::string formatted;
+  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0:0a \"123456\"\n", formatted);
+}
+
+TEST_F(IpsecManagerTest, FormatSecretsNonZeroSlot) {
+  client_cert_tpm_slot_ = "1";
+  DoInitialize(1, false);
+  std::string formatted;
+  EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard1:0a \"123456\"\n", formatted);
+}
+
 class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
  public:
   void SetUp() {

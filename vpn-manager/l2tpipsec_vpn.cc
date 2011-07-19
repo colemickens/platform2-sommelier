@@ -135,7 +135,10 @@ int main(int argc, char* argv[]) {
   ServiceManager::SetLayerOrder(&ipsec, &l2tp);
 
   InstallSignalHandlers();
-  CHECK(ipsec.Start()) << "Unable to start IPsec layer";
+  if (!ipsec.Start()) {
+    LOG(ERROR) << "Unable to start IPsec layer";
+    return 1;
+  }
 
   RunEventLoop(&ipsec, &l2tp);
 

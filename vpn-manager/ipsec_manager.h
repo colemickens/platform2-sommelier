@@ -55,6 +55,8 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, PollTimeoutWaiting);
   FRIEND_TEST(IpsecManagerTest, PollTransitionToUp);
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
+  FRIEND_TEST(IpsecManagerTest, FormatSecretsNoSlot);
+  FRIEND_TEST(IpsecManagerTest, FormatSecretsNonZeroSlot);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost);
