@@ -241,6 +241,7 @@ cmd_ssh() {
       local space_pos=$(expr index "$line" ' ')
       if [ $space_pos = 0 ]; then
         cmd="$line"
+        params=""
       else
         cmd=$(substr "$line" "0" "$space_pos")
         params=$(substr "$line" "$space_pos")
