@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+#include "shill/modem_manager.h"
+
 using std::string;
 using std::vector;
 
@@ -33,11 +35,11 @@ ModemManagerProxy::Proxy::Proxy(DBus::Connection *connection,
 ModemManagerProxy::Proxy::~Proxy() {}
 
 void ModemManagerProxy::Proxy::DeviceAdded(const DBus::Path &device) {
-  LOG(INFO) << "Modem device added: " << device;
+  manager_->AddModem(device);
 }
 
 void ModemManagerProxy::Proxy::DeviceRemoved(const DBus::Path &device) {
-  LOG(INFO) << "Modem device removed: " << device;
+  manager_->RemoveModem(device);
 }
 
 }  // namespace shill

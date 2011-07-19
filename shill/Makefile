@@ -58,6 +58,7 @@ SHILL_OBJS = \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
+	dbus_properties_proxy.o \
 	default_profile.o \
 	device.o \
 	device_dbus_adaptor.o \
@@ -78,6 +79,7 @@ SHILL_OBJS = \
 	key_file_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \
+	modem.o \
 	modem_info.o \
 	modem_manager.o \
 	modem_manager_proxy.o \

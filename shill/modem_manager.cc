@@ -5,11 +5,15 @@
 #include "shill/modem_manager.h"
 
 #include <base/logging.h>
+#include <base/stl_util-inl.h>
 
+#include "shill/modem.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
+using std::tr1::shared_ptr;
+using std::vector;
 
 namespace shill {
 
@@ -56,9 +60,17 @@ void ModemManager::Connect(const string &owner) {
   owner_ = owner;
   proxy_.reset(
       ProxyFactory::factory()->CreateModemManagerProxy(this, path_, owner_));
+
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  vector<DBus::Path> devices = proxy_->EnumerateDevices();
+  for (vector<DBus::Path>::const_iterator it = devices.begin();
+       it != devices.end(); ++it) {
+    AddModem(*it);
+  }
 }
 
 void ModemManager::Disconnect() {
+  modems_.clear();
   owner_.clear();
   proxy_.reset();
 }
@@ -78,6 +90,27 @@ void ModemManager::OnVanish(GDBusConnection *connection,
   LOG(INFO) << "Modem manager " << name << " vanished.";
   ModemManager *manager = reinterpret_cast<ModemManager *>(user_data);
   manager->Disconnect();
+}
+
+void ModemManager::AddModem(const std::string &path) {
+  LOG(INFO) << "Add modem: " << path;
+  CHECK(!owner_.empty());
+  if (ContainsKey(modems_, path)) {
+    LOG(INFO) << "Modem already exists; ignored.";
+    return;
+  }
+  shared_ptr<Modem> modem(new Modem(owner_,
+                                    path,
+                                    control_interface_,
+                                    dispatcher_,
+                                    manager_));
+  modems_[path] = modem;
+}
+
+void ModemManager::RemoveModem(const std::string &path) {
+  LOG(INFO) << "Remove modem: " << path;
+  CHECK(!owner_.empty());
+  modems_.erase(path);
 }
 
 }  // namespace shill

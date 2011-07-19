@@ -6,10 +6,13 @@
 
 #include <base/logging.h>
 
+#include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
+
+using std::string;
 
 namespace shill {
 
@@ -25,10 +28,17 @@ void ProxyFactory::Init() {
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
 }
 
+DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
+    Modem *modem,
+    const string &path,
+    const string &service) {
+  return new DBusPropertiesProxy(connection(), modem, path, service);
+}
+
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
     ModemManager *manager,
-    const std::string &path,
-    const std::string &service) {
+    const string &path,
+    const string &service) {
   return new ModemManagerProxy(connection(), manager, path, service);
 }
 

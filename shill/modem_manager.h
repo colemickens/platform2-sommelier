@@ -5,6 +5,9 @@
 #ifndef SHILL_MODEM_MANAGER_
 #define SHILL_MODEM_MANAGER_
 
+#include <map>
+#include <tr1/memory>
+
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -16,9 +19,10 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
+class Modem;
 class ModemManagerProxyInterface;
 
-// Handles a modem manager service and creates and destroys cellular devices.
+// Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
  public:
   ModemManager(const std::string &service,
@@ -33,18 +37,27 @@ class ModemManager {
   void Start();
 
   // Stops watching for the DBus modem manager service and destroys any
-  // associated modem devices.
+  // associated modems.
   void Stop();
+
+  // Adds a modem on |path|.
+  void AddModem(const std::string &path);
+
+  // Removes a modem on |path|.
+  void RemoveModem(const std::string &path);
 
  private:
   friend class ModemManagerTest;
   FRIEND_TEST(ModemInfoTest, RegisterModemManager);
+  FRIEND_TEST(ModemManagerTest, AddRemoveModem);
   FRIEND_TEST(ModemManagerTest, Connect);
   FRIEND_TEST(ModemManagerTest, Disconnect);
   FRIEND_TEST(ModemManagerTest, OnAppear);
   FRIEND_TEST(ModemManagerTest, OnVanish);
   FRIEND_TEST(ModemManagerTest, Start);
   FRIEND_TEST(ModemManagerTest, Stop);
+
+  typedef std::map<std::string, std::tr1::shared_ptr<Modem> > Modems;
 
   // Connects a newly appeared modem manager service.
   void Connect(const std::string &owner);
@@ -67,6 +80,8 @@ class ModemManager {
 
   std::string owner_;  // DBus service owner.
   scoped_ptr<ModemManagerProxyInterface> proxy_;  // DBus service proxy.
+
+  Modems modems_;  // Maps a modem |path| to a modem instance.
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

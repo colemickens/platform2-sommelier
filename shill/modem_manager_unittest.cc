@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/stl_util-inl.h>
 #include <gtest/gtest.h>
 
 #include "shill/manager.h"
@@ -12,6 +13,7 @@
 #include "shill/proxy_factory.h"
 
 using std::string;
+using std::vector;
 using testing::_;
 using testing::Return;
 using testing::StrEq;
@@ -45,6 +47,13 @@ class ModemManagerTest : public Test {
    public:
     TestProxyFactory(ModemManagerProxyInterface *proxy) : proxy_(proxy) {}
 
+    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
+        Modem *modem,
+        const string &path,
+        const string &service) {
+      return NULL;
+    }
+
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
         ModemManager *manager,
         const string &path,
@@ -58,6 +67,8 @@ class ModemManagerTest : public Test {
 
   static const char kService[];
   static const char kPath[];
+  static const char kOwner[];
+  static const char kModemPath[];
 
   MockGLib glib_;
   MockControl control_interface_;
@@ -68,8 +79,10 @@ class ModemManagerTest : public Test {
   TestProxyFactory proxy_factory_;
 };
 
-const char ModemManagerTest::kService[] = "test.dbus.service";
-const char ModemManagerTest::kPath[] = "/dbus/service/test/path";
+const char ModemManagerTest::kService[] = "org.chromium.ModemManager";
+const char ModemManagerTest::kPath[] = "/org/chromium/ModemManager";
+const char ModemManagerTest::kOwner[] = ":1.17";
+const char ModemManagerTest::kModemPath[] = "/org/chromium/ModemManager/Gobi/0";
 
 TEST_F(ModemManagerTest, Start) {
   const int kWatcher = 123;
@@ -88,7 +101,6 @@ TEST_F(ModemManagerTest, Start) {
 
 TEST_F(ModemManagerTest, Stop) {
   const int kWatcher = 345;
-  static const char kOwner[] = ":1.30";
   modem_manager_.watcher_id_ = kWatcher;
   modem_manager_.owner_ = kOwner;
   EXPECT_CALL(glib_, BusUnwatchName(kWatcher)).Times(1);
@@ -99,13 +111,15 @@ TEST_F(ModemManagerTest, Stop) {
 
 TEST_F(ModemManagerTest, Connect) {
   EXPECT_EQ("", modem_manager_.owner_);
-  static const char kOwner[] = ":1.20";
+  EXPECT_CALL(proxy_, EnumerateDevices())
+      .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
   modem_manager_.Connect(kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
+  EXPECT_EQ(1, modem_manager_.modems_.size());
+  EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
 }
 
 TEST_F(ModemManagerTest, Disconnect) {
-  static const char kOwner[] = ":1.22";
   modem_manager_.owner_ = kOwner;
   modem_manager_.Disconnect();
   EXPECT_EQ("", modem_manager_.owner_);
@@ -113,16 +127,25 @@ TEST_F(ModemManagerTest, Disconnect) {
 
 TEST_F(ModemManagerTest, OnAppear) {
   EXPECT_EQ("", modem_manager_.owner_);
-  static const char kOwner[] = ":1.17";
-  ModemManager::OnAppear(NULL, NULL, kOwner, &modem_manager_);
+  EXPECT_CALL(proxy_, EnumerateDevices())
+      .WillOnce(Return(vector<DBus::Path>()));
+  ModemManager::OnAppear(NULL, kService, kOwner, &modem_manager_);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
 }
 
 TEST_F(ModemManagerTest, OnVanish) {
-  static const char kOwner[] = ":1.18";
   modem_manager_.owner_ = kOwner;
-  ModemManager::OnVanish(NULL, NULL, &modem_manager_);
+  ModemManager::OnVanish(NULL, kService, &modem_manager_);
   EXPECT_EQ("", modem_manager_.owner_);
+}
+
+TEST_F(ModemManagerTest, AddRemoveModem) {
+  modem_manager_.owner_ = kOwner;
+  modem_manager_.AddModem(kModemPath);
+  EXPECT_EQ(1, modem_manager_.modems_.size());
+  EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  modem_manager_.RemoveModem(kModemPath);
+  EXPECT_EQ(0, modem_manager_.modems_.size());
 }
 
 }  // namespace shill
