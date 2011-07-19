@@ -54,11 +54,11 @@ string CrosDisksServer::GetDeviceFilesystem(const string& device_path,
 void CrosDisksServer::SignalFormattingFinished(const string& device_path,
     int status) {
   if (status) {
-    FormattingFinished(device_path, false);
+    FormattingFinished(std::string("!") + device_path);
     LOG(ERROR) << "Could not format device '" << device_path
       << "'. Formatting process failed with an exit code " << status;
   } else {
-    FormattingFinished(device_path, true);
+    FormattingFinished(device_path);
   }
 }
 

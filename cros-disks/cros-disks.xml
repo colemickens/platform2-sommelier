@@ -107,8 +107,6 @@
     <signal name="FormattingFinished">
       <arg name="device" type="s" direction="out">
       </arg>
-      <arg name="success" type="b" direction="out">
-      </arg>
     </signal>
   </interface>
 </node>
