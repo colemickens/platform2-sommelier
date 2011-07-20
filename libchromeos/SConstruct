@@ -8,9 +8,9 @@ import sys
 SOURCES=['chromeos/dbus/abstract_dbus_service.cc',
          'chromeos/dbus/dbus.cc',
          'chromeos/dbus/service_constants.cc',
-	 'chromeos/process.cc',
+         'chromeos/process.cc',
          'chromeos/string.cc',
-	 'chromeos/syslog_logging.cc',
+         'chromeos/syslog_logging.cc',
          'chromeos/utility.cc']
 
 env = Environment(
@@ -61,3 +61,69 @@ unittest_cmd = env_test.Program('unittests',
 
 Clean(unittest_cmd, Glob('*.gcda') + Glob('*.gcno') + Glob('*.gcov') +
                     Split('html app.info'))
+
+# --------------------------------------------------
+# Prepare and build the policy serving library.
+# TODO(pastarmovj): We should be using the global proto files here which would
+# reside in '%susr/include/proto' % os.environ["ROOT"] but until we set all
+# this up we will keep local copy in this project.
+PROTO_PATH = 'chromeos/policy/proto'
+PROTO_FILES = ['%s/chrome_device_policy.proto' % PROTO_PATH,
+               '%s/device_management_backend.proto' % PROTO_PATH]
+PROTO_SOURCES=['chromeos/policy/bindings/chrome_device_policy.pb.cc',
+               'chromeos/policy/bindings/device_management_backend.pb.cc'];
+
+POLICY_SOURCES=PROTO_SOURCES + \
+    ['chromeos/policy/device_policy.cc',
+     'chromeos/policy/device_policy_impl.cc',
+     'chromeos/policy/libpolicy.cc'];
+
+# Reset the environment.
+env = Environment(
+    CPPPATH=[ '.' ],
+    CCFLAGS=[ '-g' ],
+    LIBS = ['base', 'protobuf-lite'],
+    LIBPATH = ['.', '../third_party/chrome'],
+)
+for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
+  value = os.environ.get(key)
+  if value != None:
+    env[key] = Split(value)
+env['CCFLAGS'] += ['-fPIC', '-fno-exceptions']
+
+# Build the protobuf definitions.
+env.Command(PROTO_SOURCES,
+            None,
+            ('mkdir -p chromeos/policy/bindings && ' +
+             '/usr/bin/protoc --proto_path=%s ' +
+             '--cpp_out=chromeos/policy/bindings %s') % (
+             PROTO_PATH, ' '.join(PROTO_FILES)));
+
+# Fix issue with scons not passing some vars through the environment.
+for key in Split('PKG_CONFIG_LIBDIR PKG_CONFIG_PATH SYSROOT'):
+  if os.environ.has_key(key):
+    env['ENV'][key] = os.environ[key]
+
+env.StaticLibrary('policy', POLICY_SOURCES)
+env.ParseConfig('pkg-config --cflags --libs glib-2.0 openssl')
+env.SharedLibrary('policy', POLICY_SOURCES)
+
+# Prepare the test case as well
+env_test = env.Clone()
+
+env_test.Append(
+    LIBS = ['gtest', 'base', 'rt', 'pthread'],
+    LIBPATH = ['.'],
+  )
+for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
+  value = os.environ.get(key)
+  if value:
+    env_test[key] = Split(value)
+
+
+# Use libpolicy instead of passing in LIBS in order to always
+# get the version we just built, not what was previously installed.
+unittest_sources=['chromeos/policy/tests/libpolicy_unittest.cc',
+                  'libpolicy.a']
+env_test.ParseConfig('pkg-config --cflags --libs glib-2.0 openssl')
+env_test.Program('libpolicy_unittest', unittest_sources)
