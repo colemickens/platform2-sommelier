@@ -162,7 +162,7 @@ class SessionStarter {
     }
   }
 
-  static void CancelDataSession(gobi::Sdk *sdk) {
+  static ULONG CancelDataSession(gobi::Sdk *sdk) {
     // Runs on main thread
     LOG(WARNING) << "Cancelling in-flight data session start";
 
@@ -180,6 +180,7 @@ class SessionStarter {
     if (rc != 0) {
       LOG(ERROR) << "CancelStartDataSession failed: " << rc;
     }
+    return rc;
   }
 
  protected:
@@ -385,7 +386,7 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
 //
 // Returns:
 //   true -  to indicate either that SetPower operation has started and
-//           powerModeHandler will be called later, or that
+//           PowerModeHandler will be called later, or that
 //           CancelDataSession has been called and
 //           SessionStarterDoneCallback will be called later.
 //   false - the dbus error has been set because the operation could
@@ -420,9 +421,9 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
     SetMmState(MM_MODEM_STATE_ENABLING, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
     return true;
   } else if (!enable && Enabled()) {
-    if (session_starter_in_flight_) {
-      LOG(INFO) << "Disable while connect in flight";
-      SessionStarter::CancelDataSession(sdk_);
+    if (is_connecting_or_connected()) {
+      LOG(INFO) << "Disable while connected or connect in flight";
+      ForceDisconnect();
       return true;
     }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
@@ -485,6 +486,8 @@ void GobiModem::Disconnect(DBus::Error& error) {
   if (rc != 0)
     disconnect_time_.Reset();
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
+  SetMmState(MM_MODEM_STATE_DISCONNECTING,
+             MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
   error.set(kOperationInitiatedError, "");
 }
 
@@ -593,6 +596,22 @@ void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
   }
 }
 
+void GobiModem::PerformDeferredDisable() {
+  if (pending_enable_ != NULL) {
+    DBus::Error disable_error;
+    bool operation_pending;
+    CHECK(pending_enable_->enable_ == false);
+    operation_pending = EnableHelper(false, disable_error);
+    CHECK(operation_pending || disable_error);
+    if (disable_error) {
+      scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
+      FinishDeferredCall(&scoped_enable->tag_, disable_error);
+    }
+    // NOTE: if !disable_error, there is nothing to do, because
+    // PowerModeHandler will eventually return a value.
+  }
+}
+
 void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
   scoped_ptr<SessionStarter> starter(starter_raw);  // Take ownership
 
@@ -616,6 +635,9 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
       ULONG rc = sdk_->StopDataSession(session_id_);
       if (rc != 0) {
         LOG(ERROR) << "Could not disconnect: " << rc;
+      } else {
+        SetMmState(MM_MODEM_STATE_DISCONNECTING,
+                   MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
       }
       // SessionStateHandler will clear session_id_
     }
@@ -656,23 +678,13 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
     SetMmState(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 
-  if (pending_enable_ != NULL) {
-    DBus::Error disable_error;
-    bool operation_pending;
-    CHECK(pending_enable_->enable_ == false);
-    operation_pending = EnableHelper(false, disable_error);
-    CHECK(operation_pending || disable_error);
-    if (disable_error) {
-      scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
-      FinishDeferredCall(&scoped_enable->tag_, disable_error);
-    }
-    // NOTE: if !disable_error, there is nothing to do, because
-    // PowerModeHandler will evenutally return a value.
-  }
+  if (pending_enable_ != NULL)
+    PerformDeferredDisable();
 }
 
 void GobiModem::SetMmState(uint32_t new_state, uint32_t reason) {
   if (new_state != mm_state_) {
+    LOG(INFO) << "MM state change: " << mm_state_ << " => " << new_state;
     StateChanged(mm_state_, new_state, reason);
     State = new_state;
     mm_state_ = new_state;
@@ -1360,8 +1372,9 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
     if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
       reason = MM_MODEM_STATE_CHANGED_REASON_SUSPEND;
-    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_REGISTERED here.
-    SetMmState(MM_MODEM_STATE_REGISTERED, reason);
+    SetMmState(QCStateToMMState(state), reason);
+    if (pending_enable_ != NULL)
+      PerformDeferredDisable();
   } else if (state == gobi::kConnected) {
     // Nothing to do here; this is handled in SessionStarterDoneCallback
   }
@@ -1492,12 +1505,21 @@ bool GobiModem::is_connecting_or_connected() {
 // Force a disconnect of a data session, or stop the process of
 // starting a datasession
 bool GobiModem::ForceDisconnect() {
+  ULONG rc;
   if (session_id_) {
     LOG(INFO) << "ForceDisconnect: Stopping data session";
-    sdk_->StopDataSession(session_id_);
+    rc = sdk_->StopDataSession(session_id_);
+    SetMmState(MM_MODEM_STATE_DISCONNECTING,
+               MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
+    if (rc != 0)
+      LOG(WARNING) << "ForceDisconnect: StopDataSessionFailed: " << rc;
   } else if (session_starter_in_flight_) {
     LOG(INFO) << "ForceDisconnect: Canceling StartDataSession";
-    SessionStarter::CancelDataSession(sdk_);
+    rc = SessionStarter::CancelDataSession(sdk_);
+    SetMmState(QCStateToMMState(gobi::kDisconnected),
+               MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
+    if (rc != 0)
+      LOG(WARNING) << "ForceDisconnect: CancelDataSessionFailed: " << rc;
   }
   return true;
 }

@@ -401,6 +401,7 @@ class GobiModem
   bool StartSuspend();
   bool SuspendOk();
   void RegisterStartSuspend(const std::string& name);
+  void PerformDeferredDisable();
 
   // Resets the device by kicking it off the USB and allowing it back
   // on.  Reason is a QCWWAN error code for logging/metrics, or 0 for
