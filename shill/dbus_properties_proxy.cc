@@ -10,7 +10,6 @@
 
 namespace shill {
 
-using std::map;
 using std::string;
 using std::vector;
 
@@ -22,8 +21,7 @@ DBusPropertiesProxy::DBusPropertiesProxy(DBus::Connection *connection,
 
 DBusPropertiesProxy::~DBusPropertiesProxy() {}
 
-map<string, DBus::Variant> DBusPropertiesProxy::GetAll(
-    const string &interface_name) {
+DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
   return proxy_.GetAll(interface_name);
 }
 
@@ -38,13 +36,13 @@ DBusPropertiesProxy::Proxy::~Proxy() {}
 
 void DBusPropertiesProxy::Proxy::MmPropertiesChanged(
     const string &interface,
-    const map<string, DBus::Variant> &properties) {
+    const DBusPropertiesMap &properties) {
   LOG(INFO) << "MmPropertiesChanged: " << interface;
 }
 
 void DBusPropertiesProxy::Proxy::PropertiesChanged(
     const string &interface,
-    const map<string, DBus::Variant> &changed_properties,
+    const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
   LOG(INFO) << "PropertiesChanged: " << interface;
 }

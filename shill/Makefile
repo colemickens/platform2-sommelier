@@ -58,6 +58,7 @@ SHILL_OBJS = \
 	crypto_rot47.o \
 	dbus_adaptor.o \
 	dbus_control.o \
+	dbus_properties.o \
 	dbus_properties_proxy.o \
 	default_profile.o \
 	device.o \
@@ -112,6 +113,7 @@ TEST_OBJS = \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
 	dbus_adaptor_unittest.o \
+	dbus_properties_unittest.o \
 	default_profile_unittest.o \
 	device_info_unittest.o \
 	device_unittest.o \
@@ -128,9 +130,11 @@ TEST_OBJS = \
 	mock_service.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
+	modem_unittest.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
+	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
 	service_unittest.o \
 	shill_unittest.o \

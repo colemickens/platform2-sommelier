@@ -6,6 +6,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
@@ -14,7 +15,6 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 #include <fcntl.h>
-#include <string>
 
 #include <base/logging.h>
 
@@ -334,6 +334,32 @@ bool RTNLHandler::AddInterfaceAddress(int interface_index,
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                                          const IPConfig &ipconfig) {
   return AddressRequest(interface_index, RTM_DELADDR, 0, ipconfig);
+}
+
+int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
+  if (interface_name.empty()) {
+    LOG(ERROR) << "Empty interface name -- unable to obtain index.";
+    return -1;
+  }
+  struct ifreq ifr;
+  if (interface_name.size() >= sizeof(ifr.ifr_name)) {
+    LOG(ERROR) << "Interface name too long: " << interface_name.size() << " >= "
+               << sizeof(ifr.ifr_name);
+    return -1;
+  }
+  int socket = sockets_->Socket(PF_INET, SOCK_DGRAM, 0);
+  if (socket < 0) {
+    PLOG(ERROR) << "Unable to open INET socket";
+    return -1;
+  }
+  ScopedSocketCloser socket_closer(sockets_, socket);
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, interface_name.c_str(), sizeof(ifr.ifr_name));
+  if (sockets_->Ioctl(socket, SIOCGIFINDEX, &ifr) < 0) {
+    PLOG(ERROR) << "SIOCGIFINDEX error for " << interface_name;
+    return -1;
+  }
+  return ifr.ifr_ifindex;
 }
 
 }  // namespace shill

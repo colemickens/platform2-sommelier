@@ -23,8 +23,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   virtual ~DBusPropertiesProxy();
 
   // Inherited from DBusPropertiesProxyInterface.
-  virtual std::map<std::string, DBus::Variant> GetAll(
-      const std::string &interface_name);
+  virtual DBusPropertiesMap GetAll(const std::string &interface_name);
 
  private:
   class Proxy : public org::freedesktop::DBus::Properties_proxy,
@@ -38,13 +37,12 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
 
    private:
     // Signal callbacks inherited from DBusProperties_proxy.
-    virtual void MmPropertiesChanged(
-        const std::string &interface,
-        const std::map<std::string, DBus::Variant> &properties);
+    virtual void MmPropertiesChanged(const std::string &interface,
+                                     const DBusPropertiesMap &properties);
 
     virtual void PropertiesChanged(
         const std::string &interface,
-        const std::map<std::string, DBus::Variant> &changed_properties,
+        const DBusPropertiesMap &changed_properties,
         const std::vector<std::string> &invalidated_properties);
 
     Modem *modem_;

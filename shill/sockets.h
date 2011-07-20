@@ -7,6 +7,8 @@
 
 #include <sys/types.h>
 
+#include <base/basictypes.h>
+
 namespace shill {
 
 // A "sys/socket.h" abstraction allowing mocking in tests.
@@ -20,6 +22,9 @@ class Sockets {
   // close
   virtual int Close(int fd);
 
+  // ioctl
+  virtual int Ioctl(int d, int request, void *argp);
+
   // send
   virtual ssize_t Send(int sockfd, const void *buf, size_t len, int flags);
 
@@ -29,6 +34,18 @@ class Sockets {
 
   // socket
   virtual int Socket(int domain, int type, int protocol);
+};
+
+class ScopedSocketCloser {
+ public:
+  ScopedSocketCloser(Sockets *sockets, int fd);
+  ~ScopedSocketCloser();
+
+ private:
+  Sockets *sockets_;
+  int fd_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedSocketCloser);
 };
 
 }  // namespace shill

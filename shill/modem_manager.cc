@@ -99,12 +99,10 @@ void ModemManager::AddModem(const std::string &path) {
     LOG(INFO) << "Modem already exists; ignored.";
     return;
   }
-  shared_ptr<Modem> modem(new Modem(owner_,
-                                    path,
-                                    control_interface_,
-                                    dispatcher_,
-                                    manager_));
+  shared_ptr<Modem> modem(
+      new Modem(owner_, path, control_interface_, dispatcher_, manager_));
   modems_[path] = modem;
+  modem->Init();
 }
 
 void ModemManager::RemoveModem(const std::string &path) {

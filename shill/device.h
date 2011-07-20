@@ -62,6 +62,9 @@ class Device : public base::RefCounted<Device> {
 
   std::string GetRpcIdentifier();
 
+  const std::string &link_name() const { return link_name_; }
+  int interface_index() const { return interface_index_; }
+
   const std::string &FriendlyName() const;
 
   // Returns a string that is guaranteed to uniquely identify this Device
@@ -101,7 +104,7 @@ class Device : public base::RefCounted<Device> {
   PropertyStore store_;
 
   std::vector<ServiceRefPtr> services_;
-  int interface_index_;
+  const int interface_index_;
   bool running_;
   const std::string link_name_;
   const std::string unique_id_;

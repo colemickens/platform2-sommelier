@@ -5,6 +5,7 @@
 #ifndef SHILL_RTNL_HANDLER_
 #define SHILL_RTNL_HANDLER_
 
+#include <string>
 #include <vector>
 
 #include <base/callback_old.h>
@@ -49,12 +50,14 @@ class RTNLHandler {
   // function requires an EventDispatcher pointer so it can add itself to the
   // event loop.
   void Start(EventDispatcher *dispatcher, Sockets *sockets);
+
   // This stops the event-monitoring function of the RTNL handler
   void Stop();
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
   void AddListener(RTNLListener *to_add);
+
   // Remove a previously added RTNL event listener
   void RemoveListener(RTNLListener *to_remove);
 
@@ -63,20 +66,29 @@ class RTNLHandler {
   // be set, and they will be set to the corresponding bit in 'flags'.
   void SetInterfaceFlags(int interface_index, unsigned int flags,
                          unsigned int change);
+
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
   bool AddInterfaceAddress(int interface_index, const IPConfig &config);
+
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
   bool RemoveInterfaceAddress(int interface_index, const IPConfig &config);
+
   // Request that various tables (link, address, routing) tables be
   // exhaustively dumped via RTNL.  As results arrive from the kernel
   // they will be broadcast to all listeners.  The possible values
   // (multiple can be ORred together) are below.
   void RequestDump(int request_flags);
 
+  // Returns the index of interface |interface_name|, or -1 if unable to
+  // determine the index.
+  int GetInterfaceIndex(const std::string &interface_name);
+
  private:
   friend class DeviceInfoTest;
+  friend class ModemTest;
+  friend class RTNLHandlerTest;
   friend struct DefaultSingletonTraits<RTNLHandler>;
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);

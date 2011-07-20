@@ -9,17 +9,24 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
+#include "shill/dbus_properties_proxy_interface.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 
 class ControlInterface;
-class DBusPropertiesProxyInterface;
 class EventDispatcher;
 class Manager;
 
-// Handles an instance of ModemManager.Modem and an instance of CellularDevice.
+// Handles an instance of ModemManager.Modem and an instance of a Cellular
+// device.
 class Modem {
  public:
+  // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
+  // the ModemManager.Modem DBus object path (e.g.,
+  // "/org/chromium/ModemManager/Gobi/0").
   Modem(const std::string &owner,
         const std::string &path,
         ControlInterface *control_interface,
@@ -27,8 +34,31 @@ class Modem {
         Manager *manager);
   ~Modem();
 
+  // Initializes support for the modem, possibly constructing a Cellular device.
+  void Init();
+
  private:
+  friend class ModemManagerTest;
+  friend class ModemTest;
+  FRIEND_TEST(ModemTest, CreateCellularDevice);
+  FRIEND_TEST(ModemTest, Init);
+
+  static const char kPropertyLinkName[];
+  static const char kPropertyIPMethod[];
+  static const char kPropertyType[];
+  static const char kPropertyUnlockRequired[];
+  static const char kPropertyUnlockRetries[];
+
+  void CreateCellularDevice(const DBusPropertiesMap &properties);
+
+  // A proxy to the org.freedesktop.DBus.Properties interface used to obtain
+  // ModemManager.Modem properties and watch for property changes.
   scoped_ptr<DBusPropertiesProxyInterface> dbus_properties_proxy_;
+
+  const std::string owner_;
+  const std::string path_;
+
+  CellularRefPtr device_;
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
