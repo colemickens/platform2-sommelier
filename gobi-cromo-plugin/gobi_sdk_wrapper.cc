@@ -337,6 +337,7 @@ ULONG Sdk::CancelStartDataSession() {
   ULONG gobi_rc = ::QCWWANCancel();
   if (gobi_rc != 0) {
     LOG(ERROR) << "QCWWANCancel failed " << gobi_rc;
+    return gobi_rc;
   }
 
   // Sanity checks
