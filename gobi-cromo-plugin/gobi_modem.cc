@@ -423,8 +423,8 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
   } else if (!enable && Enabled()) {
     if (is_connecting_or_connected()) {
       LOG(INFO) << "Disable while connected or connect in flight";
-      ForceDisconnect();
-      return true;
+      if (ForceDisconnect() == 0)
+        return true;
     }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
@@ -1456,7 +1456,7 @@ void GobiModem::SetDeviceProperties()
 
 bool GobiModem::StartExit() {
   exiting_ = true;
-  return ForceDisconnect();
+  return (ForceDisconnect() == 0);
 }
 
 const char* QMIReturnCodeToMMError(unsigned int qmicode) {
@@ -1504,7 +1504,9 @@ bool GobiModem::is_connecting_or_connected() {
 
 // Force a disconnect of a data session, or stop the process of
 // starting a datasession
-bool GobiModem::ForceDisconnect() {
+//
+// Return 0 on success, gobi error code otherwise
+ULONG GobiModem::ForceDisconnect() {
   ULONG rc;
   if (session_id_) {
     LOG(INFO) << "ForceDisconnect: Stopping data session";
@@ -1521,13 +1523,13 @@ bool GobiModem::ForceDisconnect() {
     if (rc != 0)
       LOG(WARNING) << "ForceDisconnect: CancelDataSessionFailed: " << rc;
   }
-  return true;
+  return rc;
 }
 
 bool GobiModem::StartSuspend() {
   LOG(INFO) << "StartSuspend";
   suspending_ = true;
-  return ForceDisconnect();
+  return (ForceDisconnect() == 0);
 }
 
 bool StartSuspendTrampoline(void *arg) {

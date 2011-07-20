@@ -395,7 +395,7 @@ class GobiModem
 
   // Force a disconnect of a data session, or stop the process of
   // starting a datasession
-  bool ForceDisconnect();
+  ULONG ForceDisconnect();
   bool StartExit();
   bool ExitOk();
   bool StartSuspend();
