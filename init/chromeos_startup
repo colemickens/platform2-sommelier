@@ -39,13 +39,19 @@ mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
+ROOTDEV_TYPE=${ROOT_DEV%[0-9]*}
 # Check if we are booted on physical media. rootdev will fail if we are in
-# an initramfs or tmpfs rootfs.
-if [ "$ROOTDEV_RET_CODE" = "0" ]; then
+# an initramfs or tmpfs rootfs (used for x86 factory images). When using
+# initrd+tftpboot (used for ARM factory images), ROOTDEV_TYPE will be
+# /dev/ram.
+if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Find our stateful partition. It's always partition 1.
-  STATE_DEV=${ROOT_DEV%[0-9]*}1
+  STATE_DEV=${ROOTDEV_TYPE}1
 
   # For factory install shim, we never want to write to the SDCard.
+  # In some cases, we boot the factory install shim directly from removable
+  # media like an SDCard. In those cases we don't want to write to that
+  # removable media.
   if [ -f /root/.factory_installer ]; then
     mount -n -t tmpfs -o nodev,noexec,nosuid,mode=0755 tmp \
       /mnt/stateful_partition
