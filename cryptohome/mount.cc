@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,10 +29,13 @@ using std::string;
 
 namespace cryptohome {
 
+const std::string kDefaultUserRoot = "/home/chronos";
 const std::string kDefaultHomeDir = "/home/chronos/user";
 const std::string kDefaultShadowRoot = "/home/.shadow";
 const std::string kDefaultSharedUser = "chronos";
 const std::string kDefaultSkeletonSource = "/etc/skel";
+const uid_t kMountOwnerUid = 0;
+const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const std::string kIncognitoUser = "incognito";
 // The length of a user's directory name in the shadow root (equal to the length
@@ -265,21 +268,45 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   // Mount cryptohome
   string vault_path = GetUserVaultPath(credentials);
-  if (!platform_->Mount(vault_path, home_dir_, "ecryptfs", ecryptfs_options)) {
-    LOG(INFO) << "Cryptohome mount failed: " << errno << ", for vault: "
-               << vault_path;
+  mount_point_ = GetUserMountDirectory(credentials);
+  string user_home = mount_point_ + "/user";
+  string root_home = mount_point_ + "/root";
+  if (!platform_->CreateDirectory(mount_point_)) {
+    PLOG(ERROR) << "Directory creation failed for " << mount_point_;
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }
     return false;
   }
 
-  if (created) {
-    CopySkeletonForUser(credentials);
+  platform_->SetOwnership(kDefaultUserRoot, kMountOwnerUid, kMountOwnerGid);
+  LOG(INFO) << "Mount: " << vault_path << " -> " << mount_point_;
+  if (!platform_->Mount(vault_path, mount_point_, "ecryptfs", ecryptfs_options)) {
+   PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
+    if (mount_error) {
+      *mount_error = MOUNT_ERROR_FATAL;
+    }
+    return false;
   }
 
   // Ensure that the tracked subdirectories exist.
   CreateTrackedSubdirectories(credentials, created);
+
+  LOG(INFO) << "Migrating: " << mount_point_ << " -> " << user_home;
+  MigrateToUserHome(user_home, mount_point_);
+
+  LOG(INFO) << "Bind: " << user_home << " -> " << home_dir_;
+  if (!platform_->Bind(user_home, home_dir_)) {
+    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> " << home_dir_;
+    if (mount_error)
+      *mount_error = MOUNT_ERROR_FATAL;
+    platform_->Unmount(mount_point_, false, NULL);
+    return false;
+  }
+
+  if (created) {
+    CopySkeletonForUser(credentials);
+  }
 
   if (mount_error) {
     *mount_error = MOUNT_ERROR_NONE;
@@ -325,6 +352,8 @@ bool Mount::UnmountCryptohome() {
     platform_->Unmount(home_dir_, true, NULL);
     sync();
   }
+
+  platform_->Unmount(mount_point_, true, NULL);
 
   // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
@@ -409,6 +438,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     return false;
   }
 
+  LOG(INFO) << "Creating tracked subdirectories...";
+
   // The call is allowed to partially fail if directory creation fails, but we
   // want to have as many of the specified tracked directories created as
   // possible.
@@ -418,6 +449,11 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
     const string subdir_name = subdir.name;
     const FilePath passthrough_dir = vault_path.Append(subdir_name);
     const FilePath old_dir = FilePath(home_dir_).Append(subdir_name);
+
+    LOG(INFO) << "old: " << old_dir.value()
+              << " " << file_util::DirectoryExists(old_dir)
+              << " new " << passthrough_dir.value()
+              << " " << file_util::DirectoryExists(passthrough_dir);
 
     // Start migrating if |subdir| is not a pass-through directory yet.
     FilePath tmp_migrated_dir;
@@ -960,6 +996,12 @@ string Mount::GetUserVaultPath(const Credentials& credentials) const {
                       kVaultDir);
 }
 
+string Mount::GetUserMountDirectory(const Credentials& credentials) const {
+  return StringPrintf("%s/%s/mount",
+                      shadow_root_.c_str(),
+                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+}
+
 void Mount::RecursiveCopy(const FilePath& destination,
                           const FilePath& source) const {
   file_util::FileEnumerator file_enumerator(source, false,
@@ -993,6 +1035,41 @@ void Mount::RecursiveCopy(const FilePath& destination,
       }
     }
     RecursiveCopy(destination_dir, next_path);
+  }
+}
+
+void Mount::MigrateToUserHome(const std::string& dest, const std::string& source) const
+{
+  std::vector<std::string> ent_list;
+  std::vector<std::string>::iterator ent_iter;
+  platform_->EnumerateDirectoryEntries(source, false, &ent_list);
+  FilePath next_path;
+  FilePath user_path(source);
+  FilePath root_path(source);
+  user_path = user_path.Append("user");
+  root_path = root_path.Append("root");
+
+  if (!platform_->SetOwnership(source, kMountOwnerUid, kMountOwnerGid)) {
+    PLOG(ERROR) << "SetOwnership() failed: " << source;
+    return;
+  }
+  if (!platform_->CreateDirectory(user_path.value())) {
+    PLOG(ERROR) << "CreateDirectory() failed: " << user_path.value();
+    return;
+  }
+  if (!platform_->CreateDirectory(root_path.value())) {
+    PLOG(ERROR) << "CreateDirectory() failed: " << root_path.value();
+    return;
+  }
+  for (ent_iter = ent_list.begin(); ent_iter != ent_list.end(); ent_iter++) {
+    FilePath basename(*ent_iter);
+    basename = basename.BaseName();
+    if (basename.value() == "user" || basename.value() == "root") {
+      continue;
+    }
+    FilePath dest_path(dest);
+    dest_path = dest_path.Append(basename);
+    file_util::Move(next_path, dest_path);
   }
 }
 
