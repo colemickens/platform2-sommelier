@@ -263,7 +263,11 @@ class Platform {
   //  gid - effective gid to set
   //  saved_uid - if non-null, pointer to the location to store the old uid
   //  saved_gid - if non-null, pointer to the location to store the old gid
-  bool SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid, gid_t* saved_gid);
+  virtual bool SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
+                            gid_t* saved_gid);
+
+  // Call the platform function to flush the disk buffer caches.
+  virtual bool Sync();
 
   // Overrides the default mount options
   void set_mount_options(int value) {

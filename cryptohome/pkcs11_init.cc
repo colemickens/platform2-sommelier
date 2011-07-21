@@ -86,7 +86,7 @@ bool Pkcs11Init::Initialize() {
   if(!ConfigureTPMAsToken())
     return false;
 
-  // Slot daemon can only be started after the opencryptki directory has
+  // Slot daemon can only be started after the opencryptoki directory has
   // correctly been setup and the TPM is initialized to be used as the slot 0
   // token.
   if (!StartPkcs11Daemon())
@@ -109,6 +109,12 @@ bool Pkcs11Init::Initialize() {
       success = false;
     if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
       return false;
+    // This is needed to ensure that contents of the files created by
+    // opencryptoki during initialization get flushed to the underlying storage
+    // subsystem. Due to delayed writeback, a system crash at this point may
+    // leave these files in a corrupted state. Opencryptoki does not handle
+    // this quite that gracefully.
+    platform_->Sync();
     return success;
   }
 
@@ -408,6 +414,5 @@ bool Pkcs11Init::SetPin(CK_SLOT_ID slot_id, CK_USER_TYPE user,
 
   return true;
 }
-
 
 }  // namespace cryptohome

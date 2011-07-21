@@ -584,4 +584,9 @@ bool Platform::SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
   return true;
 }
 
+bool Platform::Sync() {
+  sync();
+  return true;
+}
+
 } // namespace cryptohome
