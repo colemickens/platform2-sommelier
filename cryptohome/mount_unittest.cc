@@ -38,6 +38,7 @@ using ::testing::NiceMock;
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
 const char kHomeDir[] = "alt_test_home_dir";
+const char kUserDir[] = "user";
 
 class MountTest : public ::testing::Test {
  public:
@@ -368,6 +369,8 @@ TEST_F(MountTest, MountCryptohome) {
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
+      .WillRepeatedly(Return(true));
 
   Mount::MountError error;
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
@@ -375,7 +378,8 @@ TEST_F(MountTest, MountCryptohome) {
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append(kVaultDir);
-  FilePath subdir_path = vault_path.Append(kCacheDir);
+  FilePath vault_user_path = vault_path.Append(kUserDir);
+  FilePath subdir_path = vault_user_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
 
@@ -405,6 +409,8 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
                                        &error));
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
       .WillOnce(Return(true));
 
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
@@ -444,6 +450,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
+      .WillOnce(Return(true));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
@@ -460,7 +468,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
   ASSERT_TRUE(file_util::PathExists(vault_path));
 
-  FilePath subdir_path = vault_path.Append(kCacheDir);
+  FilePath vault_user_path = vault_path.Append(kUserDir);
+  FilePath subdir_path = vault_user_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 }
 
@@ -486,6 +495,8 @@ TEST_F(MountTest, RemoveSubdirectories) {
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, Unmount(_, _, _))
       .WillRepeatedly(Return(true));
 
@@ -495,7 +506,8 @@ TEST_F(MountTest, RemoveSubdirectories) {
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append(kVaultDir);
-  FilePath subdir_path = vault_path.Append(kCacheDir);
+  FilePath vault_user_path = vault_path.Append(kUserDir);
+  FilePath subdir_path = vault_user_path.Append(kCacheDir);
   ASSERT_TRUE(file_util::PathExists(subdir_path));
 
   NiceMock<MockPlatform> platform_mounted;
@@ -563,8 +575,9 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // subdirs "Cache" and "Downloads".
   FilePath cache_dir(home_dir.Append(kCacheDir));
   FilePath downloads_dir(home_dir.Append(kDownloadsDir));
-  file_util::CreateDirectory(cache_dir);
-  file_util::CreateDirectory(downloads_dir);
+  LOG(INFO) << "mkcache: " << cache_dir.value() << " " << file_util::CreateDirectory(cache_dir);
+  LOG(INFO) << "mkdownload: " << downloads_dir.value() << " "
+            << file_util::CreateDirectory(downloads_dir);
 
   // And they are not empty.
   const string contents = "Hello world!!!";
@@ -586,6 +599,8 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // Now Mount().
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
+      .WillRepeatedly(Return(true));
   Mount::MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
@@ -593,8 +608,9 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   FilePath image_dir(kImageDir);
   FilePath user_path = image_dir.Append(up.GetObfuscatedUsername(system_salt_));
   FilePath vault_path = user_path.Append(kVaultDir);
-  ASSERT_TRUE(file_util::PathExists(vault_path.Append(kCacheDir)));
-  ASSERT_TRUE(file_util::PathExists(vault_path.Append(kDownloadsDir)));
+  FilePath vault_user_path = vault_path.Append(kUserDir);
+  ASSERT_TRUE(file_util::PathExists(vault_user_path.Append(kCacheDir)));
+  ASSERT_TRUE(file_util::PathExists(vault_user_path.Append(kDownloadsDir)));
 
   // Check that vault path does not contain user data unencrypted.
   // Note, that if we had real mount, we would see encrypted file names there;
@@ -602,11 +618,9 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path.Append(kCacheDir)));
   EXPECT_TRUE(file_util::IsDirectoryEmpty(vault_path.Append(kDownloadsDir)));
 
-  // Check that Cache is clear (because it does not need migration) so
-  // it should not appear in a home dir.
-  EXPECT_FALSE(file_util::PathExists(cache_dir));
-
   // Check that Downloads is completely migrated.
+  // TODO(ellyjones): figure out how to check that the migrated-from directories
+  // are now empty
   string tested;
   EXPECT_TRUE(file_util::PathExists(downloads_dir));
   EXPECT_TRUE(file_util::ReadFileToString(
@@ -617,10 +631,6 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::ReadFileToString(
       downloads_subdir.Append("downloaded_file"), &tested));
   EXPECT_EQ(contents, tested);
-
-  // Check that we did not leave any litter.
-  file_util::Delete(downloads_dir, true);
-  EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
 }
 
 TEST_F(MountTest, UserActivityTimestampUpdated) {
@@ -647,6 +657,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   Mount::MountError error;
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform, Bind(_, _))
+      .WillOnce(Return(true));
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
@@ -667,6 +679,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
   EXPECT_CALL(platform, Unmount(_, _, _))
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
   mount.UnmountCryptohome();
   SerializedVaultKeyset serialized2;
@@ -1041,6 +1054,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   Mount::MountError error;
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillOnce(Return(true));
   ASSERT_TRUE(mount_.MountCryptohome(
       username_passkey_[0], Mount::MountArgs(), &error));
   const string current_uservault = image_path_[0].Append(kVaultDir).value();
@@ -1071,6 +1086,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Now unmount the user. So it (user[0]) should be cached and may be
   // deleted next when it becomes old.
   EXPECT_CALL(platform_, Unmount(_, _, _))
+      .WillOnce(Return(true))
       .WillOnce(Return(true));
   mount_.UnmountCryptohome();
 

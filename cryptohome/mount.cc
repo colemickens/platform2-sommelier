@@ -7,6 +7,7 @@
 #include "mount.h"
 
 #include <errno.h>
+#include <sys/stat.h>
 
 #include <base/file_util.h>
 #include <base/logging.h>
@@ -28,10 +29,15 @@ using std::string;
 
 namespace cryptohome {
 
+const std::string kDefaultUserRoot = "/home/chronos";
 const std::string kDefaultHomeDir = "/home/chronos/user";
 const std::string kDefaultShadowRoot = "/home/.shadow";
 const std::string kDefaultSharedUser = "chronos";
 const std::string kDefaultSkeletonSource = "/etc/skel";
+const char kUserHomeSuffix[] = "user";
+const char kRootHomeSuffix[] = "root";
+const uid_t kMountOwnerUid = 0;
+const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
 const std::string kIncognitoUser = "incognito";
 // The length of a user's directory name in the shadow root (equal to the length
@@ -50,7 +56,7 @@ const struct TrackedDir {
   bool need_migration;
 } kTrackedDirs[] = {
   {kCacheDir, false},
-  {kDownloadsDir, true}
+  {kDownloadsDir, true},
 };
 const char kVaultDir[] = "vault";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
@@ -239,7 +245,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
     return false;
   }
-
   crypto_->ClearKeyset();
 
   // Add the decrypted key to the keyring so that ecryptfs can use it
@@ -263,22 +268,57 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
                                          key_signature.c_str());
 
   // Mount cryptohome
+  // /home/.shadow: owned by root
+  // /home/.shadow/$hash: owned by root
+  // /home/.shadow/$hash/vault: owned by root
+  // /home/.shadow/$hash/mount: owned by root
+  // /home/.shadow/$hash/mount/root: owned by root
+  // /home/.shadow/$hash/mount/user: owned by chronos
+  // /home/chronos: owned by chronos
+  // /home/chronos/user: owned by chronos
+  // /home/chronos-root: owned by root
+
   string vault_path = GetUserVaultPath(credentials);
-  if (!platform_->Mount(vault_path, home_dir_, "ecryptfs", ecryptfs_options)) {
-    LOG(INFO) << "Cryptohome mount failed: " << errno << ", for vault: "
-               << vault_path;
+  // Create vault_path/user as a passthrough directory, move all the (encrypted)
+  // contents of vault_path into vault_path/user, create vault_path/root.
+  MigrateToUserHome(vault_path);
+
+  mount_point_ = GetUserMountDirectory(credentials);
+  if (!platform_->CreateDirectory(mount_point_)) {
+    PLOG(ERROR) << "Directory creation failed for " << mount_point_;
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }
     return false;
   }
 
+  if (!platform_->Mount(vault_path, mount_point_, "ecryptfs", ecryptfs_options)) {
+   PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
+    if (mount_error) {
+      *mount_error = MOUNT_ERROR_FATAL;
+    }
+    return false;
+  }
+
+  // Move the tracked subdirectories from mount_point_/user to vault_path
+  // as passthrough directories.
+  CreateTrackedSubdirectories(credentials, created);
+
+  string user_home = GetMountedUserHomePath(credentials);
+  if (!platform_->Bind(user_home, home_dir_)) {
+    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> " << home_dir_;
+    if (mount_error)
+      *mount_error = MOUNT_ERROR_FATAL;
+    platform_->Unmount(mount_point_, false, NULL);
+    return false;
+  }
+
+  // TODO(ellyjones): Expose the path to the root directory over dbus for use by
+  // daemons. We may also want to bind-mount it somewhere stable.
+
   if (created) {
     CopySkeletonForUser(credentials);
   }
-
-  // Ensure that the tracked subdirectories exist.
-  CreateTrackedSubdirectories(credentials, created);
 
   if (mount_error) {
     *mount_error = MOUNT_ERROR_NONE;
@@ -324,6 +364,8 @@ bool Mount::UnmountCryptohome() {
     platform_->Unmount(home_dir_, true, NULL);
     sync();
   }
+
+  platform_->Unmount(mount_point_, true, NULL);
 
   // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
@@ -374,21 +416,12 @@ bool Mount::CreateCryptohome(const Credentials& credentials,
     return false;
   }
 
-  // Create the user's path and set the proper ownership
+  // Create the user's vault.
   std::string vault_path = GetUserVaultPath(credentials);
-  if (!file_util::CreateDirectory(FilePath(vault_path))) {
+  if (!platform_->CreateDirectory(vault_path)) {
     LOG(ERROR) << "Couldn't create vault path: " << vault_path.c_str();
     platform_->SetMask(original_mask);
     return false;
-  }
-  if (set_vault_ownership_) {
-    if (!platform_->SetOwnership(vault_path, default_user_, default_group_)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of vault path: "
-                 << vault_path.c_str();
-      platform_->SetMask(original_mask);
-      return false;
-    }
   }
 
   // Restore the umask
@@ -401,8 +434,9 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   const int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
-  const FilePath vault_path = FilePath(GetUserVaultPath(credentials));
-  if (!file_util::DirectoryExists(vault_path)) {
+  const FilePath dest = FilePath(VaultPathToUserPath(GetUserVaultPath(credentials)));
+  const FilePath source = FilePath(GetMountedUserHomePath(credentials));
+  if (!file_util::DirectoryExists(dest)) {
     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
     platform_->SetMask(original_mask);
     return false;
@@ -415,8 +449,8 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   for (size_t index = 0; index < arraysize(kTrackedDirs); ++index) {
     const TrackedDir& subdir = kTrackedDirs[index];
     const string subdir_name = subdir.name;
-    const FilePath passthrough_dir = vault_path.Append(subdir_name);
-    const FilePath old_dir = FilePath(home_dir_).Append(subdir_name);
+    const FilePath passthrough_dir = dest.Append(subdir_name);
+    const FilePath old_dir = source.Append(subdir_name);
 
     // Start migrating if |subdir| is not a pass-through directory yet.
     FilePath tmp_migrated_dir;
@@ -429,7 +463,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
       } else {
         // Migrate it: rename it, and after the pass-through one is
         // created, move its contents there.
-        tmp_migrated_dir = FilePath(home_dir_).Append(subdir_name + ".tmp");
+        tmp_migrated_dir = FilePath(dest).Append(subdir_name + ".tmp");
         LOG(INFO) << "Moving migration directory " << old_dir.value()
                   << " to " << tmp_migrated_dir.value() << "...";
         if (!file_util::Move(old_dir, tmp_migrated_dir)) {
@@ -445,6 +479,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 
     // Create pass-through directory.
     if (!file_util::DirectoryExists(passthrough_dir)) {
+      LOG(INFO) << "create-tracked: " << passthrough_dir.value();
       file_util::CreateDirectory(passthrough_dir);
       if (set_vault_ownership_) {
         if (!platform_->SetOwnership(passthrough_dir.value(),
@@ -461,7 +496,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 
     // Finish migration if started for this directory.
     if (!tmp_migrated_dir.empty()) {
-      const FilePath new_dir = FilePath(home_dir_).Append(subdir_name);
+      const FilePath new_dir = FilePath(dest).Append(subdir_name);
       if (!file_util::DirectoryExists(new_dir)) {
         LOG(ERROR) << "Unable to locate created pass-through directory from "
                    << new_dir.value() << ". Are we in a unit-test?";
@@ -959,6 +994,25 @@ string Mount::GetUserVaultPath(const Credentials& credentials) const {
                       kVaultDir);
 }
 
+string Mount::GetUserMountDirectory(const Credentials& credentials) const {
+  return StringPrintf("%s/%s/mount",
+                      shadow_root_.c_str(),
+                      credentials.GetObfuscatedUsername(system_salt_).c_str());
+}
+
+string Mount::GetMountedUserHomePath(const Credentials& credentials) const {
+  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
+                      kUserHomeSuffix);
+}
+
+string Mount::VaultPathToUserPath(const std::string& vault) const {
+  return StringPrintf("%s/%s", vault.c_str(), kUserHomeSuffix);
+}
+
+string Mount::VaultPathToRootPath(const std::string& vault) const {
+  return StringPrintf("%s/%s", vault.c_str(), kRootHomeSuffix);
+}
+
 void Mount::RecursiveCopy(const FilePath& destination,
                           const FilePath& source) const {
   file_util::FileEnumerator file_enumerator(source, false,
@@ -982,6 +1036,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
   while (!(next_path = dir_enumerator.Next()).empty()) {
     FilePath dir_name = next_path.BaseName();
     FilePath destination_dir = destination.Append(dir_name);
+    LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
     file_util::CreateDirectory(destination_dir);
     if (set_vault_ownership_) {
       if (chown(destination_dir.value().c_str(), default_user_,
@@ -993,6 +1048,75 @@ void Mount::RecursiveCopy(const FilePath& destination,
     }
     RecursiveCopy(destination_dir, next_path);
   }
+}
+
+void Mount::MigrateToUserHome(const std::string& vault_path) const
+{
+  std::vector<string> ent_list;
+  std::vector<string>::iterator ent_iter;
+  FilePath user_path(VaultPathToUserPath(vault_path));
+  FilePath root_path(VaultPathToRootPath(vault_path));
+  struct stat st;
+
+  // This check makes the migration idempotent; if we completed a migration,
+  // root_path will exist and we're done, and if we didn't complete it, we can
+  // finish it.
+  if (platform_->Stat(root_path.value(), &st) &&
+      S_ISDIR(st.st_mode) &&
+      st.st_uid == kMountOwnerUid &&
+      st.st_gid == kMountOwnerGid) {
+      return;
+  }
+
+  // There are three ways to get here:
+  // 1) the Stat() call above succeeded, but what we saw was not a root-owned
+  //    directory.
+  // 2) the Stat() call above failed with -ENOENT
+  // 3) the Stat() call above failed for some other reason
+  // In any of these cases, it is safe for us to rm root_path, since the only
+  // way it could have gotten there is if someone undertook some funny business
+  // as root.
+  platform_->DeleteFile(root_path.value(), true);
+
+  // Get the list of entries before we create user_path, since user_path will be
+  // inside dir.
+  platform_->EnumerateDirectoryEntries(vault_path, false, &ent_list);
+
+  if (!platform_->CreateDirectory(user_path.value())) {
+    PLOG(ERROR) << "CreateDirectory() failed: " << user_path.value();
+    return;
+  }
+
+  if (!platform_->SetOwnership(user_path.value(), default_user_, default_group_)) {
+    PLOG(ERROR) << "SetOwnership() failed: " << user_path.value();
+    return;
+  }
+
+  for (ent_iter = ent_list.begin(); ent_iter != ent_list.end(); ent_iter++) {
+    FilePath basename(*ent_iter);
+    FilePath next_path = basename;
+    basename = basename.BaseName();
+    // Don't move the user/ directory itself. We're currently operating on an
+    // _unmounted_ ecryptfs, which means all the filenames are encrypted except
+    // the user and root passthrough directories.
+    if (basename.value() == kUserHomeSuffix) {
+      LOG(WARNING) << "Interrupted migration detected.";
+      continue;
+    }
+    FilePath dest_path(user_path);
+    dest_path = dest_path.Append(basename);
+    if (!platform_->Rename(next_path.value(), dest_path.value())) {
+      // TODO(ellyjones): UMA event log for this
+      PLOG(WARNING) << "Migration fault: can't move " << next_path.value()
+                    << " to " << dest_path.value();
+    }
+  }
+  // Create root_path at the end as a sentinel for migration.
+  if (!platform_->CreateDirectory(root_path.value())) {
+    PLOG(ERROR) << "CreateDirectory() failed: " << root_path.value();
+    return;
+  }
+  LOG(INFO) << "Migrated user directory: " << vault_path.c_str();
 }
 
 void Mount::CopySkeletonForUser(const Credentials& credentials) const {

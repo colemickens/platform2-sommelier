@@ -31,6 +31,7 @@ class MockPlatform : public Platform {
   virtual ~MockPlatform() {}
   MOCK_METHOD4(Mount, bool(const std::string&, const std::string&,
                            const std::string&, const std::string&));
+  MOCK_METHOD2(Bind, bool(const std::string&, const std::string&));
   MOCK_METHOD3(Unmount, bool(const std::string&, bool, bool*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const std::string&));
   MOCK_METHOD2(IsDirectoryMountedWith, bool(const std::string&,
