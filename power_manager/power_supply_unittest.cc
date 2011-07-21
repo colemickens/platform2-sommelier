@@ -74,7 +74,7 @@ class PowerSupplyTest : public ::testing::Test {
 TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
   power_supply_->Init();
   chromeos::PowerStatus power_status;
-  EXPECT_FALSE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   // In absence of power supply sysfs, default assumption is line power on, no
   // battery present.
   EXPECT_TRUE(power_status.line_power_on);
