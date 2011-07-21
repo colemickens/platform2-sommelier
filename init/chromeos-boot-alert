@@ -206,35 +206,36 @@ mode_self_repair() {
 mode_dev_fwcheck() {
   # TODO(hungte) Find some better way to store firmware value, like using
   # /etc/lsb-release.  Currently the firmware updater may contain fields like
-  # SHELLBALL_FWVERSION in the beginning of updater script.
-  local SHELLBALL_FWVERSION=""
-  local SHELLBALL_ECVERSION=""
+  # TARGET_* in the beginning of updater script.
+  local TARGET_FWID=""
+  local TARGET_ECID=""
   # The magic value 40 is verified on current updaters (using line 23-24)
   eval "$(head -40 /usr/sbin/chromeos-firmwareupdate |
-          grep '^ *SHELLBALL_..VERSION=')"
-  if [ -z "$SHELLBALL_FWVERSION" -a -z "$SHELLBALL_ECVERSION" ]; then
+          grep '^ *TARGET_..ID=')"
+  if [ -z "$TARGET_FWID" -a -z "$TARGET_ECID" ]; then
     return
   fi
 
-  local fw_version="$(crossystem fwid)"
-  local ec_info="$(mosys -k ec info 2>/dev/null)" || ec_info=""
-  ec_version="$(fw_version="Unknown"; eval "$ec_info"; echo "$fw_version")"
+  local fwid="$(crossystem fwid)"
+  local ec_info
+  ec_info="$(mosys -k ec info 2>/dev/null)" || ec_info=""
+  local ecid="$(fw_version="Unknown"; eval "$ec_info"; echo "$fw_version")"
 
   local notify_update=0
-  if [ "$SHELLBALL_FWVERSION" != "$fw_version" ] &&
-     [ "$SHELLBALL_FWVERSION" != "IGNORE" ]; then
+  if [ "$TARGET_FWID" != "$fwid" ] &&
+     [ "$TARGET_FWID" != "IGNORE" ]; then
     notify_update=1
     echo "
-      System firmware update available: [$SHELLBALL_FWVERSION]
-      Currently installed system firmware: [$fw_version]
-    " > "$STDOUT"
+      System firmware update available: [$TARGET_FWID]
+      Currently installed system firmware: [$fwid]
+    " >"$STDOUT"
   fi
-  if [ "$SHELLBALL_ECVERSION" != "$ec_version" ] &&
-     [ "$SHELLBALL_ECVERSION" != "IGNORE" ]; then
+  if [ "$TARGET_ECID" != "$ecid" ] &&
+     [ "$TARGET_ECID" != "IGNORE" ]; then
     notify_update=1
     echo "
-      EC firmware update available: [$SHELLBALL_ECVERSION]
-      Currently installed EC firmware: [$ec_version]
+      EC firmware update available: [$TARGET_ECID]
+      Currently installed EC firmware: [$ecid]
     " >"$STDOUT"
   fi
   if [ $notify_update -ne 0 ]; then
