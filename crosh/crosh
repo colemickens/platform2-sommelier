@@ -48,6 +48,9 @@ HELP='
  exit
   Exit crosh.
 
+ experimental_storage < status | enable | disable >
+  Enable or disable experimental storage features.
+
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
 
@@ -429,6 +432,55 @@ cmd_enterprise_ca_approve() {
 
 cmd_enterprise_ca_disapprove() {
   /usr/sbin/entdwife.sh -c disapprove
+}
+
+cmd_experimental_storage() {
+  local enable=""
+  if [ -z "$1" ]; then
+    echo "Usage: experimental_storage < status | enable | disable >"
+    return 1
+  fi
+
+  case "$1" in
+    "status")
+      ;;
+    "enable")
+      enable="true"
+      ;;
+    "disable")
+      enable="false"
+      ;;
+    *)
+      echo "Invalid parameter: $1"
+      return 1
+      ;;
+  esac
+
+  if [ -z "$enable" ]; then
+    enable=$( dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.CrosDisks /org/chromium/CrosDisks \
+        org.freedesktop.DBus.Properties.Get string:org.chromium.CrosDisks \
+        string:ExperimentalFeaturesEnabled 2>/dev/null )
+    if [ $? -eq 0 ]; then
+      if echo "$enable" | grep -iqs "true"; then
+        echo "Experimental storage features are currently enabled."
+      else
+        echo "Experimental storage features are currently disabled."
+      fi
+    else
+      echo "Could not determine the status of experimental storage features."
+    fi
+  else
+    if dbus-send --system --type=method_call --print-reply \
+        --dest=org.chromium.CrosDisks /org/chromium/CrosDisks \
+        org.freedesktop.DBus.Properties.Set \
+        string:org.chromium.CrosDisks string:ExperimentalFeaturesEnabled \
+        variant:boolean:${enable} >/dev/null 2>&1; then
+      echo "Experimental storage features have been ${1}d."
+    else
+      echo "Could not $1 experimental storage features."
+    fi
+  fi
 }
 
 cmd_ff_debug(){
