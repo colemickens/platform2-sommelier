@@ -39,13 +39,20 @@ class Platform {
 
   // Calls the platform mount
   //
-  // Paramters
+  // Parameters
   //   from - The node to mount from
   //   to - The node to mount to
   //   type - The fs type
   //   mount_options - The mount options to pass to mount()
   virtual bool Mount(const std::string& from, const std::string& to,
                      const std::string& type, const std::string& mount_options);
+
+  // Creates a bind mount
+  //
+  // Parameters
+  //   from - Where to mount from
+  //   to - Where to mount to
+  virtual bool Bind(const std::string& from, const std::string& to);
 
   // Calls the platform unmount
   //
@@ -250,11 +257,21 @@ class Platform {
   //
   // Parameters
   //  path - string containing the file path
-  //  recurisve - whether to recurse into subdirectories
+  //  recursive - whether to recurse into subdirectories
   //  file_list - vector of strings to add the enumerated files to.
   virtual bool EnumerateFiles(const std::string& path,
                               bool is_recursive,
                               std::vector<std::string>* file_list);
+
+  // Enumerate all directory entries in a given directory
+  //
+  // Parameters
+  //  path - root of the tree to enumerate
+  //  is_recursive - true to enumerate recursively
+  //  ent_list - vector of strings to add enumerate directory entry paths into
+  virtual bool EnumerateDirectoryEntries(const std::string& path,
+                                         bool is_recursive,
+                                         std::vector<std::string>* ent_list);
 
   // Sets the calling process effective uid/gid and optionally store old ones
   //
@@ -268,6 +285,20 @@ class Platform {
 
   // Call the platform function to flush the disk buffer caches.
   virtual bool Sync();
+
+  // Look up information about a file or directory
+  //
+  // Parameters
+  //  path - element to look up
+  //  buf - buffer to store results into
+  virtual bool Stat(const std::string& path, struct stat *buf);
+
+  // Rename a file or directory
+  //
+  // Parameters
+  //  from
+  //  to
+  virtual bool Rename(const std::string& from, const std::string& to);
 
   // Overrides the default mount options
   void set_mount_options(int value) {
