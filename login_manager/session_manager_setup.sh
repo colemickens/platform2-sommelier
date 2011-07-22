@@ -219,8 +219,10 @@ if [ -x /usr/sbin/mosys ]; then
   if [ $? -ne 0 ]; then
     rm -f /var/log/ec_info.txt
   fi
-else
-  echo "version              | $(crossystem ro_fwid)" > ${BIOS_INFO_FILE}
+fi
+
+if [ ! -f ${BIOS_INFO_FILE} ]; then
+  echo "version              | $(crossystem fwid)" > ${BIOS_INFO_FILE}
 fi
 
 while true; do  # Use while/break to have the entire block dumped into a file.
