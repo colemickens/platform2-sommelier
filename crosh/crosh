@@ -170,7 +170,7 @@ cmd_exit() {
 
 check_dforward() {
   # Matches a port number between 8000 and 8999.
-  expr "$1" : '^8[0-9][0-9][0-9]' > /dev/null
+  expr "$1" : '^8[0-9][0-9][0-9]$' > /dev/null
 }
 
 check_forward() {
