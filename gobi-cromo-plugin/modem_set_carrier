@@ -5,4 +5,4 @@
 # found in the LICENSE file.
 
 # This command is deprecated in favor of the implementation in /usr/bin/modem
-/usr/bin/modem set-carrier "$@"
+/usr/bin/modem set-carrier "$*"
