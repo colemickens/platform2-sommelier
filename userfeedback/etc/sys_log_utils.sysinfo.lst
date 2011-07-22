@@ -27,7 +27,8 @@ hardware_class,crossystem hwid
 hostname,hostname
 hw_platform,uname -i
 ifconfig,/sbin/ifconfig -a
-login_times,/usr/share/userfeedback/scripts/get_log /tmp/login-times-sent
+login-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/login-times
+logout-times,/usr/share/userfeedback/scripts/get_log /home/chronos/user/logout-times
 lsmod,/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
