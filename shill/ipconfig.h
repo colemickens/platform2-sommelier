@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/callback_old.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -46,9 +47,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   };
 
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
+  IPConfig(ControlInterface *control_interface,
+           const std::string &device_name,
+           const std::string &type);
   virtual ~IPConfig();
 
   const std::string &device_name() const { return device_name_; }
+  const std::string &type() const { return type_; }
+  uint serial() const { return serial_; }
 
   std::string GetRpcIdentifier();
 
@@ -87,10 +93,17 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 
+  static const char kType[];
+  static uint global_serial_;
+
   const std::string device_name_;
+  const std::string type_;
+  const uint serial_;
   scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
+
+  void Init();
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

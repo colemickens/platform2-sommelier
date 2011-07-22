@@ -9,11 +9,13 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <dbus-c++/dbus.h>
 
 #include "shill/error.h"
 #include "shill/ipconfig.h"
 
+using base::StringPrintf;
 using std::map;
 using std::string;
 using std::vector;
@@ -23,11 +25,15 @@ namespace shill {
 // static
 const char IPConfigDBusAdaptor::kInterfaceName[] = SHILL_INTERFACE;
 // static
-const char IPConfigDBusAdaptor::kPath[] = "/device/";
+const char IPConfigDBusAdaptor::kPath[] = "/ipconfig/";
 
 IPConfigDBusAdaptor::IPConfigDBusAdaptor(DBus::Connection* conn,
                                          IPConfig *config)
-    : DBusAdaptor(conn, kPath + config->device_name() + "_ipconfig"),
+    : DBusAdaptor(conn, StringPrintf("%s%s_%u_%s",
+                                     kPath,
+                                     config->device_name().c_str(),
+                                     config->serial(),
+                                     config->type().c_str())),
       ipconfig_(config) {
 }
 

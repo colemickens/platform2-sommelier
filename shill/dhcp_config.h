@@ -79,6 +79,8 @@ class DHCPConfig : public IPConfig {
   static const char kReasonReboot[];
   static const char kReasonRenew[];
 
+  static const char kType[];
+
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
 

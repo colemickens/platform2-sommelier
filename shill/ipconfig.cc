@@ -15,10 +15,31 @@ using std::string;
 
 namespace shill {
 
+// static
+const char IPConfig::kType[] = "ip";
+// static
+uint IPConfig::global_serial_ = 0;
+
 IPConfig::IPConfig(ControlInterface *control_interface,
                    const std::string &device_name)
     : device_name_(device_name),
+      type_(kType),
+      serial_(global_serial_++),
       adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
+  Init();
+}
+
+IPConfig::IPConfig(ControlInterface *control_interface,
+                   const std::string &device_name,
+                   const std::string &type)
+    : device_name_(device_name),
+      type_(type),
+      serial_(global_serial_++),
+      adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
+  Init();
+}
+
+void IPConfig::Init() {
   // Address might be R/O or not, depending on the type of IPconfig, so
   // we'll leave this up to the subclasses.
   // Register(Const?)String(flimflam::kAddressProperty, &properties_.address);
@@ -37,7 +58,7 @@ IPConfig::IPConfig(ControlInterface *control_interface,
   // TODO(cmasone): Does anyone use this?
   // store_.RegisterStrings(flimflam::kSearchDomainsProperty,
   //                        &properties_.domain_search);
-  VLOG(2) << __func__ << " device: " << device_name;
+  VLOG(2) << __func__ << " device: " << device_name();
 }
 
 IPConfig::~IPConfig() {

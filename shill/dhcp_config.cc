@@ -22,6 +22,7 @@ using std::vector;
 
 namespace shill {
 
+// static
 const char DHCPConfig::kConfigurationKeyBroadcastAddress[] = "BroadcastAddress";
 const char DHCPConfig::kConfigurationKeyDNS[] = "DomainNameServers";
 const char DHCPConfig::kConfigurationKeyDomainName[] = "DomainName";
@@ -38,13 +39,15 @@ const char DHCPConfig::kReasonFail[] = "FAIL";
 const char DHCPConfig::kReasonRebind[] = "REBIND";
 const char DHCPConfig::kReasonReboot[] = "REBOOT";
 const char DHCPConfig::kReasonRenew[] = "RENEW";
+// static
+const char DHCPConfig::kType[] = "dhcp";
 
 
 DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        DHCPProvider *provider,
                        const string &device_name,
                        GLib *glib)
-    : IPConfig(control_interface, device_name),
+    : IPConfig(control_interface, device_name, kType),
       provider_(provider),
       pid_(0),
       child_watch_tag_(0),
