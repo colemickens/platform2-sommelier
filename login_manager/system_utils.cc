@@ -24,6 +24,10 @@
 #include <chromeos/process.h>
 
 namespace login_manager {
+namespace gobject {
+struct SessionManager;
+}
+
 //static
 const char SystemUtils::kResetFile[] =
     "/mnt/stateful_partition/factory_install_reset";
@@ -119,6 +123,14 @@ bool SystemUtils::TouchResetFile() {
     LOG(FATAL) << "Can't write reset file to disk!!!!";
   }
   return true;
+}
+
+void SystemUtils::BroadcastSignal(gobject::SessionManager* origin,
+                                  guint signal,
+                                  const char* payload,
+                                  const char* user) {
+  DCHECK(origin && payload && user);
+  g_signal_emit(origin, signal, 0, payload, user);
 }
 
 void SystemUtils::SendSignalToChromium(const char* signal_name,

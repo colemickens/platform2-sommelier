@@ -176,6 +176,12 @@ const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
 // static
 const char SessionManagerService::kIOThreadName[] = "ThreadForIO";
+// static
+const char SessionManagerService::kStarted[] = "started";
+// static
+const char SessionManagerService::kStopping[] = "stopping";
+// static
+const char SessionManagerService::kStopped[] = "stopped";
 
 namespace {
 
@@ -199,6 +205,7 @@ SessionManagerService::SessionManagerService(
       gen_(new KeyGenerator),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
+      session_stopping_(false),
       io_thread_(kIOThreadName),
       screen_locked_(false),
       set_uid_(false),
@@ -250,7 +257,7 @@ bool SessionManagerService::Initialize() {
                    g_cclosure_marshal_VOID__STRING,
                    G_TYPE_NONE,     // return type
                    2,               // num params
-                   G_TYPE_STRING,   // state ("started" or "stopped")
+                   G_TYPE_STRING,   // "started", "stopping", or "stopped"
                    G_TYPE_STRING);  // current user
 
   LOG(INFO) << "SessionManagerService starting";
@@ -355,7 +362,10 @@ bool SessionManagerService::Run() {
   CHECK(device_policy_->Initialize());
   MessageLoop::current()->Run();
   CleanupChildren(kKillTimeout);
-
+  DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
+  system_->BroadcastSignal(session_manager_,
+                           signals_[kSignalSessionStateChanged],
+                           kStopped, current_user_.c_str());
   return true;
 }
 
@@ -370,12 +380,11 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 bool SessionManagerService::Shutdown() {
   DeregisterChildWatchers();
   if (session_started_) {
-    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:stopped";
-    if (signals_[kSignalSessionStateChanged]) {
-      g_signal_emit(session_manager_,
-                    signals_[kSignalSessionStateChanged],
-                    0, "stopped", current_user_.c_str());
-    }
+    session_stopping_ = true;
+    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
+    system_->BroadcastSignal(session_manager_,
+                             signals_[kSignalSessionStateChanged],
+                             kStopping, current_user_.c_str());
   }
 
   device_policy_->PersistPolicySync();
@@ -568,12 +577,10 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
       child_job->StartSession(current_user_);
     }
     session_started_ = true;
-    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:started";
-    if (signals_[kSignalSessionStateChanged]) {
-      g_signal_emit(session_manager_,
-                    signals_[kSignalSessionStateChanged],
-                    0, "started", current_user_.c_str());
-    }
+    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
+    system_->BroadcastSignal(session_manager_,
+                             signals_[kSignalSessionStateChanged],
+                             kStarted, current_user_.c_str());
     if (device_policy_->KeyMissing() && current_user_ != kIncognitoUser) {
       gen_->Start(set_uid_ ? uid_ : 0, this);
     }
@@ -661,7 +668,10 @@ gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
 
 gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
                                                      gchar** OUT_user) {
-  *OUT_state = g_strdup(session_started_ ? "started" : "stopped");
+  if (!session_started_)
+    *OUT_state = g_strdup(kStopped);
+  else
+    *OUT_state = g_strdup(session_stopping_ ? kStopping : kStarted);
   *OUT_user = g_strdup(session_started_ && !current_user_.empty() ?
                        current_user_.c_str() : "");
   return TRUE;

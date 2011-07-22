@@ -82,13 +82,13 @@
     <method name="RestartEntd">
     </method>
     <method name="RetrieveSessionState">
-      <!-- started, stopped -->
+      <!-- started, stopping, stopped -->
       <arg type="s" name="state" direction="out" />
       <!-- user whose session is in-progress (empty for guest or stopped) -->
       <arg type="s" name="user" direction="out" />
     </method>
     <signal name="SessionStateChanged">
-      <!-- started, stopped -->
+      <!-- started, stopping, stopped -->
       <arg type="s" name="state" />
       <!-- user whose session is starting or stopping (empty for guest) -->
       <arg type="s" name="user" />

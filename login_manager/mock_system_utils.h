@@ -13,6 +13,10 @@
 #include <gmock/gmock.h>
 
 namespace login_manager {
+namespace gobject {
+struct SessionManager;
+}
+
 class MockSystemUtils : public SystemUtils {
  public:
   MockSystemUtils();
@@ -25,6 +29,10 @@ class MockSystemUtils : public SystemUtils {
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
   MOCK_METHOD0(TouchResetFile, bool(void));
+  MOCK_METHOD4(BroadcastSignal, void(gobject::SessionManager*,
+                                     guint,
+                                     const char*,
+                                     const char*));
   MOCK_METHOD2(SendSignalToChromium, void(const char*, const char*));
   MOCK_METHOD2(SendStatusSignalToChromium, void(const char*, bool));
   MOCK_METHOD1(SendSignalToPowerManager, void(const char*));

@@ -19,6 +19,10 @@
 class FilePath;
 
 namespace login_manager {
+namespace gobject {
+struct SessionManager;
+}
+
 class SystemUtils {
  public:
   SystemUtils();
@@ -49,6 +53,14 @@ class SystemUtils {
                                int size);
 
   virtual bool TouchResetFile();
+
+  // Broadcasts |signal| over DBus, originating from |origin|, adding
+  // |payload| and |user| as args.  It is an error to pass NULL for
+  // |payload|, |origin| or |user|.
+  virtual void BroadcastSignal(gobject::SessionManager* origin,
+                               guint signal,
+                               const char* payload,
+                               const char* user);
 
   // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
   //                API out of the session_manager.

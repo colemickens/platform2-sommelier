@@ -29,7 +29,7 @@ void LoginMetrics::SendLoginUserType(bool dev_mode, bool incognito,
                                      bool owner) {
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
-  int uma_code = this->LoginUserTypeCode(dev_mode, incognito, owner);
+  int uma_code = LoginUserTypeCode(dev_mode, incognito, owner);
   metrics_lib.SendEnumToUMA(kLoginUserTypeMetric, uma_code,
                             kMaxValue);
 }

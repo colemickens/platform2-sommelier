@@ -38,10 +38,13 @@
 #include "login_manager/mock_upstart_signal_emitter.h"
 
 using ::testing::AnyNumber;
+using ::testing::AtMost;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
+using ::testing::WithArgs;
 using ::testing::_;
 
 using chromeos::Resetter;
@@ -99,10 +102,21 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   void SimpleRunManager() {
-    EXPECT_CALL(*device_policy_service_, Initialize())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*device_policy_service_, PersistPolicySync())
-        .WillOnce(Return(true));
+    ExpectPolicySetup();
+    EXPECT_CALL(*(utils_.get()),
+                BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+        .Times(1);
+    EXPECT_CALL(*(utils_.get()), kill(_, _, _))
+        .Times(AtMost(1))
+        .WillRepeatedly(WithArgs<0,2>(Invoke(::kill)));
+    EXPECT_CALL(*(utils_.get()), ChildIsGone(_, _))
+        .Times(AtMost(1))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*(utils_.get()), IsDevMode())
+        .Times(AtMost(1))
+        .WillRepeatedly(Return(false));
+    MockUtils();
+
     manager_->Run();
   }
 
@@ -138,36 +152,45 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   void MockUtils() {
+    ASSERT_TRUE(utils_.get());
     manager_->test_api().set_systemutils(utils_.release());
   }
 
-  void ExpectStartSession(const std::string& email_string, MockChildJob* job) {
+  void ExpectPolicySetup() {
+    EXPECT_CALL(*device_policy_service_, Initialize())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*device_policy_service_, PersistPolicySync())
+        .WillOnce(Return(true));
+  }
+
+  void ExpectSessionBoilerplate(const std::string& email_string,
+                                bool for_owner,
+                                MockChildJob* job) {
     EXPECT_CALL(*job, StartSession(email_string))
         .Times(1);
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
                 CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(false),
+        .WillOnce(DoAll(SetArgumentPointee<1>(for_owner),
                         Return(true)));
     // Confirm that the key is present.
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(false));
+
+    EXPECT_CALL(*(utils_.get()),
+                BroadcastSignal(_, _, SessionManagerService::kStarted, _))
+        .Times(1);
+    EXPECT_CALL(*(utils_.get()), IsDevMode())
+        .WillOnce(Return(false));
+  }
+
+  void ExpectStartSession(const std::string& email_string, MockChildJob* job) {
+    ExpectSessionBoilerplate(email_string, false, job);
   }
 
   void ExpectStartOwnerSession(const std::string& email_string) {
     MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-    EXPECT_CALL(*job, StartSession(email_string))
-        .Times(1);
-
-    // Expect initialization of the device policy service, return success.
-    EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(true),
-                        Return(true)));
-
-    // Confirm that the key is present.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .WillOnce(Return(false));
+    ExpectSessionBoilerplate(email_string, true, job);
   }
 
   void ExpectStartSessionUnowned(const std::string& email_string) {
@@ -181,7 +204,7 @@ class SessionManagerTest : public ::testing::Test {
         .WillOnce(DoAll(SetArgumentPointee<1>(false),
                         Return(true)));
 
-    // Indidcate that there is no owner key in order to trigger a new one to be
+    // Indicate that there is no owner key in order to trigger a new one to be
     // generated.
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(true));
@@ -192,14 +215,12 @@ class SessionManagerTest : public ::testing::Test {
 
     manager_->set_uid(getuid());
     manager_->test_api().set_keygen(gen);
-  }
 
-  void ExpectDeprecatedCall() {
     EXPECT_CALL(*(utils_.get()),
-                SendStatusSignalToChromium(
-                    chromium::kPropertyChangeCompleteSignal, false))
+                BroadcastSignal(_, _, SessionManagerService::kStarted, _))
         .Times(1);
-    MockUtils();
+    EXPECT_CALL(*(utils_.get()), IsDevMode())
+        .WillOnce(Return(false));
   }
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
@@ -487,12 +508,20 @@ TEST_F(SessionManagerTest, SessionStartedCleanup) {
       .WillOnce(Return(0));
   EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
+  EXPECT_CALL(*(utils_.get()),
+              BroadcastSignal(_, _, SessionManagerService::kStopping, _))
+      .Times(1);
+  EXPECT_CALL(*(utils_.get()),
+              BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+      .Times(1);
+
+  ExpectPolicySetup();
+  ExpectStartSession(email, job);
   MockUtils();
 
-  ExpectStartSession(email, job);
   ScopedError error;
   manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
-  SimpleRunManager();
+  manager_->Run();
 }
 
 TEST_F(SessionManagerTest, SessionStartedSlowKillCleanup) {
@@ -509,12 +538,20 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanup) {
       .WillOnce(Return(false));
   EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
+  EXPECT_CALL(*(utils_.get()),
+              BroadcastSignal(_, _, SessionManagerService::kStopping, _))
+      .Times(1);
+  EXPECT_CALL(*(utils_.get()),
+              BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+      .Times(1);
+
+  ExpectPolicySetup();
+  ExpectStartSession(email, job);
   MockUtils();
 
-  ExpectStartSession(email, job);
   ScopedError error;
   manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
-  SimpleRunManager();
+  manager_->Run();
 }
 
 // Test that we avoid killing jobs that return true from their ShouldNeverKill()
@@ -561,6 +598,8 @@ TEST_F(SessionManagerTest, StartSession) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   ExpectStartSession(email, job);
+  MockUtils();
+
   ScopedError error;
   EXPECT_EQ(TRUE, manager_->StartSession(email,
                                          nothing,
@@ -573,6 +612,8 @@ TEST_F(SessionManagerTest, StartSessionNew) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   ExpectStartSessionUnowned(email);
+  MockUtils();
+
   ScopedError error;
   EXPECT_EQ(TRUE, manager_->StartSession(email,
                                          nothing,
@@ -616,6 +657,8 @@ TEST_F(SessionManagerTest, StartOwnerSession) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   ExpectStartOwnerSession(email);
+  MockUtils();
+
   ScopedError error;
   EXPECT_EQ(TRUE, manager_->StartSession(email,
                                          nothing,
@@ -648,15 +691,6 @@ TEST_F(SessionManagerTest, StatsRecorded) {
   LOG(INFO) << "Finished the run!";
   EXPECT_TRUE(file_util::PathExists(uptime));
   EXPECT_TRUE(file_util::PathExists(disk));
-}
-
-TEST_F(SessionManagerTest, DeprecatedMethod) {
-  MockChildJob* owned_by_manager_ = CreateTrivialMockJob(MAYBE_NEVER);
-  ExpectDeprecatedCall();
-  ScopedError error;
-  EXPECT_EQ(FALSE, manager_->DeprecatedError("", &Resetter(&error).lvalue()));
-  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY, error->code);
-  SimpleRunManager();
 }
 
 TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
@@ -781,7 +815,6 @@ TEST_F(SessionManagerTest, RestartJob) {
   manager_->test_api().set_child_pid(0, kDummyPid);
   EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
-  MockUtils();
 
   EXPECT_CALL(*job, GetName())
       .WillRepeatedly(Return(std::string("chrome")));
@@ -791,6 +824,8 @@ TEST_F(SessionManagerTest, RestartJob) {
       .Times(1);
   std::string email_string("");
   ExpectStartSession(email_string, job);
+  MockUtils();
+
   ON_CALL(*job, Run())
       .WillByDefault(Invoke(CleanExit));
 

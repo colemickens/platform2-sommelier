@@ -290,6 +290,11 @@ class SessionManagerService
   // The flag to pass to chrome to open a named socket for testing.
   static const char kTestingChannelFlag[];
 
+  // Payloads for signals_[kSignakSessionStateChanged];
+  static const char kStarted[];
+  static const char kStopping[];
+  static const char kStopped[];
+
  protected:
   virtual GMainLoop* main_loop() { return main_loop_; }
 
@@ -398,6 +403,7 @@ class SessionManagerService
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
   bool session_started_;
+  bool session_stopping_;
   std::string current_user_;
   std::string chrome_testing_path_;
 
