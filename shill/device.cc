@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -25,11 +26,20 @@
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
+#include "shill/store_interface.h"
 
+using base::StringPrintf;
 using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Device::kStoragePowered[] = "Powered";
+
+// static
+const char Device::kStorageIPConfigs[] = "IPConfigs";
+
 Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Manager *manager,
@@ -120,12 +130,37 @@ string Device::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
 
+string Device::GetStorageIdentifier() {
+  string id = GetRpcIdentifier();
+  ControlInterface::RpcIdToStorageId(&id);
+  return id;
+}
+
 const string& Device::FriendlyName() const {
   return link_name_;
 }
 
 const string& Device::UniqueName() const {
   return unique_id_;
+}
+
+bool Device::Load(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  if (!storage->ContainsGroup(id)) {
+    LOG(WARNING) << "Device is not available in the persistent store: " << id;
+    return false;
+  }
+  storage->GetBool(id, kStoragePowered, &powered_);
+  // TODO(cmasone): What does it mean to load an IPConfig identifier??
+  return true;
+}
+
+bool Device::Save(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  storage->SetBool(id, kStoragePowered, powered_);
+  if (ipconfig_.get())
+    storage->SetString(id, kStorageIPConfigs, SerializeIPConfigsForStorage());
+  return true;
 }
 
 void Device::DestroyIPConfig() {
@@ -162,6 +197,12 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
       RTNLHandler::GetInstance()->AddInterfaceAddress(interface_index_,
                                                       *ipconfig);
   }
+}
+
+string Device::SerializeIPConfigsForStorage() {
+  return StringPrintf("%s:%s",
+                      ipconfig_->GetStorageIdentifier().c_str(),
+                      ipconfig_->type().c_str());
 }
 
 vector<string> Device::AvailableIPConfigs() {

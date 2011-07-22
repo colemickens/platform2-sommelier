@@ -61,6 +61,7 @@ class Device : public base::RefCounted<Device> {
   virtual void ConfigIP() {}
 
   std::string GetRpcIdentifier();
+  std::string GetStorageIdentifier();
 
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
@@ -73,11 +74,15 @@ class Device : public base::RefCounted<Device> {
 
   PropertyStore *store() { return &store_; }
 
+  bool Load(StoreInterface *storage);
+  bool Save(StoreInterface *storage);
+
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
+  FRIEND_TEST(DeviceTest, Save);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.
@@ -111,8 +116,16 @@ class Device : public base::RefCounted<Device> {
  private:
   friend class DeviceAdaptorInterface;
 
+  static const char kStoragePowered[];
+  static const char kStorageIPConfigs[];
+
   // Callback invoked on every IP configuration update.
   void IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig, bool success);
+
+  // Right now, Devices reference IPConfigs directly when persisted to disk
+  // It's not clear that this makes sense long-term, but that's how it is now.
+  // This call generates a string in the right format for this persisting.
+  std::string SerializeIPConfigsForStorage();
 
   std::vector<std::string> AvailableIPConfigs();
   std::string GetRpcConnectionIdentifier();

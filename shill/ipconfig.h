@@ -58,6 +58,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   uint serial() const { return serial_; }
 
   std::string GetRpcIdentifier();
+  std::string GetStorageIdentifier();
 
   // Registers a callback that's executed every time the configuration
   // properties change. Takes ownership of |callback|. Pass NULL to remove a
@@ -109,7 +110,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
 
   void Init();
-  std::string GetStorageIdentifier();
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

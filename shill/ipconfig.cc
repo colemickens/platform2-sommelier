@@ -4,8 +4,6 @@
 
 #include "shill/ipconfig.h"
 
-#include <algorithm>
-
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -19,7 +17,7 @@ using std::string;
 namespace shill {
 
 // static
-const char IPConfig::kStorageType[] = "Mode";
+const char IPConfig::kStorageType[] = "Method";
 // static
 const char IPConfig::kType[] = "ip";
 // static
@@ -74,6 +72,12 @@ string IPConfig::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }
 
+string IPConfig::GetStorageIdentifier() {
+  string id = GetRpcIdentifier();
+  ControlInterface::RpcIdToStorageId(&id);
+  return id;
+}
+
 bool IPConfig::RequestIP() {
   return false;
 }
@@ -113,12 +117,6 @@ void IPConfig::UpdateProperties(const Properties &properties, bool success) {
 void IPConfig::RegisterUpdateCallback(
     Callback2<const IPConfigRefPtr&, bool>::Type *callback) {
   update_callback_.reset(callback);
-}
-
-string IPConfig::GetStorageIdentifier() {
-  string id = adaptor_->GetRpcIdentifier();
-  std::replace(id.begin(), id.end(), '/', '_');
-  return id;
 }
 
 }  // namespace shill

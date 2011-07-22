@@ -5,6 +5,11 @@
 #ifndef SHILL_CONTROL_INTERFACE_
 #define SHILL_CONTROL_INTERFACE_
 
+#include <algorithm>
+#include <string>
+
+#include <base/logging.h>
+
 namespace shill {
 
 class Device;
@@ -28,6 +33,11 @@ class ControlInterface {
   virtual ManagerAdaptorInterface *CreateManagerAdaptor(Manager *manager) = 0;
   virtual ProfileAdaptorInterface *CreateProfileAdaptor(Profile *profile) = 0;
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service) = 0;
+
+  static void RpcIdToStorageId(std::string *rpc_id) {
+    CHECK(rpc_id);
+    std::replace(rpc_id->begin(), rpc_id->end(), '/', '_');
+  }
 };
 
 }  // namespace shill
