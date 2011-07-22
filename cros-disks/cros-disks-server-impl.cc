@@ -18,6 +18,24 @@ using std::vector;
 
 namespace cros_disks {
 
+// TODO(benchan): move these to common/chromeos/dbus/service_constants.
+enum MountSourceType {
+  kMountSourceInvalid = 0,
+  kMountSourceRemovableDevice = 1,
+  kMountSourceArchive = 2,
+  kMountSourceNetworkStorage = 3,
+};
+
+enum MountErrorType {
+  kMountErrorNone = 0,
+  kMountErrorUnknown = 1,
+  kMountErrorInternal = 2,
+  kMountErrorUnknownFilesystem = 101,
+  kMountErrorUnsupportedFilesystem = 102,
+  kMountErrorInvalidArchive = 201,
+  // TODO(benchan): Add more error types.
+};
+
 // TODO(rtc): this should probably be a flag.
 // TODO(benchan): move these to common/chromeos/dbus/service_constants.
 static const char kServicePath[] = "/org/chromium/CrosDisks";
@@ -72,6 +90,7 @@ bool CrosDisksServer::FormatDevice(const string& device_path,
   return true;
 }
 
+// TODO(benchan): Deprecate this method.
 string CrosDisksServer::FilesystemMount(const string& device_path,
     const string& filesystem_type, const vector<string>& mount_options,
     DBus::Error& error) {  // NOLINT
@@ -87,11 +106,38 @@ string CrosDisksServer::FilesystemMount(const string& device_path,
   return mount_path;
 }
 
+// TODO(benchan): Deprecate this method.
 void CrosDisksServer::FilesystemUnmount(const string& device_path,
     const vector<string>& mount_options, DBus::Error& error) {  // NOLINT
   if (!disk_manager_->Unmount(device_path, mount_options)) {
     string message = "Could not unmount device " + device_path;
     LOG(ERROR) << message;
+    error.set(kServiceErrorName, message.c_str());
+  }
+}
+
+void CrosDisksServer::Mount(const string& path,
+    const string& filesystem_type, const vector<string>& options,
+    DBus::Error& error) {  // NOLINT
+  string mount_path;
+  if (disk_manager_->Mount(path, filesystem_type, options,
+        &mount_path)) {
+    // TODO(benchan): Remove this DiskChanged signal when UI
+    // no longer requires it.
+    DiskChanged(path);
+    MountCompleted(kMountErrorNone, path, kMountSourceRemovableDevice,
+        mount_path);
+  } else {
+    // TODO(benchan): Extract actual error type from disk manager.
+    MountCompleted(kMountErrorUnknown, path, kMountSourceRemovableDevice,
+        mount_path);
+  }
+}
+
+void CrosDisksServer::Unmount(const string& path,
+    const vector<string>& options, DBus::Error& error) {  // NOLINT
+  if (!disk_manager_->Unmount(path, options)) {
+    string message = "Could not unmount path " + path;
     error.set(kServiceErrorName, message.c_str());
   }
 }

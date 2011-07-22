@@ -64,11 +64,24 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // A method for checking if the daemon is running. Always returns true.
   virtual bool IsAlive(DBus::Error& error);  // NOLINT
 
+  // TODO(benchan): Deprecate this method.
   // Unmounts a device when invoked.
   virtual void FilesystemUnmount(const std::string& device_path,
       const std::vector<std::string>& mount_options,
       DBus::Error& error);  // NOLINT
 
+  // Mounts a path when invoked.
+  virtual void Mount(const std::string& path,
+      const std::string& filesystem_type,
+      const std::vector<std::string>& options,
+      DBus::Error& error);  // NOLINT
+
+  // Unmounts a path when invoked.
+  virtual void Unmount(const std::string& path,
+      const std::vector<std::string>& options,
+      DBus::Error& error);  // NOLINT
+
+  // TODO(benchan): Deprecate this method.
   // Mounts a device when invoked.
   virtual std::string FilesystemMount(const std::string& device_path,
       const std::string& filesystem_type,

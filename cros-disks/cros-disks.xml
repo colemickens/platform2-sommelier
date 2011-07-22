@@ -35,6 +35,20 @@
       <arg name="mountOptions" type="as" direction="in">
       </arg>
     </method>
+    <method name="Mount">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="filesystemType" type="s" direction="in">
+      </arg>
+      <arg name="options" type="as" direction="in">
+      </arg>
+    </method>
+    <method name="Unmount">
+      <arg name="path" type="s" direction="in">
+      </arg>
+      <arg name="options" type="as" direction="in">
+      </arg>
+    </method>
     <method name="EnumerateDevices">
       <arg name="devices" type="as" direction="out">
       </arg>
@@ -102,6 +116,16 @@
     </signal>
     <signal name="DiskChanged">
       <arg name="disk" type="s" direction="out">
+      </arg>
+    </signal>
+    <signal name="MountCompleted">
+      <arg name="status" type="u" direction="out">
+      </arg>
+      <arg name="sourcePath" type="s" direction="out">
+      </arg>
+      <arg name="sourceType" type="u" direction="out">
+      </arg>
+      <arg name="mountPath" type="s" direction="out">
       </arg>
     </signal>
     <signal name="FormattingFinished">
