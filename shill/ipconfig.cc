@@ -10,11 +10,14 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
+#include "shill/store_interface.h"
 
 using std::string;
 
 namespace shill {
 
+// static
+const char IPConfig::kStorageType[] = "Mode";
 // static
 const char IPConfig::kType[] = "ip";
 // static
@@ -81,6 +84,23 @@ bool IPConfig::ReleaseIP() {
   return false;
 }
 
+bool IPConfig::Load(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  if (!storage->ContainsGroup(id)) {
+    LOG(WARNING) << "IPConfig is not available in the persistent store: " << id;
+    return false;
+  }
+  string local_type;
+  storage->GetString(id, kStorageType, &local_type);
+  return local_type == type();
+}
+
+bool IPConfig::Save(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
+  storage->SetString(id, kStorageType, type());
+  return true;
+}
+
 void IPConfig::UpdateProperties(const Properties &properties, bool success) {
   properties_ = properties;
   if (update_callback_.get()) {
@@ -91,6 +111,13 @@ void IPConfig::UpdateProperties(const Properties &properties, bool success) {
 void IPConfig::RegisterUpdateCallback(
     Callback2<const IPConfigRefPtr&, bool>::Type *callback) {
   update_callback_.reset(callback);
+}
+
+string IPConfig::GetStorageIdentifier() {
+  string id = adaptor_->GetRpcIdentifier();
+  for (size_t i = id.find('/'); i != string::npos; i = id.find('/', i))
+    id[i] = '_';
+  return id;
 }
 
 }  // namespace shill

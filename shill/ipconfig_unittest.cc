@@ -8,7 +8,14 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_control.h"
+#include "shill/mock_store.h"
 
+using std::string;
+using testing::_;
+using testing::Return;
+using testing::SaveArg;
+using testing::SetArgumentPointee;
+using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
@@ -40,6 +47,23 @@ TEST_F(IPConfigTest, RenewIP) {
 
 TEST_F(IPConfigTest, ReleaseIP) {
   EXPECT_FALSE(ipconfig_->ReleaseIP());
+}
+
+TEST_F(IPConfigTest, SaveLoad) {
+  StrictMock<MockStore> storage;
+  string id, key, value;
+  EXPECT_CALL(storage, SetString(_, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&id),
+                      SaveArg<1>(&key),
+                      SaveArg<2>(&value),
+                      Return(true)));
+  ASSERT_TRUE(ipconfig_->Save(&storage));
+
+  EXPECT_CALL(storage, ContainsGroup(id))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, GetString(id, key, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(value), Return(true)));
+  ASSERT_TRUE(ipconfig_->Load(&storage));
 }
 
 TEST_F(IPConfigTest, UpdateProperties) {

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/key_file_store.h"
+
 #include <base/file_util.h>
 #include <base/stl_util-inl.h>
 #include <base/stringprintf.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
-
-#include "shill/key_file_store.h"
 
 using std::set;
 using std::string;

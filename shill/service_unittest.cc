@@ -168,7 +168,6 @@ TEST_F(ServiceTest, Load) {
 
 TEST_F(ServiceTest, LoadFail) {
   StrictMock<MockStore> storage;
-  const string id = kMockServiceName;
   EXPECT_CALL(storage, ContainsGroup(kMockServiceName)).WillOnce(Return(false));
   EXPECT_FALSE(service_->Load(&storage));
 }

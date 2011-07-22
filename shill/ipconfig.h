@@ -22,6 +22,7 @@ namespace shill {
 class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
+class StoreInterface;
 
 // IPConfig superclass. Individual IP configuration types will inherit from this
 // class.
@@ -78,6 +79,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   PropertyStore *store() { return &store_; }
 
+  bool Load(StoreInterface *storage);
+  bool Save(StoreInterface *storage);
+
  protected:
   // Updates the IP configuration properties and notifies registered listeners
   // about the event. |success| is set to false if the IP configuration failed.
@@ -93,6 +97,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
 
+  static const char kStorageType[];
   static const char kType[];
   static uint global_serial_;
 
@@ -104,6 +109,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   scoped_ptr<Callback2<const IPConfigRefPtr&, bool>::Type> update_callback_;
 
   void Init();
+  std::string GetStorageIdentifier();
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };
