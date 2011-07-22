@@ -141,17 +141,15 @@ cleanup() {
 
 setup_dst_loop() {
   local part="$1"
-  local dev=$(sudo losetup -f)
+  local offset=$(partoffset ${FLAGS_dst} $part)
+  local size=$(partsize ${FLAGS_dst} $part)
+  local dev=$(sudo losetup --show -f -o $((512 * offset)) \
+              --sizelimit $((512 * size)) \
+              ${FLAGS_dst})
   if [ -z "$dev" ]; then
     echo "No free loop devices." 1>&2
     return 1
   fi
-  local offset=$(partoffset ${FLAGS_dst} $part)
-  local size=$(partsize ${FLAGS_dst} $part)
-  sudo losetup -o $((512 * offset)) \
-               --sizelimit $((512 * size)) \
-               ${dev} \
-               ${FLAGS_dst}
   echo $dev
 }
 

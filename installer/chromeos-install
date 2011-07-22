@@ -244,15 +244,13 @@ loop_offset_setup() {
   local filename=$1
   local offset=$2
 
-  LOOP_DEV=$(sudo losetup -f)
-  if [ -z "$LOOP_DEV" ]
-  then
+  LOOP_DEV=$(sudo losetup --show -f -o $(($offset * 512)) ${filename})
+  if [ -z "$LOOP_DEV" ]; then
     echo "No free loop device. Free up a loop device or reboot. Exiting."
     exit 1
   fi
 
   LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
-  sudo losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
 }
 
 # Delete the current loop device.
