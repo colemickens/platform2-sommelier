@@ -10,6 +10,7 @@
 
 #include <gdk/gdkx.h>
 #include <dbus/dbus.h>
+#include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/file_path.h"
 #include "power_manager/screen_locker.h"

@@ -2,29 +2,32 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include "power_manager/suspender.h"
 
-#include "power_manager/file_tagger.h"
-#include "power_manager/util.h"
 #include "base/file_path.h"
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/time.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/file_tagger.h"
+#include "power_manager/power_constants.h"
+#include "power_manager/util.h"
 
 using base::TimeTicks;
 using std::max;
 using std::min;
 
+namespace {
+
+const unsigned int kScreenLockerTimeoutMS = 3000;
+const unsigned int kMaximumDelayTimeoutMS = 10000;
+
+const char kError[] = ".Error";
+
+}  // namespace
+
 namespace power_manager {
-
-static const unsigned int kScreenLockerTimeoutMS = 3000;
-static const unsigned int kMaximumDelayTimeoutMS = 10000;
-
-const char *kError = ".Error";
 
 Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
     : locker_(locker),
@@ -35,7 +38,7 @@ Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
       suspend_sequence_number_(0) {}
 
 void Suspender::Init(const FilePath& run_dir) {
-  user_active_file_ = run_dir.Append(util::kUserActiveFile);
+  user_active_file_ = run_dir.Append(kUserActiveFile);
   RegisterDBusMessageHandler();
 }
 
@@ -251,7 +254,7 @@ void Suspender::RegisterDBusMessageHandler() {
 void Suspender::Suspend() {
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
-  util::SendSignalToPowerM(util::kSuspendSignal);
+  util::SendSignalToPowerM(kSuspendSignal);
 }
 
 gboolean Suspender::CheckSuspendTimeout(unsigned int sequence_num) {

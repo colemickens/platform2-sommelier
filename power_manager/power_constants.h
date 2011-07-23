@@ -32,6 +32,29 @@ extern const char kFuzzMs[];
 extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 
+// Interface names.
+extern const char kLowerPowerManagerInterface[];
+
+// powerd -> powerm constants.
+extern const char kRestartSignal[];
+extern const char kRequestCleanShutdown[];
+extern const char kSuspendSignal[];
+extern const char kShutdownSignal[];
+
+// powerm -> powerd constants.
+extern const char kLidClosed[];
+extern const char kLidOpened[];
+extern const char kPowerButtonDown[];
+extern const char kPowerButtonUp[];
+
+// Broadcast signals.
+extern const char kPowerStateChanged[];
+extern const char kPowerSupplyChanged[];
+
+// Files to signal powerd_suspend whether suspend should be cancelled.
+extern const char kLidOpenFile[];
+extern const char kUserActiveFile[];
+
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_POWER_CONSTANTS_H_

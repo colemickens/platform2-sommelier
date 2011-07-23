@@ -32,17 +32,25 @@ class PowerManDaemon {
   FRIEND_TEST(PowerManDaemonTest, SendMetric);
   FRIEND_TEST(PowerManDaemonTest, GenerateRetrySuspendCountMetric);
 
-  enum LidState { kLidClosed, kLidOpened };
+  enum LidState {
+    LID_STATE_CLOSED,
+    LID_STATE_OPENED
+  };
+
   inline LidState GetLidState(int value) {
     // value == 0 is open. value == 1 is closed.
-    return (value == 1) ? kLidClosed : kLidOpened;
+    return value == 0 ? LID_STATE_OPENED : LID_STATE_CLOSED;
   }
 
-  enum PowerButtonState { kPowerButtonDown, kPowerButtonUp };
+  enum PowerButtonState {
+    POWER_BUTTON_DOWN,
+    POWER_BUTTON_UP
+  };
+
   inline PowerButtonState GetPowerButtonState(int value) {
     // value == 0 is button up. value == 1 is button down.
     // value == 2 is key repeat.
-    return (value > 0) ? kPowerButtonDown : kPowerButtonUp;
+    return value > 0 ? POWER_BUTTON_DOWN : POWER_BUTTON_UP;
   }
 
   // UMA metrics parameters.

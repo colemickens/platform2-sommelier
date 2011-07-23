@@ -15,6 +15,7 @@
 #include "base/logging.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/power_constants.h"
 
 namespace {
 
@@ -29,33 +30,8 @@ const char kWindowManagerMessageTypeName[] = "_CHROME_WM_MESSAGE";
 
 }  // namespace
 
-
 namespace power_manager {
-
 namespace util {
-
-// interface names
-const char* kLowerPowerManagerInterface = "org.chromium.LowerPowerManager";
-
-// powerd -> powerm signals
-const char* kRestartSignal = "RestartSignal";
-const char* kRequestCleanShutdown = "RequestCleanShutdown";
-const char* kSuspendSignal = "SuspendSignal";
-const char* kShutdownSignal = "ShutdownSignal";
-
-// powerm -> powerd signals
-const char* kLidClosed = "LidClosed";
-const char* kLidOpened = "LidOpened";
-const char* kPowerButtonDown = "PowerButtonDown";
-const char* kPowerButtonUp = "PowerButtonUp";
-
-// broadcast signals
-const char* kPowerStateChanged = "PowerStateChanged";
-const char* kPowerSupplyChanged = "PowerSupplyChanged";
-
-// files to signal powerd_suspend whether suspend should be cancelled
-const char* kLidOpenFile = "lid_opened";
-const char* kUserActiveFile = "user_active";
 
 bool LoggedIn() {
   return access("/var/run/state/logged-in", F_OK) == 0;
@@ -102,10 +78,10 @@ void SendSignalToSessionManager(const char* signal) {
 void SendSignalToPowerM(const char* signal_name) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",
-                              util::kLowerPowerManagerInterface);
+                              kLowerPowerManagerInterface);
   DBusMessage* signal = ::dbus_message_new_signal(
       "/",
-      util::kLowerPowerManagerInterface,
+      kLowerPowerManagerInterface,
       signal_name);
   CHECK(signal);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
@@ -186,5 +162,4 @@ bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
 }
 
 }  // namespace util
-
 }  // namespace power_manager

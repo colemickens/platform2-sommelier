@@ -9,31 +9,7 @@
 #include "cros/chromeos_wm_ipc_enums.h"
 
 namespace power_manager {
-
 namespace util {
-
-// interface names
-extern const char* kLowerPowerManagerInterface;
-
-// powerd -> powerm constants
-extern const char* kRestartSignal;
-extern const char* kRequestCleanShutdown;
-extern const char* kSuspendSignal;
-extern const char* kShutdownSignal;
-
-// powerm -> powerd constants
-extern const char* kLidClosed;
-extern const char* kLidOpened;
-extern const char* kPowerButtonDown;
-extern const char* kPowerButtonUp;
-
-// broadcast signals
-extern const char* kPowerStateChanged;
-extern const char* kPowerSupplyChanged;
-
-// files to signal powerd_suspend whether suspend should be cancelled
-extern const char* kLidOpenFile;
-extern const char* kUserActiveFile;
 
 bool LoggedIn();
 bool OOBECompleted();
@@ -59,7 +35,6 @@ bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
                                 int first_param);
 
 }  // namespace util
-
 }  // namespace power_manager
 
 #endif  // POWER_MANAGER_UTIL_H_

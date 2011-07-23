@@ -23,10 +23,14 @@
 using base::TimeDelta;
 using base::TimeTicks;
 
-namespace power_manager {
+namespace {
 
-static const int kCheckLidClosedSeconds = 10;
-static const unsigned int kCancelDBusLidOpenedSecs = 5;
+const int kCheckLidClosedSeconds = 10;
+const unsigned int kCancelDBusLidOpenedSecs = 5;
+
+}  // namespace
+
+namespace power_manager {
 
 PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
                                MetricsLibraryInterface* metrics_lib,
@@ -34,7 +38,7 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
   : loop_(NULL),
     use_input_for_lid_(1),
     prefs_(prefs),
-    lidstate_(kLidOpened),
+    lidstate_(LID_STATE_OPENED),
     metrics_lib_(metrics_lib),
     power_button_state_(false),
     retry_suspend_count_(0),
@@ -68,14 +72,14 @@ void PowerManDaemon::Init() {
   CHECK(GetConsole());
   input_.RegisterHandler(&(PowerManDaemon::OnInputEvent), this);
   CHECK(input_.Init()) << "Cannot initialize input interface.";
-  lid_open_file_ = FilePath(run_dir_).Append(util::kLidOpenFile);
+  lid_open_file_ = FilePath(run_dir_).Append(kLidOpenFile);
   if (input_.num_lid_events() > 0) {
     input_.QueryLidState(&input_lidstate);
     lidstate_ = GetLidState(input_lidstate);
     lid_ticks_ = TimeTicks::Now();
     LOG(INFO) << "PowerM Daemon Init - lid "
-              << (lidstate_ == kLidClosed?"closed.":"opened.");
-    if (kLidClosed == lidstate_) {
+              << (lidstate_ == LID_STATE_CLOSED ? "closed." : "opened.");
+    if (lidstate_ == LID_STATE_CLOSED) {
       LOG(INFO) << "PowerM Daemon Init - lid is closed; generating event";
       OnInputEvent(this, LID, input_lidstate);
     }
@@ -90,7 +94,7 @@ void PowerManDaemon::Run() {
 gboolean PowerManDaemon::CheckLidClosed(unsigned int lid_id,
                                         unsigned int powerd_id) {
   // Same lid closed event and powerd state has changed.
-  if ((lidstate_ == kLidClosed) && (lid_id_ == lid_id) &&
+  if ((lidstate_ == LID_STATE_CLOSED) && (lid_id_ == lid_id) &&
       ((powerd_state_ != kPowerManagerAlive) || (powerd_id_ != powerd_id))) {
     LOG(INFO) << "Forced suspend, powerd unstable with pending suspend";
     Suspend();
@@ -100,7 +104,7 @@ gboolean PowerManDaemon::CheckLidClosed(unsigned int lid_id,
 }
 
 gboolean PowerManDaemon::RetrySuspend(unsigned int lid_id) {
-  if (lidstate_ == kLidClosed) {
+  if (lidstate_ == LID_STATE_CLOSED) {
     if (lid_id_ == lid_id) {
       retry_suspend_count_++;
       if (retry_suspend_count_ > retry_suspend_attempts_) {
@@ -128,22 +132,23 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       daemon->lid_id_++;
       daemon->lid_ticks_ = TimeTicks::Now();
       LOG(INFO) << "PowerM Daemon - lid "
-                << (daemon->lidstate_ == kLidClosed?"closed.":"opened.")
+                << (daemon->lidstate_ == LID_STATE_CLOSED ?
+                    "closed." : "opened.")
                 << " powerd "
-                << (daemon->powerd_state_ == kPowerManagerDead?
-                    "dead":(daemon->powerd_state_ == kPowerManagerAlive?
-                            "alive":"unknown"));
+                << (daemon->powerd_state_ == kPowerManagerDead ?
+                    "dead" : (daemon->powerd_state_ == kPowerManagerAlive ?
+                              "alive" : "unknown"));
       if (!daemon->use_input_for_lid_) {
         LOG(INFO) << "Ignoring lid.";
         break;
       }
-      if (daemon->lidstate_ == kLidClosed) {
+      if (daemon->lidstate_ == LID_STATE_CLOSED) {
         if (daemon->powerd_state_ != kPowerManagerAlive) {
           // powerd is not alive so act on its behalf.
           LOG(INFO) << "Forced suspend, powerd is not alive";
           daemon->Suspend();
         } else {
-          util::SendSignalToPowerD(util::kLidClosed);
+          util::SendSignalToPowerD(kLidClosed);
           // Check that powerd stuck around to act on  this event.  If not,
           // callback will assume suspend responsibilities.
           g_timeout_add_seconds(kCheckLidClosedSeconds, CheckLidClosedThunk,
@@ -153,19 +158,19 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
         }
       } else {
         util::CreateStatusFile(daemon->lid_open_file_);
-        util::SendSignalToPowerD(util::kLidOpened);
+        util::SendSignalToPowerD(kLidOpened);
       }
       break;
     }
     case PWRBUTTON: {
       daemon->power_button_state_ = daemon->GetPowerButtonState(value);
       LOG(INFO) << "PowerM Daemon - power button "
-                << (daemon->power_button_state_ == kPowerButtonDown?
-                    "down.":"up.");
-      if (daemon->power_button_state_ == kPowerButtonDown)
-        util::SendSignalToPowerD(util::kPowerButtonDown);
+                << (daemon->power_button_state_ == POWER_BUTTON_DOWN ?
+                    "down." : "up.");
+      if (daemon->power_button_state_ == POWER_BUTTON_DOWN)
+        util::SendSignalToPowerD(kPowerButtonDown);
       else
-        util::SendSignalToPowerD(util::kPowerButtonUp);
+        util::SendSignalToPowerD(kPowerButtonUp);
       break;
     }
     default: {
@@ -179,35 +184,35 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
 bool PowerManDaemon::CancelDBusRequest() {
   TimeDelta delta = TimeTicks::Now() - lid_ticks_;
 
-  bool cancel = (lidstate_ == kLidOpened) &&
+  bool cancel = (lidstate_ == LID_STATE_OPENED) &&
                 (delta.InSeconds() < kCancelDBusLidOpenedSecs);
   LOG(INFO) << (cancel?"Canceled":"Continuing")
             << " DBus activated suspend.  Lid is "
-            << (lidstate_ == kLidClosed?"closed.":"open.");
+            << (lidstate_ == LID_STATE_CLOSED ? "closed." : "open.");
   return cancel;
 }
 
 DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     DBusConnection*, DBusMessage* message, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
-  if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
-                             util::kSuspendSignal)) {
+  if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+                             kSuspendSignal)) {
     LOG(INFO) << "Suspend event";
     daemon->Suspend();
-  } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
-                                    util::kShutdownSignal)) {
+  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+                                    kShutdownSignal)) {
     LOG(INFO) << "Shutdown event";
     daemon->Shutdown();
-  } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
-                                    util::kRestartSignal)) {
+  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+                                    kRestartSignal)) {
     LOG(INFO) << "Restart event";
     daemon->Restart();
-  } else if (dbus_message_is_signal(message, util::kLowerPowerManagerInterface,
-                                    util::kRequestCleanShutdown)) {
+  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+                                    kRequestCleanShutdown)) {
     LOG(INFO) << "Request Clean Shutdown";
     util::Launch("initctl emit power-manager-clean-shutdown");
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kPowerStateChanged)) {
+                                    kPowerStateChanged)) {
     LOG(INFO) << "Power state change event";
     const char *state = '\0';
     DBusError error;
@@ -282,7 +287,7 @@ void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
 void PowerManDaemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
-  AddDBusMatch(connection, util::kLowerPowerManagerInterface);
+  AddDBusMatch(connection, kLowerPowerManagerInterface);
   AddDBusMatch(connection, kPowerManagerInterface);
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));

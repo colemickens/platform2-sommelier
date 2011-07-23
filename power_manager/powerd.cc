@@ -292,7 +292,7 @@ void Daemon::StartCleanShutdown() {
   clean_shutdown_initiated_ = true;
   // Cancel any outstanding suspend in flight.
   suspender_.CancelSuspend();
-  util::SendSignalToPowerM(util::kRequestCleanShutdown);
+  util::SendSignalToPowerM(kRequestCleanShutdown);
   g_timeout_add(clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
 }
 
@@ -434,8 +434,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
   } else if (backlight_controller_->state() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
       if (backlight_controller_->state() == BACKLIGHT_SUSPENDED) {
-        util::CreateStatusFile(FilePath(run_dir_)
-                              .Append(util::kUserActiveFile));
+        util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
         suspender_.CancelSuspend();
       }
       changed_brightness = true;
@@ -607,21 +606,21 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     LOG(INFO) << "RequestShutdown event";
     daemon->OnRequestShutdown(true);  // notify_window_manager=true
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kLidClosed)) {
+                                    kLidClosed)) {
     LOG(INFO) << "Lid Closed event";
     daemon->SetActive();
     daemon->Suspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kLidOpened)) {
+                                    kLidOpened)) {
     LOG(INFO) << "Lid Opened event";
     daemon->SetActive();
     daemon->suspender_.CancelSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kPowerButtonDown)) {
+                                    kPowerButtonDown)) {
     LOG(INFO) << "Button Down event";
     daemon->power_button_handler_->HandleButtonDown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kPowerButtonUp)) {
+                                    kPowerButtonUp)) {
     LOG(INFO) << "Button Up event";
     daemon->power_button_handler_->HandleButtonUp();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
@@ -634,7 +633,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       LOG(INFO) << "Received clean shutdown signal, but never asked for it.";
     }
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    util::kPowerStateChanged)) {
+                                    kPowerStateChanged)) {
     LOG(INFO) << "Power state change event";
     const char* state = '\0';
     DBusError error;
@@ -888,10 +887,10 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
 void Daemon::Shutdown() {
   if (shutdown_state_ == kShutdownPowerOff) {
     LOG(INFO) << "Shutting down";
-    util::SendSignalToPowerM(util::kShutdownSignal);
+    util::SendSignalToPowerM(kShutdownSignal);
   } else if (shutdown_state_ == kShutdownRestarting) {
     LOG(INFO) << "Restarting";
-    util::SendSignalToPowerM(util::kRestartSignal);
+    util::SendSignalToPowerM(kRestartSignal);
   } else {
     LOG(ERROR) << "Shutdown : Improper System State!";
   }

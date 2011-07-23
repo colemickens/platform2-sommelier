@@ -61,7 +61,7 @@ TEST_F(PowerManDaemonTest, SendMetric) {
 
 TEST_F(PowerManDaemonTest, GenerateRetrySuspendCountMetric) {
   // lid open, retries = 0
-  daemon_.lidstate_ = PowerManDaemon::kLidOpened;
+  daemon_.lidstate_ = PowerManDaemon::LID_STATE_OPENED;
   daemon_.GenerateMetricsOnResumeEvent();
   // lid open, retries > 0
   daemon_.retry_suspend_count_ = 3;

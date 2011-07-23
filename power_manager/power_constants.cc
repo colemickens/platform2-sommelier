@@ -35,4 +35,27 @@ const char kFuzzMs[] = "fuzz_ms";
 const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";
 
+// Interface names.
+const char kLowerPowerManagerInterface[] = "org.chromium.LowerPowerManager";
+
+// powerd -> powerm signals.
+const char kRestartSignal[] = "RestartSignal";
+const char kRequestCleanShutdown[] = "RequestCleanShutdown";
+const char kSuspendSignal[] = "SuspendSignal";
+const char kShutdownSignal[] = "ShutdownSignal";
+
+// powerm -> powerd signals.
+const char kLidClosed[] = "LidClosed";
+const char kLidOpened[] = "LidOpened";
+const char kPowerButtonDown[] = "PowerButtonDown";
+const char kPowerButtonUp[] = "PowerButtonUp";
+
+// Broadcast signals.
+const char kPowerStateChanged[] = "PowerStateChanged";
+const char kPowerSupplyChanged[] = "PowerSupplyChanged";
+
+// Files to signal powerd_suspend whether suspend should be cancelled.
+const char kLidOpenFile[] = "lid_opened";
+const char kUserActiveFile[] = "user_active";
+
 }  // namespace power_manager
