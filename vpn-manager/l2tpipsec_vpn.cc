@@ -21,6 +21,7 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 DEFINE_string(client_cert_id, "", "PKCS#11 slot with client certificate");
 DEFINE_string(client_cert_slot, "", "PKCS#11 key ID for client certificate");
+DEFINE_bool(debug, false, "Log debugging information");
 DEFINE_string(psk_file, "", "File with IPsec pre-shared key");
 DEFINE_string(remote_host, "", "VPN server hostname");
 DEFINE_string(server_ca_file, "", "File with IPsec server CA in DER format");
@@ -109,6 +110,8 @@ int main(int argc, char* argv[]) {
   L2tpManager l2tp;
 
   LockDownUmask();
+
+  ipsec.set_debug(FLAGS_debug);
 
   ServiceManager::InitializeDirectories(&temp_dir);
 

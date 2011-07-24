@@ -82,7 +82,9 @@ std::string L2tpManager::FormatL2tpdConfiguration(
   AddBool(&l2tpd_config, "require authentication",
           FLAGS_require_authentication);
   AddString(&l2tpd_config, "name", FLAGS_user);
-  AddBool(&l2tpd_config, "ppp debug", FLAGS_ppp_debug);
+  if (debug()) {
+    AddBool(&l2tpd_config, "ppp debug", FLAGS_ppp_debug);
+  }
   AddString(&l2tpd_config, "pppoptfile", ppp_config_path);
   AddBool(&l2tpd_config, "length bit", FLAGS_length_bit);
   return l2tpd_config;
@@ -99,7 +101,6 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "idle 1800\n"
       "mtu 1410\n"
       "mru 1410\n"
-      "debug\n"
       "lock\n"
       "connect-delay 5000\n");
   pppd_config.append(StringPrintf("%sdefaultroute\n",
@@ -110,6 +111,9 @@ std::string L2tpManager::FormatPppdConfiguration() {
   if (!FLAGS_pppd_plugin.empty()) {
     DLOG(INFO) << "Using pppd plugin " << FLAGS_pppd_plugin;
     pppd_config.append(StringPrintf("plugin %s\n", FLAGS_pppd_plugin.c_str()));
+  }
+  if (debug()) {
+    pppd_config.append("debug\n");
   }
   return pppd_config;
 }

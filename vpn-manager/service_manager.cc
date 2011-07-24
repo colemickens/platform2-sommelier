@@ -20,6 +20,7 @@ const char* ServiceManager::temp_base_path_ = "/home/chronos/user/tmp";
 ServiceManager::ServiceManager(const std::string& service_name)
     : is_running_(false),
       was_stopped_(false),
+      debug_(false),
       inner_service_(NULL),
       outer_service_(NULL),
       service_name_(service_name) {

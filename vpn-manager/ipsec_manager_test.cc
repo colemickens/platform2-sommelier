@@ -211,7 +211,7 @@ class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
   }
 
  protected:
-  void CheckStarter(const std::string& actual);
+  std::string GetExpectedStarter(bool debug);
 };
 
 TEST_F(IpsecManagerTestIkeV1Psk, Initialize) {
@@ -242,10 +242,14 @@ TEST_F(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning) {
   EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
 }
 
-void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
-  const char kExpected[] =
+std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug) {
+  std::string expected(
       "config setup\n"
-      "\tcharonstart=no\n"
+      "\tcharonstart=no\n");
+  if (debug) {
+    expected.append("\tplutodebug=\"all\"\n");
+  }
+  expected.append(
       "\tnat_traversal=yes\n"
       "\tpkcs11module=\"/usr/lib/opencryptoki/libopencryptoki.so.0\"\n"
       "conn managed\n"
@@ -260,12 +264,14 @@ void IpsecManagerTestIkeV1Psk::CheckStarter(const std::string& actual) {
       "\tright=\"1.2.3.4\"\n"
       "\trightprotoport=\"17/1701\"\n"
       "\ttype=\"transport\"\n"
-      "\tauto=\"start\"\n";
-  EXPECT_EQ(kExpected, actual);
+      "\tauto=\"start\"\n");
+  return expected;
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile) {
-  CheckStarter(ipsec_.FormatStarterConfigFile());
+  EXPECT_EQ(GetExpectedStarter(false), ipsec_.FormatStarterConfigFile());
+  ipsec_.set_debug(true);
+  EXPECT_EQ(GetExpectedStarter(true), ipsec_.FormatStarterConfigFile());
 }
 
 TEST_F(IpsecManagerTestIkeV1Psk, Start) {
@@ -280,7 +286,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
   std::string conf_contents;
   ASSERT_TRUE(file_util::ReadFileToString(
       stateful_container_.Append("ipsec.conf"), &conf_contents));
-  CheckStarter(conf_contents);
+  EXPECT_EQ(GetExpectedStarter(false), conf_contents);
   ASSERT_TRUE(file_util::PathExists(stateful_container_.Append(
       "ipsec.secrets")));
 }
@@ -293,7 +299,7 @@ class IpsecManagerTestIkeV1Certs : public IpsecManagerTest {
   }
 
  protected:
-  void CheckStarter(const std::string& actual);
+  std::string GetExpectedStarter(bool debug);
 };
 
 TEST_F(IpsecManagerTestIkeV1Certs, Initialize) {
@@ -306,10 +312,14 @@ TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0:0a \"123456\"\n", formatted);
 }
 
-void IpsecManagerTestIkeV1Certs::CheckStarter(const std::string& actual) {
-  const char kExpected[] =
+std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
+  std::string expected(
       "config setup\n"
-      "\tcharonstart=no\n"
+      "\tcharonstart=no\n");
+  if (debug) {
+    expected.append("\tplutodebug=\"all\"\n");
+  }
+  expected.append(
       "\tnat_traversal=yes\n"
       "\tpkcs11module=\"/usr/lib/opencryptoki/libopencryptoki.so.0\"\n"
       "conn managed\n"
@@ -326,12 +336,14 @@ void IpsecManagerTestIkeV1Certs::CheckStarter(const std::string& actual) {
       "\trightid=\"CN=vpnserver\"\n"
       "\trightprotoport=\"17/1701\"\n"
       "\ttype=\"transport\"\n"
-      "\tauto=\"start\"\n";
-  EXPECT_EQ(kExpected, actual);
+      "\tauto=\"start\"\n");
+  return expected;
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile) {
-  CheckStarter(ipsec_.FormatStarterConfigFile());
+  EXPECT_EQ(GetExpectedStarter(false), ipsec_.FormatStarterConfigFile());
+  ipsec_.set_debug(true);
+  EXPECT_EQ(GetExpectedStarter(true), ipsec_.FormatStarterConfigFile());
 }
 
 TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
@@ -339,7 +351,7 @@ TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
   std::string conf_contents;
   ASSERT_TRUE(file_util::ReadFileToString(
       stateful_container_.Append("ipsec.conf"), &conf_contents));
-  CheckStarter(conf_contents);
+  EXPECT_EQ(GetExpectedStarter(false), conf_contents);
   ASSERT_TRUE(file_util::PathExists(stateful_container_.Append(
       "ipsec.secrets")));
   ASSERT_TRUE(file_util::PathExists(stateful_container_.Append("cacert.der")));

@@ -44,6 +44,9 @@ class L2tpManagerTest : public ::testing::Test {
   }
 
  protected:
+  std::string GetExpectedConfig(std::string remote_address_text,
+                                bool debug);
+
   std::string remote_address_text_;
   struct sockaddr remote_address_;
   FilePath test_path_;
@@ -54,18 +57,26 @@ class L2tpManagerTest : public ::testing::Test {
   ProcessMock* l2tpd_;
 };
 
-TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
-  std::string expected = StringPrintf(
+std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
+                                               bool debug) {
+  return StringPrintf(
       "[lac managed]\n"
       "lns = %s\n"
       "require chap = yes\n"
       "refuse pap = yes\n"
       "require authentication = yes\n"
       "name = me\n"
-      "ppp debug = yes\n"
+      "%s"
       "pppoptfile = test/pppd.config\n"
-      "length bit = yes\n", remote_address_text_.c_str());
-  EXPECT_EQ(expected,
+      "length bit = yes\n", remote_address_text.c_str(),
+      debug ? "ppp debug = yes\n" : "");
+}
+
+TEST_F(L2tpManagerTest, FormatL2tpdConfiguration) {
+  EXPECT_EQ(GetExpectedConfig(remote_address_text_, false),
+            l2tp_.FormatL2tpdConfiguration(pppd_config_path_.value()));
+  l2tp_.set_debug(true);
+  EXPECT_EQ(GetExpectedConfig(remote_address_text_, true),
             l2tp_.FormatL2tpdConfiguration(pppd_config_path_.value()));
 }
 
@@ -80,7 +91,6 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "idle 1800\n"
       "mtu 1410\n"
       "mru 1410\n"
-      "debug\n"
       "lock\n"
       "connect-delay 5000\n"
       "defaultroute\n"
@@ -89,6 +99,9 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
   EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
   FLAGS_pppd_plugin = "myplugin";
   expected.append("plugin myplugin\n");
+  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  l2tp_.set_debug(true);
+  expected.append("debug\n");
   EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
 }
 

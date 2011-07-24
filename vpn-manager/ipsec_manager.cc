@@ -267,6 +267,9 @@ std::string IpsecManager::FormatStarterConfigFile() {
   config.append("config setup\n");
   if (ike_version_ == 1) {
     AppendBoolSetting(&config, "charonstart", false);
+    if (debug()) {
+      AppendStringSetting(&config, "plutodebug", "all");
+    }
   } else {
     AppendBoolSetting(&config, "plutostart", false);
   }
