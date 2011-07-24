@@ -31,7 +31,7 @@
 #include "power_manager/signal_callback.h"
 #include "power_manager/suspender.h"
 #include "power_manager/xidle.h"
-#include "power_manager/xidle_monitor.h"
+#include "power_manager/xidle_observer.h"
 
 namespace power_manager {
 
@@ -40,7 +40,7 @@ class MonitorReconfigure;
 class PowerButtonHandler;
 class VideoDetectorInterface;
 
-class Daemon : public XIdleMonitor {
+class Daemon : public XIdleObserver {
  public:
   Daemon(BacklightController* ctl,
          PowerPrefs* prefs,
@@ -59,7 +59,6 @@ class Daemon : public XIdleMonitor {
   void Init();
   void Run();
   void SetActive();
-  void OnIdleEvent(bool is_idle, int64 idle_time_ms);
   void SetPlugged(bool plugged);
 
   void OnRequestRestart(bool notify_window_manager);
@@ -78,6 +77,9 @@ class Daemon : public XIdleMonitor {
   // If in the active-but-off state, turn up the brightness when user presses a
   // key so user can see that the screen has been locked.
   void BrightenScreenIfOff();
+
+  // Overridden from XIdleObserver:
+  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
 
  private:
   friend class DaemonTest;

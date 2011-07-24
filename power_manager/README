@@ -16,7 +16,7 @@ Executable programs:
     Lower power manager. Provides infrastructure for invoking suspend to RAM and
     system shutdown. Handles input events for hall effect sensor (lid) and power
     button.
-  * xidle-example (xidle-example.cc)
+  * xidle-example (examples/xidle_example.cc)
     Prints console notifications when the user is and is not idle.
 
 Main Classes:

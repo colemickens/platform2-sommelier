@@ -12,40 +12,24 @@
 #include <list>
 
 #include "base/basictypes.h"
-#include "power_manager/xidle_monitor.h"
 #include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
-// Receive notifications from the X Server when the user is marked as
-// idle, or as no longer idle.
-//
-// Example usage:
-//   class IdleMonitorExample : public power_manager::XIdleMonitor {
-//    public:
-//     void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-//       if (is_idle)
-//         printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
-//       else
-//         printf("User is active\n");
-//     }
-//   };
-//   IdleMonitorExample example;
-//   power_manager::XIdle idle;
-//   idle.Init(&example);
-//   idle.AddIdleTimeout(2000);
-//   idle.AddIdleTimeout(5000);
-//   GMainLoop* loop = g_main_loop_new(NULL, false);
-//   g_main_loop_run(loop);
+class XIdleObserver;
 
+// Receive notifications from the X Server when the user is marked as idle,
+// or as no longer idle.
+//
+// See examples/xidle_example.cc for usage example.
 class XIdle {
  public:
   XIdle();
   ~XIdle();
 
-  // Initialize the object with the given monitor.
+  // Initialize the object with the given |observer|.
   // On success, return true; otherwise return false.
-  bool Init(XIdleMonitor* monitor);
+  bool Init(XIdleObserver* observer);
 
   // Add a timeout value. Idle events will be fired every time
   // the user either becomes newly idle (due to exceeding an idle
@@ -79,8 +63,8 @@ class XIdle {
   int64 min_timeout_;
   int event_base_, error_base_;
 
-  // Non-owned pointer to object listening for changes to idle state
-  XIdleMonitor* monitor_;
+  // Non-owned pointer to object listening for changes to idle state.
+  XIdleObserver* observer_;
 
   // A list of the alarms. If non-empty, the negative transition alarm for
   // min_timeout_ will be the first alarm in the list.

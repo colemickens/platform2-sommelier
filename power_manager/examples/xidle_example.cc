@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -9,13 +9,13 @@
 
 #include "base/logging.h"
 #include "power_manager/xidle.h"
+#include "power_manager/xidle_observer.h"
 
-// xidle-example: Prints console notifications when the user is and is not
-//                idle.
-
-class IdleMonitorExample : public power_manager::XIdleMonitor {
+// Prints console notifications when the user is and is not idle.
+class XIdleObserverExample : public power_manager::XIdleObserver {
  public:
-  void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+  // Overridden from power_manager::XIdleObserver:
+  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (is_idle)
       printf("User has been idle for %" PRIi64 " ms\n", idle_time_ms);
     else
@@ -23,12 +23,12 @@ class IdleMonitorExample : public power_manager::XIdleMonitor {
   }
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
   gdk_init(&argc, &argv);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   power_manager::XIdle idle;
-  IdleMonitorExample monitor;
-  CHECK(idle.Init(&monitor));
+  XIdleObserverExample observer;
+  CHECK(idle.Init(&observer));
   CHECK(idle.AddIdleTimeout(2000));
   CHECK(idle.AddIdleTimeout(5000));
   g_main_loop_run(loop);

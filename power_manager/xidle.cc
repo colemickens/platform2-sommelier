@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,6 +8,7 @@
 #include <inttypes.h>
 
 #include "base/logging.h"
+#include "power_manager/xidle_observer.h"
 
 namespace power_manager {
 
@@ -29,7 +30,7 @@ XIdle::~XIdle() {
   ClearTimeouts();
 }
 
-bool XIdle::Init(XIdleMonitor* monitor) {
+bool XIdle::Init(XIdleObserver* observer) {
   CHECK(GDK_DISPLAY()) << "Display not initialized";
   int major_version, minor_version;
   if (XSyncQueryExtension(GDK_DISPLAY(), &event_base_, &error_base_) &&
@@ -46,8 +47,8 @@ bool XIdle::Init(XIdleMonitor* monitor) {
         }
       }
       XSyncFreeSystemCounterList(counters);
-      if (idle_counter_ && monitor) {
-        monitor_ = monitor;
+      if (idle_counter_ && observer) {
+        observer_ = observer;
         gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
       }
     }
@@ -134,7 +135,7 @@ GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
                                         alarm_event->alarm_value);
     if (is_idle == is_idle2) {
       int64 idle_time_ms = XSyncValueToInt64(alarm_event->counter_value);
-      monitor_->OnIdleEvent(is_idle, idle_time_ms);
+      observer_->OnIdleEvent(is_idle, idle_time_ms);
     } else {
       LOG(INFO) << "Filtering out stale event";
     }

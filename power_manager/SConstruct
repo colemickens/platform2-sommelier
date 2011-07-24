@@ -69,7 +69,8 @@ gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
 xidle_env = gdk_env.Clone()
 xidle_env.Append(LIBS=Split('base rt X11 pthread Xext'))
 xidle = xidle_env.Library('xidle', ['xidle.cc'])
-xidle_example = xidle_env.Program('xidle-example', ['xidle-example.cc', xidle])
+xidle_example = xidle_env.Program('xidle-example',
+                                  ['examples/xidle_example.cc', xidle])
 Default(xidle_example)
 
 # Build backlight tool

@@ -9,8 +9,8 @@
 
 namespace power_manager {
 
-// Interface for monitoring idle events
-class XIdleMonitor {
+// Interface for observing idle events.
+class XIdleObserver {
  public:
   // Idle event handler. This handler should be called when the user either
   // becomes newly idle (due to exceeding an idle timeout) or is no longer
@@ -18,7 +18,7 @@ class XIdleMonitor {
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) = 0;
 
  protected:
-  virtual ~XIdleMonitor() {}
+  virtual ~XIdleObserver() {}
 };
 
 }  // namespace power_manager

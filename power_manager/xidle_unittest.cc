@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "power_manager/xidle.h"
+#include "power_manager/xidle_observer.h"
 
 namespace power_manager {
 
@@ -23,7 +24,7 @@ class XIdleTest : public ::testing::Test {
   virtual void TearDown() {
     idle_.ClearTimeouts();
   }
-  power_manager::XIdle idle_;
+  XIdle idle_;
 };
 
 static void FakeMotionEvent(Display* display) {
@@ -31,10 +32,12 @@ static void FakeMotionEvent(Display* display) {
   XSync(display, false);
 }
 
-class IdleMonitorTest : public power_manager::XIdleMonitor {
+class XIdleObserverTest : public XIdleObserver {
  public:
-  explicit IdleMonitorTest(GMainLoop* loop) : count_(0), loop_(loop) {}
-  void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+  explicit XIdleObserverTest(GMainLoop* loop) : count_(0), loop_(loop) {}
+
+  // Overridden from XIdleObsever:
+  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     if (count_ & 1) {
       ASSERT_FALSE(is_idle);
       ASSERT_LT(idle_time_ms, 50);
@@ -46,11 +49,13 @@ class IdleMonitorTest : public power_manager::XIdleMonitor {
     }
     count_++;
   }
+
   static gboolean Quit(gpointer data) {
-    IdleMonitorTest* monitor = static_cast<IdleMonitorTest*>(data);
-    g_main_loop_quit(monitor->loop_);
+    XIdleObserverTest* observer = static_cast<XIdleObserverTest*>(data);
+    g_main_loop_quit(observer->loop_);
     return false;
   }
+
   int count_;
 
  private:
@@ -75,14 +80,14 @@ TEST_F(XIdleTest, GetIdleTimeWhenNonIdleTest) {
 TEST_F(XIdleTest, MonitorTest) {
   FakeMotionEvent(GDK_DISPLAY());
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  IdleMonitorTest monitor(loop);
-  ASSERT_TRUE(idle_.Init(&monitor));
+  XIdleObserverTest observer(loop);
+  ASSERT_TRUE(idle_.Init(&observer));
   idle_.AddIdleTimeout(50);
-  power_manager::XIdle idle;
-  g_timeout_add(1000, IdleMonitorTest::Quit, &monitor);
+  XIdle idle;
+  g_timeout_add(1000, XIdleObserverTest::Quit, &observer);
   g_main_loop_run(loop);
-  ASSERT_GT(monitor.count_, 1);
-  ASSERT_LT(monitor.count_, 41);
+  ASSERT_GT(observer.count_, 1);
+  ASSERT_LT(observer.count_, 41);
 }
 
 }  // namespace power_manager

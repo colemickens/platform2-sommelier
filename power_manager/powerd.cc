@@ -370,49 +370,6 @@ void Daemon::SetActive() {
   SetIdleState(idle_time_ms);
 }
 
-void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-  CHECK(plugged_state_ != kPowerUnknown);
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_ACTIVE &&
-      dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
-    int64 video_time_ms = 0;
-    bool video_is_playing = false;
-    int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
-                                                            unplugged_dim_ms_;
-    CHECK(video_detector_->GetVideoActivity(dim_timeout,
-                                            &video_time_ms,
-                                            &video_is_playing));
-    if (video_is_playing)
-      SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
-  }
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_DIM &&
-      !util::OOBECompleted()) {
-    LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
-    SetIdleOffset(idle_time_ms, kIdleScreenOff);
-  }
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_IDLE_OFF &&
-      idle_time_ms >= suspend_ms_) {
-    // Delay suspend if audio is active.
-    bool audio_is_playing = false;
-    // TODO(sque): Add a CHECK once AudioDetector is more flexible and supports
-    // various audio sysfs across different systems.
-    audio_detector_->GetAudioStatus(&audio_is_playing);
-    if (audio_is_playing) {
-      LOG(INFO) << "Delaying suspend because audio is playing.";
-      // Increase the suspend offset by the react time.  Since the offset is
-      // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
-      // need to use that here.
-      int64 base_suspend_ms = (plugged_state_ == kPowerConnected) ?
-                               plugged_suspend_ms_ : unplugged_suspend_ms_;
-      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_, kIdleSuspend);
-    }
-  }
-
-  GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
-  SetIdleState(idle_time_ms);
-  if (!is_idle && offset_ms_ != 0)
-    SetIdleOffset(0, kIdleNormal);
-}
-
 void Daemon::SetIdleState(int64 idle_time_ms) {
   bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
@@ -509,6 +466,49 @@ void Daemon::IncreaseScreenBrightness(bool user_initiated) {
 void Daemon::BrightenScreenIfOff() {
   if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
     backlight_controller_->IncreaseBrightness();
+}
+
+void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+  CHECK(plugged_state_ != kPowerUnknown);
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_ACTIVE &&
+      dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
+    int64 video_time_ms = 0;
+    bool video_is_playing = false;
+    int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
+                                                            unplugged_dim_ms_;
+    CHECK(video_detector_->GetVideoActivity(dim_timeout,
+                                            &video_time_ms,
+                                            &video_is_playing));
+    if (video_is_playing)
+      SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
+  }
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_DIM &&
+      !util::OOBECompleted()) {
+    LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
+    SetIdleOffset(idle_time_ms, kIdleScreenOff);
+  }
+  if (is_idle && backlight_controller_->state() == BACKLIGHT_IDLE_OFF &&
+      idle_time_ms >= suspend_ms_) {
+    // Delay suspend if audio is active.
+    bool audio_is_playing = false;
+    // TODO(sque): Add a CHECK once AudioDetector is more flexible and supports
+    // various audio sysfs across different systems.
+    audio_detector_->GetAudioStatus(&audio_is_playing);
+    if (audio_is_playing) {
+      LOG(INFO) << "Delaying suspend because audio is playing.";
+      // Increase the suspend offset by the react time.  Since the offset is
+      // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
+      // need to use that here.
+      int64 base_suspend_ms = (plugged_state_ == kPowerConnected) ?
+                               plugged_suspend_ms_ : unplugged_suspend_ms_;
+      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_, kIdleSuspend);
+    }
+  }
+
+  GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
+  SetIdleState(idle_time_ms);
+  if (!is_idle && offset_ms_ != 0)
+    SetIdleOffset(0, kIdleNormal);
 }
 
 void Daemon::GrabKey(KeyCode key, uint32 mask) {
