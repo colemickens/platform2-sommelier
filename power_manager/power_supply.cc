@@ -60,6 +60,7 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
     // A hack for situations like VMs where there is no power supply sysfs.
     LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
     status->line_power_on = online_ = true;
+    status->battery_is_present = present_ = false;
     return true;
   }
   int64 value;
