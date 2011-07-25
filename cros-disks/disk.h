@@ -26,6 +26,16 @@ class Disk {
  public:
   Disk();
   virtual ~Disk();
+
+  // Returns a presentation name of the disk, which can be used to name
+  // the mount directory of the disk. The naming scheme is as follows:
+  // (1) Use a non-empty label if the disk has one.
+  // (2) Otherwise, use a non-empty UUID if the disk has one.
+  // (3) Finally, use 'disk' as a fallback name.
+  // Any forward slash '/' in the presentation name is replaced with an
+  // underscore '_'.
+  std::string GetPresentationName() const;
+
   DBusDisk ToDBusFormat() const;
 
   bool is_drive() const { return is_drive_; }

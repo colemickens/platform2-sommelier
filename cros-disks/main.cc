@@ -22,12 +22,14 @@
 #include "cros-disks/cros-disks-server-impl.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/power-manager-proxy.h"
 #include "cros-disks/session-manager-proxy.h"
 
 using cros_disks::CrosDisksServer;
 using cros_disks::DiskManager;
 using cros_disks::FormatManager;
+using cros_disks::Platform;
 using cros_disks::PowerManagerProxy;
 using cros_disks::SessionManagerProxy;
 
@@ -90,7 +92,8 @@ int main(int argc, char** argv) {
   DBus::Connection server_conn = DBus::Connection::SystemBus();
   server_conn.request_name("org.chromium.CrosDisks");
 
-  DiskManager disk_manager;
+  Platform platform;
+  DiskManager disk_manager(&platform);
   FormatManager format_manager;
   disk_manager.RegisterDefaultFilesystems();
   CrosDisksServer cros_disks_server(server_conn, &disk_manager,

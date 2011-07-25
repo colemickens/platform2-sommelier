@@ -4,29 +4,35 @@
 
 #include "cros-disks/disk.h"
 
+#include <algorithm>
+
+using std::string;
+
 namespace cros_disks {
+
+static const char kFallbackPresentationName[] = "disk";
 
 // Keys that libcros expects to see on the wire.
 // TODO(rtc): We should probably stuff these in a shared header...
-const char kDeviceIsDrive[] = "DeviceIsDrive";
-const char kDevicePresentationHide[] = "DevicePresentationHide";
-const char kDeviceIsMounted[] = "DeviceIsMounted";
-const char kDeviceMountPaths[] = "DeviceMountPaths";
-const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
-const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
-const char kDeviceIsVirtual[] = "DeviceIsVirtual";
-const char kNativePath[] = "NativePath";
-const char kDeviceFile[] = "DeviceFile";
-const char kUuid[] = "IdUuid";
-const char kLabel[] = "IdLabel";
-const char kDriveModel[] = "DriveModel";
-const char kDriveIsRotational[] = "DriveIsRotational";
-const char kDeviceIsOpticalDisc[] = "DeviceIsOpticalDisc";
-const char kDeviceSize[] = "DeviceSize";
-const char kReadOnly[] = "DeviceIsReadOnly";
+static const char kDeviceIsDrive[] = "DeviceIsDrive";
+static const char kDevicePresentationHide[] = "DevicePresentationHide";
+static const char kDeviceIsMounted[] = "DeviceIsMounted";
+static const char kDeviceMountPaths[] = "DeviceMountPaths";
+static const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
+static const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
+static const char kDeviceIsVirtual[] = "DeviceIsVirtual";
+static const char kNativePath[] = "NativePath";
+static const char kDeviceFile[] = "DeviceFile";
+static const char kUuid[] = "IdUuid";
+static const char kLabel[] = "IdLabel";
+static const char kDriveModel[] = "DriveModel";
+static const char kDriveIsRotational[] = "DriveIsRotational";
+static const char kDeviceIsOpticalDisc[] = "DeviceIsOpticalDisc";
+static const char kDeviceSize[] = "DeviceSize";
+static const char kReadOnly[] = "DeviceIsReadOnly";
 
 // TODO(rtc): Figure out what this field is and include it in the response.
-const char kPartitionSlave[] = "PartitionSlave";
+static const char kPartitionSlave[] = "PartitionSlave";
 
 Disk::Disk()
   : is_drive_(false),
@@ -50,6 +56,19 @@ Disk::Disk()
 }
 
 Disk::~Disk() {
+}
+
+string Disk::GetPresentationName() const {
+  string name;
+  if (!label_.empty())
+    name = label_;
+  else if (!uuid_.empty())
+    name = uuid_;
+  else
+    name = kFallbackPresentationName;
+
+  std::replace(name.begin(), name.end(), '/', '_');
+  return name;
 }
 
 DBusDisk Disk::ToDBusFormat() const {

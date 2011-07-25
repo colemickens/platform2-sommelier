@@ -5,22 +5,18 @@
 #include "cros-disks/disk-manager.h"
 
 #include <libudev.h>
-#include <pwd.h>
 #include <string.h>
 #include <sys/mount.h>
-#include <unistd.h>
-
-#include <algorithm>
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 
 #include "cros-disks/disk.h"
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/mount-options.h"
+#include "cros-disks/platform.h"
 #include "cros-disks/system-mounter.h"
 #include "cros-disks/udev-device.h"
 
@@ -39,18 +35,18 @@ static const char kScsiDevice[] = "scsi_device";
 static const char kMountDefaultUser[] = "chronos";
 static const char kUnmountOptionForce[] = "force";
 static const char kMountRootPrefix[] = "/media/";
-static const char kFallbackMountPath[] = "/media/disk";
 static const char kUdevAddAction[] = "add";
 static const char kUdevChangeAction[] = "change";
 static const char kUdevRemoveAction[] = "remove";
 static const unsigned kMaxNumMountTrials = 10000;
-static const unsigned kFallbackPasswordBufferSize = 16384;
 
-DiskManager::DiskManager()
-    : udev_(udev_new()),
+DiskManager::DiskManager(Platform* platform)
+    : platform_(platform),
+      udev_(udev_new()),
       udev_monitor_fd_(0),
       blkid_cache_(NULL),
       experimental_features_enabled_(false) {
+  CHECK(platform_) << "Invalid platform object";
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
@@ -79,6 +75,7 @@ vector<Disk> DiskManager::EnumerateDisks() const {
   udev_list_entry_foreach(device_list_entry, device_list) {
     const char *path = udev_list_entry_get_name(device_list_entry);
     udev_device *dev = udev_device_new_from_syspath(udev_, path);
+    if (dev == NULL) continue;
 
     LOG(INFO) << "Device";
     LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
@@ -229,12 +226,13 @@ bool DiskManager::GetDiskByDevicePath(const string& device_path,
   udev_list_entry_foreach(device_list_entry, device_list) {
     const char *sys_path = udev_list_entry_get_name(device_list_entry);
     udev_device *dev = udev_device_new_from_syspath(udev_, sys_path);
+    if (dev == NULL) continue;
+
     const char *dev_path = udev_device_get_devpath(dev);
     const char *dev_file = udev_device_get_devnode(dev);
-    if ((is_sys_path && strcmp(sys_path, device_path.c_str()) == 0) ||
-        (is_dev_path && strcmp(dev_path, device_path.c_str()) == 0) ||
-        (is_dev_file && dev_file != NULL
-         && strcmp(dev_file, device_path.c_str()) == 0)) {
+    if ((is_sys_path && device_path == sys_path) ||
+        (is_dev_path && device_path == dev_path) ||
+        (is_dev_file && dev_file && device_path == dev_file)) {
       disk_found = true;
       if (disk)
         *disk = UdevDevice(dev).ToDisk();
@@ -285,89 +283,20 @@ string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
   return filesystem_type;
 }
 
-bool DiskManager::GetUserAndGroupId(const string& username,
-    uid_t *uid, gid_t *gid) const {
-  long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
-  if (buffer_size <= 0) {
-    buffer_size = kFallbackPasswordBufferSize;
-  }
-
-  struct passwd password_buffer, *password_buffer_ptr = NULL;
-  scoped_array<char> buffer(new char[buffer_size]);
-  getpwnam_r(username.c_str(), &password_buffer, buffer.get(), buffer_size,
-      &password_buffer_ptr);
-  if (password_buffer_ptr == NULL) {
-    PLOG(WARNING) << "Could not determine user and group ID of username '"
-      << username << "'";
-    return false;
-  }
-
-  if (uid) {
-    *uid = password_buffer.pw_uid;
-  }
-  if (gid) {
-    *gid = password_buffer.pw_gid;
-  }
-  return true;
-}
-
-string DiskManager::GetMountDirectoryName(const Disk& disk) const {
-  string mount_path;
-  if (!disk.label().empty()) {
-    mount_path = disk.label();
-    replace(mount_path.begin(), mount_path.end(), '/', '_');
-    mount_path = kMountRootPrefix + mount_path;
-  } else if (!disk.uuid().empty()) {
-    mount_path = kMountRootPrefix + disk.uuid();
-  } else {
-    mount_path = kFallbackMountPath;
-  }
-  return mount_path;
-}
-
-bool DiskManager::CreateDirectory(const string& path) const {
-  // Reuse the target path if it already exists and is empty.
-  // rmdir handles the cases when the target path exists but
-  // is not empty, is already mounted or is used by some process.
-  rmdir(path.c_str());
-  return (mkdir(path.c_str(), S_IRWXU) == 0);
-}
-
 string DiskManager::CreateMountDirectory(const Disk& disk,
     const string& target_path) const {
-  // Construct the mount path as follows:
-  // (1) If a target path is specified, use it.
-  // (2) If the disk has a non-empty label,
-  //     use /media/<label> as the target path.
-  //     Note: any forward slash '/' in the label is replaced
-  //     with a underscore '_'.
-  // (3) If the disk has a non-empty uuid,
-  //     use /media/<uuid> as the target path.
-  // (4) Otherwise, use /media/disk as the target path.
-  // (5) If the target path obtained in (2)-(4) cannot
-  //     be created, try suffixing it with a number.
-
-  if (!target_path.empty()) {
-    if (!CreateDirectory(target_path)) {
-      PLOG(ERROR) << "Failed to create directory '" << target_path << "'";
-      return string();
+  if (target_path.empty()) {
+    string mount_path = kMountRootPrefix + disk.GetPresentationName();
+    if (platform_->CreateOrReuseEmptyDirectoryWithFallback(&mount_path,
+          kMaxNumMountTrials)) {
+      return mount_path;
     }
-    return target_path;
-  }
-
-  unsigned suffix = 1;
-  string mount_path = GetMountDirectoryName(disk);
-  string mount_path_prefix = mount_path + "_";
-  while (!CreateDirectory(mount_path)) {
-    if (suffix == kMaxNumMountTrials) {
-      mount_path.clear();
-      break;
+  } else {
+    if (platform_->CreateOrReuseEmptyDirectory(target_path)) {
+      return target_path;
     }
-    mount_path = mount_path_prefix + base::UintToString(suffix);
-    suffix++;
   }
-
-  return mount_path;
+  return string();
 }
 
 bool DiskManager::ExtractUnmountOptions(const vector<string>& options,
@@ -450,7 +379,7 @@ bool DiskManager::Mount(const string& device_path,
   if (!mounter->Mount()) {
     LOG(ERROR) << "Failed to mount '" << device_path << "' to '"
       << mount_target << "'";
-    RemoveDirectory(mount_target);
+    platform_->RemoveEmptyDirectory(mount_target);
     return false;
   }
 
@@ -508,7 +437,7 @@ bool DiskManager::Unmount(const string& device_path,
         << "' from '" << *path_iterator << "'";
       unmount_ok = false;
     }
-    RemoveDirectory(*path_iterator);
+    platform_->RemoveEmptyDirectory(*path_iterator);
   }
 
   device_file_map_.erase(device_path);
@@ -578,7 +507,7 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   if (set_user_and_group_id) {
     uid_t uid;
     gid_t gid;
-    if (GetUserAndGroupId(kMountDefaultUser, &uid, &gid)) {
+    if (platform_->GetUserAndGroupId(kMountDefaultUser, &uid, &gid)) {
       default_user_id = StringPrintf("%d", uid);
       default_group_id = StringPrintf("%d", gid);
     }
@@ -602,14 +531,6 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
         filesystem.mount_type(), mount_options);
   }
   return mounter;
-}
-
-bool DiskManager::RemoveDirectory(const string& path) const {
-  if (rmdir(path.c_str()) != 0) {
-    PLOG(WARNING) << "Failed to remove directory '" << path << "'";
-    return false;
-  }
-  return true;
 }
 
 }  // namespace cros_disks

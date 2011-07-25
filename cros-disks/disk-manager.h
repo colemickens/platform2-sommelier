@@ -24,6 +24,7 @@ namespace cros_disks {
 class Disk;
 class Filesystem;
 class Mounter;
+class Platform;
 class UdevDevice;
 
 // The DiskManager is responsible for reading device state from udev.
@@ -32,7 +33,8 @@ class UdevDevice;
 //
 // Sample Usage:
 //
-// DiskManager manager;
+// Platform platform;
+// DiskManager manager(&platform);
 // manager.EnumerateDisks();
 // select(manager.udev_monitor_fd())...
 //
@@ -40,7 +42,7 @@ class UdevDevice;
 // and should not be considered thread safe.
 class DiskManager {
  public:
-  DiskManager();
+  explicit DiskManager(Platform* platform);
   virtual ~DiskManager();
 
   // Lists the current block devices attached to the system.
@@ -50,27 +52,11 @@ class DiskManager {
   // Returns true on success. Must be called to clear the fd.
   bool GetDeviceEvent(DeviceEvent* event);
 
-  // Returns a Filesystem object if a given filesystem type is supported.
-  // Otherwise, it returns NULL.
-  const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
-
   // Gets the filesystem type of a device.
   std::string GetFilesystemTypeOfDevice(const std::string& device_path);
 
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
-
-  // Gets the user ID and group ID for a given username.
-  bool GetUserAndGroupId(const std::string& username,
-      uid_t *uid, gid_t *gid) const;
-
-  // Gets the mount directory name for a disk.
-  std::string GetMountDirectoryName(const Disk& disk) const;
-
-  // Creates a specified directory if it does not exist.
-  // If the specified directory already exists, this function tries to
-  // reuse it if the directory is empty and not being used.
-  bool CreateDirectory(const std::string& path) const;
 
   // Creates a mount directory for a given disk.
   std::string CreateMountDirectory(const Disk& disk,
@@ -97,9 +83,6 @@ class DiskManager {
   // Subsequent registrations of the same filesystem type are ignored.
   void RegisterFilesystem(const Filesystem& filesystem);
 
-  // Removes a directory.
-  bool RemoveDirectory(const std::string& path) const;
-
   bool experimental_features_enabled() const {
     return experimental_features_enabled_;
   }
@@ -120,6 +103,10 @@ class DiskManager {
   // Gets a device file from the cache mapping from sysfs path to device file.
   std::string GetDeviceFileFromCache(const std::string& device_path) const;
 
+  // Returns a Filesystem object if a given filesystem type is supported.
+  // Otherwise, it returns NULL.
+  const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
+
   // Determines a device/disk event from a udev block device change.
   DeviceEvent::EventType ProcessBlockDeviceEvent(const UdevDevice& device,
       const char *action);
@@ -127,6 +114,9 @@ class DiskManager {
   // Determines a device/disk event from a udev SCSI device change.
   DeviceEvent::EventType ProcessScsiDeviceEvent(const UdevDevice& device,
       const char *action);
+
+  // An object that provides platform service.
+  Platform* platform_;
 
   // The root udev object.
   mutable struct udev* udev_;
@@ -159,6 +149,7 @@ class DiskManager {
   FRIEND_TEST(DiskManagerTest, CreateExternalMounter);
   FRIEND_TEST(DiskManagerTest, CreateSystemMounter);
   FRIEND_TEST(DiskManagerTest, GetDeviceFileFromCache);
+  FRIEND_TEST(DiskManagerTest, GetFilesystem);
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
 
   DISALLOW_COPY_AND_ASSIGN(DiskManager);
