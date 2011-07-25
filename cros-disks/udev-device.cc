@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cros-disks/udev-device.h"
+
 #include <fcntl.h>
 #include <libudev.h>
 #include <sys/statvfs.h>
-
-#include <fstream>
 
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
@@ -14,10 +14,8 @@
 #include <base/string_util.h>
 #include <rootdev/rootdev.h>
 
-#include "cros-disks/udev-device.h"
+#include "cros-disks/mount-info.h"
 
-using std::ifstream;
-using std::istream;
 using std::string;
 using std::vector;
 
@@ -200,27 +198,11 @@ vector<string> UdevDevice::GetMountPaths() const {
 }
 
 vector<string> UdevDevice::GetMountPaths(const string& device_path) {
-  ifstream fs("/proc/mounts");
-  if (fs.is_open()) {
-    return ParseMountPaths(device_path, fs);
+  MountInfo mount_info;
+  if (mount_info.RetrieveFromCurrentProcess()) {
+    return mount_info.GetMountPaths(device_path);
   }
-  LOG(ERROR) << "Unable to parse /proc/mounts";
   return vector<string>();
-}
-
-vector<string> UdevDevice::ParseMountPaths(const string& device_path,
-    istream& stream) {
-  vector<string> mount_paths;
-  string line;
-  while (std::getline(stream, line)) {
-    vector<string> tokens;
-    base::SplitString(line, ' ', &tokens);
-    if (tokens.size() >= 2) {
-      if (tokens[0] == device_path)
-        mount_paths.push_back(tokens[1]);
-    }
-  }
-  return mount_paths;
 }
 
 Disk UdevDevice::ToDisk() const {

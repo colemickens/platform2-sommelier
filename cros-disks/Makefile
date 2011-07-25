@@ -37,8 +37,16 @@ RM_ON_CLEAN += $(OUT)disks_testrunner
 
 # Some shortcuts
 all: disks
+
 disks: dbus-headers
-	make $(OUT)disks
+	$(MAKE) $(OUT)disks
+
 dbus-headers: cros-disks-server.h
+
 tests: dbus-headers
-	make $(OUT)disks_testrunner
+	$(MAKE) $(OUT)disks_testrunner
+
+runtests: tests
+	"$(OUT)disks_testrunner" --gtest_filter='-*.RunAsRoot*'
+	sudo LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" \
+		"$(OUT)disks_testrunner" --gtest_filter='*.RunAsRoot*'

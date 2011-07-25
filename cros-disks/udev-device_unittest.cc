@@ -2,18 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <libudev.h>
+#include "cros-disks/udev-device.h"
 
-#include <sstream>
+#include <libudev.h>
 
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include "cros-disks/udev-device.h"
-
-using std::ostream;
 using std::string;
-using std::stringstream;
 using std::vector;
 
 namespace cros_disks {
@@ -21,8 +17,12 @@ namespace cros_disks {
 class UdevDeviceTest : public ::testing::Test {
  public:
   UdevDeviceTest()
-    : udev_(udev_new()),
+    : udev_(NULL),
       udev_device_(NULL) {
+  }
+
+  virtual void SetUp() {
+    udev_ = udev_new();
     SelectUdevDeviceForTest();
     if (IsUdevDeviceAvailableForTesting())
       LOG(INFO) << "A udev device is available for testing.";
@@ -30,16 +30,16 @@ class UdevDeviceTest : public ::testing::Test {
       LOG(INFO) << "No udev device is available for testing. ";
   }
 
-  virtual ~UdevDeviceTest() {
-    if (udev_device_)
+  virtual void TearDown() {
+    if (udev_device_) {
       udev_device_unref(udev_device_);
-    if (udev_)
+      udev_device_ = NULL;
+    }
+    if (udev_) {
       udev_unref(udev_);
+      udev_ = NULL;
+    }
   }
-
-  virtual void SetUp() {}
-
-  virtual void TearDown() {}
 
   struct udev* udev() {
     return udev_;
@@ -51,17 +51,6 @@ class UdevDeviceTest : public ::testing::Test {
 
   bool IsUdevDeviceAvailableForTesting() const {
     return (udev_ != NULL && udev_device_ != NULL);
-  }
-
-  static ostream* GenerateTestMountFileContent(ostream* stream) {
-    *stream << "rootfs / rootfs rw 0 0\n"
-      << "none /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0\n"
-      << "none /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n"
-      << "/dev/sda1 /boot ext2 rw,relatime,errors=continue 0 0\n"
-      << "none /dev/shm tmpfs rw,nosuid,nodev,relatime 0 0\n"
-      << "/dev/sda1 / ext2 rw,relatime,errors=continue 0 0\n"
-      << "/dev/sdb1 /opt ext2 rw,relatime,errors=continue 0 0\n";
-    return stream;
   }
 
  private:
@@ -175,40 +164,6 @@ TEST_F(UdevDeviceTest, GetMountPaths) {
     UdevDevice device(udev_device());
     vector<string> mount_paths = device.GetMountPaths();
     EXPECT_FALSE(mount_paths.empty());
-  }
-}
-
-TEST_F(UdevDeviceTest, ParseMountPathsReturnsNoPaths) {
-  stringstream stream;
-  GenerateTestMountFileContent(&stream);
-
-  vector<string> mount_paths;
-  mount_paths = UdevDevice::ParseMountPaths("/dev/sdc1", stream);
-  EXPECT_EQ(0, mount_paths.size());
-}
-
-TEST_F(UdevDeviceTest, ParseMountPathsReturnsOnePath) {
-  stringstream stream;
-  GenerateTestMountFileContent(&stream);
-
-  vector<string> mount_paths;
-  mount_paths = UdevDevice::ParseMountPaths("/dev/sdb1", stream);
-  EXPECT_EQ(1, mount_paths.size());
-  if (mount_paths.size() == 1) {
-    EXPECT_EQ("/opt", mount_paths[0]);
-  }
-}
-
-TEST_F(UdevDeviceTest, ParseMountPathsReturnsMultiplePaths) {
-  stringstream stream;
-  GenerateTestMountFileContent(&stream);
-
-  vector<string> mount_paths;
-  mount_paths = UdevDevice::ParseMountPaths("/dev/sda1", stream);
-  EXPECT_EQ(2, mount_paths.size());
-  if (mount_paths.size() == 2) {
-    EXPECT_EQ("/boot", mount_paths[0]);
-    EXPECT_EQ("/", mount_paths[1]);
   }
 }
 

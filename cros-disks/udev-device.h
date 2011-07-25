@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_UDEV_DEVICE_H_
 #define CROS_DISKS_UDEV_DEVICE_H_
 
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -68,11 +67,6 @@ class UdevDevice {
   static std::vector<std::string> GetMountPaths(
       const std::string& device_path);
 
-  // Gets the mount paths for an input stream that has the
-  // same format as /proc/mounts
-  static std::vector<std::string> ParseMountPaths(
-      const std::string& device_path, std::istream& stream);
-
   // Returns a Disk object based on the device information.
   Disk ToDisk() const;
 
@@ -81,6 +75,8 @@ class UdevDevice {
   bool IsValueBooleanTrue(const char *value) const;
 
   mutable struct udev_device *dev_;
+
+  DISALLOW_COPY_AND_ASSIGN(UdevDevice);
 };
 
 }  // namespace cros_disks
