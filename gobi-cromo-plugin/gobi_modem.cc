@@ -442,7 +442,8 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
   else
     LOG(WARNING) << "Operation Enable(" << enable
                  << ") on modem in state: " << Enabled()
-                 << " returning error \"" << error.message() << "\"";
+                 << " returning error \"" << error.name() << " - "
+                 << error.message() << "\"";
   return false;
 }
 
