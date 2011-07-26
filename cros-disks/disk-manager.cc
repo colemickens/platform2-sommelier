@@ -34,7 +34,7 @@ static const char kScsiDevice[] = "scsi_device";
 // instead of hardcoding as chronos
 static const char kMountDefaultUser[] = "chronos";
 static const char kUnmountOptionForce[] = "force";
-static const char kMountRootPrefix[] = "/media/";
+static const char kMountRootPrefix[] = "/media/removable/";
 static const char kUdevAddAction[] = "add";
 static const char kUdevChangeAction[] = "change";
 static const char kUdevRemoveAction[] = "remove";
