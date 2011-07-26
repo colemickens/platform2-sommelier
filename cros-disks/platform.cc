@@ -5,9 +5,11 @@
 #include "cros-disks/platform.h"
 
 #include <pwd.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
@@ -18,10 +20,20 @@ namespace cros_disks {
 
 static const unsigned kFallbackPasswordBufferSize = 16384;
 
-Platform::Platform() {
+Platform::Platform()
+    : experimental_features_enabled_(false) {
 }
 
 Platform::~Platform() {
+}
+
+bool Platform::CreateDirectory(const string& path) const {
+  if (!file_util::CreateDirectory(FilePath(path))) {
+    LOG(ERROR) << "Failed to create directory '" << path << "'";
+    return false;
+  }
+  LOG(INFO) << "Created directory '" << path << "'";
+  return true;
 }
 
 bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
@@ -38,8 +50,8 @@ bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
   return true;
 }
 
-bool Platform::CreateOrReuseEmptyDirectoryWithFallback(string* path,
-    unsigned max_suffix_to_retry) const {
+bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
+    string* path, unsigned max_suffix_to_retry) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
 
   if (CreateOrReuseEmptyDirectory(*path))
@@ -56,7 +68,7 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(string* path,
 }
 
 bool Platform::GetUserAndGroupId(const string& username,
-    uid_t *uid, gid_t *gid) const {
+                                 uid_t *uid, gid_t *gid) const {
   long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
@@ -66,7 +78,7 @@ bool Platform::GetUserAndGroupId(const string& username,
   getpwnam_r(username.c_str(), &password_buffer, buffer.get(), buffer_size,
       &password_buffer_ptr);
   if (password_buffer_ptr == NULL) {
-    PLOG(WARNING) << "Could not determine user and group ID of username '"
+    PLOG(WARNING) << "Failed to determine user and group ID of username '"
       << username << "'";
     return false;
   }
@@ -85,6 +97,34 @@ bool Platform::RemoveEmptyDirectory(const string& path) const {
     PLOG(WARNING) << "Failed to remove directory '" << path << "'";
     return false;
   }
+  return true;
+}
+
+bool Platform::SetOwnership(const string& path,
+                            uid_t user_id, gid_t group_id) const {
+  if (chown(path.c_str(), user_id, group_id)) {
+    PLOG(ERROR) << "Failed to set ownership of '" << path
+                << "' to (uid=" << user_id << ", gid=" << group_id << ")";
+    return false;
+  }
+  return true;
+}
+
+bool Platform::SetPermissions(const string& path, mode_t mode) const {
+  if (chmod(path.c_str(), mode)) {
+    PLOG(ERROR) << "Failed to set permissions of '" << path
+                << "' to " << base::StringPrintf("%04o", mode);
+    return false;
+  }
+  return true;
+}
+
+bool Platform::Unmount(const string& path) const {
+  if (umount(path.c_str()) != 0) {
+    PLOG(ERROR) << "Failed to unmount '" << path << "'";
+    return false;
+  }
+  LOG(INFO) << "Unmount '" << path << "'";
   return true;
 }
 

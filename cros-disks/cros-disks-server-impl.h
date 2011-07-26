@@ -16,9 +16,12 @@
 
 namespace cros_disks {
 
+class ArchiveManager;
 class DeviceEvent;
 class DiskManager;
 class FormatManager;
+class MountManager;
+class Platform;
 
 // The d-bus server for the cros-disks daemon.
 //
@@ -26,10 +29,13 @@ class FormatManager;
 //
 // DBus::Connection server_conn = DBus::Connection::SystemBus();
 // server_conn.request_name("org.chromium.CrosDisks");
-// DiskManager disk_manager;
+// ArchiveManager archive_manager(...);
+// DiskManager disk_manager(...);
 // FormatManager format_manager;
 // CrosDisksServer* server = new(std::nothrow)
-//     CrosDisksServer(server_conn, &disk_manager, &format_manager);
+//     CrosDisksServer(server_conn, &platform,
+//                     &archive_manager,
+//                     &disk_manager, &format_manager);
 //
 // At this point the server should be attached to the main loop.
 //
@@ -41,8 +47,10 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public SessionManagerObserver {
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
-      DiskManager* disk_manager,
-      FormatManager* format_manager);
+                  Platform* platform,
+                  ArchiveManager* archive_manager,
+                  DiskManager* disk_manager,
+                  FormatManager* format_manager);
   virtual ~CrosDisksServer();
 
   // Called by FormatManager when the formatting is finished
@@ -146,9 +154,15 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // A list of deferred disk events to be fired.
   DeviceEventQueue device_event_queue_;
 
+  Platform* platform_;
+
+  ArchiveManager* archive_manager_;
+
   DiskManager* disk_manager_;
 
   FormatManager* format_manager_;
+
+  std::vector<MountManager*> mount_managers_;
 
   // This variable is set to true if any new device event should be queued
   // instead of being dispatched immediately.

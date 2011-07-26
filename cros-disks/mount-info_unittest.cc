@@ -82,12 +82,29 @@ TEST_F(MountInfoTest, GetMountPaths) {
   EXPECT_TRUE(expected_paths == manager_.GetMountPaths("/dev/sdc1"));
 }
 
+TEST_F(MountInfoTest, HasMountPath) {
+  EXPECT_TRUE(manager_.RetrieveFromFile(mount_file_));
+  EXPECT_FALSE(manager_.HasMountPath(""));
+  EXPECT_FALSE(manager_.HasMountPath("/"));
+  EXPECT_FALSE(manager_.HasMountPath("/dev/sda1"));
+  EXPECT_FALSE(manager_.HasMountPath("/dev/sdb1"));
+  EXPECT_FALSE(manager_.HasMountPath("/nonexistent-path"));
+  EXPECT_TRUE(manager_.HasMountPath("/dev/shm"));
+  EXPECT_TRUE(manager_.HasMountPath("/home"));
+  EXPECT_TRUE(manager_.HasMountPath("/media/Test 1"));
+  EXPECT_TRUE(manager_.HasMountPath("/proc"));
+  EXPECT_TRUE(manager_.HasMountPath("/sys"));
+  EXPECT_TRUE(manager_.HasMountPath("/tmp"));
+  EXPECT_TRUE(manager_.HasMountPath("/var"));
+}
+
 TEST_F(MountInfoTest, RetrieveFromFile) {
   EXPECT_TRUE(manager_.RetrieveFromFile(mount_file_));
 }
 
 TEST_F(MountInfoTest, RetrieveFromCurrentProcess) {
   EXPECT_TRUE(manager_.RetrieveFromCurrentProcess());
+  EXPECT_TRUE(manager_.HasMountPath("/proc"));
 }
 
 }  // namespace cros_disks

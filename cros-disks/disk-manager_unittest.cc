@@ -21,10 +21,12 @@ using std::vector;
 
 namespace cros_disks {
 
+static const char kMountRootDirectory[] = "/media/removable";
+
 class DiskManagerTest : public ::testing::Test {
  public:
-  DiskManagerTest() :
-    manager_(&platform_) {
+  DiskManagerTest()
+      : manager_(kMountRootDirectory, &platform_) {
   }
 
  protected:
@@ -49,7 +51,7 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   options.push_back("nosuid");
 
   Mounter *mounter =
-    manager_.CreateMounter(disk, filesystem, target_path, options);
+      manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -73,26 +75,16 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   options.push_back("nosuid");
 
   Mounter *mounter =
-    manager_.CreateMounter(disk, filesystem, target_path, options);
+      manager_.CreateMounter(disk, filesystem, target_path, options);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
   EXPECT_EQ("nodev,noexec,nosuid,utf8,shortname=mixed,rw",
-      mounter->mount_options().ToString());
+            mounter->mount_options().ToString());
 }
 
 TEST_F(DiskManagerTest, EnumerateDisks) {
   vector<Disk> disks = manager_.EnumerateDisks();
-}
-
-TEST_F(DiskManagerTest, GetDeviceFileFromCache) {
-  string device_path = "/sys/block/sda";
-  string device_file = "/dev/sda";
-
-  EXPECT_EQ("", manager_.GetDeviceFileFromCache(device_path));
-  // Mimic the device file being added to the cache.
-  manager_.device_file_map_[device_path] = device_file;
-  EXPECT_EQ(device_file, manager_.GetDeviceFileFromCache(device_path));
 }
 
 TEST_F(DiskManagerTest, GetDiskByDevicePath) {
@@ -120,18 +112,18 @@ TEST_F(DiskManagerTest, GetFilesystem) {
   Filesystem normal_fs("normal-fs");
   EXPECT_EQ(null_pointer, manager_.GetFilesystem(normal_fs.type()));
   manager_.RegisterFilesystem(normal_fs);
-  manager_.set_experimental_features_enabled(false);
+  platform_.set_experimental_features_enabled(false);
   EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
-  manager_.set_experimental_features_enabled(true);
+  platform_.set_experimental_features_enabled(true);
   EXPECT_NE(null_pointer, manager_.GetFilesystem(normal_fs.type()));
 
   Filesystem experimental_fs("experimental-fs");
   experimental_fs.set_is_experimental(true);
   EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
   manager_.RegisterFilesystem(experimental_fs);
-  manager_.set_experimental_features_enabled(false);
+  platform_.set_experimental_features_enabled(false);
   EXPECT_EQ(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
-  manager_.set_experimental_features_enabled(true);
+  platform_.set_experimental_features_enabled(true);
   EXPECT_NE(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
 }
 
@@ -139,54 +131,6 @@ TEST_F(DiskManagerTest, GetFilesystemTypeOfNonexistentDevice) {
   string device_path = "/dev/nonexistent-path";
   string filesystem_type = manager_.GetFilesystemTypeOfDevice(device_path);
   EXPECT_EQ("", filesystem_type);
-}
-
-TEST_F(DiskManagerTest, ExtractSupportedUnmountOptions) {
-  int unmount_flags = 0;
-  int expected_unmount_flags = MNT_FORCE;
-  vector<string> options;
-  options.push_back("force");
-  EXPECT_TRUE(manager_.ExtractUnmountOptions(options, &unmount_flags));
-  EXPECT_EQ(expected_unmount_flags, unmount_flags);
-}
-
-TEST_F(DiskManagerTest, ExtractUnsupportedUnmountOptions) {
-  int unmount_flags = 0;
-  vector<string> options;
-  options.push_back("foo");
-  EXPECT_FALSE(manager_.ExtractUnmountOptions(options, &unmount_flags));
-}
-
-TEST_F(DiskManagerTest, CreateMountDirectoryAlreadyExists) {
-  Disk disk;
-  string mount_path = manager_.CreateMountDirectory(disk, "/proc");
-  EXPECT_EQ("", mount_path);
-}
-
-TEST_F(DiskManagerTest, CreateMountDirectoryWithGivenName) {
-  Disk disk;
-  string target_path = "/tmp/cros-disks-test";
-  string mount_path = manager_.CreateMountDirectory(disk, target_path);
-  EXPECT_EQ(target_path, mount_path);
-  EXPECT_EQ(0, rmdir(target_path.c_str()));
-}
-
-TEST_F(DiskManagerTest, MountDiskWithInvalidDevicePath) {
-  string device_path = "";
-  string mount_path = "/tmp/cros-disks-test";
-  string filesystem_type = "ext3";
-  vector<string> options;
-  EXPECT_FALSE(manager_.Mount(device_path, filesystem_type, options,
-        &mount_path));
-}
-
-TEST_F(DiskManagerTest, MountDiskAlreadyMounted) {
-  string device_path = "/proc";
-  string mount_path = "/tmp/cros-disks-test";
-  string filesystem_type = "ext3";
-  vector<string> options;
-  EXPECT_FALSE(manager_.Mount(device_path, filesystem_type, options,
-        &mount_path));
 }
 
 TEST_F(DiskManagerTest, RegisterFilesystem) {
@@ -207,16 +151,72 @@ TEST_F(DiskManagerTest, RegisterFilesystem) {
   EXPECT_TRUE(filesystems.find(vfat_fs.type()) != filesystems.end());
 }
 
-TEST_F(DiskManagerTest, UnmountDiskWithInvalidDevicePath) {
-  string device_path = "";
-  vector<string> options;
-  EXPECT_FALSE(manager_.Unmount(device_path, options));
+TEST_F(DiskManagerTest, CanMount) {
+  EXPECT_TRUE(manager_.CanMount("/dev/sda1"));
+  EXPECT_TRUE(manager_.CanMount("/devices/block/sda/sda1"));
+  EXPECT_TRUE(manager_.CanMount("/sys/devices/block/sda/sda1"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk1"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk1/"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk 1"));
+  EXPECT_FALSE(manager_.CanMount("/media/archive/test.zip"));
+  EXPECT_FALSE(manager_.CanMount("/media/archive/test.zip/"));
+  EXPECT_FALSE(manager_.CanMount("/media/archive/test 1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk1/test.zip"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk1/test 1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/disk1/dir1/test.zip"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/test.zip/test1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanMount(""));
+  EXPECT_FALSE(manager_.CanMount("/tmp"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable"));
+  EXPECT_FALSE(manager_.CanMount("/media/removable/"));
+  EXPECT_FALSE(manager_.CanMount("/media/archive"));
+  EXPECT_FALSE(manager_.CanMount("/media/archive/"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads/"));
 }
 
-TEST_F(DiskManagerTest, UnmountDiskWithNonexistentDevicePath) {
-  string device_path = "/dev/nonexistent-path";
+TEST_F(DiskManagerTest, CanUnmount) {
+  EXPECT_TRUE(manager_.CanUnmount("/dev/sda1"));
+  EXPECT_TRUE(manager_.CanUnmount("/devices/block/sda/sda1"));
+  EXPECT_TRUE(manager_.CanUnmount("/sys/devices/block/sda/sda1"));
+  EXPECT_TRUE(manager_.CanUnmount("/media/removable/disk1"));
+  EXPECT_TRUE(manager_.CanUnmount("/media/removable/disk1/"));
+  EXPECT_TRUE(manager_.CanUnmount("/media/removable/disk 1"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/archive/test.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/archive/test.zip/"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/archive/test 1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable/disk1/test.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable/disk1/test 1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable/disk1/dir1/test.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable/test.zip/test1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount(""));
+  EXPECT_FALSE(manager_.CanUnmount("/tmp"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/removable/"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/archive"));
+  EXPECT_FALSE(manager_.CanUnmount("/media/archive/"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads/"));
+}
+
+TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
+  string filesystem_type = "ext3";
+  string source_path = "/dev/nonexistent-path";
+  string mount_path = "/tmp/cros-disks-test";
   vector<string> options;
-  EXPECT_FALSE(manager_.Unmount(device_path, options));
+  EXPECT_EQ(kMountErrorInvalidDevicePath,
+            manager_.DoMount(source_path, filesystem_type, options,
+                             mount_path));
+}
+
+TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
+  string source_path = "/dev/nonexistent-path";
+  vector<string> options;
+  options.push_back("invalid-unmount-option");
+  EXPECT_EQ(kMountErrorInvalidUnmountOptions,
+            manager_.DoUnmount(source_path, options));
 }
 
 }  // namespace cros_disks

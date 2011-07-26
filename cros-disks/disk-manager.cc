@@ -27,33 +27,28 @@ using std::vector;
 
 namespace cros_disks {
 
-static const char kBlockSubsystem[] = "block";
-static const char kScsiSubsystem[] = "scsi";
-static const char kScsiDevice[] = "scsi_device";
 // TODO(benchan): Infer the current user/group from session manager
 // instead of hardcoding as chronos
 static const char kMountDefaultUser[] = "chronos";
-static const char kUnmountOptionForce[] = "force";
-static const char kMountRootPrefix[] = "/media/removable/";
+static const char kBlockSubsystem[] = "block";
+static const char kScsiSubsystem[] = "scsi";
+static const char kScsiDevice[] = "scsi_device";
 static const char kUdevAddAction[] = "add";
 static const char kUdevChangeAction[] = "change";
 static const char kUdevRemoveAction[] = "remove";
-static const unsigned kMaxNumMountTrials = 10000;
 
-DiskManager::DiskManager(Platform* platform)
-    : platform_(platform),
+DiskManager::DiskManager(const string& mount_root, Platform* platform)
+    : MountManager(mount_root, platform),
       udev_(udev_new()),
       udev_monitor_fd_(0),
-      blkid_cache_(NULL),
-      experimental_features_enabled_(false) {
-  CHECK(platform_) << "Invalid platform object";
+      blkid_cache_(NULL) {
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-      kBlockSubsystem, NULL);
+                                                  kBlockSubsystem, NULL);
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
-      kScsiSubsystem, kScsiDevice);
+                                                  kScsiSubsystem, kScsiDevice);
   udev_monitor_enable_receiving(udev_monitor_);
   udev_monitor_fd_ = udev_monitor_get_fd(udev_monitor_);
 }
@@ -61,6 +56,11 @@ DiskManager::DiskManager(Platform* platform)
 DiskManager::~DiskManager() {
   udev_monitor_unref(udev_monitor_);
   udev_unref(udev_);
+}
+
+bool DiskManager::Initialize() {
+  RegisterDefaultFilesystems();
+  return MountManager::Initialize();
 }
 
 vector<Disk> DiskManager::EnumerateDisks() const {
@@ -128,7 +128,7 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
 
   if (disk_added) {
     set<string>::const_iterator disk_iter =
-      disks_detected_.find(device_path);
+        disks_detected_.find(device_path);
     if (disk_iter != disks_detected_.end()) {
       // Disk already exists, so remove it and then add it again.
       event_type = DeviceEvent::kDiskAddedAfterRemoved;
@@ -208,7 +208,7 @@ bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
 }
 
 bool DiskManager::GetDiskByDevicePath(const string& device_path,
-    Disk *disk) const {
+                                      Disk *disk) const {
   if (device_path.empty())
     return false;
 
@@ -247,20 +247,14 @@ bool DiskManager::GetDiskByDevicePath(const string& device_path,
   return disk_found;
 }
 
-string DiskManager::GetDeviceFileFromCache(const string& device_path) const {
-  map<string, string>::const_iterator map_iterator =
-    device_file_map_.find(device_path);
-  return (map_iterator != device_file_map_.end()) ? map_iterator->second : "";
-}
-
 const Filesystem* DiskManager::GetFilesystem(
-    const std::string& filesystem_type) const {
+    const string& filesystem_type) const {
   map<string, Filesystem>::const_iterator filesystem_iterator =
-    filesystems_.find(filesystem_type);
+      filesystems_.find(filesystem_type);
   if (filesystem_iterator == filesystems_.end())
     return NULL;
 
-  if (!experimental_features_enabled_ &&
+  if (!platform_->experimental_features_enabled() &&
       filesystem_iterator->second.is_experimental())
     return NULL;
 
@@ -271,178 +265,16 @@ string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
   string filesystem_type;
   if (blkid_cache_ != NULL || blkid_get_cache(&blkid_cache_, NULL) == 0) {
     blkid_dev dev =
-      blkid_get_dev(blkid_cache_, device_path.c_str(), BLKID_DEV_NORMAL);
+        blkid_get_dev(blkid_cache_, device_path.c_str(), BLKID_DEV_NORMAL);
     if (dev) {
       const char *type = blkid_get_tag_value(blkid_cache_, "TYPE",
-          device_path.c_str());
+                                             device_path.c_str());
       if (type) {
         filesystem_type = type;
       }
     }
   }
   return filesystem_type;
-}
-
-string DiskManager::CreateMountDirectory(const Disk& disk,
-    const string& target_path) const {
-  if (target_path.empty()) {
-    string mount_path = kMountRootPrefix + disk.GetPresentationName();
-    if (platform_->CreateOrReuseEmptyDirectoryWithFallback(&mount_path,
-          kMaxNumMountTrials)) {
-      return mount_path;
-    }
-  } else {
-    if (platform_->CreateOrReuseEmptyDirectory(target_path)) {
-      return target_path;
-    }
-  }
-  return string();
-}
-
-bool DiskManager::ExtractUnmountOptions(const vector<string>& options,
-    int *unmount_flags) const {
-  if (unmount_flags == NULL)
-    return false;
-
-  *unmount_flags = 0;
-  for (vector<string>::const_iterator
-      option_iterator = options.begin(); option_iterator != options.end();
-      ++option_iterator) {
-    const string& option = *option_iterator;
-    if (option == kUnmountOptionForce) {
-      *unmount_flags |= MNT_FORCE;
-    } else {
-      LOG(ERROR) << "Got unsupported unmount option: " << option;
-      return false;
-    }
-  }
-  return true;
-}
-
-bool DiskManager::Mount(const string& device_path,
-    const string& filesystem_type, const vector<string>& options,
-    string *mount_path) {
-  if (device_path.empty()) {
-    LOG(ERROR) << "Invalid device path.";
-    return false;
-  }
-
-  Disk disk;
-  if (!GetDiskByDevicePath(device_path, &disk)) {
-    LOG(ERROR) << "Device not found: " << device_path;
-    return false;
-  }
-
-  if (disk.is_mounted()) {
-    LOG(ERROR) << "'" << device_path << "' is already mounted.";
-    return false;
-  }
-
-  const string& device_file = disk.device_file();
-  if (device_file.empty()) {
-    LOG(ERROR) << "'" << device_path << "' does not have a device file.";
-    return false;
-  }
-
-  // Cache the mapping from device sysfs path to device file.
-  // After a device is removed, the sysfs path may no longer exist,
-  // so this cache helps Unmount to search for a mounted device file
-  // based on a removed sysfs path.
-  device_file_map_[disk.native_path()] = device_file;
-
-  // If no explicit filesystem type is given, try to determine it via blkid.
-  string device_filesystem_type = filesystem_type.empty() ?
-    GetFilesystemTypeOfDevice(device_file) : filesystem_type;
-  if (device_filesystem_type.empty()) {
-    LOG(ERROR) << "Failed to determine the file system type of device '"
-      << device_path << "'";
-    return false;
-  }
-
-  const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
-  if (filesystem == NULL) {
-    LOG(ERROR) << "File system type '" << device_filesystem_type
-      << "' on device '" << device_path << "' is not supported.";
-    return false;
-  }
-
-  string mount_target = mount_path ? *mount_path : string();
-  mount_target = CreateMountDirectory(disk, mount_target);
-  if (mount_target.empty()) {
-    LOG(ERROR) << "Failed to create mount directory for '"
-      << device_path << "'";
-    return false;
-  }
-
-  scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem,
-        mount_target, options));
-  if (!mounter->Mount()) {
-    LOG(ERROR) << "Failed to mount '" << device_path << "' to '"
-      << mount_target << "'";
-    platform_->RemoveEmptyDirectory(mount_target);
-    return false;
-  }
-
-  if (mount_path)
-    *mount_path = mount_target;
-  return true;
-}
-
-bool DiskManager::Unmount(const string& device_path,
-    const vector<string>& options) {
-
-  if (device_path.empty()) {
-    LOG(ERROR) << "Invalid device path.";
-    return false;
-  }
-
-  string device_file = GetDeviceFileFromCache(device_path);
-  if (device_file.empty()) {
-    Disk disk;
-    if (GetDiskByDevicePath(device_path, &disk)) {
-      device_file = disk.device_file();
-    }
-  }
-
-  if (device_file.empty()) {
-    LOG(ERROR) << "Could not find the device file for '" << device_path << "'";
-    return false;
-  }
-
-  // Obtain the mount paths from /proc/mounts, instead of using
-  // udev_enumerate_scan_devices, as the device node may no longer exist after
-  // device removal.
-  vector<string> mount_paths =
-    UdevDevice::GetMountPaths(device_file);
-  if (mount_paths.empty()) {
-    LOG(ERROR) << "'" << device_path << "' is not mounted.";
-    return false;
-  }
-
-  int unmount_flags;
-  if (!ExtractUnmountOptions(options, &unmount_flags)) {
-    LOG(ERROR) << "Invalid unmount options.";
-    return false;
-  }
-
-  bool unmount_ok = true;
-  for (vector<string>::const_iterator
-      path_iterator = mount_paths.begin();
-      path_iterator != mount_paths.end(); ++path_iterator) {
-    if (umount2(path_iterator->c_str(), unmount_flags) == 0) {
-      LOG(INFO) << "Unmounted '" << device_path << "' from '"
-        << *path_iterator << "'";
-    } else {
-      PLOG(ERROR) << "Failed to unmount '" << device_path
-        << "' from '" << *path_iterator << "'";
-      unmount_ok = false;
-    }
-    platform_->RemoveEmptyDirectory(*path_iterator);
-  }
-
-  device_file_map_.erase(device_path);
-
-  return unmount_ok;
 }
 
 void DiskManager::RegisterDefaultFilesystems() {
@@ -492,15 +324,15 @@ void DiskManager::RegisterFilesystem(const Filesystem& filesystem) {
 }
 
 Mounter* DiskManager::CreateMounter(const Disk& disk,
-    const Filesystem& filesystem, const string& target_path,
-    const vector<string>& options) const {
-  const vector<string>& extra_options =
-    filesystem.extra_mount_options();
+                                    const Filesystem& filesystem,
+                                    const string& target_path,
+                                    const vector<string>& options) const {
+  const vector<string>& extra_options = filesystem.extra_mount_options();
   vector<string> extended_options;
   extended_options.reserve(options.size() + extra_options.size());
   extended_options.assign(options.begin(), options.end());
   extended_options.insert(extended_options.end(),
-      extra_options.begin(), extra_options.end());
+                          extra_options.begin(), extra_options.end());
 
   string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
@@ -508,14 +340,14 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
     uid_t uid;
     gid_t gid;
     if (platform_->GetUserAndGroupId(kMountDefaultUser, &uid, &gid)) {
-      default_user_id = StringPrintf("%d", uid);
-      default_group_id = StringPrintf("%d", gid);
+      default_user_id = base::StringPrintf("%d", uid);
+      default_group_id = base::StringPrintf("%d", gid);
     }
   }
 
   MountOptions mount_options;
   mount_options.Initialize(extended_options, set_user_and_group_id,
-      default_user_id, default_group_id);
+                           default_user_id, default_group_id);
 
   if (filesystem.is_mounted_read_only() ||
       disk.is_read_only() || disk.is_optical_disk()) {
@@ -525,12 +357,89 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   Mounter* mounter;
   if (filesystem.requires_external_mounter()) {
     mounter = new ExternalMounter(disk.device_file(), target_path,
-        filesystem.mount_type(), mount_options);
+                                  filesystem.mount_type(), mount_options);
   } else {
     mounter = new SystemMounter(disk.device_file(), target_path,
-        filesystem.mount_type(), mount_options);
+                                filesystem.mount_type(), mount_options);
   }
   return mounter;
+}
+
+bool DiskManager::CanMount(const string& source_path) const {
+  // The following paths can be mounted:
+  //     /sys/...
+  //     /devices/...
+  //     /dev/...
+  return StartsWithASCII(source_path, "/sys/", true) ||
+      StartsWithASCII(source_path, "/devices/", true) ||
+      StartsWithASCII(source_path, "/dev/", true);
+}
+
+MountErrorType DiskManager::DoMount(const string& source_path,
+                                    const string& filesystem_type,
+                                    const vector<string>& options,
+                                    const string& mount_path) {
+  CHECK(!source_path.empty()) << "Invalid source path argument";
+  CHECK(!mount_path.empty()) << "Invalid mount path argument";
+
+  Disk disk;
+  if (!GetDiskByDevicePath(source_path, &disk)) {
+    LOG(ERROR) << "'" << source_path << "' is not a valid device.";
+    return kMountErrorInvalidDevicePath;
+  }
+
+  const string& device_file = disk.device_file();
+  if (device_file.empty()) {
+    LOG(ERROR) << "'" << source_path << "' does not have a device file";
+    return kMountErrorInvalidDevicePath;
+  }
+
+  // If no explicit filesystem type is given, try to determine it via blkid.
+  string device_filesystem_type = filesystem_type.empty() ?
+      GetFilesystemTypeOfDevice(device_file) : filesystem_type;
+  if (device_filesystem_type.empty()) {
+    LOG(ERROR) << "Failed to determine the file system type of device '"
+               << source_path << "'";
+    return kMountErrorUnknownFilesystem;
+  }
+
+  const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
+  if (filesystem == NULL) {
+    LOG(ERROR) << "File system type '" << device_filesystem_type
+               << "' on device '" << source_path << "' is not supported";
+    return kMountErrorUnsupportedFilesystem;
+  }
+
+  scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
+                                            options));
+  // TODO(benchan): Extract error from low-level mount operation.
+  return mounter->Mount() ? kMountErrorNone : kMountErrorUnknown;
+}
+
+MountErrorType DiskManager::DoUnmount(const string& path,
+                                      const vector<string>& options) {
+  CHECK(!path.empty()) << "Invalid path argument";
+
+  int unmount_flags;
+  if (!ExtractUnmountOptions(options, &unmount_flags)) {
+    LOG(ERROR) << "Invalid unmount options";
+    return kMountErrorInvalidUnmountOptions;
+  }
+
+  if (umount2(path.c_str(), unmount_flags) != 0) {
+    PLOG(ERROR) << "Failed to unmount '" << path << "'";
+    // TODO(benchan): Extract error from low-level unmount operation.
+    return kMountErrorUnknown;
+  }
+  return kMountErrorNone;
+}
+
+string DiskManager::SuggestMountPath(const string& source_path) const {
+  Disk disk;
+  GetDiskByDevicePath(source_path, &disk);
+  // If GetDiskByDevicePath fails, disk.GetPresentationName() returns
+  // the fallback presentation name.
+  return string(mount_root_) + "/" + disk.GetPresentationName();
 }
 
 }  // namespace cros_disks

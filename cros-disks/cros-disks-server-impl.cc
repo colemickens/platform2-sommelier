@@ -4,37 +4,19 @@
 
 #include "cros-disks/cros-disks-server-impl.h"
 
-#include <sys/mount.h>
-
 #include <base/logging.h>
 
+#include "cros-disks/archive-manager.h"
 #include "cros-disks/device-event.h"
 #include "cros-disks/disk.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
+#include "cros-disks/platform.h"
 
 using std::string;
 using std::vector;
 
 namespace cros_disks {
-
-// TODO(benchan): move these to common/chromeos/dbus/service_constants.
-enum MountSourceType {
-  kMountSourceInvalid = 0,
-  kMountSourceRemovableDevice = 1,
-  kMountSourceArchive = 2,
-  kMountSourceNetworkStorage = 3,
-};
-
-enum MountErrorType {
-  kMountErrorNone = 0,
-  kMountErrorUnknown = 1,
-  kMountErrorInternal = 2,
-  kMountErrorUnknownFilesystem = 101,
-  kMountErrorUnsupportedFilesystem = 102,
-  kMountErrorInvalidArchive = 201,
-  // TODO(benchan): Add more error types.
-};
 
 // TODO(rtc): this should probably be a flag.
 // TODO(benchan): move these to common/chromeos/dbus/service_constants.
@@ -44,14 +26,27 @@ static const char kPropertyExperimentalFeaturesEnabled[] =
   "ExperimentalFeaturesEnabled";
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
-    DiskManager* disk_manager,
-    FormatManager * format_manager)
+                                 Platform* platform,
+                                 ArchiveManager* archive_manager,
+                                 DiskManager* disk_manager,
+                                 FormatManager* format_manager)
     : DBus::ObjectAdaptor(connection, kServicePath),
+      platform_(platform),
+      archive_manager_(archive_manager),
       disk_manager_(disk_manager),
       format_manager_(format_manager),
       is_device_event_queued_(true) {
+  CHECK(platform_) << "Invalid platform object";
+  CHECK(archive_manager_) << "Invalid archive manager object";
   CHECK(disk_manager_) << "Invalid disk manager object";
   CHECK(format_manager_) << "Invalid format manager object";
+
+  // TODO(benchan): Refactor the code so that we don't have to pass
+  //                DiskManager, ArchiveManager, etc to the constructor
+  //                of CrosDisksServer, but instead pass a list of mount
+  //                managers.
+  mount_managers_.push_back(disk_manager_);
+  mount_managers_.push_back(archive_manager_);
 
   InitializeProperties();
   format_manager_->set_parent(this);
@@ -65,26 +60,27 @@ bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
 }
 
 string CrosDisksServer::GetDeviceFilesystem(const string& device_path,
-    ::DBus::Error& error) {  // NOLINT
+                                            DBus::Error& error) {  // NOLINT
   return disk_manager_->GetFilesystemTypeOfDevice(device_path);
 }
 
 void CrosDisksServer::SignalFormattingFinished(const string& device_path,
-    int status) {
+                                               int status) {
   if (status) {
     FormattingFinished(std::string("!") + device_path);
     LOG(ERROR) << "Could not format device '" << device_path
-      << "'. Formatting process failed with an exit code " << status;
+               << "'. Formatting process failed with an exit code " << status;
   } else {
     FormattingFinished(device_path);
   }
 }
 
 bool CrosDisksServer::FormatDevice(const string& device_path,
-      const string& filesystem, ::DBus::Error &error) {  // NOLINT
+                                   const string& filesystem,
+                                   DBus::Error &error) {  // NOLINT
   if (!format_manager_->StartFormatting(device_path, filesystem)) {
     LOG(ERROR) << "Could not format device " << device_path
-      << " as file system '" << filesystem << "'";
+               << " as file system '" << filesystem << "'";
     return false;
   }
   return true;
@@ -92,11 +88,12 @@ bool CrosDisksServer::FormatDevice(const string& device_path,
 
 // TODO(benchan): Deprecate this method.
 string CrosDisksServer::FilesystemMount(const string& device_path,
-    const string& filesystem_type, const vector<string>& mount_options,
-    DBus::Error& error) {  // NOLINT
+                                        const string& filesystem_type,
+                                        const vector<string>& mount_options,
+                                        DBus::Error& error) {  // NOLINT
   string mount_path;
   if (disk_manager_->Mount(device_path, filesystem_type, mount_options,
-        &mount_path)) {
+                           &mount_path) == kMountErrorNone) {
     DiskChanged(device_path);
   } else {
     string message = "Could not mount device " + device_path;
@@ -108,8 +105,9 @@ string CrosDisksServer::FilesystemMount(const string& device_path,
 
 // TODO(benchan): Deprecate this method.
 void CrosDisksServer::FilesystemUnmount(const string& device_path,
-    const vector<string>& mount_options, DBus::Error& error) {  // NOLINT
-  if (!disk_manager_->Unmount(device_path, mount_options)) {
+                                        const vector<string>& mount_options,
+                                        DBus::Error& error) {  // NOLINT
+  if (disk_manager_->Unmount(device_path, mount_options) != kMountErrorNone) {
     string message = "Could not unmount device " + device_path;
     LOG(ERROR) << message;
     error.set(kServiceErrorName, message.c_str());
@@ -117,27 +115,48 @@ void CrosDisksServer::FilesystemUnmount(const string& device_path,
 }
 
 void CrosDisksServer::Mount(const string& path,
-    const string& filesystem_type, const vector<string>& options,
-    DBus::Error& error) {  // NOLINT
+                            const string& filesystem_type,
+                            const vector<string>& options,
+                            DBus::Error& error) {  // NOLINT
+  MountErrorType error_type = kMountErrorInvalidPath;
+  MountSourceType source_type = kMountSourceInvalid;
   string mount_path;
-  if (disk_manager_->Mount(path, filesystem_type, options,
-        &mount_path)) {
+
+  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+       manager_iter != mount_managers_.end(); ++manager_iter) {
+    MountManager* manager = *manager_iter;
+    if (manager->CanMount(path)) {
+      source_type = manager->GetMountSourceType();
+      error_type = manager->Mount(path, filesystem_type, options, &mount_path);
+      break;
+    }
+  }
+
+  if (error_type == kMountErrorNone) {
     // TODO(benchan): Remove this DiskChanged signal when UI
     // no longer requires it.
     DiskChanged(path);
-    MountCompleted(kMountErrorNone, path, kMountSourceRemovableDevice,
-        mount_path);
   } else {
-    // TODO(benchan): Extract actual error type from disk manager.
-    MountCompleted(kMountErrorUnknown, path, kMountSourceRemovableDevice,
-        mount_path);
+    LOG(ERROR) << "Failed to mount '" << path << "'";
   }
+  MountCompleted(error_type, path, source_type, mount_path);
 }
 
 void CrosDisksServer::Unmount(const string& path,
-    const vector<string>& options, DBus::Error& error) {  // NOLINT
-  if (!disk_manager_->Unmount(path, options)) {
-    string message = "Could not unmount path " + path;
+                              const vector<string>& options,
+                              DBus::Error& error) {  // NOLINT
+  MountErrorType error_type = kMountErrorInvalidPath;
+  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+       manager_iter != mount_managers_.end(); ++manager_iter) {
+    MountManager* manager = *manager_iter;
+    if (manager->CanUnmount(path)) {
+      error_type = manager->Unmount(path, options);
+      break;
+    }
+  }
+
+  if (error_type != kMountErrorNone) {
+    string message = "Failed to unmount '" + path + "'";
     error.set(kServiceErrorName, message.c_str());
   }
 }
@@ -147,8 +166,8 @@ vector<string> CrosDisksServer::DoEnumerateDevices(
   vector<Disk> disks = disk_manager_->EnumerateDisks();
   vector<string> devices;
   devices.reserve(disks.size());
-  for (vector<Disk>::const_iterator disk_iterator(disks.begin());
-      disk_iterator != disks.end(); ++disk_iterator) {
+  for (vector<Disk>::const_iterator disk_iterator = disks.begin();
+       disk_iterator != disks.end(); ++disk_iterator) {
     if (!auto_mountable_only || disk_iterator->is_auto_mountable()) {
       devices.push_back(disk_iterator->native_path());
     }
@@ -167,7 +186,7 @@ vector<string> CrosDisksServer::EnumerateAutoMountableDevices(
 }
 
 DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
-    DBus::Error& error) {  // NOLINT
+                                              DBus::Error& error) {  // NOLINT
   Disk disk;
   if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
     string message = "Could not get the properties of device " + device_path;
@@ -203,11 +222,23 @@ void CrosDisksServer::OnSessionStarted(const string& user) {
   LOG(INFO) << "Session started";
   DispatchQueuedDeviceEvents();
   is_device_event_queued_ = false;
+
+  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+       manager_iter != mount_managers_.end(); ++manager_iter) {
+    MountManager* manager = *manager_iter;
+    manager->StartSession(user);
+  }
 }
 
 void CrosDisksServer::OnSessionStopped(const string& user) {
   LOG(INFO) << "Session stopped";
   is_device_event_queued_ = true;
+
+  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+       manager_iter != mount_managers_.end(); ++manager_iter) {
+    MountManager* manager = *manager_iter;
+    manager->StopSession(user);
+  }
 }
 
 void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
@@ -243,7 +274,7 @@ void CrosDisksServer::DispatchQueuedDeviceEvents() {
   const DeviceEvent* event;
   while ((event = device_event_queue_.Head()) != NULL) {
     LOG(INFO) << "Dispatch queued event: type=" << event->event_type
-      << " device='" << event->device_path << "'";
+              << " device='" << event->device_path << "'";
     DispatchDeviceEvent(*event);
     device_event_queue_.Remove();
   }
@@ -252,20 +283,19 @@ void CrosDisksServer::DispatchQueuedDeviceEvents() {
 void CrosDisksServer::InitializeProperties() {
   try {
     DBus::Variant value;
-    value.writer().append_bool(disk_manager_->experimental_features_enabled());
+    value.writer().append_bool(platform_->experimental_features_enabled());
     CrosDisks_adaptor::set_property(kPropertyExperimentalFeaturesEnabled,
-        value);
-  } catch (const DBus::Error& e) {
+                                    value);
+  } catch (const DBus::Error& e) {  // NOLINT
     LOG(FATAL) << "Failed to initialize properties: " << e.what();
   }
 }
 
 void CrosDisksServer::on_set_property(
     DBus::InterfaceAdaptor& interface,  // NOLINT
-    const std::string& property, const DBus::Variant& value) {
+    const string& property, const DBus::Variant& value) {
   if (property == kPropertyExperimentalFeaturesEnabled) {
-    disk_manager_->set_experimental_features_enabled(
-        value.reader().get_bool());
+    platform_->set_experimental_features_enabled(value.reader().get_bool());
   }
 }
 

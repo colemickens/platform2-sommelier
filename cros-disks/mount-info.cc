@@ -24,9 +24,9 @@ namespace cros_disks {
 
 // A data structure for holding information of a mount point.
 struct MountPoint {
-  std::string source_path;
-  std::string mount_path;
-  std::string filesystem_type;
+  string source_path;
+  string mount_path;
+  string filesystem_type;
 };
 
 MountInfo::MountInfo() {
@@ -65,13 +65,21 @@ string MountInfo::DecodePath(const string& encoded_path) const {
 vector<string> MountInfo::GetMountPaths(const string& source_path) const {
   vector<string> mount_paths;
   for (vector<MountPoint>::const_iterator iter = mount_points_.begin();
-      iter != mount_points_.end(); ++iter) {
+       iter != mount_points_.end(); ++iter) {
     if (iter->source_path == source_path)
       mount_paths.push_back(iter->mount_path);
   }
   return mount_paths;
 }
 
+bool MountInfo::HasMountPath(const string& mount_path) const {
+  for (vector<MountPoint>::const_iterator iter = mount_points_.begin();
+       iter != mount_points_.end(); ++iter) {
+    if (iter->mount_path == mount_path)
+      return true;
+  }
+  return false;
+}
 bool MountInfo::RetrieveFromFile(const string& path) {
   mount_points_.clear();
 

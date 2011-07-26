@@ -19,6 +19,7 @@
 #include <gflags/gflags.h>
 #include <metrics/metrics_library.h>
 
+#include "cros-disks/archive-manager.h"
 #include "cros-disks/cros-disks-server-impl.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
@@ -26,6 +27,7 @@
 #include "cros-disks/power-manager-proxy.h"
 #include "cros-disks/session-manager-proxy.h"
 
+using cros_disks::ArchiveManager;
 using cros_disks::CrosDisksServer;
 using cros_disks::DiskManager;
 using cros_disks::FormatManager;
@@ -40,6 +42,8 @@ DEFINE_int32(minloglevel, logging::LOG_WARNING,
              "this don't actually get logged anywhere");
 
 static const char kUsageMessage[] = "Chromium OS Disk Daemon";
+static const char kArchiveMountRootDirectory[] = "/media/archive";
+static const char kDiskMountRootDirectory[] = "/media/removable";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -93,11 +97,23 @@ int main(int argc, char** argv) {
   server_conn.request_name("org.chromium.CrosDisks");
 
   Platform platform;
-  DiskManager disk_manager(&platform);
+
+  LOG(INFO) << "Creating the archive manager";
+  ArchiveManager archive_manager(kArchiveMountRootDirectory,
+                                 &platform);
+  CHECK(archive_manager.Initialize())
+      << "Failed to initialize the archive manager";
+
+  LOG(INFO) << "Creating the disk manager";
+  DiskManager disk_manager(kDiskMountRootDirectory, &platform);
+  CHECK(disk_manager.Initialize()) << "Failed to initialize the disk manager";
+
   FormatManager format_manager;
-  disk_manager.RegisterDefaultFilesystems();
-  CrosDisksServer cros_disks_server(server_conn, &disk_manager,
-      &format_manager);
+  CrosDisksServer cros_disks_server(server_conn,
+                                    &platform,
+                                    &archive_manager,
+                                    &disk_manager,
+                                    &format_manager);
 
   LOG(INFO) << "Creating a power manager proxy";
   PowerManagerProxy power_manager_proxy(&server_conn, &cros_disks_server);

@@ -18,6 +18,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/device-event.h"
+#include "cros-disks/mount-manager.h"
 
 namespace cros_disks {
 
@@ -34,16 +35,29 @@ class UdevDevice;
 // Sample Usage:
 //
 // Platform platform;
-// DiskManager manager(&platform);
+// DiskManager manager("/media/removable", &platform);
+// manager.Initialize();
 // manager.EnumerateDisks();
 // select(manager.udev_monitor_fd())...
 //
 // This class is designed to run within a single-threaded GMainLoop application
 // and should not be considered thread safe.
-class DiskManager {
+class DiskManager : public MountManager {
  public:
-  explicit DiskManager(Platform* platform);
+  DiskManager(const std::string& mount_root, Platform* platform);
   virtual ~DiskManager();
+
+  // Initializes the disk manager and registers default filesystems.
+  // Returns true on success.
+  virtual bool Initialize();
+
+  // Returns true if mounting |source_path| is supported.
+  virtual bool CanMount(const std::string& source_path) const;
+
+  // Returns the type of mount sources supported by the manager.
+  virtual MountSourceType GetMountSourceType() const {
+    return kMountSourceRemovableDevice;
+  }
 
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
@@ -52,29 +66,11 @@ class DiskManager {
   // Returns true on success. Must be called to clear the fd.
   bool GetDeviceEvent(DeviceEvent* event);
 
-  // Gets the filesystem type of a device.
-  std::string GetFilesystemTypeOfDevice(const std::string& device_path);
-
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
 
-  // Creates a mount directory for a given disk.
-  std::string CreateMountDirectory(const Disk& disk,
-      const std::string& target_path) const;
-
-  // Extracts unmount flags for Unmount() from an array of options.
-  bool ExtractUnmountOptions(const std::vector<std::string>& options,
-      int *unmount_flags) const;
-
-  // Mounts a given disk.
-  bool Mount(const std::string& device_path,
-      const std::string& filesystem_type,
-      const std::vector<std::string>& options,
-      std::string *mount_path);
-
-  // Unmounts a given device path.
-  bool Unmount(const std::string& device_path,
-      const std::vector<std::string>& options);
+  // Gets the filesystem type of a device.
+  std::string GetFilesystemTypeOfDevice(const std::string& device_path);
 
   // Registers a set of default filesystems to the disk manager.
   void RegisterDefaultFilesystems();
@@ -83,25 +79,29 @@ class DiskManager {
   // Subsequent registrations of the same filesystem type are ignored.
   void RegisterFilesystem(const Filesystem& filesystem);
 
-  bool experimental_features_enabled() const {
-    return experimental_features_enabled_;
-  }
-  void set_experimental_features_enabled(bool experimental_features_enabled) {
-    experimental_features_enabled_ = experimental_features_enabled;
-  }
-
   // A file descriptor that can be select()ed or poll()ed for system changes.
   int udev_monitor_fd() const { return udev_monitor_fd_; }
+
+ protected:
+  // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
+  virtual MountErrorType DoMount(const std::string& source_path,
+                                 const std::string& filesystem_type,
+                                 const std::vector<std::string>& options,
+                                 const std::string& mount_path);
+
+  // Unmounts |path| with |options|.
+  virtual MountErrorType DoUnmount(const std::string& path,
+                                   const std::vector<std::string>& options);
+
+  // Returns a suggested mount path for a source path.
+  virtual std::string SuggestMountPath(const std::string& source_path) const;
 
  private:
   // Creates an appropriate mounter object for a given filesystem.
   // The caller is responsible for deleting the mounter object.
   Mounter* CreateMounter(const Disk& disk, const Filesystem& filesystem,
-      const std::string& target_path,
-      const std::vector<std::string>& options) const;
-
-  // Gets a device file from the cache mapping from sysfs path to device file.
-  std::string GetDeviceFileFromCache(const std::string& device_path) const;
+                         const std::string& target_path,
+                         const std::vector<std::string>& options) const;
 
   // Returns a Filesystem object if a given filesystem type is supported.
   // Otherwise, it returns NULL.
@@ -109,14 +109,11 @@ class DiskManager {
 
   // Determines a device/disk event from a udev block device change.
   DeviceEvent::EventType ProcessBlockDeviceEvent(const UdevDevice& device,
-      const char *action);
+                                                 const char *action);
 
   // Determines a device/disk event from a udev SCSI device change.
   DeviceEvent::EventType ProcessScsiDeviceEvent(const UdevDevice& device,
-      const char *action);
-
-  // An object that provides platform service.
-  Platform* platform_;
+                                                const char *action);
 
   // The root udev object.
   mutable struct udev* udev_;
@@ -136,21 +133,15 @@ class DiskManager {
   // A set of disk sysfs paths detected by the udev monitor.
   std::set<std::string> disks_detected_;
 
-  // A cache mapping device sysfs path to device file.
-  std::map<std::string, std::string> device_file_map_;
-
-  // This variable is set to true if the disk manager enables
-  // experimental features.
-  bool experimental_features_enabled_;
-
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;
 
   FRIEND_TEST(DiskManagerTest, CreateExternalMounter);
   FRIEND_TEST(DiskManagerTest, CreateSystemMounter);
-  FRIEND_TEST(DiskManagerTest, GetDeviceFileFromCache);
   FRIEND_TEST(DiskManagerTest, GetFilesystem);
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);
+  FRIEND_TEST(DiskManagerTest, DoMountDiskWithNonexistentSourcePath);
+  FRIEND_TEST(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions);
 
   DISALLOW_COPY_AND_ASSIGN(DiskManager);
 };

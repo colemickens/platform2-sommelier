@@ -29,6 +29,9 @@ class MountInfo {
   // Returns the list of mount paths associated with a given source path.
   std::vector<std::string> GetMountPaths(const std::string& source_path) const;
 
+  // Returns true if a given mount path is found among the mount points.
+  bool HasMountPath(const std::string& mount_path) const;
+
   // Retrieves the list of mount points from a given file, which has
   // the same format as /proc/self/mountinfo. Returns true on success.
   // Refer to <linux source>/Documentation/filesystems/proc.txt for details

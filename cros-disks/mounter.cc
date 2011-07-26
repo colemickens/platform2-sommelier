@@ -18,7 +18,8 @@ Mounter::Mounter(const string& source_path, const string& target_path,
     mount_options_(mount_options) {
   CHECK(!source_path.empty()) << "Invalid source path";
   CHECK(!target_path.empty()) << "Invalid target path";
-  CHECK(!filesystem_type.empty()) << "Invalid filesystem type";
+  // filesystem_type can be empty if it is auto-detected or in case of
+  // a bind mount.
 }
 
 Mounter::~Mounter() {

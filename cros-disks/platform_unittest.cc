@@ -4,6 +4,9 @@
 
 #include "cros-disks/platform.h"
 
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <base/basictypes.h>
 #include <base/file_util.h>
 #include <base/memory/scoped_temp_dir.h>
@@ -14,9 +17,45 @@ using std::string;
 namespace cros_disks {
 
 class PlatformTest : public ::testing::Test {
+ public:
+  // Returns true if |path| is owned by |user_id| and |group_id|.
+  static bool CheckOwnership(const string& path,
+                             uid_t user_id, gid_t group_id) {
+    struct stat buffer;
+    if (stat(path.c_str(), &buffer) != 0)
+      return false;
+    return buffer.st_uid == user_id && buffer.st_gid == group_id;
+  }
+
+  // Returns true if |path| has its permissions set to |mode|.
+  static bool CheckPermissions(const string& path, mode_t mode) {
+    struct stat buffer;
+    if (stat(path.c_str(), &buffer) != 0)
+      return false;
+    return (buffer.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == mode;
+  }
+
  protected:
   Platform platform_;
 };
+
+TEST_F(PlatformTest, CreateDirectory) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Nonexistent directory
+  FilePath new_dir = temp_dir.path().Append("test");
+  string path = new_dir.value();
+  EXPECT_TRUE(platform_.CreateDirectory(path));
+
+  // Existent but empty directory
+  EXPECT_TRUE(platform_.CreateDirectory(path));
+
+  // Existent and non-empty directory
+  FilePath temp_file;
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
+  EXPECT_TRUE(platform_.CreateDirectory(path));
+}
 
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
   ScopedTempDir temp_dir;
@@ -80,7 +119,7 @@ TEST_F(PlatformTest, GetUserAndGroupIdForRoot) {
 TEST_F(PlatformTest, GetUserAndGroupIdForNonExistentUser) {
   uid_t uid;
   gid_t gid;
-  EXPECT_FALSE(platform_.GetUserAndGroupId("non-existent-user", &uid, &gid));
+  EXPECT_FALSE(platform_.GetUserAndGroupId("nonexistent-user", &uid, &gid));
 }
 
 TEST_F(PlatformTest, RemoveEmptyDirectory) {
@@ -101,6 +140,41 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
+}
+
+TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {
+  EXPECT_FALSE(platform_.SetOwnership("/nonexistent-path", getuid(), getgid()));
+}
+
+TEST_F(PlatformTest, SetOwnershipOfExistentPath) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  string path = temp_dir.path().value();
+
+  EXPECT_TRUE(platform_.SetOwnership(path, getuid(), getgid()));
+  EXPECT_TRUE(CheckOwnership(path, getuid(), getgid()));
+}
+
+TEST_F(PlatformTest, SetPermissionsOfNonExistentPath) {
+  EXPECT_FALSE(platform_.SetPermissions("/nonexistent-path", S_IRWXU));
+}
+
+TEST_F(PlatformTest, SetPermissionsOfExistentPath) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  string path = temp_dir.path().value();
+
+  mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+  EXPECT_TRUE(platform_.SetPermissions(path, mode));
+  EXPECT_TRUE(CheckPermissions(path, mode));
+
+  mode = S_IRWXU | S_IRGRP | S_IXGRP;
+  EXPECT_TRUE(platform_.SetPermissions(path, mode));
+  EXPECT_TRUE(CheckPermissions(path, mode));
+
+  mode = S_IRWXU;
+  EXPECT_TRUE(platform_.SetPermissions(path, mode));
+  EXPECT_TRUE(CheckPermissions(path, mode));
 }
 
 }  // namespace cros_disks
