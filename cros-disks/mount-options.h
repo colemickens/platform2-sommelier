@@ -14,6 +14,7 @@ namespace cros_disks {
 // A class for holding and manipulating mount options.
 class MountOptions {
  public:
+  static const char kOptionBind[];
   static const char kOptionNoDev[];
   static const char kOptionNoExec[];
   static const char kOptionNoSuid[];
@@ -33,9 +34,9 @@ class MountOptions {
   // mount options if no uid option is found in the option strings.
   // default_group_id is handled similarly.
   void Initialize(const std::vector<std::string>& options,
-      bool set_user_and_group_id,
-      const std::string& default_user_id,
-      const std::string& default_group_id);
+                  bool set_user_and_group_id,
+                  const std::string& default_user_id,
+                  const std::string& default_group_id);
 
   // Returns true if the read-only option is set.
   bool IsReadOnlyOptionSet() const;

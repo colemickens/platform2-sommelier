@@ -84,8 +84,15 @@ TEST_F(MountOptionsTest, ToString) {
   mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
 
+  // options: ro, bind
+  expected_string = "bind,ro";
+  options.push_back("bind");
+  mount_options.Initialize(options, false, "", "");
+  EXPECT_EQ(expected_string, mount_options.ToString());
+
   // options: ro, nodev
   expected_string = "nodev,ro";
+  options.clear();
   options.push_back("nodev");
   mount_options.Initialize(options, false, "", "");
   EXPECT_EQ(expected_string, mount_options.ToString());
@@ -163,7 +170,16 @@ TEST_F(MountOptionsTest, ToMountFlagsAndData) {
   EXPECT_EQ(expected_flags, flags_and_data.first);
   EXPECT_EQ(expected_data, flags_and_data.second);
 
+  // options: ro, bind
+  options.push_back("bind");
+  expected_flags = MS_RDONLY | MS_BIND;
+  mount_options.Initialize(options, false, "", "");
+  flags_and_data = mount_options.ToMountFlagsAndData();
+  EXPECT_EQ(expected_flags, flags_and_data.first);
+  EXPECT_EQ(expected_data, flags_and_data.second);
+
   // options: ro, nodev
+  options.clear();
   options.push_back("nodev");
   expected_flags = MS_RDONLY | MS_NODEV;
   mount_options.Initialize(options, false, "", "");
