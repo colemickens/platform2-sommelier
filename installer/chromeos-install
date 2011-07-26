@@ -468,13 +468,6 @@ if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   loop_offset_cleanup
 fi
 
-# We can't guarantee that the kernel will see the new partition table, so
-# we can't use it directly. We could force the kernel to reload it with an
-# ioctl, but then we might have the UI mounting and displaying any old
-# filesystems left over from the last install, and we don't want that either.
-# So any access that we need to do to the destination partitions will have
-# to go through loop devices.
-
 # Now run the postinstall script on one new rootfs. Note that even though
 # we're passing the new destination partition number as an arg, the postinst
 # script had better not try to access it, for the reasons we just gave.
