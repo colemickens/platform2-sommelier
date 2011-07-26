@@ -699,14 +699,6 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
       int64 int64_value;
       int32 int32_value;
     } power_value;
-    // Important: clear the whole data structure because different fields of the
-    // union have different sizes, and this results in higher bytes filled with
-    // garbage sometimes.
-    // TODO(sque): This is a hack fix, as there are problems with passing
-    // separate variables to dbus that causes powerd to crash, but we haven't
-    // figured out why.  Eventually this should be replaced with a cleaner
-    // solution.
-    memset(&power_value, 0, sizeof(power_value));
 
     // Determine type and value of the property being requested.
     if (property == "line_power_on") {
