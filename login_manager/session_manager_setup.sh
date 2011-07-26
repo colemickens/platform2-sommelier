@@ -363,6 +363,8 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-login-images \
             --force-compositing-mode \
             --enable-smooth-scrolling \
+            --allow-webui-oobe \
+            --webui-login \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
