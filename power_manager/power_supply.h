@@ -12,6 +12,7 @@
 #include "power_manager/power_prefs.h"
 
 namespace chromeos {
+struct PowerInformation;
 struct PowerStatus;
 } // namespace chromeos
 
@@ -29,6 +30,9 @@ class PowerSupply {
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
   bool GetPowerStatus(chromeos::PowerStatus* status);
+
+  // Read data from power supply sysfs for PowerInformation structure.
+  bool GetPowerInformation(chromeos::PowerInformation* info);
 
   const FilePath& line_power_path() const { return line_power_path_; }
   const FilePath& battery_path() const { return battery_path_; }

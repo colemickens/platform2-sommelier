@@ -83,6 +83,17 @@ backlight_tool = backlight_env.Program('backlight-tool',
                                        ['backlight-tool.cc', backlight])
 Default(backlight_tool)
 
+# Build power supply info app
+power_supply = gdk_env.Library('power_supply',
+                               ['power_supply.cc', 'power_prefs.cc',
+                                'inotify.cc'])
+power_supply_env = gdk_env.Clone()
+power_supply_env.Append(LIBS=Split('base rt pthread gflags'))
+power_supply_info = power_supply_env.Program('power-supply-info',
+                                             ['power_supply_info.cc',
+                                              power_supply])
+Default(power_supply_info)
+
 # Build power daemon
 backlight_controller = gdk_env.Library('backlight_controller',
                                        ['backlight_controller.cc'])

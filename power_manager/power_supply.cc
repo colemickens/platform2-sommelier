@@ -135,6 +135,20 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
   return true;
 }
 
+bool PowerSupply::GetPowerInformation(chromeos::PowerInformation* info) {
+  CHECK(info);
+  GetPowerStatus(&info->power_status);
+
+  battery_info_->ReadString("vendor", &info->battery_vendor);
+  battery_info_->ReadString("model_name", &info->battery_model);
+  battery_info_->ReadString("serial_number", &info->battery_serial);
+  battery_info_->ReadString("technology", &info->battery_technology);
+
+  info->battery_state_string = status_;
+
+  return true;
+}
+
 void PowerSupply::GetPowerSupplyPaths() {
   // First check if both line power and battery paths have been found and still
   // exist.  If so, there is no need to do anything else.
