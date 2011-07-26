@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dbus_properties_proxy_interface.h"
@@ -49,6 +50,9 @@ class Modem {
   static const char kPropertyUnlockRequired[];
   static const char kPropertyUnlockRetries[];
 
+  // Creates and registers a Cellular device in |device_| based on
+  // ModemManager.Modem's |properties|. The device may not be created if the
+  // properties are invalid.
   void CreateCellularDevice(const DBusPropertiesMap &properties);
 
   // A proxy to the org.freedesktop.DBus.Properties interface used to obtain
@@ -60,6 +64,7 @@ class Modem {
 
   CellularRefPtr device_;
 
+  ScopedRunnableMethodFactory<Modem> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;

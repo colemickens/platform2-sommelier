@@ -30,6 +30,7 @@ Modem::Modem(const std::string &owner,
              Manager *manager)
     : owner_(owner),
       path_(path),
+      task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       manager_(manager) {
@@ -39,16 +40,24 @@ Modem::Modem(const std::string &owner,
 Modem::~Modem() {}
 
 void Modem::Init() {
+  VLOG(2) << __func__;
   CHECK(!device_.get());
   dbus_properties_proxy_.reset(
       ProxyFactory::factory()->CreateDBusPropertiesProxy(this, path_, owner_));
+
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties =
       dbus_properties_proxy_->GetAll(MM_MODEM_INTERFACE);
-  CreateCellularDevice(properties);
+
+  // Defer device creation because it may require the registration of new D-Bus
+  // objects and that can't be done in the context of a D-Bus signal handler.
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&Modem::CreateCellularDevice,
+                                      properties));
 }
 
 void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
+  VLOG(2) << __func__;
   uint32 ip_method = kuint32max;
   if (!DBusProperties::GetUint32(properties, kPropertyIPMethod, &ip_method) ||
       ip_method != MM_MODEM_IP_METHOD_DHCP) {

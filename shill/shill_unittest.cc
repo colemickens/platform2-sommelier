@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/io_handler.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/shill_config.h"

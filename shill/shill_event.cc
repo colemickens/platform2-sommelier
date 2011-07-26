@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/shill_event.h"
+
 #include <stdio.h>
 #include <glib.h>
 
@@ -9,7 +11,6 @@
 #include <base/message_loop_proxy.h>
 
 #include "shill/glib_io_handler.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 
@@ -24,17 +25,21 @@ void EventDispatcher::DispatchForever() {
   MessageLoop::current()->Run();
 }
 
-bool EventDispatcher::PostTask(Task* task) {
+void EventDispatcher::DispatchPendingEvents() {
+  MessageLoop::current()->RunAllPending();
+}
+
+bool EventDispatcher::PostTask(Task *task) {
   return message_loop_proxy_->PostTask(FROM_HERE, task);
 }
 
-bool EventDispatcher::PostDelayedTask(Task* task, int64 delay_ms) {
+bool EventDispatcher::PostDelayedTask(Task *task, int64 delay_ms) {
   return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
 }
 
 IOInputHandler *EventDispatcher::CreateInputHandler(
     int fd,
-    Callback1<InputData*>::Type *callback) {
+    Callback1<InputData *>::Type *callback) {
   return new GlibIOInputHandler(fd, callback);
 }
 

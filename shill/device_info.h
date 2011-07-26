@@ -47,6 +47,8 @@ class DeviceInfo {
   void DelLinkMsgHandler(struct nlmsghdr *hdr);
   void LinkMsgHandler(struct nlmsghdr *hdr);
 
+  void RemoveDevice(int interface_index);
+
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;

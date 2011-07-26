@@ -159,18 +159,23 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
     }
 
     switch (technology) {
-    case Device::kEthernet:
-      device = new Ethernet(control_interface_, dispatcher_, manager_,
-                            link_name, dev_index);
-      break;
-    case Device::kWifi:
-      device = new WiFi(control_interface_, dispatcher_, manager_,
-                        link_name, dev_index);
-      break;
-    default:
-      device = new DeviceStub(control_interface_, dispatcher_, manager_,
-                              link_name, dev_index, technology);
-      is_stub = true;
+      case Device::kCellular:
+        // Cellular devices are managed by ModemInfo.
+        VLOG(2) << "Cellular link " << link_name << " at index " << dev_index
+                << " ignored.";
+        return;
+      case Device::kEthernet:
+        device = new Ethernet(control_interface_, dispatcher_, manager_,
+                              link_name, dev_index);
+        break;
+      case Device::kWifi:
+        device = new WiFi(control_interface_, dispatcher_, manager_,
+                          link_name, dev_index);
+        break;
+      default:
+        device = new DeviceStub(control_interface_, dispatcher_, manager_,
+                                link_name, dev_index, technology);
+        is_stub = true;
     }
 
     devices_[dev_index] = device;
@@ -186,14 +191,15 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
 
 void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  base::hash_map<int, DeviceRefPtr>::iterator ndev =
-      devices_.find(msg->ifi_index);
-  int dev_index = msg->ifi_index;
-  DeviceRefPtr device;
+  RemoveDevice(msg->ifi_index);
+}
 
+void DeviceInfo::RemoveDevice(int interface_index) {
+  base::hash_map<int, DeviceRefPtr>::iterator ndev =
+      devices_.find(interface_index);
   if (ndev != devices_.end()) {
-    device = ndev->second;
-    manager_->DeregisterDevice(device.get());
+    VLOG(2) << "Removing device index: " << interface_index;
+    manager_->DeregisterDevice(ndev->second);
     devices_.erase(ndev);
   }
 }

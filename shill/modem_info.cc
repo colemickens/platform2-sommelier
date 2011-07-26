@@ -20,7 +20,7 @@ ModemInfo::ModemInfo(ControlInterface *control_interface,
                      Manager *manager,
                      GLib *glib)
     : control_interface_(control_interface),
-      dispatcher_(dispatcher_),
+      dispatcher_(dispatcher),
       manager_(manager),
       glib_(glib) {}
 

@@ -109,16 +109,18 @@ void ModemTest::ReleaseDBusPropertiesProxy() {
 }
 
 TEST_F(ModemTest, Init) {
-  static const char kLinkName[] = "usb1";
-  const int kTestSocket = 10;
   DBusPropertiesMap props;
   props[Modem::kPropertyIPMethod].writer().append_uint32(
       MM_MODEM_IP_METHOD_DHCP);
   props[Modem::kPropertyLinkName].writer().append_string("usb1");
   EXPECT_CALL(dbus_properties_proxy_, GetAll(MM_MODEM_INTERFACE))
       .WillOnce(Return(props));
-  EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).WillOnce(Return(-1));
+  EXPECT_TRUE(modem_.task_factory_.empty());
   modem_.Init();
+  EXPECT_FALSE(modem_.task_factory_.empty());
+
+  EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0)).WillOnce(Return(-1));
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(ModemTest, CreateCellularDevice) {

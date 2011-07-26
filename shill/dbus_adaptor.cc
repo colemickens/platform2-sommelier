@@ -29,6 +29,7 @@ const char DBusAdaptor::kStringsSig[] = "as";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
+  VLOG(2) << "DBusAdaptor: " << object_path;
 }
 
 DBusAdaptor::~DBusAdaptor() {}

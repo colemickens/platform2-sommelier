@@ -28,6 +28,7 @@ ModemManager::ModemManager(const string &service,
       watcher_id_(0),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
+      manager_(manager),
       glib_(glib) {}
 
 ModemManager::~ModemManager() {
