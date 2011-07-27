@@ -22,6 +22,7 @@
 namespace em = enterprise_management;
 
 using ::testing::DoAll;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::ReturnRef;
@@ -431,6 +432,10 @@ class PolicyServiceThreadTest : public testing::Test {
     service_->set_delegate(&delegate_);
   }
 
+  void QuitMainLoop() {
+    main_loop_.PostTask(FROM_HERE, new MessageLoop::QuitTask());
+  }
+
   MessageLoop main_loop_;
   base::Thread io_thread_;
 
@@ -450,16 +455,20 @@ TEST_F(PolicyServiceThreadTest, PersistPolicySyncSuccess) {
   EXPECT_CALL(*store_, Persist())
       .WillOnce(Return(true));
   service_->PersistPolicySync();
-  EXPECT_CALL(delegate_, OnPolicyPersisted(true));
-  main_loop_.RunAllPending();
+  EXPECT_CALL(delegate_, OnPolicyPersisted(true))
+      .WillOnce(InvokeWithoutArgs(this,
+                                  &PolicyServiceThreadTest::QuitMainLoop));
+  main_loop_.Run();
 }
 
 TEST_F(PolicyServiceThreadTest, PersistPolicySyncFailure) {
   EXPECT_CALL(*store_, Persist())
       .WillOnce(Return(false));
   service_->PersistPolicySync();
-  EXPECT_CALL(delegate_, OnPolicyPersisted(false));
-  main_loop_.RunAllPending();
+  EXPECT_CALL(delegate_, OnPolicyPersisted(false))
+      .WillOnce(InvokeWithoutArgs(this,
+                                  &PolicyServiceThreadTest::QuitMainLoop));
+  main_loop_.Run();
 }
 
 }  // namespace login_manager
