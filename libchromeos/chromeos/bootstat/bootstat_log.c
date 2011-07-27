@@ -11,12 +11,15 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <sys/fcntl.h>
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+static const char kBootstageMarkFile[] = "/sys/kernel/debug/bootstage/mark";
 
 //
 // Default path to directory where output statistics will be stored.
@@ -90,9 +93,26 @@ static void append_logdata(const char* input_path,
   (void)close(ifd);
 }
 
+static void write_mark(const char *event_name)
+{
+  ssize_t ret __attribute__((unused));
+  int fd = open(kBootstageMarkFile, O_WRONLY);
+
+  if (fd < 0) {
+    return;
+  }
+
+  /*
+   * It's not necessary to check the return value,
+   * but the compiler will generate a warning if we don't.
+   */
+  ret = write(fd, event_name, strlen(event_name));
+  close(fd);
+}
 
 void bootstat_log(const char* event_name)
 {
+  write_mark(event_name);
   append_logdata(uptime_statistics_file_name, "uptime", event_name);
   append_logdata(disk_statistics_file_name, "disk", event_name);
 }
