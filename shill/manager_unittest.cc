@@ -38,8 +38,6 @@ using ::testing::Return;
 
 class ManagerTest : public PropertyStoreTest {
  public:
-  static const char kMockServiceName[];
-
   ManagerTest()
       : factory_(this),
         mock_device_(new NiceMock<MockDevice>(&control_interface_,
@@ -66,8 +64,6 @@ class ManagerTest : public PropertyStoreTest {
   scoped_refptr<MockDevice> mock_device_;
   scoped_refptr<MockDevice> mock_device2_;
 };
-
-const char ManagerTest::kMockServiceName[] = "mock-service";
 
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager_.store()->Contains(flimflam::kStateProperty));
@@ -107,33 +103,33 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
-  const char kService1[] = "service1";
-  const char kService2[] = "wifi_service2";
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                &manager_,
-                                kService1));
-  EXPECT_CALL(*mock_service.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(kService1));
+                                &manager_));
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                &manager_,
-                                kService2));
+                                &manager_));
+  string service1_name(mock_service->UniqueName());
+  string service2_name(mock_service2->UniqueName());
+
+  EXPECT_CALL(*mock_service.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(service1_name));
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(kService2));
+      .WillRepeatedly(Return(service2_name));
 
   manager_.RegisterService(mock_service);
   manager_.RegisterService(mock_service2);
 
   vector<string> rpc_ids = manager_.EnumerateAvailableServices();
   set<string> ids(rpc_ids.begin(), rpc_ids.end());
-  EXPECT_EQ(ids.count(mock_service->GetRpcIdentifier()), 1);
-  EXPECT_EQ(ids.count(mock_service2->GetRpcIdentifier()), 1);
+  EXPECT_EQ(2, ids.size());
+  EXPECT_TRUE(ContainsKey(ids, mock_service->GetRpcIdentifier()));
+  EXPECT_TRUE(ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
-  EXPECT_TRUE(manager_.FindService(kService1).get() != NULL);
-  EXPECT_TRUE(manager_.FindService(kService2).get() != NULL);
+  EXPECT_TRUE(manager_.FindService(service1_name).get() != NULL);
+  EXPECT_TRUE(manager_.FindService(service2_name).get() != NULL);
 }
 
 TEST_F(ManagerTest, GetProperties) {
@@ -183,24 +179,25 @@ TEST_F(ManagerTest, MoveService) {
   // lifetime properly, so I can't hold a ref to it here.
   ProfileRefPtr profile(
       new MockProfile(&control_interface_, &glib_, &manager_, ""));
+  string service_name;
   {
     ServiceRefPtr s2(
         new MockService(&control_interface_,
                         &dispatcher_,
-                        &manager_,
-                        kMockServiceName));
+                        &manager_));
     profile->AdoptService(s2);
     s2->set_profile(profile);
+    service_name = s2->UniqueName();
   }
 
   // Now, move the |service| to another profile.
-  manager_.MoveToActiveProfile(profile, profile->FindService(kMockServiceName));
+  manager_.MoveToActiveProfile(profile, profile->FindService(service_name));
 
   // Force destruction of the original Profile, to ensure that the Service
   // is kept alive and populated with data.
   profile = NULL;
   {
-    ServiceRefPtr serv(manager_.ActiveProfile()->FindService(kMockServiceName));
+    ServiceRefPtr serv(manager_.ActiveProfile()->FindService(service_name));
     ASSERT_TRUE(serv.get() != NULL);
     Error error(Error::kInvalidProperty, "");
     ::DBus::Error dbus_error;

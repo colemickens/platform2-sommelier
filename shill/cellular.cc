@@ -97,8 +97,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       service_(new CellularService(control_interface,
                                    dispatcher,
                                    manager,
-                                   this,
-                                   "cellular_" + link_name_)),
+                                   this)),
       service_registered_(false) {
   store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);

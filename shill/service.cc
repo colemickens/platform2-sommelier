@@ -13,6 +13,7 @@
 
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -57,10 +58,12 @@ const char Service::kStoragePriority[] = "Priority";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
 
+// static
+unsigned int Service::serial_number_ = 0;
+
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 Manager *manager,
-                 const string& name)
+                 Manager *manager)
     : auto_connect_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
@@ -68,7 +71,7 @@ Service::Service(ControlInterface *control_interface,
       priority_(kPriorityNone),
       save_credentials_(true),
       dispatcher_(dispatcher),
-      name_(name),
+      name_(base::UintToString(serial_number_++)),
       available_(false),
       configured_(false),
       configuration_(NULL),

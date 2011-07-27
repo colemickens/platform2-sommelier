@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -39,8 +38,6 @@ const char WiFi::kSupplicantPropertySSID[]        = "ssid";
 const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
 const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
 const char WiFi::kSupplicantKeyModeNone[] = "NONE";
-
-unsigned int WiFi::service_id_serial_ = 0;
 
 // NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
@@ -204,14 +201,10 @@ void WiFi::ScanDoneTask() {
         endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
     if (service_by_private_id_.find(service_id_private) ==
         service_by_private_id_.end()) {
-      unsigned int new_service_id_serial = service_id_serial_++;
-      string service_name(base::UintToString(new_service_id_serial));
-
       LOG(INFO) << "found new endpoint. "
                 << "ssid: " << endpoint.ssid_string() << ", "
                 << "bssid: " << endpoint.bssid_string() << ", "
-                << "signal: " << endpoint.signal_strength() << ", "
-                << "service name: " << "/service/" << service_name;
+                << "signal: " << endpoint.signal_strength();
 
       // XXX key mode should reflect endpoint params (not always use
       // kSupplicantKeyModeNone)
@@ -222,10 +215,11 @@ void WiFi::ScanDoneTask() {
                           this,
                           endpoint.ssid(),
                           endpoint.network_mode(),
-                          kSupplicantKeyModeNone,
-                          service_name));
+                          kSupplicantKeyModeNone));
       services_.push_back(service);
       service_by_private_id_[service_id_private] = service;
+
+      LOG(INFO) << "new service " << service->GetRpcIdentifier();
     }
   }
 

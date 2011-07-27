@@ -22,8 +22,7 @@ class EthernetService : public Service {
   EthernetService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
                   Manager *manager,
-                  const EthernetRefPtr &device,
-                  const std::string& name);
+                  const EthernetRefPtr &device);
   ~EthernetService();
   void Connect();
   void Disconnect();

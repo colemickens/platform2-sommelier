@@ -58,7 +58,6 @@ class WiFi : public Device {
 
   void ScanDoneTask();
 
-  static unsigned int service_id_serial_;
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

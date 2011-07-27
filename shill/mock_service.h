@@ -22,8 +22,7 @@ class MockService : public Service {
   // A constructor for the Service object
   MockService(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              Manager *manager,
-              const std::string& name);
+              Manager *manager);
   virtual ~MockService();
 
   MOCK_METHOD0(Connect, void());

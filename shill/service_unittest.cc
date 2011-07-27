@@ -37,24 +37,22 @@ namespace shill {
 
 class ServiceTest : public PropertyStoreTest {
  public:
-  static const char kMockServiceName[];
   static const char kMockDeviceRpcId[];
   static const char kProfileName[];
 
   ServiceTest()
       : service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 &manager_,
-                                 kMockServiceName)) {
+                                 &manager_)),
+        service_name_(service_->UniqueName()) {
   }
 
   virtual ~ServiceTest() {}
 
  protected:
   scoped_refptr<MockService> service_;
+  string service_name_;
 };
-
-const char ServiceTest::kMockServiceName[] = "mock-service";
 
 const char ServiceTest::kMockDeviceRpcId[] = "mock-device-rpc";
 
@@ -153,12 +151,12 @@ TEST_F(ServiceTest, Dispatch) {
 }
 
 TEST_F(ServiceTest, GetStorageIdentifier) {
-  EXPECT_EQ(kMockServiceName, service_->GetStorageIdentifier());
+  EXPECT_EQ(service_name_, service_->GetStorageIdentifier());
 }
 
 TEST_F(ServiceTest, Load) {
   NiceMock<MockStore> storage;
-  const string id = kMockServiceName;
+  const string id = service_name_;
   EXPECT_CALL(storage, ContainsGroup(id)).WillOnce(Return(true));
   EXPECT_CALL(storage, GetString(id, _, _))
       .Times(AtLeast(1))
@@ -168,7 +166,7 @@ TEST_F(ServiceTest, Load) {
 
 TEST_F(ServiceTest, LoadFail) {
   StrictMock<MockStore> storage;
-  EXPECT_CALL(storage, ContainsGroup(kMockServiceName)).WillOnce(Return(false));
+  EXPECT_CALL(storage, ContainsGroup(service_name_)).WillOnce(Return(false));
   EXPECT_FALSE(service_->Load(&storage));
 }
 
@@ -176,7 +174,7 @@ TEST_F(ServiceTest, SaveString) {
   MockStore storage;
   static const char kKey[] = "test-key";
   static const char kData[] = "test-data";
-  EXPECT_CALL(storage, SetString(kMockServiceName, kKey, kData))
+  EXPECT_CALL(storage, SetString(service_name_, kKey, kData))
       .WillOnce(Return(true));
   service_->SaveString(&storage, kKey, kData, false, true);
 }
@@ -185,7 +183,7 @@ TEST_F(ServiceTest, SaveStringCrypted) {
   MockStore storage;
   static const char kKey[] = "test-key";
   static const char kData[] = "test-data";
-  EXPECT_CALL(storage, SetCryptedString(kMockServiceName, kKey, kData))
+  EXPECT_CALL(storage, SetCryptedString(service_name_, kKey, kData))
       .WillOnce(Return(true));
   service_->SaveString(&storage, kKey, kData, true, true);
 }
@@ -193,7 +191,7 @@ TEST_F(ServiceTest, SaveStringCrypted) {
 TEST_F(ServiceTest, SaveStringDontSave) {
   MockStore storage;
   static const char kKey[] = "test-key";
-  EXPECT_CALL(storage, DeleteKey(kMockServiceName, kKey))
+  EXPECT_CALL(storage, DeleteKey(service_name_, kKey))
       .WillOnce(Return(true));
   service_->SaveString(&storage, kKey, "data", false, false);
 }
@@ -201,14 +199,14 @@ TEST_F(ServiceTest, SaveStringDontSave) {
 TEST_F(ServiceTest, SaveStringEmpty) {
   MockStore storage;
   static const char kKey[] = "test-key";
-  EXPECT_CALL(storage, DeleteKey(kMockServiceName, kKey))
+  EXPECT_CALL(storage, DeleteKey(service_name_, kKey))
       .WillOnce(Return(true));
   service_->SaveString(&storage, kKey, "", true, true);
 }
 
 TEST_F(ServiceTest, Save) {
   NiceMock<MockStore> storage;
-  const string id = kMockServiceName;
+  const string id = service_name_;
   EXPECT_CALL(storage, SetString(id, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));

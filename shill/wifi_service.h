@@ -27,8 +27,7 @@ class WiFiService : public Service {
               const WiFiRefPtr &device,
               const std::vector<uint8_t> ssid,
               uint32_t mode,
-              const std::string &key_management,
-              const std::string &name);
+              const std::string &key_management);
   ~WiFiService();
   void Connect();
   void Disconnect();

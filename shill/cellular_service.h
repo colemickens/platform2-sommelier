@@ -25,8 +25,7 @@ class CellularService : public Service {
   CellularService(ControlInterface *control_interface,
                   EventDispatcher *dispatcher,
                   Manager *manager,
-                  const CellularRefPtr &device,
-                  const std::string& name);
+                  const CellularRefPtr &device);
   ~CellularService();
   void Connect();
   void Disconnect();

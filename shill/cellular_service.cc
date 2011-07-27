@@ -22,9 +22,8 @@ namespace shill {
 CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Manager *manager,
-                                 const CellularRefPtr &device,
-                                 const string &name)
-    : Service(control_interface, dispatcher, manager, name),
+                                 const CellularRefPtr &device)
+    : Service(control_interface, dispatcher, manager),
       strength_(0),
       cellular_(device),
       type_(flimflam::kTypeCellular) {

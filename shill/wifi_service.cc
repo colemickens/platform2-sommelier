@@ -24,9 +24,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const WiFiRefPtr &device,
                          const std::vector<uint8_t> ssid,
                          uint32_t mode,
-                         const std::string &key_management,
-                         const std::string &name)
-    : Service(control_interface, dispatcher, manager, name),
+                         const std::string &key_management)
+    : Service(control_interface, dispatcher, manager),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid),

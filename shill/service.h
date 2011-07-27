@@ -84,8 +84,7 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          Manager *manager,
-          const std::string& name);
+          Manager *manager);
   virtual ~Service();
 
   virtual void Connect() = 0;
@@ -194,6 +193,7 @@ class Service : public base::RefCounted<Service> {
     return "";  // Will need to call Profile to get this.
   }
 
+  static unsigned int serial_number_;
   const std::string name_;
   bool available_;
   bool configured_;

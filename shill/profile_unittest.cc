@@ -101,65 +101,64 @@ TEST_F(ProfileTest, GetStoragePath) {
 }
 
 TEST_F(ProfileTest, ServiceManagement) {
-  const char kService1[] = "service1";
-  const char kService2[] = "wifi_service2";
+  string service1_name;
+  string service2_name;
   {
     ServiceRefPtr service1(
         new StrictMock<MockService>(&control_interface_,
                                     &dispatcher_,
-                                    &manager_,
-                                    kService1));
+                                    &manager_));
     ServiceRefPtr service2(
         new StrictMock<MockService>(&control_interface_,
                                     &dispatcher_,
-                                    &manager_,
-                                    kService2));
+                                    &manager_));
+    service1_name = service1->UniqueName();
+    service2_name = service2->UniqueName();
     ASSERT_TRUE(profile_->AdoptService(service1));
     ASSERT_TRUE(profile_->AdoptService(service2));
     ASSERT_FALSE(profile_->AdoptService(service1));
   }
-  ASSERT_TRUE(profile_->FindService(kService1).get() != NULL);
-  ASSERT_TRUE(profile_->FindService(kService2).get() != NULL);
+  ASSERT_TRUE(profile_->FindService(service1_name).get() != NULL);
+  ASSERT_TRUE(profile_->FindService(service2_name).get() != NULL);
 
-  ASSERT_TRUE(profile_->AbandonService(kService1));
-  ASSERT_TRUE(profile_->FindService(kService1).get() == NULL);
-  ASSERT_TRUE(profile_->FindService(kService2).get() != NULL);
+  ASSERT_TRUE(profile_->AbandonService(service1_name));
+  ASSERT_TRUE(profile_->FindService(service1_name).get() == NULL);
+  ASSERT_TRUE(profile_->FindService(service2_name).get() != NULL);
 
-  ASSERT_FALSE(profile_->AbandonService(kService1));
-  ASSERT_TRUE(profile_->AbandonService(kService2));
-  ASSERT_TRUE(profile_->FindService(kService1).get() == NULL);
-  ASSERT_TRUE(profile_->FindService(kService2).get() == NULL);
+  ASSERT_FALSE(profile_->AbandonService(service1_name));
+  ASSERT_TRUE(profile_->AbandonService(service2_name));
+  ASSERT_TRUE(profile_->FindService(service1_name).get() == NULL);
+  ASSERT_TRUE(profile_->FindService(service2_name).get() == NULL);
 }
 
 TEST_F(ProfileTest, EntryEnumeration) {
-  const char *kServices[] = { "service1",
-                              "wifi_service2" };
   scoped_refptr<MockService> service1(
       new StrictMock<MockService>(&control_interface_,
                                   &dispatcher_,
-                                  &manager_,
-                                  kServices[0]));
-  EXPECT_CALL(*service1.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(kServices[0]));
+                                  &manager_));
   scoped_refptr<MockService> service2(
       new StrictMock<MockService>(&control_interface_,
                                   &dispatcher_,
-                                  &manager_,
-                                  kServices[1]));
+                                  &manager_));
+  string service1_name(service1->UniqueName());
+  string service2_name(service2->UniqueName());
+
+  EXPECT_CALL(*service1.get(), GetRpcIdentifier())
+      .WillRepeatedly(Return(service1_name));
   EXPECT_CALL(*service2.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(kServices[1]));
+      .WillRepeatedly(Return(service2_name));
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->AdoptService(service2));
 
   ASSERT_EQ(profile_->EnumerateEntries().size(), 2);
 
-  ASSERT_TRUE(profile_->AbandonService(kServices[0]));
-  ASSERT_EQ(profile_->EnumerateEntries()[0], kServices[1]);
+  ASSERT_TRUE(profile_->AbandonService(service1_name));
+  ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
 
-  ASSERT_FALSE(profile_->AbandonService(kServices[0]));
-  ASSERT_EQ(profile_->EnumerateEntries()[0], kServices[1]);
+  ASSERT_FALSE(profile_->AbandonService(service1_name));
+  ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
 
-  ASSERT_TRUE(profile_->AbandonService(kServices[1]));
+  ASSERT_TRUE(profile_->AbandonService(service2_name));
   ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
 }
 
