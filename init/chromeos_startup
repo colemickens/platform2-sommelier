@@ -92,36 +92,41 @@ DEV_MODE=$((! $?))
 crossystem cros_debug?1
 CROS_DEBUG=$((! $?))
 
-# Check if we need to perform firmware update.
+# Check if we need to perform firmware update: only if fwupdate_tries is
+# non-zero or if not using normal (ex, developer or recovery) firmware.
 FIRMWARE_UPDATE_SCRIPT=/usr/sbin/chromeos-firmwareupdate
-if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
+if ! crossystem "fwupdate_tries?0" "mainfw_type?normal" &&
+   [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
   # This file will be collected by chromeos-setgoodkernel
   FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/update_firmware.log
+  tries="$(crossystem fwupdate_tries || echo 0)"
 
-  if [ "$(crossystem mainfw_type)" = developer ]; then
-    # TODO(hungte) Only alert for v2 firmware.
-    chromeos-boot-alert dev_fwcheck /dev/tty1
-  elif [ "$(mosys platform name 2>/dev/null)" = "Mario" ]; then
-    # Prevent any unexpected updates on legacy system
-    crossystem fwupdate_tries=0 >/dev/null 2>&1
-  else
-    tries="$(crossystem fwupdate_tries || echo 0)"
-    if [ $tries -gt 0 ]; then
-      tries=$((tries - 1))
-      crossystem fwupdate_tries=$tries
-
-      if [ "$CROS_DEBUG" = "1" ]; then
-        # More message on console for developer mode and dev builds
-        FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
+  # Special updating rules for legacy systems.
+  case "$(mosys platform name 2>/dev/null)" in
+    Mario )
+      tries=0  # Prevents any unexpected updates on CR48.
+      ;;
+    Alex | ZGB )
+      if [ "$(crossystem mainfw_type)" = developer ]; then
+        tries=0  # Prevents updates if we're in developer mode
+        [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+        chromeos-boot-alert dev_fwcheck /dev/tty1
       fi
-      [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
-      chromeos-boot-alert update_firmware /dev/tty1
-      (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
-        tee -a $FIRMWARE_UPDATE_LOGS
-      # Send ANSI "clear screen" escape sequence to clear TTY frame buffer, to
-      # prevent user seeing the messages again in shutdown
-      printf '\033[2J' >/dev/tty1
-    fi
+      ;;
+  esac
+
+  if [ $tries -gt 0 ]; then
+    crossystem fwupdate_tries=$((tries - 1))
+    # More messages on console for developer mode and dev builds.
+    [ "$CROS_DEBUG" = "1" ] &&
+      FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS" || true
+    [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+    chromeos-boot-alert update_firmware /dev/tty1
+    (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
+      tee -a $FIRMWARE_UPDATE_LOGS
+    # Sends "clear screen" terminal command to clear TTY frame buffer, to
+    # prevent user seeing the messages again on system shutdown.
+    [ "$CROS_DEBUG" = 1 ] && tput clear >/dev/tty1 || true
   fi
 fi
 
