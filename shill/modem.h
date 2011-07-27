@@ -41,6 +41,8 @@ class Modem {
  private:
   friend class ModemManagerTest;
   friend class ModemTest;
+  FRIEND_TEST(ModemManagerTest, Connect);
+  FRIEND_TEST(ModemManagerTest, AddRemoveModem);
   FRIEND_TEST(ModemTest, CreateCellularDevice);
   FRIEND_TEST(ModemTest, Init);
 
@@ -49,6 +51,8 @@ class Modem {
   static const char kPropertyType[];
   static const char kPropertyUnlockRequired[];
   static const char kPropertyUnlockRetries[];
+
+  void InitTask();
 
   // Creates and registers a Cellular device in |device_| based on
   // ModemManager.Modem's |properties|. The device may not be created if the

@@ -42,18 +42,23 @@ Modem::~Modem() {}
 void Modem::Init() {
   VLOG(2) << __func__;
   CHECK(!device_.get());
+
+  // Defer device creation because dbus-c++ doesn't allow registration of new
+  // D-Bus objects in the context of a D-Bus signal handler.
+  dispatcher_->PostTask(task_factory_.NewRunnableMethod(&Modem::InitTask));
+}
+
+void Modem::InitTask() {
+  VLOG(2) << __func__;
+  CHECK(!device_.get());
+
   dbus_properties_proxy_.reset(
       ProxyFactory::factory()->CreateDBusPropertiesProxy(this, path_, owner_));
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties =
       dbus_properties_proxy_->GetAll(MM_MODEM_INTERFACE);
-
-  // Defer device creation because it may require the registration of new D-Bus
-  // objects and that can't be done in the context of a D-Bus signal handler.
-  dispatcher_->PostTask(
-      task_factory_.NewRunnableMethod(&Modem::CreateCellularDevice,
-                                      properties));
+  CreateCellularDevice(properties);
 }
 
 void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {

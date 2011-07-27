@@ -50,7 +50,7 @@ class ProxyFactory {
       const DBus::Path &object_path,
       const char *dbus_addr);
 
-  virtual DHCPProxyInterface *CreateDHCPProxy(const char *service);
+  virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
 
   static ProxyFactory *factory() { return factory_; }
   static void set_factory(ProxyFactory *factory) { factory_ = factory; }

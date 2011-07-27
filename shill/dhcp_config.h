@@ -7,6 +7,7 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/task.h>
 #include <dbus-c++/types.h>
 #include <glib.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -18,6 +19,7 @@ namespace shill {
 class ControlInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
+class EventDispatcher;
 class GLib;
 
 class DHCPConfig : public IPConfig {
@@ -25,6 +27,7 @@ class DHCPConfig : public IPConfig {
   typedef std::map<std::string, DBus::Variant> Configuration;
 
   DHCPConfig(ControlInterface *control_interface,
+             EventDispatcher *dispatcher,
              DHCPProvider *provider,
              const std::string &device_name,
              GLib *glib);
@@ -37,7 +40,7 @@ class DHCPConfig : public IPConfig {
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
-  void InitProxy(const char *service);
+  void InitProxy(const std::string &service);
 
   // Processes an Event signal from dhcpcd.
   void ProcessEventSignal(const std::string &reason,
@@ -46,6 +49,7 @@ class DHCPConfig : public IPConfig {
  private:
   friend class DHCPConfigTest;
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
+  FRIEND_TEST(DHCPConfigTest, InitProxy);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalFail);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
@@ -80,6 +84,10 @@ class DHCPConfig : public IPConfig {
   static const char kReasonRenew[];
 
   static const char kType[];
+
+  // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
+  // |service|.
+  void InitProxyTask(const std::string &service);
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();
@@ -122,6 +130,8 @@ class DHCPConfig : public IPConfig {
   // Root file path, used for testing.
   FilePath root_;
 
+  ScopedRunnableMethodFactory<DHCPConfig> task_factory_;
+  EventDispatcher *dispatcher_;
   GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPConfig);

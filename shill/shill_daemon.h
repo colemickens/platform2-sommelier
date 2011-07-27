@@ -7,7 +7,9 @@
 
 #include <string>
 
+#include "shill/glib.h"
 #include "shill/manager.h"
+#include "shill/proxy_factory.h"
 #include "shill/shill_event.h"
 #include "shill/sockets.h"
 
@@ -19,23 +21,24 @@ class GLib;
 
 class Daemon {
  public:
-  Daemon(Config *config, ControlInterface *control, GLib *glib);
+  Daemon(Config *config, ControlInterface *control);
   ~Daemon();
 
   void AddDeviceToBlackList(const std::string &device_name);
-  void Start();
   void Run();
 
  private:
   friend class ShillDaemonTest;
 
-  ControlInterface *CreateControl();
+  void Start();
 
   Config *config_;
   ControlInterface *control_;
   Manager manager_;
   EventDispatcher dispatcher_;
   Sockets sockets_;
+  GLib glib_;
+  ProxyFactory proxy_factory_;
 };
 
 }  // namespace shill

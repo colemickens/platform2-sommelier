@@ -69,7 +69,7 @@ void DHCPCDListener::Proxy::StatusChangedSignal(
   config->InitProxy(signal.sender());
 }
 
-DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const char *service)
+DHCPCDProxy::DHCPCDProxy(DBus::Connection *connection, const string &service)
     : proxy_(connection, service) {
   VLOG(2) << "DHCPCDProxy(service=" << service << ").";
 }
@@ -83,13 +83,15 @@ void DHCPCDProxy::Release(const string &interface) {
 }
 
 DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,
-                          const char *service)
-    : DBus::ObjectProxy(*connection, kDBusPath, service) {
+                          const string &service)
+    : DBus::ObjectProxy(*connection, kDBusPath, service.c_str()) {
   // Don't catch signals directly in this proxy because they will be dispatched
   // to the client by the DHCPCD listener.
   _signals.erase("Event");
   _signals.erase("StatusChanged");
 }
+
+DHCPCDProxy::Proxy::~Proxy() {}
 
 void DHCPCDProxy::Proxy::Event(const uint32_t &pid,
                                const std::string &reason,

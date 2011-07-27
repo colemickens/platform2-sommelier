@@ -15,9 +15,6 @@
 #include <chromeos/syslog_logging.h>
 
 #include "shill/dbus_control.h"
-#include "shill/dhcp_provider.h"
-#include "shill/glib.h"
-#include "shill/proxy_factory.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
@@ -105,16 +102,7 @@ int main(int argc, char** argv) {
   scoped_ptr<shill::DBusControl> dbus_control(new shill::DBusControl());
   dbus_control->Init();
 
-  shill::ProxyFactory proxy_factory;
-  proxy_factory.Init();
-  shill::ProxyFactory::set_factory(&proxy_factory);
-
-  shill::GLib glib;
-  glib.TypeInit();
-
-  shill::DHCPProvider::GetInstance()->Init(dbus_control.get(), &glib);
-
-  shill::Daemon daemon(&config, dbus_control.get(), &glib);
+  shill::Daemon daemon(&config, dbus_control.get());
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
     vector<string> device_list;

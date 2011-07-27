@@ -16,6 +16,7 @@
 #include "shill/glib.h"
 #include "shill/ip_address.h"
 #include "shill/proxy_factory.h"
+#include "shill/shill_event.h"
 
 using std::string;
 using std::vector;
@@ -44,6 +45,7 @@ const char DHCPConfig::kType[] = "dhcp";
 
 
 DHCPConfig::DHCPConfig(ControlInterface *control_interface,
+                       EventDispatcher *dispatcher,
                        DHCPProvider *provider,
                        const string &device_name,
                        GLib *glib)
@@ -52,6 +54,8 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       pid_(0),
       child_watch_tag_(0),
       root_("/"),
+      task_factory_(this),
+      dispatcher_(dispatcher),
       glib_(glib) {
   store_.RegisterConstString(flimflam::kAddressProperty,
                              &(properties().address));
@@ -85,10 +89,6 @@ bool DHCPConfig::RenewIP() {
   if (!pid_) {
     return false;
   }
-  if (!proxy_.get()) {
-    LOG(ERROR) << "Unable to renew IP before acquiring destination.";
-    return false;
-  }
   proxy_->Rebind(device_name());
   return true;
 }
@@ -98,17 +98,25 @@ bool DHCPConfig::ReleaseIP() {
   if (!pid_) {
     return true;
   }
-  if (!proxy_.get()) {
-    LOG(ERROR) << "Unable to release IP before acquiring destination.";
-    return false;
+  if (proxy_.get()) {
+    proxy_->Release(device_name());
   }
-  proxy_->Release(device_name());
   Stop();
   return true;
 }
 
-void DHCPConfig::InitProxy(const char *service) {
+void DHCPConfig::InitProxy(const string &service) {
+  // Defer proxy creation because dbus-c++ doesn't allow registration of new
+  // D-Bus objects in the context of a D-Bus signal handler.
   if (!proxy_.get()) {
+    dispatcher_->PostTask(
+        task_factory_.NewRunnableMethod(&DHCPConfig::InitProxyTask, service));
+  }
+}
+
+void DHCPConfig::InitProxyTask(const string &service) {
+  if (!proxy_.get()) {
+    VLOG(2) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_.reset(ProxyFactory::factory()->CreateDHCPProxy(service));
   }
 }

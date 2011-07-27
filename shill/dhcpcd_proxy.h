@@ -49,7 +49,7 @@ class DHCPCDProxy : public DHCPProxyInterface {
   static const char kDBusInterfaceName[];
   static const char kDBusPath[];
 
-  DHCPCDProxy(DBus::Connection *connection, const char *service);
+  DHCPCDProxy(DBus::Connection *connection, const std::string &service);
 
   // Inherited from DHCPProxyInterface.
   virtual void Rebind(const std::string &interface);
@@ -59,7 +59,8 @@ class DHCPCDProxy : public DHCPProxyInterface {
   class Proxy : public org::chromium::dhcpcd_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection, const char *service);
+    Proxy(DBus::Connection *connection, const std::string &service);
+    virtual ~Proxy();
 
    private:
     // Signal callbacks inherited from dhcpcd_proxy. Note that these callbacks

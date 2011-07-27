@@ -2,36 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
-#include <glib.h>
+#include "shill/shill_daemon.h"
 
-#include <algorithm>
+#include <stdio.h>
+
 #include <string>
-#include <vector>
 
 #include <base/logging.h>
 
-#include "shill/shill_daemon.h"
-#include "shill/control_interface.h"
-#include "shill/dbus_control.h"
+#include "shill/dhcp_provider.h"
 #include "shill/rtnl_handler.h"
 
-using std::max;
-using std::min;
 using std::string;
-using std::vector;
 
 namespace shill {
-
-static const char kTaggedFilePath[] = "/var/lib/shill";
 
 // Daemon: Main for connection manager.  Starts main process and holds event
 // loop.
 
-Daemon::Daemon(Config *config, ControlInterface *control, GLib *glib)
-  : config_(config),
-    control_(control),
-    manager_(control_, &dispatcher_, glib) { }
+Daemon::Daemon(Config *config, ControlInterface *control)
+    : config_(config),
+      control_(control),
+      manager_(control_, &dispatcher_, &glib_) { }
 Daemon::~Daemon() {}
 
 void Daemon::AddDeviceToBlackList(const string &device_name) {
@@ -39,7 +31,11 @@ void Daemon::AddDeviceToBlackList(const string &device_name) {
 }
 
 void Daemon::Start() {
+  glib_.TypeInit();
+  proxy_factory_.Init();
+  ProxyFactory::set_factory(&proxy_factory_);
   RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
+  DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
   manager_.Start();
 }
 

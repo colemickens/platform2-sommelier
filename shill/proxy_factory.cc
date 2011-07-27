@@ -58,7 +58,7 @@ SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
                                       dbus_addr);
 }
 
-DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const char *service) {
+DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
   return new DHCPCDProxy(connection(), service);
 }
 

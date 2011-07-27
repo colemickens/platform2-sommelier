@@ -8,7 +8,6 @@
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_modem_manager_proxy.h"
 #include "shill/modem.h"
@@ -34,7 +33,7 @@ class ModemManagerTest : public Test {
                        &dispatcher_,
                        &manager_,
                        &glib_),
-        proxy_factory_(&proxy_, &dbus_properties_proxy_) {
+        proxy_factory_(&proxy_) {
     ProxyFactory::set_factory(&proxy_factory_);
   }
 
@@ -43,17 +42,8 @@ class ModemManagerTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(ModemManagerProxyInterface *proxy,
-                     DBusPropertiesProxyInterface *dbus_properties_proxy)
-        : proxy_(proxy),
-          dbus_properties_proxy_(dbus_properties_proxy) {}
-
-    virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        Modem *modem,
-        const string &path,
-        const string &service) {
-      return dbus_properties_proxy_;
-    }
+    TestProxyFactory(ModemManagerProxyInterface *proxy)
+        : proxy_(proxy) {}
 
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
         ModemManager *manager,
@@ -64,7 +54,6 @@ class ModemManagerTest : public Test {
 
    private:
     ModemManagerProxyInterface *proxy_;
-    DBusPropertiesProxyInterface *dbus_properties_proxy_;
   };
 
   static const char kService[];
@@ -72,15 +61,12 @@ class ModemManagerTest : public Test {
   static const char kOwner[];
   static const char kModemPath[];
 
-  void ReleaseDBusPropertiesProxy();
-
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
   Manager manager_;
   ModemManager modem_manager_;
   MockModemManagerProxy proxy_;
-  MockDBusPropertiesProxy dbus_properties_proxy_;
   TestProxyFactory proxy_factory_;
 };
 
@@ -93,20 +79,7 @@ void ModemManagerTest::TearDown() {
   modem_manager_.watcher_id_ = 0;
   ModemManagerProxyInterface *proxy = modem_manager_.proxy_.release();
   EXPECT_TRUE(proxy == NULL || proxy == &proxy_);
-  ReleaseDBusPropertiesProxy();
   ProxyFactory::set_factory(NULL);
-}
-
-void ModemManagerTest::ReleaseDBusPropertiesProxy() {
-  if (modem_manager_.modems_.empty()) {
-    return;
-  }
-  EXPECT_EQ(1, modem_manager_.modems_.size());
-  ModemManager::Modems::iterator iter = modem_manager_.modems_.begin();
-  DBusPropertiesProxyInterface *dbus_properties_proxy =
-      iter->second->dbus_properties_proxy_.release();
-  EXPECT_TRUE(dbus_properties_proxy == NULL ||
-              dbus_properties_proxy == &dbus_properties_proxy_);
 }
 
 TEST_F(ModemManagerTest, Start) {
@@ -138,12 +111,11 @@ TEST_F(ModemManagerTest, Connect) {
   EXPECT_EQ("", modem_manager_.owner_);
   EXPECT_CALL(proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
-  EXPECT_CALL(dbus_properties_proxy_, GetAll(MM_MODEM_INTERFACE))
-      .WillOnce(Return(DBusPropertiesMap()));
   modem_manager_.Connect(kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
   EXPECT_EQ(1, modem_manager_.modems_.size());
-  EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  EXPECT_FALSE(modem_manager_.modems_[kModemPath]->task_factory_.empty());
 }
 
 TEST_F(ModemManagerTest, Disconnect) {
@@ -168,13 +140,11 @@ TEST_F(ModemManagerTest, OnVanish) {
 
 TEST_F(ModemManagerTest, AddRemoveModem) {
   modem_manager_.owner_ = kOwner;
-  EXPECT_CALL(dbus_properties_proxy_, GetAll(MM_MODEM_INTERFACE))
-      .WillOnce(Return(DBusPropertiesMap()));
   modem_manager_.AddModem(kModemPath);
   EXPECT_EQ(1, modem_manager_.modems_.size());
-  EXPECT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  ASSERT_TRUE(ContainsKey(modem_manager_.modems_, kModemPath));
+  EXPECT_FALSE(modem_manager_.modems_[kModemPath]->task_factory_.empty());
 
-  ReleaseDBusPropertiesProxy();
   modem_manager_.RemoveModem(kModemPath);
   EXPECT_EQ(0, modem_manager_.modems_.size());
 }

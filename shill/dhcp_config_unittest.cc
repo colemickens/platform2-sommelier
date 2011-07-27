@@ -16,6 +16,8 @@
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/property_store_unittest.h"
+#include "shill/proxy_factory.h"
+#include "shill/shill_event.h"
 
 using std::string;
 using std::vector;
@@ -27,23 +29,44 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const char kDeviceName[] = "testdevicename";
+const char kDeviceName[] = "eth0";
 }  // namespace {}
 
 class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
+        proxy_factory_(this),
         config_(new DHCPConfig(&control_,
+                               &dispatcher_,
                                DHCPProvider::GetInstance(),
                                kDeviceName,
-                               &glib_)) {
-    config_->proxy_.reset(proxy_);  // pass ownership
+                               &glib_)) {}
+
+  virtual void SetUp() {
+    ProxyFactory::set_factory(&proxy_factory_);
+  }
+
+  virtual void TearDown() {
+    ProxyFactory::set_factory(NULL);
   }
 
  protected:
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    TestProxyFactory(DHCPConfigTest *test) : test_(test) {}
+
+    virtual DHCPProxyInterface *CreateDHCPProxy(const string &service) {
+      return test_->proxy_.release();
+    }
+
+   private:
+    DHCPConfigTest *test_;
+  };
+
   MockGLib glib_;
-  MockDHCPProxy * const proxy_;
+  scoped_ptr<MockDHCPProxy> proxy_;
+  TestProxyFactory proxy_factory_;
   MockControl control_;
   DHCPConfigRefPtr config_;
 };
@@ -52,6 +75,22 @@ TEST_F(DHCPConfigTest, GetIPv4AddressString) {
   EXPECT_EQ("255.255.255.255", config_->GetIPv4AddressString(0xffffffff));
   EXPECT_EQ("0.0.0.0", config_->GetIPv4AddressString(0));
   EXPECT_EQ("1.2.3.4", config_->GetIPv4AddressString(0x04030201));
+}
+
+TEST_F(DHCPConfigTest, InitProxy) {
+  static const char kService[] = ":1.200";
+  EXPECT_TRUE(config_->task_factory_.empty());
+  config_->InitProxy(kService);
+  EXPECT_FALSE(config_->task_factory_.empty());
+
+  EXPECT_TRUE(proxy_.get());
+  EXPECT_FALSE(config_->proxy_.get());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(proxy_.get());
+  EXPECT_TRUE(config_->proxy_.get());
+
+  config_->InitProxy(kService);
+  EXPECT_TRUE(config_->task_factory_.empty());
 }
 
 TEST_F(DHCPConfigTest, ParseConfiguration) {
@@ -193,6 +232,7 @@ TEST_F(DHCPConfigTest, ProcessEventSignalUnknown) {
 TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->ReleaseIP());
   config_->pid_ = 0;
 }
@@ -200,6 +240,7 @@ TEST_F(DHCPConfigTest, ReleaseIP) {
 TEST_F(DHCPConfigTest, RenewIP) {
   config_->pid_ = 456;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());
   config_->pid_ = 0;
 }
@@ -207,6 +248,7 @@ TEST_F(DHCPConfigTest, RenewIP) {
 TEST_F(DHCPConfigTest, RequestIP) {
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
+  config_->proxy_.reset(proxy_.release());
   EXPECT_TRUE(config_->RenewIP());
   config_->pid_ = 0;
 }
@@ -287,7 +329,7 @@ TEST_F(DHCPConfigTest, Stop) {
   config_->Stop();
   config_->pid_ = kPID;
   config_->Stop();
-  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);  // Invoked by destuctor.
+  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
 }
 
 TEST_F(DHCPConfigTest, Dispatch) {

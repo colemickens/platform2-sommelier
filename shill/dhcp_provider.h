@@ -18,6 +18,7 @@ namespace shill {
 
 class ControlInterface;
 class DHCPCDListener;
+class EventDispatcher;
 class GLib;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
@@ -34,7 +35,9 @@ class DHCPProvider {
   // Initializes the provider singleton. This method hooks up a D-Bus signal
   // listener that catches signals from spawned DHCP clients and dispatches them
   // to the appropriate DHCP configuration instance.
-  void Init(ControlInterface *control_interface, GLib *glib);
+  void Init(ControlInterface *control_interface,
+            EventDispatcher *dispatcher,
+            GLib *glib);
 
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
@@ -74,8 +77,9 @@ class DHCPProvider {
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;
 
-  GLib *glib_;
   ControlInterface *control_interface_;
+  EventDispatcher *dispatcher_;
+  GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DHCPProvider);
 };
