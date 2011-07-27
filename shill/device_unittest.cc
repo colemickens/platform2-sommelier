@@ -78,20 +78,6 @@ TEST_F(DeviceTest, GetProperties) {
     EXPECT_EQ(props[flimflam::kNameProperty].reader().get_string(),
               string(kDeviceName));
   }
-  {
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kDBusObjectProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kDBusObjectProperty].reader().get_string(),
-              string(DeviceMockAdaptor::kRpcId));
-  }
-  {
-    ::DBus::Error dbus_error;
-    DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
-    ASSERT_FALSE(props.find(flimflam::kDBusConnectionProperty) == props.end());
-    EXPECT_EQ(props[flimflam::kDBusConnectionProperty].reader().get_string(),
-              string(DeviceMockAdaptor::kRpcConnId));
-  }
 }
 
 TEST_F(DeviceTest, Dispatch) {

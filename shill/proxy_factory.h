@@ -20,6 +20,7 @@ class DHCPProxyInterface;
 class Modem;
 class ModemManager;
 class ModemManagerProxyInterface;
+class ModemProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 
@@ -40,6 +41,9 @@ class ProxyFactory {
       ModemManager *manager,
       const std::string &path,
       const std::string &service);
+
+  virtual ModemProxyInterface *CreateModemProxy(const std::string &path,
+                                                const std::string &service);
 
   virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
       const char *dbus_path,

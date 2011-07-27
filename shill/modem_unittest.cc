@@ -133,16 +133,21 @@ TEST_F(ModemTest, CreateCellularDevice) {
   const int kTestSocket = 10;
   props[Modem::kPropertyLinkName].writer().append_string(kLinkName);
   EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
-      .WillOnce(Return(kTestSocket));
+      .Times(2)
+      .WillRepeatedly(Return(kTestSocket));
   EXPECT_CALL(sockets_, Ioctl(kTestSocket, SIOCGIFINDEX, _))
-      .WillOnce(DoAll(SetInterfaceIndex(), Return(0)));
+      .WillRepeatedly(DoAll(SetInterfaceIndex(), Return(0)));
   EXPECT_CALL(sockets_, Close(kTestSocket))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
   modem_.CreateCellularDevice(props);
-  EXPECT_TRUE(modem_.device_.get());
+  EXPECT_FALSE(modem_.device_.get());
+
+  props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_CDMA);
+  modem_.CreateCellularDevice(props);
+  ASSERT_TRUE(modem_.device_.get());
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());
-  // TODO(petkov): Confirm the device is register by the manager.
+  // TODO(petkov): Confirm the device is registered by the manager.
 }
 
 }  // namespace shill

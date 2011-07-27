@@ -4,41 +4,65 @@
 
 #include "shill/cellular.h"
 
-#include <map>
-#include <string>
-#include <vector>
-
-#include <dbus-c++/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
-#include "shill/dbus_adaptor.h"
-#include "shill/manager.h"
-#include "shill/mock_control.h"
-#include "shill/mock_device.h"
+#include "shill/mock_modem_proxy.h"
 #include "shill/property_store_unittest.h"
+#include "shill/proxy_factory.h"
 
-using std::map;
 using std::string;
-using std::vector;
-using ::testing::_;
-using ::testing::NiceMock;
-using ::testing::Return;
-using ::testing::Test;
 
 namespace shill {
 
 class CellularTest : public PropertyStoreTest {
  public:
   CellularTest()
-      : device_(new Cellular(&control_interface_, NULL, &manager_, "3G", 0)) {
-  }
+      : proxy_(new MockModemProxy()),
+        proxy_factory_(this),
+        device_(new Cellular(&control_interface_,
+                             NULL,
+                             &manager_,
+                             "usb0",
+                             3,
+                             Cellular::kTypeGSM,
+                             kDBusOwner,
+                             kDBusPath)) {}
   virtual ~CellularTest() {}
 
+  virtual void SetUp() {
+    ProxyFactory::set_factory(&proxy_factory_);
+  }
+
+  virtual void TearDown() {
+    ProxyFactory::set_factory(NULL);
+    device_->Stop();
+  }
+
  protected:
-  DeviceRefPtr device_;
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    TestProxyFactory(CellularTest *test) : test_(test) {}
+
+    virtual ModemProxyInterface *CreateModemProxy(const string &path,
+                                                  const string &service) {
+      return test_->proxy_.release();
+    }
+
+   private:
+    CellularTest *test_;
+  };
+
+  static const char kDBusOwner[];
+  static const char kDBusPath[];
+
+  scoped_ptr<MockModemProxy> proxy_;
+  TestProxyFactory proxy_factory_;
+
+  CellularRefPtr device_;
 };
+
+const char CellularTest::kDBusOwner[] = ":1.19";
+const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 
 TEST_F(CellularTest, Contains) {
   EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));
@@ -86,6 +110,32 @@ TEST_F(CellularTest, Dispatch) {
                                              &error));
     EXPECT_EQ(invalid_args_, error.name());
   }
+}
+
+TEST_F(CellularTest, GetTypeString) {
+  EXPECT_EQ("CellularTypeGSM", device_->GetTypeString());
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_EQ("CellularTypeCDMA", device_->GetTypeString());
+  device_->type_ = static_cast<Cellular::Type>(1234);
+  EXPECT_EQ("CellularTypeUnknown-1234", device_->GetTypeString());
+}
+
+TEST_F(CellularTest, GetStateString) {
+  EXPECT_EQ("CellularStateDisabled", device_->GetStateString());
+  device_->state_ = Cellular::kStateEnabled;
+  EXPECT_EQ("CellularStateEnabled", device_->GetStateString());
+  device_->state_ = Cellular::kStateRegistered;
+  EXPECT_EQ("CellularStateRegistered", device_->GetStateString());
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_EQ("CellularStateConnected", device_->GetStateString());
+  device_->state_ = static_cast<Cellular::State>(2345);
+  EXPECT_EQ("CellularStateUnknown-2345", device_->GetStateString());
+}
+
+TEST_F(CellularTest, Start) {
+  EXPECT_CALL(*proxy_, Enable(true)).Times(1);
+  device_->Start();
+  EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
 }
 
 }  // namespace shill

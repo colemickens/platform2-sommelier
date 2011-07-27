@@ -89,9 +89,6 @@ class Device : public base::RefCounted<Device> {
   // request was successfully sent.
   bool AcquireDHCPConfig();
 
-  void HelpRegisterDerivedString(const std::string &name,
-                                 std::string(Device::*get)(void),
-                                 bool(Device::*set)(const std::string&));
   void HelpRegisterDerivedStrings(const std::string &name,
                                   Strings(Device::*get)(void),
                                   bool(Device::*set)(const Strings&));

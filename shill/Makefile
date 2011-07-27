@@ -26,6 +26,8 @@ LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
 
+DBUS_INTERFACES_DIR = $(SYSROOT)/usr/share/dbus-1/interfaces
+
 DBUS_BINDINGS_DIR = dbus_bindings
 DBUS_BINDINGS_MODEM_MANAGER = $(DBUS_BINDINGS_DIR)/modem_manager.xml
 
@@ -38,6 +40,7 @@ DBUS_ADAPTOR_HEADERS = \
 
 DBUS_PROXY_HEADERS = \
 	dhcpcd.h \
+	modem.h \
 	modem_manager.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
@@ -84,6 +87,7 @@ SHILL_OBJS = \
 	modem_info.o \
 	modem_manager.o \
 	modem_manager_proxy.o \
+	modem_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
 	property_store.o \
@@ -147,7 +151,7 @@ TEST_OBJS = \
 all: $(SHILL_BIN) $(TEST_BIN)
 
 $(DBUS_BINDINGS_MODEM_MANAGER): \
-	$(SYSROOT)/usr/share/dbus-1/interfaces/org.freedesktop.ModemManager.xml
+	$(DBUS_INTERFACES_DIR)/org.freedesktop.ModemManager.xml
 	cat $< > $@
 
 $(DBUS_PROXY_BINDINGS): %.h: %.xml

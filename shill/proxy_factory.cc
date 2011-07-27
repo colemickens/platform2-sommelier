@@ -9,6 +9,7 @@
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/modem_manager_proxy.h"
+#include "shill/modem_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
 
@@ -40,6 +41,11 @@ ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
     const string &path,
     const string &service) {
   return new ModemManagerProxy(connection(), manager, path, service);
+}
+
+ModemProxyInterface *ProxyFactory::CreateModemProxy(const string &path,
+                                                    const string &service) {
+  return new ModemProxy(connection(), path, service);
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(

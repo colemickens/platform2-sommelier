@@ -65,13 +65,9 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kPRLVersionProperty: Registered in Cellular
   // flimflam::kSIMLockStatusProperty: Registered in Cellular
   // flimflam::kFoundNetworksProperty: Registered in Cellular
+  // flimflam::kDBusConnectionProperty: Registered in Cellular
+  // flimflam::kDBusObjectProperty: Register in Cellular
 
-  HelpRegisterDerivedString(flimflam::kDBusConnectionProperty,
-                            &Device::GetRpcConnectionIdentifier,
-                            NULL);
-  HelpRegisterDerivedString(flimflam::kDBusObjectProperty,
-                            &Device::GetRpcIdentifier,
-                            NULL);
   // TODO(cmasone): Chrome doesn't use this...does anyone?
   // store_.RegisterConstString(flimflam::kInterfaceProperty, &link_name_);
   HelpRegisterDerivedStrings(flimflam::kIPConfigsProperty,
@@ -147,14 +143,6 @@ bool Device::AcquireDHCPConfig() {
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();
-}
-
-void Device::HelpRegisterDerivedString(const string &name,
-                                       string(Device::*get)(void),
-                                       bool(Device::*set)(const string&)) {
-  store_.RegisterDerivedString(
-      name,
-      StringAccessor(new CustomAccessor<Device, string>(this, get, set)));
 }
 
 void Device::HelpRegisterDerivedStrings(const string &name,

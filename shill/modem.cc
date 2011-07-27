@@ -82,9 +82,20 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
     return;
   }
 
-  uint32 type = 0;
-  DBusProperties::GetUint32(properties, kPropertyType, &type);
-  // TODO(petkov): Use type.
+  uint32 mm_type = kuint32max;
+  Cellular::Type type;
+  DBusProperties::GetUint32(properties, kPropertyType, &mm_type);
+  switch (mm_type) {
+    case MM_MODEM_TYPE_CDMA:
+      type = Cellular::kTypeCDMA;
+      break;
+    case MM_MODEM_TYPE_GSM:
+      type = Cellular::kTypeGSM;
+      break;
+    default:
+      LOG(ERROR) << "Unsupported cellular modem type: " << mm_type;
+      return;
+  }
 
   LOG(INFO) << "Creating a cellular device on link " << link_name
             << " interface index " << interface_index << ".";
@@ -92,7 +103,10 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                          dispatcher_,
                          manager_,
                          link_name,
-                         interface_index);
+                         interface_index,
+                         type,
+                         owner_,
+                         path_);
   manager_->RegisterDevice(device_);
 
   string unlock_required;

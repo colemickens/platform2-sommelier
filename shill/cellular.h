@@ -6,10 +6,9 @@
 #define SHILL_CELLULAR_
 
 #include <string>
-#include <utility>
 
 #include <base/basictypes.h>
-#include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 #include "shill/refptr_types.h"
@@ -17,12 +16,26 @@
 
 namespace shill {
 
+class ModemProxyInterface;
+
 class Cellular : public Device {
  public:
+  enum Type {
+    kTypeGSM,
+    kTypeCDMA
+  };
+
+  enum State {
+    kStateDisabled,
+    kStateEnabled,
+    kStateRegistered,
+    kStateConnected,
+  };
+
   class Network {
    public:
     Network();
-    virtual ~Network();
+    ~Network();
 
     const std::string &GetStatus() const;
     void SetStatus(const std::string &status);
@@ -43,28 +56,41 @@ class Cellular : public Device {
 
    private:
     Stringmap dict_;
+
     DISALLOW_COPY_AND_ASSIGN(Network);
   };
 
   struct SimLockStatus {
    public:
-    SimLockStatus();
-    virtual ~SimLockStatus();
+    SimLockStatus() : retries_left(0) {}
+
     std::string lock_type;
     uint32 retries_left;
   };
 
+  // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
+  // the ModemManager.Modem DBus object path (e.g.,
+  // "/org/chromium/ModemManager/Gobi/0").
   Cellular(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Manager *manager,
-           const std::string& link,
-           int interface_index);
-  ~Cellular();
-  void Start();
-  void Stop();
-  bool TechnologyIs(Device::Technology type);
+           const std::string &link_name,
+           int interface_index,
+           Type type,
+           const std::string &owner,
+           const std::string &path);
+  virtual ~Cellular();
+
+  // Inherited from Device.
+  virtual void Start();
+  virtual void Stop();
+  virtual bool TechnologyIs(Technology type);
 
  private:
+  FRIEND_TEST(CellularTest, GetStateString);
+  FRIEND_TEST(CellularTest, GetTypeString);
+  FRIEND_TEST(CellularTest, Start);
+
   Stringmaps EnumerateNetworks();
   StrIntPair SimLockStatusToProperty();
   void HelpRegisterDerivedStringmaps(const std::string &name,
@@ -73,6 +99,16 @@ class Cellular : public Device {
   void HelpRegisterDerivedStrIntPair(const std::string &name,
                                      StrIntPair(Cellular::*get)(void),
                                      bool(Cellular::*set)(const StrIntPair&));
+
+  std::string GetTypeString();
+  std::string GetStateString();
+
+  Type type_;
+  State state_;
+
+  const std::string dbus_owner_;  // ModemManager.Modem
+  const std::string dbus_path_;  // ModemManager.Modem
+  scoped_ptr<ModemProxyInterface> proxy_;
 
   ServiceRefPtr service_;
   bool service_registered_;

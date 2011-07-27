@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular_service.h"
@@ -16,8 +17,10 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
+#include "shill/modem_proxy_interface.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
+#include "shill/proxy_factory.h"
 #include "shill/shill_event.h"
 
 using std::make_pair;
@@ -80,25 +83,34 @@ const Stringmap &Cellular::Network::ToDict() const {
   return dict_;
 }
 
-Cellular::SimLockStatus::SimLockStatus() {}
-
-Cellular::SimLockStatus::~SimLockStatus() {}
-
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Manager *manager,
-                   const string &link,
-                   int interface_index)
+                   const string &link_name,
+                   int interface_index,
+                   Type type,
+                   const string &owner,
+                   const string &path)
     : Device(control_interface,
              dispatcher,
              manager,
-             link,
+             link_name,
              interface_index),
+      type_(type),
+      state_(kStateDisabled),
+      dbus_owner_(owner),
+      dbus_path_(path),
       service_(new CellularService(control_interface,
                                    dispatcher,
                                    manager,
                                    this)),
-      service_registered_(false) {
+      service_registered_(false),
+      allow_roaming_(false),
+      prl_version_(0),
+      scanning_(false),
+      scan_interval_(0) {
+  store_.RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
+  store_.RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
   store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
   store_.RegisterConstString(flimflam::kEsnProperty, &esn_);
@@ -125,20 +137,46 @@ Cellular::Cellular(ControlInterface *control_interface,
   store_.RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
-  VLOG(2) << "Cellular device " << link_name_ << " initialized.";
+  VLOG(2) << "Cellular device " << link_name_ << " initialized: "
+          << GetTypeString();
 }
 
-Cellular::~Cellular() {
-  Stop();
+Cellular::~Cellular() {}
+
+std::string Cellular::GetTypeString() {
+  switch (type_) {
+    case kTypeGSM: return "CellularTypeGSM";
+    case kTypeCDMA: return "CellularTypeCDMA";
+    default: return StringPrintf("CellularTypeUnknown-%d", type_);
+  }
+}
+
+std::string Cellular::GetStateString() {
+  switch (state_) {
+    case kStateDisabled: return "CellularStateDisabled";
+    case kStateEnabled: return "CellularStateEnabled";
+    case kStateRegistered: return "CellularStateRegistered";
+    case kStateConnected: return "CellularStateConnected";
+    default: return StringPrintf("CellularStateUnknown-%d", state_);
+  }
 }
 
 void Cellular::Start() {
-  Device::Start();
+  VLOG(2) << __func__ << ": " << GetStateString();
+  CHECK_EQ(kStateDisabled, state_);
+  proxy_.reset(
+      ProxyFactory::factory()->CreateModemProxy(dbus_path_, dbus_owner_));
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  proxy_->Enable(true);
+  state_ = kStateEnabled;
+  // TODO(petkov): Device::Start();
 }
 
 void Cellular::Stop() {
+  proxy_.reset();
   manager_->DeregisterService(service_);
-  Device::Stop();
+  service_ = NULL;  // Breaks a reference cycle.
+  // TODO(petkov): Device::Stop();
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) {

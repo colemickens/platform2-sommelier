@@ -1,0 +1,21 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_MODEM_PROXY_INTERFACE_
+#define SHILL_MODEM_PROXY_INTERFACE_
+
+namespace shill {
+
+// These are the methods that a ModemManager.Modem proxy must support. The
+// interface is provided so that it can be mocked in tests.
+class ModemProxyInterface {
+ public:
+  virtual ~ModemProxyInterface() {}
+
+  virtual void Enable(const bool enable) = 0;
+};
+
+}  // namespace shill
+
+#endif  // SHILL_MODEM_PROXY_INTERFACE_
