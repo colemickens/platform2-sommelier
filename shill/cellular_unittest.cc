@@ -7,10 +7,12 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/mock_modem_proxy.h"
+#include "shill/mock_modem_simple_proxy.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
+using testing::Return;
 
 namespace shill {
 
@@ -18,6 +20,7 @@ class CellularTest : public PropertyStoreTest {
  public:
   CellularTest()
       : proxy_(new MockModemProxy()),
+        simple_proxy_(new MockModemSimpleProxy()),
         proxy_factory_(this),
         device_(new Cellular(&control_interface_,
                              NULL,
@@ -48,6 +51,12 @@ class CellularTest : public PropertyStoreTest {
       return test_->proxy_.release();
     }
 
+    virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
+        const string &path,
+        const string &service) {
+      return test_->simple_proxy_.release();
+    }
+
    private:
     CellularTest *test_;
   };
@@ -56,6 +65,7 @@ class CellularTest : public PropertyStoreTest {
   static const char kDBusPath[];
 
   scoped_ptr<MockModemProxy> proxy_;
+  scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   TestProxyFactory proxy_factory_;
 
   CellularRefPtr device_;
@@ -134,6 +144,8 @@ TEST_F(CellularTest, GetStateString) {
 
 TEST_F(CellularTest, Start) {
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
+  EXPECT_CALL(*simple_proxy_, GetStatus())
+      .WillOnce(Return(DBusPropertiesMap()));
   device_->Start();
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
 }

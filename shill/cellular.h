@@ -17,6 +17,7 @@
 namespace shill {
 
 class ModemProxyInterface;
+class ModemSimpleProxyInterface;
 
 class Cellular : public Device {
  public:
@@ -109,6 +110,7 @@ class Cellular : public Device {
   const std::string dbus_owner_;  // ModemManager.Modem
   const std::string dbus_path_;  // ModemManager.Modem
   scoped_ptr<ModemProxyInterface> proxy_;
+  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
   ServiceRefPtr service_;
   bool service_registered_;

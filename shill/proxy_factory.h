@@ -21,6 +21,7 @@ class Modem;
 class ModemManager;
 class ModemManagerProxyInterface;
 class ModemProxyInterface;
+class ModemSimpleProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 
@@ -44,6 +45,10 @@ class ProxyFactory {
 
   virtual ModemProxyInterface *CreateModemProxy(const std::string &path,
                                                 const std::string &service);
+
+  virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
+      const std::string &path,
+      const std::string &service);
 
   virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
       const char *dbus_path,

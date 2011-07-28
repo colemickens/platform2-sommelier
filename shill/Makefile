@@ -30,6 +30,10 @@ DBUS_INTERFACES_DIR = $(SYSROOT)/usr/share/dbus-1/interfaces
 
 DBUS_BINDINGS_DIR = dbus_bindings
 DBUS_BINDINGS_MODEM_MANAGER = $(DBUS_BINDINGS_DIR)/modem_manager.xml
+DBUS_BINDINGS_MODEM_SIMPLE = $(DBUS_BINDINGS_DIR)/modem-simple.xml
+DBUS_BINDINGS_XML = \
+	$(DBUS_BINDINGS_MODEM_MANAGER) \
+	$(DBUS_BINDINGS_MODEM_SIMPLE)
 
 DBUS_ADAPTOR_HEADERS = \
 	flimflam-device.h \
@@ -39,9 +43,9 @@ DBUS_ADAPTOR_HEADERS = \
 	flimflam-service.h
 
 DBUS_PROXY_HEADERS = \
+	$(patsubst $(DBUS_BINDINGS_DIR)/%.xml,%.h,$(DBUS_BINDINGS_XML)) \
 	dhcpcd.h \
 	modem.h \
-	modem_manager.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
@@ -88,6 +92,7 @@ SHILL_OBJS = \
 	modem_manager.o \
 	modem_manager_proxy.o \
 	modem_proxy.o \
+	modem_simple_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
 	property_store.o \
@@ -156,6 +161,10 @@ $(DBUS_BINDINGS_MODEM_MANAGER): \
 	$(DBUS_INTERFACES_DIR)/org.freedesktop.ModemManager.xml
 	cat $< > $@
 
+$(DBUS_BINDINGS_MODEM_SIMPLE): \
+	$(DBUS_INTERFACES_DIR)/org.freedesktop.ModemManager.Modem.Simple.xml
+	cat $< > $@
+
 $(DBUS_PROXY_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
 
@@ -176,5 +185,9 @@ $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 	$(CXX) $(CXXFLAGS) $(TEST_LIB_DIRS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
-	rm -rf *.o $(DBUS_BINDINGS_MODEM_MANAGER) $(DBUS_BINDINGS) \
-		$(SHILL_BIN) $(TEST_BIN)
+	rm -rf \
+		*.o \
+		$(DBUS_BINDINGS_XML) \
+		$(DBUS_BINDINGS) \
+		$(SHILL_BIN) \
+		$(TEST_BIN)

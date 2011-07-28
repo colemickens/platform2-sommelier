@@ -10,6 +10,7 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
+#include "shill/modem_simple_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
 
@@ -46,6 +47,12 @@ ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
 ModemProxyInterface *ProxyFactory::CreateModemProxy(const string &path,
                                                     const string &service) {
   return new ModemProxy(connection(), path, service);
+}
+
+ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
+    const string &path,
+    const string &service) {
+  return new ModemSimpleProxy(connection(), path, service);
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(

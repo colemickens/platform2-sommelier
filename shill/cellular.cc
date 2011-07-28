@@ -18,6 +18,7 @@
 #include "shill/device_info.h"
 #include "shill/manager.h"
 #include "shill/modem_proxy_interface.h"
+#include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -169,11 +170,21 @@ void Cellular::Start() {
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   proxy_->Enable(true);
   state_ = kStateEnabled;
+
+  simple_proxy_.reset(
+      ProxyFactory::factory()->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  DBusPropertiesMap properties = simple_proxy_->GetStatus();
+  for (DBusPropertiesMap::const_iterator it = properties.begin();
+       it != properties.end(); ++it) {
+    VLOG(2) << "ModemManager.Modem.Simple: " << it->first;
+  }
   // TODO(petkov): Device::Start();
 }
 
 void Cellular::Stop() {
   proxy_.reset();
+  simple_proxy_.reset();
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
   // TODO(petkov): Device::Stop();
