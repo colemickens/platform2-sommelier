@@ -43,7 +43,8 @@ class ModemTest : public Test {
  public:
   ModemTest()
       : manager_(&control_interface_, &dispatcher_, &glib_),
-        proxy_factory_(&dbus_properties_proxy_),
+        proxy_(new MockDBusPropertiesProxy()),
+        proxy_factory_(this),
         modem_(kOwner, kPath, &control_interface_, &dispatcher_, &manager_) {}
 
   virtual void SetUp();
@@ -56,30 +57,27 @@ class ModemTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(DBusPropertiesProxyInterface *dbus_properties_proxy)
-        : dbus_properties_proxy_(dbus_properties_proxy) {}
+    TestProxyFactory(ModemTest *test) : test_(test) {}
 
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
         Modem *modem,
         const string &path,
         const string &service) {
-      return dbus_properties_proxy_;
+      return test_->proxy_.release();
     }
 
    private:
-    DBusPropertiesProxyInterface *dbus_properties_proxy_;
+    ModemTest *test_;
   };
 
   static const char kOwner[];
   static const char kPath[];
 
-  void ReleaseDBusPropertiesProxy();
-
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
   Manager manager_;
-  MockDBusPropertiesProxy dbus_properties_proxy_;
+  scoped_ptr<MockDBusPropertiesProxy> proxy_;
   TestProxyFactory proxy_factory_;
   Modem modem_;
   StrictMock<MockSockets> sockets_;
@@ -96,16 +94,8 @@ void ModemTest::SetUp() {
 }
 
 void ModemTest::TearDown() {
-  ReleaseDBusPropertiesProxy();
   ProxyFactory::set_factory(NULL);
   SetSockets(NULL);
-}
-
-void ModemTest::ReleaseDBusPropertiesProxy() {
-  DBusPropertiesProxyInterface *dbus_properties_proxy =
-      modem_.dbus_properties_proxy_.release();
-  EXPECT_TRUE(dbus_properties_proxy == NULL ||
-              dbus_properties_proxy == &dbus_properties_proxy_);
 }
 
 TEST_F(ModemTest, Init) {
@@ -113,8 +103,7 @@ TEST_F(ModemTest, Init) {
   props[Modem::kPropertyIPMethod].writer().append_uint32(
       MM_MODEM_IP_METHOD_DHCP);
   props[Modem::kPropertyLinkName].writer().append_string("usb1");
-  EXPECT_CALL(dbus_properties_proxy_, GetAll(MM_MODEM_INTERFACE))
-      .WillOnce(Return(props));
+  EXPECT_CALL(*proxy_, GetAll(MM_MODEM_INTERFACE)).WillOnce(Return(props));
   EXPECT_TRUE(modem_.task_factory_.empty());
   modem_.Init();
   EXPECT_FALSE(modem_.task_factory_.empty());

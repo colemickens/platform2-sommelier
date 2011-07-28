@@ -33,7 +33,8 @@ class ModemManagerTest : public Test {
                        &dispatcher_,
                        &manager_,
                        &glib_),
-        proxy_factory_(&proxy_) {
+        proxy_(new MockModemManagerProxy()),
+        proxy_factory_(this) {
     ProxyFactory::set_factory(&proxy_factory_);
   }
 
@@ -42,18 +43,17 @@ class ModemManagerTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(ModemManagerProxyInterface *proxy)
-        : proxy_(proxy) {}
+    TestProxyFactory(ModemManagerTest *test) : test_(test) {}
 
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
         ModemManager *manager,
         const string &path,
         const string &service) {
-      return proxy_;
+      return test_->proxy_.release();
     }
 
    private:
-    ModemManagerProxyInterface *proxy_;
+    ModemManagerTest *test_;
   };
 
   static const char kService[];
@@ -66,7 +66,7 @@ class ModemManagerTest : public Test {
   EventDispatcher dispatcher_;
   Manager manager_;
   ModemManager modem_manager_;
-  MockModemManagerProxy proxy_;
+  scoped_ptr<MockModemManagerProxy> proxy_;
   TestProxyFactory proxy_factory_;
 };
 
@@ -77,8 +77,6 @@ const char ModemManagerTest::kModemPath[] = "/org/chromium/ModemManager/Gobi/0";
 
 void ModemManagerTest::TearDown() {
   modem_manager_.watcher_id_ = 0;
-  ModemManagerProxyInterface *proxy = modem_manager_.proxy_.release();
-  EXPECT_TRUE(proxy == NULL || proxy == &proxy_);
   ProxyFactory::set_factory(NULL);
 }
 
@@ -109,7 +107,7 @@ TEST_F(ModemManagerTest, Stop) {
 
 TEST_F(ModemManagerTest, Connect) {
   EXPECT_EQ("", modem_manager_.owner_);
-  EXPECT_CALL(proxy_, EnumerateDevices())
+  EXPECT_CALL(*proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>(1, kModemPath)));
   modem_manager_.Connect(kOwner);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
@@ -126,7 +124,7 @@ TEST_F(ModemManagerTest, Disconnect) {
 
 TEST_F(ModemManagerTest, OnAppear) {
   EXPECT_EQ("", modem_manager_.owner_);
-  EXPECT_CALL(proxy_, EnumerateDevices())
+  EXPECT_CALL(*proxy_, EnumerateDevices())
       .WillOnce(Return(vector<DBus::Path>()));
   ModemManager::OnAppear(NULL, kService, kOwner, &modem_manager_);
   EXPECT_EQ(kOwner, modem_manager_.owner_);
