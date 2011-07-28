@@ -58,7 +58,7 @@ void WiFiService::Connect() {
   // NB(quiche) defer handling, since dbus-c++ does not permit us to
   // send an outbound request while processing an inbound one.
   dispatcher_->PostTask(
-      task_factory_.NewRunnableMethod(&WiFiService::RealConnect));
+      task_factory_.NewRunnableMethod(&WiFiService::ConnectTask));
 }
 
 void WiFiService::Disconnect() {
@@ -78,7 +78,7 @@ const std::vector<uint8_t> &WiFiService::ssid() const {
   return ssid_;
 }
 
-void WiFiService::RealConnect() {
+void WiFiService::ConnectTask() {
   wifi_->ConnectTo(*this);
 }
 

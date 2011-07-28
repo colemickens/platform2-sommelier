@@ -40,7 +40,7 @@ class WiFiService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
-  void RealConnect();
+  void ConnectTask();
 
   std::string GetDeviceRpcId();
 

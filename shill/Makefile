@@ -131,6 +131,7 @@ TEST_OBJS = \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \
+	nice_mock_control.o \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \

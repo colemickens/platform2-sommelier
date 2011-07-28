@@ -164,7 +164,7 @@ void WiFi::ScanDone() {
   // registration can't be done in the context of a D-Bus signal
   // handler.
   dispatcher_->PostTask(
-      task_factory_.NewRunnableMethod(&WiFi::RealScanDone));
+      task_factory_.NewRunnableMethod(&WiFi::ScanDoneTask));
 }
 
 void WiFi::ConnectTo(const WiFiService &service) {
@@ -188,7 +188,7 @@ void WiFi::ConnectTo(const WiFiService &service) {
   // XXX add to favorite networks list?
 }
 
-void WiFi::RealScanDone() {
+void WiFi::ScanDoneTask() {
   LOG(INFO) << __func__;
 
   scan_pending_ = false;

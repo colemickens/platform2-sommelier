@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <dbus-c++/dbus.h>
@@ -17,10 +18,10 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/manager.h"
-#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
+#include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 #include "shill/wifi_endpoint.h"
@@ -33,6 +34,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DefaultValue;
 using ::testing::InSequence;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
 using ::testing::Throw;
@@ -94,11 +96,10 @@ class WiFiMainTest : public Test {
   WiFiMainTest()
       : manager_(&control_interface_, NULL, NULL),
         wifi_(new WiFi(&control_interface_, NULL, &manager_, kDeviceName, 0)),
-        test_started_wifi_(false),
-        supplicant_process_proxy_(new MockSupplicantProcessProxy()),
-        supplicant_interface_proxy_(new MockSupplicantInterfaceProxy(wifi_)),
-        proxy_factory_(supplicant_process_proxy_,
-                       supplicant_interface_proxy_) {
+        supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
+        supplicant_interface_proxy_(
+            new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
+        proxy_factory_(this) {
     ProxyFactory::set_factory(&proxy_factory_);
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
   }
@@ -109,34 +110,25 @@ class WiFiMainTest : public Test {
     wifi_->Stop();
   }
 
-  virtual void TearDown() {
-    EXPECT_TRUE(test_started_wifi_);
-  }
-
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(
-        SupplicantProcessProxyInterface *process_proxy,
-        SupplicantInterfaceProxyInterface *interface_proxy)
-        : process_proxy_(process_proxy),
-          interface_proxy_(interface_proxy) {}
+    TestProxyFactory(WiFiMainTest *test) : test_(test) {}
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
         const char *dbus_path, const char *dbus_addr) {
-      return process_proxy_;
+      return test_->supplicant_process_proxy_.release();
     }
 
     virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
         const WiFiRefPtr &wifi,
         const DBus::Path &object_path,
         const char *dbus_addr) {
-      return interface_proxy_;
+      return test_->supplicant_interface_proxy_.release();
     }
 
    private:
-    SupplicantProcessProxyInterface *process_proxy_;
-    SupplicantInterfaceProxyInterface *interface_proxy_;
+    WiFiMainTest *test_;
   };
 
   const WiFi::EndpointMap &GetEndpointMap() {
@@ -163,21 +155,19 @@ class WiFiMainTest : public Test {
                  int16_t signal_strength,
                  const char *mode);
   void ReportScanDone() {
-    wifi_->RealScanDone();
+    wifi_->ScanDoneTask();
   }
   void StartWiFi() {
     wifi_->Start();
-    test_started_wifi_ = true;
   }
   void StopWiFi() {
     wifi_->Stop();
   }
 
  private:
-  MockControl control_interface_;
+  NiceMockControl control_interface_;
   Manager manager_;
   WiFiRefPtr wifi_;
-  bool test_started_wifi_;
 
   // protected fields interspersed between private fields, due to
   // initialization order
@@ -186,8 +176,8 @@ class WiFiMainTest : public Test {
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeInfrastructure[];
 
-  MockSupplicantProcessProxy *supplicant_process_proxy_;
-  MockSupplicantInterfaceProxy *supplicant_interface_proxy_;
+  scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
+  scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
 
  private:
   TestProxyFactory proxy_factory_;
@@ -303,6 +293,9 @@ TEST_F(WiFiMainTest, ScanCompleted) {
 }
 
 TEST_F(WiFiMainTest, Connect) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
   StartWiFi();
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -311,9 +304,9 @@ TEST_F(WiFiMainTest, Connect) {
     InSequence s;
     DBus::Path fake_path("/fake/path");
 
-    EXPECT_CALL(*supplicant_interface_proxy_, AddNetwork(_))
+    EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
         .WillOnce(Return(fake_path));
-    EXPECT_CALL(*supplicant_interface_proxy_, SelectNetwork(fake_path));
+    EXPECT_CALL(supplicant_interface_proxy, SelectNetwork(fake_path));
     InitiateConnect(*(GetServiceMap().begin()->second));
   }
 }

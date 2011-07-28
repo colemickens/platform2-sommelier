@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_CONTROL_
-#define SHILL_MOCK_CONTROL_
+#ifndef SHILL_NICE_MOCK_CONTROL_
+#define SHILL_NICE_MOCK_CONTROL_
 
 #include <base/basictypes.h>
 
@@ -11,11 +11,11 @@
 
 namespace shill {
 // An implementation of the Shill RPC-channel-interface-factory interface that
-// returns mocks.
-class MockControl : public ControlInterface {
+// returns nice mocks.
+class NiceMockControl : public ControlInterface {
  public:
-  MockControl();
-  virtual ~MockControl();
+  NiceMockControl();
+  virtual ~NiceMockControl();
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
@@ -26,9 +26,9 @@ class MockControl : public ControlInterface {
   virtual ServiceAdaptorInterface *CreateServiceAdaptor(Service *service);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockControl);
+  DISALLOW_COPY_AND_ASSIGN(NiceMockControl);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_CONTROL_
+#endif  // SHILL_NICE_MOCK_CONTROL_

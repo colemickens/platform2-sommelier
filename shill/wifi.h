@@ -56,7 +56,7 @@ class WiFi : public Device {
   static const char kSupplicantPropertyKeyMode[];
   static const char kSupplicantKeyModeNone[];
 
-  void RealScanDone();
+  void ScanDoneTask();
 
   static unsigned int service_id_serial_;
   ScopedRunnableMethodFactory<WiFi> task_factory_;
