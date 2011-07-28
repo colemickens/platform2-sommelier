@@ -65,10 +65,7 @@ Clean(unittest_cmd, Glob('*.gcda') + Glob('*.gcno') + Glob('*.gcov') +
 
 # --------------------------------------------------
 # Prepare and build the policy serving library.
-# TODO(pastarmovj): We should be using the global proto files here which would
-# reside in '%susr/include/proto' % os.environ["ROOT"] but until we set all
-# this up we will keep local copy in this project.
-PROTO_PATH = 'chromeos/policy/proto'
+PROTO_PATH = '%susr/include/proto' % os.environ["ROOT"]
 PROTO_FILES = ['%s/chrome_device_policy.proto' % PROTO_PATH,
                '%s/device_management_backend.proto' % PROTO_PATH]
 PROTO_SOURCES=['chromeos/policy/bindings/chrome_device_policy.pb.cc',
