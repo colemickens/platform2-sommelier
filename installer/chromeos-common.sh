@@ -426,11 +426,10 @@ make_partition_dev() {
 # The scripts that source this file typically want to use the root password as
 # confirmation, unless the --run_as_root flag is given.
 dont_run_as_root() {
-  if [ $(id -u) -eq "0" -a "${FLAGS_run_as_root}" -eq "${FLAGS_FALSE}" ]
+  if [ "${FLAGS_run_as_root}" -eq "${FLAGS_TRUE}" ]
   then
-    echo "Note: You must be the 'chronos' user to run this script. Unless"
-    echo "you pass --run_as_root and run as root."
-    exit 1
+    echo "The caller of this script ($0) is using the old run_as_root flag."
+    echo "Please fix it - see crosbug.com/6136 :)"
   fi
 }
 
