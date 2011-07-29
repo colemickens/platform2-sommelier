@@ -90,6 +90,7 @@ bool BacklightController::Init() {
   if (backlight_->GetBrightness(&level, &max_)) {
     ReadPrefs();
     is_initialized_ = true;
+    local_brightness_ = RawBrightnessToLocalBrightness(level);
 
     // If there are fewer steps than the max, adjust for it.
     // TODO(sque): this is not ideal for some cases, such as max=17, where the
