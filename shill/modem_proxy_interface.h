@@ -5,15 +5,20 @@
 #ifndef SHILL_MODEM_PROXY_INTERFACE_
 #define SHILL_MODEM_PROXY_INTERFACE_
 
+#include <dbus-c++/types.h>
+
 namespace shill {
 
 // These are the methods that a ModemManager.Modem proxy must support. The
 // interface is provided so that it can be mocked in tests.
 class ModemProxyInterface {
  public:
+  typedef DBus::Struct<std::string, std::string, std::string> Info;
+
   virtual ~ModemProxyInterface() {}
 
   virtual void Enable(const bool enable) = 0;
+  virtual Info GetInfo() = 0;
 };
 
 }  // namespace shill

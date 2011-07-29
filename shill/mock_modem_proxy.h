@@ -14,6 +14,7 @@ namespace shill {
 class MockModemProxy : public ModemProxyInterface {
  public:
   MOCK_METHOD1(Enable, void(const bool enable));
+  MOCK_METHOD0(GetInfo, Info());
 };
 
 }  // namespace shill

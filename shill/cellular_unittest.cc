@@ -67,7 +67,6 @@ class CellularTest : public PropertyStoreTest {
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   TestProxyFactory proxy_factory_;
-
   CellularRefPtr device_;
 };
 
@@ -146,8 +145,37 @@ TEST_F(CellularTest, Start) {
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
   device_->Start();
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
+}
+
+TEST_F(CellularTest, GetModemStatus) {
+  static const char kCarrier[] = "The Cellular Carrier";
+  DBusPropertiesMap props;
+  props["carrier"].writer().append_string(kCarrier);
+  props["unknown-property"].writer().append_string("irrelevant-value");
+  EXPECT_CALL(*simple_proxy_, GetStatus()).WillOnce(Return(props));
+  device_->simple_proxy_.reset(simple_proxy_.release());
+  device_->state_ = Cellular::kStateEnabled;
+  device_->GetModemStatus();
+  EXPECT_EQ(kCarrier, device_->carrier_);
+}
+
+TEST_F(CellularTest, GetModemInfo) {
+  static const char kManufacturer[] = "Company";
+  static const char kModelID[] = "Gobi 2000";
+  static const char kHWRev[] = "A00B1234";
+  ModemProxyInterface::Info info;
+  info._1 = kManufacturer;
+  info._2 = kModelID;
+  info._3 = kHWRev;
+  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(info));
+  device_->proxy_.reset(proxy_.release());
+  device_->GetModemInfo();
+  EXPECT_EQ(kManufacturer, device_->manufacturer_);
+  EXPECT_EQ(kModelID, device_->model_id_);
+  EXPECT_EQ(kHWRev, device_->hardware_revision_);
 }
 
 }  // namespace shill

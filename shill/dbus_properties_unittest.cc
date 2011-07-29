@@ -40,4 +40,17 @@ TEST_F(DBusPropertiesTest, GetUint32) {
   EXPECT_EQ(kTestValue, value);
 }
 
+TEST_F(DBusPropertiesTest, GetUint16) {
+  static const char kTestProperty[] = "version";
+  const uint16 kTestValue = 77;
+  const uint16 kOldValue = 88;
+  uint16 value = kOldValue;
+  DBusPropertiesMap props;
+  EXPECT_FALSE(DBusProperties::GetUint16(props, kTestProperty, &value));
+  EXPECT_EQ(kOldValue, value);
+  props[kTestProperty].writer().append_uint16(kTestValue);
+  EXPECT_TRUE(DBusProperties::GetUint16(props, kTestProperty, &value));
+  EXPECT_EQ(kTestValue, value);
+}
+
 }  // namespace shill

@@ -25,6 +25,10 @@ class DBusProperties {
                         const std::string &key,
                         uint32 *value);
 
+  static bool GetUint16(const DBusPropertiesMap &properties,
+                        const std::string &key,
+                        uint16 *value);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DBusProperties);
 };

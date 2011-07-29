@@ -21,6 +21,10 @@ void ModemProxy::Enable(const bool enable) {
   proxy_.Enable(enable);
 }
 
+ModemProxyInterface::Info ModemProxy::GetInfo() {
+  return proxy_.GetInfo();
+}
+
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,
                          const string &path,
                          const string &service)

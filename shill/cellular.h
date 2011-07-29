@@ -88,6 +88,8 @@ class Cellular : public Device {
   virtual bool TechnologyIs(Technology type);
 
  private:
+  FRIEND_TEST(CellularTest, GetModemInfo);
+  FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, Start);
@@ -106,6 +108,17 @@ class Cellular : public Device {
 
   void EnableModem();
   void GetModemStatus();
+  void GetGSMProperties();
+  void RegisterGSMModem();
+  void GetModemRegistrationState();
+  void ReportEnabled();
+
+  // Obtains the modem identifiers: MEID for CDMA; IMEI, IMSI, SPN and MSISDN
+  // for GSM.
+  void GetModemIdentifiers();
+
+  // Obtain modem's manufacturer, model ID, and hardware revision.
+  void GetModemInfo();
 
   Type type_;
   State state_;
@@ -131,7 +144,7 @@ class Cellular : public Device {
   std::string manufacturer_;
   std::string firmware_revision_;
   std::string hardware_revision_;
-  int16 prl_version_;
+  uint16 prl_version_;
   bool scanning_;
   uint16 scan_interval_;
   std::vector<Network> found_networks_;

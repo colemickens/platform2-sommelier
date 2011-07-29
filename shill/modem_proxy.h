@@ -23,6 +23,7 @@ class ModemProxy : public ModemProxyInterface {
 
   // Inherited from ModemProxyInterface.
   virtual void Enable(const bool enable);
+  virtual Info GetInfo();
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,

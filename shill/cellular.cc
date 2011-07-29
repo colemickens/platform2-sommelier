@@ -126,7 +126,7 @@ Cellular::Cellular(ControlInterface *control_interface,
   store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
   store_.RegisterConstString(flimflam::kMinProperty, &min_);
   store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  store_.RegisterConstInt16(flimflam::kPRLVersionProperty, &prl_version_);
+  store_.RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
@@ -171,8 +171,17 @@ void Cellular::Start() {
 
   VLOG(2) << __func__ << ": " << GetStateString();
   EnableModem();
-  // TODO(petkov): If GSM, invoke ModemManager.Modem.Gsm.Network.Register.
+  if (type_ == kTypeGSM) {
+    RegisterGSMModem();
+  }
   GetModemStatus();
+  GetModemIdentifiers();
+  if (type_ == kTypeGSM) {
+    GetGSMProperties();
+  }
+  GetModemInfo();
+  GetModemRegistrationState();
+  ReportEnabled();
   // TODO(petkov): Device::Start();
 }
 
@@ -192,12 +201,66 @@ void Cellular::EnableModem() {
 }
 
 void Cellular::GetModemStatus() {
+  CHECK_EQ(kStateEnabled, state_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties = simple_proxy_->GetStatus();
-  for (DBusPropertiesMap::const_iterator it = properties.begin();
-       it != properties.end(); ++it) {
-    VLOG(2) << "ModemManager.Modem.Simple: " << it->first;
+  if (DBusProperties::GetString(properties, "carrier", &carrier_) &&
+      type_ == kTypeCDMA) {
+    // TODO(petkov): Set Cellular.FirmwareImageName and home_provider based on
+    // the carrier.
   }
+  DBusProperties::GetString(properties, "meid", &meid_);
+  DBusProperties::GetString(properties, "imei", &imei_);
+  if (DBusProperties::GetString(properties, "imsi", &imsi_) &&
+      type_ == kTypeGSM) {
+    // TODO(petkov): Set GSM provider.
+  }
+  DBusProperties::GetString(properties, "esn", &esn_);
+  DBusProperties::GetString(properties, "mdn", &mdn_);
+  DBusProperties::GetString(properties, "min", &min_);
+  DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
+  DBusProperties::GetString(
+      properties, "firmware_revision", &firmware_revision_);
+  // TODO(petkov): Get payment_url/olp_url/usage_url. For now, get these from
+  // ModemManager to match flimflam. In the future, provide a plugin API to get
+  // these directly from the modem driver.
+  if (type_ == kTypeCDMA) {
+    // TODO(petkov): Get activation_state.
+  }
+}
+
+void Cellular::GetModemIdentifiers() {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::GetGSMProperties() {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::RegisterGSMModem() {
+  // TODO(petkov): Invoke ModemManager.Modem.Gsm.Network.Register.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::GetModemInfo() {
+  ModemProxyInterface::Info info = proxy_->GetInfo();
+  manufacturer_ = info._1;
+  model_id_ = info._2;
+  hardware_revision_ = info._3;
+  VLOG(2) << "ModemInfo: " << manufacturer_ << ", " << model_id_ << ", "
+          << hardware_revision_;
+}
+
+void Cellular::GetModemRegistrationState() {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::ReportEnabled() {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) {
