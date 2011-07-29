@@ -163,22 +163,16 @@ std::string Cellular::GetStateString() {
 }
 
 void Cellular::Start() {
-  VLOG(2) << __func__ << ": " << GetStateString();
-  CHECK_EQ(kStateDisabled, state_);
   proxy_.reset(
       ProxyFactory::factory()->CreateModemProxy(dbus_path_, dbus_owner_));
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  proxy_->Enable(true);
-  state_ = kStateEnabled;
-
   simple_proxy_.reset(
-      ProxyFactory::factory()->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  DBusPropertiesMap properties = simple_proxy_->GetStatus();
-  for (DBusPropertiesMap::const_iterator it = properties.begin();
-       it != properties.end(); ++it) {
-    VLOG(2) << "ModemManager.Modem.Simple: " << it->first;
-  }
+      ProxyFactory::factory()->CreateModemSimpleProxy(
+          dbus_path_, dbus_owner_));
+
+  VLOG(2) << __func__ << ": " << GetStateString();
+  EnableModem();
+  // TODO(petkov): If GSM, invoke ModemManager.Modem.Gsm.Network.Register.
+  GetModemStatus();
   // TODO(petkov): Device::Start();
 }
 
@@ -188,6 +182,22 @@ void Cellular::Stop() {
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
   // TODO(petkov): Device::Stop();
+}
+
+void Cellular::EnableModem() {
+  CHECK_EQ(kStateDisabled, state_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  proxy_->Enable(true);
+  state_ = kStateEnabled;
+}
+
+void Cellular::GetModemStatus() {
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  DBusPropertiesMap properties = simple_proxy_->GetStatus();
+  for (DBusPropertiesMap::const_iterator it = properties.begin();
+       it != properties.end(); ++it) {
+    VLOG(2) << "ModemManager.Modem.Simple: " << it->first;
+  }
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) {

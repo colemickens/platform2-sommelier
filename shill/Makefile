@@ -26,14 +26,7 @@ LIB_DIRS = $(BASE_LIB_DIRS) $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0 \
 TEST_LIBS = $(BASE_LIBS) -lgmock -lgtest
 TEST_LIB_DIRS = $(LIB_DIRS)
 
-DBUS_INTERFACES_DIR = $(SYSROOT)/usr/share/dbus-1/interfaces
-
 DBUS_BINDINGS_DIR = dbus_bindings
-DBUS_BINDINGS_MODEM_MANAGER = $(DBUS_BINDINGS_DIR)/modem_manager.xml
-DBUS_BINDINGS_MODEM_SIMPLE = $(DBUS_BINDINGS_DIR)/modem-simple.xml
-DBUS_BINDINGS_XML = \
-	$(DBUS_BINDINGS_MODEM_MANAGER) \
-	$(DBUS_BINDINGS_MODEM_SIMPLE)
 
 DBUS_ADAPTOR_HEADERS = \
 	flimflam-device.h \
@@ -43,13 +36,33 @@ DBUS_ADAPTOR_HEADERS = \
 	flimflam-service.h
 
 DBUS_PROXY_HEADERS = \
-	$(patsubst $(DBUS_BINDINGS_DIR)/%.xml,%.h,$(DBUS_BINDINGS_XML)) \
 	dhcpcd.h \
 	modem.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
 	supplicant-process.h
+
+# Generates rules for copying SYSROOT XMLs locally and updates the proxy header
+# dependencies.
+DBUS_BINDINGS_XML_SYSROOT = \
+	org.freedesktop.ModemManager>modem_manager \
+	org.freedesktop.ModemManager.Modem.Cdma>modem-cdma \
+	org.freedesktop.ModemManager.Modem.Gsm.Card>modem-gsm-card \
+	org.freedesktop.ModemManager.Modem.Gsm.Network>modem-gsm-network \
+	org.freedesktop.ModemManager.Modem.Simple>modem-simple
+
+define ADD_BINDING
+$(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
+$(eval _TARGET = $(word 2,$(subst >, ,$(1))))
+CLEAN_FILES += $(DBUS_BINDINGS_DIR)/$(_TARGET).xml
+DBUS_PROXY_HEADERS += $(_TARGET).h
+$(DBUS_BINDINGS_DIR)/$(_TARGET).xml: \
+	$(SYSROOT)/usr/share/dbus-1/interfaces/$(_SOURCE).xml
+	cat $$< > $$@
+endef
+
+$(foreach b,$(DBUS_BINDINGS_XML_SYSROOT),$(eval $(call ADD_BINDING,$(b))))
 
 DBUS_ADAPTOR_BINDINGS = \
 	$(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
@@ -157,14 +170,6 @@ TEST_OBJS = \
 
 all: $(SHILL_BIN) $(TEST_BIN)
 
-$(DBUS_BINDINGS_MODEM_MANAGER): \
-	$(DBUS_INTERFACES_DIR)/org.freedesktop.ModemManager.xml
-	cat $< > $@
-
-$(DBUS_BINDINGS_MODEM_SIMPLE): \
-	$(DBUS_INTERFACES_DIR)/org.freedesktop.ModemManager.Modem.Simple.xml
-	cat $< > $@
-
 $(DBUS_PROXY_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
 
@@ -187,7 +192,7 @@ $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 clean:
 	rm -rf \
 		*.o \
-		$(DBUS_BINDINGS_XML) \
+		$(CLEAN_FILES) \
 		$(DBUS_BINDINGS) \
 		$(SHILL_BIN) \
 		$(TEST_BIN)

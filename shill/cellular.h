@@ -104,6 +104,9 @@ class Cellular : public Device {
   std::string GetTypeString();
   std::string GetStateString();
 
+  void EnableModem();
+  void GetModemStatus();
+
   Type type_;
   State state_;
 
