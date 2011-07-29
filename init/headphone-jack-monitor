@@ -1,0 +1,139 @@
+#!/bin/bash
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# TODO: This scripts makes an assumption that all Arm-based boards use
+#       WM8903 and that the board will always have the same codec.
+#
+# TODO: Rather than examining '/proc/cpuinfo', should use 'crossystem
+#       hwid' to determine the hardware type.
+
+NAME=$(basename "${0}");
+AMIXER=${AMIXER:-"/usr/bin/amixer"};
+SLEEP_TIME=${SLEEP_TIME:-"0.5"}; # Seconds to sleep between GPIO checking.
+HP_GPIO="185";                   # Headphone GPIO.
+HP_GPIO_DIR="/sys/class/gpio/gpio${HP_GPIO}";
+
+declare -A machine_to_codec=(                   \
+    [seaboard]="wm8903"                         \
+    [kaen]="wm8903"                             \
+    [aebl]="wm8903"                             \
+);
+
+declare active_low;
+declare machine_kind;
+
+function log ()
+{
+    msg=${1};
+    logger "${NAME}: ${msg}.";
+}
+
+function failure ()
+{
+    msg=${1};
+    log "Headphone jack cannot be monitored: ${msg}";
+    false || exit;
+}
+
+function get_gpio_attribute ()
+{
+    attribute=${1};             # Pathname of GPIO attribute to read.
+    shift;
+    if [ -f "${attribute}" ] ; then
+        cat "${attribute}";
+        true && return;
+    else
+        echo "";
+        false || return;
+    fi;
+}
+
+function set_output_headphones ()
+{
+    ${AMIXER} set 'Speaker' off  &>/dev/null
+    ${AMIXER} set 'Int Spk' off    &>/dev/null
+    ${AMIXER} set 'Headphone' on &>/dev/null
+}
+
+function set_output_internal_speaker ()
+{
+    ${AMIXER} set 'Speaker' on    &>/dev/null
+    ${AMIXER} set 'Int Spk' on    &>/dev/null
+    ${AMIXER} set 'Headphone' off &>/dev/null
+}
+
+function initialize_wm8903 ()
+{
+    # Without enabling DACL, Kaen has no speaker output.
+    ${AMIXER} set 'Speaker' 70%                 &>/dev/null
+    ${AMIXER} set 'Headphone' 70%               &>/dev/null
+    ${AMIXER} set "Left Speaker Mixer DACL" on  &>/dev/null
+    ${AMIXER} set "Right Speaker Mixer DACL" on &>/dev/null
+}
+
+function initialize_codec ()
+{
+    local c="/proc/cpuinfo";    # Input file
+    local p="^Hardware";        # Search pattern
+
+    machine_kind=$(grep -i -e "${p}" "${c}"|sed -e 's/ //g'|cut -d ':' -f 2);
+    codec="${machine_to_codec[${machine_kind}]}";
+    if [ ! -z "${codec}" ] ; then
+        init_fn="initialize_${codec}";
+        if declare -f ${init_fn} >/dev/null; then
+            ${init_fn};
+        else
+            false;
+        fi;
+    else
+        false;
+    fi;
+}
+
+function multiplex ()
+{
+    local hp_gpio_dir=${1};
+    local value_pathname="${hp_gpio_dir}/value";
+    local -a value;
+
+    value[1]="-";               # Force mismatch on first loop.
+    while true ; do
+        value[0]=${value[1]};
+        value[1]="$(get_gpio_attribute "${value_pathname}")";
+        if [ "${value[0]}" != "${value[1]}" ] ; then
+            # Headphone Jack has changed state.
+            case "${active_low}${value[1]}" in
+                "00" ) set_output_headphones;       ;;
+                "01" ) set_output_internal_speaker; ;;
+                "10" ) set_output_internal_speaker; ;;
+                "11" ) set_output_headphones;       ;;
+                *    ) # Ignore invalid combos.
+                    ;;
+            esac;
+        fi;
+        sleep ${SLEEP_TIME};
+    done;
+}
+
+function main ()
+{
+    local hp_gpio_dir=$(readlink --canonicalize "${HP_GPIO_DIR}");
+    if [ ! -d "${hp_gpio_dir}" ] ; then
+        failure "'${HP_GPIO_DIR}' does not exist";
+    fi;
+
+    active_low=$(get_gpio_attribute "${hp_gpio_dir}/active_low");
+    if [ -z "${active_low}" ] ; then
+        failure "Unable to determine active low or active high";
+    fi;
+    multiplex ${hp_gpio_dir} &
+}
+
+if initialize_codec ; then
+    main;
+else
+    log "Unknown machine / sound codec combo; headphone jack not managed."
+fi;
+true && exit;
