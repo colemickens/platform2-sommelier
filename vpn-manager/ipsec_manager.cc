@@ -130,11 +130,8 @@ bool IpsecManager::Initialize(int ike_version,
   } else {
     if (!server_ca_file.empty() ||
         !server_id.empty() ||
-        !client_cert_slot.empty() ||
-        !client_cert_id.empty() ||
-        !user_pin.empty()) {
-      LOG(ERROR) << "Specified both PSK and certificates for IPsec layer";
-      return false;
+        !client_cert_id.empty()) {
+      LOG(WARNING) << "Specified both certificates and PSK to IPsec layer";
     }
     if (!file_util::PathExists(FilePath(psk_file))) {
       LOG(ERROR) << "Invalid PSK file for IPsec layer: " << psk_file;
