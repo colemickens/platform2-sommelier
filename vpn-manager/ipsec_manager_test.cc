@@ -125,14 +125,14 @@ TEST_F(IpsecManagerTest, InitializeNoAuth) {
 }
 
 TEST_F(IpsecManagerTest, InitializeNotBoth) {
-  EXPECT_FALSE(ipsec_.Initialize(1, remote_address_,
-                                 psk_file_,
-                                 server_ca_file_,
-                                 server_id_,
-                                 client_cert_tpm_slot_,
-                                 client_cert_tpm_id_,
-                                 tpm_user_pin_));
-  EXPECT_TRUE(FindLog("Specified both PSK and certificates"));
+  EXPECT_TRUE(ipsec_.Initialize(1, remote_address_,
+                                psk_file_,
+                                server_ca_file_,
+                                server_id_,
+                                client_cert_tpm_slot_,
+                                client_cert_tpm_id_,
+                                tpm_user_pin_));
+  EXPECT_TRUE(FindLog("Specified both certificates and PSK to IPsec layer"));
 }
 
 TEST_F(IpsecManagerTest, InitializeUnsupportedVersion) {
