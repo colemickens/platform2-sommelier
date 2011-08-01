@@ -79,6 +79,10 @@ class DevicePolicyImpl : public DevicePolicy {
   // Returns true on success.
   virtual bool GetProxyBypassList(std::string* proxy_bypass_list) const;
 
+  // Writes the value of the release channel policy in |release channel|.
+  // Returns true on success.
+  virtual bool GetReleaseChannel(std::string* release_channel) const;
+
  protected:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles();

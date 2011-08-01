@@ -259,6 +259,22 @@ bool DevicePolicyImpl::GetProxyBypassList(
   return true;
 }
 
+// Writes the value of the release channel policy in |release_channel|.
+// Returns true on success.
+bool DevicePolicyImpl::GetReleaseChannel(
+    std::string* release_channel) const {
+  if (!device_policy_.has_release_channel())
+    return false;
+
+  const enterprise_management::ReleaseChannelProto& proto =
+      device_policy_.release_channel();
+  if (!proto.has_release_channel())
+    return false;
+
+  *release_channel = proto.release_channel();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!file_util::PathExists(policy_path_) ||

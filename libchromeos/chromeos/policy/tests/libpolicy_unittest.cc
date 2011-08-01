@@ -97,9 +97,11 @@ TEST(PolicyTest, DevicePolicyTest) {
   ASSERT_TRUE(policy.GetProxyBypassList(&string_value));
   ASSERT_EQ("a, b, c", string_value);
 
-  // Test one missing policy.
   ASSERT_TRUE(policy.GetMetricsEnabled(&bool_value));
   ASSERT_EQ(false, bool_value);
+
+  // Test one missing policy.
+  ASSERT_FALSE(policy.GetReleaseChannel(&string_value));
 
   // Try reloading the protobuf should succeed.
   ASSERT_TRUE(provider.Reload());

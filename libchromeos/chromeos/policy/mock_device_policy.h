@@ -57,6 +57,7 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_CONST_METHOD1(GetProxyServer, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyPacUrl, bool(std::string*));
   MOCK_CONST_METHOD1(GetProxyBypassList, bool(std::string*));
+  MOCK_CONST_METHOD1(GetReleaseChannel, bool(std::string*));
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));
