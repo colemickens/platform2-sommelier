@@ -674,7 +674,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
 
     if (!dbus_connection_send(connection, reply, NULL))
       LOG(WARNING) << "Failed to send reply message.";
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    return DBUS_HANDLER_RESULT_HANDLED;
   } else if (dbus_message_is_method_call(message,
                                          kPowerManagerInterface,
                                          "GetProperty")) {
@@ -741,11 +741,12 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     DBusMessage *reply = dbus_message_new_method_return(message);
     CHECK(reply != NULL);
     dbus_message_append_args(reply, dbus_type, &power_value, DBUS_TYPE_INVALID);
-    if (!dbus_connection_send(connection, reply, NULL))
+    if (!dbus_connection_send(connection, reply, NULL)) {
       LOG(WARNING) << "Failed to send reply message.";
-
-    // Other dbus clients may be interested in consuming this signal.
-    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+      // Other dbus clients may be interested in consuming this signal.
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    return DBUS_HANDLER_RESULT_HANDLED;
   } else if (dbus_message_is_signal(
                  message,
                  login_manager::kSessionManagerInterface,
