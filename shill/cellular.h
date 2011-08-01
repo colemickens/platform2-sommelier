@@ -16,6 +16,7 @@
 
 namespace shill {
 
+class ModemCDMAProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
 
@@ -61,6 +62,14 @@ class Cellular : public Device {
     DISALLOW_COPY_AND_ASSIGN(Network);
   };
 
+  struct CDMA {
+    CDMA();
+
+    uint32 registration_state_evdo;
+    uint32 registration_state_1x;
+    uint32 activation_state;
+  };
+
   struct SimLockStatus {
    public:
     SimLockStatus() : retries_left(0) {}
@@ -88,10 +97,13 @@ class Cellular : public Device {
   virtual bool TechnologyIs(Technology type);
 
  private:
+  FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
+  FRIEND_TEST(CellularTest, InitProxiesCDMA);
+  FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, Start);
 
   Stringmaps EnumerateNetworks();
@@ -103,6 +115,8 @@ class Cellular : public Device {
                                      StrIntPair(Cellular::*get)(void),
                                      bool(Cellular::*set)(const StrIntPair&));
 
+  void InitProxies();
+
   std::string GetTypeString();
   std::string GetStateString();
 
@@ -110,7 +124,6 @@ class Cellular : public Device {
   void GetModemStatus();
   void GetGSMProperties();
   void RegisterGSMModem();
-  void GetModemRegistrationState();
   void ReportEnabled();
 
   // Obtains the modem identifiers: MEID for CDMA; IMEI, IMSI, SPN and MSISDN
@@ -120,6 +133,10 @@ class Cellular : public Device {
   // Obtain modem's manufacturer, model ID, and hardware revision.
   void GetModemInfo();
 
+  void GetModemRegistrationState();
+  void GetCDMARegistrationState();
+  void GetGSMRegistrationState();
+
   Type type_;
   State state_;
 
@@ -127,6 +144,9 @@ class Cellular : public Device {
   const std::string dbus_path_;  // ModemManager.Modem
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
+  scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
+
+  CDMA cdma_;
 
   ServiceRefPtr service_;
   bool service_registered_;

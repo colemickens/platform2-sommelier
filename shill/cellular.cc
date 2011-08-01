@@ -11,12 +11,14 @@
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <mm/mm-modem.h>
 
 #include "shill/cellular_service.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
+#include "shill/modem_cdma_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
@@ -83,6 +85,11 @@ void Cellular::Network::SetTechnology(const std::string &technology) {
 const Stringmap &Cellular::Network::ToDict() const {
   return dict_;
 }
+
+Cellular::CDMA::CDMA()
+    : registration_state_evdo(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
+      registration_state_1x(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
+      activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED) {}
 
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
@@ -163,13 +170,8 @@ std::string Cellular::GetStateString() {
 }
 
 void Cellular::Start() {
-  proxy_.reset(
-      ProxyFactory::factory()->CreateModemProxy(dbus_path_, dbus_owner_));
-  simple_proxy_.reset(
-      ProxyFactory::factory()->CreateModemSimpleProxy(
-          dbus_path_, dbus_owner_));
-
   VLOG(2) << __func__ << ": " << GetStateString();
+  InitProxies();
   EnableModem();
   if (type_ == kTypeGSM) {
     RegisterGSMModem();
@@ -188,9 +190,29 @@ void Cellular::Start() {
 void Cellular::Stop() {
   proxy_.reset();
   simple_proxy_.reset();
+  cdma_proxy_.reset();
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
   // TODO(petkov): Device::Stop();
+}
+
+void Cellular::InitProxies() {
+  proxy_.reset(
+      ProxyFactory::factory()->CreateModemProxy(dbus_path_, dbus_owner_));
+  simple_proxy_.reset(
+      ProxyFactory::factory()->CreateModemSimpleProxy(
+          dbus_path_, dbus_owner_));
+  switch (type_) {
+    case kTypeGSM:
+      NOTIMPLEMENTED();
+      break;
+    case kTypeCDMA:
+      cdma_proxy_.reset(
+          ProxyFactory::factory()->CreateModemCDMAProxy(
+              dbus_path_, dbus_owner_));
+      break;
+    default: NOTREACHED();
+  }
 }
 
 void Cellular::EnableModem() {
@@ -254,6 +276,27 @@ void Cellular::GetModemInfo() {
 }
 
 void Cellular::GetModemRegistrationState() {
+  switch (type_) {
+    case kTypeGSM:
+      GetGSMRegistrationState();
+      break;
+    case kTypeCDMA:
+      GetCDMARegistrationState();
+      break;
+    default: NOTREACHED();
+  }
+}
+
+void Cellular::GetCDMARegistrationState() {
+  CHECK_EQ(kTypeCDMA, type_);
+  cdma_proxy_->GetRegistrationState(&cdma_.registration_state_1x,
+                                    &cdma_.registration_state_evdo);
+  VLOG(2) << "CDMA Registration: 1x(" << cdma_.registration_state_1x
+          << ") EVDO(" << cdma_.registration_state_evdo << ")";
+  // TODO(petkov): handle_reported_connect?
+}
+
+void Cellular::GetGSMRegistrationState() {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }

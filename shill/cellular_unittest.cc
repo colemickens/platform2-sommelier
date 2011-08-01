@@ -5,14 +5,18 @@
 #include "shill/cellular.h"
 
 #include <chromeos/dbus/service_constants.h>
+#include <mm/mm-modem.h>
 
+#include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
+using testing::_;
 using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -21,6 +25,7 @@ class CellularTest : public PropertyStoreTest {
   CellularTest()
       : proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
+        cdma_proxy_(new MockModemCDMAProxy()),
         proxy_factory_(this),
         device_(new Cellular(&control_interface_,
                              NULL,
@@ -57,6 +62,12 @@ class CellularTest : public PropertyStoreTest {
       return test_->simple_proxy_.release();
     }
 
+    virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
+        const string &path,
+        const string &service) {
+      return test_->cdma_proxy_.release();
+    }
+
    private:
     CellularTest *test_;
   };
@@ -66,6 +77,7 @@ class CellularTest : public PropertyStoreTest {
 
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
+  scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
   TestProxyFactory proxy_factory_;
   CellularRefPtr device_;
 };
@@ -150,6 +162,22 @@ TEST_F(CellularTest, Start) {
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
 }
 
+TEST_F(CellularTest, InitProxiesCDMA) {
+  device_->type_ = Cellular::kTypeCDMA;
+  device_->InitProxies();
+  EXPECT_TRUE(device_->proxy_.get());
+  EXPECT_TRUE(device_->simple_proxy_.get());
+  EXPECT_TRUE(device_->cdma_proxy_.get());
+}
+
+TEST_F(CellularTest, InitProxiesGSM) {
+  device_->type_ = Cellular::kTypeGSM;
+  device_->InitProxies();
+  EXPECT_TRUE(device_->proxy_.get());
+  EXPECT_TRUE(device_->simple_proxy_.get());
+  EXPECT_FALSE(device_->cdma_proxy_.get());
+}
+
 TEST_F(CellularTest, GetModemStatus) {
   static const char kCarrier[] = "The Cellular Carrier";
   DBusPropertiesMap props;
@@ -176,6 +204,24 @@ TEST_F(CellularTest, GetModemInfo) {
   EXPECT_EQ(kManufacturer, device_->manufacturer_);
   EXPECT_EQ(kModelID, device_->model_id_);
   EXPECT_EQ(kHWRev, device_->hardware_revision_);
+}
+
+TEST_F(CellularTest, GetCDMARegistrationState) {
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
+            device_->cdma_.registration_state_1x);
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
+            device_->cdma_.registration_state_evdo);
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
+      .WillOnce(DoAll(
+          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
+          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+  device_->cdma_proxy_.reset(cdma_proxy_.release());
+  device_->GetModemRegistrationState();
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
+            device_->cdma_.registration_state_1x);
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+            device_->cdma_.registration_state_evdo);
 }
 
 }  // namespace shill

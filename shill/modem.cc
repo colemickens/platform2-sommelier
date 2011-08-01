@@ -97,6 +97,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
       return;
   }
 
+  // TODO(petkov): Handle the "State" property?
+
   LOG(INFO) << "Creating a cellular device on link " << link_name
             << " interface index " << interface_index << ".";
   device_ = new Cellular(control_interface_,

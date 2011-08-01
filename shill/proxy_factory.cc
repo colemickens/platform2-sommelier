@@ -8,6 +8,7 @@
 
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
+#include "shill/modem_cdma_proxy.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
 #include "shill/modem_simple_proxy.h"
@@ -53,6 +54,12 @@ ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
     const string &path,
     const string &service) {
   return new ModemSimpleProxy(connection(), path, service);
+}
+
+ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
+    const string &path,
+    const string &service) {
+  return new ModemCDMAProxy(connection(), path, service);
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
