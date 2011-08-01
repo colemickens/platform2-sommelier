@@ -23,6 +23,7 @@
 #include "shill/ipconfig.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
+#include "shill/rtnl_message.h"
 #include "shill/shill_event.h"
 #include "shill/sockets.h"
 
@@ -176,17 +177,27 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
   req.hdr.nlmsg_pid = 0;
   req.hdr.nlmsg_seq = request_sequence_;
-  req.msg.rtgen_family = AF_INET;
 
   if ((request_flags_ & kRequestLink) != 0) {
+    req.msg.rtgen_family = AF_INET;
     req.hdr.nlmsg_type = RTM_GETLINK;
     flag = kRequestLink;
   } else if ((request_flags_ & kRequestAddr) != 0) {
+    req.msg.rtgen_family = AF_INET;
     req.hdr.nlmsg_type = RTM_GETADDR;
     flag = kRequestAddr;
   } else if ((request_flags_ & kRequestRoute) != 0) {
+    req.msg.rtgen_family = AF_INET;
     req.hdr.nlmsg_type = RTM_GETROUTE;
     flag = kRequestRoute;
+  } else if ((request_flags_ & kRequestAddr6) != 0) {
+    req.msg.rtgen_family = AF_INET6;
+    req.hdr.nlmsg_type = RTM_GETADDR;
+    flag = kRequestAddr6;
+  } else if ((request_flags_ & kRequestRoute6) != 0) {
+    req.msg.rtgen_family = AF_INET6;
+    req.hdr.nlmsg_type = RTM_GETROUTE;
+    flag = kRequestRoute6;
   } else {
     in_request_ = false;
     return;
@@ -291,8 +302,9 @@ bool RTNLHandler::AddressRequest(int interface_index, int cmd, int flags,
   } else if (properties.address_family == IPAddress::kAddressFamilyIPv6) {
     address_family = AF_INET6;
     address_size = sizeof(struct in6_addr);
-  } else
+  } else {
     return false;
+  }
 
   request_sequence_++;
   memset(&req, 0, sizeof(req));
@@ -360,6 +372,25 @@ int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
     return -1;
   }
   return ifr.ifr_ifindex;
+}
+
+bool RTNLHandler::SendMessage(RTNLMessage *message) {
+  message->set_seq(request_sequence_++);
+  ByteString msgdata = message->Encode();
+
+  if (msgdata.GetLength() == 0) {
+    return false;
+  }
+
+  if (sockets_->Send(rtnl_socket_,
+                     msgdata.GetData(),
+                     msgdata.GetLength(),
+                     0) < 0) {
+    PLOG(ERROR) << "RTNL send failed: " << strerror(errno);
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace shill

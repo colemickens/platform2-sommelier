@@ -49,6 +49,11 @@ class IPAddress {
     return family_ == b.family_ && address_.Equals(b.address_);
   }
 
+  void Clone(const IPAddress &b) {
+    family_ = b.family_;
+    address_ = b.address_;
+  }
+
  private:
   Family family_;
   ByteString address_;

@@ -28,7 +28,6 @@ class StoreInterface;
 // class.
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
-
   struct Properties {
     Properties() : address_family(IPAddress::kAddressFamilyUnknown),
                    subnet_cidr(0),
@@ -97,6 +96,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
+  FRIEND_TEST(RoutingTableTest, RouteAddDelete);
 
   static const char kStorageType[];
   static const char kType[];

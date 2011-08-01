@@ -26,6 +26,7 @@ struct nlmsghdr;
 namespace shill {
 
 class IPConfig;
+class RTNLMessage;
 class Sockets;
 
 // This singleton class is responsible for interacting with the RTNL subsystem.
@@ -42,6 +43,8 @@ class RTNLHandler {
   static const int kRequestLink = 1;
   static const int kRequestAddr = 2;
   static const int kRequestRoute = 4;
+  static const int kRequestAddr6 = 8;
+  static const int kRequestRoute6 = 16;
 
   // Since this is a singleton, use RTNHandler::GetInstance()->Foo()
   static RTNLHandler *GetInstance();
@@ -85,10 +88,14 @@ class RTNLHandler {
   // determine the index.
   int GetInterfaceIndex(const std::string &interface_name);
 
+  // Send a formatted RTNL message.  The sequence number in the message is set.
+  bool SendMessage(RTNLMessage *message);
+
  private:
   friend class DeviceInfoTest;
   friend class ModemTest;
   friend class RTNLHandlerTest;
+  friend class RoutingTableTest;
   friend struct DefaultSingletonTraits<RTNLHandler>;
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);

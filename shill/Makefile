@@ -112,6 +112,7 @@ SHILL_OBJS = \
 	profile_dbus_adaptor.o \
 	property_store.o \
 	proxy_factory.o \
+	routing_table.o \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	rtnl_message.o \
@@ -160,6 +161,7 @@ TEST_OBJS = \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
+	routing_table_unittest.o \
 	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
 	rtnl_message_unittest.o \

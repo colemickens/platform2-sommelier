@@ -140,9 +140,11 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
 
 TEST_F(DeviceInfoTest, DeviceEnumerationReverse) {
   // Start our own private device_info _after_ RTNLHandler has been started
-  StartRTNLHandler();
+  // TODO(pstew): Find out why this EXPECT_CALL needed to be moved above
+  //              StartRTNLHandler()
   EXPECT_CALL(sockets_, SendTo(kTestSocket, _, _, 0, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
+  StartRTNLHandler();
   device_info_.Start();
 
   AddLink();
