@@ -6,9 +6,6 @@
 # TODO: This scripts makes an assumption that all Arm-based boards use
 #       WM8903 and that the board will always have the same codec.
 #
-# TODO: Rather than examining '/proc/cpuinfo', should use 'crossystem
-#       hwid' to determine the hardware type.
-
 NAME=$(basename "${0}");
 AMIXER=${AMIXER:-"/usr/bin/amixer"};
 SLEEP_TIME=${SLEEP_TIME:-"0.5"}; # Seconds to sleep between GPIO checking.
@@ -16,13 +13,15 @@ HP_GPIO="185";                   # Headphone GPIO.
 HP_GPIO_DIR="/sys/class/gpio/gpio${HP_GPIO}";
 
 declare -A machine_to_codec=(                   \
-    [seaboard]="wm8903"                         \
-    [kaen]="wm8903"                             \
-    [aebl]="wm8903"                             \
+    [SEABOARD]="wm8903"                         \
+    [ASYMPTOTE]="wm8903"                        \
+    [KAEN]="wm8903"                             \
+    [AEBL]="wm8903"                             \
 );
 
-declare active_low;
-declare machine_kind;
+declare active_low;           # inv: '0' or '1'.
+declare machine_kind;         # inv: An element of 'machine_to_codec'.
+declare codec;                # inv: ${machine_to_codec[${machine_kind}]}
 
 function log ()
 {
@@ -50,21 +49,21 @@ function get_gpio_attribute ()
     fi;
 }
 
-function set_output_headphones ()
+function wm8903_set_output_headphones ()
 {
     ${AMIXER} set 'Speaker' off  &>/dev/null
     ${AMIXER} set 'Int Spk' off    &>/dev/null
     ${AMIXER} set 'Headphone' on &>/dev/null
 }
 
-function set_output_internal_speaker ()
+function wm8903_set_output_internal_speaker ()
 {
     ${AMIXER} set 'Speaker' on    &>/dev/null
     ${AMIXER} set 'Int Spk' on    &>/dev/null
     ${AMIXER} set 'Headphone' off &>/dev/null
 }
 
-function initialize_wm8903 ()
+function wm8903_initialize ()
 {
     # Without enabling DACL, Kaen has no speaker output.
     ${AMIXER} set 'Speaker' 70%                 &>/dev/null
@@ -75,13 +74,20 @@ function initialize_wm8903 ()
 
 function initialize_codec ()
 {
-    local c="/proc/cpuinfo";    # Input file
-    local p="^Hardware";        # Search pattern
-
-    machine_kind=$(grep -i -e "${p}" "${c}"|sed -e 's/ //g'|cut -d ':' -f 2);
+    # crosssystem hwid produces the following type of output:
+    #
+    #    ARM KAEN TEST 3084
+    #    ARM AEBL TEST 5789
+    #    ARM ASYMPTOTE TEST 8314
+    #    IEC MARIO FISH 2330 DEV
+    #    ARM SEABOARD TEST 1176
+    #
+    # The second field is needed as the key to map the hardware to the
+    # type of codec.
+    machine_kind=$(crossystem hwid|cut -d ' ' -f 2);
     codec="${machine_to_codec[${machine_kind}]}";
     if [ ! -z "${codec}" ] ; then
-        init_fn="initialize_${codec}";
+        init_fn="${codec}_initialize";
         if declare -f ${init_fn} >/dev/null; then
             ${init_fn};
         else
@@ -105,10 +111,10 @@ function multiplex ()
         if [ "${value[0]}" != "${value[1]}" ] ; then
             # Headphone Jack has changed state.
             case "${active_low}${value[1]}" in
-                "00" ) set_output_headphones;       ;;
-                "01" ) set_output_internal_speaker; ;;
-                "10" ) set_output_internal_speaker; ;;
-                "11" ) set_output_headphones;       ;;
+                "00" ) ${codec}_set_output_headphones;       ;;
+                "01" ) ${codec}_set_output_internal_speaker; ;;
+                "10" ) ${codec}_set_output_internal_speaker; ;;
+                "11" ) ${codec}_set_output_headphones;       ;;
                 *    ) # Ignore invalid combos.
                     ;;
             esac;
@@ -119,6 +125,7 @@ function multiplex ()
 
 function main ()
 {
+    local pidfile="/var/run/headphone-jack-monitor.pid";
     local hp_gpio_dir=$(readlink --canonicalize "${HP_GPIO_DIR}");
     if [ ! -d "${hp_gpio_dir}" ] ; then
         failure "'${HP_GPIO_DIR}' does not exist";
@@ -129,6 +136,7 @@ function main ()
         failure "Unable to determine active low or active high";
     fi;
     multiplex ${hp_gpio_dir} &
+    echo $! >${pidfile}
 }
 
 if initialize_codec ; then
