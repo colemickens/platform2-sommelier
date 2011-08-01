@@ -215,20 +215,15 @@ if [ ${FLAGS_override_kernel_options} -eq ${FLAGS_FALSE} ]; then
   fi
 fi
 
-# get_verity_arg <commandline> <key> -> <value>
-get_verity_arg() {
-  echo "$1" | sed "s/.*\b$2=\([^ \"]*\).*/\1/"
-}
-
 # Extract the dm-verity target options.
 kernel_cfg="$(echo "${KERNEL_CONFIG}" | sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
               cut -f2- -d,)"
 verity_preamble="$(echo "${KERNEL_CONFIG}" |
                    sed -e 's/.*dm="\([^"]*\)".*/\1/g' |
                    cut -f1 -d,)"
-rootfs_sectors=$(get_verity_arg "${kernel_cfg}" hashstart)
-verity_depth=0
-verity_algorithm=$(get_verity_arg "${kernel_cfg}" alg)
+rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
+verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
+verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
 
 rootfs_image="${FLAGS_rootfs_image}"
 selected_root=$((selected_kernel + 1))
