@@ -23,6 +23,8 @@ namespace cros_disks {
 
 static const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+static const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
+static const char kMountDirectoryGroup[] = "chronos";
 static const char kUnmountOptionForce[] = "force";
 static const unsigned kMaxNumMountTrials = 10000;
 
@@ -97,6 +99,17 @@ MountErrorType MountManager::Mount(const string& source_path,
   if (!mount_path_created) {
     LOG(ERROR) << "Failed to create directory '" << actual_mount_path
                << "' to mount '" << source_path << "'";
+    return kMountErrorDirectoryCreationFailed;
+  }
+
+  gid_t group_id;
+  if (!platform_->GetGroupId(kMountDirectoryGroup, &group_id) ||
+      !platform_->SetOwnership(actual_mount_path, getuid(), group_id) ||
+      !platform_->SetPermissions(actual_mount_path,
+                                 kMountDirectoryPermissions)) {
+    LOG(ERROR) << "Failed to set ownership and permissions of directory '"
+               << actual_mount_path << "' to mount '" << source_path << "'";
+    platform_->RemoveEmptyDirectory(actual_mount_path);
     return kMountErrorDirectoryCreationFailed;
   }
 

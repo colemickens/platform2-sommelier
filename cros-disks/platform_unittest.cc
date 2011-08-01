@@ -108,18 +108,30 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_EQ(new_dir2.value(), path);
 }
 
-TEST_F(PlatformTest, GetUserAndGroupIdForRoot) {
-  uid_t uid;
-  gid_t gid;
-  EXPECT_TRUE(platform_.GetUserAndGroupId("root", &uid, &gid));
-  EXPECT_EQ(0, uid);
-  EXPECT_EQ(0, gid);
+TEST_F(PlatformTest, GetGroupIdOfRoot) {
+  gid_t group_id;
+  EXPECT_TRUE(platform_.GetGroupId("root", &group_id));
+  EXPECT_EQ(0, group_id);
 }
 
-TEST_F(PlatformTest, GetUserAndGroupIdForNonExistentUser) {
-  uid_t uid;
-  gid_t gid;
-  EXPECT_FALSE(platform_.GetUserAndGroupId("nonexistent-user", &uid, &gid));
+TEST_F(PlatformTest, GetGroupIdOfNonExistentGroup) {
+  gid_t group_id;
+  EXPECT_FALSE(platform_.GetGroupId("nonexistent-group", &group_id));
+}
+
+TEST_F(PlatformTest, GetUserAndGroupIdOfRoot) {
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_TRUE(platform_.GetUserAndGroupId("root", &user_id, &group_id));
+  EXPECT_EQ(0, user_id);
+  EXPECT_EQ(0, group_id);
+}
+
+TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_FALSE(platform_.GetUserAndGroupId("nonexistent-user",
+                                           &user_id, &group_id));
 }
 
 TEST_F(PlatformTest, RemoveEmptyDirectory) {

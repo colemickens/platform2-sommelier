@@ -4,6 +4,7 @@
 
 #include "cros-disks/platform.h"
 
+#include <grp.h>
 #include <pwd.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -18,6 +19,7 @@ using std::string;
 
 namespace cros_disks {
 
+static const unsigned kFallbackGroupBufferSize = 16384;
 static const unsigned kFallbackPasswordBufferSize = 16384;
 
 Platform::Platform()
@@ -67,27 +69,47 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
   return false;
 }
 
-bool Platform::GetUserAndGroupId(const string& username,
-                                 uid_t *uid, gid_t *gid) const {
+bool Platform::GetGroupId(const string& group_name, gid_t* group_id) const {
+  long buffer_size = sysconf(_SC_GETGR_R_SIZE_MAX);
+  if (buffer_size <= 0)
+    buffer_size = kFallbackGroupBufferSize;
+
+  struct group group_buffer, *group_buffer_ptr = NULL;
+  scoped_array<char> buffer(new char[buffer_size]);
+  getgrnam_r(group_name.c_str(), &group_buffer, buffer.get(), buffer_size,
+      &group_buffer_ptr);
+  if (group_buffer_ptr == NULL) {
+    PLOG(WARNING) << "Failed to determine group ID of group '"
+      << group_name << "'";
+    return false;
+  }
+
+  if (group_id)
+    *group_id = group_buffer.gr_gid;
+  return true;
+}
+
+bool Platform::GetUserAndGroupId(const string& user_name,
+                                 uid_t* user_id, gid_t* group_id) const {
   long buffer_size = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (buffer_size <= 0)
     buffer_size = kFallbackPasswordBufferSize;
 
   struct passwd password_buffer, *password_buffer_ptr = NULL;
   scoped_array<char> buffer(new char[buffer_size]);
-  getpwnam_r(username.c_str(), &password_buffer, buffer.get(), buffer_size,
+  getpwnam_r(user_name.c_str(), &password_buffer, buffer.get(), buffer_size,
       &password_buffer_ptr);
   if (password_buffer_ptr == NULL) {
-    PLOG(WARNING) << "Failed to determine user and group ID of username '"
-      << username << "'";
+    PLOG(WARNING) << "Failed to determine user and group ID of user '"
+      << user_name << "'";
     return false;
   }
 
-  if (uid)
-    *uid = password_buffer.pw_uid;
+  if (user_id)
+    *user_id = password_buffer.pw_uid;
 
-  if (gid)
-    *gid = password_buffer.pw_gid;
+  if (group_id)
+    *group_id = password_buffer.pw_gid;
 
   return true;
 }

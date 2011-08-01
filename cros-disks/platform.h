@@ -38,10 +38,13 @@ class Platform {
   virtual bool CreateOrReuseEmptyDirectoryWithFallback(
       std::string* path, unsigned max_suffix_to_retry) const;
 
-  // Gets the user ID and group ID for a given username. Returns true on
+  // Gets the group ID of a given group name. Returns true on success.
+  virtual bool GetGroupId(const std::string& group_name, gid_t* group_id) const;
+
+  // Gets the user ID and group ID of a given user name. Returns true on
   // success.
-  virtual bool GetUserAndGroupId(const std::string& username,
-                                 uid_t *uid, gid_t *gid) const;
+  virtual bool GetUserAndGroupId(const std::string& user_name,
+                                 uid_t* user_id, gid_t* group_id) const;
 
   // Removes a directory at |path| if it is empty and not in use.
   // Returns true on success.
