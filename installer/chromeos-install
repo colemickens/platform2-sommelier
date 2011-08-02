@@ -210,7 +210,7 @@ mkdir -p ${TMPMNT}
 # aliasing access to block devices.
 prepare_disk() {
   sudo initctl stop cros-disks || true
-  sudo umount -f /media/* || true
+  sudo umount -f /media/*/* || true
 }
 
 # Like mount but keeps track of the current mounts so that they can be cleaned
