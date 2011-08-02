@@ -32,10 +32,12 @@ ModemProxy::Proxy::Proxy(DBus::Connection *connection,
 
 ModemProxy::Proxy::~Proxy() {}
 
-void ModemProxy::Proxy::StateChanged(const uint32 &old_state,
-                                     const uint32 &new_state,
+void ModemProxy::Proxy::StateChanged(const uint32 &old,
+                                     const uint32 &_new,
                                      const uint32 &reason) {
   VLOG(2) << __func__;
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
 }
 
 }  // namespace shill

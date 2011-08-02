@@ -5,7 +5,7 @@
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized
-# disable some errors, which occur repeateadly the dbus-c++ headers.
+# Disable some errors, which occur repeatedly in the dbus-c++ headers.
 CXXFLAGS += -Wno-ignored-qualifiers -Wno-unused
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
@@ -37,7 +37,6 @@ DBUS_ADAPTOR_HEADERS = \
 
 DBUS_PROXY_HEADERS = \
 	dhcpcd.h \
-	modem.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
@@ -47,6 +46,7 @@ DBUS_PROXY_HEADERS = \
 # dependencies.
 DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager>modem_manager \
+	org.freedesktop.ModemManager.Modem>modem \
 	org.freedesktop.ModemManager.Modem.Cdma>modem-cdma \
 	org.freedesktop.ModemManager.Modem.Gsm.Card>modem-gsm-card \
 	org.freedesktop.ModemManager.Modem.Gsm.Network>modem-gsm-network \

@@ -36,8 +36,8 @@ class ModemProxy : public ModemProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem_proxy.
-    virtual void StateChanged(const uint32 &old_state,
-                              const uint32 &new_state,
+    virtual void StateChanged(const uint32 &old,
+                              const uint32 &_new,
                               const uint32 &reason);
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
