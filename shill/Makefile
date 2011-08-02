@@ -36,6 +36,7 @@ DBUS_ADAPTOR_HEADERS = \
 	flimflam-service.h
 
 DBUS_PROXY_HEADERS = \
+	dbus-properties.h \
 	dhcpcd.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
