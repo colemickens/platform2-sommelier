@@ -10,6 +10,7 @@
 #include <base/basictypes.h>
 
 #include "cros-disks/mount-options.h"
+#include "cros-disks/service-constants.h"
 
 namespace cros_disks {
 
@@ -18,15 +19,16 @@ namespace cros_disks {
 // of the filesystem.
 class Mounter {
  public:
-  Mounter(const std::string& source_path, const std::string& target_path,
-      const std::string& filesystem_type, const MountOptions& mount_options);
+  Mounter(const std::string& source_path,
+          const std::string& target_path,
+          const std::string& filesystem_type,
+          const MountOptions& mount_options);
 
   virtual ~Mounter();
 
   // This method implements the common steps to mount a filesystem.
-  // It internally calls MountImpl() on a derived class and returns
-  // true on success.
-  bool Mount();
+  // It internally calls MountImpl() on a derived class.
+  MountErrorType Mount();
 
   const std::string& filesystem_type() const { return filesystem_type_; }
   void set_filesystem_type(const std::string& filesystem_type) {
@@ -50,8 +52,8 @@ class Mounter {
 
  protected:
   // This pure virtual method is implemented by a derived class to mount
-  // a filesystem. It returns true on success.
-  virtual bool MountImpl() = 0;
+  // a filesystem.
+  virtual MountErrorType MountImpl() = 0;
 
  private:
   // Type of filesystem to mount.

@@ -21,16 +21,17 @@ static const char* kMountProgramPaths[] = {
 };
 
 ExternalMounter::ExternalMounter(const string& source_path,
-    const string& target_path, const string& filesystem_type,
-    const MountOptions& mount_options)
-  : Mounter(source_path, target_path, filesystem_type, mount_options) {
+                                 const string& target_path,
+                                 const string& filesystem_type,
+                                 const MountOptions& mount_options)
+    : Mounter(source_path, target_path, filesystem_type, mount_options) {
 }
 
-bool ExternalMounter::MountImpl() {
+MountErrorType ExternalMounter::MountImpl() {
   string mount_program = GetMountProgramPath();
   if (mount_program.empty()) {
     LOG(WARNING) << "Could not find an external mount program.";
-    return false;
+    return kMountErrorMountProgramNotFound;
   }
 
   chromeos::ProcessImpl mount_process;
@@ -49,9 +50,9 @@ bool ExternalMounter::MountImpl() {
   if (return_code != 0) {
     LOG(WARNING) << "External mount program failed with a return code "
       << return_code;
-    return false;
+    return kMountErrorMountProgramFailed;
   }
-  return true;
+  return kMountErrorNone;
 }
 
 string ExternalMounter::GetMountProgramPath() const {

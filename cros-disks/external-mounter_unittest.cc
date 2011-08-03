@@ -26,10 +26,10 @@ TEST_F(ExternalMounterTest, RunAsRootMount) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-      "tmpfs", MountOptions());
+                          "tmpfs", MountOptions());
   EXPECT_FALSE(mounter.GetMountProgramPath().empty());
   if (!mounter.GetMountProgramPath().empty()) {
-    EXPECT_TRUE(mounter.Mount());
+    EXPECT_EQ(kMountErrorNone, mounter.Mount());
     umount2(temp_dir.path().value().c_str(), MNT_FORCE);
   } else {
     LOG(WARNING) << "Could not find an external mount program for testing.";
@@ -43,21 +43,21 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // filesystem type instead of tmpfs since tmpfs does not care
   // about source path.
   ExternalMounter mounter("/nonexistent", temp_dir.path().value(),
-      "ext2", MountOptions());
-  EXPECT_FALSE(mounter.Mount());
+                          "ext2", MountOptions());
+  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   ExternalMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions());
-  EXPECT_FALSE(mounter.Mount());
+  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-      "nonexistentfs", MountOptions());
-  EXPECT_FALSE(mounter.Mount());
+                          "nonexistentfs", MountOptions());
+  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
@@ -68,8 +68,8 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
   MountOptions mount_options;
   mount_options.Initialize(options, false, "", "");
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-      "tmpfs", mount_options);
-  EXPECT_FALSE(mounter.Mount());
+                          "tmpfs", mount_options);
+  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
 }
 
 }  // namespace cros_disks

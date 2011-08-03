@@ -412,8 +412,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
 
   scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
                                             options));
-  // TODO(benchan): Extract error from low-level mount operation.
-  return mounter->Mount() ? kMountErrorNone : kMountErrorUnknown;
+  return mounter->Mount();
 }
 
 MountErrorType DiskManager::DoUnmount(const string& path,

@@ -15,9 +15,9 @@ namespace cros_disks {
 class ExternalMounter : public Mounter {
  public:
   ExternalMounter(const std::string& source_path,
-      const std::string& target_path,
-      const std::string& filesystem_type,
-      const MountOptions& mount_options);
+                  const std::string& target_path,
+                  const std::string& filesystem_type,
+                  const MountOptions& mount_options);
 
   // Returns the full path of an external mount program if it is found in
   // some predefined locations. Otherwise, an empty string is returned.
@@ -25,8 +25,7 @@ class ExternalMounter : public Mounter {
 
  protected:
   // Mounts a device file using an external mount program.
-  // This method returns true on success.
-  virtual bool MountImpl();
+  virtual MountErrorType MountImpl();
 };
 
 }  // namespace cros_disks

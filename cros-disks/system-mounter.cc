@@ -4,6 +4,7 @@
 
 #include "cros-disks/system-mounter.h"
 
+#include <errno.h>
 #include <sys/mount.h>
 
 #include <string>
@@ -17,12 +18,13 @@ using std::string;
 namespace cros_disks {
 
 SystemMounter::SystemMounter(const string& source_path,
-    const string& target_path, const string& filesystem_type,
-    const MountOptions& mount_options)
-  : Mounter(source_path, target_path, filesystem_type, mount_options) {
+                             const string& target_path,
+                             const string& filesystem_type,
+                             const MountOptions& mount_options)
+    : Mounter(source_path, target_path, filesystem_type, mount_options) {
 }
 
-bool SystemMounter::MountImpl() {
+MountErrorType SystemMounter::MountImpl() {
   pair<unsigned long, string> flags_and_data =
     mount_options().ToMountFlagsAndData();
   if (mount(source_path().c_str(), target_path().c_str(),
@@ -31,9 +33,20 @@ bool SystemMounter::MountImpl() {
     PLOG(WARNING) << "mount('" << source_path() << "', '" << target_path()
       << "', '" << filesystem_type() << "', " << flags_and_data.first
       << ", '" << flags_and_data.second << "') failed";
-    return false;
+    switch (errno) {
+      case ENODEV:
+        return kMountErrorUnsupportedFilesystem;
+      case ENOENT:
+      case ENOTBLK:
+      case ENOTDIR:
+        return kMountErrorInvalidPath;
+      case EPERM:
+        return kMountErrorInsufficientPermissions;
+      default:
+        return kMountErrorInternal;
+    }
   }
-  return true;
+  return kMountErrorNone;
 }
 
 }  // namespace cros_disks

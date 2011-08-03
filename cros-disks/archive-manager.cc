@@ -128,8 +128,7 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   MountOptions mount_options;
   mount_options.Initialize(extended_options, false, "", "");
   SystemMounter mounter(avfs_path, mount_path, "", mount_options);
-  // TODO(benchan): Extract error from low-level mount operation.
-  return mounter.Mount() ? kMountErrorNone : kMountErrorUnknown;
+  return mounter.Mount();
 }
 
 MountErrorType ArchiveManager::DoUnmount(const string& path,

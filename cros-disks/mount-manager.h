@@ -12,35 +12,9 @@
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>
 
+#include "cros-disks/service-constants.h"
+
 namespace cros_disks {
-
-// TODO(benchan): Move these to common/chromeos/dbus/service_constants,
-//                and make sure they are in sync with Chrome.
-enum MountSourceType {
-  kMountSourceInvalid = 0,
-  kMountSourceRemovableDevice = 1,
-  kMountSourceArchive = 2,
-  kMountSourceNetworkStorage = 3,
-};
-
-enum MountErrorType {
-  kMountErrorNone = 0,
-  kMountErrorUnknown = 1,
-  kMountErrorInternal = 2,
-  kMountErrorInvalidArgument = 3,
-  kMountErrorInvalidPath = 4,
-  kMountErrorPathAlreadyMounted = 5,
-  kMountErrorPathNotMounted = 6,
-  kMountErrorDirectoryCreationFailed = 7,
-  kMountErrorInvalidMountOptions = 8,
-  kMountErrorInvalidUnmountOptions = 9,
-  kMountErrorInvalidDevicePath = 100,
-  kMountErrorUnknownFilesystem = 101,
-  kMountErrorUnsupportedFilesystem = 102,
-  kMountErrorInvalidArchive = 201,
-  kMountErrorUnsupportedArchive = 202,
-  // TODO(benchan): Add more error types.
-};
 
 class Platform;
 
