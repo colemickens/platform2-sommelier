@@ -116,7 +116,36 @@ bool Platform::GetUserAndGroupId(const string& user_name,
   return true;
 }
 
-bool Platform::SetMountUser(const std::string& user_name) {
+bool Platform::GetOwnership(const string& path,
+                            uid_t* user_id, gid_t* group_id) const {
+  struct stat path_status;
+  if (stat(path.c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "Failed to get the ownership of '" << path << "'";
+    return false;
+  }
+
+  if (user_id)
+    *user_id = path_status.st_uid;
+
+  if (group_id)
+    *group_id = path_status.st_gid;
+
+  return true;
+}
+
+bool Platform::GetPermissions(const string& path, mode_t* mode) const {
+  CHECK(mode) << "Invalid mode argument";
+
+  struct stat path_status;
+  if (stat(path.c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "Failed to get the permissions of '" << path << "'";
+    return false;
+  }
+  *mode = path_status.st_mode;
+  return true;
+}
+
+bool Platform::SetMountUser(const string& user_name) {
   return GetUserAndGroupId(user_name, &mount_user_id_, &mount_group_id_);
 }
 

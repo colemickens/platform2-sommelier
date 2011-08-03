@@ -24,7 +24,7 @@ class MounterUnderTest : public Mounter {
                    const string& target_path,
                    const string& filesystem_type,
                    const MountOptions& mount_options)
-    : Mounter(source_path, target_path, filesystem_type, mount_options) {
+      : Mounter(source_path, target_path, filesystem_type, mount_options) {
   }
 
   // Mocks mount implementation.

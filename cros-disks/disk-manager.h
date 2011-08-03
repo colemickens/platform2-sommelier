@@ -136,6 +136,7 @@ class DiskManager : public MountManager {
   std::map<std::string, Filesystem> filesystems_;
 
   FRIEND_TEST(DiskManagerTest, CreateExternalMounter);
+  FRIEND_TEST(DiskManagerTest, CreateNTFSMounter);
   FRIEND_TEST(DiskManagerTest, CreateSystemMounter);
   FRIEND_TEST(DiskManagerTest, GetFilesystem);
   FRIEND_TEST(DiskManagerTest, RegisterFilesystem);

@@ -6,12 +6,15 @@
 
 #include <sys/mount.h>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/disk.h"
+#include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/mounter.h"
+#include "cros-disks/ntfs-mounter.h"
 #include "cros-disks/platform.h"
 
 using std::map;
@@ -37,9 +40,9 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   Disk disk;
   disk.set_device_file("/dev/sda1");
 
-  Filesystem filesystem("ntfs");
-  filesystem.set_mount_type("ntfs-3g");
-  filesystem.set_requires_external_mounter(true);
+  Filesystem filesystem("fat");
+  filesystem.set_mount_type("vfat");
+  filesystem.set_mounter_type(ExternalMounter::kMounterType);
 
   string target_path = "/media/disk";
 
@@ -49,8 +52,33 @@ TEST_F(DiskManagerTest, CreateExternalMounter) {
   options.push_back("noexec");
   options.push_back("nosuid");
 
-  Mounter *mounter =
-      manager_.CreateMounter(disk, filesystem, target_path, options);
+  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
+                                                     target_path, options));
+  EXPECT_TRUE(mounter.get() != NULL);
+  EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
+  EXPECT_EQ(disk.device_file(), mounter->source_path());
+  EXPECT_EQ(target_path, mounter->target_path());
+  EXPECT_EQ("nodev,noexec,nosuid,rw", mounter->mount_options().ToString());
+}
+
+TEST_F(DiskManagerTest, CreateNTFSMounter) {
+  Disk disk;
+  disk.set_device_file("/dev/sda1");
+
+  Filesystem filesystem("ntfs");
+  filesystem.set_mounter_type(NTFSMounter::kMounterType);
+
+  string target_path = "/media/disk";
+
+  vector<string> options;
+  options.push_back("rw");
+  options.push_back("nodev");
+  options.push_back("noexec");
+  options.push_back("nosuid");
+
+  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
+                                                     target_path, options));
+  EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());
@@ -73,8 +101,9 @@ TEST_F(DiskManagerTest, CreateSystemMounter) {
   options.push_back("noexec");
   options.push_back("nosuid");
 
-  Mounter *mounter =
-      manager_.CreateMounter(disk, filesystem, target_path, options);
+  scoped_ptr<Mounter> mounter(manager_.CreateMounter(disk, filesystem,
+                                                     target_path, options));
+  EXPECT_TRUE(mounter.get() != NULL);
   EXPECT_EQ(filesystem.mount_type(), mounter->filesystem_type());
   EXPECT_EQ(disk.device_file(), mounter->source_path());
   EXPECT_EQ(target_path, mounter->target_path());

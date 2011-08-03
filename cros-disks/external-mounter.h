@@ -14,6 +14,9 @@ namespace cros_disks {
 // A class for mounting a device file using an external mount program.
 class ExternalMounter : public Mounter {
  public:
+  // A unique type identifier of this derived mounter class.
+  static const char kMounterType[];
+
   ExternalMounter(const std::string& source_path,
                   const std::string& target_path,
                   const std::string& filesystem_type,

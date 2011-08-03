@@ -24,7 +24,6 @@ namespace cros_disks {
 static const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 static const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
-static const char kMountDirectoryGroup[] = "chronos";
 static const char kUnmountOptionForce[] = "force";
 static const unsigned kMaxNumMountTrials = 10000;
 

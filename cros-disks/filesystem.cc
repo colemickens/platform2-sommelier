@@ -14,7 +14,6 @@ Filesystem::Filesystem(const string& type)
   : accepts_user_and_group_id_(false),
     is_experimental_(false),
     is_mounted_read_only_(false),
-    requires_external_mounter_(false),
     type_(type) {
   CHECK(!type.empty()) << "Invalid filesystem type";
 }

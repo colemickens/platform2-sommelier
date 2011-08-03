@@ -134,6 +134,125 @@ TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
                                            &user_id, &group_id));
 }
 
+TEST_F(PlatformTest, GetOwnershipOfDirectory) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  string path = temp_dir.path().value();
+
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_TRUE(platform_.GetOwnership(path, &user_id, &group_id));
+  EXPECT_EQ(getuid(), user_id);
+  EXPECT_EQ(getgid(), group_id);
+}
+
+TEST_F(PlatformTest, GetOwnershipOfFile) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath temp_file;
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  string path = temp_file.value();
+
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_TRUE(platform_.GetOwnership(path, &user_id, &group_id));
+  EXPECT_EQ(getuid(), user_id);
+  EXPECT_EQ(getgid(), group_id);
+}
+
+TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath temp_file;
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  string file_path = temp_file.value();
+  string symlink_path = file_path + "-symlink";
+  FilePath temp_symlink(symlink_path);
+  ASSERT_TRUE(file_util::CreateSymbolicLink(temp_file, temp_symlink));
+
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_TRUE(platform_.GetOwnership(symlink_path, &user_id, &group_id));
+  EXPECT_EQ(getuid(), user_id);
+  EXPECT_EQ(getgid(), group_id);
+}
+
+TEST_F(PlatformTest, GetOwnershipOfNonexistentPath) {
+  uid_t user_id;
+  gid_t group_id;
+  EXPECT_FALSE(platform_.GetOwnership("/nonexistent-path",
+                                      &user_id, &group_id));
+}
+
+TEST_F(PlatformTest, GetPermissionsOfDirectory) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  string path = temp_dir.path().value();
+
+  mode_t mode = 0;
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  mode_t expected_mode = (mode & ~S_IRWXG & ~S_IRWXO) | S_IRWXU;
+  EXPECT_TRUE(platform_.SetPermissions(path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+
+  mode = 0;
+  expected_mode |= S_IRWXG;
+  EXPECT_TRUE(platform_.SetPermissions(path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+}
+
+TEST_F(PlatformTest, GetPermissionsOfFile) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath temp_file;
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  string path = temp_file.value();
+
+  mode_t mode = 0;
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  mode_t expected_mode = (mode & ~S_IRWXG & ~S_IRWXO) | S_IRWXU;
+  EXPECT_TRUE(platform_.SetPermissions(path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+
+  mode = 0;
+  expected_mode |= S_IRWXG;
+  EXPECT_TRUE(platform_.SetPermissions(path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+}
+
+TEST_F(PlatformTest, GetPermissionsOfSymbolicLink) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  FilePath temp_file;
+  ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
+  string file_path = temp_file.value();
+  string symlink_path = file_path + "-symlink";
+  FilePath temp_symlink(symlink_path);
+  ASSERT_TRUE(file_util::CreateSymbolicLink(temp_file, temp_symlink));
+
+  mode_t mode = 0;
+  EXPECT_TRUE(platform_.GetPermissions(file_path, &mode));
+  mode_t expected_mode = (mode & ~S_IRWXG & ~S_IRWXO) | S_IRWXU;
+  EXPECT_TRUE(platform_.SetPermissions(file_path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(symlink_path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+
+  mode = 0;
+  expected_mode |= S_IRWXG;
+  EXPECT_TRUE(platform_.SetPermissions(file_path, expected_mode));
+  EXPECT_TRUE(platform_.GetPermissions(symlink_path, &mode));
+  EXPECT_EQ(expected_mode, mode);
+}
+
+TEST_F(PlatformTest, GetPermissionsOfNonexistentPath) {
+  mode_t mode;
+  EXPECT_FALSE(platform_.GetPermissions("/nonexistent-path", &mode));
+}
+
 TEST_F(PlatformTest, RemoveEmptyDirectory) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());

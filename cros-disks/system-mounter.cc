@@ -17,6 +17,8 @@ using std::string;
 
 namespace cros_disks {
 
+const char SystemMounter::kMounterType[] = "";
+
 SystemMounter::SystemMounter(const string& source_path,
                              const string& target_path,
                              const string& filesystem_type,

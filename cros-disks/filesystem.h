@@ -53,9 +53,11 @@ class Filesystem {
     mount_type_ = mount_type;
   }
 
-  bool requires_external_mounter() const { return requires_external_mounter_; }
-  void set_requires_external_mounter(bool requires_external_mounter) {
-    requires_external_mounter_ = requires_external_mounter;
+  const std::string& mounter_type() const {
+    return mounter_type_;
+  }
+  void set_mounter_type(const std::string& mounter_type) {
+    mounter_type_ = mounter_type;
   }
 
   const std::string& type() const { return type_; }
@@ -81,9 +83,8 @@ class Filesystem {
   // filesystem.
   std::string mount_type_;
 
-  // This variable is set to true if an external mount program is used
-  // to mount the filesystem.
-  bool requires_external_mounter_;
+  // Type of mounter to use for mounting the filesystem.
+  std::string mounter_type_;
 
   // Filesystem type.
   std::string type_;

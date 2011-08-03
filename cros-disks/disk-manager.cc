@@ -16,6 +16,7 @@
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/mount-options.h"
+#include "cros-disks/ntfs-mounter.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/system-mounter.h"
 #include "cros-disks/udev-device.h"
@@ -283,11 +284,10 @@ void DiskManager::RegisterDefaultFilesystems() {
   RegisterFilesystem(vfat_fs);
 
   Filesystem ntfs_fs("ntfs");
-  ntfs_fs.set_mount_type("ntfs-3g");
+  ntfs_fs.set_mounter_type(NTFSMounter::kMounterType);
   ntfs_fs.set_is_experimental(true);
   ntfs_fs.set_is_mounted_read_only(true);
   ntfs_fs.set_accepts_user_and_group_id(true);
-  ntfs_fs.set_requires_external_mounter(true);
   RegisterFilesystem(ntfs_fs);
 
   Filesystem hfsplus_fs("hfsplus");
@@ -347,15 +347,24 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
     mount_options.SetReadOnlyOption();
   }
 
-  Mounter* mounter;
-  if (filesystem.requires_external_mounter()) {
-    mounter = new ExternalMounter(disk.device_file(), target_path,
-                                  filesystem.mount_type(), mount_options);
-  } else {
-    mounter = new SystemMounter(disk.device_file(), target_path,
-                                filesystem.mount_type(), mount_options);
-  }
-  return mounter;
+  const string& mounter_type = filesystem.mounter_type();
+  if (mounter_type == SystemMounter::kMounterType)
+    return new(std::nothrow) SystemMounter(disk.device_file(), target_path,
+                                           filesystem.mount_type(),
+                                           mount_options);
+
+  if (mounter_type == ExternalMounter::kMounterType)
+    return new(std::nothrow) ExternalMounter(disk.device_file(), target_path,
+                                             filesystem.mount_type(),
+                                             mount_options);
+
+  if (mounter_type == NTFSMounter::kMounterType)
+    return new(std::nothrow) NTFSMounter(disk.device_file(), target_path,
+                                         filesystem.mount_type(),
+                                         mount_options, platform_);
+
+  LOG(FATAL) << "Invalid mounter type '" << mounter_type << "'";
+  return NULL;
 }
 
 bool DiskManager::CanMount(const string& source_path) const {
@@ -405,6 +414,7 @@ MountErrorType DiskManager::DoMount(const string& source_path,
 
   scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
                                             options));
+  CHECK(mounter.get() != NULL) << "Failed to create a mounter";
   return mounter->Mount();
 }
 

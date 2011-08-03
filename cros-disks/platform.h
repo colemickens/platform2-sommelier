@@ -47,6 +47,17 @@ class Platform {
   virtual bool GetUserAndGroupId(const std::string& user_name,
                                  uid_t* user_id, gid_t* group_id) const;
 
+  // Gets the user ID and group ID of |path|. If |path| is a symbolic link, the
+  // ownership of the linked file, not the symbolic link itself, is obtained.
+  // Returns true on success.
+  virtual bool GetOwnership(const std::string& path,
+                            uid_t* user_id, gid_t* group_id) const;
+
+  // Gets the permissions of |path|. If |path| is a symbolic link, the
+  // permissions of the linked file, not the symbolic link itself, is obtained.
+  // Returns true on success.
+  virtual bool GetPermissions(const std::string& path, mode_t* mode) const;
+
   // Removes a directory at |path| if it is empty and not in use.
   // Returns true on success.
   virtual bool RemoveEmptyDirectory(const std::string& path) const;

@@ -15,6 +15,8 @@ using std::string;
 
 namespace cros_disks {
 
+const char ExternalMounter::kMounterType[] = "external";
+
 // Expected locations of an external mount program
 static const char* kMountProgramPaths[] = {
   "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount"
@@ -49,7 +51,7 @@ MountErrorType ExternalMounter::MountImpl() {
   int return_code = mount_process.Run();
   if (return_code != 0) {
     LOG(WARNING) << "External mount program failed with a return code "
-      << return_code;
+                 << return_code;
     return kMountErrorMountProgramFailed;
   }
   return kMountErrorNone;
