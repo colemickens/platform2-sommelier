@@ -4,6 +4,8 @@
 
 #include "shill/ipconfig.h"
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -115,8 +117,7 @@ void IPConfig::RegisterUpdateCallback(
 
 string IPConfig::GetStorageIdentifier() {
   string id = adaptor_->GetRpcIdentifier();
-  for (size_t i = id.find('/'); i != string::npos; i = id.find('/', i))
-    id[i] = '_';
+  std::replace(id.begin(), id.end(), '/', '_');
   return id;
 }
 
