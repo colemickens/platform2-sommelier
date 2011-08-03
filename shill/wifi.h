@@ -59,8 +59,6 @@ class WiFi : public Device {
   void ScanDoneTask();
 
   ScopedRunnableMethodFactory<WiFi> task_factory_;
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
   EndpointMap endpoint_by_bssid_;

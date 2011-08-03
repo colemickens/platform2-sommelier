@@ -51,6 +51,8 @@ Device::Device(ControlInterface *control_interface,
       running_(false),
       link_name_(link_name),
       unique_id_(link_name),
+      control_interface_(control_interface),
+      dispatcher_(dispatcher),
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)) {
 

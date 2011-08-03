@@ -17,6 +17,18 @@ class ModemCDMAProxyInterface {
 
   virtual void GetRegistrationState(uint32 *cdma_1x_state,
                                     uint32 *evdo_state) = 0;
+
+  virtual uint32 GetSignalQuality() = 0;
+};
+
+// ModemManager.Modem.CDMA signal listener to be associated with the proxy.
+class ModemCDMAProxyListener {
+ public:
+  virtual ~ModemCDMAProxyListener() {}
+
+  virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
+                                              uint32 state_evdo) = 0;
+  virtual void OnCDMASignalQualityChanged(uint32 strength) = 0;
 };
 
 }  // namespace shill

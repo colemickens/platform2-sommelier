@@ -11,16 +11,17 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
+#include "shill/modem_cdma_proxy_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
-class ModemCDMAProxyInterface;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
 
-class Cellular : public Device {
+class Cellular : public Device,
+                 public ModemCDMAProxyListener {
  public:
   enum Type {
     kTypeGSM,
@@ -98,6 +99,7 @@ class Cellular : public Device {
 
  private:
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
+  FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);
@@ -124,18 +126,39 @@ class Cellular : public Device {
   void GetModemStatus();
   void GetGSMProperties();
   void RegisterGSMModem();
-  void ReportEnabled();
 
   // Obtains the modem identifiers: MEID for CDMA; IMEI, IMSI, SPN and MSISDN
   // for GSM.
   void GetModemIdentifiers();
 
-  // Obtain modem's manufacturer, model ID, and hardware revision.
+  // Obtains modem's manufacturer, model ID, and hardware revision.
   void GetModemInfo();
 
   void GetModemRegistrationState();
   void GetCDMARegistrationState();
   void GetGSMRegistrationState();
+
+  // Processes a change in the modem registration state, possibly creating,
+  // destroying or updating the CellularService.
+  void HandleNewRegistrationState();
+
+  void CreateService();
+
+  void GetModemSignalQuality();
+  uint32 GetCDMASignalQuality();
+  uint32 GetGSMSignalQuality();
+
+  void HandleNewSignalQuality(uint32 strength);
+
+  // Returns true if the modem is registered. Note that this method looks at the
+  // latest CDMA/GSM registration info obtained from the modem rather than the
+  // device |state_|.
+  bool IsModemRegistered();
+
+  // Signal callbacks from ModemCDMAProxyListener.
+  virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
+                                              uint32 state_evdo);
+  virtual void OnCDMASignalQualityChanged(uint32 strength);
 
   Type type_;
   State state_;
@@ -148,7 +171,7 @@ class Cellular : public Device {
 
   CDMA cdma_;
 
-  ServiceRefPtr service_;
+  CellularServiceRefPtr service_;
   bool service_registered_;
 
   // Properties

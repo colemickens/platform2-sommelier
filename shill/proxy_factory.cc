@@ -57,9 +57,10 @@ ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
 }
 
 ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
+    ModemCDMAProxyListener *listener,
     const string &path,
     const string &service) {
-  return new ModemCDMAProxy(connection(), path, service);
+  return new ModemCDMAProxy(listener, connection(), path, service);
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(

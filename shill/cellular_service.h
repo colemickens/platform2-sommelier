@@ -26,9 +26,13 @@ class CellularService : public Service {
                   EventDispatcher *dispatcher,
                   Manager *manager,
                   const CellularRefPtr &device);
-  ~CellularService();
+  virtual ~CellularService();
+
   void Connect();
   void Disconnect();
+
+  uint8 strength() const { return strength_; }
+  void set_strength(uint8 strength) { strength_ = strength; }
 
  protected:
   virtual std::string CalculateState() { return "idle"; }
@@ -50,6 +54,7 @@ class CellularService : public Service {
 
   CellularRefPtr cellular_;
   const std::string type_;
+
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };
 

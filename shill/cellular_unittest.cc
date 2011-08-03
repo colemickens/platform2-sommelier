@@ -7,6 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 
+#include "shill/cellular_service.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
@@ -63,6 +64,7 @@ class CellularTest : public PropertyStoreTest {
     }
 
     virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
+        ModemCDMAProxyListener *listener,
         const string &path,
         const string &service) {
       return test_->cdma_proxy_.release();
@@ -207,6 +209,7 @@ TEST_F(CellularTest, GetModemInfo) {
 }
 
 TEST_F(CellularTest, GetCDMARegistrationState) {
+  EXPECT_FALSE(device_->service_.get());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
             device_->cdma_.registration_state_1x);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
@@ -216,12 +219,32 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
       .WillOnce(DoAll(
           SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
   device_->cdma_proxy_.reset(cdma_proxy_.release());
   device_->GetModemRegistrationState();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
             device_->cdma_.registration_state_1x);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             device_->cdma_.registration_state_evdo);
+  EXPECT_TRUE(device_->service_.get());
+}
+
+TEST_F(CellularTest, GetCDMASignalQuality) {
+  const int kStrength = 90;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality())
+      .Times(2)
+      .WillRepeatedly(Return(kStrength));
+  device_->cdma_proxy_.reset(cdma_proxy_.release());
+
+  EXPECT_FALSE(device_->service_.get());
+  device_->GetModemSignalQuality();
+
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &manager_, device_);
+  EXPECT_EQ(0, device_->service_->strength());
+  device_->GetModemSignalQuality();
+  EXPECT_EQ(kStrength, device_->service_->strength());
 }
 
 }  // namespace shill

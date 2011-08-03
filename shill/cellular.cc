@@ -108,10 +108,6 @@ Cellular::Cellular(ControlInterface *control_interface,
       state_(kStateDisabled),
       dbus_owner_(owner),
       dbus_path_(path),
-      service_(new CellularService(control_interface,
-                                   dispatcher,
-                                   manager,
-                                   this)),
       service_registered_(false),
       allow_roaming_(false),
       prl_version_(0),
@@ -183,7 +179,6 @@ void Cellular::Start() {
   }
   GetModemInfo();
   GetModemRegistrationState();
-  ReportEnabled();
   // TODO(petkov): Device::Start();
 }
 
@@ -193,6 +188,7 @@ void Cellular::Stop() {
   cdma_proxy_.reset();
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
+  state_ = kStateDisabled;
   // TODO(petkov): Device::Stop();
 }
 
@@ -209,7 +205,7 @@ void Cellular::InitProxies() {
     case kTypeCDMA:
       cdma_proxy_.reset(
           ProxyFactory::factory()->CreateModemCDMAProxy(
-              dbus_path_, dbus_owner_));
+              this, dbus_path_, dbus_owner_));
       break;
     default: NOTREACHED();
   }
@@ -285,6 +281,7 @@ void Cellular::GetModemRegistrationState() {
       break;
     default: NOTREACHED();
   }
+  HandleNewRegistrationState();
 }
 
 void Cellular::GetCDMARegistrationState() {
@@ -301,13 +298,92 @@ void Cellular::GetGSMRegistrationState() {
   NOTIMPLEMENTED();
 }
 
-void Cellular::ReportEnabled() {
+bool Cellular::IsModemRegistered() {
+  return cdma_.registration_state_1x !=
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
+      cdma_.registration_state_evdo !=
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  // TODO(petkov): Handle GSM states.
+}
+
+void Cellular::HandleNewRegistrationState() {
+  VLOG(2) << __func__;
+  if (!IsModemRegistered()) {
+    service_ = NULL;
+    if (state_ == kStateConnected || state_ == kStateRegistered) {
+      state_ = kStateEnabled;
+    }
+    return;
+  }
+
+  if (state_ == kStateEnabled) {
+    state_ = kStateRegistered;
+  }
+  if (!service_.get()) {
+    // For now, no endpoint is created. Revisit if necessary.
+    CreateService();
+  }
+  GetModemSignalQuality();
+  // TODO(petkov): Update the service.
+}
+
+void Cellular::GetModemSignalQuality() {
+  uint32 strength = 0;
+  switch (type_) {
+    case kTypeGSM:
+      strength = GetGSMSignalQuality();
+      break;
+    case kTypeCDMA:
+      strength = GetCDMASignalQuality();
+      break;
+    default: NOTREACHED();
+  }
+  HandleNewSignalQuality(strength);
+}
+
+uint32 Cellular::GetCDMASignalQuality() {
+  CHECK_EQ(kTypeCDMA, type_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  return cdma_proxy_->GetSignalQuality();
+}
+
+uint32 Cellular::GetGSMSignalQuality() {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
+  return 0;
+}
+
+void Cellular::HandleNewSignalQuality(uint32 strength) {
+  VLOG(2) << "Signal strength: " << strength;
+  if (service_.get()) {
+    service_->set_strength(strength);
+  }
+}
+
+void Cellular::CreateService() {
+  CHECK(!service_.get());
+  service_ =
+      new CellularService(control_interface_, dispatcher_, manager_, this);
+  // TODO(petkov): Set activation_state.
+  // TODO(petkov): Set operator.
+  // TODO(petkov): Set old_url/usage_url.
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) {
   return type == Device::kCellular;
+}
+
+void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,
+                                              uint32 state_evdo) {
+  CHECK_EQ(kTypeCDMA, type_);
+  cdma_.registration_state_1x = state_1x;
+  cdma_.registration_state_evdo = state_evdo;
+  HandleNewRegistrationState();
+}
+
+void Cellular::OnCDMASignalQualityChanged(uint32 strength) {
+  CHECK_EQ(kTypeCDMA, type_);
+  HandleNewSignalQuality(strength);
 }
 
 Stringmaps Cellular::EnumerateNetworks() {

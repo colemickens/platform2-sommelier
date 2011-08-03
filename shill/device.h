@@ -110,6 +110,8 @@ class Device : public base::RefCounted<Device> {
   bool running_;
   const std::string link_name_;
   const std::string unique_id_;
+  ControlInterface *control_interface_;
+  EventDispatcher *dispatcher_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
 
