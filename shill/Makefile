@@ -4,7 +4,7 @@
 
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
-CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized
+CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized -Woverloaded-virtual
 # Disable some errors, which occur repeatedly in the dbus-c++ headers.
 CXXFLAGS += -Wno-ignored-qualifiers -Wno-unused
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
