@@ -5,7 +5,6 @@
 #include "cros-disks/disk-manager.h"
 
 #include <sys/mount.h>
-#include <sys/types.h>
 
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>

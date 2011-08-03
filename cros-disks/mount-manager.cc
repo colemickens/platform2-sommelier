@@ -102,9 +102,8 @@ MountErrorType MountManager::Mount(const string& source_path,
     return kMountErrorDirectoryCreationFailed;
   }
 
-  gid_t group_id;
-  if (!platform_->GetGroupId(kMountDirectoryGroup, &group_id) ||
-      !platform_->SetOwnership(actual_mount_path, getuid(), group_id) ||
+  if (!platform_->SetOwnership(actual_mount_path, getuid(),
+                               platform_->mount_group_id()) ||
       !platform_->SetPermissions(actual_mount_path,
                                  kMountDirectoryPermissions)) {
     LOG(ERROR) << "Failed to set ownership and permissions of directory '"

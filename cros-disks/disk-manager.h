@@ -7,7 +7,6 @@
 
 #include <blkid/blkid.h>
 #include <libudev.h>
-#include <sys/types.h>
 
 #include <map>
 #include <set>

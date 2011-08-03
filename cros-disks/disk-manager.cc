@@ -27,9 +27,6 @@ using std::vector;
 
 namespace cros_disks {
 
-// TODO(benchan): Infer the current user/group from session manager
-// instead of hardcoding as chronos
-static const char kMountDefaultUser[] = "chronos";
 static const char kBlockSubsystem[] = "block";
 static const char kScsiSubsystem[] = "scsi";
 static const char kScsiDevice[] = "scsi_device";
@@ -337,12 +334,8 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
   if (set_user_and_group_id) {
-    uid_t uid;
-    gid_t gid;
-    if (platform_->GetUserAndGroupId(kMountDefaultUser, &uid, &gid)) {
-      default_user_id = base::StringPrintf("%d", uid);
-      default_group_id = base::StringPrintf("%d", gid);
-    }
+    default_user_id = base::StringPrintf("%d", platform_->mount_user_id());
+    default_group_id = base::StringPrintf("%d", platform_->mount_group_id());
   }
 
   MountOptions mount_options;

@@ -44,6 +44,7 @@ DEFINE_int32(minloglevel, logging::LOG_WARNING,
 static const char kUsageMessage[] = "Chromium OS Disk Daemon";
 static const char kArchiveMountRootDirectory[] = "/media/archive";
 static const char kDiskMountRootDirectory[] = "/media/removable";
+static const char kNonPrivilegedMountUser[] = "chronos";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
@@ -97,10 +98,12 @@ int main(int argc, char** argv) {
   server_conn.request_name("org.chromium.CrosDisks");
 
   Platform platform;
+  CHECK(platform.SetMountUser(kNonPrivilegedMountUser))
+      << "'" << kNonPrivilegedMountUser
+      << "' is not available for non-privileged mount operations.";
 
   LOG(INFO) << "Creating the archive manager";
-  ArchiveManager archive_manager(kArchiveMountRootDirectory,
-                                 &platform);
+  ArchiveManager archive_manager(kArchiveMountRootDirectory, &platform);
   CHECK(archive_manager.Initialize())
       << "Failed to initialize the archive manager";
 

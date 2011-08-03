@@ -6,6 +6,7 @@
 #define CROS_DISKS_PLATFORM_H_
 
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include <string>
 
@@ -50,6 +51,13 @@ class Platform {
   // Returns true on success.
   virtual bool RemoveEmptyDirectory(const std::string& path) const;
 
+  // Makes |user_name| to perform mount operations, which changes the value of
+  // mount_group_id_ and mount_user_id_. When |user_name| is a non-root user, a
+  // mount operation repsecting the value of mount_group_id_ and mount_user_id_
+  // becomes non-privileged. Returns false if it fails to obtain the user and
+  // group ID of |user_name|.
+  bool SetMountUser(const std::string& user_name);
+
   // Sets the user ID and group ID of |path| to |user_id| and |group_id|,
   // respectively. Returns true on success.
   virtual bool SetOwnership(const std::string& path,
@@ -68,9 +76,19 @@ class Platform {
     experimental_features_enabled_ = experimental_features_enabled;
   }
 
+  gid_t mount_group_id() const { return mount_group_id_; }
+
+  uid_t mount_user_id() const { return mount_user_id_; }
+
  private:
   // This variable is set to true if the experimental features are enabled.
   bool experimental_features_enabled_;
+
+  // Group ID to perform mount operations.
+  gid_t mount_group_id_;
+
+  // User ID to perform mount operations.
+  uid_t mount_user_id_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };

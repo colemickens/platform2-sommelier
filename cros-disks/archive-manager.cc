@@ -30,7 +30,6 @@ struct AVFSPathMapping {
 // in the path: '/', 'media', '<sub type>', '<mount dir>'
 static size_t kNumComponentsInMountDirectoryPath = 4;
 static const char kAVFSMountProgram[] = "/usr/bin/avfsd";
-static const char kAVFSMountUser[] = "chronos";
 static const char kAVFSRootDirectory[] = "/var/run/avfsroot";
 static const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
 static const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
@@ -52,10 +51,8 @@ bool ArchiveManager::Initialize() {
 }
 
 bool ArchiveManager::StartSession(const string& user) {
-  uid_t user_id;
-  gid_t group_id;
-  if (!platform_->GetUserAndGroupId(kAVFSMountUser, &user_id, &group_id))
-    return false;
+  uid_t user_id = platform_->mount_user_id();
+  gid_t group_id = platform_->mount_group_id();
 
   if (!platform_->CreateDirectory(kAVFSRootDirectory) ||
       !platform_->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
@@ -191,12 +188,13 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   }
 
   chromeos::ProcessImpl mount_process;
-  mount_process.AddArg("/bin/su");
-  mount_process.AddArg(kAVFSMountUser);
-  mount_process.AddArg("-c");
-  mount_process.AddArg(string(kAVFSMountProgram) +
-                       " -o ro,nodev,noexec,nosuid,modules=subdir,subdir=" +
-                       base_path + " " + avfs_path);
+  mount_process.AddArg(kAVFSMountProgram);
+  mount_process.AddArg("-o");
+  mount_process.AddArg("ro,nodev,noexec,nosuid,modules=subdir,subdir=" +
+                       base_path);
+  mount_process.AddArg(avfs_path);
+  mount_process.SetUid(platform_->mount_user_id());
+  mount_process.SetGid(platform_->mount_group_id());
   if (mount_process.Run() != 0 ||
       !mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {

@@ -154,6 +154,20 @@ TEST_F(PlatformTest, RemoveEmptyDirectory) {
   EXPECT_FALSE(platform_.RemoveEmptyDirectory(path));
 }
 
+TEST_F(PlatformTest, SetMountUserToRoot) {
+  EXPECT_TRUE(platform_.SetMountUser("root"));
+  EXPECT_EQ(0, platform_.mount_user_id());
+  EXPECT_EQ(0, platform_.mount_group_id());
+}
+
+TEST_F(PlatformTest, SetMountUserToNonexistentUser) {
+  uid_t user_id = platform_.mount_user_id();
+  gid_t group_id = platform_.mount_group_id();
+  EXPECT_FALSE(platform_.SetMountUser("nonexistent-user"));
+  EXPECT_EQ(user_id, platform_.mount_user_id());
+  EXPECT_EQ(group_id, platform_.mount_group_id());
+}
+
 TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {
   EXPECT_FALSE(platform_.SetOwnership("/nonexistent-path", getuid(), getgid()));
 }

@@ -23,7 +23,9 @@ static const unsigned kFallbackGroupBufferSize = 16384;
 static const unsigned kFallbackPasswordBufferSize = 16384;
 
 Platform::Platform()
-    : experimental_features_enabled_(false) {
+    : experimental_features_enabled_(false),
+      mount_group_id_(0),
+      mount_user_id_(0) {
 }
 
 Platform::~Platform() {
@@ -112,6 +114,10 @@ bool Platform::GetUserAndGroupId(const string& user_name,
     *group_id = password_buffer.pw_gid;
 
   return true;
+}
+
+bool Platform::SetMountUser(const std::string& user_name) {
+  return GetUserAndGroupId(user_name, &mount_user_id_, &mount_group_id_);
 }
 
 bool Platform::RemoveEmptyDirectory(const string& path) const {
