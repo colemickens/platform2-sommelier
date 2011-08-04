@@ -185,10 +185,18 @@ const char SessionManagerService::kStopped[] = "stopped";
 
 namespace {
 
-// Time we wait for child job to die (in seconds).
+// Time we wait for child job to die (in seconds) unless crash-reporter
+// based crash reporting of Chrome is enabled (which should only be
+// during test runs) in which case kKillTimeoutChromeCrashHandling is used.
 const int kKillTimeout = 3;
 
 const int kMaxArgumentsSize = 1024;
+
+// TODO(mkrebs): Remove CollectChrome timeout and file when
+// crosbug.com/5872 is fixed.
+const int kKillTimeoutCollectChrome = 60;
+static const char kCollectChromeFile[] =
+    "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
 }  // namespace
 
@@ -330,6 +338,13 @@ void SessionManagerService::OnKeyPersisted(bool success) {
   system_->SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, success);
 }
 
+int GetKillTimeout() {
+  if (file_util::PathExists(FilePath(kCollectChromeFile)))
+    return kKillTimeoutCollectChrome;
+  else
+    return kKillTimeout;
+}
+
 bool SessionManagerService::Run() {
   if (!main_loop_) {
     LOG(ERROR) << "You must have a main loop to call Run.";
@@ -361,7 +376,7 @@ bool SessionManagerService::Run() {
   //                to recovery mode.  How to tell them that from here?
   CHECK(device_policy_->Initialize());
   MessageLoop::current()->Run();
-  CleanupChildren(kKillTimeout);
+  CleanupChildren(GetKillTimeout());
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
   system_->BroadcastSignal(session_manager_,
                            signals_[kSignalSessionStateChanged],
@@ -969,8 +984,11 @@ void SessionManagerService::CleanupChildren(int timeout) {
        it != pids_to_kill.end(); ++it) {
     const int pid = it->first;
     const uid_t uid = it->second;
-    if (!system_->ChildIsGone(pid, timeout))
+    if (!system_->ChildIsGone(pid, timeout)) {
+      LOG(WARNING) << "Killing child process " << pid << " " << timeout
+                   << "seconds after sending KILL/TERM signal";
       system_->kill(pid, uid, SIGABRT);
+    }
   }
 }
 
