@@ -79,6 +79,13 @@ OTHER_ROOT_DEV=$(echo $ROOT_DEV | tr '35' '53')
 KERNEL_DEV=$(echo $ROOT_DEV | tr '35' '24')
 OTHER_KERNEL_DEV=$(echo $OTHER_ROOT_DEV | tr '35' '24')
 WIPE_PART_NUM=${OTHER_ROOT_DEV##[/a-z]*[/a-z]}
+# Save the option before wipe-out
+WIPE_OPTION_FILE="/mnt/stateful_partition/factory_wipe_option"
+if [ -O ${WIPE_OPTION_FILE} ]; then
+  WIPE_OPTION=$(cat ${WIPE_OPTION_FILE})
+else
+  WIPE_OPTION=
+fi
 
 if [ "$WIPE_PART_NUM" != "3" ] && [ "$WIPE_PART_NUM" != "5" ]
 then
@@ -140,7 +147,7 @@ if [ "$FACTORY_WIPE" = "factory" ]; then
   factory_wipe_firmware
   BOARD_WIPE=/usr/sbin/board_factory_wipe.sh
   if [ -x "${BOARD_WIPE}" ]; then
-    ${BOARD_WIPE}
+    ${BOARD_WIPE} ${WIPE_OPTION}
   fi
 fi
 
