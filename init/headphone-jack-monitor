@@ -3,7 +3,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO: This scripts makes an assumption that all Arm-based boards use
+# TODO(thutt): Convert to /bin/sh from bash
+# TODO(thutt): Lookup board configs by config file installed
+# by private overlay.
+# TODO(thutt): This scripts makes an assumption that all Arm-based boards use
 #       WM8903 and that the board will always have the same codec.
 #
 NAME=$(basename "${0}");
@@ -11,13 +14,10 @@ AMIXER=${AMIXER:-"/usr/bin/amixer"};
 SLEEP_TIME=${SLEEP_TIME:-"0.5"}; # Seconds to sleep between GPIO checking.
 HP_GPIO="185";                   # Headphone GPIO.
 HP_GPIO_DIR="/sys/class/gpio/gpio${HP_GPIO}";
-
-declare -A machine_to_codec=(                   \
-    [SEABOARD]="wm8903"                         \
-    [ASYMPTOTE]="wm8903"                        \
-    [KAEN]="wm8903"                             \
-    [AEBL]="wm8903"                             \
-);
+# This represents the board this image is targeted for.
+BOARD="$(cat /etc/lsb-release | grep CHROMEOS_RELEASE_BOARD | cut -d'=' -f2)"
+# This is the codec chip we are currently using.
+CODEC="$(cat /proc/asound/pcm | head -n1 | cut -d':' -f2 | awk '{print $1}')"
 
 declare active_low;           # inv: '0' or '1'.
 declare machine_kind;         # inv: An element of 'machine_to_codec'.
@@ -71,23 +71,25 @@ function wm8903_initialize ()
     ${AMIXER} set 'Digital'    70%              &>/dev/null
     ${AMIXER} set "Left Speaker Mixer DACL"  on &>/dev/null
     ${AMIXER} set "Right Speaker Mixer DACL" on &>/dev/null
+    ${AMIXER} set 'ADC Input' 'DMIC'            &>/dev/null
 }
 
 function initialize_codec ()
 {
-    # crosssystem hwid produces the following type of output:
-    #
-    #    ARM KAEN TEST 3084
-    #    ARM AEBL TEST 5789
-    #    ARM ASYMPTOTE TEST 8314
-    #    IEC MARIO FISH 2330 DEV
-    #    ARM SEABOARD TEST 1176
-    #
-    # The second field is needed as the key to map the hardware to the
-    # type of codec.
-    machine_kind=$(crossystem hwid|cut -d ' ' -f 2);
-    codec="${machine_to_codec[${machine_kind}]}";
-    if [ ! -z "${codec}" ] ; then
+    # Board type is found in /etc/lsb-release:
+    #    tegra2_seaboard
+    # We need to support the audio config per board.
+    local machine_kind=$BOARD
+    # Codec type is found in /proc/asound/pcm
+    # TODO(thutt): We should support more than one codec, and
+    # support more than one codec per board. Current implementation
+    # is a stopgap.
+    codec=""
+    if [ "$CODEC" = "WM8903" ]; then
+      codec="wm8903"
+    fi
+
+    if [ -n "${codec}" ] ; then
         init_fn="${codec}_initialize";
         if declare -f ${init_fn} >/dev/null; then
             ${init_fn};
@@ -126,7 +128,6 @@ function multiplex ()
 
 function main ()
 {
-    local pidfile="/var/run/headphone-jack-monitor.pid";
     local hp_gpio_dir=$(readlink --canonicalize "${HP_GPIO_DIR}");
     if [ ! -d "${hp_gpio_dir}" ] ; then
         failure "'${HP_GPIO_DIR}' does not exist";
@@ -136,8 +137,7 @@ function main ()
     if [ -z "${active_low}" ] ; then
         failure "Unable to determine active low or active high";
     fi;
-    multiplex ${hp_gpio_dir} &
-    echo $! >${pidfile}
+    multiplex ${hp_gpio_dir}
 }
 
 if initialize_codec ; then
