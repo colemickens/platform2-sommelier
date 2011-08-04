@@ -104,6 +104,13 @@ fi
 # To force WebUI OOBE. This works ok with test images as they
 # are always started with OOBE.
 if [ -f /root/.test_webui_oobe ] ; then
+  SKIP_OOBE=
+  WEBUI_LOGIN="--webui-login --webui-gaia-login --allow-webui-oobe"
+fi
+
+# To always force WebUI OOBE. This works ok with test images as they
+# are always started with OOBE.
+if [ -f /root/.test_repeat_webui_oobe ] ; then
   rm -f "${DATA_DIR}/.oobe_completed"
   rm -f "${DATA_DIR}/Local State"
   SKIP_OOBE=
