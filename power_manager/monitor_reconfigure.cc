@@ -113,7 +113,11 @@ void MonitorReconfigure::Run() {
 
   vector<ResolutionSelector::Mode> lcd_modes;
   SortModesByResolution(lcd_output_, &lcd_modes);
-  DCHECK(!lcd_modes.empty());
+  if (lcd_modes.empty()) {
+    LOG(WARNING) << "LCD modes empty";
+    XRRFreeScreenResources(screen_info_);
+    return;
+  }
 
   vector<ResolutionSelector::Mode> external_modes;
   if (external_output_info_ &&
