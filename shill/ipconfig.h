@@ -96,6 +96,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
+  FRIEND_TEST(ResolverTest, Empty);
+  FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
 
   static const char kStorageType[];
