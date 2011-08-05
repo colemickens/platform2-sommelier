@@ -43,7 +43,12 @@ INSTALL_DEV="$1"
 # fail if /proc is not bind mounted, or if the script is running inside a chroot
 # on the same device, or if the new root is not really a root (inode != 2).
 [ $(stat -c %d /proc/1/root) -ne $(stat -c %d /) ] || exit 1
-[ $(stat -c %i /) -eq 2 ] || exit 1
+# If the root filesystem isn't squashfs, we need to check its root inode number.
+# The root inode number of extN is always 2, but the root inode number in
+# squashfs isn't constant.
+if [ "$(stat -f -c %T /)" != "squashfs" ]; then
+  [ $(stat -c %i /) -eq 2 ] || exit 1
+fi
 
 # Old update_engine runs this script twice, the second time passing
 # --postcommit. The second run is essentially a no-op so exit gracefully.
