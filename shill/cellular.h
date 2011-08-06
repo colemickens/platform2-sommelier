@@ -8,20 +8,23 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/task.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/modem_cdma_proxy_interface.h"
+#include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
 
 namespace shill {
 
-class ModemProxyInterface;
 class ModemSimpleProxyInterface;
 
 class Cellular : public Device,
-                 public ModemCDMAProxyListener {
+                 public ModemCDMAProxyListener,
+                 public ModemProxyListener {
  public:
   enum Type {
     kTypeGSM,
@@ -79,6 +82,8 @@ class Cellular : public Device,
     uint32 retries_left;
   };
 
+  static const char kConnectPropertyPhoneNumber[];
+
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
@@ -92,12 +97,19 @@ class Cellular : public Device,
            const std::string &path);
   virtual ~Cellular();
 
+  // Asynchronously connects the modem to the network.
+  void Connect();
+
   // Inherited from Device.
   virtual void Start();
   virtual void Stop();
   virtual bool TechnologyIs(Technology type);
 
  private:
+  static const char kPhoneNumberCDMA[];
+  static const char kPhoneNumberGSM[];
+
+  FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
@@ -107,6 +119,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, Start);
+
+  void ConnectTask(const DBusPropertiesMap &properties);
 
   Stringmaps EnumerateNetworks();
   StrIntPair SimLockStatusToProperty();
@@ -155,10 +169,15 @@ class Cellular : public Device,
   // device |state_|.
   bool IsModemRegistered();
 
-  // Signal callbacks from ModemCDMAProxyListener.
+  // Signal callbacks inherited from ModemCDMAProxyListener.
   virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo);
   virtual void OnCDMASignalQualityChanged(uint32 strength);
+
+  // Signal callbacks inherited from ModemProxyListener.
+  virtual void OnModemStateChanged(uint32 old_state,
+                                   uint32 new_state,
+                                   uint32 reason);
 
   Type type_;
   State state_;
@@ -173,6 +192,8 @@ class Cellular : public Device,
 
   CellularServiceRefPtr service_;
   bool service_registered_;
+
+  ScopedRunnableMethodFactory<Cellular> task_factory_;
 
   // Properties
   bool allow_roaming_;

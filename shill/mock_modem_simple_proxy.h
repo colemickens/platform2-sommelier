@@ -14,6 +14,7 @@ namespace shill {
 class MockModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   MOCK_METHOD0(GetStatus, DBusPropertiesMap());
+  MOCK_METHOD1(Connect, void(const DBusPropertiesMap &properties));
 };
 
 }  // namespace shill

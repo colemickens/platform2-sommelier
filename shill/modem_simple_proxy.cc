@@ -19,6 +19,10 @@ DBusPropertiesMap ModemSimpleProxy::GetStatus() {
   return proxy_.GetStatus();
 }
 
+void ModemSimpleProxy::Connect(const DBusPropertiesMap &properties) {
+  proxy_.Connect(properties);
+}
+
 ModemSimpleProxy::Proxy::Proxy(DBus::Connection *connection,
                                const string &path,
                                const string &service)

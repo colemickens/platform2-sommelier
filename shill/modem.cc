@@ -13,6 +13,7 @@
 #include "shill/rtnl_handler.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -120,6 +121,20 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                               &unlock_retries);
     // TODO(petkov): Set these properties on the device instance.
   }
+}
+
+void Modem::OnDBusPropertiesChanged(
+    const string &interface,
+    const DBusPropertiesMap &changed_properties,
+    const vector<string> &invalidated_properties) {
+  // Ignored.
+}
+
+void Modem::OnModemManagerPropertiesChanged(
+    const string &interface,
+    const DBusPropertiesMap &properties) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
 }
 
 }  // namespace shill

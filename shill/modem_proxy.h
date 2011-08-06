@@ -12,11 +12,13 @@
 
 namespace shill {
 
-// There's a single proxy per ModemManager.Modem service identified by its DBus
-// |path| and owner name |service|.
+// A proxy to ModemManager.Modem.
 class ModemProxy : public ModemProxyInterface {
  public:
-  ModemProxy(DBus::Connection *connection,
+  // Constructs a ModemManager.Modem DBus object proxy at |path| owned by
+  // |service|. Caught signals will be dispatched to |listener|.
+  ModemProxy(ModemProxyListener *listener,
+             DBus::Connection *connection,
              const std::string &path,
              const std::string &service);
   virtual ~ModemProxy();
@@ -29,7 +31,8 @@ class ModemProxy : public ModemProxyInterface {
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
+    Proxy(ModemProxyListener *listener,
+          DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -39,6 +42,8 @@ class ModemProxy : public ModemProxyInterface {
     virtual void StateChanged(const uint32 &old,
                               const uint32 &_new,
                               const uint32 &reason);
+
+    ModemProxyListener *listener_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

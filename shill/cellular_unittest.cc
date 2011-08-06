@@ -29,7 +29,7 @@ class CellularTest : public PropertyStoreTest {
         cdma_proxy_(new MockModemCDMAProxy()),
         proxy_factory_(this),
         device_(new Cellular(&control_interface_,
-                             NULL,
+                             &dispatcher_,
                              &manager_,
                              "usb0",
                              3,
@@ -52,7 +52,8 @@ class CellularTest : public PropertyStoreTest {
    public:
     TestProxyFactory(CellularTest *test) : test_(test) {}
 
-    virtual ModemProxyInterface *CreateModemProxy(const string &path,
+    virtual ModemProxyInterface *CreateModemProxy(ModemProxyListener *listener,
+                                                  const string &path,
                                                   const string &service) {
       return test_->proxy_.release();
     }
@@ -245,6 +246,30 @@ TEST_F(CellularTest, GetCDMASignalQuality) {
   EXPECT_EQ(0, device_->service_->strength());
   device_->GetModemSignalQuality();
   EXPECT_EQ(kStrength, device_->service_->strength());
+}
+
+namespace {
+
+MATCHER(ContainsPhoneNumber, "") {
+  return ContainsKey(arg, Cellular::kConnectPropertyPhoneNumber);
+}
+
+}  // namespace {}
+
+TEST_F(CellularTest, Connect) {
+  device_->state_ = Cellular::kStateConnected;
+  device_->Connect();
+
+  device_->state_ = Cellular::kStateRegistered;
+  device_->Connect();
+  ASSERT_FALSE(device_->task_factory_.empty());
+
+  DBusPropertiesMap properties;
+  properties[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
+      Cellular::kPhoneNumberGSM);
+  EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(1);
+  device_->simple_proxy_.reset(simple_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill

@@ -12,12 +12,10 @@
 
 namespace shill {
 
-class Modem;
-
 class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
  public:
-  DBusPropertiesProxy(DBus::Connection *connection,
-                      Modem *modem,
+  DBusPropertiesProxy(DBusPropertiesProxyListener *listener,
+                      DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
   virtual ~DBusPropertiesProxy();
@@ -29,8 +27,8 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   class Proxy : public org::freedesktop::DBus::Properties_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
-          Modem *modem,
+    Proxy(DBusPropertiesProxyListener *listener,
+          DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
@@ -45,7 +43,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
         const DBusPropertiesMap &changed_properties,
         const std::vector<std::string> &invalidated_properties);
 
-    Modem *modem_;
+    DBusPropertiesProxyListener *listener_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

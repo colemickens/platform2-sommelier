@@ -22,6 +22,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
 
   // Inherited from ModemSimpleProxyInterface.
   virtual DBusPropertiesMap GetStatus();
+  virtual void Connect(const DBusPropertiesMap &properties);
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Simple_proxy,

@@ -11,7 +11,6 @@
 #include <base/basictypes.h>
 
 #include "shill/refptr_types.h"
-#include "shill/shill_event.h"
 #include "shill/service.h"
 
 namespace shill {

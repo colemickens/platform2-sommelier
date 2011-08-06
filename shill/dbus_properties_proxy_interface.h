@@ -5,6 +5,8 @@
 #ifndef SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
 #define SHILL_DBUS_PROPERTIES_PROXY_INTERFACE_
 
+#include <vector>
+
 #include "shill/dbus_properties.h"
 
 namespace shill {
@@ -16,6 +18,21 @@ class DBusPropertiesProxyInterface {
   virtual ~DBusPropertiesProxyInterface() {}
 
   virtual DBusPropertiesMap GetAll(const std::string &interface_name) = 0;
+};
+
+// DBus.Properties signal listener to be associated with the proxy.
+class DBusPropertiesProxyListener {
+ public:
+  virtual ~DBusPropertiesProxyListener() {}
+
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties) = 0;
+
+  virtual void OnModemManagerPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties) = 0;
 };
 
 }  // namespace shill

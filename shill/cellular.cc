@@ -18,8 +18,6 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/manager.h"
-#include "shill/modem_cdma_proxy_interface.h"
-#include "shill/modem_proxy_interface.h"
 #include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -31,6 +29,10 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+const char Cellular::kConnectPropertyPhoneNumber[] = "number";
+const char Cellular::kPhoneNumberCDMA[] = "#777";
+const char Cellular::kPhoneNumberGSM[] = "*99#";
 
 Cellular::Network::Network() {
   dict_[flimflam::kStatusProperty] = "";
@@ -109,6 +111,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_owner_(owner),
       dbus_path_(path),
       service_registered_(false),
+      task_factory_(this),
       allow_roaming_(false),
       prl_version_(0),
       scanning_(false),
@@ -194,7 +197,7 @@ void Cellular::Stop() {
 
 void Cellular::InitProxies() {
   proxy_.reset(
-      ProxyFactory::factory()->CreateModemProxy(dbus_path_, dbus_owner_));
+      ProxyFactory::factory()->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
       ProxyFactory::factory()->CreateModemSimpleProxy(
           dbus_path_, dbus_owner_));
@@ -373,6 +376,36 @@ bool Cellular::TechnologyIs(const Device::Technology type) {
   return type == Device::kCellular;
 }
 
+void Cellular::Connect() {
+  VLOG(2) << __func__;
+  if (state_ == kStateConnected) {
+    return;
+  }
+  CHECK_EQ(kStateRegistered, state_);
+  DBusPropertiesMap properties;
+  const char *phone_number = NULL;
+  switch (type_) {
+    case kTypeGSM:
+      phone_number = kPhoneNumberGSM;
+      break;
+    case kTypeCDMA:
+      phone_number = kPhoneNumberCDMA;
+      break;
+    default: NOTREACHED();
+  }
+  properties[kConnectPropertyPhoneNumber].writer().append_string(phone_number);
+  // TODO(petkov): Setup apn and "home_only".
+
+  // Defer connect because we may be in a dbus-c++ callback.
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&Cellular::ConnectTask, properties));
+}
+
+void Cellular::ConnectTask(const DBusPropertiesMap &properties) {
+  VLOG(2) << __func__;
+  simple_proxy_->Connect(properties);
+}
+
 void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo) {
   CHECK_EQ(kTypeCDMA, type_);
@@ -384,6 +417,13 @@ void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,
 void Cellular::OnCDMASignalQualityChanged(uint32 strength) {
   CHECK_EQ(kTypeCDMA, type_);
   HandleNewSignalQuality(strength);
+}
+
+void Cellular::OnModemStateChanged(uint32 old_state,
+                                   uint32 new_state,
+                                   uint32 reason) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
 }
 
 Stringmaps Cellular::EnumerateNetworks() {

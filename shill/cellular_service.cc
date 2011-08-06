@@ -10,15 +10,11 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular.h"
-#include "shill/control_interface.h"
-#include "shill/device.h"
-#include "shill/device_info.h"
-#include "shill/manager.h"
-#include "shill/shill_event.h"
 
 using std::string;
 
 namespace shill {
+
 CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Manager *manager,
@@ -48,7 +44,9 @@ CellularService::CellularService(ControlInterface *control_interface,
 
 CellularService::~CellularService() { }
 
-void CellularService::Connect() { }
+void CellularService::Connect() {
+  cellular_->Connect();
+}
 
 void CellularService::Disconnect() { }
 

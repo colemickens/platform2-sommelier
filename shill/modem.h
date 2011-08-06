@@ -23,7 +23,7 @@ class Manager;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
-class Modem {
+class Modem : public DBusPropertiesProxyListener {
  public:
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
@@ -35,7 +35,8 @@ class Modem {
         Manager *manager);
   ~Modem();
 
-  // Initializes support for the modem, possibly constructing a Cellular device.
+  // Asynchronously initializes support for the modem, possibly constructing a
+  // Cellular device.
   void Init();
 
  private:
@@ -58,6 +59,15 @@ class Modem {
   // ModemManager.Modem's |properties|. The device may not be created if the
   // properties are invalid.
   void CreateCellularDevice(const DBusPropertiesMap &properties);
+
+  // Signal callbacks inherited from DBusPropertiesProxyListener.
+  virtual void OnDBusPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties);
+  virtual void OnModemManagerPropertiesChanged(
+      const std::string &interface,
+      const DBusPropertiesMap &properties);
 
   // A proxy to the org.freedesktop.DBus.Properties interface used to obtain
   // ModemManager.Modem properties and watch for property changes.

@@ -6,18 +6,16 @@
 
 #include <base/logging.h>
 
-#include "shill/modem.h"
-
 namespace shill {
 
 using std::string;
 using std::vector;
 
-DBusPropertiesProxy::DBusPropertiesProxy(DBus::Connection *connection,
-                                         Modem *modem,
+DBusPropertiesProxy::DBusPropertiesProxy(DBusPropertiesProxyListener *listener,
+                                         DBus::Connection *connection,
                                          const string &path,
                                          const string &service)
-    : proxy_(connection, modem, path, service) {}
+    : proxy_(listener, connection, path, service) {}
 
 DBusPropertiesProxy::~DBusPropertiesProxy() {}
 
@@ -25,26 +23,29 @@ DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
   return proxy_.GetAll(interface_name);
 }
 
-DBusPropertiesProxy::Proxy::Proxy(DBus::Connection *connection,
-                                  Modem *modem,
+DBusPropertiesProxy::Proxy::Proxy(DBusPropertiesProxyListener *listener,
+                                  DBus::Connection *connection,
                                   const string &path,
                                   const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),
-      modem_(modem) {}
+      listener_(listener) {}
 
 DBusPropertiesProxy::Proxy::~Proxy() {}
 
 void DBusPropertiesProxy::Proxy::MmPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &properties) {
-  LOG(INFO) << "MmPropertiesChanged: " << interface;
+  VLOG(2) << __func__ << "(" << interface << ")";
+  listener_->OnModemManagerPropertiesChanged(interface, properties);
 }
 
 void DBusPropertiesProxy::Proxy::PropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
-  LOG(INFO) << "PropertiesChanged: " << interface;
+  VLOG(2) << __func__ << "(" << interface << ")";
+  listener_->OnDBusPropertiesChanged(
+      interface, changed_properties, invalidated_properties);
 }
 
 }  // namespace shill

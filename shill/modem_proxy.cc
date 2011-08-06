@@ -10,10 +10,11 @@ using std::string;
 
 namespace shill {
 
-ModemProxy::ModemProxy(DBus::Connection *connection,
+ModemProxy::ModemProxy(ModemProxyListener *listener,
+                       DBus::Connection *connection,
                        const string &path,
                        const string &service)
-    : proxy_(connection, path, service) {}
+    : proxy_(listener, connection, path, service) {}
 
 ModemProxy::~ModemProxy() {}
 
@@ -25,19 +26,20 @@ ModemProxyInterface::Info ModemProxy::GetInfo() {
   return proxy_.GetInfo();
 }
 
-ModemProxy::Proxy::Proxy(DBus::Connection *connection,
+ModemProxy::Proxy::Proxy(ModemProxyListener *listener,
+                         DBus::Connection *connection,
                          const string &path,
                          const string &service)
-    : DBus::ObjectProxy(*connection, path, service.c_str()) {}
+    : DBus::ObjectProxy(*connection, path, service.c_str()),
+      listener_(listener) {}
 
 ModemProxy::Proxy::~Proxy() {}
 
 void ModemProxy::Proxy::StateChanged(const uint32 &old,
                                      const uint32 &_new,
                                      const uint32 &reason) {
-  VLOG(2) << __func__;
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  VLOG(2) << __func__ << "(" << old << ", " << _new << ", " << reason << ")";
+  listener_->OnModemStateChanged(old, _new, reason);
 }
 
 }  // namespace shill

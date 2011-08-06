@@ -16,6 +16,7 @@ class ModemSimpleProxyInterface {
   virtual ~ModemSimpleProxyInterface() {}
 
   virtual DBusPropertiesMap GetStatus() = 0;
+  virtual void Connect(const DBusPropertiesMap &properties) = 0;
 };
 
 }  // namespace shill

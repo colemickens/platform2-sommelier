@@ -32,10 +32,10 @@ void ProxyFactory::Init() {
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
-    Modem *modem,
+    DBusPropertiesProxyListener *listener,
     const string &path,
     const string &service) {
-  return new DBusPropertiesProxy(connection(), modem, path, service);
+  return new DBusPropertiesProxy(listener, connection(), path, service);
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
@@ -45,9 +45,11 @@ ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
   return new ModemManagerProxy(connection(), manager, path, service);
 }
 
-ModemProxyInterface *ProxyFactory::CreateModemProxy(const string &path,
-                                                    const string &service) {
-  return new ModemProxy(connection(), path, service);
+ModemProxyInterface *ProxyFactory::CreateModemProxy(
+    ModemProxyListener *listener,
+    const string &path,
+    const string &service) {
+  return new ModemProxy(listener, connection(), path, service);
 }
 
 ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
