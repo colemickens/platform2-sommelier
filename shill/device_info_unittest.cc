@@ -54,6 +54,10 @@ class DeviceInfoTest : public Test {
 
   void AddLink();
 
+  virtual void TearDown() {
+    RTNLHandler::GetInstance()->Stop();
+  }
+
  protected:
   static const int kTestSocket;
   static const int kTestDeviceIndex;
@@ -139,12 +143,9 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
 }
 
 TEST_F(DeviceInfoTest, DeviceEnumerationReverse) {
-  // Start our own private device_info _after_ RTNLHandler has been started
-  // TODO(pstew): Find out why this EXPECT_CALL needed to be moved above
-  //              StartRTNLHandler()
+  StartRTNLHandler();
   EXPECT_CALL(sockets_, SendTo(kTestSocket, _, _, 0, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
-  StartRTNLHandler();
   device_info_.Start();
 
   AddLink();

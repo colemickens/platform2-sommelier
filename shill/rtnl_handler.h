@@ -54,9 +54,6 @@ class RTNLHandler {
   // event loop.
   void Start(EventDispatcher *dispatcher, Sockets *sockets);
 
-  // This stops the event-monitoring function of the RTNL handler
-  void Stop();
-
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
   void AddListener(RTNLListener *to_add);
@@ -103,6 +100,11 @@ class RTNLHandler {
   // Private to ensure that this behaves as a singleton.
   RTNLHandler();
   virtual ~RTNLHandler();
+
+  // This stops the event-monitoring function of the RTNL handler -- it is
+  // private since it will never happen in normal running, but is useful for
+  // tests.
+  void Stop();
 
   // Dispatches an rtnl message to all listeners
   void DispatchEvent(int type, struct nlmsghdr *hdr);

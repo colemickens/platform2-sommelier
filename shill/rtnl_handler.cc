@@ -92,6 +92,7 @@ void RTNLHandler::Stop() {
   sockets_->Close(rtnl_socket_);
   in_request_ = false;
   sockets_ = NULL;
+  request_flags_ = 0;
   VLOG(2) << "RTNLHandler stopped";
 }
 

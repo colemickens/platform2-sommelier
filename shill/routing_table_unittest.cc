@@ -45,6 +45,10 @@ class RoutingTableTest : public Test {
                     uint32 interface_index,
                     const RoutingTableEntry &entry);
 
+  virtual void TearDown() {
+    RTNLHandler::GetInstance()->Stop();
+  }
+
  protected:
   static const int kTestSocket;
   static const uint32 kTestDeviceIndex0;
