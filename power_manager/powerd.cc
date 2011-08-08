@@ -884,6 +884,9 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     current_user_ = user;
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
+  } else if (strcmp(state, "stopping") == 0) {
+    current_user_.clear();
+    DLOG(INFO) << "Session stopping";
   } else if (strcmp(state, "stopped") == 0) {
     current_user_.clear();
     DLOG(INFO) << "Session stopped";

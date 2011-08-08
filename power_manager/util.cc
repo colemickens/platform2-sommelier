@@ -34,7 +34,40 @@ namespace power_manager {
 namespace util {
 
 bool LoggedIn() {
-  return access("/var/run/state/logged-in", F_OK) == 0;
+  DBusGConnection* connection =
+      chromeos::dbus::GetSystemBusConnection().g_connection();
+  CHECK(connection);
+
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name(
+      connection,
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface);
+
+  GError* error = NULL;
+  gchar* state = NULL;
+  gchar* user = NULL;
+  bool retval;
+  if (dbus_g_proxy_call(proxy,
+                        login_manager::kSessionManagerRetrieveSessionState,
+                        &error,
+                        G_TYPE_INVALID,
+                        G_TYPE_STRING,
+                        &state,
+                        G_TYPE_STRING,
+                        &user,
+                        G_TYPE_INVALID)) {
+    retval = strcmp(state, "started") == 0;
+    g_free(state);
+    g_free(user);
+  } else {
+    LOG(ERROR) << "Unable to retrieve session state from session manager: "
+               << error->message;
+    g_error_free(error);
+    retval = access("/var/run/state/logged-in", F_OK) == 0;
+  }
+  g_object_unref(proxy);
+  return retval;
 }
 
 bool OOBECompleted() {

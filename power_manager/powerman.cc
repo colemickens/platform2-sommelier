@@ -45,6 +45,7 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
     suspend_pid_(0),
     lid_id_(0),
     powerd_id_(0),
+    session_state_(kSessionStopped),
     powerd_state_(kPowerManagerUnknown),
     run_dir_(run_dir),
     console_fd_(-1) {}
@@ -137,25 +138,22 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
                 << " powerd "
                 << (daemon->powerd_state_ == kPowerManagerDead ?
                     "dead" : (daemon->powerd_state_ == kPowerManagerAlive ?
-                              "alive" : "unknown"));
+                              "alive" : "unknown"))
+                << ". session "
+                << (daemon->session_state_ == kSessionStarted ?
+                    "started." : "stopped");
       if (!daemon->use_input_for_lid_) {
         LOG(INFO) << "Ignoring lid.";
         break;
       }
       if (daemon->lidstate_ == LID_STATE_CLOSED) {
-        if (daemon->powerd_state_ != kPowerManagerAlive) {
-          // powerd is not alive so act on its behalf.
-          LOG(INFO) << "Forced suspend, powerd is not alive";
-          daemon->Suspend();
-        } else {
-          util::SendSignalToPowerD(kLidClosed);
-          // Check that powerd stuck around to act on  this event.  If not,
-          // callback will assume suspend responsibilities.
-          g_timeout_add_seconds(kCheckLidClosedSeconds, CheckLidClosedThunk,
-                                CreateCheckLidClosedArgs(daemon,
-                                                         daemon->lid_id_,
-                                                         daemon->powerd_id_));
-        }
+        util::SendSignalToPowerD(kLidClosed);
+        // Check that powerd stuck around to act on  this event.  If not,
+        // callback will assume suspend responsibilities.
+        g_timeout_add_seconds(kCheckLidClosedSeconds, CheckLidClosedThunk,
+                              CreateCheckLidClosedArgs(daemon,
+                                                       daemon->lid_id_,
+                                                       daemon->powerd_id_));
       } else {
         util::CreateStatusFile(daemon->lid_open_file_);
         util::SendSignalToPowerD(kLidOpened);
@@ -239,7 +237,33 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
 
     // Other dbus clients may be interested in consuming this signal.
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-  } else {
+  } else if (dbus_message_is_signal(
+                 message,
+                 login_manager::kSessionManagerInterface,
+                 login_manager::kSessionManagerSessionStateChanged)) {
+    DBusError error;
+    dbus_error_init(&error);
+    const char* state = NULL;
+    const char* user = NULL;
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_STRING, &state,
+                              DBUS_TYPE_STRING, &user,
+                              DBUS_TYPE_INVALID)) {
+      if (strcmp(state, "started") == 0)
+        daemon->session_state_ = kSessionStarted;
+      else if (strcmp(state, "stopping") == 0)
+        daemon->session_state_ = kSessionStopping;
+      else if (strcmp(state, "stopped") == 0)
+        daemon->session_state_ = kSessionStopped;
+      else
+        LOG(WARNING) << "Unknown session state : " << state;
+    } else {
+      LOG(WARNING) << "Unable to read arguments from "
+                   << login_manager::kSessionManagerSessionStateChanged
+                   << " signal";
+    }
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+   } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
   return DBUS_HANDLER_RESULT_HANDLED;
@@ -263,6 +287,11 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
     } else if (strlen(old_owner) == 0) {
       daemon->powerd_state_ = kPowerManagerAlive;
       LOG(INFO) << "Powerd has started";
+      if (daemon->use_input_for_lid_ &&
+          daemon->lidstate_ == LID_STATE_CLOSED) {
+        LOG(INFO) << "Lid is closed. Sending message to powerd on respawn.";
+        util::SendSignalToPowerD(kLidClosed);
+      }
     } else {
       daemon->powerd_state_ = kPowerManagerUnknown;
       LOG(WARNING) << "Unrecognized DBus NameOwnerChanged transition of powerd";
@@ -271,11 +300,16 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
 }
 
 void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
-                                   const char *interface) {
+                                   const char *interface,
+                                   const char *member) {
   DBusError error;
   dbus_error_init(&error);
-  const std::string filter = StringPrintf(
-      "type='signal', interface='%s'", interface);
+  std::string filter;
+  if (member)
+    filter = StringPrintf("type='signal', interface='%s', member='%s'",
+                          interface, member);
+  else
+    filter = StringPrintf("type='signal', interface='%s'", interface);
   dbus_bus_add_match(connection, filter.c_str(), &error);
   if (dbus_error_is_set(&error)) {
     LOG(ERROR) << "Failed to add a match:" << error.name << ", message="
@@ -284,9 +318,18 @@ void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
   }
 }
 
+
+void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
+                                   const char *interface) {
+  AddDBusMatch(connection, interface, NULL);
+}
+
 void PowerManDaemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
+  AddDBusMatch(connection,
+               login_manager::kSessionManagerInterface,
+               login_manager::kSessionManagerSessionStateChanged);
   AddDBusMatch(connection, kLowerPowerManagerInterface);
   AddDBusMatch(connection, kPowerManagerInterface);
   CHECK(dbus_connection_add_filter(

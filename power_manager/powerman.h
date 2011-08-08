@@ -72,6 +72,9 @@ class PowerManDaemon {
 
   bool CancelDBusRequest();
 
+  enum SessionManagerState { kSessionStarted, kSessionStopping,
+                             kSessionStopped };
+
   enum PowerManagerState { kPowerManagerUnknown, kPowerManagerAlive,
                            kPowerManagerDead };
   // Handler for NameOwnerChanged dbus messages.  See dbus-specification
@@ -90,6 +93,9 @@ class PowerManDaemon {
                            unsigned int);
 
   // Add interfaces to dbus matches for connection.
+  void AddDBusMatch(DBusConnection *connection,
+                    const char *interface,
+                    const char *member);
   void AddDBusMatch(DBusConnection *connection, const char *interface);
   // Register the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
@@ -131,6 +137,7 @@ class PowerManDaemon {
   pid_t suspend_pid_;
   unsigned int lid_id_;              // incremented on lid event
   unsigned int powerd_id_;           // incremented when powerd spawns/dies
+  SessionManagerState session_state_;// started | stopping | stopped
   PowerManagerState powerd_state_;   // alive | dead | unknown
   FilePath run_dir_;                 // --run_dir /var/run/power_manager
   FilePath lid_open_file_;           // touch when suspend should be cancelled

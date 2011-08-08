@@ -227,13 +227,6 @@ void Suspender::RegisterDBusMessageHandler() {
                                      NULL));
     LOG(INFO) << "DBus monitoring started";
   }
-  dbus_bus_request_name(connection_, kPowerManagerInterface,
-                        DBUS_NAME_FLAG_ALLOW_REPLACEMENT, &error);
-  if (dbus_error_is_set(&error)) {
-    LOG(ERROR) << "Failed to request name: " << error.name << ": "
-               << error.message;
-    NOTREACHED();
-  }
 
   DBusGProxy* proxy = dbus_g_proxy_new_for_name(
       chromeos::dbus::GetSystemBusConnection().g_connection(),
