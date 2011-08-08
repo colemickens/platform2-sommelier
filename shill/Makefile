@@ -74,6 +74,7 @@ SHILL_OBJS = \
 	byte_string.o \
 	cellular.o \
 	cellular_service.o \
+	connection.o \
 	crypto_des_cbc.o \
 	crypto_provider.o \
 	crypto_rot47.o \
@@ -139,6 +140,7 @@ TEST_OBJS = \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
+	connection_unittest.o \
 	dbus_adaptor_unittest.o \
 	dbus_properties_unittest.o \
 	default_profile_unittest.o \

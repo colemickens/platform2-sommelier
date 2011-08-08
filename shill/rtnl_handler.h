@@ -54,41 +54,43 @@ class RTNLHandler {
   // This starts the event-monitoring function of the RTNL handler. This
   // function requires an EventDispatcher pointer so it can add itself to the
   // event loop.
-  void Start(EventDispatcher *dispatcher, Sockets *sockets);
+  virtual void Start(EventDispatcher *dispatcher, Sockets *sockets);
 
   // Add an RTNL event listener to the list of entities that will
   // be notified of RTNL events.
-  void AddListener(RTNLListener *to_add);
+  virtual void AddListener(RTNLListener *to_add);
 
   // Remove a previously added RTNL event listener
-  void RemoveListener(RTNLListener *to_remove);
+  virtual void RemoveListener(RTNLListener *to_remove);
 
   // Set flags on a network interface that has a kernel index of
   // 'interface_index'.  Only the flags bits set in 'change' will
   // be set, and they will be set to the corresponding bit in 'flags'.
-  void SetInterfaceFlags(int interface_index, unsigned int flags,
-                         unsigned int change);
+  virtual void SetInterfaceFlags(int interface_index,
+                                 unsigned int flags,
+                                 unsigned int change);
 
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
-  bool AddInterfaceAddress(int interface_index, const IPConfig &config);
+  virtual bool AddInterfaceAddress(int interface_index, const IPConfig &config);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
-  bool RemoveInterfaceAddress(int interface_index, const IPConfig &config);
+  virtual bool RemoveInterfaceAddress(int interface_index,
+                                      const IPConfig &config);
 
   // Request that various tables (link, address, routing) tables be
   // exhaustively dumped via RTNL.  As results arrive from the kernel
   // they will be broadcast to all listeners.  The possible values
   // (multiple can be ORred together) are below.
-  void RequestDump(int request_flags);
+  virtual void RequestDump(int request_flags);
 
   // Returns the index of interface |interface_name|, or -1 if unable to
   // determine the index.
-  int GetInterfaceIndex(const std::string &interface_name);
+  virtual int GetInterfaceIndex(const std::string &interface_name);
 
   // Send a formatted RTNL message.  The sequence number in the message is set.
-  bool SendMessage(RTNLMessage *message);
+  virtual bool SendMessage(RTNLMessage *message);
 
  protected:
   RTNLHandler();

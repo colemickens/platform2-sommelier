@@ -32,30 +32,30 @@ class RoutingTable {
 
   static RoutingTable *GetInstance();
 
-  void Start();
-  void Stop();
+  virtual void Start();
+  virtual void Stop();
 
   // Add an entry to the routing table
-  bool AddRoute(int interface_index, const RoutingTableEntry &entry);
+  virtual bool AddRoute(int interface_index, const RoutingTableEntry &entry);
 
   // Get the default route associated with an interface of a given addr family
-  bool GetDefaultRoute(int interface_index,
-                       IPAddress::Family family,
-                       RoutingTableEntry *entry);
+  virtual bool GetDefaultRoute(int interface_index,
+                               IPAddress::Family family,
+                               RoutingTableEntry *entry);
 
   // Set the default route for an interface, given an ipconfig entry
-  bool SetDefaultRoute(int interface_index,
-                       const IPConfigRefPtr &ipconfig,
-                       uint32 metric);
+  virtual bool SetDefaultRoute(int interface_index,
+                               const IPConfigRefPtr &ipconfig,
+                               uint32 metric);
 
   // Remove all routes associated with interface
-  void FlushRoutes(int interface_index);
+  virtual void FlushRoutes(int interface_index);
 
   // Reset local state for this interface
-  void ResetTable(int interface_index);
+  virtual void ResetTable(int interface_index);
 
   // Set the metric (priority) on existing default routes for an interface
-  void SetDefaultMetric(int interface_index, uint32 metric);
+  virtual void SetDefaultMetric(int interface_index, uint32 metric);
 
  protected:
   RoutingTable();

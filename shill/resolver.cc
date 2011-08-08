@@ -30,24 +30,29 @@ Resolver* Resolver::GetInstance() {
   return g_resolver.Pointer();
 }
 
-bool Resolver::SetDNS(const IPConfigRefPtr &ipconfig) {
+bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig) {
   CHECK(!path_.empty());
 
   const IPConfig::Properties &props = ipconfig->properties();
 
-  if (!props.dns_servers.size() && !props.domain_search.size()) {
+  return SetDNSFromLists(props.dns_servers, props.domain_search);
+}
+
+bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
+                               const std::vector<std::string> &domain_search) {
+  if (dns_servers.empty() && domain_search.empty()) {
     return ClearDNS();
   }
 
   vector<string> lines;
   vector<string>::const_iterator iter;
-  for (iter = props.dns_servers.begin();
-       iter != props.dns_servers.end(); ++iter) {
+  for (iter = dns_servers.begin();
+       iter != dns_servers.end(); ++iter) {
     lines.push_back("nameserver " + *iter);
   }
 
-  if (props.domain_search.size()) {
-    lines.push_back("search " + JoinString(props.domain_search, ' '));
+  if (!domain_search.empty()) {
+    lines.push_back("search " + JoinString(domain_search, ' '));
   }
 
   // Newline at end of file

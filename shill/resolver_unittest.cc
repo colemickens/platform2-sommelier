@@ -74,7 +74,7 @@ TEST_F(ResolverTest, NonEmpty) {
   properties.domain_search.push_back(kSearchDomain1);
   ipconfig->UpdateProperties(properties, true);
 
-  EXPECT_TRUE(resolver_->SetDNS(ipconfig));
+  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(ipconfig));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
 
@@ -90,7 +90,7 @@ TEST_F(ResolverTest, Empty) {
   IPConfig::Properties properties;
   ipconfig->UpdateProperties(properties, true);
 
-  EXPECT_TRUE(resolver_->SetDNS(ipconfig));
+  EXPECT_TRUE(resolver_->SetDNSFromIPConfig(ipconfig));
   EXPECT_FALSE(file_util::PathExists(path_));
 }
 

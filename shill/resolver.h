@@ -22,13 +22,17 @@ class Resolver {
   // Since this is a singleton, use Resolver::GetInstance()->Foo()
   static Resolver *GetInstance();
 
-  void set_path(const FilePath &path) { path_ = path; }
+  virtual void set_path(const FilePath &path) { path_ = path; }
 
-  // Set the default domain name mservice parameters, given an ipconfig entry
-  bool SetDNS(const IPConfigRefPtr &ipconfig);
+  // Set the default domain name service parameters, given an ipconfig entry
+  virtual bool SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig);
+
+  // Set the default domain name service parameters, given an ipconfig entry
+  virtual bool SetDNSFromLists(const std::vector<std::string> &dns_servers,
+                               const std::vector<std::string> &domain_search);
 
   // Remove any created domain name service file
-  bool ClearDNS();
+  virtual bool ClearDNS();
 
  protected:
   Resolver();

@@ -58,6 +58,9 @@ typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 class Profile;
 typedef scoped_refptr<Profile> ProfileRefPtr;
 
+class Connection;
+typedef scoped_refptr<Connection> ConnectionRefPtr;
+
 }  // namespace shill
 
 #endif  // SHILL_REFPTR_TYPES_
