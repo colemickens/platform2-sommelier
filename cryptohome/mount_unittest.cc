@@ -368,8 +368,6 @@ TEST_F(MountTest, MountCryptohome) {
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
-      .WillRepeatedly(Return(true));
 
   Mount::MountError error;
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
@@ -408,8 +406,6 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
-      .WillOnce(Return(true));
 
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
@@ -447,8 +443,6 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   UsernamePasskey up(kDefaultUsers[12].username, passkey);
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
-      .WillOnce(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
       .WillOnce(Return(true));
 
   Mount::MountArgs mount_args;
@@ -491,8 +485,6 @@ TEST_F(MountTest, RemoveSubdirectories) {
   UsernamePasskey up(kDefaultUsers[13].username, passkey);
 
   EXPECT_CALL(platform, Mount(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, Unmount(_, _, _))
       .WillRepeatedly(Return(true));
@@ -571,8 +563,8 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // subdirs "Cache" and "Downloads".
   FilePath cache_dir(home_dir.Append(kCacheDir));
   FilePath downloads_dir(home_dir.Append(kDownloadsDir));
-  LOG(INFO) << "mkcache: " << cache_dir.value() << " " << file_util::CreateDirectory(cache_dir);
-  LOG(INFO) << "mkdownload: " << downloads_dir.value() << " " << file_util::CreateDirectory(downloads_dir);
+  file_util::CreateDirectory(cache_dir);
+  file_util::CreateDirectory(downloads_dir);
 
   // And they are not empty.
   const string contents = "Hello world!!!";
@@ -593,8 +585,6 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
 
   // Now Mount().
   EXPECT_CALL(platform, Mount(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
       .WillRepeatedly(Return(true));
   Mount::MountError error;
   EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
@@ -618,12 +608,10 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
 
   // Check that Downloads is completely migrated.
   string tested;
-  LOG(INFO) << "Downloads: " << downloads_dir.value();
   EXPECT_TRUE(file_util::PathExists(downloads_dir));
   EXPECT_TRUE(file_util::ReadFileToString(
       downloads_dir.Append("downloaded_file"), &tested));
   EXPECT_EQ(contents, tested);
-  LOG(INFO) << "Downloads subdir: " << downloads_subdir.value();
   EXPECT_TRUE(file_util::PathExists(downloads_subdir));
   tested.clear();
   EXPECT_TRUE(file_util::ReadFileToString(
@@ -659,8 +647,6 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   Mount::MountError error;
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
-  EXPECT_CALL(platform, Bind(_, _))
-      .WillOnce(Return(true));
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
@@ -680,7 +666,6 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   // Unmount the user. This must update user's activity timestamps.
   EXPECT_CALL(platform, Unmount(_, _, _))
-      .WillOnce(Return(true))
       .WillOnce(Return(true));
   mount.UnmountCryptohome();
   SerializedVaultKeyset serialized2;
@@ -1091,7 +1076,6 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Now unmount the user. So it (user[0]) should be cached and may be
   // deleted next when it becomes old.
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillOnce(Return(true))
       .WillOnce(Return(true));
   mount_.UnmountCryptohome();
 
