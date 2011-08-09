@@ -15,6 +15,7 @@
 #include "base/string_number_conversions.h"
 #include "cros/chromeos_power.h"
 #include "power_manager/power_supply.h"
+#include "power_manager/signal_callback.h"
 
 using std::map;
 using std::string;
@@ -36,15 +37,20 @@ const double kVoltageNow = 2.50;
 const double kEnergyNow = kChargeNow * kVoltageNow;
 const double kEnergyRate = kCurrentNow * kVoltageNow;
 const double kPercentage = 100. * kChargeNow / kChargeFull;
-const int64 kTimeToFull = 3600 * (kChargeFull - kChargeNow) / kCurrentNow;
-const int64 kTimeToEmpty = 3600 * (kChargeNow) / kCurrentNow;
+const int64 kTimeToFull = lround(3600. * (kChargeFull - kChargeNow) /
+                                     kCurrentNow);
+const int64 kTimeToEmpty = lround(3600. * (kChargeNow) / kCurrentNow);
 
 // sysfs stores doubles by multiplying them by 1000000 and storing as an int.
 const int kDoubleScaleFactor = 1000000;
-const int kChargeFullInt = kChargeFull * kDoubleScaleFactor;
-const int kChargeNowInt = kChargeNow * kDoubleScaleFactor;
-const int kCurrentNowInt = kCurrentNow * kDoubleScaleFactor;
-const int kVoltageNowInt = kVoltageNow * kDoubleScaleFactor;
+int ScaleDouble(double value) {
+  return round(value * kDoubleScaleFactor);
+}
+
+const int kChargeFullInt = ScaleDouble(kChargeFull);
+const int kChargeNowInt = ScaleDouble(kChargeNow);
+const int kCurrentNowInt = ScaleDouble(kCurrentNow);
+const int kVoltageNowInt = ScaleDouble(kVoltageNow);
 
 const int kCycleCount = 10000;
 
@@ -132,7 +138,7 @@ TEST_F(PowerSupplyTest, TestCharging) {
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
-  EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
+  EXPECT_DOUBLE_EQ(kTimeToFull, power_status.battery_time_to_full);
   EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
 }
 
@@ -179,6 +185,177 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
   EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
+}
+
+namespace {
+
+// Used for supplying long sequences of simulated power supply readings.
+struct PowerSupplyValues {
+  double charge;
+  double current;
+  int64 time_to_empty;
+};
+
+struct HysteresisTestData {
+  PowerSupply* power_supply;
+  PowerSupplyValues* values;
+  FilePath* path;
+  int index;
+};
+
+gboolean HysteresisTestLoop(gpointer data) {
+  HysteresisTestData* test_data = static_cast<HysteresisTestData*>(data);
+  PowerSupplyValues* values = test_data->values;
+  // Write charge and current values to simulated sysfs.
+  map<string, string> value_map;
+  value_map["battery/charge_now"] =
+    base::IntToString(ScaleDouble(values->charge));
+  value_map["battery/current_now"] =
+    base::IntToString(ScaleDouble(values->current));
+  for (map<string, string>::iterator iter = value_map.begin();
+       iter != value_map.end();
+       ++iter)
+    file_util::WriteFile(test_data->path->Append(iter->first),
+                         iter->second.c_str(),
+                         iter->second.length());
+
+  chromeos::PowerStatus power_status;
+  EXPECT_TRUE(test_data->power_supply->GetPowerStatus(&power_status));
+  EXPECT_EQ(values->time_to_empty, power_status.battery_time_to_empty);
+  LOG_IF(INFO, values->time_to_empty !=
+      power_status.battery_time_to_empty) << "Remaining time mismatch found "
+      << "at index " << test_data->index
+      << "; charge: " << values->charge
+      << "; current: " << values->current;
+
+  delete test_data;
+  return false;
+}
+
+gboolean QuitLoop(gpointer data) {
+  GMainLoop* loop = static_cast<GMainLoop*>(data);
+  g_main_loop_quit(loop);
+  return false;
+}
+
+} // namespace
+
+TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
+  const int kPollIntervalMs = 1000;
+  FilePath path = temp_dir_generator_->path();
+  file_util::CreateDirectory(path.Append("ac"));
+  file_util::CreateDirectory(path.Append("battery"));
+  // List of power values to be simulated at one-second intervals.
+  // The order is: { charge, current, time remaining }
+  // Note that the charge values go all over the place.  They're not meant to be
+  // realistic.  Instead, the charge and current values are meant to simulate a
+  // sequence of calculated battery times, to test the hysteresis mechanism of
+  // the power supply reader.
+  PowerSupplyValues value_table[] = {
+    // 0-4: First establish a baseline acceptable time.
+    { 10.000000, 100, 360 },
+    { 13.333333, 100, 480 },
+    { 10.000000, 100, 360 },
+    { 13.333333, 100, 480 },
+    { 10.000000, 100, 360 },
+    // 5-7: Baseline established at 360, vary it slightly.
+    {  9.972222, 100, 359 },
+    {  9.944444, 100, 358 },
+    {  9.916667, 100, 357 },
+    // 8-10: Increase the time beyond the allowed variance.
+    { 11.111111, 100, 363 },
+    { 11.388889, 100, 362 },
+    { 11.666667, 100, 361 },
+    // 11-13: New baseline established at 440.
+    { 12.222222, 100, 440 },
+    { 12.194444, 100, 439 },
+    { 12.166667, 100, 438 },
+    // 14-17: Fix time at 445, while the upper bound drops gradually.
+    { 12.361111, 100, 445 },
+    { 12.361111, 100, 445 },
+    { 12.361111, 100, 444 },
+    { 12.361111, 100, 443 },
+    // 18-21: New baseline established at 445.
+    { 12.361111, 100, 445 },
+    { 12.361111, 100, 445 },
+    { 12.361111, 100, 445 },
+    { 12.361111, 100, 445 },
+    // 22-24: Increase the calculated time beyond the allowed variance.
+    { 16.666667, 100, 450 },
+    { 16.666667, 100, 449 },
+    { 16.666667, 100, 448 },
+    // 25-27: Bring it back down before it becomes the new baseline.
+    { 12.222222, 100, 440 },
+    { 12.222222, 100, 440 },
+    { 12.222222, 100, 440 },
+    // 28-32: Drop the calculated time below lower bound.  Eventually the lower
+    // bound will drop so that the calculated time becomes acceptable.
+    { 11.777778, 100, 426 },
+    { 11.777778, 100, 425 },
+    { 11.777778, 100, 424 },
+    { 11.777778, 100, 424 },
+    { 11.777778, 100, 424 },
+    // 33-36: Drop the calculated time to 400 and hold it until it becomes the
+    // new baseline.
+    { 11.111111, 100, 421 },
+    { 11.111111, 100, 420 },
+    { 11.111111, 100, 419 },
+    { 11.111111, 100, 400 },
+    // 37-39: Let it keep dropping from 400.
+    { 11.111111, 100, 400 },
+    { 10.972222, 100, 395 },
+    { 10.972222, 100, 395 },
+    // 40-42: Drop to 350, should be clipped at lower bound.
+    {  9.722222, 100, 388 },
+    {  9.722222, 100, 387 },
+    {  9.722222, 100, 386 },
+    // 43-45: Bring it back up to 390.
+    { 10.833333, 100, 390 },
+    { 10.833333, 100, 390 },
+    { 10.833333, 100, 390 },
+  };
+  map<string, string> values;
+  values["ac/online"] = kOffline;
+  values["ac/type"] = kACType;
+  values["battery/type"] = kBatteryType;
+  values["battery/present"] = kPresent;
+  values["battery/charge_full"] = base::IntToString(kChargeFullInt);
+  values["battery/charge_full_design"] = base::IntToString(kChargeFullInt);
+  values["battery/voltage_now"] = base::IntToString(kVoltageNowInt);
+  values["battery/cycle_count"] = base::IntToString(kCycleCount);
+  values["battery/charge_now"] = base::IntToString(value_table[0].charge);
+  values["battery/current_now"] = base::IntToString(value_table[0].current);
+
+  for (map<string, string>::iterator iter = values.begin();
+       iter != values.end();
+       ++iter)
+    file_util::WriteFile(path.Append(iter->first),
+                         iter->second.c_str(),
+                         iter->second.length());
+  int num_entries = sizeof(value_table) / sizeof(value_table[0]);
+  for (int i = 0; i < num_entries; ++i) {
+    HysteresisTestData* data = new HysteresisTestData;
+    CHECK(data);
+    data->power_supply = power_supply_.get();
+    data->values = &value_table[i];
+    data->path = &path;
+    data->index = i;
+    g_timeout_add(kPollIntervalMs * (i + 1), HysteresisTestLoop, data);
+  }
+
+  // Initialize the power supply object the first time around.
+  power_supply_->Init();
+  // Override the default hysteresis time with something short, so the test
+  // doesn't take forever.  In this case, we want 4 seconds.  However, set it to
+  // 3.5 seconds to allow for variations in runtime.
+  power_supply_->hysteresis_time_ = base::TimeDelta::FromMilliseconds(3500);
+
+  GMainLoop* loop = g_main_loop_new(NULL, false);
+  g_timeout_add(kPollIntervalMs * (num_entries + 1), QuitLoop, loop);
+  g_main_loop_run(loop);
+  // Wait for test event loop to finish running.
+  while (g_main_loop_is_running(loop))
+    sleep(1);
 }
 
 }  // namespace power_manager

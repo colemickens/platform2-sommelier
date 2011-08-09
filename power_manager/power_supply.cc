@@ -21,9 +21,19 @@ const char kUnknownString[] = "Unknown";
 // up by 10^6.  This factor scales them back down accordingly.
 const double kDoubleScaleFactor = 0.000001;
 
-// Converts time from hours to seconds, and rounds to nearest integer.
-int64 HoursToSeconds(double num_hours) {
-  return lround(num_hours * 3600);
+// How much the remaining time can vary, as a fraction of the baseline time.
+const double kAcceptableVariance = 0.02;
+
+// Allow three minutes before deciding on an acceptable time.
+const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
+
+// Converts time from hours to seconds.
+double HoursToSecondsDouble(double num_hours) {
+  return num_hours * 3600.;
+}
+// Same as above, but rounds to nearest integer.
+int64 HoursToSecondsInt(double num_hours) {
+  return lround(HoursToSecondsDouble(num_hours));
 }
 
 } // namespace
@@ -33,7 +43,10 @@ namespace power_manager {
 PowerSupply::PowerSupply(const FilePath& power_supply_path)
     : line_power_info_(NULL),
       battery_info_(NULL),
-      power_supply_path_(power_supply_path) {}
+      power_supply_path_(power_supply_path),
+      acceptable_variance_(kAcceptableVariance),
+      hysteresis_time_(kHysteresisTime),
+      found_acceptable_time_range_(false) {}
 
 PowerSupply::~PowerSupply() {
   // Clean up allocated objects.
@@ -93,6 +106,13 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
   current_now_ = fabs(battery_info_->ReadScaledDouble("current_now"));
   cycle_count_ = battery_info_->ReadScaledDouble("cycle_count");
   voltage_now_ = battery_info_->ReadScaledDouble("voltage_now");
+  // Attempt to determine nominal voltage for time remaining calculations.
+  if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
+    nominal_voltage_ = battery_info_->ReadScaledDouble("voltage_min_design");
+  else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
+    nominal_voltage_ = battery_info_->ReadScaledDouble("voltage_max_design");
+  else
+    nominal_voltage_ = voltage_now_;
 
   serial_number_.clear();
   technology_.clear();
@@ -105,15 +125,9 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
   status->battery_energy = charge_now_ * voltage_now_;
   status->battery_energy_rate = current_now_ * voltage_now_;
   status->battery_voltage = voltage_now_;
-  // Check to make sure there isn't a division by zero.
-  if (current_now_ > 0) {
-    status->battery_time_to_empty = HoursToSeconds(charge_now_ / current_now_);
-    status->battery_time_to_full = HoursToSeconds((charge_full_ - charge_now_) /
-                                                      current_now_);
-  } else {
-    status->battery_time_to_empty = 0;
-    status->battery_time_to_full = 0;
-  }
+
+  CalculateRemainingTime(status);
+
   if (charge_full_ > 0)
     status->battery_percentage = 100. * charge_now_ / charge_full_;
   else
@@ -202,6 +216,68 @@ void PowerSupply::GetPowerSupplyPaths() {
         line_power_info_ = new PowerInfoReader(path);
       }
     }
+  }
+}
+
+double PowerSupply::GetLinearTimeToEmpty() {
+  return HoursToSecondsDouble(nominal_voltage_ * charge_now_ / (current_now_ *
+                                                                voltage_now_));
+}
+
+void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
+  // Check to make sure there isn't a division by zero.
+  if (current_now_ > 0) {
+    double time_to_empty = 0;
+    if (status->line_power_on) {
+      status->battery_time_to_full =
+          HoursToSecondsInt((charge_full_ - charge_now_) / current_now_);
+      // Reset the remaining-time-calculation state machine when AC plugged in.
+      found_acceptable_time_range_ = false;
+      last_poll_time_ = base::Time();
+      discharge_start_time_ = base::Time();
+    } else if (!found_acceptable_time_range_) {
+      // No base range found, need to give it some time to stabilize.  For now,
+      // use the simple linear calculation for time.
+      if (discharge_start_time_.is_null())
+        discharge_start_time_ = base::Time::Now();
+      time_to_empty = GetLinearTimeToEmpty();
+      status->battery_time_to_empty = lround(time_to_empty);
+      // Select an acceptable remaining time once the system has been
+      // discharging for the necessary amount of time.
+      if (base::Time::Now() - discharge_start_time_ >= hysteresis_time_) {
+        acceptable_time_ = time_to_empty;
+        found_acceptable_time_range_ = true;
+        last_poll_time_ = base::Time::Now();
+      }
+    } else {
+      double calculated_time = GetLinearTimeToEmpty();
+      double allowed_time_variation = acceptable_time_ * acceptable_variance_;
+      base::Time time_now = base::Time::Now();
+      // Reduce the acceptable time range as time goes by.
+      acceptable_time_ -= (time_now - last_poll_time_).InSecondsF();
+      if (fabs(calculated_time - acceptable_time_) <= allowed_time_variation) {
+        last_acceptable_range_time_ = time_now;
+        time_to_empty = calculated_time;
+      } else if (time_now - last_acceptable_range_time_ >= hysteresis_time_) {
+        // If the calculated time has been outside the acceptable range for a
+        // long enough period of time, make it the basis for a new acceptable
+        // range.
+        acceptable_time_ = calculated_time;
+        time_to_empty = calculated_time;
+        found_acceptable_time_range_ = true;
+      } else if (calculated_time < acceptable_time_ - allowed_time_variation) {
+        // Clip remaining time at lower bound if it is too low.
+        time_to_empty = acceptable_time_ - allowed_time_variation;
+      } else {
+        // Clip remaining time at upper bound if it is too high.
+        time_to_empty = acceptable_time_ + allowed_time_variation;
+      }
+      last_poll_time_ = time_now;
+    }
+    status->battery_time_to_empty = lround(time_to_empty);
+  } else {
+    status->battery_time_to_empty = 0;
+    status->battery_time_to_full = 0;
   }
 }
 
