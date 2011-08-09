@@ -146,10 +146,13 @@ TEST_F(ModemTest, CreateCellularDevice) {
   EXPECT_FALSE(modem_.device_.get());
 
   props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_CDMA);
+  props[Modem::kPropertyState].writer().append_uint32(
+      Cellular::kModemStateDisabled);
   modem_.CreateCellularDevice(props);
   ASSERT_TRUE(modem_.device_.get());
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());
+  EXPECT_EQ(Cellular::kModemStateDisabled, modem_.device_->modem_state());
 
   vector<DeviceRefPtr> devices;
   manager_.FilterByTechnology(Device::kCellular, &devices);

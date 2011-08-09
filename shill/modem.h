@@ -49,6 +49,7 @@ class Modem : public DBusPropertiesProxyListener {
 
   static const char kPropertyLinkName[];
   static const char kPropertyIPMethod[];
+  static const char kPropertyState[];
   static const char kPropertyType[];
   static const char kPropertyUnlockRequired[];
   static const char kPropertyUnlockRetries[];

@@ -165,6 +165,37 @@ TEST_F(CellularTest, Start) {
   EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
 }
 
+TEST_F(CellularTest, StartRegister) {
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*proxy_, Enable(true)).Times(1);
+  EXPECT_CALL(*simple_proxy_, GetStatus())
+      .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
+      .WillOnce(DoAll(
+          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
+          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
+  device_->Start();
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+}
+
+TEST_F(CellularTest, StartConnected) {
+  device_->type_ = Cellular::kTypeCDMA;
+  device_->set_modem_state(Cellular::kModemStateConnected);
+  EXPECT_CALL(*proxy_, Enable(true)).Times(1);
+  EXPECT_CALL(*simple_proxy_, GetStatus())
+      .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
+  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
+      .WillOnce(DoAll(
+          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
+          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
+  device_->Start();
+  EXPECT_EQ(Cellular::kStateConnected, device_->state_);
+}
+
 TEST_F(CellularTest, InitProxiesCDMA) {
   device_->type_ = Cellular::kTypeCDMA;
   device_->InitProxies();

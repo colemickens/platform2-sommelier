@@ -108,6 +108,7 @@ Cellular::Cellular(ControlInterface *control_interface,
              interface_index),
       type_(type),
       state_(kStateDisabled),
+      modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
       service_registered_(false),
@@ -182,6 +183,9 @@ void Cellular::Start() {
   }
   GetModemInfo();
   GetModemRegistrationState();
+  if (modem_state_ == kModemStateConnected) {
+    EstablishLink();
+  }
   // TODO(petkov): Device::Start();
 }
 
@@ -403,7 +407,16 @@ void Cellular::Connect() {
 
 void Cellular::ConnectTask(const DBusPropertiesMap &properties) {
   VLOG(2) << __func__;
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   simple_proxy_->Connect(properties);
+  EstablishLink();
+}
+
+void Cellular::EstablishLink() {
+  VLOG(2) << __func__;
+  CHECK_EQ(kStateRegistered, state_);
+  state_ = kStateConnected;
+  // TODO(petkov): Bring the network interface up.
 }
 
 void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,

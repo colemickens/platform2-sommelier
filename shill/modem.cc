@@ -20,6 +20,7 @@ namespace shill {
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
+const char Modem::kPropertyState[] = "State";
 const char Modem::kPropertyType[] = "Type";
 const char Modem::kPropertyUnlockRequired[] = "UnlockRequired";
 const char Modem::kPropertyUnlockRetries[] = "UnlockRetries";
@@ -98,8 +99,6 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
       return;
   }
 
-  // TODO(petkov): Handle the "State" property?
-
   LOG(INFO) << "Creating a cellular device on link " << link_name
             << " interface index " << interface_index << ".";
   device_ = new Cellular(control_interface_,
@@ -110,7 +109,10 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                          type,
                          owner_,
                          path_);
-  manager_->device_info()->RegisterDevice(device_);
+
+  uint32 modem_state = Cellular::kModemStateUnknown;
+  DBusProperties::GetUint32(properties, kPropertyState, &modem_state);
+  device_->set_modem_state(static_cast<Cellular::ModemState>(modem_state));
 
   string unlock_required;
   if (DBusProperties::GetString(
@@ -121,6 +123,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                               &unlock_retries);
     // TODO(petkov): Set these properties on the device instance.
   }
+
+  manager_->device_info()->RegisterDevice(device_);
 }
 
 void Modem::OnDBusPropertiesChanged(

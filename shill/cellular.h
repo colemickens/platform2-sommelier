@@ -38,6 +38,20 @@ class Cellular : public Device,
     kStateConnected,
   };
 
+  // These should be kept in sync with ModemManager's mm-modem.h:MMModemState.
+  enum ModemState {
+    kModemStateUnknown = 0,
+    kModemStateDisabled = 10,
+    kModemStateDisabling = 20,
+    kModemStateEnabling = 30,
+    kModemStateEnabled = 40,
+    kModemStateSearching = 50,
+    kModemStateRegistered = 60,
+    kModemStateDisconnecting = 70,
+    kModemStateConnecting = 80,
+    kModemStateConnected = 90,
+  };
+
   class Network {
    public:
     Network();
@@ -100,15 +114,15 @@ class Cellular : public Device,
   // Asynchronously connects the modem to the network.
   void Connect();
 
+  void set_modem_state(ModemState state) { modem_state_ = state; }
+  ModemState modem_state() const { return modem_state_; }
+
   // Inherited from Device.
   virtual void Start();
   virtual void Stop();
   virtual bool TechnologyIs(Technology type) const;
 
  private:
-  static const char kPhoneNumberCDMA[];
-  static const char kPhoneNumberGSM[];
-
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
@@ -119,8 +133,17 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, Start);
+  FRIEND_TEST(CellularTest, StartConnected);
+  FRIEND_TEST(CellularTest, StartRegister);
+
+  static const char kPhoneNumberCDMA[];
+  static const char kPhoneNumberGSM[];
 
   void ConnectTask(const DBusPropertiesMap &properties);
+
+  // Invoked when the modem is connected to the cellular network to transition
+  // to the network-connected state and bring the network interface up.
+  void EstablishLink();
 
   Stringmaps EnumerateNetworks();
   StrIntPair SimLockStatusToProperty();
@@ -181,6 +204,7 @@ class Cellular : public Device,
 
   Type type_;
   State state_;
+  ModemState modem_state_;
 
   const std::string dbus_owner_;  // ModemManager.Modem
   const std::string dbus_path_;  // ModemManager.Modem
