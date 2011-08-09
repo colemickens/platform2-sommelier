@@ -95,7 +95,7 @@ bool Backlight::GetBrightness(int64* level, int64* max_level) {
          base::StringToInt64(max_level_buf, max_level);
   }
   LOG_IF(WARNING, !ok) << "Can't get brightness";
-  LOG(INFO) << "GetBrightness: " << *level;
+  DLOG(INFO) << "GetBrightness: " << *level;
   return ok;
 }
 
