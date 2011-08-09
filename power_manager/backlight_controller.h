@@ -119,11 +119,6 @@ class BacklightController {
   // Determine whether backlight controller has been initialized
   bool IsInitialized();
 
-  // Read brightness settings from the system and apply any changes made
-  // by other programs to our local view. Return true if the brightness
-  // has not been modified by other programs; return false otherwise.
-  bool ReadBrightness();
-
   // Write brightness based on current settings.
   // Returns true if the brightness was changed and false otherwise.
   // Set adjust_brightness_offset = true if the local brightness offset should

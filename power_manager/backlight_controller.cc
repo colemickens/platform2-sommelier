@@ -115,15 +115,6 @@ bool BacklightController::GetTargetBrightness(double* level) {
   return true;
 }
 
-bool BacklightController::IsInitialized() {
-  // brightness_offset_ will be initialized once polling of plugged event has
-  // occurred once
-  if (is_initialized_ && (brightness_offset_ != NULL))
-    return true;
-
-  return false;
-}
-
 void BacklightController::IncreaseBrightness() {
   if (!IsInitialized())
     return;
@@ -188,8 +179,6 @@ bool BacklightController::SetPowerState(PowerState new_state) {
   LOG(INFO) << PowerStateToString(state_) << " -> "
             << PowerStateToString(new_state);
 
-  if (new_state != BACKLIGHT_ACTIVE)
-    ReadBrightness();
   state_ = new_state;
 
   WriteBrightness(true);
@@ -247,15 +236,6 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
   return WriteBrightness(true);
 }
 
-void BacklightController::SetMinimumBrightness(int64 level) {
-  min_percent_ = level;
-  min_ = LocalBrightnessToRawBrightness(level);
-}
-
-bool BacklightController::IsBacklightActiveOff() {
-  return state_ == BACKLIGHT_ACTIVE && local_brightness_ == 0;
-}
-
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
   if (!is_initialized_)
     return;
@@ -300,6 +280,15 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     WriteBrightness(false);  // ALS adjustment should not change brightness
                              // offset.
   }
+}
+
+void BacklightController::SetMinimumBrightness(int64 level) {
+  min_percent_ = level;
+  min_ = LocalBrightnessToRawBrightness(level);
+}
+
+bool BacklightController::IsBacklightActiveOff() {
+  return state_ == BACKLIGHT_ACTIVE && local_brightness_ == 0;
 }
 
 double BacklightController::Clamp(double value) {
@@ -353,30 +342,10 @@ void BacklightController::WritePrefs() {
     prefs_->SetDouble(kUnpluggedBrightnessOffset, unplugged_brightness_offset_);
 }
 
-bool BacklightController::ReadBrightness() {
-  if (!IsInitialized())
-    return false;
-
-  int64 raw_level;
-  CHECK(backlight_->GetBrightness(&raw_level, &max_));
-  double level = RawBrightnessToLocalBrightness(raw_level);
-
-  if (LocalBrightnessToRawBrightness(local_brightness_) != raw_level &&
-      !is_in_transition_) {
-    // Another program adjusted the brightness. Sync up.
-    LOG(INFO) << "ReadBrightness: " << local_brightness_ << " -> " << level;
-
-    // TODO(sque): This part should be modified to use ClampToMin instead.  It
-    // also rather complex and could use some simplification.
-    double brightness = Clamp(*brightness_offset_ + als_brightness_level_);
-    double diff = Clamp(brightness + level - local_brightness_) - brightness;
-    *brightness_offset_ += diff;
-    local_brightness_ = level;
-    WritePrefs();
-    return false;
-  }
-
-  return true;
+bool BacklightController::IsInitialized() {
+  // brightness_offset_ will be initialized once polling of plugged event has
+  // occurred once
+  return (is_initialized_ && brightness_offset_);
 }
 
 bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
