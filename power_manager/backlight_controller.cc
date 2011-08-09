@@ -115,8 +115,17 @@ bool BacklightController::GetTargetBrightness(double* level) {
   return true;
 }
 
+bool BacklightController::IsInitialized() {
+  // brightness_offset_ will be initialized once polling of plugged event has
+  // occurred once
+  if (is_initialized_ && (brightness_offset_ != NULL))
+    return true;
+
+  return false;
+}
+
 void BacklightController::IncreaseBrightness() {
-  if (!is_initialized_)
+  if (!IsInitialized())
     return;
 
   // Determine the adjustment step size.
@@ -133,7 +142,7 @@ void BacklightController::IncreaseBrightness() {
 }
 
 void BacklightController::DecreaseBrightness(bool allow_off) {
-  if (!is_initialized_)
+  if (!IsInitialized())
     return;
 
   // Determine the adjustment step size.
@@ -345,9 +354,8 @@ void BacklightController::WritePrefs() {
 }
 
 bool BacklightController::ReadBrightness() {
-  if (!is_initialized_)
+  if (!IsInitialized())
     return false;
-  CHECK(brightness_offset_ != NULL) << "Plugged state must be initialized";
 
   int64 raw_level;
   CHECK(backlight_->GetBrightness(&raw_level, &max_));
@@ -372,10 +380,9 @@ bool BacklightController::ReadBrightness() {
 }
 
 bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
-  if (!is_initialized_)
+  if (!IsInitialized())
     return false;
-  if (!brightness_offset_)
-    return false;
+
   double old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE || state_ == BACKLIGHT_ALREADY_DIMMED) {
     local_brightness_ = ClampToMin(als_brightness_level_ + *brightness_offset_);

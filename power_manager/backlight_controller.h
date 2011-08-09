@@ -116,6 +116,9 @@ class BacklightController {
   void ReadPrefs();
   void WritePrefs();
 
+  // Determine whether backlight controller has been initialized
+  bool IsInitialized();
+
   // Read brightness settings from the system and apply any changes made
   // by other programs to our local view. Return true if the brightness
   // has not been modified by other programs; return false otherwise.
