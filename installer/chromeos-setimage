@@ -222,7 +222,7 @@ get_verity_arg() {
 
 is_old_verity_argv() {
   local depth=$(echo "$1" | cut -f7 -d' ')
-  if [ "$depth" -eq "0" ]; then
+  if [ "$depth" = "0" ]; then
     return 0
   fi
   return 1
