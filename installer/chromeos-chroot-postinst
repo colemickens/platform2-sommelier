@@ -245,7 +245,7 @@ if [ -z "${IS_INSTALL}" -a "${IS_INTEL_ARCH}" -eq "1" ]; then
       ROOT_DEV_PARAM="--rootfs_image=$INSTALL_DEV --kernel_image=$NEW_K_DEV"
     fi
     /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-        --dst=${ROOT_DEV} --run_as_root \
+        --dst=${ROOT_DEV} \
         --update_syslinux_cfg="${syslinux_cfg}" \
         --update_grub_cfg="${grub_cfg}" \
         --esp_mounted_at="${EFI_MNT}" \
@@ -277,14 +277,14 @@ if [ ${IS_INTEL_ARCH} -eq 1 ]; then
   syslinux_cfg="/boot/syslinux/root.${BOOT_SLOT}.cfg"
   grub_cfg="/boot/efi/boot/grub.cfg"
   /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-      --dst=${ROOT_DEV} --run_as_root \
+      --dst=${ROOT_DEV} \
       --update_syslinux_cfg="${syslinux_cfg}" \
       --update_grub_cfg="${grub_cfg}" \
       --update_vmlinuz=/boot/vmlinuz \
       ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
 else
   /usr/sbin/chromeos-setimage ${BOOT_SLOT} \
-      --dst=${ROOT_DEV} --run_as_root \
+      --dst=${ROOT_DEV} \
       ${SUB_CMD_DEBUG_FLAG} ${ROOT_DEV_PARAM}
 fi
 
