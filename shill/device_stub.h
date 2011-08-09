@@ -37,10 +37,11 @@ class DeviceStub : public Device {
         technology_(technology) {}
   void Start() {}
   void Stop() {}
-  bool TechnologyIs(const Technology type) { return type == technology_; }
+  bool TechnologyIs(const Technology type) const { return type == technology_; }
 
  private:
   Technology technology_;
+
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
 };
 

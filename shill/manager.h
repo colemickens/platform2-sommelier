@@ -64,9 +64,12 @@ class Manager {
   ServiceRefPtr FindService(const std::string& name);
   std::vector<std::string> EnumerateAvailableServices();
 
+  DeviceInfo *device_info() { return &device_info_; }
   PropertyStore *store() { return &store_; }
 
  private:
+  friend class ManagerAdaptorInterface;
+
   std::string CalculateState();
   std::vector<std::string> AvailableTechnologies();
   std::vector<std::string> ConnectedTechnologies();
@@ -97,8 +100,6 @@ class Manager {
   // Properties to be get/set via PropertyStore calls.
   Properties props_;
   PropertyStore store_;
-
-  friend class ManagerAdaptorInterface;
 };
 
 }  // namespace shill

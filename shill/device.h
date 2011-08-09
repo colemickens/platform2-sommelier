@@ -53,7 +53,7 @@ class Device : public base::RefCounted<Device> {
   virtual void Stop();
 
   // Base method always returns false.
-  virtual bool TechnologyIs(const Technology type);
+  virtual bool TechnologyIs(const Technology type) const;
 
   virtual void LinkEvent(unsigned flags, unsigned change);
   virtual void Scan();

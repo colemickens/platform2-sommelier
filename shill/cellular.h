@@ -103,7 +103,7 @@ class Cellular : public Device,
   // Inherited from Device.
   virtual void Start();
   virtual void Stop();
-  virtual bool TechnologyIs(Technology type);
+  virtual bool TechnologyIs(Technology type) const;
 
  private:
   static const char kPhoneNumberCDMA[];

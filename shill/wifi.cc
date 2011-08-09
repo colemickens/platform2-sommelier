@@ -132,7 +132,7 @@ void WiFi::Stop() {
   // XXX anything else to do?
 }
 
-bool WiFi::TechnologyIs(const Device::Technology type) {
+bool WiFi::TechnologyIs(const Device::Technology type) const {
   return type == Device::kWifi;
 }
 

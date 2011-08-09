@@ -115,7 +115,7 @@ void Device::Stop() {
   adaptor_->UpdateEnabled();
 }
 
-bool Device::TechnologyIs(const Technology type) {
+bool Device::TechnologyIs(const Technology type) const {
   return false;
 }
 

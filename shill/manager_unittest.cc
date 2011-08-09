@@ -8,10 +8,7 @@
 
 #include <glib.h>
 
-#include <base/callback_old.h>
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
-#include <base/message_loop.h>
 #include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -23,7 +20,6 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/property_store_unittest.h"
-#include "shill/shill_event.h"
 
 using std::map;
 using std::set;
@@ -39,17 +35,21 @@ using ::testing::Return;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : factory_(this),
-        mock_device_(new NiceMock<MockDevice>(&control_interface_,
+      : mock_device_(new NiceMock<MockDevice>(&control_interface_,
                                               &dispatcher_,
                                               &manager_,
                                               "null0",
-                                              -1)),
+                                              0)),
         mock_device2_(new NiceMock<MockDevice>(&control_interface_,
                                                &dispatcher_,
                                                &manager_,
-                                               "null1",
-                                               -1)) {
+                                               "null2",
+                                               2)),
+        mock_device3_(new NiceMock<MockDevice>(&control_interface_,
+                                               &dispatcher_,
+                                               &manager_,
+                                               "null3",
+                                               3)) {
   }
   virtual ~ManagerTest() {}
 
@@ -60,9 +60,9 @@ class ManagerTest : public PropertyStoreTest {
   }
 
  protected:
-  ScopedRunnableMethodFactory<ManagerTest> factory_;
   scoped_refptr<MockDevice> mock_device_;
   scoped_refptr<MockDevice> mock_device2_;
+  scoped_refptr<MockDevice> mock_device3_;
 };
 
 TEST_F(ManagerTest, Contains) {
@@ -75,12 +75,16 @@ TEST_F(ManagerTest, DeviceRegistration) {
       .WillByDefault(Return(true));
   ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
+  ON_CALL(*mock_device3_.get(), TechnologyIs(Device::kCellular))
+      .WillByDefault(Return(true));
 
-  manager_.RegisterDevice(mock_device_.get());
-  manager_.RegisterDevice(mock_device2_.get());
+  manager_.RegisterDevice(mock_device_);
+  manager_.RegisterDevice(mock_device2_);
+  manager_.RegisterDevice(mock_device3_);
 
   EXPECT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
   EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device3_, Device::kCellular));
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {

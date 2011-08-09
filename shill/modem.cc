@@ -110,7 +110,7 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                          type,
                          owner_,
                          path_);
-  manager_->RegisterDevice(device_);
+  manager_->device_info()->RegisterDevice(device_);
 
   string unlock_required;
   if (DBusProperties::GetString(

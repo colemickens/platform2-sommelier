@@ -62,7 +62,7 @@ void Ethernet::Stop() {
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
 }
 
-bool Ethernet::TechnologyIs(const Device::Technology type) {
+bool Ethernet::TechnologyIs(const Device::Technology type) const {
   return type == Device::kEthernet;
 }
 

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <vector>
+
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 #include <net/if.h>
@@ -19,6 +21,7 @@
 #include "shill/shill_event.h"
 
 using std::string;
+using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
@@ -147,7 +150,11 @@ TEST_F(ModemTest, CreateCellularDevice) {
   ASSERT_TRUE(modem_.device_.get());
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());
-  // TODO(petkov): Confirm the device is registered by the manager.
+
+  vector<DeviceRefPtr> devices;
+  manager_.FilterByTechnology(Device::kCellular, &devices);
+  EXPECT_EQ(1, devices.size());
+  EXPECT_TRUE(devices[0].get() == modem_.device_.get());
 }
 
 }  // namespace shill

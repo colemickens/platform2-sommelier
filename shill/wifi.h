@@ -32,7 +32,7 @@ class WiFi : public Device {
   virtual ~WiFi();
   virtual void Start();
   virtual void Stop();
-  virtual bool TechnologyIs(const Technology type);
+  virtual bool TechnologyIs(const Technology type) const;
 
   // called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.

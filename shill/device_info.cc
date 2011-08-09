@@ -34,6 +34,7 @@
 #include "shill/service.h"
 #include "shill/wifi.h"
 
+using base::hash_map;
 using std::string;
 
 namespace shill {
@@ -75,6 +76,26 @@ void DeviceInfo::Start() {
 
 void DeviceInfo::Stop() {
   link_listener_.reset(NULL);
+}
+
+void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
+  VLOG(2) << __func__ << "(" << device->link_name() << ", "
+          << device->interface_index() << ")";
+  CHECK(!ContainsKey(devices_, device->interface_index()));
+  devices_[device->interface_index()] = device;
+  if (device->TechnologyIs(Device::kCellular) ||
+      device->TechnologyIs(Device::kEthernet) ||
+      device->TechnologyIs(Device::kWifi)) {
+    manager_->RegisterDevice(device);
+  }
+}
+
+DeviceRefPtr DeviceInfo::GetDevice(int interface_index) {
+  hash_map<int, DeviceRefPtr>::iterator iter = devices_.find(interface_index);
+  if (iter == devices_.end()) {
+    return NULL;
+  }
+  return iter->second;
 }
 
 Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
@@ -124,19 +145,16 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
 
 void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
   struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  base::hash_map<int, DeviceRefPtr>::iterator ndev =
-      devices_.find(msg->ifi_index);
   int dev_index = msg->ifi_index;
   struct rtattr *rta;
   int rta_bytes;
   char *link_name = NULL;
-  DeviceRefPtr device;
   Device::Technology technology = Device::kUnknown;
-  bool is_stub = false;
 
   VLOG(2) << __func__;
 
-  if (ndev == devices_.end()) {
+  DeviceRefPtr device = GetDevice(dev_index);
+  if (!device.get()) {
     rta_bytes = IFLA_PAYLOAD(hdr);
     for (rta = IFLA_RTA(msg); RTA_OK(rta, rta_bytes);
          rta = RTA_NEXT(rta, rta_bytes)) {
@@ -175,15 +193,9 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
       default:
         device = new DeviceStub(control_interface_, dispatcher_, manager_,
                                 link_name, dev_index, technology);
-        is_stub = true;
+        break;
     }
-
-    devices_[dev_index] = device;
-
-    if (!is_stub)
-      manager_->RegisterDevice(device);
-  } else {
-    device = ndev->second;
+    RegisterDevice(device);
   }
 
   device->LinkEvent(msg->ifi_flags, msg->ifi_change);
@@ -195,8 +207,7 @@ void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
 }
 
 void DeviceInfo::RemoveDevice(int interface_index) {
-  base::hash_map<int, DeviceRefPtr>::iterator ndev =
-      devices_.find(interface_index);
+  hash_map<int, DeviceRefPtr>::iterator ndev = devices_.find(interface_index);
   if (ndev != devices_.end()) {
     VLOG(2) << "Removing device index: " << interface_index;
     manager_->DeregisterDevice(ndev->second);

@@ -372,7 +372,7 @@ void Cellular::CreateService() {
   // TODO(petkov): Set old_url/usage_url.
 }
 
-bool Cellular::TechnologyIs(const Device::Technology type) {
+bool Cellular::TechnologyIs(const Device::Technology type) const {
   return type == Device::kCellular;
 }
 

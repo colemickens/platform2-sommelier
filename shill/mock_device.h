@@ -26,9 +26,9 @@ class MockDevice : public Device {
              int interface_index);
   virtual ~MockDevice();
 
-  MOCK_METHOD0(Start, void(void));
-  MOCK_METHOD0(Stop, void(void));
-  MOCK_METHOD1(TechnologyIs, bool(Technology));
+  MOCK_METHOD0(Start, void());
+  MOCK_METHOD0(Stop, void());
+  MOCK_CONST_METHOD1(TechnologyIs, bool(const Technology technology));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

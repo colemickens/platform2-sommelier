@@ -34,7 +34,11 @@ class DeviceInfo {
   void Start();
   void Stop();
 
-  static Device::Technology GetDeviceTechnology(const char *interface_name);
+  // Adds |device| to this DeviceInfo instance so that we can handle its link
+  // messages, and registers it with the manager.
+  void RegisterDevice(const DeviceRefPtr &device);
+
+  DeviceRefPtr GetDevice(int interface_index);
 
  private:
   friend class DeviceInfoTest;
@@ -42,6 +46,8 @@ class DeviceInfo {
   static const char *kInterfaceUevent;
   static const char *kInterfaceDriver;
   static const char *kModemDrivers[];
+
+  static Device::Technology GetDeviceTechnology(const char *interface_name);
 
   void AddLinkMsgHandler(struct nlmsghdr *hdr);
   void DelLinkMsgHandler(struct nlmsghdr *hdr);
