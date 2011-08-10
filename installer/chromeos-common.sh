@@ -365,7 +365,7 @@ install_gpt() {
 # Args: DEVICE PARTNUM
 # Returns: offset (in sectors) of partition PARTNUM
 partoffset() {
-  sudo $GPT show -b -i $2 $1
+  $sudo $GPT show -b -i $2 $1
 }
 
 # Read GPT table to find the size of a specific partition.
@@ -373,7 +373,7 @@ partoffset() {
 # Args: DEVICE PARTNUM
 # Returns: size (in sectors) of partition PARTNUM
 partsize() {
-  sudo $GPT show -s -i $2 $1
+  $sudo $GPT show -s -i $2 $1
 }
 
 # Extract the whole disk block device from the partition device.
@@ -421,6 +421,14 @@ make_partition_dev() {
   else
     echo "${block}${num}"
   fi
+}
+
+# Find the uuid for a (disk, partnum) pair (e.g., ("/dev/sda", 3))
+part_index_to_uuid() {
+  local dev="$1"
+  local idx="$2"
+
+  $sudo $GPT show -i "$idx" -u "$dev"
 }
 
 # The scripts that source this file typically want to use the root password as

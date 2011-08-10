@@ -291,9 +291,10 @@ if [ -n "${newimg:-}" ]; then
   # This will usually be ${rootfs_image} except for cases where
   # FLAGS_dst and FLAGS_rootfs_image diverge.
   dst_part=$(make_partition_dev ${FLAGS_dst} ${selected_root})
+  dst_uuid="PARTUUID=$(part_index_to_uuid ${FLAGS_dst} ${selected_root})"
   # Replace the placeholders from the verity tool.
   table="$(echo "$table" |
-           sed -s "s|ROOT_DEV|${dst_part}|g;s|HASH_DEV|${dst_part}|g")"
+           sed -s "s|ROOT_DEV|${dst_uuid}|g;s|HASH_DEV|${dst_uuid}|g")"
 fi
 # Overwrite the appended hashes with the new ones.
 sudo dd if=${tempfile} of="${rootfs_image}" \
@@ -342,8 +343,8 @@ if [ -n "${newimg:-}" -a -s "$FLAGS_update_syslinux_cfg" ]; then
   vmlinuz_tgt=${mountpoint}/syslinux/vmlinuz.${newimg_letter}
 
   # 3 and 5 are the current rootfs a and b partitions
-  DST_PART_A=$(make_partition_dev ${FLAGS_dst} 3)
-  DST_PART_B=$(make_partition_dev ${FLAGS_dst} 5)
+  DST_PART_A="PARTUUID=$(part_index_to_uuid "${FLAGS_dst}" 3)"
+  DST_PART_B="PARTUUID=$(part_index_to_uuid "${FLAGS_dst}" 5)"
   # Changes to this sed command must also be made in
   # scr/scripts/update_bootloaders.sh.
   sed -e "s|HDROOTA|${DST_PART_A}|g;s|HDROOTB|${DST_PART_B}|g" \
