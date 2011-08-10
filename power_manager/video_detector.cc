@@ -11,13 +11,13 @@ namespace power_manager {
 
 VideoDetector::VideoDetector()
     : video_time_atom_(None),
-      root_window_(NULL) {}
+      root_window_(None) {}
 
 void VideoDetector::Init() {
   video_time_atom_ = XInternAtom(GDK_DISPLAY(), "_CHROME_VIDEO_TIME", false);
-  DCHECK(None != video_time_atom_);
+  DCHECK(video_time_atom_ != None);
   root_window_ = DefaultRootWindow(GDK_DISPLAY());
-  DCHECK(root_window_);
+  DCHECK(root_window_ != None);
 }
 
 bool VideoDetector::GetVideoActivity(int64 activity_threshold_ms,

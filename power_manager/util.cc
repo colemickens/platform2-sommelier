@@ -162,7 +162,7 @@ bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,
   Display* display = GDK_DISPLAY();
   Window wm_window = XGetSelectionOwner(
       display, XInternAtom(display, kWindowManagerSelectionName, True));
-  if (!wm_window) {
+  if (wm_window == None) {
     LOG(WARNING) << "Unable to find window owning the "
                  << kWindowManagerSelectionName << " X selection -- is the "
                  << "window manager running?";

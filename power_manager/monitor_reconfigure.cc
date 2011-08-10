@@ -31,7 +31,7 @@ namespace power_manager {
 
 MonitorReconfigure::MonitorReconfigure()
     : display_(NULL),
-      window_(0),
+      window_(None),
       lcd_output_(0),
       lcd_output_info_(NULL),
       external_output_(0),
@@ -44,7 +44,7 @@ MonitorReconfigure::MonitorReconfigure()
 MonitorReconfigure::MonitorReconfigure(
     BacklightController* backlight_ctl)
     : display_(NULL),
-      window_(0),
+      window_(None),
       lcd_output_(0),
       lcd_output_info_(NULL),
       external_output_(0),
