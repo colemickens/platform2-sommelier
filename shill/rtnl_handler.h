@@ -10,9 +10,9 @@
 
 #include <base/callback_old.h>
 #include <base/hash_tables.h>
+#include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/singleton.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
@@ -45,6 +45,8 @@ class RTNLHandler {
   static const int kRequestRoute = 4;
   static const int kRequestAddr6 = 8;
   static const int kRequestRoute6 = 16;
+
+  virtual ~RTNLHandler();
 
   // Since this is a singleton, use RTNHandler::GetInstance()->Foo()
   static RTNLHandler *GetInstance();
@@ -88,18 +90,18 @@ class RTNLHandler {
   // Send a formatted RTNL message.  The sequence number in the message is set.
   bool SendMessage(RTNLMessage *message);
 
+ protected:
+  RTNLHandler();
+
  private:
+  friend struct base::DefaultLazyInstanceTraits<RTNLHandler>;
   friend class DeviceInfoTest;
   friend class ModemTest;
   friend class RTNLHandlerTest;
   friend class RoutingTableTest;
-  friend struct DefaultSingletonTraits<RTNLHandler>;
+
   FRIEND_TEST(RTNLListenerTest, NoRun);
   FRIEND_TEST(RTNLListenerTest, Run);
-
-  // Private to ensure that this behaves as a singleton.
-  RTNLHandler();
-  virtual ~RTNLHandler();
 
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for

@@ -13,18 +13,21 @@
 
 #include "shill/ipconfig.h"
 
-namespace shill {
-
 using base::StringPrintf;
 using std::string;
 using std::vector;
+
+namespace shill {
+
+static base::LazyInstance<Resolver> g_resolver(
+    base::LINKER_INITIALIZED);
 
 Resolver::Resolver() {}
 
 Resolver::~Resolver() {}
 
 Resolver* Resolver::GetInstance() {
-  return Singleton<Resolver>::get();
+  return g_resolver.Pointer();
 }
 
 bool Resolver::SetDNS(const IPConfigRefPtr &ipconfig) {

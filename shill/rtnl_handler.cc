@@ -31,6 +31,9 @@ using std::string;
 
 namespace shill {
 
+static base::LazyInstance<RTNLHandler> g_rtnl_handler(
+    base::LINKER_INITIALIZED);
+
 RTNLHandler::RTNLHandler()
     : sockets_(NULL),
       in_request_(false),
@@ -47,7 +50,7 @@ RTNLHandler::~RTNLHandler() {
 }
 
 RTNLHandler* RTNLHandler::GetInstance() {
-  return Singleton<RTNLHandler>::get();
+  return g_rtnl_handler.Pointer();
 }
 
 void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {

@@ -38,8 +38,12 @@ using std::vector;
 
 namespace shill {
 
+static base::LazyInstance<RoutingTable> g_routing_table(
+    base::LINKER_INITIALIZED);
+
 // static
 const char RoutingTable::kRouteFlushPath4[] = "/proc/sys/net/ipv4/route/flush";
+// static
 const char RoutingTable::kRouteFlushPath6[] = "/proc/sys/net/ipv6/route/flush";
 
 RoutingTable::RoutingTable()
@@ -51,7 +55,7 @@ RoutingTable::RoutingTable()
 RoutingTable::~RoutingTable() {}
 
 RoutingTable* RoutingTable::GetInstance() {
-  return Singleton<RoutingTable>::get();
+  return g_routing_table.Pointer();
 }
 
 void RoutingTable::Start() {

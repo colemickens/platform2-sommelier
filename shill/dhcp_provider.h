@@ -8,8 +8,8 @@
 #include <map>
 #include <string>
 
+#include <base/lazy_instance.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/memory/singleton.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
@@ -29,6 +29,8 @@ class GLib;
 // DHCPProvider::GetInstance()->CreateConfig(device_name)->Request();
 class DHCPProvider {
  public:
+  virtual ~DHCPProvider();
+
   // This is a singleton -- use DHCPProvider::GetInstance()->Foo()
   static DHCPProvider *GetInstance();
 
@@ -57,18 +59,17 @@ class DHCPProvider {
   // destruction of the DHCP config instance if its reference count goes to 0.
   void UnbindPID(int pid);
 
+ protected:
+  DHCPProvider();
+
  private:
-  friend struct DefaultSingletonTraits<DHCPProvider>;
+  friend struct base::DefaultLazyInstanceTraits<DHCPProvider>;
   friend class DHCPProviderTest;
   friend class DeviceInfoTest;
   friend class DeviceTest;
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
-
-  // Private to ensure that this behaves as a singleton.
-  DHCPProvider();
-  virtual ~DHCPProvider();
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.

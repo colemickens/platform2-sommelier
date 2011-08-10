@@ -6,8 +6,8 @@
 #define SHILL_RESOLVER_
 
 #include <base/file_path.h>
+#include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/singleton.h>
 
 #include "shill/refptr_types.h"
 
@@ -17,6 +17,8 @@ namespace shill {
 // of an ipconfig into a "resolv.conf" formatted file.
 class Resolver {
  public:
+  virtual ~Resolver();
+
   // Since this is a singleton, use Resolver::GetInstance()->Foo()
   static Resolver *GetInstance();
 
@@ -28,13 +30,12 @@ class Resolver {
   // Remove any created domain name service file
   bool ClearDNS();
 
- private:
-  friend struct DefaultSingletonTraits<Resolver>;
-  friend class ResolverTest;
-
-  // Don't allow this object to be created
+ protected:
   Resolver();
-  ~Resolver();
+
+ private:
+  friend struct base::DefaultLazyInstanceTraits<Resolver>;
+  friend class ResolverTest;
 
   FilePath path_;
 

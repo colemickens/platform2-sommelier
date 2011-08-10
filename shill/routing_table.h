@@ -9,8 +9,8 @@
 
 #include <base/callback_old.h>
 #include <base/hash_tables.h>
+#include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>
-#include <base/memory/singleton.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/ip_address.h"
@@ -28,7 +28,8 @@ class RTNLListener;
 // default route for an interface or modifying its metric (priority).
 class RoutingTable {
  public:
-  // Since this is a singleton, use RoutingTable::GetInstance()->Foo()
+  virtual ~RoutingTable();
+
   static RoutingTable *GetInstance();
 
   void Start();
@@ -56,13 +57,12 @@ class RoutingTable {
   // Set the metric (priority) on existing default routes for an interface
   void SetDefaultMetric(int interface_index, uint32 metric);
 
- private:
-  friend struct DefaultSingletonTraits<RoutingTable>;
-  friend class RoutingTableTest;
-
-  // Constructor and destructor are private since this is a singleton
+ protected:
   RoutingTable();
-  ~RoutingTable();
+
+ private:
+  friend struct base::DefaultLazyInstanceTraits<RoutingTable>;
+  friend class RoutingTableTest;
 
   void RouteMsgHandler(const RTNLMessage &msg);
   bool ApplyRoute(uint32 interface_index,

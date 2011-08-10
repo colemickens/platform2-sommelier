@@ -15,6 +15,9 @@ using std::string;
 
 namespace shill {
 
+static base::LazyInstance<DHCPProvider> g_dhcp_provider(
+    base::LINKER_INITIALIZED);
+
 DHCPProvider::DHCPProvider()
     : control_interface_(NULL),
       dispatcher_(NULL),
@@ -27,7 +30,7 @@ DHCPProvider::~DHCPProvider() {
 }
 
 DHCPProvider* DHCPProvider::GetInstance() {
-  return Singleton<DHCPProvider>::get();
+  return g_dhcp_provider.Pointer();
 }
 
 void DHCPProvider::Init(ControlInterface *control_interface,
