@@ -7,20 +7,21 @@
 
 #include <base/callback_old.h>
 
-struct nlmsghdr;
-
 namespace shill {
+
+class RTNLMessage;
 
 class RTNLListener {
  public:
-  RTNLListener(int listen_flags, Callback1<struct nlmsghdr *>::Type *callback);
+  RTNLListener(int listen_flags,
+               Callback1<const RTNLMessage &>::Type *callback);
   ~RTNLListener();
 
-  void NotifyEvent(int type, struct nlmsghdr *hdr);
+  void NotifyEvent(int type, const RTNLMessage &msg);
 
  private:
   int listen_flags_;
-  Callback1<struct nlmsghdr *>::Type *callback_;
+  Callback1<const RTNLMessage &>::Type *callback_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLListener);
 };

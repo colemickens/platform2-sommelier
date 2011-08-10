@@ -17,11 +17,10 @@
 
 #include "shill/rtnl_listener.h"
 
-struct nlmsghdr;
-
 namespace shill {
 
 class Manager;
+class RTNLMessage;
 
 class DeviceInfo {
  public:
@@ -47,11 +46,11 @@ class DeviceInfo {
   static const char *kInterfaceDriver;
   static const char *kModemDrivers[];
 
-  static Device::Technology GetDeviceTechnology(const char *interface_name);
+  static Device::Technology GetDeviceTechnology(const std::string &face_name);
 
-  void AddLinkMsgHandler(struct nlmsghdr *hdr);
-  void DelLinkMsgHandler(struct nlmsghdr *hdr);
-  void LinkMsgHandler(struct nlmsghdr *hdr);
+  void AddLinkMsgHandler(const RTNLMessage &msg);
+  void DelLinkMsgHandler(const RTNLMessage &msg);
+  void LinkMsgHandler(const RTNLMessage &msg);
 
   void RemoveDevice(int interface_index);
 
@@ -59,7 +58,7 @@ class DeviceInfo {
   EventDispatcher *dispatcher_;
   Manager *manager_;
   base::hash_map<int, DeviceRefPtr> devices_;
-  scoped_ptr<Callback1<struct nlmsghdr *>::Type> link_callback_;
+  scoped_ptr<Callback1<const RTNLMessage &>::Type> link_callback_;
   scoped_ptr<RTNLListener> link_listener_;
   std::set<std::string> black_list_;
 };

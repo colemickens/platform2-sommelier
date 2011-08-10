@@ -194,15 +194,7 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
   }
 }
 
-void RoutingTable::RouteMsgHandler(struct nlmsghdr *hdr) {
-  RTNLMessage msg;
-
-  // TODO(pstew): When RTNLHandler starts using RTNLMessages, this goes away
-  if (!msg.Decode(ByteString(reinterpret_cast<unsigned char *>(hdr),
-                             hdr->nlmsg_len))) {
-    return;
-  }
-
+void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   VLOG(2) << __func__;
 
   if (msg.type() != RTNLMessage::kMessageTypeRoute ||

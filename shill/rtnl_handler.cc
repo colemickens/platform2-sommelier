@@ -150,10 +150,10 @@ void RTNLHandler::RequestDump(int request_flags) {
     NextRequest(request_sequence_);
 }
 
-void RTNLHandler::DispatchEvent(int type, struct nlmsghdr *hdr) {
+void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
   std::vector<RTNLListener *>::iterator it;
   for (it = listeners_.begin(); it != listeners_.end(); ++it) {
-    (*it)->NotifyEvent(type, hdr);
+    (*it)->NotifyEvent(type, msg);
   }
 }
 
@@ -226,37 +226,46 @@ void RTNLHandler::ParseRTNL(InputData *data) {
 
   while (buf < end) {
     struct nlmsghdr *hdr = reinterpret_cast<struct nlmsghdr *>(buf);
-    struct nlmsgerr *err;
-
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
-    switch (hdr->nlmsg_type) {
-    case NLMSG_NOOP:
-    case NLMSG_OVERRUN:
-      return;
-    case NLMSG_DONE:
-      NextRequest(hdr->nlmsg_seq);
-      return;
-    case NLMSG_ERROR:
-      err = reinterpret_cast<nlmsgerr *>(NLMSG_DATA(hdr));
-      LOG(ERROR) << "error " << -err->error << " (" << strerror(-err->error) <<
-                 ")";
-      return;
-    case RTM_NEWLINK:
-    case RTM_DELLINK:
-      DispatchEvent(kRequestLink, hdr);
-      break;
-    case RTM_NEWADDR:
-    case RTM_DELADDR:
-      DispatchEvent(kRequestAddr, hdr);
-      break;
-    case RTM_NEWROUTE:
-    case RTM_DELROUTE:
-      DispatchEvent(kRequestRoute, hdr);
-      break;
-    }
+    RTNLMessage msg;
+    if (!msg.Decode(ByteString(reinterpret_cast<unsigned char *>(hdr),
+                               hdr->nlmsg_len))) {
 
+      switch (hdr->nlmsg_type) {
+        case NLMSG_NOOP:
+        case NLMSG_OVERRUN:
+          break;
+        case NLMSG_DONE:
+          NextRequest(hdr->nlmsg_seq);
+          break;
+        case NLMSG_ERROR:
+          {
+            struct nlmsgerr *err =
+                reinterpret_cast<nlmsgerr *>(NLMSG_DATA(hdr));
+            LOG(ERROR) << "error " << -err->error << " ("
+                       << strerror(-err->error) << ")";
+            break;
+          }
+        default:
+          NOTIMPLEMENTED() << "Unknown NL message type.";
+      }
+    } else {
+      switch (msg.type()) {
+        case RTNLMessage::kMessageTypeLink:
+          DispatchEvent(kRequestLink, msg);
+          break;
+        case RTNLMessage::kMessageTypeAddress:
+          DispatchEvent(kRequestAddr, msg);
+          break;
+        case RTNLMessage::kMessageTypeRoute:
+          DispatchEvent(kRequestRoute, msg);
+          break;
+        default:
+          NOTIMPLEMENTED() << "Unknown RTNL message type.";
+      }
+    }
     buf += hdr->nlmsg_len;
   }
 }

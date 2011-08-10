@@ -4,6 +4,7 @@
 
 #include "shill/ip_address.h"
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 
 #include <string>
@@ -11,6 +12,13 @@
 #include "shill/byte_string.h"
 
 namespace shill {
+
+// static
+const IPAddress::Family IPAddress::kAddressFamilyUnknown = AF_UNSPEC;
+// static
+const IPAddress::Family IPAddress::kAddressFamilyIPv4 = AF_INET;
+// static
+const IPAddress::Family IPAddress::kAddressFamilyIPv6 = AF_INET6;
 
 IPAddress::IPAddress(Family family, const ByteString &address)
     : family_(family) ,

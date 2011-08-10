@@ -5,8 +5,6 @@
 #ifndef SHILL_IP_ADDRESS_
 #define SHILL_IP_ADDRESS_
 
-#include <arpa/inet.h>
-
 #include <string>
 
 #include "shill/byte_string.h"
@@ -16,9 +14,9 @@ namespace shill {
 class IPAddress {
  public:
   typedef unsigned char Family;
-  static const Family kAddressFamilyUnknown = AF_UNSPEC;
-  static const Family kAddressFamilyIPv4 = AF_INET;
-  static const Family kAddressFamilyIPv6 = AF_INET6;
+  static const Family kAddressFamilyUnknown;
+  static const Family kAddressFamilyIPv4;
+  static const Family kAddressFamilyIPv6;
 
   explicit IPAddress(Family family);
   IPAddress(Family family, const ByteString &address);

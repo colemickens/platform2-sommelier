@@ -10,7 +10,7 @@
 namespace shill {
 
 RTNLListener::RTNLListener(int listen_flags,
-                           Callback1<struct nlmsghdr *>::Type *callback)
+                           Callback1<const RTNLMessage &>::Type *callback)
     : listen_flags_(listen_flags), callback_(callback) {
   RTNLHandler::GetInstance()->AddListener(this);
 }
@@ -19,9 +19,9 @@ RTNLListener::~RTNLListener() {
   RTNLHandler::GetInstance()->RemoveListener(this);
 }
 
-void RTNLListener::NotifyEvent(int type, struct nlmsghdr *hdr) {
+void RTNLListener::NotifyEvent(int type, const RTNLMessage &msg) {
   if ((type & listen_flags_) != 0)
-    callback_->Run(hdr);
+    callback_->Run(msg);
 }
 
 }  // namespace shill

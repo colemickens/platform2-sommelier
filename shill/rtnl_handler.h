@@ -107,7 +107,7 @@ class RTNLHandler {
   void Stop();
 
   // Dispatches an rtnl message to all listeners
-  void DispatchEvent(int type, struct nlmsghdr *hdr);
+  void DispatchEvent(int type, const RTNLMessage &msg);
   // Send the next table-dump request to the kernel
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel

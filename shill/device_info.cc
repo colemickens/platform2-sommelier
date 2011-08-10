@@ -31,6 +31,7 @@
 #include "shill/manager.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
+#include "shill/rtnl_message.h"
 #include "shill/service.h"
 #include "shill/wifi.h"
 
@@ -98,12 +99,12 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) {
   return iter->second;
 }
 
-Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
+Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
   char contents[1024];
   int length;
   int fd;
-  string uevent_file = StringPrintf(kInterfaceUevent, interface_name);
-  string driver_file = StringPrintf(kInterfaceDriver, interface_name);
+  string uevent_file = StringPrintf(kInterfaceUevent, iface_name.c_str());
+  string driver_file = StringPrintf(kInterfaceDriver, iface_name.c_str());
   const char *wifi_type;
   const char *driver_name;
   int modem_idx;
@@ -143,32 +144,25 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const char *interface_name) {
   return Device::kEthernet;
 }
 
-void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
-  struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  int dev_index = msg->ifi_index;
-  struct rtattr *rta;
-  int rta_bytes;
-  char *link_name = NULL;
+void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
+  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
+         msg.mode() == RTNLMessage::kMessageModeAdd);
+  int dev_index = msg.interface_index();
   Device::Technology technology = Device::kUnknown;
 
   VLOG(2) << __func__;
 
   DeviceRefPtr device = GetDevice(dev_index);
   if (!device.get()) {
-    rta_bytes = IFLA_PAYLOAD(hdr);
-    for (rta = IFLA_RTA(msg); RTA_OK(rta, rta_bytes);
-         rta = RTA_NEXT(rta, rta_bytes)) {
-      if (rta->rta_type == IFLA_IFNAME) {
-        link_name = reinterpret_cast<char *>(RTA_DATA(rta));
-        break;
-      } else {
-        VLOG(2) << " RTA type " << rta->rta_type;
-      }
+    if (!msg.HasAttribute(IFLA_IFNAME)) {
+      LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
+      return;
     }
-
+    ByteString b(msg.GetAttribute(IFLA_IFNAME));
+    string link_name(reinterpret_cast<const char*>(b.GetConstData()));
     VLOG(2) << "add link index "  << dev_index << " name " << link_name;
 
-    if (link_name) {
+    if (!link_name.empty()) {
       if (ContainsKey(black_list_, link_name)) {
         technology = Device::kBlacklisted;
       } else {
@@ -198,12 +192,13 @@ void DeviceInfo::AddLinkMsgHandler(struct nlmsghdr *hdr) {
     RegisterDevice(device);
   }
 
-  device->LinkEvent(msg->ifi_flags, msg->ifi_change);
+  device->LinkEvent(msg.link_status().flags, msg.link_status().change);
 }
 
-void DeviceInfo::DelLinkMsgHandler(struct nlmsghdr *hdr) {
-  struct ifinfomsg *msg = reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-  RemoveDevice(msg->ifi_index);
+void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
+  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
+         msg.mode() == RTNLMessage::kMessageModeDelete);
+  RemoveDevice(msg.interface_index());
 }
 
 void DeviceInfo::RemoveDevice(int interface_index) {
@@ -215,11 +210,14 @@ void DeviceInfo::RemoveDevice(int interface_index) {
   }
 }
 
-void DeviceInfo::LinkMsgHandler(struct nlmsghdr *hdr) {
-  if (hdr->nlmsg_type == RTM_NEWLINK) {
-    AddLinkMsgHandler(hdr);
-  } else if (hdr->nlmsg_type == RTM_DELLINK) {
-    DelLinkMsgHandler(hdr);
+void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
+  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink);
+  if (msg.mode() == RTNLMessage::kMessageModeAdd) {
+    AddLinkMsgHandler(msg);
+  } else if (msg.mode() == RTNLMessage::kMessageModeDelete) {
+    DelLinkMsgHandler(msg);
+  } else {
+    NOTREACHED();
   }
 }
 

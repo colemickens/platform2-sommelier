@@ -115,33 +115,34 @@ class RTNLMessage {
     ByteString Encode();
 
     // Getters and setters
-    MessageType type() { return type_; }
-    MessageMode mode() { return mode_; }
-    uint16 flags() { return flags_; }
-    uint32 seq() { return seq_; }
+    MessageType type() const { return type_; }
+    MessageMode mode() const { return mode_; }
+    uint16 flags() const { return flags_; }
+    uint32 seq() const { return seq_; }
     void set_seq(uint32 seq) { seq_ = seq; }
-    uint32 pid() { return pid_; }
-    uint32 interface_index() { return interface_index_; }
-    IPAddress::Family family() { return family_; }
+    uint32 pid() const { return pid_; }
+    uint32 interface_index() const { return interface_index_; }
+    IPAddress::Family family() const { return family_; }
 
-    const LinkStatus &link_status() { return link_status_; }
+    const LinkStatus &link_status() const { return link_status_; }
     void set_link_status(LinkStatus link_status) { link_status_ = link_status; }
-    const AddressStatus &address_status() { return address_status_; }
+    const AddressStatus &address_status() const { return address_status_; }
     void set_address_status(AddressStatus address_status) {
       address_status_ = address_status;
     }
-    const RouteStatus &route_status() { return route_status_; }
+    const RouteStatus &route_status() const { return route_status_; }
     void set_route_status(RouteStatus route_status) {
       route_status_ = route_status;
     }
     // GLint hates "unsigned short", and I don't blame it, but that's the
     // type that's used in the system headers.  Use uint16 instead and hope
     // that the conversion never ends up truncating on some strange platform.
-    bool HasAttribute(uint16 attr) {
+    bool HasAttribute(uint16 attr) const {
       return ContainsKey(attributes_, attr);
     }
-    const ByteString GetAttribute(uint16 attr) {
-      return HasAttribute(attr) ? attributes_[attr] : ByteString(0);
+    const ByteString GetAttribute(uint16 attr) const {
+      return HasAttribute(attr) ?
+          attributes_.find(attr)->second : ByteString(0);
     }
     void SetAttribute(uint16 attr, const ByteString &val) {
       attributes_[attr] = val;

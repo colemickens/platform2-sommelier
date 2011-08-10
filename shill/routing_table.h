@@ -17,8 +17,6 @@
 #include "shill/refptr_types.h"
 #include "shill/rtnl_message.h"
 
-struct nlmsghdr;
-
 namespace shill {
 
 class RoutingTableEntry;
@@ -66,7 +64,7 @@ class RoutingTable {
   RoutingTable();
   ~RoutingTable();
 
-  void RouteMsgHandler(struct nlmsghdr *hdr);
+  void RouteMsgHandler(const RTNLMessage &msg);
   bool ApplyRoute(uint32 interface_index,
                   const RoutingTableEntry &entry,
                   RTNLMessage::MessageMode mode,
@@ -77,7 +75,7 @@ class RoutingTable {
   static const char kRouteFlushPath6[];
 
   base::hash_map<int, std::vector<RoutingTableEntry> > tables_;
-  scoped_ptr<Callback1<struct nlmsghdr *>::Type> route_callback_;
+  scoped_ptr<Callback1<const RTNLMessage &>::Type> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
 
   DISALLOW_COPY_AND_ASSIGN(RoutingTable);
