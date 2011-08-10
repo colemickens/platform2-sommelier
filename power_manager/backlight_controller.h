@@ -76,6 +76,11 @@ class BacklightController {
   // transition completes, this equals the current brightness.
   bool GetTargetBrightness(double* level);
 
+  // Get the scale level that is to be displayed visually to the user, in the
+  // UI's brightness adjustment bar.  This is typically based on what percentage
+  // of the allowable min-max range the brightness has been set to.
+  bool GetBrightnessScaleLevel(double *level);
+
   // Increase the brightness level of the backlight by one level.
   void IncreaseBrightness();
 

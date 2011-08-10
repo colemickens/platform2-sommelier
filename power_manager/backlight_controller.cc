@@ -96,12 +96,16 @@ bool BacklightController::Init() {
     // TODO(sque): this is not ideal for some cases, such as max=17, where the
     // steps will have a large spread.  Something we can work on in the future.
     num_steps_ = std::max(1LL, std::min(kMaxBrightnessSteps, max_));
+
+    // Make sure the min-max brightness range is valid.
+    CHECK(max_percent_ - min_percent_ > 0);
     return true;
   }
   return false;
 }
 
 bool BacklightController::GetCurrentBrightness(double* level) {
+  CHECK(level);
   int64 raw_level;
   if (!backlight_->GetBrightness(&raw_level, &max_))
     return false;
@@ -111,7 +115,16 @@ bool BacklightController::GetCurrentBrightness(double* level) {
 }
 
 bool BacklightController::GetTargetBrightness(double* level) {
+  CHECK(level);
   *level = RawBrightnessToLocalBrightness(target_raw_brightness_);
+  return true;
+}
+
+bool BacklightController::GetBrightnessScaleLevel(double *level) {
+  CHECK(level);
+  double brightness;
+  GetTargetBrightness(&brightness);
+  *level = (brightness - min_percent_) / (max_percent_ - min_percent_) * 100.;
   return true;
 }
 

@@ -938,7 +938,7 @@ gboolean Daemon::PrefChangeHandler(const char* name,
 void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
   double brightness = 0.;
   int64 brightness_rounded;
-  if (!backlight_controller_->GetTargetBrightness(&brightness))
+  if (!backlight_controller_->GetBrightnessScaleLevel(&brightness))
     return;
   brightness_rounded = lround(brightness);
 
