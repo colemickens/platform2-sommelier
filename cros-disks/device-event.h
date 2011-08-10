@@ -31,6 +31,10 @@ struct DeviceEvent {
       device_path(path) {
   }
 
+  // NOTE: This operator== is needed due to the use of gmock matcher in
+  // DeviceEventModeratorTest.
+  bool operator==(const DeviceEvent& event) const;
+
   // Returns true if the event type is DiskAdded, DiskAddedAfterRemoved,
   // DiskChanged or DiskRemoved.
   bool IsDiskEvent() const;

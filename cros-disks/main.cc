@@ -21,6 +21,7 @@
 
 #include "cros-disks/archive-manager.h"
 #include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/device-event-moderator.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
 #include "cros-disks/platform.h"
@@ -29,6 +30,7 @@
 
 using cros_disks::ArchiveManager;
 using cros_disks::CrosDisksServer;
+using cros_disks::DeviceEventModerator;
 using cros_disks::DiskManager;
 using cros_disks::FormatManager;
 using cros_disks::Platform;
@@ -63,8 +65,9 @@ void SetupLogging() {
 gboolean UdevCallback(GIOChannel* source,
                       GIOCondition condition,
                       gpointer data) {
-  CrosDisksServer* server = static_cast<CrosDisksServer*>(data);
-  server->SignalDeviceChanges();
+  DeviceEventModerator* event_moderator =
+      reinterpret_cast<DeviceEventModerator*>(data);
+  event_moderator->ProcessNextDeviceEvent();
   // This function should always return true so that the main loop
   // continues to select on udev monitor's file descriptor.
   return true;
@@ -118,11 +121,16 @@ int main(int argc, char** argv) {
                                     &disk_manager,
                                     &format_manager);
 
+  DeviceEventModerator event_moderator(&cros_disks_server, &disk_manager);
+
   LOG(INFO) << "Creating a power manager proxy";
-  PowerManagerProxy power_manager_proxy(&server_conn, &cros_disks_server);
+  PowerManagerProxy power_manager_proxy(&server_conn);
+  power_manager_proxy.AddObserver(&event_moderator);
 
   LOG(INFO) << "Creating a session manager proxy";
-  SessionManagerProxy session_manager_proxy(&server_conn, &cros_disks_server);
+  SessionManagerProxy session_manager_proxy(&server_conn);
+  session_manager_proxy.AddObserver(&cros_disks_server);
+  session_manager_proxy.AddObserver(&event_moderator);
 
   LOG(INFO) << "Initializing the metrics library";
   MetricsLibrary metrics_lib;
@@ -133,7 +141,7 @@ int main(int argc, char** argv) {
                       G_PRIORITY_HIGH_IDLE,
                       GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
                       UdevCallback,
-                      &cros_disks_server,
+                      &event_moderator,
                       NULL);
   g_main_loop_run(loop);
 

@@ -6,6 +6,10 @@
 
 namespace cros_disks {
 
+bool DeviceEvent::operator==(const DeviceEvent& event) const {
+  return event.event_type == event_type && event.device_path == device_path;
+}
+
 bool DeviceEvent::IsDiskEvent() const {
   switch (event_type) {
     case kDiskAdded:

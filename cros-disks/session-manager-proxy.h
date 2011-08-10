@@ -6,29 +6,30 @@
 #define CROS_DISKS_SESSION_MANAGER_PROXY_H_
 
 #include <dbus-c++/dbus.h>  // NOLINT
-#include <string>
 
 #include <base/basictypes.h>
+#include <base/observer_list.h>
 
 namespace cros_disks {
 
-class SessionManagerObserver;
+class SessionManagerObserverInterface;
 
 // A proxy class that listens to DBus signals from the session manager and
-// notifies a registered observer for events.
+// notifies a list of registered observers for events.
 class SessionManagerProxy : public DBus::InterfaceProxy,
                             public DBus::ObjectProxy {
  public:
-  SessionManagerProxy(DBus::Connection* connection,
-      SessionManagerObserver* observer);
+  explicit SessionManagerProxy(DBus::Connection* connection);
 
   ~SessionManagerProxy();
+
+  void AddObserver(SessionManagerObserverInterface* observer);
 
  private:
   // Handles the SessionStateChanged DBus signal.
   void OnSessionStateChanged(const DBus::SignalMessage& signal);
 
-  SessionManagerObserver* observer_;
+  ObserverList<SessionManagerObserverInterface> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProxy);
 };

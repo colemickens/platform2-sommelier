@@ -17,6 +17,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/device-event.h"
+#include "cros-disks/device-event-source-interface.h"
 #include "cros-disks/mount-manager.h"
 
 namespace cros_disks {
@@ -41,7 +42,8 @@ class UdevDevice;
 //
 // This class is designed to run within a single-threaded GMainLoop application
 // and should not be considered thread safe.
-class DiskManager : public MountManager {
+class DiskManager : public MountManager,
+                    public DeviceEventSourceInterface {
  public:
   DiskManager(const std::string& mount_root, Platform* platform);
   virtual ~DiskManager();
@@ -61,8 +63,9 @@ class DiskManager : public MountManager {
   // Lists the current block devices attached to the system.
   virtual std::vector<Disk> EnumerateDisks() const;
 
-  // Reads the changes from udev and converts the changes into a device event.
-  // Returns true on success. Must be called to clear the fd.
+  // Implements the DeviceEventSourceInterface interface to read the changes
+  // from udev and converts the changes into a device event. Returns false on
+  // error or if not device event is available. Must be called to clear the fd.
   bool GetDeviceEvent(DeviceEvent* event);
 
   // Gets a Disk object that corresponds to a given device file.

@@ -4,20 +4,16 @@
 
 #include "cros-disks/power-manager-proxy.h"
 
-#include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "cros-disks/power-manager-observer.h"
+#include "cros-disks/power-manager-observer-interface.h"
 
 namespace cros_disks {
 
-PowerManagerProxy::PowerManagerProxy(DBus::Connection* connection,
-                                     PowerManagerObserver* observer)
+PowerManagerProxy::PowerManagerProxy(DBus::Connection* connection)
     : DBus::InterfaceProxy(power_manager::kPowerManagerInterface),
       DBus::ObjectProxy(*connection, "/",
-                        power_manager::kPowerManagerServiceName),
-      observer_(observer) {
-  CHECK(observer_) << "Invalid power manager observer";
+                        power_manager::kPowerManagerServiceName) {
   connect_signal(PowerManagerProxy, ScreenIsLocked, OnScreenIsLocked);
   connect_signal(PowerManagerProxy, ScreenIsUnlocked, OnScreenIsUnlocked);
 }
@@ -25,12 +21,19 @@ PowerManagerProxy::PowerManagerProxy(DBus::Connection* connection,
 PowerManagerProxy::~PowerManagerProxy() {
 }
 
+void PowerManagerProxy::AddObserver(PowerManagerObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer object";
+  observer_list_.AddObserver(observer);
+}
+
 void PowerManagerProxy::OnScreenIsLocked(const DBus::SignalMessage& signal) {
-  observer_->OnScreenIsLocked();
+  FOR_EACH_OBSERVER(PowerManagerObserverInterface, observer_list_,
+                    OnScreenIsLocked());
 }
 
 void PowerManagerProxy::OnScreenIsUnlocked(const DBus::SignalMessage& signal) {
-  observer_->OnScreenIsUnlocked();
+  FOR_EACH_OBSERVER(PowerManagerObserverInterface, observer_list_,
+                    OnScreenIsUnlocked());
 }
 
 }  // namespace cros_disks

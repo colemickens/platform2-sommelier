@@ -9,10 +9,11 @@
 #include <vector>
 
 #include "cros-disks/cros-disks-server.h"
+#include "cros-disks/device-event-dispatcher-interface.h"
 #include "cros-disks/device-event-queue.h"
 #include "cros-disks/disk.h"
-#include "cros-disks/power-manager-observer.h"
-#include "cros-disks/session-manager-observer.h"
+#include "cros-disks/power-manager-observer-interface.h"
+#include "cros-disks/session-manager-observer-interface.h"
 
 namespace cros_disks {
 
@@ -43,8 +44,8 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::IntrospectableAdaptor,
                         public DBus::PropertiesAdaptor,
                         public DBus::ObjectAdaptor,
-                        public PowerManagerObserver,
-                        public SessionManagerObserver {
+                        public DeviceEventDispatcherInterface,
+                        public SessionManagerObserverInterface {
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
                   Platform* platform,
@@ -111,32 +112,18 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   virtual DBusDisk GetDeviceProperties(const std::string& device_path,
       DBus::Error& error);  // NOLINT
 
-  // Emits appropriate DBus signals notifying device changes.
-  void SignalDeviceChanges();
-
-  // Implements the PowerManagerObserver interface to handle the event
-  // when the screen is locked.
-  virtual void OnScreenIsLocked();
-
-  // Implements the PowerManagerObserver interface to handle the event
-  // when the screen is unlocked.
-  virtual void OnScreenIsUnlocked();
-
-  // Implements the SessionManagerObserver interface to handle the event
-  // when the session has been started.
+  // Implements the SessionManagerObserverInterface interface to handle
+  // the event when the session has been started.
   virtual void OnSessionStarted(const std::string& user);
 
-  // Implements the SessionManagerObserver interface to handle the event
-  // when the session has been stopped.
+  // Implements the SessionManagerObserverInterface interface to handle
+  // the event when the session has been stopped.
   virtual void OnSessionStopped(const std::string& user);
 
  private:
-  // Dispatches a device event by emitting the corresponding D-Bus signal.
+  // Implements the DeviceEventDispatcherInterface to dispatch a device event
+  // by emitting the corresponding D-Bus signal.
   void DispatchDeviceEvent(const DeviceEvent& event);
-
-  // Dispatches all queued device events by emitting the corresponding
-  // D-Bus signals.
-  void DispatchQueuedDeviceEvents();
 
   // Initializes DBus properties.
   void InitializeProperties();
@@ -151,9 +138,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // devices are returned.
   std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
 
-  // A list of deferred disk events to be fired.
-  DeviceEventQueue device_event_queue_;
-
   Platform* platform_;
 
   ArchiveManager* archive_manager_;
@@ -163,10 +147,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   FormatManager* format_manager_;
 
   std::vector<MountManager*> mount_managers_;
-
-  // This variable is set to true if any new device event should be queued
-  // instead of being dispatched immediately.
-  bool is_device_event_queued_;
 };
 
 }  // namespace cros_disks

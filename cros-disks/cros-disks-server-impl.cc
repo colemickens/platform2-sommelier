@@ -34,8 +34,7 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
       platform_(platform),
       archive_manager_(archive_manager),
       disk_manager_(disk_manager),
-      format_manager_(format_manager),
-      is_device_event_queued_(true) {
+      format_manager_(format_manager) {
   CHECK(platform_) << "Invalid platform object";
   CHECK(archive_manager_) << "Invalid archive manager object";
   CHECK(disk_manager_) << "Invalid disk manager object";
@@ -196,33 +195,7 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
   return disk.ToDBusFormat();
 }
 
-void CrosDisksServer::SignalDeviceChanges() {
-  DeviceEvent event;
-  if (disk_manager_->GetDeviceEvent(&event)) {
-    if (is_device_event_queued_) {
-      device_event_queue_.Add(event);
-    } else {
-      DispatchDeviceEvent(event);
-    }
-  }
-}
-
-void CrosDisksServer::OnScreenIsLocked() {
-  LOG(INFO) << "Screen is locked";
-  is_device_event_queued_ = true;
-}
-
-void CrosDisksServer::OnScreenIsUnlocked() {
-  LOG(INFO) << "Screen is unlocked";
-  DispatchQueuedDeviceEvents();
-  is_device_event_queued_ = false;
-}
-
 void CrosDisksServer::OnSessionStarted(const string& user) {
-  LOG(INFO) << "Session started";
-  DispatchQueuedDeviceEvents();
-  is_device_event_queued_ = false;
-
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {
     MountManager* manager = *manager_iter;
@@ -231,9 +204,6 @@ void CrosDisksServer::OnSessionStarted(const string& user) {
 }
 
 void CrosDisksServer::OnSessionStopped(const string& user) {
-  LOG(INFO) << "Session stopped";
-  is_device_event_queued_ = true;
-
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {
     MountManager* manager = *manager_iter;
@@ -267,16 +237,6 @@ void CrosDisksServer::DispatchDeviceEvent(const DeviceEvent& event) {
       break;
     default:
       break;
-  }
-}
-
-void CrosDisksServer::DispatchQueuedDeviceEvents() {
-  const DeviceEvent* event;
-  while ((event = device_event_queue_.Head()) != NULL) {
-    LOG(INFO) << "Dispatch queued event: type=" << event->event_type
-              << " device='" << event->device_path << "'";
-    DispatchDeviceEvent(*event);
-    device_event_queue_.Remove();
   }
 }
 

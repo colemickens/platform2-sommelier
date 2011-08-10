@@ -8,20 +8,22 @@
 #include <dbus-c++/dbus.h>  // NOLINT
 
 #include <base/basictypes.h>
+#include <base/observer_list.h>
 
 namespace cros_disks {
 
-class PowerManagerObserver;
+class PowerManagerObserverInterface;
 
 // A proxy class that listens to DBus signals from the power manager and
-// notifies a registered observer for events.
+// notifies a list of registered observers for events.
 class PowerManagerProxy : public DBus::InterfaceProxy,
                           public DBus::ObjectProxy {
  public:
-  PowerManagerProxy(DBus::Connection* connection,
-      PowerManagerObserver* observer);
+  explicit PowerManagerProxy(DBus::Connection* connection);
 
   ~PowerManagerProxy();
+
+  void AddObserver(PowerManagerObserverInterface* observer);
 
  private:
   // Handles the ScreenIsLocked DBus signal.
@@ -30,7 +32,7 @@ class PowerManagerProxy : public DBus::InterfaceProxy,
   // Handles the ScreenIsUnlocked DBus signal.
   void OnScreenIsUnlocked(const DBus::SignalMessage& signal);
 
-  PowerManagerObserver* observer_;
+  ObserverList<PowerManagerObserverInterface> observer_list_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerManagerProxy);
 };

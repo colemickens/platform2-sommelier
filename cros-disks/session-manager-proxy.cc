@@ -4,28 +4,32 @@
 
 #include "cros-disks/session-manager-proxy.h"
 
-#include <base/logging.h>
+#include <string>
+
 #include <chromeos/dbus/service_constants.h>
 
-#include "cros-disks/session-manager-observer.h"
+#include "cros-disks/session-manager-observer-interface.h"
 
 using std::string;
 
 namespace cros_disks {
 
-SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection,
-                                         SessionManagerObserver* observer)
+SessionManagerProxy::SessionManagerProxy(DBus::Connection* connection)
     : DBus::InterfaceProxy(login_manager::kSessionManagerInterface),
       DBus::ObjectProxy(*connection,
                         login_manager::kSessionManagerServicePath,
-                        login_manager::kSessionManagerServiceName),
-      observer_(observer) {
-  CHECK(observer_) << "Invalid session manager observer";
+                        login_manager::kSessionManagerServiceName) {
   connect_signal(SessionManagerProxy, SessionStateChanged,
                  OnSessionStateChanged);
 }
 
 SessionManagerProxy::~SessionManagerProxy() {
+}
+
+void SessionManagerProxy::AddObserver(
+    SessionManagerObserverInterface* observer) {
+  CHECK(observer) << "Invalid observer object";
+  observer_list_.AddObserver(observer);
 }
 
 void SessionManagerProxy::OnSessionStateChanged(
@@ -34,9 +38,11 @@ void SessionManagerProxy::OnSessionStateChanged(
   string state, user;
   reader >> state >> user;
   if (state == "started") {
-    observer_->OnSessionStarted(user);
+    FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
+                      OnSessionStarted(user));
   } else if (state == "stopped") {
-    observer_->OnSessionStopped(user);
+    FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
+                      OnSessionStopped(user));
   }
 }
 
