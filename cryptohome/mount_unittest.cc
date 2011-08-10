@@ -635,7 +635,8 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
 }
 
-TEST_F(MountTest, UserActivityTimestampUpdated) {
+// Test is disabled due to http://crosbug.com/18788
+TEST_F(MountTest, DISABLED_UserActivityTimestampUpdated) {
   // checks that user activity timestamp is updated during Mount() and
   // periodically while mounted, other Keyset fields remains the same
   Mount mount;
