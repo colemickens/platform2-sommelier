@@ -5,11 +5,9 @@
 #ifndef CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 #define CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 
-#include <glib.h>
-
-// To conform to the GError conventions...
-#define CHROMEOS_LOGIN_ERROR chromeos_login_error_quark()
-GQuark chromeos_login_error_quark();
+// TODO(satorux): Remove this once all files that need the error constants
+// are modified to include "error_constants.h".
+#include "error_constants.h"
 
 namespace cryptohome {
 extern const char* kCryptohomeInterface;
@@ -95,24 +93,6 @@ extern const char* kSessionManagerRetrieveUserPolicy;
 extern const char* kSessionManagerRetrieveSessionState;
 // Signals
 extern const char* kSessionManagerSessionStateChanged;
-
-// Also, conforming to GError conventions
-typedef enum {
-  CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,   // email address is illegal.
-  CHROMEOS_LOGIN_ERROR_EMIT_FAILED,     // could not emit upstart signal.
-  CHROMEOS_LOGIN_ERROR_SESSION_EXISTS,  // session already exists for this user.
-  CHROMEOS_LOGIN_ERROR_UNKNOWN_PID,     // pid specified is unknown.
-  CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB,   // error finding/opening NSS DB.
-  CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY,  // attempt to set key is illegal.
-  CHROMEOS_LOGIN_ERROR_NO_OWNER_KEY,    // attempt to set prefs before key.
-  CHROMEOS_LOGIN_ERROR_VERIFY_FAIL,     // Signature on update request failed.
-  CHROMEOS_LOGIN_ERROR_ENCODE_FAIL,     // Encoding signature for writing to
-                                        // disk failed.
-  CHROMEOS_LOGIN_ERROR_DECODE_FAIL,     // Decoding signature failed.
-  CHROMEOS_LOGIN_ERROR_ILLEGAL_USER,    // The user is not on the whitelist.
-  CHROMEOS_LOGIN_ERROR_UNKNOWN_PROPERTY,// No value set for given property.
-} ChromeOSLoginError;
-
 }  // namespace login_manager
 
 namespace speech_synthesis {
