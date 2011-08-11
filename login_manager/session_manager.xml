@@ -106,5 +106,16 @@
       <arg type="s" name="command_line" direction="in" />
       <arg type="b" name="done" direction="out" />
     </method>
+    <!-- These two methods start and stop per-session services. Per-session
+         services are ordinary upstart services that are stopped when the
+         session ends. -->
+    <method name="StartSessionService">
+      <arg type="s" name="name" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
+    <method name="StopSessionService">
+      <arg type="s" name="name" direction="in" />
+      <arg type="b" name="done" direction="out" />
+    </method>
   </interface>
 </node>

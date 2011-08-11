@@ -183,6 +183,11 @@ const char SessionManagerService::kStarted[] = "started";
 const char SessionManagerService::kStopping[] = "stopping";
 // static
 const char SessionManagerService::kStopped[] = "stopped";
+// static
+const char *SessionManagerService::kValidSessionServices[] = {
+  "tor",
+  NULL
+};
 
 namespace {
 
@@ -764,6 +769,56 @@ gboolean SessionManagerService::RestartEntd(GError** error) {
   LOG(INFO) << "Restart was " << (restarted ? "" : "not ")
             << "successful.";
   return restarted;
+}
+
+gboolean SessionManagerService::StartSessionService(gchar *name,
+                                                    gboolean *OUT_done,
+                                                    GError **error) {
+  if (!IsValidSessionService(name)) {
+    LOG(ERROR) << "Invalid session service name: " << name;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE,
+                       "Invalid session service name.");
+    return FALSE;
+  }
+
+  LOG(INFO) << "Starting session service: " << name;
+  string command = StringPrintf("/sbin/initctl start %s", name);
+  int status = system(command.c_str());
+  if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+    LOG(ERROR) << "Could not start " << name << ": " << status;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_START_FAIL,
+                       "Starting service failed.");
+  }
+  return status == 0;
+}
+
+gboolean SessionManagerService::StopSessionService(gchar *name,
+                                                   gboolean *OUT_done,
+                                                   GError **error) {
+  if (!IsValidSessionService(name)) {
+    LOG(ERROR) << "Invalid session service name: " << name;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE,
+                       "Invalid session service name.");
+    return FALSE;
+  }
+
+  LOG(INFO) << "Stopping session service: " << name;
+  string command = StringPrintf("/sbin/initctl stop %s", name);
+  int status = system(command.c_str());
+  if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+    LOG(ERROR) << "Could not stop " << name << ": " << status;
+    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_STOP_FAIL,
+                       "Stopping service failed.");
+  }
+  return status == 0;
+}
+
+// static
+bool SessionManagerService::IsValidSessionService(const gchar *name) {
+  for (int i = 0; kValidSessionServices[i]; i++)
+    if (!strcmp(name, kValidSessionServices[i]))
+      return true;
+  return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

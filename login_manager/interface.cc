@@ -166,16 +166,30 @@ gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error) {
   SESSION_MANAGER_WRAP_METHOD(UnlockScreen, error);
 }
-gboolean session_manager_restart_job(SessionManager* self,
+gboolean session_manager_restart_job(SessionManager *self,
                                      gint pid,
-                                     gchar* arguments,
-                                     gboolean* OUT_done,
-                                     GError** error) {
+                                     gchar *arguments,
+                                     gboolean *OUT_done,
+                                     GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RestartJob, pid, arguments, OUT_done, error);
 }
-gboolean session_manager_restart_entd(SessionManager* self,
-                                      GError** error) {
+gboolean session_manager_restart_entd(SessionManager *self,
+                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RestartEntd, error);
+}
+
+gboolean session_manager_start_session_service(SessionManager *self,
+                                               gchar *name,
+                                               gboolean *OUT_done,
+                                               GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(StartSessionService, name, OUT_done, error);
+}
+
+gboolean session_manager_stop_session_service(SessionManager *self,
+                                              gchar *name,
+                                              gboolean *OUT_done,
+                                              GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(StopSessionService, name, OUT_done, error);
 }
 
 #undef SESSION_MANAGER_WRAP_METHOD

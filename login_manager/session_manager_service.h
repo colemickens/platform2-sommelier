@@ -273,6 +273,11 @@ class SessionManagerService
   // start was successful.
   gboolean RestartEntd(GError** error);
 
+  // Manage per-session services, which die when the session ends.
+  gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
+  gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);
+  static bool IsValidSessionService(const gchar *name);
+
   // |data| is a SessionManagerService*
   static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
@@ -387,6 +392,7 @@ class SessionManagerService
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
   static const char kIOThreadName[];
+  static const char *kValidSessionServices[];
 
   // TODO(cmasone): consider tracking job, pid and watcher in one struct.
   std::vector<ChildJobInterface*> child_jobs_;
