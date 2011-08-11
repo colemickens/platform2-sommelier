@@ -31,11 +31,21 @@ class Cellular : public Device,
     kTypeCDMA
   };
 
+  // The device states progress linearly from Disabled to Linked.
   enum State {
+    // This is the initial state of the modem and indicates that the modem radio
+    // is not turned on.
     kStateDisabled,
+    // This state indicates that the modem radio is turned on, and it should be
+    // possible to measure signal strength.
     kStateEnabled,
+    // The modem has registered with a network and has signal quality
+    // measurements.
     kStateRegistered,
+    // The modem has connected to a network.
     kStateConnected,
+    // The network interface is UP.
+    kStateLinked,
   };
 
   // These should be kept in sync with ModemManager's mm-modem.h:MMModemState.
@@ -121,6 +131,7 @@ class Cellular : public Device,
   virtual void Start();
   virtual void Stop();
   virtual bool TechnologyIs(Technology type) const;
+  virtual void LinkEvent(unsigned int flags, unsigned int change);
 
  private:
   FRIEND_TEST(CellularTest, Connect);
@@ -134,10 +145,13 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, Start);
   FRIEND_TEST(CellularTest, StartConnected);
+  FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartRegister);
 
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
+
+  void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
 
@@ -178,6 +192,7 @@ class Cellular : public Device,
   // Processes a change in the modem registration state, possibly creating,
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
+  void HandleNewRegistrationStateTask();
 
   void CreateService();
 
@@ -215,7 +230,6 @@ class Cellular : public Device,
   CDMA cdma_;
 
   CellularServiceRefPtr service_;
-  bool service_registered_;
 
   ScopedRunnableMethodFactory<Cellular> task_factory_;
 

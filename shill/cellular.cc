@@ -4,6 +4,9 @@
 
 #include "shill/cellular.h"
 
+#include <netinet/in.h>
+#include <linux/if.h>
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,6 +25,7 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
+#include "shill/rtnl_handler.h"
 #include "shill/shill_event.h"
 
 using std::make_pair;
@@ -111,7 +115,6 @@ Cellular::Cellular(ControlInterface *control_interface,
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
-      service_registered_(false),
       task_factory_(this),
       allow_roaming_(false),
       prl_version_(0),
@@ -151,25 +154,35 @@ Cellular::Cellular(ControlInterface *control_interface,
 
 Cellular::~Cellular() {}
 
-std::string Cellular::GetTypeString() {
+string Cellular::GetTypeString() {
   switch (type_) {
     case kTypeGSM: return "CellularTypeGSM";
     case kTypeCDMA: return "CellularTypeCDMA";
-    default: return StringPrintf("CellularTypeUnknown-%d", type_);
+    default: NOTREACHED();
   }
+  return StringPrintf("CellularTypeUnknown-%d", type_);
 }
 
-std::string Cellular::GetStateString() {
+string Cellular::GetStateString() {
   switch (state_) {
     case kStateDisabled: return "CellularStateDisabled";
     case kStateEnabled: return "CellularStateEnabled";
     case kStateRegistered: return "CellularStateRegistered";
     case kStateConnected: return "CellularStateConnected";
-    default: return StringPrintf("CellularStateUnknown-%d", state_);
+    case kStateLinked: return "CellularStateLinked";
+    default: NOTREACHED();
   }
+  return StringPrintf("CellularStateUnknown-%d", state_);
+}
+
+void Cellular::SetState(State state) {
+  VLOG(2) << "Current state: " << GetStateString();
+  state_ = state;
+  VLOG(2) << "New state: " << GetStateString();
 }
 
 void Cellular::Start() {
+  LOG(INFO) << "Start";
   VLOG(2) << __func__ << ": " << GetStateString();
   InitProxies();
   EnableModem();
@@ -183,9 +196,6 @@ void Cellular::Start() {
   }
   GetModemInfo();
   GetModemRegistrationState();
-  if (modem_state_ == kModemStateConnected) {
-    EstablishLink();
-  }
   // TODO(petkov): Device::Start();
 }
 
@@ -195,11 +205,13 @@ void Cellular::Stop() {
   cdma_proxy_.reset();
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
-  state_ = kStateDisabled;
+  SetState(kStateDisabled);
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
   // TODO(petkov): Device::Stop();
 }
 
 void Cellular::InitProxies() {
+  LOG(INFO) << "InitProxies";
   proxy_.reset(
       ProxyFactory::factory()->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
@@ -222,7 +234,7 @@ void Cellular::EnableModem() {
   CHECK_EQ(kStateDisabled, state_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   proxy_->Enable(true);
-  state_ = kStateEnabled;
+  SetState(kStateEnabled);
 }
 
 void Cellular::GetModemStatus() {
@@ -314,27 +326,39 @@ bool Cellular::IsModemRegistered() {
 }
 
 void Cellular::HandleNewRegistrationState() {
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(
+          &Cellular::HandleNewRegistrationStateTask));
+}
+
+void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
   if (!IsModemRegistered()) {
     service_ = NULL;
-    if (state_ == kStateConnected || state_ == kStateRegistered) {
-      state_ = kStateEnabled;
+    if (state_ == kStateLinked ||
+        state_ == kStateConnected ||
+        state_ == kStateRegistered) {
+      SetState(kStateEnabled);
     }
     return;
   }
-
   if (state_ == kStateEnabled) {
-    state_ = kStateRegistered;
+    SetState(kStateRegistered);
   }
   if (!service_.get()) {
     // For now, no endpoint is created. Revisit if necessary.
     CreateService();
   }
   GetModemSignalQuality();
+  if (state_ == kStateRegistered && modem_state_ == kModemStateConnected) {
+    SetState(kStateConnected);
+    EstablishLink();
+  }
   // TODO(petkov): Update the service.
 }
 
 void Cellular::GetModemSignalQuality() {
+  VLOG(2) << __func__;
   uint32 strength = 0;
   switch (type_) {
     case kTypeGSM:
@@ -349,6 +373,7 @@ void Cellular::GetModemSignalQuality() {
 }
 
 uint32 Cellular::GetCDMASignalQuality() {
+  VLOG(2) << __func__;
   CHECK_EQ(kTypeCDMA, type_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   return cdma_proxy_->GetSignalQuality();
@@ -368,6 +393,7 @@ void Cellular::HandleNewSignalQuality(uint32 strength) {
 }
 
 void Cellular::CreateService() {
+  VLOG(2) << __func__;
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface_, dispatcher_, manager_, this);
@@ -382,7 +408,8 @@ bool Cellular::TechnologyIs(const Device::Technology type) const {
 
 void Cellular::Connect() {
   VLOG(2) << __func__;
-  if (state_ == kStateConnected) {
+  if (state_ == kStateConnected ||
+      state_ == kStateLinked) {
     return;
   }
   CHECK_EQ(kStateRegistered, state_);
@@ -409,14 +436,37 @@ void Cellular::ConnectTask(const DBusPropertiesMap &properties) {
   VLOG(2) << __func__;
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   simple_proxy_->Connect(properties);
+  SetState(kStateConnected);
   EstablishLink();
 }
 
 void Cellular::EstablishLink() {
   VLOG(2) << __func__;
-  CHECK_EQ(kStateRegistered, state_);
-  state_ = kStateConnected;
-  // TODO(petkov): Bring the network interface up.
+  CHECK_EQ(kStateConnected, state_);
+  unsigned int flags = 0;
+  if (manager_->device_info()->GetFlags(interface_index_, &flags) &&
+      (flags & IFF_UP) != 0) {
+    LinkEvent(flags, IFF_UP);
+    return;
+  }
+  // TODO(petkov): Provide a timeout for a failed link-up request.
+  RTNLHandler::GetInstance()->SetInterfaceFlags(
+      interface_index_, IFF_UP, IFF_UP);
+}
+
+void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
+  Device::LinkEvent(flags, change);
+  if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
+    LOG(INFO) << link_name_ << " is up.";
+    SetState(kStateLinked);
+    manager_->RegisterService(service_);
+    // TODO(petkov): For GSM, remember the APN.
+    // TODO(petkov): Acquire IP.
+  } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
+    SetState(kStateConnected);
+    manager_->DeregisterService(service_);
+    // TODO(petkov): Release IP.
+  }
 }
 
 void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,

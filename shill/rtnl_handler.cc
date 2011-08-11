@@ -121,7 +121,7 @@ void RTNLHandler::RemoveListener(RTNLListener *to_remove) {
 }
 
 void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
-                                   unsigned int change) {
+                                    unsigned int change) {
   struct rtnl_request {
     struct nlmsghdr hdr;
     struct ifinfomsg msg;

@@ -95,6 +95,7 @@ class RTNLHandler {
 
  private:
   friend struct base::DefaultLazyInstanceTraits<RTNLHandler>;
+  friend class CellularTest;
   friend class DeviceInfoTest;
   friend class ModemTest;
   friend class RTNLHandlerTest;

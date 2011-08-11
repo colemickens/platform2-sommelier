@@ -12,6 +12,7 @@
 #include <base/callback_old.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/byte_string.h"
 #include "shill/device.h"
@@ -43,6 +44,7 @@ class DeviceInfo {
 
  private:
   friend class DeviceInfoTest;
+  FRIEND_TEST(CellularTest, StartLinked);
 
   struct Info {
     Info() : flags(0) {}
