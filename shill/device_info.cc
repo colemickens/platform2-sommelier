@@ -17,7 +17,6 @@
 #include <string>
 
 #include <base/callback_old.h>
-#include <base/hash_tables.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util-inl.h>
@@ -35,7 +34,7 @@
 #include "shill/service.h"
 #include "shill/wifi.h"
 
-using base::hash_map;
+using std::map;
 using std::string;
 
 namespace shill {
@@ -82,21 +81,13 @@ void DeviceInfo::Stop() {
 void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   VLOG(2) << __func__ << "(" << device->link_name() << ", "
           << device->interface_index() << ")";
-  CHECK(!ContainsKey(devices_, device->interface_index()));
-  devices_[device->interface_index()] = device;
+  CHECK(!GetDevice(device->interface_index()).get());
+  infos_[device->interface_index()].device = device;
   if (device->TechnologyIs(Device::kCellular) ||
       device->TechnologyIs(Device::kEthernet) ||
       device->TechnologyIs(Device::kWifi)) {
     manager_->RegisterDevice(device);
   }
-}
-
-DeviceRefPtr DeviceInfo::GetDevice(int interface_index) {
-  hash_map<int, DeviceRefPtr>::iterator iter = devices_.find(interface_index);
-  if (iter == devices_.end()) {
-    return NULL;
-  }
-  return iter->second;
 }
 
 Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
@@ -150,7 +141,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   int dev_index = msg.interface_index();
   Device::Technology technology = Device::kUnknown;
 
-  VLOG(2) << __func__;
+  unsigned int flags = msg.link_status().flags;
+  unsigned int change = msg.link_status().change;
+  VLOG(2) << __func__ << "(index=" << dev_index
+          << ", flags=" << flags << ", change=" << change << ")";
+  infos_[dev_index].flags = flags;
 
   DeviceRefPtr device = GetDevice(dev_index);
   if (!device.get()) {
@@ -191,22 +186,45 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
     }
     RegisterDevice(device);
   }
-
-  device->LinkEvent(msg.link_status().flags, msg.link_status().change);
+  device->LinkEvent(flags, change);
 }
 
 void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
   DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
          msg.mode() == RTNLMessage::kMessageModeDelete);
-  RemoveDevice(msg.interface_index());
+  RemoveInfo(msg.interface_index());
 }
 
-void DeviceInfo::RemoveDevice(int interface_index) {
-  hash_map<int, DeviceRefPtr>::iterator ndev = devices_.find(interface_index);
-  if (ndev != devices_.end()) {
-    VLOG(2) << "Removing device index: " << interface_index;
-    manager_->DeregisterDevice(ndev->second);
-    devices_.erase(ndev);
+DeviceRefPtr DeviceInfo::GetDevice(int interface_index) {
+  Info *info = GetInfo(interface_index);
+  return info ? info->device : NULL;
+}
+
+bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) {
+  Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  *flags = info->flags;
+  return true;
+}
+
+DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) {
+  map<int, Info>::iterator iter = infos_.find(interface_index);
+  if (iter == infos_.end()) {
+    return NULL;
+  }
+  return &iter->second;
+}
+
+void DeviceInfo::RemoveInfo(int interface_index) {
+  map<int, Info>::iterator iter = infos_.find(interface_index);
+  if (iter != infos_.end()) {
+    VLOG(2) << "Removing info for device index: " << interface_index;
+    if (iter->second.device.get()) {
+      manager_->DeregisterDevice(iter->second.device);
+    }
+    infos_.erase(iter);
   }
 }
 

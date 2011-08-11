@@ -6,6 +6,7 @@
 
 #include <glib.h>
 #include <sys/socket.h>
+#include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
 
@@ -24,6 +25,7 @@
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
 
+using std::map;
 using std::string;
 using testing::_;
 using testing::Return;
@@ -45,10 +47,6 @@ class DeviceInfoTest : public Test {
   DeviceInfoTest()
       : manager_(&control_interface_, &dispatcher_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &manager_) {
-  }
-
-  base::hash_map<int, DeviceRefPtr> *DeviceInfoDevices() {
-    return &device_info_.devices_;
   }
 
  protected:
@@ -87,20 +85,26 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   device_info_.Start();
   scoped_ptr<RTNLMessage> message(BuildMessage(RTNLMessage::kMessageTypeLink,
                                                RTNLMessage::kMessageModeAdd));
-  SendMessageToDeviceInfo(*message.get());
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
+  unsigned int flags = 0;
+  EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
+  EXPECT_EQ(IFF_LOWER_UP, flags);
 
-  // Peek in at the map of devices
-  base::hash_map<int, DeviceRefPtr> *device_map = DeviceInfoDevices();
-  EXPECT_EQ(1, device_map->size());
-  EXPECT_TRUE(ContainsKey(*device_map, kTestDeviceIndex));
+  message.reset(BuildMessage(RTNLMessage::kMessageTypeLink,
+                             RTNLMessage::kMessageModeAdd));
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_UP | IFF_RUNNING, 0));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
+  EXPECT_EQ(IFF_UP | IFF_RUNNING, flags);
 
   message.reset(BuildMessage(RTNLMessage::kMessageTypeLink,
                              RTNLMessage::kMessageModeDelete));
-  SendMessageToDeviceInfo(*message.get());
-
-  // Peek in at the map of devices
-  EXPECT_EQ(0, device_map->size());
-  EXPECT_FALSE(ContainsKey(*device_map, kTestDeviceIndex));
+  SendMessageToDeviceInfo(*message);
+  EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
+  EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
 
   device_info_.Stop();
 }
@@ -110,13 +114,11 @@ TEST_F(DeviceInfoTest, DeviceBlackList) {
   device_info_.Start();
   scoped_ptr<RTNLMessage> message(BuildMessage(RTNLMessage::kMessageTypeLink,
                                                RTNLMessage::kMessageModeAdd));
-  SendMessageToDeviceInfo(*message.get());
+  SendMessageToDeviceInfo(*message);
 
-  // Peek in at the map of devices
-  base::hash_map<int, DeviceRefPtr> *device_map(DeviceInfoDevices());
-  ASSERT_TRUE(ContainsKey(*device_map, kTestDeviceIndex));
-  EXPECT_TRUE(device_map->find(kTestDeviceIndex)->second->TechnologyIs(
-      Device::kBlacklisted));
+  DeviceRefPtr device = device_info_.GetDevice(kTestDeviceIndex);
+  ASSERT_TRUE(device.get());
+  EXPECT_TRUE(device->TechnologyIs(Device::kBlacklisted));
 
   device_info_.Stop();
 }

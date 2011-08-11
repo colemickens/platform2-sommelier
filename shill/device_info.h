@@ -5,11 +5,11 @@
 #ifndef SHILL_DEVICE_INFO_
 #define SHILL_DEVICE_INFO_
 
+#include <map>
 #include <set>
 #include <string>
 
 #include <base/callback_old.h>
-#include <base/hash_tables.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
@@ -38,9 +38,17 @@ class DeviceInfo {
   void RegisterDevice(const DeviceRefPtr &device);
 
   DeviceRefPtr GetDevice(int interface_index);
+  bool GetFlags(int interface_index, unsigned int *flags);
 
  private:
   friend class DeviceInfoTest;
+
+  struct Info {
+    Info() : flags(0) {}
+
+    DeviceRefPtr device;
+    unsigned int flags;
+  };
 
   static const char *kInterfaceUevent;
   static const char *kInterfaceDriver;
@@ -52,15 +60,18 @@ class DeviceInfo {
   void DelLinkMsgHandler(const RTNLMessage &msg);
   void LinkMsgHandler(const RTNLMessage &msg);
 
-  void RemoveDevice(int interface_index);
+  Info *GetInfo(int interface_index);
+  void RemoveInfo(int interface_index);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;
-  base::hash_map<int, DeviceRefPtr> devices_;
+  std::map<int, Info> infos_;
   scoped_ptr<Callback1<const RTNLMessage &>::Type> link_callback_;
   scoped_ptr<RTNLListener> link_listener_;
   std::set<std::string> black_list_;
+
+  DISALLOW_COPY_AND_ASSIGN(DeviceInfo);
 };
 
 }  // namespace shill
