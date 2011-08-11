@@ -6,6 +6,10 @@
 
 #include <netinet/in.h>
 
+#include <base/string_number_conversions.h>
+
+using std::string;
+
 namespace shill {
 
 // static
@@ -51,6 +55,10 @@ bool ByteString::Equals(const ByteString &b) const {
 
 void ByteString::Append(const ByteString &b) {
   data_.insert(data_.end(), b.data_.begin(), b.data_.end());
+}
+
+string ByteString::HexEncode() const {
+  return base::HexEncode(GetConstData(), GetLength());
 }
 
 }  // namespace shill

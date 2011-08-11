@@ -149,6 +149,11 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 
   DeviceRefPtr device = GetDevice(dev_index);
   if (!device.get()) {
+    if (msg.HasAttribute(IFLA_ADDRESS)) {
+      infos_[dev_index].address = msg.GetAttribute(IFLA_ADDRESS);
+      VLOG(2) << "link index " << dev_index << " address "
+              << infos_[dev_index].address.HexEncode();
+    }
     if (!msg.HasAttribute(IFLA_IFNAME)) {
       LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
       return;
@@ -195,13 +200,22 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
   RemoveInfo(msg.interface_index());
 }
 
-DeviceRefPtr DeviceInfo::GetDevice(int interface_index) {
-  Info *info = GetInfo(interface_index);
+DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
+  const Info *info = GetInfo(interface_index);
   return info ? info->device : NULL;
 }
 
-bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) {
-  Info *info = GetInfo(interface_index);
+bool DeviceInfo::GetAddress(int interface_index, ByteString *address) const {
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  *address = info->address;
+  return true;
+}
+
+bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
+  const Info *info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
@@ -209,8 +223,8 @@ bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) {
   return true;
 }
 
-DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) {
-  map<int, Info>::iterator iter = infos_.find(interface_index);
+const DeviceInfo::Info *DeviceInfo::GetInfo(int interface_index) const {
+  map<int, Info>::const_iterator iter = infos_.find(interface_index);
   if (iter == infos_.end()) {
     return NULL;
   }

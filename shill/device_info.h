@@ -13,8 +13,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/byte_string.h"
 #include "shill/device.h"
-
 #include "shill/rtnl_listener.h"
 
 namespace shill {
@@ -37,8 +37,9 @@ class DeviceInfo {
   // messages, and registers it with the manager.
   void RegisterDevice(const DeviceRefPtr &device);
 
-  DeviceRefPtr GetDevice(int interface_index);
-  bool GetFlags(int interface_index, unsigned int *flags);
+  DeviceRefPtr GetDevice(int interface_index) const;
+  bool GetAddress(int interface_index, ByteString *address) const;
+  bool GetFlags(int interface_index, unsigned int *flags) const;
 
  private:
   friend class DeviceInfoTest;
@@ -47,6 +48,7 @@ class DeviceInfo {
     Info() : flags(0) {}
 
     DeviceRefPtr device;
+    ByteString address;
     unsigned int flags;
   };
 
@@ -60,7 +62,7 @@ class DeviceInfo {
   void DelLinkMsgHandler(const RTNLMessage &msg);
   void LinkMsgHandler(const RTNLMessage &msg);
 
-  Info *GetInfo(int interface_index);
+  const Info *GetInfo(int interface_index) const;
   void RemoveInfo(int interface_index);
 
   ControlInterface *control_interface_;

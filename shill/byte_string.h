@@ -48,12 +48,15 @@ class ByteString {
   // Returns true on success
   bool ConvertToNetUInt32(uint32 *val) const;
 
+  bool IsEmpty() const { return GetLength() == 0; }
   bool IsZero() const;
   bool Equals(const ByteString &b) const;
   void Append(const ByteString &b);
   void Resize(int size) {
     data_.resize(size, 0);
   }
+
+  std::string HexEncode() const;
 
  private:
   std::vector<unsigned char> data_;

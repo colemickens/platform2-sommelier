@@ -52,6 +52,7 @@ class DeviceInfoTest : public Test {
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
+  static const char kTestAddress[];
 
   RTNLMessage *BuildMessage(RTNLMessage::MessageType type,
                             RTNLMessage::MessageMode mode);
@@ -66,6 +67,8 @@ class DeviceInfoTest : public Test {
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
+const char DeviceInfoTest::kTestAddress[] = {
+  0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
 
 RTNLMessage *DeviceInfoTest::BuildMessage(RTNLMessage::MessageType type,
                                           RTNLMessage::MessageMode mode) {
@@ -86,12 +89,18 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   scoped_ptr<RTNLMessage> message(BuildMessage(RTNLMessage::kMessageTypeLink,
                                                RTNLMessage::kMessageModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  ByteString test_address(kTestAddress, sizeof(kTestAddress));
+  message->SetAttribute(IFLA_ADDRESS, test_address);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
   unsigned int flags = 0;
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
+  ByteString address;
+  EXPECT_TRUE(device_info_.GetAddress(kTestDeviceIndex, &address));
+  EXPECT_FALSE(address.IsEmpty());
+  EXPECT_TRUE(test_address.Equals(address));
 
   message.reset(BuildMessage(RTNLMessage::kMessageTypeLink,
                              RTNLMessage::kMessageModeAdd));
