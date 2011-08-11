@@ -21,6 +21,10 @@
 #include "openssl/x509.h"
 
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
+// Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
+// authentication for the IPsec SA.  Default StrongS/WAN setup is
+// to only propose SHA1.
+DEFINE_string(esp, "aes128-sha1,3des-sha1,aes128-md5,3des-md5", "esp proposals");
 // Windows RRAS requires modp1024 dh-group.  Strongswan's
 // default is modp1536 which it does not support.
 DEFINE_string(ike, "3des-sha1-modp1024", "ike proposals");
@@ -274,6 +278,7 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "pkcs11module", PKCS11_LIB);
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", FLAGS_ike);
+  AppendStringSetting(&config, "esp", FLAGS_esp);
   AppendStringSetting(&config, "keyexchange",
                       ike_version_ == 1 ? "ikev1" : "ikev2");
   if (!psk_file_.empty()) AppendStringSetting(&config, "authby", "psk");
