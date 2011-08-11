@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "chromeos/dbus/error_constants.h"
 #include "chromeos/dbus/service_constants.h"
 
 using std::string;

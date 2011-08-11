@@ -22,6 +22,7 @@
 #include <base/memory/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
 #include <crypto/rsa_private_key.h>

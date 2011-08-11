@@ -32,6 +32,7 @@
 #include "base/stl_util-inl.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
+#include "chromeos/dbus/error_constants.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/bootstat.h"
 

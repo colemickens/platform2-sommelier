@@ -12,6 +12,7 @@
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 
 namespace enterprise_management {

@@ -12,6 +12,7 @@
 
 #include <base/basictypes.h>
 #include <base/stringprintf.h>
+#include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus.h>
