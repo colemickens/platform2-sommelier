@@ -4,6 +4,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+. /usr/lib/shflags
+
+DEFINE_boolean test $FLAGS_FALSE "support power_Resume test" t
+DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
+
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" $1
 }
@@ -11,11 +16,13 @@ log_msg() {
 # these files are created by powerm | powerd and their existence means
 # event has occurred which should cancel suspend
 suspend_cancel() {
-    if [ $cancel -eq 1 ] || [ -e "/var/run/power_manager/lid_opened" ] ||
-        [ -e "/var/run/power_manager/chronos/user_active" ]; then
+    if [ $FLAGS_cancel -eq $FLAGS_TRUE ] ||
+       [ -e "/var/run/power_manager/lid_opened" ] ||
+       [ -e "/var/run/power_manager/chronos/user_active" ]; then
         cancel=1
         return 0
     else
+        cancel=0
         return 1
     fi
 }
@@ -25,15 +32,10 @@ cleanup_for_resume() {
     rm -f "/var/run/power_manager/chronos/user_active"
 }
 
-parse_args() {
-    cancel=0
-    if [ "$1" != "" ] ; then
-        cancel=$((1 && $1))
-    fi
-}
-
 log_msg "Going to suspend-to-RAM state : args=$@"
-parse_args $@
+# Parse command line
+FLAGS "$@" || exit 1
+eval set -- "$FLAGS_ARGV"
 
 # - logs the time going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
@@ -77,8 +79,11 @@ fi
 
 if [ $cancel -eq 0 ]; then
     # On resume:
-    # - records the hwclock time at resume. It is read by power_Resume test.
-    /sbin/hwclock --utc --debug > /var/run/power_manager/hwclock-on-resume &
+    if [ $FLAGS_test -eq $FLAGS_TRUE ]; then
+        # - records the hwclock time at resume. It is read by power_Resume test.
+        /sbin/hwclock --utc --debug > /var/run/power_manager/hwclock-on-resume &
+        log_msg "Recorded hwclock time for test"
+    fi
 
     # - sends UMA metrics on resume
     /usr/bin/send_metrics_on_resume &

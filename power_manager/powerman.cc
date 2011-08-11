@@ -383,8 +383,8 @@ void PowerManDaemon::Suspend() {
     setsid();
     if (fork() == 0) {
       wait(NULL);
-      exit(CancelDBusRequest() ? system("powerd_suspend 1")
-                               : system("powerd_suspend 0"));
+      exit(CancelDBusRequest() ? system("powerd_suspend --cancel")
+                               : system("powerd_suspend"));
     } else {
       exit(0);
     }
