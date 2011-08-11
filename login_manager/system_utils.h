@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_SYSTEM_UTILS_H_
 #define LOGIN_MANAGER_SYSTEM_UTILS_H_
 
+#include <time.h>
 #include <unistd.h>
 
 #include <string>
@@ -32,6 +33,9 @@ class SystemUtils {
   // NOTE: Your saved UID is kept unchanged.  If you expect to drop and regain
   // root privs, MAKE SURE YOUR suid == 0.
   virtual int kill(pid_t pid, uid_t owner, int signal);
+
+  // Returns time, in seconds, since the unix epoch.
+  virtual time_t time(time_t* t);
 
   // Returns 0 if normal mode, 1 if developer mode, -1 if error.
   virtual int IsDevMode();

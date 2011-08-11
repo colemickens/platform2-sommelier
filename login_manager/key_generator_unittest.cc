@@ -32,7 +32,7 @@ class KeyGeneratorTest : public ::testing::Test {
 
   virtual void SetUp() {
     std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs);
+    manager_ = new SessionManagerService(jobs, &utils_);
   }
 
   virtual void TearDown() {
@@ -41,7 +41,7 @@ class KeyGeneratorTest : public ::testing::Test {
 
  protected:
   scoped_refptr<SessionManagerService> manager_;
-  scoped_ptr<MockSystemUtils> utils_;
+  MockSystemUtils utils_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyGeneratorTest);

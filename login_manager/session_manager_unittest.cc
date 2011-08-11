@@ -76,7 +76,6 @@ class SessionManagerTest : public ::testing::Test {
  public:
   SessionManagerTest()
       : manager_(NULL),
-        utils_(new MockSystemUtils),
         file_checker_(new MockFileChecker(kCheckedFile)),
         mitigator_(new MockMitigator),
         upstart_(new MockUpstartSignalEmitter),
@@ -103,16 +102,16 @@ class SessionManagerTest : public ::testing::Test {
 
   void SimpleRunManager() {
     ExpectPolicySetup();
-    EXPECT_CALL(*(utils_.get()),
+    EXPECT_CALL(utils_,
                 BroadcastSignal(_, _, SessionManagerService::kStopped, _))
         .Times(1);
-    EXPECT_CALL(*(utils_.get()), kill(_, _, _))
+    EXPECT_CALL(utils_, kill(_, _, _))
         .Times(AtMost(1))
         .WillRepeatedly(WithArgs<0,2>(Invoke(::kill)));
-    EXPECT_CALL(*(utils_.get()), ChildIsGone(_, _))
+    EXPECT_CALL(utils_, ChildIsGone(_, _))
         .Times(AtMost(1))
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*(utils_.get()), IsDevMode())
+    EXPECT_CALL(utils_, IsDevMode())
         .Times(AtMost(1))
         .WillRepeatedly(Return(false));
     MockUtils();
@@ -143,7 +142,7 @@ class SessionManagerTest : public ::testing::Test {
       jobs.push_back(job2);
     }
     ASSERT_TRUE(MessageLoop::current() == NULL);
-    manager_ = new SessionManagerService(jobs);
+    manager_ = new SessionManagerService(jobs, &real_utils_);
     manager_->set_file_checker(file_checker_);
     manager_->set_mitigator(mitigator_);
     manager_->test_api().set_exit_on_child_done(true);
@@ -152,8 +151,7 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   void MockUtils() {
-    ASSERT_TRUE(utils_.get());
-    manager_->test_api().set_systemutils(utils_.release());
+    manager_->test_api().set_systemutils(&utils_);
   }
 
   void ExpectPolicySetup() {
@@ -177,10 +175,10 @@ class SessionManagerTest : public ::testing::Test {
     EXPECT_CALL(*device_policy_service_, KeyMissing())
         .WillOnce(Return(false));
 
-    EXPECT_CALL(*(utils_.get()),
+    EXPECT_CALL(utils_,
                 BroadcastSignal(_, _, SessionManagerService::kStarted, _))
         .Times(1);
-    EXPECT_CALL(*(utils_.get()), IsDevMode())
+    EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
   }
 
@@ -216,10 +214,10 @@ class SessionManagerTest : public ::testing::Test {
     manager_->set_uid(getuid());
     manager_->test_api().set_keygen(gen);
 
-    EXPECT_CALL(*(utils_.get()),
+    EXPECT_CALL(utils_,
                 BroadcastSignal(_, _, SessionManagerService::kStarted, _))
         .Times(1);
-    EXPECT_CALL(*(utils_.get()), IsDevMode())
+    EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
   }
 
@@ -293,7 +291,8 @@ class SessionManagerTest : public ::testing::Test {
   }
 
   scoped_refptr<SessionManagerService> manager_;
-  scoped_ptr<MockSystemUtils> utils_;
+  SystemUtils real_utils_;
+  MockSystemUtils utils_;
   MockFileChecker* file_checker_;
   MockMitigator* mitigator_;
   MockUpstartSignalEmitter* upstart_;
@@ -471,9 +470,9 @@ TEST_F(SessionManagerTest, SessionNotStartedCleanup) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
   MockUtils();
 
@@ -485,11 +484,11 @@ TEST_F(SessionManagerTest, SessionNotStartedSlowKillCleanup) {
   manager_->test_api().set_child_pid(0, kDummyPid);
 
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGABRT))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
   MockUtils();
 
@@ -504,14 +503,14 @@ TEST_F(SessionManagerTest, SessionStartedCleanup) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
-  EXPECT_CALL(*(utils_.get()),
+  EXPECT_CALL(utils_,
               BroadcastSignal(_, _, SessionManagerService::kStopping, _))
       .Times(1);
-  EXPECT_CALL(*(utils_.get()),
+  EXPECT_CALL(utils_,
               BroadcastSignal(_, _, SessionManagerService::kStopped, _))
       .Times(1);
 
@@ -532,16 +531,16 @@ TEST_F(SessionManagerTest, SessionStartedSlowKillCleanup) {
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
   int timeout = 3;
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGTERM))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()), ChildIsGone(kDummyPid, timeout))
+  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(false));
-  EXPECT_CALL(*(utils_.get()), kill(kDummyPid, getuid(), SIGABRT))
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()),
+  EXPECT_CALL(utils_,
               BroadcastSignal(_, _, SessionManagerService::kStopping, _))
       .Times(1);
-  EXPECT_CALL(*(utils_.get()),
+  EXPECT_CALL(utils_,
               BroadcastSignal(_, _, SessionManagerService::kStopped, _))
       .Times(1);
 
@@ -573,18 +572,18 @@ TEST_F(SessionManagerTest, HonorShouldNeverKill) {
       .WillRepeatedly(Return(true));
 
   // Say that the normal job died after the TERM signal.
-  EXPECT_CALL(*(utils_.get()), ChildIsGone(kNormalPid, kTimeout))
+  EXPECT_CALL(utils_, ChildIsGone(kNormalPid, kTimeout))
       .WillRepeatedly(Return(true));
 
   // We should just see a TERM signal for the normal job.
-  EXPECT_CALL(*(utils_.get()), kill(kNormalPid, getuid(), SIGTERM))
+  EXPECT_CALL(utils_, kill(kNormalPid, getuid(), SIGTERM))
       .Times(1)
       .WillOnce(Return(0));
-  EXPECT_CALL(*(utils_.get()), kill(kNormalPid, getuid(), SIGABRT))
+  EXPECT_CALL(utils_, kill(kNormalPid, getuid(), SIGABRT))
       .Times(0);
-  EXPECT_CALL(*(utils_.get()), kill(kShouldNeverKillPid, getuid(), SIGTERM))
+  EXPECT_CALL(utils_, kill(kShouldNeverKillPid, getuid(), SIGTERM))
       .Times(0);
-  EXPECT_CALL(*(utils_.get()), kill(kShouldNeverKillPid, getuid(), SIGABRT))
+  EXPECT_CALL(utils_, kill(kShouldNeverKillPid, getuid(), SIGABRT))
       .Times(0);
 
   MockUtils();
@@ -695,7 +694,7 @@ TEST_F(SessionManagerTest, StatsRecorded) {
 
 TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()),
+  EXPECT_CALL(utils_,
               SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, false))
       .Times(1);
   MockUtils();
@@ -711,7 +710,7 @@ TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
 
 TEST_F(SessionManagerTest, EnableChromeTesting) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
-  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGKILL))
       .Times(2).WillOnce(Return(0)).WillOnce(Return(0));
   MockUtils();
 
@@ -813,7 +812,7 @@ TEST_F(SessionManagerTest, RestartJobUnknownPid) {
 TEST_F(SessionManagerTest, RestartJob) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   manager_->test_api().set_child_pid(0, kDummyPid);
-  EXPECT_CALL(*(utils_.get()), kill(-kDummyPid, getuid(), SIGKILL))
+  EXPECT_CALL(utils_, kill(-kDummyPid, getuid(), SIGKILL))
       .WillOnce(Return(0));
 
   EXPECT_CALL(*job, GetName())

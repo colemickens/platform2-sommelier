@@ -60,7 +60,8 @@ class SessionManagerService
       public login_manager::PolicyService::Delegate {
  public:
 
-  explicit SessionManagerService(std::vector<ChildJobInterface*> child_jobs);
+  SessionManagerService(std::vector<ChildJobInterface*> child_jobs,
+                        SystemUtils* system);
   virtual ~SessionManagerService();
 
   // If you want to call any of these setters, you should do so before calling
@@ -73,7 +74,7 @@ class SessionManagerService
     }
 
     void set_systemutils(SystemUtils* utils) {
-      session_manager_service_->system_.reset(utils);
+      session_manager_service_->system_ = utils;
     }
     void set_device_policy_service(DevicePolicyService* device_policy) {
       session_manager_service_->device_policy_ = device_policy;
@@ -398,7 +399,7 @@ class SessionManagerService
   scoped_ptr<MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_;
 
-  scoped_ptr<SystemUtils> system_;
+  SystemUtils* system_;  // Owned by the caller.
   scoped_ptr<KeyGenerator> gen_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 

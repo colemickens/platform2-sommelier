@@ -13,6 +13,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_system_utils.h"
 #include "login_manager/session_manager_service.h"
 
 using ::testing::Return;
@@ -26,7 +27,7 @@ class RegenMitigatorTest : public ::testing::Test {
 
   virtual void SetUp() {
     std::vector<ChildJobInterface*> jobs;
-    manager_ = new SessionManagerService(jobs);
+    manager_ = new SessionManagerService(jobs, &utils_);
   }
 
   virtual void TearDown() {
@@ -34,6 +35,7 @@ class RegenMitigatorTest : public ::testing::Test {
   }
 
  protected:
+  MockSystemUtils utils_;
   scoped_refptr<SessionManagerService> manager_;
 
  private:

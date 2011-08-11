@@ -9,6 +9,7 @@
 #include <glib.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <limits>
@@ -59,6 +60,10 @@ int SystemUtils::kill(pid_t pid, uid_t owner, int signal) {
     return -1;
   }
   return ret;
+}
+
+time_t SystemUtils::time(time_t* t) {
+  return ::time(t);
 }
 
 bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {

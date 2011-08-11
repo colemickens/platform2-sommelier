@@ -25,6 +25,8 @@
 #include <base/logging.h>
 #include <base/string_util.h>
 
+#include "login_manager/system_utils.h"
+
 namespace login_manager {
 
 // static
@@ -46,10 +48,12 @@ const char ChildJob::kWindowManagerSuffix[] = "window-manager-session.sh";
 // static
 const int ChildJob::kRestartWindow = 1;
 
-ChildJob::ChildJob(const std::vector<std::string>& arguments)
+ChildJob::ChildJob(const std::vector<std::string>& arguments,
+                   SystemUtils* utils)
       : arguments_(arguments),
         desired_uid_(0),
         is_desired_uid_set_(false),
+        system(utils),
         last_start_(0),
         removed_login_manager_flag_(false) {
 }
@@ -58,7 +62,7 @@ ChildJob::~ChildJob() {
 }
 
 bool ChildJob::ShouldStop() const {
-  return (time(NULL) - last_start_ < kRestartWindow);
+  return (system->time(NULL) - last_start_ < kRestartWindow);
 }
 
 bool ChildJob::ShouldNeverKill() const {
@@ -70,7 +74,7 @@ bool ChildJob::ShouldNeverKill() const {
 }
 
 void ChildJob::RecordTime() {
-  time(&last_start_);
+  last_start_ = system->time(NULL);
 }
 
 void ChildJob::Run() {

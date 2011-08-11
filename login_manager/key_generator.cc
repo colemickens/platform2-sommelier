@@ -10,6 +10,7 @@
 
 #include "login_manager/child_job.h"
 #include "login_manager/session_manager_service.h"
+#include "login_manager/system_utils.h"
 
 namespace login_manager {
 
@@ -24,13 +25,14 @@ KeyGenerator::~KeyGenerator() {}
 
 bool KeyGenerator::Start(uid_t uid,
                          SessionManagerService* manager) {
+  SystemUtils utils;
   if (!keygen_job_.get()) {
     LOG(INFO) << "Creating keygen job";
     std::vector<std::string> keygen_argv;
     keygen_argv.push_back(kKeygenExecutable);
     keygen_argv.push_back(
         file_util::GetHomeDir().AppendASCII(kTemporaryKeyFilename).value());
-    keygen_job_.reset(new ChildJob(keygen_argv));
+    keygen_job_.reset(new ChildJob(keygen_argv, &utils));
   }
 
   if (uid != 0)

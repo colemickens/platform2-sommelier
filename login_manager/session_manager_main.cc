@@ -115,20 +115,21 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  SystemUtils system;
   // Parse jobs to be run with its args.
   vector<string> loose_args = cl->args();
   vector<vector<string> > arg_lists =
       SessionManagerService::GetArgLists(loose_args);
   vector<ChildJobInterface*> child_jobs;
   for (size_t i = 0; i < arg_lists.size(); ++i) {
-    child_jobs.push_back(new ChildJob(arg_lists[i]));
+    child_jobs.push_back(new ChildJob(arg_lists[i], &system));
     if (uid_set)
       child_jobs.back()->SetDesiredUid(uid);
   }
 
   ::g_type_init();
   scoped_refptr<SessionManagerService> manager =
-      new SessionManagerService(child_jobs);
+      new SessionManagerService(child_jobs, &system);
 
   string magic_chrome_file =
       cl->GetSwitchValueASCII(switches::kDisableChromeRestartFile);

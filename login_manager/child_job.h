@@ -19,6 +19,8 @@ class CommandLine;
 
 namespace login_manager {
 
+class SystemUtils;
+
 // SessionManager takes a ChildJob object, forks and then calls the ChildJob's
 // Run() method. I've created this interface so that I can create mocks for
 // unittesting SessionManager.
@@ -77,7 +79,7 @@ class ChildJobInterface {
 
 class ChildJob : public ChildJobInterface {
  public:
-  explicit ChildJob(const std::vector<std::string>& arguments);
+  ChildJob(const std::vector<std::string>& arguments, SystemUtils* utils);
   virtual ~ChildJob();
 
   // Overridden from ChildJobInterface
@@ -136,6 +138,9 @@ class ChildJob : public ChildJobInterface {
 
   // Indicates if |desired_uid_| was initialized.
   bool is_desired_uid_set_;
+
+  // Wrapper for system library calls.  Owned by the owner of this object.
+  SystemUtils* system;
 
   // The last time the job was run.
   time_t last_start_;

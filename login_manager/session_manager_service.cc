@@ -201,7 +201,8 @@ static const char kCollectChromeFile[] =
 }  // namespace
 
 SessionManagerService::SessionManagerService(
-    std::vector<ChildJobInterface*> child_jobs)
+    std::vector<ChildJobInterface*> child_jobs,
+    SystemUtils* utils)
     : child_jobs_(child_jobs.begin(), child_jobs.end()),
       child_pids_(child_jobs.size(), -1),
       exit_on_child_done_(false),
@@ -209,7 +210,7 @@ SessionManagerService::SessionManagerService(
       main_loop_(g_main_loop_new(NULL, FALSE)),
       dont_use_directly_(new MessageLoopForUI),
       message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
-      system_(new SystemUtils),
+      system_(utils),
       gen_(new KeyGenerator),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
