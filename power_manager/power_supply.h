@@ -67,12 +67,11 @@ class PowerSupply {
   double voltage_now_;
 
   // Indicates whether battery is present.
-  bool present_;
+  bool battery_is_present_;
   // Indicates whether line power is on.
-  bool online_;
+  bool line_power_on_;
 
   std::string serial_number_;
-  std::string status_;
   std::string technology_;
   std::string type_;
 

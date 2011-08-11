@@ -59,29 +59,29 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
       (!battery_info_ || !file_util::PathExists(battery_path_))) {
     // A hack for situations like VMs where there is no power supply sysfs.
     LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
-    status->line_power_on = online_ = true;
-    status->battery_is_present = present_ = false;
+    status->line_power_on = line_power_on_ = true;
+    status->battery_is_present = battery_is_present_ = false;
     return true;
   }
   int64 value;
   if (line_power_info_ && file_util::PathExists(line_power_path_)) {
     line_power_info_->GetInt64("online", &value);
     // Return the line power status.
-    status->line_power_on = online_ = (bool) value;
+    status->line_power_on = line_power_on_ = (bool) value;
   }
 
   // If no battery was found, or if the previously found path doesn't exist
   // anymore, return true.  This is still an acceptable case since the battery
   // could be physically removed.
   if (!battery_info_ || !file_util::PathExists(battery_path_)) {
-    status->battery_is_present = present_ = false;
+    status->battery_is_present = battery_is_present_ = false;
     return true;
   }
 
   battery_info_->GetInt64("present", &value);
-  status->battery_is_present = present_ = (bool) value;
+  status->battery_is_present = battery_is_present_ = (bool) value;
   // If there is no battery present, we can skip the rest of the readings.
-  if (!present_)
+  if (!battery_is_present_)
     return true;
 
   // Read all battery values from sysfs.
@@ -95,11 +95,9 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
   voltage_now_ = battery_info_->ReadScaledDouble("voltage_now");
 
   serial_number_.clear();
-  status_.clear();
   technology_.clear();
   type_.clear();
   battery_info_->ReadString("serial_number", &serial_number_);
-  battery_info_->ReadString("status", &status_);
   battery_info_->ReadString("technology", &technology_);
   battery_info_->ReadString("type", &type_);
 
@@ -121,17 +119,23 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
   else
     status->battery_percentage = 0;
 
-  // TODO(sque): make this a STL map container?
-  if (status_ == "Charging")
-    status->battery_state = chromeos::BATTERY_STATE_CHARGING;
-  else if (status_ == "Discharging")
+  // Determine battery state from above readings.  Disregard the "status" field
+  // in sysfs, as that can be inconsistent with the numerical readings.
+  status->battery_state = chromeos::BATTERY_STATE_UNKNOWN;
+  if (line_power_on_) {
+    if (charge_now_ >= charge_full_) {
+      status->battery_state = chromeos::BATTERY_STATE_FULLY_CHARGED;
+    } else {
+      if (current_now_ <= 0)
+        LOG(WARNING) << "Line power is on and battery is not fully charged "
+                     << "but battery current is " << current_now_ << " A.";
+      status->battery_state = chromeos::BATTERY_STATE_CHARGING;
+    }
+  } else {
     status->battery_state = chromeos::BATTERY_STATE_DISCHARGING;
-  else if (status_ == "Empty")
-    status->battery_state = chromeos::BATTERY_STATE_EMPTY;
-  else if (status_ == "Full")
-    status->battery_state = chromeos::BATTERY_STATE_FULLY_CHARGED;
-  else
-    status->battery_state = chromeos::BATTERY_STATE_UNKNOWN;
+    if (charge_now_ == 0)
+      status->battery_state = chromeos::BATTERY_STATE_EMPTY;
+  }
   return true;
 }
 
@@ -146,8 +150,23 @@ bool PowerSupply::GetPowerInformation(chromeos::PowerInformation* info) {
   battery_info_->ReadString("serial_number", &info->battery_serial);
   battery_info_->ReadString("technology", &info->battery_technology);
 
-  info->battery_state_string = status_;
-
+  switch (info->power_status.battery_state) {
+    case chromeos::BATTERY_STATE_CHARGING:
+      info->battery_state_string = "Charging";
+      break;
+    case chromeos::BATTERY_STATE_DISCHARGING:
+      info->battery_state_string = "Discharging";
+      break;
+    case chromeos::BATTERY_STATE_EMPTY:
+      info->battery_state_string = "Empty";
+      break;
+    case chromeos::BATTERY_STATE_FULLY_CHARGED:
+      info->battery_state_string = "Fully charged";
+      break;
+    default:
+      info->battery_state_string = "Unknown";
+      break;
+  }
   return true;
 }
 
