@@ -5,10 +5,6 @@
 #ifndef CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 #define CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 
-// TODO(satorux): Remove this once all files that need the error constants
-// are modified to include "error_constants.h".
-#include "error_constants.h"
-
 namespace cryptohome {
 extern const char* kCryptohomeInterface;
 extern const char* kCryptohomeServicePath;
