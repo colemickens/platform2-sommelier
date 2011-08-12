@@ -11,6 +11,8 @@
 
 #define DISABLE_SOME_TESTS_FOR_INTEL_DRIVER 1
 
+#define IS_NOT_POWER_OF_2(v) (((v) & ((v) - 1)) && (v))
+
 namespace glbench {
 
 class TestBase;

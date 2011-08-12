@@ -72,6 +72,12 @@ bool TextureUpdateTest::TestFunc(int iter) {
   glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
   glFlush();
   for (int i = 0; i < iter-1; ++i) {
+
+    //For NPOT texture we must set GL_TEXTURE_WRAP as GL_CLAMP_TO_EDGE
+    if(IS_NOT_POWER_OF_2(width_) || IS_NOT_POWER_OF_2(height_)) {
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    }
     switch (flavor_) {
       case TEX_IMAGE:
         glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, width_, height_,
