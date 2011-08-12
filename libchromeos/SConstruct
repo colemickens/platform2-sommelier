@@ -8,7 +8,6 @@ import sys
 SOURCES=['chromeos/dbus/abstract_dbus_service.cc',
          'chromeos/dbus/dbus.cc',
          'chromeos/dbus/error_constants.cc',
-         'chromeos/dbus/service_constants.cc',
          'chromeos/process.cc',
          'chromeos/string.cc',
          'chromeos/syslog_logging.cc',

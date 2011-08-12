@@ -6,495 +6,510 @@
 #define CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
 
 namespace cryptohome {
-extern const char* kCryptohomeInterface;
-extern const char* kCryptohomeServicePath;
-extern const char* kCryptohomeServiceName;
+const char kCryptohomeInterface[] = "org.chromium.CryptohomeInterface";
+const char kCryptohomeServicePath[] = "/org/chromium/Cryptohome";
+const char kCryptohomeServiceName[] = "org.chromium.Cryptohome";
 // Methods
-extern const char* kCryptohomeCheckKey;
-extern const char* kCryptohomeMigrateKey;
-extern const char* kCryptohomeRemove;
-extern const char* kCryptohomeGetSystemSalt;
-extern const char* kCryptohomeIsMounted;
-extern const char* kCryptohomeMount;
-extern const char* kCryptohomeMountGuest;
-extern const char* kCryptohomeUnmount;
-extern const char* kCryptohomeTpmIsReady;
-extern const char* kCryptohomeTpmIsEnabled;
-extern const char* kCryptohomeTpmIsOwned;
-extern const char* kCryptohomeTpmIsBeingOwned;
-extern const char* kCryptohomeTpmGetPassword;
-extern const char* kCryptohomeTpmCanAttemptOwnership;
-extern const char* kCryptohomeTpmClearStoredPassword;
-extern const char* kCryptohomePkcs11GetTpmTokenInfo;
-extern const char* kCryptohomePkcs11IsTpmTokenReady;
-extern const char* kCryptohomeAsyncCheckKey;
-extern const char* kCryptohomeAsyncMigrateKey;
-extern const char* kCryptohomeAsyncMount;
-extern const char* kCryptohomeAsyncMountGuest;
-extern const char* kCryptohomeAsyncRemove;
-extern const char* kCryptohomeGetStatusString;
-extern const char* kCryptohomeRemoveTrackedSubdirectories;
-extern const char* kCryptohomeAsyncRemoveTrackedSubdirectories;
-extern const char* kCryptohomeDoAutomaticFreeDiskSpaceControl;
-extern const char* kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl;
-extern const char* kCryptohomeAsyncDoesUsersExist;
-extern const char* kCryptohomeAsyncSetOwnerUser;
-extern const char* kCryptohomeInstallAttributesGet;
-extern const char* kCryptohomeInstallAttributesSet;
-extern const char* kCryptohomeInstallAttributesCount;
-extern const char* kCryptohomeInstallAttributesFinalize;
-extern const char* kCryptohomeInstallAttributesIsReady;
-extern const char* kCryptohomeInstallAttributesIsSecure;
-extern const char* kCryptohomeInstallAttributesIsInvalid;
-extern const char* kCryptohomeInstallAttributesIsFirstInstall;
+const char kCryptohomeCheckKey[] = "CheckKey";
+const char kCryptohomeMigrateKey[] = "MigrateKey";
+const char kCryptohomeRemove[] = "Remove";
+const char kCryptohomeGetSystemSalt[] = "GetSystemSalt";
+const char kCryptohomeIsMounted[] = "IsMounted";
+const char kCryptohomeMount[] = "Mount";
+const char kCryptohomeMountGuest[] = "MountGuest";
+const char kCryptohomeUnmount[] = "Unmount";
+const char kCryptohomeTpmIsReady[] = "TpmIsReady";
+const char kCryptohomeTpmIsEnabled[] = "TpmIsEnabled";
+const char kCryptohomeTpmIsOwned[] = "TpmIsOwned";
+const char kCryptohomeTpmIsBeingOwned[] = "TpmIsBeingOwned";
+const char kCryptohomeTpmGetPassword[] = "TpmGetPassword";
+const char kCryptohomeTpmCanAttemptOwnership[] = "TpmCanAttemptOwnership";
+const char kCryptohomeTpmClearStoredPassword[] = "TpmClearStoredPassword";
+const char kCryptohomePkcs11GetTpmTokenInfo[] = "Pkcs11GetTpmTokenInfo";
+const char kCryptohomePkcs11IsTpmTokenReady[] = "Pkcs11IsTpmTokenReady";
+const char kCryptohomeAsyncCheckKey[] = "AsyncCheckKey";
+const char kCryptohomeAsyncMigrateKey[] = "AsyncMigrateKey";
+const char kCryptohomeAsyncMount[] = "AsyncMount";
+const char kCryptohomeAsyncMountGuest[] = "AsyncMountGuest";
+const char kCryptohomeAsyncRemove[] = "AsyncRemove";
+const char kCryptohomeGetStatusString[] = "GetStatusString";
+const char kCryptohomeRemoveTrackedSubdirectories[] =
+    "RemoveTrackedSubdirectories";
+const char kCryptohomeAsyncRemoveTrackedSubdirectories[] =
+    "AsyncRemoveTrackedSubdirectories";
+const char kCryptohomeDoAutomaticFreeDiskSpaceControl[] =
+    "DoAutomaticFreeDiskSpaceControl";
+const char kCryptohomeAsyncDoAutomaticFreeDiskSpaceControl[] =
+    "AsyncDoAutomaticFreeDiskSpaceControl";
+const char kCryptohomeAsyncDoesUsersExist[] = "AsyncDoesUsersExist";
+const char kCryptohomeAsyncSetOwnerUser[] = "AsyncSetOwnerUser";
+const char kCryptohomeInstallAttributesGet[] = "InstallAttributesGet";
+const char kCryptohomeInstallAttributesSet[] = "InstallAttributesSet";
+const char kCryptohomeInstallAttributesCount[] = "InstallAttributesCount";
+const char kCryptohomeInstallAttributesFinalize[] =
+    "InstallAttributesFinalize";
+const char kCryptohomeInstallAttributesIsReady[] = "InstallAttributesIsReady";
+const char kCryptohomeInstallAttributesIsSecure[] =
+    "InstallAttributesIsSecure";
+const char kCryptohomeInstallAttributesIsInvalid[] =
+    "InstallAttributesIsInvalid";
+const char kCryptohomeInstallAttributesIsFirstInstall[] =
+    "InstallAttributesIsFirstInstall";
 // Signals
-extern const char* kSignalAsyncCallStatus;
-extern const char* kSignalTpmInitStatus;
-extern const char* kSignalCleanupUsersRemoved;
+const char kSignalAsyncCallStatus[] = "AsyncCallStatus";
+const char kSignalTpmInitStatus[] = "TpmInitStatus";
+const char kSignalCleanupUsersRemoved[] = "CleanupUsersRemoved";
 }  // namespace cryptohome
 
 namespace imageburn {
-extern const char* kImageBurnServiceName;
-extern const char* kImageBurnServicePath;
-extern const char* kImageBurnServiceInterface;
+const char kImageBurnServiceName[] = "org.chromium.ImageBurner";
+const char kImageBurnServicePath[] = "/org/chromium/ImageBurner";
+const char kImageBurnServiceInterface[] = "org.chromium.ImageBurnerInterface";
 //Methods
-extern const char* kBurnImage;
+const char kBurnImage[] = "BurnImage";
 //Signals
-extern const char* kSignalBurnFinishedName;
-extern const char* kSignalBurnUpdateName;
+const char kSignalBurnFinishedName[] = "burn_finished";
+const char kSignalBurnUpdateName[] = "burn_progress_update";
 } // namespace imageburn
 
 namespace login_manager {
-extern const char* kSessionManagerInterface;
-extern const char* kSessionManagerServicePath;
-extern const char* kSessionManagerServiceName;
+const char kSessionManagerInterface[] = "org.chromium.SessionManagerInterface";
+const char kSessionManagerServicePath[] = "/org/chromium/SessionManager";
+const char kSessionManagerServiceName[] = "org.chromium.SessionManager";
 // Methods
-extern const char* kSessionManagerEmitLoginPromptReady;
-extern const char* kSessionManagerEmitLoginPromptVisible;
-extern const char* kSessionManagerStartSession;
-extern const char* kSessionManagerStopSession;
-extern const char* kSessionManagerRestartJob;
-extern const char* kSessionManagerRestartEntd;
-extern const char* kSessionManagerSetOwnerKey;
-extern const char* kSessionManagerUnwhitelist;
-extern const char* kSessionManagerCheckWhitelist;
-extern const char* kSessionManagerEnumerateWhitelisted;
-extern const char* kSessionManagerWhitelist;
-extern const char* kSessionManagerStoreProperty;
-extern const char* kSessionManagerRetrieveProperty;
-extern const char* kSessionManagerStorePolicy;
-extern const char* kSessionManagerRetrievePolicy;
-extern const char* kSessionManagerStoreUserPolicy;
-extern const char* kSessionManagerRetrieveUserPolicy;
-extern const char* kSessionManagerRetrieveSessionState;
+const char kSessionManagerEmitLoginPromptReady[] = "EmitLoginPromptReady";
+const char kSessionManagerEmitLoginPromptVisible[] = "EmitLoginPromptVisible";
+const char kSessionManagerStartSession[] = "StartSession";
+const char kSessionManagerStopSession[] = "StopSession";
+const char kSessionManagerRestartJob[] = "RestartJob";
+const char kSessionManagerRestartEntd[] = "RestartEntd";
+const char kSessionManagerSetOwnerKey[] = "SetOwnerKey";
+const char kSessionManagerUnwhitelist[] = "Unwhitelist";
+const char kSessionManagerCheckWhitelist[] = "CheckWhitelist";
+const char kSessionManagerEnumerateWhitelisted[] = "EnumerateWhitelisted";
+const char kSessionManagerWhitelist[] = "Whitelist";
+const char kSessionManagerStoreProperty[] = "StoreProperty";
+const char kSessionManagerRetrieveProperty[] = "RetrieveProperty";
+const char kSessionManagerStorePolicy[] = "StorePolicy";
+const char kSessionManagerRetrievePolicy[] = "RetrievePolicy";
+const char kSessionManagerStoreUserPolicy[] = "StoreUserPolicy";
+const char kSessionManagerRetrieveUserPolicy[] = "RetrieveUserPolicy";
+const char kSessionManagerRetrieveSessionState[] = "RetrieveSessionState";
 // Signals
-extern const char* kSessionManagerSessionStateChanged;
+const char kSessionManagerSessionStateChanged[] = "SessionStateChanged";
 }  // namespace login_manager
 
 namespace speech_synthesis {
-extern const char* kSpeechSynthesizerInterface;
-extern const char* kSpeechSynthesizerServicePath;
-extern const char* kSpeechSynthesizerServiceName;
+const char kSpeechSynthesizerInterface[] =
+    "org.chromium.SpeechSynthesizerInterface";
+const char kSpeechSynthesizerServicePath[] = "/org/chromium/SpeechSynthesizer";
+const char kSpeechSynthesizerServiceName[] = "org.chromium.SpeechSynthesizer";
 }  // namespace speech_synthesis
 
 namespace chromium {
-extern const char* kChromiumInterface;
+const char kChromiumInterface[] = "org.chromium.Chromium";
 // ScreenLock signals.
-extern const char* kLockScreenSignal;
-extern const char* kUnlockScreenSignal;
-extern const char* kUnlockScreenFailedSignal;
+const char kLockScreenSignal[] = "LockScreen";
+const char kUnlockScreenSignal[] = "UnlockScreen";
+const char kUnlockScreenFailedSignal[] = "UnlockScreenFailed";
 // Text-to-speech service signals
-extern const char* kTTSReadySignal;
-extern const char* kTTSFailedSignal;
+const char kTTSReadySignal[] = "TTSReady";
+const char kTTSFailedSignal[] = "TTSFailed";
 // Ownership API signals
-extern const char* kOwnerKeySetSignal;
-extern const char* kPropertyChangeCompleteSignal;
-extern const char* kWhitelistChangeCompleteSignal;
+const char kOwnerKeySetSignal[] = "SetOwnerKeyComplete";
+const char kPropertyChangeCompleteSignal[] = "PropertyChangeComplete";
+const char kWhitelistChangeCompleteSignal[] = "WhitelistChangeComplete";
 }  // namespace chromium
 
 namespace power_manager {
-extern const char* kPowerManagerInterface;
-extern const char* kPowerManagerServicePath;
-extern const char* kPowerManagerServiceName;
+const char kPowerManagerInterface[] = "org.chromium.PowerManager";
+const char kPowerManagerServicePath[] = "/org/chromium/PowerManager";
+const char kPowerManagerServiceName[] = "org.chromium.PowerManager";
 // Methods
-extern const char* kPowerManagerDecreaseScreenBrightness;
-extern const char* kPowerManagerIncreaseScreenBrightness;
-extern const char* kPowerManagerDecreaseKeyboardBrightness;
-extern const char* kPowerManagerIncreaseKeyboardBrightness;
+const char kPowerManagerDecreaseScreenBrightness[] =
+    "DecreaseScreenBrightness";
+const char kPowerManagerIncreaseScreenBrightness[] =
+    "IncreaseScreenBrightness";
+const char kPowerManagerDecreaseKeyboardBrightness[] =
+    "DecreaseKeyboardBrightness";
+const char kPowerManagerIncreaseKeyboardBrightness[] =
+    "IncreaseKeyboardBrightness";
 // Signals
-extern const char* kRequestLockScreenSignal;
-extern const char* kRequestRestartSignal;
-extern const char* kRequestSuspendSignal;
-extern const char* kRequestShutdownSignal;
-extern const char* kRequestUnlockScreenSignal;
-extern const char* kScreenIsLockedSignal;
-extern const char* kScreenIsUnlockedSignal;
-extern const char* kCleanShutdown;
-extern const char* kRegisterSuspendDelay;
-extern const char* kUnregisterSuspendDelay;
-extern const char* kSuspendDelay;
-extern const char* kSuspendReady;
-extern const char* kBrightnessChangedSignal;
-extern const char* kKeyboardBrightnessChangedSignal;
-extern const char* kPowerStateChangedSignal;
+const char kRequestLockScreenSignal[] = "RequestLockScreen";
+const char kRequestRestartSignal[] = "RequestRestart";
+const char kRequestSuspendSignal[] = "RequestSuspend";
+const char kRequestShutdownSignal[] = "RequestShutdown";
+const char kRequestUnlockScreenSignal[] = "RequestUnlockScreen";
+const char kScreenIsLockedSignal[] = "ScreenIsLocked";
+const char kScreenIsUnlockedSignal[] = "ScreenIsUnlocked";
+const char kCleanShutdown[] = "CleanShutdown";
+const char kRegisterSuspendDelay[] = "RegisterSuspendDelay";
+const char kUnregisterSuspendDelay[] = "UnregisterSuspendDelay";
+const char kSuspendDelay[] = "SuspendDelay";
+const char kSuspendReady[] = "SuspendReady";
+const char kBrightnessChangedSignal[] = "BrightnessChanged";
+const char kKeyboardBrightnessChangedSignal[] = "KeyboardBrightnessChanged";
+const char kPowerStateChangedSignal[] = "PowerStateChanged";
 }  // namespace power_manager
 
 namespace chromeos {
-extern const char* kLibCrosServiceName;
-extern const char* kLibCrosServicePath;
-extern const char* kLibCrosServiceInterface;
+const char kLibCrosServiceName[] = "org.chromium.LibCrosService";
+const char kLibCrosServicePath[] = "/org/chromium/LibCrosService";
+const char kLibCrosServiceInterface[] = "org.chromium.LibCrosServiceInterface";
 // Methods
-extern const char* kResolveNetworkProxy;
+const char kResolveNetworkProxy[] = "ResolveNetworkProxy";
 } // namespace chromeos
 
 namespace flimflam {
 // Flimflam D-Bus service identifiers.
-extern const char* kFlimflamManagerInterface;
-extern const char* kFlimflamServiceInterface;
-extern const char* kFlimflamServiceName;
-extern const char* kFlimflamIPConfigInterface;
-extern const char* kFlimflamDeviceInterface;
-extern const char* kFlimflamProfileInterface;
-extern const char* kFlimflamNetworkInterface;
+const char kFlimflamManagerInterface[] = "org.chromium.flimflam.Manager";
+const char kFlimflamServiceInterface[] = "org.chromium.flimflam.Service";
+const char kFlimflamServiceName[] = "org.chromium.flimflam";
+const char kFlimflamIPConfigInterface[] = "org.chromium.flimflam.IPConfig";
+const char kFlimflamDeviceInterface[] = "org.chromium.flimflam.Device";
+const char kFlimflamProfileInterface[] = "org.chromium.flimflam.Profile";
+const char kFlimflamNetworkInterface[] = "org.chromium.flimflam.Network";
 
 // Flimflam function names.
-extern const char* kGetPropertiesFunction;
-extern const char* kSetPropertyFunction;
-extern const char* kClearPropertyFunction;
-extern const char* kConnectFunction;
-extern const char* kDisconnectFunction;
-extern const char* kRequestScanFunction;
-extern const char* kGetWifiServiceFunction;
-extern const char* kGetVPNServiceFunction;
-extern const char* kEnableTechnologyFunction;
-extern const char* kDisableTechnologyFunction;
-extern const char* kAddIPConfigFunction;
-extern const char* kRemoveConfigFunction;
-extern const char* kGetEntryFunction;
-extern const char* kDeleteEntryFunction;
-extern const char* kActivateCellularModemFunction;
-extern const char* kRequirePinFunction;
-extern const char* kEnterPinFunction;
-extern const char* kUnblockPinFunction;
-extern const char* kChangePinFunction;
-extern const char* kProposeScanFunction;
-extern const char* kRegisterFunction;
+const char kGetPropertiesFunction[] = "GetProperties";
+const char kSetPropertyFunction[] = "SetProperty";
+const char kClearPropertyFunction[] = "ClearProperty";
+const char kConnectFunction[] = "Connect";
+const char kDisconnectFunction[] = "Disconnect";
+const char kRequestScanFunction[] = "RequestScan";
+const char kGetWifiServiceFunction[] = "GetWifiService";
+const char kGetVPNServiceFunction[] = "GetVPNService";
+const char kEnableTechnologyFunction[] = "EnableTechnology";
+const char kDisableTechnologyFunction[] = "DisableTechnology";
+const char kAddIPConfigFunction[] = "AddIPConfig";
+const char kRemoveConfigFunction[] = "Remove";
+const char kGetEntryFunction[] = "GetEntry";
+const char kDeleteEntryFunction[] = "DeleteEntry";
+const char kActivateCellularModemFunction[] = "ActivateCellularModem";
+const char kRequirePinFunction[] = "RequirePin";
+const char kEnterPinFunction[] = "EnterPin";
+const char kUnblockPinFunction[] = "UnblockPin";
+const char kChangePinFunction[] = "ChangePin";
+const char kProposeScanFunction[] = "ProposeScan";
+const char kRegisterFunction[] = "Register";
 
 // Flimflam Service property names.
-extern const char* kSecurityProperty;
-extern const char* kPriorityProperty;
-extern const char* kPassphraseProperty;
-extern const char* kIdentityProperty;
-extern const char* kAuthorityPathProperty;
-extern const char* kPassphraseRequiredProperty;
-extern const char* kSaveCredentialsProperty;
-extern const char* kSignalStrengthProperty;
-extern const char* kNameProperty;
-extern const char* kStateProperty;
-extern const char* kTypeProperty;
-extern const char* kDeviceProperty;
-extern const char* kProfileProperty;
-extern const char* kConnectivityStateProperty;
-extern const char* kFavoriteProperty;
-extern const char* kConnectableProperty;
-extern const char* kAutoConnectProperty;
-extern const char* kIsActiveProperty;
-extern const char* kModeProperty;
-extern const char* kErrorProperty;
-extern const char* kProviderProperty;
-extern const char* kHostProperty;
-extern const char* kDomainProperty;
-extern const char* kProxyConfigProperty;
-extern const char* kCheckPortalProperty;
-extern const char* kSSIDProperty;
-extern const char* kConnectedProperty;
+const char kSecurityProperty[] = "Security";
+const char kPriorityProperty[] = "Priority";
+const char kPassphraseProperty[] = "Passphrase";
+const char kIdentityProperty[] = "Identity";
+const char kAuthorityPathProperty[] = "AuthorityPath";
+const char kPassphraseRequiredProperty[] = "PassphraseRequired";
+const char kSaveCredentialsProperty[] = "SaveCredentials";
+const char kSignalStrengthProperty[] = "Strength";
+const char kNameProperty[] = "Name";
+const char kStateProperty[] = "State";
+const char kTypeProperty[] = "Type";
+const char kDeviceProperty[] = "Device";
+const char kProfileProperty[] = "Profile";
+const char kConnectivityStateProperty[] = "ConnectivityState";
+const char kFavoriteProperty[] = "Favorite";
+const char kConnectableProperty[] = "Connectable";
+const char kAutoConnectProperty[] = "AutoConnect";
+const char kIsActiveProperty[] = "IsActive";
+const char kModeProperty[] = "Mode";
+const char kErrorProperty[] = "Error";
+const char kProviderProperty[] = "Provider";
+const char kHostProperty[] = "Host";
+const char kDomainProperty[] = "Domain";
+const char kProxyConfigProperty[] = "ProxyConfig";
+const char kCheckPortalProperty[] = "CheckPortal";
+const char kSSIDProperty[] = "SSID";
+const char kConnectedProperty[] = "Connected";
 
 // Flimflam Wifi Service property names.
-extern const char* kWifiHexSsid;
-extern const char* kWifiFrequency;
-extern const char* kWifiHiddenSsid;
-extern const char* kWifiPhyMode;
-extern const char* kWifiAuthMode;
-extern const char* kWifiChannelProperty;
+const char kWifiHexSsid[] = "WiFi.HexSSID";
+const char kWifiFrequency[] = "WiFi.Frequency";
+const char kWifiHiddenSsid[] = "WiFi.HiddenSSID";
+const char kWifiPhyMode[] = "WiFi.PhyMode";
+const char kWifiAuthMode[] = "WiFi.AuthMode";
+const char kWifiChannelProperty[] = "WiFi.Channel";
 
 // Flimflam EAP property names.
-extern const char* kEapIdentityProperty;
-extern const char* kEAPEAPProperty;
-extern const char* kEapPhase2AuthProperty;
-extern const char* kEapAnonymousIdentityProperty;
-extern const char* kEAPClientCertProperty;
-extern const char* kEAPCertIDProperty;
-extern const char* kEapClientCertNssProperty;
-extern const char* kEapPrivateKeyProperty;
-extern const char* kEapPrivateKeyPasswordProperty;
-extern const char* kEAPKeyIDProperty;
-extern const char* kEapCaCertProperty;
-extern const char* kEapCaCertIDProperty;
-extern const char* kEapCaCertNssProperty;
-extern const char* kEapUseSystemCAsProperty;
-extern const char* kEAPPINProperty;
-extern const char* kEapPasswordProperty;
-extern const char* kEapKeyMgmtProperty;
+const char kEapIdentityProperty[] = "EAP.Identity";
+const char kEAPEAPProperty[] = "EAP.EAP";
+const char kEapPhase2AuthProperty[] = "EAP.InnerEAP";
+const char kEapAnonymousIdentityProperty[] = "EAP.AnonymousIdentity";
+const char kEAPClientCertProperty[] = "EAP.ClientCert";
+const char kEAPCertIDProperty[] = "EAP.CertID";
+const char kEapClientCertNssProperty[] = "EAP.ClientCertNSS";
+const char kEapPrivateKeyProperty[] = "EAP.PrivateKey";
+const char kEapPrivateKeyPasswordProperty[] = "EAP.PrivateKeyPassword";
+const char kEAPKeyIDProperty[] = "EAP.KeyID";
+const char kEapCaCertProperty[] = "EAP.CACert";
+const char kEapCaCertIDProperty[] = "EAP.CACertID";
+const char kEapCaCertNssProperty[] = "EAP.CACertNSS";
+const char kEapUseSystemCAsProperty[] = "EAP.UseSystemCAs";
+const char kEAPPINProperty[] = "EAP.PIN";
+const char kEapPasswordProperty[] = "EAP.Password";
+const char kEapKeyMgmtProperty[] = "EAP.KeyMgmt";
 
 // Flimflam Cellular Service property names.
-extern const char* kActivationStateProperty;
-extern const char* kNetworkTechnologyProperty;
-extern const char* kRoamingStateProperty;
-extern const char* kOperatorNameProperty;
-extern const char* kOperatorCodeProperty;
-extern const char* kServingOperatorProperty;
-extern const char* kPaymentURLProperty;
-extern const char* kUsageURLProperty;
-extern const char* kCellularApnProperty;
-extern const char* kCellularLastGoodApnProperty;
+const char kActivationStateProperty[] = "Cellular.ActivationState";
+const char kNetworkTechnologyProperty[] = "Cellular.NetworkTechnology";
+const char kRoamingStateProperty[] = "Cellular.RoamingState";
+const char kOperatorNameProperty[] = "Cellular.OperatorName";
+const char kOperatorCodeProperty[] = "Cellular.OperatorCode";
+const char kServingOperatorProperty[] = "Cellular.ServingOperator";
+const char kPaymentURLProperty[] = "Cellular.OlpUrl";
+const char kUsageURLProperty[] = "Cellular.UsageUrl";
+const char kCellularApnProperty[] = "Cellular.APN";
+const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 
 // Flimflam Manager property names.
-extern const char* kProfilesProperty;
-extern const char* kServicesProperty;
-extern const char* kServiceWatchListProperty;
-extern const char* kAvailableTechnologiesProperty;
-extern const char* kEnabledTechnologiesProperty;
-extern const char* kConnectedTechnologiesProperty;
-extern const char* kDefaultTechnologyProperty;
-extern const char* kOfflineModeProperty;
-extern const char* kActiveProfileProperty;
-extern const char* kDevicesProperty;
-extern const char* kCheckPortalListProperty;
-extern const char* kCountryProperty;
-extern const char* kPortalURLProperty;
+const char kProfilesProperty[] = "Profiles";
+const char kServicesProperty[] = "Services";
+const char kServiceWatchListProperty[] = "ServiceWatchList";
+const char kAvailableTechnologiesProperty[] = "AvailableTechnologies";
+const char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
+const char kConnectedTechnologiesProperty[] = "ConnectedTechnologies";
+const char kDefaultTechnologyProperty[] = "DefaultTechnology";
+const char kOfflineModeProperty[] = "OfflineMode";
+const char kActiveProfileProperty[] = "ActiveProfile";
+const char kDevicesProperty[] = "Devices";
+const char kCheckPortalListProperty[] = "CheckPortalList";
+const char kCountryProperty[] = "Country";
+const char kPortalURLProperty[] = "PortalURL";
 
 // Flimflam Profile property names.
-extern const char* kEntriesProperty;
+const char kEntriesProperty[] = "Entries";
 
 // Flimflam Device property names.
-extern const char* kScanningProperty;
-extern const char* kPoweredProperty;
-extern const char* kNetworksProperty;
-extern const char* kScanIntervalProperty;
-extern const char* kBgscanMethodProperty;
-extern const char* kBgscanShortIntervalProperty;
-extern const char* kDBusConnectionProperty;
-extern const char* kDBusObjectProperty;
-extern const char* kBgscanSignalThresholdProperty;
+const char kScanningProperty[] = "Scanning";
+const char kPoweredProperty[] = "Powered";
+const char kNetworksProperty[] = "Networks";
+const char kScanIntervalProperty[] = "ScanInterval";
+const char kBgscanMethodProperty[] = "BgscanMethod";
+const char kBgscanShortIntervalProperty[] = "BgscanShortInterval";
+const char kDBusConnectionProperty[] = "DBus.Connection";
+const char kDBusObjectProperty[] = "DBus.Object";
+const char kBgscanSignalThresholdProperty[] = "BgscanSignalThreshold";
 
 // Flimflam Cellular Device property names.
-extern const char* kCarrierProperty;
-extern const char* kCellularAllowRoamingProperty;
-extern const char* kHomeProviderProperty;
-extern const char* kMeidProperty;
-extern const char* kImeiProperty;
-extern const char* kImsiProperty;
-extern const char* kEsnProperty;
-extern const char* kMdnProperty;
-extern const char* kMinProperty;
-extern const char* kModelIDProperty;
-extern const char* kManufacturerProperty;
-extern const char* kFirmwareRevisionProperty;
-extern const char* kHardwareRevisionProperty;
-extern const char* kPRLVersionProperty;
-extern const char* kSelectedNetworkProperty;
-extern const char* kSupportNetworkScanProperty;
-extern const char* kFoundNetworksProperty;
-extern const char* kIPConfigsProperty;
+const char kCarrierProperty[] = "Cellular.Carrier";
+const char kCellularAllowRoamingProperty[] = "Cellular.AllowRoaming";
+const char kHomeProviderProperty[] = "Cellular.HomeProvider";
+const char kMeidProperty[] = "Cellular.MEID";
+const char kImeiProperty[] = "Cellular.IMEI";
+const char kImsiProperty[] = "Cellular.IMSI";
+const char kEsnProperty[] = "Cellular.ESN";
+const char kMdnProperty[] = "Cellular.MDN";
+const char kMinProperty[] = "Cellular.MIN";
+const char kModelIDProperty[] = "Cellular.ModelID";
+const char kManufacturerProperty[] = "Cellular.Manufacturer";
+const char kFirmwareRevisionProperty[] = "Cellular.FirmwareRevision";
+const char kHardwareRevisionProperty[] = "Cellular.HardwareRevision";
+const char kPRLVersionProperty[] = "Cellular.PRLVersion";
+const char kSelectedNetworkProperty[] = "Cellular.SelectedNetwork";
+const char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
+const char kFoundNetworksProperty[] = "Cellular.FoundNetworks";
+const char kIPConfigsProperty[] = "IPConfigs";
 
 // Flimflam state options.
-extern const char* kStateIdle;
-extern const char* kStateCarrier;
-extern const char* kStateAssociation;
-extern const char* kStateConfiguration;
-extern const char* kStateReady;
-extern const char* kStatePortal;
-extern const char* kStateOffline;
-extern const char* kStateOnline;
-extern const char* kStateDisconnect;
-extern const char* kStateFailure;
-extern const char* kStateActivationFailure;
+const char kStateIdle[] = "idle";
+const char kStateCarrier[] = "carrier";
+const char kStateAssociation[] = "association";
+const char kStateConfiguration[] = "configuration";
+const char kStateReady[] = "ready";
+const char kStatePortal[] = "portal";
+const char kStateOffline[] = "offline";
+const char kStateOnline[] = "online";
+const char kStateDisconnect[] = "disconnect";
+const char kStateFailure[] = "failure";
+const char kStateActivationFailure[] = "activation-failure";
 
 // Flimflam property names for SIMLock status.
-extern const char* kSIMLockStatusProperty;
-extern const char* kSIMLockTypeProperty;
-extern const char* kSIMLockRetriesLeftProperty;
+const char kSIMLockStatusProperty[] = "Cellular.SIMLockStatus";
+const char kSIMLockTypeProperty[] = "LockType";
+const char kSIMLockRetriesLeftProperty[] = "RetriesLeft";
 
 // Flimflam property names for Cellular.FoundNetworks.
-extern const char* kLongNameProperty;
-extern const char* kStatusProperty;
-extern const char* kShortNameProperty;
-extern const char* kTechnologyProperty;
+const char kLongNameProperty[] = "long_name";
+const char kStatusProperty[] = "status";
+const char kShortNameProperty[] = "short_name";
+const char kTechnologyProperty[] = "technology";
 
 // Flimflam SIMLock status types.
-extern const char* kSIMLockPin;
-extern const char* kSIMLockPuk;
+const char kSIMLockPin[] = "sim-pin";
+const char kSIMLockPuk[] = "sim-puk";
 
 // APN info property names.
-extern const char* kApnProperty;
-extern const char* kNetworkIdProperty;
-extern const char* kUsernameProperty;
-extern const char* kPasswordProperty;
+const char kApnProperty[] = "apn";
+const char kNetworkIdProperty[] = "network_id";
+const char kUsernameProperty[] = "username";
+const char kPasswordProperty[] = "password";
 
 // Operator info property names.
-extern const char* kOperatorNameKey;
-extern const char* kOperatorCodeKey;
-extern const char* kOperatorCountryKey;
+const char kOperatorNameKey[] = "name";
+const char kOperatorCodeKey[] = "code";
+const char kOperatorCountryKey[] = "country";
 
 // Flimflam network technology options.
-extern const char* kNetworkTechnology1Xrtt;
-extern const char* kNetworkTechnologyEvdo;
-extern const char* kNetworkTechnologyGprs;
-extern const char* kNetworkTechnologyEdge;
-extern const char* kNetworkTechnologyUmts;
-extern const char* kNetworkTechnologyHspa;
-extern const char* kNetworkTechnologyHspaPlus;
-extern const char* kNetworkTechnologyLte;
-extern const char* kNetworkTechnologyLteAdvanced;
+const char kNetworkTechnology1Xrtt[] = "1xRTT";
+const char kNetworkTechnologyEvdo[] = "EVDO";
+const char kNetworkTechnologyGprs[] = "GPRS";
+const char kNetworkTechnologyEdge[] = "EDGE";
+const char kNetworkTechnologyUmts[] = "UMTS";
+const char kNetworkTechnologyHspa[] = "HSPA";
+const char kNetworkTechnologyHspaPlus[] = "HSPA+";
+const char kNetworkTechnologyLte[] = "LTE";
+const char kNetworkTechnologyLteAdvanced[] = "LTE Advanced";
 
 // Flimflam roaming state options
-extern const char* kRoamingStateHome;
-extern const char* kRoamingStateRoaming;
-extern const char* kRoamingStateUnknown;
+const char kRoamingStateHome[] = "home";
+const char kRoamingStateRoaming[] = "roaming";
+const char kRoamingStateUnknown[] = "unknown";
 
 // Flimflam activation state options
-extern const char* kActivationStateActivated;
-extern const char* kActivationStateActivating;
-extern const char* kActivationStateNotActivated;
-extern const char* kActivationStatePartiallyActivated;
-extern const char* kActivationStateUnknown;
+const char kActivationStateActivated[] = "activated";
+const char kActivationStateActivating[] = "activating";
+const char kActivationStateNotActivated[] = "not-activated";
+const char kActivationStatePartiallyActivated[] = "partially-activated";
+const char kActivationStateUnknown[] = "unknown";
 
 // Flimflam EAP method options.
-extern const char* kEapMethodPEAP;
-extern const char* kEapMethodTLS;
-extern const char* kEapMethodTTLS;
-extern const char* kEapMethodLEAP;
+const char kEapMethodPEAP[] = "PEAP";
+const char kEapMethodTLS[] = "TLS";
+const char kEapMethodTTLS[] = "TTLS";
+const char kEapMethodLEAP[] = "LEAP";
 
 // Flimflam EAP phase 2 auth options.
-extern const char* kEapPhase2AuthPEAPMD5;
-extern const char* kEapPhase2AuthPEAPMSCHAPV2;
-extern const char* kEapPhase2AuthTTLSMD5;
-extern const char* kEapPhase2AuthTTLSMSCHAPV2;
-extern const char* kEapPhase2AuthTTLSMSCHAP;
-extern const char* kEapPhase2AuthTTLSPAP;
-extern const char* kEapPhase2AuthTTLSCHAP;
+const char kEapPhase2AuthPEAPMD5[] = "auth=MD5";
+const char kEapPhase2AuthPEAPMSCHAPV2[] = "auth=MSCHAPV2";
+const char kEapPhase2AuthTTLSMD5[] = "autheap=MD5";
+const char kEapPhase2AuthTTLSMSCHAPV2[] = "autheap=MSCHAPV2";
+const char kEapPhase2AuthTTLSMSCHAP[] = "autheap=MSCHAP";
+const char kEapPhase2AuthTTLSPAP[] = "autheap=PAP";
+const char kEapPhase2AuthTTLSCHAP[] = "autheap=CHAP";
 
 // Flimflam VPN provider types.
-extern const char* kProviderL2tpIpsec;
-extern const char* kProviderOpenVpn;
+const char kProviderL2tpIpsec[] = "l2tpipsec";
+const char kProviderOpenVpn[] = "openvpn";
 
 // Flimflam VPN service properties
-extern const char* kVPNDomainProperty;
+const char kVPNDomainProperty[] = "VPN.Domain";
 
 // Flimflam monitored properties
-extern const char* kMonitorPropertyChanged;
+const char kMonitorPropertyChanged[] = "PropertyChanged";
 
 // Flimflam type options.
-extern const char* kTypeEthernet;
-extern const char* kTypeWifi;
-extern const char* kTypeWimax;
-extern const char* kTypeBluetooth;
-extern const char* kTypeCellular;
-extern const char* kTypeVPN;
+const char kTypeEthernet[] = "ethernet";
+const char kTypeWifi[] = "wifi";
+const char kTypeWimax[] = "wimax";
+const char kTypeBluetooth[] = "bluetooth";
+const char kTypeCellular[] = "cellular";
+const char kTypeVPN[] = "vpn";
 
 // Flimflam mode options.
-extern const char* kModeManaged;
-extern const char* kModeAdhoc;
+const char kModeManaged[] = "managed";
+const char kModeAdhoc[] = "adhoc";
 
 // Flimflam security options.
-extern const char* kSecurityWpa;
-extern const char* kSecurityWep;
-extern const char* kSecurityRsn;
-extern const char* kSecurity8021x;
-extern const char* kSecurityPsk;
-extern const char* kSecurityNone;
+const char kSecurityWpa[] = "wpa";
+const char kSecurityWep[] = "wep";
+const char kSecurityRsn[] = "rsn";
+const char kSecurity8021x[] = "802_1x";
+const char kSecurityPsk[] = "psk";
+const char kSecurityNone[] = "none";
 
 // Flimflam L2TPIPsec property names.
-extern const char* kL2TPIPSecCACertNSSProperty;
-extern const char* kL2TPIPSecClientCertIDProperty;
-extern const char* kL2TPIPSecPSKProperty;
-extern const char* kL2TPIPSecUserProperty;
-extern const char* kL2TPIPSecPasswordProperty;
+const char kL2TPIPSecCACertNSSProperty[] = "L2TPIPsec.CACertNSS";
+const char kL2TPIPSecClientCertIDProperty[] = "L2TPIPsec.ClientCertID";
+const char kL2TPIPSecPSKProperty[] = "L2TPIPsec.PSK";
+const char kL2TPIPSecUserProperty[] = "L2TPIPsec.User";
+const char kL2TPIPSecPasswordProperty[] = "L2TPIPsec.Password";
 
 // IPConfig property names.
-extern const char* kMethodProperty;
-extern const char* kAddressProperty;
-extern const char* kMtuProperty;
-extern const char* kPrefixlenProperty;
-extern const char* kBroadcastProperty;
-extern const char* kPeerAddressProperty;
-extern const char* kGatewayProperty;
-extern const char* kDomainNameProperty;
-extern const char* kNameServersProperty;
+const char kMethodProperty[] = "Method";
+const char kAddressProperty[] = "Address";
+const char kMtuProperty[] = "Mtu";
+const char kPrefixlenProperty[] = "Prefixlen";
+const char kBroadcastProperty[] = "Broadcast";
+const char kPeerAddressProperty[] = "PeerAddress";
+const char kGatewayProperty[] = "Gateway";
+const char kDomainNameProperty[] = "DomainName";
+const char kNameServersProperty[] = "NameServers";
 
 // IPConfig type options.
-extern const char* kTypeIPv4;
-extern const char* kTypeIPv6;
-extern const char* kTypeDHCP;
-extern const char* kTypeBOOTP;
-extern const char* kTypeZeroConf;
-extern const char* kTypeDHCP6;
-extern const char* kTypePPP;
+const char kTypeIPv4[] = "ipv4";
+const char kTypeIPv6[] = "ipv6";
+const char kTypeDHCP[] = "dhcp";
+const char kTypeBOOTP[] = "bootp";
+const char kTypeZeroConf[] = "zeroconf";
+const char kTypeDHCP6[] = "dhcp6";
+const char kTypePPP[] = "ppp";
 
 // Flimflam error options.
-extern const char* kErrorOutOfRange;
-extern const char* kErrorPinMissing;
-extern const char* kErrorDhcpFailed;
-extern const char* kErrorConnectFailed;
-extern const char* kErrorBadPassphrase;
-extern const char* kErrorBadWEPKey;
-extern const char* kErrorActivationFailed;
-extern const char* kErrorNeedEvdo;
-extern const char* kErrorNeedHomeNetwork;
-extern const char* kErrorOtaspFailed;
-extern const char* kErrorAaaFailed;
-extern const char* kErrorInternal;
-extern const char* kErrorDNSLookupFailed;
-extern const char* kErrorHTTPGetFailed;
+const char kErrorOutOfRange[] = "out-of-range";
+const char kErrorPinMissing[] = "pin-missing";
+const char kErrorDhcpFailed[] = "dhcp-failed";
+const char kErrorConnectFailed[] = "connect-failed";
+const char kErrorBadPassphrase[] = "bad-passphrase";
+const char kErrorBadWEPKey[] = "bad-wepkey";
+const char kErrorActivationFailed[] = "activation-failed";
+const char kErrorNeedEvdo[] = "need-evdo";
+const char kErrorNeedHomeNetwork[] = "need-home-network";
+const char kErrorOtaspFailed[] = "otasp-failed";
+const char kErrorAaaFailed[] = "aaa-failed";
+const char kErrorInternal[] = "internal-error";
+const char kErrorDNSLookupFailed[] = "dns-lookup-failed";
+const char kErrorHTTPGetFailed[] = "http-get-failed";
 
 // Flimflam error messages.
-extern const char* kErrorPassphraseRequiredMsg;
-extern const char* kErrorIncorrectPinMsg;
-extern const char* kErrorPinBlockedMsg;
-extern const char* kErrorPinRequiredMsg;
+const char kErrorPassphraseRequiredMsg[] = "Passphrase required";
+const char kErrorIncorrectPinMsg[] =
+    "org.chromium.flimflam.Error.IncorrectPin";
+const char kErrorPinBlockedMsg[] = "org.chromium.flimflam.Error.PinBlocked";
+const char kErrorPinRequiredMsg[] = "org.chromium.flimflam.Error.PinRequired";
 
-extern const char* kUnknownString;
+const char kUnknownString[] = "UNKNOWN";
 }  // namespace flimflam
 
 namespace cashew {
 // Cashew D-Bus service identifiers.
-extern const char* kCashewServiceName;
-extern const char* kCashewServicePath;
-extern const char* kCashewServiceInterface;
+const char kCashewServiceName[] = "org.chromium.Cashew";
+const char kCashewServicePath[] = "/org/chromium/Cashew";
+const char kCashewServiceInterface[] = "org.chromium.Cashew";
 
 // Cashew function names.
-extern const char* kRequestDataPlanFunction;
-extern const char* kRetrieveDataPlanFunction;
+const char kRequestDataPlanFunction[] = "RequestDataPlansUpdate";
+const char kRetrieveDataPlanFunction[] = "GetDataPlans";
 
 // Cashew signals.
-extern const char* kMonitorDataPlanUpdate;
+const char kMonitorDataPlanUpdate[] = "DataPlansUpdate";
 
 // Cashew data plan properties
-extern const char* kCellularPlanNameProperty;
-extern const char* kCellularPlanTypeProperty;
-extern const char* kCellularPlanUpdateTimeProperty;
-extern const char* kCellularPlanStartProperty;
-extern const char* kCellularPlanEndProperty;
-extern const char* kCellularPlanDataBytesProperty;
-extern const char* kCellularDataBytesUsedProperty;
+const char kCellularPlanNameProperty[] = "CellularPlanName";
+const char kCellularPlanTypeProperty[] = "CellularPlanType";
+const char kCellularPlanUpdateTimeProperty[] = "CellularPlanUpdateTime";
+const char kCellularPlanStartProperty[] = "CellularPlanStart";
+const char kCellularPlanEndProperty[] = "CellularPlanEnd";
+const char kCellularPlanDataBytesProperty[] = "CellularPlanDataBytes";
+const char kCellularDataBytesUsedProperty[] = "CellularDataBytesUsed";
 
 // Cashew Data Plan types
-extern const char* kCellularDataPlanUnlimited;
-extern const char* kCellularDataPlanMeteredPaid;
-extern const char* kCellularDataPlanMeteredBase;
+const char kCellularDataPlanUnlimited[] = "UNLIMITED";
+const char kCellularDataPlanMeteredPaid[] = "METERED_PAID";
+const char kCellularDataPlanMeteredBase[] = "METERED_BASE";
 }  // namespace cashew
 
 namespace modemmanager {
 // ModemManager D-Bus service identifiers
-extern const char* kModemManagerSMSInterface;
+const char kModemManagerSMSInterface[] =
+    "org.freedesktop.ModemManager.Modem.Gsm.SMS";
 
 // ModemManager function names.
-extern const char* kSMSGetFunction;
-extern const char* kSMSDeleteFunction;
-extern const char* kSMSListFunction;
+const char kSMSGetFunction[] = "Get";
+const char kSMSDeleteFunction[] = "Delete";
+const char kSMSListFunction[] = "List";
 
 // ModemManager monitored signals
-extern const char* kSMSReceivedSignal;
+const char kSMSReceivedSignal[] = "SmsReceived";
 }  // namespace modemmanager
 
 #endif  // CHROMEOS_DBUS_SERVICE_CONSTANTS_H_
