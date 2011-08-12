@@ -14,8 +14,9 @@ static EGLConfig egl_config = NULL;
 static EGLSurface egl_surface = NULL;
 static EGLContext egl_context = NULL;
 
+// TODO(ihf): This is a f'ugly macro. Rework this one day.
 #define CHECK_EGL() do { \
-  if (eglGetError() != EGL_SUCCESS) return false; \
+  if (eglGetError() != EGL_SUCCESS) return 0; \
 } while (0)
 
 bool Init() {
