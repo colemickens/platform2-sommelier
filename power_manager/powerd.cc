@@ -214,6 +214,10 @@ void Daemon::ReadSettings() {
   base_timeout_values_[kUnpluggedOffMs]     = unplugged_off_ms_;
   base_timeout_values_[kUnpluggedSuspendMs] = unplugged_suspend_ms_;
 
+  // Initialize from prefs as might be used before AC plug status evaluated.
+  dim_ms_ = unplugged_dim_ms_;
+  off_ms_ = unplugged_off_ms_;
+
   if (monitor_reconfigure_->is_projecting())
     AdjustIdleTimeoutsForProjection();
 }
