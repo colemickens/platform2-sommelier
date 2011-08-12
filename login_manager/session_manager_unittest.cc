@@ -696,7 +696,8 @@ TEST_F(SessionManagerTest, StatsRecorded) {
 TEST_F(SessionManagerTest, SetOwnerKeyShouldFail) {
   MockChildJob* job = CreateTrivialMockJob(MAYBE_NEVER);
   EXPECT_CALL(utils_,
-              SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, false))
+              SendStatusSignalToChromium(
+                  StrEq(chromium::kOwnerKeySetSignal), false))
       .Times(1);
   MockUtils();
 
