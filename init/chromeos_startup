@@ -95,34 +95,32 @@ CROS_DEBUG=$((! $?))
 # Check if we need to perform firmware update.
 FIRMWARE_UPDATE_SCRIPT=/usr/sbin/chromeos-firmwareupdate
 if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
-  FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/var/log/update_firmware.log
+  # This file will be collected by chromeos-setgoodkernel
+  FIRMWARE_UPDATE_LOGS=/mnt/stateful_partition/update_firmware.log
 
   if [ "$(crossystem mainfw_type)" = developer ]; then
+    # TODO(hungte) Only alert for v2 firmware.
     chromeos-boot-alert dev_fwcheck /dev/tty1
   elif [ "$(mosys platform name 2>/dev/null)" = "Mario" ]; then
     # Prevent any unexpected updates on legacy system
     crossystem fwupdate_tries=0 >/dev/null 2>&1
   else
-    # fwupdate_tries is not supported in legacy system like CR48, so a cookie
-    # file in stateful partition is used when fwupdate_tries is not available)
     tries="$(crossystem fwupdate_tries || echo 0)"
     if [ $tries -gt 0 ]; then
       tries=$((tries - 1))
       crossystem fwupdate_tries=$tries
 
-      # TODO(arkaitzr): remove references to /root/.dev_mode in this file if
-      # CROS_DEBUG is also being check since CROS_DEBUG==1 for dev images.
-      if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
+      if [ "$CROS_DEBUG" = "1" ]; then
         # More message on console for developer mode and dev builds
         FIRMWARE_UPDATE_LOGS="/dev/tty1 $FIRMWARE_UPDATE_LOGS"
       fi
-      # TODO(hungte) don't duplicate the creation of var/log code
-      mkdir -p -m 0755 /mnt/stateful_partition/var/log
       [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
       chromeos-boot-alert update_firmware /dev/tty1
-
-      "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1 |
-        tee $FIRMWARE_UPDATE_LOGS
+      (date && "$FIRMWARE_UPDATE_SCRIPT" --mode=startup 2>&1) |
+        tee -a $FIRMWARE_UPDATE_LOGS
+      # Send ANSI "clear screen" escape sequence to clear TTY frame buffer, to
+      # prevent user seeing the messages again in shutdown
+      printf '\033[2J' >/dev/tty1
     fi
   fi
 fi
