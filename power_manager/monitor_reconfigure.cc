@@ -180,7 +180,7 @@ void MonitorReconfigure::Run() {
 
   // Enable the backlight. We do not want to do this before the resize is
   // done so that we can hide the resize when going off->on.
-  if (!lcd_resolution.name.empty())
+  if (!lcd_resolution.name.empty() || is_projecting_)
     backlight_ctl_->SetPowerState(BACKLIGHT_ACTIVE);
 
   if (lcd_output_info_)
