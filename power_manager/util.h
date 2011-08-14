@@ -1,12 +1,13 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef POWER_MANAGER_UTIL_H_
 #define POWER_MANAGER_UTIL_H_
 
-#include "base/file_path.h"
 #include "cros/chromeos_wm_ipc_enums.h"
+
+class FilePath;
 
 namespace power_manager {
 namespace util {
@@ -26,9 +27,9 @@ void SendSignalToPowerM(const char* signal);
 // Send a message |signal| to the unprivileged power daemon.
 void SendSignalToPowerD(const char* signal);
 
-// Status file creation and removal
-void CreateStatusFile(FilePath file);
-void RemoveStatusFile(FilePath file);
+// Status file creation and removal.
+void CreateStatusFile(const FilePath& file);
+void RemoveStatusFile(const FilePath& file);
 
 // Send an X ClientEvent message to the window manager.
 bool SendMessageToWindowManager(chromeos::WmIpcMessageType type,

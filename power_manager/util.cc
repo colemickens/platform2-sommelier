@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,6 +11,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gdk/gdkx.h>
 
+#include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "chromeos/dbus/dbus.h"
@@ -136,21 +137,19 @@ void SendSignalToPowerD(const char* signal_name) {
   ::dbus_message_unref(signal);
 }
 
-void CreateStatusFile(FilePath file) {
-  if (!file_util::WriteFile(file, NULL, 0) == -1) {
+void CreateStatusFile(const FilePath& file) {
+  if (!file_util::WriteFile(file, NULL, 0) == -1)
     LOG(ERROR) << "Unable to create " << file.value();
-  } else {
+  else
     LOG(INFO) << "Created " << file.value();
-  }
 }
 
-void RemoveStatusFile(FilePath file) {
+void RemoveStatusFile(const FilePath& file) {
   if (file_util::PathExists(file)) {
-    if (!file_util::Delete(file, FALSE)) {
+    if (!file_util::Delete(file, FALSE))
       LOG(ERROR) << "Unable to remove " << file.value();
-    } else {
+    else
       LOG(INFO) << "Removed " << file.value();
-    }
   }
 }
 
