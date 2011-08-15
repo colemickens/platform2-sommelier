@@ -1,9 +1,10 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_BUTTON_HANDLER_H_
-#define POWER_BUTTON_HANDLER_H_
+#ifndef POWER_MANAGER_POWER_BUTTON_HANDLER_H_
+#define POWER_MANAGER_POWER_BUTTON_HANDLER_H_
+#pragma once
 
 #include <glib.h>
 
@@ -74,4 +75,4 @@ class PowerButtonHandler {
 
 }  // namespace power_manager
 
-#endif
+#endif  // POWER_MANAGER_POWER_BUTTON_HANDLER_H_

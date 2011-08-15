@@ -2,8 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_DAEMON_H_
-#define POWER_DAEMON_H_
+#ifndef POWER_MANAGER_POWERD_H_
+#define POWER_MANAGER_POWERD_H_
+#pragma once
 
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib.h>
@@ -332,4 +333,4 @@ class Daemon : public XIdleObserver {
 
 }  // namespace power_manager
 
-#endif  // POWER_DAEMON_H_
+#endif  // POWER_MANAGER_POWERD_H_
