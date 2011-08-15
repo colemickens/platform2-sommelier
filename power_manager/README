@@ -3,7 +3,7 @@ the power manager subscribes for idle notifications from XSync, and adjusts
 the backlight based on whether or not the user is idle.
 
 Executable programs:
-  * backlight-tool (backlight-tool.cc)
+  * backlight-tool (backlight_tool.cc)
     Simple tool to get and set the brightness level of the display backlight.
   * powerd (powerd.cc)
     Upper power manager. Adjusts device status based on whether the

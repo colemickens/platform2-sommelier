@@ -80,7 +80,7 @@ backlight = gdk_env.Library('backlight',
 backlight_env = gdk_env.Clone()
 backlight_env.Append(LIBS=Split('base rt pthread gflags'))
 backlight_tool = backlight_env.Program('backlight-tool',
-                                       ['backlight-tool.cc', backlight])
+                                       ['backlight_tool.cc', backlight])
 Default(backlight_tool)
 
 # Build power supply info app
