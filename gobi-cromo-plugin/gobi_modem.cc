@@ -132,7 +132,7 @@ class SessionStarter {
 
   static gboolean CompletionCallback(void *data) {
     // Runs on main thread;
-    SessionStarter *s = static_cast<SessionStarter *>(data);
+    scoped_ptr<SessionStarter> s(static_cast<SessionStarter *>(data));
 
     int join_rc = pthread_join(s->thread_, NULL);
     if (join_rc != 0) {
@@ -144,10 +144,12 @@ class SessionStarter {
     GobiModem *modem = GobiModem::handler_->LookupByDbusPath(
         s->modem_dbus_path_);
     if (modem == NULL) {
+      // The DBUs call is never completed; the object was unregistered
+      // from the bus.
       LOG(ERROR) << "SessionStarter complete with no modem";
       return false;
     }
-    modem->SessionStarterDoneCallback(s);
+    modem->SessionStarterDoneCallback(s.get());
     return false;
   }
 
@@ -613,8 +615,7 @@ void GobiModem::PerformDeferredDisable() {
   }
 }
 
-void GobiModem::SessionStarterDoneCallback(SessionStarter *starter_raw) {
-  scoped_ptr<SessionStarter> starter(starter_raw);  // Take ownership
+void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
 
   session_starter_in_flight_ = false;
   if (injected_faults_["ConnectFailsWithErrorSendingQmiRequest"]) {
