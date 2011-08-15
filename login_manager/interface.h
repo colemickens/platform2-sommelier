@@ -30,6 +30,7 @@ struct SessionManagerClass { GObjectClass parent_class; };
 // class system specific functions and variables discussed in
 // interface.cc.
 GType session_manager_get_type();  // defined by G_DEFINE_TYPE
+struct dbus_glib_session_manager_object_info;  // defined by G_DEFINE_TYPE
 
 // Interface function prototypes which wrap service.
 gboolean session_manager_emit_login_prompt_ready(SessionManager *self,
