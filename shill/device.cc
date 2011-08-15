@@ -54,8 +54,8 @@ Device::Device(ControlInterface *control_interface,
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       manager_(manager),
-      adaptor_(control_interface->CreateDeviceAdaptor(this)) {
-
+      adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      dhcp_provider_(DHCPProvider::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
 
   // flimflam::kBgscanMethodProperty: Registered in WiFi
@@ -176,7 +176,7 @@ void Device::DestroyIPConfig() {
 
 bool Device::AcquireDHCPConfig() {
   DestroyIPConfig();
-  ipconfig_ = DHCPProvider::GetInstance()->CreateConfig(link_name_);
+  ipconfig_ = dhcp_provider_->CreateConfig(link_name_);
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
   return ipconfig_->RequestIP();

@@ -44,7 +44,7 @@ class DHCPProvider {
   // Creates a new DHCPConfig for |device_name|. The DHCP configuration for the
   // device can then be initiated through DHCPConfig::Request and
   // DHCPConfig::Renew.
-  DHCPConfigRefPtr CreateConfig(const std::string &device_name);
+  virtual DHCPConfigRefPtr CreateConfig(const std::string &device_name);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // NULL if |pid| is not bound to a configuration.
@@ -64,6 +64,7 @@ class DHCPProvider {
 
  private:
   friend struct base::DefaultLazyInstanceTraits<DHCPProvider>;
+  friend class CellularTest;
   friend class DHCPProviderTest;
   friend class DeviceInfoTest;
   friend class DeviceTest;

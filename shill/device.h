@@ -21,6 +21,7 @@
 namespace shill {
 
 class ControlInterface;
+class DHCPProvider;
 class DeviceAdaptorInterface;
 class DeviceInfo;
 class Endpoint;
@@ -76,6 +77,8 @@ class Device : public base::RefCounted<Device> {
 
   bool Load(StoreInterface *storage);
   bool Save(StoreInterface *storage);
+
+  void set_dhcp_provider(DHCPProvider *provider) { dhcp_provider_ = provider; }
 
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
@@ -133,6 +136,9 @@ class Device : public base::RefCounted<Device> {
   std::string GetRpcConnectionIdentifier();
 
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
+
+  // Cache singleton pointer for performance and test purposes.
+  DHCPProvider *dhcp_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

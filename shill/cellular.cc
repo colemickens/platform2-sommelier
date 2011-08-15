@@ -461,11 +461,11 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SetState(kStateLinked);
     manager_->RegisterService(service_);
     // TODO(petkov): For GSM, remember the APN.
-    // TODO(petkov): Acquire IP.
+    LOG_IF(ERROR, !AcquireDHCPConfig()) << "Unable to acquire DHCP config.";
   } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
     SetState(kStateConnected);
     manager_->DeregisterService(service_);
-    // TODO(petkov): Release IP.
+    DestroyIPConfig();
   }
 }
 

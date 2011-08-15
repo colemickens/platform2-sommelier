@@ -12,6 +12,8 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular_service.h"
+#include "shill/mock_dhcp_config.h"
+#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
@@ -110,10 +112,15 @@ class CellularTest : public testing::Test {
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCDMAProxy()),
         proxy_factory_(this),
+        dhcp_config_(new MockDHCPConfig(&control_interface_,
+                                        &dispatcher_,
+                                        &dhcp_provider_,
+                                        kTestDeviceName,
+                                        &glib_)),
         device_(new Cellular(&control_interface_,
                              &dispatcher_,
                              &manager_,
-                             "usb0",
+                             kTestDeviceName,
                              3,
                              Cellular::kTypeGSM,
                              kDBusOwner,
@@ -123,12 +130,14 @@ class CellularTest : public testing::Test {
   virtual void SetUp() {
     ProxyFactory::set_factory(&proxy_factory_);
     StartRTNLHandler();
+    device_->set_dhcp_provider(&dhcp_provider_);
   }
 
   virtual void TearDown() {
     ProxyFactory::set_factory(NULL);
     device_->Stop();
     StopRTNLHandler();
+    device_->set_dhcp_provider(NULL);
   }
 
  protected:
@@ -159,6 +168,7 @@ class CellularTest : public testing::Test {
     CellularTest *test_;
   };
 
+  static const char kTestDeviceName[];
   static const int kTestSocket;
   static const char kDBusOwner[];
   static const char kDBusPath[];
@@ -175,9 +185,14 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
   TestProxyFactory proxy_factory_;
+
+  MockDHCPProvider dhcp_provider_;
+  scoped_refptr<MockDHCPConfig> dhcp_config_;
+
   CellularRefPtr device_;
 };
 
+const char CellularTest::kTestDeviceName[] = "usb0";
 const int CellularTest::kTestSocket = 123;
 const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
@@ -268,6 +283,9 @@ TEST_F(CellularTest, StartLinked) {
           SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName))
+      .WillOnce(Return(dhcp_config_));
+  EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   device_->Start();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateLinked, device_->state_);
