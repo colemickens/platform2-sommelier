@@ -356,8 +356,6 @@ install_gpt() {
 
   # Display what we've got
   $sudo $GPT show ${outdev}
-
-  sync
 }
 
 # Read GPT table to find the starting location of a specific partition.
