@@ -373,6 +373,36 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
   return METRIC_INDEX_NONE;
 }
 
+
+void GobiModem::RescheduleDisable(void) {
+  static const int kRetryDisableTimeoutSec = 1;
+
+  retry_disable_callback_source_.TimeoutAddFull(
+      G_PRIORITY_DEFAULT,
+      kRetryDisableTimeoutSec,
+      RetryDisableCallback,
+      new CallbackArgs(new DBus::Path(path())),
+      CleanupRetryDisableCallback);
+}
+
+void GobiModem::CleanupRetryDisableCallback(gpointer data) {
+  delete static_cast<CallbackArgs*>(data);
+}
+
+gboolean GobiModem::RetryDisableCallback(gpointer data) {
+  CallbackArgs *args = static_cast<CallbackArgs*>(data);
+
+  // GobiModem::handler_ is a static
+  GobiModem *modem = GobiModem::handler_->LookupByDbusPath(*args->path);
+  if (modem == NULL) {
+    LOG(ERROR) << "DisableRetryCallback with no modem";
+    return FALSE;
+  }
+  modem->PerformDeferredDisable();
+  return FALSE;
+}
+
+
 // EnableHelper
 //
 // Enable or Disable (poweroff) the modem based on the enable flag.
@@ -386,6 +416,9 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
 // communicate with the gobi API and failing to communicate with the
 // module.
 //
+// If the user_initiated argument is false, force the modem to be disabled even
+// if an error is returned when trying stop the current data session.
+//
 // Returns:
 //   true -  to indicate either that SetPower operation has started and
 //           PowerModeHandler will be called later, or that
@@ -394,7 +427,8 @@ static unsigned int QCErrorToMetricIndex(unsigned int error) {
 //   false - the dbus error has been set because the operation could
 //           not be completed, or the operation would have no effect.
 //
-bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
+bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error,
+                             const bool &user_initiated)
 {
   if (enable && Enabled()) {
     ScopedApiConnection connection(*this);
@@ -425,8 +459,24 @@ bool GobiModem::EnableHelper(const bool& enable, DBus::Error& error)
   } else if (!enable && Enabled()) {
     if (is_connecting_or_connected()) {
       LOG(INFO) << "Disable while connected or connect in flight";
+
+      int fault_inject_sleep_time_ms = static_cast <useconds_t> (
+          injected_faults_["DisableSleepMs"]);
+      if (fault_inject_sleep_time_ms) {
+        LOG(WARNING) << "Fault injection:  disable sleeping for "
+                     << fault_inject_sleep_time_ms << "ms";
+        usleep(1000 * fault_inject_sleep_time_ms);
+      }
+
       if (ForceDisconnect() == 0)
         return true;
+      if (user_initiated) {
+        // The error on force disconnect is probably a race.  If this
+        // was a user initiated request, allow
+        // SessionStarterDoneCallback to run, and try to disable later.
+        RescheduleDisable();
+        return true;
+      }
     }
     ULONG rc = sdk_->SetPower(gobi::kPersistentLowPower);
     if (rc != 0) {
@@ -460,7 +510,7 @@ void GobiModem::Enable(const bool& enable, DBus::Error& error) {
     error.set(kModeError, "Already have a pending Enable operation");
     return;
   }
-  operation_pending = EnableHelper(enable, error);
+  operation_pending = EnableHelper(enable, error, true);
   if (operation_pending) {
     CHECK(pending_enable_ == NULL);
     CHECK(!error);
@@ -599,16 +649,22 @@ void GobiModem::FinishDeferredCall(DBus::Tag *tag, const DBus::Error &error) {
   }
 }
 
+void GobiModem::FinishEnable(const DBus::Error &error)
+{
+  scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
+  retry_disable_callback_source_.Remove();
+  FinishDeferredCall(&scoped_enable->tag_, error);
+}
+
 void GobiModem::PerformDeferredDisable() {
   if (pending_enable_ != NULL) {
     DBus::Error disable_error;
     bool operation_pending;
     CHECK(pending_enable_->enable_ == false);
-    operation_pending = EnableHelper(false, disable_error);
+    operation_pending = EnableHelper(false, disable_error, false);
     CHECK(operation_pending || disable_error);
     if (disable_error) {
-      scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
-      FinishDeferredCall(&scoped_enable->tag_, disable_error);
+      FinishEnable(disable_error);
     }
     // NOTE: if !disable_error, there is nothing to do, because
     // PowerModeHandler will eventually return a value.
@@ -675,13 +731,22 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
   LOG(INFO) << "Returning deferred connect call";
   FinishDeferredCall(&starter->continuation_tag_, error);
 
-  if (!error.is_set()) {
-    // TODO(ellyjones): stop guessing about MM_MODEM_STATE_CONNECTING here.
-    SetMmState(MM_MODEM_STATE_CONNECTED, MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+  if (mm_state_ == MM_MODEM_STATE_CONNECTING) {
+    if (!error.is_set())
+      SetMmState(MM_MODEM_STATE_CONNECTED,
+                 MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
+    else
+      SetMmState(MM_MODEM_STATE_REGISTERED,
+                 MM_MODEM_STATE_CHANGED_REASON_UNKNOWN);
   }
 
   if (pending_enable_ != NULL)
-    PerformDeferredDisable();
+    // The pending_enable_ operation (which is most certainly a
+    // "DISABLE") should not be run until the SessionStateHandler has
+    // run (assuming it gets run).  By defering this call for a
+    // second, we give a chance to the SessionStateHandler to run, but
+    // also protect ourselves in case the SessionStateHandler never runs.
+    RescheduleDisable();
 }
 
 void GobiModem::SetMmState(uint32_t new_state, uint32_t reason) {
@@ -1351,9 +1416,9 @@ void GobiModem::PowerModeHandler() {
     }
   }
   if (pending_enable_ != NULL) {
-    scoped_ptr<PendingEnable> scoped_enable(pending_enable_.release());
-    FinishDeferredCall(&scoped_enable->tag_, error);
+    FinishEnable(error);
     LOG(INFO) << "PowerModeHandler: finishing deferred call";
+
   }
 }
 
@@ -1374,9 +1439,10 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
     if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
       reason = MM_MODEM_STATE_CHANGED_REASON_SUSPEND;
-    SetMmState(QCStateToMMState(state), reason);
     if (pending_enable_ != NULL)
       PerformDeferredDisable();
+    else
+      SetMmState(QCStateToMMState(state), reason);
   } else if (state == gobi::kConnected) {
     // Nothing to do here; this is handled in SessionStarterDoneCallback
   }
@@ -1520,10 +1586,11 @@ ULONG GobiModem::ForceDisconnect() {
   } else if (session_starter_in_flight_) {
     LOG(INFO) << "ForceDisconnect: Canceling StartDataSession";
     rc = SessionStarter::CancelDataSession(sdk_);
-    SetMmState(QCStateToMMState(gobi::kDisconnected),
-               MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
     if (rc != 0)
       LOG(WARNING) << "ForceDisconnect: CancelDataSessionFailed: " << rc;
+    else
+      SetMmState(QCStateToMMState(gobi::kDisconnected),
+                 MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
   }
   return rc;
 }

@@ -90,6 +90,34 @@ class GobiModemHelper;
 
 struct PendingEnable;
 
+class ScopedGSource {
+ public:
+  ScopedGSource() : id_(0) { }
+  ~ScopedGSource() { Remove(); }
+
+  // Remove old timeout if exists and add a new one
+  guint TimeoutAddFull(gint priority,
+                       guint interval,
+                       GSourceFunc function,
+                       gpointer data,
+                       GDestroyNotify notify) {
+    Remove();
+    id_ = g_timeout_add_seconds_full(
+        priority, interval, function, data, notify);
+    return id_;
+  }
+
+  void Remove(void) {
+    if (id_) {
+      g_source_remove(id_);
+      id_ = 0;
+    }
+  }
+  DISALLOW_COPY_AND_ASSIGN(ScopedGSource);
+ private:
+  uint32 id_;
+};
+
 class GobiModem
     : public Modem,
       public org::freedesktop::ModemManager::Modem_adaptor,
@@ -385,7 +413,14 @@ class GobiModem
   bool session_starter_in_flight_;
   scoped_ptr<PendingEnable> pending_enable_;
 
-  bool EnableHelper(const bool& enable, DBus::Error& error);
+  ScopedGSource retry_disable_callback_source_;
+  void RescheduleDisable();
+  static void CleanupRetryDisableCallback(gpointer data);
+  static gboolean RetryDisableCallback(gpointer data);
+  bool EnableHelper(const bool& enable, DBus::Error& error,
+                    const bool& user_initiated);
+  void FinishEnable(const DBus::Error &error);
+  void PerformDeferredDisable();
 
   friend class GobiModemTest;
 
@@ -401,7 +436,6 @@ class GobiModem
   bool StartSuspend();
   bool SuspendOk();
   void RegisterStartSuspend(const std::string& name);
-  void PerformDeferredDisable();
 
   // Resets the device by kicking it off the USB and allowing it back
   // on.  Reason is a QCWWAN error code for logging/metrics, or 0 for
