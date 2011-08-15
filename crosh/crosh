@@ -102,6 +102,9 @@ HELP='
  top
   Run top.
 
+ tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
+  Manually adjust advanced touchpad settings.
+
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
 
@@ -646,6 +649,10 @@ cmd_connectivity() {
 
 cmd_autest() {
   /usr/bin/update_engine_client --omaha_url autest
+}
+
+cmd_tpcontrol() {
+  /opt/google/touchpad/tpcontrol "$@"
 }
 
 substr() {
