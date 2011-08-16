@@ -40,6 +40,7 @@ CellularService::CellularService(ControlInterface *control_interface,
 
   store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store_.RegisterConstString(flimflam::kTypeProperty, &type_);
+  store_.RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 }
 
 CellularService::~CellularService() { }

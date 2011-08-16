@@ -26,6 +26,10 @@ class ModemCDMAProxyListener {
  public:
   virtual ~ModemCDMAProxyListener() {}
 
+  virtual void OnCDMAActivationStateChanged(
+      uint32 activation_state,
+      uint32 activation_error,
+      const DBusPropertiesMap &status_changes) = 0;
   virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo) = 0;
   virtual void OnCDMASignalQualityChanged(uint32 strength) = 0;

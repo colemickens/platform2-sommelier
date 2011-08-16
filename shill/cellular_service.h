@@ -27,11 +27,17 @@ class CellularService : public Service {
                   const CellularRefPtr &device);
   virtual ~CellularService();
 
-  void Connect();
-  void Disconnect();
+  virtual void Connect();
+  virtual void Disconnect();
 
   uint8 strength() const { return strength_; }
   void set_strength(uint8 strength) { strength_ = strength; }
+
+  const std::string &payment_url() const { return payment_url_; }
+  void set_payment_url(const std::string &url) { payment_url_ = url; }
+
+  const std::string &usage_url() const { return usage_url_; }
+  void set_usage_url(const std::string &url) { usage_url_ = url; }
 
  protected:
   virtual std::string CalculateState() { return "idle"; }
@@ -44,12 +50,13 @@ class CellularService : public Service {
   std::string roaming_state_;
   std::string payment_url_;
   uint8 strength_;
+  std::string usage_url_;
 
   std::map<std::string, std::string> apn_info_;
   std::map<std::string, std::string> last_good_apn_info_;
 
  private:
-  std::string GetDeviceRpcId();
+  virtual std::string GetDeviceRpcId();
 
   CellularRefPtr cellular_;
   const std::string type_;

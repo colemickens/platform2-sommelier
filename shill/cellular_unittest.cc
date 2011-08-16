@@ -348,13 +348,19 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
   device_->cdma_proxy_.reset(cdma_proxy_.release());
+  static const char kPaymentURL[] = "https://payment.url";
+  static const char kUsageURL[] = "https://usage.url";
+  device_->payment_url_ = kPaymentURL;
+  device_->usage_url_ = kUsageURL;
   device_->GetModemRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
             device_->cdma_.registration_state_1x);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             device_->cdma_.registration_state_evdo);
-  EXPECT_TRUE(device_->service_.get());
+  ASSERT_TRUE(device_->service_.get());
+  EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
+  EXPECT_EQ(kUsageURL, device_->service_->usage_url());
 }
 
 TEST_F(CellularTest, GetCDMASignalQuality) {

@@ -208,6 +208,10 @@ class Cellular : public Device,
   bool IsModemRegistered();
 
   // Signal callbacks inherited from ModemCDMAProxyListener.
+  virtual void OnCDMAActivationStateChanged(
+      uint32 activation_state,
+      uint32 activation_error,
+      const DBusPropertiesMap &status_changes);
   virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo);
   virtual void OnCDMASignalQualityChanged(uint32 strength);
@@ -232,6 +236,9 @@ class Cellular : public Device,
   CellularServiceRefPtr service_;
 
   ScopedRunnableMethodFactory<Cellular> task_factory_;
+
+  std::string payment_url_;
+  std::string usage_url_;
 
   // Properties
   bool allow_roaming_;

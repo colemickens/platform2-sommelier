@@ -258,9 +258,13 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
   DBusProperties::GetString(
       properties, "firmware_revision", &firmware_revision_);
-  // TODO(petkov): Get payment_url/olp_url/usage_url. For now, get these from
-  // ModemManager to match flimflam. In the future, provide a plugin API to get
-  // these directly from the modem driver.
+
+  // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
+  // match flimflam. In the future, provide a plugin API to get these directly
+  // from the modem driver.
+  DBusProperties::GetString(properties, "payment_url", &payment_url_);
+  DBusProperties::GetString(properties, "usage_url", &usage_url_);
+
   if (type_ == kTypeCDMA) {
     // TODO(petkov): Get activation_state.
   }
@@ -397,9 +401,10 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface_, dispatcher_, manager_, this);
+  service_->set_payment_url(payment_url_);
+  service_->set_usage_url(usage_url_);
   // TODO(petkov): Set activation_state.
   // TODO(petkov): Set operator.
-  // TODO(petkov): Set old_url/usage_url.
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) const {
@@ -467,6 +472,20 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     manager_->DeregisterService(service_);
     DestroyIPConfig();
   }
+}
+
+void Cellular::OnCDMAActivationStateChanged(
+    uint32 activation_state,
+    uint32 activation_error,
+    const DBusPropertiesMap &status_changes) {
+  CHECK_EQ(kTypeCDMA, type_);
+  DBusProperties::GetString(status_changes, "mdn", &mdn_);
+  DBusProperties::GetString(status_changes, "min", &min_);
+  if (DBusProperties::GetString(status_changes, "payment_url", &payment_url_) &&
+      service_.get()) {
+    service_->set_payment_url(payment_url_);
+  }
+  // TODO(petkov): Handle activation state updates.
 }
 
 void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,

@@ -40,9 +40,10 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const uint32 &activation_state,
     const uint32 &activation_error,
     const DBusPropertiesMap &status_changes) {
-  VLOG(2) << __func__;
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  VLOG(2) << __func__ << "(" << activation_state << ", " << activation_error
+          << ")";
+  listener_->OnCDMAActivationStateChanged(
+      activation_state, activation_error, status_changes);
 }
 
 void ModemCDMAProxy::Proxy::SignalQuality(const uint32 &quality) {
