@@ -34,6 +34,16 @@ $sudo cgpt prioritize $base_dev -i $kern_num
 # can look at.
 $sudo dev_debug_vboot --cleanup
 
+# Collect any startup time firmware updater logs (see chromeos_startup)
+FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
+if [ -f "$FIRMWARE_UPDATE_LOG" ]; then
+  echo "Found startup-time firmware updating logs:"
+  stat -c "%y" "$FIRMWARE_UPDATE_LOG"
+  echo "------------------------------------------"
+  cat "$FIRMWARE_UPDATE_LOG" && rm -f "$FIRMWARE_UPDATE_LOG"
+  echo "------------------------------------------"
+fi
+
 # Run the firmware updater
 FIRMWARE_UPDATE_SCRIPT='/usr/sbin/chromeos-firmwareupdate'
 if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
