@@ -285,7 +285,7 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
   RTNLMessage msg(
       RTNLMessage::kMessageTypeRoute,
       mode,
-      flags,
+      NLM_F_REQUEST | flags,
       0,
       0,
       0,

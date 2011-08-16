@@ -66,6 +66,7 @@ class Device : public base::RefCounted<Device> {
 
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
+  const ConnectionRefPtr &connection() const { return connection_; }
 
   const std::string &FriendlyName() const;
 
@@ -97,6 +98,12 @@ class Device : public base::RefCounted<Device> {
   // request was successfully sent.
   bool AcquireDHCPConfig();
 
+  // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
+  void CreateConnection();
+
+  // Remove connection state
+  void DestroyConnection();
+
   void HelpRegisterDerivedStrings(const std::string &name,
                                   Strings(Device::*get)(void),
                                   bool(Device::*set)(const Strings&));
@@ -117,6 +124,7 @@ class Device : public base::RefCounted<Device> {
   EventDispatcher *dispatcher_;
   Manager *manager_;
   IPConfigRefPtr ipconfig_;
+  ConnectionRefPtr connection_;
 
  private:
   friend class DeviceAdaptorInterface;

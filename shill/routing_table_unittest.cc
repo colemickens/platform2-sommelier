@@ -95,7 +95,7 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   return
     msg.type() == RTNLMessage::kMessageTypeRoute &&
     msg.family() == entry.gateway.family() &&
-    msg.flags() == flags &&
+    msg.flags() == (NLM_F_REQUEST | flags) &&
     status.table == RT_TABLE_MAIN &&
     status.protocol == RTPROT_BOOT &&
     status.scope == entry.scope &&

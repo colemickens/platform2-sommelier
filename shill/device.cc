@@ -15,6 +15,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp_config.h"
@@ -167,11 +168,15 @@ bool Device::Save(StoreInterface *storage) {
 
 void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
+    // TODO(pstew): Instead we should do this in DestroyConnection(), which
+    // should have a facility at its disposal that returns all addresses
+    // assigned to the interface.
     RTNLHandler::GetInstance()->RemoveInterfaceAddress(interface_index_,
                                                        *ipconfig_);
     ipconfig_->ReleaseIP();
     ipconfig_ = NULL;
   }
+  DestroyConnection();
 }
 
 bool Device::AcquireDHCPConfig() {
@@ -192,13 +197,27 @@ void Device::HelpRegisterDerivedStrings(const string &name,
 
 void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
                                      bool success) {
-  // TODO(petkov): Use DeviceInfo to configure IP, etc. -- maybe through
-  // ConfigIP? Also, maybe allow forwarding the callback to interested listeners
-  // (e.g., the Manager).
+  VLOG(2) << __func__ << " " << " success: " << success;
   if (success) {
-      RTNLHandler::GetInstance()->AddInterfaceAddress(interface_index_,
-                                                      *ipconfig);
+    CreateConnection();
+    connection_->UpdateFromIPConfig(ipconfig);
+  } else {
+    // TODO(pstew): This logic gets more complex when multiple IPConfig types
+    // are run in parallel (e.g. DHCP and DHCP6)
+    DestroyConnection();
   }
+}
+
+void Device::CreateConnection() {
+  VLOG(2) << __func__;
+  if (!connection_.get()) {
+    connection_ = new Connection(interface_index_, link_name_);
+  }
+}
+
+void Device::DestroyConnection() {
+  VLOG(2) << __func__;
+  connection_ = NULL;
 }
 
 string Device::SerializeIPConfigsForStorage() {

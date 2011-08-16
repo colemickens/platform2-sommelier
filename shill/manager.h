@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
@@ -70,6 +71,8 @@ class Manager {
  private:
   friend class ManagerAdaptorInterface;
 
+  static const char kDefaultRunDirectory[];
+
   std::string CalculateState();
   std::vector<std::string> AvailableTechnologies();
   std::vector<std::string> ConnectedTechnologies();
@@ -87,6 +90,7 @@ class Manager {
                                   Strings(Manager::*get)(void),
                                   bool(Manager::*set)(const Strings&));
 
+  FilePath run_path_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   ModemInfo modem_info_;

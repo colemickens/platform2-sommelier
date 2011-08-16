@@ -31,6 +31,8 @@ Resolver* Resolver::GetInstance() {
 }
 
 bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig) {
+  VLOG(2) << __func__;
+
   CHECK(!path_.empty());
 
   const IPConfig::Properties &props = ipconfig->properties();
@@ -40,7 +42,10 @@ bool Resolver::SetDNSFromIPConfig(const IPConfigRefPtr &ipconfig) {
 
 bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
                                const std::vector<std::string> &domain_search) {
+  VLOG(2) << __func__;
+
   if (dns_servers.empty() && domain_search.empty()) {
+    VLOG(2) << "DNS list is empty";
     return ClearDNS();
   }
 
@@ -59,12 +64,16 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
   lines.push_back("");
 
   string contents = JoinString(lines, '\n');
+
+  VLOG(2) << "Writing DNS out to " << path_.value();
   int count = file_util::WriteFile(path_, contents.c_str(), contents.size());
 
   return count == static_cast<int>(contents.size());
 }
 
 bool Resolver::ClearDNS() {
+  VLOG(2) << __func__;
+
   CHECK(!path_.empty());
 
   return file_util::Delete(path_, false);

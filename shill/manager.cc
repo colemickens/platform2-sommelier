@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <chromeos/dbus/service_constants.h>
@@ -24,6 +25,7 @@
 #include "shill/error.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
+#include "shill/resolver.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
 
@@ -31,10 +33,15 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Manager::kDefaultRunDirectory[] = "/var/run/shill";
+
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
                  GLib *glib)
-  : adaptor_(control_interface->CreateManagerAdaptor(this)),
+  : run_path_(FilePath(kDefaultRunDirectory)),
+    adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
     modem_info_(control_interface, dispatcher, this, glib),
     running_(false),
@@ -96,6 +103,9 @@ void Manager::AddDeviceToBlackList(const string &device_name) {
 
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
+
+  CHECK(file_util::CreateDirectory(run_path_));
+  Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();

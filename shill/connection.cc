@@ -35,6 +35,10 @@ Connection::~Connection() {
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   VLOG(2) << __func__;
+
+  // TODO(pstew): Create a centralized resource (perhaps in DeviceInfo?) to
+  // keep apply and keep track of addresses associated with an interface.
+  // Use this instead of directly setting the address over RTNL.
   rtnl_handler_->AddInterfaceAddress(interface_index_, *config);
 
   uint32 metric = is_default_ ? kDefaultMetric : kNonDefaultMetric;
