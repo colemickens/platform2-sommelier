@@ -60,6 +60,7 @@ namespace switches {
     "install_attributes_get",
     "install_attributes_finalize",
     "pkcs11_init",
+    "force_pkcs11_init",
     "pkcs11_token_status",
     NULL };
   enum ActionEnum {
@@ -84,6 +85,7 @@ namespace switches {
     ACTION_INSTALL_ATTRIBUTES_GET,
     ACTION_INSTALL_ATTRIBUTES_FINALIZE,
     ACTION_PKCS11_INIT,
+    ACTION_FORCE_PKCS11_INIT,
     ACTION_PKCS11_TOKEN_STATUS };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -302,6 +304,25 @@ class TpmWaitLoop {
 
   GMainLoop *loop_;
 };
+
+bool WaitForTPMOwnership(chromeos::dbus::Proxy& proxy) {
+  TpmWaitLoop client_loop;
+  client_loop.Initialize(proxy);
+  gboolean result;
+  chromeos::glib::ScopedError error;
+  if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(
+          proxy.gproxy(), &result, &chromeos::Resetter(&error).lvalue())) {
+    printf("TpmIsBeingOwned call failed: %s.\n", error->message);
+  }
+  if (result) {
+    printf("Waiting for TPM to be owned...\n");
+    client_loop.Run();
+  } else {
+    printf("TPM is not currently being owned.\n");
+  }
+  return result;
+}
+
 
 int main(int argc, char **argv) {
   CommandLine::Init(argc, argv);
@@ -866,27 +887,37 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_WAIT_OWNERSHIP],
       action.c_str())) {
-    TpmWaitLoop client_loop;
-    client_loop.Initialize(proxy);
-    gboolean result;
-    chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_is_being_owned(proxy.gproxy(),
-        &result,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("TpmIsBeingOwned call failed: %s.\n", error->message);
-    } else {
-      if (result) {
-        printf("Waiting for TPM to be owned...\n");
-        client_loop.Run();
-      } else {
-        printf("TPM is not currently being owned.\n");
-      }
-    }
+    return !WaitForTPMOwnership(proxy);
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_INIT],
       action.c_str())) {
-    cryptohome::Pkcs11Init init;
-    return !init.Initialize();
+    cryptohome::Pkcs11Init pkcs11_init;
+    if (!pkcs11_init.InitializeOpencryptoki())
+      return 1;
+    if (!pkcs11_init.IsUserTokenBroken()) {
+      printf("PKCS#11 token looks OK! Not reinitializing.");
+      return 0;
+    }
+    return !pkcs11_init.InitializeToken();
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_FORCE_PKCS11_INIT],
+      action.c_str())) {
+    // First attempt ownership.
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_can_attempt_ownership(
+        proxy.gproxy(),
+        &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmCanAttemptOwnership call failed: %s.\n", error->message);
+      return 1;
+    }
+    // Now wait for ownership to finish. Note that we don't care if this fails
+    // since that might happen if the TPM is already owned.
+    WaitForTPMOwnership(proxy);
+    // Attempt "forced" Pkcs#11 initialization.
+    cryptohome::Pkcs11Init pkcs11_init;
+    if (!pkcs11_init.InitializeOpencryptoki())
+      return 1;
+    return !pkcs11_init.InitializeToken();
   } else if (!strcmp(
       switches::kActions[switches::ACTION_PKCS11_TOKEN_STATUS],
       action.c_str())) {

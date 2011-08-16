@@ -68,14 +68,15 @@ void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
   *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
 }
 
-bool Pkcs11Init::Initialize() {
+bool Pkcs11Init::InitializeOpencryptoki() {
+  LOG(INFO) << "Initializing Opencryptoki subsystem.";
   // Determine required uid and gids.
   if (!platform_->GetGroupId(kPkcs11Group, &pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't get the group ID for group " << kPkcs11Group;
     return false;
   }
   if (!platform_->GetUserId(kDefaultSharedUser, &chronos_user_id_,
-                          &chronos_group_id_)) {
+                            &chronos_group_id_)) {
     LOG(ERROR) << "Couldn't get the user/group ID for user "
                << kDefaultSharedUser;
     return false;
@@ -94,34 +95,39 @@ bool Pkcs11Init::Initialize() {
   if (!StartPkcs11Daemon())
     return false;
 
-  if (IsUserTokenBroken()) {
-    LOG(WARNING) << "User token will be reinitialized.";
+  is_opencryptoki_ready_ = true;
+  return true;
+}
 
-    if (!SetupUserTokenDirectory())
-      return false;
-
-    // PIN initialization needs to be performed as chronos:pkcs11.
-    uid_t saved_uid;
-    gid_t saved_gid;
-    if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
-                                 &saved_gid))
-      return false;
-    bool success = SetUserTokenPins() && SetUserTokenFilePermissions();
-    if (!SetInitialized(success))
-      success = false;
-    if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
-      return false;
-    // This is needed to ensure that contents of the files created by
-    // opencryptoki during initialization get flushed to the underlying storage
-    // subsystem. Due to delayed writeback, a system crash at this point may
-    // leave these files in a corrupted state. Opencryptoki does not handle
-    // this quite that gracefully.
-    platform_->Sync();
-    return success;
+bool Pkcs11Init::InitializeToken() {
+  LOG(INFO) << "User token will be initialized.";
+  if (!is_opencryptoki_ready_) {
+    LOG(ERROR) << "Opencryptoki subsystem is not ready. Did you call "
+               << "InitializeOpencryptoki?";
+    return false;
   }
 
-  LOG(INFO) << "PKCS#11 is already initialized.";
-  return true;
+  if (!SetupUserTokenDirectory())
+    return false;
+
+  // PIN initialization needs to be performed as chronos:pkcs11.
+  uid_t saved_uid;
+  gid_t saved_gid;
+  if (!platform_->SetProcessId(chronos_user_id_, pkcs11_group_id_, &saved_uid,
+                               &saved_gid))
+    return false;
+  bool success = SetUserTokenPins() && SetUserTokenFilePermissions();
+  if (!SetInitialized(success))
+    success = false;
+  if (!platform_->SetProcessId(saved_uid, saved_gid, NULL, NULL))
+    return false;
+  // This is needed to ensure that contents of the files created by
+  // opencryptoki during initialization get flushed to the underlying storage
+  // subsystem. Due to delayed writeback, a system crash at this point may
+  // leave these files in a corrupted state. Opencryptoki does not handle
+  // this quite that gracefully.
+  platform_->Sync();
+  return success;
 }
 
 bool Pkcs11Init::ConfigureTPMAsToken() {

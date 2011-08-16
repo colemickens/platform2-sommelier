@@ -23,8 +23,8 @@ namespace cryptohome {
 
 class Pkcs11Init {
  public:
-  Pkcs11Init() : is_initialized_(false), pkcs11_group_id_(0),
-                 chronos_user_id_(0), chronos_group_id_(0),
+  Pkcs11Init() : is_opencryptoki_ready_(false), is_initialized_(false),
+                 pkcs11_group_id_(0), chronos_user_id_(0), chronos_group_id_(0),
                  default_platform_(new Platform),
                  platform_(default_platform_.get()),
                  default_process_(new chromeos::ProcessImpl),
@@ -34,9 +34,15 @@ class Pkcs11Init {
   virtual void GetTpmTokenInfo(gchar **OUT_label,
                                gchar **OUT_user_pin);
 
-  // Initialize openCryptoki. This includes starting and setting up the
-  // necessary service daemons, and initializing the tokens.
-  virtual bool Initialize();
+  // Initialize
+  virtual bool InitializeOpencryptoki();
+
+  // Initialize PKCS#11 tokens and setup SO and User PINs. This always clobbers
+  // an existing token. Check the token using IsUserTokenBroken() before calling
+  // this method to ensure existing tokens are not destroyed. The OpenCryptoki
+  // subsystem must have been already initialized or this will
+  // fail.
+  virtual bool InitializeToken();
 
   // Configures the TPM as a PKCS#11 token on slot 0.
   virtual bool ConfigureTPMAsToken();
@@ -110,6 +116,11 @@ class Pkcs11Init {
   // the actual token label.
   bool CheckTokenInSlot(CK_SLOT_ID slot_id, const CK_CHAR* expected_label);
 
+  // Tracks if the openCryptoki is ready, including whether the PKCS#11 slot
+  // daemon was started.
+  bool is_opencryptoki_ready_;
+
+  // Tracks if PKCS#11 initialization completed.
   bool is_initialized_;
 
   gid_t pkcs11_group_id_;

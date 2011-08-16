@@ -216,7 +216,7 @@ void Service::InitializePkcs11() {
     return;
   }
 
-  // Reset PKCS#11 initialization status. A succesful completion of
+  // Reset PKCS#11 initialization status. A successful completion of
   // MountTaskPkcs11_Init would set it in the service thread via NotifyEvent().
   pkcs11_state_ = kIsBeingInitialized;
   MountTaskPkcs11Init* pkcs11_init_task = new MountTaskPkcs11Init(this, mount_);
