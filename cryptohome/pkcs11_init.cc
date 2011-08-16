@@ -312,15 +312,6 @@ bool Pkcs11Init::SetUserTokenFilePermissions() {
     return false;
   }
 
-  // For pkcs11 group to be able to read data from the token, the map file for
-  // communicating with pkcsslotd also needs to be writable by pkcs11 group.
-  mode_t stmapfile_perms = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;  // ug+rw
-  std::string stmapfile = StringPrintf("%s/.stmapfile", kUserTokenDir);
-  if (!platform_->SetPermissions(stmapfile, stmapfile_perms)) {
-    LOG(ERROR) << "Couldn't set file permissions for " << stmapfile;
-    return false;
-  }
-
   return true;
 }
 
