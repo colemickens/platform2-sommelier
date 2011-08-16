@@ -99,6 +99,9 @@ if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
 
   if [ "$(crossystem mainfw_type)" = developer ]; then
     chromeos-boot-alert dev_fwcheck /dev/tty1
+  elif [ "$(mosys platform name 2>/dev/null)" = "Mario" ]; then
+    # Prevent any unexpected updates on legacy system
+    crossystem fwupdate_tries=0 >/dev/null 2>&1
   else
     # fwupdate_tries is not supported in legacy system like CR48, so a cookie
     # file in stateful partition is used when fwupdate_tries is not available)
