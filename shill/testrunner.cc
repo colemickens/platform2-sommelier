@@ -3,10 +3,14 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
+#include <chromeos/syslog_logging.h>
 #include <gtest/gtest.h>
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
+  CommandLine::Init(argc, argv);
+  chromeos::InitLog(chromeos::kLogToStderr);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
