@@ -96,6 +96,10 @@ class Cellular : public Device,
     uint32 registration_state_evdo;
     uint32 registration_state_1x;
     uint32 activation_state;
+
+    uint16 prl_version;
+    std::string payment_url;
+    std::string usage_url;
   };
 
   struct SimLockStatus {
@@ -170,8 +174,8 @@ class Cellular : public Device,
 
   void InitProxies();
 
-  std::string GetTypeString();
-  std::string GetStateString();
+  std::string GetTypeString() const;
+  static std::string GetStateString(State state);
 
   void EnableModem();
   void GetModemStatus();
@@ -237,9 +241,6 @@ class Cellular : public Device,
 
   ScopedRunnableMethodFactory<Cellular> task_factory_;
 
-  std::string payment_url_;
-  std::string usage_url_;
-
   // Properties
   bool allow_roaming_;
   std::string carrier_;
@@ -253,7 +254,6 @@ class Cellular : public Device,
   std::string manufacturer_;
   std::string firmware_revision_;
   std::string hardware_revision_;
-  uint16 prl_version_;
   bool scanning_;
   uint16 scan_interval_;
   std::vector<Network> found_networks_;

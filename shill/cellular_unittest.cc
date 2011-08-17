@@ -217,15 +217,16 @@ TEST_F(CellularTest, GetTypeString) {
 }
 
 TEST_F(CellularTest, GetStateString) {
-  EXPECT_EQ("CellularStateDisabled", device_->GetStateString());
-  device_->state_ = Cellular::kStateEnabled;
-  EXPECT_EQ("CellularStateEnabled", device_->GetStateString());
-  device_->state_ = Cellular::kStateRegistered;
-  EXPECT_EQ("CellularStateRegistered", device_->GetStateString());
-  device_->state_ = Cellular::kStateConnected;
-  EXPECT_EQ("CellularStateConnected", device_->GetStateString());
-  device_->state_ = Cellular::kStateLinked;
-  EXPECT_EQ("CellularStateLinked", device_->GetStateString());
+  EXPECT_EQ("CellularStateDisabled",
+            device_->GetStateString(Cellular::kStateDisabled));
+  EXPECT_EQ("CellularStateEnabled",
+            device_->GetStateString(Cellular::kStateEnabled));
+  EXPECT_EQ("CellularStateRegistered",
+            device_->GetStateString(Cellular::kStateRegistered));
+  EXPECT_EQ("CellularStateConnected",
+            device_->GetStateString(Cellular::kStateConnected));
+  EXPECT_EQ("CellularStateLinked",
+            device_->GetStateString(Cellular::kStateLinked));
 }
 
 TEST_F(CellularTest, Start) {
@@ -350,8 +351,8 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
   device_->cdma_proxy_.reset(cdma_proxy_.release());
   static const char kPaymentURL[] = "https://payment.url";
   static const char kUsageURL[] = "https://usage.url";
-  device_->payment_url_ = kPaymentURL;
-  device_->usage_url_ = kUsageURL;
+  device_->cdma_.payment_url = kPaymentURL;
+  device_->cdma_.usage_url = kUsageURL;
   device_->GetModemRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,

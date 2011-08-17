@@ -95,7 +95,8 @@ const Stringmap &Cellular::Network::ToDict() const {
 Cellular::CDMA::CDMA()
     : registration_state_evdo(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       registration_state_1x(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED) {}
+      activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
+      prl_version(0) {}
 
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
@@ -117,7 +118,6 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_path_(path),
       task_factory_(this),
       allow_roaming_(false),
-      prl_version_(0),
       scanning_(false),
       scan_interval_(0) {
   store_.RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
@@ -136,7 +136,7 @@ Cellular::Cellular(ControlInterface *control_interface,
   store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
   store_.RegisterConstString(flimflam::kMinProperty, &min_);
   store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  store_.RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
+  store_.RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
@@ -154,7 +154,7 @@ Cellular::Cellular(ControlInterface *control_interface,
 
 Cellular::~Cellular() {}
 
-string Cellular::GetTypeString() {
+string Cellular::GetTypeString() const {
   switch (type_) {
     case kTypeGSM: return "CellularTypeGSM";
     case kTypeCDMA: return "CellularTypeCDMA";
@@ -163,8 +163,9 @@ string Cellular::GetTypeString() {
   return StringPrintf("CellularTypeUnknown-%d", type_);
 }
 
-string Cellular::GetStateString() {
-  switch (state_) {
+// static
+string Cellular::GetStateString(State state) {
+  switch (state) {
     case kStateDisabled: return "CellularStateDisabled";
     case kStateEnabled: return "CellularStateEnabled";
     case kStateRegistered: return "CellularStateRegistered";
@@ -172,18 +173,16 @@ string Cellular::GetStateString() {
     case kStateLinked: return "CellularStateLinked";
     default: NOTREACHED();
   }
-  return StringPrintf("CellularStateUnknown-%d", state_);
+  return StringPrintf("CellularStateUnknown-%d", state);
 }
 
 void Cellular::SetState(State state) {
-  VLOG(2) << "Current state: " << GetStateString();
+  VLOG(2) << GetStateString(state_) << " -> " << GetStateString(state);
   state_ = state;
-  VLOG(2) << "New state: " << GetStateString();
 }
 
 void Cellular::Start() {
-  LOG(INFO) << "Start";
-  VLOG(2) << __func__ << ": " << GetStateString();
+  LOG(INFO) << __func__ << ": " << GetStateString(state_);
   InitProxies();
   EnableModem();
   if (type_ == kTypeGSM) {
@@ -211,7 +210,7 @@ void Cellular::Stop() {
 }
 
 void Cellular::InitProxies() {
-  LOG(INFO) << "InitProxies";
+  VLOG(2) << __func__;
   proxy_.reset(
       ProxyFactory::factory()->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
@@ -255,18 +254,19 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetString(properties, "esn", &esn_);
   DBusProperties::GetString(properties, "mdn", &mdn_);
   DBusProperties::GetString(properties, "min", &min_);
-  DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
   DBusProperties::GetString(
       properties, "firmware_revision", &firmware_revision_);
 
-  // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
-  // match flimflam. In the future, provide a plugin API to get these directly
-  // from the modem driver.
-  DBusProperties::GetString(properties, "payment_url", &payment_url_);
-  DBusProperties::GetString(properties, "usage_url", &usage_url_);
 
   if (type_ == kTypeCDMA) {
     // TODO(petkov): Get activation_state.
+    DBusProperties::GetUint16(properties, "prl_version", &cdma_.prl_version);
+
+    // TODO(petkov): For now, get the payment and usage URLs from ModemManager
+    // to match flimflam. In the future, provide a plugin API to get these
+    // directly from the modem driver.
+    DBusProperties::GetString(properties, "payment_url", &cdma_.payment_url);
+    DBusProperties::GetString(properties, "usage_url", &cdma_.usage_url);
   }
 }
 
@@ -401,8 +401,10 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface_, dispatcher_, manager_, this);
-  service_->set_payment_url(payment_url_);
-  service_->set_usage_url(usage_url_);
+  if (type_ == kTypeCDMA) {
+    service_->set_payment_url(cdma_.payment_url);
+    service_->set_usage_url(cdma_.usage_url);
+  }
   // TODO(petkov): Set activation_state.
   // TODO(petkov): Set operator.
 }
@@ -481,9 +483,10 @@ void Cellular::OnCDMAActivationStateChanged(
   CHECK_EQ(kTypeCDMA, type_);
   DBusProperties::GetString(status_changes, "mdn", &mdn_);
   DBusProperties::GetString(status_changes, "min", &min_);
-  if (DBusProperties::GetString(status_changes, "payment_url", &payment_url_) &&
+  if (DBusProperties::GetString(
+          status_changes, "payment_url", &cdma_.payment_url) &&
       service_.get()) {
-    service_->set_payment_url(payment_url_);
+    service_->set_payment_url(cdma_.payment_url);
   }
   // TODO(petkov): Handle activation state updates.
 }
