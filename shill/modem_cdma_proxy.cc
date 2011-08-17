@@ -18,6 +18,10 @@ ModemCDMAProxy::ModemCDMAProxy(ModemCDMAProxyListener *listener,
 
 ModemCDMAProxy::~ModemCDMAProxy() {}
 
+uint32 ModemCDMAProxy::Activate(const string &carrier) {
+  return proxy_.Activate(carrier);
+}
+
 void ModemCDMAProxy::GetRegistrationState(uint32 *cdma_1x_state,
                                           uint32 *evdo_state) {
   proxy_.GetRegistrationState(*cdma_1x_state, *evdo_state);

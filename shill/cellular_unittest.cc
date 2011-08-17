@@ -229,6 +229,22 @@ TEST_F(CellularTest, GetStateString) {
             device_->GetStateString(Cellular::kStateLinked));
 }
 
+TEST_F(CellularTest, GetCDMAActivationStateString) {
+  EXPECT_EQ("activated",
+            device_->GetCDMAActivationStateString(
+                MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED));
+  EXPECT_EQ("activating",
+            device_->GetCDMAActivationStateString(
+                MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING));
+  EXPECT_EQ("not-activated",
+            device_->GetCDMAActivationStateString(
+                MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED));
+  EXPECT_EQ("partially-activated",
+            device_->GetCDMAActivationStateString(
+                MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED));
+  EXPECT_EQ("unknown", device_->GetCDMAActivationStateString(123));
+}
+
 TEST_F(CellularTest, Start) {
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
@@ -407,6 +423,19 @@ TEST_F(CellularTest, Connect) {
   EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(1);
   device_->simple_proxy_.reset(simple_proxy_.release());
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, Activate) {
+  static const char kCarrier[] = "The Cellular Carrier";
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*cdma_proxy_, Activate(kCarrier))
+      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
+  device_->Activate(kCarrier);
+  device_->cdma_proxy_.reset(cdma_proxy_.release());
+  device_->state_ = Cellular::kStateEnabled;
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
+            device_->cdma_.activation_state);
 }
 
 }  // namespace shill

@@ -13,6 +13,7 @@ namespace shill {
 
 class MockModemCDMAProxy : public ModemCDMAProxyInterface {
  public:
+  MOCK_METHOD1(Activate, uint32(const std::string &carrier));
   MOCK_METHOD2(GetRegistrationState, void(uint32 *cdma_1x_state,
                                           uint32 *evdo_state));
   MOCK_METHOD0(GetSignalQuality, uint32());

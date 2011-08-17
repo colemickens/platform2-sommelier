@@ -34,6 +34,12 @@ using std::vector;
 
 namespace shill {
 
+const char Cellular::kActivationStateActivated[] = "activated";
+const char Cellular::kActivationStateActivating[] = "activating";
+const char Cellular::kActivationStateNotActivated[] = "not-activated";
+const char Cellular::kActivationStatePartiallyActivated[] =
+    "partially-activated";
+const char Cellular::kActivationStateUnknown[] = "unknown";
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
 const char Cellular::kPhoneNumberCDMA[] = "#777";
 const char Cellular::kPhoneNumberGSM[] = "*99#";
@@ -176,6 +182,22 @@ string Cellular::GetStateString(State state) {
   return StringPrintf("CellularStateUnknown-%d", state);
 }
 
+// static
+string Cellular::GetCDMAActivationStateString(uint32 state) {
+  switch (state) {
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+      return kActivationStateActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
+      return kActivationStateActivating;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
+      return kActivationStateNotActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
+      return kActivationStatePartiallyActivated;
+    default:
+      return kActivationStateUnknown;
+  }
+}
+
 void Cellular::SetState(State state) {
   VLOG(2) << GetStateString(state_) << " -> " << GetStateString(state);
   state_ = state;
@@ -257,11 +279,12 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetString(
       properties, "firmware_revision", &firmware_revision_);
 
+  // TODO(petkov): Handle "state".
 
   if (type_ == kTypeCDMA) {
-    // TODO(petkov): Get activation_state.
+    DBusProperties::GetUint32(
+        properties, "activation_state", &cdma_.activation_state);
     DBusProperties::GetUint16(properties, "prl_version", &cdma_.prl_version);
-
     // TODO(petkov): For now, get the payment and usage URLs from ModemManager
     // to match flimflam. In the future, provide a plugin API to get these
     // directly from the modem driver.
@@ -338,6 +361,9 @@ void Cellular::HandleNewRegistrationState() {
 void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
   if (!IsModemRegistered()) {
+    if (state_ == kStateLinked) {
+      manager_->DeregisterService(service_);
+    }
     service_ = NULL;
     if (state_ == kStateLinked ||
         state_ == kStateConnected ||
@@ -401,11 +427,18 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface_, dispatcher_, manager_, this);
-  if (type_ == kTypeCDMA) {
-    service_->set_payment_url(cdma_.payment_url);
-    service_->set_usage_url(cdma_.usage_url);
+  switch (type_) {
+    case kTypeGSM:
+      service_->set_activation_state(kActivationStateActivated);
+      break;
+    case kTypeCDMA:
+      service_->set_payment_url(cdma_.payment_url);
+      service_->set_usage_url(cdma_.usage_url);
+      HandleNewCDMAActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
+      break;
+    default:
+      NOTREACHED();
   }
-  // TODO(petkov): Set activation_state.
   // TODO(petkov): Set operator.
 }
 
@@ -476,6 +509,36 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
+void Cellular::Activate(const string &carrier) {
+  CHECK_EQ(kTypeCDMA, type_);
+  // Defer connect because we may be in a dbus-c++ callback.
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&Cellular::ActivateTask, carrier));
+}
+
+void Cellular::ActivateTask(const string &carrier) {
+  VLOG(2) << __func__ << "(" << carrier << ")";
+  if (state_ != kStateEnabled && state_ != kStateRegistered) {
+    LOG(ERROR) << "Unable to activate in " << GetStateString(state_);
+    return;
+  }
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 status = cdma_proxy_->Activate(carrier);
+  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
+    cdma_.activation_state = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  }
+  HandleNewCDMAActivationState(status);
+}
+
+void Cellular::HandleNewCDMAActivationState(uint32 error) {
+  if (!service_.get()) {
+    return;
+  }
+  service_->set_activation_state(
+      GetCDMAActivationStateString(cdma_.activation_state));
+  // TODO(petkov): Handle activation state error codes.
+}
+
 void Cellular::OnCDMAActivationStateChanged(
     uint32 activation_state,
     uint32 activation_error,
@@ -488,7 +551,8 @@ void Cellular::OnCDMAActivationStateChanged(
       service_.get()) {
     service_->set_payment_url(cdma_.payment_url);
   }
-  // TODO(petkov): Handle activation state updates.
+  cdma_.activation_state = activation_state;
+  HandleNewCDMAActivationState(activation_error);
 }
 
 void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,

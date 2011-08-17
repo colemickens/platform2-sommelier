@@ -148,6 +148,10 @@ Service::Service(ControlInterface *control_interface,
 
 Service::~Service() {}
 
+void Service::ActivateCellularModem(const std::string &carrier) {
+  NOTREACHED() << "Attempt to activate a non-cellular service?";
+}
+
 string Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }

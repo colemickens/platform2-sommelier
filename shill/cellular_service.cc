@@ -51,7 +51,11 @@ void CellularService::Connect() {
 
 void CellularService::Disconnect() { }
 
-std::string CellularService::GetDeviceRpcId() {
+void CellularService::ActivateCellularModem(const string &carrier) {
+  cellular_->Activate(carrier);
+}
+
+string CellularService::GetDeviceRpcId() {
   return cellular_->GetRpcIdentifier();
 }
 

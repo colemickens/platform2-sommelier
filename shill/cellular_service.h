@@ -27,8 +27,15 @@ class CellularService : public Service {
                   const CellularRefPtr &device);
   virtual ~CellularService();
 
+  // Inherited from Service.
   virtual void Connect();
   virtual void Disconnect();
+  virtual void ActivateCellularModem(const std::string &carrier);
+
+  const std::string &activation_state() const { return activation_state_; }
+  void set_activation_state(const std::string &state) {
+    activation_state_ = state;
+  }
 
   uint8 strength() const { return strength_; }
   void set_strength(uint8 strength) { strength_ = strength; }

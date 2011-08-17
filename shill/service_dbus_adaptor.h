@@ -52,10 +52,11 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   void Remove(::DBus::Error &error);
   void MoveBefore(const ::DBus::Path& , ::DBus::Error &error);
   void MoveAfter(const ::DBus::Path& , ::DBus::Error &error);
-  void ActivateCellularModem(const std::string& , ::DBus::Error &error);
+  void ActivateCellularModem(const std::string &carrier, ::DBus::Error &error);
 
  private:
   Service *service_;
+
   DISALLOW_COPY_AND_ASSIGN(ServiceDBusAdaptor);
 };
 

@@ -90,6 +90,9 @@ class Service : public base::RefCounted<Service> {
   virtual void Connect() = 0;
   virtual void Disconnect() = 0;
 
+  // The default implementation asserts.
+  virtual void ActivateCellularModem(const std::string &carrier);
+
   virtual bool IsActive() { return false; }
 
   // Returns a string that is guaranteed to uniquely identify this Service

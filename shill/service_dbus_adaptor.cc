@@ -85,8 +85,9 @@ void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
                                    ::DBus::Error &error) {
 }
 
-void ServiceDBusAdaptor::ActivateCellularModem(const string& ,
+void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
                                                ::DBus::Error &error) {
+  service_->ActivateCellularModem(carrier);
 }
 
 }  // namespace shill

@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_CDMA_PROXY_INTERFACE_
 #define SHILL_MODEM_CDMA_PROXY_INTERFACE_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 namespace shill {
@@ -15,9 +17,9 @@ class ModemCDMAProxyInterface {
  public:
   virtual ~ModemCDMAProxyInterface() {}
 
+  virtual uint32 Activate(const std::string &carrier) = 0;
   virtual void GetRegistrationState(uint32 *cdma_1x_state,
                                     uint32 *evdo_state) = 0;
-
   virtual uint32 GetSignalQuality() = 0;
 };
 

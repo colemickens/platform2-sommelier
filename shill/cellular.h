@@ -128,6 +128,9 @@ class Cellular : public Device,
   // Asynchronously connects the modem to the network.
   void Connect();
 
+  // Asynchronously activates the modem.
+  void Activate(const std::string &carrier);
+
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
 
@@ -138,7 +141,9 @@ class Cellular : public Device,
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 
  private:
+  FRIEND_TEST(CellularTest, Activate);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
@@ -152,12 +157,18 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartRegister);
 
+  static const char kActivationStateActivated[];
+  static const char kActivationStateActivating[];
+  static const char kActivationStateNotActivated[];
+  static const char kActivationStatePartiallyActivated[];
+  static const char kActivationStateUnknown[];
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
 
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
+  void ActivateTask(const std::string &carrier);
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
@@ -176,6 +187,8 @@ class Cellular : public Device,
 
   std::string GetTypeString() const;
   static std::string GetStateString(State state);
+
+  static std::string GetCDMAActivationStateString(uint32 state);
 
   void EnableModem();
   void GetModemStatus();
@@ -205,6 +218,8 @@ class Cellular : public Device,
   uint32 GetGSMSignalQuality();
 
   void HandleNewSignalQuality(uint32 strength);
+
+  void HandleNewCDMAActivationState(uint32 error);
 
   // Returns true if the modem is registered. Note that this method looks at the
   // latest CDMA/GSM registration info obtained from the modem rather than the
