@@ -167,7 +167,8 @@ set_carrier () {
 	[ -z "$mm" ] && echo "no compatible modem found" && exit 1
 	$(arg_or_default modem $(modems | head -1))
 	[ -z "$modem" ] && echo "no modem found" && exit 1
-	$(needarg carrier)
+	if [ $# -eq 0 ]; then echo 'Missing arg: carrier' && usage; fi
+	carrier="$*"
 
 	echo Setting carrier to "$carrier".  This could take up to two minutes.
 	echo Using modem "$modem"
