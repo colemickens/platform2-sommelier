@@ -277,31 +277,43 @@ mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 # gone through setuid.
 echo 2 > /proc/sys/fs/suid_dumpable
 
-# NOTE: ensure that a rootdev has been found.
-if [ "$ROOTDEV_RET_CODE" = "0" ] ; then
-  if [ ! -e /home/chronos/.oobe_completed ]; then
-    # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt.
-    # So that OOBE process can read the default locale setting from VPD.
+# Check for extra steps needed for OOBE.  These steps are expensive
+# so they only happen once; when OOBE is complete the OOBE_COMPLETE
+# file gets created to block this code from running again.
+#
+# We also skip the extra steps for factory images (check for
+# ROOTDEV) and test images (check for /root/.forget_usernames).
+
+OOBE_COMPLETE=/home/chronos/.oobe_completed
+if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
+  if [ -f /root/.forget_usernames ]; then
+    # It's a test image; mark OOBE as having been done.
+    touch $OOBE_COMPLETE
+    chown chronos:chronos $OOBE_COMPLETE
+  else
+    # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt
+    # so that OOBE process can read the default locale setting
+    # from VPD.
     if [ -x /usr/sbin/dump_vpd_log ]; then
       /usr/sbin/dump_vpd_log
     fi
-    # End of OOBE block
 
-    # TODO(yjlou): We are developing a more generic hook mechanism (i.e.
-    #              pre-OOBE-oem.sh), and will move this block to new hook point.
+    # TODO(yjlou): We are developing a more generic hook mechanism
+    #              (i.e. pre-OOBE-oem.sh), and will move this block
+    #              to new hook point.
     #
-    #              The activate_date script is installed in partner's board-
-    #              specific private overlay. Hence the vpd utility dependency
-    #              is described in private overlay, instead of chromeos-init.
+    # The activate_date script is installed in partner's
+    # board-specific private overlay. Hence the vpd utility
+    # dependency is described in private overlay, instead of
+    # chromeos-init.
     #
-    # If the activate date script is executable (installed from the private
-    # overlay), run it.
+    # If the activate date script is executable (installed from
+    # the private overlay), run it.
     if [ -x /usr/sbin/activate_date ]; then
       # Since this script will invoke flash read/write (around 20 secs),
       # run it in background.
       (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
     fi
-    # End of activate_date block
 
     # Dump machine info from mosys
     mosys -k smbios info system > /tmp/machine-info
