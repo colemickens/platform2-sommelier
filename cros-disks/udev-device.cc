@@ -19,11 +19,29 @@
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
+static const char kAttributeRange[] = "range";
+static const char kAttributeReadOnly[] = "ro";
+static const char kAttributeRemovable[] = "removable";
+static const char kAttributeSize[] = "size";
+static const char kPropertyCDROM[] = "ID_CDROM";
+static const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
+static const char kPropertyFilesystemLabel[] = "ID_FS_LABEL";
+static const char kPropertyFilesystemUUID[] = "ID_FS_UUID";
+static const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
+static const char kPropertyModel[] = "ID_MODEL";
+static const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
+static const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
+static const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
+static const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 static const char* kNonAutoMountableFilesystemLabels[] = {
   "C-ROOT", "C-STATE", NULL
 };
+
+}  // namespace
+
+namespace cros_disks {
 
 UdevDevice::UdevDevice(struct udev_device *dev)
     : dev_(dev) {
@@ -89,14 +107,14 @@ void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
   // instead. If the UDISKS_PARTITION_SIZE property is not set but sysfs
   // provides a size value, which is the actual size in bytes divided by 512,
   // use that as the total size instead.
-  const char *partition_size = udev_device_get_property_value(dev_,
-      "UDISKS_PARTITION_SIZE");
+  const char *partition_size =
+      udev_device_get_property_value(dev_, kPropertyPartitionSize);
   int64 size = 0;
   if (partition_size) {
     base::StringToInt64(partition_size, &size);
     total = size;
   } else {
-    const char *size_attr = udev_device_get_sysattr_value(dev_, "size");
+    const char *size_attr = udev_device_get_sysattr_value(dev_, kAttributeSize);
     if (size_attr) {
       base::StringToInt64(size_attr, &size);
       total = size * kSectorSize;
@@ -111,9 +129,9 @@ void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
 
 bool UdevDevice::IsMediaAvailable() const {
   bool is_media_available = true;
-  if (IsAttributeTrue("removable")) {
-    if (IsPropertyTrue("ID_CDROM")) {
-      is_media_available = IsPropertyTrue("ID_CDROM_MEDIA");
+  if (IsAttributeTrue(kAttributeRemovable)) {
+    if (IsPropertyTrue(kPropertyCDROM)) {
+      is_media_available = IsPropertyTrue(kPropertyCDROMMedia);
     } else {
       const char *dev_file = udev_device_get_devnode(dev_);
       if (dev_file) {
@@ -130,13 +148,14 @@ bool UdevDevice::IsMediaAvailable() const {
 }
 
 bool UdevDevice::IsAutoMountable() const {
-  if (IsOnBootDevice() || IsVirtual())
+  if (IsOnBootDevice() || IsVirtual() || !IsOnRemovableDevice() ||
+      !HasProperty(kPropertyFilesystemUsage))
     return false;
 
   // TODO(benchan): Find a better way to filter out Chrome OS specific
   // partitions instead of excluding partitions with certain labels
   // (e.g. C-ROOT, C-STATE).
-  string filesystem_label = GetProperty("ID_FS_LABEL");
+  string filesystem_label = GetProperty(kPropertyFilesystemLabel);
   if (!filesystem_label.empty()) {
     for (const char** label = kNonAutoMountableFilesystemLabels;
         *label; ++label) {
@@ -163,8 +182,7 @@ bool UdevDevice::IsOnBootDevice() const {
   // Compare the device file path of the current device and all its parents
   // with the boot device path. Any match indicates that the current device
   // is on the boot device.
-  for (struct udev_device *dev = dev_; dev;
-      dev = udev_device_get_parent(dev)) {
+  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
     const char *dev_file = udev_device_get_devnode(dev);
     if (dev_file) {
       if (strncmp(boot_device_path, dev_file, PATH_MAX) == 0) {
@@ -175,10 +193,19 @@ bool UdevDevice::IsOnBootDevice() const {
   return false;
 }
 
+bool UdevDevice::IsOnRemovableDevice() const {
+  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char *value = udev_device_get_sysattr_value(dev, kAttributeRemovable);
+    if (IsValueBooleanTrue(value))
+      return true;
+  }
+  return false;
+}
+
 bool UdevDevice::IsVirtual() const {
   const char *sys_path = udev_device_get_syspath(dev_);
   if (sys_path) {
-    return StartsWithASCII(sys_path, "/sys/devices/virtual/", true);
+    return StartsWithASCII(sys_path, kVirtualDevicePathPrefix, true);
   }
   // To be safe, mark it as virtual device if sys path cannot be determined.
   return true;
@@ -209,17 +236,17 @@ Disk UdevDevice::ToDisk() const {
   Disk disk;
 
   disk.set_is_auto_mountable(IsAutoMountable());
-  disk.set_is_read_only(IsAttributeTrue("ro"));
-  disk.set_is_drive(HasAttribute("range"));
-  disk.set_is_rotational(HasProperty("ID_ATA_ROTATION_RATE_RPM"));
-  disk.set_is_optical_disk(IsPropertyTrue("ID_CDROM"));
-  disk.set_is_hidden(IsPropertyTrue("UDISKS_PRESENTATION_HIDE"));
+  disk.set_is_read_only(IsAttributeTrue(kAttributeReadOnly));
+  disk.set_is_drive(HasAttribute(kAttributeRange));
+  disk.set_is_rotational(HasProperty(kPropertyRotationRate));
+  disk.set_is_optical_disk(IsPropertyTrue(kPropertyCDROM));
+  disk.set_is_hidden(IsPropertyTrue(kPropertyPresentationHide));
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_is_virtual(IsVirtual());
-  disk.set_drive_model(GetProperty("ID_MODEL"));
-  disk.set_uuid(GetProperty("ID_FS_UUID"));
-  disk.set_label(GetProperty("ID_FS_LABEL"));
+  disk.set_drive_model(GetProperty(kPropertyModel));
+  disk.set_uuid(GetProperty(kPropertyFilesystemUUID));
+  disk.set_label(GetProperty(kPropertyFilesystemLabel));
   disk.set_native_path(NativePath());
 
   const char *dev_file = udev_device_get_devnode(dev_);

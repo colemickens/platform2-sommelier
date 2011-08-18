@@ -125,14 +125,16 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
   }
 
   if (disk_added) {
-    set<string>::const_iterator disk_iter =
-        disks_detected_.find(device_path);
-    if (disk_iter != disks_detected_.end()) {
-      // Disk already exists, so remove it and then add it again.
-      event_type = DeviceEvent::kDiskAddedAfterRemoved;
-    } else {
-      disks_detected_.insert(device_path);
-      event_type = DeviceEvent::kDiskAdded;
+    if (device.IsAutoMountable()) {
+      set<string>::const_iterator disk_iter =
+          disks_detected_.find(device_path);
+      if (disk_iter != disks_detected_.end()) {
+        // Disk already exists, so remove it and then add it again.
+        event_type = DeviceEvent::kDiskAddedAfterRemoved;
+      } else {
+        disks_detected_.insert(device_path);
+        event_type = DeviceEvent::kDiskAdded;
+      }
     }
   } else if (disk_removed) {
     disks_detected_.erase(device_path);
@@ -187,18 +189,13 @@ bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
   event->device_path = sys_path;
   event->event_type = DeviceEvent::kIgnored;
 
-  // Ignore change events from boot devices, virtual devices,
-  // or Chrome OS specific partitions, which should not be sent
-  // to the Chrome browser.
   UdevDevice udev(dev);
-  if (udev.IsAutoMountable()) {
-    // udev_monitor_ only monitors block or scsi device changes, so
-    // subsystem is either "block" or "scsi".
-    if (strcmp(subsystem, kBlockSubsystem) == 0) {
-      event->event_type = ProcessBlockDeviceEvent(udev, action);
-    } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-      event->event_type = ProcessScsiDeviceEvent(udev, action);
-    }
+  // udev_monitor_ only monitors block or scsi device changes, so
+  // subsystem is either "block" or "scsi".
+  if (strcmp(subsystem, kBlockSubsystem) == 0) {
+    event->event_type = ProcessBlockDeviceEvent(udev, action);
+  } else {  // strcmp(subsystem, kScsiSubsystem) == 0
+    event->event_type = ProcessScsiDeviceEvent(udev, action);
   }
 
   udev_device_unref(dev);

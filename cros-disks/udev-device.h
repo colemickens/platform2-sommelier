@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>
 
 #include "cros-disks/disk.h"
 
@@ -54,6 +55,9 @@ class UdevDevice {
   // Checks if the device is on the boot device.
   bool IsOnBootDevice() const;
 
+  // Checks if the device is on the removable device.
+  bool IsOnRemovableDevice() const;
+
   // Checks if the device is a virtual device.
   bool IsVirtual() const;
 
@@ -75,6 +79,8 @@ class UdevDevice {
   bool IsValueBooleanTrue(const char *value) const;
 
   mutable struct udev_device *dev_;
+
+  FRIEND_TEST(UdevDeviceTest, IsValueBooleanTrue);
 
   DISALLOW_COPY_AND_ASSIGN(UdevDevice);
 };
