@@ -32,19 +32,25 @@ const CK_CHAR Pkcs11Init::kDefaultSoPin[] = "000000";
 const CK_CHAR Pkcs11Init::kDefaultUserPin[] = "111111";
 const CK_CHAR Pkcs11Init::kDefaultLabel[] = "User-Specific TPM Token";
 const char Pkcs11Init::kOpencryptokiDir[] = "/var/lib/opencryptoki";
-const char Pkcs11Init::kUserTokenLink[] = "/var/lib/opencryptoki/tpm/chronos";
-const char Pkcs11Init::kIPsecTokenLink[] = "/var/lib/opencryptoki/tpm/ipsec";
-const char Pkcs11Init::kRootTokenLink[] = "/var/lib/opencryptoki/tpm/root";
 const char Pkcs11Init::kUserDir[] = "/home/chronos/user";
 const char Pkcs11Init::kUserTokenDir[] = "/home/chronos/user/.tpm";
-const char Pkcs11Init::kRootTokenDir[] = "./chronos";
 const char Pkcs11Init::kPkcs11Group[] = "pkcs11";
 const char Pkcs11Init::kTokenConfigFile[] =
     "/var/lib/opencryptoki/pk_config_data";
-const std::string Pkcs11Init::kPkcsSlotdPath = "/usr/sbin/pkcsslotd";
-const std::string Pkcs11Init::kPkcsSlotPath = "/usr/sbin/pkcs_slot";
-const std::string Pkcs11Init::kPkcsSlotCmd[] = { Pkcs11Init::kPkcsSlotPath,
-                                                 "0", "tpm" };
+const char Pkcs11Init::kPkcsSlotdPath[] = "/usr/sbin/pkcsslotd";
+const char Pkcs11Init::kPkcsSlotPath[] = "/usr/sbin/pkcs_slot";
+const char* Pkcs11Init::kPkcsSlotCmd[] = {
+  Pkcs11Init::kPkcsSlotPath,
+  "0",
+  "tpm"
+};
+const char* Pkcs11Init::kSymlinkSources[] = {
+  "/var/lib/opencryptoki/tpm/chronos",
+  "/var/lib/opencryptoki/tpm/ipsec",
+  "/var/lib/opencryptoki/tpm/root",
+  NULL
+};
+
 // This file in the user's cryptohome signifies that Pkcs11 initialization
 // was completed for the user.
 const std::string Pkcs11Init::kPkcs11InitializedFile =
@@ -82,7 +88,7 @@ bool Pkcs11Init::InitializeOpencryptoki() {
     return false;
   }
 
-  if (!platform_->DirectoryExists(kOpencryptokiDir) &&
+  if (!IsOpencryptokiDirectoryValid() &&
       !SetupOpencryptokiDirectory())
     return false;
 
@@ -213,38 +219,34 @@ bool Pkcs11Init::SetUserTokenPins() {
   return true;
 }
 
+bool Pkcs11Init::IsOpencryptokiDirectoryValid() {
+  if (!platform_->DirectoryExists(kOpencryptokiDir))
+    return false;
+  for (int i = 0; kSymlinkSources[i]; ++i) {
+    std::string target = platform_->ReadLink(kSymlinkSources[i]);
+    if (target != kUserTokenDir) {
+      LOG(ERROR) << "Symlink " << kSymlinkSources[i] << " target should be \""
+                 << kUserTokenDir << "\", not \"" << target << "\"";
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Pkcs11Init::SetupOpencryptokiDirectory() {
-  std::string opencryptoki_tpm = StringPrintf("%s/tpm", kOpencryptokiDir);
-  if (!platform_->CreateDirectory(opencryptoki_tpm)) {
-    LOG(ERROR) << "Couldn't create openCryptoki token directory "
-               << opencryptoki_tpm;
+  if (platform_->DirectoryExists(kOpencryptokiDir)) {
+    if (!platform_->DeleteFile(kOpencryptokiDir, true)) {
+      PLOG(ERROR) << "Unable to remove " << kOpencryptokiDir;
+      return false;
+    }
+  }
+  if (!platform_->CreateDirectory(kOpencryptokiDir)) {
+    PLOG(ERROR) << "Unable to create " << kOpencryptokiDir;
     return false;
   }
-
-  // Ensure symbolic links for the token directories are correctly setup.
-  // TODO(gauravsh): (crosbug.com/7284) Patch openCryptoki so that this is no
-  // longer necessary.
-  if (!platform_->Symlink(std::string(kUserTokenDir),
-                          std::string(kUserTokenLink)))
-    return false;
-
-  if (!platform_->Symlink(std::string(kUserTokenDir),
-                          std::string(kIPsecTokenLink)))
-    return false;
-
-  if (!platform_->Symlink(std::string(kRootTokenDir),
-                          std::string(kRootTokenLink)))
-    return false;
 
   // Set correct ownership on the directory (root:$PKCS11_GROUP_ID).
   if (!platform_->SetOwnership(std::string(kOpencryptokiDir),
-                               static_cast<uid_t>(0),  // Root uid is 0.
-                               pkcs11_group_id_)) {
-    LOG(ERROR) << "Couldn't set file ownership for " << kOpencryptokiDir;
-    return false;
-  }
-
-  if (!platform_->SetOwnership(opencryptoki_tpm,
                                static_cast<uid_t>(0),  // Root uid is 0.
                                pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't set file ownership for " << kOpencryptokiDir;
@@ -259,11 +261,39 @@ bool Pkcs11Init::SetupOpencryptokiDirectory() {
     LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
     return false;
   }
+
+  std::string opencryptoki_tpm = StringPrintf("%s/tpm", kOpencryptokiDir);
+  if (!platform_->CreateDirectory(opencryptoki_tpm)) {
+    LOG(ERROR) << "Couldn't create openCryptoki token directory "
+               << opencryptoki_tpm;
+    return false;
+  }
+
+  if (!platform_->SetOwnership(opencryptoki_tpm,
+                               static_cast<uid_t>(0),  // Root uid is 0.
+                               pkcs11_group_id_)) {
+    LOG(ERROR) << "Couldn't set file ownership for " << kOpencryptokiDir;
+    return false;
+  }
+
   if (!platform_->SetPermissions(opencryptoki_tpm,
                                  opencryptoki_dir_perms)) {
     LOG(ERROR) << "Couldn't set permissions for " << kOpencryptokiDir;
     return false;
   }
+
+  // Ensure symbolic links for the token directories are correctly setup.
+  // TODO(gauravsh): (crosbug.com/7284) Patch openCryptoki so that this is no
+  // longer necessary.
+  for (int i = 0; kSymlinkSources[i]; ++i) {
+    if (!platform_->Symlink(std::string(kUserTokenDir),
+                            std::string(kSymlinkSources[i]))) {
+      PLOG(ERROR) << "Couldn't create symlink for " << kOpencryptokiDir;
+      return false;
+    }
+  }
+
+  LOG(INFO) << "Finished setting up " << kOpencryptokiDir;
   return true;
 }
 

@@ -54,6 +54,10 @@ class Pkcs11Init {
   // false on failure.
   virtual bool SetUserTokenPins();
 
+  // Returns false whenever the /var/lib/opencryptoki directory is known to
+  // be invalid and needs to be set up again.
+  virtual bool IsOpencryptokiDirectoryValid();
+
   // Sets up the necessary opencryptoki directories (/var/lib/opencryptoki/
   // {,tpm}), symlinks (under /var/lib/opencryptoki/tpm) and sets the
   // appropriate permissions.
@@ -90,17 +94,15 @@ class Pkcs11Init {
   static const CK_CHAR kDefaultUserPin[];
   static const CK_CHAR kDefaultLabel[];
   static const char kOpencryptokiDir[];
-  static const char kUserTokenLink[];
-  static const char kIPsecTokenLink[];
-  static const char kRootTokenLink[];
   static const char kUserDir[];
   static const char kUserTokenDir[];
   static const char kRootTokenDir[];
   static const char kPkcs11Group[];
   static const char kTokenConfigFile[];
-  static const std::string kPkcsSlotdPath;
-  static const std::string kPkcsSlotPath;
-  static const std::string kPkcsSlotCmd[];
+  static const char kPkcsSlotdPath[];
+  static const char kPkcsSlotPath[];
+  static const char* kPkcsSlotCmd[];
+  static const char* kSymlinkSources[];
 
   static const std::string kPkcs11InitializedFile;
 
