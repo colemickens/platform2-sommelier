@@ -4,7 +4,9 @@
 
 #include "cros-disks/disk-manager.h"
 
+#include <blkid/blkid.h>
 #include <libudev.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 
@@ -26,7 +28,7 @@ using std::set;
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
 static const char kBlockSubsystem[] = "block";
 static const char kScsiSubsystem[] = "scsi";
@@ -34,12 +36,16 @@ static const char kScsiDevice[] = "scsi_device";
 static const char kUdevAddAction[] = "add";
 static const char kUdevChangeAction[] = "change";
 static const char kUdevRemoveAction[] = "remove";
+static const char kNullDeviceFile[] = "/dev/null";
+
+}  // namespace
+
+namespace cros_disks {
 
 DiskManager::DiskManager(const string& mount_root, Platform* platform)
     : MountManager(mount_root, platform),
       udev_(udev_new()),
-      udev_monitor_fd_(0),
-      blkid_cache_(NULL) {
+      udev_monitor_fd_(0) {
   CHECK(udev_) << "Failed to initialize udev";
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   CHECK(udev_monitor_) << "Failed to create a udev monitor";
@@ -258,16 +264,22 @@ const Filesystem* DiskManager::GetFilesystem(
 
 string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
   string filesystem_type;
-  if (blkid_cache_ != NULL || blkid_get_cache(&blkid_cache_, NULL) == 0) {
+  blkid_cache blkid_cache = NULL;
+  // No cache file is used as disk manager should always query information
+  // from the device, i.e. setting cache file to /dev/null.
+  if (blkid_get_cache(&blkid_cache, kNullDeviceFile) == 0) {
     blkid_dev dev =
-        blkid_get_dev(blkid_cache_, device_path.c_str(), BLKID_DEV_NORMAL);
+        blkid_get_dev(blkid_cache, device_path.c_str(), BLKID_DEV_NORMAL);
     if (dev) {
-      const char *type = blkid_get_tag_value(blkid_cache_, "TYPE",
-                                             device_path.c_str());
+      char *type = blkid_get_tag_value(blkid_cache, "TYPE",
+                                       device_path.c_str());
       if (type) {
         filesystem_type = type;
+        free(type);
       }
     }
+    // To deallocate the cache, it needs to call blkid_put_cache.
+    blkid_put_cache(blkid_cache);
   }
   return filesystem_type;
 }

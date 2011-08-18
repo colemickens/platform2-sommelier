@@ -5,7 +5,6 @@
 #ifndef CROS_DISKS_DISK_MANAGER_H_
 #define CROS_DISKS_DISK_MANAGER_H_
 
-#include <blkid/blkid.h>
 #include <libudev.h>
 
 #include <map>
@@ -125,9 +124,6 @@ class DiskManager : public MountManager,
 
   // A file descriptor that indicates changes to the system.
   int udev_monitor_fd_;
-
-  // blkid_cache object.
-  blkid_cache blkid_cache_;
 
   // A set of device sysfs paths detected by the udev monitor.
   std::set<std::string> devices_detected_;
