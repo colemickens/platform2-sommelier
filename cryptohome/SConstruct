@@ -142,7 +142,7 @@ env.Append(
     # order without copious testing. In particular, the 'chromeos' dependency
     # should appear before 'base' or bad things happen.
     LIBS = ['chromeos', 'base', 'rt', 'crypto', 'ecryptfs', 'event', 'keyutils',
-            'opencryptoki', 'protobuf', 'pthread', 'scrypt', 'tspi'],
+            'opencryptoki', 'protobuf', 'pthread', 'scrypt', 'tspi', 'metrics'],
 )
 for key in Split('CC CXX AR RANLIB LD NM CFLAGS CCFLAGS'):
   value = os.environ.get(key)

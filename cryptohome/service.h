@@ -13,6 +13,8 @@
 #include <chromeos/glib/object.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
+#include <metrics/metrics_library.h>
+#include <metrics/timer.h>
 
 #include "cryptohome_event_source.h"
 #include "install_attributes.h"
@@ -26,6 +28,9 @@ namespace gobject {
 
 struct Cryptohome;
 }  // namespace gobject
+
+// Wrapper for all timers used by the cryptohome daemon.
+class TimerCollection;
 
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
@@ -237,6 +242,12 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Sequence id of an asynchronous mount request that must trigger
   // a pkcs11 init request.
   int async_mount_pkcs11_init_sequence_id_;
+  // Sequence id of an asynchronous guest mount request. Needed for the timer.
+  int async_guest_mount_sequence_id_;
+  // Metrics library used by all metrics reporters in cryptohome.
+  MetricsLibrary metrics_lib_;
+  // Collection of timers for UMA reports.
+  scoped_ptr<TimerCollection> timer_collection_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
