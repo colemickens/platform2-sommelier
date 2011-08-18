@@ -285,9 +285,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
   } else if (!strcmp(event->GetEventName(), kPkcs11InitResultEventType)) {
     LOG(INFO) << "A Pkcs11_Init event got finished.";
     MountTaskResult* result = static_cast<MountTaskResult*>(event);
-    // Do extra sanity checks before updating our state.
-    if (result->return_status() && mount_->IsCryptohomeMounted() &&
-        !pkcs11_init_->IsUserTokenBroken()) {
+    if (result->return_status()) {
       LOG(INFO) << "PKCS#11 initialization succeeded.";
       pkcs11_state_ = kIsInitialized;
       return;
