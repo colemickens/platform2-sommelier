@@ -172,6 +172,7 @@ class CellularTest : public testing::Test {
   static const int kTestSocket;
   static const char kDBusOwner[];
   static const char kDBusPath[];
+  static const char kTestCarrier[];
 
   void StartRTNLHandler();
   void StopRTNLHandler();
@@ -196,6 +197,7 @@ const char CellularTest::kTestDeviceName[] = "usb0";
 const int CellularTest::kTestSocket = 123;
 const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
+const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
 
 void CellularTest::StartRTNLHandler() {
   EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -230,19 +232,46 @@ TEST_F(CellularTest, GetStateString) {
 }
 
 TEST_F(CellularTest, GetCDMAActivationStateString) {
-  EXPECT_EQ("activated",
+  EXPECT_EQ(flimflam::kActivationStateActivated,
             device_->GetCDMAActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED));
-  EXPECT_EQ("activating",
+  EXPECT_EQ(flimflam::kActivationStateActivating,
             device_->GetCDMAActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING));
-  EXPECT_EQ("not-activated",
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
             device_->GetCDMAActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED));
-  EXPECT_EQ("partially-activated",
+  EXPECT_EQ(flimflam::kActivationStatePartiallyActivated,
             device_->GetCDMAActivationStateString(
                 MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED));
-  EXPECT_EQ("unknown", device_->GetCDMAActivationStateString(123));
+  EXPECT_EQ(flimflam::kActivationStateUnknown,
+            device_->GetCDMAActivationStateString(123));
+}
+
+TEST_F(CellularTest, GetCDMAActivationErrorString) {
+  EXPECT_EQ(flimflam::kErrorNeedEvdo,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE));
+  EXPECT_EQ(flimflam::kErrorNeedHomeNetwork,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING));
+  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT));
+  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED));
+  EXPECT_EQ(flimflam::kErrorOtaspFailed,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED));
+  EXPECT_EQ("",
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
+  EXPECT_EQ(flimflam::kErrorActivationFailed,
+            device_->GetCDMAActivationErrorString(
+                MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
+  EXPECT_EQ(flimflam::kErrorActivationFailed,
+            device_->GetCDMAActivationErrorString(1234));
 }
 
 TEST_F(CellularTest, Start) {
@@ -325,15 +354,14 @@ TEST_F(CellularTest, InitProxiesGSM) {
 }
 
 TEST_F(CellularTest, GetModemStatus) {
-  static const char kCarrier[] = "The Cellular Carrier";
   DBusPropertiesMap props;
-  props["carrier"].writer().append_string(kCarrier);
+  props["carrier"].writer().append_string(kTestCarrier);
   props["unknown-property"].writer().append_string("irrelevant-value");
   EXPECT_CALL(*simple_proxy_, GetStatus()).WillOnce(Return(props));
   device_->simple_proxy_.reset(simple_proxy_.release());
   device_->state_ = Cellular::kStateEnabled;
   device_->GetModemStatus();
-  EXPECT_EQ(kCarrier, device_->carrier_);
+  EXPECT_EQ(kTestCarrier, device_->carrier_);
 }
 
 TEST_F(CellularTest, GetModemInfo) {
@@ -426,16 +454,36 @@ TEST_F(CellularTest, Connect) {
 }
 
 TEST_F(CellularTest, Activate) {
-  static const char kCarrier[] = "The Cellular Carrier";
   device_->type_ = Cellular::kTypeCDMA;
-  EXPECT_CALL(*cdma_proxy_, Activate(kCarrier))
+  EXPECT_CALL(*cdma_proxy_, Activate(kTestCarrier))
       .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  device_->Activate(kCarrier);
+  device_->Activate(kTestCarrier);
   device_->cdma_proxy_.reset(cdma_proxy_.release());
   device_->state_ = Cellular::kStateEnabled;
+  device_->CreateService();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             device_->cdma_.activation_state);
+  EXPECT_EQ(flimflam::kActivationStateActivating,
+            device_->service_->activation_state());
+  EXPECT_EQ("", device_->service_->error());
+}
+
+TEST_F(CellularTest, ActivateError) {
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*cdma_proxy_, Activate(kTestCarrier))
+      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
+  device_->Activate(kTestCarrier);
+  device_->cdma_proxy_.reset(cdma_proxy_.release());
+  device_->state_ = Cellular::kStateEnabled;
+  device_->CreateService();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            device_->cdma_.activation_state);
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+            device_->service_->activation_state());
+  EXPECT_EQ(flimflam::kErrorActivationFailed,
+            device_->service_->error());
 }
 
 }  // namespace shill

@@ -40,7 +40,7 @@ class Cellular : public Device,
     // possible to measure signal strength.
     kStateEnabled,
     // The modem has registered with a network and has signal quality
-    // measurements.
+    // measurements. A cellular service object is created.
     kStateRegistered,
     // The modem has connected to a network.
     kStateConnected,
@@ -142,8 +142,10 @@ class Cellular : public Device,
 
  private:
   FRIEND_TEST(CellularTest, Activate);
+  FRIEND_TEST(CellularTest, ActivateError);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
+  FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
@@ -157,11 +159,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, StartRegister);
 
-  static const char kActivationStateActivated[];
-  static const char kActivationStateActivating[];
-  static const char kActivationStateNotActivated[];
-  static const char kActivationStatePartiallyActivated[];
-  static const char kActivationStateUnknown[];
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
 
@@ -189,6 +186,7 @@ class Cellular : public Device,
   static std::string GetStateString(State state);
 
   static std::string GetCDMAActivationStateString(uint32 state);
+  static std::string GetCDMAActivationErrorString(uint32 error);
 
   void EnableModem();
   void GetModemStatus();

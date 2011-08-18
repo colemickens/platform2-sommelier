@@ -34,12 +34,6 @@ using std::vector;
 
 namespace shill {
 
-const char Cellular::kActivationStateActivated[] = "activated";
-const char Cellular::kActivationStateActivating[] = "activating";
-const char Cellular::kActivationStateNotActivated[] = "not-activated";
-const char Cellular::kActivationStatePartiallyActivated[] =
-    "partially-activated";
-const char Cellular::kActivationStateUnknown[] = "unknown";
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
 const char Cellular::kPhoneNumberCDMA[] = "#777";
 const char Cellular::kPhoneNumberGSM[] = "*99#";
@@ -186,15 +180,34 @@ string Cellular::GetStateString(State state) {
 string Cellular::GetCDMAActivationStateString(uint32 state) {
   switch (state) {
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
-      return kActivationStateActivated;
+      return flimflam::kActivationStateActivated;
     case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
-      return kActivationStateActivating;
+      return flimflam::kActivationStateActivating;
     case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
-      return kActivationStateNotActivated;
+      return flimflam::kActivationStateNotActivated;
     case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
-      return kActivationStatePartiallyActivated;
+      return flimflam::kActivationStatePartiallyActivated;
     default:
-      return kActivationStateUnknown;
+      return flimflam::kActivationStateUnknown;
+  }
+}
+
+// static
+string Cellular::GetCDMAActivationErrorString(uint32 error) {
+  switch (error) {
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
+      return flimflam::kErrorNeedEvdo;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING:
+      return flimflam::kErrorNeedHomeNetwork;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
+      return flimflam::kErrorOtaspFailed;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR:
+      return "";
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
+    default:
+      return flimflam::kErrorActivationFailed;
   }
 }
 
@@ -429,7 +442,7 @@ void Cellular::CreateService() {
       new CellularService(control_interface_, dispatcher_, manager_, this);
   switch (type_) {
     case kTypeGSM:
-      service_->set_activation_state(kActivationStateActivated);
+      service_->set_activation_state(flimflam::kActivationStateActivated);
       break;
     case kTypeCDMA:
       service_->set_payment_url(cdma_.payment_url);
@@ -536,7 +549,7 @@ void Cellular::HandleNewCDMAActivationState(uint32 error) {
   }
   service_->set_activation_state(
       GetCDMAActivationStateString(cdma_.activation_state));
-  // TODO(petkov): Handle activation state error codes.
+  service_->set_error(GetCDMAActivationErrorString(error));
 }
 
 void Cellular::OnCDMAActivationStateChanged(

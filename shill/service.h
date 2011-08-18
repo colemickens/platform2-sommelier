@@ -113,6 +113,9 @@ class Service : public base::RefCounted<Service> {
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
+  const std::string &error() const { return error_; }
+  void set_error(const std::string &error) { error_ = error; }
+
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
