@@ -29,10 +29,11 @@ class DeviceStub : public Device {
   DeviceStub(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
              Manager *manager,
-             const std::string& link_name,
+             const std::string &link_name,
+             const std::string &address,
              int interface_index,
              Technology technology)
-      : Device(control_interface, dispatcher, manager, link_name,
+      : Device(control_interface, dispatcher, manager, link_name, address,
                interface_index),
         technology_(technology) {}
   void Start() {}

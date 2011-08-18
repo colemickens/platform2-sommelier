@@ -23,7 +23,6 @@ namespace shill {
 class ControlInterface;
 class DHCPProvider;
 class DeviceAdaptorInterface;
-class DeviceInfo;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -47,6 +46,7 @@ class Device : public base::RefCounted<Device> {
          EventDispatcher *dispatcher,
          Manager *manager,
          const std::string &link_name,
+         const std::string &address,
          int interface_index);
   virtual ~Device();
 
@@ -109,9 +109,9 @@ class Device : public base::RefCounted<Device> {
                                   bool(Device::*set)(const Strings&));
 
   // Properties
-  std::string hardware_address_;
   bool powered_;  // TODO(pstew): Is this what |running_| is for?
   bool reconnect_;
+  const std::string hardware_address_;
 
   PropertyStore store_;
 

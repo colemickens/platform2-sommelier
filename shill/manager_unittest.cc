@@ -39,16 +39,19 @@ class ManagerTest : public PropertyStoreTest {
                                               &dispatcher_,
                                               &manager_,
                                               "null0",
+                                              "addr0",
                                               0)),
         mock_device2_(new NiceMock<MockDevice>(&control_interface_,
                                                &dispatcher_,
                                                &manager_,
                                                "null2",
+                                               "addr2",
                                                2)),
         mock_device3_(new NiceMock<MockDevice>(&control_interface_,
                                                &dispatcher_,
                                                &manager_,
                                                "null3",
+                                               "addr3",
                                                3)) {
   }
   virtual ~ManagerTest() {}

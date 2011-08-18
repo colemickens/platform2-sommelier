@@ -35,24 +35,31 @@ using ::testing::Test;
 
 namespace shill {
 
-namespace {
-const char kDeviceName[] = "testdevice";
-}  // namespace {}
-
 class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
-      : device_(new Device(&control_interface_, NULL, NULL, kDeviceName, 0)) {
+      : device_(new Device(&control_interface_,
+                           NULL,
+                           NULL,
+                           kDeviceName,
+                           kDeviceAddress,
+                           0)) {
     DHCPProvider::GetInstance()->glib_ = &glib_;
     DHCPProvider::GetInstance()->control_interface_ = &control_interface_;
   }
   virtual ~DeviceTest() {}
 
  protected:
+  static const char kDeviceName[];
+  static const char kDeviceAddress[];
+
   MockGLib glib_;
   MockControl control_interface_;
   DeviceRefPtr device_;
 };
+
+const char DeviceTest::kDeviceName[] = "testdevice";
+const char DeviceTest::kDeviceAddress[] = "address";
 
 TEST_F(DeviceTest, Contains) {
   EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));

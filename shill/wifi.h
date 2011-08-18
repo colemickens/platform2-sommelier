@@ -27,7 +27,8 @@ class WiFi : public Device {
   WiFi(ControlInterface *control_interface,
        EventDispatcher *dispatcher,
        Manager *manager,
-       const std::string& link,
+       const std::string &link,
+       const std::string &address,
        int interface_index);
   virtual ~WiFi();
   virtual void Start();

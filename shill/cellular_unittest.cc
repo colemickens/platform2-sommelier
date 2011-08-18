@@ -46,6 +46,7 @@ class CellularPropertyTest : public PropertyStoreTest {
                              NULL,
                              NULL,
                              "usb0",
+                             "00:01:02:03:04:05",
                              3,
                              Cellular::kTypeGSM,
                              "",
@@ -121,6 +122,7 @@ class CellularTest : public testing::Test {
                              &dispatcher_,
                              &manager_,
                              kTestDeviceName,
+                             kTestDeviceAddress,
                              3,
                              Cellular::kTypeGSM,
                              kDBusOwner,
@@ -169,6 +171,7 @@ class CellularTest : public testing::Test {
   };
 
   static const char kTestDeviceName[];
+  static const char kTestDeviceAddress[];
   static const int kTestSocket;
   static const char kDBusOwner[];
   static const char kDBusPath[];
@@ -194,6 +197,7 @@ class CellularTest : public testing::Test {
 };
 
 const char CellularTest::kTestDeviceName[] = "usb0";
+const char CellularTest::kTestDeviceAddress[] = "00:01:02:03:04:05";
 const int CellularTest::kTestSocket = 123;
 const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
