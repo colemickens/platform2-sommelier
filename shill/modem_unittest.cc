@@ -4,7 +4,6 @@
 
 #include <vector>
 
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
 #include <net/if.h>
@@ -13,10 +12,8 @@
 #include "shill/cellular.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_glib.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_sockets.h"
 #include "shill/modem.h"
 #include "shill/proxy_factory.h"
@@ -28,7 +25,6 @@ using std::vector;
 using testing::_;
 using testing::DoAll;
 using testing::Return;
-using testing::SetArgumentPointee;
 using testing::StrictMock;
 using testing::Test;
 
@@ -83,7 +79,7 @@ class ModemTest : public Test {
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
-  MockManager manager_;
+  Manager manager_;
   scoped_ptr<MockDBusPropertiesProxy> proxy_;
   TestProxyFactory proxy_factory_;
   Modem modem_;
@@ -137,7 +133,6 @@ TEST_F(ModemTest, CreateCellularDevice) {
   EXPECT_FALSE(modem_.device_.get());
 
   static const char kLinkName[] = "usb0";
-  static const unsigned char kAddress[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
   const int kTestSocket = 10;
   props[Modem::kPropertyLinkName].writer().append_string(kLinkName);
   EXPECT_CALL(sockets_, Socket(PF_INET, SOCK_DGRAM, 0))
@@ -147,14 +142,6 @@ TEST_F(ModemTest, CreateCellularDevice) {
       .WillRepeatedly(DoAll(SetInterfaceIndex(), Return(0)));
   EXPECT_CALL(sockets_, Close(kTestSocket))
       .WillRepeatedly(Return(0));
-
-  ByteString expected_address(kAddress, arraysize(kAddress));
-  MockDeviceInfo info_(&control_interface_, &dispatcher_, &manager_);
-  EXPECT_CALL(info_, GetAddress(kTestInterfaceIndex, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)));
-  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
-
   modem_.CreateCellularDevice(props);
   EXPECT_FALSE(modem_.device_.get());
 

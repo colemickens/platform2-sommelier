@@ -23,7 +23,6 @@ class MockDevice : public Device {
              EventDispatcher *dispatcher,
              Manager *manager,
              const std::string &link_name,
-             const std::string &address,
              int interface_index);
   virtual ~MockDevice();
 

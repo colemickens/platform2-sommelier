@@ -153,9 +153,6 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       infos_[dev_index].address = msg.GetAttribute(IFLA_ADDRESS);
       VLOG(2) << "link index " << dev_index << " address "
               << infos_[dev_index].address.HexEncode();
-    } else {
-      LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
-      return;
     }
     if (!msg.HasAttribute(IFLA_IFNAME)) {
       LOG(ERROR) << "Add Link message does not have IFLA_IFNAME!";
@@ -172,7 +169,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         technology = GetDeviceTechnology(link_name);
       }
     }
-    string address = infos_[dev_index].address.HexEncode();
+
     switch (technology) {
       case Device::kCellular:
         // Cellular devices are managed by ModemInfo.
@@ -181,15 +178,15 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         return;
       case Device::kEthernet:
         device = new Ethernet(control_interface_, dispatcher_, manager_,
-                              link_name, address, dev_index);
+                              link_name, dev_index);
         break;
       case Device::kWifi:
         device = new WiFi(control_interface_, dispatcher_, manager_,
-                          link_name, address, dev_index);
+                          link_name, dev_index);
         break;
       default:
         device = new DeviceStub(control_interface_, dispatcher_, manager_,
-                                link_name, address, dev_index, technology);
+                                link_name, dev_index, technology);
         break;
     }
     RegisterDevice(device);

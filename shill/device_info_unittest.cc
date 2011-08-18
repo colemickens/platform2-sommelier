@@ -76,8 +76,6 @@ RTNLMessage *DeviceInfoTest::BuildMessage(RTNLMessage::MessageType type,
                                          IPAddress::kAddressFamilyIPv4);
   message->SetAttribute(static_cast<uint16>(IFLA_IFNAME),
                         ByteString(kTestDeviceName, true));
-  ByteString test_address(kTestAddress, sizeof(kTestAddress));
-  message->SetAttribute(IFLA_ADDRESS, test_address);
   return message;
 }
 
@@ -91,6 +89,8 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   scoped_ptr<RTNLMessage> message(BuildMessage(RTNLMessage::kMessageTypeLink,
                                                RTNLMessage::kMessageModeAdd));
   message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  ByteString test_address(kTestAddress, sizeof(kTestAddress));
+  message->SetAttribute(IFLA_ADDRESS, test_address);
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   SendMessageToDeviceInfo(*message);
   EXPECT_TRUE(device_info_.GetDevice(kTestDeviceIndex).get());
@@ -100,7 +100,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   ByteString address;
   EXPECT_TRUE(device_info_.GetAddress(kTestDeviceIndex, &address));
   EXPECT_FALSE(address.IsEmpty());
-  EXPECT_TRUE(address.Equals(ByteString(kTestAddress, sizeof(kTestAddress))));
+  EXPECT_TRUE(test_address.Equals(address));
 
   message.reset(BuildMessage(RTNLMessage::kMessageTypeLink,
                              RTNLMessage::kMessageModeAdd));
