@@ -238,10 +238,12 @@ if is_old_verity_argv "${kernel_cfg}"; then
   rootfs_sectors=$(echo ${kernel_cfg} | cut -f2 -d' ')
   verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
   verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
+  expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
 else
   rootfs_sectors=$(get_verity_arg "${kernel_cfg}" hashstart)
   verity_depth=0
   verity_algorithm=$(get_verity_arg "${kernel_cfg}" alg)
+  expected_hash=$(get_verity_arg "${kernel_cfg}" root_hexdigest)
 fi
 
 rootfs_image="${FLAGS_rootfs_image}"
@@ -274,8 +276,12 @@ table="${verity_preamble},"$(sudo "${VERITY}" mode=create \
         "payload_blocks="$((rootfs_sectors / 8)) \
         "hashtree=${tempfile}")
 
-expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
-generated_hash=$(echo ${table} | cut -f2- -d, | cut -f9 -d' ')
+sufftable=$(echo "${table}" | cut -f2- -d,)
+if is_old_verity_argv "${sufftable}"; then
+  generated_hash=$(echo "${sufftable}" | cut -f9 -d' ')
+else
+  generated_hash=$(get_verity_arg "${sufftable}" root_hexdigest)
+fi
 
 if [ ${FLAGS_ignore_bad_verification} -eq ${FLAGS_FALSE} ]; then
   if [ "${expected_hash}" != "${generated_hash}" ]; then
