@@ -45,9 +45,11 @@ Device::Device(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Manager *manager,
                const string &link_name,
+               const string &address,
                int interface_index)
     : powered_(true),
       reconnect_(true),
+      hardware_address_(address),
       interface_index_(interface_index),
       running_(false),
       link_name_(link_name),
@@ -136,6 +138,9 @@ string Device::GetRpcIdentifier() {
 string Device::GetStorageIdentifier() {
   string id = GetRpcIdentifier();
   ControlInterface::RpcIdToStorageId(&id);
+  size_t needle = id.find('_');
+  LOG_IF(ERROR, needle == string::npos) << "No _ in storage id?!?!";
+  id.replace(id.begin() + needle + 1, id.end(), hardware_address_);
   return id;
 }
 

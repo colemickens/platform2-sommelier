@@ -65,8 +65,8 @@ class Manager {
   ServiceRefPtr FindService(const std::string& name);
   std::vector<std::string> EnumerateAvailableServices();
 
-  DeviceInfo *device_info() { return &device_info_; }
-  PropertyStore *store() { return &store_; }
+  virtual DeviceInfo *device_info() { return &device_info_; }
+  virtual PropertyStore *store() { return &store_; }
 
  private:
   friend class ManagerAdaptorInterface;

@@ -55,6 +55,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
                                &dispatcher_,
                                &manager_,
                                "mock",
+                               "addr0",
                                0)),
         service_(new MockService(&control_interface_,
                                  &dispatcher_,

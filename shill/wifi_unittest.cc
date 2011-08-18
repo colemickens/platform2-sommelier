@@ -44,7 +44,7 @@ namespace shill {
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : device_(new WiFi(&control_interface_, NULL, NULL, "wifi", 0)) {
+      : device_(new WiFi(&control_interface_, NULL, NULL, "wifi", "", 0)) {
   }
   virtual ~WiFiPropertyTest() {}
 
@@ -95,7 +95,12 @@ class WiFiMainTest : public Test {
  public:
   WiFiMainTest()
       : manager_(&control_interface_, NULL, NULL),
-        wifi_(new WiFi(&control_interface_, NULL, &manager_, kDeviceName, 0)),
+        wifi_(new WiFi(&control_interface_,
+                       NULL,
+                       &manager_,
+                       kDeviceName,
+                       kDeviceAddress,
+                       0)),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
@@ -173,6 +178,7 @@ class WiFiMainTest : public Test {
   // initialization order
  protected:
   static const char kDeviceName[];
+  static const char kDeviceAddress[];
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeInfrastructure[];
 
@@ -185,6 +191,7 @@ class WiFiMainTest : public Test {
 };
 
 const char WiFiMainTest::kDeviceName[] = "wlan0";
+const char WiFiMainTest::kDeviceAddress[] = "00:01:02:03:04:05";
 const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
 

@@ -84,6 +84,14 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
     return;
   }
 
+  ByteString address_bytes;
+  if (!manager_->device_info()->GetAddress(interface_index, &address_bytes)) {
+    // TODO(petkov): ensure that DeviceInfo has heard about this device before
+    //               we go ahead and try to add it.
+    LOG(ERROR) << "Unable to create cellular device without a hardware addr.";
+    return;
+  }
+
   uint32 mm_type = kuint32max;
   Cellular::Type type;
   DBusProperties::GetUint32(properties, kPropertyType, &mm_type);
@@ -105,6 +113,7 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                          dispatcher_,
                          manager_,
                          link_name,
+                         address_bytes.HexEncode(),
                          interface_index,
                          type,
                          owner_,
