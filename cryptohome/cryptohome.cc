@@ -896,6 +896,10 @@ int main(int argc, char **argv) {
       return 1;
     if (!pkcs11_init.IsUserTokenBroken()) {
       printf("PKCS#11 token looks OK! Not reinitializing.");
+      // Sanitize the token directory in case the token was initialized before
+      // sanitization was added.
+      if (!pkcs11_init.SanitizeTokenDirectory())
+        return 1;
       return 0;
     }
     return !pkcs11_init.InitializeToken();
