@@ -103,6 +103,7 @@ HELP='
   Run top.
 
  tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
+ tpcontrol {syntp [on|off]}
   Manually adjust advanced touchpad settings.
 
  tracepath [-n] <destination>[/port]
