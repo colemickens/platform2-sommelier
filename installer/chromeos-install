@@ -518,11 +518,6 @@ if [ -f "${ROOT}"/root/.dev_mode ]; then
 fi
 loop_offset_cleanup
 
-if grep "vogue" "$ROOT"/etc/lsb-release > /dev/null; then
-   sudo uboot-env.py -f /dev/mtdblock0 -o 0x7c000 -s 0x4000 \
-    --set bootcmd="mmc read 0 C0008000 0 1; autoscr C0008000"
-fi
-
 # Force data to disk before we declare done.
 sync
 
