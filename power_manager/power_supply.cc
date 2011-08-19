@@ -174,9 +174,11 @@ void PowerSupply::GetPowerSupplyPaths() {
       // path can disappear if removed).  So this code should only be run once
       // for each power source.
       if (buf == "Battery" && !battery_info_) {
+        DLOG(INFO) << "Battery path found: " << path.value();
         battery_path_ = path;
         battery_info_ = new PowerInfoReader(path);
       } else if (buf == "Mains" && !line_power_info_) {
+        DLOG(INFO) << "Line power path found: " << path.value();
         line_power_path_ = path;
         line_power_info_ = new PowerInfoReader(path);
       }
