@@ -146,6 +146,8 @@ if [ -f "$CONSENT_FILE" ]; then
   CONSENT_USER_GROUP=$(stat -c %U:%G "$CONSENT_FILE")
   # normally, the consent file would be owned by "chronos:chronos".
   if [ "$CONSENT_USER_GROUP" = "root:root" ]; then
+    TAG="$(basename $0)[$$]"
+    logger -t "${TAG}" "Removing consent file owned by root"
     rm -f "$CONSENT_FILE"
   fi
 fi
