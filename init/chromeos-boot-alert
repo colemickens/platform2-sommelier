@@ -35,6 +35,50 @@ usage_help() {
 "
 }
 
+# Prints out system locale by searching cached settings or VPD.
+find_current_locale() {
+  # TODO(hungte) Find some better way other than hard coding file path here.
+  local state_file='/mnt/stateful_partition/home/chronos/Local State'
+  local vpd_file='/mnt/stateful_partition/var/log/vpd_2.0.txt'
+  local locale=""
+  if [ -f "$state_file" ]; then
+    locale="$(grep -w '"app_locale":' "$state_file" |
+              sed 's/.*"\([^"]*\)",$/\1/')" || locale=""
+  fi
+  if [ -n "$locale" ]; then
+    echo "$locale"
+  elif [ -f "$vpd_file" ]; then
+    sed -nr '/^"initial_locale"=".*"/s/.*="(.*)"/\1/p' "$vpd_file"
+  else
+    vpd -i RO_VPD -g initial_locale 2>/dev/null || true
+  fi
+}
+
+# Shows PNG message-type image files on screen center if available.
+# Arguments: message name in /usr/share/chromeos-assets/images/messages/$locale
+show_assets_message_image() {
+  local message="$1"
+  local locale locale_list image_file
+
+  # Build locale list
+  locale="$(find_current_locale)" || locale=""
+  locale_list="$locale"
+  while [ "${locale%[-_]*}" != "$locale" ]; do
+    locale="${locale%[-_]*}"
+    locale_list="$locale_list $locale"
+  done
+  locale_list="$locale_list en-US en"
+
+  for locale in $locale_list; do
+    image_file="/usr/share/chromeos-assets/images/messages/$locale/$message.png"
+    if [ -f "$image_file" ]; then
+      ply-image "$image_file" >/dev/null 2>&1 || return $?
+      return 0
+    fi
+  done
+  return 1
+}
+
 # Prints the two byte hex code of the matched char or
 # exists non-zero on timeout.  It reads from the current tty.
 # To override, call it as follows,
@@ -132,33 +176,36 @@ mode_warn_dev() {
 # Argument: time to countdown (in seconds)
 mode_enter_dev() {
   local delay_secs="${1:-30}"
+  show_assets_message_image "enter_dev1" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
   echo "
     Your system is transitioning to Developer Mode.
+    Local data will be cleared.
 
-    If you do not want to enter Developer Mode, turn your computer off now
-    and toggle the developer switch back to Normal (Verified) Mode.
+    To cancel, turn your computer off now and
+    toggle the developer switch back to Normal (Verified) Mode.
   " >"$STDOUT"
 
-  local echo_opt='-n'
-  if [ -n "$BASH_VERSION" ]; then
-    # bash needs -e to interpret \r, but dash does not.
-    echo_opt='-n -e'
-  fi
+  local format='\r  %-30s'
   for dev_count_down in $(seq $delay_secs -1 1); do
     # Trailing spaces must exist to clear previous message when the printed
     # counter width changed (ex, 100->99).
-    echo $echo_opt "\r  Starting in $dev_count_down second(s)...   " >"$STDOUT"
+    # TODO(hungte) merge this with assets messages so it can be localized.
+    printf "$format" "Starting in $dev_count_down second(s)..." >"$STDOUT"
     sleep 1
   done
 
-  echo $echo_opt "\r                                               " >"$STDOUT"
   # Count-down
+  tput clear >"$STDOUT" &&
+  show_assets_message_image "enter_dev2" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
   echo "
-    Preparing your system for developer mode.
-    Please wait 5 - 10 minutes and DO NOT POWER OFF . . .
-    The system will reboot when complete.
+    Preparing system for Developer Mode (may take 5 - 10 minutes).
+    Do not turn your computer off until it has restarted.
 
-    On reboot, press Ctrl+Alt+[->] (F2) for further instruction.
+    On reboot, press Ctrl+Alt+[->] (F2) for information about Developer Mode.
   " >"$STDOUT"
   # TODO(wad,wfrichar) Request a root password here.
   # TODO(wad,reinauer) Inform the user of chromeos-firmwareupdate --mode=todev
@@ -166,18 +213,24 @@ mode_enter_dev() {
 
 # Prints message when leaving developer mode
 mode_leave_dev() {
+  show_assets_message_image "leave_dev" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
   echo "
-    Your system last booted in developer mode.
-    Attempting to return to normal...
-    Upon completion, the machine will reboot.
+    Your system last booted in Developer Mode.
+    Returning to Normal (Verified) Mode...
+    Upon completion, the system will reboot.
   " >"$STDOUT"
 }
 
 # Prints messages before starting firmware update
 mode_update_firmware() {
+  show_assets_message_image "update_firmware" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
   echo "
-    Your system is updating firmware, please DO NOT POWER OFF.
-    Upon completion, the machine may reboot or continue for login.
+    Your system is applying a critical update.
+    Please do not turn it off.
   " >"$STDOUT"
 }
 
@@ -196,8 +249,11 @@ mode_wipe() {
 
 # Prints message before starting to rebuild a corrupted stateful partition.
 mode_self_repair() {
+  show_assets_message_image "self_repair" ||
+  # The text by echo below is only fallback of localized assets message.
+  # Please sync with text there if you want to change the message.
   echo "
-    Your system is performing a self-repair process, please wait...
+    Your system is repairing itself.  Please wait.
   " >"$STDOUT"
 }
 
