@@ -13,6 +13,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stl_util-inl.h>
 #include <base/stringprintf.h>
 
 using std::string;
@@ -55,15 +56,17 @@ bool Platform::CreateOrReuseEmptyDirectory(const string& path) const {
 }
 
 bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
-    string* path, unsigned max_suffix_to_retry) const {
+    string* path, unsigned max_suffix_to_retry,
+    const std::set<std::string>& reserved_paths) const {
   CHECK(path && !path->empty()) << "Invalid path argument";
 
-  if (CreateOrReuseEmptyDirectory(*path))
+  if (!ContainsKey(reserved_paths, *path) && CreateOrReuseEmptyDirectory(*path))
     return true;
 
   for (unsigned suffix = 1; suffix <= max_suffix_to_retry; ++suffix) {
     string fallback_path = base::StringPrintf("%s (%d)", path->c_str(), suffix);
-    if (CreateOrReuseEmptyDirectory(fallback_path)) {
+    if (!ContainsKey(reserved_paths, fallback_path) &&
+        CreateOrReuseEmptyDirectory(fallback_path)) {
       *path = fallback_path;
       return true;
     }

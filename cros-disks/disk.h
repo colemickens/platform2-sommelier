@@ -31,7 +31,7 @@ class Disk {
   // the mount directory of the disk. The naming scheme is as follows:
   // (1) Use a non-empty label if the disk has one.
   // (2) Otherwise, use a non-empty UUID if the disk has one.
-  // (3) Finally, use 'disk' as a fallback name.
+  // (3) Finally, use 'Untitled' as a fallback name.
   // Any forward slash '/' in the presentation name is replaced with an
   // underscore '_'.
   std::string GetPresentationName() const;

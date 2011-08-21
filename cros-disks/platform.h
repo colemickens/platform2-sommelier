@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <set>
 #include <string>
 
 #include <base/basictypes.h>
@@ -31,13 +32,15 @@ class Platform {
   // Returns true if the directory is created successfully.
   virtual bool CreateOrReuseEmptyDirectory(const std::string& path) const;
 
-  // Creates a directory at |path| similar to CreateDirectory() but retries
-  // on failure by augmenting a numeric suffix (e.g. "mydir (1)"), starting
-  // from 1 to |max_suffix_to_retry|, to the directory name. The created
-  // directory is only accessible by the current user. Returns true if the
-  // directory is created successfully.
+  // Creates a directory at |path| similar to CreateOrReuseEmptyDirectory()
+  // but avoids using any paths in the |reserved_paths| set and retries on
+  // failure by augmenting a numeric suffix (e.g. "mydir (1)"), starting from
+  // 1 to |max_suffix_to_retry|, to the directory name. The created directory
+  // is only accessible by the current user. Returns true if the directory is
+  // created successfully.
   virtual bool CreateOrReuseEmptyDirectoryWithFallback(
-      std::string* path, unsigned max_suffix_to_retry) const;
+      std::string* path, unsigned max_suffix_to_retry,
+      const std::set<std::string>& reserved_paths) const;
 
   // Gets the group ID of a given group name. Returns true on success.
   virtual bool GetGroupId(const std::string& group_name, gid_t* group_id) const;

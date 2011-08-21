@@ -10,7 +10,7 @@ using std::string;
 
 namespace cros_disks {
 
-static const char kFallbackPresentationName[] = "disk";
+static const char kFallbackPresentationName[] = "Untitled";
 
 // Keys that libcros expects to see on the wire.
 // TODO(rtc): We should probably stuff these in a shared header...

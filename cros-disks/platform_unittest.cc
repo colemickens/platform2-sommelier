@@ -12,6 +12,7 @@
 #include <base/memory/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+using std::set;
 using std::string;
 
 namespace cros_disks {
@@ -78,34 +79,66 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  set<string> reserved_paths;
 
   // Nonexistent directory
   FilePath new_dir = temp_dir.path().Append("test");
   string path = new_dir.value();
-  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 10));
+  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 10, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
   // Existent but empty directory
   path = new_dir.value();
-  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 10));
+  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 10, reserved_paths));
   EXPECT_EQ(new_dir.value(), path);
 
   // Existent and non-empty directory
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir, &temp_file));
   path = new_dir.value();
-  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 0));
-  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 1));
+  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 0, reserved_paths));
+  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 1, reserved_paths));
   FilePath new_dir1 = temp_dir.path().Append("test (1)");
   EXPECT_EQ(new_dir1.value(), path);
 
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(new_dir1, &temp_file));
   path = new_dir.value();
-  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 0));
-  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 1));
-  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(&path, 2));
+  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 0, reserved_paths));
+  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 1, reserved_paths));
+  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 2, reserved_paths));
   FilePath new_dir2 = temp_dir.path().Append("test (2)");
   EXPECT_EQ(new_dir2.value(), path);
+}
+
+TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  set<string> reserved_paths;
+
+  FilePath new_dir = temp_dir.path().Append("test");
+  string path = new_dir.value();
+  reserved_paths.insert(path);
+  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 0, reserved_paths));
+  EXPECT_EQ(new_dir.value(), path);
+
+  reserved_paths.insert(temp_dir.path().Append("test (1)").value());
+  reserved_paths.insert(temp_dir.path().Append("test (2)").value());
+  EXPECT_FALSE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 2, reserved_paths));
+  EXPECT_EQ(new_dir.value(), path);
+
+  FilePath expected_dir = temp_dir.path().Append("test (3)");
+  EXPECT_TRUE(platform_.CreateOrReuseEmptyDirectoryWithFallback(
+      &path, 3, reserved_paths));
+  EXPECT_EQ(expected_dir.value(), path);
 }
 
 TEST_F(PlatformTest, GetGroupIdOfRoot) {

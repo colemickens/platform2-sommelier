@@ -16,7 +16,7 @@ class DiskTest : public ::testing::Test {
 };
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithoutLabelOrUuid) {
-  EXPECT_EQ("disk", disk_.GetPresentationName());
+  EXPECT_EQ("Untitled", disk_.GetPresentationName());
 }
 
 TEST_F(DiskTest, GetPresentationNameForDiskWithLabelButNoUuid) {

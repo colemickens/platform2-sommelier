@@ -97,6 +97,10 @@ class DiskManager : public MountManager,
   // Returns a suggested mount path for a source path.
   virtual std::string SuggestMountPath(const std::string& source_path) const;
 
+  // Returns true to reserve a mount path on errors due to unknown or
+  // unsupported filesystems.
+  virtual bool ShouldReserveMountPathOnError(MountErrorType error_type) const;
+
  private:
   // Creates an appropriate mounter object for a given filesystem.
   // The caller is responsible for deleting the mounter object.

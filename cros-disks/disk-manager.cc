@@ -453,4 +453,10 @@ string DiskManager::SuggestMountPath(const string& source_path) const {
   return string(mount_root_) + "/" + disk.GetPresentationName();
 }
 
+bool DiskManager::ShouldReserveMountPathOnError(
+    MountErrorType error_type) const {
+  return error_type == kMountErrorUnknownFilesystem ||
+         error_type == kMountErrorUnsupportedFilesystem;
+}
+
 }  // namespace cros_disks

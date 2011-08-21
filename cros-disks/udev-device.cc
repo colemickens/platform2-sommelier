@@ -21,6 +21,7 @@ using std::vector;
 
 namespace {
 
+static const char kAttributePartition[] = "partition";
 static const char kAttributeRange[] = "range";
 static const char kAttributeReadOnly[] = "ro";
 static const char kAttributeRemovable[] = "removable";
@@ -148,7 +149,11 @@ bool UdevDevice::IsMediaAvailable() const {
 }
 
 bool UdevDevice::IsAutoMountable() const {
-  if (IsOnBootDevice() || IsVirtual() || !IsOnRemovableDevice() ||
+  if (IsOnBootDevice() || IsVirtual() || !IsOnRemovableDevice())
+    return false;
+
+  // Ignore a device that is neither marked as a partition nor a filesystem.
+  if (!HasAttribute(kAttributePartition) &&
       !HasProperty(kPropertyFilesystemUsage))
     return false;
 

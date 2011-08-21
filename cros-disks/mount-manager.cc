@@ -11,6 +11,7 @@
 
 #include <base/file_path.h>
 #include <base/logging.h>
+#include <base/stl_util-inl.h>
 
 #include "cros-disks/platform.h"
 
@@ -88,11 +89,11 @@ MountErrorType MountManager::Mount(const string& source_path,
   if (mount_path->empty()) {
     actual_mount_path = SuggestMountPath(source_path);
     mount_path_created =
-        platform_->CreateOrReuseEmptyDirectoryWithFallback(&actual_mount_path,
-                                                           kMaxNumMountTrials);
+        platform_->CreateOrReuseEmptyDirectoryWithFallback(
+            &actual_mount_path, kMaxNumMountTrials, reserved_mount_paths_);
   } else {
     actual_mount_path = *mount_path;
-    mount_path_created =
+    mount_path_created = !IsMountPathReserved(actual_mount_path) &&
         platform_->CreateOrReuseEmptyDirectory(actual_mount_path);
   }
   if (!mount_path_created) {
@@ -116,12 +117,18 @@ MountErrorType MountManager::Mount(const string& source_path,
   if (error_type == kMountErrorNone) {
     LOG(INFO) << "Path '" << source_path << "' is mounted to '"
               << actual_mount_path << "'";
-    AddMountPathToCache(source_path, actual_mount_path);
-    *mount_path = actual_mount_path;
+  } else if (ShouldReserveMountPathOnError(error_type)) {
+    LOG(INFO) << "Reserving mount path '" << actual_mount_path
+              << "' for '" << source_path << "'";
+    ReserveMountPath(actual_mount_path);
   } else {
     LOG(ERROR) << "Failed to mount path '" << source_path << "'";
     platform_->RemoveEmptyDirectory(actual_mount_path);
+    return error_type;
   }
+
+  AddMountPathToCache(source_path, actual_mount_path);
+  *mount_path = actual_mount_path;
   return error_type;
 }
 
@@ -142,14 +149,23 @@ MountErrorType MountManager::Unmount(const string& path,
     mount_path = path;
   }
 
-  MountErrorType error_type = DoUnmount(mount_path, options);
-  if (error_type == kMountErrorNone) {
-    LOG(INFO) << "Unmounted '" << mount_path << "'";
-    RemoveMountPathFromCache(mount_path);
-    platform_->RemoveEmptyDirectory(mount_path);
+  MountErrorType error_type = kMountErrorNone;
+  if (IsMountPathReserved(mount_path)) {
+    LOG(INFO) << "Removing mount path '" << mount_path
+              << "' from the reserved list";
+    UnreserveMountPath(mount_path);
   } else {
-    LOG(ERROR) << "Failed to unmount '" << mount_path << "'";
+    error_type = DoUnmount(mount_path, options);
+    if (error_type == kMountErrorNone) {
+      LOG(INFO) << "Unmounted '" << mount_path << "'";
+    } else {
+      LOG(ERROR) << "Failed to unmount '" << mount_path << "'";
+      return error_type;
+    }
   }
+
+  RemoveMountPathFromCache(mount_path);
+  platform_->RemoveEmptyDirectory(mount_path);
   return error_type;
 }
 
@@ -207,6 +223,18 @@ bool MountManager::RemoveMountPathFromCache(const string& mount_path) {
   return false;
 }
 
+bool MountManager::IsMountPathReserved(const string& mount_path) const {
+  return ContainsKey(reserved_mount_paths_, mount_path);
+}
+
+void MountManager::ReserveMountPath(const string& mount_path) {
+  reserved_mount_paths_.insert(mount_path);
+}
+
+void MountManager::UnreserveMountPath(const string& mount_path) {
+  reserved_mount_paths_.erase(mount_path);
+}
+
 bool MountManager::ExtractUnmountOptions(const vector<string>& options,
                                          int *unmount_flags) const {
   CHECK(unmount_flags) << "Invalid unmount flags argument";
@@ -223,6 +251,11 @@ bool MountManager::ExtractUnmountOptions(const vector<string>& options,
     }
   }
   return true;
+}
+
+bool MountManager::ShouldReserveMountPathOnError(
+    MountErrorType error_type) const {
+  return false;
 }
 
 bool MountManager::IsPathImmediateChildOfParent(const string& path,
