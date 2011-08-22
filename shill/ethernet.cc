@@ -75,11 +75,17 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     link_up_ = true;
     manager_->RegisterService(service_);
     if (service_->auto_connect()) {
-      LOG_IF(ERROR, !AcquireDHCPConfig()) << "Unable to acquire DHCP config.";
+      if (AcquireDHCPConfig()) {
+        SelectService(service_);
+        SetServiceState(Service::kStateConfiguring);
+      } else {
+        LOG(ERROR) << "Unable to acquire DHCP config.";
+      }
     }
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
     manager_->DeregisterService(service_);
+    SelectService(NULL);
     DestroyIPConfig();
   }
 }

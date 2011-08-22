@@ -64,7 +64,9 @@ unsigned int Service::serial_number_ = 0;
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
                  Manager *manager)
-    : auto_connect_(false),
+    : state_(kStateUnknown),
+      failure_(kFailureUnknown),
+      auto_connect_(false),
       check_portal_(kCheckPortalAuto),
       connectable_(false),
       favorite_(false),
@@ -151,6 +153,30 @@ Service::~Service() {}
 
 void Service::ActivateCellularModem(const std::string &carrier) {
   NOTREACHED() << "Attempt to activate a non-cellular service?";
+}
+
+bool Service::IsActive() {
+  return state_ != kStateUnknown &&
+    state_ != kStateIdle &&
+    state_ != kStateFailure;
+}
+
+void Service::SetState(ConnectState state) {
+  if (state == state_) {
+    return;
+  }
+
+  state_ = state;
+  if (state != kStateFailure) {
+    failure_ = kFailureUnknown;
+  }
+  manager_->UpdateService(this);
+  // TODO(pstew): Broadcast property change notification via control interface
+}
+
+void Service::SetFailure(ConnectFailure failure) {
+  failure_ = failure;
+  SetState(kStateFailure);
 }
 
 string Service::GetRpcIdentifier() const {

@@ -190,6 +190,13 @@ void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
   }
 }
 
+void Manager::UpdateService(const ServiceConstRefPtr &to_update) {
+  LOG(INFO) << "Service " << to_update->UniqueName() << " updated;"
+            << " state: " << to_update->state() << " failure: "
+            << to_update->failure();
+  // TODO(pstew): This should trigger re-sorting of services, autoconnect, etc.
+}
+
 void Manager::FilterByTechnology(Device::Technology tech,
                                  vector<DeviceRefPtr> *found) {
   CHECK(found);

@@ -214,9 +214,11 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
   if (success) {
     CreateConnection();
     connection_->UpdateFromIPConfig(ipconfig);
+    SetServiceState(Service::kStateConnected);
   } else {
     // TODO(pstew): This logic gets more complex when multiple IPConfig types
     // are run in parallel (e.g. DHCP and DHCP6)
+    SetServiceState(Service::kStateDisconnected);
     DestroyConnection();
   }
 }
@@ -231,6 +233,27 @@ void Device::CreateConnection() {
 void Device::DestroyConnection() {
   VLOG(2) << __func__;
   connection_ = NULL;
+}
+
+void Device::SelectService(const ServiceRefPtr &service) {
+  VLOG(2) << __func__ << ": " << service->UniqueName();
+  if (selected_service_.get() &&
+      selected_service_->state() != Service::kStateFailure) {
+    selected_service_->SetState(Service::kStateIdle);
+  }
+  selected_service_ = service;
+}
+
+void Device::SetServiceState(Service::ConnectState state) {
+  if (selected_service_.get()) {
+    selected_service_->SetState(state);
+  }
+}
+
+void Device::SetServiceFailure(Service::ConnectFailure failure_state) {
+  if (selected_service_.get()) {
+    selected_service_->SetFailure(failure_state);
+  }
 }
 
 string Device::SerializeIPConfigs(const string &suffix) {

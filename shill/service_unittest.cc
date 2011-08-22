@@ -18,9 +18,10 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_service.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
+#include "shill/service.h"
 #include "shill/shill_event.h"
 
 using std::map;
@@ -35,32 +36,48 @@ using testing::Test;
 
 namespace shill {
 
+// This is a simple Service subclass with all the pure-virutal methods stubbed
+class ServiceUnderTest : public Service {
+ public:
+  static const char kRpcId[];
+  static const char kStorageId[];
+
+  ServiceUnderTest(ControlInterface *control_interface,
+                   EventDispatcher *dispatcher,
+                   Manager *manager)
+      : Service(control_interface, dispatcher, manager) {}
+  virtual ~ServiceUnderTest() {}
+
+  virtual void Connect(Error *error) {}
+  virtual void Disconnect() {}
+  virtual string CalculateState() { return ""; }
+  virtual string GetRpcIdentifier() const { return ServiceMockAdaptor::kRpcId; }
+  virtual string GetDeviceRpcId() { return kRpcId; }
+  virtual string GetStorageIdentifier(const string &mac) { return kStorageId; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
+};
+
+const char ServiceUnderTest::kRpcId[] = "mock-device-rpc";
+const char ServiceUnderTest::kStorageId[] = "service";
+
 class ServiceTest : public PropertyStoreTest {
  public:
-  static const char kMockDeviceRpcId[];
-  static const char kProfileName[];
-
   ServiceTest()
-      : service_(new MockService(&control_interface_,
-                                 &dispatcher_,
-                                 &manager_)),
-        storage_id_("service") {
-    EXPECT_CALL(*service_.get(), GetStorageIdentifier(_))
-        .WillRepeatedly(Return(storage_id_));
-    EXPECT_CALL(*service_.get(), GetRpcIdentifier())
-        .WillRepeatedly(Return(ServiceMockAdaptor::kRpcId));
-  }
+      : mock_manager_(&control_interface_, &dispatcher_, &glib_),
+        service_(new ServiceUnderTest(&control_interface_,
+                                      &dispatcher_,
+                                      &mock_manager_)),
+        storage_id_(ServiceUnderTest::kStorageId) {}
 
   virtual ~ServiceTest() {}
 
  protected:
-  scoped_refptr<MockService> service_;
+  MockManager mock_manager_;
+  scoped_refptr<ServiceUnderTest> service_;
   string storage_id_;
 };
-
-const char ServiceTest::kMockDeviceRpcId[] = "mock-device-rpc";
-
-const char ServiceTest::kProfileName[] = "profile";
 
 TEST_F(ServiceTest, Constructor) {
   EXPECT_TRUE(service_->save_credentials_);
@@ -68,9 +85,6 @@ TEST_F(ServiceTest, Constructor) {
 }
 
 TEST_F(ServiceTest, GetProperties) {
-  EXPECT_CALL(*service_.get(), CalculateState()).WillRepeatedly(Return(""));
-  EXPECT_CALL(*service_.get(), GetDeviceRpcId())
-      .WillRepeatedly(Return(ServiceTest::kMockDeviceRpcId));
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
   {
@@ -117,7 +131,7 @@ TEST_F(ServiceTest, GetProperties) {
     DBusAdaptor::GetProperties(service_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDeviceProperty) == props.end());
     EXPECT_EQ(props[flimflam::kDeviceProperty].reader().get_string(),
-              string(ServiceTest::kMockDeviceRpcId));
+              string(ServiceUnderTest::kRpcId));
   }
 }
 
@@ -212,6 +226,28 @@ TEST_F(ServiceTest, Save) {
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_->Save(&storage, ""));
+}
+
+TEST_F(ServiceTest, State) {
+  EXPECT_EQ(Service::kStateUnknown, service_->state());
+  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+
+  ServiceConstRefPtr service_ref(service_);
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  service_->SetState(Service::kStateConnected);
+  // A second state change shouldn't cause another update
+  service_->SetState(Service::kStateConnected);
+
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  service_->SetState(Service::kStateDisconnected);
+
+  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
+  service_->SetFailure(Service::kFailureOutOfRange);
+
+  EXPECT_EQ(Service::kStateFailure, service_->state());
+  EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
 }
 
 }  // namespace shill

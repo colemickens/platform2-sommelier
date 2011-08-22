@@ -29,6 +29,7 @@ class MockManager : public Manager {
 
   MOCK_METHOD0(device_info, DeviceInfo*(void));
   MOCK_METHOD0(store, PropertyStore*(void));
+  MOCK_METHOD1(UpdateService, void(const ServiceConstRefPtr &to_update));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockManager);

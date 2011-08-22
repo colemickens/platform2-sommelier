@@ -42,25 +42,25 @@ class Service : public base::RefCounted<Service> {
   static const char kCheckPortalTrue[];
 
   enum ConnectFailure {
-    kServiceFailureUnknown,
-    kServiceFailureActivationFailure,
-    kServiceFailureOutOfRange,
-    kServiceFailurePinMissing,
-    kServiceFailureConfigurationFailed,
-    kServiceFailureBadCredentials,
-    kServiceFailureNeedEVDO,
-    kServiceFailureNeedHomeNetwork,
-    kServiceFailureOTASPFailure,
-    kServiceFailureAAAFailure
+    kFailureUnknown,
+    kFailureActivationFailure,
+    kFailureOutOfRange,
+    kFailurePinMissing,
+    kFailureConfigurationFailed,
+    kFailureBadCredentials,
+    kFailureNeedEVDO,
+    kFailureNeedHomeNetwork,
+    kFailureOTASPFailure,
+    kFailureAAAFailure
   };
   enum ConnectState {
-    kServiceStateUnknown,
-    kServiceStateIdle,
-    kServiceStateAssociating,
-    kServiceStateConfiguring,
-    kServiceStateConnected,
-    kServiceStateDisconnected,
-    kServiceStateFailure
+    kStateUnknown,
+    kStateIdle,
+    kStateAssociating,
+    kStateConfiguring,
+    kStateConnected,
+    kStateDisconnected,
+    kStateFailure
   };
   struct EapCredentials {
     EapCredentials() : use_system_cas(false) {}
@@ -93,7 +93,16 @@ class Service : public base::RefCounted<Service> {
   // The default implementation asserts.
   virtual void ActivateCellularModem(const std::string &carrier);
 
-  virtual bool IsActive() { return false; }
+  virtual bool IsActive();
+
+  virtual ConnectState state() const { return state_; }
+  // Updates the state of the Service and alerts the manager.  Also
+  // clears |failure_| if the new state isn't a failure.
+  virtual void SetState(ConnectState state);
+
+  virtual ConnectFailure failure() const { return failure_; }
+  // Records the failure mode, and sets the Service state to "Failure".
+  virtual void SetFailure(ConnectFailure failure);
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
@@ -153,6 +162,8 @@ class Service : public base::RefCounted<Service> {
   void SaveEapCredentials(StoreInterface *storage, const std::string &id);
 
   // Properties
+  ConnectState state_;
+  ConnectFailure failure_;
   bool auto_connect_;
   std::string check_portal_;
   bool connectable_;
@@ -170,6 +181,7 @@ class Service : public base::RefCounted<Service> {
 
  private:
   friend class ServiceAdaptorInterface;
+  FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);

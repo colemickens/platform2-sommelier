@@ -28,6 +28,10 @@ class MockService : public Service {
   MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD0(CalculateState, std::string());
+  MOCK_METHOD1(SetState, void(ConnectState state));
+  MOCK_CONST_METHOD0(state, ConnectState());
+  MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
+  MOCK_CONST_METHOD0(failure, ConnectFailure());
   MOCK_METHOD0(GetDeviceRpcId, std::string());
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
   MOCK_METHOD1(GetStorageIdentifier, std::string(const std::string &));

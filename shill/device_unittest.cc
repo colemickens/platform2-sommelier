@@ -23,6 +23,7 @@
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
@@ -34,6 +35,7 @@ using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::Values;
 
@@ -167,6 +169,34 @@ TEST_F(DeviceTest, StorageIdGeneration) {
   ControlInterface::RpcIdToStorageId(&to_process);
   EXPECT_TRUE(isalpha(to_process[0]));
   EXPECT_EQ(string::npos, to_process.find('/'));
+}
+
+TEST_F(DeviceTest, SelectedService) {
+  EXPECT_FALSE(device_->selected_service_.get());
+  device_->SetServiceState(Service::kStateAssociating);
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(&control_interface_,
+                                  &dispatcher_,
+                                  &manager_));
+  device_->SelectService(service);
+  EXPECT_TRUE(device_->selected_service_.get() == service.get());
+
+  EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
+  device_->SetServiceState(Service::kStateConfiguring);
+  EXPECT_CALL(*service.get(), SetFailure(Service::kFailureOutOfRange));
+  device_->SetServiceFailure(Service::kFailureOutOfRange);
+
+  // Service should be returned to "Idle" state
+  EXPECT_CALL(*service.get(), state())
+    .WillOnce(Return(Service::kStateUnknown));
+  EXPECT_CALL(*service.get(), SetState(Service::kStateIdle));
+  device_->SelectService(NULL);
+
+  // A service in the "Failure" state should not be reset to "Idle"
+  device_->SelectService(service);
+  EXPECT_CALL(*service.get(), state())
+    .WillOnce(Return(Service::kStateFailure));
+  device_->SelectService(NULL);
 }
 
 }  // namespace shill

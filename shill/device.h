@@ -16,6 +16,7 @@
 #include "shill/ipconfig.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/service.h"
 #include "shill/shill_event.h"
 
 namespace shill {
@@ -87,6 +88,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Save);
+  FRIEND_TEST(DeviceTest, SelectedService);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.
@@ -103,6 +105,17 @@ class Device : public base::RefCounted<Device> {
 
   // Remove connection state
   void DestroyConnection();
+
+  // Selects a service to be "current" -- i.e. link-state or configuration
+  // events that happen to the device are attributed to this service.
+  void SelectService(const ServiceRefPtr &service);
+
+  // Set the state of the selected service
+  void SetServiceState(Service::ConnectState state);
+
+  // Set the failure of the selected service (implicitly sets the state to
+  // "failure")
+  void SetServiceFailure(Service::ConnectFailure failure_state);
 
   void HelpRegisterDerivedStrings(const std::string &name,
                                   Strings(Device::*get)(void),
@@ -145,6 +158,9 @@ class Device : public base::RefCounted<Device> {
   std::string GetRpcConnectionIdentifier();
 
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
+
+  // Maintain a reference to the connected / connecting service
+  ServiceRefPtr selected_service_;
 
   // Cache singleton pointer for performance and test purposes.
   DHCPProvider *dhcp_provider_;
