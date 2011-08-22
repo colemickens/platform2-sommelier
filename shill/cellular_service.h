@@ -33,6 +33,9 @@ class CellularService : public Service {
   virtual void Disconnect();
   virtual void ActivateCellularModem(const std::string &carrier);
 
+  // cellular_<MAC>_<Service_Operator_Name>
+  std::string GetStorageIdentifier(const std::string &mac);
+
   const std::string &activation_state() const { return activation_state_; }
   void set_activation_state(const std::string &state) {
     activation_state_ = state;
@@ -66,6 +69,8 @@ class CellularService : public Service {
   std::map<std::string, std::string> last_good_apn_info_;
 
  private:
+  static const char kServiceType[];
+
   virtual std::string GetDeviceRpcId();
 
   CellularRefPtr cellular_;

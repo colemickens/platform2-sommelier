@@ -4,14 +4,16 @@
 
 #include "shill/device.h"
 
+#include <ctype.h>
+
 #include <map>
 #include <string>
 #include <vector>
 
-#include <dbus-c++/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
+#include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
@@ -20,6 +22,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_ipconfig.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/shill_event.h"
@@ -32,6 +35,7 @@ using ::testing::AtLeast;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
+using ::testing::Values;
 
 namespace shill {
 
@@ -144,14 +148,25 @@ TEST_F(DeviceTest, Load) {
 TEST_F(DeviceTest, Save) {
   NiceMock<MockStore> storage;
   const string id = device_->GetStorageIdentifier();
-  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
   EXPECT_CALL(storage, SetString(id, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(storage, SetBool(id, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(&control_interface_,
+                                                          kDeviceName);
+  EXPECT_CALL(*ipconfig.get(), Save(_, _))
+      .WillOnce(Return(true));
+  device_->ipconfig_ = ipconfig;
   EXPECT_TRUE(device_->Save(&storage));
+}
+
+TEST_F(DeviceTest, StorageIdGeneration) {
+  string to_process("/device/stuff/0");
+  ControlInterface::RpcIdToStorageId(&to_process);
+  EXPECT_TRUE(isalpha(to_process[0]));
+  EXPECT_EQ(string::npos, to_process.find('/'));
 }
 
 }  // namespace shill

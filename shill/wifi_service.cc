@@ -7,6 +7,9 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
+#include <base/string_number_conversions.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -18,6 +21,9 @@ using std::string;
 
 namespace shill {
 
+// static
+const char WiFiService::kServiceType[] = "wifi";
+
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager,
@@ -26,6 +32,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const std::string &mode,
                          const std::string &key_management)
     : Service(control_interface, dispatcher, manager),
+      security_(flimflam::kSecurityNone),
       mode_(mode),
       task_factory_(this),
       wifi_(device),
@@ -62,6 +69,16 @@ void WiFiService::Connect() {
 void WiFiService::Disconnect() {
   // TODO(quiche) RemoveNetwork from supplicant
   // XXX remove from favorite networks list?
+}
+
+string WiFiService::GetStorageIdentifier(const std::string &mac) {
+  string ssid_hex = base::HexEncode(&(*ssid_.begin()), ssid_.size());
+  return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+                                               kServiceType,
+                                               mac.c_str(),
+                                               ssid_hex.c_str(),
+                                               mode_.c_str(),
+                                               security_.c_str()));
 }
 
 const string &WiFiService::mode() const {

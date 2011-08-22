@@ -31,6 +31,10 @@ class WiFiService : public Service {
   ~WiFiService();
   void Connect();
   void Disconnect();
+
+  // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
+  std::string GetStorageIdentifier(const std::string &mac);
+
   const std::string &mode() const;
   const std::string &key_management() const;
   const std::vector<uint8_t> &ssid() const;
@@ -39,6 +43,8 @@ class WiFiService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
+  static const char kServiceType[];
+
   void ConnectTask();
 
   std::string GetDeviceRpcId();

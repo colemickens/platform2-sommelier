@@ -57,13 +57,13 @@ TEST_F(IPConfigTest, SaveLoad) {
                       SaveArg<1>(&key),
                       SaveArg<2>(&value),
                       Return(true)));
-  ASSERT_TRUE(ipconfig_->Save(&storage));
+  ASSERT_TRUE(ipconfig_->Save(&storage, ""));
 
   EXPECT_CALL(storage, ContainsGroup(id))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, GetString(id, key, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(value), Return(true)));
-  ASSERT_TRUE(ipconfig_->Load(&storage));
+  ASSERT_TRUE(ipconfig_->Load(&storage, ""));
 }
 
 TEST_F(IPConfigTest, UpdateProperties) {

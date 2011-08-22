@@ -57,7 +57,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   uint serial() const { return serial_; }
 
   std::string GetRpcIdentifier();
-  std::string GetStorageIdentifier();
 
   // Registers a callback that's executed every time the configuration
   // properties change. Takes ownership of |callback|. Pass NULL to remove a
@@ -79,13 +78,19 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   PropertyStore *store() { return &store_; }
 
-  bool Load(StoreInterface *storage);
-  bool Save(StoreInterface *storage);
+  // |id_suffix| is used to generate a storage ID that binds this instance
+  // to its associated device.
+  virtual bool Load(StoreInterface *storage, const std::string &id_suffix);
+  virtual bool Save(StoreInterface *storage, const std::string &id_suffix);
 
  protected:
   // Updates the IP configuration properties and notifies registered listeners
   // about the event. |success| is set to false if the IP configuration failed.
   void UpdateProperties(const Properties &properties, bool success);
+
+  // |id_suffix| is appended to the storage id, intended to bind this instance
+  // to its associated device.
+  std::string GetStorageIdentifier(const std::string &id_suffix);
 
   PropertyStore store_;
 

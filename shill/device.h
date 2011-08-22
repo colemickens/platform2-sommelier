@@ -138,7 +138,8 @@ class Device : public base::RefCounted<Device> {
   // Right now, Devices reference IPConfigs directly when persisted to disk
   // It's not clear that this makes sense long-term, but that's how it is now.
   // This call generates a string in the right format for this persisting.
-  std::string SerializeIPConfigsForStorage();
+  // |suffix| is injected into the storage identifier used for the configs.
+  std::string SerializeIPConfigs(const std::string &suffix);
 
   std::vector<std::string> AvailableIPConfigs();
   std::string GetRpcConnectionIdentifier();

@@ -172,6 +172,7 @@ TEST_OBJS = \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \
+	wifi_service_unittest.o \
 	wifi_unittest.o
 
 .PHONY: all clean

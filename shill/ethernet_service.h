@@ -27,10 +27,15 @@ class EthernetService : public Service {
   void Connect();
   void Disconnect();
 
+  // ethernet_<MAC>
+  virtual std::string GetStorageIdentifier(const std::string &mac);
+
  protected:
   virtual std::string CalculateState() { return "idle"; }
 
  private:
+  static const char kServiceType[];
+
   std::string GetDeviceRpcId();
 
   EthernetRefPtr ethernet_;

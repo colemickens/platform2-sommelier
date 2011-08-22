@@ -140,7 +140,7 @@ string Device::GetStorageIdentifier() {
   string id = GetRpcIdentifier();
   ControlInterface::RpcIdToStorageId(&id);
   size_t needle = id.find('_');
-  LOG_IF(ERROR, needle == string::npos) << "No _ in storage id?!?!";
+  DLOG_IF(ERROR, needle == string::npos) << "No _ in storage id?!?!";
   id.replace(id.begin() + needle + 1, id.end(), hardware_address_);
   return id;
 }
@@ -167,8 +167,15 @@ bool Device::Load(StoreInterface *storage) {
 bool Device::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   storage->SetBool(id, kStoragePowered, powered_);
-  if (ipconfig_.get())
-    storage->SetString(id, kStorageIPConfigs, SerializeIPConfigsForStorage());
+  if (ipconfig_.get()) {
+    // The _0 is an index into the list of IPConfigs that this device might
+    // have.  We only have one IPConfig right now, and I hope to never have
+    // to support more, as sleffler indicates that associating IPConfigs
+    // with devices is wrong and due to be changed in flimflam anyhow.
+    string suffix = hardware_address_ + "_0";
+    ipconfig_->Save(storage, suffix);
+    storage->SetString(id, kStorageIPConfigs, SerializeIPConfigs(suffix));
+  }
   return true;
 }
 
@@ -226,10 +233,8 @@ void Device::DestroyConnection() {
   connection_ = NULL;
 }
 
-string Device::SerializeIPConfigsForStorage() {
-  return StringPrintf("%s:%s",
-                      ipconfig_->GetStorageIdentifier().c_str(),
-                      ipconfig_->type().c_str());
+string Device::SerializeIPConfigs(const string &suffix) {
+  return StringPrintf("%s:%s", suffix.c_str(), ipconfig_->type().c_str());
 }
 
 vector<string> Device::AvailableIPConfigs() {

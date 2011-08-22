@@ -157,44 +157,117 @@ string Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-string Service::GetStorageIdentifier() {
-  return UniqueName();
+bool Service::Load(StoreInterface *storage, const string &id_suffix) {
+  const string id = GetStorageIdentifier(id_suffix);
+  if (!storage->ContainsGroup(id)) {
+    LOG(WARNING) << "Service is not available in the persistent store: " << id;
+    return false;
+  }
+  storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
+  storage->GetString(id, kStorageCheckPortal, &check_portal_);
+  storage->GetBool(id, kStorageFavorite, &favorite_);
+  storage->GetInt(id, kStoragePriority, &priority_);
+  storage->GetString(id, kStorageProxyConfig, &proxy_config_);
+  storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
+
+  LoadEapCredentials(storage, id);
+
+  // TODO(petkov): Load these:
+
+  // "Name"
+  // "WiFi.HiddenSSID"
+  // "SSID"
+  // "Failure"
+  // "Modified"
+  // "LastAttempt"
+  // WiFiService: "Passphrase"
+  // "APN"
+  // "LastGoodAPN"
+
+  return true;
 }
 
+bool Service::Save(StoreInterface *storage, const string &id_suffix) {
+  const string id = GetStorageIdentifier(id_suffix);
+
+  // TODO(petkov): We could choose to simplify the saving code by removing most
+  // conditionals thus saving even default values.
+  if (favorite_) {
+    storage->SetBool(id, kStorageAutoConnect, auto_connect_);
+  }
+  if (check_portal_ == kCheckPortalAuto) {
+    storage->DeleteKey(id, kStorageCheckPortal);
+  } else {
+    storage->SetString(id, kStorageCheckPortal, check_portal_);
+  }
+  storage->SetBool(id, kStorageFavorite, favorite_);
+  storage->SetString(id, kStorageName, name_);
+  SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
+  if (priority_ != kPriorityNone) {
+    storage->SetInt(id, kStoragePriority, priority_);
+  } else {
+    storage->DeleteKey(id, kStoragePriority);
+  }
+  if (save_credentials_) {
+    storage->DeleteKey(id, kStorageSaveCredentials);
+  } else {
+    storage->SetBool(id, kStorageSaveCredentials, false);
+  }
+
+  SaveEapCredentials(storage, id);
+
+  // TODO(petkov): Save these:
+
+  // "WiFi.HiddenSSID"
+  // "SSID"
+  // "Failure"
+  // "Modified"
+  // "LastAttempt"
+  // WiFiService: "Passphrase"
+  // "APN"
+  // "LastGoodAPN"
+
+  return true;
+}
+
+const ProfileRefPtr &Service::profile() const { return profile_; }
+
+void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
+
 void Service::HelpRegisterDerivedBool(const string &name,
-                                  bool(Service::*get)(void),
-                                  bool(Service::*set)(const bool&)) {
+                                      bool(Service::*get)(void),
+                                      bool(Service::*set)(const bool&)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set)));
 }
 
 void Service::HelpRegisterDerivedString(const string &name,
-                                    string(Service::*get)(void),
-                                    bool(Service::*set)(const string&)) {
+                                        string(Service::*get)(void),
+                                        bool(Service::*set)(const string&)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
 }
 
 void Service::SaveString(StoreInterface *storage,
+                         const string &id,
                          const string &key,
                          const string &value,
                          bool crypted,
                          bool save) {
   if (value.empty() || !save) {
-    storage->DeleteKey(GetStorageIdentifier(), key);
+    storage->DeleteKey(id, key);
     return;
   }
   if (crypted) {
-    storage->SetCryptedString(GetStorageIdentifier(), key, value);
+    storage->SetCryptedString(id, key, value);
     return;
   }
-  storage->SetString(GetStorageIdentifier(), key, value);
+  storage->SetString(id, key, value);
 }
 
-void Service::LoadEapCredentials(StoreInterface *storage) {
-  const string id = GetStorageIdentifier();
+void Service::LoadEapCredentials(StoreInterface *storage, const string &id) {
   storage->GetCryptedString(id, kStorageEapIdentity, &eap_.identity);
   storage->GetString(id, kStorageEapEap, &eap_.eap);
   storage->GetString(id, kStorageEapInnerEap, &eap_.inner_eap);
@@ -216,114 +289,38 @@ void Service::LoadEapCredentials(StoreInterface *storage) {
   storage->GetString(id, kStorageEapKeyManagement, &eap_.key_management);
 }
 
-void Service::SaveEapCredentials(StoreInterface *storage) {
+void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {
   bool save = save_credentials_;
-  SaveString(storage, kStorageEapIdentity, eap_.identity, true, save);
-  SaveString(storage, kStorageEapEap, eap_.eap, false, true);
-  SaveString(storage, kStorageEapInnerEap, eap_.inner_eap, false, true);
+  SaveString(storage, id, kStorageEapIdentity, eap_.identity, true, save);
+  SaveString(storage, id, kStorageEapEap, eap_.eap, false, true);
+  SaveString(storage, id, kStorageEapInnerEap, eap_.inner_eap, false, true);
   SaveString(storage,
+             id,
              kStorageEapAnonymousIdentity,
              eap_.anonymous_identity,
              true,
              save);
-  SaveString(storage, kStorageEapClientCert, eap_.client_cert, false, save);
-  SaveString(storage, kStorageEapCertID, eap_.cert_id, false, save);
-  SaveString(storage, kStorageEapPrivateKey, eap_.private_key, false, save);
+  SaveString(storage, id, kStorageEapClientCert, eap_.client_cert, false, save);
+  SaveString(storage, id, kStorageEapCertID, eap_.cert_id, false, save);
+  SaveString(storage, id, kStorageEapPrivateKey, eap_.private_key, false, save);
   SaveString(storage,
+             id,
              kStorageEapPrivateKeyPassword,
              eap_.private_key_password,
              true,
              save);
-  SaveString(storage, kStorageEapKeyID, eap_.key_id, false, save);
-  SaveString(storage, kStorageEapCACert, eap_.ca_cert, false, true);
-  SaveString(storage, kStorageEapCACertID, eap_.ca_cert_id, false, true);
-  storage->SetBool(GetStorageIdentifier(),
-                   kStorageEapUseSystemCAs,
-                   eap_.use_system_cas);
-  SaveString(storage, kStorageEapPIN, eap_.pin, false, save);
-  SaveString(storage, kStorageEapPassword, eap_.password, true, save);
+  SaveString(storage, id, kStorageEapKeyID, eap_.key_id, false, save);
+  SaveString(storage, id, kStorageEapCACert, eap_.ca_cert, false, true);
+  SaveString(storage, id, kStorageEapCACertID, eap_.ca_cert_id, false, true);
+  storage->SetBool(id, kStorageEapUseSystemCAs, eap_.use_system_cas);
+  SaveString(storage, id, kStorageEapPIN, eap_.pin, false, save);
+  SaveString(storage, id, kStorageEapPassword, eap_.password, true, save);
   SaveString(storage,
+             id,
              kStorageEapKeyManagement,
              eap_.key_management,
              false,
              true);
 }
-
-bool Service::Load(StoreInterface *storage) {
-  const string id = GetStorageIdentifier();
-  if (!storage->ContainsGroup(id)) {
-    LOG(WARNING) << "Service is not available in the persistent store: " << id;
-    return false;
-  }
-  storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
-  storage->GetString(id, kStorageCheckPortal, &check_portal_);
-  storage->GetBool(id, kStorageFavorite, &favorite_);
-  storage->GetInt(id, kStoragePriority, &priority_);
-  storage->GetString(id, kStorageProxyConfig, &proxy_config_);
-  storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
-
-  LoadEapCredentials(storage);
-
-  // TODO(petkov): Load these:
-
-  // "Name"
-  // "WiFi.HiddenSSID"
-  // "SSID"
-  // "Failure"
-  // "Modified"
-  // "LastAttempt"
-  // WiFiService: "Passphrase"
-  // "APN"
-  // "LastGoodAPN"
-
-  return true;
-}
-
-bool Service::Save(StoreInterface *storage) {
-  const string id = GetStorageIdentifier();
-
-  // TODO(petkov): We could choose to simplify the saving code by removing most
-  // conditionals thus saving even default values.
-  if (favorite_) {
-    storage->SetBool(id, kStorageAutoConnect, auto_connect_);
-  }
-  if (check_portal_ == kCheckPortalAuto) {
-    storage->DeleteKey(id, kStorageCheckPortal);
-  } else {
-    storage->SetString(id, kStorageCheckPortal, check_portal_);
-  }
-  storage->SetBool(id, kStorageFavorite, favorite_);
-  storage->SetString(id, kStorageName, name_);
-  SaveString(storage, kStorageProxyConfig, proxy_config_, false, true);
-  if (priority_ != kPriorityNone) {
-    storage->SetInt(id, kStoragePriority, priority_);
-  } else {
-    storage->DeleteKey(id, kStoragePriority);
-  }
-  if (save_credentials_) {
-    storage->DeleteKey(id, kStorageSaveCredentials);
-  } else {
-    storage->SetBool(id, kStorageSaveCredentials, false);
-  }
-
-  SaveEapCredentials(storage);
-
-  // TODO(petkov): Save these:
-
-  // "WiFi.HiddenSSID"
-  // "SSID"
-  // "Failure"
-  // "Modified"
-  // "LastAttempt"
-  // WiFiService: "Passphrase"
-  // "APN"
-  // "LastGoodAPN"
-
-  return true;
-}
-
-const ProfileRefPtr &Service::profile() const { return profile_; }
-
-void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 }  // namespace shill

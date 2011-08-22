@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -25,6 +26,9 @@
 using std::string;
 
 namespace shill {
+
+// static
+const char EthernetService::kServiceType[] = "ethernet";
 
 EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
@@ -46,6 +50,10 @@ void EthernetService::Disconnect() { }
 
 std::string EthernetService::GetDeviceRpcId() {
   return ethernet_->GetRpcIdentifier();
+}
+
+string EthernetService::GetStorageIdentifier(const string &mac) {
+  return base::StringPrintf("%s_%s", kServiceType, mac.c_str());
 }
 
 }  // namespace shill

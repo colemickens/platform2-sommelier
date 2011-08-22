@@ -36,6 +36,8 @@ class ControlInterface {
 
   static void RpcIdToStorageId(std::string *rpc_id) {
     CHECK(rpc_id);
+    DCHECK(rpc_id->at(0) == '/');
+    rpc_id->erase(0, 1);
     std::replace(rpc_id->begin(), rpc_id->end(), '/', '_');
   }
 };

@@ -7,6 +7,7 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/cellular.h"
@@ -14,6 +15,9 @@
 using std::string;
 
 namespace shill {
+
+// static
+const char CellularService::kServiceType[] = "cellular";
 
 CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
@@ -49,6 +53,15 @@ void CellularService::Disconnect() { }
 
 void CellularService::ActivateCellularModem(const string &carrier) {
   cellular_->Activate(carrier);
+}
+
+string CellularService::GetStorageIdentifier(const string &mac) {
+  string id = base::StringPrintf("%s_%s_%s",
+                                 kServiceType,
+                                 mac.c_str(),
+                                 serving_operator_.GetName().c_str());
+  std::replace_if(id.begin(), id.end(), &Service::LegalChar, '_');
+  return id;
 }
 
 string CellularService::GetDeviceRpcId() {

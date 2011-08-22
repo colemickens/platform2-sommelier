@@ -102,13 +102,15 @@ class Service : public base::RefCounted<Service> {
   virtual std::string GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
-  std::string GetStorageIdentifier();
+  // |mac| is the associated Device's MAC address to be used in the storage id.
+  // We do this for flimflam compatibility, for now.
+  virtual std::string GetStorageIdentifier(const std::string &mac) = 0;
 
   // Loads the service from persistent |storage|. Returns true on success.
-  virtual bool Load(StoreInterface *storage);
+  virtual bool Load(StoreInterface *storage, const std::string &id_suffix);
 
   // Saves the service to persistent |storage|. Returns true on success.
-  virtual bool Save(StoreInterface *storage);
+  virtual bool Save(StoreInterface *storage, const std::string &id_suffix);
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
@@ -116,6 +118,7 @@ class Service : public base::RefCounted<Service> {
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
 
+  // These are defined in service.cc so that we don't have to include profile.h
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
@@ -123,6 +126,9 @@ class Service : public base::RefCounted<Service> {
 
  protected:
   static const int kPriorityNone = 0;
+
+  // Returns true if a character is allowed to be in a service storage id.
+  static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
   virtual std::string CalculateState() = 0;
 
@@ -137,13 +143,14 @@ class Service : public base::RefCounted<Service> {
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
   // value is encrypted.
   void SaveString(StoreInterface *storage,
+                  const std::string &id,
                   const std::string &key,
                   const std::string &value,
                   bool crypted,
                   bool save);
 
-  void LoadEapCredentials(StoreInterface *storage);
-  void SaveEapCredentials(StoreInterface *storage);
+  void LoadEapCredentials(StoreInterface *storage, const std::string &id);
+  void SaveEapCredentials(StoreInterface *storage, const std::string &id);
 
   // Properties
   bool auto_connect_;

@@ -30,6 +30,8 @@ class MockService : public Service {
   MOCK_METHOD0(CalculateState, std::string());
   MOCK_METHOD0(GetDeviceRpcId, std::string());
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
+  MOCK_METHOD1(GetStorageIdentifier, std::string(const std::string &));
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockService);
 };
