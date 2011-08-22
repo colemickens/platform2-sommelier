@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 
+#include "shill/cellular.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -46,13 +47,15 @@ class CellularService : public Service {
   const std::string &usage_url() const { return usage_url_; }
   void set_usage_url(const std::string &url) { usage_url_ = url; }
 
+  const Cellular::Operator &serving_operator() const;
+  void set_serving_operator(const Cellular::Operator &oper);
+
  protected:
   virtual std::string CalculateState() { return "idle"; }
 
   // Properties
   std::string activation_state_;
-  std::string operator_name_;
-  std::string operator_code_;
+  Cellular::Operator serving_operator_;
   std::string network_tech_;
   std::string roaming_state_;
   std::string payment_url_;

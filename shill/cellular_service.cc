@@ -23,21 +23,17 @@ CellularService::CellularService(ControlInterface *control_interface,
       strength_(0),
       cellular_(device),
       type_(flimflam::kTypeCellular) {
-
   store_.RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
-
   store_.RegisterStringmap(flimflam::kCellularApnProperty, &apn_info_);
   store_.RegisterConstStringmap(flimflam::kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
-
   store_.RegisterConstString(flimflam::kNetworkTechnologyProperty,
                              &network_tech_);
-  store_.RegisterConstString(flimflam::kOperatorNameProperty, &operator_name_);
-  store_.RegisterConstString(flimflam::kOperatorCodeProperty, &operator_code_);
   store_.RegisterConstString(flimflam::kPaymentURLProperty, &payment_url_);
   store_.RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
-
+  store_.RegisterConstStringmap(flimflam::kServingOperatorProperty,
+                                &serving_operator_.ToDict());
   store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store_.RegisterConstString(flimflam::kTypeProperty, &type_);
   store_.RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
@@ -57,6 +53,14 @@ void CellularService::ActivateCellularModem(const string &carrier) {
 
 string CellularService::GetDeviceRpcId() {
   return cellular_->GetRpcIdentifier();
+}
+
+const Cellular::Operator &CellularService::serving_operator() const {
+  return serving_operator_;
+}
+
+void CellularService::set_serving_operator(const Cellular::Operator &oper) {
+  serving_operator_.CopyFrom(oper);
 }
 
 }  // namespace shill

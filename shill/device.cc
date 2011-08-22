@@ -68,6 +68,7 @@ Device::Device(ControlInterface *control_interface,
   // flimflam::kCellularAllowRoamingProperty: Registered in Cellular
   // flimflam::kCarrierProperty: Registered in Cellular
   // flimflam::kEsnProperty: Registered in Cellular
+  // flimflam::kHomeProviderProperty: Registered in Cellular
   // flimflam::kImeiProperty: Registered in Cellular
   // flimflam::kImsiProperty: Registered in Cellular
   // flimflam::kManufacturerProperty: Registered in Cellular

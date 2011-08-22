@@ -85,9 +85,10 @@ Service::Service(ControlInterface *control_interface,
   // flimflam::kCellularApnProperty: Registered in CellularService
   // flimflam::kCellularLastGoodApnProperty: Registered in CellularService
   // flimflam::kNetworkTechnologyProperty: Registered in CellularService
-  // flimflam::kOperatorNameProperty: Registered in CellularService
-  // flimflam::kOperatorCodeProperty: Registered in CellularService
+  // flimflam::kOperatorNameProperty: DEPRECATED
+  // flimflam::kOperatorCodeProperty: DEPRECATED
   // flimflam::kRoamingStateProperty: Registered in CellularService
+  // flimflam::kServingOperatorProperty: Registered in CellularService
   // flimflam::kPaymentURLProperty: Registered in CellularService
 
   store_.RegisterString(flimflam::kCheckPortalProperty, &check_portal_);

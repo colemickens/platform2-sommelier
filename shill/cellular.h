@@ -62,6 +62,30 @@ class Cellular : public Device,
     kModemStateConnected = 90,
   };
 
+  class Operator {
+   public:
+    Operator();
+    ~Operator();
+
+    void CopyFrom(const Operator &oper);
+
+    const std::string &GetName() const;
+    void SetName(const std::string &name);
+
+    const std::string &GetCode() const;
+    void SetCode(const std::string &code);
+
+    const std::string &GetCountry() const;
+    void SetCountry(const std::string &country);
+
+    const Stringmap &ToDict() const;
+
+   private:
+    Stringmap dict_;
+
+    DISALLOW_COPY_AND_ASSIGN(Operator);
+  };
+
   class Network {
    public:
     Network();
@@ -144,6 +168,7 @@ class Cellular : public Device,
  private:
   FRIEND_TEST(CellularTest, Activate);
   FRIEND_TEST(CellularTest, ActivateError);
+  FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
@@ -272,6 +297,7 @@ class Cellular : public Device,
   uint16 scan_interval_;
   std::vector<Network> found_networks_;
   SimLockStatus sim_lock_status_;
+  Operator home_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

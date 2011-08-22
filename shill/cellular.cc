@@ -38,6 +38,46 @@ const char Cellular::kConnectPropertyPhoneNumber[] = "number";
 const char Cellular::kPhoneNumberCDMA[] = "#777";
 const char Cellular::kPhoneNumberGSM[] = "*99#";
 
+Cellular::Operator::Operator() {
+  SetName("");
+  SetCode("");
+  SetCountry("");
+}
+
+Cellular::Operator::~Operator() {}
+
+void Cellular::Operator::CopyFrom(const Operator &oper) {
+  dict_ = oper.dict_;
+}
+
+const string &Cellular::Operator::GetName() const {
+  return dict_.find(flimflam::kOperatorNameKey)->second;
+}
+
+void Cellular::Operator::SetName(const string &name) {
+  dict_[flimflam::kOperatorNameKey] = name;
+}
+
+const string &Cellular::Operator::GetCode() const {
+  return dict_.find(flimflam::kOperatorCodeKey)->second;
+}
+
+void Cellular::Operator::SetCode(const string &code) {
+  dict_[flimflam::kOperatorCodeKey] = code;
+}
+
+const string &Cellular::Operator::GetCountry() const {
+  return dict_.find(flimflam::kOperatorCountryKey)->second;
+}
+
+void Cellular::Operator::SetCountry(const string &country) {
+  dict_[flimflam::kOperatorCountryKey] = country;
+}
+
+const Stringmap &Cellular::Operator::ToDict() const {
+  return dict_;
+}
+
 Cellular::Network::Network() {
   dict_[flimflam::kStatusProperty] = "";
   dict_[flimflam::kNetworkIdProperty] = "";
@@ -48,43 +88,43 @@ Cellular::Network::Network() {
 
 Cellular::Network::~Network() {}
 
-const std::string &Cellular::Network::GetStatus() const {
+const string &Cellular::Network::GetStatus() const {
   return dict_.find(flimflam::kStatusProperty)->second;
 }
 
-void Cellular::Network::SetStatus(const std::string &status) {
+void Cellular::Network::SetStatus(const string &status) {
   dict_[flimflam::kStatusProperty] = status;
 }
 
-const std::string &Cellular::Network::GetId() const {
+const string &Cellular::Network::GetId() const {
   return dict_.find(flimflam::kNetworkIdProperty)->second;
 }
 
-void Cellular::Network::SetId(const std::string &id) {
+void Cellular::Network::SetId(const string &id) {
   dict_[flimflam::kNetworkIdProperty] = id;
 }
 
-const std::string &Cellular::Network::GetShortName() const {
+const string &Cellular::Network::GetShortName() const {
   return dict_.find(flimflam::kShortNameProperty)->second;
 }
 
-void Cellular::Network::SetShortName(const std::string &name) {
+void Cellular::Network::SetShortName(const string &name) {
   dict_[flimflam::kShortNameProperty] = name;
 }
 
-const std::string &Cellular::Network::GetLongName() const {
+const string &Cellular::Network::GetLongName() const {
   return dict_.find(flimflam::kLongNameProperty)->second;
 }
 
-void Cellular::Network::SetLongName(const std::string &name) {
+void Cellular::Network::SetLongName(const string &name) {
   dict_[flimflam::kLongNameProperty] = name;
 }
 
-const std::string &Cellular::Network::GetTechnology() const {
+const string &Cellular::Network::GetTechnology() const {
   return dict_.find(flimflam::kTechnologyProperty)->second;
 }
 
-void Cellular::Network::SetTechnology(const std::string &technology) {
+void Cellular::Network::SetTechnology(const string &technology) {
   dict_[flimflam::kTechnologyProperty] = technology;
 }
 
@@ -102,7 +142,7 @@ Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Manager *manager,
                    const string &link_name,
-                   const std::string &address,
+                   const string &address,
                    int interface_index,
                    Type type,
                    const string &owner,
@@ -131,6 +171,8 @@ Cellular::Cellular(ControlInterface *control_interface,
                              &firmware_revision_);
   store_.RegisterConstString(flimflam::kHardwareRevisionProperty,
                              &hardware_revision_);
+  store_.RegisterConstStringmap(flimflam::kHomeProviderProperty,
+                                &home_provider_.ToDict());
   store_.RegisterConstString(flimflam::kImeiProperty, &imei_);
   store_.RegisterConstString(flimflam::kImsiProperty, &imsi_);
   store_.RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
@@ -220,6 +262,7 @@ void Cellular::SetState(State state) {
 
 void Cellular::Start() {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
+  Device::Start();
   InitProxies();
   EnableModem();
   if (type_ == kTypeGSM) {
@@ -232,7 +275,6 @@ void Cellular::Start() {
   }
   GetModemInfo();
   GetModemRegistrationState();
-  // TODO(petkov): Device::Start();
 }
 
 void Cellular::Stop() {
@@ -243,7 +285,7 @@ void Cellular::Stop() {
   service_ = NULL;  // Breaks a reference cycle.
   SetState(kStateDisabled);
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
-  // TODO(petkov): Device::Stop();
+  Device::Stop();
 }
 
 void Cellular::InitProxies() {
@@ -279,8 +321,9 @@ void Cellular::GetModemStatus() {
   DBusPropertiesMap properties = simple_proxy_->GetStatus();
   if (DBusProperties::GetString(properties, "carrier", &carrier_) &&
       type_ == kTypeCDMA) {
-    // TODO(petkov): Set Cellular.FirmwareImageName and home_provider based on
-    // the carrier.
+    home_provider_.SetName(carrier_);
+    home_provider_.SetCode("");
+    home_provider_.SetCountry("us");
   }
   DBusProperties::GetString(properties, "meid", &meid_);
   DBusProperties::GetString(properties, "imei", &imei_);
@@ -445,16 +488,17 @@ void Cellular::CreateService() {
   switch (type_) {
     case kTypeGSM:
       service_->set_activation_state(flimflam::kActivationStateActivated);
+      // TODO(petkov): Set serving operator.
       break;
     case kTypeCDMA:
       service_->set_payment_url(cdma_.payment_url);
       service_->set_usage_url(cdma_.usage_url);
+      service_->set_serving_operator(home_provider_);
       HandleNewCDMAActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
       break;
     default:
       NOTREACHED();
   }
-  // TODO(petkov): Set operator.
 }
 
 bool Cellular::TechnologyIs(const Device::Technology type) const {

@@ -18,6 +18,7 @@
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_sockets.h"
+#include "shill/nice_mock_control.h"
 #include "shill/rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -180,7 +181,7 @@ class CellularTest : public testing::Test {
   void StartRTNLHandler();
   void StopRTNLHandler();
 
-  MockControl control_interface_;
+  NiceMockControl control_interface_;
   TestEventDispatcher dispatcher_;
   MockGLib glib_;
   Manager manager_;
@@ -358,6 +359,7 @@ TEST_F(CellularTest, InitProxiesGSM) {
 }
 
 TEST_F(CellularTest, GetModemStatus) {
+  device_->type_ = Cellular::kTypeCDMA;
   DBusPropertiesMap props;
   props["carrier"].writer().append_string(kTestCarrier);
   props["unknown-property"].writer().append_string("irrelevant-value");
@@ -366,6 +368,7 @@ TEST_F(CellularTest, GetModemStatus) {
   device_->state_ = Cellular::kStateEnabled;
   device_->GetModemStatus();
   EXPECT_EQ(kTestCarrier, device_->carrier_);
+  EXPECT_EQ(kTestCarrier, device_->home_provider_.GetName());
 }
 
 TEST_F(CellularTest, GetModemInfo) {
@@ -397,10 +400,6 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
   device_->cdma_proxy_.reset(cdma_proxy_.release());
-  static const char kPaymentURL[] = "https://payment.url";
-  static const char kUsageURL[] = "https://usage.url";
-  device_->cdma_.payment_url = kPaymentURL;
-  device_->cdma_.usage_url = kUsageURL;
   device_->GetModemRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
@@ -408,8 +407,6 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
             device_->cdma_.registration_state_evdo);
   ASSERT_TRUE(device_->service_.get());
-  EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
-  EXPECT_EQ(kUsageURL, device_->service_->usage_url());
 }
 
 TEST_F(CellularTest, GetCDMASignalQuality) {
@@ -428,6 +425,20 @@ TEST_F(CellularTest, GetCDMASignalQuality) {
   EXPECT_EQ(0, device_->service_->strength());
   device_->GetModemSignalQuality();
   EXPECT_EQ(kStrength, device_->service_->strength());
+}
+
+TEST_F(CellularTest, CreateService) {
+  device_->type_ = Cellular::kTypeCDMA;
+  static const char kPaymentURL[] = "https://payment.url";
+  static const char kUsageURL[] = "https://usage.url";
+  device_->cdma_.payment_url = kPaymentURL;
+  device_->cdma_.usage_url = kUsageURL;
+  device_->home_provider_.SetName(kTestCarrier);
+  device_->CreateService();
+  ASSERT_TRUE(device_->service_.get());
+  EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
+  EXPECT_EQ(kUsageURL, device_->service_->usage_url());
+  EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
 }
 
 namespace {
