@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi_endpoint.h"
+
+#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
-
-#include "shill/wifi_endpoint.h"
+#include <chromeos/dbus/service_constants.h>
 
 using std::string;
 
@@ -36,10 +38,10 @@ WiFiEndpoint::WiFiEndpoint(
       operator std::vector<uint8_t>();
   signal_strength_ =
       properties.find(kSupplicantPropertySignal)->second;
-  network_mode_ = parse_mode(
+  network_mode_ = ParseMode(
       properties.find(kSupplicantPropertyMode)->second);
 
-  if (network_mode_ < 0) {
+  if (network_mode_.empty()) {
     // XXX log error?
   }
 
@@ -52,6 +54,18 @@ WiFiEndpoint::WiFiEndpoint(
 }
 
 WiFiEndpoint::~WiFiEndpoint() {}
+
+// static
+uint32_t WiFiEndpoint::ModeStringToUint(const std::string &mode_string) {
+  if (mode_string == flimflam::kModeManaged)
+    return kSupplicantNetworkModeInfrastructureInt;
+  else if (mode_string == flimflam::kModeAdhoc)
+    return kSupplicantNetworkModeAdHocInt;
+  else
+    NOTIMPLEMENTED() << "Shill dos not support " << mode_string
+                     << " mode at this time.";
+  return 0;
+}
 
 const std::vector<uint8_t> &WiFiEndpoint::ssid() const {
   return ssid_;
@@ -77,22 +91,22 @@ int16_t WiFiEndpoint::signal_strength() const {
   return signal_strength_;
 }
 
-uint32_t WiFiEndpoint::network_mode() const {
-  if (network_mode_ < 0)
-    return 0;
-  else
+const string &WiFiEndpoint::network_mode() const {
     return network_mode_;
 }
 
-int32_t WiFiEndpoint::parse_mode(const std::string &mode_string) {
+// static
+const char *WiFiEndpoint::ParseMode(const std::string &mode_string) {
   if (mode_string == kSupplicantNetworkModeInfrastructure) {
-    return kSupplicantNetworkModeInfrastructureInt;
+    return flimflam::kModeManaged;
   } else if (mode_string == kSupplicantNetworkModeAdHoc) {
-    return kSupplicantNetworkModeAdHocInt;
+    return flimflam::kModeAdhoc;
   } else if (mode_string == kSupplicantNetworkModeAccessPoint) {
-    return kSupplicantNetworkModeAccessPointInt;
+    NOTREACHED() << "Shill does not support AP mode at this time.";
+    return NULL;
   } else {
-    return -1;
+    NOTREACHED() << "Unknown WiFi endpoint mode!";
+    return NULL;
   }
 }
 

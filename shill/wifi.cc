@@ -170,7 +170,7 @@ void WiFi::ConnectTo(const WiFiService &service) {
   DBus::Path network_path;
 
   add_network_args[kSupplicantPropertyNetworkMode].writer().
-      append_uint32(service.mode());
+      append_uint32(WiFiEndpoint::ModeStringToUint(service.mode()));
   add_network_args[kSupplicantPropertyKeyMode].writer().
       append_string(service.key_management().c_str());
   // TODO(quiche): figure out why we can't use operator<< without the

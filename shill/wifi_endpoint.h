@@ -21,13 +21,18 @@ class WiFiEndpoint : public Endpoint {
  public:
   WiFiEndpoint(const std::map<std::string, ::DBus::Variant> &properties);
   virtual ~WiFiEndpoint();
+
+  // Maps mode strings from flimflam's nomenclature, as defined
+  // in chromeos/dbus/service_constants.h, to uints used by supplicant
+  static uint32_t ModeStringToUint(const std::string &mode_string);
+
   const std::vector<uint8_t> &ssid() const;
   const std::string &ssid_string() const;
   const std::string &ssid_hex() const;
   const std::string &bssid_string() const;
   const std::string &bssid_hex() const;
   int16_t signal_strength() const;
-  uint32_t network_mode() const;
+  const std::string &network_mode() const;
 
  private:
   static const uint32_t kSupplicantNetworkModeInfrastructureInt;
@@ -42,7 +47,9 @@ class WiFiEndpoint : public Endpoint {
   static const char kSupplicantNetworkModeAdHoc[];
   static const char kSupplicantNetworkModeAccessPoint[];
 
-  static int32_t parse_mode(const std::string &mode_string);
+  // Maps mode strings from supplicant into flimflam's nomenclature, as defined
+  // in chromeos/dbus/service_constants.h
+  static const char *ParseMode(const std::string &mode_string);
 
   std::vector<uint8_t> ssid_;
   std::vector<uint8_t> bssid_;
@@ -51,7 +58,7 @@ class WiFiEndpoint : public Endpoint {
   std::string bssid_string_;
   std::string bssid_hex_;
   int16_t signal_strength_;
-  int32_t network_mode_;
+  std::string network_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiEndpoint);
 };

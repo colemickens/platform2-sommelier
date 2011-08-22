@@ -23,17 +23,16 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          Manager *manager,
                          const WiFiRefPtr &device,
                          const std::vector<uint8_t> ssid,
-                         uint32_t mode,
+                         const std::string &mode,
                          const std::string &key_management)
     : Service(control_interface, dispatcher, manager),
+      mode_(mode),
       task_factory_(this),
       wifi_(device),
-      ssid_(ssid),
-      mode_(mode) {
+      ssid_(ssid) {
   eap_.key_management = key_management;
 
-  // TODO(cmasone): Figure out if mode_ should be a string or what
-  // store_.RegisterString(flimflam::kModeProperty, &mode_);
+  store_.RegisterConstString(flimflam::kModeProperty, &mode_);
   store_.RegisterString(flimflam::kPassphraseProperty, &passphrase_);
   store_.RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store_.RegisterConstString(flimflam::kSecurityProperty, &security_);
@@ -65,11 +64,11 @@ void WiFiService::Disconnect() {
   // XXX remove from favorite networks list?
 }
 
-uint32_t WiFiService::mode() const {
+const string &WiFiService::mode() const {
   return mode_;
 }
 
-const std::string &WiFiService::key_management() const {
+const string &WiFiService::key_management() const {
   return eap_.key_management;
 }
 

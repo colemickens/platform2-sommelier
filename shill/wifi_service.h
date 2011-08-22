@@ -26,12 +26,12 @@ class WiFiService : public Service {
               Manager *manager,
               const WiFiRefPtr &device,
               const std::vector<uint8_t> ssid,
-              uint32_t mode,
+              const std::string &mode,
               const std::string &key_management);
   ~WiFiService();
   void Connect();
   void Disconnect();
-  uint32_t mode() const;
+  const std::string &mode() const;
   const std::string &key_management() const;
   const std::vector<uint8_t> &ssid() const;
 
@@ -51,6 +51,7 @@ class WiFiService : public Service {
   const std::string type_;
   // TODO(cmasone): see if the below can be pulled from the endpoint associated
   // with this service instead.
+  const std::string mode_;
   std::string auth_mode_;
   bool hidden_ssid_;
   uint16 frequency_;
@@ -60,7 +61,6 @@ class WiFiService : public Service {
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;
   const std::vector<uint8_t> ssid_;
-  const uint32_t mode_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };
 
