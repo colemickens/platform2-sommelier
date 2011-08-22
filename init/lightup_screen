@@ -8,7 +8,7 @@
 trap "exit 0" EXIT
 set -e
 
-for INTERFACE in "acpi_video0" "i915_backlight"; do
+for INTERFACE in "acpi_video0" "i915_backlight" "pwm-backlight" ; do
 	BRIGHTNESS="/sys/class/backlight/${INTERFACE}/brightness"
 	MAX_BRIGHTNESS="/sys/class/backlight/${INTERFACE}/max_brightness"
 	[ ! -f "${BRIGHTNESS}" -o ! -f "${MAX_BRIGHTNESS}" ] && continue
