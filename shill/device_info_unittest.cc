@@ -21,6 +21,7 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_sockets.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_message.h"
@@ -60,7 +61,7 @@ class DeviceInfoTest : public Test {
 
   MockGLib glib_;
   MockControl control_interface_;
-  Manager manager_;
+  MockManager manager_;
   DeviceInfo device_info_;
   TestEventDispatcher dispatcher_;
 };

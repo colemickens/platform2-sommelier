@@ -9,6 +9,7 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_modem_manager_proxy.h"
 #include "shill/modem.h"
 #include "shill/modem_manager.h"
@@ -64,7 +65,7 @@ class ModemManagerTest : public Test {
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
-  Manager manager_;
+  MockManager manager_;
   ModemManager modem_manager_;
   scoped_ptr<MockModemManagerProxy> proxy_;
   TestProxyFactory proxy_factory_;

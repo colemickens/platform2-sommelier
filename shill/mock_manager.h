@@ -23,7 +23,7 @@ class MockManager : public Manager {
   MockManager(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
               GLib *glib)
-      : Manager(control_interface, dispatcher, glib) {
+      : Manager(control_interface, dispatcher, glib, "", "", "") {
   }
   ~MockManager() {}
 

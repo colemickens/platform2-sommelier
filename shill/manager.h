@@ -39,10 +39,12 @@ class Manager {
     std::string portal_url;
   };
 
-  // A constructor for the Manager object
   Manager(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          GLib *glib);
+          GLib *glib,
+          const std::string &run_directory,
+          const std::string &storage_directory,
+          const std::string &user_storage_format);
   virtual ~Manager();
 
   void AddDeviceToBlackList(const std::string &device_name);
@@ -71,8 +73,6 @@ class Manager {
  private:
   friend class ManagerAdaptorInterface;
 
-  static const char kDefaultRunDirectory[];
-
   std::string CalculateState();
   std::vector<std::string> AvailableTechnologies();
   std::vector<std::string> ConnectedTechnologies();
@@ -90,7 +90,9 @@ class Manager {
                                   Strings(Manager::*get)(void),
                                   bool(Manager::*set)(const Strings&));
 
-  FilePath run_path_;
+  const FilePath run_path_;
+  const FilePath storage_path_;
+  const std::string user_storage_format_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   DeviceInfo device_info_;
   ModemInfo modem_info_;
@@ -100,6 +102,8 @@ class Manager {
   std::vector<ServiceRefPtr> services_;
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
+  ControlInterface *control_interface_;
+  GLib *glib_;
 
   // Properties to be get/set via PropertyStore calls.
   Properties props_;
