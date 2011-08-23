@@ -283,6 +283,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --enable-login-images \
             --force-compositing-mode \
             --enable-smooth-scrolling \
+            --enable-nacl \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
