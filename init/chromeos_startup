@@ -314,8 +314,18 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
       (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
     fi
 
+    # TODO: This file should be removed after OOBE because it contains
+    #       data to identify a machine and world-readable.
+    MACHINE_INFO=/tmp/machine-info
+    rm -f $MACHINE_INFO
+    touch $MACHINE_INFO
+    chmod go-stwx $MACHINE_INFO
+    chmod go+r $MACHINE_INFO
     # Dump machine info from mosys
-    mosys -k smbios info system > /tmp/machine-info
+    mosys -k smbios info system >> $MACHINE_INFO
+    # We need serial numbers for enterprise enrollment process.
+    # Dump full information in the VPD.
+    /usr/sbin/dump_vpd_log --full --stdout >> $MACHINE_INFO
   fi
 fi
 
