@@ -158,18 +158,24 @@ void MonitorReconfigure::Run() {
   // to set the screen resolution; otherwise xrandr will complain if we're
   // trying to set the screen to a smaller size than what the now-unplugged
   // device was using.
-  // Otherwise enable the external device if appropriate.
+  // Otherwise mark that the external device should be enabled.
   if (external_resolution.name.empty()) {
     DisableDevice(external_output_info_);
     is_projecting_ = false;
   } else {
-    SetDeviceResolution(external_output_, external_output_info_,
-                        external_resolution);
     is_projecting_ = true;
   }
 
   // Set the fb resolution.
   SetScreenResolution(screen_resolution);
+
+  // Enable the external device.  We do that after resizing the framebuffer
+  // because otherwise it may temporarily try to scan outside the framebuffer
+  // and accidentally enable the server's shadow code.
+  if (is_projecting_) {
+    SetDeviceResolution(external_output_, external_output_info_,
+                        external_resolution);
+  }
 
   // Now let the server go and sync all changes.
   XUngrabServer(display_);
