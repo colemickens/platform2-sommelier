@@ -220,6 +220,58 @@ string Cellular::GetStateString(State state) {
   return StringPrintf("CellularStateUnknown-%d", state);
 }
 
+string Cellular::GetNetworkTechnologyString() const {
+  switch (type_) {
+    case kTypeGSM:
+      // TODO(petkov): Implement this.
+      NOTIMPLEMENTED();
+      break;
+    case kTypeCDMA:
+      if (cdma_.registration_state_evdo !=
+          MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+        return flimflam::kNetworkTechnologyEvdo;
+      }
+      if (cdma_.registration_state_1x !=
+          MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+        return flimflam::kNetworkTechnology1Xrtt;
+      }
+      break;
+    default:
+      NOTREACHED();
+  }
+  return "";
+}
+
+string Cellular::GetRoamingStateString() const {
+  switch (type_) {
+    case kTypeGSM:
+      // TODO(petkov): Implement this.
+      NOTIMPLEMENTED();
+      break;
+    case kTypeCDMA: {
+      uint32 state = cdma_.registration_state_evdo;
+      if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
+        state = cdma_.registration_state_1x;
+      }
+      switch (state) {
+        case MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN:
+        case MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED:
+          break;
+        case MM_MODEM_CDMA_REGISTRATION_STATE_HOME:
+          return flimflam::kRoamingStateHome;
+        case MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING:
+          return flimflam::kRoamingStateRoaming;
+        default:
+          NOTREACHED();
+      }
+      break;
+    }
+    default:
+      NOTREACHED();
+  }
+  return flimflam::kRoamingStateUnknown;
+}
+
 // static
 string Cellular::GetCDMAActivationStateString(uint32 state) {
   switch (state) {
@@ -337,7 +389,10 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetString(
       properties, "firmware_revision", &firmware_revision_);
 
-  // TODO(petkov): Handle "state".
+  uint32 state = 0;
+  if (DBusProperties::GetUint32(properties, "state", &state)) {
+    modem_state_ = static_cast<ModemState>(state);
+  }
 
   if (type_ == kTypeCDMA) {
     DBusProperties::GetUint32(
@@ -367,6 +422,7 @@ void Cellular::RegisterGSMModem() {
 }
 
 void Cellular::GetModemInfo() {
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   ModemProxyInterface::Info info = proxy_->GetInfo();
   manufacturer_ = info._1;
   model_id_ = info._2;
@@ -390,6 +446,7 @@ void Cellular::GetModemRegistrationState() {
 
 void Cellular::GetCDMARegistrationState() {
   CHECK_EQ(kTypeCDMA, type_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   cdma_proxy_->GetRegistrationState(&cdma_.registration_state_1x,
                                     &cdma_.registration_state_evdo);
   VLOG(2) << "CDMA Registration: 1x(" << cdma_.registration_state_1x
@@ -402,14 +459,6 @@ void Cellular::GetGSMRegistrationState() {
   NOTIMPLEMENTED();
 }
 
-bool Cellular::IsModemRegistered() {
-  return cdma_.registration_state_1x !=
-      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
-      cdma_.registration_state_evdo !=
-      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
-  // TODO(petkov): Handle GSM states.
-}
-
 void Cellular::HandleNewRegistrationState() {
   dispatcher_->PostTask(
       task_factory_.NewRunnableMethod(
@@ -418,7 +467,8 @@ void Cellular::HandleNewRegistrationState() {
 
 void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
-  if (!IsModemRegistered()) {
+  const string network_tech = GetNetworkTechnologyString();
+  if (network_tech.empty()) {
     if (state_ == kStateLinked) {
       manager_->DeregisterService(service_);
     }
@@ -442,7 +492,8 @@ void Cellular::HandleNewRegistrationStateTask() {
     SetState(kStateConnected);
     EstablishLink();
   }
-  // TODO(petkov): Update the service.
+  service_->set_network_tech(network_tech);
+  service_->set_roaming_state(GetRoamingStateString());
 }
 
 void Cellular::GetModemSignalQuality() {
@@ -512,6 +563,13 @@ void Cellular::Connect() {
     return;
   }
   CHECK_EQ(kStateRegistered, state_);
+
+  if (!allow_roaming_ &&
+      service_->roaming_state() == flimflam::kRoamingStateRoaming) {
+    LOG(ERROR) << "Roaming disallowed; connection request ignored.";
+    return;
+  }
+
   DBusPropertiesMap properties;
   const char *phone_number = NULL;
   switch (type_) {

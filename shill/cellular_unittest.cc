@@ -223,6 +223,46 @@ TEST_F(CellularTest, GetTypeString) {
   EXPECT_EQ("CellularTypeCDMA", device_->GetTypeString());
 }
 
+TEST_F(CellularTest, GetNetworkTechnologyString) {
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_EQ("", device_->GetNetworkTechnologyString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_EQ(flimflam::kNetworkTechnologyEvdo,
+            device_->GetNetworkTechnologyString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  device_->cdma_.registration_state_1x =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
+            device_->GetNetworkTechnologyString());
+}
+
+TEST_F(CellularTest, GetRoamingStateString) {
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_EQ(flimflam::kRoamingStateHome, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_evdo =
+      MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+  device_->cdma_.registration_state_1x =
+      MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_1x =
+      MM_MODEM_CDMA_REGISTRATION_STATE_HOME;
+  EXPECT_EQ(flimflam::kRoamingStateHome, device_->GetRoamingStateString());
+  device_->cdma_.registration_state_1x =
+      MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
+  EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->GetRoamingStateString());
+}
+
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",
             device_->GetStateString(Cellular::kStateDisabled));
@@ -296,12 +336,16 @@ TEST_F(CellularTest, StartRegister) {
   EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
   EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
       .WillOnce(DoAll(
-          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
-          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME),
+          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
   device_->Start();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+  ASSERT_TRUE(device_->service_.get());
+  EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
+            device_->service_->network_tech());
+  EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
 }
 
 TEST_F(CellularTest, StartConnected) {
@@ -457,13 +501,26 @@ TEST_F(CellularTest, Connect) {
   device_->Connect();
 
   device_->state_ = Cellular::kStateRegistered;
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &manager_, device_);
+
+  device_->allow_roaming_ = false;
+  device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
+  device_->Connect();
+  ASSERT_TRUE(device_->task_factory_.empty());
+
+  device_->service_->set_roaming_state(flimflam::kRoamingStateHome);
   device_->Connect();
   ASSERT_FALSE(device_->task_factory_.empty());
+
+  device_->allow_roaming_ = true;
+  device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
+  device_->Connect();
 
   DBusPropertiesMap properties;
   properties[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
       Cellular::kPhoneNumberGSM);
-  EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(1);
+  EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(2);
   device_->simple_proxy_.reset(simple_proxy_.release());
   dispatcher_.DispatchPendingEvents();
 }

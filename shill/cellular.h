@@ -176,6 +176,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
+  FRIEND_TEST(CellularTest, GetNetworkTechnologyString);
+  FRIEND_TEST(CellularTest, GetRoamingStateString);
   FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
@@ -211,6 +213,11 @@ class Cellular : public Device,
   std::string GetTypeString() const;
   static std::string GetStateString(State state);
 
+  // Returns an empty string if the network technology is unknown.
+  std::string GetNetworkTechnologyString() const;
+
+  std::string GetRoamingStateString() const;
+
   static std::string GetCDMAActivationStateString(uint32 state);
   static std::string GetCDMAActivationErrorString(uint32 error);
 
@@ -244,11 +251,6 @@ class Cellular : public Device,
   void HandleNewSignalQuality(uint32 strength);
 
   void HandleNewCDMAActivationState(uint32 error);
-
-  // Returns true if the modem is registered. Note that this method looks at the
-  // latest CDMA/GSM registration info obtained from the modem rather than the
-  // device |state_|.
-  bool IsModemRegistered();
 
   // Signal callbacks inherited from ModemCDMAProxyListener.
   virtual void OnCDMAActivationStateChanged(

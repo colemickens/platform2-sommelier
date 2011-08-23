@@ -53,6 +53,12 @@ class CellularService : public Service {
   const Cellular::Operator &serving_operator() const;
   void set_serving_operator(const Cellular::Operator &oper);
 
+  const std::string &network_tech() const { return network_tech_; }
+  void set_network_tech(const std::string &tech) { network_tech_ = tech; }
+
+  const std::string &roaming_state() const { return roaming_state_; }
+  void set_roaming_state(const std::string &state) { roaming_state_ = state; }
+
  protected:
   virtual std::string CalculateState() { return "idle"; }
 
