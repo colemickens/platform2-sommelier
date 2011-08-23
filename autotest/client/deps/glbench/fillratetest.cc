@@ -120,11 +120,6 @@ bool FillRateTest::Run() {
   // lod = 0.5
   glUniform1f(scale_uinform, 0.7071f);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-                  GL_LINEAR_MIPMAP_NEAREST);
-  FillRateTestNormalSubWindow("fill_tex_trilinear_nearest_05",
-                              0.7071f * g_width, 0.7071f * g_height);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
                   GL_LINEAR_MIPMAP_LINEAR);
   FillRateTestNormalSubWindow("fill_tex_trilinear_linear_05",
                               0.7071f * g_width, 0.7071f * g_height);
