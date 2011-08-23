@@ -18,8 +18,8 @@ LIB_DIRS = $(shell $(PKG_CONFIG) --libs dbus-1 dbus-glib-1 dbus-c++-1 glib-2.0)
 
 CFLAGS := -Iinclude $(CFLAGS)
 CXXFLAGS := -Iinclude -I../ $(INCLUDE_DIRS) $(CXXFLAGS)
-LDFLAGS += -lbase -lblkid -lchromeos -lgflags -lmetrics -lrootdev -ludev \
-	$(LIB_DIRS)
+LDFLAGS += -lbase -lblkid -lchromeos -lgflags -lmetrics -lminijail -lrootdev \
+	-ludev $(LIB_DIRS)
 
 cros-disks-server.h: cros-disks.xml
 	$(DBUSXX_XML2CPP) cros-disks.xml --adaptor=$@

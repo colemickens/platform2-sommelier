@@ -4,13 +4,15 @@
 
 #include "cros-disks/ntfs-mounter.h"
 
+#include <linux/capability.h>
+
 #include <string>
 
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <chromeos/process.h>
 
 #include "cros-disks/platform.h"
+#include "cros-disks/sandboxed-process.h"
 
 using std::string;
 
@@ -18,6 +20,12 @@ namespace cros_disks {
 
 // Expected location of the ntfs-3g executable.
 static const char kMountProgramPath[] = "/bin/ntfs-3g";
+
+// Process capabilities required by the ntfs-3g process:
+//   CAP_SYS_ADMIN for mounting/unmounting filesystem
+//   CAP_SETUID/CAP_SETGID for setting uid/gid in non-privileged mounts
+static const uint64_t kMountProgramCapabilities =
+    (1 << CAP_SYS_ADMIN) | (1 << CAP_SETUID) | (1 << CAP_SETGID);
 
 static const mode_t kSourcePathPermissions =
     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
@@ -39,7 +47,8 @@ MountErrorType NTFSMounter::MountImpl() {
     return kMountErrorMountProgramNotFound;
   }
 
-  chromeos::ProcessImpl mount_process;
+  SandboxedProcess mount_process;
+  mount_process.SetCapabilities(kMountProgramCapabilities);
 
   // Temporarily work around the fact that the ntfs-3g executable is not
   // set to setuid-root, so check the permissions of ntfs-3g before doing
@@ -62,18 +71,18 @@ MountErrorType NTFSMounter::MountImpl() {
         !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
       return kMountErrorInternal;
     }
-    mount_process.SetUid(mount_user_id);
-    mount_process.SetGid(mount_group_id);
+    mount_process.SetUserId(mount_user_id);
+    mount_process.SetGroupId(mount_group_id);
   }
 
-  mount_process.AddArg(kMountProgramPath);
+  mount_process.AddArgument(kMountProgramPath);
   string options_string = mount_options().ToString();
   if (!options_string.empty()) {
-    mount_process.AddArg("-o");
-    mount_process.AddArg(options_string);
+    mount_process.AddArgument("-o");
+    mount_process.AddArgument(options_string);
   }
-  mount_process.AddArg(source_path());
-  mount_process.AddArg(target_path());
+  mount_process.AddArgument(source_path());
+  mount_process.AddArgument(target_path());
 
   int return_code = mount_process.Run();
   if (return_code != 0) {
