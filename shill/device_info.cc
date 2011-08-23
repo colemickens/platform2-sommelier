@@ -17,6 +17,7 @@
 #include <string>
 
 #include <base/callback_old.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util-inl.h>
@@ -40,9 +41,9 @@ using std::string;
 namespace shill {
 
 // static
-const char *DeviceInfo::kInterfaceUevent= "/sys/class/net/%s/uevent";
+const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
 // static
-const char *DeviceInfo::kInterfaceDriver= "/sys/class/net/%s/device/driver";
+const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
 // static
 const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
@@ -50,6 +51,9 @@ const char *DeviceInfo::kModemDrivers[] = {
     "GobiNet",
     NULL
 };
+// static
+const char DeviceInfo::kInterfaceIPv6Privacy[] =
+    "/proc/sys/net/ipv6/conf/%s/use_tempaddr";
 
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
@@ -182,10 +186,12 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
                 << " ignored.";
         return;
       case Device::kEthernet:
+        EnableDeviceIPv6Privacy(link_name);
         device = new Ethernet(control_interface_, dispatcher_, manager_,
                               link_name, address, dev_index);
         break;
       case Device::kWifi:
+        EnableDeviceIPv6Privacy(link_name);
         device = new WiFi(control_interface_, dispatcher_, manager_,
                           link_name, address, dev_index);
         break;
@@ -260,6 +266,12 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
   } else {
     NOTREACHED();
   }
+}
+
+void DeviceInfo::EnableDeviceIPv6Privacy(const string &iface_name) {
+  FilePath priv_file(StringPrintf(kInterfaceIPv6Privacy, iface_name.c_str()));
+  LOG_IF(ERROR, file_util::WriteFile(priv_file, "2", 1))
+      << "Write failed for use_tempaddr: " << priv_file.value();
 }
 
 }  // namespace shill

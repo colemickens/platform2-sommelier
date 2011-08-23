@@ -54,9 +54,10 @@ class DeviceInfo {
     unsigned int flags;
   };
 
-  static const char *kInterfaceUevent;
-  static const char *kInterfaceDriver;
+  static const char kInterfaceUevent[];
+  static const char kInterfaceDriver[];
   static const char *kModemDrivers[];
+  static const char kInterfaceIPv6Privacy[];
 
   static Device::Technology GetDeviceTechnology(const std::string &face_name);
 
@@ -66,6 +67,7 @@ class DeviceInfo {
 
   const Info *GetInfo(int interface_index) const;
   void RemoveInfo(int interface_index);
+  void EnableDeviceIPv6Privacy(const std::string &link_name);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
