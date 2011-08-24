@@ -40,11 +40,13 @@ class Profile : public base::RefCounted<Profile> {
     std::string identifier;
   };
 
+  static const char kGlobalStorageDir[];
+  static const char kUserStorageDirFormat[];
+
   Profile(ControlInterface *control_interface,
           GLib *glib,
           Manager *manager,
           const Identifier &name,
-          const std::string &user_storage_format,
           bool connect_to_rpc);
   virtual ~Profile();
 
@@ -87,12 +89,10 @@ class Profile : public base::RefCounted<Profile> {
   static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
 
   // Sets |path| to the persistent store file path for a profile identified by
-  // |name_|. Returns true on success, and false if unable to determine an
-  // appropriate file location. |name_| must be a valid identifier,
+  // |identifier|. Returns true on success, and false if unable to determine an
+  // appropriate file location. |identifier| must be a valid identifier,
   // possibly parsed and validated through Profile::ParseIdentifier.
-  //
-  // In the default implementation, |name_.user| cannot be empty.
-  virtual bool GetStoragePath(FilePath *path);
+  static bool GetStoragePath(const Identifier &identifier, FilePath *path);
 
  protected:
   Manager *manager_;
@@ -126,9 +126,6 @@ class Profile : public base::RefCounted<Profile> {
 
   // Persistent store associated with the profile.
   KeyFileStore storage_;
-
-  // Format string used to generate paths to user profile directories.
-  const std::string storage_format_;
 
   scoped_ptr<ProfileAdaptorInterface> adaptor_;
 

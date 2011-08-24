@@ -8,12 +8,10 @@
 
 #include <string>
 
-#include <base/file_path.h>
 #include <base/logging.h>
 
 #include "shill/dhcp_provider.h"
 #include "shill/rtnl_handler.h"
-#include "shill/shill_config.h"
 
 using std::string;
 
@@ -25,13 +23,7 @@ namespace shill {
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
-      manager_(control_,
-               &dispatcher_,
-               &glib_,
-               config->RunDirectory(),
-               config->StorageDirectory(),
-               config->UserStorageDirectoryFormat()) {
-}
+      manager_(control_, &dispatcher_, &glib_) { }
 Daemon::~Daemon() {}
 
 void Daemon::AddDeviceToBlackList(const string &device_name) {

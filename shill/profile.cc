@@ -26,16 +26,17 @@ using std::vector;
 
 namespace shill {
 
+const char Profile::kGlobalStorageDir[] = "/var/cache/flimflam";
+const char Profile::kUserStorageDirFormat[] = "/home/%s/user/flimflam";
+
 Profile::Profile(ControlInterface *control_interface,
                  GLib *glib,
                  Manager *manager,
                  const Identifier &name,
-                 const string &user_storage_format,
                  bool connect_to_rpc)
     : manager_(manager),
       name_(name),
-      storage_(glib),
-      storage_format_(user_storage_format) {
+      storage_(glib) {
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
 
@@ -149,15 +150,14 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   return true;
 }
 
-bool Profile::GetStoragePath(FilePath *path) {
-  if (name_.user.empty()) {
-    LOG(ERROR) << "Non-default profiles cannot be stored globally.";
-    return false;
-  }
-  FilePath dir(base::StringPrintf(storage_format_.c_str(), name_.user.c_str()));
+bool Profile::GetStoragePath(const Identifier &identifier, FilePath *path) {
+  FilePath dir(
+      identifier.user.empty() ?
+      kGlobalStorageDir :
+      base::StringPrintf(kUserStorageDirFormat, identifier.user.c_str()));
   // TODO(petkov): Validate the directory permissions, etc.
   *path = dir.Append(base::StringPrintf("%s.profile",
-                                        name_.identifier.c_str()));
+                                        identifier.identifier.c_str()));
   return true;
 }
 

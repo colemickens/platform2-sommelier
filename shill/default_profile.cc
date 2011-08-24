@@ -4,8 +4,6 @@
 
 #include "shill/default_profile.h"
 
-#include <base/file_path.h>
-#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -15,13 +13,11 @@
 namespace shill {
 const char DefaultProfile::kDefaultId[] = "default";
 
-DefaultProfile::DefaultProfile(ControlInterface *control,
+DefaultProfile::DefaultProfile(ControlInterface *control_interface,
                                GLib *glib,
                                Manager *manager,
-                               const FilePath &storage_path,
                                const Manager::Properties &manager_props)
-    : Profile(control, glib, manager, Identifier(kDefaultId), "", true),
-      storage_path_(storage_path) {
+    : Profile(control_interface, glib, manager, Identifier(kDefaultId), true) {
   store_.RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store_.RegisterConstString(flimflam::kCountryProperty,
@@ -33,10 +29,5 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 }
 
 DefaultProfile::~DefaultProfile() {}
-
-bool DefaultProfile::GetStoragePath(FilePath *path) {
-  *path = storage_path_.Append(base::StringPrintf("%s.profile", kDefaultId));
-  return true;
-}
 
 }  // namespace shill

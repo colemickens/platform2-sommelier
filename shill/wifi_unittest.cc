@@ -13,13 +13,12 @@
 #include <base/string_util.h>
 #include <dbus-c++/dbus.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/nice_mock_control.h"
@@ -172,7 +171,7 @@ class WiFiMainTest : public Test {
 
  private:
   NiceMockControl control_interface_;
-  MockManager manager_;
+  Manager manager_;
   WiFiRefPtr wifi_;
 
   // protected fields interspersed between private fields, due to

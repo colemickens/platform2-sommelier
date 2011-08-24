@@ -12,10 +12,8 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular_service.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
-#include "shill/mock_manager.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
@@ -112,7 +110,6 @@ class CellularTest : public testing::Test {
  public:
   CellularTest()
       : manager_(&control_interface_, &dispatcher_, &glib_),
-        device_info_(&control_interface_, &dispatcher_, &manager_),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCDMAProxy()),
@@ -137,7 +134,6 @@ class CellularTest : public testing::Test {
     ProxyFactory::set_factory(&proxy_factory_);
     StartRTNLHandler();
     device_->set_dhcp_provider(&dhcp_provider_);
-    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
   }
 
   virtual void TearDown() {
@@ -188,8 +184,7 @@ class CellularTest : public testing::Test {
   NiceMockControl control_interface_;
   TestEventDispatcher dispatcher_;
   MockGLib glib_;
-  MockManager manager_;
-  MockDeviceInfo device_info_;
+  Manager manager_;
   NiceMock<MockSockets> sockets_;
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
@@ -354,8 +349,6 @@ TEST_F(CellularTest, StartRegister) {
 }
 
 TEST_F(CellularTest, StartConnected) {
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(Return(true));
   device_->type_ = Cellular::kTypeCDMA;
   device_->set_modem_state(Cellular::kModemStateConnected);
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
@@ -373,8 +366,7 @@ TEST_F(CellularTest, StartConnected) {
 }
 
 TEST_F(CellularTest, StartLinked) {
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
+  manager_.device_info()->infos_[device_->interface_index()].flags = IFF_UP;
   device_->type_ = Cellular::kTypeCDMA;
   device_->set_modem_state(Cellular::kModemStateConnected);
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
@@ -502,8 +494,6 @@ MATCHER(ContainsPhoneNumber, "") {
 }  // namespace {}
 
 TEST_F(CellularTest, Connect) {
-  EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(Return(true));
   device_->state_ = Cellular::kStateConnected;
   device_->Connect();
 

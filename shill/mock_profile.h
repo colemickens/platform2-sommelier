@@ -20,8 +20,10 @@ class Manager;
 
 class MockProfile : public Profile {
  public:
-  MockProfile(ControlInterface *control, GLib *glib, Manager *manager);
-  MockProfile(ControlInterface *control,
+  MockProfile(ControlInterface *control_interface,
+              GLib *glib,
+              Manager *manager);
+  MockProfile(ControlInterface *control_interface,
               GLib *glib,
               Manager *manager,
               const std::string &identifier);

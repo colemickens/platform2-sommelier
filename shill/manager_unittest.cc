@@ -11,8 +11,8 @@
 #include <base/logging.h>
 #include <base/stl_util-inl.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"

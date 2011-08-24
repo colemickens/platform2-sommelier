@@ -34,22 +34,18 @@ using std::vector;
 
 namespace shill {
 
+// static
+const char Manager::kDefaultRunDirectory[] = "/var/run/shill";
+
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 GLib *glib,
-                 const string &run_directory,
-                 const string &storage_directory,
-                 const string &user_storage_format)
-  : run_path_(FilePath(run_directory)),
-    storage_path_(FilePath(storage_directory)),
-    user_storage_format_(user_storage_format),
+                 GLib *glib)
+  : run_path_(FilePath(kDefaultRunDirectory)),
     adaptor_(control_interface->CreateManagerAdaptor(this)),
     device_info_(control_interface, dispatcher, this),
     modem_info_(control_interface, dispatcher, this, glib),
     running_(false),
-    ephemeral_profile_(new EphemeralProfile(control_interface, glib, this)),
-    control_interface_(control_interface),
-    glib_(glib) {
+    ephemeral_profile_(new EphemeralProfile(control_interface, glib, this)) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileName,
                             NULL);
@@ -85,10 +81,10 @@ Manager::Manager(ControlInterface *control_interface,
 
   // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kProfilesProperty);
-  profiles_.push_back(new DefaultProfile(control_interface_,
-                                         glib_,
+
+  profiles_.push_back(new DefaultProfile(control_interface,
+                                         glib,
                                          this,
-                                         storage_path_,
                                          props_));
   VLOG(2) << "Manager initialized.";
 }
@@ -108,11 +104,8 @@ void Manager::AddDeviceToBlackList(const string &device_name) {
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
+  CHECK(file_util::CreateDirectory(run_path_));
   Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
-
-  CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
-
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();
