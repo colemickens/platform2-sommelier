@@ -68,8 +68,8 @@ PropertyStoreTest::PropertyStoreTest()
                run_dir_.path().value(),
                storage_dir_.path().value(),
                string()),
-      invalid_args_(Error::kErrorNames[Error::kInvalidArguments]),
-      invalid_prop_(Error::kErrorNames[Error::kInvalidProperty]) {
+      invalid_args_(Error::GetName(Error::kInvalidArguments)),
+      invalid_prop_(Error::GetName(Error::kInvalidProperty)) {
 }
 
 PropertyStoreTest::~PropertyStoreTest() {}

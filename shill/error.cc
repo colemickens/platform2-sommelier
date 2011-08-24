@@ -4,47 +4,83 @@
 
 #include "shill/error.h"
 
-#include <string>
-
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <dbus-c++/error.h>
 
 #include "shill/dbus_adaptor.h"
 
+using std::string;
+
 namespace shill {
 
 // static
-const char * const Error::kErrorNames[Error::kNumErrors] = {
-  SHILL_INTERFACE ".Error.AlreadyExists",
-  SHILL_INTERFACE ".Error.InProgress",
-  SHILL_INTERFACE ".Error.InternalError",
-  SHILL_INTERFACE ".Error.InvalidArguments",
-  SHILL_INTERFACE ".Error.InvalidNetworkName",
-  SHILL_INTERFACE ".Error.InvalidPassphrase",
-  SHILL_INTERFACE ".Error.InvalidProperty",
-  SHILL_INTERFACE ".Error.NotFound",
-  SHILL_INTERFACE ".Error.NotSupported",
-  SHILL_INTERFACE ".Error.PermissionDenied",
-  SHILL_INTERFACE ".Error.PinError"
+const Error::Info Error::kInfos[kNumErrors] = {
+  { "Success", "Success (no error)" },
+  { "AlreadyConnected", "Already connected" },
+  { "AlreadyExists", "Already exists" },
+  { "InProgress", "In progress" },
+  { "InternalError", "Internal error" },
+  { "InvalidArguments", "Invalid arguments" },
+  { "InvalidNetworkName", "Invalid network name" },
+  { "InvalidPassphrase", "Invalid passphrase" },
+  { "InvalidProperty", "Invalid property" },
+  { "NoCarrier", "No carrier" },
+  { "NotConnected", "Not connected" },
+  { "NotFound", "Not found" },
+  { "NotImplemented", "Not implemented" },
+  { "NotOnHomeNetwork", "Not on home network" },
+  { "NotRegistered", "Not registered" },
+  { "NotSupported", "Not supported" },
+  { "OperationAborted", "Operation aborted" },
+  { "OperationTimeout", "Operation timeout" },
+  { "PassphraseRequired", "Passphrase required" },
+  { "PermissionDenied", "Permission denied" },
 };
 
-Error::Error(Type type, const std::string& message)
-    : type_(type),
-      message_(message) {
-  CHECK(type_ < Error::kNumErrors) << "Error type out of range: " << type;
+// static
+const char Error::kInterfaceName[] = SHILL_INTERFACE;
+
+Error::Error() {
+  Populate(kSuccess);
+}
+
+Error::Error(Type type) {
+  Populate(type);
+}
+
+Error::Error(Type type, const std::string &message) {
+  Populate(type, message);
 }
 
 Error::~Error() {}
 
-void Error::Populate(Type type, const std::string& message) {
-  CHECK(type_ < Error::kNumErrors) << "Error type out of range: " << type;
+void Error::Populate(Type type) {
+  Populate(type, GetDefaultMessage(type));
+}
+
+void Error::Populate(Type type, const std::string &message) {
+  CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
 }
 
-void Error::ToDBusError(::DBus::Error *error) {
-  if (type_ < Error::kNumErrors)
-    error->set(kErrorNames[type_], message_.c_str());
+void Error::ToDBusError(::DBus::Error *error) const {
+  if (IsFailure()) {
+    error->set(GetName(type_).c_str(), message_.c_str());
+  }
+}
+
+// static
+string Error::GetName(Type type) {
+  CHECK(type < kNumErrors) << "Error type out of range: " << type;
+  return base::StringPrintf("%s.Error.%s", kInterfaceName, kInfos[type].name);
+}
+
+// static
+string Error::GetDefaultMessage(Type type) {
+  CHECK(type < kNumErrors) << "Error type out of range: " << type;
+  return kInfos[type].message;
 }
 
 }  // namespace shill

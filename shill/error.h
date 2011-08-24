@@ -18,6 +18,8 @@ namespace shill {
 class Error {
  public:
   enum Type {
+    kSuccess = 0,  // No error.
+    kAlreadyConnected,
     kAlreadyExists,
     kInProgress,
     kInternalError,
@@ -25,22 +27,50 @@ class Error {
     kInvalidNetworkName,
     kInvalidPassphrase,
     kInvalidProperty,
+    kNoCarrier,
+    kNotConnected,
     kNotFound,
+    kNotImplemented,
+    kNotOnHomeNetwork,
+    kNotRegistered,
     kNotSupported,
+    kOperationAborted,
+    kOperationTimeout,
+    kPassphraseRequired,
     kPermissionDenied,
-    kPinError,
     kNumErrors
   };
-  static const char * const kErrorNames[kNumErrors];
 
-  Error(Type type, const std::string& message);
-  virtual ~Error();
+  Error();  // Success by default.
+  explicit Error(Type type);  // Uses the default message for |type|.
+  Error(Type type, const std::string &message);
+  ~Error();
 
-  void Populate(Type type, const std::string& message);
+  void Populate(Type type);  // Uses the default message for |type|.
+  void Populate(Type type, const std::string &message);
 
-  void ToDBusError(::DBus::Error *error);
+  // Sets the DBus |error| to this error if it's failure. Leaves |error|
+  // unchanged otherwise.
+  void ToDBusError(::DBus::Error *error) const;
+
+  Type type() const { return type_; }
+  const std::string &message() const { return message_; }
+
+  bool IsSuccess() const { return type_ == kSuccess; }
+  bool IsFailure() const { return !IsSuccess(); }
+
+  static std::string GetName(Type type);
+  static std::string GetDefaultMessage(Type type);
 
  private:
+  struct Info {
+    const char *name;  // Error type name.
+    const char *message;  // Default Error type message.
+  };
+
+  static const Info kInfos[kNumErrors];
+  static const char kInterfaceName[];
+
   Type type_;
   std::string message_;
 
