@@ -4,14 +4,16 @@
 
 #include "cros-disks/archive-manager.h"
 
+#include <linux/capability.h>
+
 #include <base/file_path.h>
 #include <base/logging.h>
 #include <base/string_util.h>
-#include <chromeos/process.h>
 
 #include "cros-disks/mount-info.h"
 #include "cros-disks/mount-options.h"
 #include "cros-disks/platform.h"
+#include "cros-disks/sandboxed-process.h"
 #include "cros-disks/system-mounter.h"
 
 using std::string;
@@ -24,6 +26,10 @@ struct AVFSPathMapping {
   const char* const base_path;
   const char* const avfs_path;
 };
+
+// Process capabilities required by the avfsd process:
+//   CAP_SYS_ADMIN for mounting/unmounting filesystem
+static const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
 
 // Number of components in a mount directory path. A mount directory is always
 // created under /media/<sub type>/<mount dir>, so it always has 4 components
@@ -187,14 +193,15 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
     return false;
   }
 
-  chromeos::ProcessImpl mount_process;
-  mount_process.AddArg(kAVFSMountProgram);
-  mount_process.AddArg("-o");
-  mount_process.AddArg("ro,nodev,noexec,nosuid,modules=subdir,subdir=" +
-                       base_path);
-  mount_process.AddArg(avfs_path);
-  mount_process.SetUid(platform_->mount_user_id());
-  mount_process.SetGid(platform_->mount_group_id());
+  SandboxedProcess mount_process;
+  mount_process.AddArgument(kAVFSMountProgram);
+  mount_process.AddArgument("-o");
+  mount_process.AddArgument("ro,nodev,noexec,nosuid,modules=subdir,subdir=" +
+                            base_path);
+  mount_process.AddArgument(avfs_path);
+  mount_process.SetCapabilities(kAVFSMountProgramCapabilities);
+  mount_process.SetUserId(platform_->mount_user_id());
+  mount_process.SetGroupId(platform_->mount_group_id());
   if (mount_process.Run() != 0 ||
       !mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
