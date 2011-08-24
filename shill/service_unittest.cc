@@ -250,4 +250,10 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kFailureOutOfRange, service_->failure());
 }
 
+TEST_F(ServiceTest, ActivateCellularModem) {
+  Error error;
+  service_->ActivateCellularModem("Carrier", &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+}
+
 }  // namespace shill

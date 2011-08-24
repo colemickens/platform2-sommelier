@@ -17,6 +17,7 @@
 namespace shill {
 
 class ControlInterface;
+class Error;
 class EventDispatcher;
 class Manager;
 
@@ -31,7 +32,7 @@ class CellularService : public Service {
   // Inherited from Service.
   virtual void Connect(Error *error);
   virtual void Disconnect();
-  virtual void ActivateCellularModem(const std::string &carrier);
+  virtual void ActivateCellularModem(const std::string &carrier, Error *error);
 
   // cellular_<MAC>_<Service_Operator_Name>
   std::string GetStorageIdentifier(const std::string &mac);

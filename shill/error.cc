@@ -49,7 +49,7 @@ Error::Error(Type type) {
   Populate(type);
 }
 
-Error::Error(Type type, const std::string &message) {
+Error::Error(Type type, const string &message) {
   Populate(type, message);
 }
 
@@ -59,7 +59,7 @@ void Error::Populate(Type type) {
   Populate(type, GetDefaultMessage(type));
 }
 
-void Error::Populate(Type type, const std::string &message) {
+void Error::Populate(Type type, const string &message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;

@@ -155,8 +155,9 @@ class Cellular : public Device,
   // failure, leaves it unchanged otherwise.
   void Connect(Error *error);
 
-  // Asynchronously activates the modem.
-  void Activate(const std::string &carrier);
+  // Asynchronously activates the modem. Populates |error| on failure, leaves it
+  // unchanged otherwise.
+  void Activate(const std::string &carrier, Error *error);
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }

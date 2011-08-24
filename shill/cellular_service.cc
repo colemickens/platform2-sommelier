@@ -51,8 +51,9 @@ void CellularService::Connect(Error *error) {
 
 void CellularService::Disconnect() { }
 
-void CellularService::ActivateCellularModem(const string &carrier) {
-  cellular_->Activate(carrier);
+void CellularService::ActivateCellularModem(const string &carrier,
+                                            Error *error) {
+  cellular_->Activate(carrier, error);
 }
 
 string CellularService::GetStorageIdentifier(const string &mac) {

@@ -52,12 +52,10 @@ TEST_F(ErrorTest, PopulateCustomMessage) {
 TEST_F(ErrorTest, ToDBusError) {
   DBus::Error dbus_error;
   ASSERT_FALSE(dbus_error.is_set());
-  Error e;
-  e.ToDBusError(&dbus_error);
+  Error().ToDBusError(&dbus_error);
   ASSERT_FALSE(dbus_error.is_set());
   static const char kMessage[] = "Test error message";
-  e.Populate(Error::kPermissionDenied, kMessage);
-  e.ToDBusError(&dbus_error);
+  Error(Error::kPermissionDenied, kMessage).ToDBusError(&dbus_error);
   ASSERT_TRUE(dbus_error.is_set());
   EXPECT_EQ(Error::GetName(Error::kPermissionDenied), dbus_error.name());
   EXPECT_STREQ(kMessage, dbus_error.message());

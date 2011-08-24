@@ -90,8 +90,8 @@ class Service : public base::RefCounted<Service> {
   virtual void Connect(Error *error) = 0;
   virtual void Disconnect() = 0;
 
-  // The default implementation asserts.
-  virtual void ActivateCellularModem(const std::string &carrier);
+  // The default implementation sets |error| to kInvalidArguments.
+  virtual void ActivateCellularModem(const std::string &carrier, Error *error);
 
   virtual bool IsActive();
 

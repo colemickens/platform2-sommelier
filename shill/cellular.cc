@@ -632,8 +632,22 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void Cellular::Activate(const string &carrier) {
-  CHECK_EQ(kTypeCDMA, type_);
+void Cellular::Activate(const string &carrier, Error *error) {
+  if (type_ != kTypeCDMA) {
+    const string kMessage = "Unable to activate non-CDMA modem.";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
+  if (state_ != kStateEnabled &&
+      state_ != kStateRegistered) {
+    const string kMessage = "Unable to activate in " + GetStateString(state_);
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
   // Defer connect because we may be in a dbus-c++ callback.
   dispatcher_->PostTask(
       task_factory_.NewRunnableMethod(&Cellular::ActivateTask, carrier));
@@ -641,7 +655,8 @@ void Cellular::Activate(const string &carrier) {
 
 void Cellular::ActivateTask(const string &carrier) {
   VLOG(2) << __func__ << "(" << carrier << ")";
-  if (state_ != kStateEnabled && state_ != kStateRegistered) {
+  if (state_ != kStateEnabled &&
+      state_ != kStateRegistered) {
     LOG(ERROR) << "Unable to activate in " << GetStateString(state_);
     return;
   }
