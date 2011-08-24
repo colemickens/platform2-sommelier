@@ -18,17 +18,17 @@ class ControlInterface;
 class GLib;
 class Manager;
 
-MockProfile::MockProfile(ControlInterface *control_interface,
+MockProfile::MockProfile(ControlInterface *control,
                          GLib *glib,
                          Manager *manager)
-    : Profile(control_interface, glib, manager, Identifier("mock"), false) {
+    : Profile(control, glib, manager, Identifier("mock"), "", false) {
 }
 
-MockProfile::MockProfile(ControlInterface *control_interface,
+MockProfile::MockProfile(ControlInterface *control,
                          GLib *glib,
                          Manager *manager,
                          const std::string &identifier)
-    : Profile(control_interface, glib, manager, Identifier(identifier), false) {
+    : Profile(control, glib, manager, Identifier(identifier), "", false) {
 }
 
 MockProfile::~MockProfile() {}

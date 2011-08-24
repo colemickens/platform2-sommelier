@@ -21,7 +21,7 @@ namespace shill {
 EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
                                    GLib *glib,
                                    Manager *manager)
-    : Profile(control_interface, glib, manager, Identifier(), false) {
+    : Profile(control_interface, glib, manager, Identifier(), "", false) {
 }
 
 EphemeralProfile::~EphemeralProfile() {}

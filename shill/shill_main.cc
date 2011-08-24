@@ -35,6 +35,8 @@ static const char kDeviceBlackList[] = "device-black-list";
 static const char kHelp[] = "help";
 // LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.
 static const char kLogLevel[] = "log-level";
+// Use the same directories flimflam uses for global, user profiles..
+static const char kUseFlimflamProfiles[] = "use-flimflam-profiles";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
@@ -49,6 +51,8 @@ static const char kHelpMessage[] = "\n"
     "    Do not manage devices named device1 or device2\n"
     "  --log-level=N\n"
     "    LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.\n"
+    "  --use-flimflam-profiles\n"
+    "    Use the same directories flimflam uses for global, user profiles.\n"
     "  --v=N\n"
     "    Enables VLOG(N) and below.\n"
     "  --vmodule=\"*file_pattern*=1,certain_file.cc=2\".\n"
@@ -97,6 +101,8 @@ int main(int argc, char** argv) {
       cl->GetSwitchValueASCII(switches::kDefaultConfigDir));
 
   shill::Config config; /* (config_dir, default_config_dir) */
+  if (cl->HasSwitch(switches::kUseFlimflamProfiles))
+    config.UseFlimflamStorageDirs();
 
   // TODO(pstew): This should be chosen based on config
   scoped_ptr<shill::DBusControl> dbus_control(new shill::DBusControl());

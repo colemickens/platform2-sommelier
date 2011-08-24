@@ -8,6 +8,7 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
 #include "shill/modem_info.h"
 #include "shill/modem_manager.h"
 
@@ -27,7 +28,7 @@ class ModemInfoTest : public Test {
   MockGLib glib_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
-  Manager manager_;
+  MockManager manager_;
   ModemInfo modem_info_;
 };
 

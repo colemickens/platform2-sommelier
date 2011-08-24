@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 
 #include "shill/manager.h"
@@ -22,14 +23,25 @@ class ControlInterface;
 
 class DefaultProfile : public Profile {
  public:
-  DefaultProfile(ControlInterface *control_interface,
+  DefaultProfile(ControlInterface *control,
                  GLib *glib,
                  Manager *manager,
+                 const FilePath &storage_path,
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
+
+  // Sets |path| to the persistent store file path for the default, global
+  // profile. Returns true on success, and false if unable to determine an
+  // appropriate file location.
+  //
+  // In this implementation, |name_| is ignored.
+  virtual bool GetStoragePath(FilePath *path);
+
  private:
   static const char kDefaultId[];
+
+  const FilePath storage_path_;
 
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);
 };

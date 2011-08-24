@@ -9,9 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/scoped_temp_dir.h>
 #include <dbus-c++/dbus.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
@@ -46,6 +47,8 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   virtual ~PropertyStoreTest();
 
  protected:
+  ScopedTempDir run_dir_;
+  ScopedTempDir storage_dir_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;
   Manager manager_;

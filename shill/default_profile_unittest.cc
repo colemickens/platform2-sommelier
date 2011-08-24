@@ -27,16 +27,21 @@ class DefaultProfileTest : public PropertyStoreTest {
       : profile_(new DefaultProfile(&control_interface_,
                                     &glib_,
                                     &manager_,
+                                    FilePath(kTestStoragePath),
                                     properties_)) {
   }
 
   virtual ~DefaultProfileTest() {}
 
  protected:
+  static const char kTestStoragePath[];
+
   ProfileRefPtr profile_;
   GLib glib_;
   Manager::Properties properties_;
 };
+
+const char DefaultProfileTest::kTestStoragePath[] = "/no/where";
 
 TEST_F(DefaultProfileTest, GetProperties) {
   Error error(Error::kInvalidProperty, "");
@@ -62,6 +67,12 @@ TEST_F(DefaultProfileTest, GetProperties) {
                                            true,
                                            &error));
   }
+}
+
+TEST_F(DefaultProfileTest, GetStoragePath) {
+  FilePath path;
+  EXPECT_TRUE(profile_->GetStoragePath(&path));
+  EXPECT_EQ(string(kTestStoragePath) + "/default.profile", path.value());
 }
 
 }  // namespace shill

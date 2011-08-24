@@ -80,24 +80,29 @@ TEST_F(ProfileTest, GetFriendlyName) {
   Profile::Identifier id;
   id.identifier = kIdentifier;
   ProfileRefPtr profile(
-      new Profile(&control_interface_, &glib_, &manager_, id, false));
+      new Profile(&control_interface_, &glib_, &manager_, id, "", false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(&control_interface_, &glib_, &manager_, id, false);
+  profile = new Profile(&control_interface_, &glib_, &manager_, id, "", false);
   EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
 TEST_F(ProfileTest, GetStoragePath) {
   static const char kUser[] = "chronos";
   static const char kIdentifier[] = "someprofile";
+  static const char kFormat[] = "/a/place/for/%s";
   FilePath path;
-  Profile::Identifier identifier;
-  identifier.identifier = kIdentifier;
-  EXPECT_TRUE(Profile::GetStoragePath(identifier, &path));
-  EXPECT_EQ("/var/cache/flimflam/someprofile.profile", path.value());
-  identifier.user = kUser;
-  EXPECT_TRUE(Profile::GetStoragePath(identifier, &path));
-  EXPECT_EQ("/home/chronos/user/flimflam/someprofile.profile", path.value());
+  Profile::Identifier id;
+  id.identifier = kIdentifier;
+  ProfileRefPtr profile(
+      new Profile(&control_interface_, &glib_, &manager_, id, "", false));
+  EXPECT_FALSE(profile->GetStoragePath(&path));
+  id.user = kUser;
+  profile =
+      new Profile(&control_interface_, &glib_, &manager_, id, kFormat, false);
+  EXPECT_TRUE(profile->GetStoragePath(&path));
+  string suffix = base::StringPrintf("/%s.profile", kIdentifier);
+  EXPECT_EQ(base::StringPrintf(kFormat, kUser) + suffix, path.value());
 }
 
 TEST_F(ProfileTest, ServiceManagement) {

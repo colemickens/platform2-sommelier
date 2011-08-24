@@ -5,20 +5,33 @@
 #ifndef SHILL_CONFIG_
 #define SHILL_CONFIG_
 
+#include <string>
+
 namespace shill {
 
 class Config {
  public:
-  Config(/* FilePath &prefs_dir, FilePath &def_prefs_dir */);
   static const char kShillDefaultPrefsDir[];
 
+  Config();
+  virtual ~Config();
+
+  void UseFlimflamStorageDirs() { use_flimflam_ = true; }
+
+  std::string RunDirectory();
+  std::string StorageDirectory();
+  std::string UserStorageDirectoryFormat();
+
  private:
-  /*
-  FilePath prefs_dir_;
-  FilePath def_prefs_dir_;
-  */
+  static const char kDefaultRunDirectory[];
+  static const char kDefaultStorageDirectory[];
+  static const char kDefaultUserStorageFormat[];
+  static const char kFlimflamStorageDirectory[];
+  static const char kFlimflamUserStorageFormat[];
+
+  bool use_flimflam_;
 };
 
 }  // namespace shill
 
-#endif  // SHILL_MANAGER_
+#endif  // SHILL_CONFIG_
