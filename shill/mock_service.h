@@ -25,7 +25,7 @@ class MockService : public Service {
               Manager *manager);
   virtual ~MockService();
 
-  MOCK_METHOD0(Connect, void());
+  MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD0(Disconnect, void());
   MOCK_METHOD0(CalculateState, std::string());
   MOCK_METHOD0(GetDeviceRpcId, std::string());

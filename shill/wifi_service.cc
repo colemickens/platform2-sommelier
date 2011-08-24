@@ -57,7 +57,7 @@ WiFiService::~WiFiService() {
   LOG(INFO) << __func__;
 }
 
-void WiFiService::Connect() {
+void WiFiService::Connect(Error *error) {
   LOG(INFO) << __func__;
 
   // NB(quiche) defer handling, since dbus-c++ does not permit us to

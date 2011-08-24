@@ -29,7 +29,7 @@ class CellularService : public Service {
   virtual ~CellularService();
 
   // Inherited from Service.
-  virtual void Connect();
+  virtual void Connect(Error *error);
   virtual void Disconnect();
   virtual void ActivateCellularModem(const std::string &carrier);
 

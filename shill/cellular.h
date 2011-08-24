@@ -20,6 +20,7 @@
 
 namespace shill {
 
+class Error;
 class ModemSimpleProxyInterface;
 
 class Cellular : public Device,
@@ -150,8 +151,9 @@ class Cellular : public Device,
            const std::string &path);
   virtual ~Cellular();
 
-  // Asynchronously connects the modem to the network.
-  void Connect();
+  // Asynchronously connects the modem to the network. Populates |error| on
+  // failure, leaves it unchanged otherwise.
+  void Connect(Error *error);
 
   // Asynchronously activates the modem.
   void Activate(const std::string &carrier);

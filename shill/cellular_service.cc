@@ -45,8 +45,8 @@ CellularService::CellularService(ControlInterface *control_interface,
 
 CellularService::~CellularService() { }
 
-void CellularService::Connect() {
-  cellular_->Connect();
+void CellularService::Connect(Error *error) {
+  cellular_->Connect(error);
 }
 
 void CellularService::Disconnect() { }

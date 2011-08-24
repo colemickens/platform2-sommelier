@@ -68,7 +68,9 @@ void ServiceDBusAdaptor::ClearProperty(const string& , ::DBus::Error &error) {
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
-  service_->Connect();
+  Error e;
+  service_->Connect(&e);
+  e.ToDBusError(&error);
 }
 
 void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {

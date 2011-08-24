@@ -20,6 +20,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
@@ -556,10 +557,13 @@ bool Cellular::TechnologyIs(const Device::Technology type) const {
   return type == Device::kCellular;
 }
 
-void Cellular::Connect() {
+void Cellular::Connect(Error *error) {
   VLOG(2) << __func__;
   if (state_ == kStateConnected ||
       state_ == kStateLinked) {
+    LOG(ERROR) << "Already connected; connection request ignored.";
+    CHECK(error);
+    error->Populate(Error::kAlreadyConnected);
     return;
   }
   CHECK_EQ(kStateRegistered, state_);
@@ -567,6 +571,8 @@ void Cellular::Connect() {
   if (!allow_roaming_ &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     LOG(ERROR) << "Roaming disallowed; connection request ignored.";
+    CHECK(error);
+    error->Populate(Error::kNotOnHomeNetwork);
     return;
   }
 

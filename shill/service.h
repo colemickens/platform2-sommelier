@@ -87,7 +87,7 @@ class Service : public base::RefCounted<Service> {
           Manager *manager);
   virtual ~Service();
 
-  virtual void Connect() = 0;
+  virtual void Connect(Error *error) = 0;
   virtual void Disconnect() = 0;
 
   // The default implementation asserts.

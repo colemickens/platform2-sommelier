@@ -12,6 +12,7 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular_service.h"
+#include "shill/error.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
@@ -502,14 +503,18 @@ MATCHER(ContainsPhoneNumber, "") {
 }  // namespace {}
 
 TEST_F(CellularTest, Connect) {
+  Error error;
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(Return(true))
       .WillOnce(Return(true));
   device_->state_ = Cellular::kStateConnected;
-  device_->Connect();
+  device_->Connect(&error);
+  EXPECT_EQ(Error::kAlreadyConnected, error.type());
+  error.Populate(Error::kSuccess);
 
   device_->state_ = Cellular::kStateLinked;
-  device_->Connect();
+  device_->Connect(&error);
+  EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
   device_->state_ = Cellular::kStateRegistered;
   device_->service_ = new CellularService(
@@ -517,16 +522,20 @@ TEST_F(CellularTest, Connect) {
 
   device_->allow_roaming_ = false;
   device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
-  device_->Connect();
+  device_->Connect(&error);
   ASSERT_TRUE(device_->task_factory_.empty());
+  EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
+  error.Populate(Error::kSuccess);
 
   device_->service_->set_roaming_state(flimflam::kRoamingStateHome);
-  device_->Connect();
+  device_->Connect(&error);
   ASSERT_FALSE(device_->task_factory_.empty());
+  EXPECT_TRUE(error.IsSuccess());
 
   device_->allow_roaming_ = true;
   device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
-  device_->Connect();
+  device_->Connect(&error);
+  EXPECT_TRUE(error.IsSuccess());
 
   DBusPropertiesMap properties;
   properties[Cellular::kConnectPropertyPhoneNumber].writer().append_string(

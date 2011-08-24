@@ -24,8 +24,10 @@ class EthernetService : public Service {
                   Manager *manager,
                   const EthernetRefPtr &device);
   ~EthernetService();
-  void Connect();
-  void Disconnect();
+
+  // Inherited from Service.
+  virtual void Connect(Error *error);
+  virtual void Disconnect();
 
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier(const std::string &mac);
