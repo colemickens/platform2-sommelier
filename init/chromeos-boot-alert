@@ -166,6 +166,8 @@ mode_warn_dev() {
     "20")  # Spacebar
       crossystem recovery_request=1
       reboot
+      # To prevent system continue booting
+      sleep 1d
       ;;
   esac
   return 0
