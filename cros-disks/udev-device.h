@@ -5,6 +5,8 @@
 #ifndef CROS_DISKS_UDEV_DEVICE_H_
 #define CROS_DISKS_UDEV_DEVICE_H_
 
+#include <blkid/blkid.h>
+
 #include <string>
 #include <vector>
 
@@ -41,13 +43,16 @@ class UdevDevice {
   // Checks if a device property exists.
   bool HasProperty(const char *key) const;
 
+  // Gets the string value of a device property from blkid.
+  std::string GetPropertyFromBlkId(const char *key);
+
   // Gets the total and remaining capacity of the device.
   void GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const;
 
   // Checks if a device should be auto-mounted. Currently, all external
   // disk devices, which are not on the boot device, not virtual, and
   // do not host Chrome-OS specific partition are considered auto-mountable.
-  bool IsAutoMountable() const;
+  bool IsAutoMountable();
 
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
@@ -72,13 +77,15 @@ class UdevDevice {
       const std::string& device_path);
 
   // Returns a Disk object based on the device information.
-  Disk ToDisk() const;
+  Disk ToDisk();
 
  private:
   // Checks if a string contains a "1" (as Boolean true).
   bool IsValueBooleanTrue(const char *value) const;
 
   mutable struct udev_device *dev_;
+
+  blkid_cache blkid_cache_;
 
   FRIEND_TEST(UdevDeviceTest, IsValueBooleanTrue);
 

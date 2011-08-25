@@ -155,12 +155,6 @@ TEST_F(DiskManagerTest, GetFilesystem) {
   EXPECT_NE(null_pointer, manager_.GetFilesystem(experimental_fs.type()));
 }
 
-TEST_F(DiskManagerTest, GetFilesystemTypeOfNonexistentDevice) {
-  string device_path = "/dev/nonexistent-path";
-  string filesystem_type = manager_.GetFilesystemTypeOfDevice(device_path);
-  EXPECT_EQ("", filesystem_type);
-}
-
 TEST_F(DiskManagerTest, RegisterFilesystem) {
   map<string, Filesystem>& filesystems = manager_.filesystems_;
   EXPECT_EQ(0, filesystems.size());

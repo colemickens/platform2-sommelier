@@ -182,6 +182,13 @@ TEST_F(UdevDeviceTest, HasPropertyForNonexistentProperty) {
   }
 }
 
+TEST_F(UdevDeviceTest, GetPropertyFromBlkIdForNonexistentProperty) {
+  if (mounted_device_) {
+    UdevDevice device(mounted_device_);
+    EXPECT_EQ("", device.GetPropertyFromBlkId("nonexistent-property"));
+  }
+}
+
 TEST_F(UdevDeviceTest, IsAutoMountable) {
   if (boot_device_) {
     UdevDevice device(boot_device_);

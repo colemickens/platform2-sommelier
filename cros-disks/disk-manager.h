@@ -70,9 +70,6 @@ class DiskManager : public MountManager,
   // Gets a Disk object that corresponds to a given device file.
   bool GetDiskByDevicePath(const std::string& device_path, Disk *disk) const;
 
-  // Gets the filesystem type of a device.
-  std::string GetFilesystemTypeOfDevice(const std::string& device_path);
-
   // Registers a set of default filesystems to the disk manager.
   void RegisterDefaultFilesystems();
 
@@ -113,11 +110,11 @@ class DiskManager : public MountManager,
   const Filesystem* GetFilesystem(const std::string& filesystem_type) const;
 
   // Determines a device/disk event from a udev block device change.
-  DeviceEvent::EventType ProcessBlockDeviceEvent(const UdevDevice& device,
+  DeviceEvent::EventType ProcessBlockDeviceEvent(UdevDevice* device,
                                                  const char *action);
 
   // Determines a device/disk event from a udev SCSI device change.
-  DeviceEvent::EventType ProcessScsiDeviceEvent(const UdevDevice& device,
+  DeviceEvent::EventType ProcessScsiDeviceEvent(UdevDevice* device,
                                                 const char *action);
 
   // The root udev object.

@@ -4,9 +4,7 @@
 
 #include "cros-disks/disk-manager.h"
 
-#include <blkid/blkid.h>
 #include <libudev.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/mount.h>
 
@@ -36,7 +34,8 @@ static const char kScsiDevice[] = "scsi_device";
 static const char kUdevAddAction[] = "add";
 static const char kUdevChangeAction[] = "change";
 static const char kUdevRemoveAction[] = "remove";
-static const char kNullDeviceFile[] = "/dev/null";
+static const char kPropertyDiskEjectRequest[] = "DISK_EJECT_REQUEST";
+static const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 
 }  // namespace
 
@@ -107,9 +106,11 @@ vector<Disk> DiskManager::EnumerateDisks() const {
 }
 
 DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
-    const UdevDevice& device, const char *action) {
+    UdevDevice* device, const char* action) {
+  CHECK(device) << "Invalid udev device object";
+
   DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  string device_path = device.NativePath();
+  string device_path = device->NativePath();
 
   bool disk_added = false;
   bool disk_removed = false;
@@ -121,17 +122,17 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
     // For removable devices like CD-ROM, an eject request event
     // is treated as disk removal, while a media change event with
     // media available is treated as disk insertion.
-    if (device.IsPropertyTrue("DISK_EJECT_REQUEST")) {
+    if (device->IsPropertyTrue(kPropertyDiskEjectRequest)) {
       disk_removed = true;
-    } else if (device.IsPropertyTrue("DISK_MEDIA_CHANGE")) {
-      if (device.IsMediaAvailable()) {
+    } else if (device->IsPropertyTrue(kPropertyDiskMediaChange)) {
+      if (device->IsMediaAvailable()) {
         disk_added = true;
       }
     }
   }
 
   if (disk_added) {
-    if (device.IsAutoMountable()) {
+    if (device->IsAutoMountable()) {
       set<string>::const_iterator disk_iter =
           disks_detected_.find(device_path);
       if (disk_iter != disks_detected_.end()) {
@@ -150,9 +151,11 @@ DeviceEvent::EventType DiskManager::ProcessBlockDeviceEvent(
 }
 
 DeviceEvent::EventType DiskManager::ProcessScsiDeviceEvent(
-    const UdevDevice& device, const char *action) {
+    UdevDevice* device, const char* action) {
+  CHECK(device) << "Invalid udev device object";
+
   DeviceEvent::EventType event_type = DeviceEvent::kIgnored;
-  string device_path = device.NativePath();
+  string device_path = device->NativePath();
 
   set<string>::const_iterator device_iter;
   if (strcmp(action, kUdevAddAction) == 0) {
@@ -199,9 +202,9 @@ bool DiskManager::GetDeviceEvent(DeviceEvent* event) {
   // udev_monitor_ only monitors block or scsi device changes, so
   // subsystem is either "block" or "scsi".
   if (strcmp(subsystem, kBlockSubsystem) == 0) {
-    event->event_type = ProcessBlockDeviceEvent(udev, action);
+    event->event_type = ProcessBlockDeviceEvent(&udev, action);
   } else {  // strcmp(subsystem, kScsiSubsystem) == 0
-    event->event_type = ProcessScsiDeviceEvent(udev, action);
+    event->event_type = ProcessScsiDeviceEvent(&udev, action);
   }
 
   udev_device_unref(dev);
@@ -260,28 +263,6 @@ const Filesystem* DiskManager::GetFilesystem(
     return NULL;
 
   return &filesystem_iterator->second;
-}
-
-string DiskManager::GetFilesystemTypeOfDevice(const string& device_path) {
-  string filesystem_type;
-  blkid_cache blkid_cache = NULL;
-  // No cache file is used as disk manager should always query information
-  // from the device, i.e. setting cache file to /dev/null.
-  if (blkid_get_cache(&blkid_cache, kNullDeviceFile) == 0) {
-    blkid_dev dev =
-        blkid_get_dev(blkid_cache, device_path.c_str(), BLKID_DEV_NORMAL);
-    if (dev) {
-      char *type = blkid_get_tag_value(blkid_cache, "TYPE",
-                                       device_path.c_str());
-      if (type) {
-        filesystem_type = type;
-        free(type);
-      }
-    }
-    // To deallocate the cache, it needs to call blkid_put_cache.
-    blkid_put_cache(blkid_cache);
-  }
-  return filesystem_type;
 }
 
 void DiskManager::RegisterDefaultFilesystems() {
@@ -405,9 +386,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
     return kMountErrorInvalidDevicePath;
   }
 
-  // If no explicit filesystem type is given, try to determine it via blkid.
   string device_filesystem_type = filesystem_type.empty() ?
-      GetFilesystemTypeOfDevice(device_file) : filesystem_type;
+      disk.filesystem_type() : filesystem_type;
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
                << source_path << "'";

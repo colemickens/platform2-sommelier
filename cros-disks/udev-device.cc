@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <libudev.h>
+#include <stdlib.h>
 #include <sys/statvfs.h>
 
 #include <base/logging.h>
@@ -21,15 +22,17 @@ using std::vector;
 
 namespace {
 
+static const char kNullDeviceFile[] = "/dev/null";
 static const char kAttributePartition[] = "partition";
 static const char kAttributeRange[] = "range";
 static const char kAttributeReadOnly[] = "ro";
 static const char kAttributeRemovable[] = "removable";
 static const char kAttributeSize[] = "size";
+static const char kPropertyBlkIdFilesystemType[] = "TYPE";
+static const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
+static const char kPropertyBlkIdFilesystemUUID[] = "UUID";
 static const char kPropertyCDROM[] = "ID_CDROM";
 static const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
-static const char kPropertyFilesystemLabel[] = "ID_FS_LABEL";
-static const char kPropertyFilesystemUUID[] = "ID_FS_UUID";
 static const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
 static const char kPropertyModel[] = "ID_MODEL";
 static const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
@@ -45,13 +48,17 @@ static const char* kNonAutoMountableFilesystemLabels[] = {
 namespace cros_disks {
 
 UdevDevice::UdevDevice(struct udev_device *dev)
-    : dev_(dev) {
-
+    : dev_(dev),
+      blkid_cache_(NULL) {
   CHECK(dev_) << "Invalid udev device";
   udev_device_ref(dev_);
 }
 
 UdevDevice::~UdevDevice() {
+  if (blkid_cache_) {
+    // It needs to call blkid_put_cache to deallocate the blkid cache.
+    blkid_put_cache(blkid_cache_);
+  }
   udev_device_unref(dev_);
 }
 
@@ -87,6 +94,26 @@ bool UdevDevice::IsPropertyTrue(const char *key) const {
 bool UdevDevice::HasProperty(const char *key) const {
   const char *value = udev_device_get_property_value(dev_, key);
   return value != NULL;
+}
+
+string UdevDevice::GetPropertyFromBlkId(const char *key) {
+  string value;
+  const char *dev_file = udev_device_get_devnode(dev_);
+  if (dev_file) {
+    // No cache file is used as it should always query information from
+    // the device, i.e. setting cache file to /dev/null.
+    if (blkid_cache_ || blkid_get_cache(&blkid_cache_, kNullDeviceFile) == 0) {
+      blkid_dev dev = blkid_get_dev(blkid_cache_, dev_file, BLKID_DEV_NORMAL);
+      if (dev) {
+        char *tag_value = blkid_get_tag_value(blkid_cache_, key, dev_file);
+        if (tag_value) {
+          value = tag_value;
+          free(tag_value);
+        }
+      }
+    }
+  }
+  return value;
 }
 
 void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
@@ -148,7 +175,7 @@ bool UdevDevice::IsMediaAvailable() const {
   return is_media_available;
 }
 
-bool UdevDevice::IsAutoMountable() const {
+bool UdevDevice::IsAutoMountable() {
   if (IsOnBootDevice() || IsVirtual() || !IsOnRemovableDevice())
     return false;
 
@@ -160,7 +187,7 @@ bool UdevDevice::IsAutoMountable() const {
   // TODO(benchan): Find a better way to filter out Chrome OS specific
   // partitions instead of excluding partitions with certain labels
   // (e.g. C-ROOT, C-STATE).
-  string filesystem_label = GetProperty(kPropertyFilesystemLabel);
+  string filesystem_label = GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel);
   if (!filesystem_label.empty()) {
     for (const char** label = kNonAutoMountableFilesystemLabels;
         *label; ++label) {
@@ -237,7 +264,7 @@ vector<string> UdevDevice::GetMountPaths(const string& device_path) {
   return vector<string>();
 }
 
-Disk UdevDevice::ToDisk() const {
+Disk UdevDevice::ToDisk() {
   Disk disk;
 
   disk.set_is_auto_mountable(IsAutoMountable());
@@ -250,8 +277,9 @@ Disk UdevDevice::ToDisk() const {
   disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_is_virtual(IsVirtual());
   disk.set_drive_model(GetProperty(kPropertyModel));
-  disk.set_uuid(GetProperty(kPropertyFilesystemUUID));
-  disk.set_label(GetProperty(kPropertyFilesystemLabel));
+  disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
+  disk.set_uuid(GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
+  disk.set_label(GetPropertyFromBlkId(kPropertyBlkIdFilesystemLabel));
   disk.set_native_path(NativePath());
 
   const char *dev_file = udev_device_get_devnode(dev_);

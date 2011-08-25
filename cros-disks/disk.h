@@ -91,6 +91,11 @@ class Disk {
     device_file_ = device_file;
   }
 
+  std::string filesystem_type() const { return filesystem_type_; }
+  void set_filesystem_type(const std::string& filesystem_type) {
+    filesystem_type_ = filesystem_type;
+  }
+
   std::string uuid() const { return uuid_; }
   void set_uuid(const std::string& uuid) { uuid_ = uuid; }
 
@@ -126,6 +131,7 @@ class Disk {
   std::vector<std::string> mount_paths_;
   std::string native_path_;
   std::string device_file_;
+  std::string filesystem_type_;
   std::string uuid_;
   std::string label_;
   std::string drive_model_;
