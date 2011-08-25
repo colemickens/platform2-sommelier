@@ -56,7 +56,7 @@ class Manager {
                            const ServiceRefPtr &to_move);
 
   void RegisterDevice(const DeviceRefPtr &to_manage);
-  void DeregisterDevice(const DeviceConstRefPtr &to_forget);
+  void DeregisterDevice(const DeviceRefPtr &to_forget);
 
   void RegisterService(const ServiceRefPtr &to_manage);
   void DeregisterService(const ServiceConstRefPtr &to_forget);

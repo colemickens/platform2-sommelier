@@ -149,14 +149,17 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
     to_manage->Start();
 }
 
-void Manager::DeregisterDevice(const DeviceConstRefPtr &to_forget) {
+void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_forget.get() == it->get()) {
+      VLOG(2) << "Deregistered device: " << to_forget->UniqueName();
+      to_forget->Stop();
       devices_.erase(it);
       return;
     }
   }
+  VLOG(2) << __func__ << " unknown device: " << to_forget->UniqueName();
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {

@@ -102,9 +102,11 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ASSERT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 
+  EXPECT_CALL(*mock_device_.get(), Stop());
   manager_.DeregisterDevice(mock_device_.get());
   EXPECT_FALSE(IsDeviceRegistered(mock_device_, Device::kEthernet));
 
+  EXPECT_CALL(*mock_device2_.get(), Stop());
   manager_.DeregisterDevice(mock_device2_.get());
   EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 }
