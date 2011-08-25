@@ -147,7 +147,10 @@ void RTNLHandler::SetInterfaceFlags(int interface_index, unsigned int flags,
 void RTNLHandler::RequestDump(int request_flags) {
   request_flags_ |= request_flags;
 
-  VLOG(2) << "RTNLHandler got request to dump " << request_flags;
+  VLOG(2) << "RTNLHandler got request to dump "
+          << std::showbase << std::hex
+          << request_flags
+          << std::dec << std::noshowbase;
 
   if (!in_request_ && sockets_)
     NextRequest(request_sequence_);
@@ -169,7 +172,9 @@ void RTNLHandler::NextRequest(uint32_t seq) {
   int flag = 0;
 
   VLOG(2) << "RTNLHandler nextrequest " << seq << " " << request_sequence_
-          << " " << request_flags_;
+          << std::showbase << std::hex
+          << " " << request_flags_
+          << std::dec << std::noshowbase;
 
   if (seq != request_sequence_)
     return;

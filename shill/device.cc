@@ -124,8 +124,10 @@ bool Device::TechnologyIs(const Technology type) const {
 }
 
 void Device::LinkEvent(unsigned flags, unsigned change) {
-  VLOG(2) << "Device " << link_name_ << " flags " << flags << " changed "
-          << change;
+  VLOG(2) << "Device " << link_name_
+          << std::showbase << std::hex
+          << " flags " << flags << " changed " << change
+          << std::dec << std::noshowbase;
 }
 
 void Device::Scan() {

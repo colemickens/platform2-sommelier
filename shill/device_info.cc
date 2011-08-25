@@ -144,7 +144,9 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
   VLOG(2) << __func__ << "(index=" << dev_index
-          << ", flags=" << flags << ", change=" << change << ")";
+          << std::showbase << std::hex
+          << ", flags=" << flags << ", change=" << change << ")"
+          << std::dec << std::noshowbase;
   infos_[dev_index].flags = flags;
 
   DeviceRefPtr device = GetDevice(dev_index);
@@ -198,6 +200,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 }
 
 void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
+  VLOG(2) << __func__ << "(index=" << msg.interface_index() << ")";
+
   DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
          msg.mode() == RTNLMessage::kMessageModeDelete);
   RemoveInfo(msg.interface_index());
@@ -242,6 +246,8 @@ void DeviceInfo::RemoveInfo(int interface_index) {
       manager_->DeregisterDevice(iter->second.device);
     }
     infos_.erase(iter);
+  } else {
+    VLOG(2) << __func__ << "unknown device index: " << interface_index;
   }
 }
 
