@@ -336,6 +336,7 @@ void Cellular::Stop() {
   cdma_proxy_.reset();
   manager_->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
+  SelectService(NULL);
   SetState(kStateDisabled);
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
   Device::Stop();
@@ -452,7 +453,6 @@ void Cellular::GetCDMARegistrationState() {
                                     &cdma_.registration_state_evdo);
   VLOG(2) << "CDMA Registration: 1x(" << cdma_.registration_state_1x
           << ") EVDO(" << cdma_.registration_state_evdo << ")";
-  // TODO(petkov): handle_reported_connect?
 }
 
 void Cellular::GetGSMRegistrationState() {
@@ -624,10 +624,16 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SetState(kStateLinked);
     manager_->RegisterService(service_);
     // TODO(petkov): For GSM, remember the APN.
-    LOG_IF(ERROR, !AcquireDHCPConfig()) << "Unable to acquire DHCP config.";
+    if (AcquireDHCPConfig()) {
+      SelectService(service_);
+      SetServiceState(Service::kStateConfiguring);
+    } else {
+      LOG(ERROR) << "Unable to acquire DHCP config.";
+    }
   } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
     SetState(kStateConnected);
     manager_->DeregisterService(service_);
+    SelectService(NULL);
     DestroyIPConfig();
   }
 }

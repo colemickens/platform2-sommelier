@@ -390,9 +390,12 @@ TEST_F(CellularTest, StartLinked) {
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
+  EXPECT_CALL(manager_, UpdateService(_)).Times(2);
   device_->Start();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateLinked, device_->state_);
+  EXPECT_EQ(Service::kStateConfiguring, device_->service_->state());
+  device_->SelectService(NULL);
 }
 
 TEST_F(CellularTest, InitProxiesCDMA) {
