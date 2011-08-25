@@ -19,22 +19,6 @@
       <tp:member name="DeviceIsReadOnly" type="b"> </tp:member>
       <tp:member name="DeviceSize" type="t"> </tp:member>
     </tp:struct>
-    <method name="FilesystemMount">
-      <arg name="devicePath" type="s" direction="in">
-      </arg>
-      <arg name="filesystemType" type="s" direction="in">
-      </arg>
-      <arg name="mountOptions" type="as" direction="in">
-      </arg>
-      <arg name="mountPath" type="s" direction="out">
-      </arg>
-    </method>
-    <method name="FilesystemUnmount">
-      <arg name="devicePath" type="s" direction="in">
-      </arg>
-      <arg name="mountOptions" type="as" direction="in">
-      </arg>
-    </method>
     <method name="Mount">
       <arg name="path" type="s" direction="in">
       </arg>
@@ -73,12 +57,6 @@
           This variable indicates that the formatting was succesfully
           initialized, rather than successfully finished.
         </tp:docstring>
-      </arg>
-    </method>
-    <method name="GetDeviceFilesystem">
-      <arg name="devicePath" type="s" direction="in">
-      </arg>
-      <arg name="result" type="s" direction="out">
       </arg>
     </method>
     <method name="IsAlive">

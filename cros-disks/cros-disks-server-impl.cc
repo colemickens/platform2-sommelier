@@ -58,11 +58,6 @@ bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
   return true;
 }
 
-string CrosDisksServer::GetDeviceFilesystem(const string& device_path,
-                                            DBus::Error& error) {  // NOLINT
-  return disk_manager_->GetFilesystemTypeOfDevice(device_path);
-}
-
 void CrosDisksServer::SignalFormattingFinished(const string& device_path,
                                                int status) {
   if (status) {
@@ -85,34 +80,6 @@ bool CrosDisksServer::FormatDevice(const string& device_path,
   return true;
 }
 
-// TODO(benchan): Deprecate this method.
-string CrosDisksServer::FilesystemMount(const string& device_path,
-                                        const string& filesystem_type,
-                                        const vector<string>& mount_options,
-                                        DBus::Error& error) {  // NOLINT
-  string mount_path;
-  if (disk_manager_->Mount(device_path, filesystem_type, mount_options,
-                           &mount_path) == kMountErrorNone) {
-    DiskChanged(device_path);
-  } else {
-    string message = "Could not mount device " + device_path;
-    LOG(ERROR) << message;
-    error.set(kServiceErrorName, message.c_str());
-  }
-  return mount_path;
-}
-
-// TODO(benchan): Deprecate this method.
-void CrosDisksServer::FilesystemUnmount(const string& device_path,
-                                        const vector<string>& mount_options,
-                                        DBus::Error& error) {  // NOLINT
-  if (disk_manager_->Unmount(device_path, mount_options) != kMountErrorNone) {
-    string message = "Could not unmount device " + device_path;
-    LOG(ERROR) << message;
-    error.set(kServiceErrorName, message.c_str());
-  }
-}
-
 void CrosDisksServer::Mount(const string& path,
                             const string& filesystem_type,
                             const vector<string>& options,
@@ -131,11 +98,7 @@ void CrosDisksServer::Mount(const string& path,
     }
   }
 
-  if (error_type == kMountErrorNone) {
-    // TODO(benchan): Remove this DiskChanged signal when UI
-    // no longer requires it.
-    DiskChanged(path);
-  } else {
+  if (error_type != kMountErrorNone) {
     LOG(ERROR) << "Failed to mount '" << path << "'";
   }
   MountCompleted(error_type, path, source_type, mount_path);

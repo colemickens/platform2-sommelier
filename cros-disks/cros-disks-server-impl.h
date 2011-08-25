@@ -58,11 +58,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   virtual void SignalFormattingFinished(const std::string& device_path,
       int status);
 
-  // Returns filesystem of a device. In case of any error (unrecognised device,
-  // unrecognised file system returns empty string
-  virtual std::string GetDeviceFilesystem(const std::string& device_path,
-      ::DBus::Error &error);  // NOLINT
-
   // A method for asynchronous formating device using specified file system.
   // Assumes device path is vaild (should it be invaild singal
   // FormattingFinished(false) will be sent)
@@ -73,12 +68,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // A method for checking if the daemon is running. Always returns true.
   virtual bool IsAlive(DBus::Error& error);  // NOLINT
 
-  // TODO(benchan): Deprecate this method.
-  // Unmounts a device when invoked.
-  virtual void FilesystemUnmount(const std::string& device_path,
-      const std::vector<std::string>& mount_options,
-      DBus::Error& error);  // NOLINT
-
   // Mounts a path when invoked.
   virtual void Mount(const std::string& path,
       const std::string& filesystem_type,
@@ -88,13 +77,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // Unmounts a path when invoked.
   virtual void Unmount(const std::string& path,
       const std::vector<std::string>& options,
-      DBus::Error& error);  // NOLINT
-
-  // TODO(benchan): Deprecate this method.
-  // Mounts a device when invoked.
-  virtual std::string FilesystemMount(const std::string& device_path,
-      const std::string& filesystem_type,
-      const std::vector<std::string>& mount_options,
       DBus::Error& error);  // NOLINT
 
   // Returns a list of device sysfs paths for all disk devices attached to
