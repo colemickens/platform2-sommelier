@@ -39,10 +39,6 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              address,
              interface_index),
       service_registered_(false),
-      service_(new EthernetService(control_interface,
-                                   dispatcher,
-                                   manager,
-                                   this)),
       link_up_(false) {
   VLOG(2) << "Ethernet device " << link_name << " initialized.";
 }
@@ -52,6 +48,10 @@ Ethernet::~Ethernet() {
 }
 
 void Ethernet::Start() {
+  service_ = new EthernetService(control_interface(),
+                                 dispatcher(),
+                                 manager(),
+                                 this);
   Device::Start();
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);
@@ -59,6 +59,7 @@ void Ethernet::Start() {
 
 void Ethernet::Stop() {
   manager()->DeregisterService(service_);
+  service_ = NULL;
   DestroyIPConfig();
   Device::Stop();
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), 0, IFF_UP);

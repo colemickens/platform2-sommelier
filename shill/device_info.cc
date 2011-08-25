@@ -210,6 +210,10 @@ void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
 
   DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
          msg.mode() == RTNLMessage::kMessageModeDelete);
+  VLOG(2) << __func__ << "(index=" << msg.interface_index()
+          << std::showbase << std::hex
+          << ", flags=" << msg.link_status().flags
+          << ", change=" << msg.link_status().change << ")";
   RemoveInfo(msg.interface_index());
 }
 
