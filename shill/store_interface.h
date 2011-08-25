@@ -16,18 +16,6 @@ class StoreInterface {
  public:
   virtual ~StoreInterface() {}
 
-  // Opens the store. Returns true on success. This method must be invoked
-  // before using any of the getters or setters. This method is not required
-  // complete gracefully if invoked on a store that has been opened already but
-  // not closed yet.
-  virtual bool Open() = 0;
-
-  // Closes the store and flushes it to persistent storage. Returns true on
-  // success. Note that the store is considered closed even if Close returns
-  // false. This method is not required to complete gracefully if invoked on a
-  // store that has not been opened successfully or has been closed already.
-  virtual bool Close() = 0;
-
   // Returns a set of all groups contained in the store.
   virtual std::set<std::string> GetGroups() = 0;
 

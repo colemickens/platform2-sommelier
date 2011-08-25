@@ -23,6 +23,7 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/key_file_store.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/resolver.h"
@@ -47,7 +48,7 @@ Manager::Manager(ControlInterface *control_interface,
     device_info_(control_interface, dispatcher, this),
     modem_info_(control_interface, dispatcher, this, glib),
     running_(false),
-    ephemeral_profile_(new EphemeralProfile(control_interface, glib, this)),
+    ephemeral_profile_(new EphemeralProfile(control_interface, this)),
     control_interface_(control_interface),
     glib_(glib) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
@@ -86,7 +87,6 @@ Manager::Manager(ControlInterface *control_interface,
   // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kProfilesProperty);
   profiles_.push_back(new DefaultProfile(control_interface_,
-                                         glib_,
                                          this,
                                          storage_path_,
                                          props_));
@@ -94,11 +94,7 @@ Manager::Manager(ControlInterface *control_interface,
 }
 
 Manager::~Manager() {
-  vector<ProfileRefPtr>::iterator it;
-  for (it = profiles_.begin(); it != profiles_.end(); ++it) {
-    (*it)->Finalize();
-  }
-  ephemeral_profile_->Finalize();
+  profiles_.clear();
 }
 
 void Manager::AddDeviceToBlackList(const string &device_name) {
@@ -121,6 +117,22 @@ void Manager::Start() {
 
 void Manager::Stop() {
   running_ = false;
+  // Persist profile, device, service information to disk.
+  vector<ProfileRefPtr>::iterator it;
+  for (it = profiles_.begin(); it != profiles_.end(); ++it) {
+    KeyFileStore storage(glib_);
+    FilePath profile_path;
+    CHECK((*it)->GetStoragePath(&profile_path));
+    storage.set_path(profile_path);
+    if (storage.Open()) {
+      (*it)->Finalize(&storage);
+      storage.Close();
+    } else {
+      LOG(ERROR) << "Could not open storage at " << profile_path.value();
+    }
+  }
+  ephemeral_profile_->Finalize(NULL);
+
   adaptor_->UpdateRunning();
   modem_info_.Stop();
   device_info_.Stop();

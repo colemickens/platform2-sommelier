@@ -62,24 +62,30 @@ const ::DBus::Variant PropertyStoreTest::kUint32V =
     DBusAdaptor::Uint32ToVariant(0);
 
 PropertyStoreTest::PropertyStoreTest()
-    : manager_(&control_interface_,
+    : invalid_args_(Error::GetName(Error::kInvalidArguments)),
+      invalid_prop_(Error::GetName(Error::kInvalidProperty)),
+      path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
+      manager_(&control_interface_,
                &dispatcher_,
                &glib_,
-               run_dir_.path().value(),
-               storage_dir_.path().value(),
-               string()),
-      invalid_args_(Error::GetName(Error::kInvalidArguments)),
-      invalid_prop_(Error::GetName(Error::kInvalidProperty)) {
+               run_path(),
+               storage_path(),
+               string()) {
 }
 
 PropertyStoreTest::~PropertyStoreTest() {}
+
+void PropertyStoreTest::SetUp() {
+  ASSERT_FALSE(run_path().empty());
+  ASSERT_FALSE(storage_path().empty());
+}
 
 TEST_P(PropertyStoreTest, TestProperty) {
   // Ensure that an attempt to write unknown properties returns InvalidProperty.
   PropertyStore store;
   ::DBus::Error error;
   EXPECT_FALSE(DBusAdaptor::DispatchOnType(&store, "", GetParam(), &error));
-  EXPECT_EQ(invalid_prop_, error.name());
+  EXPECT_EQ(invalid_prop(), error.name());
 }
 
 INSTANTIATE_TEST_CASE_P(

@@ -52,6 +52,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
 
   hex_ssid_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
+  set_name(name() +
+           "_" +
+           string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size()));
+
   // TODO(quiche): set based on security properties
   need_passphrase_ = false;
   // TODO(quiche): figure out when to set true
@@ -76,10 +80,10 @@ void WiFiService::Disconnect() {
   // XXX remove from favorite networks list?
 }
 
-string WiFiService::GetStorageIdentifier(const std::string &mac) {
+string WiFiService::GetStorageIdentifier() {
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                flimflam::kTypeWifi,
-                                               mac.c_str(),
+                                               wifi_->address().c_str(),
                                                hex_ssid_.c_str(),
                                                mode_.c_str(),
                                                security_.c_str()));

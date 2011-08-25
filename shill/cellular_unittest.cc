@@ -91,7 +91,7 @@ TEST_F(CellularPropertyTest, Dispatch) {
                                              flimflam::kAddressProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
@@ -99,7 +99,7 @@ TEST_F(CellularPropertyTest, Dispatch) {
                                              flimflam::kCarrierProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
@@ -107,7 +107,7 @@ TEST_F(CellularPropertyTest, Dispatch) {
                                              flimflam::kPRLVersionProperty,
                                              PropertyStoreTest::kInt16V,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
 }
 

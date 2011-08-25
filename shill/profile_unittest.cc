@@ -12,12 +12,15 @@
 
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
+#include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 
 using std::set;
 using std::string;
 using std::vector;
+using testing::_;
 using testing::Return;
+using testing::SetArgumentPointee;
 using testing::StrictMock;
 
 namespace shill {
@@ -25,11 +28,18 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest()
-      : profile_(new MockProfile(&control_interface_, &glib_, &manager_, "")) {
+      : profile_(new MockProfile(&control_interface_, manager(), "")) {
+  }
+
+  MockService *CreateMockService() {
+    return new StrictMock<MockService>(&control_interface_,
+                                       &dispatcher_,
+                                       manager());
   }
 
  protected:
-  ProfileRefPtr profile_;
+  MockStore store_;
+  scoped_refptr<MockProfile> profile_;
 };
 
 TEST_F(ProfileTest, IsValidIdentifierToken) {
@@ -80,10 +90,10 @@ TEST_F(ProfileTest, GetFriendlyName) {
   Profile::Identifier id;
   id.identifier = kIdentifier;
   ProfileRefPtr profile(
-      new Profile(&control_interface_, &glib_, &manager_, id, "", false));
+      new Profile(&control_interface_, manager(), id, "", false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(&control_interface_, &glib_, &manager_, id, "", false);
+  profile = new Profile(&control_interface_, manager(), id, "", false);
   EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
@@ -95,11 +105,11 @@ TEST_F(ProfileTest, GetStoragePath) {
   Profile::Identifier id;
   id.identifier = kIdentifier;
   ProfileRefPtr profile(
-      new Profile(&control_interface_, &glib_, &manager_, id, "", false));
+      new Profile(&control_interface_, manager(), id, "", false));
   EXPECT_FALSE(profile->GetStoragePath(&path));
   id.user = kUser;
   profile =
-      new Profile(&control_interface_, &glib_, &manager_, id, kFormat, false);
+      new Profile(&control_interface_, manager(), id, kFormat, false);
   EXPECT_TRUE(profile->GetStoragePath(&path));
   string suffix = base::StringPrintf("/%s.profile", kIdentifier);
   EXPECT_EQ(base::StringPrintf(kFormat, kUser) + suffix, path.value());
@@ -109,14 +119,8 @@ TEST_F(ProfileTest, ServiceManagement) {
   string service1_name;
   string service2_name;
   {
-    ServiceRefPtr service1(
-        new StrictMock<MockService>(&control_interface_,
-                                    &dispatcher_,
-                                    &manager_));
-    ServiceRefPtr service2(
-        new StrictMock<MockService>(&control_interface_,
-                                    &dispatcher_,
-                                    &manager_));
+    ServiceRefPtr service1(CreateMockService());
+    ServiceRefPtr service2(CreateMockService());
     service1_name = service1->UniqueName();
     service2_name = service2->UniqueName();
     ASSERT_TRUE(profile_->AdoptService(service1));
@@ -136,15 +140,27 @@ TEST_F(ProfileTest, ServiceManagement) {
   ASSERT_TRUE(profile_->FindService(service2_name).get() == NULL);
 }
 
+TEST_F(ProfileTest, Finalize) {
+  scoped_refptr<MockService> service1(CreateMockService());
+  scoped_refptr<MockService> service2(CreateMockService());
+  EXPECT_CALL(*service1.get(), Save(_)).WillOnce(Return(true));
+  EXPECT_CALL(*service2.get(), Save(_)).WillOnce(Return(true));
+
+  ASSERT_TRUE(profile_->AdoptService(service1));
+  ASSERT_TRUE(profile_->AdoptService(service2));
+
+  profile_->Finalize(&store_);
+}
+
 TEST_F(ProfileTest, EntryEnumeration) {
   scoped_refptr<MockService> service1(
       new StrictMock<MockService>(&control_interface_,
                                   &dispatcher_,
-                                  &manager_));
+                                  manager()));
   scoped_refptr<MockService> service2(
       new StrictMock<MockService>(&control_interface_,
                                   &dispatcher_,
-                                  &manager_));
+                                  manager()));
   string service1_name(service1->UniqueName());
   string service2_name(service2->UniqueName());
 

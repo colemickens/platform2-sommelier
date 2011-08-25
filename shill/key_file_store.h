@@ -25,9 +25,20 @@ class KeyFileStore : public StoreInterface {
   void set_path(const FilePath &path) { path_ = path; }
   const FilePath &path() const { return path_; }
 
+  // Opens the store. Returns true on success. This method must be
+  // invoked before using any of the getters or setters.
+  // This method does not complete gracefully if invoked on a store
+  // that has been opened already but not closed yet.
+  bool Open();
+
+  // Closes the store and flushes it to persistent storage. Returns true on
+  // success. Note that the store is considered closed even if Close returns
+  // false.
+  // This method does not complete gracefully if invoked on a store
+  // that has not been opened successfully or has been closed already.
+  bool Close();
+
   // Inherited from StoreInterface.
-  virtual bool Open();
-  virtual bool Close();
   virtual std::set<std::string> GetGroups();
   virtual bool ContainsGroup(const std::string &group);
   virtual bool DeleteKey(const std::string &group, const std::string &key);

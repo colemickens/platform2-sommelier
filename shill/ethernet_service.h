@@ -30,7 +30,7 @@ class EthernetService : public Service {
   virtual void Disconnect();
 
   // ethernet_<MAC>
-  virtual std::string GetStorageIdentifier(const std::string &mac);
+  virtual std::string GetStorageIdentifier();
 
  private:
   static const char kServiceType[];

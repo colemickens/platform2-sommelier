@@ -107,7 +107,7 @@ TEST_F(DeviceTest, Dispatch) {
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
                                            &error));
-  EXPECT_EQ(invalid_args_, error.name());
+  EXPECT_EQ(invalid_args(), error.name());
 }
 
 TEST_F(DeviceTest, TechnologyIs) {
@@ -177,7 +177,7 @@ TEST_F(DeviceTest, SelectedService) {
   scoped_refptr<MockService> service(
       new StrictMock<MockService>(&control_interface_,
                                   &dispatcher_,
-                                  &manager_));
+                                  manager()));
   device_->SelectService(service);
   EXPECT_TRUE(device_->selected_service_.get() == service.get());
 

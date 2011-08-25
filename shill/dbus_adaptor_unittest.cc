@@ -55,13 +55,13 @@ class DBusAdaptorTest : public PropertyStoreTest {
         uint32_v_(DBusAdaptor::Uint32ToVariant(ex_uint32_)),
         device_(new MockDevice(&control_interface_,
                                &dispatcher_,
-                               &manager_,
+                               manager(),
                                "mock",
                                "addr0",
                                0)),
         service_(new MockService(&control_interface_,
                                  &dispatcher_,
-                                 &manager_)) {
+                                 manager())) {
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
 

@@ -343,7 +343,7 @@ TEST_F(DHCPConfigTest, Dispatch) {
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
                                            &error));
-  EXPECT_EQ(invalid_args_, error.name());
+  EXPECT_EQ(invalid_args(), error.name());
 }
 
 }  // namespace shill

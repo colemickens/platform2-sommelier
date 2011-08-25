@@ -94,7 +94,7 @@ TEST_F(WiFiPropertyTest, Dispatch) {
                                              flimflam::kScanningProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
 }
 

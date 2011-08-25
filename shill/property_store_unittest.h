@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_temp_dir.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
@@ -46,15 +47,29 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   PropertyStoreTest();
   virtual ~PropertyStoreTest();
 
+  virtual void SetUp();
+
  protected:
-  ScopedTempDir run_dir_;
-  ScopedTempDir storage_dir_;
+  Manager *manager() { return &manager_; }
+
+  const std::string &run_path() const { return path_; }
+  const std::string &storage_path() const { return path_; }
+
+  const std::string &invalid_args() const { return invalid_args_; }
+  const std::string &invalid_prop() const { return invalid_prop_; }
+
+  // TODO(cmasone): make these private as per http://crosbug.com/19573
   MockControl control_interface_;
   EventDispatcher dispatcher_;
-  Manager manager_;
   MockGLib glib_;
-  std::string invalid_args_;
-  std::string invalid_prop_;
+
+ private:
+  const std::string invalid_args_;
+  const std::string invalid_prop_;
+  ScopedTempDir dir_;
+  const std::string path_;
+  Manager manager_;
+
 };
 
 }  // namespace shill

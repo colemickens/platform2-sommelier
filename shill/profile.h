@@ -12,7 +12,6 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/key_file_store.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
@@ -23,9 +22,9 @@ namespace shill {
 
 class ControlInterface;
 class Error;
-class GLib;
 class Manager;
 class ProfileAdaptorInterface;
+class StoreInterface;
 
 class Profile : public base::RefCounted<Profile> {
  public:
@@ -41,7 +40,6 @@ class Profile : public base::RefCounted<Profile> {
   };
 
   Profile(ControlInterface *control_interface,
-          GLib *glib,
           Manager *manager,
           const Identifier &name,
           const std::string &user_storage_format,
@@ -78,13 +76,17 @@ class Profile : public base::RefCounted<Profile> {
   std::vector<std::string> EnumerateEntries();
 
   // Flush any pending entry info to disk and stop managing service persistence.
-  virtual void Finalize();
+  virtual void Finalize(StoreInterface *storage);
 
   // Parses a profile identifier. There're two acceptable forms of the |raw|
   // identifier: "identifier" and "~user/identifier". Both "user" and
   // "identifier" must be suitable for use in a D-Bus object path. Returns true
   // on success.
   static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
+
+  bool Load(StoreInterface *storage);
+
+  virtual bool Save(StoreInterface *storage);
 
   // Sets |path| to the persistent store file path for a profile identified by
   // |name_|. Returns true on success, and false if unable to determine an
@@ -116,6 +118,9 @@ class Profile : public base::RefCounted<Profile> {
                                   Strings(Profile::*get)(void),
                                   bool(Profile::*set)(const Strings&));
 
+  // Persists |services_| to disk.
+  bool SaveServices(StoreInterface *storage);
+
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
   Manager *manager_;
@@ -126,9 +131,6 @@ class Profile : public base::RefCounted<Profile> {
 
   // Properties to be gotten via PropertyStore calls.
   Identifier name_;
-
-  // Persistent store associated with the profile.
-  KeyFileStore storage_;
 
   // Format string used to generate paths to user profile directories.
   const std::string storage_format_;

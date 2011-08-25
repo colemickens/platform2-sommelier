@@ -14,21 +14,14 @@
 
 namespace shill {
 
-class ControlInterface;
-class GLib;
-class Manager;
-
-MockProfile::MockProfile(ControlInterface *control,
-                         GLib *glib,
-                         Manager *manager)
-    : Profile(control, glib, manager, Identifier("mock"), "", false) {
+MockProfile::MockProfile(ControlInterface *control, Manager *manager)
+    : Profile(control, manager, Identifier("mock"), "", false) {
 }
 
 MockProfile::MockProfile(ControlInterface *control,
-                         GLib *glib,
                          Manager *manager,
                          const std::string &identifier)
-    : Profile(control, glib, manager, Identifier(identifier), "", false) {
+    : Profile(control, manager, Identifier(identifier), "", false) {
 }
 
 MockProfile::~MockProfile() {}

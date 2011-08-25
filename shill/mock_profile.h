@@ -11,21 +11,17 @@
 
 #include "shill/profile.h"
 
-
 namespace shill {
-
-class ControlInterface;
-class GLib;
-class Manager;
 
 class MockProfile : public Profile {
  public:
-  MockProfile(ControlInterface *control, GLib *glib, Manager *manager);
+  MockProfile(ControlInterface *control, Manager *manager);
   MockProfile(ControlInterface *control,
-              GLib *glib,
               Manager *manager,
               const std::string &identifier);
   virtual ~MockProfile();
+
+  MOCK_METHOD1(GetStoragePath, bool(FilePath *));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProfile);

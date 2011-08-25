@@ -30,29 +30,29 @@ using std::string;
 using std::vector;
 
 namespace shill {
-using ::testing::Test;
 using ::testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::Test;
 
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
       : mock_device_(new NiceMock<MockDevice>(&control_interface_,
                                               &dispatcher_,
-                                              &manager_,
+                                              manager(),
                                               "null0",
                                               "addr0",
                                               0)),
         mock_device2_(new NiceMock<MockDevice>(&control_interface_,
                                                &dispatcher_,
-                                               &manager_,
+                                               manager(),
                                                "null2",
                                                "addr2",
                                                2)),
         mock_device3_(new NiceMock<MockDevice>(&control_interface_,
                                                &dispatcher_,
-                                               &manager_,
+                                               manager(),
                                                "null3",
                                                "addr3",
                                                3)) {
@@ -61,7 +61,7 @@ class ManagerTest : public PropertyStoreTest {
 
   bool IsDeviceRegistered(const DeviceRefPtr &device, Device::Technology tech) {
     vector<DeviceRefPtr> devices;
-    manager_.FilterByTechnology(tech, &devices);
+    manager()->FilterByTechnology(tech, &devices);
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
 
@@ -72,8 +72,8 @@ class ManagerTest : public PropertyStoreTest {
 };
 
 TEST_F(ManagerTest, Contains) {
-  EXPECT_TRUE(manager_.store()->Contains(flimflam::kStateProperty));
-  EXPECT_FALSE(manager_.store()->Contains(""));
+  EXPECT_TRUE(manager()->store()->Contains(flimflam::kStateProperty));
+  EXPECT_FALSE(manager()->store()->Contains(""));
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
@@ -84,9 +84,9 @@ TEST_F(ManagerTest, DeviceRegistration) {
   ON_CALL(*mock_device3_.get(), TechnologyIs(Device::kCellular))
       .WillByDefault(Return(true));
 
-  manager_.RegisterDevice(mock_device_);
-  manager_.RegisterDevice(mock_device2_);
-  manager_.RegisterDevice(mock_device3_);
+  manager()->RegisterDevice(mock_device_);
+  manager()->RegisterDevice(mock_device2_);
+  manager()->RegisterDevice(mock_device3_);
 
   EXPECT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
   EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
@@ -99,30 +99,38 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
       .WillByDefault(Return(true));
 
-  manager_.RegisterDevice(mock_device_.get());
-  manager_.RegisterDevice(mock_device2_.get());
+  manager()->RegisterDevice(mock_device_.get());
+  manager()->RegisterDevice(mock_device2_.get());
 
   ASSERT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 
   EXPECT_CALL(*mock_device_.get(), Stop());
-  manager_.DeregisterDevice(mock_device_.get());
+  manager()->DeregisterDevice(mock_device_.get());
   EXPECT_FALSE(IsDeviceRegistered(mock_device_, Device::kEthernet));
 
   EXPECT_CALL(*mock_device2_.get(), Stop());
-  manager_.DeregisterDevice(mock_device2_.get());
+  manager()->DeregisterDevice(mock_device2_.get());
   EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Device::kWifi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
+  // It's much easier and safer to use a real GLib for this test.
+  GLib glib;
+  Manager manager(&control_interface_,
+                  &dispatcher_,
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  string());
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                &manager_));
+                                &manager));
   scoped_refptr<MockService> mock_service2(
       new NiceMock<MockService>(&control_interface_,
                                 &dispatcher_,
-                                &manager_));
+                                &manager));
   string service1_name(mock_service->UniqueName());
   string service2_name(mock_service2->UniqueName());
 
@@ -131,20 +139,22 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
   // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
-  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager_.adaptor_.get()),
+  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager.adaptor_.get()),
   //             EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty, _));
 
-  manager_.RegisterService(mock_service);
-  manager_.RegisterService(mock_service2);
+  manager.RegisterService(mock_service);
+  manager.RegisterService(mock_service2);
 
-  vector<string> rpc_ids = manager_.EnumerateAvailableServices();
+  vector<string> rpc_ids = manager.EnumerateAvailableServices();
   set<string> ids(rpc_ids.begin(), rpc_ids.end());
   EXPECT_EQ(2, ids.size());
   EXPECT_TRUE(ContainsKey(ids, mock_service->GetRpcIdentifier()));
   EXPECT_TRUE(ContainsKey(ids, mock_service2->GetRpcIdentifier()));
 
-  EXPECT_TRUE(manager_.FindService(service1_name).get() != NULL);
-  EXPECT_TRUE(manager_.FindService(service2_name).get() != NULL);
+  EXPECT_TRUE(manager.FindService(service1_name).get() != NULL);
+  EXPECT_TRUE(manager.FindService(service2_name).get() != NULL);
+
+  manager.Stop();
 }
 
 TEST_F(ManagerTest, GetProperties) {
@@ -153,10 +163,10 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     string expected("portal_list");
-    manager_.store()->SetStringProperty(flimflam::kCheckPortalListProperty,
-                                        expected,
-                                        &error);
-    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
+    manager()->store()->SetStringProperty(flimflam::kCheckPortalListProperty,
+                                          expected,
+                                          &error);
+    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kCheckPortalListProperty) == props.end());
     EXPECT_EQ(props[flimflam::kCheckPortalListProperty].reader().get_string(),
               expected);
@@ -164,10 +174,10 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    manager_.store()->SetBoolProperty(flimflam::kOfflineModeProperty,
-                                      expected,
-                                      &error);
-    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
+    manager()->store()->SetBoolProperty(flimflam::kOfflineModeProperty,
+                                        expected,
+                                        &error);
+    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
     EXPECT_EQ(props[flimflam::kOfflineModeProperty].reader().get_bool(),
               expected);
@@ -175,13 +185,13 @@ TEST_F(ManagerTest, GetProperties) {
 }
 
 TEST_F(ManagerTest, GetDevicesProperty) {
-  manager_.RegisterDevice(mock_device_.get());
-  manager_.RegisterDevice(mock_device2_.get());
+  manager()->RegisterDevice(mock_device_.get());
+  manager()->RegisterDevice(mock_device2_.get());
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
     bool expected = true;
-    DBusAdaptor::GetProperties(manager_.store(), &props, &dbus_error);
+    DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
     Strings devices =
         props[flimflam::kDevicesProperty].operator vector<string>();
@@ -190,29 +200,40 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 }
 
 TEST_F(ManagerTest, MoveService) {
+  // It's much easier and safer to use a real GLib for this test.
+  GLib glib;
+  Manager manager(&control_interface_,
+                  &dispatcher_,
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  string());
+
   // I want to ensure that the Profiles are managing this Service object
   // lifetime properly, so I can't hold a ref to it here.
-  ProfileRefPtr profile(
-      new MockProfile(&control_interface_, &glib_, &manager_, ""));
+  ProfileRefPtr profile(new MockProfile(&control_interface_, &manager, ""));
   string service_name;
   {
-    ServiceRefPtr s2(
+    scoped_refptr<MockService> s2(
         new MockService(&control_interface_,
                         &dispatcher_,
-                        &manager_));
+                        &manager));
+    EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));
+
     profile->AdoptService(s2);
     s2->set_profile(profile);
     service_name = s2->UniqueName();
   }
 
   // Now, move the |service| to another profile.
-  manager_.MoveToActiveProfile(profile, profile->FindService(service_name));
+  ASSERT_TRUE(manager.MoveToActiveProfile(profile,
+                                           profile->FindService(service_name)));
 
   // Force destruction of the original Profile, to ensure that the Service
   // is kept alive and populated with data.
   profile = NULL;
   {
-    ServiceRefPtr serv(manager_.ActiveProfile()->FindService(service_name));
+    ServiceRefPtr serv(manager.ActiveProfile()->FindService(service_name));
     ASSERT_TRUE(serv.get() != NULL);
     Error error(Error::kInvalidProperty, "");
     ::DBus::Error dbus_error;
@@ -226,19 +247,20 @@ TEST_F(ManagerTest, MoveService) {
     EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
               expected);
   }
+  manager.Stop();
 }
 
 TEST_F(ManagerTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager_.store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->store(),
                                             flimflam::kOfflineModeProperty,
                                             PropertyStoreTest::kBoolV,
                                             &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager_.store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->store(),
                                             flimflam::kCountryProperty,
                                             PropertyStoreTest::kStringV,
                                             &error));
@@ -246,49 +268,49 @@ TEST_F(ManagerTest, Dispatch) {
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->store(),
                                              flimflam::kCountryProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager_.store(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->store(),
                                              flimflam::kOfflineModeProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
   // Attempt to write R/O property should return InvalidArgs.
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::DispatchOnType(
-        manager_.store(),
+        manager()->store(),
         flimflam::kEnabledTechnologiesProperty,
         PropertyStoreTest::kStringsV,
         &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
 }
 
 TEST_F(ManagerTest, RequestScan) {
   {
     Error error;
-    manager_.RegisterDevice(mock_device_.get());
-    manager_.RegisterDevice(mock_device2_.get());
+    manager()->RegisterDevice(mock_device_.get());
+    manager()->RegisterDevice(mock_device2_.get());
     EXPECT_CALL(*mock_device_, TechnologyIs(Device::kWifi))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_, Scan());
     EXPECT_CALL(*mock_device2_, TechnologyIs(Device::kWifi))
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*mock_device2_, Scan()).Times(0);
-    manager_.RequestScan(flimflam::kTypeWifi, &error);
+    manager()->RequestScan(flimflam::kTypeWifi, &error);
   }
 
   {
     Error error;
-    manager_.RequestScan("bogus_device_type", &error);
+    manager()->RequestScan("bogus_device_type", &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }

@@ -76,6 +76,7 @@ class Device : public base::RefCounted<Device> {
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();
 
+  const std::string &address() const { return hardware_address_; }
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }

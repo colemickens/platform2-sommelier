@@ -52,8 +52,9 @@ std::string EthernetService::GetDeviceRpcId() {
   return ethernet_->GetRpcIdentifier();
 }
 
-string EthernetService::GetStorageIdentifier(const string &mac) {
-  return base::StringPrintf("%s_%s", kServiceType, mac.c_str());
+string EthernetService::GetStorageIdentifier() {
+  return base::StringPrintf("%s_%s",
+                            kServiceType, ethernet_->address().c_str());
 }
 
 }  // namespace shill

@@ -16,11 +16,10 @@ namespace shill {
 const char DefaultProfile::kDefaultId[] = "default";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
-                               GLib *glib,
                                Manager *manager,
                                const FilePath &storage_path,
                                const Manager::Properties &manager_props)
-    : Profile(control, glib, manager, Identifier(kDefaultId), "", true),
+    : Profile(control, manager, Identifier(kDefaultId), "", true),
       storage_path_(storage_path) {
   PropertyStore *store = this->store();
   store->RegisterConstString(flimflam::kCheckPortalListProperty,

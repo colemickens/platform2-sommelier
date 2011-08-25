@@ -13,10 +13,6 @@
 
 namespace shill {
 
-class ControlInterface;
-class EventDispatcher;
-class Manager;
-
 class MockService : public Service {
  public:
   // A constructor for the Service object
@@ -34,7 +30,9 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(failure, ConnectFailure());
   MOCK_METHOD0(GetDeviceRpcId, std::string());
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
-  MOCK_METHOD1(GetStorageIdentifier, std::string(const std::string &));
+  MOCK_METHOD0(GetStorageIdentifier, std::string());
+  MOCK_METHOD1(Load, bool(StoreInterface *));
+  MOCK_METHOD1(Save, bool(StoreInterface *));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockService);

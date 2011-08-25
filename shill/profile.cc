@@ -19,6 +19,7 @@
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
+#include "shill/store_interface.h"
 
 using std::map;
 using std::string;
@@ -27,14 +28,12 @@ using std::vector;
 namespace shill {
 
 Profile::Profile(ControlInterface *control_interface,
-                 GLib *glib,
                  Manager *manager,
                  const Identifier &name,
                  const string &user_storage_format,
                  bool connect_to_rpc)
     : manager_(manager),
       name_(name),
-      storage_(glib),
       storage_format_(user_storage_format) {
   if (connect_to_rpc)
     adaptor_.reset(control_interface->CreateProfileAdaptor(this));
@@ -54,7 +53,9 @@ Profile::Profile(ControlInterface *control_interface,
                              NULL);
 }
 
-Profile::~Profile() {}
+Profile::~Profile() {
+  DCHECK_EQ(services_.size(), 0);
+}
 
 string Profile::GetFriendlyName() {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
@@ -103,8 +104,8 @@ ServiceRefPtr Profile::FindService(const std::string& name) {
   return NULL;
 }
 
-void Profile::Finalize() {
-  // TODO(cmasone): Flush all of |services_| to disk if needed.
+void Profile::Finalize(StoreInterface *storage) {
+  Save(storage);
   services_.clear();
 }
 
@@ -149,6 +150,15 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   return true;
 }
 
+bool Profile::Load(StoreInterface *storage) {
+  return false;
+}
+
+bool Profile::Save(StoreInterface *storage) {
+  // TODO(cmasone): Persist other profile info to disk.
+  return SaveServices(storage);
+}
+
 bool Profile::GetStoragePath(FilePath *path) {
   if (name_.user.empty()) {
     LOG(ERROR) << "Non-default profiles cannot be stored globally.";
@@ -180,6 +190,17 @@ void Profile::HelpRegisterDerivedStrings(const string &name,
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));
+}
+
+bool Profile::SaveServices(StoreInterface *storage) {
+  for (map<string, ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    VLOG(1) << "Saving service named " << it->first;
+    if (!it->second->Save(storage))
+      return false;
+  }
+  return true;
 }
 
 }  // namespace shill

@@ -35,16 +35,22 @@ class WiFiServiceTest : public PropertyStoreTest {
 TEST_F(WiFiServiceTest, StorageId) {
   vector<uint8_t> ssid(5, 0);
   ssid.push_back(0xff);
-
-  WiFiServiceRefPtr wifi = new WiFiService(&control_interface_,
-                                           &dispatcher_,
-                                           &manager_,
-                                           NULL,
-                                           ssid,
-                                           flimflam::kModeManaged,
-                                           "none");
   static const char fake_mac[] = "AaBBcCDDeeFF";
-  string id = wifi->GetStorageIdentifier(fake_mac);
+
+  WiFiRefPtr wifi = new WiFi(&control_interface_,
+                             &dispatcher_,
+                             manager(),
+                             "wifi",
+                             fake_mac,
+                             0);
+  WiFiServiceRefPtr wifi_service = new WiFiService(&control_interface_,
+                                                   &dispatcher_,
+                                                   manager(),
+                                                   wifi,
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   "none");
+  string id = wifi_service->GetStorageIdentifier();
   for (uint i = 0; i < id.length(); ++i) {
     EXPECT_TRUE(id[i] == '_' ||
                 isxdigit(id[i]) ||

@@ -113,15 +113,13 @@ class Service : public base::RefCounted<Service> {
   virtual std::string GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
-  // |mac| is the associated Device's MAC address to be used in the storage id.
-  // We do this for flimflam compatibility, for now.
-  virtual std::string GetStorageIdentifier(const std::string &mac) = 0;
+  virtual std::string GetStorageIdentifier() = 0;
 
   // Loads the service from persistent |storage|. Returns true on success.
-  virtual bool Load(StoreInterface *storage, const std::string &id_suffix);
+  virtual bool Load(StoreInterface *storage);
 
   // Saves the service to persistent |storage|. Returns true on success.
-  virtual bool Save(StoreInterface *storage, const std::string &id_suffix);
+  virtual bool Save(StoreInterface *storage);
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
@@ -130,6 +128,9 @@ class Service : public base::RefCounted<Service> {
   void set_error(const std::string &error) { error_ = error; }
 
   // These are defined in service.cc so that we don't have to include profile.h
+  // TODO(cmasone): right now, these are here only so that we can get the
+  // profile name as a property.  Can we store just the name, and then handle
+  // setting the profile for this service via |manager_|?
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
@@ -138,6 +139,9 @@ class Service : public base::RefCounted<Service> {
  protected:
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
+
+  const std::string &name() const { return name_; }
+  void set_name(const std::string &n) { name_ = n; }
 
   virtual std::string CalculateState();
 
@@ -222,7 +226,7 @@ class Service : public base::RefCounted<Service> {
 
   EventDispatcher *dispatcher_;
   static unsigned int serial_number_;
-  const std::string name_;
+  std::string name_;
   bool available_;
   bool configured_;
   Configuration *configuration_;

@@ -35,7 +35,7 @@ class CellularService : public Service {
   virtual void ActivateCellularModem(const std::string &carrier, Error *error);
 
   // cellular_<MAC>_<Service_Operator_Name>
-  std::string GetStorageIdentifier(const std::string &mac);
+  std::string GetStorageIdentifier();
 
   const std::string &activation_state() const { return activation_state_; }
   void set_activation_state(const std::string &state) {

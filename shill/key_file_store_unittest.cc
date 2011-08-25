@@ -127,7 +127,7 @@ TEST_F(KeyFileStoreTest, DeleteKey) {
                                   kGroup, kKeyDead, kKeyAlive, kValueAlive));
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.DeleteKey(kGroup, kKeyDead));
-  EXPECT_FALSE(store_.DeleteKey(kGroup, "random-key"));
+  EXPECT_TRUE(store_.DeleteKey(kGroup, "random-key"));
   EXPECT_FALSE(store_.DeleteKey("random-group", kKeyAlive));
   ASSERT_TRUE(store_.Close());
   EXPECT_EQ(base::StringPrintf("\n"
@@ -148,7 +148,7 @@ TEST_F(KeyFileStoreTest, DeleteGroup) {
                                   kGroupA, kGroupB, kGroupC));
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.DeleteGroup(kGroupB));
-  EXPECT_FALSE(store_.DeleteGroup("group-d"));
+  EXPECT_TRUE(store_.DeleteGroup("group-d"));
   ASSERT_TRUE(store_.Close());
   EXPECT_EQ(base::StringPrintf("\n"
                                "[%s]\n"
@@ -532,7 +532,7 @@ TEST_F(KeyFileStoreTest, Combo) {
   }
 
   EXPECT_TRUE(store_.DeleteGroup(kGroupA));
-  EXPECT_FALSE(store_.DeleteGroup(kGroupA));
+  EXPECT_TRUE(store_.DeleteGroup(kGroupA));
 
   EXPECT_FALSE(store_.ContainsGroup(kGroupA));
   EXPECT_TRUE(store_.ContainsGroup(kGroupB));
@@ -552,7 +552,7 @@ TEST_F(KeyFileStoreTest, Combo) {
                        vector<string>(1, kValueStringB));
 
   EXPECT_TRUE(store_.DeleteKey(kGroupB, kKeyString));
-  EXPECT_FALSE(store_.DeleteKey(kGroupB, kKeyString));
+  EXPECT_TRUE(store_.DeleteKey(kGroupB, kKeyString));
 
   {
     string value;

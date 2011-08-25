@@ -35,7 +35,7 @@ class WiFiService : public Service {
   virtual void Disconnect();
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
-  std::string GetStorageIdentifier(const std::string &mac);
+  std::string GetStorageIdentifier();
 
   const std::string &mode() const;
   const std::string &key_management() const;

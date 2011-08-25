@@ -25,8 +25,7 @@ class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
       : profile_(new DefaultProfile(&control_interface_,
-                                    &glib_,
-                                    &manager_,
+                                    manager(),
                                     FilePath(kTestStoragePath),
                                     properties_)) {
   }
@@ -37,7 +36,6 @@ class DefaultProfileTest : public PropertyStoreTest {
   static const char kTestStoragePath[];
 
   ProfileRefPtr profile_;
-  GLib glib_;
   Manager::Properties properties_;
 };
 

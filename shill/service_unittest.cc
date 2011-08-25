@@ -53,7 +53,7 @@ class ServiceUnderTest : public Service {
   virtual string CalculateState() { return ""; }
   virtual string GetRpcIdentifier() const { return ServiceMockAdaptor::kRpcId; }
   virtual string GetDeviceRpcId() { return kRpcId; }
-  virtual string GetStorageIdentifier(const string &mac) { return kStorageId; }
+  virtual string GetStorageIdentifier() { return kStorageId; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
@@ -69,7 +69,8 @@ class ServiceTest : public PropertyStoreTest {
         service_(new ServiceUnderTest(&control_interface_,
                                       &dispatcher_,
                                       &mock_manager_)),
-        storage_id_(ServiceUnderTest::kStorageId) {}
+        storage_id_(ServiceUnderTest::kStorageId) {
+  }
 
   virtual ~ServiceTest() {}
 
@@ -164,7 +165,7 @@ TEST_F(ServiceTest, Dispatch) {
                                              flimflam::kFavoriteProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
-    EXPECT_EQ(invalid_args_, error.name());
+    EXPECT_EQ(invalid_args(), error.name());
   }
 }
 
@@ -174,13 +175,13 @@ TEST_F(ServiceTest, Load) {
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(service_->Load(&storage, ""));
+  EXPECT_TRUE(service_->Load(&storage));
 }
 
 TEST_F(ServiceTest, LoadFail) {
   StrictMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(false));
-  EXPECT_FALSE(service_->Load(&storage, ""));
+  EXPECT_FALSE(service_->Load(&storage));
 }
 
 TEST_F(ServiceTest, SaveString) {
@@ -225,7 +226,7 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  EXPECT_TRUE(service_->Save(&storage, ""));
+  EXPECT_TRUE(service_->Save(&storage));
 }
 
 TEST_F(ServiceTest, State) {

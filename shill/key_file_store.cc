@@ -105,7 +105,7 @@ bool KeyFileStore::DeleteKey(const string &group, const string &key) {
   CHECK(key_file_);
   GError *error = NULL;
   glib_->KeyFileRemoveKey(key_file_, group.c_str(), key.c_str(), &error);
-  if (error) {
+  if (error && error->code != G_KEY_FILE_ERROR_KEY_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete (" << group << ":" << key << "): "
                << glib_->ConvertErrorToMessage(error);
     return false;
@@ -117,7 +117,7 @@ bool KeyFileStore::DeleteGroup(const string &group) {
   CHECK(key_file_);
   GError *error = NULL;
   glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
-  if (error) {
+  if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete group " << group << ": "
                << glib_->ConvertErrorToMessage(error);
     return false;

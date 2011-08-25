@@ -188,8 +188,8 @@ string Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-bool Service::Load(StoreInterface *storage, const string &id_suffix) {
-  const string id = GetStorageIdentifier(id_suffix);
+bool Service::Load(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {
     LOG(WARNING) << "Service is not available in the persistent store: " << id;
     return false;
@@ -218,8 +218,8 @@ bool Service::Load(StoreInterface *storage, const string &id_suffix) {
   return true;
 }
 
-bool Service::Save(StoreInterface *storage, const string &id_suffix) {
-  const string id = GetStorageIdentifier(id_suffix);
+bool Service::Save(StoreInterface *storage) {
+  const string id = GetStorageIdentifier();
 
   // TODO(petkov): We could choose to simplify the saving code by removing most
   // conditionals thus saving even default values.

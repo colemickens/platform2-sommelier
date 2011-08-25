@@ -24,12 +24,10 @@ class ControlInterface;
 class DefaultProfile : public Profile {
  public:
   DefaultProfile(ControlInterface *control,
-                 GLib *glib,
                  Manager *manager,
                  const FilePath &storage_path,
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
-
 
   // Sets |path| to the persistent store file path for the default, global
   // profile. Returns true on success, and false if unable to determine an

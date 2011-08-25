@@ -19,15 +19,19 @@ using std::string;
 namespace shill {
 
 EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
-                                   GLib *glib,
                                    Manager *manager)
-    : Profile(control_interface, glib, manager, Identifier(), "", false) {
+    : Profile(control_interface, manager, Identifier(), "", false) {
 }
 
 EphemeralProfile::~EphemeralProfile() {}
 
-void EphemeralProfile::Finalize() {
+void EphemeralProfile::Finalize(StoreInterface *storage) {
   services()->clear();
+}
+
+bool EphemeralProfile::Save(StoreInterface *storage) {
+  NOTREACHED();
+  return false;
 }
 
 }  // namespace shill

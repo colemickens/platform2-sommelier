@@ -57,10 +57,10 @@ void CellularService::ActivateCellularModem(const string &carrier,
   cellular_->Activate(carrier, error);
 }
 
-string CellularService::GetStorageIdentifier(const string &mac) {
+string CellularService::GetStorageIdentifier() {
   string id = base::StringPrintf("%s_%s_%s",
                                  kServiceType,
-                                 mac.c_str(),
+                                 cellular_->address().c_str(),
                                  serving_operator_.GetName().c_str());
   std::replace_if(id.begin(), id.end(), &Service::LegalChar, '_');
   return id;

@@ -19,18 +19,23 @@ namespace shill {
 
 class ControlInterface;
 class Manager;
+class StoreInterface;
 
 // An in-memory profile that is not persisted to disk, but allows the
 // promotion of entries contained herein to the currently active profile.
 class EphemeralProfile : public Profile {
  public:
-  EphemeralProfile(ControlInterface *control_interface,
-                   GLib *glib,
-                   Manager *manager);
+  EphemeralProfile(ControlInterface *control_interface, Manager *manager);
   virtual ~EphemeralProfile();
 
   // Merely stop managing service persistence; flush nothing to disk.
-  virtual void Finalize();
+  virtual void Finalize(StoreInterface *storage);
+
+  // Should not be called.
+  virtual bool Save(StoreInterface *storage);
+
+  // Leaves |path| untouched and returns false.
+  virtual bool GetStoragePath(FilePath *path) { return false; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(EphemeralProfile);
