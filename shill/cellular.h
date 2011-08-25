@@ -14,6 +14,7 @@
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/modem_cdma_proxy_interface.h"
+#include "shill/modem_gsm_network_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_event.h"
@@ -25,6 +26,7 @@ class ModemSimpleProxyInterface;
 
 class Cellular : public Device,
                  public ModemCDMAProxyListener,
+                 public ModemGSMNetworkProxyListener,
                  public ModemProxyListener {
  public:
   enum Type {
@@ -185,10 +187,10 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
-  FRIEND_TEST(CellularTest, Start);
   FRIEND_TEST(CellularTest, StartConnected);
+  FRIEND_TEST(CellularTest, StartCDMARegister);
+  FRIEND_TEST(CellularTest, StartGSM);
   FRIEND_TEST(CellularTest, StartLinked);
-  FRIEND_TEST(CellularTest, StartRegister);
 
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
@@ -264,6 +266,13 @@ class Cellular : public Device,
                                               uint32 state_evdo);
   virtual void OnCDMASignalQualityChanged(uint32 strength);
 
+  // Signal callbacks inherited from ModemGSMNetworkProxyListener.
+  virtual void OnGSMNetworkModeChanged(uint32 mode);
+  virtual void OnGSMRegistrationInfoChanged(uint32 status,
+                                            const std::string &operator_code,
+                                            const std::string &operator_name);
+  virtual void OnGSMSignalQualityChanged(uint32 quality);
+
   // Signal callbacks inherited from ModemProxyListener.
   virtual void OnModemStateChanged(uint32 old_state,
                                    uint32 new_state,
@@ -278,6 +287,7 @@ class Cellular : public Device,
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
   scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
+  scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
 
   CDMA cdma_;
 
@@ -300,6 +310,7 @@ class Cellular : public Device,
   std::string hardware_revision_;
   bool scanning_;
   uint16 scan_interval_;
+  std::string selected_network_;
   std::vector<Network> found_networks_;
   SimLockStatus sim_lock_status_;
   Operator home_provider_;

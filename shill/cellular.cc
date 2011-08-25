@@ -163,9 +163,9 @@ Cellular::Cellular(ControlInterface *control_interface,
       allow_roaming_(false),
       scanning_(false),
       scan_interval_(0) {
+  store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store_.RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store_.RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
-  store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
   store_.RegisterConstString(flimflam::kEsnProperty, &esn_);
   store_.RegisterConstString(flimflam::kFirmwareRevisionProperty,
@@ -182,6 +182,8 @@ Cellular::Cellular(ControlInterface *control_interface,
   store_.RegisterConstString(flimflam::kMinProperty, &min_);
   store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
   store_.RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
+  store_.RegisterConstString(flimflam::kSelectedNetworkProperty,
+                             &selected_network_);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
@@ -351,7 +353,9 @@ void Cellular::InitProxies() {
           dbus_path_, dbus_owner_));
   switch (type_) {
     case kTypeGSM:
-      NOTIMPLEMENTED();
+      gsm_network_proxy_.reset(
+          ProxyFactory::factory()->CreateModemGSMNetworkProxy(
+              this, dbus_path_, dbus_owner_));
       break;
     case kTypeCDMA:
       cdma_proxy_.reset(
@@ -419,8 +423,10 @@ void Cellular::GetGSMProperties() {
 }
 
 void Cellular::RegisterGSMModem() {
-  // TODO(petkov): Invoke ModemManager.Modem.Gsm.Network.Register.
-  NOTIMPLEMENTED();
+  LOG(INFO) << "Registering on: "
+            << (selected_network_.empty() ? "home network" : selected_network_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  gsm_network_proxy_->Register(selected_network_);
 }
 
 void Cellular::GetModemInfo() {
@@ -710,6 +716,23 @@ void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,
 void Cellular::OnCDMASignalQualityChanged(uint32 strength) {
   CHECK_EQ(kTypeCDMA, type_);
   HandleNewSignalQuality(strength);
+}
+
+void Cellular::OnGSMNetworkModeChanged(uint32 mode) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::OnGSMRegistrationInfoChanged(uint32 status,
+                                            const string &operator_code,
+                                            const string &operator_name) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void Cellular::OnGSMSignalQualityChanged(uint32 quality) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
 }
 
 void Cellular::OnModemStateChanged(uint32 old_state,

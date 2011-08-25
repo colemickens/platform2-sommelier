@@ -20,6 +20,8 @@ class DBusPropertiesProxyListener;
 class DHCPProxyInterface;
 class ModemCDMAProxyInterface;
 class ModemCDMAProxyListener;
+class ModemGSMNetworkProxyInterface;
+class ModemGSMNetworkProxyListener;
 class ModemManager;
 class ModemManagerProxyInterface;
 class ModemProxyInterface;
@@ -56,6 +58,11 @@ class ProxyFactory {
 
   virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
       ModemCDMAProxyListener *listener,
+      const std::string &path,
+      const std::string &service);
+
+  virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
+      ModemGSMNetworkProxyListener *listener,
       const std::string &path,
       const std::string &service);
 

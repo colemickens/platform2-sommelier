@@ -18,6 +18,7 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_modem_cdma_proxy.h"
+#include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_sockets.h"
@@ -117,6 +118,7 @@ class CellularTest : public testing::Test {
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCDMAProxy()),
+        gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         proxy_factory_(this),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         &dispatcher_,
@@ -172,6 +174,13 @@ class CellularTest : public testing::Test {
       return test_->cdma_proxy_.release();
     }
 
+    virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
+        ModemGSMNetworkProxyListener *listener,
+        const string &path,
+        const string &service) {
+      return test_->gsm_network_proxy_.release();
+    }
+
    private:
     CellularTest *test_;
   };
@@ -195,6 +204,7 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
+  scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   TestProxyFactory proxy_factory_;
 
   MockDHCPProvider dhcp_provider_;
@@ -325,16 +335,7 @@ TEST_F(CellularTest, GetCDMAActivationErrorString) {
             device_->GetCDMAActivationErrorString(1234));
 }
 
-TEST_F(CellularTest, Start) {
-  EXPECT_CALL(*proxy_, Enable(true)).Times(1);
-  EXPECT_CALL(*simple_proxy_, GetStatus())
-      .WillOnce(Return(DBusPropertiesMap()));
-  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
-  device_->Start();
-  EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
-}
-
-TEST_F(CellularTest, StartRegister) {
+TEST_F(CellularTest, StartCDMARegister) {
   device_->type_ = Cellular::kTypeCDMA;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
@@ -352,6 +353,19 @@ TEST_F(CellularTest, StartRegister) {
   EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
             device_->service_->network_tech());
   EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
+}
+
+TEST_F(CellularTest, StartGSM) {
+  device_->type_ = Cellular::kTypeGSM;
+  static const char kNetwork[] = "My Favorite GSM Network";
+  device_->selected_network_ = kNetwork;
+  EXPECT_CALL(*proxy_, Enable(true)).Times(1);
+  EXPECT_CALL(*gsm_network_proxy_, Register(kNetwork)).Times(1);
+  EXPECT_CALL(*simple_proxy_, GetStatus())
+      .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
+  device_->Start();
+  EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
 }
 
 TEST_F(CellularTest, StartConnected) {

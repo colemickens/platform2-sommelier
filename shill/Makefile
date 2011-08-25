@@ -104,6 +104,7 @@ SHILL_OBJS = \
 	manager_dbus_adaptor.o \
 	modem.o \
 	modem_cdma_proxy.o \
+	modem_gsm_network_proxy.o \
 	modem_info.o \
 	modem_manager.o \
 	modem_manager_proxy.o \
