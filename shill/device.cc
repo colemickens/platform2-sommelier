@@ -236,7 +236,8 @@ void Device::DestroyConnection() {
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
-  VLOG(2) << __func__ << ": " << service->UniqueName();
+  VLOG(2) << __func__ << ": "
+          << (service.get() ? service->UniqueName() : "*reset*");
   if (selected_service_.get() &&
       selected_service_->state() != Service::kStateFailure) {
     selected_service_->SetState(Service::kStateIdle);
