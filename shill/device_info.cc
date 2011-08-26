@@ -270,7 +270,7 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
 
 void DeviceInfo::EnableDeviceIPv6Privacy(const string &iface_name) {
   FilePath priv_file(StringPrintf(kInterfaceIPv6Privacy, iface_name.c_str()));
-  LOG_IF(ERROR, file_util::WriteFile(priv_file, "2", 1))
+  LOG_IF(ERROR, file_util::WriteFile(priv_file, "2", 1) != 1)
       << "Write failed for use_tempaddr: " << priv_file.value();
 }
 
