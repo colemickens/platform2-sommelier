@@ -23,6 +23,16 @@ export SHELL=/bin/sh
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
 export GTK_IM_MODULE=ibus
+
+# If used with Address Sanitizer, set the following flags to alter memory
+# allocations by glibc. Hopefully later, when ASAN matures, we will not need
+# any changes for it to run.
+if [ -f /root/.debug_with_asan ]; then
+  export G_SLICE=always-malloc
+  export NSS_DISABLE_ARENA_FREE_LIST=1
+  export NSS_DISABLE_UNLOAD=1
+fi
+
 # Change the directory for ibus-daemon socket file from ~/.config/ibus/bus/ to
 # /tmp/.ibus-socket-<unique random string>/ to fix crosbug.com/16501 and 17270.
 # Every time when you change IBUS_ADDRESS_FILE, you should also update the
