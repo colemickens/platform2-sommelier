@@ -112,6 +112,7 @@ int main(int argc, char* argv[]) {
   LockDownUmask();
 
   ipsec.set_debug(FLAGS_debug);
+  l2tp.set_debug(FLAGS_debug);
 
   ServiceManager::InitializeDirectories(&temp_dir);
 
