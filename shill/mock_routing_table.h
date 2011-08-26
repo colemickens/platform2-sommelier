@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_ROUTING_TABLE_H_
 #define SHILL_MOCK_ROUTING_TABLE_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/routing_table.h"
@@ -13,6 +14,9 @@ namespace shill {
 
 class MockRoutingTable : public RoutingTable {
  public:
+  MockRoutingTable();
+  virtual ~MockRoutingTable();
+
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD2(AddRoute, bool(int interface_index,
@@ -26,6 +30,9 @@ class MockRoutingTable : public RoutingTable {
   MOCK_METHOD1(FlushRoutes, void(int interface_index));
   MOCK_METHOD1(ResetTable, void(int interface_index));
   MOCK_METHOD2(SetDefaultMetric, void(int interface_index, uint32 metric));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockRoutingTable);
 };
 
 }  // namespace shill

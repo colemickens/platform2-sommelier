@@ -172,9 +172,12 @@ TEST_OBJS = \
 	mock_modem_simple_proxy.o \
 	mock_profile.o \
 	mock_property_store.o \
+	mock_resolver.o \
+	mock_routing_table.o \
 	mock_rtnl_handler.o \
 	mock_service.o \
 	mock_sockets.o \
+	mock_store.o \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
 	modem_info_unittest.o \

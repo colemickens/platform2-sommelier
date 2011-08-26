@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_STORE_
 #define SHILL_MOCK_STORE_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/store_interface.h"
@@ -13,6 +14,9 @@ namespace shill {
 
 class MockStore : public StoreInterface {
  public:
+  MockStore();
+  virtual ~MockStore();
+
   MOCK_METHOD0(Open, bool());
   MOCK_METHOD0(Close, bool());
   MOCK_METHOD0(GetGroups, std::set<std::string>());
@@ -50,6 +54,9 @@ class MockStore : public StoreInterface {
   MOCK_METHOD3(SetCryptedString, bool(const std::string &group,
                                       const std::string &key,
                                       const std::string &value));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockStore);
 };
 
 }  // namespace shill
