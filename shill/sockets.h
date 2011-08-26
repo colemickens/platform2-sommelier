@@ -5,6 +5,7 @@
 #ifndef SHILL_SOCKETS_H_
 #define SHILL_SOCKETS_H_
 
+#include <sys/socket.h>
 #include <sys/types.h>
 
 #include <base/basictypes.h>

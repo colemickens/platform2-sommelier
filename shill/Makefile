@@ -163,8 +163,20 @@ TEST_OBJS = \
 	mock_dhcp_provider.o \
 	mock_dhcp_proxy.o \
 	mock_glib.o \
+	mock_ipconfig.o \
+	mock_manager.o \
+	mock_modem_cdma_proxy.o \
+	mock_modem_gsm_network_proxy.o \
+	mock_modem_manager_proxy.o \
+	mock_modem_proxy.o \
+	mock_modem_simple_proxy.o \
 	mock_profile.o \
+	mock_property_store.o \
+	mock_rtnl_handler.o \
 	mock_service.o \
+	mock_sockets.o \
+	mock_supplicant_interface_proxy.o \
+	mock_supplicant_process_proxy.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \

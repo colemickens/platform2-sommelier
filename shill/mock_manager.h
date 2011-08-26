@@ -5,27 +5,19 @@
 #ifndef SHILL_MOCK_MANAGER_
 #define SHILL_MOCK_MANAGER_
 
-#include <base/memory/ref_counted.h>
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/manager.h"
 
 namespace shill {
 
-class ControlInterface;
-class DeviceInfo;
-class EventDispatcher;
-class GLib;
-class PropertyStore;
-
 class MockManager : public Manager {
  public:
   MockManager(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
-              GLib *glib)
-      : Manager(control_interface, dispatcher, glib, "", "", "") {
-  }
-  ~MockManager() {}
+              GLib *glib);
+  virtual ~MockManager();
 
   MOCK_METHOD0(device_info, DeviceInfo*(void));
   MOCK_METHOD0(store, PropertyStore*(void));

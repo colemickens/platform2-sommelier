@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_MODEM_GSM_NETWORK_PROXY_H_
 #define SHILL_MOCK_MODEM_GSM_NETWORK_PROXY_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/modem_gsm_network_proxy_interface.h"
@@ -13,7 +14,13 @@ namespace shill {
 
 class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
  public:
+  MockModemGSMNetworkProxy();
+  virtual ~MockModemGSMNetworkProxy();
+
   MOCK_METHOD1(Register, void(const std::string &network_id));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockModemGSMNetworkProxy);
 };
 
 }  // namespace shill

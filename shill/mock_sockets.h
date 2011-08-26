@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_SOCKETS_H_
 #define SHILL_MOCK_SOCKETS_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/sockets.h"
@@ -13,6 +14,9 @@ namespace shill {
 
 class MockSockets : public Sockets {
  public:
+  MockSockets();
+  virtual ~MockSockets();
+
   MOCK_METHOD3(Bind,
                int(int sockfd, const struct sockaddr *addr, socklen_t addrlen));
   MOCK_METHOD1(Close, int(int fd));
@@ -26,6 +30,9 @@ class MockSockets : public Sockets {
                                const struct sockaddr *dest_addr,
                                socklen_t addrlen));
   MOCK_METHOD3(Socket, int(int domain, int type, int protocol));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockSockets);
 };
 
 }  // namespace shill

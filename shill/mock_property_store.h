@@ -5,22 +5,18 @@
 #ifndef SHILL_MOCK_PROPERTY_STORE_
 #define SHILL_MOCK_PROPERTY_STORE_
 
-#include "shill/property_store.h"
-
-#include <map>
-#include <string>
-#include <vector>
-
 #include <base/basictypes.h>
+#include <gmock/gmock.h>
+
+#include "shill/property_store.h"
 
 namespace shill {
 
-class Error;
-
 class MockPropertyStore : public PropertyStore {
  public:
-  MockPropertyStore() {}
-  virtual ~MockPropertyStore() {}
+  MockPropertyStore();
+  virtual ~MockPropertyStore();
+
   MOCK_METHOD1(Contains, bool(const std::string&));
   MOCK_METHOD3(SetBoolProperty, bool(const std::string&, bool, Error*));
   MOCK_METHOD3(SetInt16Property, bool(const std::string&, int16, Error*));

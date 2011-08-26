@@ -9,6 +9,8 @@
 
 #include <base/basictypes.h>
 
+#include "shill/dbus_properties.h"
+
 namespace shill {
 
 // These are the methods that a ModemManager.Modem.CDMA proxy must support. The

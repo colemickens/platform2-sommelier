@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_RTNL_HANDLER_H_
 #define SHILL_MOCK_RTNL_HANDLER_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/rtnl_handler.h"
@@ -13,6 +14,9 @@ namespace shill {
 
 class MockRTNLHandler : public RTNLHandler {
  public:
+  MockRTNLHandler();
+  virtual ~MockRTNLHandler();
+
   MOCK_METHOD2(Start, void(EventDispatcher *dispatcher, Sockets *sockets));
   MOCK_METHOD1(AddListener, void(RTNLListener *to_add));
   MOCK_METHOD1(RemoveListener, void(RTNLListener *to_remove));
@@ -26,6 +30,9 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD1(RequestDump, void(int request_flags));
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string &interface_name));
   MOCK_METHOD1(SendMessage, bool(RTNLMessage *message));
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockRTNLHandler);
 };
 
 }  // namespace shill

@@ -5,16 +5,17 @@
 #ifndef MOCK_SUPPLICANT_PROCESS_PROXY_H_
 #define MOCK_SUPPLICANT_PROCESS_PROXY_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
-#include "supplicant_process_proxy_interface.h"
+#include "shill/supplicant_process_proxy_interface.h"
 
 namespace shill {
 
 class MockSupplicantProcessProxy : public SupplicantProcessProxyInterface {
  public:
-  MockSupplicantProcessProxy() {}
-  virtual ~MockSupplicantProcessProxy() {}
+  MockSupplicantProcessProxy();
+  virtual ~MockSupplicantProcessProxy();
 
   MOCK_METHOD1(CreateInterface,
                ::DBus::Path(
