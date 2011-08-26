@@ -20,7 +20,20 @@ class IPAddress {
 
   explicit IPAddress(Family family);
   IPAddress(Family family, const ByteString &address);
+  IPAddress(Family family, const ByteString &address, unsigned int prefix);
   ~IPAddress();
+
+  // Since this is a copyable datatype...
+  IPAddress(const IPAddress &b)
+    : family_(b.family_),
+      address_(b.address_),
+      prefix_(b.prefix_) {}
+  IPAddress &operator=(const IPAddress &b) {
+    family_ = b.family_;
+    address_ = b.address_;
+    prefix_ = b.prefix_;
+    return *this;
+  }
 
   // Static utilities
   // Get the length in bytes of addresses of the given family
@@ -29,6 +42,8 @@ class IPAddress {
   // Getters and Setters
   Family family() const { return family_; }
   const ByteString &address() const { return address_; }
+  unsigned int prefix() const { return prefix_; }
+  void set_prefix(unsigned int prefix) { prefix_ = prefix; }
   const unsigned char *GetConstData() const { return address_.GetConstData(); }
   int GetLength() const { return address_.GetLength(); }
   bool IsDefault() const { return address_.IsZero(); }
@@ -44,18 +59,15 @@ class IPAddress {
   void SetAddressToDefault();
 
   bool Equals(const IPAddress &b) const {
-    return family_ == b.family_ && address_.Equals(b.address_);
-  }
-
-  void Clone(const IPAddress &b) {
-    family_ = b.family_;
-    address_ = b.address_;
+    return family_ == b.family_ && address_.Equals(b.address_) &&
+        prefix_ == b.prefix_;
   }
 
  private:
   Family family_;
   ByteString address_;
-  DISALLOW_COPY_AND_ASSIGN(IPAddress);
+  unsigned int prefix_;
+  // NO DISALLOW_COPY_AND_ASSIGN -- we assign IPAddresses in STL datatypes
 };
 
 }  // namespace shill

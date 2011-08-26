@@ -22,10 +22,19 @@ const IPAddress::Family IPAddress::kAddressFamilyIPv6 = AF_INET6;
 
 IPAddress::IPAddress(Family family, const ByteString &address)
     : family_(family) ,
-      address_(address) {}
+      address_(address),
+      prefix_(0) {}
+
+IPAddress::IPAddress(Family family,
+                     const ByteString &address,
+                     unsigned int prefix)
+    : family_(family) ,
+      address_(address),
+      prefix_(prefix) {}
 
 IPAddress::IPAddress(Family family)
-    : family_(family) {}
+    : family_(family),
+      prefix_(0) {}
 
 IPAddress::~IPAddress() {}
 

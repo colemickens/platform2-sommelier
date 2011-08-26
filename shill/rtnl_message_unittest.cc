@@ -261,6 +261,7 @@ const unsigned char kNewAddrIPV4[] = {
 
 const int kDelRouteIPV6InterfaceIndex = 2;
 const char kDelRouteIPV6Address[] = "ff02::1:ffa0:688";
+const int kDelRouteIPV6Prefix = 128;
 const int kDelRouteIPV6Metric = 0;
 
 const unsigned char kDelRouteIPV6[] = {
@@ -377,7 +378,6 @@ class RTNLMessageTest : public Test {
                         RTNLMessage::MessageMode mode,
                         int interface_index,
                         const IPAddress &address,
-                        int prefix,
                         unsigned char scope) {
     RTNLMessage msg;
 
@@ -388,14 +388,14 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(address.family(), msg.family());
 
     RTNLMessage::AddressStatus status = msg.address_status();
-    EXPECT_EQ(prefix, status.prefix_len);
     EXPECT_EQ(scope, status.scope);
 
     EXPECT_TRUE(msg.HasAttribute(IFA_LOCAL));
     EXPECT_EQ(address.GetLength(), msg.GetAttribute(IFA_LOCAL).GetLength());
     EXPECT_TRUE(
         IPAddress(address.family(),
-            msg.GetAttribute(IFA_LOCAL)).Equals(address));
+                  msg.GetAttribute(IFA_LOCAL),
+                  status.prefix_len).Equals(address));
   }
 
   void TestParseRoute(const ByteString &packet,
@@ -403,9 +403,7 @@ class RTNLMessageTest : public Test {
                       IPAddress::Family family,
                       int interface_index,
                       const IPAddress &dst,
-                      int dst_prefix,
                       const IPAddress &src,
-                      int src_prefix,
                       const IPAddress &gateway,
                       unsigned char table,
                       int protocol,
@@ -427,12 +425,16 @@ class RTNLMessageTest : public Test {
 
     if (!dst.IsDefault()) {
       EXPECT_TRUE(msg.HasAttribute(RTA_DST));
-      EXPECT_TRUE(IPAddress(family, msg.GetAttribute(RTA_DST)).Equals(dst));
+      EXPECT_TRUE(IPAddress(family,
+                            msg.GetAttribute(RTA_DST),
+                            status.dst_prefix).Equals(dst));
     }
 
     if (!src.IsDefault()) {
       EXPECT_TRUE(msg.HasAttribute(RTA_SRC));
-      EXPECT_TRUE(IPAddress(family, msg.GetAttribute(RTA_SRC)).Equals(src));
+      EXPECT_TRUE(IPAddress(family,
+                            msg.GetAttribute(RTA_SRC),
+                            status.src_prefix).Equals(src));
     }
 
     if (!gateway.IsDefault()) {
@@ -491,11 +493,11 @@ TEST_F(RTNLMessageTest, NewAddrIPv4) {
   IPAddress addr(IPAddress::kAddressFamilyIPv4);
 
   EXPECT_TRUE(addr.SetAddressFromString(kNewAddrIPV4Address));
+  addr.set_prefix(kNewAddrIPV4AddressPrefix);
   TestParseAddress(ByteString(kNewAddrIPV4, sizeof(kNewAddrIPV4)),
                    RTNLMessage::kMessageModeAdd,
                    kNewAddrIPV4InterfaceIndex,
                    addr,
-                   kNewAddrIPV4AddressPrefix,
                    kNewAddrIPV4Scope);
 }
 
@@ -505,6 +507,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
   IPAddress gateway(IPAddress::kAddressFamilyIPv6);
 
   EXPECT_TRUE(dst.SetAddressFromString(kDelRouteIPV6Address));
+  dst.set_prefix(kDelRouteIPV6Prefix);
   src.SetAddressToDefault();
   EXPECT_TRUE(gateway.SetAddressFromString(kDelRouteIPV6Address));
 
@@ -513,9 +516,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
                  IPAddress::kAddressFamilyIPv6,
                  kDelRouteIPV6InterfaceIndex,
                  dst,
-                 0,
                  src,
-                 0,
                  gateway,
                  RT_TABLE_MAIN,
                  RTPROT_UNSPEC,
@@ -538,9 +539,7 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
                  IPAddress::kAddressFamilyIPv4,
                  kAddRouteIPV4InterfaceIndex,
                  dst,
-                 0,
                  src,
-                 0,
                  gateway,
                  RT_TABLE_MAIN,
                  RTPROT_BOOT,
@@ -590,9 +589,7 @@ TEST_F(RTNLMessageTest, Encode) {
                  IPAddress::kAddressFamilyIPv4,
                  12,
                  dst,
-                 0,
                  src,
-                 0,
                  gateway,
                  RT_TABLE_MAIN,
                  RTPROT_BOOT,

@@ -148,9 +148,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
 
   return AddRoute(interface_index,
                   RoutingTableEntry(default_address,
-                                    0,
                                     default_address,
-                                    0,
                                     gateway_address,
                                     metric,
                                     RT_SCOPE_UNIVERSE,
@@ -242,10 +240,8 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   }
 
   RoutingTableEntry entry(
-      IPAddress(msg.family(), dst_bytes),
-      route_status.dst_prefix,
-      IPAddress(msg.family(), src_bytes),
-      route_status.src_prefix,
+      IPAddress(msg.family(), dst_bytes, route_status.dst_prefix),
+      IPAddress(msg.family(), src_bytes, route_status.src_prefix),
       IPAddress(msg.family(), gateway_bytes),
       metric,
       route_status.scope,
@@ -255,9 +251,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   vector<RoutingTableEntry>::iterator nent;
   for (nent = table.begin(); nent != table.end(); ++nent) {
     if (nent->dst.Equals(entry.dst) &&
-        nent->dst_prefix == entry.dst_prefix &&
         nent->src.Equals(entry.src) &&
-        nent->src_prefix == entry.src_prefix &&
         nent->gateway.Equals(entry.gateway) &&
         nent->scope == entry.scope) {
       if (msg.mode() == RTNLMessage::kMessageModeDelete) {
@@ -292,8 +286,8 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
       entry.dst.family());
 
   msg.set_route_status(RTNLMessage::RouteStatus(
-      entry.dst_prefix,
-      entry.src_prefix,
+      entry.dst.prefix(),
+      entry.src.prefix(),
       RT_TABLE_MAIN,
       RTPROT_BOOT,
       entry.scope,

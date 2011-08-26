@@ -126,8 +126,8 @@ void RoutingTableTest::SendRouteMsg(RTNLMessage::MessageMode mode,
       entry.dst.family());
 
   msg.set_route_status(RTNLMessage::RouteStatus(
-      entry.dst_prefix,
-      entry.src_prefix,
+      entry.dst.prefix(),
+      entry.src.prefix(),
       RT_TABLE_MAIN,
       RTPROT_BOOT,
       entry.scope,
@@ -181,9 +181,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   int metric = 10;
 
   RoutingTableEntry entry0(default_address,
-                           0,
                            default_address,
-                           0,
                            gateway_address0,
                            metric,
                            RT_SCOPE_UNIVERSE,
@@ -222,9 +220,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   gateway_address1.SetAddressFromString(kTestNetAddress1);
 
   RoutingTableEntry entry1(default_address,
-                           0,
                            default_address,
-                           0,
                            gateway_address1,
                            metric,
                            RT_SCOPE_UNIVERSE,
