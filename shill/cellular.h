@@ -117,18 +117,6 @@ class Cellular : public Device,
     DISALLOW_COPY_AND_ASSIGN(Network);
   };
 
-  struct CDMA {
-    CDMA();
-
-    uint32 registration_state_evdo;
-    uint32 registration_state_1x;
-    uint32 activation_state;
-
-    uint16 prl_version;
-    std::string payment_url;
-    std::string usage_url;
-  };
-
   struct SimLockStatus {
    public:
     SimLockStatus() : retries_left(0) {}
@@ -177,20 +165,43 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
+  FRIEND_TEST(CellularTest, GetCDMANetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
+  FRIEND_TEST(CellularTest, GetCDMARoamingStateString);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
+  FRIEND_TEST(CellularTest, GetGSMNetworkTechnologyString);
+  FRIEND_TEST(CellularTest, GetGSMRoamingStateString);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
-  FRIEND_TEST(CellularTest, GetNetworkTechnologyString);
-  FRIEND_TEST(CellularTest, GetRoamingStateString);
   FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
-  FRIEND_TEST(CellularTest, StartGSM);
+  FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+
+  struct CDMA {
+    CDMA();
+
+    uint32 registration_state_evdo;
+    uint32 registration_state_1x;
+    uint32 activation_state;
+
+    uint16 prl_version;
+    std::string payment_url;
+    std::string usage_url;
+  };
+
+  struct GSM {
+    GSM();
+
+    uint32 registration_state;
+    uint32 access_technology;
+    std::string network_id;
+    std::string operator_name;
+  };
 
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
@@ -290,6 +301,7 @@ class Cellular : public Device,
   scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
 
   CDMA cdma_;
+  GSM gsm_;
 
   CellularServiceRefPtr service_;
 

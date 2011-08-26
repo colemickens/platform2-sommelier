@@ -239,7 +239,7 @@ TEST_F(CellularTest, GetTypeString) {
   EXPECT_EQ("CellularTypeCDMA", device_->GetTypeString());
 }
 
-TEST_F(CellularTest, GetNetworkTechnologyString) {
+TEST_F(CellularTest, GetCDMANetworkTechnologyString) {
   device_->type_ = Cellular::kTypeCDMA;
   EXPECT_EQ("", device_->GetNetworkTechnologyString());
   device_->cdma_.registration_state_evdo =
@@ -254,7 +254,41 @@ TEST_F(CellularTest, GetNetworkTechnologyString) {
             device_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularTest, GetRoamingStateString) {
+TEST_F(CellularTest, GetGSMNetworkTechnologyString) {
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_EQ("", device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GSM;
+  EXPECT_EQ("", device_->GetNetworkTechnologyString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  // TODO(petkov): Define "GSM" in system_api:service_constants.h.
+  EXPECT_EQ("GSM", device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT;
+  EXPECT_EQ("GSM", device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GPRS;
+  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_EDGE;
+  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_UMTS;
+  EXPECT_EQ(flimflam::kNetworkTechnologyUmts,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_HSDPA;
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_HSUPA;
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_HSPA;
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            device_->GetNetworkTechnologyString());
+  device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS;
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspaPlus,
+            device_->GetNetworkTechnologyString());
+}
+
+TEST_F(CellularTest, GetCDMARoamingStateString) {
   device_->type_ = Cellular::kTypeCDMA;
   EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
   device_->cdma_.registration_state_evdo =
@@ -277,6 +311,21 @@ TEST_F(CellularTest, GetRoamingStateString) {
   device_->cdma_.registration_state_1x =
       MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING;
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->GetRoamingStateString());
+}
+
+TEST_F(CellularTest, GetGSMRoamingStateString) {
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  EXPECT_EQ(flimflam::kRoamingStateHome, device_->GetRoamingStateString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->GetRoamingStateString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE;
+  EXPECT_EQ(flimflam::kRoamingStateUnknown, device_->GetRoamingStateString());
 }
 
 TEST_F(CellularTest, GetStateString) {
@@ -355,7 +404,7 @@ TEST_F(CellularTest, StartCDMARegister) {
   EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
 }
 
-TEST_F(CellularTest, StartGSM) {
+TEST_F(CellularTest, StartGSMRegister) {
   device_->type_ = Cellular::kTypeGSM;
   static const char kNetwork[] = "My Favorite GSM Network";
   device_->selected_network_ = kNetwork;
@@ -363,9 +412,20 @@ TEST_F(CellularTest, StartGSM) {
   EXPECT_CALL(*gsm_network_proxy_, Register(kNetwork)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*gsm_network_proxy_, AccessTechnology())
+      .WillOnce(Return(MM_MODEM_GSM_ACCESS_TECH_EDGE));
   EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
+  ModemGSMNetworkProxyInterface::RegistrationInfo reg_info;
+  reg_info._1 = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  EXPECT_CALL(*gsm_network_proxy_, GetRegistrationInfo())
+      .WillOnce(Return(reg_info));
   device_->Start();
-  EXPECT_EQ(Cellular::kStateEnabled, device_->state_);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+  ASSERT_TRUE(device_->service_.get());
+  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
+            device_->service_->network_tech());
+  EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
 }
 
 TEST_F(CellularTest, StartConnected) {
@@ -522,8 +582,8 @@ MATCHER(ContainsPhoneNumber, "") {
 TEST_F(CellularTest, Connect) {
   Error error;
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
   device_->state_ = Cellular::kStateConnected;
   device_->Connect(&error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());

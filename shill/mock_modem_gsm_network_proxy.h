@@ -18,6 +18,8 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   virtual ~MockModemGSMNetworkProxy();
 
   MOCK_METHOD1(Register, void(const std::string &network_id));
+  MOCK_METHOD0(GetRegistrationInfo, RegistrationInfo());
+  MOCK_METHOD0(AccessTechnology, uint32());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemGSMNetworkProxy);

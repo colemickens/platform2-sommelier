@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <dbus-c++/types.h>
 
 namespace shill {
 
@@ -15,9 +16,15 @@ namespace shill {
 // support. The interface is provided so that it can be mocked in tests.
 class ModemGSMNetworkProxyInterface {
  public:
+  typedef DBus::Struct<uint32, std::string, std::string> RegistrationInfo;
+
   virtual ~ModemGSMNetworkProxyInterface() {}
 
   virtual void Register(const std::string &network_id) = 0;
+  virtual RegistrationInfo GetRegistrationInfo() = 0;
+
+  // Properties.
+  virtual uint32 AccessTechnology() = 0;
 };
 
 // ModemManager.Modem.Gsm.Network signal listener to be associated with the

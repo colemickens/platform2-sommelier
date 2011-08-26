@@ -23,6 +23,15 @@ void ModemGSMNetworkProxy::Register(const string &network_id) {
   proxy_.Register(network_id);
 }
 
+ModemGSMNetworkProxyInterface::RegistrationInfo
+ModemGSMNetworkProxy::GetRegistrationInfo() {
+  return proxy_.GetRegistrationInfo();
+}
+
+uint32 ModemGSMNetworkProxy::AccessTechnology() {
+  return proxy_.AccessTechnology();
+}
+
 ModemGSMNetworkProxy::Proxy::Proxy(ModemGSMNetworkProxyListener *listener,
                                    DBus::Connection *connection,
                                    const string &path,

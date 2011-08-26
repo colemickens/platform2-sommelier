@@ -22,6 +22,8 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
 
   // Inherited from ModemGSMNetworkProxyInterface.
   virtual void Register(const std::string &network_id);
+  virtual RegistrationInfo GetRegistrationInfo();
+  virtual uint32 AccessTechnology();
 
  private:
   class Proxy

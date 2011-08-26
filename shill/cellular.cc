@@ -139,6 +139,10 @@ Cellular::CDMA::CDMA()
       activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       prl_version(0) {}
 
+Cellular::GSM::GSM()
+    : registration_state(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
+      access_technology(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN) {}
+
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Manager *manager,
@@ -227,8 +231,29 @@ string Cellular::GetStateString(State state) {
 string Cellular::GetNetworkTechnologyString() const {
   switch (type_) {
     case kTypeGSM:
-      // TODO(petkov): Implement this.
-      NOTIMPLEMENTED();
+      if (gsm_.registration_state == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
+          gsm_.registration_state == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
+        switch (gsm_.access_technology) {
+          case MM_MODEM_GSM_ACCESS_TECH_GSM:
+          case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
+            // TODO(petkov): Add "GSM" to system_api:service_constants.h.
+            return "GSM";
+          case MM_MODEM_GSM_ACCESS_TECH_GPRS:
+            return flimflam::kNetworkTechnologyGprs;
+          case MM_MODEM_GSM_ACCESS_TECH_EDGE:
+            return flimflam::kNetworkTechnologyEdge;
+          case MM_MODEM_GSM_ACCESS_TECH_UMTS:
+            return flimflam::kNetworkTechnologyUmts;
+          case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
+          case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
+          case MM_MODEM_GSM_ACCESS_TECH_HSPA:
+            return flimflam::kNetworkTechnologyHspa;
+          case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
+            return flimflam::kNetworkTechnologyHspaPlus;
+          default:
+            NOTREACHED();
+        }
+      }
       break;
     case kTypeCDMA:
       if (cdma_.registration_state_evdo !=
@@ -249,8 +274,14 @@ string Cellular::GetNetworkTechnologyString() const {
 string Cellular::GetRoamingStateString() const {
   switch (type_) {
     case kTypeGSM:
-      // TODO(petkov): Implement this.
-      NOTIMPLEMENTED();
+      switch (gsm_.registration_state) {
+        case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
+          return flimflam::kRoamingStateHome;
+        case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
+          return flimflam::kRoamingStateRoaming;
+        default:
+          break;
+      }
       break;
     case kTypeCDMA: {
       uint32 state = cdma_.registration_state_evdo;
@@ -419,8 +450,9 @@ void Cellular::GetModemIdentifiers() {
 }
 
 void Cellular::GetGSMProperties() {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  gsm_.access_technology = gsm_network_proxy_->AccessTechnology();
+  VLOG(2) << "GSM AccessTechnology: " << gsm_.access_technology;
 }
 
 void Cellular::RegisterGSMModem() {
@@ -463,8 +495,15 @@ void Cellular::GetCDMARegistrationState() {
 }
 
 void Cellular::GetGSMRegistrationState() {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  CHECK_EQ(kTypeGSM, type_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  ModemGSMNetworkProxyInterface::RegistrationInfo info =
+      gsm_network_proxy_->GetRegistrationInfo();
+  gsm_.registration_state = info._1;
+  gsm_.network_id = info._2;
+  gsm_.operator_name = info._3;
+  VLOG(2) << "GSM Registration: " << gsm_.registration_state << ", "
+          << gsm_.network_id << ", "  << gsm_.operator_name;
 }
 
 void Cellular::HandleNewRegistrationState() {
@@ -502,6 +541,8 @@ void Cellular::HandleNewRegistrationStateTask() {
   }
   service_->set_network_tech(network_tech);
   service_->set_roaming_state(GetRoamingStateString());
+  // TODO(petkov): For GSM, update the serving operator based on the network id
+  // and the mobile provider database.
 }
 
 void Cellular::GetModemSignalQuality() {
@@ -727,8 +768,11 @@ void Cellular::OnGSMNetworkModeChanged(uint32 mode) {
 void Cellular::OnGSMRegistrationInfoChanged(uint32 status,
                                             const string &operator_code,
                                             const string &operator_name) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  CHECK_EQ(kTypeGSM, type_);
+  gsm_.registration_state = status;
+  gsm_.network_id = operator_code;
+  gsm_.operator_name = operator_name;
+  HandleNewRegistrationState();
 }
 
 void Cellular::OnGSMSignalQualityChanged(uint32 quality) {
