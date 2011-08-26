@@ -156,7 +156,13 @@ TEST_OBJS = \
 	manager_unittest.o \
 	mock_adaptors.o \
 	mock_control.o \
+	mock_dbus_properties_proxy.o \
 	mock_device.o \
+	mock_device_info.o \
+	mock_dhcp_config.o \
+	mock_dhcp_provider.o \
+	mock_dhcp_proxy.o \
+	mock_glib.o \
 	mock_profile.o \
 	mock_service.o \
 	modem_info_unittest.o \

@@ -5,7 +5,7 @@
 #ifndef SHILL_MOCK_DEVICE_INFO_
 #define SHILL_MOCK_DEVICE_INFO_
 
-#include <base/memory/ref_counted.h>
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/device_info.h"
@@ -21,10 +21,8 @@ class MockDeviceInfo : public DeviceInfo {
  public:
   MockDeviceInfo(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 Manager *manager)
-      : DeviceInfo(control_interface, dispatcher, manager) {
-  }
-  ~MockDeviceInfo() {}
+                 Manager *manager);
+  virtual ~MockDeviceInfo();
 
   MOCK_CONST_METHOD2(GetAddress, bool(int, ByteString*));
   MOCK_CONST_METHOD2(GetFlags, bool(int, unsigned int*));

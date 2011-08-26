@@ -5,6 +5,7 @@
 #ifndef SHILL_MOCK_GLIB_H_
 #define SHILL_MOCK_GLIB_H_
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
 
 #include "shill/glib.h"
@@ -13,6 +14,9 @@ namespace shill {
 
 class MockGLib : public GLib {
  public:
+  MockGLib();
+  virtual ~MockGLib();
+
   MOCK_METHOD2(Base64Decode, guchar *(const gchar *text, gsize *out_len));
   MOCK_METHOD2(Base64Encode, gchar *(const guchar *data, gsize len));
   MOCK_METHOD1(BusUnwatchName, void(guint watcher_id));
@@ -94,6 +98,9 @@ class MockGLib : public GLib {
   MOCK_METHOD1(SpawnClosePID, void(GPid pid));
   MOCK_METHOD1(Strfreev, void(gchar **str_array));
   MOCK_METHOD0(TypeInit, void());
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockGLib);
 };
 
 }  // namespace shill
