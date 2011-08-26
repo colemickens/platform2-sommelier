@@ -95,13 +95,9 @@ class Profile : public base::RefCounted<Profile> {
   virtual bool GetStoragePath(FilePath *path);
 
  protected:
-  Manager *manager_;
-
-  // Properties to be get/set via PropertyStore calls that must also be visible
-  // in subclasses.
-  PropertyStore store_;
-
-  std::map<std::string, ServiceRefPtr> services_;
+  // Protected getters
+  Manager *manager() const { return manager_; }
+  std::map<std::string, ServiceRefPtr> *services() { return &services_; }
 
  private:
   friend class ProfileAdaptorInterface;
@@ -120,6 +116,13 @@ class Profile : public base::RefCounted<Profile> {
                                   Strings(Profile::*get)(void),
                                   bool(Profile::*set)(const Strings&));
 
+  // Data members shared with subclasses via getter/setters above in the
+  // protected: section
+  Manager *manager_;
+  std::map<std::string, ServiceRefPtr> services_;
+
+  // Shared with subclasses via public getter
+  PropertyStore store_;
 
   // Properties to be gotten via PropertyStore calls.
   Identifier name_;

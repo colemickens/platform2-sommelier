@@ -37,20 +37,21 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
-  eap_.key_management = key_management;
+  SetEAPKeyManagement(key_management);
 
-  store_.RegisterConstString(flimflam::kModeProperty, &mode_);
-  store_.RegisterString(flimflam::kPassphraseProperty, &passphrase_);
-  store_.RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
-  store_.RegisterConstString(flimflam::kSecurityProperty, &security_);
-  store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
+  PropertyStore *store = this->store();
+  store->RegisterConstString(flimflam::kModeProperty, &mode_);
+  store->RegisterString(flimflam::kPassphraseProperty, &passphrase_);
+  store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
+  store->RegisterConstString(flimflam::kSecurityProperty, &security_);
+  store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
+  store->RegisterConstString(flimflam::kTypeProperty, &type_);
 
-  store_.RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
-  store_.RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
-  store_.RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
-  store_.RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
-  store_.RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
+  store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
+  store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
+  store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
+  store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
+  store->RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
 }
 
 WiFiService::~WiFiService() {
@@ -62,7 +63,7 @@ void WiFiService::Connect(Error *error) {
 
   // NB(quiche) defer handling, since dbus-c++ does not permit us to
   // send an outbound request while processing an inbound one.
-  dispatcher_->PostTask(
+  dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&WiFiService::ConnectTask));
 }
 
@@ -86,7 +87,7 @@ const string &WiFiService::mode() const {
 }
 
 const string &WiFiService::key_management() const {
-  return eap_.key_management;
+  return GetEAPKeyManagement();
 }
 
 const std::vector<uint8_t> &WiFiService::ssid() const {

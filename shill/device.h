@@ -121,23 +121,11 @@ class Device : public base::RefCounted<Device> {
                                   Strings(Device::*get)(void),
                                   bool(Device::*set)(const Strings&));
 
-  // Properties
-  bool powered_;  // TODO(pstew): Is this what |running_| is for?
-  bool reconnect_;
-  const std::string hardware_address_;
-
-  PropertyStore store_;
-
-  std::vector<ServiceRefPtr> services_;
-  const int interface_index_;
-  bool running_;
-  const std::string link_name_;
-  const std::string unique_id_;
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Manager *manager_;
-  IPConfigRefPtr ipconfig_;
-  ConnectionRefPtr connection_;
+  // Property getters reserved for subclasses
+  ControlInterface *control_interface() const { return control_interface_; }
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+  Manager *manager() const { return manager_; }
+  std::vector<ServiceRefPtr> *services() { return &services_; }
 
  private:
   friend class DeviceAdaptorInterface;
@@ -157,6 +145,23 @@ class Device : public base::RefCounted<Device> {
   std::vector<std::string> AvailableIPConfigs();
   std::string GetRpcConnectionIdentifier();
 
+  // Properties
+  bool powered_;  // TODO(pstew): Is this what |running_| is for?
+  bool reconnect_;
+  const std::string hardware_address_;
+
+  PropertyStore store_;
+
+  std::vector<ServiceRefPtr> services_;
+  const int interface_index_;
+  bool running_;
+  const std::string link_name_;
+  const std::string unique_id_;
+  ControlInterface *control_interface_;
+  EventDispatcher *dispatcher_;
+  Manager *manager_;
+  IPConfigRefPtr ipconfig_;
+  ConnectionRefPtr connection_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
 
   // Maintain a reference to the connected / connecting service

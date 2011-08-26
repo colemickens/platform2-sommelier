@@ -92,8 +92,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // to its associated device.
   std::string GetStorageIdentifier(const std::string &id_suffix);
 
-  PropertyStore store_;
-
  private:
   friend class IPConfigAdaptorInterface;
   friend class ConnectionTest;
@@ -110,6 +108,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   static const char kType[];
   static uint global_serial_;
 
+  PropertyStore store_;
   const std::string device_name_;
   const std::string type_;
   const uint serial_;

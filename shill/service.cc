@@ -35,6 +35,8 @@ const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
 const char Service::kCheckPortalTrue[] = "true";
 
+const int Service::kPriorityNone = 0;
+
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
 const char Service::kStorageEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
@@ -350,6 +352,14 @@ void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {
              eap_.key_management,
              false,
              true);
+}
+
+const string &Service::GetEAPKeyManagement() const {
+  return eap_.key_management;
+}
+
+void Service::SetEAPKeyManagement(const string &key_management) {
+  eap_.key_management = key_management;
 }
 
 }  // namespace shill

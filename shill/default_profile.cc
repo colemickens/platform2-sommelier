@@ -22,13 +22,14 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                                const Manager::Properties &manager_props)
     : Profile(control, glib, manager, Identifier(kDefaultId), "", true),
       storage_path_(storage_path) {
-  store_.RegisterConstString(flimflam::kCheckPortalListProperty,
+  PropertyStore *store = this->store();
+  store->RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
-  store_.RegisterConstString(flimflam::kCountryProperty,
+  store->RegisterConstString(flimflam::kCountryProperty,
                              &manager_props.country);
-  store_.RegisterConstBool(flimflam::kOfflineModeProperty,
+  store->RegisterConstBool(flimflam::kOfflineModeProperty,
                            &manager_props.offline_mode);
-  store_.RegisterConstString(flimflam::kPortalURLProperty,
+  store->RegisterConstString(flimflam::kPortalURLProperty,
                              &manager_props.portal_url);
 }
 

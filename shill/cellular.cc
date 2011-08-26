@@ -163,26 +163,27 @@ Cellular::Cellular(ControlInterface *control_interface,
       allow_roaming_(false),
       scanning_(false),
       scan_interval_(0) {
-  store_.RegisterConstString(flimflam::kCarrierProperty, &carrier_);
-  store_.RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
-  store_.RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
-  store_.RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
-  store_.RegisterConstString(flimflam::kEsnProperty, &esn_);
-  store_.RegisterConstString(flimflam::kFirmwareRevisionProperty,
+  PropertyStore *store = this->store();
+  store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
+  store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
+  store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
+  store->RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
+  store->RegisterConstString(flimflam::kEsnProperty, &esn_);
+  store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
                              &firmware_revision_);
-  store_.RegisterConstString(flimflam::kHardwareRevisionProperty,
+  store->RegisterConstString(flimflam::kHardwareRevisionProperty,
                              &hardware_revision_);
-  store_.RegisterConstStringmap(flimflam::kHomeProviderProperty,
+  store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
-  store_.RegisterConstString(flimflam::kImeiProperty, &imei_);
-  store_.RegisterConstString(flimflam::kImsiProperty, &imsi_);
-  store_.RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
-  store_.RegisterConstString(flimflam::kMdnProperty, &mdn_);
-  store_.RegisterConstString(flimflam::kMeidProperty, &meid_);
-  store_.RegisterConstString(flimflam::kMinProperty, &min_);
-  store_.RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  store_.RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
-  store_.RegisterConstString(flimflam::kSelectedNetworkProperty,
+  store->RegisterConstString(flimflam::kImeiProperty, &imei_);
+  store->RegisterConstString(flimflam::kImsiProperty, &imsi_);
+  store->RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
+  store->RegisterConstString(flimflam::kMdnProperty, &mdn_);
+  store->RegisterConstString(flimflam::kMeidProperty, &meid_);
+  store->RegisterConstString(flimflam::kMinProperty, &min_);
+  store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
+  store->RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
+  store->RegisterConstString(flimflam::kSelectedNetworkProperty,
                              &selected_network_);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
@@ -192,10 +193,10 @@ Cellular::Cellular(ControlInterface *control_interface,
                                 &Cellular::EnumerateNetworks,
                                 NULL);
 
-  store_.RegisterConstBool(flimflam::kScanningProperty, &scanning_);
-  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
-  VLOG(2) << "Cellular device " << link_name_ << " initialized: "
+  VLOG(2) << "Cellular device " << this->link_name() << " initialized: "
           << GetTypeString();
 }
 
@@ -336,11 +337,11 @@ void Cellular::Stop() {
   proxy_.reset();
   simple_proxy_.reset();
   cdma_proxy_.reset();
-  manager_->DeregisterService(service_);
+  manager()->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
   SelectService(NULL);
   SetState(kStateDisabled);
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
   Device::Stop();
 }
 
@@ -467,7 +468,7 @@ void Cellular::GetGSMRegistrationState() {
 }
 
 void Cellular::HandleNewRegistrationState() {
-  dispatcher_->PostTask(
+  dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(
           &Cellular::HandleNewRegistrationStateTask));
 }
@@ -477,7 +478,7 @@ void Cellular::HandleNewRegistrationStateTask() {
   const string network_tech = GetNetworkTechnologyString();
   if (network_tech.empty()) {
     if (state_ == kStateLinked) {
-      manager_->DeregisterService(service_);
+      manager()->DeregisterService(service_);
     }
     service_ = NULL;
     if (state_ == kStateLinked ||
@@ -542,7 +543,7 @@ void Cellular::CreateService() {
   VLOG(2) << __func__;
   CHECK(!service_.get());
   service_ =
-      new CellularService(control_interface_, dispatcher_, manager_, this);
+      new CellularService(control_interface(), dispatcher(), manager(), this);
   switch (type_) {
     case kTypeGSM:
       service_->set_activation_state(flimflam::kActivationStateActivated);
@@ -597,7 +598,7 @@ void Cellular::Connect(Error *error) {
   // TODO(petkov): Setup apn and "home_only".
 
   // Defer connect because we may be in a dbus-c++ callback.
-  dispatcher_->PostTask(
+  dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&Cellular::ConnectTask, properties));
 }
 
@@ -613,22 +614,22 @@ void Cellular::EstablishLink() {
   VLOG(2) << __func__;
   CHECK_EQ(kStateConnected, state_);
   unsigned int flags = 0;
-  if (manager_->device_info()->GetFlags(interface_index_, &flags) &&
+  if (manager()->device_info()->GetFlags(interface_index(), &flags) &&
       (flags & IFF_UP) != 0) {
     LinkEvent(flags, IFF_UP);
     return;
   }
   // TODO(petkov): Provide a timeout for a failed link-up request.
   RTNLHandler::GetInstance()->SetInterfaceFlags(
-      interface_index_, IFF_UP, IFF_UP);
+      interface_index(), IFF_UP, IFF_UP);
 }
 
 void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
-    LOG(INFO) << link_name_ << " is up.";
+    LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
-    manager_->RegisterService(service_);
+    manager()->RegisterService(service_);
     // TODO(petkov): For GSM, remember the APN.
     if (AcquireDHCPConfig()) {
       SelectService(service_);
@@ -638,7 +639,7 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     }
   } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
     SetState(kStateConnected);
-    manager_->DeregisterService(service_);
+    manager()->DeregisterService(service_);
     SelectService(NULL);
     DestroyIPConfig();
   }
@@ -661,7 +662,7 @@ void Cellular::Activate(const string &carrier, Error *error) {
     return;
   }
   // Defer connect because we may be in a dbus-c++ callback.
-  dispatcher_->PostTask(
+  dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&Cellular::ActivateTask, carrier));
 }
 
@@ -763,7 +764,7 @@ void Cellular::HelpRegisterDerivedStringmaps(
     const string &name,
     Stringmaps(Cellular::*get)(void),
     bool(Cellular::*set)(const Stringmaps&)) {
-  store_.RegisterDerivedStringmaps(
+  store()->RegisterDerivedStringmaps(
       name,
       StringmapsAccessor(
           new CustomAccessor<Cellular, Stringmaps>(this, get, set)));
@@ -773,7 +774,7 @@ void Cellular::HelpRegisterDerivedStrIntPair(
     const string &name,
     StrIntPair(Cellular::*get)(void),
     bool(Cellular::*set)(const StrIntPair&)) {
-  store_.RegisterDerivedStrIntPair(
+  store()->RegisterDerivedStrIntPair(
       name,
       StrIntPairAccessor(
           new CustomAccessor<Cellular, StrIntPair>(this, get, set)));

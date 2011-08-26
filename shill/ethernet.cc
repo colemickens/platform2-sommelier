@@ -53,15 +53,15 @@ Ethernet::~Ethernet() {
 
 void Ethernet::Start() {
   Device::Start();
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, IFF_UP,
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);
 }
 
 void Ethernet::Stop() {
-  manager_->DeregisterService(service_);
+  manager()->DeregisterService(service_);
   DestroyIPConfig();
   Device::Stop();
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index_, 0, IFF_UP);
+  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 bool Ethernet::TechnologyIs(const Device::Technology type) const {
@@ -71,9 +71,9 @@ bool Ethernet::TechnologyIs(const Device::Technology type) const {
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
-    LOG(INFO) << link_name_ << " is up; should start L3!";
+    LOG(INFO) << link_name() << " is up; should start L3!";
     link_up_ = true;
-    manager_->RegisterService(service_);
+    manager()->RegisterService(service_);
     if (service_->auto_connect()) {
       if (AcquireDHCPConfig()) {
         SelectService(service_);
@@ -84,7 +84,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     }
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
-    manager_->DeregisterService(service_);
+    manager()->DeregisterService(service_);
     SelectService(NULL);
     DestroyIPConfig();
   }

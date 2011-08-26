@@ -81,6 +81,8 @@ class Service : public base::RefCounted<Service> {
     std::string key_management;
   };
 
+  static const int kPriorityNone;
+
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
@@ -134,8 +136,6 @@ class Service : public base::RefCounted<Service> {
   PropertyStore *store() { return &store_; }
 
  protected:
-  static const int kPriorityNone = 0;
-
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
@@ -161,23 +161,10 @@ class Service : public base::RefCounted<Service> {
   void LoadEapCredentials(StoreInterface *storage, const std::string &id);
   void SaveEapCredentials(StoreInterface *storage, const std::string &id);
 
-  // Properties
-  ConnectState state_;
-  ConnectFailure failure_;
-  bool auto_connect_;
-  std::string check_portal_;
-  bool connectable_;
-  std::string error_;
-  bool favorite_;
-  int32 priority_;
-  std::string proxy_config_;
-  bool save_credentials_;
-  EapCredentials eap_;  // Only saved if |save_credentials_| is true.
-
-  ProfileRefPtr profile_;
-  PropertyStore store_;
-
-  EventDispatcher *dispatcher_;
+  // Property accessors reserved for subclasses
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+  const std::string &GetEAPKeyManagement() const;
+  void SetEAPKeyManagement(const std::string &key_management);
 
  private:
   friend class ServiceAdaptorInterface;
@@ -218,6 +205,22 @@ class Service : public base::RefCounted<Service> {
     return "";  // Will need to call Profile to get this.
   }
 
+  ConnectState state_;
+  ConnectFailure failure_;
+  bool auto_connect_;
+  std::string check_portal_;
+  bool connectable_;
+  std::string error_;
+  bool favorite_;
+  int32 priority_;
+  std::string proxy_config_;
+  bool save_credentials_;
+  EapCredentials eap_;  // Only saved if |save_credentials_| is true.
+
+  ProfileRefPtr profile_;
+  PropertyStore store_;
+
+  EventDispatcher *dispatcher_;
   static unsigned int serial_number_;
   const std::string name_;
   bool available_;

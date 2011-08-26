@@ -57,19 +57,20 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_(0),
       scan_pending_(false),
       scan_interval_(0) {
-  store_.RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
-  store_.RegisterUint16(flimflam::kBgscanShortIntervalProperty,
+  PropertyStore *store = this->store();
+  store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
+  store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
                  &bgscan_short_interval_);
-  store_.RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
+  store->RegisterInt32(flimflam::kBgscanSignalThresholdProperty,
                 &bgscan_signal_threshold_);
 
   // TODO(quiche): Decide if scan_pending_ is close enough to
   // "currently scanning" that we don't care, or if we want to track
   // scan pending/currently scanning/no scan scheduled as a tri-state
   // kind of thing.
-  store_.RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
-  store_.RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
-  VLOG(2) << "WiFi device " << link_name_ << " initialized.";
+  store->RegisterConstBool(flimflam::kScanningProperty, &scan_pending_);
+  store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  VLOG(2) << "WiFi device " << link_name() << " initialized.";
 }
 
 WiFi::~WiFi() {}
@@ -83,7 +84,7 @@ void WiFi::Start() {
   try {
     std::map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
-        append_string(link_name_.c_str());
+        append_string(link_name().c_str());
     create_interface_args["Driver"].writer().
         append_string(kSupplicantWiFiDriver);
     // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
@@ -93,7 +94,7 @@ void WiFi::Start() {
   } catch (const DBus::Error e) {  // NOLINT
     if (!strcmp(e.name(), kSupplicantErrorInterfaceExists)) {
       interface_path =
-          supplicant_process_proxy_->GetInterface(link_name_);
+          supplicant_process_proxy_->GetInterface(link_name());
       // XXX crash here, if device missing?
     } else {
       // XXX
@@ -160,7 +161,7 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. and such
   // registration can't be done in the context of a D-Bus signal
   // handler.
-  dispatcher_->PostTask(
+  dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&WiFi::ScanDoneTask));
 }
 
@@ -209,14 +210,14 @@ void WiFi::ScanDoneTask() {
       // XXX key mode should reflect endpoint params (not always use
       // kSupplicantKeyModeNone)
       WiFiServiceRefPtr service(
-          new WiFiService(control_interface_,
-                          dispatcher_,
-                          manager_,
+          new WiFiService(control_interface(),
+                          dispatcher(),
+                          manager(),
                           this,
                           endpoint.ssid(),
                           endpoint.network_mode(),
                           kSupplicantKeyModeNone));
-      services_.push_back(service);
+      services()->push_back(service);
       service_by_private_id_[service_id_private] = service;
 
       LOG(INFO) << "new service " << service->GetRpcIdentifier();

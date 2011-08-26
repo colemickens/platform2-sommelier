@@ -57,8 +57,8 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       task_factory_(this),
       dispatcher_(dispatcher),
       glib_(glib) {
-  store_.RegisterConstString(flimflam::kAddressProperty,
-                             &(properties().address));
+  store()->RegisterConstString(flimflam::kAddressProperty,
+                               &(properties().address));
   VLOG(2) << __func__ << ": " << device_name;
 }
 

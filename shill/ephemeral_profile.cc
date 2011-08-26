@@ -27,7 +27,7 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 EphemeralProfile::~EphemeralProfile() {}
 
 void EphemeralProfile::Finalize() {
-  services_.clear();
+  services()->clear();
 }
 
 }  // namespace shill

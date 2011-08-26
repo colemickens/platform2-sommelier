@@ -63,6 +63,11 @@ class CellularService : public Service {
  protected:
   virtual std::string CalculateState() { return "idle"; }
 
+ private:
+  static const char kServiceType[];
+
+  virtual std::string GetDeviceRpcId();
+
   // Properties
   std::string activation_state_;
   Cellular::Operator serving_operator_;
@@ -74,11 +79,6 @@ class CellularService : public Service {
 
   std::map<std::string, std::string> apn_info_;
   std::map<std::string, std::string> last_good_apn_info_;
-
- private:
-  static const char kServiceType[];
-
-  virtual std::string GetDeviceRpcId();
 
   CellularRefPtr cellular_;
   const std::string type_;
