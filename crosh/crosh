@@ -147,7 +147,7 @@ ctrl_c() {
   return
 }
 
-trap ctrl_c SIGINT
+trap ctrl_c INT
 
 shell_read() {
   local prompt="$1"
