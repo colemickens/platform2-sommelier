@@ -30,9 +30,6 @@ fi
 # Please keep the help text in alphabetical order!
 #
 HELP='
- connectivity
-  Shows connectivity status.  "connectivity help" for more details
-
  enterprise_ca_approve [--allow-self-signed] <url>
   Approve an enterprise certificate authority.  The <url> option should be
   an http or https url to your enterprise Certificate Authority in PEM
@@ -48,14 +45,38 @@ HELP='
  exit
   Exit crosh.
 
+ help
+  Display this help.
+
+ help_advanced
+  Display the help for more advanced commands, mainly used for debugging.
+
+ ping [-c count] [-i interval] [-n] [-s packetsize] [-W waittime] <destination>
+  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
+  then the next hop gateway for the default route is used.
+
+ ssh [optional args...]
+  Starts the ssh subsystem if invoked without any arguments.
+  "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
+  or "ssh <user>@<host> <port>" connect without entering the subsystem.
+
+ ssh_forget_host
+  Remove a host from the list of known ssh hosts.  This command displays
+  a menu of known hosts and prompts for the host to forget.
+
+ top
+  Run top.
+'
+
+HELP_ADVANCED='
+ connectivity
+  Shows connectivity status.  "connectivity help" for more details
+
  experimental_storage < status | enable | disable >
   Enable or disable experimental storage features.
 
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
-
- help
-  Display this help.
 
  modem <command> [args...]
   Interact with the 3G modem. Run "modem help" for detailed help.
@@ -71,10 +92,6 @@ HELP='
   A function that performs a suite of network diagnostics.  Saves a copy
   of the output to your download directory.
 
- ping [-c count] [-i interval] [-n] [-s packet-size] [-W wait-time] <destination>
-  Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
-  then the next hop gateway for the default route is used.
-
  route [-n] [-6]
   Display the routing tables.
 
@@ -89,18 +106,6 @@ HELP='
  set_arpgw <true | false>
   Turn on extra network state checking to make sure the default gateway
   is reachable.
-
- ssh [optional args...]
-  Starts the ssh subsystem if invoked without any arguments.
-  "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
-  or "ssh <user>@<host> <port>" connect without entering the subsystem.
-
- ssh_forget_host
-  Remove a host from the list of known ssh hosts.  This command displays
-  a menu of known hosts and prompts for the host to forget.
-
- top
-  Run top.
 
  tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
  tpcontrol {syntp [on|off]}
@@ -170,6 +175,10 @@ shell_history() {
 
 cmd_help() {
   echo "$HELP"
+}
+
+cmd_help_advanced() {
+  echo "$HELP_ADVANCED"
 }
 
 cmd_exit() {
