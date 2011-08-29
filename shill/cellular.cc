@@ -236,8 +236,7 @@ string Cellular::GetNetworkTechnologyString() const {
         switch (gsm_.access_technology) {
           case MM_MODEM_GSM_ACCESS_TECH_GSM:
           case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
-            // TODO(petkov): Add "GSM" to system_api:service_constants.h.
-            return "GSM";
+            return flimflam::kNetworkTechnologyGsm;
           case MM_MODEM_GSM_ACCESS_TECH_GPRS:
             return flimflam::kNetworkTechnologyGprs;
           case MM_MODEM_GSM_ACCESS_TECH_EDGE:

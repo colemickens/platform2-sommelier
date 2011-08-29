@@ -260,10 +260,11 @@ TEST_F(CellularTest, GetGSMNetworkTechnologyString) {
   device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GSM;
   EXPECT_EQ("", device_->GetNetworkTechnologyString());
   device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
-  // TODO(petkov): Define "GSM" in system_api:service_constants.h.
-  EXPECT_EQ("GSM", device_->GetNetworkTechnologyString());
+  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
+            device_->GetNetworkTechnologyString());
   device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT;
-  EXPECT_EQ("GSM", device_->GetNetworkTechnologyString());
+  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
+            device_->GetNetworkTechnologyString());
   device_->gsm_.access_technology = MM_MODEM_GSM_ACCESS_TECH_GPRS;
   EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
             device_->GetNetworkTechnologyString());
