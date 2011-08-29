@@ -79,16 +79,20 @@ string ManagerDBusAdaptor::GetState(::DBus::Error &error) {
 
 ::DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
                                                ::DBus::Error &error) {
-  return ::DBus::Path();
+  NOTIMPLEMENTED();
+  // TODO(quiche): implement this
+  return ::DBus::Path("/" + name);
 }
 
 void ManagerDBusAdaptor::RemoveProfile(const string &name,
                                        ::DBus::Error &error) {
 }
 
-::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &,
+::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &name,
                                              ::DBus::Error &error) {
-  return ::DBus::Path();
+  NOTIMPLEMENTED();
+  // TODO(quiche): implement this
+  return ::DBus::Path("/" + name);
 }
 
 void ManagerDBusAdaptor::PopProfile(const std::string &, ::DBus::Error &error) {
