@@ -171,6 +171,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
   FRIEND_TEST(CellularTest, GetGSMNetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetGSMRoamingStateString);
+  FRIEND_TEST(CellularTest, GetGSMSignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);

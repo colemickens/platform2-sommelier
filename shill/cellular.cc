@@ -567,9 +567,10 @@ uint32 Cellular::GetCDMASignalQuality() {
 }
 
 uint32 Cellular::GetGSMSignalQuality() {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
-  return 0;
+  VLOG(2) << __func__;
+  CHECK_EQ(kTypeGSM, type_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  return gsm_network_proxy_->GetSignalQuality();
 }
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {
@@ -775,8 +776,8 @@ void Cellular::OnGSMRegistrationInfoChanged(uint32 status,
 }
 
 void Cellular::OnGSMSignalQualityChanged(uint32 quality) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  CHECK_EQ(kTypeGSM, type_);
+  HandleNewSignalQuality(quality);
 }
 
 void Cellular::OnModemStateChanged(uint32 old_state,

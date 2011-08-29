@@ -19,13 +19,17 @@ ModemGSMNetworkProxy::ModemGSMNetworkProxy(
 
 ModemGSMNetworkProxy::~ModemGSMNetworkProxy() {}
 
-void ModemGSMNetworkProxy::Register(const string &network_id) {
-  proxy_.Register(network_id);
-}
-
 ModemGSMNetworkProxyInterface::RegistrationInfo
 ModemGSMNetworkProxy::GetRegistrationInfo() {
   return proxy_.GetRegistrationInfo();
+}
+
+uint32 ModemGSMNetworkProxy::GetSignalQuality() {
+  return proxy_.GetSignalQuality();
+}
+
+void ModemGSMNetworkProxy::Register(const string &network_id) {
+  proxy_.Register(network_id);
 }
 
 uint32 ModemGSMNetworkProxy::AccessTechnology() {

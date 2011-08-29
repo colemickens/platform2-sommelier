@@ -20,8 +20,9 @@ class ModemGSMNetworkProxyInterface {
 
   virtual ~ModemGSMNetworkProxyInterface() {}
 
-  virtual void Register(const std::string &network_id) = 0;
   virtual RegistrationInfo GetRegistrationInfo() = 0;
+  virtual uint32 GetSignalQuality() = 0;
+  virtual void Register(const std::string &network_id) = 0;
 
   // Properties.
   virtual uint32 AccessTechnology() = 0;

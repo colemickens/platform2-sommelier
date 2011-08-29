@@ -386,6 +386,7 @@ TEST_F(CellularTest, GetCDMAActivationErrorString) {
 }
 
 TEST_F(CellularTest, StartCDMARegister) {
+  const int kStrength = 90;
   device_->type_ = Cellular::kTypeCDMA;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
@@ -395,19 +396,21 @@ TEST_F(CellularTest, StartCDMARegister) {
       .WillOnce(DoAll(
           SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME),
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
+  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(kStrength));
   device_->Start();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
             device_->service_->network_tech());
+  EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
 }
 
 TEST_F(CellularTest, StartGSMRegister) {
   device_->type_ = Cellular::kTypeGSM;
   static const char kNetwork[] = "My Favorite GSM Network";
+  const int kStrength = 70;
   device_->selected_network_ = kNetwork;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*gsm_network_proxy_, Register(kNetwork)).Times(1);
@@ -420,12 +423,15 @@ TEST_F(CellularTest, StartGSMRegister) {
   reg_info._1 = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
   EXPECT_CALL(*gsm_network_proxy_, GetRegistrationInfo())
       .WillOnce(Return(reg_info));
+  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
+      .WillOnce(Return(kStrength));
   device_->Start();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
             device_->service_->network_tech());
+  EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
 }
 
@@ -547,6 +553,24 @@ TEST_F(CellularTest, GetCDMASignalQuality) {
       .Times(2)
       .WillRepeatedly(Return(kStrength));
   device_->cdma_proxy_.reset(cdma_proxy_.release());
+
+  EXPECT_FALSE(device_->service_.get());
+  device_->GetModemSignalQuality();
+
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &manager_, device_);
+  EXPECT_EQ(0, device_->service_->strength());
+  device_->GetModemSignalQuality();
+  EXPECT_EQ(kStrength, device_->service_->strength());
+}
+
+TEST_F(CellularTest, GetGSMSignalQuality) {
+  const int kStrength = 80;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
+      .Times(2)
+      .WillRepeatedly(Return(kStrength));
+  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
 
   EXPECT_FALSE(device_->service_.get());
   device_->GetModemSignalQuality();
