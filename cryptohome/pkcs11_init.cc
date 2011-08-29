@@ -53,6 +53,9 @@ const char* Pkcs11Init::kSymlinkSources[] = {
 const char* Pkcs11Init::kSensitiveTokenFiles[] = {
   "PUBLIC_ROOT_KEY.pem",
   "PRIVATE_ROOT_KEY.pem",
+  ".stmapfile", // This files is not sensitive but it needs to be cleaned up
+                // because it seems to fall out-of-sync causing existing certs
+                // to disappear.
   NULL
 };
 
