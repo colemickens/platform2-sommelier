@@ -378,4 +378,60 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
     sleep(1);
 }
 
+// Test battery discharge while suspending and resuming.
+TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
+  FilePath path = temp_dir_generator_->path();
+  file_util::CreateDirectory(path.Append("ac"));
+  file_util::CreateDirectory(path.Append("battery"));
+  map<string, string> values;
+  values["ac/online"] = kOffline;
+  values["ac/type"] = kACType;
+  values["battery/type"] = kBatteryType;
+  values["battery/present"] = kPresent;
+  values["battery/charge_full"] = base::IntToString(kChargeFullInt);
+  values["battery/charge_full_design"] = base::IntToString(kChargeFullInt);
+  values["battery/charge_now"] = base::IntToString(kChargeNowInt);
+  values["battery/current_now"] = base::IntToString(kCurrentNowInt);
+  values["battery/voltage_now"] = base::IntToString(kVoltageNowInt);
+  values["battery/cycle_count"] = base::IntToString(kCycleCount);
+
+  for (map<string, string>::iterator iter = values.begin();
+       iter != values.end();
+       ++iter)
+    file_util::WriteFile(path.Append(iter->first),
+                         iter->second.c_str(),
+                         iter->second.length());
+  power_supply_->Init();
+  power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
+  chromeos::PowerStatus power_status;
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  sleep(6);
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
+  EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
+  EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
+  EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
+  // Store initial remaining battery time reading.
+  int64 time_to_empty = power_status.battery_time_to_empty;
+
+  // Suspend, reduce the current, and resume.
+  power_supply_->SetSuspendState(true);
+  file_util::WriteFile(path.Append("battery/current_now"),
+                       base::IntToString(kCurrentNowInt / 10).c_str(),
+                       base::IntToString(kCurrentNowInt / 10).length());
+  sleep(8);
+  // Verify that the time remaining hasn't increased dramatically.
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty,
+              time_to_empty * power_supply_->acceptable_variance_);
+  sleep(2);
+  // Restore normal current reading.
+  file_util::WriteFile(path.Append("battery/current_now"),
+                       base::IntToString(kCurrentNowInt).c_str(),
+                       base::IntToString(kCurrentNowInt).length());
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty, 30);
+}
+
 }  // namespace power_manager

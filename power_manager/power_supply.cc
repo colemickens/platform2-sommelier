@@ -47,7 +47,8 @@ PowerSupply::PowerSupply(const FilePath& power_supply_path)
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTime),
       found_acceptable_time_range_(false),
-      time_now_func(base::Time::Now) {}
+      time_now_func(base::Time::Now),
+      is_suspended_(false) {}
 
 PowerSupply::~PowerSupply() {
   // Clean up allocated objects.
@@ -185,6 +186,24 @@ bool PowerSupply::GetPowerInformation(chromeos::PowerInformation* info) {
   return true;
 }
 
+void PowerSupply::SetSuspendState(bool state) {
+  // Do not take any action if there is no change in suspend state.
+  if (is_suspended_ == state)
+    return;
+  is_suspended_ = state;
+
+  // Record the suspend time.
+  if (is_suspended_) {
+    suspend_time_ = time_now_func();
+    return;
+  }
+
+  // If resuming, deduct the time suspended from the hysteresis state machine
+  // timestamps.
+  base::TimeDelta offset = time_now_func() - suspend_time_;
+  AdjustHysteresisTimes(offset);
+}
+
 void PowerSupply::GetPowerSupplyPaths() {
   // First check if both line power and battery paths have been found and still
   // exist.  If so, there is no need to do anything else.
@@ -228,6 +247,46 @@ double PowerSupply::GetLinearTimeToEmpty() {
 void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
   CHECK(time_now_func);
   base::Time time_now = time_now_func();
+  // This function might be called due to a race condition between the suspend
+  // process and the battery polling.  If that's the case, handle it gracefully
+  // by updating the hysteresis times and suspend time.
+  //
+  // Since the time between suspend and now has been taken into account in the
+  // hysteresis times, the recorded suspend time should be updated to the
+  // current time, to compensate.
+  //
+  // Example:
+  // Hysteresis time = 3
+  // At time t=0, there is a read of the power supply.
+  // At time t=1, the system is suspended.
+  // At time t=4, the system is resumed.  There is a power supply read at t=4.
+  // At time t=4.5, SetSuspendState(false) is called (latency in resume process)
+  //
+  // At t=4, the remaining time could be set to something very high, based on
+  // the low suspend current, since the time since last read is greater than the
+  // hysteresis time.
+  //
+  // The solution is to shift the last read time forward by 3, which is the time
+  // elapsed between suspend (t=1) and the next reading (t=4).  Thus, the time
+  // of last read becomes t=3, and time since last read becomes 1 instead of 4.
+  // This avoids triggering the time hysteresis adjustment.
+  //
+  // At this point, the suspend time is also reset to the current time.  This is
+  // so that when AdjustHysteresisTimes() is called again (e.g. during resume),
+  // the previous period of t=1 to t=4 is not used again in the adjustment.
+  // Continuing the example:
+  // At t=4.5, SetSuspendState(false) is called, and it calls
+  //   AdjustHysteresisTimes().  Since suspend time has been adjusted from t=1
+  //   to t=4, the new offset is only 0.5.  So time of last read gets shifted
+  //   from t=3 to t=3.5.
+  // If suspend time was not reset to t=4, then we'd have an offset of 3.5
+  // instead of 0.5, and time of last read gets set from t=3 to t=6.5, which is
+  // invalid.
+  if (is_suspended_) {
+    AdjustHysteresisTimes(time_now - suspend_time_);
+    suspend_time_ = time_now;
+  }
+
   // Check to make sure there isn't a division by zero.
   if (current_now_ > 0) {
     double time_to_empty = 0;
@@ -238,6 +297,7 @@ void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
       found_acceptable_time_range_ = false;
       last_poll_time_ = base::Time();
       discharge_start_time_ = base::Time();
+      last_acceptable_range_time_ = base::Time();
     } else if (!found_acceptable_time_range_) {
       // No base range found, need to give it some time to stabilize.  For now,
       // use the simple linear calculation for time.
@@ -250,7 +310,7 @@ void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
       if (time_now - discharge_start_time_ >= hysteresis_time_) {
         acceptable_time_ = time_to_empty;
         found_acceptable_time_range_ = true;
-        last_poll_time_ = time_now;
+        last_poll_time_ = last_acceptable_range_time_ = time_now;
       }
     } else {
       double calculated_time = GetLinearTimeToEmpty();
@@ -267,6 +327,7 @@ void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
         acceptable_time_ = calculated_time;
         time_to_empty = calculated_time;
         found_acceptable_time_range_ = true;
+        last_acceptable_range_time_ = time_now;
       } else if (calculated_time < acceptable_time_ - allowed_time_variation) {
         // Clip remaining time at lower bound if it is too low.
         time_to_empty = acceptable_time_ - allowed_time_variation;
@@ -281,6 +342,13 @@ void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
     status->battery_time_to_empty = 0;
     status->battery_time_to_full = 0;
   }
+}
+
+void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
+  if (!discharge_start_time_.is_null())
+    discharge_start_time_ += offset;
+  if (!last_acceptable_range_time_.is_null())
+    last_acceptable_range_time_ += offset;
 }
 
 double PowerSupply::PowerInfoReader::ReadScaledDouble(const char* name) {

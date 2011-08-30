@@ -922,6 +922,7 @@ void Daemon::Suspend() {
     return;
   }
   if (util::LoggedIn()) {
+    power_supply_.SetSuspendState(true);
     suspender_.RequestSuspend();
   } else {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
@@ -970,6 +971,7 @@ void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
 
 void Daemon::HandleResume() {
   file_tagger_.HandleResumeEvent();
+  power_supply_.SetSuspendState(false);
   // Monitor reconfigure will set the backlight if needed.
   monitor_reconfigure_->Run();
 }

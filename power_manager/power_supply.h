@@ -40,9 +40,22 @@ class PowerSupply {
   const FilePath& line_power_path() const { return line_power_path_; }
   const FilePath& battery_path() const { return battery_path_; }
 
+  void SetSuspendState(bool state);
+
  private:
   friend class PowerSupplyTest;
   FRIEND_TEST(PowerSupplyTest, TestDischargingWithHysteresis);
+  FRIEND_TEST(PowerSupplyTest, TestDischargingWithSuspendResume);
+
+  // Use the PowerPrefs functions to read info from sysfs.
+  // Make this public for unit testing purposes, but keep objects private.
+  class PowerInfoReader : public PowerPrefs {
+   public:
+    PowerInfoReader(const FilePath& path) : PowerPrefs(path, path) {}
+
+    double ReadScaledDouble(const char* name);
+    bool ReadString(const char* name, std::string* str);
+  };
 
   // Find sysfs directories to read from.
   void GetPowerSupplyPaths();
@@ -53,14 +66,12 @@ class PowerSupply {
   // Determine remaining time when charging or discharging.
   void CalculateRemainingTime(chromeos::PowerStatus *status);
 
-  // Use the PowerPrefs functions to read info from sysfs.
-  class PowerInfoReader : public PowerPrefs {
-   public:
-    PowerInfoReader(const FilePath& path) : PowerPrefs(path, path) {}
+  // Offsets the timestamps used in hysteresis calculations.  This is used when
+  // suspending and resuming -- the time while suspended should not count toward
+  // the hysteresis times.
+  void AdjustHysteresisTimes(const base::TimeDelta& offset);
 
-    double ReadScaledDouble(const char* name);
-    bool ReadString(const char* name, std::string* str);
-  };
+  // Used for reading line power and battery status from sysfs.
   PowerInfoReader* line_power_info_;
   PowerInfoReader* battery_info_;
 
@@ -101,6 +112,9 @@ class PowerSupply {
   // Use a function pointer to get the current time.  This way base::Time::Now()
   // can be mocked out by inserting an alternate function.
   base::Time (*time_now_func)();
+
+  base::Time suspend_time_;
+  bool is_suspended_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };
