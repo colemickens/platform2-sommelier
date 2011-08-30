@@ -710,6 +710,28 @@ TEST_F(CellularTest, Connect) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(CellularTest, RegisterOnNetwork) {
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_network_proxy_, Register(kTestCarrier)).Times(1);
+  device_->RegisterOnNetwork(kTestCarrier, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(kTestCarrier, device_->selected_network_);
+}
+
+TEST_F(CellularTest, RegisterOnNetworkError) {
+  Error error;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*gsm_network_proxy_, Register(_)).Times(0);
+  device_->RegisterOnNetwork(kTestCarrier, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ("", device_->selected_network_);
+}
+
 TEST_F(CellularTest, Activate) {
   Error error;
   device_->type_ = Cellular::kTypeCDMA;

@@ -506,10 +506,34 @@ void Cellular::GetGSMProperties() {
 
 void Cellular::RegisterGSMModem() {
   CHECK_EQ(kTypeGSM, type_);
-  LOG(INFO) << "Registering on: "
-            << (selected_network_.empty() ? "home network" : selected_network_);
+  LOG(INFO) << "Registering on \"" << selected_network_ << "\"";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   gsm_network_proxy_->Register(selected_network_);
+  // TODO(petkov): Handle registration failure including trying the home network
+  // when selected_network_ is not empty.
+}
+
+void Cellular::RegisterOnNetwork(const string &network_id, Error *error) {
+  LOG(INFO) << __func__ << "(" << network_id << ")";
+  if (type_ != kTypeGSM) {
+    const string kMessage = "Network registration supported only for GSM.";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kNotSupported, kMessage);
+    return;
+  }
+  // Defer registration because we may be in a dbus-c++ callback.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&Cellular::RegisterOnNetworkTask,
+                                      network_id));
+}
+
+void Cellular::RegisterOnNetworkTask(const string &network_id) {
+  LOG(INFO) << __func__ << "(" << network_id << ")";
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  gsm_network_proxy_->Register(network_id);
+  // TODO(petkov): Handle registration failure.
+  selected_network_ = network_id;
 }
 
 void Cellular::GetModemInfo() {

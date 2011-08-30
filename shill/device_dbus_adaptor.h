@@ -43,22 +43,25 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
                                  const std::string& value);
 
   // Implementation of Device_adaptor.
-  std::map<std::string, ::DBus::Variant> GetProperties(::DBus::Error &error);
-  void SetProperty(const std::string& name,
-                   const ::DBus::Variant& value,
-                   ::DBus::Error &error);
-  void ClearProperty(const std::string& , ::DBus::Error &error);
-  void ProposeScan(::DBus::Error &error);
-  ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
-  void Register(const std::string& , ::DBus::Error &error);
-  void RequirePin(const std::string& , const bool& , ::DBus::Error &error);
-  void EnterPin(const std::string& , ::DBus::Error &error);
-  void UnblockPin(const std::string& ,
-                  const std::string& ,
-                  ::DBus::Error &error);
-  void ChangePin(const std::string& ,
-                 const std::string& ,
-                 ::DBus::Error &error);
+  virtual std::map<std::string, ::DBus::Variant> GetProperties(
+      ::DBus::Error &error);
+  virtual void SetProperty(const std::string& name,
+                           const ::DBus::Variant& value,
+                           ::DBus::Error &error);
+  virtual void ClearProperty(const std::string& , ::DBus::Error &error);
+  virtual void ProposeScan(::DBus::Error &error);
+  virtual ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
+  virtual void Register(const std::string &network_id, ::DBus::Error &error);
+  virtual void RequirePin(const std::string& ,
+                          const bool& ,
+                          ::DBus::Error &error);
+  virtual void EnterPin(const std::string& , ::DBus::Error &error);
+  virtual void UnblockPin(const std::string& ,
+                          const std::string& ,
+                          ::DBus::Error &error);
+  virtual void ChangePin(const std::string& ,
+                         const std::string& ,
+                         ::DBus::Error &error);
 
  private:
   Device *device_;

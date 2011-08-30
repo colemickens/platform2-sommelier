@@ -82,7 +82,11 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
   return ::DBus::Path();
 }
 
-void DeviceDBusAdaptor::Register(const std::string& , ::DBus::Error &error) {
+void DeviceDBusAdaptor::Register(const string &network_id,
+                                 ::DBus::Error &error) {
+  Error e;
+  device_->RegisterOnNetwork(network_id, &e);
+  e.ToDBusError(&error);
 }
 
 void DeviceDBusAdaptor::RequirePin(const std::string& ,

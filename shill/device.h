@@ -62,6 +62,9 @@ class Device : public base::RefCounted<Device> {
 
   virtual void ConfigIP() {}
 
+  // The default implementation sets |error| to kNotSupported.
+  virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();
 

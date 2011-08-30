@@ -134,6 +134,13 @@ void Device::Scan() {
   VLOG(2) << "Device " << link_name_ << " scan requested.";
 }
 
+void Device::RegisterOnNetwork(const std::string &network_id, Error *error) {
+  const string kMessage = "Device doesn't support network registration.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
+}
+
 string Device::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }

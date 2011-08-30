@@ -159,6 +159,7 @@ class Cellular : public Device,
   virtual void Stop();
   virtual bool TechnologyIs(Technology type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
+  virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
 
  private:
   FRIEND_TEST(CellularTest, Activate);
@@ -182,6 +183,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
+  FRIEND_TEST(CellularTest, RegisterOnNetwork);
+  FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -216,6 +219,7 @@ class Cellular : public Device,
 
   void ConnectTask(const DBusPropertiesMap &properties);
   void ActivateTask(const std::string &carrier);
+  void RegisterOnNetworkTask(const std::string &network_id);
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
