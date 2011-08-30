@@ -1213,11 +1213,7 @@ void GobiModem::GetSignalStrengthDbm(int& output,
 
   // If we're in the connected state, pick the signal strength for the radio
   // interface that's being used. Otherwise, pick the strongest signal.
-  ULONG session_state;
-  rc = sdk_->GetSessionState(&session_state);
-  ENSURE_SDK_SUCCESS(GetSessionState, rc, kSdkError);
-
-  if (session_state == gobi::kConnected) {
+  if (session_id_) {
     ULONG db_technology;
     rc =  sdk_->GetDataBearerTechnology(&db_technology);
     if (rc != 0) {
