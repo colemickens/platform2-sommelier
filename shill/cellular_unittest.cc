@@ -18,6 +18,7 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_modem_cdma_proxy.h"
+#include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
@@ -118,6 +119,7 @@ class CellularTest : public testing::Test {
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         cdma_proxy_(new MockModemCDMAProxy()),
+        gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         proxy_factory_(this),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
@@ -174,6 +176,13 @@ class CellularTest : public testing::Test {
       return test_->cdma_proxy_.release();
     }
 
+    virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
+        ModemGSMCardProxyListener *listener,
+        const string &path,
+        const string &service) {
+      return test_->gsm_card_proxy_.release();
+    }
+
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
         ModemGSMNetworkProxyListener *listener,
         const string &path,
@@ -191,6 +200,10 @@ class CellularTest : public testing::Test {
   static const char kDBusOwner[];
   static const char kDBusPath[];
   static const char kTestCarrier[];
+  static const char kMEID[];
+  static const char kIMEI[];
+  static const char kIMSI[];
+  static const char kMSISDN[];
 
   void StartRTNLHandler();
   void StopRTNLHandler();
@@ -204,6 +217,7 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
+  scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   TestProxyFactory proxy_factory_;
 
@@ -219,6 +233,10 @@ const int CellularTest::kTestSocket = 123;
 const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
+const char CellularTest::kMEID[] = "D1234567EF8901";
+const char CellularTest::kIMEI[] = "987654321098765";
+const char CellularTest::kIMSI[] = "123456789012345";
+const char CellularTest::kMSISDN[] = "12345678901";
 
 void CellularTest::StartRTNLHandler() {
   EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -391,6 +409,7 @@ TEST_F(CellularTest, StartCDMARegister) {
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
   EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
   EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
       .WillOnce(DoAll(
@@ -398,6 +417,7 @@ TEST_F(CellularTest, StartCDMARegister) {
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN)));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(kStrength));
   device_->Start();
+  EXPECT_EQ(kMEID, device_->meid_);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
@@ -416,6 +436,10 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_CALL(*gsm_network_proxy_, Register(kNetwork)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
+  EXPECT_CALL(*gsm_card_proxy_, GetIMEI()).WillOnce(Return(kIMEI));
+  EXPECT_CALL(*gsm_card_proxy_, GetIMSI()).WillOnce(Return(kIMSI));
+  EXPECT_CALL(*gsm_card_proxy_, GetSPN()).WillOnce(Return(kTestCarrier));
+  EXPECT_CALL(*gsm_card_proxy_, GetMSISDN()).WillOnce(Return(kMSISDN));
   EXPECT_CALL(*gsm_network_proxy_, AccessTechnology())
       .WillOnce(Return(MM_MODEM_GSM_ACCESS_TECH_EDGE));
   EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
@@ -426,6 +450,10 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
       .WillOnce(Return(kStrength));
   device_->Start();
+  EXPECT_EQ(kIMEI, device_->imei_);
+  EXPECT_EQ(kIMSI, device_->imsi_);
+  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
+  EXPECT_EQ(kMSISDN, device_->mdn_);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
@@ -440,6 +468,7 @@ TEST_F(CellularTest, StartConnected) {
       .WillOnce(Return(true));
   device_->type_ = Cellular::kTypeCDMA;
   device_->set_modem_state(Cellular::kModemStateConnected);
+  device_->meid_ = kMEID;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
@@ -459,6 +488,7 @@ TEST_F(CellularTest, StartLinked) {
       .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
   device_->type_ = Cellular::kTypeCDMA;
   device_->set_modem_state(Cellular::kModemStateConnected);
+  device_->meid_ = kMEID;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
@@ -485,6 +515,8 @@ TEST_F(CellularTest, InitProxiesCDMA) {
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
   EXPECT_TRUE(device_->cdma_proxy_.get());
+  EXPECT_FALSE(device_->gsm_card_proxy_.get());
+  EXPECT_FALSE(device_->gsm_network_proxy_.get());
 }
 
 TEST_F(CellularTest, InitProxiesGSM) {
@@ -492,6 +524,8 @@ TEST_F(CellularTest, InitProxiesGSM) {
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
+  EXPECT_TRUE(device_->gsm_card_proxy_.get());
+  EXPECT_TRUE(device_->gsm_network_proxy_.get());
   EXPECT_FALSE(device_->cdma_proxy_.get());
 }
 
@@ -580,6 +614,35 @@ TEST_F(CellularTest, GetGSMSignalQuality) {
   EXPECT_EQ(0, device_->service_->strength());
   device_->GetModemSignalQuality();
   EXPECT_EQ(kStrength, device_->service_->strength());
+}
+
+TEST_F(CellularTest, GetCDMAIdentifiers) {
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
+  device_->cdma_proxy_.reset(cdma_proxy_.release());
+  device_->GetModemIdentifiers();
+  EXPECT_EQ(kMEID, device_->meid_);
+  device_->GetModemIdentifiers();
+  EXPECT_EQ(kMEID, device_->meid_);
+}
+
+TEST_F(CellularTest, GetGSMIdentifiers) {
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_card_proxy_, GetIMEI()).WillOnce(Return(kIMEI));
+  EXPECT_CALL(*gsm_card_proxy_, GetIMSI()).WillOnce(Return(kIMSI));
+  EXPECT_CALL(*gsm_card_proxy_, GetSPN()).WillOnce(Return(kTestCarrier));
+  EXPECT_CALL(*gsm_card_proxy_, GetMSISDN()).WillOnce(Return(kMSISDN));
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  device_->GetModemIdentifiers();
+  EXPECT_EQ(kIMEI, device_->imei_);
+  EXPECT_EQ(kIMSI, device_->imsi_);
+  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
+  EXPECT_EQ(kMSISDN, device_->mdn_);
+  device_->GetModemIdentifiers();
+  EXPECT_EQ(kIMEI, device_->imei_);
+  EXPECT_EQ(kIMSI, device_->imsi_);
+  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
+  EXPECT_EQ(kMSISDN, device_->mdn_);
 }
 
 TEST_F(CellularTest, CreateService) {

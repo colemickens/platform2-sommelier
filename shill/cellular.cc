@@ -384,6 +384,9 @@ void Cellular::InitProxies() {
           dbus_path_, dbus_owner_));
   switch (type_) {
     case kTypeGSM:
+      gsm_card_proxy_.reset(
+          ProxyFactory::factory()->CreateModemGSMCardProxy(
+              this, dbus_path_, dbus_owner_));
       gsm_network_proxy_.reset(
           ProxyFactory::factory()->CreateModemGSMNetworkProxy(
               this, dbus_path_, dbus_owner_));
@@ -444,17 +447,65 @@ void Cellular::GetModemStatus() {
 }
 
 void Cellular::GetModemIdentifiers() {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  VLOG(2) << __func__;
+  switch (type_) {
+    case kTypeGSM:
+      GetGSMIdentifiers();
+      break;
+    case kTypeCDMA:
+      GetCDMAIdentifiers();
+      break;
+    default: NOTREACHED();
+  }
+}
+
+void Cellular::GetCDMAIdentifiers() {
+  CHECK_EQ(kTypeCDMA, type_);
+  if (meid_.empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    meid_ = cdma_proxy_->MEID();
+    VLOG(2) << "MEID: " << imei_;
+  }
+}
+
+void Cellular::GetGSMIdentifiers() {
+  CHECK_EQ(kTypeGSM, type_);
+  if (imei_.empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    imei_ = gsm_card_proxy_->GetIMEI();
+    VLOG(2) << "IMEI: " << imei_;
+  }
+  if (imsi_.empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    imsi_ = gsm_card_proxy_->GetIMSI();
+    VLOG(2) << "IMSI: " << imsi_;
+  }
+  if (gsm_.spn.empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    try {
+      gsm_.spn = gsm_card_proxy_->GetSPN();
+      VLOG(2) << "SPN: " << gsm_.spn;
+    } catch (const DBus::Error e) {
+      // Some modems don't support this call so catch the exception explicitly.
+      LOG(WARNING) << "Unable to obtain SPN: " << e.what();
+    }
+  }
+  if (mdn_.empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    mdn_ = gsm_card_proxy_->GetMSISDN();
+    VLOG(2) << "MSISDN/MDN: " << mdn_;
+  }
 }
 
 void Cellular::GetGSMProperties() {
+  CHECK_EQ(kTypeGSM, type_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   gsm_.access_technology = gsm_network_proxy_->AccessTechnology();
   VLOG(2) << "GSM AccessTechnology: " << gsm_.access_technology;
 }
 
 void Cellular::RegisterGSMModem() {
+  CHECK_EQ(kTypeGSM, type_);
   LOG(INFO) << "Registering on: "
             << (selected_network_.empty() ? "home network" : selected_network_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).

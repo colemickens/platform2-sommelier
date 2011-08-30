@@ -14,6 +14,7 @@
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/modem_cdma_proxy_interface.h"
+#include "shill/modem_gsm_card_proxy_interface.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
@@ -26,6 +27,7 @@ class ModemSimpleProxyInterface;
 
 class Cellular : public Device,
                  public ModemCDMAProxyListener,
+                 public ModemGSMCardProxyListener,
                  public ModemGSMNetworkProxyListener,
                  public ModemProxyListener {
  public:
@@ -165,10 +167,12 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
+  FRIEND_TEST(CellularTest, GetCDMAIdentifiers);
   FRIEND_TEST(CellularTest, GetCDMANetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMARoamingStateString);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
+  FRIEND_TEST(CellularTest, GetGSMIdentifiers);
   FRIEND_TEST(CellularTest, GetGSMNetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetGSMRoamingStateString);
   FRIEND_TEST(CellularTest, GetGSMSignalQuality);
@@ -202,6 +206,7 @@ class Cellular : public Device,
     uint32 access_technology;
     std::string network_id;
     std::string operator_name;
+    std::string spn;
   };
 
   static const char kPhoneNumberCDMA[];
@@ -246,6 +251,8 @@ class Cellular : public Device,
   // Obtains the modem identifiers: MEID for CDMA; IMEI, IMSI, SPN and MSISDN
   // for GSM.
   void GetModemIdentifiers();
+  void GetCDMAIdentifiers();
+  void GetGSMIdentifiers();
 
   // Obtains modem's manufacturer, model ID, and hardware revision.
   void GetModemInfo();
@@ -299,6 +306,7 @@ class Cellular : public Device,
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
   scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
+  scoped_ptr<ModemGSMCardProxyInterface> gsm_card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
 
   CDMA cdma_;

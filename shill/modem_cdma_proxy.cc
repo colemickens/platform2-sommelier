@@ -31,6 +31,10 @@ uint32 ModemCDMAProxy::GetSignalQuality() {
   return proxy_.GetSignalQuality();
 }
 
+const string ModemCDMAProxy::MEID() {
+  return proxy_.Meid();
+}
+
 ModemCDMAProxy::Proxy::Proxy(ModemCDMAProxyListener *listener,
                              DBus::Connection *connection,
                              const string &path,

@@ -25,6 +25,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
   virtual uint32 Activate(const std::string &carrier);
   virtual void GetRegistrationState(uint32 *cdma_1x_state, uint32 *evdo_state);
   virtual uint32 GetSignalQuality();
+  virtual const std::string MEID();
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Cdma_proxy,

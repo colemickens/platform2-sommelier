@@ -21,6 +21,7 @@ class MockModemCDMAProxy : public ModemCDMAProxyInterface {
   MOCK_METHOD2(GetRegistrationState, void(uint32 *cdma_1x_state,
                                           uint32 *evdo_state));
   MOCK_METHOD0(GetSignalQuality, uint32());
+  MOCK_METHOD0(MEID, const std::string());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemCDMAProxy);

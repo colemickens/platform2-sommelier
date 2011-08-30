@@ -9,6 +9,7 @@
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/modem_cdma_proxy.h"
+#include "shill/modem_gsm_card_proxy.h"
 #include "shill/modem_gsm_network_proxy.h"
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
@@ -64,6 +65,13 @@ ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
     const string &path,
     const string &service) {
   return new ModemCDMAProxy(listener, connection(), path, service);
+}
+
+ModemGSMCardProxyInterface *ProxyFactory::CreateModemGSMCardProxy(
+    ModemGSMCardProxyListener *listener,
+    const string &path,
+    const string &service) {
+  return new ModemGSMCardProxy(listener, connection(), path, service);
 }
 
 ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(

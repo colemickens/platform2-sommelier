@@ -23,6 +23,9 @@ class ModemCDMAProxyInterface {
   virtual void GetRegistrationState(uint32 *cdma_1x_state,
                                     uint32 *evdo_state) = 0;
   virtual uint32 GetSignalQuality() = 0;
+
+  // Properties.
+  virtual const std::string MEID() = 0;
 };
 
 // ModemManager.Modem.CDMA signal listener to be associated with the proxy.

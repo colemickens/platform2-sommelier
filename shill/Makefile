@@ -104,6 +104,7 @@ SHILL_OBJS = \
 	manager_dbus_adaptor.o \
 	modem.o \
 	modem_cdma_proxy.o \
+	modem_gsm_card_proxy.o \
 	modem_gsm_network_proxy.o \
 	modem_info.o \
 	modem_manager.o \
@@ -166,6 +167,7 @@ TEST_OBJS = \
 	mock_ipconfig.o \
 	mock_manager.o \
 	mock_modem_cdma_proxy.o \
+	mock_modem_gsm_card_proxy.o \
 	mock_modem_gsm_network_proxy.o \
 	mock_modem_manager_proxy.o \
 	mock_modem_proxy.o \
