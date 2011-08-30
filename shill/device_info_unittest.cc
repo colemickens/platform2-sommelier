@@ -99,7 +99,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
   ByteString address;
-  EXPECT_TRUE(device_info_.GetAddress(kTestDeviceIndex, &address));
+  EXPECT_TRUE(device_info_.GetMACAddress(kTestDeviceIndex, &address));
   EXPECT_FALSE(address.IsEmpty());
   EXPECT_TRUE(address.Equals(ByteString(kTestAddress, sizeof(kTestAddress))));
 

@@ -156,9 +156,9 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   DeviceRefPtr device = GetDevice(dev_index);
   if (!device.get()) {
     if (msg.HasAttribute(IFLA_ADDRESS)) {
-      infos_[dev_index].address = msg.GetAttribute(IFLA_ADDRESS);
+      infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
       VLOG(2) << "link index " << dev_index << " address "
-              << infos_[dev_index].address.HexEncode();
+              << infos_[dev_index].mac_address.HexEncode();
     } else {
       LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
       return;
@@ -178,7 +178,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         technology = GetDeviceTechnology(link_name);
       }
     }
-    string address = infos_[dev_index].address.HexEncode();
+    string address = infos_[dev_index].mac_address.HexEncode();
     switch (technology) {
       case Device::kCellular:
         // Cellular devices are managed by ModemInfo.
@@ -222,12 +222,12 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
   return info ? info->device : NULL;
 }
 
-bool DeviceInfo::GetAddress(int interface_index, ByteString *address) const {
+bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
   const Info *info = GetInfo(interface_index);
   if (!info) {
     return false;
   }
-  *address = info->address;
+  *address = info->mac_address;
   return true;
 }
 

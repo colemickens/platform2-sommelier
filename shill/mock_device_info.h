@@ -24,7 +24,7 @@ class MockDeviceInfo : public DeviceInfo {
                  Manager *manager);
   virtual ~MockDeviceInfo();
 
-  MOCK_CONST_METHOD2(GetAddress, bool(int, ByteString*));
+  MOCK_CONST_METHOD2(GetMACAddress, bool(int, ByteString*));
   MOCK_CONST_METHOD2(GetFlags, bool(int, unsigned int*));
 
  private:

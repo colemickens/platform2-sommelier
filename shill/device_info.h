@@ -39,7 +39,7 @@ class DeviceInfo {
   void RegisterDevice(const DeviceRefPtr &device);
 
   DeviceRefPtr GetDevice(int interface_index) const;
-  virtual bool GetAddress(int interface_index, ByteString *address) const;
+  virtual bool GetMACAddress(int interface_index, ByteString *address) const;
   virtual bool GetFlags(int interface_index, unsigned int *flags) const;
 
  private:
@@ -50,7 +50,7 @@ class DeviceInfo {
     Info() : flags(0) {}
 
     DeviceRefPtr device;
-    ByteString address;
+    ByteString mac_address;
     unsigned int flags;
   };
 

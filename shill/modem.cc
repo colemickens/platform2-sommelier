@@ -85,7 +85,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
   }
 
   ByteString address_bytes;
-  if (!manager_->device_info()->GetAddress(interface_index, &address_bytes)) {
+  if (!manager_->device_info()->GetMACAddress(interface_index,
+                                              &address_bytes)) {
     // TODO(petkov): ensure that DeviceInfo has heard about this device before
     //               we go ahead and try to add it.
     LOG(ERROR) << "Unable to create cellular device without a hardware addr.";

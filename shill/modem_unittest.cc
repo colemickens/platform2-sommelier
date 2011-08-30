@@ -150,7 +150,7 @@ TEST_F(ModemTest, CreateCellularDevice) {
 
   ByteString expected_address(kAddress, arraysize(kAddress));
   MockDeviceInfo info_(&control_interface_, &dispatcher_, &manager_);
-  EXPECT_CALL(info_, GetAddress(kTestInterfaceIndex, _))
+  EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)))
       .WillOnce(DoAll(SetArgumentPointee<1>(expected_address), Return(true)));
   EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
