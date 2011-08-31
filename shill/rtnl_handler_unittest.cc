@@ -106,8 +106,8 @@ void RTNLHandlerTest::StopRTNLHandler() {
 }
 
 void RTNLHandlerTest::AddLink() {
-  RTNLMessage message(RTNLMessage::kMessageTypeLink,
-                      RTNLMessage::kMessageModeAdd,
+  RTNLMessage message(RTNLMessage::kTypeLink,
+                      RTNLMessage::kModeAdd,
                       0,
                       0,
                       0,

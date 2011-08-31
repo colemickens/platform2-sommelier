@@ -20,18 +20,18 @@ struct RTNLHeader;
 
 class RTNLMessage {
   public:
-    enum MessageType {
-      kMessageTypeUnknown,
-      kMessageTypeLink,
-      kMessageTypeAddress,
-      kMessageTypeRoute
+    enum Type {
+      kTypeUnknown,
+      kTypeLink,
+      kTypeAddress,
+      kTypeRoute
     };
 
-    enum MessageMode {
-      kMessageModeUnknown,
-      kMessageModeGet,
-      kMessageModeAdd,
-      kMessageModeDelete
+    enum Mode {
+      kModeUnknown,
+      kModeGet,
+      kModeAdd,
+      kModeDelete
     };
 
     struct LinkStatus {
@@ -101,8 +101,8 @@ class RTNLMessage {
     // Empty constructor
     RTNLMessage();
     // Build an RTNL message from arguments
-    RTNLMessage(MessageType type,
-                MessageMode mode,
+    RTNLMessage(Type type,
+                Mode mode,
                 unsigned int flags,
                 uint32 seq,
                 uint32 pid,
@@ -115,8 +115,8 @@ class RTNLMessage {
     ByteString Encode();
 
     // Getters and setters
-    MessageType type() const { return type_; }
-    MessageMode mode() const { return mode_; }
+    Type type() const { return type_; }
+    Mode mode() const { return mode_; }
     uint16 flags() const { return flags_; }
     uint32 seq() const { return seq_; }
     void set_seq(uint32 seq) { seq_ = seq; }
@@ -125,13 +125,15 @@ class RTNLMessage {
     IPAddress::Family family() const { return family_; }
 
     const LinkStatus &link_status() const { return link_status_; }
-    void set_link_status(LinkStatus link_status) { link_status_ = link_status; }
+    void set_link_status(const LinkStatus &link_status) {
+      link_status_ = link_status;
+    }
     const AddressStatus &address_status() const { return address_status_; }
-    void set_address_status(AddressStatus address_status) {
+    void set_address_status(const AddressStatus &address_status) {
       address_status_ = address_status;
     }
     const RouteStatus &route_status() const { return route_status_; }
-    void set_route_status(RouteStatus route_status) {
+    void set_route_status(const RouteStatus &route_status) {
       route_status_ = route_status;
     }
     // GLint hates "unsigned short", and I don't blame it, but that's the
@@ -151,23 +153,23 @@ class RTNLMessage {
   private:
     bool DecodeInternal(const ByteString &msg);
     bool DecodeLink(const RTNLHeader *hdr,
-                    MessageMode mode,
+                    Mode mode,
                     rtattr **attr_data,
                     int *attr_length);
     bool DecodeAddress(const RTNLHeader *hdr,
-                       MessageMode mode,
+                       Mode mode,
                        rtattr **attr_data,
                        int *attr_length);
     bool DecodeRoute(const RTNLHeader *hdr,
-                     MessageMode mode,
+                     Mode mode,
                      rtattr **attr_data,
                      int *attr_length);
     void EncodeLink(RTNLHeader *hdr);
     void EncodeAddress(RTNLHeader *hdr);
     void EncodeRoute(RTNLHeader *hdr);
 
-    MessageType type_;
-    MessageMode mode_;
+    Type type_;
+    Mode mode_;
     uint16 flags_;
     uint32 seq_;
     uint32 pid_;

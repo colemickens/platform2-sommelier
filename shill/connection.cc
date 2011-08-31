@@ -4,6 +4,10 @@
 
 #include "shill/connection.h"
 
+#include <arpa/inet.h>
+#include <linux/rtnetlink.h>
+
+#include "shill/device_info.h"
 #include "shill/resolver.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
@@ -17,10 +21,13 @@ const uint32 Connection::kDefaultMetric = 1;
 // static
 const uint32 Connection::kNonDefaultMetric = 10;
 
-Connection::Connection(int interface_index, const std::string& interface_name)
+Connection::Connection(int interface_index,
+                       const std::string& interface_name,
+                       const DeviceInfo *device_info)
     : is_default_(false),
       interface_index_(interface_index),
       interface_name_(interface_name),
+      device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
@@ -28,18 +35,31 @@ Connection::Connection(int interface_index, const std::string& interface_name)
 }
 
 Connection::~Connection() {
-  routing_table_->FlushRoutes(interface_index_);
-  // TODO(pstew): Also flush all addresses when DeviceInfo starts tracking them
   VLOG(2) << __func__;
+
+  routing_table_->FlushRoutes(interface_index_);
+  device_info_->FlushAddresses(interface_index_);
 }
 
 void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   VLOG(2) << __func__;
 
-  // TODO(pstew): Create a centralized resource (perhaps in DeviceInfo?) to
-  // keep apply and keep track of addresses associated with an interface.
-  // Use this instead of directly setting the address over RTNL.
-  rtnl_handler_->AddInterfaceAddress(interface_index_, *config);
+  const IPConfig::Properties &properties = config->properties();
+  IPAddress local(properties.address_family);
+  if (!local.SetAddressFromString(properties.address)) {
+    LOG(ERROR) << "Local address " << properties.address << " is invalid";
+    return;
+  }
+  local.set_prefix(properties.subnet_cidr);
+
+  IPAddress broadcast(properties.address_family);
+  if (!broadcast.SetAddressFromString(properties.broadcast_address)) {
+    LOG(ERROR) << "Broadcast address " << properties.broadcast_address
+               << " is invalid";
+    return;
+  }
+
+  rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
 
   uint32 metric = is_default_ ? kDefaultMetric : kNonDefaultMetric;
   routing_table_->SetDefaultRoute(interface_index_, config, metric);

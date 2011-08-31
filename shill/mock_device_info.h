@@ -26,6 +26,8 @@ class MockDeviceInfo : public DeviceInfo {
 
   MOCK_CONST_METHOD2(GetMACAddress, bool(int, ByteString*));
   MOCK_CONST_METHOD2(GetFlags, bool(int, unsigned int*));
+  MOCK_CONST_METHOD2(GetAddresses, bool(int, std::vector<AddressData>*));
+  MOCK_CONST_METHOD1(FlushAddresses, void(int));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDeviceInfo);

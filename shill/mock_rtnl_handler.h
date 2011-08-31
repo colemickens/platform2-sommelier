@@ -23,10 +23,11 @@ class MockRTNLHandler : public RTNLHandler {
   MOCK_METHOD3(SetInterfaceFlags, void(int interface_index,
                                        unsigned int flags,
                                        unsigned int change));
-  MOCK_METHOD2(AddInterfaceAddress, bool(int interface_index,
-                                         const IPConfig &config));
+  MOCK_METHOD3(AddInterfaceAddress, bool(int interface_index,
+                                         const IPAddress &local,
+                                         const IPAddress &broadcast));
   MOCK_METHOD2(RemoveInterfaceAddress, bool(int interface_index,
-                                            const IPConfig &config));
+                                            const IPAddress &local));
   MOCK_METHOD1(RequestDump, void(int request_flags));
   MOCK_METHOD1(GetInterfaceIndex, int(const std::string &interface_name));
   MOCK_METHOD1(SendMessage, bool(RTNLMessage *message));

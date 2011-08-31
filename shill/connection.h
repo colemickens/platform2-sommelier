@@ -15,6 +15,7 @@
 
 namespace shill {
 
+class DeviceInfo;
 class Resolver;
 class RoutingTable;
 class RTNLHandler;
@@ -23,7 +24,9 @@ class RTNLHandler;
 // the IP address, routing table and DNS table entries.
 class Connection : public base::RefCounted<Connection> {
  public:
-  Connection(int interface_index, const std::string& interface_name);
+  Connection(int interface_index,
+             const std::string &interface_name,
+             const DeviceInfo *device_info);
   virtual ~Connection();
 
   // Add the contents of an IPConfig reference to the list of managed state.
@@ -52,6 +55,7 @@ class Connection : public base::RefCounted<Connection> {
   std::vector<std::string> dns_domain_search_;
 
   // Store cached copies of singletons for speed/ease of testing
+  const DeviceInfo *device_info_;
   Resolver *resolver_;
   RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;

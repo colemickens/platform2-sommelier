@@ -67,7 +67,7 @@ class RoutingTable {
   void RouteMsgHandler(const RTNLMessage &msg);
   bool ApplyRoute(uint32 interface_index,
                   const RoutingTableEntry &entry,
-                  RTNLMessage::MessageMode mode,
+                  RTNLMessage::Mode mode,
                   unsigned int flags);
   bool FlushCache();
 

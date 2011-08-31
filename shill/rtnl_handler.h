@@ -19,6 +19,7 @@
 
 #include "shill/io_handler.h"
 #include "shill/rtnl_listener.h"
+#include "shill/rtnl_message.h"
 #include "shill/shill_event.h"
 
 struct nlmsghdr;
@@ -26,7 +27,6 @@ struct nlmsghdr;
 namespace shill {
 
 class IPConfig;
-class RTNLMessage;
 class Sockets;
 
 // This singleton class is responsible for interacting with the RTNL subsystem.
@@ -43,8 +43,6 @@ class RTNLHandler {
   static const int kRequestLink = 1;
   static const int kRequestAddr = 2;
   static const int kRequestRoute = 4;
-  static const int kRequestAddr6 = 8;
-  static const int kRequestRoute6 = 16;
 
   virtual ~RTNLHandler();
 
@@ -72,12 +70,14 @@ class RTNLHandler {
 
   // Set address of a network interface that has a kernel index of
   // 'interface_index'.
-  virtual bool AddInterfaceAddress(int interface_index, const IPConfig &config);
+  virtual bool AddInterfaceAddress(int interface_index,
+                                   const IPAddress &local,
+                                   const IPAddress &gateway);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
   virtual bool RemoveInterfaceAddress(int interface_index,
-                                      const IPConfig &config);
+                                      const IPAddress &local);
 
   // Request that various tables (link, address, routing) tables be
   // exhaustively dumped via RTNL.  As results arrive from the kernel
@@ -117,15 +117,19 @@ class RTNLHandler {
   void NextRequest(uint32_t seq);
   // Parse an incoming rtnl message from the kernel
   void ParseRTNL(InputData *data);
-  bool AddressRequest(int interface_index, int cmd, int flags,
-                      const IPConfig &config);
 
+  bool AddressRequest(int interface_index,
+                      RTNLMessage::Mode mode,
+                      int flags,
+                      const IPAddress &local,
+                      const IPAddress &gateway);
   Sockets *sockets_;
   bool in_request_;
 
   int rtnl_socket_;
   uint32_t request_flags_;
   uint32_t request_sequence_;
+  uint32_t last_dump_sequence_;
 
   std::vector<RTNLListener *> listeners_;
   scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;

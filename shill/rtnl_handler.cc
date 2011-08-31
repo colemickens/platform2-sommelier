@@ -40,6 +40,7 @@ RTNLHandler::RTNLHandler()
       rtnl_socket_(-1),
       request_flags_(0),
       request_sequence_(0),
+      last_dump_sequence_(0),
       rtnl_callback_(NewCallback(this, &RTNLHandler::ParseRTNL)) {
   VLOG(2) << "RTNLHandler created";
 }
@@ -68,7 +69,8 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
 
   memset(&addr, 0, sizeof(addr));
   addr.nl_family = AF_NETLINK;
-  addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
+  addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+      RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
 
   if (sockets->Bind(rtnl_socket_,
                     reinterpret_cast<struct sockaddr *>(&addr),
@@ -83,7 +85,7 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
                                                      rtnl_callback_.get()));
   sockets_ = sockets;
 
-  NextRequest(request_sequence_);
+  NextRequest(last_dump_sequence_);
   VLOG(2) << "RTNLHandler started";
 }
 
@@ -153,7 +155,7 @@ void RTNLHandler::RequestDump(int request_flags) {
           << std::dec << std::noshowbase;
 
   if (!in_request_ && sockets_)
-    NextRequest(request_sequence_);
+    NextRequest(last_dump_sequence_);
 }
 
 void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
@@ -164,66 +166,43 @@ void RTNLHandler::DispatchEvent(int type, const RTNLMessage &msg) {
 }
 
 void RTNLHandler::NextRequest(uint32_t seq) {
-  struct rtnl_request {
-    struct nlmsghdr hdr;
-    struct rtgenmsg msg;
-  } req;
-  struct sockaddr_nl addr;
   int flag = 0;
+  RTNLMessage::Type type;
 
-  VLOG(2) << "RTNLHandler nextrequest " << seq << " " << request_sequence_
+  VLOG(2) << "RTNLHandler nextrequest " << seq << " " << last_dump_sequence_
           << std::showbase << std::hex
           << " " << request_flags_
           << std::dec << std::noshowbase;
 
-  if (seq != request_sequence_)
+  if (seq != last_dump_sequence_)
     return;
 
-  request_sequence_++;
-  memset(&req, 0, sizeof(req));
-
-  req.hdr.nlmsg_len = sizeof(req);
-  req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-  req.hdr.nlmsg_pid = 0;
-  req.hdr.nlmsg_seq = request_sequence_;
-
   if ((request_flags_ & kRequestLink) != 0) {
-    req.msg.rtgen_family = AF_INET;
-    req.hdr.nlmsg_type = RTM_GETLINK;
+    type = RTNLMessage::kTypeLink;
     flag = kRequestLink;
   } else if ((request_flags_ & kRequestAddr) != 0) {
-    req.msg.rtgen_family = AF_INET;
-    req.hdr.nlmsg_type = RTM_GETADDR;
+    type = RTNLMessage::kTypeAddress;
     flag = kRequestAddr;
   } else if ((request_flags_ & kRequestRoute) != 0) {
-    req.msg.rtgen_family = AF_INET;
-    req.hdr.nlmsg_type = RTM_GETROUTE;
+    type = RTNLMessage::kTypeRoute;
     flag = kRequestRoute;
-  } else if ((request_flags_ & kRequestAddr6) != 0) {
-    req.msg.rtgen_family = AF_INET6;
-    req.hdr.nlmsg_type = RTM_GETADDR;
-    flag = kRequestAddr6;
-  } else if ((request_flags_ & kRequestRoute6) != 0) {
-    req.msg.rtgen_family = AF_INET6;
-    req.hdr.nlmsg_type = RTM_GETROUTE;
-    flag = kRequestRoute6;
   } else {
+    VLOG(2) << "Done with requests";
     in_request_ = false;
     return;
   }
 
-  memset(&addr, 0, sizeof(addr));
-  addr.nl_family = AF_NETLINK;
+  RTNLMessage msg(
+      type,
+      RTNLMessage::kModeGet,
+      0,
+      0,
+      0,
+      0,
+      IPAddress::kAddressFamilyUnknown);
+  CHECK(SendMessage(&msg));
 
-  if (sockets_->SendTo(rtnl_socket_,
-                       &req,
-                       sizeof(req),
-                       0,
-                       reinterpret_cast<struct sockaddr *>(&addr),
-                       sizeof(addr)) < 0) {
-    LOG(ERROR) << "RTNL sendto failed";
-    return;
-  }
+  last_dump_sequence_ = msg.seq();
   request_flags_ &= ~flag;
   in_request_ = true;
 }
@@ -261,13 +240,13 @@ void RTNLHandler::ParseRTNL(InputData *data) {
       }
     } else {
       switch (msg.type()) {
-        case RTNLMessage::kMessageTypeLink:
+        case RTNLMessage::kTypeLink:
           DispatchEvent(kRequestLink, msg);
           break;
-        case RTNLMessage::kMessageTypeAddress:
+        case RTNLMessage::kTypeAddress:
           DispatchEvent(kRequestAddr, msg);
           break;
-        case RTNLMessage::kMessageTypeRoute:
+        case RTNLMessage::kTypeRoute:
           DispatchEvent(kRequestRoute, msg);
           break;
         default:
@@ -278,92 +257,54 @@ void RTNLHandler::ParseRTNL(InputData *data) {
   }
 }
 
-static bool AddAtribute(struct nlmsghdr *hdr, int max_msg_size, int attr_type,
-                        const void *attr_data, int attr_len) {
-  int len = RTA_LENGTH(attr_len);
-  int new_msg_size = NLMSG_ALIGN(hdr->nlmsg_len) + RTA_ALIGN(len);
-  struct rtattr *rt_attr;
+bool RTNLHandler::AddressRequest(int interface_index,
+                                 RTNLMessage::Mode mode,
+                                 int flags,
+                                 const IPAddress &local,
+                                 const IPAddress &gateway) {
+  CHECK(local.family() == gateway.family());
 
-  if (new_msg_size > max_msg_size)
-    return false;
+  RTNLMessage msg(
+      RTNLMessage::kTypeAddress,
+      mode,
+      NLM_F_REQUEST | flags,
+      0,
+      0,
+      interface_index,
+      local.family());
 
-  rt_attr = reinterpret_cast<struct rtattr *> (reinterpret_cast<unsigned char *>
-                                               (hdr) +
-                                               NLMSG_ALIGN(hdr->nlmsg_len));
-  rt_attr->rta_type = attr_type;
-  rt_attr->rta_len = len;
-  memcpy(RTA_DATA(rt_attr), attr_data, attr_len);
-  hdr->nlmsg_len = new_msg_size;
-  return true;
-}
-
-bool RTNLHandler::AddressRequest(int interface_index, int cmd, int flags,
-                                 const IPConfig &ipconfig) {
-  const IPConfig::Properties &properties = ipconfig.properties();
-  int address_family;
-  int address_size;
-  unsigned char *attrs, *attrs_end;
-  int max_msg_size;
-  struct {
-    struct nlmsghdr   hdr;
-    struct ifaddrmsg  ifa;
-    unsigned char     attrs[256];
-  } req;
-  union {
-    in_addr ip4;
-    in6_addr in6;
-  } addr;
-
-  if (properties.address_family == IPAddress::kAddressFamilyIPv4) {
-    address_family = AF_INET;
-    address_size = sizeof(struct in_addr);
-  } else if (properties.address_family == IPAddress::kAddressFamilyIPv6) {
-    address_family = AF_INET6;
-    address_size = sizeof(struct in6_addr);
-  } else {
-    return false;
-  }
-
-  request_sequence_++;
-  memset(&req, 0, sizeof(req));
-  req.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
-  req.hdr.nlmsg_flags = NLM_F_REQUEST | flags;
-  req.hdr.nlmsg_type = cmd;
-  req.ifa.ifa_family = address_family;
-  req.ifa.ifa_index = interface_index;
-
-  max_msg_size = req.hdr.nlmsg_len + sizeof(req.attrs);
+  msg.set_address_status(RTNLMessage::AddressStatus(
+      local.prefix(),
+      0,
+      0));
 
   // TODO(pstew): This code only works for Ethernet-like setups,
   //              not with devices that have a peer address like PPP.
-  if (inet_pton(address_family, properties.address.c_str(), &addr) <= 0 ||
-      !AddAtribute(&req.hdr, max_msg_size, IFA_LOCAL, &addr, address_size))
-    return false;
-
-  if (inet_pton(address_family, properties.broadcast_address.c_str(),
-                &addr) <= 0 ||
-      !AddAtribute(&req.hdr, max_msg_size, IFA_BROADCAST, &addr, address_size))
-    return false;
-
-  req.ifa.ifa_prefixlen = properties.subnet_cidr;
-
-  if (sockets_->Send(rtnl_socket_, &req, req.hdr.nlmsg_len, 0) < 0) {
-    LOG(ERROR) << "RTNL sendto failed: " << strerror(errno);
-    return false;
+  msg.SetAttribute(IFA_LOCAL, local.address());
+  if (!gateway.IsDefault()) {
+    msg.SetAttribute(IFA_BROADCAST, gateway.address());
   }
 
-  return true;
+  return SendMessage(&msg);
 }
 
 bool RTNLHandler::AddInterfaceAddress(int interface_index,
-                                      const IPConfig &ipconfig) {
-  return AddressRequest(interface_index, RTM_NEWADDR, NLM_F_CREATE | NLM_F_EXCL,
-                        ipconfig);
+                                      const IPAddress &local,
+                                      const IPAddress &broadcast) {
+    return AddressRequest(interface_index,
+                          RTNLMessage::kModeAdd,
+                          NLM_F_CREATE | NLM_F_EXCL,
+                          local,
+                          broadcast);
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
-                                         const IPConfig &ipconfig) {
-  return AddressRequest(interface_index, RTM_DELADDR, 0, ipconfig);
+                                         const IPAddress &local) {
+  return AddressRequest(interface_index,
+                        RTNLMessage::kModeDelete,
+                        0,
+                        local,
+                        IPAddress(local.family()));
 }
 
 int RTNLHandler::GetInterfaceIndex(const string &interface_name) {
@@ -401,7 +342,7 @@ bool RTNLHandler::SendMessage(RTNLMessage *message) {
   }
 
   if (sockets_->Send(rtnl_socket_,
-                     msgdata.GetData(),
+                     msgdata.GetConstData(),
                      msgdata.GetLength(),
                      0) < 0) {
     PLOG(ERROR) << "RTNL send failed: " << strerror(errno);

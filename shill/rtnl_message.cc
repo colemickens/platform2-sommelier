@@ -26,14 +26,14 @@ struct RTNLHeader {
 };
 
 RTNLMessage::RTNLMessage()
-    : type_(kMessageTypeUnknown),
-      mode_(kMessageModeUnknown),
+    : type_(kTypeUnknown),
+      mode_(kModeUnknown),
       flags_(0),
       interface_index_(0),
       family_(IPAddress::kAddressFamilyUnknown) {}
 
-RTNLMessage::RTNLMessage(MessageType type,
-                         MessageMode mode,
+RTNLMessage::RTNLMessage(Type type,
+                         Mode mode,
                          unsigned int flags,
                          uint32 seq,
                          uint32 pid,
@@ -50,8 +50,8 @@ RTNLMessage::RTNLMessage(MessageType type,
 bool RTNLMessage::Decode(const ByteString &msg) {
   bool ret = DecodeInternal(msg);
   if (!ret) {
-    mode_ = kMessageModeUnknown;
-    type_ = kMessageTypeUnknown;
+    mode_ = kModeUnknown;
+    type_ = kTypeUnknown;
   }
   return ret;
 }
@@ -64,18 +64,18 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
       msg.GetLength() < hdr->hdr.nlmsg_len)
     return false;
 
-  MessageMode mode = kMessageModeUnknown;
+  Mode mode = kModeUnknown;
   switch (hdr->hdr.nlmsg_type) {
   case RTM_NEWLINK:
   case RTM_NEWADDR:
   case RTM_NEWROUTE:
-    mode = kMessageModeAdd;
+    mode = kModeAdd;
     break;
 
   case RTM_DELLINK:
   case RTM_DELADDR:
   case RTM_DELROUTE:
-    mode = kMessageModeDelete;
+    mode = kModeDelete;
     break;
 
   default:
@@ -130,7 +130,7 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
 }
 
 bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
-                             MessageMode mode,
+                             Mode mode,
                              rtattr **attr_data,
                              int *attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifi))) {
@@ -141,7 +141,7 @@ bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
   *attr_data = IFLA_RTA(NLMSG_DATA(&hdr->hdr));
   *attr_length = IFLA_PAYLOAD(&hdr->hdr);
 
-  type_ = kMessageTypeLink;
+  type_ = kTypeLink;
   family_ = hdr->ifi.ifi_family;
   interface_index_ = hdr->ifi.ifi_index;
   set_link_status(LinkStatus(hdr->ifi.ifi_type,
@@ -151,7 +151,7 @@ bool RTNLMessage::DecodeLink(const RTNLHeader *hdr,
 }
 
 bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
-                                MessageMode mode,
+                                Mode mode,
                                 rtattr **attr_data,
                                 int *attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->ifa))) {
@@ -161,7 +161,7 @@ bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
   *attr_data = IFA_RTA(NLMSG_DATA(&hdr->hdr));
   *attr_length = IFA_PAYLOAD(&hdr->hdr);
 
-  type_ = kMessageTypeAddress;
+  type_ = kTypeAddress;
   family_ = hdr->ifa.ifa_family;
   interface_index_ = hdr->ifa.ifa_index;
   set_address_status(AddressStatus(hdr->ifa.ifa_prefixlen,
@@ -171,7 +171,7 @@ bool RTNLMessage::DecodeAddress(const RTNLHeader *hdr,
 }
 
 bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
-                              MessageMode mode,
+                              Mode mode,
                               rtattr **attr_data,
                               int *attr_length) {
   if (hdr->hdr.nlmsg_len < NLMSG_LENGTH(sizeof(hdr->rtm))) {
@@ -181,7 +181,7 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
   *attr_data = RTM_RTA(NLMSG_DATA(&hdr->hdr));
   *attr_length = RTM_PAYLOAD(&hdr->hdr);
 
-  type_ = kMessageTypeRoute;
+  type_ = kTypeRoute;
   family_ = hdr->rtm.rtm_family;
   set_route_status(RouteStatus(hdr->rtm.rtm_dst_len,
                                hdr->rtm.rtm_src_len,
@@ -194,9 +194,9 @@ bool RTNLMessage::DecodeRoute(const RTNLHeader *hdr,
 }
 
 ByteString RTNLMessage::Encode() {
-  if (type_ != kMessageTypeLink &&
-      type_ != kMessageTypeAddress &&
-      type_ != kMessageTypeRoute) {
+  if (type_ != kTypeLink &&
+      type_ != kTypeAddress &&
+      type_ != kTypeRoute) {
     return ByteString();
   }
 
@@ -206,27 +206,28 @@ ByteString RTNLMessage::Encode() {
   hdr.hdr.nlmsg_pid = pid_;
   hdr.hdr.nlmsg_seq = 0;
 
-  if (mode_ == kMessageModeGet) {
-    if (type_ == kMessageTypeLink) {
+  if (mode_ == kModeGet) {
+    if (type_ == kTypeLink) {
       hdr.hdr.nlmsg_type = RTM_GETLINK;
-    } else if (type_ == kMessageTypeAddress) {
+    } else if (type_ == kTypeAddress) {
       hdr.hdr.nlmsg_type = RTM_GETADDR;
-    } else if (type_ == kMessageTypeRoute) {
+    } else if (type_ == kTypeRoute) {
       hdr.hdr.nlmsg_type = RTM_GETROUTE;
     }
     hdr.hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr.gen));
+    hdr.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
     hdr.gen.rtgen_family = family_;
   } else {
     switch (type_) {
-    case kMessageTypeLink:
+    case kTypeLink:
       EncodeLink(&hdr);
       break;
 
-    case kMessageTypeAddress:
+    case kTypeAddress:
       EncodeAddress(&hdr);
       break;
 
-    case kMessageTypeRoute:
+    case kTypeRoute:
       EncodeRoute(&hdr);
       break;
 
@@ -261,7 +262,7 @@ ByteString RTNLMessage::Encode() {
 }
 
 void RTNLMessage::EncodeLink(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type = (mode_ == kMessageModeAdd) ? RTM_NEWLINK : RTM_DELLINK;
+  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWLINK : RTM_DELLINK;
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifi));
   hdr->ifi.ifi_family = family_;
   hdr->ifi.ifi_type = link_status_.type;
@@ -270,7 +271,7 @@ void RTNLMessage::EncodeLink(RTNLHeader *hdr) {
 }
 
 void RTNLMessage::EncodeAddress(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type = (mode_ == kMessageModeAdd) ? RTM_NEWADDR : RTM_DELADDR;
+  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWADDR : RTM_DELADDR;
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->ifa));
   hdr->ifa.ifa_family = family_;
   hdr->ifa.ifa_prefixlen = address_status_.prefix_len;
@@ -280,8 +281,7 @@ void RTNLMessage::EncodeAddress(RTNLHeader *hdr) {
 }
 
 void RTNLMessage::EncodeRoute(RTNLHeader *hdr) {
-  hdr->hdr.nlmsg_type =
-      (mode_ == kMessageModeAdd) ? RTM_NEWROUTE : RTM_DELROUTE;
+  hdr->hdr.nlmsg_type = (mode_ == kModeAdd) ? RTM_NEWROUTE : RTM_DELROUTE;
   hdr->hdr.nlmsg_len = NLMSG_LENGTH(sizeof(hdr->rtm));
   hdr->rtm.rtm_family = family_;
   hdr->rtm.rtm_dst_len = route_status_.dst_prefix;

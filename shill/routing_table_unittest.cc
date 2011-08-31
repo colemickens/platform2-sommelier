@@ -41,7 +41,7 @@ class RoutingTableTest : public Test {
     return &routing_table_->tables_;
   }
 
-  void SendRouteMsg(RTNLMessage::MessageMode mode,
+  void SendRouteMsg(RTNLMessage::Mode mode,
                     uint32 interface_index,
                     const RoutingTableEntry &entry);
 
@@ -93,7 +93,7 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
   uint32 priority;
 
   return
-    msg.type() == RTNLMessage::kMessageTypeRoute &&
+    msg.type() == RTNLMessage::kTypeRoute &&
     msg.family() == entry.gateway.family() &&
     msg.flags() == (NLM_F_REQUEST | flags) &&
     status.table == RT_TABLE_MAIN &&
@@ -113,11 +113,11 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
     priority == entry.metric;
 }
 
-void RoutingTableTest::SendRouteMsg(RTNLMessage::MessageMode mode,
+void RoutingTableTest::SendRouteMsg(RTNLMessage::Mode mode,
                                     uint32 interface_index,
                                     const RoutingTableEntry &entry) {
   RTNLMessage msg(
-      RTNLMessage::kMessageTypeRoute,
+      RTNLMessage::kTypeRoute,
       mode,
       0,
       0,
@@ -165,7 +165,7 @@ void RoutingTableTest::StopRTNLHandler() {
 }
 
 TEST_F(RoutingTableTest, RouteAddDelete) {
-  EXPECT_CALL(sockets_, SendTo(kTestSocket, _, _, 0, _, sizeof(sockaddr_nl)));
+  EXPECT_CALL(sockets_, Send(kTestSocket, _, _, 0));
   StartRTNLHandler();
   routing_table_->Start();
 
@@ -187,7 +187,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                            RT_SCOPE_UNIVERSE,
                            true);
   // Add a single entry
-  SendRouteMsg(RTNLMessage::kMessageModeAdd,
+  SendRouteMsg(RTNLMessage::kModeAdd,
                kTestDeviceIndex0,
                entry0);
 
@@ -203,7 +203,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_TRUE(entry0.Equals(test_entry));
 
   // Add a second entry for a different interface
-  SendRouteMsg(RTNLMessage::kMessageModeAdd,
+  SendRouteMsg(RTNLMessage::kModeAdd,
                kTestDeviceIndex1,
                entry0);
 
@@ -227,7 +227,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                            true);
 
   // Add a second gateway route to the second interface
-  SendRouteMsg(RTNLMessage::kMessageModeAdd,
+  SendRouteMsg(RTNLMessage::kModeAdd,
                kTestDeviceIndex1,
                entry1);
 
@@ -240,7 +240,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   EXPECT_TRUE(entry1.Equals(test_entry));
 
   // Remove the first gateway route from the second interface
-  SendRouteMsg(RTNLMessage::kMessageModeDelete,
+  SendRouteMsg(RTNLMessage::kModeDelete,
                kTestDeviceIndex1,
                entry0);
 
@@ -255,7 +255,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Send a duplicate of the second gatway route message, changing the metric
   RoutingTableEntry entry2(entry1);
   entry2.metric++;
-  SendRouteMsg(RTNLMessage::kMessageModeAdd,
+  SendRouteMsg(RTNLMessage::kModeAdd,
                kTestDeviceIndex1,
                entry2);
 
@@ -276,7 +276,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                                                &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail
-  SendRouteMsg(RTNLMessage::kMessageModeDelete,
+  SendRouteMsg(RTNLMessage::kModeDelete,
                kTestDeviceIndex1,
                entry2);
 
@@ -295,7 +295,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   EXPECT_CALL(sockets_,
               Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kMessageModeAdd,
+                   IsRoutingPacket(RTNLMessage::kModeAdd,
                                    kTestDeviceIndex1,
                                    entry0,
                                    NLM_F_CREATE | NLM_F_EXCL),
@@ -319,7 +319,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   entry4.metric += 10;
   EXPECT_CALL(sockets_,
               Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kMessageModeAdd,
+                   IsRoutingPacket(RTNLMessage::kModeAdd,
                                    kTestDeviceIndex1,
                                    entry4,
                                    NLM_F_CREATE | NLM_F_REPLACE),
@@ -342,7 +342,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   entry5.metric += 10;
   EXPECT_CALL(sockets_,
               Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kMessageModeAdd,
+                   IsRoutingPacket(RTNLMessage::kModeAdd,
                                    kTestDeviceIndex0,
                                    entry5,
                                    NLM_F_CREATE | NLM_F_REPLACE),
@@ -353,7 +353,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Ask to flush table0.  We should see a delete message sent
   EXPECT_CALL(sockets_,
               Send(kTestSocket,
-                   IsRoutingPacket(RTNLMessage::kMessageModeDelete,
+                   IsRoutingPacket(RTNLMessage::kModeDelete,
                                    kTestDeviceIndex0,
                                    entry0,
                                    0),

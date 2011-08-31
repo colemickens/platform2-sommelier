@@ -222,11 +222,6 @@ bool Device::Save(StoreInterface *storage) {
 
 void Device::DestroyIPConfig() {
   if (ipconfig_.get()) {
-    // TODO(pstew): Instead we should do this in DestroyConnection(), which
-    // should have a facility at its disposal that returns all addresses
-    // assigned to the interface.
-    RTNLHandler::GetInstance()->RemoveInterfaceAddress(interface_index_,
-                                                       *ipconfig_);
     ipconfig_->ReleaseIP();
     ipconfig_ = NULL;
   }
@@ -267,7 +262,9 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
 void Device::CreateConnection() {
   VLOG(2) << __func__;
   if (!connection_.get()) {
-    connection_ = new Connection(interface_index_, link_name_);
+    connection_ = new Connection(interface_index_,
+                                 link_name_,
+                                 manager_->device_info());
   }
 }
 

@@ -37,6 +37,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -63,7 +64,10 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       manager_(manager),
       link_callback_(NewCallback(this, &DeviceInfo::LinkMsgHandler)),
-      link_listener_(NULL) {
+      address_callback_(NewCallback(this, &DeviceInfo::AddressMsgHandler)),
+      link_listener_(NULL),
+      address_listener_(NULL),
+      rtnl_handler_(RTNLHandler::GetInstance()) {
 }
 
 DeviceInfo::~DeviceInfo() {}
@@ -75,11 +79,15 @@ void DeviceInfo::AddDeviceToBlackList(const string &device_name) {
 void DeviceInfo::Start() {
   link_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestLink, link_callback_.get()));
-  RTNLHandler::GetInstance()->RequestDump(RTNLHandler::kRequestLink);
+  address_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestAddr, address_callback_.get()));
+  rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
+                             RTNLHandler::kRequestAddr);
 }
 
 void DeviceInfo::Stop() {
-  link_listener_.reset(NULL);
+  link_listener_.reset();
+  address_listener_.reset();
 }
 
 void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
@@ -140,8 +148,8 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
 }
 
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
-  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
-         msg.mode() == RTNLMessage::kMessageModeAdd);
+  DCHECK(msg.type() == RTNLMessage::kTypeLink &&
+         msg.mode() == RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
   Device::Technology technology = Device::kUnknown;
 
@@ -208,8 +216,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 void DeviceInfo::DelLinkMsgHandler(const RTNLMessage &msg) {
   VLOG(2) << __func__ << "(index=" << msg.interface_index() << ")";
 
-  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink &&
-         msg.mode() == RTNLMessage::kMessageModeDelete);
+  DCHECK(msg.type() == RTNLMessage::kTypeLink &&
+         msg.mode() == RTNLMessage::kModeDelete);
   VLOG(2) << __func__ << "(index=" << msg.interface_index()
           << std::showbase << std::hex
           << ", flags=" << msg.link_status().flags
@@ -229,6 +237,34 @@ bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
   }
   *address = info->mac_address;
   return true;
+}
+
+bool DeviceInfo::GetAddresses(int interface_index,
+                              vector<AddressData> *addresses) const {
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return false;
+  }
+  *addresses = info->ip_addresses;
+  return true;
+}
+
+void DeviceInfo::FlushAddresses(int interface_index) const {
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    return;
+  }
+  const vector<AddressData> &addresses = info->ip_addresses;
+  vector<AddressData>::const_iterator iter;
+  for (iter = addresses.begin(); iter != addresses.end(); ++iter) {
+    if (iter->address.family() == IPAddress::kAddressFamilyIPv4 ||
+        (iter->scope == RT_SCOPE_UNIVERSE &&
+         (iter->flags & ~IFA_F_TEMPORARY) == 0)) {
+      VLOG(2) << __func__ << ": removing ip address from interface "
+              << interface_index;
+      rtnl_handler_->RemoveInterfaceAddress(interface_index, iter->address);
+    }
+  }
 }
 
 bool DeviceInfo::GetFlags(int interface_index, unsigned int *flags) const {
@@ -262,13 +298,47 @@ void DeviceInfo::RemoveInfo(int interface_index) {
 }
 
 void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
-  DCHECK(msg.type() == RTNLMessage::kMessageTypeLink);
-  if (msg.mode() == RTNLMessage::kMessageModeAdd) {
+  DCHECK(msg.type() == RTNLMessage::kTypeLink);
+  if (msg.mode() == RTNLMessage::kModeAdd) {
     AddLinkMsgHandler(msg);
-  } else if (msg.mode() == RTNLMessage::kMessageModeDelete) {
+  } else if (msg.mode() == RTNLMessage::kModeDelete) {
     DelLinkMsgHandler(msg);
   } else {
     NOTREACHED();
+  }
+}
+
+void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
+  DCHECK(msg.type() == RTNLMessage::kTypeAddress);
+  int interface_index = msg.interface_index();
+  if (!ContainsKey(infos_, interface_index)) {
+    LOG(ERROR) << "Got address type message for unknown index "
+               << interface_index;
+    return;
+  }
+  const RTNLMessage::AddressStatus &status = msg.address_status();
+  IPAddress address(msg.family(),
+                    msg.GetAttribute(IFA_ADDRESS),
+                    status.prefix_len);
+
+  vector<AddressData> &address_list = infos_[interface_index].ip_addresses;
+  vector<AddressData>::iterator iter;
+  for (iter = address_list.begin(); iter != address_list.end(); ++iter) {
+    if (address.Equals(iter->address)) {
+      break;
+    }
+  }
+  if (iter != address_list.end()) {
+    if (msg.mode() == RTNLMessage::kModeDelete) {
+      VLOG(2) << "Delete address for interface " << interface_index;
+      address_list.erase(iter);
+    } else {
+      iter->flags = status.flags;
+      iter->scope = status.scope;
+    }
+  } else if (msg.mode() == RTNLMessage::kModeAdd) {
+    address_list.push_back(AddressData(address, status.flags, status.scope));
+    VLOG(2) << "Add address for interface " << interface_index;
   }
 }
 

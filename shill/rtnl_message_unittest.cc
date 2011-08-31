@@ -333,7 +333,7 @@ const unsigned char kAddNeighborMessage[] = {
 class RTNLMessageTest : public Test {
  protected:
   void TestParseLink(const ByteString &packet,
-                     RTNLMessage::MessageMode mode,
+                     RTNLMessage::Mode mode,
                      int interface_index,
                      unsigned int flags,
                      unsigned int change,
@@ -345,7 +345,7 @@ class RTNLMessageTest : public Test {
     RTNLMessage msg;
     EXPECT_TRUE(msg.Decode(packet));
 
-    EXPECT_EQ(RTNLMessage::kMessageTypeLink, msg.type());
+    EXPECT_EQ(RTNLMessage::kTypeLink, msg.type());
     EXPECT_EQ(mode, msg.mode());
     EXPECT_EQ(interface_index, msg.interface_index());
 
@@ -375,14 +375,14 @@ class RTNLMessageTest : public Test {
   }
 
   void TestParseAddress(const ByteString &packet,
-                        RTNLMessage::MessageMode mode,
+                        RTNLMessage::Mode mode,
                         int interface_index,
                         const IPAddress &address,
                         unsigned char scope) {
     RTNLMessage msg;
 
     EXPECT_TRUE(msg.Decode(packet));
-    EXPECT_EQ(RTNLMessage::kMessageTypeAddress, msg.type());
+    EXPECT_EQ(RTNLMessage::kTypeAddress, msg.type());
     EXPECT_EQ(mode, msg.mode());
     EXPECT_EQ(interface_index, msg.interface_index());
     EXPECT_EQ(address.family(), msg.family());
@@ -399,7 +399,7 @@ class RTNLMessageTest : public Test {
   }
 
   void TestParseRoute(const ByteString &packet,
-                      RTNLMessage::MessageMode mode,
+                      RTNLMessage::Mode mode,
                       IPAddress::Family family,
                       int interface_index,
                       const IPAddress &dst,
@@ -413,7 +413,7 @@ class RTNLMessageTest : public Test {
     RTNLMessage msg;
 
     EXPECT_TRUE(msg.Decode(packet));
-    EXPECT_EQ(RTNLMessage::kMessageTypeRoute, msg.type());
+    EXPECT_EQ(RTNLMessage::kTypeRoute, msg.type());
     EXPECT_EQ(0, msg.interface_index());
     EXPECT_EQ(family, msg.family());
 
@@ -465,7 +465,7 @@ class RTNLMessageTest : public Test {
 
 TEST_F(RTNLMessageTest, NewLinkWlan0) {
   TestParseLink(ByteString(kNewLinkMessageWlan0, sizeof(kNewLinkMessageWlan0)),
-                RTNLMessage::kMessageModeAdd,
+                RTNLMessage::kModeAdd,
                 kNewLinkMessageWlan0InterfaceIndex,
                 kNewLinkMessageWlan0InterfaceFlags,
                 kNewLinkMessageWlan0InterfaceFlagsChange,
@@ -478,7 +478,7 @@ TEST_F(RTNLMessageTest, NewLinkWlan0) {
 
 TEST_F(RTNLMessageTest, DelLinkEth0) {
   TestParseLink(ByteString(kDelLinkMessageEth0, sizeof(kDelLinkMessageEth0)),
-                RTNLMessage::kMessageModeDelete,
+                RTNLMessage::kModeDelete,
                 kDelLinkMessageEth0InterfaceIndex,
                 kDelLinkMessageEth0InterfaceFlags,
                 kDelLinkMessageEth0InterfaceFlagsChange,
@@ -495,7 +495,7 @@ TEST_F(RTNLMessageTest, NewAddrIPv4) {
   EXPECT_TRUE(addr.SetAddressFromString(kNewAddrIPV4Address));
   addr.set_prefix(kNewAddrIPV4AddressPrefix);
   TestParseAddress(ByteString(kNewAddrIPV4, sizeof(kNewAddrIPV4)),
-                   RTNLMessage::kMessageModeAdd,
+                   RTNLMessage::kModeAdd,
                    kNewAddrIPV4InterfaceIndex,
                    addr,
                    kNewAddrIPV4Scope);
@@ -512,7 +512,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
   EXPECT_TRUE(gateway.SetAddressFromString(kDelRouteIPV6Address));
 
   TestParseRoute(ByteString(kDelRouteIPV6, sizeof(kDelRouteIPV6)),
-                 RTNLMessage::kMessageModeDelete,
+                 RTNLMessage::kModeDelete,
                  IPAddress::kAddressFamilyIPv6,
                  kDelRouteIPV6InterfaceIndex,
                  dst,
@@ -535,7 +535,7 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
   EXPECT_TRUE(gateway.SetAddressFromString(kAddRouteIPV4Address));
 
   TestParseRoute(ByteString(kAddRouteIPV4, sizeof(kAddRouteIPV4)),
-                 RTNLMessage::kMessageModeAdd,
+                 RTNLMessage::kModeAdd,
                  IPAddress::kAddressFamilyIPv4,
                  kAddRouteIPV4InterfaceIndex,
                  dst,
@@ -563,8 +563,8 @@ TEST_F(RTNLMessageTest, AddNeighbor) {
 }
 
 TEST_F(RTNLMessageTest, Encode) {
-  RTNLMessage msg(RTNLMessage::kMessageTypeRoute,
-                  RTNLMessage::kMessageModeAdd,
+  RTNLMessage msg(RTNLMessage::kTypeRoute,
+                  RTNLMessage::kModeAdd,
                   0, 1, 2, 0,
                   IPAddress::kAddressFamilyIPv4);
   IPAddress dst(IPAddress::kAddressFamilyIPv4);
@@ -585,7 +585,7 @@ TEST_F(RTNLMessageTest, Encode) {
 
 
   TestParseRoute(msg.Encode(),
-                 RTNLMessage::kMessageModeAdd,
+                 RTNLMessage::kModeAdd,
                  IPAddress::kAddressFamilyIPv4,
                  12,
                  dst,

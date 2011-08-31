@@ -64,7 +64,7 @@ void RoutingTable::Start() {
   route_listener_.reset(
       new RTNLListener(RTNLHandler::kRequestRoute, route_callback_.get()));
   RTNLHandler::GetInstance()->RequestDump(
-      RTNLHandler::kRequestRoute | RTNLHandler::kRequestRoute6);
+      RTNLHandler::kRequestRoute);
 }
 
 void RoutingTable::Stop() {
@@ -80,7 +80,7 @@ bool RoutingTable::AddRoute(int interface_index,
   CHECK(!entry.from_rtnl);
   if (!ApplyRoute(interface_index,
                   entry,
-                  RTNLMessage::kMessageModeAdd,
+                  RTNLMessage::kModeAdd,
                   NLM_F_CREATE | NLM_F_EXCL)) {
     return false;
   }
@@ -131,14 +131,14 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
     if (old_entry.gateway.Equals(gateway_address)) {
       if (old_entry.metric != metric) {
         old_entry.metric = metric;
-        ApplyRoute(interface_index, old_entry, RTNLMessage::kMessageModeAdd,
+        ApplyRoute(interface_index, old_entry, RTNLMessage::kModeAdd,
                    NLM_F_CREATE | NLM_F_REPLACE);
       }
       return true;
     } else {
       ApplyRoute(interface_index,
                  old_entry,
-                 RTNLMessage::kMessageModeDelete,
+                 RTNLMessage::kModeDelete,
                  0);
     }
   }
@@ -168,7 +168,7 @@ void RoutingTable::FlushRoutes(int interface_index) {
   vector<RoutingTableEntry>::iterator nent;
 
   for (nent = table->second.begin(); nent != table->second.end(); ++nent) {
-    ApplyRoute(interface_index, *nent, RTNLMessage::kMessageModeDelete, 0);
+    ApplyRoute(interface_index, *nent, RTNLMessage::kModeDelete, 0);
   }
 }
 
@@ -184,14 +184,14 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
   if (GetDefaultRoute(interface_index, IPAddress::kAddressFamilyIPv4, &entry) &&
       entry.metric != metric) {
     entry.metric = metric;
-    ApplyRoute(interface_index, entry, RTNLMessage::kMessageModeAdd,
+    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
                NLM_F_CREATE | NLM_F_REPLACE);
   }
 
   if (GetDefaultRoute(interface_index, IPAddress::kAddressFamilyIPv6, &entry) &&
       entry.metric != metric) {
     entry.metric = metric;
-    ApplyRoute(interface_index, entry, RTNLMessage::kMessageModeAdd,
+    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
                NLM_F_CREATE | NLM_F_REPLACE);
   }
 }
@@ -199,7 +199,7 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
 void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   VLOG(2) << __func__;
 
-  if (msg.type() != RTNLMessage::kMessageTypeRoute ||
+  if (msg.type() != RTNLMessage::kTypeRoute ||
       msg.family() == IPAddress::kAddressFamilyUnknown ||
       !msg.HasAttribute(RTA_OIF)) {
     return;
@@ -254,7 +254,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&
         nent->scope == entry.scope) {
-      if (msg.mode() == RTNLMessage::kMessageModeDelete) {
+      if (msg.mode() == RTNLMessage::kModeDelete) {
         table.erase(nent);
       } else {
         nent->from_rtnl = true;
@@ -264,20 +264,20 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
     }
   }
 
-  if (msg.mode() == RTNLMessage::kMessageModeAdd) {
+  if (msg.mode() == RTNLMessage::kModeAdd) {
     table.push_back(entry);
   }
 }
 
 bool RoutingTable::ApplyRoute(uint32 interface_index,
                               const RoutingTableEntry &entry,
-                              RTNLMessage::MessageMode mode,
+                              RTNLMessage::Mode mode,
                               unsigned int flags) {
   VLOG(2) << base::StringPrintf("%s: index %d mode %d flags 0x%x",
                                 __func__, interface_index, mode, flags);
 
   RTNLMessage msg(
-      RTNLMessage::kMessageTypeRoute,
+      RTNLMessage::kTypeRoute,
       mode,
       NLM_F_REQUEST | flags,
       0,
