@@ -814,9 +814,13 @@ unsigned int GobiModem::QCStateToMMState(ULONG qcstate) {
 DBusPropertyMap GobiModem::GetStatus(DBus::Error& error_ignored) {
   DBusPropertyMap result;
 
+  DBus::Error api_connect_error;
+  ScopedApiConnection connection(*this);
+  // Errors are ignored so data not requiring a connection can be returned
+  connection.ApiConnect(api_connect_error);
+
   int32_t rssi;
   DBus::Error signal_strength_error;
-
   StrengthMap interface_to_dbm;
   GetSignalStrengthDbm(rssi, &interface_to_dbm, signal_strength_error);
   if (signal_strength_error.is_set() || rssi <= kMinSignalStrengthDbm) {
