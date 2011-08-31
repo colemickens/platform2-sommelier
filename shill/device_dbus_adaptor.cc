@@ -89,22 +89,34 @@ void DeviceDBusAdaptor::Register(const string &network_id,
   e.ToDBusError(&error);
 }
 
-void DeviceDBusAdaptor::RequirePin(const std::string& ,
-                                   const bool& ,
+void DeviceDBusAdaptor::RequirePin(const string &pin,
+                                   const bool &require,
                                    ::DBus::Error &error) {
+  Error e;
+  device_->RequirePIN(pin, require, &e);
+  e.ToDBusError(&error);
 }
 
-void DeviceDBusAdaptor::EnterPin(const std::string& , ::DBus::Error &error) {
+void DeviceDBusAdaptor::EnterPin(const string &pin, ::DBus::Error &error) {
+  Error e;
+  device_->EnterPIN(pin, &e);
+  e.ToDBusError(&error);
 }
 
-void DeviceDBusAdaptor::UnblockPin(const std::string& ,
-                                   const std::string& ,
+void DeviceDBusAdaptor::UnblockPin(const string &unblock_code,
+                                   const string &pin,
                                    ::DBus::Error &error) {
+  Error e;
+  device_->UnblockPIN(unblock_code, pin, &e);
+  e.ToDBusError(&error);
 }
 
-void DeviceDBusAdaptor::ChangePin(const std::string& ,
-                                  const std::string& ,
+void DeviceDBusAdaptor::ChangePin(const string &old_pin,
+                                  const string &new_pin,
                                   ::DBus::Error &error) {
+  Error e;
+  device_->ChangePIN(old_pin, new_pin, &e);
+  e.ToDBusError(&error);
 }
 
 }  // namespace shill

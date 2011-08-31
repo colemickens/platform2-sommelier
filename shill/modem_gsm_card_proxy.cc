@@ -32,6 +32,23 @@ string ModemGSMCardProxy::GetMSISDN() {
   return proxy_.GetMsIsdn();
 }
 
+void ModemGSMCardProxy::EnablePIN(const string &pin, bool enabled) {
+  proxy_.EnablePin(pin, enabled);
+}
+
+void ModemGSMCardProxy::SendPIN(const string &pin) {
+  proxy_.SendPin(pin);
+}
+
+void ModemGSMCardProxy::SendPUK(const string &puk, const string &pin) {
+  proxy_.SendPuk(puk, pin);
+}
+
+void ModemGSMCardProxy::ChangePIN(const string &old_pin,
+                                  const string &new_pin) {
+  proxy_.ChangePin(old_pin, new_pin);
+}
+
 ModemGSMCardProxy::Proxy::Proxy(ModemGSMCardProxyListener *listener,
                                 DBus::Connection *connection,
                                 const string &path,

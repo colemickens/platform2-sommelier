@@ -22,6 +22,12 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MOCK_METHOD0(GetSPN, std::string());
   MOCK_METHOD0(GetMSISDN, std::string());
 
+  MOCK_METHOD2(EnablePIN, void(const std::string &pin, bool enabled));
+  MOCK_METHOD1(SendPIN, void(const std::string &pin));
+  MOCK_METHOD2(SendPUK, void(const std::string &puk, const std::string &pin));
+  MOCK_METHOD2(ChangePIN,
+               void(const std::string &old_pin, const std::string &new_pin));
+
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemGSMCardProxy);
 };

@@ -19,6 +19,12 @@ class ModemGSMCardProxyInterface {
   virtual std::string GetIMSI() = 0;
   virtual std::string GetSPN() = 0;
   virtual std::string GetMSISDN() = 0;
+
+  virtual void EnablePIN(const std::string &pin, bool enabled) = 0;
+  virtual void SendPIN(const std::string &pin) = 0;
+  virtual void SendPUK(const std::string &puk, const std::string &pin) = 0;
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin) = 0;
 };
 
 // ModemManager.Modem.Gsm.Card callback listener to be associated with the

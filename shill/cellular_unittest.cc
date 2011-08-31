@@ -204,6 +204,8 @@ class CellularTest : public testing::Test {
   static const char kIMEI[];
   static const char kIMSI[];
   static const char kMSISDN[];
+  static const char kPIN[];
+  static const char kPUK[];
 
   void StartRTNLHandler();
   void StopRTNLHandler();
@@ -237,6 +239,8 @@ const char CellularTest::kMEID[] = "D1234567EF8901";
 const char CellularTest::kIMEI[] = "987654321098765";
 const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
+const char CellularTest::kPIN[] = "9876";
+const char CellularTest::kPUK[] = "8765";
 
 void CellularTest::StartRTNLHandler() {
   EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
@@ -730,6 +734,87 @@ TEST_F(CellularTest, RegisterOnNetworkError) {
   device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ("", device_->selected_network_);
+}
+
+TEST_F(CellularTest, RequirePIN) {
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_card_proxy_, EnablePIN(kPIN, true)).Times(1);
+  device_->RequirePIN(kPIN, true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, RequirePINError) {
+  Error error;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*gsm_card_proxy_, EnablePIN(_, _)).Times(0);
+  device_->RequirePIN(kPIN, true, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, EnterPIN) {
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_card_proxy_, SendPIN(kPIN)).Times(1);
+  device_->EnterPIN(kPIN, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, EnterPINError) {
+  Error error;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*gsm_card_proxy_, SendPIN(_)).Times(0);
+  device_->EnterPIN(kPIN, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, UnblockPIN) {
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_card_proxy_, SendPUK(kPUK, kPIN)).Times(1);
+  device_->UnblockPIN(kPUK, kPIN, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, UnblockPINError) {
+  Error error;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*gsm_card_proxy_, SendPUK(_, _)).Times(0);
+  device_->UnblockPIN(kPUK, kPIN, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, ChangePIN) {
+  static const char kOldPIN[] = "1111";
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  EXPECT_CALL(*gsm_card_proxy_, ChangePIN(kOldPIN, kPIN)).Times(1);
+  device_->ChangePIN(kOldPIN, kPIN, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, ChangePINError) {
+  Error error;
+  device_->type_ = Cellular::kTypeCDMA;
+  EXPECT_CALL(*gsm_card_proxy_, ChangePIN(_, _)).Times(0);
+  device_->ChangePIN(kPIN, kPIN, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, Activate) {

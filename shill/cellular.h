@@ -160,11 +160,21 @@ class Cellular : public Device,
   virtual bool TechnologyIs(Technology type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual void RequirePIN(const std::string &pin, bool require, Error *error);
+  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void UnblockPIN(const std::string &unblock_code,
+                          const std::string &pin,
+                          Error *error);
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin,
+                         Error *error);
 
  private:
   FRIEND_TEST(CellularTest, Activate);
   FRIEND_TEST(CellularTest, ActivateError);
   FRIEND_TEST(CellularTest, CreateService);
+  FRIEND_TEST(CellularTest, ChangePIN);
+  FRIEND_TEST(CellularTest, ChangePINError);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
@@ -181,14 +191,20 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
+  FRIEND_TEST(CellularTest, EnterPIN);
+  FRIEND_TEST(CellularTest, EnterPINError);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, RegisterOnNetwork);
   FRIEND_TEST(CellularTest, RegisterOnNetworkError);
+  FRIEND_TEST(CellularTest, RequirePIN);
+  FRIEND_TEST(CellularTest, RequirePINError);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(CellularTest, UnblockPIN);
+  FRIEND_TEST(CellularTest, UnblockPINError);
 
   struct CDMA {
     CDMA();
@@ -220,6 +236,10 @@ class Cellular : public Device,
   void ConnectTask(const DBusPropertiesMap &properties);
   void ActivateTask(const std::string &carrier);
   void RegisterOnNetworkTask(const std::string &network_id);
+  void RequirePINTask(const std::string &pin, bool require);
+  void EnterPINTask(const std::string &pin);
+  void UnblockPINTask(const std::string &unblock_code, const std::string &pin);
+  void ChangePINTask(const std::string &old_pin, const std::string &new_pin);
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.

@@ -52,15 +52,15 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual void ProposeScan(::DBus::Error &error);
   virtual ::DBus::Path AddIPConfig(const std::string& , ::DBus::Error &error);
   virtual void Register(const std::string &network_id, ::DBus::Error &error);
-  virtual void RequirePin(const std::string& ,
-                          const bool& ,
+  virtual void RequirePin(const std::string &pin,
+                          const bool &require,
                           ::DBus::Error &error);
-  virtual void EnterPin(const std::string& , ::DBus::Error &error);
-  virtual void UnblockPin(const std::string& ,
-                          const std::string& ,
+  virtual void EnterPin(const std::string &pin, ::DBus::Error &error);
+  virtual void UnblockPin(const std::string &unblock_code,
+                          const std::string &pin,
                           ::DBus::Error &error);
-  virtual void ChangePin(const std::string& ,
-                         const std::string& ,
+  virtual void ChangePin(const std::string &old_pin,
+                         const std::string &new_pin,
                          ::DBus::Error &error);
 
  private:

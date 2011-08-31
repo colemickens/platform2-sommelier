@@ -141,6 +141,38 @@ void Device::RegisterOnNetwork(const std::string &network_id, Error *error) {
   error->Populate(Error::kNotSupported, kMessage);
 }
 
+void Device::RequirePIN(const string &pin, bool require, Error *error) {
+  const string kMessage = "Device doesn't support RequirePIN.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
+}
+
+void Device::EnterPIN(const string &pin, Error *error) {
+  const string kMessage = "Device doesn't support EnterPIN.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
+}
+
+void Device::UnblockPIN(const string &unblock_code,
+                        const string &pin,
+                        Error *error) {
+  const string kMessage = "Device doesn't support UnblockPIN.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
+}
+
+void Device::ChangePIN(const string &old_pin,
+                       const string &new_pin,
+                       Error *error) {
+  const string kMessage = "Device doesn't support ChangePIN.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
+}
+
 string Device::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
 }

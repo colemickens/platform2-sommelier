@@ -64,6 +64,14 @@ class Device : public base::RefCounted<Device> {
 
   // The default implementation sets |error| to kNotSupported.
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual void RequirePIN(const std::string &pin, bool require, Error *error);
+  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void UnblockPIN(const std::string &unblock_code,
+                          const std::string &pin,
+                          Error *error);
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin,
+                         Error *error);
 
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();

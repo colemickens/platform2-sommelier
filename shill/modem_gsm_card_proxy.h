@@ -27,6 +27,11 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
   virtual std::string GetIMSI();
   virtual std::string GetSPN();
   virtual std::string GetMSISDN();
+  virtual void EnablePIN(const std::string &pin, bool enabled);
+  virtual void SendPIN(const std::string &pin);
+  virtual void SendPUK(const std::string &puk, const std::string &pin);
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin);
 
  private:
   class Proxy
