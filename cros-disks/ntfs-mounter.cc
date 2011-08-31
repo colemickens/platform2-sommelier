@@ -21,6 +21,8 @@ namespace cros_disks {
 // Expected location of the ntfs-3g executable.
 static const char kMountProgramPath[] = "/bin/ntfs-3g";
 
+static const char kMountUser[] = "ntfs-3g";
+
 // Process capabilities required by the ntfs-3g process:
 //   CAP_SYS_ADMIN for mounting/unmounting filesystem
 //   CAP_SETUID/CAP_SETGID for setting uid/gid in non-privileged mounts
@@ -29,6 +31,8 @@ static const uint64_t kMountProgramCapabilities =
 
 static const mode_t kSourcePathPermissions =
     S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+
+static const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
 
 const char NTFSMounter::kMounterType[] = "ntfs";
 
@@ -62,13 +66,18 @@ MountErrorType NTFSMounter::MountImpl() {
       (program_user_id == 0) && ((program_mode & S_ISUID) != 0);
 
   if (non_privileged_mount) {
-    uid_t mount_user_id = platform_->mount_user_id();
-    gid_t mount_group_id = platform_->mount_group_id();
+    uid_t mount_user_id;
+    gid_t mount_group_id;
     // To perform a non-privileged mount via ntfs-3g, change the group of
-    // the source path to the group of the non-privileged user, but keep
-    // the user of the source path unchanged.
-    if (!platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
-        !platform_->SetPermissions(source_path(), kSourcePathPermissions)) {
+    // the source and target path to the group of the non-privileged user,
+    // but keep the user of the source and target path unchanged. Also set
+    // appropriate group permissions on the source and target path.
+    if (!platform_->GetUserAndGroupId(kMountUser,
+                                      &mount_user_id, &mount_group_id) ||
+        !platform_->SetOwnership(source_path(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(source_path(), kSourcePathPermissions) ||
+        !platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
+        !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
       return kMountErrorInternal;
     }
     mount_process.SetUserId(mount_user_id);
