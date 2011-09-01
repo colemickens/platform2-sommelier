@@ -41,9 +41,6 @@ class WiFiService : public Service {
   const std::string &key_management() const;
   const std::vector<uint8_t> &ssid() const;
 
- protected:
-  virtual std::string CalculateState() { return "idle"; }
-
  private:
   void ConnectTask();
 

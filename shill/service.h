@@ -139,7 +139,7 @@ class Service : public base::RefCounted<Service> {
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
-  virtual std::string CalculateState() = 0;
+  virtual std::string CalculateState();
 
   void HelpRegisterDerivedBool(const std::string &name,
                                bool(Service::*get)(void),

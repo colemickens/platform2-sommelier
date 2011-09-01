@@ -35,6 +35,7 @@ class WiFi : public Device {
   virtual void Stop();
   virtual void Scan();
   virtual bool TechnologyIs(const Technology type) const;
+  virtual void LinkEvent(unsigned int flags, unsigned int change);
 
   // called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -75,8 +76,9 @@ class WiFi : public Device {
   int32 bgscan_signal_threshold_;
   bool scan_pending_;
   uint16 scan_interval_;
+  bool link_up_;
 
-  friend class WiFiMainTest;  // access to supplicant_*_proxy_ fields
+  friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 

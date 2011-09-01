@@ -176,7 +176,7 @@ void Service::SetState(ConnectState state) {
     failure_ = kFailureUnknown;
   }
   manager_->UpdateService(this);
-  // TODO(pstew): Broadcast property change notification via control interface
+  adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState());
 }
 
 void Service::SetFailure(ConnectFailure failure) {
@@ -264,6 +264,16 @@ bool Service::Save(StoreInterface *storage, const string &id_suffix) {
 const ProfileRefPtr &Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
+
+string Service::CalculateState() {
+  switch (state_) {
+    case kStateConnected:
+      return flimflam::kStateReady;
+    default:
+      // TODO(quiche): provide strings for other states
+      return flimflam::kStateIdle;
+  }
+}
 
 void Service::HelpRegisterDerivedBool(const string &name,
                                       bool(Service::*get)(void),

@@ -60,9 +60,6 @@ class CellularService : public Service {
   const std::string &roaming_state() const { return roaming_state_; }
   void set_roaming_state(const std::string &state) { roaming_state_ = state; }
 
- protected:
-  virtual std::string CalculateState() { return "idle"; }
-
  private:
   static const char kServiceType[];
 

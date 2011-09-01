@@ -7,6 +7,8 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
+#include <netinet/ether.h>
+#include <linux/if.h>
 
 #include <map>
 #include <string>
@@ -58,7 +60,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_short_interval_(0),
       bgscan_signal_threshold_(0),
       scan_pending_(false),
-      scan_interval_(0) {
+      scan_interval_(0),
+      link_up_(false) {
   PropertyStore *store = this->store();
   store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
   store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
@@ -147,6 +150,26 @@ bool WiFi::TechnologyIs(const Device::Technology type) const {
   return type == Device::kWifi;
 }
 
+void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
+  // TODO(quiche): figure out how to relate these events to supplicant
+  // events. e.g., may be we can ignore LinkEvent, in favor of events
+  // from SupplicantInterfaceProxy?
+  Device::LinkEvent(flags, change);
+  if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
+    LOG(INFO) << link_name() << " is up; should start L3!";
+    link_up_ = true;
+    if (AcquireDHCPConfig()) {
+      SetServiceState(Service::kStateConfiguring);
+    } else {
+      LOG(ERROR) << "Unable to acquire DHCP config.";
+    }
+  } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
+    link_up_ = false;
+    // TODO(quiche): attempt to reconnect to current SSID, another SSID,
+    // or initiate a scan.
+  }
+}
+
 void WiFi::BSSAdded(
     const ::DBus::Path &BSS,
     const std::map<string, ::DBus::Variant> &properties) {
@@ -178,7 +201,7 @@ void WiFi::ConnectTo(WiFiService *service) {
   DBus::MessageIter writer;
   DBus::Path network_path;
 
-  // TODO(quiche): if already connected, disconnect
+  // TODO(quiche): handle cases where already connected
 
   add_network_args[kSupplicantPropertyNetworkMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(service->mode()));
@@ -194,6 +217,14 @@ void WiFi::ConnectTo(WiFiService *service) {
       supplicant_interface_proxy_->AddNetwork(add_network_args);
   supplicant_interface_proxy_->SelectNetwork(network_path);
   // XXX add to favorite networks list?
+
+  // SelectService here (instead of in LinkEvent, like Ethernet), so
+  // that, if we fail to bring up L2, we can attribute failure correctly.
+  //
+  // TODO(quiche): when we add code for dealing with connection failures,
+  // reconsider if this is the right place to change the selected service.
+  // see discussion in crosbug.com/20191.
+  SelectService(service);
 }
 
 void WiFi::ScanDoneTask() {

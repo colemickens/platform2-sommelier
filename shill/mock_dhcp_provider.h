@@ -8,7 +8,9 @@
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
+#include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
+#include "shill/refptr_types.h"
 
 namespace shill {
 

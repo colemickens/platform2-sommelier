@@ -233,6 +233,10 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
 
   ServiceConstRefPtr service_ref(service_);
+
+  // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
+  // EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
+  //     EmitStringChanged(flimflam::kStateProperty, _));
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
   // A second state change shouldn't cause another update

@@ -4,6 +4,9 @@
 
 #include "shill/wifi.h"
 
+#include <netinet/ether.h>
+#include <linux/if.h>
+
 #include <map>
 #include <string>
 #include <vector>
@@ -19,6 +22,8 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
+#include "shill/mock_dhcp_config.h"
+#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
@@ -106,6 +111,11 @@ class WiFiMainTest : public Test {
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
+        dhcp_config_(new MockDHCPConfig(&control_interface_,
+                                        &dispatcher_,
+                                        &dhcp_provider_,
+                                        kDeviceName,
+                                        &glib_)),
         proxy_factory_(this) {
     ProxyFactory::set_factory(&proxy_factory_);
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
@@ -115,6 +125,10 @@ class WiFiMainTest : public Test {
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop();
+  }
+
+  virtual void SetUp() {
+    wifi_->set_dhcp_provider(&dhcp_provider_);
   }
 
  protected:
@@ -156,11 +170,17 @@ class WiFiMainTest : public Test {
   void InitiateConnect(WiFiService *service) {
     wifi_->ConnectTo(service);
   }
+  bool IsLinkUp() {
+    return wifi_->link_up_;
+  }
   void ReportBSS(const ::DBus::Path &bss_path,
                  const string &ssid,
                  const string &bssid,
                  int16_t signal_strength,
                  const char *mode);
+  void ReportLinkUp() {
+    wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
+  }
   void ReportScanDone() {
     wifi_->ScanDoneTask();
   }
@@ -181,6 +201,7 @@ class WiFiMainTest : public Test {
 
  private:
   NiceMockControl control_interface_;
+  MockGLib glib_;
   MockManager manager_;
   WiFiRefPtr wifi_;
 
@@ -194,6 +215,8 @@ class WiFiMainTest : public Test {
 
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
+  MockDHCPProvider dhcp_provider_;
+  scoped_refptr<MockDHCPConfig> dhcp_config_;
 
  private:
   TestProxyFactory proxy_factory_;
@@ -329,7 +352,16 @@ TEST_F(WiFiMainTest, Connect) {
         .WillOnce(Return(fake_path));
     EXPECT_CALL(supplicant_interface_proxy, SelectNetwork(fake_path));
     InitiateConnect(service);
+    EXPECT_EQ(static_cast<Service *>(service),
+              wifi()->selected_service_.get());
   }
+}
+
+TEST_F(WiFiMainTest, LinkEvent) {
+  EXPECT_FALSE(IsLinkUp());
+  EXPECT_CALL(dhcp_provider_, CreateConfig(_)).
+      WillOnce(Return(dhcp_config_));
+  ReportLinkUp();
 }
 
 }  // namespace shill
