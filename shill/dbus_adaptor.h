@@ -41,6 +41,8 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static ::DBus::Variant Int16ToVariant(int16 value);
   static ::DBus::Variant Int32ToVariant(int32 value);
   static ::DBus::Variant PathToVariant(const ::DBus::Path &value);
+  static ::DBus::Variant PathArrayToVariant(
+      const std::vector< ::DBus::Path> &value);
   static ::DBus::Variant StringToVariant(const std::string &value);
   static ::DBus::Variant StringmapToVariant(const Stringmap &value);
   static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);
@@ -54,6 +56,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsInt16(::DBus::Signature signature);
   static bool IsInt32(::DBus::Signature signature);
   static bool IsPath(::DBus::Signature signature);
+  static bool IsPathArray(::DBus::Signature signature);
   static bool IsString(::DBus::Signature signature);
   static bool IsStringmap(::DBus::Signature signature);
   static bool IsStringmaps(::DBus::Signature signature);
@@ -62,6 +65,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsUint32(::DBus::Signature signature);
 
  private:
+  static const char kPathArraySig[];
   static const char kStringmapSig[];
   static const char kStringmapsSig[];
   static const char kStringsSig[];

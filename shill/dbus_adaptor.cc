@@ -21,6 +21,8 @@ using std::vector;
 namespace shill {
 
 // static
+const char DBusAdaptor::kPathArraySig[] = "ao";
+// static
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
 // static
 const char DBusAdaptor::kStringmapsSig[] = "aa{ss}";
@@ -166,6 +168,19 @@ bool DBusAdaptor::GetProperties(PropertyStore *store,
 }
 
 // static
+::DBus::Variant DBusAdaptor::PathArrayToVariant(
+    const vector< ::DBus::Path> &value) {
+  ::DBus::MessageIter writer;
+  ::DBus::Variant v;
+
+  // TODO(quiche): figure out why we can't use operator<< without the
+  // temporary variable.
+  writer = v.writer();
+  writer << value;
+  return v;
+}
+
+// static
 ::DBus::Variant DBusAdaptor::StringToVariant(const string &value) {
   ::DBus::Variant v;
   v.writer().append_string(value.c_str());
@@ -242,6 +257,11 @@ bool DBusAdaptor::IsInt32(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsPath(::DBus::Signature signature) {
   return signature == ::DBus::type< ::DBus::Path >::sig();
+}
+
+// static
+bool DBusAdaptor::IsPathArray(::DBus::Signature signature) {
+  return signature == DBusAdaptor::kPathArraySig;
 }
 
 // static

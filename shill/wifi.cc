@@ -37,7 +37,9 @@ const char WiFi::kSupplicantErrorInterfaceExists[] =
 const char WiFi::kSupplicantPropertySSID[]        = "ssid";
 const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
 const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
+const char WiFi::kSupplicantPropertyScanType[]    = "Type";
 const char WiFi::kSupplicantKeyModeNone[] = "NONE";
+const char WiFi::kSupplicantScanTypeActive[] = "active";
 
 // NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
@@ -115,12 +117,7 @@ void WiFi::Start() {
   // all BSSes (not just new ones since the last scan).
   supplicant_interface_proxy_->FlushBSS(0);
 
-  LOG(INFO) << "initiating Scan.";
-  std::map<string, DBus::Variant> scan_args;
-  scan_args["Type"].writer().append_string("active");
-  // TODO(quiche) indicate scanning in UI
-  supplicant_interface_proxy_->Scan(scan_args);
-  scan_pending_ = true;
+  Scan();
   Device::Start();
 }
 
@@ -131,8 +128,19 @@ void WiFi::Stop() {
   supplicant_process_proxy_.reset();
   endpoint_by_bssid_.clear();
   service_by_private_id_.clear();       // breaks reference cycles
+  // TODO(quiche): unregister services from manager
   Device::Stop();
   // XXX anything else to do?
+}
+
+void WiFi::Scan() {
+  LOG(INFO) << __func__;
+
+  // needs to send a D-Bus message, but may be called from D-Bus
+  // signal handler context (via Manager::RequestScan). so defer work
+  // to event loop.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::ScanTask));
 }
 
 bool WiFi::TechnologyIs(const Device::Technology type) const {
@@ -165,19 +173,21 @@ void WiFi::ScanDone() {
       task_factory_.NewRunnableMethod(&WiFi::ScanDoneTask));
 }
 
-void WiFi::ConnectTo(const WiFiService &service) {
+void WiFi::ConnectTo(WiFiService *service) {
   std::map<string, DBus::Variant> add_network_args;
   DBus::MessageIter writer;
   DBus::Path network_path;
 
+  // TODO(quiche): if already connected, disconnect
+
   add_network_args[kSupplicantPropertyNetworkMode].writer().
-      append_uint32(WiFiEndpoint::ModeStringToUint(service.mode()));
+      append_uint32(WiFiEndpoint::ModeStringToUint(service->mode()));
   add_network_args[kSupplicantPropertyKeyMode].writer().
-      append_string(service.key_management().c_str());
+      append_string(service->key_management().c_str());
   // TODO(quiche): figure out why we can't use operator<< without the
   // temporary variable.
   writer = add_network_args[kSupplicantPropertySSID].writer();
-  writer << service.ssid();
+  writer << service->ssid();
   // TODO(quiche): set scan_ssid=1, like flimflam does?
 
   network_path =
@@ -219,13 +229,23 @@ void WiFi::ScanDoneTask() {
                           kSupplicantKeyModeNone));
       services()->push_back(service);
       service_by_private_id_[service_id_private] = service;
+      manager()->RegisterService(service);
 
       LOG(INFO) << "new service " << service->GetRpcIdentifier();
     }
   }
 
-  // TODO(quiche): register new services with manager
   // TODO(quiche): unregister removed services from manager
+}
+
+void WiFi::ScanTask() {
+  VLOG(2) << "WiFi " << link_name() << " scan requested.";
+  std::map<string, DBus::Variant> scan_args;
+  scan_args[kSupplicantPropertyScanType].writer().
+      append_string(kSupplicantScanTypeActive);
+  // TODO(quiche) indicate scanning in UI
+  supplicant_interface_proxy_->Scan(scan_args);
+  scan_pending_ = true;
 }
 
 }  // namespace shill

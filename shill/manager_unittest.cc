@@ -14,6 +14,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/adaptor_interfaces.h"
+#include "shill/error.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
@@ -127,6 +130,9 @@ TEST_F(ManagerTest, ServiceRegistration) {
       .WillRepeatedly(Return(service1_name));
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
+  // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
+  // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager_.adaptor_.get()),
+  //             EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty, _));
 
   manager_.RegisterService(mock_service);
   manager_.RegisterService(mock_service2);
@@ -263,6 +269,27 @@ TEST_F(ManagerTest, Dispatch) {
         PropertyStoreTest::kStringsV,
         &error));
     EXPECT_EQ(invalid_args_, error.name());
+  }
+}
+
+TEST_F(ManagerTest, RequestScan) {
+  {
+    Error error;
+    manager_.RegisterDevice(mock_device_.get());
+    manager_.RegisterDevice(mock_device2_.get());
+    EXPECT_CALL(*mock_device_, TechnologyIs(Device::kWifi))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mock_device_, Scan());
+    EXPECT_CALL(*mock_device2_, TechnologyIs(Device::kWifi))
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mock_device2_, Scan()).Times(0);
+    manager_.RequestScan(flimflam::kTypeWifi, &error);
+  }
+
+  {
+    Error error;
+    manager_.RequestScan("bogus_device_type", &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 

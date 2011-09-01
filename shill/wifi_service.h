@@ -45,8 +45,6 @@ class WiFiService : public Service {
   virtual std::string CalculateState() { return "idle"; }
 
  private:
-  static const char kServiceType[];
-
   void ConnectTask();
 
   std::string GetDeviceRpcId();
@@ -64,7 +62,7 @@ class WiFiService : public Service {
   bool hidden_ssid_;
   uint16 frequency_;
   uint16 physical_mode_;
-  uint16 hex_ssid_;
+  std::string hex_ssid_;
 
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;

@@ -58,7 +58,7 @@ class Manager {
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceRefPtr &to_forget);
 
-  void RegisterService(const ServiceRefPtr &to_manage);
+  virtual void RegisterService(const ServiceRefPtr &to_manage);
   void DeregisterService(const ServiceConstRefPtr &to_forget);
   virtual void UpdateService(const ServiceConstRefPtr &to_update);
 
@@ -67,6 +67,9 @@ class Manager {
 
   ServiceRefPtr FindService(const std::string& name);
   std::vector<std::string> EnumerateAvailableServices();
+
+  // called via RPC (e.g., from ManagerDBusAdaptor)
+  void RequestScan(const std::string &technology, Error *error);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   virtual PropertyStore *store() { return &store_; }

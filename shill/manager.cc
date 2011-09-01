@@ -177,6 +177,13 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
       return;
   }
   services_.push_back(to_manage);
+
+  vector<string> service_paths;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    service_paths.push_back((*it)->GetRpcIdentifier());
+  }
+  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
+                                          service_paths);
 }
 
 void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
@@ -282,6 +289,26 @@ vector<string> Manager::EnumerateWatchedServices() {
 
 string Manager::GetActiveProfileName() {
   return ActiveProfile()->GetFriendlyName();
+}
+
+// called via RPC (e.g., from ManagerDBusAdaptor)
+void Manager::RequestScan(const std::string &technology, Error *error) {
+  if (technology == flimflam::kTypeWifi || technology == "") {
+    vector<DeviceRefPtr> wifi_devices;
+    FilterByTechnology(Device::kWifi, &wifi_devices);
+
+    for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
+         it != wifi_devices.end();
+         ++it) {
+      (*it)->Scan();
+    }
+  } else {
+    // TODO(quiche): support scanning for other technologies?
+    const string kMessage = "Unrecognized technology " + technology;
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+  }
 }
 
 }  // namespace shill

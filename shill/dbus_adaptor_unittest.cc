@@ -41,12 +41,14 @@ class DBusAdaptorTest : public PropertyStoreTest {
         ex_uint32_(2000000),
         ex_int16_(-32768),
         ex_int32_(-65536),
+        ex_path_("/"),
         ex_string_("something"),
         ex_strings_(1, ex_string_),
         bool_v_(DBusAdaptor::BoolToVariant(ex_bool_)),
         byte_v_(DBusAdaptor::ByteToVariant(ex_byte_)),
         int16_v_(DBusAdaptor::Int16ToVariant(ex_int16_)),
         int32_v_(DBusAdaptor::Int32ToVariant(ex_int32_)),
+        path_v_(DBusAdaptor::PathToVariant(ex_path_)),
         string_v_(DBusAdaptor::StringToVariant(ex_string_)),
         strings_v_(DBusAdaptor::StringsToVariant(ex_strings_)),
         uint16_v_(DBusAdaptor::Uint16ToVariant(ex_uint16_)),
@@ -62,6 +64,9 @@ class DBusAdaptorTest : public PropertyStoreTest {
                                  &manager_)) {
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
+
+    ex_patharray_.push_back(ex_path_);
+    patharray_v_ = DBusAdaptor::PathArrayToVariant(ex_patharray_);
   }
 
   virtual ~DBusAdaptorTest() {}
@@ -73,6 +78,8 @@ class DBusAdaptorTest : public PropertyStoreTest {
   uint32 ex_uint32_;
   int16 ex_int16_;
   int32 ex_int32_;
+  ::DBus::Path ex_path_;
+  vector< ::DBus::Path> ex_patharray_;
   string ex_string_;
   map<string, string> ex_stringmap_;
   vector<map<string, string> > ex_stringmaps_;
@@ -82,6 +89,8 @@ class DBusAdaptorTest : public PropertyStoreTest {
   ::DBus::Variant byte_v_;
   ::DBus::Variant int16_v_;
   ::DBus::Variant int32_v_;
+  ::DBus::Variant path_v_;
+  ::DBus::Variant patharray_v_;
   ::DBus::Variant string_v_;
   ::DBus::Variant stringmap_v_;
   ::DBus::Variant stringmaps_v_;
@@ -112,6 +121,10 @@ TEST_F(DBusAdaptorTest, Conversions) {
   EXPECT_EQ(0, PropertyStoreTest::kInt32V.reader().get_int32());
   EXPECT_EQ(ex_int32_, int32_v_.reader().get_int32());
 
+  EXPECT_EQ(ex_path_, path_v_.reader().get_path());
+
+  EXPECT_EQ(ex_path_, patharray_v_.operator vector< ::DBus::Path>()[0]);
+
   EXPECT_EQ(string(""), PropertyStoreTest::kStringV.reader().get_string());
   EXPECT_EQ(ex_string_, string_v_.reader().get_string());
 
@@ -125,6 +138,8 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_TRUE(DBusAdaptor::IsByte(byte_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsInt16(int16_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsInt32(int32_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsPath(path_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsPathArray(patharray_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsString(string_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsStringmap(stringmap_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v_.signature()));

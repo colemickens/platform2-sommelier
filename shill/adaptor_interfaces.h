@@ -6,6 +6,7 @@
 #define SHILL_ADAPTOR_INTERFACES_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
@@ -65,6 +66,9 @@ class ManagerAdaptorInterface {
   virtual void EmitIntChanged(const std::string& name, int value) = 0;
   virtual void EmitStringChanged(const std::string& name,
                                  const std::string& value) = 0;
+  virtual void EmitRpcIdentifierArrayChanged(
+      const std::string &name,
+      const std::vector<std::string> &value) = 0;
 
   virtual void EmitStateChanged(const std::string& new_state) = 0;
 };

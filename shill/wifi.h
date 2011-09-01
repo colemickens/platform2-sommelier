@@ -33,6 +33,7 @@ class WiFi : public Device {
   virtual ~WiFi();
   virtual void Start();
   virtual void Stop();
+  virtual void Scan();
   virtual bool TechnologyIs(const Technology type) const;
 
   // called by SupplicantInterfaceProxy, in response to events from
@@ -42,7 +43,7 @@ class WiFi : public Device {
   void ScanDone();
 
   // called by WiFiService
-  void ConnectTo(const WiFiService &service);
+  void ConnectTo(WiFiService *service);
 
  private:
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
@@ -55,9 +56,12 @@ class WiFi : public Device {
   static const char kSupplicantPropertySSID[];
   static const char kSupplicantPropertyNetworkMode[];
   static const char kSupplicantPropertyKeyMode[];
+  static const char kSupplicantPropertyScanType[];
   static const char kSupplicantKeyModeNone[];
+  static const char kSupplicantScanTypeActive[];
 
   void ScanDoneTask();
+  void ScanTask();
 
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;

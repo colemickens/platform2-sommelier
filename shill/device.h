@@ -100,6 +100,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(WiFiMainTest, Connect);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.

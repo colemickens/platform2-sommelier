@@ -67,6 +67,8 @@ class ManagerMockAdaptor : public ManagerAdaptorInterface {
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+  MOCK_METHOD2(EmitRpcIdentifierArrayChanged,
+               void(const std::string &, const std::vector<std::string> &));
 
   MOCK_METHOD1(EmitStateChanged, void(const std::string&));
 

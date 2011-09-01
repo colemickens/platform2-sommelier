@@ -27,6 +27,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi.h"
+#include "shill/wifi_service.h"
 
 using std::map;
 using std::string;
@@ -97,7 +98,7 @@ class WiFiMainTest : public Test {
   WiFiMainTest()
       : manager_(&control_interface_, NULL, NULL),
         wifi_(new WiFi(&control_interface_,
-                       NULL,
+                       &dispatcher_,
                        &manager_,
                        kDeviceName,
                        kDeviceAddress,
@@ -152,7 +153,7 @@ class WiFiMainTest : public Test {
   SupplicantInterfaceProxyInterface *GetSupplicantInterfaceProxy() {
     return wifi_->supplicant_interface_proxy_.get();
   }
-  void InitiateConnect(const WiFiService &service) {
+  void InitiateConnect(WiFiService *service) {
     wifi_->ConnectTo(service);
   }
   void ReportBSS(const ::DBus::Path &bss_path,
@@ -169,6 +170,14 @@ class WiFiMainTest : public Test {
   void StopWiFi() {
     wifi_->Stop();
   }
+  MockManager *manager() {
+    return &manager_;
+  }
+  const WiFiConstRefPtr wifi() const {
+    return wifi_;
+  }
+
+  EventDispatcher dispatcher_;
 
  private:
   NiceMockControl control_interface_;
@@ -239,6 +248,7 @@ TEST_F(WiFiMainTest, CleanStart) {
               "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
   StartWiFi();
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(WiFiMainTest, Restart) {
@@ -251,6 +261,7 @@ TEST_F(WiFiMainTest, Restart) {
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_));
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
   StartWiFi();
+  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(WiFiMainTest, StartClearsState) {
@@ -295,6 +306,8 @@ TEST_F(WiFiMainTest, ScanCompleted) {
       "bss1", "ssid1", "00:00:00:00:00:01", 1, kNetworkModeInfrastructure);
   ReportBSS(
       "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
+  EXPECT_CALL(*manager(), RegisterService(_))
+      .Times(3);
   ReportScanDone();
   EXPECT_EQ(3, GetServiceMap().size());
 }
@@ -310,11 +323,12 @@ TEST_F(WiFiMainTest, Connect) {
   {
     InSequence s;
     DBus::Path fake_path("/fake/path");
+    WiFiService *service(GetServiceMap().begin()->second);
 
     EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
         .WillOnce(Return(fake_path));
     EXPECT_CALL(supplicant_interface_proxy, SelectNetwork(fake_path));
-    InitiateConnect(*(GetServiceMap().begin()->second));
+    InitiateConnect(service);
   }
 }
 

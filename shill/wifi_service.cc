@@ -21,9 +21,6 @@ using std::string;
 
 namespace shill {
 
-// static
-const char WiFiService::kServiceType[] = "wifi";
-
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager,
@@ -33,6 +30,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const std::string &key_management)
     : Service(control_interface, dispatcher, manager),
       security_(flimflam::kSecurityNone),
+      type_(flimflam::kTypeWifi),
       mode_(mode),
       task_factory_(this),
       wifi_(device),
@@ -51,7 +49,13 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
-  store->RegisterConstUint16(flimflam::kWifiHexSsid, &hex_ssid_);
+  store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
+
+  hex_ssid_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
+  // TODO(quiche): set based on security properties
+  need_passphrase_ = false;
+  // TODO(quiche): figure out when to set true
+  hidden_ssid_ = false;
 }
 
 WiFiService::~WiFiService() {
@@ -73,11 +77,10 @@ void WiFiService::Disconnect() {
 }
 
 string WiFiService::GetStorageIdentifier(const std::string &mac) {
-  string ssid_hex = base::HexEncode(&(*ssid_.begin()), ssid_.size());
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                               kServiceType,
+                                               flimflam::kTypeWifi,
                                                mac.c_str(),
-                                               ssid_hex.c_str(),
+                                               hex_ssid_.c_str(),
                                                mode_.c_str(),
                                                security_.c_str()));
 }
@@ -94,8 +97,9 @@ const std::vector<uint8_t> &WiFiService::ssid() const {
   return ssid_;
 }
 
+// private methods
 void WiFiService::ConnectTask() {
-  wifi_->ConnectTo(*this);
+  wifi_->ConnectTo(this);
 }
 
 string WiFiService::GetDeviceRpcId() {

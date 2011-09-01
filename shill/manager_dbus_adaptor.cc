@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/device.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 
@@ -52,6 +53,18 @@ void ManagerDBusAdaptor::EmitIntChanged(const string &name, int value) {
 void ManagerDBusAdaptor::EmitStringChanged(const string &name,
                                            const string &value) {
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
+}
+
+void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
+    const string &name,
+    const vector<string> &value) {
+  vector< ::DBus::Path> paths;
+  vector<string>::const_iterator it;
+  for (it = value.begin(); it != value.end(); ++it) {
+    paths.push_back(*it);
+  }
+
+  PropertyChanged(name, DBusAdaptor::PathArrayToVariant(paths));
 }
 
 void ManagerDBusAdaptor::EmitStateChanged(const string &new_state) {
@@ -101,8 +114,11 @@ void ManagerDBusAdaptor::PopProfile(const std::string &, ::DBus::Error &error) {
 void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
 }
 
-void ManagerDBusAdaptor::RequestScan(const string &,
+void ManagerDBusAdaptor::RequestScan(const string &technology,
                                      ::DBus::Error &error) {
+  Error e;
+  manager_->RequestScan(technology, &e);
+  e.ToDBusError(&error);
 }
 
 void ManagerDBusAdaptor::EnableTechnology(const string &,

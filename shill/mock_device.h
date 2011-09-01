@@ -29,6 +29,7 @@ class MockDevice : public Device {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD0(Scan, void());
   MOCK_CONST_METHOD1(TechnologyIs, bool(const Technology technology));
 
  private:
