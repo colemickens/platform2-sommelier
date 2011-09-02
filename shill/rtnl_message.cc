@@ -30,7 +30,7 @@ RTNLMessage::RTNLMessage()
       mode_(kModeUnknown),
       flags_(0),
       interface_index_(0),
-      family_(IPAddress::kAddressFamilyUnknown) {}
+      family_(IPAddress::kFamilyUnknown) {}
 
 RTNLMessage::RTNLMessage(Type type,
                          Mode mode,

@@ -64,7 +64,7 @@ class ModemTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(ModemTest *test) : test_(test) {}
+    explicit TestProxyFactory(ModemTest *test) : test_(test) {}
 
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
         DBusPropertiesProxyListener *listener,

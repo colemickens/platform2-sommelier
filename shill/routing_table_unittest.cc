@@ -172,10 +172,10 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   // Expect the tables to be empty by default
   EXPECT_EQ(0, GetRoutingTables()->size());
 
-  IPAddress default_address(IPAddress::kAddressFamilyIPv4);
+  IPAddress default_address(IPAddress::kFamilyIPv4);
   default_address.SetAddressToDefault();
 
-  IPAddress gateway_address0(IPAddress::kAddressFamilyIPv4);
+  IPAddress gateway_address0(IPAddress::kFamilyIPv4);
   gateway_address0.SetAddressFromString(kTestNetAddress0);
 
   int metric = 10;
@@ -216,7 +216,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   test_entry = (*tables)[kTestDeviceIndex1][0];
   EXPECT_TRUE(entry0.Equals(test_entry));
 
-  IPAddress gateway_address1(IPAddress::kAddressFamilyIPv4);
+  IPAddress gateway_address1(IPAddress::kFamilyIPv4);
   gateway_address1.SetAddressFromString(kTestNetAddress1);
 
   RoutingTableEntry entry1(default_address,
@@ -266,13 +266,13 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
 
   // Find a matching entry
   EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
-                                              IPAddress::kAddressFamilyIPv4,
+                                              IPAddress::kFamilyIPv4,
                                               &test_entry));
   EXPECT_TRUE(entry2.Equals(test_entry));
 
   // Test that a search for a non-matching family fails
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
-                                               IPAddress::kAddressFamilyIPv6,
+                                               IPAddress::kFamilyIPv6,
                                                &test_entry));
 
   // Remove last entry from an existing interface and test that we now fail
@@ -281,14 +281,14 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
                entry2);
 
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
-                                               IPAddress::kAddressFamilyIPv4,
+                                               IPAddress::kFamilyIPv4,
                                                &test_entry));
 
   // Add a route from an IPConfig entry
   MockControl control;
   IPConfigRefPtr ipconfig(new IPConfig(&control, kTestDeviceName0));
   IPConfig::Properties properties;
-  properties.address_family = IPAddress::kAddressFamilyIPv4;
+  properties.address_family = IPAddress::kFamilyIPv4;
   properties.gateway = kTestNetAddress0;
   properties.address = kTestNetAddress1;
   ipconfig->UpdateProperties(properties, true);
@@ -309,7 +309,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   RoutingTableEntry entry3(entry0);
   entry3.from_rtnl = false;
   EXPECT_TRUE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
-                                              IPAddress::kAddressFamilyIPv4,
+                                              IPAddress::kFamilyIPv4,
                                               &test_entry));
   EXPECT_TRUE(entry3.Equals(test_entry));
 
@@ -333,7 +333,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   routing_table_->ResetTable(kTestDeviceIndex1);
   EXPECT_FALSE(ContainsKey(*tables, kTestDeviceIndex1));
   EXPECT_FALSE(routing_table_->GetDefaultRoute(kTestDeviceIndex1,
-                                               IPAddress::kAddressFamilyIPv4,
+                                               IPAddress::kFamilyIPv4,
                                                &test_entry));
   EXPECT_EQ(1, GetRoutingTables()->size());
 

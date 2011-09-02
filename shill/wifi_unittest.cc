@@ -119,7 +119,7 @@ class WiFiMainTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(WiFiMainTest *test) : test_(test) {}
+    explicit TestProxyFactory(WiFiMainTest *test) : test_(test) {}
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
         const char *dbus_path, const char *dbus_addr) {
@@ -188,7 +188,6 @@ class WiFiMainTest : public Test {
 
  private:
   TestProxyFactory proxy_factory_;
-
 };
 
 const char WiFiMainTest::kDeviceName[] = "wlan0";

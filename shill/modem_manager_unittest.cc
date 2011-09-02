@@ -44,7 +44,7 @@ class ModemManagerTest : public Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(ModemManagerTest *test) : test_(test) {}
+    explicit TestProxyFactory(ModemManagerTest *test) : test_(test) {}
 
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
         ModemManager *manager,

@@ -112,7 +112,7 @@ void RTNLHandlerTest::AddLink() {
                       0,
                       0,
                       kTestDeviceIndex,
-                      IPAddress::kAddressFamilyIPv4);
+                      IPAddress::kFamilyIPv4);
   message.SetAttribute(static_cast<uint16>(IFLA_IFNAME),
                        ByteString(kTestDeviceName, true));
   ByteString b(message.Encode());

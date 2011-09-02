@@ -93,7 +93,7 @@ void RTNLHandler::Stop() {
   if (!sockets_)
     return;
 
-  rtnl_handler_.reset(NULL);
+  rtnl_handler_.reset();
   sockets_->Close(rtnl_socket_);
   in_request_ = false;
   sockets_ = NULL;
@@ -199,7 +199,7 @@ void RTNLHandler::NextRequest(uint32_t seq) {
       0,
       0,
       0,
-      IPAddress::kAddressFamilyUnknown);
+      IPAddress::kFamilyUnknown);
   CHECK(SendMessage(&msg));
 
   last_dump_sequence_ = msg.seq();
@@ -216,10 +216,13 @@ void RTNLHandler::ParseRTNL(InputData *data) {
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 
+    VLOG(3) << __func__ << ": received payload (" << end - buf << ")";
+
     RTNLMessage msg;
     if (!msg.Decode(ByteString(reinterpret_cast<unsigned char *>(hdr),
                                hdr->nlmsg_len))) {
-
+      VLOG(3) << __func__ << ": rtnl packet type "
+              << hdr->nlmsg_type << " length " << hdr->nlmsg_len;
       switch (hdr->nlmsg_type) {
         case NLMSG_NOOP:
         case NLMSG_OVERRUN:

@@ -256,6 +256,24 @@ const unsigned char kNewAddrIPV4[] = {
   0x00, 0x00, 0x00, 0x00,
 };
 
+// Deleted 15: if15    inet6 fe80::6a7f:74ff:feba:efc7/64 scope link
+//       valid_lft forever preferred_lft forever
+
+const int kDelAddrIPV6InterfaceIndex = 15;
+const char kDelAddrIPV6Address[] = "fe80::6a7f:74ff:feba:efc7";
+const int kDelAddrIPV6AddressPrefix = 64;
+const unsigned char kDelAddrIPV6Scope = RT_SCOPE_LINK;
+
+const unsigned char kDelAddrIPV6[] = {
+  0x40, 0x00, 0x00, 0x00, 0x15, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x0a, 0x40, 0x80, 0xfd, 0x0f, 0x00, 0x00, 0x00,
+  0x14, 0x00, 0x01, 0x00, 0xfe, 0x80, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x6a, 0x7f, 0x74, 0xff,
+  0xfe, 0xba, 0xef, 0xc7, 0x14, 0x00, 0x06, 0x00,
+  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  0xbf, 0xdb, 0x02, 0x00, 0xbf, 0xdb, 0x02, 0x00,
+};
 
 // Deleted ff02::1:ffa0:688 via ff02::1:ffa0:688 dev if2  metric 0
 
@@ -390,11 +408,11 @@ class RTNLMessageTest : public Test {
     RTNLMessage::AddressStatus status = msg.address_status();
     EXPECT_EQ(scope, status.scope);
 
-    EXPECT_TRUE(msg.HasAttribute(IFA_LOCAL));
-    EXPECT_EQ(address.GetLength(), msg.GetAttribute(IFA_LOCAL).GetLength());
+    EXPECT_TRUE(msg.HasAttribute(IFA_ADDRESS));
+    EXPECT_EQ(address.GetLength(), msg.GetAttribute(IFA_ADDRESS).GetLength());
     EXPECT_TRUE(
         IPAddress(address.family(),
-                  msg.GetAttribute(IFA_LOCAL),
+                  msg.GetAttribute(IFA_ADDRESS),
                   status.prefix_len).Equals(address));
   }
 
@@ -490,7 +508,7 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
 }
 
 TEST_F(RTNLMessageTest, NewAddrIPv4) {
-  IPAddress addr(IPAddress::kAddressFamilyIPv4);
+  IPAddress addr(IPAddress::kFamilyIPv4);
 
   EXPECT_TRUE(addr.SetAddressFromString(kNewAddrIPV4Address));
   addr.set_prefix(kNewAddrIPV4AddressPrefix);
@@ -501,10 +519,22 @@ TEST_F(RTNLMessageTest, NewAddrIPv4) {
                    kNewAddrIPV4Scope);
 }
 
+TEST_F(RTNLMessageTest, DelAddrIPv6) {
+  IPAddress addr(IPAddress::kFamilyIPv6);
+
+  EXPECT_TRUE(addr.SetAddressFromString(kDelAddrIPV6Address));
+  addr.set_prefix(kDelAddrIPV6AddressPrefix);
+  TestParseAddress(ByteString(kDelAddrIPV6, sizeof(kDelAddrIPV6)),
+                   RTNLMessage::kModeDelete,
+                   kDelAddrIPV6InterfaceIndex,
+                   addr,
+                   kDelAddrIPV6Scope);
+}
+
 TEST_F(RTNLMessageTest, DelRouteIPv6) {
-  IPAddress dst(IPAddress::kAddressFamilyIPv6);
-  IPAddress src(IPAddress::kAddressFamilyIPv6);
-  IPAddress gateway(IPAddress::kAddressFamilyIPv6);
+  IPAddress dst(IPAddress::kFamilyIPv6);
+  IPAddress src(IPAddress::kFamilyIPv6);
+  IPAddress gateway(IPAddress::kFamilyIPv6);
 
   EXPECT_TRUE(dst.SetAddressFromString(kDelRouteIPV6Address));
   dst.set_prefix(kDelRouteIPV6Prefix);
@@ -513,7 +543,7 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
 
   TestParseRoute(ByteString(kDelRouteIPV6, sizeof(kDelRouteIPV6)),
                  RTNLMessage::kModeDelete,
-                 IPAddress::kAddressFamilyIPv6,
+                 IPAddress::kFamilyIPv6,
                  kDelRouteIPV6InterfaceIndex,
                  dst,
                  src,
@@ -526,9 +556,9 @@ TEST_F(RTNLMessageTest, DelRouteIPv6) {
 }
 
 TEST_F(RTNLMessageTest, AddRouteIPv4) {
-  IPAddress dst(IPAddress::kAddressFamilyIPv4);
-  IPAddress src(IPAddress::kAddressFamilyIPv4);
-  IPAddress gateway(IPAddress::kAddressFamilyIPv4);
+  IPAddress dst(IPAddress::kFamilyIPv4);
+  IPAddress src(IPAddress::kFamilyIPv4);
+  IPAddress gateway(IPAddress::kFamilyIPv4);
 
   dst.SetAddressToDefault();
   src.SetAddressToDefault();
@@ -536,7 +566,7 @@ TEST_F(RTNLMessageTest, AddRouteIPv4) {
 
   TestParseRoute(ByteString(kAddRouteIPV4, sizeof(kAddRouteIPV4)),
                  RTNLMessage::kModeAdd,
-                 IPAddress::kAddressFamilyIPv4,
+                 IPAddress::kFamilyIPv4,
                  kAddRouteIPV4InterfaceIndex,
                  dst,
                  src,
@@ -566,10 +596,10 @@ TEST_F(RTNLMessageTest, Encode) {
   RTNLMessage msg(RTNLMessage::kTypeRoute,
                   RTNLMessage::kModeAdd,
                   0, 1, 2, 0,
-                  IPAddress::kAddressFamilyIPv4);
-  IPAddress dst(IPAddress::kAddressFamilyIPv4);
-  IPAddress src(IPAddress::kAddressFamilyIPv4);
-  IPAddress gateway(IPAddress::kAddressFamilyIPv4);
+                  IPAddress::kFamilyIPv4);
+  IPAddress dst(IPAddress::kFamilyIPv4);
+  IPAddress src(IPAddress::kFamilyIPv4);
+  IPAddress gateway(IPAddress::kFamilyIPv4);
 
   dst.SetAddressToDefault();
   src.SetAddressToDefault();
@@ -586,7 +616,7 @@ TEST_F(RTNLMessageTest, Encode) {
 
   TestParseRoute(msg.Encode(),
                  RTNLMessage::kModeAdd,
-                 IPAddress::kAddressFamilyIPv4,
+                 IPAddress::kFamilyIPv4,
                  12,
                  dst,
                  src,

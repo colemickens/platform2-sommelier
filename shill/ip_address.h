@@ -14,9 +14,9 @@ namespace shill {
 class IPAddress {
  public:
   typedef unsigned char Family;
-  static const Family kAddressFamilyUnknown;
-  static const Family kAddressFamilyIPv4;
-  static const Family kAddressFamilyIPv6;
+  static const Family kFamilyUnknown;
+  static const Family kFamilyIPv4;
+  static const Family kFamilyIPv6;
 
   explicit IPAddress(Family family);
   IPAddress(Family family, const ByteString &address);
@@ -48,7 +48,7 @@ class IPAddress {
   int GetLength() const { return address_.GetLength(); }
   bool IsDefault() const { return address_.IsZero(); }
   bool IsValid() const {
-    return family_ != kAddressFamilyUnknown &&
+    return family_ != kFamilyUnknown &&
         GetLength() == GetAddressLength(family_);
   }
 

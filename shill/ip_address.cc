@@ -14,11 +14,11 @@
 namespace shill {
 
 // static
-const IPAddress::Family IPAddress::kAddressFamilyUnknown = AF_UNSPEC;
+const IPAddress::Family IPAddress::kFamilyUnknown = AF_UNSPEC;
 // static
-const IPAddress::Family IPAddress::kAddressFamilyIPv4 = AF_INET;
+const IPAddress::Family IPAddress::kFamilyIPv4 = AF_INET;
 // static
-const IPAddress::Family IPAddress::kAddressFamilyIPv6 = AF_INET6;
+const IPAddress::Family IPAddress::kFamilyIPv6 = AF_INET6;
 
 IPAddress::IPAddress(Family family, const ByteString &address)
     : family_(family) ,
@@ -40,9 +40,9 @@ IPAddress::~IPAddress() {}
 
 int IPAddress::GetAddressLength(Family family) {
   switch (family) {
-  case kAddressFamilyIPv4:
+  case kFamilyIPv4:
     return sizeof(in_addr);
-  case kAddressFamilyIPv6:
+  case kFamilyIPv6:
     return sizeof(in6_addr);
   default:
     return 0;

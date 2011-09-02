@@ -167,4 +167,4 @@ TEST_F(ProfileTest, EntryEnumeration) {
   ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
 }
 
-} // namespace shill
+}  // namespace shill

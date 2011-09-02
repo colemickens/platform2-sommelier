@@ -155,7 +155,7 @@ class CellularTest : public testing::Test {
  protected:
   class TestProxyFactory : public ProxyFactory {
    public:
-    TestProxyFactory(CellularTest *test) : test_(test) {}
+    explicit TestProxyFactory(CellularTest *test) : test_(test) {}
 
     virtual ModemProxyInterface *CreateModemProxy(ModemProxyListener *listener,
                                                   const string &path,

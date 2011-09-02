@@ -106,7 +106,7 @@ RTNLMessage *DeviceInfoTest::BuildLinkMessage(RTNLMessage::Mode mode) {
       0,
       0,
       kTestDeviceIndex,
-      IPAddress::kAddressFamilyIPv4);
+      IPAddress::kFamilyIPv4);
   message->SetAttribute(static_cast<uint16>(IFLA_IFNAME),
                         ByteString(kTestDeviceName, true));
   ByteString test_address(kTestMACAddress, sizeof(kTestMACAddress));
@@ -202,7 +202,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   EXPECT_TRUE(addresses.empty());
 
   // Add an address to the device address list
-  IPAddress ip_address0(IPAddress::kAddressFamilyIPv4);
+  IPAddress ip_address0(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(ip_address0.SetAddressFromString(kTestIPAddress0));
   ip_address0.set_prefix(kTestIPAddressPrefix0);
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address0, 0, 0));
@@ -218,7 +218,7 @@ TEST_F(DeviceInfoTest, DeviceAddressList) {
   EXPECT_TRUE(ip_address0.Equals(addresses[0].address));
 
   // Adding a new address should expand the list
-  IPAddress ip_address1(IPAddress::kAddressFamilyIPv6);
+  IPAddress ip_address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(ip_address1.SetAddressFromString(kTestIPAddress1));
   ip_address1.set_prefix(kTestIPAddressPrefix1);
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd, ip_address1, 0, 0));
@@ -264,7 +264,7 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
   scoped_ptr<RTNLMessage> message(BuildLinkMessage(RTNLMessage::kModeAdd));
   SendMessageToDeviceInfo(*message);
 
-  IPAddress address1(IPAddress::kAddressFamilyIPv6);
+  IPAddress address1(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address1.SetAddressFromString(kTestIPAddress1));
   address1.set_prefix(kTestIPAddressPrefix1);
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
@@ -272,21 +272,21 @@ TEST_F(DeviceInfoTest, FlushAddressList) {
                                     0,
                                     RT_SCOPE_UNIVERSE));
   SendMessageToDeviceInfo(*message);
-  IPAddress address2(IPAddress::kAddressFamilyIPv6);
+  IPAddress address2(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address2.SetAddressFromString(kTestIPAddress2));
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
                                     address2,
                                     IFA_F_TEMPORARY,
                                     RT_SCOPE_UNIVERSE));
   SendMessageToDeviceInfo(*message);
-  IPAddress address3(IPAddress::kAddressFamilyIPv6);
+  IPAddress address3(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address3.SetAddressFromString(kTestIPAddress3));
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
                                     address3,
                                     0,
                                     RT_SCOPE_LINK));
   SendMessageToDeviceInfo(*message);
-  IPAddress address4(IPAddress::kAddressFamilyIPv6);
+  IPAddress address4(IPAddress::kFamilyIPv6);
   EXPECT_TRUE(address4.SetAddressFromString(kTestIPAddress4));
   message.reset(BuildAddressMessage(RTNLMessage::kModeAdd,
                                     address4,

@@ -17,9 +17,9 @@ namespace shill {
 struct RoutingTableEntry {
  public:
   RoutingTableEntry()
-      : dst(IPAddress::kAddressFamilyUnknown),
-        src(IPAddress::kAddressFamilyUnknown),
-        gateway(IPAddress::kAddressFamilyUnknown),
+      : dst(IPAddress::kFamilyUnknown),
+        src(IPAddress::kFamilyUnknown),
+        gateway(IPAddress::kFamilyUnknown),
         metric(0),
         scope(0),
         from_rtnl(false) {}

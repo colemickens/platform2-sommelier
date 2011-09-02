@@ -181,14 +181,14 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
 
   VLOG(2) << __func__;
 
-  if (GetDefaultRoute(interface_index, IPAddress::kAddressFamilyIPv4, &entry) &&
+  if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv4, &entry) &&
       entry.metric != metric) {
     entry.metric = metric;
     ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
                NLM_F_CREATE | NLM_F_REPLACE);
   }
 
-  if (GetDefaultRoute(interface_index, IPAddress::kAddressFamilyIPv6, &entry) &&
+  if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv6, &entry) &&
       entry.metric != metric) {
     entry.metric = metric;
     ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
@@ -200,7 +200,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
   VLOG(2) << __func__;
 
   if (msg.type() != RTNLMessage::kTypeRoute ||
-      msg.family() == IPAddress::kAddressFamilyUnknown ||
+      msg.family() == IPAddress::kFamilyUnknown ||
       !msg.HasAttribute(RTA_OIF)) {
     return;
   }

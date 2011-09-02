@@ -30,7 +30,7 @@ class DeviceInfo {
  public:
   struct AddressData {
     AddressData()
-        : address(IPAddress::kAddressFamilyUnknown), flags(0), scope(0) {}
+        : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
     AddressData(const IPAddress &address_in,
                 unsigned char flags_in,
                 unsigned char scope_in)

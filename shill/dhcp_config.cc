@@ -206,7 +206,7 @@ bool DHCPConfig::ParseConfiguration(const Configuration& configuration,
                                     IPConfig::Properties *properties) {
   VLOG(2) << __func__;
   properties->method = flimflam::kTypeDHCP;
-  properties->address_family = IPAddress::kAddressFamilyIPv4;
+  properties->address_family = IPAddress::kFamilyIPv4;
   for (Configuration::const_iterator it = configuration.begin();
        it != configuration.end(); ++it) {
     const string &key = it->first;

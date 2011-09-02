@@ -69,7 +69,7 @@ class ConnectionTest : public Test {
     properties.dns_servers.push_back(kNameServer1);
     properties.domain_search.push_back(kSearchDomain0);
     properties.domain_search.push_back(kSearchDomain1);
-    properties.address_family = IPAddress::kAddressFamilyIPv4;
+    properties.address_family = IPAddress::kFamilyIPv4;
     ipconfig_->UpdateProperties(properties, true);
   }
 

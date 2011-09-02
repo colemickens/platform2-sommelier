@@ -65,24 +65,24 @@ class IPAddressTest : public Test {
 };
 
 TEST_F(IPAddressTest, Statics) {
-  EXPECT_EQ(4, IPAddress::GetAddressLength(IPAddress::kAddressFamilyIPv4));
-  EXPECT_EQ(16, IPAddress::GetAddressLength(IPAddress::kAddressFamilyIPv6));
+  EXPECT_EQ(4, IPAddress::GetAddressLength(IPAddress::kFamilyIPv4));
+  EXPECT_EQ(16, IPAddress::GetAddressLength(IPAddress::kFamilyIPv6));
 
-  IPAddress addr4(IPAddress::kAddressFamilyIPv4);
+  IPAddress addr4(IPAddress::kFamilyIPv4);
   addr4.SetAddressToDefault();
 
   EXPECT_EQ(4, addr4.GetLength());
-  EXPECT_EQ(IPAddress::kAddressFamilyIPv4, addr4.family());
+  EXPECT_EQ(IPAddress::kFamilyIPv4, addr4.family());
   EXPECT_TRUE(addr4.IsDefault());
   EXPECT_TRUE(addr4.address().IsZero());
   EXPECT_TRUE(addr4.address().Equals(ByteString(4)));
 
 
-  IPAddress addr6(IPAddress::kAddressFamilyIPv6);
+  IPAddress addr6(IPAddress::kFamilyIPv6);
   addr6.SetAddressToDefault();
 
   EXPECT_EQ(16, addr6.GetLength());
-  EXPECT_EQ(addr6.family(), IPAddress::kAddressFamilyIPv6);
+  EXPECT_EQ(addr6.family(), IPAddress::kFamilyIPv6);
   EXPECT_TRUE(addr6.IsDefault());
   EXPECT_TRUE(addr6.address().IsZero());
   EXPECT_TRUE(addr6.address().Equals(ByteString(16)));
@@ -91,14 +91,14 @@ TEST_F(IPAddressTest, Statics) {
 }
 
 TEST_F(IPAddressTest, IPv4) {
-  TestAddress(IPAddress::kAddressFamilyIPv4,
+  TestAddress(IPAddress::kFamilyIPv4,
               kV4String1, ByteString(kV4Address1, sizeof(kV4Address1)),
               kV4String2, ByteString(kV4Address2, sizeof(kV4Address2)));
 }
 
 
 TEST_F(IPAddressTest, IPv6) {
-  TestAddress(IPAddress::kAddressFamilyIPv6,
+  TestAddress(IPAddress::kFamilyIPv6,
               kV6String1, ByteString(kV6Address1, sizeof(kV6Address1)),
               kV6String2, ByteString(kV6Address2, sizeof(kV6Address2)));
 }

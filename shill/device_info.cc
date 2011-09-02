@@ -250,6 +250,7 @@ bool DeviceInfo::GetAddresses(int interface_index,
 }
 
 void DeviceInfo::FlushAddresses(int interface_index) const {
+  VLOG(2) << __func__ << "(" << interface_index << ")";
   const Info *info = GetInfo(interface_index);
   if (!info) {
     return;
@@ -257,7 +258,7 @@ void DeviceInfo::FlushAddresses(int interface_index) const {
   const vector<AddressData> &addresses = info->ip_addresses;
   vector<AddressData>::const_iterator iter;
   for (iter = addresses.begin(); iter != addresses.end(); ++iter) {
-    if (iter->address.family() == IPAddress::kAddressFamilyIPv4 ||
+    if (iter->address.family() == IPAddress::kFamilyIPv4 ||
         (iter->scope == RT_SCOPE_UNIVERSE &&
          (iter->flags & ~IFA_F_TEMPORARY) == 0)) {
       VLOG(2) << __func__ << ": removing ip address from interface "
@@ -309,6 +310,7 @@ void DeviceInfo::LinkMsgHandler(const RTNLMessage &msg) {
 }
 
 void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
+  VLOG(2) << __func__;
   DCHECK(msg.type() == RTNLMessage::kTypeAddress);
   int interface_index = msg.interface_index();
   if (!ContainsKey(infos_, interface_index)) {

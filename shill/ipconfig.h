@@ -29,7 +29,7 @@ class StoreInterface;
 class IPConfig : public base::RefCounted<IPConfig> {
  public:
   struct Properties {
-    Properties() : address_family(IPAddress::kAddressFamilyUnknown),
+    Properties() : address_family(IPAddress::kFamilyUnknown),
                    subnet_cidr(0),
                    mtu(0) {}
 
