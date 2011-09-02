@@ -89,12 +89,29 @@ if [ -f /root/.forget_usernames ] ; then
   SKIP_OOBE="--login-screen=login"
 fi
 
+WEBUI_LOGIN=
+# If file exists, use webui login. We also are currently forcing the intial
+# screen to be the login screen. This is due to WebUI OOBE not being
+# completed. Once the WebUI OOBE is working we can remove this.
+if [ -f /root/.use_webui_login ] ; then
+  SKIP_OOBE="--login-screen=login"
+  WEBUI_LOGIN="--webui-login --webui-gaia-login"
+fi
+
+# To force WebUI OOBE. This works ok with test images as they
+# are always started with OOBE.
+if [ -f /root/.test_webui_oobe ] ; then
+  SKIP_OOBE=
+  WEBUI_LOGIN="--webui-login --webui-gaia-login --allow-webui-oobe"
+fi
+
 # To always force WebUI OOBE. This works ok with test images as they
 # are always started with OOBE.
 if [ -f /root/.test_repeat_webui_oobe ] ; then
   rm -f "${DATA_DIR}/.oobe_completed"
   rm -f "${DATA_DIR}/Local State"
   SKIP_OOBE=
+  WEBUI_LOGIN="--webui-login --webui-gaia-login --allow-webui-oobe"
 fi
 
 # For recovery image, do NOT display OOBE or login window
@@ -102,11 +119,13 @@ if [ -f /mnt/stateful_partition/.recovery ]; then
   # Verify recovery UI HTML file exists
   if [ -f /usr/share/misc/recovery_ui.html ]; then
     SKIP_OOBE="--login-screen=html file:///usr/share/misc/recovery_ui.html"
+    WEBUI_LOGIN=
   else
     # Fall back to displaying a blank screen
     # the magic string "test:nowindow" comes from
     # src/chrome/browser/chromeos/login/wizard_controller.cc
     SKIP_OOBE="--login-screen=test:nowindow"
+    WEBUI_LOGIN=
   fi
 fi
 
@@ -255,29 +274,30 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --apps-gallery-url="https://chrome.google.com/webstore/" \
             --compress-sys-feedback \
             --device-management-url="$DMSERVER" \
+            --disable-domui-menu \
             --disable-seccomp-sandbox \
             --enable-accelerated-plugins \
             --enable-device-policy \
             --enable-gview \
             --enable-logging \
             --enable-login-images \
-            --enable-nacl \
-            --enable-smooth-scrolling \
             --force-compositing-mode \
+            --enable-smooth-scrolling \
+            --enable-nacl \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
             --no-first-run \
             --parallel-auth \
-            --reload-killed-tabs \
             --scroll-pixels=3 \
+            --reload-killed-tabs \
             --user-data-dir="$DATA_DIR" \
-            --webui-login \
             "$REGISTER_PLUGINS" \
             "$TOUCH_UI_FLAGS" \
             ${ACCELERATED_FLAGS} \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
+            ${WEBUI_LOGIN} \
             ${PKCS11_FLAGS} \
 -- "$WM_SCRIPT"
