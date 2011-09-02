@@ -18,6 +18,9 @@
     <method name="DecreaseScreenBrightness">
       <arg type="b" name="allow_off" direction="in" />
     </method>
-
+    <method name="GetIdleTime">
+      <arg name="result" type="x" direction="out">
+      </arg>
+    </method>
   </interface>
 </node>

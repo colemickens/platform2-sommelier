@@ -75,6 +75,11 @@ class Daemon : public XIdleObserver {
   // Increases the screen brightness and announces the change as a D-Bus signal.
   void IncreaseScreenBrightness(bool user_initiated);
 
+  // Set idle_time_ms to how long the user has been idle, in milliseconds.
+  // On success, return true; otherwise return false. Used in idle API on
+  // chrome side.
+  bool GetIdleTime(int64* idle_time_ms);
+
   // If in the active-but-off state, turn up the brightness when user presses a
   // key so user can see that the screen has been locked.
   void BrightenScreenIfOff();

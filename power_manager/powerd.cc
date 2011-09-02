@@ -467,6 +467,10 @@ void Daemon::IncreaseScreenBrightness(bool user_initiated) {
   SendBrightnessChangedSignal(user_initiated);
 }
 
+bool Daemon::GetIdleTime(int64* idle_time_ms) {
+  return idle_.GetIdleTime(idle_time_ms);
+}
+
 void Daemon::BrightenScreenIfOff() {
   if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
     backlight_controller_->IncreaseBrightness();

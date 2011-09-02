@@ -55,6 +55,9 @@ class PowerManagerService : public chromeos::dbus::AbstractDbusService {
   // combination or button.
   void IncreaseScreenBrightness();
 
+  // Sends amount of time user was idle in ms.
+  int64 GetIdleTime();
+
  protected:
   // chromeos::dbus::AbstractDbusService implementation.
   virtual GMainLoop* main_loop() { return NULL; }
