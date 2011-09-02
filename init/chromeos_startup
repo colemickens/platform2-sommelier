@@ -60,7 +60,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     TMP_STATEFUL="$(mktemp -d)"
     FACTORY_LSB_REL="dev_image/etc/lsb-factory"
     mkdir -p /mnt/stateful_partition/dev_image/etc
-    mount -n -t ext3 -o nodev,noexec,nosuid,commit=600 \
+    mount -n -t ext4 -o nodev,noexec,nosuid,commit=600 \
       "$STATE_DEV" "$TMP_STATEFUL"
     if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
       cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
@@ -70,7 +70,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     rmdir "$TMP_STATEFUL"
 
   # For all other cases, mount stateful partition from STATE_DEV.
-  elif ! mount -n -t ext3 -o nodev,noexec,nosuid,commit=600 \
+  elif ! mount -n -t ext4 -o nodev,noexec,nosuid,commit=600 \
          "$STATE_DEV" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by  clobber-state
     # (for security concern, we don't use fast mode)
