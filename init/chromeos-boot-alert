@@ -279,6 +279,15 @@ mode_dev_fwcheck() {
   ec_info="$(mosys -k ec info 2>/dev/null)" || ec_info=""
   local ecid="$(fw_version="Unknown"; eval "$ec_info"; echo "$fw_version")"
 
+  # Ignore known firmware images carried by updaters with multiple images
+  # TODO(hungte) Replace this by a "compatible list" in updater if such request
+  # becomes a common feature.
+  case "$(mosys platform name 2>/dev/null):$ecid" in
+    "ZGB:0.14" | "Alex:00VFA616 " )
+      TARGET_ECID="$ecid"
+      ;;
+  esac
+
   local notify_update=0
   if [ "$TARGET_FWID" != "$fwid" ] &&
      [ "$TARGET_FWID" != "IGNORE" ]; then
