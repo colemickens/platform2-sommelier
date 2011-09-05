@@ -88,7 +88,6 @@ DevicePolicyImpl::~DevicePolicyImpl() {
 
 bool DevicePolicyImpl::LoadPolicy() {
   if (!VerifyPolicyFiles()) {
-    LOG(ERROR) << "Policy files verification failed!";
     return false;
   }
 
@@ -279,7 +278,6 @@ bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!file_util::PathExists(policy_path_) ||
       !file_util::PathExists(keyfile_path_)) {
-    LOG(ERROR) << "Either policy or public key file not present!";
     return false;
   }
 

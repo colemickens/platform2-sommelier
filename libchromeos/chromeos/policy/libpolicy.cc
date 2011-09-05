@@ -28,7 +28,7 @@ PolicyProvider::~PolicyProvider() {
 bool PolicyProvider::Reload() {
   device_policy_is_loaded_ = device_policy_->LoadPolicy();
   if (!device_policy_is_loaded_) {
-    LOG(ERROR) << "Could not load the device policy file.";
+    LOG(WARNING) << "Could not load the device policy file.";
   }
   return device_policy_is_loaded_;
 }
