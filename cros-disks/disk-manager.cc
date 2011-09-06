@@ -275,7 +275,6 @@ void DiskManager::RegisterDefaultFilesystems() {
 
   Filesystem ntfs_fs("ntfs");
   ntfs_fs.set_mounter_type(NTFSMounter::kMounterType);
-  ntfs_fs.set_is_experimental(true);
   ntfs_fs.set_is_mounted_read_only(true);
   ntfs_fs.set_accepts_user_and_group_id(true);
   RegisterFilesystem(ntfs_fs);
