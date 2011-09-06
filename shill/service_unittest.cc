@@ -45,7 +45,7 @@ class ServiceUnderTest : public Service {
   ServiceUnderTest(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
                    Manager *manager)
-      : Service(control_interface, dispatcher, manager) {}
+      : Service(control_interface, dispatcher, manager, "stub") {}
   virtual ~ServiceUnderTest() {}
 
   virtual void Connect(Error *error) {}

@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_dhcp_config.h"
@@ -196,6 +197,40 @@ class WiFiMainTest : public Test {
   }
   void StopWiFi() {
     wifi_->Stop();
+  }
+  void GetOpenService(const char *service_type,
+                      const char *ssid,
+                      const char *mode,
+                      Error &result) {
+    return GetService(service_type, ssid, mode, NULL, NULL, result);
+  }
+  void GetService(const char *service_type,
+                  const char *ssid,
+                  const char *mode,
+                  const char *security,
+                  const char *passphrase,
+                  Error &result) {
+    map<string, ::DBus::Variant> args;
+    Error e;
+    KeyValueStore args_kv;
+
+    // in general, we want to avoid D-Bus specific code for any RPCs
+    // that come in via adaptors. we make an exception here, because
+    // calls to GetWifiService are rerouted from the Manager object to
+    // the Wifi class.
+    if (service_type != NULL)
+      args[flimflam::kTypeProperty].writer().append_string(service_type);
+    if (ssid != NULL)
+      args[flimflam::kSSIDProperty].writer().append_string(ssid);
+    if (mode != NULL)
+      args[flimflam::kModeProperty].writer().append_string(mode);
+    if (security != NULL)
+      args[flimflam::kSecurityProperty].writer().append_string(security);
+    if (passphrase != NULL)
+      args[flimflam::kPassphraseProperty].writer().append_string(passphrase);
+
+    DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &e);
+    wifi_->GetService(args_kv, &result);
   }
   MockManager *manager() {
     return &manager_;
@@ -388,6 +423,163 @@ TEST_F(WiFiMainTest, Stop) {
     EXPECT_CALL(*manager(), DeregisterService(_));
     StopWiFi();
   }
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpen) {
+  Error e;
+  GetOpenService("wifi", "an_ssid", "managed", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenNoType) {
+  Error e;
+  GetOpenService(NULL, "an_ssid", "managed", e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("must specify service type", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenNoSSID) {
+  Error e;
+  GetOpenService("wifi", NULL, "managed", e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("must specify SSID", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenLongSSID) {
+  Error e;
+  GetOpenService(
+      "wifi", "123456789012345678901234567890123", "managed", e);
+  EXPECT_EQ(Error::kInvalidNetworkName, e.type());
+  EXPECT_EQ("SSID is too long", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenShortSSID) {
+  Error e;
+  GetOpenService("wifi", "", "managed", e);
+  EXPECT_EQ(Error::kInvalidNetworkName, e.type());
+  EXPECT_EQ("SSID is too short", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenBadMode) {
+  Error e;
+  GetOpenService("wifi", "an_ssid", "ad-hoc", e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("service mode is unsupported", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceOpenNoMode) {
+  Error e;
+  GetOpenService("wifi", "an_ssid", NULL, e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceRSN) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "rsn", "secure password", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceRSNNoPassword) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "rsn", NULL, e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("must specify passphrase", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceBadSecurity) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "rot-13", NULL, e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("security mode is unsupported", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEPNoPassword) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", NULL, e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("must specify passphrase", e.message());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEPEmptyPassword) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "", e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40ASCII) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "abcde", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP104ASCII) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "abcdefghijklm", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40ASCIIWithKeyIndex) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "0:abcdefghijklm", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40Hex) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "0102030405", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40HexBadPassphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "O102030405", e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithKeyIndexBadPassphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "1:O102030405", e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithKeyIndexAndBaseBadPassphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "1:0xO102030405", e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithBaseBadPassphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep", "0xO102030405", e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP104Hex) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep",
+             "0102030405060708090a0b0c0d", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP104HexUppercase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep",
+             "0102030405060708090A0B0C0D", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP104HexWithKeyIndex) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep",
+             "0:0102030405060708090a0b0c0d", e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, GetWifiServiceWEP104HexWithKeyIndexAndBase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wep",
+             "0:0x0102030405060708090a0b0c0d", e);
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 }  // namespace shill

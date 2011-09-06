@@ -17,6 +17,8 @@
 
 namespace shill {
 
+class Error;
+class KeyValueStore;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WiFiService;
@@ -47,10 +49,21 @@ class WiFi : public Device {
   // called by WiFiService
   void ConnectTo(WiFiService *service);
 
+  // called by Manager
+  virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+
  private:
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
 
+  static const char kManagerErrorPassphraseRequired[];
+  static const char kManagerErrorSSIDTooLong[];
+  static const char kManagerErrorSSIDTooShort[];
+  static const char kManagerErrorSSIDRequired[];
+  static const char kManagerErrorTypeRequired[];
+  static const char kManagerErrorUnsupportedSecurityMode[];
+  static const char kManagerErrorUnsupportedServiceType[];
+  static const char kManagerErrorUnsupportedServiceMode[];
   static const char kSupplicantPath[];
   static const char kSupplicantDBusAddr[];
   static const char kSupplicantWiFiDriver[];
@@ -64,6 +77,12 @@ class WiFi : public Device {
 
   void ScanDoneTask();
   void ScanTask();
+
+  static std::string ParseWEPPassphrase(const std::string &passphrase,
+                                        Error *error);
+  static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
+  static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
+  static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
 
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;

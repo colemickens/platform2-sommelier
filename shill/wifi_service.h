@@ -51,7 +51,6 @@ class WiFiService : public Service {
   bool need_passphrase_;
   std::string security_;
   uint8 strength_;
-  const std::string type_;
   // TODO(cmasone): see if the below can be pulled from the endpoint associated
   // with this service instead.
   const std::string mode_;

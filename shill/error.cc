@@ -65,9 +65,12 @@ void Error::Populate(Type type, const string &message) {
   message_ = message;
 }
 
-void Error::ToDBusError(::DBus::Error *error) const {
+bool Error::ToDBusError(::DBus::Error *error) const {
   if (IsFailure()) {
     error->set(GetName(type_).c_str(), message_.c_str());
+    return true;
+  } else {
+    return false;
   }
 }
 

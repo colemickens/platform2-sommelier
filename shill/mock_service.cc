@@ -24,7 +24,7 @@ class Manager;
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager)
-    : Service(control_interface, dispatcher, manager) {
+    : Service(control_interface, dispatcher, manager, "mock") {
   ON_CALL(*this, GetRpcIdentifier()).WillByDefault(Return(""));
 }
 

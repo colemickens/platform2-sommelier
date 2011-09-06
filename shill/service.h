@@ -25,6 +25,7 @@ class ControlInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
+class KeyValueStore;
 class Manager;
 class ServiceAdaptorInterface;
 class StoreInterface;
@@ -86,7 +87,8 @@ class Service : public base::RefCounted<Service> {
   // A constructor for the Service object
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
-          Manager *manager);
+          Manager *manager,
+          const std::string &type);
   virtual ~Service();
 
   virtual void Connect(Error *error) = 0;
@@ -221,6 +223,7 @@ class Service : public base::RefCounted<Service> {
   std::string proxy_config_;
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.
+  const std::string type_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

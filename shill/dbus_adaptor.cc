@@ -12,6 +12,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/property_store.h"
 
 using std::map;
@@ -130,6 +131,28 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
       (*out)[it.Key()] = Uint32ToVariant(it.Value());
   }
   return true;
+}
+
+// static
+void DBusAdaptor::ArgsToKeyValueStore(
+    const map<string, ::DBus::Variant> &args,
+    KeyValueStore *out,
+    Error *error) {  // XXX should be ::DBus::Error?
+  for (map<string, ::DBus::Variant>::const_iterator it = args.begin();
+       it != args.end();
+       ++it) {
+    DBus::type<string> string_type;
+    DBus::type<bool> bool_type;
+
+    if (it->second.signature() == string_type.sig()) {
+      out->SetString(it->first, it->second.reader().get_string());
+    } else if (it->second.signature() == bool_type.sig()) {
+      out->SetBool(it->first, it->second.reader().get_bool());
+    } else {
+      error->Populate(Error::kInternalError);
+      return;  // skip remaining args after error
+    }
+  }
 }
 
 // static

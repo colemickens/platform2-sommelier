@@ -34,12 +34,9 @@ EthernetService::EthernetService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Manager *manager,
                                  const EthernetRefPtr &device)
-    : Service(control_interface, dispatcher, manager),
-      ethernet_(device),
-      type_(flimflam::kTypeEthernet) {
+    : Service(control_interface, dispatcher, manager, flimflam::kTypeEthernet),
+      ethernet_(device) {
   set_auto_connect(true);
-
-  mutable_store()->RegisterConstString(flimflam::kTypeProperty, &type_);
 }
 
 EthernetService::~EthernetService() { }

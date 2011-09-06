@@ -13,7 +13,9 @@
 
 #include "shill/device.h"
 #include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
+#include "shill/wifi_service.h"
 
 using std::map;
 using std::string;
@@ -132,16 +134,32 @@ void ManagerDBusAdaptor::DisableTechnology(const string &,
                                            ::DBus::Error &error) {
 }
 
+// deprecated synonym for GetWifiService
 ::DBus::Path ManagerDBusAdaptor::GetService(
-    const map<string, ::DBus::Variant> &,
+    const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
-  return ::DBus::Path();
+  return GetWifiService(args, error);
 }
 
+// called, e.g., to get Service handle for a hidden SSID
 ::DBus::Path ManagerDBusAdaptor::GetWifiService(
-    const map<string, ::DBus::Variant> &,
+    const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
-  return ::DBus::Path();
+  KeyValueStore args_store;
+  Error e;
+  WiFiServiceRefPtr service;
+  string ret;
+
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &e);
+  if (e.IsSuccess()) {
+    service = manager_->GetWifiService(args_store, &e);
+  }
+
+  if (e.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid
+  } else {
+    return service->GetRpcIdentifier();
+  }
 }
 
 void ManagerDBusAdaptor::ConfigureWifiService(

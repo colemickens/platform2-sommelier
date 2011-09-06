@@ -16,13 +16,16 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/error.h"
+#include "shill/key_value_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
+#include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
+#include "shill/wifi_service.h"
 
 using std::map;
 using std::set;
@@ -55,7 +58,14 @@ class ManagerTest : public PropertyStoreTest {
                                                manager(),
                                                "null3",
                                                "addr3",
-                                               3)) {
+                                               3)),
+        mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
+                                          dispatcher(),
+                                          manager(),
+                                          "wifi0",
+                                          "addr4",
+                                          4))
+  {
   }
   virtual ~ManagerTest() {}
 
@@ -69,6 +79,7 @@ class ManagerTest : public PropertyStoreTest {
   scoped_refptr<MockDevice> mock_device_;
   scoped_refptr<MockDevice> mock_device2_;
   scoped_refptr<MockDevice> mock_device3_;
+  scoped_refptr<MockWiFi> mock_wifi_;
 };
 
 TEST_F(ManagerTest, Contains) {
@@ -314,6 +325,25 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RequestScan("bogus_device_type", &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
+}
+
+TEST_F(ManagerTest, GetWifiServiceNoDevice) {
+  KeyValueStore args;
+  Error e;
+  manager()->GetWifiService(args, &e);
+  EXPECT_EQ(Error::kInvalidArguments, e.type());
+  EXPECT_EQ("no wifi devices available", e.message());
+}
+
+TEST_F(ManagerTest, GetWifiService) {
+  KeyValueStore args;
+  Error e;
+  WiFiServiceRefPtr wifi_service;
+
+  manager()->RegisterDevice(mock_wifi_);
+  EXPECT_CALL(*mock_wifi_, GetService(_, _))
+      .WillRepeatedly(Return(wifi_service));
+  manager()->GetWifiService(args, &e);
 }
 
 }  // namespace shill

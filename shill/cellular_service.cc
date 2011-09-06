@@ -23,10 +23,9 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Manager *manager,
                                  const CellularRefPtr &device)
-    : Service(control_interface, dispatcher, manager),
+    : Service(control_interface, dispatcher, manager, flimflam::kTypeCellular),
       strength_(0),
-      cellular_(device),
-      type_(flimflam::kTypeCellular) {
+      cellular_(device) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
@@ -40,7 +39,6 @@ CellularService::CellularService(ControlInterface *control_interface,
   store->RegisterConstStringmap(flimflam::kServingOperatorProperty,
                                 &serving_operator_.ToDict());
   store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  store->RegisterConstString(flimflam::kTypeProperty, &type_);
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 }
 

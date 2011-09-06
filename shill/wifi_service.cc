@@ -28,9 +28,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const std::vector<uint8_t> ssid,
                          const std::string &mode,
                          const std::string &key_management)
-    : Service(control_interface, dispatcher, manager),
+    : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
       security_(flimflam::kSecurityNone),
-      type_(flimflam::kTypeWifi),
       mode_(mode),
       task_factory_(this),
       wifi_(device),
@@ -43,7 +42,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
   store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
-  store->RegisterConstString(flimflam::kTypeProperty, &type_);
 
   store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
   store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);

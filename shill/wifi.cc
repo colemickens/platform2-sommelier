@@ -15,10 +15,15 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/error.h"
+#include "shill/key_value_store.h"
+#include "shill/ieee80211.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/proxy_factory.h"
@@ -28,9 +33,28 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 
+using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
+
+// statics
+//
+// Note that WiFi generates some manager-level errors, because it implements
+// the Manager.GetWiFiService flimflam API. The API is implemented here,
+// rather than in manager, to keep WiFi-specific logic in the right place.
+const char WiFi::kManagerErrorPassphraseRequired[] = "must specify passphrase";
+const char WiFi::kManagerErrorSSIDRequired[] = "must specify SSID";
+const char WiFi::kManagerErrorSSIDTooLong[]  = "SSID is too long";
+const char WiFi::kManagerErrorSSIDTooShort[] = "SSID is too short";
+const char WiFi::kManagerErrorTypeRequired[] = "must specify service type";
+const char WiFi::kManagerErrorUnsupportedSecurityMode[] =
+    "security mode is unsupported";
+const char WiFi::kManagerErrorUnsupportedServiceType[] =
+    "service type is unsupported";
+const char WiFi::kManagerErrorUnsupportedServiceMode[] =
+    "service mode is unsupported";
 const char WiFi::kSupplicantPath[]        = "/fi/w1/wpa_supplicant1";
 const char WiFi::kSupplicantDBusAddr[]    = "fi.w1.wpa_supplicant1";
 const char WiFi::kSupplicantWiFiDriver[]  = "nl80211";
@@ -296,6 +320,165 @@ void WiFi::ScanTask() {
   // TODO(quiche) indicate scanning in UI
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;
+}
+
+// used by manager, via static WiFi::GetService method
+WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
+  if (!args.ContainsString(flimflam::kTypeProperty)) {
+    error->Populate(Error::kInvalidArguments, kManagerErrorTypeRequired);
+    return NULL;
+  }
+
+  if (args.GetString(flimflam::kTypeProperty) != flimflam::kTypeWifi) {
+    error->Populate(Error::kNotSupported, kManagerErrorUnsupportedServiceType);
+    return NULL;
+  }
+
+  if (args.ContainsString(flimflam::kModeProperty) &&
+      args.GetString(flimflam::kModeProperty) !=
+      flimflam::kModeManaged) {
+    error->Populate(Error::kNotSupported, kManagerErrorUnsupportedServiceMode);
+    return NULL;
+  }
+
+  if (!args.ContainsString(flimflam::kSSIDProperty)) {
+    error->Populate(Error::kInvalidArguments, kManagerErrorSSIDRequired);
+    return NULL;
+  }
+
+  string ssid = args.GetString(flimflam::kSSIDProperty);
+  if (ssid.length() < 1) {
+    error->Populate(Error::kInvalidNetworkName, kManagerErrorSSIDTooShort);
+    return NULL;
+  }
+
+  if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
+    error->Populate(Error::kInvalidNetworkName, kManagerErrorSSIDTooLong);
+    return NULL;
+  }
+
+  string security_method;
+  if (args.ContainsString(flimflam::kSecurityProperty)) {
+    security_method = args.GetString(flimflam::kSecurityProperty);
+  } else {
+    security_method = flimflam::kSecurityNone;
+  }
+
+  if (security_method != flimflam::kSecurityNone &&
+      security_method != flimflam::kSecurityWep &&
+      security_method != flimflam::kSecurityPsk &&
+      security_method != flimflam::kSecurityWpa &&
+      security_method != flimflam::kSecurityRsn &&
+      security_method != flimflam::kSecurity8021x) {
+    error->Populate(Error::kNotSupported,
+                    kManagerErrorUnsupportedSecurityMode);
+    return NULL;
+  }
+
+  if ((security_method == flimflam::kSecurityWep ||
+       security_method == flimflam::kSecurityPsk ||
+       security_method == flimflam::kSecurityWpa ||
+       security_method == flimflam::kSecurityRsn) &&
+      !args.ContainsString(flimflam::kPassphraseProperty)) {
+    error->Populate(Error::kInvalidArguments,
+                    kManagerErrorPassphraseRequired);
+    return NULL;
+  }
+
+  if (security_method == flimflam::kSecurityWep) {
+    string passphrase = args.GetString(flimflam::kPassphraseProperty);
+    passphrase = ParseWEPPassphrase(passphrase, error);
+    if (error->IsFailure()) {
+      return NULL;
+    }
+  }
+
+  WiFiService *service = NULL;
+
+  // TODO(quiche): search for existing service
+
+  if (service == NULL) {
+    // TODO(quiche): construct a new service
+  }
+
+  // TODO(quiche): apply configuration parameters
+
+  return service;
+}
+
+// static
+string WiFi::ParseWEPPassphrase(const string &passphrase, Error *error) {
+  unsigned int length = passphrase.length();
+
+  switch (length) {
+    case IEEE_80211::kWEP40AsciiLen:
+    case IEEE_80211::kWEP104AsciiLen:
+      break;
+    case IEEE_80211::kWEP40AsciiLen + 2:
+    case IEEE_80211::kWEP104AsciiLen + 2:
+      CheckWEPKeyIndex(passphrase, error);
+      break;
+    case IEEE_80211::kWEP40HexLen:
+    case IEEE_80211::kWEP104HexLen:
+      CheckWEPIsHex(passphrase, error);
+      break;
+    case IEEE_80211::kWEP40HexLen + 2:
+    case IEEE_80211::kWEP104HexLen + 2:
+      (CheckWEPKeyIndex(passphrase, error) ||
+       CheckWEPPrefix(passphrase, error)) &&
+          CheckWEPIsHex(passphrase.substr(2), error);
+      break;
+    case IEEE_80211::kWEP40HexLen + 4:
+    case IEEE_80211::kWEP104HexLen + 4:
+      CheckWEPKeyIndex(passphrase, error) &&
+          CheckWEPPrefix(passphrase.substr(2), error) &&
+          CheckWEPIsHex(passphrase.substr(4), error);
+      break;
+    default:
+      error->Populate(Error::kInvalidPassphrase);
+      break;
+  }
+
+  // TODO(quiche): may need to normalize passphrase format
+  if (error->IsSuccess()) {
+    return passphrase;
+  } else {
+    return "";
+  }
+}
+
+// static
+bool WiFi::CheckWEPIsHex(const string &passphrase, Error *error) {
+  vector<uint8> passphrase_bytes;
+  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
+}
+
+// static
+bool WiFi::CheckWEPKeyIndex(const string &passphrase, Error *error) {
+  if (StartsWithASCII(passphrase, "0:", false) ||
+      StartsWithASCII(passphrase, "1:", false) ||
+      StartsWithASCII(passphrase, "2:", false) ||
+      StartsWithASCII(passphrase, "3:", false)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
+}
+
+// static
+bool WiFi::CheckWEPPrefix(const string &passphrase, Error *error) {
+  if (StartsWithASCII(passphrase, "0x", false)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
 }
 
 }  // namespace shill

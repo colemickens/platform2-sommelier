@@ -101,6 +101,7 @@ SHILL_OBJS = \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
 	key_file_store.o \
+	key_value_store.o \
 	manager.o \
 	manager_dbus_adaptor.o \
 	modem.o \
@@ -183,6 +184,7 @@ TEST_OBJS = \
 	mock_store.o \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
+	mock_wifi.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \

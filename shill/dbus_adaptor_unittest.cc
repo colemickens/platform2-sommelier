@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -184,6 +185,19 @@ TEST_F(DBusAdaptorTest, Dispatch) {
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", uint32_v_, &e8));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", stringmap_v_, &e9));
   EXPECT_TRUE(DBusAdaptor::DispatchOnType(&store, "", byte_v_, &e10));
+}
+
+TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
+    map<string, ::DBus::Variant> args;
+    KeyValueStore args_kv;
+    Error error;
+
+    args["string_arg"].writer().append_string("string");
+    args["bool_arg"].writer().append_bool(true);
+    DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ("string", args_kv.GetString("string_arg"));
+    EXPECT_EQ(true, args_kv.GetBool("bool_arg"));
 }
 
 }  // namespace shill

@@ -19,6 +19,7 @@
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
+#include "shill/wifi.h"
 
 namespace shill {
 
@@ -69,6 +70,7 @@ class Manager {
   std::vector<std::string> EnumerateAvailableServices();
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
+  WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
   void RequestScan(const std::string &technology, Error *error);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
@@ -82,6 +84,8 @@ class Manager {
 
  private:
   friend class ManagerAdaptorInterface;
+
+  static const char kManagerErrorNoDevice[];
 
   std::string CalculateState();
   std::vector<std::string> AvailableTechnologies();

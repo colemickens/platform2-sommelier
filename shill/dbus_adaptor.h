@@ -19,6 +19,8 @@ namespace shill {
 #define SHILL_INTERFACE "org.chromium.flimflam"
 #define SHILL_PATH "/org/chromium/flimflam"
 
+class Error;
+class KeyValueStore;
 class PropertyStore;
 
 // Superclass for all DBus-backed Adaptor objects
@@ -35,6 +37,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool GetProperties(const PropertyStore &store,
                             std::map<std::string, ::DBus::Variant> *out,
                             ::DBus::Error *error);
+  static void ArgsToKeyValueStore(
+      const std::map<std::string, ::DBus::Variant> &args,
+      KeyValueStore *out,
+      Error *error);
 
   static ::DBus::Variant BoolToVariant(bool value);
   static ::DBus::Variant ByteToVariant(uint8 value);

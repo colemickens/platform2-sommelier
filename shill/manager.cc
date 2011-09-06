@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdio.h>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -29,11 +30,16 @@
 #include "shill/resolver.h"
 #include "shill/shill_event.h"
 #include "shill/service.h"
+#include "shill/wifi.h"
+#include "shill/wifi_service.h"
 
 using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Manager::kManagerErrorNoDevice[] = "no wifi devices available";
 
 Manager::Manager(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
@@ -301,6 +307,21 @@ vector<string> Manager::EnumerateWatchedServices() {
 
 string Manager::GetActiveProfileName() {
   return ActiveProfile()->GetFriendlyName();
+}
+
+// called via RPC (e.g., from ManagerDBusAdaptor)
+WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
+                                          Error *error) {
+  std::vector<DeviceRefPtr> wifi_devices;
+  FilterByTechnology(Device::kWifi, &wifi_devices);
+  if (wifi_devices.empty()) {
+    error->Populate(Error::kInvalidArguments, kManagerErrorNoDevice);
+    return NULL;
+  } else {
+    WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
+    CHECK(wifi);
+    return wifi->GetService(args, error);
+  }
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

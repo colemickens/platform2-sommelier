@@ -65,7 +65,8 @@ unsigned int Service::serial_number_ = 0;
 
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
-                 Manager *manager)
+                 Manager *manager,
+                 const string &type)
     : state_(kStateUnknown),
       failure_(kFailureUnknown),
       auto_connect_(false),
@@ -74,6 +75,7 @@ Service::Service(ControlInterface *control_interface,
       favorite_(false),
       priority_(kPriorityNone),
       save_credentials_(true),
+      type_(type),
       dispatcher_(dispatcher),
       name_(base::UintToString(serial_number_++)),
       available_(false),
@@ -137,6 +139,7 @@ Service::Service(ControlInterface *control_interface,
   // store_.RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
 
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
+  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
   // flimflam::kSecurityProperty: Registered in WiFiService
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Service::CalculateState,
