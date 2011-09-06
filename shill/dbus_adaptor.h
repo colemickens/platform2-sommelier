@@ -22,7 +22,8 @@ namespace shill {
 class PropertyStore;
 
 // Superclass for all DBus-backed Adaptor objects
-class DBusAdaptor : public DBus::ObjectAdaptor {
+class DBusAdaptor : public DBus::ObjectAdaptor,
+                    public DBus::IntrospectableAdaptor {
  public:
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
