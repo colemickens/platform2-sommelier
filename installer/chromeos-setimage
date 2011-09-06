@@ -217,7 +217,10 @@ fi
 
 # get_verity_arg <commandline> <key> -> <value>
 get_verity_arg() {
-  echo "$1" | sed "s/.*\b$2=\([^ \"]*\).*/\1/"
+  # Replace all the parts of the commandline that aren't what we want. If the
+  # substitution succeeds, print what's left of the pattern space; if it fails,
+  # print nothing.
+  echo "$1" | sed -n "s/.*\b$2=\([^ \"]*\).*/\1/;T;p"
 }
 
 is_old_verity_argv() {
@@ -239,11 +242,13 @@ if is_old_verity_argv "${kernel_cfg}"; then
   verity_depth=$(echo ${kernel_cfg} | cut -f7 -d' ')
   verity_algorithm=$(echo ${kernel_cfg} | cut -f8 -d' ')
   expected_hash=$(echo ${kernel_cfg} | cut -f9 -d' ')
+  salt=''
 else
   rootfs_sectors=$(get_verity_arg "${kernel_cfg}" hashstart)
   verity_depth=0
   verity_algorithm=$(get_verity_arg "${kernel_cfg}" alg)
   expected_hash=$(get_verity_arg "${kernel_cfg}" root_hexdigest)
+  salt=$(get_verity_arg "${kernel_cfg}" salt)
 fi
 
 rootfs_image="${FLAGS_rootfs_image}"
@@ -270,11 +275,12 @@ fi
 
 # Compute the rootfs hash tree and dump it in the tempfile.
 VERITY=/bin/verity
+[ -n "$salt" ] && salt="salt=${salt}"
 table="${verity_preamble},"$(sudo "${VERITY}" mode=create \
         "alg=${verity_algorithm}" \
         "payload=${rootfs_image}" \
         "payload_blocks="$((rootfs_sectors / 8)) \
-        "hashtree=${tempfile}")
+        "hashtree=${tempfile}" "$salt")
 
 sufftable=$(echo "${table}" | cut -f2- -d,)
 if is_old_verity_argv "${sufftable}"; then
