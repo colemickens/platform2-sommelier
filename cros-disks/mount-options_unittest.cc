@@ -34,18 +34,18 @@ TEST_F(MountOptionsTest, IsReadOnlyOptionSet) {
   vector<string> options;
 
   // default construction
-  EXPECT_EQ(true, mount_options.IsReadOnlyOptionSet());
+  EXPECT_TRUE(mount_options.IsReadOnlyOptionSet());
 
   // options: ro
   options.push_back("ro");
   mount_options.Initialize(options, false, "", "");
-  EXPECT_EQ(true, mount_options.IsReadOnlyOptionSet());
+  EXPECT_TRUE(mount_options.IsReadOnlyOptionSet());
 
   // options: rw
   options.clear();
   options.push_back("rw");
   mount_options.Initialize(options, false, "", "");
-  EXPECT_EQ(false, mount_options.IsReadOnlyOptionSet());
+  EXPECT_FALSE(mount_options.IsReadOnlyOptionSet());
 }
 
 TEST_F(MountOptionsTest, SetReadOnlyOption) {
