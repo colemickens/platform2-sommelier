@@ -21,6 +21,7 @@
 #include <base/file_util.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
+#include <base/time.h>
 #include <chromeos/utility.h>
 
 // Included last to avoid redefinition problems
@@ -587,6 +588,10 @@ bool Platform::SetProcessId(uid_t uid, gid_t gid, uid_t* saved_uid,
 bool Platform::Sync() {
   sync();
   return true;
+}
+
+base::Time Platform::GetCurrentTime() const {
+  return base::Time::Now();
 }
 
 } // namespace cryptohome

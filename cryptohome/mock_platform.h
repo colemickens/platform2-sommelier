@@ -25,6 +25,8 @@ class MockPlatform : public Platform {
         .WillByDefault(Return(false));
     ON_CALL(*this, TerminatePidsForUser(_, _))
         .WillByDefault(Return(false));
+    ON_CALL(*this, GetCurrentTime())
+        .WillByDefault(Return(base::Time::NowFromSystemTime()));
   }
   virtual ~MockPlatform() {}
   MOCK_METHOD4(Mount, bool(const std::string&, const std::string&,
@@ -46,6 +48,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD1(DeleteFile, bool(const std::string&));
   MOCK_METHOD2(ReadFile, bool(const std::string&, chromeos::Blob*));
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
+  MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
 
  private:
   bool MockGetUserId(const std::string& user, uid_t* user_id, gid_t* group_id) {

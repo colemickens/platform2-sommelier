@@ -623,8 +623,7 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   EXPECT_TRUE(file_util::IsDirectoryEmpty(home_dir));
 }
 
-// Test is disabled due to http://crosbug.com/18788
-TEST_F(MountTest, DISABLED_UserActivityTimestampUpdated) {
+TEST_F(MountTest, UserActivityTimestampUpdated) {
   // checks that user activity timestamp is updated during Mount() and
   // periodically while mounted, other Keyset fields remains the same
   Mount mount;
@@ -652,32 +651,28 @@ TEST_F(MountTest, DISABLED_UserActivityTimestampUpdated) {
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
   // background but here in the test we must call it manually.
+  static const int kMagicTimestamp = 123;
+  EXPECT_CALL(platform, GetCurrentTime())
+      .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp)));
   mount.UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized1;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized1));
 
-  // Check that last activity timestamp is updated (and within a 0.1s from now).
+  // Check that last activity timestamp is updated.
   ASSERT_TRUE(serialized1.has_last_activity_timestamp());
-  const base::Time last_activity =
-      base::Time::FromInternalValue(serialized1.last_activity_timestamp());
-  const int64 last_activity_delay_us =
-      (base::Time::NowFromSystemTime() - last_activity).InMicroseconds();
-  EXPECT_GT(100000, last_activity_delay_us);
-  EXPECT_LE(0, last_activity_delay_us);
+  EXPECT_EQ(kMagicTimestamp, serialized1.last_activity_timestamp());
 
   // Unmount the user. This must update user's activity timestamps.
+  static const int kMagicTimestamp2 = 234;
+  EXPECT_CALL(platform, GetCurrentTime())
+      .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
   EXPECT_CALL(platform, Unmount(_, _, _))
       .WillOnce(Return(true));
   mount.UnmountCryptohome();
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
   ASSERT_TRUE(serialized2.has_last_activity_timestamp());
-  const base::Time last_activity_2 =
-      base::Time::FromInternalValue(serialized2.last_activity_timestamp());
-  const int64 last_activity_delay_us_2 =
-      (base::Time::NowFromSystemTime() - last_activity_2).InMicroseconds();
-  EXPECT_GT(100000, last_activity_delay_us_2);
-  EXPECT_LE(0, last_activity_delay_us_2);
+  EXPECT_EQ(kMagicTimestamp2, serialized2.last_activity_timestamp());
 
   // Update timestamp again, after user is unmounted. User's activity
   // timestamp must not change this.
@@ -685,9 +680,8 @@ TEST_F(MountTest, DISABLED_UserActivityTimestampUpdated) {
   SerializedVaultKeyset serialized3;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized3));
   ASSERT_TRUE(serialized3.has_last_activity_timestamp());
-  const base::Time last_activity_3 =
-      base::Time::FromInternalValue(serialized2.last_activity_timestamp());
-  EXPECT_EQ(0, (last_activity_3 - last_activity_2).InMicroseconds());
+  EXPECT_EQ(serialized3.has_last_activity_timestamp(),
+            serialized2.has_last_activity_timestamp());
 }
 
 // Users for testing automatic disk cleanup.
