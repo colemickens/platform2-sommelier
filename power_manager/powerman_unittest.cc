@@ -31,7 +31,7 @@ class PowerManDaemonTest : public Test {
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(1, daemon_.lidstate_);
-    EXPECT_EQ(false, daemon_.power_button_state_);
+    EXPECT_FALSE(daemon_.power_button_state_);
     EXPECT_EQ(0, daemon_.retry_suspend_count_);
     EXPECT_EQ(0, daemon_.lid_id_);
     EXPECT_EQ(0, daemon_.suspend_pid_);
