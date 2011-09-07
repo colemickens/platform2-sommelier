@@ -175,9 +175,9 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   PopulateOobeData(&serialized_data);
 
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(platform_, ReadFile(_, _))
    .Times(1)
@@ -207,9 +207,9 @@ TEST_F(InstallAttributesTest, NormalBootWithoutTpm) {
   install_attrs_.SetTpm(NULL);
 
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(platform_, ReadFile(_, _))
    .Times(1)
@@ -237,10 +237,10 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
   chromeos::Blob serialized_data;
   PopulateOobeData(&serialized_data);
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
-  EXPECT_EQ(true, install_attrs_.is_secure());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
+  EXPECT_TRUE(install_attrs_.is_secure());
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramData;
   EXPECT_CALL(lockbox_, Load(_))
@@ -257,9 +257,9 @@ TEST_F(InstallAttributesTest, NormalBootUnlocked) {
 
 TEST_F(InstallAttributesTest, NormalBootLoadError) {
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdTpmError;
   EXPECT_CALL(lockbox_, Load(_))
@@ -276,9 +276,9 @@ TEST_F(InstallAttributesTest, NormalBootLoadError) {
 
 TEST_F(InstallAttributesTest, NormalBootReadFileError) {
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   EXPECT_CALL(lockbox_, Load(_))
    .Times(1)
@@ -297,9 +297,9 @@ TEST_F(InstallAttributesTest, NormalBootReadFileError) {
 
 TEST_F(InstallAttributesTest, NormalBootVerifyError) {
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdHashMismatch;
   EXPECT_CALL(lockbox_, Load(_))
@@ -325,9 +325,9 @@ TEST_F(InstallAttributesTest, NormalBootVerifyError) {
 
 TEST_F(InstallAttributesTest, LegacyBoot) {
   // Check the baseline.
-  EXPECT_EQ(false, install_attrs_.is_first_install());
-  EXPECT_EQ(false, install_attrs_.is_initialized());
-  EXPECT_EQ(false, install_attrs_.is_invalid());
+  EXPECT_FALSE(install_attrs_.is_first_install());
+  EXPECT_FALSE(install_attrs_.is_initialized());
+  EXPECT_FALSE(install_attrs_.is_invalid());
 
   Lockbox::ErrorId error_id = Lockbox::kErrorIdNoNvramSpace;
   EXPECT_CALL(lockbox_, Load(_))
