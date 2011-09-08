@@ -210,14 +210,6 @@ class Mount : public EntropySource {
   virtual bool MigratePasskey(const Credentials& credentials,
                               const char* old_key) const;
 
-  // Migrates from the home-in-encfs setup to the home-in-subdir setup. Instead
-  // of storing all the user's files in the root of the encfs, we store them in
-  // a subdirectory of it to make room for a root-owned, user-encrypted volume.
-  //
-  // Parameters
-  //   dir - directory to migrate
-  virtual void MigrateToUserHome(const std::string& dir) const;
-
   // Mounts a guest home directory to the cryptohome mount point
   virtual bool MountGuestCryptohome() const;
 
@@ -460,30 +452,6 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   std::string GetUserVaultPath(const Credentials& credentials) const;
 
-  // Gets the directory to mount the user's cryptohome at
-  //
-  // Parameters
-  //   credentials - The credentials representing the user
-  std::string GetUserMountDirectory(const Credentials& credentials) const;
-
-  // Returns the path of a user passthrough inside a vault
-  //
-  // Parameters
-  //   vault - vault path
-  std::string VaultPathToUserPath(const std::string& vault) const;
-
-  // Returns the path of a root passthrough inside a vault
-  //
-  // Parameters
-  //   vault - vault path
-  std::string VaultPathToRootPath(const std::string& vault) const;
-
-  // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
-  //
-  // Parameters
-  //  credentials - The Credentials representing the user
-  std::string GetMountedUserHomePath(const Credentials& credentials) const;
-
   // Set/get last access timestamp cache instance for test purposes.
   UserOldestActivityTimestampCache* user_timestamp_cache() const {
     return user_timestamp_;
@@ -580,7 +548,6 @@ class Mount : public EntropySource {
 
   // The file path to mount cryptohome at.  Defaults to /home/chronos/user
   std::string home_dir_;
-  std::string mount_point_;
 
   // Where to store the system salt and user salt/key/vault.  Defaults to
   // /home/chronos/shadow
