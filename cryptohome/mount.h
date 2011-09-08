@@ -15,6 +15,7 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/time.h>
 
 #include "credentials.h"
 #include "crypto.h"

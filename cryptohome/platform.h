@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+namespace base { class Time; }
+
 namespace cryptohome {
 
 // Default mount options
@@ -29,7 +31,8 @@ extern const std::string kProcDir;
 
 class ProcessInformation;
 
-// TODO(fes): Description
+// Platform specific routines abstraction layer.
+// Also helps us to be able to mock them in tests.
 class Platform {
  public:
 
@@ -283,6 +286,9 @@ class Platform {
   void set_proc_dir(const std::string& value) {
     proc_dir_ = value;
   }
+
+  // Retuns the current time.
+  virtual base::Time GetCurrentTime() const;
 
  private:
   int mount_options_;

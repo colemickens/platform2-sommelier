@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/string_util.h>
-#include <base/time.h>
 #include <base/values.h>
 #include <chromeos/utility.h>
 #include <set>
@@ -491,7 +490,7 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   if (!obfuscated_username.empty()) {
     SerializedVaultKeyset serialized;
     LoadVaultKeysetForUser(obfuscated_username, &serialized);
-    base::Time timestamp = base::Time::Now();
+    base::Time timestamp = platform_->GetCurrentTime();
     if (time_shift_sec > 0)
       timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
