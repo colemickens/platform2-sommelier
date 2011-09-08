@@ -72,6 +72,7 @@ class IpsecManager : public ServiceManager {
                               std::string* output);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
+  void KillRunningDaemon(const std::string& pid_file);
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
   std::string FormatStarterConfigFile();
@@ -103,6 +104,8 @@ class IpsecManager : public ServiceManager {
   std::string ipsec_prefix_;
   // File containing starter process's process id.
   std::string starter_pid_file_;
+  // File containing pluto process's process id.
+  std::string pluto_pid_file_;
   // Remote address of IPsec connection.
   struct sockaddr remote_address_;
   // Remote address of IPsec connection (as a string).

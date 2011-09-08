@@ -70,6 +70,7 @@ class IpsecManagerTest : public ::testing::Test {
   }
 
   void DoInitialize(int ike_version, bool use_psk);
+  void SetProcessKillExpectations(const std::string& pid_file);
 
   IpsecManager ipsec_;
   FilePath stateful_container_;
@@ -99,16 +100,23 @@ void IpsecManagerTest::DoInitialize(int ike_version, bool use_psk) {
   }
 }
 
+void IpsecManagerTest::SetProcessKillExpectations(
+    const std::string& pid_file) {
+  // File must exist.
+  file_util::WriteFile(FilePath(pid_file), "", 0);
+  // Test that it attempts to kill the running starter.
+  EXPECT_CALL(*starter_, ResetPidByFile(pid_file)).
+    WillOnce(Return(true));
+  EXPECT_CALL(*starter_, pid()).WillOnce(Return(1));
+  EXPECT_CALL(*starter_, Reset(0));
+}
+
 void IpsecManagerTest::SetStartStarterExpectations(bool already_running) {
   if (already_running) {
     ipsec_.starter_pid_file_ = test_path_.Append("starter_pid").value();
-    // File must exist.
-    file_util::WriteFile(FilePath(ipsec_.starter_pid_file_), "", 0);
-    // Test that it attempts to kill the running starter.
-    EXPECT_CALL(*starter_, ResetPidByFile(ipsec_.starter_pid_file_)).
-        WillOnce(Return(true));
-    EXPECT_CALL(*starter_, pid()).WillOnce(Return(1));
-    EXPECT_CALL(*starter_, Reset(0));
+    SetProcessKillExpectations(ipsec_.starter_pid_file_);
+    ipsec_.pluto_pid_file_ = test_path_.Append("pluto_pid").value();
+    SetProcessKillExpectations(ipsec_.pluto_pid_file_);
   }
 
   EXPECT_CALL(*starter_, AddArg(IPSEC_STARTER));

@@ -44,6 +44,7 @@ const char kIpsecRunPath[] = "/var/run/ipsec";
 const char kIpsecUpFile[] = "/var/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
 const char kStarterPidFile[] = "/var/run/starter.pid";
+const char kPlutoPidFile[] = "/var/run/pluto.pid";
 const mode_t kIpsecRunPathMode = (S_IRUSR | S_IWUSR | S_IXUSR |
                                   S_IRGRP | S_IWGRP | S_IXGRP);
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
@@ -64,6 +65,7 @@ IpsecManager::IpsecManager()
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_pid_file_(kStarterPidFile),
+      pluto_pid_file_(kPlutoPidFile),
       starter_(new ProcessImpl) {
 }
 
@@ -220,15 +222,20 @@ bool IpsecManager::FormatSecrets(std::string* formatted) {
   return true;
 }
 
-void IpsecManager::KillCurrentlyRunning() {
-  if (!file_util::PathExists(FilePath(starter_pid_file_)))
+void IpsecManager::KillRunningDaemon(const std::string& pid_file) {
+  if (!file_util::PathExists(FilePath(pid_file)))
     return;
-  starter_->ResetPidByFile(starter_pid_file_);
+  starter_->ResetPidByFile(pid_file);
   if (Process::ProcessExists(starter_->pid()))
     starter_->Reset(0);
   else
     starter_->Release();
-  file_util::Delete(FilePath(starter_pid_file_), false);
+  file_util::Delete(FilePath(pid_file), false);
+}
+
+void IpsecManager::KillCurrentlyRunning() {
+  KillRunningDaemon(starter_pid_file_);
+  KillRunningDaemon(pluto_pid_file_);
 }
 
 bool IpsecManager::StartStarter() {
