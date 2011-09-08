@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--
+  Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!--
+  This file defines the Chaps D-Bus interface. It can be used to generate
+  glib bindings as follows:
+
+     dbus-binding-tool -mode=glib-server -prefix=chaps chaps_interface.xml
+                        &gt; bindings_server.h
+-->
+
+<!-- The DTD to help xmllint.
+-->
+<!DOCTYPE node PUBLIC
+  "-//freedesktop//DTD D-Bus Object Introspection 1.0//EN"
+  "http://standards.freedesktop.org/dbus/1.0/introspect.dtd">
+
+<node name="/org/chromium/Chaps">
+  <interface name="org.chromium.Chaps">
+
+    <!-- The Connect method establishes a connection with the Chaps daemon. It
+         must be called before any other methods and should be paired with a
+         Disconnect call. The session identifier returned can be used in all
+         other method calls. The return_value is true on success.
+    -->
+    <method name="Connect">
+      <arg type="s" name="username" direction="in"/>
+      <arg type="u" name="session_id" direction="out"/>
+      <arg type="b" name="return_value" direction="out"/>
+    </method>
+
+    <!-- The Disconnect method closes a connection with the Chaps daemon. It
+         should be called once for each call to Connect. Once Disconnect has
+         been called, the session identifier is no longer valid.
+    -->
+    <method name="Disconnect">
+      <arg type="u" name="session_id" direction="in"/>
+    </method>
+
+  </interface>
+</node>
+
