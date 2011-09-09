@@ -199,6 +199,11 @@ check_forward() {
       > /dev/null
 }
 
+check_serveraliveinterval() {
+  # Matches a number of seconds.
+  expr "$1" : '^[0-9][0-9]*$' > /dev/null;
+}
+
 check_keyfile() {
   # Allow files in /home/chronos/user, /media. Note that we *do* allow .., so
   # this isn't actually a security barrier, just a molly-guard to keep users
@@ -223,6 +228,7 @@ cmd_ssh() {
   local dforwards=""
   local forwards=""
   local nocmd=""
+  local serveraliveinterval=""
   local line
   local cmd
   local params
@@ -305,6 +311,14 @@ cmd_ssh() {
         nocmd="-N"
         ;;
 
+      server-alive-interval)
+        if ! check_serveraliveinterval "$params"; then
+          echo "Invalid ServerAliveInterval '$params'."
+        else
+          serveraliveinterval="-oServerAliveInterval=$params"
+        fi
+        ;;
+
       port)
         if ! check_digits "$params"; then
           echo "Invalid port '$params'"
@@ -339,6 +353,7 @@ cmd_ssh() {
         echo "key <file>                    - sets private key to use (-i)"
         echo "nocmd                         - don't execute command (-N)"
         echo "port <num>                    - port on remote host (-p)"
+        echo "server-alive-interval <num>   - set ServerAliveInterval option"
         echo "exit                          - exit ssh subsystem"
         echo "user <username>               - username on remote host"
         echo "Note that this program can only bind local ports in the range"
@@ -358,7 +373,7 @@ cmd_ssh() {
     elif ! check_ssh_host "$host"; then
       echo "Invalid hostname '$host'"
     else
-      ssh $defopts $idfile $dforwards $forwards $nocmd \
+      ssh $defopts $idfile $dforwards $forwards $nocmd $serveraliveinterval \
           -p "$port" -l "$user" "$host"
     fi
   fi
