@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <libudev.h>
+#include <parted/parted.h>
 #include <stdlib.h>
 #include <sys/statvfs.h>
 
@@ -155,6 +156,23 @@ void UdevDevice::GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const {
     *remaining_size = remaining;
 }
 
+size_t UdevDevice::GetPrimaryPartitionCount() const {
+  size_t partition_count = 0;
+  const char *dev_file = udev_device_get_devnode(dev_);
+  if (dev_file) {
+    PedDevice* ped_device = ped_device_get(dev_file);
+    if (ped_device) {
+      PedDisk* ped_disk = ped_disk_new(ped_device);
+      if (ped_disk) {
+        partition_count = ped_disk_get_primary_partition_count(ped_disk);
+        ped_disk_destroy(ped_disk);
+      }
+      ped_device_destroy(ped_device);
+    }
+  }
+  return partition_count;
+}
+
 bool UdevDevice::IsMediaAvailable() const {
   bool is_media_available = true;
   if (IsAttributeTrue(kAttributeRemovable)) {
@@ -181,9 +199,14 @@ bool UdevDevice::IsAutoMountable() {
   if (IsOnBootDevice() || IsVirtual())
     return false;
 
-  // Ignore a device that is neither marked as a partition nor a filesystem.
+  // Ignore a device that is neither marked as a partition nor a filesystem,
+  // unless it has no valid partitions (e.g. the device is unformatted or
+  // corrupted). An unformatted or corrupted device is considered as
+  // auto-mountable so that the file browser sees it and provides a way to
+  // format it.
   if (!HasAttribute(kAttributePartition) &&
-      !HasProperty(kPropertyFilesystemUsage))
+      !HasProperty(kPropertyFilesystemUsage) &&
+      (GetPrimaryPartitionCount() > 0))
     return false;
 
   // TODO(benchan): Find a better way to filter out Chrome OS specific

@@ -49,6 +49,9 @@ class UdevDevice {
   // Gets the total and remaining capacity of the device.
   void GetSizeInfo(uint64 *total_size, uint64 *remaining_size) const;
 
+  // Gets the number of primary partitions on the device.
+  size_t GetPrimaryPartitionCount() const;
+
   // Checks if a device should be auto-mounted. Currently, all external
   // disk devices, which are not on the boot device, not virtual, and
   // do not host Chrome-OS specific partition are considered auto-mountable.
