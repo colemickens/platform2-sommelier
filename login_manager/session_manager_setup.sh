@@ -82,7 +82,7 @@ chown ${USER}:${USER} ${LOGIN_PROFILE_DIR}
 CHROME="/opt/google/chrome/chrome"
 # Note: If this script is renamed, ChildJob::kWindowManagerSuffix needs to be
 # updated to contain the new name.  See http://crosbug.com/7901 for more info.
-WM_SCRIPT="-- /sbin/window-manager-session.sh"
+WM_SCRIPT="/sbin/window-manager-session.sh"
 CONSENT_FILE="$DATA_DIR/Consent To Send Stats"
 
 # xdg-open is used to open downloaded files.
@@ -199,7 +199,6 @@ if [ -f /root/.use_touchui ] ; then
       TOUCH_UI_FLAGS="$TOUCH_UI_FLAGS --touch-devices='$DEVICE_LIST'"
     fi
   fi
-  WM_SCRIPT=""
 fi
 
 PKCS11_FLAGS=--load-opencryptoki
@@ -291,4 +290,4 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
             ${PKCS11_FLAGS} \
-"$WM_SCRIPT"
+-- "$WM_SCRIPT"
