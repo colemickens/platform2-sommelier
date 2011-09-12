@@ -11,7 +11,7 @@ trap '' USR1 TTOU TTIN
 # proceed to the second (expensive) half of the test.
 SERIAL_MARKER=/mnt/stateful_partition/var/lib/Synaptics/run/synset.serio
 if [ -f /home/chronos/.tp_disable -a \
-     -f $(SERIAL_MARKER) ] ; then
+     -f ${SERIAL_MARKER} ] ; then
   # If the syntp driver is running (synset.serio exists), but should be
   # disabled (.tp_disable exists), reconfigure the i8042 driver to disable
   # the serio_raw device currently being used by syntp (/dev/serio_rawN).
