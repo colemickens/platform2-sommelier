@@ -1,4 +1,4 @@
-// Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,13 +6,13 @@
 #define POWER_MANAGER_XIDLE_H_
 
 #include <gdk/gdkevents.h>
-#include <X11/Xlib.h>
-#include <X11/extensions/sync.h>
 
 #include <list>
 
 #include "base/basictypes.h"
+#include "base/memory/scoped_ptr.h"
 #include "power_manager/signal_callback.h"
+#include "power_manager/xsync.h"
 
 namespace power_manager {
 
@@ -29,6 +29,14 @@ class XIdle {
 
   // Initialize the object with the given |observer|.
   // On success, return true; otherwise return false.
+  // The flag |check_xsync_version| is used for testing, when the target system
+  // XSync may not be the same version as the host system's XSync.  Set it to
+  // false to disable the version check so that the test can pass.
+  bool Init(XIdleObserver* observer, bool check_xsync_version);
+
+  // This version of Init() defaults to check_xsync_version=true.  This is the
+  // intended behavior when running on the target system (i.e. not in a unit
+  // test).
   bool Init(XIdleObserver* observer);
 
   // Add a timeout value. Idle events will be fired every time
@@ -47,6 +55,7 @@ class XIdle {
   bool ClearTimeouts();
 
  private:
+  friend class XIdleTest;
 
   // Create an XSyncAlarm. Returns the new alarm.
   //
@@ -58,6 +67,10 @@ class XIdle {
 
   SIGNAL_CALLBACK_2(XIdle, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
                     GdkEvent*);
+
+  // Wrapper object for making XSync calls.  Allows XSync API to be mocked out
+  // during testing.
+  scoped_ptr<XSync> xsync_;
 
   XSyncCounter idle_counter_;
   int64 min_timeout_;

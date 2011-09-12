@@ -68,7 +68,7 @@ gdk_env.ParseConfig(os.environ['PKG_CONFIG'] + ' --cflags --libs gdk-2.0')
 # Build example xidle program
 xidle_env = gdk_env.Clone()
 xidle_env.Append(LIBS=Split('base rt X11 pthread Xext'))
-xidle = xidle_env.Library('xidle', ['xidle.cc'])
+xidle = xidle_env.Library('xidle', ['xidle.cc', 'xsync.cc'])
 xidle_example = xidle_env.Program('xidle-example',
                                   ['examples/xidle_example.cc', xidle])
 Default(xidle_example)
@@ -152,7 +152,7 @@ tests = []
 testrunner = base_env.Library('testrunner', ['testrunner.cc'])
 xidle_unittest_env = xidle_env.Clone()
 xidle_unittest_env.Append(LIBS=['gtest', 'Xtst'])
-deps = [testrunner, 'xidle_unittest.cc', xidle]
+deps = [testrunner, 'xidle_unittest.cc', 'mock_xsync.cc', xidle]
 tests.append(xidle_unittest_env.Program('xidle_unittest', deps))
 backlight_unittest_env = gdk_env.Clone()
 backlight_unittest_env.Append(LIBS=Split('base rt gtest pthread gmock Xext'))

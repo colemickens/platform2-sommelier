@@ -12,17 +12,9 @@
 
 namespace power_manager {
 
-static inline int64 XSyncValueToInt64(XSyncValue value) {
-  return (static_cast<int64>(XSyncValueHigh32(value)) << 32 |
-          static_cast<int64>(XSyncValueLow32(value)));
-}
-
-static inline void XSyncInt64ToValue(XSyncValue* xvalue, int64 value) {
-  XSyncIntsToValue(xvalue, value, value >> 32);
-}
-
 XIdle::XIdle()
-    : idle_counter_(0),
+    : xsync_(new XSync()),
+      idle_counter_(0),
       min_timeout_(kint64max) {
 }
 
@@ -31,26 +23,37 @@ XIdle::~XIdle() {
 }
 
 bool XIdle::Init(XIdleObserver* observer) {
-  CHECK(GDK_DISPLAY()) << "Display not initialized";
-  int major_version, minor_version;
-  if (XSyncQueryExtension(GDK_DISPLAY(), &event_base_, &error_base_) &&
-      XSyncInitialize(GDK_DISPLAY(), &major_version, &minor_version)) {
-    XSyncSystemCounter* counters;
-    int ncounters;
-    counters = XSyncListSystemCounters(GDK_DISPLAY(), &ncounters);
+  xsync_->Init();
+  CHECK(xsync_.get());
+  if (!xsync_->QueryExtension(&event_base_, &error_base_)) {
+    LOG(WARNING) << "Error querying XSync extension.";
+    return false;
+  }
+  int major_version = -1;
+  int minor_version = -1;
+  if (!xsync_->Initialize(&major_version, &minor_version)) {
+    if (major_version == -1 && minor_version == -1)
+      LOG(WARNING) << "Unable to read XSync version.";
+    else
+      LOG(WARNING) << "Invalid XSync version: "
+                   << major_version << "." << minor_version;
+    return false;
+  }
 
-    if (counters) {
-      for (int i = 0; i < ncounters; i++) {
-        if (counters[i].name && strcmp(counters[i].name, "IDLETIME") == 0) {
-          idle_counter_ = counters[i].counter;
-          break;
-        }
+  XSyncSystemCounter* counters;
+  int ncounters;
+  counters = xsync_->ListSystemCounters(&ncounters);
+  if (counters) {
+    for (int i = 0; i < ncounters; ++i) {
+      if (counters[i].name && strcmp(counters[i].name, "IDLETIME") == 0) {
+        idle_counter_ = counters[i].counter;
+        break;
       }
-      XSyncFreeSystemCounterList(counters);
-      if (idle_counter_ && observer) {
-        observer_ = observer;
-        gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
-      }
+    }
+    xsync_->FreeSystemCounterList(counters);
+    if (idle_counter_ && observer) {
+      observer_ = observer;
+      xsync_->SetEventHandler(GdkEventFilterThunk, this);
     }
   }
   return idle_counter_ != 0;
@@ -71,7 +74,7 @@ bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
     if (!alarm)
       return false;
     if (!alarms_.empty()) {
-      XSyncDestroyAlarm(GDK_DISPLAY(), alarms_.front());
+      xsync_->DestroyAlarm(alarms_.front());
       alarms_.pop_front();
     }
     alarms_.push_front(alarm);
@@ -86,19 +89,13 @@ bool XIdle::AddIdleTimeout(int64 idle_timeout_ms) {
 
 bool XIdle::GetIdleTime(int64* idle_time_ms) {
   DCHECK_NE(idle_counter_, 0);
-  XSyncValue value;
-  if (XSyncQueryCounter(GDK_DISPLAY(), idle_counter_, &value)) {
-    *idle_time_ms = XSyncValueToInt64(value);
-    return true;
-  }
-  return false;
+  return xsync_->QueryCounterInt64(idle_counter_, idle_time_ms);
 }
 
 bool XIdle::ClearTimeouts() {
-  std::list<XSyncAlarm>::iterator it = alarms_.begin();
-  for (; it != alarms_.end(); it++) {
-    XSyncDestroyAlarm(GDK_DISPLAY(), *it);
-  }
+  std::list<XSyncAlarm>::iterator it;
+  for (it = alarms_.begin(); it != alarms_.end(); ++it)
+    xsync_->DestroyAlarm(*it);
   alarms_.clear();
   min_timeout_ = kint64max;
   return true;
@@ -113,9 +110,9 @@ XSyncAlarm XIdle::CreateIdleAlarm(int64 idle_timeout_ms,
   XSyncAlarmAttributes attr;
   attr.trigger.counter = idle_counter_;
   attr.trigger.test_type = test_type;
-  XSyncInt64ToValue(&attr.trigger.wait_value, idle_timeout_ms);
+  XSync::Int64ToValue(&attr.trigger.wait_value, idle_timeout_ms);
   XSyncIntToValue(&attr.delta, 0);
-  return XSyncCreateAlarm(GDK_DISPLAY(), mask, &attr);
+  return xsync_->CreateAlarm(mask, &attr);
 }
 
 GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
@@ -128,13 +125,12 @@ GdkFilterReturn XIdle::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
   XSyncValue value;
   if (xevent->type == event_base_ + XSyncAlarmNotify &&
       alarm_event->state != XSyncAlarmDestroyed &&
-      XSyncQueryCounter(GDK_DISPLAY(), idle_counter_, &value)) {
+      xsync_->QueryCounter(idle_counter_, &value)) {
     bool is_idle = !XSyncValueLessThan(alarm_event->counter_value,
                                        alarm_event->alarm_value);
-    bool is_idle2 = !XSyncValueLessThan(value,
-                                        alarm_event->alarm_value);
+    bool is_idle2 = !XSyncValueLessThan(value, alarm_event->alarm_value);
     if (is_idle == is_idle2) {
-      int64 idle_time_ms = XSyncValueToInt64(alarm_event->counter_value);
+      int64 idle_time_ms = XSync::ValueToInt64(alarm_event->counter_value);
       observer_->OnIdleEvent(is_idle, idle_time_ms);
     } else {
       LOG(INFO) << "Filtering out stale event";
