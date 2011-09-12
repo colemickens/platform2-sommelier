@@ -226,6 +226,12 @@ SessionManagerService::SessionManagerService(
       set_uid_(false),
       shutting_down_(false) {
   io_thread_.Start();
+
+  int pipefd[2];
+  PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
+  g_shutdown_pipe_read_fd = pipefd[0];
+  g_shutdown_pipe_write_fd = pipefd[1];
+
   memset(signals_, 0, sizeof(signals_));
   SetupHandlers();
 }
@@ -357,27 +363,16 @@ bool SessionManagerService::Run() {
     LOG(ERROR) << "You must have a main loop to call Run.";
     return false;
   }
-
-  int pipefd[2];
-  int ret = pipe2(pipefd, O_CLOEXEC);
-  if (ret < 0) {
-    PLOG(DFATAL) << "Failed to create pipe";
-  } else {
-    g_shutdown_pipe_read_fd = pipefd[0];
-    g_shutdown_pipe_write_fd = pipefd[1];
-    g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
-                        G_PRIORITY_HIGH_IDLE,
-                        GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
-                        HandleKill,
-                        this,
-                        NULL);
-  }
-
-  if (ShouldRunChildren()) {
+  g_io_add_watch_full(g_io_channel_unix_new(g_shutdown_pipe_read_fd),
+                      G_PRIORITY_HIGH_IDLE,
+                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP),
+                      HandleKill,
+                      this,
+                      NULL);
+  if (ShouldRunChildren())
     RunChildren();
-  } else {
+  else
     AllowGracefulExit();
-  }
 
   // TODO(cmasone): A corrupted owner key means that the user needs to go
   //                to recovery mode.  How to tell them that from here?
