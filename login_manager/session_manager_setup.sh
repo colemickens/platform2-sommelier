@@ -199,6 +199,7 @@ if [ -f /root/.use_touchui ] ; then
       TOUCH_UI_FLAGS="$TOUCH_UI_FLAGS --touch-devices='$DEVICE_LIST'"
     fi
   fi
+  WM_SCRIPT=""
 fi
 
 PKCS11_FLAGS=--load-opencryptoki
@@ -290,4 +291,4 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             ${SCREENSAVER_FLAG} \
             ${SKIP_OOBE} \
             ${PKCS11_FLAGS} \
--- "$WM_SCRIPT"
+    ${WM_SCRIPT:+-- "${WM_SCRIPT}"}
