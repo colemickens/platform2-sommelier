@@ -10,6 +10,7 @@
 
 #include "vpn-manager/l2tp_manager.h"
 
+DECLARE_bool(systemconfig);
 DECLARE_string(password);
 DECLARE_int32(ppp_setup_timeout);
 DECLARE_string(pppd_plugin);
@@ -96,6 +97,9 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "defaultroute\n"
       "usepeerdns\n";
   std::string expected(kBaseExpected);
+  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  FLAGS_systemconfig = false;
+  expected.append("nosystemconfig\n");
   EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
   FLAGS_pppd_plugin = "myplugin";
   expected.append("plugin myplugin\n");

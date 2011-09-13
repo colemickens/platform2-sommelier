@@ -24,6 +24,7 @@ DEFINE_int32(ppp_setup_timeout, 10, "timeout to setup ppp (seconds)");
 DEFINE_string(pppd_plugin, "", "pppd plugin");
 DEFINE_bool(usepeerdns, true, "usepeerdns - ask peer for DNS");
 DEFINE_string(user, "", "user name");
+DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
 const char kL2tpConnectionName[] = "managed";
@@ -107,6 +108,11 @@ std::string L2tpManager::FormatPppdConfiguration() {
                                   FLAGS_defaultroute ? "" : "no"));
   if (FLAGS_usepeerdns) {
     pppd_config.append("usepeerdns\n");
+  }
+  if (!FLAGS_systemconfig) {
+    // nosystemconfig is only supported by the chromiumos patched
+    // version of pppd.
+    pppd_config.append("nosystemconfig\n");
   }
   if (!FLAGS_pppd_plugin.empty()) {
     DLOG(INFO) << "Using pppd plugin " << FLAGS_pppd_plugin;
