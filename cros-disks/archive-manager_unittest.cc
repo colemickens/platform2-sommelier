@@ -11,9 +11,13 @@
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
-static const char kMountRootDirectory[] = "/media/archive";
+const char kMountRootDirectory[] = "/media/archive";
+
+}  // namespace
+
+namespace cros_disks {
 
 class ArchiveManagerTest : public ::testing::Test {
  public:

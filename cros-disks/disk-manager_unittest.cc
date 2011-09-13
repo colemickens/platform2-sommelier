@@ -21,9 +21,13 @@ using std::map;
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
-static const char kMountRootDirectory[] = "/media/removable";
+const char kMountRootDirectory[] = "/media/removable";
+
+}  // namespace
+
+namespace cros_disks {
 
 class DiskManagerTest : public ::testing::Test {
  public:

@@ -22,9 +22,13 @@ using std::vector;
 using testing::Return;
 using testing::_;
 
-namespace cros_disks {
+namespace {
 
-static const char kMountRootDirectory[] = "/test";
+const char kMountRootDirectory[] = "/test";
+
+}  // namespace
+
+namespace cros_disks {
 
 // A mock platform class for testing the mount manager base class.
 class MockPlatform : public Platform {

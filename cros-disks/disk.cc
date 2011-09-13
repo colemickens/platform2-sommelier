@@ -8,31 +8,35 @@
 
 using std::string;
 
-namespace cros_disks {
+namespace {
 
-static const char kFallbackPresentationName[] = "Untitled";
+const char kFallbackPresentationName[] = "Untitled";
 
 // Keys that libcros expects to see on the wire.
 // TODO(rtc): We should probably stuff these in a shared header...
-static const char kDeviceIsDrive[] = "DeviceIsDrive";
-static const char kDevicePresentationHide[] = "DevicePresentationHide";
-static const char kDeviceIsMounted[] = "DeviceIsMounted";
-static const char kDeviceMountPaths[] = "DeviceMountPaths";
-static const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
-static const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
-static const char kDeviceIsVirtual[] = "DeviceIsVirtual";
-static const char kNativePath[] = "NativePath";
-static const char kDeviceFile[] = "DeviceFile";
-static const char kUuid[] = "IdUuid";
-static const char kLabel[] = "IdLabel";
-static const char kDriveModel[] = "DriveModel";
-static const char kDriveIsRotational[] = "DriveIsRotational";
-static const char kDeviceIsOpticalDisc[] = "DeviceIsOpticalDisc";
-static const char kDeviceSize[] = "DeviceSize";
-static const char kReadOnly[] = "DeviceIsReadOnly";
+const char kDeviceIsDrive[] = "DeviceIsDrive";
+const char kDevicePresentationHide[] = "DevicePresentationHide";
+const char kDeviceIsMounted[] = "DeviceIsMounted";
+const char kDeviceMountPaths[] = "DeviceMountPaths";
+const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
+const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
+const char kDeviceIsVirtual[] = "DeviceIsVirtual";
+const char kNativePath[] = "NativePath";
+const char kDeviceFile[] = "DeviceFile";
+const char kUuid[] = "IdUuid";
+const char kLabel[] = "IdLabel";
+const char kDriveModel[] = "DriveModel";
+const char kDriveIsRotational[] = "DriveIsRotational";
+const char kDeviceIsOpticalDisc[] = "DeviceIsOpticalDisc";
+const char kDeviceSize[] = "DeviceSize";
+const char kReadOnly[] = "DeviceIsReadOnly";
 
 // TODO(rtc): Figure out what this field is and include it in the response.
-static const char kPartitionSlave[] = "PartitionSlave";
+const char kPartitionSlave[] = "PartitionSlave";
+
+}  // namespace
+
+namespace cros_disks {
 
 Disk::Disk()
   : is_drive_(false),

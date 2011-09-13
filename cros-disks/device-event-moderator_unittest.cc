@@ -17,9 +17,13 @@ using testing::Return;
 using testing::SetArgumentPointee;
 using testing::_;
 
-namespace cros_disks {
+namespace {
 
-static const char kSessionUser[] = "user";
+const char kSessionUser[] = "user";
+
+}  // namespace
+
+namespace cros_disks {
 
 class MockDeviceEventDispatcher : public DeviceEventDispatcherInterface {
  public:

@@ -20,13 +20,17 @@ using std::pair;
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
-static const mode_t kMountRootDirectoryPermissions =
+const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-static const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
-static const char kUnmountOptionForce[] = "force";
-static const unsigned kMaxNumMountTrials = 10000;
+const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
+const char kUnmountOptionForce[] = "force";
+const unsigned kMaxNumMountTrials = 10000;
+
+}  // namespace
+
+namespace cros_disks {
 
 MountManager::MountManager(const string& mount_root, Platform* platform)
     : mount_root_(mount_root),

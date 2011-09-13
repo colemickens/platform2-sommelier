@@ -23,24 +23,24 @@ using std::vector;
 
 namespace {
 
-static const char kNullDeviceFile[] = "/dev/null";
-static const char kAttributePartition[] = "partition";
-static const char kAttributeRange[] = "range";
-static const char kAttributeReadOnly[] = "ro";
-static const char kAttributeRemovable[] = "removable";
-static const char kAttributeSize[] = "size";
-static const char kPropertyBlkIdFilesystemType[] = "TYPE";
-static const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
-static const char kPropertyBlkIdFilesystemUUID[] = "UUID";
-static const char kPropertyCDROM[] = "ID_CDROM";
-static const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
-static const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
-static const char kPropertyModel[] = "ID_MODEL";
-static const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
-static const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
-static const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
-static const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
-static const char* kNonAutoMountableFilesystemLabels[] = {
+const char kNullDeviceFile[] = "/dev/null";
+const char kAttributePartition[] = "partition";
+const char kAttributeRange[] = "range";
+const char kAttributeReadOnly[] = "ro";
+const char kAttributeRemovable[] = "removable";
+const char kAttributeSize[] = "size";
+const char kPropertyBlkIdFilesystemType[] = "TYPE";
+const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
+const char kPropertyBlkIdFilesystemUUID[] = "UUID";
+const char kPropertyCDROM[] = "ID_CDROM";
+const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
+const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
+const char kPropertyModel[] = "ID_MODEL";
+const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
+const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
+const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
+const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
+const char* kNonAutoMountableFilesystemLabels[] = {
   "C-ROOT", "C-STATE", NULL
 };
 

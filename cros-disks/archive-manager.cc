@@ -19,7 +19,7 @@
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
 // Mapping from a base path to its corresponding path inside the AVFS mount.
 struct AVFSPathMapping {
@@ -29,22 +29,26 @@ struct AVFSPathMapping {
 
 // Process capabilities required by the avfsd process:
 //   CAP_SYS_ADMIN for mounting/unmounting filesystem
-static const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
+const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
 
 // Number of components in a mount directory path. A mount directory is always
 // created under /media/<sub type>/<mount dir>, so it always has 4 components
 // in the path: '/', 'media', '<sub type>', '<mount dir>'
-static size_t kNumComponentsInMountDirectoryPath = 4;
-static const char kAVFSMountProgram[] = "/usr/bin/avfsd";
-static const char kAVFSRootDirectory[] = "/var/run/avfsroot";
-static const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
-static const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
-static const char kMediaDirectory[] = "/media";
-static const char kUserFileDirectory[] = "/home/chronos/user/Downloads";
-static const AVFSPathMapping kAVFSPathMapping[] = {
+size_t kNumComponentsInMountDirectoryPath = 4;
+const char kAVFSMountProgram[] = "/usr/bin/avfsd";
+const char kAVFSRootDirectory[] = "/var/run/avfsroot";
+const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
+const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
+const char kMediaDirectory[] = "/media";
+const char kUserFileDirectory[] = "/home/chronos/user/Downloads";
+const AVFSPathMapping kAVFSPathMapping[] = {
   { kMediaDirectory, kAVFSMediaDirectory },
   { kUserFileDirectory, kAVFSUserFileDirectory },
 };
+
+}  // namespace
+
+namespace cros_disks {
 
 ArchiveManager::ArchiveManager(const string& mount_root,
                                Platform* platform)

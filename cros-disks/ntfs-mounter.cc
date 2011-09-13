@@ -16,23 +16,25 @@
 
 using std::string;
 
-namespace cros_disks {
+namespace {
 
 // Expected location of the ntfs-3g executable.
-static const char kMountProgramPath[] = "/bin/ntfs-3g";
+const char kMountProgramPath[] = "/bin/ntfs-3g";
 
-static const char kMountUser[] = "ntfs-3g";
+const char kMountUser[] = "ntfs-3g";
 
 // Process capabilities required by the ntfs-3g process:
 //   CAP_SYS_ADMIN for mounting/unmounting filesystem
 //   CAP_SETUID/CAP_SETGID for setting uid/gid in non-privileged mounts
-static const uint64_t kMountProgramCapabilities =
+const uint64_t kMountProgramCapabilities =
     (1 << CAP_SYS_ADMIN) | (1 << CAP_SETUID) | (1 << CAP_SETGID);
 
-static const mode_t kSourcePathPermissions =
-    S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+const mode_t kSourcePathPermissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
 
-static const mode_t kTargetPathPermissions = S_IRWXU | S_IRWXG;
+}  // namespace
+
+namespace cros_disks {
 
 const char NTFSMounter::kMounterType[] = "ntfs";
 

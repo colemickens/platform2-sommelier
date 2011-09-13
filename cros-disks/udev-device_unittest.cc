@@ -13,9 +13,13 @@
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
-static const char kLoopDeviceFile[] = "/dev/loop0";
+const char kLoopDeviceFile[] = "/dev/loop0";
+
+}  // namespace
+
+namespace cros_disks {
 
 class UdevDeviceTest : public ::testing::Test {
  protected:

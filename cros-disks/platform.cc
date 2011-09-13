@@ -18,10 +18,14 @@
 
 using std::string;
 
-namespace cros_disks {
+namespace {
 
-static const unsigned kFallbackGroupBufferSize = 16384;
-static const unsigned kFallbackPasswordBufferSize = 16384;
+const unsigned kFallbackGroupBufferSize = 16384;
+const unsigned kFallbackPasswordBufferSize = 16384;
+
+}  // namespace
+
+namespace cros_disks {
 
 Platform::Platform()
     : experimental_features_enabled_(false),

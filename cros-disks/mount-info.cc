@@ -14,7 +14,7 @@ using std::vector;
 
 namespace {
 
-static bool IsOctalDigit(char digit) {
+bool IsOctalDigit(char digit) {
   return digit >= '0' && digit <= '7';
 }
 

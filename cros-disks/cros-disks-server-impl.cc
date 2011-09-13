@@ -16,14 +16,18 @@
 using std::string;
 using std::vector;
 
-namespace cros_disks {
+namespace {
 
 // TODO(rtc): this should probably be a flag.
 // TODO(benchan): move these to common/chromeos/dbus/service_constants.
-static const char kServicePath[] = "/org/chromium/CrosDisks";
-static const char kServiceErrorName[] = "org.chromium.CrosDisks.Error";
-static const char kPropertyExperimentalFeaturesEnabled[] =
-  "ExperimentalFeaturesEnabled";
+const char kServicePath[] = "/org/chromium/CrosDisks";
+const char kServiceErrorName[] = "org.chromium.CrosDisks.Error";
+const char kPropertyExperimentalFeaturesEnabled[] =
+    "ExperimentalFeaturesEnabled";
+
+}  // namespace
+
+namespace cros_disks {
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
                                  Platform* platform,

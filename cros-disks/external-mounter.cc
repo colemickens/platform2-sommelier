@@ -13,14 +13,18 @@
 
 using std::string;
 
+namespace {
+
+// Expected locations of an external mount program
+const char* kMountProgramPaths[] = {
+  "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount"
+};
+
+}  // namespace
+
 namespace cros_disks {
 
 const char ExternalMounter::kMounterType[] = "external";
-
-// Expected locations of an external mount program
-static const char* kMountProgramPaths[] = {
-  "/bin/mount", "/sbin/mount", "/usr/bin/mount", "/usr/sbin/mount"
-};
 
 ExternalMounter::ExternalMounter(const string& source_path,
                                  const string& target_path,

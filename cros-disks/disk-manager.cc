@@ -28,14 +28,14 @@ using std::vector;
 
 namespace {
 
-static const char kBlockSubsystem[] = "block";
-static const char kScsiSubsystem[] = "scsi";
-static const char kScsiDevice[] = "scsi_device";
-static const char kUdevAddAction[] = "add";
-static const char kUdevChangeAction[] = "change";
-static const char kUdevRemoveAction[] = "remove";
-static const char kPropertyDiskEjectRequest[] = "DISK_EJECT_REQUEST";
-static const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
+const char kBlockSubsystem[] = "block";
+const char kScsiSubsystem[] = "scsi";
+const char kScsiDevice[] = "scsi_device";
+const char kUdevAddAction[] = "add";
+const char kUdevChangeAction[] = "change";
+const char kUdevRemoveAction[] = "remove";
+const char kPropertyDiskEjectRequest[] = "DISK_EJECT_REQUEST";
+const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 
 }  // namespace
 
