@@ -73,20 +73,15 @@ int SetSlaveAddress(int fd, int addr) {
 //
 // Args:
 //   fd: a non-negative integer, open device file descriptor.
-//   reg: an 8-bit unsigned integer, non-negative register number.
 //
 // Returns:
-//   ret: a boolean, true if preconditions are met and false if error.
-bool PreconditionCheck(int fd, __u8 reg) {
-  bool ret = false;
+//   ret: a boolean, true if fd is non-negative and false otherwise.
+bool PreconditionCheck(int fd) {
   if (fd < 0) {
     printf("Error: invalid file descriptor %d. Expect integer >= 0\n", fd);
-  } else if (reg < 0 || reg > 255) {
-    printf("Error: invalid register number %d. Expect integer in 0~255\n", reg);
-  } else {
-    ret = true;
+    return false;
   }
-  return ret;
+  return true;
 }
 
 // Writes a byte to specified register address.
@@ -107,7 +102,7 @@ int WriteByte(int fd, __u8 reg, __u8 byte_val) {
   args.size = I2C_SMBUS_BYTE_DATA;
   args.data = &data;
 
-  if (PreconditionCheck(fd, reg) != true) {
+  if (PreconditionCheck(fd) != true) {
     return -1;
   }
 
@@ -135,7 +130,7 @@ int ReadByte(int fd, __u8 reg) {
   args.size = I2C_SMBUS_BYTE_DATA;
   args.data = &data;
 
-  if (PreconditionCheck(fd, reg) != true) {
+  if (PreconditionCheck(fd) != true) {
     return -1;
   }
 
@@ -152,20 +147,20 @@ int ReadByte(int fd, __u8 reg) {
 // Args:
 //   fd: an integer, open device file descriptor.
 //   reg: an 8-bit unsigned integer, register number.
-//   byte_val: a 16-bit unsigned integer, value to write.
+//   word_val: a 16-bit unsigned integer, value to write.
 //
 // Returns:
 //   0 if success, -1 if error.
 int WriteWord(int fd, __u8 reg, __u16 word_val) {
   union i2c_smbus_data data;
-  data.byte = word_val;
+  data.word = word_val;
   struct i2c_smbus_ioctl_data args;
   args.read_write = I2C_SMBUS_WRITE;
   args.command = reg;
   args.size = I2C_SMBUS_WORD_DATA;
   args.data = &data;
 
-  if (PreconditionCheck(fd, reg) != true) {
+  if (PreconditionCheck(fd) != true) {
     return -1;
   }
 
@@ -193,7 +188,7 @@ int ReadWord(int fd, __u8 reg) {
   args.size = I2C_SMBUS_WORD_DATA;
   args.data = &data;
 
-  if (PreconditionCheck(fd, reg) != true) {
+  if (PreconditionCheck(fd) != true) {
     return -1;
   }
 

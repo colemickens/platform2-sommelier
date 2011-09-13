@@ -15,11 +15,11 @@ libs:
 
 shared_libs: libs
 	$(CC) -shared -fPIC -o ${SONAME} lib/lib_smogcheck.o -W1,-h${SONAME} \
-	 -lpthread -lrt -lbase
+	 -lpthread -lrt
 
 binary: shared_libs
 	$(CC) $(CFLAGS) -o smogcheck.o -c smogcheck.c
-	$(CC) $(CFLAGS) -o smogcheck smogcheck.o lib/lib_smogcheck.o -luuid
+	$(CC) $(CFLAGS) -o smogcheck smogcheck.o lib/lib_smogcheck.o
 
 install:
 	install -D ${EXEC_NAME} $(DESTDIR)/usr/local/sbin/${EXEC_NAME}
