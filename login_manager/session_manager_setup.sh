@@ -190,7 +190,7 @@ fi
 TOUCH_UI_FLAGS=
 if [ -f /root/.use_touchui ] ; then
   # chrome://keyboard relies on experimental APIs.
-  TOUCH_UI_FLAGS="--enable-experimental-extension-apis"
+  TOUCH_UI_FLAGS="--enable-experimental-extension-apis --enable-sensors"
   # Look to see if there are touch devices.
   TOUCH_LIST_PATH=/etc/touch-devices
   if [ -s $TOUCH_LIST_PATH ] ; then
@@ -285,7 +285,7 @@ exec /sbin/session_manager --uid=${USER_ID} -- \
             --user-data-dir="$DATA_DIR" \
             --webui-login \
             "$REGISTER_PLUGINS" \
-            "$TOUCH_UI_FLAGS" \
+            ${TOUCH_UI_FLAGS} \
             ${ACCELERATED_FLAGS} \
             ${FLASH_FLAGS} \
             ${SCREENSAVER_FLAG} \
