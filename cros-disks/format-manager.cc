@@ -26,6 +26,8 @@ const char* kSupportedFilesystems[] = {
   "vfat"
 };
 
+const char* kDefaultLabel = "UNTITLED";
+
 void OnFormatProcessExit(pid_t pid, gint status, gpointer data) {
   cros_disks::FormatManager* format_manager =
       reinterpret_cast<cros_disks::FormatManager*>(data);
@@ -68,6 +70,14 @@ bool FormatManager::StartFormatting(const std::string& device_path,
 
   chromeos::ProcessImpl* process = &format_process_[device_path];
   process->AddArg(format_program);
+
+  // Allow to create filesystem across the entire device.
+  if (filesystem == "vfat") {
+    process->AddArg("-I");
+    // FAT type should be predefined, because mkfs autodetection is faulty.
+    process->AddStringOption("-F", "32");
+    process->AddStringOption("-n", kDefaultLabel);
+  }
   process->AddArg(device_path);
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start a process for formatting '"
