@@ -155,7 +155,6 @@ bool Profile::Load(StoreInterface *storage) {
 }
 
 bool Profile::Save(StoreInterface *storage) {
-  // TODO(cmasone): Persist other profile info to disk.
   return SaveServices(storage);
 }
 
@@ -185,8 +184,8 @@ vector<string> Profile::EnumerateEntries() {
 }
 
 void Profile::HelpRegisterDerivedStrings(const string &name,
-                                     Strings(Profile::*get)(void),
-                                     bool(Profile::*set)(const Strings&)) {
+                                         Strings(Profile::*get)(void),
+                                         bool(Profile::*set)(const Strings&)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));

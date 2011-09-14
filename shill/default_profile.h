@@ -10,6 +10,7 @@
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/manager.h"
 #include "shill/profile.h"
@@ -29,6 +30,8 @@ class DefaultProfile : public Profile {
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
+  virtual bool Save(StoreInterface *storage);
+
   // Sets |path| to the persistent store file path for the default, global
   // profile. Returns true on success, and false if unable to determine an
   // appropriate file location.
@@ -37,9 +40,16 @@ class DefaultProfile : public Profile {
   virtual bool GetStoragePath(FilePath *path);
 
  private:
+  FRIEND_TEST(DefaultProfileTest, Save);
+
   static const char kDefaultId[];
+  static const char kStorageId[];
+  static const char kStorageCheckPortalList[];
+  static const char kStorageName[];
+  static const char kStorageOfflineMode[];
 
   const FilePath storage_path_;
+  const Manager::Properties &props_;
 
   DISALLOW_COPY_AND_ASSIGN(DefaultProfile);
 };

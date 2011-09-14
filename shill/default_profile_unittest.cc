@@ -13,11 +13,13 @@
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 
 using std::map;
 using std::string;
 using ::testing::_;
+using ::testing::Return;
 
 namespace shill {
 
@@ -65,6 +67,23 @@ TEST_F(DefaultProfileTest, GetProperties) {
                                            true,
                                            &error));
   }
+}
+
+TEST_F(DefaultProfileTest, Save) {
+  MockStore storage;
+  EXPECT_CALL(storage, SetString(DefaultProfile::kStorageId,
+                                 DefaultProfile::kStorageName,
+                                 DefaultProfile::kDefaultId))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, SetString(DefaultProfile::kStorageId,
+                                 DefaultProfile::kStorageCheckPortalList,
+                                 ""))
+      .WillOnce(Return(true));
+  EXPECT_CALL(storage, SetBool(DefaultProfile::kStorageId,
+                               DefaultProfile::kStorageOfflineMode,
+                               false))
+      .WillOnce(Return(true));
+  ASSERT_TRUE(profile_->Save(&storage));
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {
