@@ -28,6 +28,7 @@ class Endpoint;
 class Error;
 class EventDispatcher;
 class Manager;
+class RTNLHandler;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -52,6 +53,10 @@ class Device : public base::RefCounted<Device> {
   virtual ~Device();
 
   virtual void Start();
+
+  // Clear running state, especially any fields that hold a reference back
+  // to us. After a call to Stop(), the Device may be restarted (with a call
+  // to Start()), or destroyed (if its refcount falls to zero).
   virtual void Stop();
 
   // Base method always returns false.
@@ -89,6 +94,7 @@ class Device : public base::RefCounted<Device> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
+  RTNLHandler *rtnl_handler() { return rtnl_handler_; }
 
   bool Load(StoreInterface *storage);
   bool Save(StoreInterface *storage);
@@ -102,6 +108,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, GetProperties);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(WiFiMainTest, Connect);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
@@ -143,6 +150,9 @@ class Device : public base::RefCounted<Device> {
 
  private:
   friend class DeviceAdaptorInterface;
+  friend class DeviceTest;
+  friend class CellularTest;
+  friend class WiFiMainTest;
 
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
@@ -181,8 +191,9 @@ class Device : public base::RefCounted<Device> {
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;
 
-  // Cache singleton pointer for performance and test purposes.
+  // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
+  RTNLHandler *rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

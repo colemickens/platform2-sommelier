@@ -5,7 +5,7 @@
 #include "shill/cellular.h"
 
 #include <netinet/in.h>
-#include <linux/if.h>
+#include <linux/if.h>  // Needs definitions from netinet/in.h
 
 #include <string>
 #include <utility>
@@ -371,9 +371,7 @@ void Cellular::Stop() {
   gsm_network_proxy_.reset();
   manager()->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
-  SelectService(NULL);
   SetState(kStateDisabled);
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
   Device::Stop();
 }
 
@@ -829,8 +827,7 @@ void Cellular::EstablishLink() {
     return;
   }
   // TODO(petkov): Provide a timeout for a failed link-up request.
-  RTNLHandler::GetInstance()->SetInterfaceFlags(
-      interface_index(), IFF_UP, IFF_UP);
+  rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
 }
 
 void Cellular::LinkEvent(unsigned int flags, unsigned int change) {

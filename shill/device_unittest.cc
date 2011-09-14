@@ -5,6 +5,8 @@
 #include "shill/device.h"
 
 #include <ctype.h>
+#include <sys/socket.h>
+#include <linux/if.h>  // Needs typedefs from sys/socket.h.
 
 #include <map>
 #include <string>
@@ -23,6 +25,7 @@
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_ipconfig.h"
+#include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
@@ -55,12 +58,17 @@ class DeviceTest : public PropertyStoreTest {
   }
   virtual ~DeviceTest() {}
 
+  virtual void SetUp() {
+    device_->rtnl_handler_ = &rtnl_handler_;
+  }
+
  protected:
   static const char kDeviceName[];
   static const char kDeviceAddress[];
 
   MockControl control_interface_;
   DeviceRefPtr device_;
+  StrictMock<MockRTNLHandler> rtnl_handler_;
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
@@ -196,6 +204,25 @@ TEST_F(DeviceTest, SelectedService) {
   EXPECT_CALL(*service.get(), state())
     .WillOnce(Return(Service::kStateFailure));
   device_->SelectService(NULL);
+}
+
+TEST_F(DeviceTest, Stop) {
+  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(&control_interface_,
+                                dispatcher(),
+                                manager()));
+  device_->SelectService(service);
+
+  EXPECT_CALL(*service.get(), state()).
+      WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
+              UpdateEnabled());
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
+  device_->Stop();
+
+  EXPECT_FALSE(device_->ipconfig_.get());
+  EXPECT_FALSE(device_->selected_service_.get());
 }
 
 }  // namespace shill

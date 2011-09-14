@@ -7,7 +7,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <netinet/ether.h>
-#include <linux/if.h>
+#include <linux/if.h>  // Needs definitions from netinet/ether.h
 
 #include <string>
 
@@ -60,9 +60,7 @@ void Ethernet::Start() {
 void Ethernet::Stop() {
   manager()->DeregisterService(service_);
   service_ = NULL;
-  DestroyIPConfig();
   Device::Stop();
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 bool Ethernet::TechnologyIs(const Device::Technology type) const {

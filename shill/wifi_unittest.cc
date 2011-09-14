@@ -6,6 +6,8 @@
 
 #include <netinet/ether.h>
 #include <linux/if.h>
+#include <sys/socket.h>
+#include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 
 #include <map>
 #include <string>
@@ -25,11 +27,13 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_rtnl_handler.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/shill_event.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
@@ -120,15 +124,18 @@ class WiFiMainTest : public Test {
     ProxyFactory::set_factory(&proxy_factory_);
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
   }
-  virtual ~WiFiMainTest() {
+
+  virtual void SetUp() {
+    static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
+    wifi_->set_dhcp_provider(&dhcp_provider_);
+  }
+
+  virtual void TearDown() {
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop();
-  }
-
-  virtual void SetUp() {
-    wifi_->set_dhcp_provider(&dhcp_provider_);
+    wifi_->set_dhcp_provider(NULL);
   }
 
  protected:
@@ -198,6 +205,7 @@ class WiFiMainTest : public Test {
   }
 
   EventDispatcher dispatcher_;
+  NiceMock<MockRTNLHandler> rtnl_handler_;
 
  private:
   NiceMockControl control_interface_;
@@ -362,6 +370,24 @@ TEST_F(WiFiMainTest, LinkEvent) {
   EXPECT_CALL(dhcp_provider_, CreateConfig(_)).
       WillOnce(Return(dhcp_config_));
   ReportLinkUp();
+}
+
+TEST_F(WiFiMainTest, Stop) {
+  {
+    InSequence s;
+
+    StartWiFi();
+    ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+    ReportScanDone();
+    EXPECT_CALL(dhcp_provider_, CreateConfig(_)).
+        WillOnce(Return(dhcp_config_));
+    ReportLinkUp();
+  }
+
+  {
+    EXPECT_CALL(*manager(), DeregisterService(_));
+    StopWiFi();
+  }
 }
 
 }  // namespace shill

@@ -4,8 +4,10 @@
 
 #include "shill/device.h"
 
-#include <time.h>
+#include <netinet/in.h>
+#include <linux/if.h>  // Needs definitions from netinet/in.h
 #include <stdio.h>
+#include <time.h>
 
 #include <string>
 #include <vector>
@@ -58,7 +60,8 @@ Device::Device(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
-      dhcp_provider_(DHCPProvider::GetInstance()) {
+      dhcp_provider_(DHCPProvider::GetInstance()),
+      rtnl_handler_(RTNLHandler::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
 
   // flimflam::kBgscanMethodProperty: Registered in WiFi
@@ -115,8 +118,21 @@ void Device::Start() {
 }
 
 void Device::Stop() {
+  VLOG(2) << "Device " << link_name_ << " stopping.";
   running_ = false;
+  DestroyIPConfig();         // breaks a reference cycle
+  SelectService(NULL);       // breaks a reference cycle
   adaptor_->UpdateEnabled();
+  rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
+
+  VLOG(3) << "Device " << link_name_ << " has " << services_.size()
+          << " remaining services.";
+  VLOG(3) << "Device " << link_name_ << " ipconfig_ "
+          << (ipconfig_.get() ? "is set." : "is not set.");
+  VLOG(3) << "Device " << link_name_ << " connection_ "
+          << (connection_.get() ? "is set." : "is not set.");
+  VLOG(3) << "Device " << link_name_ << " selected_service_ "
+          << (selected_service_.get() ? "is set." : "is not set.");
 }
 
 bool Device::TechnologyIs(const Technology type) const {

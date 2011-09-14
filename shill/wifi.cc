@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <netinet/ether.h>
-#include <linux/if.h>
+#include <linux/if.h>  // Needs definitions from netinet/ether.h
 
 #include <map>
 #include <string>
@@ -125,15 +125,33 @@ void WiFi::Start() {
 }
 
 void WiFi::Stop() {
-  LOG(INFO) << __func__;
+  VLOG(2) << "WiFi " << link_name() << " stopping.";
   // TODO(quiche): remove interface from supplicant
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
   endpoint_by_bssid_.clear();
   service_by_private_id_.clear();       // breaks reference cycles
-  // TODO(quiche): unregister services from manager
+
+  for (std::vector<ServiceRefPtr>::const_iterator it = services()->begin();
+       it != services()->end();
+       ++it) {
+    manager()->DeregisterService(*it);
+  }
+  services()->clear();                  // breaks reference cycles
+
   Device::Stop();
   // XXX anything else to do?
+
+  VLOG(3) << "WiFi " << link_name() << " task_factory_ "
+          << (task_factory_.empty() ? "is empty." : "is not empty.");
+  VLOG(3) << "WiFi " << link_name() << " supplicant_process_proxy_ "
+          << (supplicant_process_proxy_.get() ? "is set." : "is not set.");
+  VLOG(3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
+          << (supplicant_interface_proxy_.get() ? "is set." : "is not set.");
+  VLOG(3) << "WiFi " << link_name() << " has " << endpoint_by_bssid_.size()
+          << " EndpointMap entries.";
+  VLOG(3) << "WiFi " << link_name() << " has " << service_by_private_id_.size()
+          << " ServiceMap entries.";
 }
 
 void WiFi::Scan() {
@@ -164,6 +182,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
+    LOG(INFO) << link_name() << " is down";
     link_up_ = false;
     // TODO(quiche): attempt to reconnect to current SSID, another SSID,
     // or initiate a scan.

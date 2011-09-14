@@ -22,11 +22,11 @@
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
-#include "shill/mock_sockets.h"
+#include "shill/mock_rtnl_handler.h"
 #include "shill/nice_mock_control.h"
-#include "shill/rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/shill_event.h"
 
 using std::string;
 using testing::_;
@@ -35,15 +35,6 @@ using testing::Return;
 using testing::SetArgumentPointee;
 
 namespace shill {
-
-class TestEventDispatcher : public EventDispatcher {
- public:
-  virtual IOInputHandler *CreateInputHandler(
-      int fd,
-      Callback1<InputData*>::Type *callback) {
-    return NULL;
-  }
-};
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:
@@ -140,7 +131,7 @@ class CellularTest : public testing::Test {
 
   virtual void SetUp() {
     ProxyFactory::set_factory(&proxy_factory_);
-    StartRTNLHandler();
+    static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
   }
@@ -148,7 +139,6 @@ class CellularTest : public testing::Test {
   virtual void TearDown() {
     ProxyFactory::set_factory(NULL);
     device_->Stop();
-    StopRTNLHandler();
     device_->set_dhcp_provider(NULL);
   }
 
@@ -211,11 +201,12 @@ class CellularTest : public testing::Test {
   void StopRTNLHandler();
 
   NiceMockControl control_interface_;
-  TestEventDispatcher dispatcher_;
+  EventDispatcher dispatcher_;
   MockGLib glib_;
   MockManager manager_;
   MockDeviceInfo device_info_;
-  NiceMock<MockSockets> sockets_;
+  NiceMock<MockRTNLHandler> rtnl_handler_;
+
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
@@ -231,7 +222,6 @@ class CellularTest : public testing::Test {
 
 const char CellularTest::kTestDeviceName[] = "usb0";
 const char CellularTest::kTestDeviceAddress[] = "00:01:02:03:04:05";
-const int CellularTest::kTestSocket = 123;
 const char CellularTest::kDBusOwner[] = ":1.19";
 const char CellularTest::kDBusPath[] = "/org/chromium/ModemManager/Gobi/0";
 const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
@@ -241,19 +231,6 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kPIN[] = "9876";
 const char CellularTest::kPUK[] = "8765";
-
-void CellularTest::StartRTNLHandler() {
-  EXPECT_CALL(sockets_, Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE))
-      .WillOnce(Return(kTestSocket));
-  EXPECT_CALL(sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
-      .WillOnce(Return(0));
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
-}
-
-void CellularTest::StopRTNLHandler() {
-  EXPECT_CALL(sockets_, Close(kTestSocket)).WillOnce(Return(0));
-  RTNLHandler::GetInstance()->Stop();
-}
 
 TEST_F(CellularTest, GetTypeString) {
   EXPECT_EQ("CellularTypeGSM", device_->GetTypeString());
