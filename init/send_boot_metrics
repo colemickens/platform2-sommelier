@@ -4,15 +4,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-FREQ=$(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq)
 AWK_PROG='
-  /Initial TSC value:/ {
-    sub(".*Initial TSC value: ", "")
-    initial_tsc = $0
+  /Initial usec timer/ {
+    sub(".*Initial usec timer ", "")
+    initial_usec = $0
     exit
   }
   END {
-    printf "%.2f", initial_tsc / ('$FREQ' * 1000.0)
+    printf "%.2f", initial_usec / 1000000
   }
 '
 FIRMWARE_TIME=$(dmesg | awk "$AWK_PROG")
