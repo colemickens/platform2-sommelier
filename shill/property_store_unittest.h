@@ -51,6 +51,9 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
 
  protected:
   Manager *manager() { return &manager_; }
+  MockControl *control_interface() { return &control_interface_; }
+  EventDispatcher *dispatcher() { return &dispatcher_; }
+  MockGLib *glib() { return &glib_; }
 
   const std::string &run_path() const { return path_; }
   const std::string &storage_path() const { return path_; }
@@ -58,18 +61,15 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   const std::string &invalid_args() const { return invalid_args_; }
   const std::string &invalid_prop() const { return invalid_prop_; }
 
-  // TODO(cmasone): make these private as per http://crosbug.com/19573
-  MockControl control_interface_;
-  EventDispatcher dispatcher_;
-  MockGLib glib_;
-
  private:
   const std::string invalid_args_;
   const std::string invalid_prop_;
   ScopedTempDir dir_;
   const std::string path_;
+  MockControl control_interface_;
+  EventDispatcher dispatcher_;
+  MockGLib glib_;
   Manager manager_;
-
 };
 
 }  // namespace shill

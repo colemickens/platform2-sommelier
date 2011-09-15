@@ -38,10 +38,10 @@ class DHCPConfigTest : public PropertyStoreTest {
       : proxy_(new MockDHCPProxy()),
         proxy_factory_(this),
         config_(new DHCPConfig(&control_,
-                               &dispatcher_,
+                               dispatcher(),
                                DHCPProvider::GetInstance(),
                                kDeviceName,
-                               &glib_)) {}
+                               glib())) {}
 
   virtual void SetUp() {
     ProxyFactory::set_factory(&proxy_factory_);
@@ -64,7 +64,6 @@ class DHCPConfigTest : public PropertyStoreTest {
     DHCPConfigTest *test_;
   };
 
-  MockGLib glib_;
   scoped_ptr<MockDHCPProxy> proxy_;
   TestProxyFactory proxy_factory_;
   MockControl control_;
@@ -85,7 +84,7 @@ TEST_F(DHCPConfigTest, InitProxy) {
 
   EXPECT_TRUE(proxy_.get());
   EXPECT_FALSE(config_->proxy_.get());
-  dispatcher_.DispatchPendingEvents();
+  dispatcher()->DispatchPendingEvents();
   EXPECT_FALSE(proxy_.get());
   EXPECT_TRUE(config_->proxy_.get());
 
@@ -146,9 +145,9 @@ TEST_F(DHCPConfigTest, ParseConfiguration) {
 }
 
 TEST_F(DHCPConfigTest, StartFail) {
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).Times(0);
+  EXPECT_CALL(*glib(), ChildWatchAdd(_, _, _)).Times(0);
   EXPECT_FALSE(config_->Start());
   EXPECT_EQ(0, config_->pid_);
 }
@@ -261,11 +260,11 @@ TEST_F(DHCPConfigTest, Restart) {
   config_->pid_ = kPID1;
   config_->child_watch_tag_ = kTag1;
   DHCPProvider::GetInstance()->BindPID(kPID1, config_);
-  EXPECT_CALL(glib_, SourceRemove(kTag1)).WillOnce(Return(true));
-  EXPECT_CALL(glib_, SpawnClosePID(kPID1)).Times(1);
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(*glib(), SourceRemove(kTag1)).WillOnce(Return(true));
+  EXPECT_CALL(*glib(), SpawnClosePID(kPID1)).Times(1);
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgumentPointee<6>(kPID2), Return(true)));
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
+  EXPECT_CALL(*glib(), ChildWatchAdd(kPID2, _, _)).WillOnce(Return(kTag2));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID2, config_->pid_);
   EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID2).get());
@@ -278,11 +277,11 @@ TEST_F(DHCPConfigTest, Restart) {
 TEST_F(DHCPConfigTest, RestartNoClient) {
   const int kPID = 777;
   const unsigned int kTag = 66;
-  EXPECT_CALL(glib_, SourceRemove(_)).Times(0);
-  EXPECT_CALL(glib_, SpawnClosePID(_)).Times(0);
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(*glib(), SourceRemove(_)).Times(0);
+  EXPECT_CALL(*glib(), SpawnClosePID(_)).Times(0);
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID, config_->pid_);
   EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
@@ -295,9 +294,9 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
 TEST_F(DHCPConfigTest, StartSuccess) {
   const int kPID = 123456;
   const unsigned int kTag = 55;
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
+  EXPECT_CALL(*glib(), ChildWatchAdd(kPID, _, _)).WillOnce(Return(kTag));
   EXPECT_TRUE(config_->Start());
   EXPECT_EQ(kPID, config_->pid_);
   EXPECT_EQ(config_.get(), DHCPProvider::GetInstance()->GetConfig(kPID).get());
@@ -316,7 +315,7 @@ TEST_F(DHCPConfigTest, StartSuccess) {
   ASSERT_TRUE(file_util::PathExists(pid_file));
   ASSERT_TRUE(file_util::PathExists(lease_file));
 
-  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);
+  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);
   DHCPConfig::ChildWatchCallback(kPID, 0, config_.get());
   EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
   EXPECT_FALSE(file_util::PathExists(pid_file));
@@ -329,7 +328,7 @@ TEST_F(DHCPConfigTest, Stop) {
   config_->Stop();
   config_->pid_ = kPID;
   config_->Stop();
-  EXPECT_CALL(glib_, SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
+  EXPECT_CALL(*glib(), SpawnClosePID(kPID)).Times(1);  // Invoked by destructor.
 }
 
 TEST_F(DHCPConfigTest, Dispatch) {

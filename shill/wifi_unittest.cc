@@ -51,7 +51,7 @@ namespace shill {
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
   WiFiPropertyTest()
-      : device_(new WiFi(&control_interface_, NULL, NULL, "wifi", "", 0)) {
+      : device_(new WiFi(control_interface(), NULL, NULL, "wifi", "", 0)) {
   }
   virtual ~WiFiPropertyTest() {}
 

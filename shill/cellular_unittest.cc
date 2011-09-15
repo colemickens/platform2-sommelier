@@ -48,7 +48,7 @@ class TestEventDispatcher : public EventDispatcher {
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
-      : device_(new Cellular(&control_interface_,
+      : device_(new Cellular(control_interface(),
                              NULL,
                              NULL,
                              "usb0",

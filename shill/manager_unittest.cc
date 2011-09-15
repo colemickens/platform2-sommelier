@@ -38,20 +38,20 @@ using ::testing::Test;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : mock_device_(new NiceMock<MockDevice>(&control_interface_,
-                                              &dispatcher_,
+      : mock_device_(new NiceMock<MockDevice>(control_interface(),
+                                              dispatcher(),
                                               manager(),
                                               "null0",
                                               "addr0",
                                               0)),
-        mock_device2_(new NiceMock<MockDevice>(&control_interface_,
-                                               &dispatcher_,
+        mock_device2_(new NiceMock<MockDevice>(control_interface(),
+                                               dispatcher(),
                                                manager(),
                                                "null2",
                                                "addr2",
                                                2)),
-        mock_device3_(new NiceMock<MockDevice>(&control_interface_,
-                                               &dispatcher_,
+        mock_device3_(new NiceMock<MockDevice>(control_interface(),
+                                               dispatcher(),
                                                manager(),
                                                "null3",
                                                "addr3",
@@ -117,19 +117,19 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 TEST_F(ManagerTest, ServiceRegistration) {
   // It's much easier and safer to use a real GLib for this test.
   GLib glib;
-  Manager manager(&control_interface_,
-                  &dispatcher_,
+  Manager manager(control_interface(),
+                  dispatcher(),
                   &glib,
                   run_path(),
                   storage_path(),
                   string());
   scoped_refptr<MockService> mock_service(
-      new NiceMock<MockService>(&control_interface_,
-                                &dispatcher_,
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
                                 &manager));
   scoped_refptr<MockService> mock_service2(
-      new NiceMock<MockService>(&control_interface_,
-                                &dispatcher_,
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
                                 &manager));
   string service1_name(mock_service->UniqueName());
   string service2_name(mock_service2->UniqueName());
@@ -202,8 +202,8 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 TEST_F(ManagerTest, MoveService) {
   // It's much easier and safer to use a real GLib for this test.
   GLib glib;
-  Manager manager(&control_interface_,
-                  &dispatcher_,
+  Manager manager(control_interface(),
+                  dispatcher(),
                   &glib,
                   run_path(),
                   storage_path(),
@@ -211,12 +211,12 @@ TEST_F(ManagerTest, MoveService) {
 
   // I want to ensure that the Profiles are managing this Service object
   // lifetime properly, so I can't hold a ref to it here.
-  ProfileRefPtr profile(new MockProfile(&control_interface_, &manager, ""));
+  ProfileRefPtr profile(new MockProfile(control_interface(), &manager, ""));
   string service_name;
   {
     scoped_refptr<MockService> s2(
-        new MockService(&control_interface_,
-                        &dispatcher_,
+        new MockService(control_interface(),
+                        dispatcher(),
                         &manager));
     EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));
 

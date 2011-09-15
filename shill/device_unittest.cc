@@ -44,14 +44,14 @@ namespace shill {
 class DeviceTest : public PropertyStoreTest {
  public:
   DeviceTest()
-      : device_(new Device(&control_interface_,
+      : device_(new Device(control_interface(),
                            NULL,
                            NULL,
                            kDeviceName,
                            kDeviceAddress,
                            0)) {
-    DHCPProvider::GetInstance()->glib_ = &glib_;
-    DHCPProvider::GetInstance()->control_interface_ = &control_interface_;
+    DHCPProvider::GetInstance()->glib_ = glib();
+    DHCPProvider::GetInstance()->control_interface_ = control_interface();
   }
   virtual ~DeviceTest() {}
 
@@ -59,7 +59,6 @@ class DeviceTest : public PropertyStoreTest {
   static const char kDeviceName[];
   static const char kDeviceAddress[];
 
-  MockGLib glib_;
   MockControl control_interface_;
   DeviceRefPtr device_;
 };
@@ -116,7 +115,7 @@ TEST_F(DeviceTest, TechnologyIs) {
 
 TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_FALSE(device_->ipconfig_.get());
-  device_->ipconfig_ = new IPConfig(&control_interface_, kDeviceName);
+  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
   device_->DestroyIPConfig();
   ASSERT_FALSE(device_->ipconfig_.get());
 }
@@ -128,8 +127,8 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 }
 
 TEST_F(DeviceTest, AcquireDHCPConfig) {
-  device_->ipconfig_ = new IPConfig(&control_interface_, "randomname");
-  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _))
+  device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
+  EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(device_->AcquireDHCPConfig());
   ASSERT_TRUE(device_->ipconfig_.get());
@@ -156,7 +155,7 @@ TEST_F(DeviceTest, Save) {
   EXPECT_CALL(storage, SetBool(id, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
-  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(&control_interface_,
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
                                                           kDeviceName);
   EXPECT_CALL(*ipconfig.get(), Save(_, _))
       .WillOnce(Return(true));
@@ -175,8 +174,8 @@ TEST_F(DeviceTest, SelectedService) {
   EXPECT_FALSE(device_->selected_service_.get());
   device_->SetServiceState(Service::kStateAssociating);
   scoped_refptr<MockService> service(
-      new StrictMock<MockService>(&control_interface_,
-                                  &dispatcher_,
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
                                   manager()));
   device_->SelectService(service);
   EXPECT_TRUE(device_->selected_service_.get() == service.get());

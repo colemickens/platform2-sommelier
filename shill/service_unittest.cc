@@ -65,9 +65,9 @@ const char ServiceUnderTest::kStorageId[] = "service";
 class ServiceTest : public PropertyStoreTest {
  public:
   ServiceTest()
-      : mock_manager_(&control_interface_, &dispatcher_, &glib_),
-        service_(new ServiceUnderTest(&control_interface_,
-                                      &dispatcher_,
+      : mock_manager_(control_interface(), dispatcher(), glib()),
+        service_(new ServiceUnderTest(control_interface(),
+                                      dispatcher(),
                                       &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId) {
   }

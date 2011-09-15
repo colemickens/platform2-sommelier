@@ -28,12 +28,12 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest()
-      : profile_(new MockProfile(&control_interface_, manager(), "")) {
+      : profile_(new MockProfile(control_interface(), manager(), "")) {
   }
 
   MockService *CreateMockService() {
-    return new StrictMock<MockService>(&control_interface_,
-                                       &dispatcher_,
+    return new StrictMock<MockService>(control_interface(),
+                                       dispatcher(),
                                        manager());
   }
 
@@ -90,10 +90,10 @@ TEST_F(ProfileTest, GetFriendlyName) {
   Profile::Identifier id;
   id.identifier = kIdentifier;
   ProfileRefPtr profile(
-      new Profile(&control_interface_, manager(), id, "", false));
+      new Profile(control_interface(), manager(), id, "", false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(&control_interface_, manager(), id, "", false);
+  profile = new Profile(control_interface(), manager(), id, "", false);
   EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
@@ -105,11 +105,11 @@ TEST_F(ProfileTest, GetStoragePath) {
   Profile::Identifier id;
   id.identifier = kIdentifier;
   ProfileRefPtr profile(
-      new Profile(&control_interface_, manager(), id, "", false));
+      new Profile(control_interface(), manager(), id, "", false));
   EXPECT_FALSE(profile->GetStoragePath(&path));
   id.user = kUser;
   profile =
-      new Profile(&control_interface_, manager(), id, kFormat, false);
+      new Profile(control_interface(), manager(), id, kFormat, false);
   EXPECT_TRUE(profile->GetStoragePath(&path));
   string suffix = base::StringPrintf("/%s.profile", kIdentifier);
   EXPECT_EQ(base::StringPrintf(kFormat, kUser) + suffix, path.value());
@@ -154,12 +154,12 @@ TEST_F(ProfileTest, Finalize) {
 
 TEST_F(ProfileTest, EntryEnumeration) {
   scoped_refptr<MockService> service1(
-      new StrictMock<MockService>(&control_interface_,
-                                  &dispatcher_,
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
                                   manager()));
   scoped_refptr<MockService> service2(
-      new StrictMock<MockService>(&control_interface_,
-                                  &dispatcher_,
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
                                   manager()));
   string service1_name(service1->UniqueName());
   string service2_name(service2->UniqueName());

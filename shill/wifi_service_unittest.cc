@@ -37,14 +37,14 @@ TEST_F(WiFiServiceTest, StorageId) {
   ssid.push_back(0xff);
   static const char fake_mac[] = "AaBBcCDDeeFF";
 
-  WiFiRefPtr wifi = new WiFi(&control_interface_,
-                             &dispatcher_,
+  WiFiRefPtr wifi = new WiFi(control_interface(),
+                             dispatcher(),
                              manager(),
                              "wifi",
                              fake_mac,
                              0);
-  WiFiServiceRefPtr wifi_service = new WiFiService(&control_interface_,
-                                                   &dispatcher_,
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
                                                    manager(),
                                                    wifi,
                                                    ssid,

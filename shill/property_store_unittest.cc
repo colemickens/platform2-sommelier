@@ -65,9 +65,9 @@ PropertyStoreTest::PropertyStoreTest()
     : invalid_args_(Error::GetName(Error::kInvalidArguments)),
       invalid_prop_(Error::GetName(Error::kInvalidProperty)),
       path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
-      manager_(&control_interface_,
-               &dispatcher_,
-               &glib_,
+      manager_(control_interface(),
+               dispatcher(),
+               glib(),
                run_path(),
                storage_path(),
                string()) {

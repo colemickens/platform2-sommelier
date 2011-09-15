@@ -24,7 +24,7 @@ namespace shill {
 class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
-      : profile_(new DefaultProfile(&control_interface_,
+      : profile_(new DefaultProfile(control_interface(),
                                     manager(),
                                     FilePath(kTestStoragePath),
                                     properties_)) {
