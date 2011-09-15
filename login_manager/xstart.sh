@@ -15,7 +15,7 @@ if [ -f /home/chronos/.tp_disable -a \
   # If the syntp driver is running (synset.serio exists), but should be
   # disabled (.tp_disable exists), reconfigure the i8042 driver to disable
   # the serio_raw device currently being used by syntp (/dev/serio_rawN).
-  SERIAL_DEVICE=`cat $(SERIAL_MARKER)`
+  SERIAL_DEVICE=`cat ${SERIAL_MARKER}`
   SERIAL_NAME=`basename ${SERIAL_DEVICE}`
   echo -n "rescan" > /sys/devices/platform/i8042/${SERIAL_NAME}/drvctl
 fi
