@@ -29,7 +29,9 @@ $(OUT)include/chaps/chaps_adaptor_generated.h: chaps_interface.xml
 	@$(DBUSXX_XML2CPP) $< --adaptor=$@
 RM_ON_CLEAN += $(OUT)include/chaps/chaps_adaptor_generated.h
 
-$(OUT)libchaps.so: dbus-headers $(OUT)chaps.o $(OUT)chaps_proxy.o
+$(OUT)libchaps.so: dbus-headers $(OUT)chaps.o \
+                                $(OUT)chaps_proxy.o \
+                                $(OUT)chaps_utility.o
 	$(call cxx_library)
 RM_ON_CLEAN += $(OUT)libchaps.so
 

@@ -2,8 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_PROXY_MOCK_H
-#define CHAPS_PROXY_MOCK_H
+#ifndef CHAPS_CHAPS_PROXY_MOCK_H
+#define CHAPS_CHAPS_PROXY_MOCK_H
+
+#include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -28,6 +31,11 @@ public:
 
   MOCK_METHOD1(Connect, bool (const std::string&));
   MOCK_METHOD0(Disconnect, void());
+  MOCK_METHOD2(GetSlotList, uint32_t (const bool&,
+                                      std::vector<uint32_t>&));
+  MOCK_METHOD8(GetSlotInfo, uint32_t (const uint32_t&, std::string&,
+                                      std::string&, uint32_t&, uint8_t&,
+                                      uint8_t&, uint8_t&, uint8_t&));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);
@@ -35,5 +43,5 @@ private:
 
 }  // namespace
 
-#endif  // CHAPS_PROXY_MOCK_H
+#endif  // CHAPS_CHAPS_PROXY_MOCK_H
 

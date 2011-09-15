@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 
-#ifndef CHAPS_PROXY_H
-#define CHAPS_PROXY_H
+#ifndef CHAPS_CHAPS_PROXY_H
+#define CHAPS_CHAPS_PROXY_H
 
 #include <base/scoped_ptr.h>
 
@@ -27,6 +27,16 @@ public:
   // ChapsProxyInterface methods.
   virtual bool Connect(const std::string& username);
   virtual void Disconnect();
+  virtual uint32_t GetSlotList(const bool& token_present,
+                               std::vector<uint32_t>& slot_list);
+  virtual uint32_t GetSlotInfo(const uint32_t& slot_id,
+                               std::string& slot_description,
+                               std::string& manufacturer_id,
+                               uint32_t& flags,
+                               uint8_t& hardware_version_major,
+                               uint8_t& hardware_version_minor,
+                               uint8_t& firmware_version_major,
+                               uint8_t& firmware_version_minor);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.
@@ -50,5 +60,5 @@ private:
 
 }  // namespace
 
-#endif  // CHAPS_PROXY_H
+#endif  // CHAPS_CHAPS_PROXY_H
 
