@@ -965,6 +965,14 @@ Stringmaps Cellular::EnumerateNetworks() {
   return to_return;
 }
 
+void Cellular::SetGSMAccessTechnology(uint32 access_technology) {
+  CHECK_EQ(kTypeGSM, type_);
+  gsm_.access_technology = access_technology;
+  if (service_.get()) {
+    service_->set_network_tech(GetNetworkTechnologyString());
+  }
+}
+
 StrIntPair Cellular::SimLockStatusToProperty() {
   return StrIntPair(make_pair(flimflam::kSIMLockTypeProperty,
                               sim_lock_status_.lock_type),

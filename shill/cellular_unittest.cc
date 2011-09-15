@@ -863,4 +863,17 @@ TEST_F(CellularTest, ActivateError) {
             device_->service_->error());
 }
 
+TEST_F(CellularTest, SetGSMAccessTechnology) {
+  device_->type_ = Cellular::kTypeGSM;
+  device_->SetGSMAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, device_->gsm_.access_technology);
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &manager_, device_);
+  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  device_->SetGSMAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, device_->gsm_.access_technology);
+  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
+            device_->service_->network_tech());
+}
+
 }  // namespace shill

@@ -122,6 +122,9 @@ class Cellular : public Device,
   struct SimLockStatus {
    public:
     SimLockStatus() : retries_left(0) {}
+    SimLockStatus(const std::string &in_lock_type, uint32 in_retries_left)
+        : lock_type(in_lock_type),
+          retries_left(in_retries_left) {}
 
     std::string lock_type;
     uint32 retries_left;
@@ -153,6 +156,11 @@ class Cellular : public Device,
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
+
+  const SimLockStatus &sim_lock_status() const { return sim_lock_status_; }
+  void set_sim_lock_status(const SimLockStatus &s) { sim_lock_status_ = s; }
+
+  void SetGSMAccessTechnology(uint32 access_technology);
 
   // Inherited from Device.
   virtual void Start();
@@ -199,6 +207,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, RequirePIN);
   FRIEND_TEST(CellularTest, RequirePINError);
+  FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -245,8 +254,9 @@ class Cellular : public Device,
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  Stringmaps EnumerateNetworks();
   StrIntPair SimLockStatusToProperty();
+
+  Stringmaps EnumerateNetworks();
   void HelpRegisterDerivedStringmaps(const std::string &name,
                                      Stringmaps(Cellular::*get)(void),
                                      bool(Cellular::*set)(const Stringmaps&));

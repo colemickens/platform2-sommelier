@@ -18,6 +18,7 @@ using std::vector;
 namespace shill {
 
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
+const char Modem::kPropertyAccessTechnology[] = "AccessTechnology";
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyState[] = "State";
@@ -131,7 +132,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
     DBusProperties::GetUint32(properties,
                               kPropertyUnlockRetries,
                               &unlock_retries);
-    // TODO(petkov): Set these properties on the device instance.
+    device_->set_sim_lock_status(
+        Cellular::SimLockStatus(unlock_required, unlock_retries));
   }
 
   manager_->device_info()->RegisterDevice(device_);
@@ -147,8 +149,23 @@ void Modem::OnDBusPropertiesChanged(
 void Modem::OnModemManagerPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &properties) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
+  if (!device_.get()) {
+    return;
+  }
+  Cellular::SimLockStatus lock_status = device_->sim_lock_status();
+  if (DBusProperties::GetString(
+          properties, kPropertyUnlockRequired, &lock_status.lock_type) ||
+      DBusProperties::GetUint32(properties,
+                                kPropertyUnlockRetries,
+                                &lock_status.retries_left)) {
+    device_->set_sim_lock_status(lock_status);
+  }
+  uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
+  if (DBusProperties::GetUint32(properties,
+                                kPropertyAccessTechnology,
+                                &access_technology)) {
+    device_->SetGSMAccessTechnology(access_technology);
+  }
 }
 
 }  // namespace shill
