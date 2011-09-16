@@ -48,6 +48,7 @@ const char kPlutoPidFile[] = "/var/run/pluto.pid";
 const mode_t kIpsecRunPathMode = (S_IRUSR | S_IWUSR | S_IXUSR |
                                   S_IRGRP | S_IWGRP | S_IXGRP);
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
+const char kIpsecMalformedPayloadPattern[] = "*malformed payload in packet*";
 
 // Give IPsec layer 2 seconds to shut down before killing it.
 const int kTermTimeout = 2;
@@ -79,6 +80,7 @@ bool IpsecManager::Initialize(int ike_version,
                               const std::string& user_pin) {
   if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
     LOG(ERROR) << "Unable to convert sockaddr to name for remote host";
+    RegisterError(kServiceErrorInternal);
     return false;
   }
   remote_address_ = remote_address;
@@ -88,11 +90,13 @@ bool IpsecManager::Initialize(int ike_version,
         client_cert_id.empty() &&
         user_pin.empty()) {
       LOG(ERROR) << "Must specify either PSK or certificates for IPsec layer";
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
 
     if (ike_version != 1) {
       LOG(ERROR) << "Only IKE version 1 is supported with certificates";
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
 
@@ -101,11 +105,13 @@ bool IpsecManager::Initialize(int ike_version,
     if (!file_util::PathExists(server_ca_path)) {
       LOG(ERROR) << "Invalid server CA file for IPsec layer: "
                  << server_ca_file;
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
     if (!ReadCertificateSubject(server_ca_path, &server_ca_subject_)) {
       LOG(ERROR) << "Unable to read certificate subject from: "
                  << server_ca_file;
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
     server_ca_file_ = server_ca_file;
@@ -124,12 +130,14 @@ bool IpsecManager::Initialize(int ike_version,
 
     if (client_cert_id.empty()) {
       LOG(ERROR) << "Must specify the PKCS#11 ID for the certificate";
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
     client_cert_id_ = client_cert_id;
 
     if (user_pin.empty()) {
       LOG(ERROR) << "Must specify the PKCS#11 user PIN for the certificate";
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
     user_pin_ = user_pin;
@@ -141,6 +149,7 @@ bool IpsecManager::Initialize(int ike_version,
     }
     if (!file_util::PathExists(FilePath(psk_file))) {
       LOG(ERROR) << "Invalid PSK file for IPsec layer: " << psk_file;
+      RegisterError(kServiceErrorInvalidArgument);
       return false;
     }
     psk_file_ = psk_file;
@@ -148,6 +157,7 @@ bool IpsecManager::Initialize(int ike_version,
 
   if (ike_version != 1 && ike_version != 2) {
     LOG(ERROR) << "Unsupported IKE version" << ike_version;
+    RegisterError(kServiceErrorInvalidArgument);
     return false;
   }
   ike_version_ = ike_version;
@@ -397,17 +407,18 @@ bool IpsecManager::Start() {
     if (getgrnam_r(kIpsecGroupName, &group_buffer, buffer,
                    sizeof(buffer), &group_result) != 0 || !group_result) {
       LOG(ERROR) << "Cannot find group id for " << kIpsecGroupName;
+      RegisterError(kServiceErrorInternal);
       return false;
     }
     ipsec_group_ = group_result->gr_gid;
     DLOG(INFO) << "Using ipsec group " << ipsec_group_;
   }
-  if (!WriteConfigFiles())
+  if (!WriteConfigFiles() ||
+      !CreateIpsecRunDirectory() ||
+      !StartStarter()) {
+    RegisterError(kServiceErrorInternal);
     return false;
-  if (!CreateIpsecRunDirectory())
-    return false;
-  if (!StartStarter())
-    return false;
+  }
 
   start_ticks_ = base::TimeTicks::Now();
 
@@ -421,6 +432,7 @@ int IpsecManager::Poll() {
     if (base::TimeTicks::Now() - start_ticks_ >
         base::TimeDelta::FromSeconds(FLAGS_ipsec_timeout)) {
       LOG(ERROR) << "IPsec connection timed out";
+      RegisterError(kServiceErrorIpsecConnectionFailed);
       OnStopped(false);
       // Poll in 1 second in order to check exit conditions.
     }
@@ -434,8 +446,7 @@ int IpsecManager::Poll() {
 }
 
 void IpsecManager::ProcessOutput() {
-  ServiceManager::WriteFdToSyslog(output_fd_, ipsec_prefix_,
-                                  &partial_output_line_);
+  WriteFdToSyslog(output_fd_, ipsec_prefix_, &partial_output_line_);
 }
 
 bool IpsecManager::IsChild(pid_t pid) {
@@ -453,4 +464,17 @@ void IpsecManager::Stop() {
     return;
   }
   OnStopped(false);
+}
+
+void IpsecManager::OnSyslogOutput(const std::string& prefix,
+                                  const std::string& line) {
+  if (MatchPattern(line, kIpsecMalformedPayloadPattern)) {
+    if (psk_file_.empty()) {
+      LOG(ERROR) << "IPsec certificate authentication failed";
+      RegisterError(kServiceErrorIpsecCertificateAuthenticationFailed);
+    } else {
+      LOG(ERROR) << "IPsec pre-shared key authentication failed";
+      RegisterError(kServiceErrorIpsecPresharedKeyAuthenticationFailed);
+    }
+  }
 }

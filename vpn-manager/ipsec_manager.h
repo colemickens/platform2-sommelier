@@ -44,6 +44,8 @@ class IpsecManager : public ServiceManager {
   virtual int Poll();
   virtual void ProcessOutput();
   virtual bool IsChild(pid_t pid);
+  virtual void OnSyslogOutput(const std::string& prefix,
+                              const std::string& line);
 
   // Returns the stderr output file descriptor of our child process.
   int output_fd() const { return output_fd_; }

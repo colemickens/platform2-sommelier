@@ -10,6 +10,8 @@
 #include "base/file_path.h"
 #include "gtest/gtest_prod.h"  // for FRIEND_TEST
 
+#include "vpn-manager/service_error.h"
+
 class ScopedTempDir;
 
 // Generic code to manage setting up and stopping a set of layered
@@ -21,7 +23,7 @@ class ScopedTempDir;
 // was_stopped.
 class ServiceManager {
  public:
-  ServiceManager(const std::string& service_name);
+  explicit ServiceManager(const std::string& service_name);
   virtual ~ServiceManager();
 
   // Initialize directories used by services.  |scoped_temp_dir| will
@@ -58,6 +60,21 @@ class ServiceManager {
   // Callback when this service has stopped after having started
   // successfully.  |was_error| indicates if an error occurred.
   virtual void OnStopped(bool was_error);
+
+  // Callback when WriteFdToSyslog() outputs a line to syslog. The default
+  // implementation is a no-op. A derived class can override this method to
+  // extract information such as errors from the log messages.
+  virtual void OnSyslogOutput(const std::string& prefix,
+                              const std::string& line);
+
+  // Registers the given |error| if |error| is more specific than the
+  // currently registered |error_|.
+  void RegisterError(ServiceError error);
+
+  // Returns the most specific error that has been registered by this
+  // service manager. If this service manager has an inner service,
+  // this method always returns the error registered by an inner service.
+  ServiceError GetError() const;
 
   // Queries if this service is currently running.
   bool is_running() const {
@@ -100,8 +117,8 @@ class ServiceManager {
   // ready.  It will also only read a fixed size per call.  Any
   // partial line read is stored into |partial_line|.  This variable
   // is used on each call to prefix any newly read data.
-  static void WriteFdToSyslog(int fd, const std::string& prefix,
-                              std::string* partial_line);
+  void WriteFdToSyslog(int fd, const std::string& prefix,
+                       std::string* partial_line);
 
   // Resolve given |name| into an IP address |socket_address| or return
   // false if an error occurs.
@@ -156,6 +173,9 @@ class ServiceManager {
 
   // Name of this service.
   std::string service_name_;
+
+  // Most specific error that has been registerred by this service manager.
+  ServiceError error_;
 
   // Path to temporary directory on cryptohome.
   static const FilePath* temp_path_;

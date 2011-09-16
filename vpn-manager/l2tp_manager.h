@@ -37,10 +37,16 @@ class L2tpManager : public ServiceManager {
   virtual void Stop();
   virtual int Poll();
   virtual void ProcessOutput();
+  virtual void ProcessPppOutput();
   virtual bool IsChild(pid_t pid);
+  virtual void OnSyslogOutput(const std::string& prefix,
+                              const std::string& line);
 
   // Returns the stderr output file descriptor of our child process.
   int output_fd() const { return output_fd_; }
+
+  // Returns the log output file descriptor of the ppp daemon.
+  int ppp_output_fd() const { return ppp_output_fd_; }
 
  private:
   friend class L2tpManagerTest;
@@ -56,6 +62,7 @@ class L2tpManager : public ServiceManager {
   FRIEND_TEST(L2tpManagerTest, Start);
   FRIEND_TEST(L2tpManagerTest, Terminate);
 
+  bool CreatePppLogFifo();
   std::string FormatL2tpdConfiguration(const std::string& ppp_config_path);
   std::string FormatPppdConfiguration();
   bool Initiate();
@@ -65,6 +72,8 @@ class L2tpManager : public ServiceManager {
   bool was_initiated_;
   // l2tp daemon stderr pipe file descriptor.
   int output_fd_;
+  // ppp daemon log pipe file descriptor.
+  int ppp_output_fd_;
   // Start time of the l2tp daemon.
   base::TimeTicks start_ticks_;
   // Remote address for L2TP connection.
@@ -73,8 +82,12 @@ class L2tpManager : public ServiceManager {
   std::string remote_address_text_;
   // Last partial line read from output_fd_.
   std::string partial_output_line_;
+  // Last partial line read from ppp_output_fd_.
+  std::string partial_ppp_output_line_;
   // Path to a file whose existence indicates the ppp device is up.
   FilePath ppp_interface_path_;
+  // Path to ppp daemon's log file.
+  FilePath ppp_output_path_;
   // Path to l2tp daemon's control file.
   FilePath l2tpd_control_path_;
   // Running l2tp process.

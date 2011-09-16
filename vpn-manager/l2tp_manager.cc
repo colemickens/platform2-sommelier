@@ -4,8 +4,12 @@
 
 #include "vpn-manager/l2tp_manager.h"
 
+#include <fcntl.h>
 #include <stdlib.h>  // for setenv()
+#include <sys/stat.h>
+#include <sys/types.h>
 
+#include "base/eintr_wrapper.h"
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
@@ -32,6 +36,8 @@ const char kL2tpConnectionName[] = "managed";
 // of the L2TP server.
 const char kLnsAddress[] = "LNS_ADDRESS";
 const char kPppInterfacePath[] = "/sys/class/net/ppp0";
+const char kPppLogPrefix[] = "pppd: ";
+const char kPppAuthenticationFailurePattern[] = "*authentication failed*";
 
 using ::chromeos::ProcessImpl;
 
@@ -39,6 +45,7 @@ L2tpManager::L2tpManager()
     : ServiceManager("l2tp"),
       was_initiated_(false),
       output_fd_(-1),
+      ppp_output_fd_(-1),
       ppp_interface_path_(kPppInterfacePath),
       l2tpd_(new ProcessImpl) {
 }
@@ -46,12 +53,14 @@ L2tpManager::L2tpManager()
 bool L2tpManager::Initialize(const struct sockaddr& remote_address) {
   if (!ConvertSockAddrToIPString(remote_address, &remote_address_text_)) {
     LOG(ERROR) << "Unable to convert sockaddr to name for remote host";
+    RegisterError(kServiceErrorInternal);
     return false;
   }
   remote_address_ = remote_address;
 
   if (FLAGS_user.empty()) {
     LOG(ERROR) << "l2tp layer requires user name";
+    RegisterError(kServiceErrorInvalidArgument);
     return false;
   }
   if (!FLAGS_pppd_plugin.empty() &&
@@ -71,6 +80,17 @@ static void AddString(std::string* config, const char* key,
 
 static void AddBool(std::string* config, const char* key, bool value) {
   config->append(StringPrintf("%s = %s\n", key, value ? "yes" : "no"));
+}
+
+bool L2tpManager::CreatePppLogFifo() {
+  ppp_output_path_ = temp_path()->Append("pppd.log");
+  const char* fifo_path = ppp_output_path_.value().c_str();
+  if (HANDLE_EINTR(mkfifo(fifo_path, S_IRUSR | S_IWUSR)) == 0) {
+    ppp_output_fd_ = HANDLE_EINTR(open(fifo_path, O_RDONLY | O_NONBLOCK));
+    if (ppp_output_fd_ != -1)
+      return true;
+  }
+  return false;
 }
 
 std::string L2tpManager::FormatL2tpdConfiguration(
@@ -106,6 +126,10 @@ std::string L2tpManager::FormatPppdConfiguration() {
       "connect-delay 5000\n");
   pppd_config.append(StringPrintf("%sdefaultroute\n",
                                   FLAGS_defaultroute ? "" : "no"));
+  if (ppp_output_fd_ != -1) {
+    pppd_config.append(StringPrintf("logfile %s\n",
+                                    ppp_output_path_.value().c_str()));
+  }
   if (FLAGS_usepeerdns) {
     pppd_config.append("usepeerdns\n");
   }
@@ -161,12 +185,20 @@ bool L2tpManager::Start() {
                             l2tpd_config.size())) {
     LOG(ERROR) << "Unable to write l2tpd config to "
                << l2tpd_config_path.value();
+    RegisterError(kServiceErrorInternal);
+    return false;
+  }
+
+  if (!CreatePppLogFifo()) {
+    PLOG(ERROR) << "Unable to create ppp log fifo";
+    RegisterError(kServiceErrorInternal);
     return false;
   }
   std::string pppd_config = FormatPppdConfiguration();
   if (!file_util::WriteFile(pppd_config_path, pppd_config.c_str(),
                             pppd_config.size())) {
     LOG(ERROR) << "Unable to write pppd config to " << pppd_config_path.value();
+    RegisterError(kServiceErrorInternal);
     return false;
   }
   l2tpd_control_path_ = temp_path()->Append("l2tpd.control");
@@ -195,6 +227,7 @@ int L2tpManager::Poll() {
   if (!was_initiated_ && file_util::PathExists(l2tpd_control_path_)) {
     if (!Initiate()) {
       LOG(ERROR) << "Unable to initiate connection";
+      RegisterError(kServiceErrorL2tpConnectionFailed);
       Terminate();
       OnStopped(false);
       return -1;
@@ -213,6 +246,7 @@ int L2tpManager::Poll() {
   // the ppp device is created.
   if (base::TimeTicks::Now() - start_ticks_ >
       base::TimeDelta::FromSeconds(FLAGS_ppp_setup_timeout)) {
+    RegisterError(kServiceErrorPppConnectionFailed);
     LOG(ERROR) << "PPP setup timed out";
     // Cleanly terminate if the control file exists.
     if (was_initiated_) Terminate();
@@ -223,7 +257,11 @@ int L2tpManager::Poll() {
 }
 
 void L2tpManager::ProcessOutput() {
-  ServiceManager::WriteFdToSyslog(output_fd_, "", &partial_output_line_);
+  WriteFdToSyslog(output_fd_, "", &partial_output_line_);
+}
+
+void L2tpManager::ProcessPppOutput() {
+  WriteFdToSyslog(ppp_output_fd_, kPppLogPrefix, &partial_ppp_output_line_);
 }
 
 bool L2tpManager::IsChild(pid_t pid) {
@@ -236,4 +274,14 @@ void L2tpManager::Stop() {
     Terminate();
   }
   OnStopped(false);
+}
+
+void L2tpManager::OnSyslogOutput(const std::string& prefix,
+                                 const std::string& line) {
+  if (prefix == kPppLogPrefix &&
+      MatchPattern(line, kPppAuthenticationFailurePattern)) {
+    LOG(ERROR) << "PPP authentication failed";
+    RegisterError(kServiceErrorPppAuthenticationFailed);
+    Stop();
+  }
 }

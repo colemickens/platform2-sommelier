@@ -10,7 +10,9 @@
 
 #include "vpn-manager/l2tp_manager.h"
 
+DECLARE_bool(defaultroute);
 DECLARE_bool(systemconfig);
+DECLARE_bool(usepeerdns);
 DECLARE_string(password);
 DECLARE_int32(ppp_setup_timeout);
 DECLARE_string(pppd_plugin);
@@ -93,10 +95,21 @@ TEST_F(L2tpManagerTest, FormatPppdConfiguration) {
       "mtu 1410\n"
       "mru 1410\n"
       "lock\n"
-      "connect-delay 5000\n"
-      "defaultroute\n"
-      "usepeerdns\n";
+      "connect-delay 5000\n";
+  FLAGS_defaultroute = false;
+  FLAGS_usepeerdns = false;
   std::string expected(kBaseExpected);
+  expected.append("nodefaultroute\n");
+  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  expected = kBaseExpected;
+  FLAGS_defaultroute = true;
+  expected.append("defaultroute\n");
+  l2tp_.ppp_output_fd_ = 4;
+  l2tp_.ppp_output_path_ = FilePath("/tmp/pppd.log");
+  expected.append("logfile /tmp/pppd.log\n");
+  EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
+  FLAGS_usepeerdns = true;
+  expected.append("usepeerdns\n");
   EXPECT_EQ(expected, l2tp_.FormatPppdConfiguration());
   FLAGS_systemconfig = false;
   expected.append("nosystemconfig\n");

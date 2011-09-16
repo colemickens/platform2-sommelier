@@ -23,7 +23,8 @@ ServiceManager::ServiceManager(const std::string& service_name)
       debug_(false),
       inner_service_(NULL),
       outer_service_(NULL),
-      service_name_(service_name) {
+      service_name_(service_name),
+      error_(kServiceErrorNoError) {
 }
 
 ServiceManager::~ServiceManager() {
@@ -54,6 +55,27 @@ void ServiceManager::OnStopped(bool was_error) {
   }
 }
 
+void ServiceManager::OnSyslogOutput(const std::string& prefix,
+                                    const std::string& line) {
+}
+
+void ServiceManager::RegisterError(ServiceError error) {
+  // Register a given error only if it has a higher value than the one
+  // currently registered as error identifiers are ordered from less
+  // specific to more specific.
+  if (error_ < error)
+    error_ = error;
+}
+
+ServiceError ServiceManager::GetError() const {
+  if (inner_service_ != NULL) {
+    ServiceError inner_service_error = inner_service_->GetError();
+    if (inner_service_error != kServiceErrorNoError)
+      return inner_service_error;
+  }
+  return error_;
+}
+
 void ServiceManager::InitializeDirectories(ScopedTempDir* scoped_temp_path) {
   bool success =
       scoped_temp_path->CreateUniqueTempDirUnderPath(FilePath(temp_base_path_));
@@ -68,7 +90,7 @@ void ServiceManager::WriteFdToSyslog(int fd,
   char buffer[256];
   ssize_t written = HANDLE_EINTR(read(fd, &buffer, sizeof(buffer) - 1));
   if (written < 0) {
-    LOG(WARNING) << "Error condition on " << prefix << " pipe";
+    PLOG(WARNING) << "Error condition on " << prefix << " pipe";
     return;
   }
   buffer[written] = '\0';
@@ -83,6 +105,7 @@ void ServiceManager::WriteFdToSyslog(int fd,
   }
   for (size_t i = 0; i < lines.size(); ++i) {
     LOG(INFO) << prefix << lines[i];
+    OnSyslogOutput(prefix, lines[i]);
   }
 }
 

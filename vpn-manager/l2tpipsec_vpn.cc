@@ -71,10 +71,11 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
     int poll_timeout = (ipsec_poll_timeout > l2tp_poll_timeout) ?
         ipsec_poll_timeout : l2tp_poll_timeout;
 
-    const int poll_input_count = 2;
+    const int poll_input_count = 3;
     struct pollfd poll_inputs[poll_input_count] = {
       { ipsec->output_fd(), POLLIN },  // ipsec output
-      { l2tp->output_fd(), POLLIN }  // l2tp output
+      { l2tp->output_fd(), POLLIN },  // l2tp output
+      { l2tp->ppp_output_fd(), POLLIN }  // ppp output
     };
     int poll_result = poll(poll_inputs, poll_input_count, poll_timeout);
     if (poll_result < 0 && errno != EINTR) {
@@ -95,6 +96,8 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
       ipsec->ProcessOutput();
     if (poll_inputs[1].revents & POLLIN)
       l2tp->ProcessOutput();
+    if (poll_inputs[2].revents & POLLIN)
+      l2tp->ProcessPppOutput();
   } while(!ipsec->was_stopped() && !s_terminate_request);
 }
 
@@ -120,7 +123,7 @@ int main(int argc, char* argv[]) {
   if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,
                                              &remote_address)) {
     LOG(ERROR) << "Unable to resolve hostname " << FLAGS_remote_host;
-    return 1;
+    return kServiceErrorResolveHostnameFailed;
   }
 
   if (!ipsec.Initialize(1,
@@ -131,22 +134,22 @@ int main(int argc, char* argv[]) {
                         FLAGS_client_cert_slot,
                         FLAGS_client_cert_id,
                         FLAGS_user_pin)) {
-    return 1;
+    return ipsec.GetError();
   }
   if (!l2tp.Initialize(remote_address)) {
-    return 1;
+    return l2tp.GetError();
   }
   ServiceManager::SetLayerOrder(&ipsec, &l2tp);
 
   InstallSignalHandlers();
   if (!ipsec.Start()) {
     LOG(ERROR) << "Unable to start IPsec layer";
-    return 1;
+    return ipsec.GetError();
   }
 
   RunEventLoop(&ipsec, &l2tp);
 
   LOG(INFO) << "Shutting down...";
   l2tp.Stop();
-  return 0;
+  return ipsec.GetError();
 }

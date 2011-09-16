@@ -114,6 +114,31 @@ TEST_F(ServiceManagerTest, OnStoppedFromFailure) {
   EXPECT_TRUE(inner_service_.was_stopped());
 }
 
+TEST_F(ServiceManagerTest, RegisterError) {
+  // No error initially
+  EXPECT_EQ(kServiceErrorNoError, single_service_.GetError());
+  single_service_.RegisterError(kServiceErrorInternal);
+  EXPECT_EQ(kServiceErrorInternal, single_service_.GetError());
+  // Registering a more specific error overrides the current error
+  single_service_.RegisterError(kServiceErrorPppAuthenticationFailed);
+  EXPECT_EQ(kServiceErrorPppAuthenticationFailed, single_service_.GetError());
+  // Registering a less specific error does not override the current error
+  single_service_.RegisterError(kServiceErrorPppConnectionFailed);
+  EXPECT_EQ(kServiceErrorPppAuthenticationFailed, single_service_.GetError());
+
+  // No error initially
+  EXPECT_EQ(kServiceErrorNoError, outer_service_.GetError());
+  EXPECT_EQ(kServiceErrorNoError, inner_service_.GetError());
+  // The outer service reports its error if the inner service reports no error
+  outer_service_.RegisterError(kServiceErrorIpsecConnectionFailed);
+  EXPECT_EQ(kServiceErrorIpsecConnectionFailed, outer_service_.GetError());
+  EXPECT_EQ(kServiceErrorNoError, inner_service_.GetError());
+  // The outer service reports the error reported by the inner service
+  inner_service_.RegisterError(kServiceErrorL2tpConnectionFailed);
+  EXPECT_EQ(kServiceErrorL2tpConnectionFailed, outer_service_.GetError());
+  EXPECT_EQ(kServiceErrorL2tpConnectionFailed, inner_service_.GetError());
+}
+
 TEST_F(ServiceManagerTest, WriteFdToSyslog) {
   int mypipe[2];
   ASSERT_EQ(0, pipe(mypipe));
@@ -121,7 +146,7 @@ TEST_F(ServiceManagerTest, WriteFdToSyslog) {
 
   const char kMessage1[] = "good morning\npipe\n";
   EXPECT_EQ(strlen(kMessage1), write(mypipe[1], kMessage1, strlen(kMessage1)));
-  ServiceManager::WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
+  single_service_.WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
   EXPECT_EQ("prefix: good morning\nprefix: pipe\n", GetLog());
   EXPECT_EQ("", partial);
 
@@ -129,13 +154,13 @@ TEST_F(ServiceManagerTest, WriteFdToSyslog) {
 
   const char kMessage2[] = "partial line";
   EXPECT_EQ(strlen(kMessage2), write(mypipe[1], kMessage2, strlen(kMessage2)));
-  ServiceManager::WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
+  single_service_.WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
   EXPECT_EQ(kMessage2, partial);
   EXPECT_EQ("", GetLog());
 
   const char kMessage3[] = " end\nbegin\nlast";
   EXPECT_EQ(strlen(kMessage3), write(mypipe[1], kMessage3, strlen(kMessage3)));
-  ServiceManager::WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
+  single_service_.WriteFdToSyslog(mypipe[0], "prefix: ", &partial);
   EXPECT_EQ("last", partial);
   EXPECT_EQ("prefix: partial line end\nprefix: begin\n", GetLog());
 
