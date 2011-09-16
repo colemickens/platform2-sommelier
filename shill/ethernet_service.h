@@ -28,6 +28,7 @@ class EthernetService : public Service {
   // Inherited from Service.
   virtual void Connect(Error *error);
   virtual void Disconnect();
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier();

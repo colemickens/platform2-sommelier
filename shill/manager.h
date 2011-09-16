@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -72,6 +73,8 @@ class Manager {
   // called via RPC (e.g., from ManagerDBusAdaptor)
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
   void RequestScan(const std::string &technology, Error *error);
+  std::string GetTechnologyOrder();
+  void SetTechnologyOrder(const std::string &order, Error *error);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   PropertyStore *mutable_store() { return &store_; }
@@ -84,6 +87,8 @@ class Manager {
 
  private:
   friend class ManagerAdaptorInterface;
+  friend class ManagerTest;
+  FRIEND_TEST(ManagerTest, SortServices);
 
   static const char kManagerErrorNoDevice[];
 
@@ -104,6 +109,9 @@ class Manager {
                                   Strings(Manager::*get)(void),
                                   bool(Manager::*set)(const Strings&));
 
+  bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
+  void SortServices();
+
   const FilePath run_path_;
   const FilePath storage_path_;
   const std::string user_storage_format_;
@@ -118,6 +126,9 @@ class Manager {
   ProfileRefPtr ephemeral_profile_;
   ControlInterface *control_interface_;
   GLib *glib_;
+
+  // The priority order of technologies
+  std::vector<Technology::Identifier> technology_order_;
 
   // Properties to be get/set via PropertyStore calls.
   Properties props_;

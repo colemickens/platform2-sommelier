@@ -34,6 +34,7 @@ using std::vector;
 
 namespace shill {
 using ::testing::_;
+using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
@@ -41,31 +42,30 @@ using ::testing::Test;
 class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
-      : mock_device_(new NiceMock<MockDevice>(control_interface(),
-                                              dispatcher(),
-                                              manager(),
-                                              "null0",
-                                              "addr0",
-                                              0)),
-        mock_device2_(new NiceMock<MockDevice>(control_interface(),
-                                               dispatcher(),
-                                               manager(),
-                                               "null2",
-                                               "addr2",
-                                               2)),
-        mock_device3_(new NiceMock<MockDevice>(control_interface(),
-                                               dispatcher(),
-                                               manager(),
-                                               "null3",
-                                               "addr3",
-                                               3)),
-        mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
+      : mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
                                           dispatcher(),
                                           manager(),
                                           "wifi0",
                                           "addr4",
-                                          4))
-  {
+                                          4)) {
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     manager(),
+                                                     "null0",
+                                                     "addr0",
+                                                     0));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     manager(),
+                                                     "null1",
+                                                     "addr1",
+                                                     1));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     manager(),
+                                                     "null2",
+                                                     "addr2",
+                                                     2));
   }
   virtual ~ManagerTest() {}
 
@@ -75,13 +75,17 @@ class ManagerTest : public PropertyStoreTest {
     manager()->FilterByTechnology(tech, &devices);
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
+  bool ServiceOrderIs(ServiceRefPtr svc1, ServiceRefPtr svc2);
 
  protected:
-  scoped_refptr<MockDevice> mock_device_;
-  scoped_refptr<MockDevice> mock_device2_;
-  scoped_refptr<MockDevice> mock_device3_;
   scoped_refptr<MockWiFi> mock_wifi_;
+  vector<scoped_refptr<MockDevice> > mock_devices_;
 };
+
+bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
+  return (svc0.get() == manager()->services_[0].get() &&
+          svc1.get() == manager()->services_[1].get());
+}
 
 TEST_F(ManagerTest, Contains) {
   EXPECT_TRUE(manager()->store().Contains(flimflam::kStateProperty));
@@ -89,41 +93,41 @@ TEST_F(ManagerTest, Contains) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  ON_CALL(*mock_device_.get(), TechnologyIs(Technology::kEthernet))
+  ON_CALL(*mock_devices_[0].get(), TechnologyIs(Technology::kEthernet))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device2_.get(), TechnologyIs(Technology::kWifi))
+  ON_CALL(*mock_devices_[1].get(), TechnologyIs(Technology::kWifi))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device3_.get(), TechnologyIs(Technology::kCellular))
+  ON_CALL(*mock_devices_[2].get(), TechnologyIs(Technology::kCellular))
       .WillByDefault(Return(true));
 
-  manager()->RegisterDevice(mock_device_);
-  manager()->RegisterDevice(mock_device2_);
-  manager()->RegisterDevice(mock_device3_);
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
 
-  EXPECT_TRUE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device3_, Technology::kCellular));
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[2], Technology::kCellular));
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  ON_CALL(*mock_device_.get(), TechnologyIs(Technology::kEthernet))
+  ON_CALL(*mock_devices_[0].get(), TechnologyIs(Technology::kEthernet))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device2_.get(), TechnologyIs(Technology::kWifi))
+  ON_CALL(*mock_devices_[1].get(), TechnologyIs(Technology::kWifi))
       .WillByDefault(Return(true));
 
-  manager()->RegisterDevice(mock_device_.get());
-  manager()->RegisterDevice(mock_device2_.get());
+  manager()->RegisterDevice(mock_devices_[0].get());
+  manager()->RegisterDevice(mock_devices_[1].get());
 
-  ASSERT_TRUE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
-  ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
+  ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
+  ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
-  EXPECT_CALL(*mock_device_.get(), Stop());
-  manager()->DeregisterDevice(mock_device_.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
+  EXPECT_CALL(*mock_devices_[0].get(), Stop());
+  manager()->DeregisterDevice(mock_devices_[0].get());
+  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
-  EXPECT_CALL(*mock_device2_.get(), Stop());
-  manager()->DeregisterDevice(mock_device2_.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
+  EXPECT_CALL(*mock_devices_[1].get(), Stop());
+  manager()->DeregisterDevice(mock_devices_[1].get());
+  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
@@ -198,8 +202,8 @@ TEST_F(ManagerTest, GetProperties) {
 }
 
 TEST_F(ManagerTest, GetDevicesProperty) {
-  manager()->RegisterDevice(mock_device_.get());
-  manager()->RegisterDevice(mock_device2_.get());
+  manager()->RegisterDevice(mock_devices_[0].get());
+  manager()->RegisterDevice(mock_devices_[1].get());
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
@@ -310,14 +314,14 @@ TEST_F(ManagerTest, Dispatch) {
 TEST_F(ManagerTest, RequestScan) {
   {
     Error error;
-    manager()->RegisterDevice(mock_device_.get());
-    manager()->RegisterDevice(mock_device2_.get());
-    EXPECT_CALL(*mock_device_, TechnologyIs(Technology::kWifi))
+    manager()->RegisterDevice(mock_devices_[0].get());
+    manager()->RegisterDevice(mock_devices_[1].get());
+    EXPECT_CALL(*mock_devices_[0], TechnologyIs(Technology::kWifi))
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_device_, Scan(_));
-    EXPECT_CALL(*mock_device2_, TechnologyIs(Technology::kWifi))
+    EXPECT_CALL(*mock_devices_[0], Scan(_));
+    EXPECT_CALL(*mock_devices_[1], TechnologyIs(Technology::kWifi))
         .WillRepeatedly(Return(false));
-    EXPECT_CALL(*mock_device2_, Scan(_)).Times(0);
+    EXPECT_CALL(*mock_devices_[1], Scan(_)).Times(0);
     manager()->RequestScan(flimflam::kTypeWifi, &error);
   }
 
@@ -345,6 +349,105 @@ TEST_F(ManagerTest, GetWifiService) {
   EXPECT_CALL(*mock_wifi_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
   manager()->GetWifiService(args, &e);
+}
+
+TEST_F(ManagerTest, TechnologyOrder) {
+  Error error;
+  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "," +
+                                string(flimflam::kTypeWifi), &error);
+  ASSERT_TRUE(error.IsSuccess());
+  EXPECT_EQ(manager()->GetTechnologyOrder(),
+            string(flimflam::kTypeEthernet) + "," +
+            string(flimflam::kTypeWifi));
+
+  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "x," +
+                                string(flimflam::kTypeWifi), &error);
+  ASSERT_FALSE(error.IsSuccess());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ(string(flimflam::kTypeEthernet) + "," +
+            string(flimflam::kTypeWifi),
+            manager()->GetTechnologyOrder());
+}
+
+TEST_F(ManagerTest, SortServices) {
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  string service1_name(mock_service0->UniqueName());
+  string service2_name(mock_service1->UniqueName());
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  // Services should already be sorted by UniqueName
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Asking explictly to sort services should not change anything
+  manager()->SortServices();
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Two otherwise equal services should be reordered by strength
+  mock_service1->set_strength(1);
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  // Security
+  mock_service0->set_security(1);
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Technology
+  EXPECT_CALL(*mock_service0.get(), TechnologyIs(Technology::kWifi))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_service1.get(), TechnologyIs(Technology::kEthernet))
+      .WillRepeatedly(Return(true));
+  // NB: Redefine default (false) return values so we don't use the default rule
+  // which makes the logs noisier
+  EXPECT_CALL(*mock_service0.get(), TechnologyIs(Ne(Technology::kWifi)))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_service1.get(), TechnologyIs(Ne(Technology::kEthernet)))
+      .WillRepeatedly(Return(false));
+
+  Error error;
+  manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "," +
+                                string(flimflam::kTypeWifi), &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  manager()->SetTechnologyOrder(string(flimflam::kTypeWifi) + "," +
+                                string(flimflam::kTypeEthernet), &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Priority
+  mock_service0->set_priority(1);
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Favorite
+  mock_service1->set_favorite(true);
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  // Connecting
+  EXPECT_CALL(*mock_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateAssociating));
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Connected
+  EXPECT_CALL(*mock_service1.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  manager()->DeregisterService(mock_service0);
+  manager()->DeregisterService(mock_service1);
 }
 
 }  // namespace shill

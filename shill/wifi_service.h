@@ -34,6 +34,8 @@ class WiFiService : public Service {
   virtual void Connect(Error *error);
   virtual void Disconnect();
 
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
+
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier();
 

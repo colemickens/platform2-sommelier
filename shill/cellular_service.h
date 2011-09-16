@@ -33,6 +33,7 @@ class CellularService : public Service {
   virtual void Connect(Error *error);
   virtual void Disconnect();
   virtual void ActivateCellularModem(const std::string &carrier, Error *error);
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // cellular_<MAC>_<Service_Operator_Name>
   std::string GetStorageIdentifier();

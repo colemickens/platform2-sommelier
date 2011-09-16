@@ -194,11 +194,14 @@ void ManagerDBusAdaptor::SetDebugLevel(const int32_t &level,
 }
 
 string ManagerDBusAdaptor::GetServiceOrder(::DBus::Error &error) {
-  return string();
+  return manager_->GetTechnologyOrder();
 }
 
-void ManagerDBusAdaptor::SetServiceOrder(const string &,
+void ManagerDBusAdaptor::SetServiceOrder(const string &order,
                                          ::DBus::Error &error) {
+  Error e;
+  manager_->SetTechnologyOrder(order, &e);
+  e.ToDBusError(&error);
 }
 
 }  // namespace shill

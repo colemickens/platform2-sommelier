@@ -55,6 +55,10 @@ void CellularService::ActivateCellularModem(const string &carrier,
   cellular_->Activate(carrier, error);
 }
 
+bool CellularService::TechnologyIs(const Technology::Identifier type) const {
+  return cellular_->TechnologyIs(type);
+}
+
 string CellularService::GetStorageIdentifier() {
   string id = base::StringPrintf("%s_%s_%s",
                                  kServiceType,

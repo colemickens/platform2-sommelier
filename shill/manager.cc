@@ -7,6 +7,7 @@
 #include <time.h>
 #include <stdio.h>
 
+#include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
@@ -14,6 +15,8 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/string_split.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -25,6 +28,7 @@
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
 #include "shill/key_file_store.h"
+#include "shill/service_sorter.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/resolver.h"
@@ -33,6 +37,7 @@
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"
 
+using std::map;
 using std::string;
 using std::vector;
 
@@ -195,6 +200,7 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
       return;
   }
   services_.push_back(to_manage);
+  SortServices();
 
   vector<string> service_paths;
   for (it = services_.begin(); it != services_.end(); ++it) {
@@ -213,6 +219,7 @@ void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->UniqueName() == (*it)->UniqueName()) {
       services_.erase(it);
+      SortServices();
       return;
     }
   }
@@ -222,7 +229,7 @@ void Manager::UpdateService(const ServiceConstRefPtr &to_update) {
   LOG(INFO) << "Service " << to_update->UniqueName() << " updated;"
             << " state: " << to_update->state() << " failure: "
             << to_update->failure();
-  // TODO(pstew): This should trigger re-sorting of services, autoconnect, etc.
+  SortServices();
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,
@@ -235,7 +242,7 @@ void Manager::FilterByTechnology(Technology::Identifier tech,
   }
 }
 
-ServiceRefPtr Manager::FindService(const std::string& name) {
+ServiceRefPtr Manager::FindService(const string& name) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (name == (*it)->UniqueName())
@@ -258,6 +265,10 @@ void Manager::HelpRegisterDerivedStrings(const string &name,
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set)));
+}
+
+void Manager::SortServices() {
+  sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
 }
 
 string Manager::CalculateState() {
@@ -313,7 +324,7 @@ string Manager::GetActiveProfileName() {
 WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
                                           Error *error) {
   std::vector<DeviceRefPtr> wifi_devices;
-  FilterByTechnology(Device::kWifi, &wifi_devices);
+  FilterByTechnology(Technology::kWifi, &wifi_devices);
   if (wifi_devices.empty()) {
     error->Populate(Error::kInvalidArguments, kManagerErrorNoDevice);
     return NULL;
@@ -325,7 +336,7 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
-void Manager::RequestScan(const std::string &technology, Error *error) {
+void Manager::RequestScan(const string &technology, Error *error) {
   if (technology == flimflam::kTypeWifi || technology == "") {
     vector<DeviceRefPtr> wifi_devices;
     FilterByTechnology(Technology::kWifi, &wifi_devices);
@@ -342,6 +353,48 @@ void Manager::RequestScan(const std::string &technology, Error *error) {
     CHECK(error);
     error->Populate(Error::kInvalidArguments, kMessage);
   }
+}
+
+string Manager::GetTechnologyOrder() {
+  vector<string> technology_names;
+  for (vector<Technology::Identifier>::iterator it = technology_order_.begin();
+       it != technology_order_.end();
+       ++it) {
+    technology_names.push_back(Technology::NameFromIdentifier(*it));
+  }
+
+  return JoinString(technology_names, ',');
+}
+
+void Manager::SetTechnologyOrder(const string &order, Error *error) {
+  vector<Technology::Identifier> new_order;
+  map<Technology::Identifier, bool> seen;
+
+  vector<string> order_parts;
+  base::SplitString(order, ',', &order_parts);
+
+  for (vector<string>::iterator it = order_parts.begin();
+       it != order_parts.end();
+       ++it) {
+    Technology::Identifier identifier = Technology::IdentifierFromName(*it);
+
+    if (identifier == Technology::kUnknown) {
+      error->Populate(Error::kInvalidArguments, *it +
+                      " is an unknown technology name");
+      return;
+    }
+
+    if (ContainsKey(seen, identifier)) {
+      error->Populate(Error::kInvalidArguments, *it +
+                      " is duplicated in the list");
+      return;
+    }
+    seen[identifier] = true;
+    new_order.push_back(identifier);
+  }
+
+  technology_order_ = new_order;
+  SortServices();
 }
 
 }  // namespace shill

@@ -56,6 +56,7 @@ TEST_F(WiFiServiceTest, StorageId) {
                 isxdigit(id[i]) ||
                 (isalpha(id[i]) && islower(id[i])));
   }
+  EXPECT_TRUE(wifi_service->TechnologyIs(Technology::kWifi));
   size_t mac_pos = id.find(StringToLowerASCII(string(fake_mac)));
   EXPECT_NE(mac_pos, string::npos);
   EXPECT_NE(id.find(string(flimflam::kModeManaged), mac_pos), string::npos);

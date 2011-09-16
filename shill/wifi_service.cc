@@ -78,6 +78,10 @@ void WiFiService::Disconnect() {
   // XXX remove from favorite networks list?
 }
 
+bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
+  return wifi_->TechnologyIs(type);
+}
+
 string WiFiService::GetStorageIdentifier() {
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                flimflam::kTypeWifi,

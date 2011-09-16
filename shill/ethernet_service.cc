@@ -45,6 +45,10 @@ void EthernetService::Connect(Error *error) { }
 
 void EthernetService::Disconnect() { }
 
+bool EthernetService::TechnologyIs(const Technology::Identifier type) const {
+  return ethernet_->TechnologyIs(type);
+}
+
 std::string EthernetService::GetDeviceRpcId() {
   return ethernet_->GetRpcIdentifier();
 }

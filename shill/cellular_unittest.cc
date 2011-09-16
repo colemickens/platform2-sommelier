@@ -639,6 +639,7 @@ TEST_F(CellularTest, CreateService) {
   EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
   EXPECT_EQ(kUsageURL, device_->service_->usage_url());
   EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
+  EXPECT_TRUE(device_->service_->TechnologyIs(Technology::kCellular));
 }
 
 namespace {

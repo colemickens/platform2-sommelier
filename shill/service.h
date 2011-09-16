@@ -16,6 +16,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -97,12 +98,21 @@ class Service : public base::RefCounted<Service> {
   // The default implementation sets |error| to kInvalidArguments.
   virtual void ActivateCellularModem(const std::string &carrier, Error *error);
 
+  // Base method always returns false.
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
+
   virtual bool IsActive();
 
   virtual ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.
   virtual void SetState(ConnectState state);
+
+  // State utility functions
+  bool IsConnected() const { return state() == kStateConnected; }
+  bool IsConnecting() const {
+    return state() == kStateAssociating || state() == kStateConfiguring;
+  }
 
   virtual ConnectFailure failure() const { return failure_; }
   // Records the failure mode, and sets the Service state to "Failure".
@@ -126,8 +136,26 @@ class Service : public base::RefCounted<Service> {
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
+  bool favorite() const { return favorite_; }
+  void set_favorite(bool favorite) { favorite_ = favorite; }
+
+  int32 priority() const { return priority_; }
+  void set_priority(int32 priority) { priority_ = priority; }
+
+  int32 security() const { return security_; }
+  void set_security(int32 security) { security_ = security; }
+
+  int32 strength() const { return strength_; }
+  void set_strength(int32 strength) { strength_ = strength; }
+
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
+
+  // Compare two services.  Returns true if Service a should be displayed
+  // above Service b
+  static bool Compare(ServiceRefPtr a,
+                      ServiceRefPtr b,
+                      const std::vector<Technology::Identifier> &tech_order);
 
   // These are defined in service.cc so that we don't have to include profile.h
   // TODO(cmasone): right now, these are here only so that we can get the
@@ -212,6 +240,10 @@ class Service : public base::RefCounted<Service> {
     return "";  // Will need to call Profile to get this.
   }
 
+  // Utility function that returns true if a is different from b.  When they
+  // are, "decision" is populated with the boolean value of "a > b".
+  static bool DecideBetween(int a, int b, bool *decision);
+
   ConnectState state_;
   ConnectFailure failure_;
   bool auto_connect_;
@@ -220,6 +252,8 @@ class Service : public base::RefCounted<Service> {
   std::string error_;
   bool favorite_;
   int32 priority_;
+  int32 security_;
+  int32 strength_;
   std::string proxy_config_;
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.

@@ -13,6 +13,7 @@
 #include "shill/refptr_types.h"
 
 using std::string;
+using testing::_;
 using testing::Return;
 
 namespace shill {
@@ -26,6 +27,9 @@ MockService::MockService(ControlInterface *control_interface,
                          Manager *manager)
     : Service(control_interface, dispatcher, manager, "mock") {
   ON_CALL(*this, GetRpcIdentifier()).WillByDefault(Return(""));
+  ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
+  ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
+  ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
 }
 
 MockService::~MockService() {}

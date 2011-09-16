@@ -74,6 +74,8 @@ Service::Service(ControlInterface *control_interface,
       connectable_(false),
       favorite_(false),
       priority_(kPriorityNone),
+      security_(0),
+      strength_(0),
       save_credentials_(true),
       type_(type),
       dispatcher_(dispatcher),
@@ -161,6 +163,10 @@ void Service::ActivateCellularModem(const std::string &carrier, Error *error) {
   LOG(ERROR) << kMessage;
   CHECK(error);
   error->Populate(Error::kInvalidArguments, kMessage);
+}
+
+bool Service::TechnologyIs(const Technology::Identifier type) const {
+  return false;
 }
 
 bool Service::IsActive() {
@@ -262,6 +268,56 @@ bool Service::Save(StoreInterface *storage) {
   // "LastGoodAPN"
 
   return true;
+}
+
+bool Service::DecideBetween(int a, int b, bool *decision) {
+  if (a == b)
+    return false;
+  *decision = (a > b);
+  return true;
+}
+
+bool Service::Compare(ServiceRefPtr a,
+                      ServiceRefPtr b,
+                      const vector<Technology::Identifier> &tech_order) {
+  bool ret;
+
+  if (a->state() != b->state()) {
+    if (DecideBetween(a->IsConnected(), b->IsConnected(), &ret)) {
+      return ret;
+    }
+
+    // TODO(pstew): Services don't know about portal state yet
+
+    if (DecideBetween(a->IsConnecting(), b->IsConnecting(), &ret)) {
+      return ret;
+    }
+  }
+
+  if (DecideBetween(a->favorite(), b->favorite(), &ret) ||
+      DecideBetween(a->priority(), b->priority(), &ret)) {
+    return ret;
+  }
+
+  // TODO(pstew): Below this point we are making value judgements on
+  // services that are not related to anything intrinsic or
+  // user-specified.  These heuristics should be richer (contain
+  // historical information, for example) and be subject to user
+  // customization.
+
+  for (vector<Technology::Identifier>::const_iterator it = tech_order.begin();
+       it != tech_order.end();
+       ++it) {
+    if (DecideBetween(a->TechnologyIs(*it), b->TechnologyIs(*it), &ret))
+      return ret;
+  }
+
+  if (DecideBetween(a->security(), b->security(), &ret) ||
+      DecideBetween(a->strength(), b->strength(), &ret)) {
+    return ret;
+  }
+
+  return a->UniqueName() < b->UniqueName();
 }
 
 const ProfileRefPtr &Service::profile() const { return profile_; }
