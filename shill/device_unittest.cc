@@ -118,7 +118,7 @@ TEST_F(DeviceTest, Dispatch) {
 }
 
 TEST_F(DeviceTest, TechnologyIs) {
-  EXPECT_FALSE(device_->TechnologyIs(Device::kEthernet));
+  EXPECT_FALSE(device_->TechnologyIs(Technology::kEthernet));
 }
 
 TEST_F(DeviceTest, DestroyIPConfig) {

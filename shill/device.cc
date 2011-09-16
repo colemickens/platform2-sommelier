@@ -135,7 +135,7 @@ void Device::Stop() {
           << (selected_service_.get() ? "is set." : "is not set.");
 }
 
-bool Device::TechnologyIs(const Technology type) const {
+bool Device::TechnologyIs(const Technology::Identifier type) const {
   return false;
 }
 

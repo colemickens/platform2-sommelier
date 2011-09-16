@@ -32,16 +32,18 @@ class DeviceStub : public Device {
              const std::string &link_name,
              const std::string &address,
              int interface_index,
-             Technology technology)
+             Technology::Identifier technology)
       : Device(control_interface, dispatcher, manager, link_name, address,
                interface_index),
         technology_(technology) {}
   void Start() {}
   void Stop() {}
-  bool TechnologyIs(const Technology type) const { return type == technology_; }
+  bool TechnologyIs(const Technology::Identifier type) const {
+    return type == technology_;
+  }
 
  private:
-  Technology technology_;
+  Technology::Identifier technology_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
 };

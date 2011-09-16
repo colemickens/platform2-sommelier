@@ -168,7 +168,7 @@ TEST_F(ModemTest, CreateCellularDevice) {
   EXPECT_EQ(Cellular::kModemStateDisabled, modem_.device_->modem_state());
 
   vector<DeviceRefPtr> devices;
-  manager_.FilterByTechnology(Device::kCellular, &devices);
+  manager_.FilterByTechnology(Technology::kCellular, &devices);
   EXPECT_EQ(1, devices.size());
   EXPECT_TRUE(devices[0].get() == modem_.device_.get());
 }

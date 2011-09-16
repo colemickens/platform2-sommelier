@@ -25,7 +25,7 @@ class Ethernet : public Device {
 
   void Start();
   void Stop();
-  bool TechnologyIs(Device::Technology type) const;
+  bool TechnologyIs(Technology::Identifier type) const;
   void LinkEvent(unsigned int flags, unsigned int change);
 
  private:

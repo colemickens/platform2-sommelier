@@ -188,8 +188,8 @@ void WiFi::Scan(Error *error) {
       task_factory_.NewRunnableMethod(&WiFi::ScanTask));
 }
 
-bool WiFi::TechnologyIs(const Device::Technology type) const {
-  return type == Device::kWifi;
+bool WiFi::TechnologyIs(const Technology::Identifier type) const {
+  return type == Technology::kWifi;
 }
 
 void WiFi::LinkEvent(unsigned int flags, unsigned int change) {

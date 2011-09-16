@@ -18,6 +18,7 @@
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/shill_event.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -34,15 +35,6 @@ class RTNLHandler;
 // this class.
 class Device : public base::RefCounted<Device> {
  public:
-  enum Technology {
-    kEthernet,
-    kWifi,
-    kCellular,
-    kBlacklisted,
-    kUnknown,
-    kNumTechnologies
-  };
-
   // A constructor for the Device object
   Device(ControlInterface *control_interface,
          EventDispatcher *dispatcher,
@@ -60,7 +52,7 @@ class Device : public base::RefCounted<Device> {
   virtual void Stop();
 
   // Base method always returns false.
-  virtual bool TechnologyIs(const Technology type) const;
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   virtual void LinkEvent(unsigned flags, unsigned change);
 

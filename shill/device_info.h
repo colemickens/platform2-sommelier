@@ -78,7 +78,8 @@ class DeviceInfo {
   static const char *kModemDrivers[];
   static const char kInterfaceIPv6Privacy[];
 
-  static Device::Technology GetDeviceTechnology(const std::string &face_name);
+  static Technology::Identifier GetDeviceTechnology(
+      const std::string &face_name);
 
   void AddLinkMsgHandler(const RTNLMessage &msg);
   void DelLinkMsgHandler(const RTNLMessage &msg);

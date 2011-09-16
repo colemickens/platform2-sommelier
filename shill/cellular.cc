@@ -719,8 +719,8 @@ void Cellular::CreateService() {
   }
 }
 
-bool Cellular::TechnologyIs(const Device::Technology type) const {
-  return type == Device::kCellular;
+bool Cellular::TechnologyIs(const Technology::Identifier type) const {
+  return type == Technology::kCellular;
 }
 
 void Cellular::Connect(Error *error) {

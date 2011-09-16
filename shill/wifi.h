@@ -37,7 +37,7 @@ class WiFi : public Device {
   virtual void Start();
   virtual void Stop();
   virtual void Scan(Error *error);
-  virtual bool TechnologyIs(const Technology type) const;
+  virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 
   // called by SupplicantInterfaceProxy, in response to events from

@@ -69,7 +69,8 @@ class ManagerTest : public PropertyStoreTest {
   }
   virtual ~ManagerTest() {}
 
-  bool IsDeviceRegistered(const DeviceRefPtr &device, Device::Technology tech) {
+  bool IsDeviceRegistered(const DeviceRefPtr &device,
+                          Technology::Identifier tech) {
     vector<DeviceRefPtr> devices;
     manager()->FilterByTechnology(tech, &devices);
     return (devices.size() == 1 && devices[0].get() == device.get());
@@ -88,41 +89,41 @@ TEST_F(ManagerTest, Contains) {
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
-  ON_CALL(*mock_device_.get(), TechnologyIs(Device::kEthernet))
+  ON_CALL(*mock_device_.get(), TechnologyIs(Technology::kEthernet))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
+  ON_CALL(*mock_device2_.get(), TechnologyIs(Technology::kWifi))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device3_.get(), TechnologyIs(Device::kCellular))
+  ON_CALL(*mock_device3_.get(), TechnologyIs(Technology::kCellular))
       .WillByDefault(Return(true));
 
   manager()->RegisterDevice(mock_device_);
   manager()->RegisterDevice(mock_device2_);
   manager()->RegisterDevice(mock_device3_);
 
-  EXPECT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
-  EXPECT_TRUE(IsDeviceRegistered(mock_device3_, Device::kCellular));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_device3_, Technology::kCellular));
 }
 
 TEST_F(ManagerTest, DeviceDeregistration) {
-  ON_CALL(*mock_device_.get(), TechnologyIs(Device::kEthernet))
+  ON_CALL(*mock_device_.get(), TechnologyIs(Technology::kEthernet))
       .WillByDefault(Return(true));
-  ON_CALL(*mock_device2_.get(), TechnologyIs(Device::kWifi))
+  ON_CALL(*mock_device2_.get(), TechnologyIs(Technology::kWifi))
       .WillByDefault(Return(true));
 
   manager()->RegisterDevice(mock_device_.get());
   manager()->RegisterDevice(mock_device2_.get());
 
-  ASSERT_TRUE(IsDeviceRegistered(mock_device_, Device::kEthernet));
-  ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Device::kWifi));
+  ASSERT_TRUE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
+  ASSERT_TRUE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
 
   EXPECT_CALL(*mock_device_.get(), Stop());
   manager()->DeregisterDevice(mock_device_.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device_, Device::kEthernet));
+  EXPECT_FALSE(IsDeviceRegistered(mock_device_, Technology::kEthernet));
 
   EXPECT_CALL(*mock_device2_.get(), Stop());
   manager()->DeregisterDevice(mock_device2_.get());
-  EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Device::kWifi));
+  EXPECT_FALSE(IsDeviceRegistered(mock_device2_, Technology::kWifi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
@@ -311,10 +312,10 @@ TEST_F(ManagerTest, RequestScan) {
     Error error;
     manager()->RegisterDevice(mock_device_.get());
     manager()->RegisterDevice(mock_device2_.get());
-    EXPECT_CALL(*mock_device_, TechnologyIs(Device::kWifi))
+    EXPECT_CALL(*mock_device_, TechnologyIs(Technology::kWifi))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_, Scan(_));
-    EXPECT_CALL(*mock_device2_, TechnologyIs(Device::kWifi))
+    EXPECT_CALL(*mock_device2_, TechnologyIs(Technology::kWifi))
         .WillRepeatedly(Return(false));
     EXPECT_CALL(*mock_device2_, Scan(_)).Times(0);
     manager()->RequestScan(flimflam::kTypeWifi, &error);

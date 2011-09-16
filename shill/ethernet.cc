@@ -63,8 +63,8 @@ void Ethernet::Stop() {
   Device::Stop();
 }
 
-bool Ethernet::TechnologyIs(const Device::Technology type) const {
-  return type == Device::kEthernet;
+bool Ethernet::TechnologyIs(const Technology::Identifier type) const {
+  return type == Technology::kEthernet;
 }
 
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {

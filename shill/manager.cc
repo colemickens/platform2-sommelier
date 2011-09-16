@@ -225,7 +225,7 @@ void Manager::UpdateService(const ServiceConstRefPtr &to_update) {
   // TODO(pstew): This should trigger re-sorting of services, autoconnect, etc.
 }
 
-void Manager::FilterByTechnology(Device::Technology tech,
+void Manager::FilterByTechnology(Technology::Identifier tech,
                                  vector<DeviceRefPtr> *found) {
   CHECK(found);
   vector<DeviceRefPtr>::iterator it;
@@ -328,7 +328,7 @@ WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
 void Manager::RequestScan(const std::string &technology, Error *error) {
   if (technology == flimflam::kTypeWifi || technology == "") {
     vector<DeviceRefPtr> wifi_devices;
-    FilterByTechnology(Device::kWifi, &wifi_devices);
+    FilterByTechnology(Technology::kWifi, &wifi_devices);
 
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
          it != wifi_devices.end();

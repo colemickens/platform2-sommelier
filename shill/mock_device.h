@@ -27,7 +27,8 @@ class MockDevice : public Device {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(Scan, void(Error *error));
-  MOCK_CONST_METHOD1(TechnologyIs, bool(const Technology technology));
+  MOCK_CONST_METHOD1(TechnologyIs,
+                     bool(const Technology::Identifier technology));
   MOCK_METHOD1(Save, bool(StoreInterface*));
 
  private:

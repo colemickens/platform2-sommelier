@@ -96,14 +96,15 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
           << device->interface_index() << ")";
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
-  if (device->TechnologyIs(Device::kCellular) ||
-      device->TechnologyIs(Device::kEthernet) ||
-      device->TechnologyIs(Device::kWifi)) {
+  if (device->TechnologyIs(Technology::kCellular) ||
+      device->TechnologyIs(Technology::kEthernet) ||
+      device->TechnologyIs(Technology::kWifi)) {
     manager_->RegisterDevice(device);
   }
 }
 
-Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
+Technology::Identifier DeviceInfo::GetDeviceTechnology(
+    const string &iface_name) {
   char contents[1024];
   int length;
   int fd;
@@ -115,11 +116,11 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
 
   fd = open(uevent_file.c_str(), O_RDONLY);
   if (fd < 0)
-    return Device::kUnknown;
+    return Technology::kUnknown;
 
   length = read(fd, contents, sizeof(contents) - 1);
   if (length < 0)
-    return Device::kUnknown;
+    return Technology::kUnknown;
 
   /*
    * If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
@@ -129,11 +130,11 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
   contents[length] = '\0';
   wifi_type = strstr(contents, "DEVTYPE=wlan\n");
   if (wifi_type != NULL && (wifi_type == contents || wifi_type[-1] == '\n'))
-    return Device::kWifi;
+    return Technology::kWifi;
 
   length = readlink(driver_file.c_str(), contents, sizeof(contents)-1);
   if (length < 0)
-    return Device::kUnknown;
+    return Technology::kUnknown;
 
   contents[length] = '\0';
   driver_name = strrchr(contents, '/');
@@ -142,17 +143,17 @@ Device::Technology DeviceInfo::GetDeviceTechnology(const string &iface_name) {
     // See if driver for this interface is in a list of known modem driver names
     for (modem_idx = 0; kModemDrivers[modem_idx] != NULL; modem_idx++)
       if (strcmp(driver_name, kModemDrivers[modem_idx]) == 0)
-        return Device::kCellular;
+        return Technology::kCellular;
   }
 
-  return Device::kEthernet;
+  return Technology::kEthernet;
 }
 
 void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink &&
          msg.mode() == RTNLMessage::kModeAdd);
   int dev_index = msg.interface_index();
-  Device::Technology technology = Device::kUnknown;
+  Technology::Identifier technology = Technology::kUnknown;
 
   unsigned int flags = msg.link_status().flags;
   unsigned int change = msg.link_status().change;
@@ -182,7 +183,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
 
     if (!link_name.empty()) {
       if (ContainsKey(black_list_, link_name)) {
-        technology = Device::kBlacklisted;
+        technology = Technology::kBlacklisted;
       } else {
         technology = GetDeviceTechnology(link_name);
       }
@@ -190,17 +191,17 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
     string address =
         StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
     switch (technology) {
-      case Device::kCellular:
+      case Technology::kCellular:
         // Cellular devices are managed by ModemInfo.
         VLOG(2) << "Cellular link " << link_name << " at index " << dev_index
                 << " ignored.";
         return;
-      case Device::kEthernet:
+      case Technology::kEthernet:
         EnableDeviceIPv6Privacy(link_name);
         device = new Ethernet(control_interface_, dispatcher_, manager_,
                               link_name, address, dev_index);
         break;
-      case Device::kWifi:
+      case Technology::kWifi:
         EnableDeviceIPv6Privacy(link_name);
         device = new WiFi(control_interface_, dispatcher_, manager_,
                           link_name, address, dev_index);
