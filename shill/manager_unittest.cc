@@ -302,10 +302,10 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_device2_.get());
     EXPECT_CALL(*mock_device_, TechnologyIs(Device::kWifi))
         .WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_device_, Scan());
+    EXPECT_CALL(*mock_device_, Scan(_));
     EXPECT_CALL(*mock_device2_, TechnologyIs(Device::kWifi))
         .WillRepeatedly(Return(false));
-    EXPECT_CALL(*mock_device2_, Scan()).Times(0);
+    EXPECT_CALL(*mock_device2_, Scan(_)).Times(0);
     manager()->RequestScan(flimflam::kTypeWifi, &error);
   }
 

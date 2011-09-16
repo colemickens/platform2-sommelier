@@ -63,11 +63,11 @@ class Device : public base::RefCounted<Device> {
   virtual bool TechnologyIs(const Technology type) const;
 
   virtual void LinkEvent(unsigned flags, unsigned change);
-  virtual void Scan();
 
   virtual void ConfigIP() {}
 
   // The default implementation sets |error| to kNotSupported.
+  virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
   virtual void EnterPIN(const std::string &pin, Error *error);

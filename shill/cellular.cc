@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
@@ -30,12 +31,18 @@
 #include "shill/shill_event.h"
 
 using std::make_pair;
+using std::map;
 using std::string;
 using std::vector;
 
 namespace shill {
 
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
+const char Cellular::kNetworkPropertyAccessTechnology[] = "access-tech";
+const char Cellular::kNetworkPropertyID[] = "operator-num";
+const char Cellular::kNetworkPropertyLongName[] = "operator-long";
+const char Cellular::kNetworkPropertyShortName[] = "operator-short";
+const char Cellular::kNetworkPropertyStatus[] = "status";
 const char Cellular::kPhoneNumberCDMA[] = "#777";
 const char Cellular::kPhoneNumberGSM[] = "*99#";
 
@@ -76,60 +83,6 @@ void Cellular::Operator::SetCountry(const string &country) {
 }
 
 const Stringmap &Cellular::Operator::ToDict() const {
-  return dict_;
-}
-
-Cellular::Network::Network() {
-  dict_[flimflam::kStatusProperty] = "";
-  dict_[flimflam::kNetworkIdProperty] = "";
-  dict_[flimflam::kShortNameProperty] = "";
-  dict_[flimflam::kLongNameProperty] = "";
-  dict_[flimflam::kTechnologyProperty] = "";
-}
-
-Cellular::Network::~Network() {}
-
-const string &Cellular::Network::GetStatus() const {
-  return dict_.find(flimflam::kStatusProperty)->second;
-}
-
-void Cellular::Network::SetStatus(const string &status) {
-  dict_[flimflam::kStatusProperty] = status;
-}
-
-const string &Cellular::Network::GetId() const {
-  return dict_.find(flimflam::kNetworkIdProperty)->second;
-}
-
-void Cellular::Network::SetId(const string &id) {
-  dict_[flimflam::kNetworkIdProperty] = id;
-}
-
-const string &Cellular::Network::GetShortName() const {
-  return dict_.find(flimflam::kShortNameProperty)->second;
-}
-
-void Cellular::Network::SetShortName(const string &name) {
-  dict_[flimflam::kShortNameProperty] = name;
-}
-
-const string &Cellular::Network::GetLongName() const {
-  return dict_.find(flimflam::kLongNameProperty)->second;
-}
-
-void Cellular::Network::SetLongName(const string &name) {
-  dict_[flimflam::kLongNameProperty] = name;
-}
-
-const string &Cellular::Network::GetTechnology() const {
-  return dict_.find(flimflam::kTechnologyProperty)->second;
-}
-
-void Cellular::Network::SetTechnology(const string &technology) {
-  dict_[flimflam::kTechnologyProperty] = technology;
-}
-
-const Stringmap &Cellular::Network::ToDict() const {
   return dict_;
 }
 
@@ -175,6 +128,8 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kEsnProperty, &esn_);
   store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
                              &firmware_revision_);
+  store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
+                                 &found_networks_);
   store->RegisterConstString(flimflam::kHardwareRevisionProperty,
                              &hardware_revision_);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
@@ -192,9 +147,6 @@ Cellular::Cellular(ControlInterface *control_interface,
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
-                                NULL);
-  HelpRegisterDerivedStringmaps(flimflam::kFoundNetworksProperty,
-                                &Cellular::EnumerateNetworks,
                                 NULL);
 
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
@@ -851,7 +803,96 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
+void Cellular::Scan(Error *error) {
+  VLOG(2) << __func__;
+  if (type_ != kTypeGSM) {
+    const string kMessage = "Network scanning support for GSM only.";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kNotSupported, kMessage);
+    return;
+  }
+  // Defer scan because we may be in a dbus-c++ callback.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&Cellular::ScanTask));
+}
+
+void Cellular::ScanTask() {
+  VLOG(2) << __func__;
+  // TODO(petkov): Defer scan requests if a scan is in progress already.
+  CHECK_EQ(kTypeGSM, type_);
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). This is a
+  // must for this call which is basically a stub at this point.
+  ModemGSMNetworkProxyInterface::ScanResults results =
+      gsm_network_proxy_->Scan();
+  found_networks_.clear();
+  for (ModemGSMNetworkProxyInterface::ScanResults::const_iterator it =
+           results.begin(); it != results.end(); ++it) {
+    found_networks_.push_back(ParseScanResult(*it));
+  }
+}
+
+Stringmap Cellular::ParseScanResult(
+    const ModemGSMNetworkProxyInterface::ScanResult &result) {
+  Stringmap parsed;
+  for (ModemGSMNetworkProxyInterface::ScanResult::const_iterator it =
+           result.begin(); it != result.end(); ++it) {
+    // TODO(petkov): Define these in system_api/service_constants.h. The
+    // numerical values are taken from 3GPP TS 27.007 Section 7.3.
+    static const char * const kStatusString[] = {
+      "unknown",
+      "available",
+      "current",
+      "forbidden",
+    };
+    // TODO(petkov): Do we need the finer level of granularity here or can we
+    // use the same granularity as GetNetworkTechnologyString (e.g.,
+    // HSDPA->"HSPA").
+    static const char * const kTechnologyString[] = {
+      flimflam::kNetworkTechnologyGsm,
+      "GSM Compact",
+      flimflam::kNetworkTechnologyUmts,
+      flimflam::kNetworkTechnologyEdge,
+      "HSDPA",
+      "HSUPA",
+      flimflam::kNetworkTechnologyHspa,
+    };
+    VLOG(2) << "Network property: " << it->first << " = " << it->second;
+    if (it->first == kNetworkPropertyStatus) {
+      int status = 0;
+      if (base::StringToInt(it->second, &status) &&
+          status >= 0 &&
+          status < static_cast<int>(arraysize(kStatusString))) {
+        parsed[flimflam::kStatusProperty] = kStatusString[status];
+      } else {
+        LOG(ERROR) << "Unexpected status value: " << it->second;
+      }
+    } else if (it->first == kNetworkPropertyID) {
+      parsed[flimflam::kNetworkIdProperty] = it->second;
+    } else if (it->first == kNetworkPropertyLongName) {
+      parsed[flimflam::kLongNameProperty] = it->second;
+    } else if (it->first == kNetworkPropertyShortName) {
+      parsed[flimflam::kShortNameProperty] = it->second;
+    } else if (it->first == kNetworkPropertyAccessTechnology) {
+      int tech = 0;
+      if (base::StringToInt(it->second, &tech) &&
+          tech >= 0 &&
+          tech < static_cast<int>(arraysize(kTechnologyString))) {
+        parsed[flimflam::kTechnologyProperty] = kTechnologyString[tech];
+      } else {
+        LOG(ERROR) << "Unexpected technology value: " << it->second;
+      }
+    } else {
+      LOG(WARNING) << "Unknown network property ignored: " << it->first;
+    }
+  }
+  // TODO(petkov): If long name is not set and there's a network ID, do a mobile
+  // database lookup (crosbug.com/19699).
+  return parsed;
+}
+
 void Cellular::Activate(const string &carrier, Error *error) {
+  VLOG(2) << __func__ << "(" << carrier << ")";
   if (type_ != kTypeCDMA) {
     const string kMessage = "Unable to activate non-CDMA modem.";
     LOG(ERROR) << kMessage;
@@ -874,6 +915,7 @@ void Cellular::Activate(const string &carrier, Error *error) {
 
 void Cellular::ActivateTask(const string &carrier) {
   VLOG(2) << __func__ << "(" << carrier << ")";
+  CHECK_EQ(kTypeCDMA, type_);
   if (state_ != kStateEnabled &&
       state_ != kStateRegistered) {
     LOG(ERROR) << "Unable to activate in " << GetStateString(state_);
@@ -952,16 +994,6 @@ void Cellular::OnModemStateChanged(uint32 old_state,
   NOTIMPLEMENTED();
 }
 
-Stringmaps Cellular::EnumerateNetworks() {
-  Stringmaps to_return;
-  for (vector<Network>::const_iterator it = found_networks_.begin();
-       it != found_networks_.end();
-       ++it) {
-    to_return.push_back(it->ToDict());
-  }
-  return to_return;
-}
-
 void Cellular::SetGSMAccessTechnology(uint32 access_technology) {
   CHECK_EQ(kTypeGSM, type_);
   gsm_.access_technology = access_technology;
@@ -975,16 +1007,6 @@ StrIntPair Cellular::SimLockStatusToProperty() {
                               sim_lock_status_.lock_type),
                     make_pair(flimflam::kSIMLockRetriesLeftProperty,
                               sim_lock_status_.retries_left));
-}
-
-void Cellular::HelpRegisterDerivedStringmaps(
-    const string &name,
-    Stringmaps(Cellular::*get)(void),
-    bool(Cellular::*set)(const Stringmaps&)) {
-  mutable_store()->RegisterDerivedStringmaps(
-      name,
-      StringmapsAccessor(
-          new CustomAccessor<Cellular, Stringmaps>(this, get, set)));
 }
 
 void Cellular::HelpRegisterDerivedStrIntPair(

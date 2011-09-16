@@ -229,6 +229,17 @@ void PropertyStore::RegisterConstStringmap(const string &name,
       StringmapAccessor(new ConstPropertyAccessor<Stringmap>(prop));
 }
 
+void PropertyStore::RegisterStringmaps(const string &name, Stringmaps *prop) {
+  stringmaps_properties_[name] =
+      StringmapsAccessor(new PropertyAccessor<Stringmaps>(prop));
+}
+
+void PropertyStore::RegisterConstStringmaps(const string &name,
+                                            const Stringmaps *prop) {
+  stringmaps_properties_[name] =
+      StringmapsAccessor(new ConstPropertyAccessor<Stringmaps>(prop));
+}
+
 void PropertyStore::RegisterStrings(const string &name, Strings *prop) {
   strings_properties_[name] =
       StringsAccessor(new PropertyAccessor<Strings>(prop));

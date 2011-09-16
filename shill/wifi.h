@@ -31,9 +31,10 @@ class WiFi : public Device {
        const std::string &address,
        int interface_index);
   virtual ~WiFi();
+
   virtual void Start();
   virtual void Stop();
-  virtual void Scan();
+  virtual void Scan(Error *error);
   virtual bool TechnologyIs(const Technology type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 

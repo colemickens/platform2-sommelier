@@ -32,6 +32,10 @@ void ModemGSMNetworkProxy::Register(const string &network_id) {
   proxy_.Register(network_id);
 }
 
+ModemGSMNetworkProxyInterface::ScanResults ModemGSMNetworkProxy::Scan() {
+  return proxy_.Scan();
+}
+
 uint32 ModemGSMNetworkProxy::AccessTechnology() {
   return proxy_.AccessTechnology();
 }

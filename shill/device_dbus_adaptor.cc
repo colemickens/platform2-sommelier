@@ -75,6 +75,9 @@ void DeviceDBusAdaptor::ClearProperty(const std::string& ,
 }
 
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
+  Error e;
+  device_->Scan(&e);
+  e.ToDBusError(&error);
 }
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,

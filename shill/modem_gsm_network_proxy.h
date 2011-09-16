@@ -24,6 +24,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   virtual RegistrationInfo GetRegistrationInfo();
   virtual uint32 GetSignalQuality();
   virtual void Register(const std::string &network_id);
+  virtual ScanResults Scan();
   virtual uint32 AccessTechnology();
 
  private:

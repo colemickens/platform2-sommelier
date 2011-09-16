@@ -91,34 +91,6 @@ class Cellular : public Device,
     DISALLOW_COPY_AND_ASSIGN(Operator);
   };
 
-  class Network {
-   public:
-    Network();
-    ~Network();
-
-    const std::string &GetStatus() const;
-    void SetStatus(const std::string &status);
-
-    const std::string &GetId() const;
-    void SetId(const std::string &id);
-
-    const std::string &GetShortName() const;
-    void SetShortName(const std::string &name);
-
-    const std::string &GetLongName() const;
-    void SetLongName(const std::string &name);
-
-    const std::string &GetTechnology() const;
-    void SetTechnology(const std::string &technology);
-
-    const Stringmap &ToDict() const;
-
-   private:
-    Stringmap dict_;
-
-    DISALLOW_COPY_AND_ASSIGN(Network);
-  };
-
   struct SimLockStatus {
    public:
     SimLockStatus() : retries_left(0) {}
@@ -167,6 +139,7 @@ class Cellular : public Device,
   virtual void Stop();
   virtual bool TechnologyIs(Technology type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
+  virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
   virtual void EnterPIN(const std::string &pin, Error *error);
@@ -203,11 +176,13 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EnterPINError);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
+  FRIEND_TEST(CellularTest, ParseScanResult);
   FRIEND_TEST(CellularTest, RegisterOnNetwork);
   FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, RequirePIN);
   FRIEND_TEST(CellularTest, RequirePINError);
   FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
+  FRIEND_TEST(CellularTest, Scan);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -237,12 +212,18 @@ class Cellular : public Device,
     std::string spn;
   };
 
+  static const char kNetworkPropertyAccessTechnology[];
+  static const char kNetworkPropertyID[];
+  static const char kNetworkPropertyLongName[];
+  static const char kNetworkPropertyShortName[];
+  static const char kNetworkPropertyStatus[];
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
 
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
+  void ScanTask();
   void ActivateTask(const std::string &carrier);
   void RegisterOnNetworkTask(const std::string &network_id);
   void RequirePINTask(const std::string &pin, bool require);
@@ -256,7 +237,6 @@ class Cellular : public Device,
 
   StrIntPair SimLockStatusToProperty();
 
-  Stringmaps EnumerateNetworks();
   void HelpRegisterDerivedStringmaps(const std::string &name,
                                      Stringmaps(Cellular::*get)(void),
                                      bool(Cellular::*set)(const Stringmaps&));
@@ -309,6 +289,9 @@ class Cellular : public Device,
   void HandleNewSignalQuality(uint32 strength);
 
   void HandleNewCDMAActivationState(uint32 error);
+
+  Stringmap ParseScanResult(
+      const ModemGSMNetworkProxyInterface::ScanResult &result);
 
   // Signal callbacks inherited from ModemCDMAProxyListener.
   virtual void OnCDMAActivationStateChanged(
@@ -366,7 +349,7 @@ class Cellular : public Device,
   bool scanning_;
   uint16 scan_interval_;
   std::string selected_network_;
-  std::vector<Network> found_networks_;
+  Stringmaps found_networks_;
   SimLockStatus sim_lock_status_;
   Operator home_provider_;
 

@@ -28,6 +28,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/shill_event.h"
 
+using std::map;
 using std::string;
 using testing::_;
 using testing::NiceMock;
@@ -792,6 +793,48 @@ TEST_F(CellularTest, ChangePINError) {
   EXPECT_EQ(Error::kNotSupported, error.type());
   device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularTest, Scan) {
+  static const char kID0[] = "123";
+  static const char kID1[] = "456";
+  Error error;
+  device_->type_ = Cellular::kTypeGSM;
+  device_->Scan(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  ModemGSMNetworkProxyInterface::ScanResults results;
+  results.push_back(ModemGSMNetworkProxyInterface::ScanResult());
+  results[0][Cellular::kNetworkPropertyID] = kID0;
+  results.push_back(ModemGSMNetworkProxyInterface::ScanResult());
+  results[1][Cellular::kNetworkPropertyID] = kID1;
+  EXPECT_CALL(*gsm_network_proxy_, Scan()).WillOnce(Return(results));
+  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
+  device_->found_networks_.resize(2, Stringmap());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(2, device_->found_networks_.size());
+  EXPECT_EQ(kID0, device_->found_networks_[0][flimflam::kNetworkIdProperty]);
+  EXPECT_EQ(kID1, device_->found_networks_[1][flimflam::kNetworkIdProperty]);
+}
+
+TEST_F(CellularTest, ParseScanResult) {
+  static const char kID[] = "123";
+  static const char kLongName[] = "long name";
+  static const char kShortName[] = "short name";
+  ModemGSMNetworkProxyInterface::ScanResult result;
+  result[Cellular::kNetworkPropertyStatus] = "1";
+  result[Cellular::kNetworkPropertyID] = kID;
+  result[Cellular::kNetworkPropertyLongName] = kLongName;
+  result[Cellular::kNetworkPropertyShortName] = kShortName;
+  result[Cellular::kNetworkPropertyAccessTechnology] = "3";
+  result["unknown property"] = "random value";
+  Stringmap parsed = device_->ParseScanResult(result);
+  EXPECT_EQ(5, parsed.size());
+  EXPECT_EQ("available", parsed[flimflam::kStatusProperty]);
+  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
+  EXPECT_EQ(kLongName, parsed[flimflam::kLongNameProperty]);
+  EXPECT_EQ(kShortName, parsed[flimflam::kShortNameProperty]);
+  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
+            parsed[flimflam::kTechnologyProperty]);
 }
 
 TEST_F(CellularTest, Activate) {

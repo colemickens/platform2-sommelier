@@ -20,6 +20,7 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   MOCK_METHOD0(GetRegistrationInfo, RegistrationInfo());
   MOCK_METHOD0(GetSignalQuality, uint32());
   MOCK_METHOD1(Register, void(const std::string &network_id));
+  MOCK_METHOD0(Scan, ScanResults());
   MOCK_METHOD0(AccessTechnology, uint32());
 
  private:

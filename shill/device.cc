@@ -146,8 +146,12 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
           << std::dec << std::noshowbase;
 }
 
-void Device::Scan() {
+void Device::Scan(Error *error) {
   VLOG(2) << "Device " << link_name_ << " scan requested.";
+  const string kMessage = "Device doesn't support scan.";
+  LOG(ERROR) << kMessage;
+  CHECK(error);
+  error->Populate(Error::kNotSupported, kMessage);
 }
 
 void Device::RegisterOnNetwork(const std::string &network_id, Error *error) {

@@ -120,7 +120,7 @@ void WiFi::Start() {
   // all BSSes (not just new ones since the last scan).
   supplicant_interface_proxy_->FlushBSS(0);
 
-  Scan();
+  Scan(NULL);
   Device::Start();
 }
 
@@ -154,7 +154,7 @@ void WiFi::Stop() {
           << " ServiceMap entries.";
 }
 
-void WiFi::Scan() {
+void WiFi::Scan(Error *error) {
   LOG(INFO) << __func__;
 
   // needs to send a D-Bus message, but may be called from D-Bus

@@ -312,7 +312,7 @@ void Manager::RequestScan(const std::string &technology, Error *error) {
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
          it != wifi_devices.end();
          ++it) {
-      (*it)->Scan();
+      (*it)->Scan(error);
     }
   } else {
     // TODO(quiche): support scanning for other technologies?

@@ -5,7 +5,9 @@
 #ifndef SHILL_MODEM_GSM_NETWORK_PROXY_INTERFACE_
 #define SHILL_MODEM_GSM_NETWORK_PROXY_INTERFACE_
 
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <dbus-c++/types.h>
@@ -17,12 +19,15 @@ namespace shill {
 class ModemGSMNetworkProxyInterface {
  public:
   typedef DBus::Struct<uint32, std::string, std::string> RegistrationInfo;
+  typedef std::map<std::string, std::string> ScanResult;
+  typedef std::vector<ScanResult> ScanResults;
 
   virtual ~ModemGSMNetworkProxyInterface() {}
 
   virtual RegistrationInfo GetRegistrationInfo() = 0;
   virtual uint32 GetSignalQuality() = 0;
   virtual void Register(const std::string &network_id) = 0;
+  virtual ScanResults Scan() = 0;
 
   // Properties.
   virtual uint32 AccessTechnology() = 0;
