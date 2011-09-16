@@ -133,6 +133,10 @@ const char* kTpmInitStatusEventType = "TpmInitStatus";
 // The default entropy source to seed with random data from the TPM on startup.
 const char* kDefaultEntropySource = "/dev/urandom";
 
+// The name of the UMA user action for reporting a failure to initialize the
+// PKCS#11.
+const char* kMetricNamePkcs11InitFail = "Cryptohome.PKCS11InitFail";
+
 class TpmInitStatus : public CryptohomeEventBase {
  public:
   TpmInitStatus()
@@ -187,7 +191,8 @@ Service::Service()
       pkcs11_state_(kUninitialized),
       async_mount_pkcs11_init_sequence_id_(-1),
       async_guest_mount_sequence_id_(-1),
-      timer_collection_(new TimerCollection()) {
+      timer_collection_(new TimerCollection()),
+      reported_pkcs11_init_fail_(false) {
 }
 
 Service::~Service() {
@@ -392,6 +397,14 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
       LOG(INFO) << "PKCS#11 initialization succeeded.";
       pkcs11_state_ = kIsInitialized;
       return;
+    }
+    // We only report failures on the PKCS#11 initialization once per
+    // initialization attempt, which is currently done once per login.
+    if (!reported_pkcs11_init_fail_) {
+      reported_pkcs11_init_fail_ =
+          metrics_lib_.SendUserActionToUMA(kMetricNamePkcs11InitFail);
+      LOG_IF(WARNING, !reported_pkcs11_init_fail_)
+          << "Failed to report a failure on PKCS#11 initialization.";
     }
     LOG(ERROR) << "PKCS#11 initialization failed.";
     pkcs11_state_ = kIsFailed;
@@ -722,6 +735,8 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   }
   // Reset PKCS#11 initialization state.
   pkcs11_state_ = kUninitialized;
+  // And also reset its 'failure reported' state.
+  reported_pkcs11_init_fail_ = false;
   return TRUE;
 }
 

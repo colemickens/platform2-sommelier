@@ -248,6 +248,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   MetricsLibrary metrics_lib_;
   // Collection of timers for UMA reports.
   scoped_ptr<TimerCollection> timer_collection_;
+  // Keeps track of whether a failure on PKCS#11 initialization was reported
+  // during this user login. We use this not to report a same failure multiple
+  // times.
+  bool reported_pkcs11_init_fail_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
