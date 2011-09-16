@@ -23,7 +23,7 @@ class PropertyStore {
   PropertyStore();
   virtual ~PropertyStore();
 
-  virtual bool Contains(const std::string& property);
+  virtual bool Contains(const std::string& property) const;
 
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
@@ -69,17 +69,17 @@ class PropertyStore {
                                  Error *error);
 
   // Accessors for iterators over property maps.
-  PropertyConstIterator<bool> GetBoolPropertiesIter();
-  PropertyConstIterator<int16> GetInt16PropertiesIter();
-  PropertyConstIterator<int32> GetInt32PropertiesIter();
-  PropertyConstIterator<std::string> GetStringPropertiesIter();
-  PropertyConstIterator<Stringmap> GetStringmapPropertiesIter();
-  PropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter();
-  PropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter();
-  PropertyConstIterator<Strings> GetStringsPropertiesIter();
-  PropertyConstIterator<uint8> GetUint8PropertiesIter();
-  PropertyConstIterator<uint16> GetUint16PropertiesIter();
-  PropertyConstIterator<uint32> GetUint32PropertiesIter();
+  PropertyConstIterator<bool> GetBoolPropertiesIter() const;
+  PropertyConstIterator<int16> GetInt16PropertiesIter() const;
+  PropertyConstIterator<int32> GetInt32PropertiesIter() const;
+  PropertyConstIterator<std::string> GetStringPropertiesIter() const;
+  PropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
+  PropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
+  PropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter() const;
+  PropertyConstIterator<Strings> GetStringsPropertiesIter() const;
+  PropertyConstIterator<uint8> GetUint8PropertiesIter() const;
+  PropertyConstIterator<uint16> GetUint16PropertiesIter() const;
+  PropertyConstIterator<uint32> GetUint32PropertiesIter() const;
 
   void RegisterBool(const std::string &name, bool *prop);
   void RegisterConstBool(const std::string &name, const bool *prop);

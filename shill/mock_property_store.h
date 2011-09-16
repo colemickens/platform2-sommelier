@@ -17,7 +17,7 @@ class MockPropertyStore : public PropertyStore {
   MockPropertyStore();
   virtual ~MockPropertyStore();
 
-  MOCK_METHOD1(Contains, bool(const std::string&));
+  MOCK_CONST_METHOD1(Contains, bool(const std::string&));
   MOCK_METHOD3(SetBoolProperty, bool(const std::string&, bool, Error*));
   MOCK_METHOD3(SetInt16Property, bool(const std::string&, int16, Error*));
   MOCK_METHOD3(SetInt32Property, bool(const std::string&, int32, Error*));

@@ -25,7 +25,7 @@ PropertyStore::PropertyStore() {}
 
 PropertyStore::~PropertyStore() {}
 
-bool PropertyStore::Contains(const std::string &prop) {
+bool PropertyStore::Contains(const std::string &prop) const {
   return (bool_properties_.find(prop) != bool_properties_.end() ||
           int16_properties_.find(prop) != int16_properties_.end() ||
           int32_properties_.find(prop) != int32_properties_.end() ||
@@ -139,43 +139,46 @@ bool PropertyStore::SetUint32Property(const std::string& name,
   return set;
 }
 
-PropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter() {
+PropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter() const {
   return PropertyConstIterator<bool>(bool_properties_);
 }
 
-PropertyConstIterator<int16> PropertyStore::GetInt16PropertiesIter() {
+PropertyConstIterator<int16> PropertyStore::GetInt16PropertiesIter() const {
   return PropertyConstIterator<int16>(int16_properties_);
 }
 
-PropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter() {
+PropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter() const {
   return PropertyConstIterator<int32>(int32_properties_);
 }
 
-PropertyConstIterator<std::string> PropertyStore::GetStringPropertiesIter() {
+PropertyConstIterator<std::string> PropertyStore::GetStringPropertiesIter()
+    const {
   return PropertyConstIterator<std::string>(string_properties_);
 }
 
-PropertyConstIterator<Stringmap> PropertyStore::GetStringmapPropertiesIter() {
+PropertyConstIterator<Stringmap> PropertyStore::GetStringmapPropertiesIter()
+    const {
   return PropertyConstIterator<Stringmap>(stringmap_properties_);
 }
 
-PropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter() {
+PropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter() const {
   return PropertyConstIterator<Strings>(strings_properties_);
 }
 
-PropertyConstIterator<StrIntPair> PropertyStore::GetStrIntPairPropertiesIter() {
+PropertyConstIterator<StrIntPair> PropertyStore::GetStrIntPairPropertiesIter()
+    const {
   return PropertyConstIterator<StrIntPair>(strintpair_properties_);
 }
 
-PropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter() {
+PropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter() const {
   return PropertyConstIterator<uint8>(uint8_properties_);
 }
 
-PropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter() {
+PropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter() const {
   return PropertyConstIterator<uint16>(uint16_properties_);
 }
 
-PropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter() {
+PropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter() const {
   return PropertyConstIterator<uint32>(uint32_properties_);
 }
 

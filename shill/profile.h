@@ -50,7 +50,8 @@ class Profile : public base::RefCounted<Profile> {
 
   std::string GetRpcIdentifier();
 
-  PropertyStore *store() { return &store_; }
+  PropertyStore *mutable_store() { return &store_; }
+  const PropertyStore &store() const { return store_; }
 
   // Begin managing the persistence of |service|.
   // Returns true if |service| is new to this profile and was added,

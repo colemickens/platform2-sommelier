@@ -67,8 +67,8 @@ const char DeviceTest::kDeviceName[] = "testdevice";
 const char DeviceTest::kDeviceAddress[] = "address";
 
 TEST_F(DeviceTest, Contains) {
-  EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));
-  EXPECT_FALSE(device_->store()->Contains(""));
+  EXPECT_TRUE(device_->store().Contains(flimflam::kNameProperty));
+  EXPECT_FALSE(device_->store().Contains(""));
 }
 
 TEST_F(DeviceTest, GetProperties) {
@@ -77,9 +77,9 @@ TEST_F(DeviceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    device_->store()->SetBoolProperty(flimflam::kPoweredProperty,
-                                      expected,
-                                      &error);
+    device_->mutable_store()->SetBoolProperty(flimflam::kPoweredProperty,
+                                              expected,
+                                              &error);
     DBusAdaptor::GetProperties(device_->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kPoweredProperty) == props.end());
     EXPECT_EQ(props[flimflam::kPoweredProperty].reader().get_bool(),
@@ -96,13 +96,13 @@ TEST_F(DeviceTest, GetProperties) {
 
 TEST_F(DeviceTest, Dispatch) {
   ::DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->store(),
+  EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                           flimflam::kPoweredProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
 
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                            flimflam::kAddressProperty,
                                            PropertyStoreTest::kStringV,
                                            &error));

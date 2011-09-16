@@ -32,7 +32,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
                              const std::string &name,
                              const ::DBus::Variant &value,
                              ::DBus::Error *error);
-  static bool GetProperties(PropertyStore *store,
+  static bool GetProperties(const PropertyStore &store,
                             std::map<std::string, ::DBus::Variant> *out,
                             ::DBus::Error *error);
 

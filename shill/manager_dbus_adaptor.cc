@@ -81,7 +81,10 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetProperties(
 void ManagerDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(manager_->store(), name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(manager_->mutable_store(),
+                                  name,
+                                  value,
+                                  &error)) {
     PropertyChanged(name, value);
   }
 }

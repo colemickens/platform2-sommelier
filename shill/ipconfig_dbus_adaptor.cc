@@ -69,7 +69,10 @@ map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
 void IPConfigDBusAdaptor::SetProperty(const string &name,
                                       const ::DBus::Variant &value,
                                       ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(ipconfig_->store(), name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(ipconfig_->mutable_store(),
+                                  name,
+                                  value,
+                                  &error)) {
     PropertyChanged(name, value);
   }
 }

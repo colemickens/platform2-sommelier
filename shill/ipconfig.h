@@ -76,7 +76,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool RenewIP();
   virtual bool ReleaseIP();
 
-  PropertyStore *store() { return &store_; }
+  PropertyStore *mutable_store() { return &store_; }
+  const PropertyStore &store() const { return store_; }
 
   // |id_suffix| is used to generate a storage ID that binds this instance
   // to its associated device.

@@ -62,7 +62,10 @@ map<string, ::DBus::Variant> ProfileDBusAdaptor::GetProperties(
 void ProfileDBusAdaptor::SetProperty(const string &name,
                                      const ::DBus::Variant &value,
                                      ::DBus::Error &error) {
-  if (DBusAdaptor::DispatchOnType(profile_->store(), name, value, &error)) {
+  if (DBusAdaptor::DispatchOnType(profile_->mutable_store(),
+                                  name,
+                                  value,
+                                  &error)) {
     PropertyChanged(name, value);
   }
 }

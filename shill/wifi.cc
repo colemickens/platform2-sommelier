@@ -62,7 +62,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       scan_pending_(false),
       scan_interval_(0),
       link_up_(false) {
-  PropertyStore *store = this->store();
+  PropertyStore *store = this->mutable_store();
   store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
   store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
                  &bgscan_short_interval_);

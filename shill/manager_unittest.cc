@@ -72,8 +72,8 @@ class ManagerTest : public PropertyStoreTest {
 };
 
 TEST_F(ManagerTest, Contains) {
-  EXPECT_TRUE(manager()->store()->Contains(flimflam::kStateProperty));
-  EXPECT_FALSE(manager()->store()->Contains(""));
+  EXPECT_TRUE(manager()->store().Contains(flimflam::kStateProperty));
+  EXPECT_FALSE(manager()->store().Contains(""));
 }
 
 TEST_F(ManagerTest, DeviceRegistration) {
@@ -163,9 +163,10 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     string expected("portal_list");
-    manager()->store()->SetStringProperty(flimflam::kCheckPortalListProperty,
-                                          expected,
-                                          &error);
+    manager()->mutable_store()->SetStringProperty(
+        flimflam::kCheckPortalListProperty,
+        expected,
+        &error);
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kCheckPortalListProperty) == props.end());
     EXPECT_EQ(props[flimflam::kCheckPortalListProperty].reader().get_string(),
@@ -174,9 +175,9 @@ TEST_F(ManagerTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    manager()->store()->SetBoolProperty(flimflam::kOfflineModeProperty,
-                                        expected,
-                                        &error);
+    manager()->mutable_store()->SetBoolProperty(flimflam::kOfflineModeProperty,
+                                                expected,
+                                                &error);
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kOfflineModeProperty) == props.end());
     EXPECT_EQ(props[flimflam::kOfflineModeProperty].reader().get_bool(),
@@ -239,9 +240,9 @@ TEST_F(ManagerTest, MoveService) {
     ::DBus::Error dbus_error;
     map<string, ::DBus::Variant> props;
     bool expected = true;
-    serv->store()->SetBoolProperty(flimflam::kAutoConnectProperty,
-                                   expected,
-                                   &error);
+    serv->mutable_store()->SetBoolProperty(flimflam::kAutoConnectProperty,
+                                           expected,
+                                           &error);
     DBusAdaptor::GetProperties(serv->store(), &props, &dbus_error);
     ASSERT_TRUE(ContainsKey(props, flimflam::kAutoConnectProperty));
     EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
@@ -253,14 +254,14 @@ TEST_F(ManagerTest, MoveService) {
 TEST_F(ManagerTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
                                             flimflam::kOfflineModeProperty,
                                             PropertyStoreTest::kBoolV,
                                             &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
                                             flimflam::kCountryProperty,
                                             PropertyStoreTest::kStringV,
                                             &error));
@@ -268,7 +269,7 @@ TEST_F(ManagerTest, Dispatch) {
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->store(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
                                              flimflam::kCountryProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));
@@ -276,7 +277,7 @@ TEST_F(ManagerTest, Dispatch) {
   }
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->store(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(manager()->mutable_store(),
                                              flimflam::kOfflineModeProperty,
                                              PropertyStoreTest::kStringV,
                                              &error));
@@ -286,7 +287,7 @@ TEST_F(ManagerTest, Dispatch) {
   {
     ::DBus::Error error;
     EXPECT_FALSE(DBusAdaptor::DispatchOnType(
-        manager()->store(),
+        manager()->mutable_store(),
         flimflam::kEnabledTechnologiesProperty,
         PropertyStoreTest::kStringsV,
         &error));

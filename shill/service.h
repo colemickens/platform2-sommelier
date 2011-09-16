@@ -134,7 +134,8 @@ class Service : public base::RefCounted<Service> {
   const ProfileRefPtr &profile() const;
   void set_profile(const ProfileRefPtr &p);
 
-  PropertyStore *store() { return &store_; }
+  PropertyStore *mutable_store() { return &store_; }
+  const PropertyStore &store() const { return store_; }
 
  protected:
   // Returns true if a character is allowed to be in a service storage id.

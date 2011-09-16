@@ -63,9 +63,10 @@ TEST_F(DefaultProfileTest, GetProperties) {
   {
     Error error(Error::kInvalidProperty, "");
     EXPECT_FALSE(
-        profile_->store()->SetBoolProperty(flimflam::kOfflineModeProperty,
-                                           true,
-                                           &error));
+        profile_->mutable_store()->SetBoolProperty(
+            flimflam::kOfflineModeProperty,
+            true,
+            &error));
   }
 }
 

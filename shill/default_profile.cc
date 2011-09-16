@@ -32,7 +32,7 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
     : Profile(control, manager, Identifier(kDefaultId), "", true),
       storage_path_(storage_path),
       props_(manager_props) {
-  PropertyStore *store = this->store();
+  PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kCheckPortalListProperty,
                              &manager_props.check_portal_list);
   store->RegisterConstString(flimflam::kCountryProperty,

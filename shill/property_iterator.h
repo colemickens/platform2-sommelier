@@ -26,7 +26,7 @@ class PropertyConstIterator {
 
   const std::string &Key() const { return it_->first; }
 
-  const V &Value() { return it_->second->Get(); }
+  const V &Value() const { return it_->second->Get(); }
 
  private:
   friend class PropertyStore;

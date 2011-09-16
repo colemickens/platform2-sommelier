@@ -37,7 +37,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid) {
   SetEAPKeyManagement(key_management);
 
-  PropertyStore *store = this->store();
+  PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
   store->RegisterString(flimflam::kPassphraseProperty, &passphrase_);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);

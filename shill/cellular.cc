@@ -167,7 +167,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       allow_roaming_(false),
       scanning_(false),
       scan_interval_(0) {
-  PropertyStore *store = this->store();
+  PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
@@ -984,7 +984,7 @@ void Cellular::HelpRegisterDerivedStringmaps(
     const string &name,
     Stringmaps(Cellular::*get)(void),
     bool(Cellular::*set)(const Stringmaps&)) {
-  store()->RegisterDerivedStringmaps(
+  mutable_store()->RegisterDerivedStringmaps(
       name,
       StringmapsAccessor(
           new CustomAccessor<Cellular, Stringmaps>(this, get, set)));
@@ -994,7 +994,7 @@ void Cellular::HelpRegisterDerivedStrIntPair(
     const string &name,
     StrIntPair(Cellular::*get)(void),
     bool(Cellular::*set)(const StrIntPair&)) {
-  store()->RegisterDerivedStrIntPair(
+  mutable_store()->RegisterDerivedStrIntPair(
       name,
       StrIntPairAccessor(
           new CustomAccessor<Cellular, StrIntPair>(this, get, set)));

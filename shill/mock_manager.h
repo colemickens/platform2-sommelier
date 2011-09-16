@@ -20,7 +20,8 @@ class MockManager : public Manager {
   virtual ~MockManager();
 
   MOCK_METHOD0(device_info, DeviceInfo*(void));
-  MOCK_METHOD0(store, PropertyStore*(void));
+  MOCK_METHOD0(mutable_store, PropertyStore*(void));
+  MOCK_CONST_METHOD0(store, const PropertyStore&(void));
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));
   MOCK_METHOD1(UpdateService, void(const ServiceConstRefPtr &to_update));
 

@@ -27,7 +27,7 @@ CellularService::CellularService(ControlInterface *control_interface,
       strength_(0),
       cellular_(device),
       type_(flimflam::kTypeCellular) {
-  PropertyStore *store = this->store();
+  PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
   store->RegisterStringmap(flimflam::kCellularApnProperty, &apn_info_);

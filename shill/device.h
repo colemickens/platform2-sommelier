@@ -87,7 +87,8 @@ class Device : public base::RefCounted<Device> {
   // instance.
   const std::string &UniqueName() const;
 
-  PropertyStore *store() { return &store_; }
+  PropertyStore *mutable_store() { return &store_; }
+  const PropertyStore &store() const { return store_; }
 
   bool Load(StoreInterface *storage);
   bool Save(StoreInterface *storage);

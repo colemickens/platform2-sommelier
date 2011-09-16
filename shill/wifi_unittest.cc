@@ -60,14 +60,14 @@ class WiFiPropertyTest : public PropertyStoreTest {
 };
 
 TEST_F(WiFiPropertyTest, Contains) {
-  EXPECT_TRUE(device_->store()->Contains(flimflam::kNameProperty));
-  EXPECT_FALSE(device_->store()->Contains(""));
+  EXPECT_TRUE(device_->store().Contains(flimflam::kNameProperty));
+  EXPECT_FALSE(device_->store().Contains(""));
 }
 
 TEST_F(WiFiPropertyTest, Dispatch) {
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                             flimflam::kBgscanMethodProperty,
                                             PropertyStoreTest::kStringV,
                                             &error));
@@ -75,14 +75,14 @@ TEST_F(WiFiPropertyTest, Dispatch) {
   {
     ::DBus::Error error;
     EXPECT_TRUE(DBusAdaptor::DispatchOnType(
-        device_->store(),
+        device_->mutable_store(),
         flimflam::kBgscanSignalThresholdProperty,
         PropertyStoreTest::kInt32V,
         &error));
   }
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->store(),
+    EXPECT_TRUE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                             flimflam::kScanIntervalProperty,
                                             PropertyStoreTest::kUint16V,
                                             &error));
@@ -90,7 +90,7 @@ TEST_F(WiFiPropertyTest, Dispatch) {
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->store(),
+    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                              flimflam::kScanningProperty,
                                              PropertyStoreTest::kBoolV,
                                              &error));

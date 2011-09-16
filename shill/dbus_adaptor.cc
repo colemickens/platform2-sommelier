@@ -81,51 +81,51 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
 }
 
 // static
-bool DBusAdaptor::GetProperties(PropertyStore *store,
+bool DBusAdaptor::GetProperties(const PropertyStore &store,
                                 map<string, ::DBus::Variant> *out,
                                 ::DBus::Error *error) {
   {
-    PropertyConstIterator<bool> it = store->GetBoolPropertiesIter();
+    PropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = BoolToVariant(it.Value());
   }
   {
-    PropertyConstIterator<int16> it = store->GetInt16PropertiesIter();
+    PropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Int16ToVariant(it.Value());
   }
   {
-    PropertyConstIterator<int32> it = store->GetInt32PropertiesIter();
+    PropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Int32ToVariant(it.Value());
   }
   {
-    PropertyConstIterator<string> it = store->GetStringPropertiesIter();
+    PropertyConstIterator<string> it = store.GetStringPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = StringToVariant(it.Value());
   }
   {
-    PropertyConstIterator<Stringmap> it = store->GetStringmapPropertiesIter();
+    PropertyConstIterator<Stringmap> it = store.GetStringmapPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = StringmapToVariant(it.Value());
   }
   {
-    PropertyConstIterator<Strings> it = store->GetStringsPropertiesIter();
+    PropertyConstIterator<Strings> it = store.GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = StringsToVariant(it.Value());
   }
   {
-    PropertyConstIterator<uint8> it = store->GetUint8PropertiesIter();
+    PropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = ByteToVariant(it.Value());
   }
   {
-    PropertyConstIterator<uint16> it = store->GetUint16PropertiesIter();
+    PropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Uint16ToVariant(it.Value());
   }
   {
-    PropertyConstIterator<uint32> it = store->GetUint32PropertiesIter();
+    PropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
       (*out)[it.Key()] = Uint32ToVariant(it.Value());
   }

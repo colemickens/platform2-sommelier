@@ -72,7 +72,8 @@ class Manager {
   void RequestScan(const std::string &technology, Error *error);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
-  virtual PropertyStore *store() { return &store_; }
+  PropertyStore *mutable_store() { return &store_; }
+  virtual const PropertyStore &store() const { return store_; }
 
  private:
   friend class ManagerAdaptorInterface;

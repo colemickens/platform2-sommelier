@@ -61,7 +61,7 @@ map<string, ::DBus::Variant> ServiceDBusAdaptor::GetProperties(
 void ServiceDBusAdaptor::SetProperty(const string& name,
                                      const ::DBus::Variant& value,
                                      ::DBus::Error &error) {
-  DBusAdaptor::DispatchOnType(service_->store(), name, value, &error);
+  DBusAdaptor::DispatchOnType(service_->mutable_store(), name, value, &error);
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string& , ::DBus::Error &error) {
