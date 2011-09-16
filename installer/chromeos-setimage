@@ -28,8 +28,6 @@ DEFINE_string update_grub_cfg "" \
   "If specified, the path to a new grub.cfg."
 DEFINE_string update_vmlinuz "" \
   "If specified, the path to a vmlinuz to use as syslinux's vmlinuz.[A|B]"
-DEFINE_boolean run_as_root ${FLAGS_FALSE} \
-  "Allow root to run this script (Careful, it won't prompt for a password!)"
 DEFINE_boolean enable_rootfs_verification ${FLAGS_TRUE} \
   "With override_kernel_options, will toggle verified rootfs for legacy \
 bootloaders"
@@ -89,9 +87,6 @@ if [ -n "${@:-}" ]; then
     exit 1
   fi
 fi
-
-# Don't run this as root
-dont_run_as_root
 
 # Check out the dst device.
 if [ ! -b "$FLAGS_dst" ]

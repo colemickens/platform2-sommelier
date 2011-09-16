@@ -429,16 +429,6 @@ part_index_to_uuid() {
   sudo $GPT show -i "$idx" -u "$dev"
 }
 
-# The scripts that source this file typically want to use the root password as
-# confirmation, unless the --run_as_root flag is given.
-dont_run_as_root() {
-  if [ "${FLAGS_run_as_root}" -eq "${FLAGS_TRUE}" ]
-  then
-    echo "The caller of this script ($0) is using the old run_as_root flag."
-    echo "Please fix it - see crosbug.com/6136 :)"
-  fi
-}
-
 list_usb_disks() {
   local sd
   for sd in /sys/block/sd*; do

@@ -16,8 +16,6 @@ DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
   "Skip check to ensure destination is not removable"
 DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
   "Skip installing the rootfs; Only set up partition table"
-DEFINE_boolean run_as_root ${FLAGS_FALSE} \
-  "Allow root to run this script (Careful, it won't prompt for a password!)"
 DEFINE_boolean yes ${FLAGS_FALSE} \
   "Answer yes to everything"
 DEFINE_boolean skip_vblock ${FLAGS_FALSE} \
@@ -51,9 +49,6 @@ if [ "$FLAGS_debug" -eq "${FLAGS_TRUE}" ]; then
   set -x
   SUB_CMD_DEBUG_FLAG="--debug"
 fi
-
-# Don't run this as root
-dont_run_as_root
 
 # Determine our architecture
 if [ -z "$FLAGS_arch" ]; then
