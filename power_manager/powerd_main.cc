@@ -15,7 +15,6 @@
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
-#include "cros/chromeos_cros_api.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
 #include "power_manager/backlight.h"
@@ -90,9 +89,6 @@ int main(int argc, char* argv[]) {
                              "/usr/share/power_manager" :
                              FLAGS_default_prefs_dir);
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
-  string err;
-  CHECK(chromeos::LoadLibcros(chromeos::kCrosDefaultPath, err))
-      << "LoadLibcros('" << chromeos::kCrosDefaultPath << "') failed: " << err;
   gdk_init(&argc, &argv);
   power_manager::Backlight backlight;
   LOG_IF(WARNING, !backlight.Init(FilePath(power_manager::kBacklightPath),
