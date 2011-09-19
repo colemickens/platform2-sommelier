@@ -53,9 +53,12 @@ class UdevDevice {
   size_t GetPrimaryPartitionCount() const;
 
   // Checks if a device should be auto-mounted. Currently, all external
-  // disk devices, which are not on the boot device, not virtual, and
-  // do not host Chrome-OS specific partition are considered auto-mountable.
-  bool IsAutoMountable();
+  // disk devices, which are neither on the boot device nor virtual,
+  // are considered auto-mountable.
+  bool IsAutoMountable() const;
+
+  // Checks if a device should be hidden from the file browser.
+  bool IsHidden();
 
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;

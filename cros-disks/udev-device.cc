@@ -193,21 +193,24 @@ bool UdevDevice::IsMediaAvailable() const {
   return is_media_available;
 }
 
-bool UdevDevice::IsAutoMountable() {
+bool UdevDevice::IsAutoMountable() const {
   // TODO(benchan): Find a reliable way to detect if a device is a removable
   // storage as the removable attribute in sysfs does not always tell the truth.
-  if (IsOnBootDevice() || IsVirtual() || !IsMediaAvailable())
-    return false;
+  return !IsOnBootDevice() && !IsVirtual() && IsMediaAvailable();
+}
 
-  // Ignore a device that is neither marked as a partition nor a filesystem,
+bool UdevDevice::IsHidden() {
+  if (IsPropertyTrue(kPropertyPresentationHide))
+    return true;
+
+  // Hide a device that is neither marked as a partition nor a filesystem,
   // unless it has no valid partitions (e.g. the device is unformatted or
-  // corrupted). An unformatted or corrupted device is considered as
-  // auto-mountable so that the file browser sees it and provides a way to
-  // format it.
+  // corrupted). An unformatted or corrupted device is visible in the file
+  // the file browser so that we can provide a way to format it.
   if (!HasAttribute(kAttributePartition) &&
       !HasProperty(kPropertyFilesystemUsage) &&
       (GetPrimaryPartitionCount() > 0))
-    return false;
+    return true;
 
   // TODO(benchan): Find a better way to filter out Chrome OS specific
   // partitions instead of excluding partitions with certain labels
@@ -217,11 +220,11 @@ bool UdevDevice::IsAutoMountable() {
     for (const char** label = kNonAutoMountableFilesystemLabels;
         *label; ++label) {
       if (strcmp(*label, filesystem_label.c_str()) == 0) {
-        return false;
+        return true;
       }
     }
   }
-  return true;
+  return false;
 }
 
 bool UdevDevice::IsOnBootDevice() const {
@@ -297,7 +300,7 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_drive(HasAttribute(kAttributeRange));
   disk.set_is_rotational(HasProperty(kPropertyRotationRate));
   disk.set_is_optical_disk(IsPropertyTrue(kPropertyCDROM));
-  disk.set_is_hidden(IsPropertyTrue(kPropertyPresentationHide));
+  disk.set_is_hidden(IsHidden());
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_is_virtual(IsVirtual());
