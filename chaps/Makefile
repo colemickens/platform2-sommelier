@@ -14,15 +14,15 @@ INCLUDE_DIRS = -I$(OUT)include -I.. \
                $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-c++-1)
 LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs dbus-1 dbus-c++-1)
 
-CFLAGS := $(CFLAGS)
 CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS)
 LDFLAGS += -lbase $(LIB_DIRS)
 
+# Rules
 $(OUT)include/chaps/chaps_proxy_generated.h: chaps_interface.xml
 	@mkdir -p $(dir $@)
 	@$(DBUSXX_XML2CPP) $< --proxy=$@
 RM_ON_CLEAN += $(OUT)include/chaps/chaps_proxy_generated.h
-RMDIR_ON_CLEAN += $(OUT)include/chaps $(OUT)include
+RMDIR_ON_CLEAN += $(OUT)include $(OUT)include/chaps
 
 $(OUT)include/chaps/chaps_adaptor_generated.h: chaps_interface.xml
 	@mkdir -p $(dir $@)
@@ -35,21 +35,29 @@ $(OUT)libchaps.so: dbus-headers $(OUT)chaps.o \
 	$(call cxx_library)
 RM_ON_CLEAN += $(OUT)libchaps.so
 
-$(OUT)chapsd: dbus-headers $(OUT)chapsd.o
-	$(call cxx_binary)
+$(OUT)chapsd: dbus-headers $(OUT)chapsd.o \
+                           $(OUT)chaps_service_redirect.o \
+                           $(OUT)chaps_adaptor.o \
+                           $(OUT)chaps_utility.o
+	$(call cxx_binary, -ldl)
 RM_ON_CLEAN += $(OUT)chapsd
 
-$(OUT)chaps_test: $(OUT)chaps_test.o $(OUT)libchaps.so
+$(OUT)chapsd_test: $(OUT)chapsd_test.o $(OUT)chaps_service_redirect.o
+	$(call cxx_binary, -lgtest -lgflags -lchaps -ldl)
+RM_ON_CLEAN += $(OUT)chapsd_test
+
+$(OUT)chaps_test: $(OUT)chaps_test.o
 	$(call cxx_binary, -lgtest -lgmock -lchaps)
 RM_ON_CLEAN += $(OUT)chaps_test
 
 # Some shortcuts
-all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)chaps_test
+all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)chaps_test $(OUT)chapsd_test
 
 dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
               $(OUT)include/chaps/chaps_proxy_generated.h
 
-tests: $(OUT)chaps_test
+tests: $(OUT)libchaps.so $(OUT)chaps_test $(OUT)chapsd_test
 
 runtests: tests
 	LD_LIBRARY_PATH=$(OUT) "$(OUT)chaps_test"
+	#LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"

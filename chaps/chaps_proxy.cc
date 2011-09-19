@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
 
 using std::string;
@@ -17,75 +18,64 @@ ChapsProxyImpl::ChapsProxyImpl() {}
 
 ChapsProxyImpl::~ChapsProxyImpl() {}
 
-bool ChapsProxyImpl::Connect(const string& username) {
-  bool success = false;
+bool ChapsProxyImpl::Init() {
   try {
-    if (proxy_ == NULL) {
+    if (!DBus::default_dispatcher)
+      DBus::default_dispatcher = new DBus::BusDispatcher();
+    if (!proxy_.get()) {
       // Establish a D-Bus connection.
-      DBus::Connection connection = DBus::Connection::SessionBus();
-      proxy_.reset(new Proxy(connection, "/org/chromium/Chaps",
-                             "org.chromium.Chaps"));
+      DBus::Connection connection = DBus::Connection::SystemBus();
+      proxy_.reset(new Proxy(connection, kChapsServicePath,
+                             kChapsServiceName));
     }
-    // Connect to our service via D-Bus.
-    if (proxy_ != NULL)
-      proxy_->Connect(username, session_id_, success);
+    if (proxy_.get())
+      return true;
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
-  return success;
+  return false;
 }
 
-void ChapsProxyImpl::Disconnect() {
-  try {
-    if (proxy_ != NULL)
-      proxy_->Disconnect(session_id_);
-  } catch (DBus::Error err) {
-    LOG(ERROR) << "DBus::Error - " << err.what();
-  }
-}
-
-uint32_t ChapsProxyImpl::GetSlotList(const bool& token_present,
-                                     vector<uint32_t>& slot_list) {
-  uint32_t return_value = CKR_OK;
-  if (proxy_ == NULL)
+uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
+                                     vector<uint32_t>* slot_list) {
+  uint32_t result = CKR_OK;
+  if (!proxy_.get())
     return CKR_CRYPTOKI_NOT_INITIALIZED;
   try {
-    proxy_->GetSlotList(session_id_, token_present, slot_list, return_value);
+    proxy_->GetSlotList(token_present, *slot_list, result);
   } catch (DBus::Error err) {
-    return_value = CKR_GENERAL_ERROR;
+    result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
-  return return_value;
+  return result;
 }
 
-uint32_t ChapsProxyImpl::GetSlotInfo(const uint32_t& slot_id,
-                                     string& slot_description,
-                                     string& manufacturer_id,
-                                     uint32_t& flags,
-                                     uint8_t& hardware_version_major,
-                                     uint8_t& hardware_version_minor,
-                                     uint8_t& firmware_version_major,
-                                     uint8_t& firmware_version_minor) {
-  uint32_t return_value = CKR_OK;
-  if (proxy_ == NULL)
+uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
+                                     string* slot_description,
+                                     string* manufacturer_id,
+                                     uint32_t* flags,
+                                     uint8_t* hardware_version_major,
+                                     uint8_t* hardware_version_minor,
+                                     uint8_t* firmware_version_major,
+                                     uint8_t* firmware_version_minor) {
+  uint32_t result = CKR_OK;
+  if (!proxy_.get())
     return CKR_CRYPTOKI_NOT_INITIALIZED;
   try {
-    proxy_->GetSlotInfo(session_id_,
-                        slot_id,
-                        slot_description,
-                        manufacturer_id,
-                        flags,
-                        hardware_version_major,
-                        hardware_version_minor,
-                        firmware_version_major,
-                        firmware_version_minor,
-                        return_value);
+    proxy_->GetSlotInfo(slot_id,
+                        *slot_description,
+                        *manufacturer_id,
+                        *flags,
+                        *hardware_version_major,
+                        *hardware_version_minor,
+                        *firmware_version_major,
+                        *firmware_version_minor,
+                        result);
   } catch (DBus::Error err) {
-    return_value = CKR_GENERAL_ERROR;
+    result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
-  return return_value;
+  return result;
 }
 
 }  // namespace
-

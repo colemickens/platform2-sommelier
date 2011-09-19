@@ -23,42 +23,21 @@
 <node name="/org/chromium/Chaps">
   <interface name="org.chromium.Chaps">
 
-    <!-- The Connect method establishes a connection with the Chaps daemon. It
-         must be called before any other methods and should be paired with a
-         Disconnect call. The session identifier returned can be used in all
-         other method calls. The return_value is true on success.
-    -->
-    <method name="Connect">
-      <arg type="s" name="username" direction="in"/>
-      <arg type="u" name="session_id" direction="out"/>
-      <arg type="b" name="return_value" direction="out"/>
-    </method>
-
-    <!-- The Disconnect method closes a connection with the Chaps daemon. It
-         should be called once for each call to Connect. Once Disconnect has
-         been called, the session identifier is no longer valid.
-    -->
-    <method name="Disconnect">
-      <arg type="u" name="session_id" direction="in"/>
-    </method>
-
     <!-- Methods that map to PKCS #11 calls. Each method name is identical to
          the PKCS #11 function name except for the "C_" prefix.
     -->
 
     <!-- PKCS #11 v2.20 section 11.5 page 106. -->
     <method name="GetSlotList">
-      <arg type="u" name="session_id" direction="in"/>
       <arg type="b" name="token_present" direction="in"/>
       <arg type="au" name="slot_list" direction="out"/>
-      <arg type="u" name="return_value" direction="out">
+      <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>
 
     <!-- PKCS #11 v2.20 section 11.5 page 108. -->
     <method name="GetSlotInfo">
-      <arg type="u" name="session_id" direction="in"/>
       <arg type="u" name="slot_id" direction="in"/>
       <arg type="s" name="slot_description" direction="out"/>
       <arg type="s" name="manufacturer_id" direction="out"/>
@@ -67,7 +46,7 @@
       <arg type="y" name="hardware_version_minor" direction="out"/>
       <arg type="y" name="firmware_version_major" direction="out"/>
       <arg type="y" name="firmware_version_minor" direction="out"/>
-      <arg type="u" name="return_value" direction="out">
+      <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>

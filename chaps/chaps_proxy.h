@@ -8,8 +8,8 @@
 
 #include <base/scoped_ptr.h>
 
+#include "chaps/chaps_interface.h"
 #include "chaps/chaps_proxy_generated.h"
-#include "chaps/chaps_proxy_interface.h"
 
 namespace chaps {
 
@@ -20,23 +20,22 @@ namespace chaps {
 //
 // The Connect() method must be called successfully before calling any other
 // methods.
-class ChapsProxyImpl : public ChapsProxyInterface {
+class ChapsProxyImpl : public ChapsInterface {
 public:
   ChapsProxyImpl();
   virtual ~ChapsProxyImpl();
-  // ChapsProxyInterface methods.
-  virtual bool Connect(const std::string& username);
-  virtual void Disconnect();
-  virtual uint32_t GetSlotList(const bool& token_present,
-                               std::vector<uint32_t>& slot_list);
-  virtual uint32_t GetSlotInfo(const uint32_t& slot_id,
-                               std::string& slot_description,
-                               std::string& manufacturer_id,
-                               uint32_t& flags,
-                               uint8_t& hardware_version_major,
-                               uint8_t& hardware_version_minor,
-                               uint8_t& firmware_version_major,
-                               uint8_t& firmware_version_minor);
+  bool Init();
+  // ChapsInterface methods.
+  virtual uint32_t GetSlotList(bool token_present,
+                               std::vector<uint32_t>* slot_list);
+  virtual uint32_t GetSlotInfo(uint32_t slot_id,
+                               std::string* slot_description,
+                               std::string* manufacturer_id,
+                               uint32_t* flags,
+                               uint8_t* hardware_version_major,
+                               uint8_t* hardware_version_minor,
+                               uint8_t* firmware_version_major,
+                               uint8_t* firmware_version_minor);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.
@@ -53,7 +52,6 @@ private:
   };
 
   scoped_ptr<Proxy> proxy_;
-  uint32_t session_id_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyImpl);
 };
@@ -61,4 +59,3 @@ private:
 }  // namespace
 
 #endif  // CHAPS_CHAPS_PROXY_H
-

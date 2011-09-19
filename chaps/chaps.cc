@@ -22,7 +22,7 @@ static const CK_BYTE kChapsLibraryVersionMajor = 0;
 static const CK_BYTE kChapsLibraryVersionMinor = 1;
 
 // The global proxy instance. This is valid only when g_is_initialized is true.
-static chaps::ChapsProxyInterface* g_proxy = NULL;
+static chaps::ChapsInterface* g_proxy = NULL;
 
 // Set to true when using a mock proxy.
 static bool g_is_using_mock = false;
@@ -31,7 +31,7 @@ static bool g_is_using_mock = false;
 // When not using a mock proxy this is synonymous with (g_proxy != NULL).
 static bool g_is_initialized = false;
 
-// tear down helper
+// Tear down helper.
 static void TearDown() {
   if (g_is_initialized && !g_is_using_mock) {
     delete g_proxy;
@@ -40,13 +40,10 @@ static void TearDown() {
   g_is_initialized = false;
 }
 
-// Logging helper macro
-#define LOG_CK_RV(rv) LOG(ERROR) << __func__ << " - " << chaps::RVToString(rv);
-
 namespace chaps {
 
-// Helpers to support a mock proxy (useful in testing)
-void EnableMockProxy(ChapsProxyInterface* proxy, bool is_initialized) {
+// Helpers to support a mock proxy (useful in testing).
+void EnableMockProxy(ChapsInterface* proxy, bool is_initialized) {
   g_proxy = proxy;
   g_is_using_mock = true;
   g_is_initialized = is_initialized;
@@ -74,11 +71,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (!g_proxy)
     return CKR_HOST_MEMORY;
   g_is_initialized = true;
-  // We have a proxy instance, now connect.
-  if (!g_proxy->Connect("default")) {
-    TearDown();
-    return CKR_GENERAL_ERROR;
-  }
   return CKR_OK;
 }
 
@@ -89,7 +81,6 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
     return CKR_ARGUMENTS_BAD;
   if (!g_is_initialized)
     return CKR_CRYPTOKI_NOT_INITIALIZED;
-  g_proxy->Disconnect();
   TearDown();
   return CKR_OK;
 }
@@ -123,15 +114,12 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
   if (pulCount == NULL_PTR)
     return CKR_ARGUMENTS_BAD;
 
-  CK_RV rv = CKR_OK;
+  CK_RV result = CKR_OK;
   vector<uint32_t> slot_list;
-  rv = g_proxy->GetSlotList((tokenPresent != CK_FALSE), slot_list);
-  if (rv != CKR_OK) {
-    LOG_CK_RV(rv);
-    return rv;
-  }
-  size_t max_copy = chaps::UlongToSize(*pulCount);
-  *pulCount = chaps::SizeToUlong(slot_list.size());
+  result = g_proxy->GetSlotList((tokenPresent != CK_FALSE), &slot_list);
+  LOG_CK_RV_ERR_RETURN(result);
+  size_t max_copy = static_cast<size_t>(*pulCount);
+  *pulCount = static_cast<CK_ULONG>(slot_list.size());
   if (pSlotList == NULL_PTR)
     return CKR_OK;
   for (size_t i = 0; i < slot_list.size(); i++) {
@@ -149,22 +137,20 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   if (pInfo == NULL_PTR)
     return CKR_ARGUMENTS_BAD;
 
-  CK_RV rv = CKR_OK;
+  CK_RV result = CKR_OK;
   string slot_description;
   string manufacturer_id;
   uint32_t flags = 0;
-  rv = g_proxy->GetSlotInfo(slotID,
-      slot_description,
-      manufacturer_id,
-      flags,
-      chaps::BytePtrToRef8(&pInfo->hardwareVersion.major),
-      chaps::BytePtrToRef8(&pInfo->hardwareVersion.minor),
-      chaps::BytePtrToRef8(&pInfo->firmwareVersion.major),
-      chaps::BytePtrToRef8(&pInfo->firmwareVersion.minor));
-  if (rv != CKR_OK) {
-    LOG_CK_RV(rv);
-    return rv;
-  }
+  result = g_proxy->GetSlotInfo(
+      slotID,
+      &slot_description,
+      &manufacturer_id,
+      &flags,
+      static_cast<uint8_t*>(&pInfo->hardwareVersion.major),
+      static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
+      static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
+      static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
+  LOG_CK_RV_ERR_RETURN(result);
   pInfo->flags = flags;
   chaps::CopyToCharBuffer(slot_description.c_str(), pInfo->slotDescription,
                           arraysize(pInfo->slotDescription));
@@ -172,4 +158,3 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
                           arraysize(pInfo->manufacturerID));
   return CKR_OK;
 }
-
