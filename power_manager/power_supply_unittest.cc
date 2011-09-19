@@ -33,7 +33,9 @@ const double kChargeNow = 1.80;
 const double kCurrentNow = 0.20;
 const double kVoltageNow = 2.50;
 
+const double kPowerNow = kCurrentNow * kVoltageNow;
 const double kEnergyNow = kChargeNow * kVoltageNow;
+const double kEnergyFull = kChargeFull * kVoltageNow;
 const double kEnergyRate = kCurrentNow * kVoltageNow;
 const double kPercentage = 100. * kChargeNow / kChargeFull;
 const int64 kTimeToFull = lround(3600. * (kChargeFull - kChargeNow) /
@@ -46,6 +48,9 @@ int ScaleDouble(double value) {
   return round(value * kDoubleScaleFactor);
 }
 
+const int kPowerNowInt = ScaleDouble(kPowerNow);
+const int kEnergyFullInt = ScaleDouble(kEnergyFull);
+const int kEnergyNowInt = ScaleDouble(kEnergyNow);
 const int kChargeFullInt = ScaleDouble(kChargeFull);
 const int kChargeNowInt = ScaleDouble(kChargeNow);
 const int kCurrentNowInt = ScaleDouble(kCurrentNow);
@@ -177,6 +182,50 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   file_util::WriteFile(path.Append("battery/current_now"),
                        base::IntToString(-kCurrentNowInt).c_str(),
                        base::IntToString(-kCurrentNowInt).length());
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_FALSE(power_status.line_power_on);
+  EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
+  EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
+  EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
+  EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
+}
+
+// Test battery reporting energy instead of charge.
+TEST_F(PowerSupplyTest, TestEnergyDischarging) {
+  FilePath path = temp_dir_generator_->path();
+  file_util::CreateDirectory(path.Append("ac"));
+  file_util::CreateDirectory(path.Append("battery"));
+  map<string, string> values;
+  values["ac/online"] = kOffline;
+  values["ac/type"] = kACType;
+  values["battery/type"] = kBatteryType;
+  values["battery/present"] = kPresent;
+  values["battery/energy_full"] = base::IntToString(kEnergyFullInt);
+  values["battery/energy_full_design"] = base::IntToString(kEnergyFullInt);
+  values["battery/energy_now"] = base::IntToString(kEnergyNowInt);
+  values["battery/power_now"] = base::IntToString(kPowerNowInt);
+  values["battery/voltage_now"] = base::IntToString(kVoltageNowInt);
+  values["battery/cycle_count"] = base::IntToString(kCycleCount);
+
+  for (map<string, string>::iterator iter = values.begin();
+       iter != values.end();
+       ++iter)
+    file_util::WriteFile(path.Append(iter->first),
+                         iter->second.c_str(),
+                         iter->second.length());
+  power_supply_->Init();
+  PowerStatus power_status;
+  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
+  EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
+  EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
+  EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
+  EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
+
+  file_util::WriteFile(path.Append("battery/power_now"),
+                       base::IntToString(-kPowerNowInt).c_str(),
+                       base::IntToString(-kPowerNowInt).length());
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);

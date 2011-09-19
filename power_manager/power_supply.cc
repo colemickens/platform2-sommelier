@@ -30,11 +30,11 @@ const base::TimeDelta kHysteresisTimeFast = base::TimeDelta::FromSeconds(10);
 const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
 
 // Converts time from hours to seconds.
-double HoursToSecondsDouble(double num_hours) {
+inline double HoursToSecondsDouble(double num_hours) {
   return num_hours * 3600.;
 }
 // Same as above, but rounds to nearest integer.
-int64 HoursToSecondsInt(double num_hours) {
+inline int64 HoursToSecondsInt(double num_hours) {
   return lround(HoursToSecondsDouble(num_hours));
 }
 
@@ -103,14 +103,6 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status) {
   if (!battery_is_present_)
     return true;
 
-  // Read all battery values from sysfs.
-  charge_full_ = battery_info_->ReadScaledDouble("charge_full");
-  charge_full_design_ = battery_info_->ReadScaledDouble("charge_full_design");
-  charge_now_ = battery_info_->ReadScaledDouble("charge_now");
-  // Sometimes current could be negative.  Ignore it and use |line_power_on| to
-  // determine whether it's charging or discharging.
-  current_now_ = fabs(battery_info_->ReadScaledDouble("current_now"));
-  cycle_count_ = battery_info_->ReadScaledDouble("cycle_count");
   voltage_now_ = battery_info_->ReadScaledDouble("voltage_now");
   // Attempt to determine nominal voltage for time remaining calculations.
   if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
@@ -119,6 +111,46 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status) {
     nominal_voltage_ = battery_info_->ReadScaledDouble("voltage_max_design");
   else
     nominal_voltage_ = voltage_now_;
+
+  // ACPI has two different battery types: charge_battery and energy_battery.
+  // The main difference is that charge_battery type exposes
+  // 1. current_now in A
+  // 2. charge_{now, full, full_design} in Ah
+  // while energy_battery type exposes
+  // 1. power_now W
+  // 2. energy_{now, full, full_design} in Wh
+  // Change all the energy readings to charge format.
+  // If both energy and charge reading are present (some non-ACPI drivers
+  // expose both readings), read only the charge format.
+  if (file_util::PathExists(battery_path_.Append("charge_full"))) {
+    charge_full_ = battery_info_->ReadScaledDouble("charge_full");
+    charge_full_design_ = battery_info_->ReadScaledDouble("charge_full_design");
+    charge_now_ = battery_info_->ReadScaledDouble("charge_now");
+  } else if(file_util::PathExists(battery_path_.Append("energy_full"))) {
+    if (nominal_voltage_ <= 0 || voltage_now_ <= 0) {
+      LOG(WARNING) << "Non valid voltage_nominal/now readings for "
+                   << "energy-to-charge conversion : "
+                   << nominal_voltage_ << "/" << voltage_now_;
+      return false;
+    }
+    charge_full_ =
+        battery_info_->ReadScaledDouble("energy_full") / voltage_now_;
+    charge_full_design_ =
+        battery_info_->ReadScaledDouble("energy_full_design") / voltage_now_;
+    charge_now_ = battery_info_->ReadScaledDouble("energy_now") / voltage_now_;
+  } else {
+    LOG(WARNING) << "No charge/energy readings for battery";
+    return false;
+  }
+  // Sometimes current could be negative.  Ignore it and use |line_power_on| to
+  // determine whether it's charging or discharging.
+  if (file_util::PathExists(battery_path_.Append("power_now"))) {
+    current_now_ = fabs(battery_info_->ReadScaledDouble("power_now")) /
+                   voltage_now_;
+  }
+  else
+    current_now_ = fabs(battery_info_->ReadScaledDouble("current_now"));
+  cycle_count_ = battery_info_->ReadScaledDouble("cycle_count");
 
   serial_number_.clear();
   technology_.clear();
@@ -165,7 +197,12 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   if (!info->power_status.battery_is_present)
     return true;
 
-  battery_info_->ReadString("vendor", &info->battery_vendor);
+  // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
+  // defined in <linux/power_supply.y>.
+  if (file_util::PathExists(battery_path_.Append("manufacturer")))
+    battery_info_->ReadString("manufacturer", &info->battery_vendor);
+  else
+    battery_info_->ReadString("vendor", &info->battery_vendor);
   battery_info_->ReadString("model_name", &info->battery_model);
   battery_info_->ReadString("serial_number", &info->battery_serial);
   battery_info_->ReadString("technology", &info->battery_technology);
