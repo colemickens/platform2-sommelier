@@ -97,7 +97,7 @@ class Device : public base::RefCounted<Device> {
   RTNLHandler *rtnl_handler() { return rtnl_handler_; }
 
   bool Load(StoreInterface *storage);
-  bool Save(StoreInterface *storage);
+  virtual bool Save(StoreInterface *storage);
 
   void set_dhcp_provider(DHCPProvider *provider) { dhcp_provider_ = provider; }
 

@@ -30,6 +30,9 @@ class DefaultProfile : public Profile {
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
 
+  // Persists profile information, as well as that of discovered devices
+  // and bound services, to disk.
+  // Returns true on success, false on failure.
   virtual bool Save(StoreInterface *storage);
 
   // Sets |path| to the persistent store file path for the default, global

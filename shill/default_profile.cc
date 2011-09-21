@@ -4,6 +4,8 @@
 
 #include "shill/default_profile.h"
 
+#include <vector>
+
 #include <base/file_path.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -12,6 +14,8 @@
 #include "shill/control_interface.h"
 #include "shill/manager.h"
 #include "shill/store_interface.h"
+
+using std::vector;
 
 namespace shill {
 // static
@@ -51,6 +55,13 @@ bool DefaultProfile::Save(StoreInterface *storage) {
   storage->SetString(kStorageId,
                      kStorageCheckPortalList,
                      props_.check_portal_list);
+  vector<DeviceRefPtr>::iterator it;
+  for (it = manager()->devices_begin(); it != manager()->devices_end(); ++it) {
+    if (!(*it)->Save(storage)) {
+      LOG(ERROR) << "Could not save " << (*it)->UniqueName();
+      return false;
+    }
+  }
   return Profile::Save(storage);
 }
 

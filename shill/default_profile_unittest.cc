@@ -6,6 +6,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -13,11 +14,13 @@
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 
 using std::map;
 using std::string;
+using std::vector;
 using ::testing::_;
 using ::testing::Return;
 
@@ -29,7 +32,13 @@ class DefaultProfileTest : public PropertyStoreTest {
       : profile_(new DefaultProfile(control_interface(),
                                     manager(),
                                     FilePath(kTestStoragePath),
-                                    properties_)) {
+                                    properties_)),
+        device_(new MockDevice(control_interface(),
+                               dispatcher(),
+                               manager(),
+                               "null0",
+                               "addr0",
+                               0)) {
   }
 
   virtual ~DefaultProfileTest() {}
@@ -38,6 +47,7 @@ class DefaultProfileTest : public PropertyStoreTest {
   static const char kTestStoragePath[];
 
   ProfileRefPtr profile_;
+  scoped_refptr<MockDevice> device_;
   Manager::Properties properties_;
 };
 
@@ -84,7 +94,12 @@ TEST_F(DefaultProfileTest, Save) {
                                DefaultProfile::kStorageOfflineMode,
                                false))
       .WillOnce(Return(true));
+
+  EXPECT_CALL(*device_.get(), Save(&storage)).WillOnce(Return(true));
+
+  manager()->RegisterDevice(device_);
   ASSERT_TRUE(profile_->Save(&storage));
+  manager()->DeregisterDevice(device_);
 }
 
 TEST_F(DefaultProfileTest, GetStoragePath) {

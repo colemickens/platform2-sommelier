@@ -75,6 +75,11 @@ class Manager {
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
 
+  std::vector<DeviceRefPtr>::iterator devices_begin() {
+    return devices_.begin();
+  }
+  std::vector<DeviceRefPtr>::iterator devices_end() { return devices_.end(); }
+
  private:
   friend class ManagerAdaptorInterface;
 

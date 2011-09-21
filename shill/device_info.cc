@@ -21,6 +21,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util-inl.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/control_interface.h"
@@ -186,7 +187,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
         technology = GetDeviceTechnology(link_name);
       }
     }
-    string address = infos_[dev_index].mac_address.HexEncode();
+    string address =
+        StringToLowerASCII(infos_[dev_index].mac_address.HexEncode());
     switch (technology) {
       case Device::kCellular:
         // Cellular devices are managed by ModemInfo.
