@@ -258,6 +258,17 @@ void SendSignalWithNoArgumentsToSystemBus(const char* path,
   ::dbus_message_unref(signal);
 }
 
+void CallMethodWithNoArguments(const char* service_name,
+                               const char* path,
+                               const char* interface_name,
+                               const char* method_name) {
+  Proxy proxy(dbus::GetSystemBusConnection(),
+              service_name,
+              path,
+              interface_name);
+  ::dbus_g_proxy_call_no_reply(proxy.gproxy(), method_name, G_TYPE_INVALID);
+}
+
 void SignalWatcher::StartMonitoring(const std::string& interface,
                                     const std::string& signal) {
   DCHECK(interface_.empty()) << "StartMonitoring() must be called only once";

@@ -464,6 +464,14 @@ void SendSignalWithNoArgumentsToSystemBus(const char* path,
                                           const char* interface_name,
                                           const char* signal_name);
 
+// \brief Calls a method |method_name| with no arguments per the given |path|
+// and |interface_name|.  Ignores return value.
+
+void CallMethodWithNoArguments(const char* service_name,
+                               const char* path,
+                               const char* interface_name,
+                               const char* method_name);
+
 // \brief Low-level signal monitor base class.
 //
 // Used when there is no definite named signal sender (that Proxy
