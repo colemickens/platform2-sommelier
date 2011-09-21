@@ -955,9 +955,9 @@ void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
   int user_initiated_int = user_initiated;
 
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              "/",
+                              kPowerManagerServicePath,
                               kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal("/",
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
                                                 kPowerManagerInterface,
                                                 kBrightnessChangedSignal);
   CHECK(signal);
