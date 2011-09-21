@@ -823,8 +823,8 @@ gboolean Service::TpmGetPassword(gchar** OUT_password, GError** error) {
     *OUT_password = NULL;
     return TRUE;
   }
-  *OUT_password = g_strdup_printf("%.*s", password.size(),
-                                  static_cast<char*>(password.data()));
+  *OUT_password = g_strndup(static_cast<char*>(password.data()),
+                            password.size());
   return TRUE;
 }
 
