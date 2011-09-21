@@ -349,6 +349,8 @@ void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
     discharge_start_time_ += offset;
   if (!last_acceptable_range_time_.is_null())
     last_acceptable_range_time_ += offset;
+  if (!last_poll_time_.is_null())
+    last_poll_time_ += offset;
 }
 
 double PowerSupply::PowerInfoReader::ReadScaledDouble(const char* name) {
