@@ -95,7 +95,8 @@ bool BacklightController::Init() {
     // If there are fewer steps than the max, adjust for it.
     // TODO(sque): this is not ideal for some cases, such as max=17, where the
     // steps will have a large spread.  Something we can work on in the future.
-    num_steps_ = std::max(1LL, std::min(kMaxBrightnessSteps, max_));
+    num_steps_ = std::max(static_cast<int64>(1),
+                          std::min(kMaxBrightnessSteps, max_));
 
     // Make sure the min-max brightness range is valid.
     CHECK(max_percent_ - min_percent_ > 0);

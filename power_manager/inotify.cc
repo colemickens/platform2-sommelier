@@ -12,7 +12,7 @@
 namespace power_manager {
 
 // Buffer size for read of inotify event data.
-static const int64 kInotifyBufferSize = 32768;
+static const gsize kInotifyBufferSize = 32768;
 
 Inotify::Inotify()
     : channel_(NULL),
@@ -81,7 +81,7 @@ gboolean Inotify::CallbackHandler(GIOChannel* source,
   InotifyCallback callback = inotifier->callback_;
   gpointer callback_data = inotifier->callback_data_;
   char buf[kInotifyBufferSize];
-  guint len;
+  gsize len;
   GIOError err = g_io_channel_read(source, buf, kInotifyBufferSize, &len);
   if (G_IO_ERROR_NONE != err) {
     LOG(ERROR) << "Error reading from inotify!";
