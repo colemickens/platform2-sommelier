@@ -586,33 +586,33 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                              DBusMessage* message,
                                              void* data) {
   Daemon* daemon = static_cast<Daemon*>(data);
-  if (dbus_message_is_signal(message, kPowerManagerInterface,
-                             kRequestLockScreenSignal)) {
+  if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                  kRequestLockScreenMethod)) {
     LOG(INFO) << "RequestLockScreen event";
     daemon->locker_.LockScreen();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kRequestUnlockScreenSignal)) {
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kRequestUnlockScreenMethod)) {
     LOG(INFO) << "RequestUnlockScreen event";
     util::SendSignalToSessionManager("UnlockScreen");
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kScreenIsLockedSignal)) {
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kScreenIsLockedMethod)) {
     LOG(INFO) << "ScreenIsLocked event";
     daemon->locker_.set_locked(true);
     daemon->suspender_.CheckSuspend();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kScreenIsUnlockedSignal)) {
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                    kScreenIsUnlockedMethod)) {
     LOG(INFO) << "ScreenIsUnlocked event";
     daemon->locker_.set_locked(false);
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kRequestSuspendSignal)) {
     LOG(INFO) << "RequestSuspend event";
     daemon->Suspend();
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kRequestRestartSignal)) {
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kRequestRestartMethod)) {
     LOG(INFO) << "RequestRestart event";
     daemon->OnRequestRestart(true);  // notify_window_manager=true
-  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
-                                    kRequestShutdownSignal)) {
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kRequestShutdownMethod)) {
     LOG(INFO) << "RequestShutdown event";
     daemon->OnRequestShutdown(true);  // notify_window_manager=true
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
