@@ -441,6 +441,7 @@ GdkFilterReturn Daemon::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
       IncreaseScreenBrightness(true);
       SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessUp,
                                    kBrightnessEnumMax);
+      return GDK_FILTER_REMOVE;
     } else if (keycode == key_brightness_down_ || keycode == key_f6_) {
       if (keycode == key_brightness_down_) {
         LOG(INFO) << "Key press: Brightness down";
@@ -451,6 +452,7 @@ GdkFilterReturn Daemon::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
       DecreaseScreenBrightness(true, true);
       SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessDown,
                                    kBrightnessEnumMax);
+      return GDK_FILTER_REMOVE;
     }
   }
 
