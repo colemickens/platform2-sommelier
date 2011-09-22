@@ -723,6 +723,17 @@ void Daemon::RegisterDBusMessageHandler() {
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
 
+  DBusError error;
+  dbus_error_init(&error);
+  if (dbus_bus_request_name(connection,
+                            power_manager::kPowerManagerServiceName,
+                            0,
+                            &error) < 0) {
+    LOG(FATAL) << "Failed to register name \""
+               << power_manager::kPowerManagerServiceName << "\": "
+               << dbus_error_is_set(&error) ? error.message : "Unknown error";
+  }
+
   vector<string> matches;
   matches.push_back(
       StringPrintf("type='signal', interface='%s'", kPowerManagerInterface));
@@ -737,12 +748,12 @@ void Daemon::RegisterDBusMessageHandler() {
 
   for (vector<string>::const_iterator it = matches.begin();
        it != matches.end(); ++it) {
-    DBusError error;
-    dbus_error_init(&error);
-    dbus_bus_add_match(connection, it->c_str(), &error);
-    if (dbus_error_is_set(&error)) {
+    DBusError match_error;
+    dbus_error_init(&match_error);
+    dbus_bus_add_match(connection, it->c_str(), &match_error);
+    if (dbus_error_is_set(&match_error)) {
       LOG(DFATAL) << "Failed to add match \"" << *it << "\": "
-                  << error.name << ", message=" << error.message;
+                  << match_error.name << ", message=" << match_error.message;
     }
   }
 
