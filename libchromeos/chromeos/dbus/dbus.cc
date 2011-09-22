@@ -234,30 +234,6 @@ bool RegisterExclusiveService(const BusConnection& connection,
   return true;
 }
 
-void SendSignalWithNoArgumentsToSystemBus(const char* path,
-                                          const char* interface_name,
-                                          const char* signal_name) {
-  CHECK(path);
-  CHECK(interface_name);
-  CHECK(signal_name);
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              path,
-                              interface_name);
-  DBusMessage* signal = ::dbus_message_new_signal(
-      path,
-      interface_name,
-      signal_name);
-  if (!signal) {
-    LOG(ERROR) << "Failed to create a signal: "
-               << "path: " << path << ", "
-               << "interface_name: " << interface_name << ", "
-               << "signal_name: " << signal_name;
-    return;
-  }
-  ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  ::dbus_message_unref(signal);
-}
-
 void CallMethodWithNoArguments(const char* service_name,
                                const char* path,
                                const char* interface_name,
