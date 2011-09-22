@@ -10,8 +10,6 @@
 #include <stdint.h>
 #include <sys/inotify.h>
 #include <X11/extensions/dpms.h>
-#include <X11/keysym.h>
-#include <X11/XF86keysym.h>
 
 #include <algorithm>
 #include <vector>
@@ -119,26 +117,6 @@ void Daemon::Init() {
                         0,                 // 0 alteration timeout
                         DefaultBlanking,
                         DefaultExposures));
-  key_brightness_up_ = XKeysymToKeycode(GDK_DISPLAY(), XF86XK_MonBrightnessUp);
-  key_brightness_down_ = XKeysymToKeycode(GDK_DISPLAY(),
-                                          XF86XK_MonBrightnessDown);
-  key_f6_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F6);
-  key_f7_ = XKeysymToKeycode(GDK_DISPLAY(), XK_F7);
-  CHECK(key_f6_ != 0);
-  CHECK(key_f7_ != 0);
-  if (key_brightness_up_ == 0) {
-    LOG(ERROR) << "No brightness up keycode found. Guessing instead.";
-    key_brightness_up_ = 212;
-  }
-  if (key_brightness_down_ == 0) {
-    LOG(ERROR) << "No brightness down keycode found. Guessing instead.";
-    key_brightness_down_ = 101;
-  }
-  GrabKey(key_brightness_up_, 0);
-  GrabKey(key_brightness_down_, 0);
-  GrabKey(key_f6_, 0);
-  GrabKey(key_f7_, 0);
-  gdk_window_add_filter(NULL, GdkEventFilterThunk, this);
   locker_.Init(use_xscreensaver_, lock_on_idle_suspend_);
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
@@ -421,52 +399,20 @@ void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
     daemon->OnLowBattery(info.battery_percentage);
 }
 
-GdkFilterReturn Daemon::GdkEventFilter(GdkXEvent* gxevent, GdkEvent*) {
-  XEvent* xevent = static_cast<XEvent*>(gxevent);
-
-  if (xevent->type == KeyPress)
-    LOG(INFO) << backlight_controller_->state();
-  if (xevent->type == KeyPress &&
-      (backlight_controller_->state() == BACKLIGHT_ACTIVE ||
-       backlight_controller_->state() == BACKLIGHT_ALREADY_DIMMED)) {
-    SetIdleState(0);
-    int keycode = xevent->xkey.keycode;
-    if (keycode == key_brightness_up_ || keycode == key_f7_) {
-      if (keycode == key_brightness_up_) {
-        LOG(INFO) << "Key press: Brightness up";
-      } else {  // keycode == key_f7_
-        LOG(INFO) << "Key press: F7";
-        metrics_lib_->SendUserActionToUMA("Accel_BrightnessUp_F7");
-      }
-      IncreaseScreenBrightness(true);
-      SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessUp,
-                                   kBrightnessEnumMax);
-      return GDK_FILTER_REMOVE;
-    } else if (keycode == key_brightness_down_ || keycode == key_f6_) {
-      if (keycode == key_brightness_down_) {
-        LOG(INFO) << "Key press: Brightness down";
-      } else {  // keycode == key_f6_
-        LOG(INFO) << "Key press: F6";
-        metrics_lib_->SendUserActionToUMA("Accel_BrightnessDown_F6");
-      }
-      DecreaseScreenBrightness(true, true);
-      SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessDown,
-                                   kBrightnessEnumMax);
-      return GDK_FILTER_REMOVE;
-    }
-  }
-
-  return GDK_FILTER_CONTINUE;
-}
-
 void Daemon::DecreaseScreenBrightness(bool allow_off, bool user_initiated) {
   backlight_controller_->DecreaseBrightness(allow_off);
   SendBrightnessChangedSignal(user_initiated);
+  if (user_initiated)
+    SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessDown,
+                                 kBrightnessEnumMax);
 }
 
 void Daemon::IncreaseScreenBrightness(bool user_initiated) {
   backlight_controller_->IncreaseBrightness();
   SendBrightnessChangedSignal(user_initiated);
+  if (user_initiated)
+    SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessUp,
+                                 kBrightnessEnumMax);
 }
 
 bool Daemon::GetIdleTime(int64* idle_time_ms) {
@@ -519,19 +465,6 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
     SetIdleOffset(0, kIdleNormal);
-}
-
-void Daemon::GrabKey(KeyCode key, uint32 mask) {
-  uint32 NumLockMask = Mod2Mask;
-  uint32 CapsLockMask = LockMask;
-  Window root = DefaultRootWindow(GDK_DISPLAY());
-  XGrabKey(GDK_DISPLAY(), key, mask, root, True, GrabModeAsync, GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key, mask | CapsLockMask, root, True,
-           GrabModeAsync, GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key, mask | NumLockMask, root, True,
-           GrabModeAsync, GrabModeAsync);
-  XGrabKey(GDK_DISPLAY(), key, mask | CapsLockMask | NumLockMask, root, True,
-           GrabModeAsync, GrabModeAsync);
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,

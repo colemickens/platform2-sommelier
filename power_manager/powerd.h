@@ -129,13 +129,6 @@ class Daemon : public XIdleObserver {
 
   static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
 
-  SIGNAL_CALLBACK_2(Daemon, GdkFilterReturn, GdkEventFilter, GdkXEvent*,
-                    GdkEvent*);
-
-  // Tells X we are interested in the specified key/mask combination.
-  // Capslock and Numlock are always ignored.
-  void GrabKey(KeyCode key, uint32 mask);
-
   // Handles power supply udev events.
   static gboolean UdevEventHandler(GIOChannel* source,
                                    GIOCondition condition,
@@ -308,12 +301,6 @@ class Daemon : public XIdleObserver {
 
   // Idle time as of last idle event.
   base::TimeDelta last_idle_timedelta_;
-
-  // Key symbols
-  KeyCode key_brightness_up_;
-  KeyCode key_brightness_down_;
-  KeyCode key_f6_;
-  KeyCode key_f7_;
 
   // User whose session is currently active, or empty if no session is
   // active or we're in guest mode.
