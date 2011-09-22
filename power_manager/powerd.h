@@ -312,7 +312,6 @@ class Daemon : public XIdleObserver {
   // Key symbols
   KeyCode key_brightness_up_;
   KeyCode key_brightness_down_;
-  KeyCode key_power_off_;
   KeyCode key_f6_;
   KeyCode key_f7_;
 
