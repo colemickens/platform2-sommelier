@@ -140,21 +140,62 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   CK_RV result = CKR_OK;
   string slot_description;
   string manufacturer_id;
-  uint32_t flags = 0;
   result = g_proxy->GetSlotInfo(
       slotID,
       &slot_description,
       &manufacturer_id,
-      &flags,
+      chaps::PreservedCK_ULONG(&pInfo->flags),
       static_cast<uint8_t*>(&pInfo->hardwareVersion.major),
       static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
   LOG_CK_RV_ERR_RETURN(result);
-  pInfo->flags = flags;
   chaps::CopyToCharBuffer(slot_description.c_str(), pInfo->slotDescription,
                           arraysize(pInfo->slotDescription));
   chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
                           arraysize(pInfo->manufacturerID));
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 109.
+CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
+  if (!g_is_initialized)
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  if (pInfo == NULL_PTR)
+    return CKR_ARGUMENTS_BAD;
+
+  CK_RV result = CKR_OK;
+  std::string label;
+  std::string manufacturer_id;
+  std::string model;
+  std::string serial_number;
+  result = g_proxy->GetTokenInfo(
+      slotID,
+      &label,
+      &manufacturer_id,
+      &model,
+      &serial_number,
+      chaps::PreservedCK_ULONG(&pInfo->flags),
+      chaps::PreservedCK_ULONG(&pInfo->ulMaxSessionCount),
+      chaps::PreservedCK_ULONG(&pInfo->ulSessionCount),
+      chaps::PreservedCK_ULONG(&pInfo->ulMaxRwSessionCount),
+      chaps::PreservedCK_ULONG(&pInfo->ulRwSessionCount),
+      chaps::PreservedCK_ULONG(&pInfo->ulMaxPinLen),
+      chaps::PreservedCK_ULONG(&pInfo->ulMinPinLen),
+      chaps::PreservedCK_ULONG(&pInfo->ulTotalPublicMemory),
+      chaps::PreservedCK_ULONG(&pInfo->ulFreePublicMemory),
+      chaps::PreservedCK_ULONG(&pInfo->ulTotalPrivateMemory),
+      chaps::PreservedCK_ULONG(&pInfo->ulFreePrivateMemory),
+      static_cast<uint8_t*>(&pInfo->hardwareVersion.major),
+      static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
+      static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
+      static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
+  LOG_CK_RV_ERR_RETURN(result);
+  chaps::CopyToCharBuffer(label.c_str(), pInfo->label, arraysize(pInfo->label));
+  chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
+                          arraysize(pInfo->manufacturerID));
+  chaps::CopyToCharBuffer(model.c_str(), pInfo->model, arraysize(pInfo->model));
+  chaps::CopyToCharBuffer(serial_number.c_str(), pInfo->serialNumber,
+                          arraysize(pInfo->serialNumber));
   return CKR_OK;
 }

@@ -219,6 +219,28 @@ TEST(TestSlotInfo,SlotInfoFailure) {
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetSlotInfo(1, &info));
 }
 
+// Token Info Tests
+TEST(TestTokenInfo,TokenInfoOK) {
+  chaps::ChapsProxyMock proxy(true);
+  CK_TOKEN_INFO info;
+  memset(&info, 0, sizeof(info));
+  EXPECT_EQ(CKR_OK, C_GetTokenInfo(1, &info));
+  EXPECT_EQ(std::string(16, ' '), std::string((char*)info.serialNumber, 16));
+  EXPECT_EQ(std::string(32, ' '), std::string((char*)info.manufacturerID, 32));
+  EXPECT_EQ(1, info.flags);
+}
+
+TEST(TestTokenInfo,TokenInfoNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GetTokenInfo(1, NULL));
+}
+
+TEST(TestTokenInfo,TokenInfoNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_TOKEN_INFO info;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_GetTokenInfo(1, &info));
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);
   return RUN_ALL_TESTS();

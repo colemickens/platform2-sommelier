@@ -60,4 +60,6 @@ tests: $(OUT)libchaps.so $(OUT)chaps_test $(OUT)chapsd_test
 
 runtests: tests
 	LD_LIBRARY_PATH=$(OUT) "$(OUT)chaps_test"
-	#LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"
+# This will have to wait until it does not depend on opencryptoki.
+# For now this test must be run on a live system.
+#LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"

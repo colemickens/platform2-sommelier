@@ -118,4 +118,53 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   return CKR_OK;
 }
 
+uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
+                                            std::string* label,
+                                            std::string* manufacturer_id,
+                                            std::string* model,
+                                            std::string* serial_number,
+                                            uint32_t* flags,
+                                            uint32_t* max_session_count,
+                                            uint32_t* session_count,
+                                            uint32_t* max_session_count_rw,
+                                            uint32_t* session_count_rw,
+                                            uint32_t* max_pin_len,
+                                            uint32_t* min_pin_len,
+                                            uint32_t* total_public_memory,
+                                            uint32_t* free_public_memory,
+                                            uint32_t* total_private_memory,
+                                            uint32_t* free_private_memory,
+                                            uint8_t* hardware_version_major,
+                                            uint8_t* hardware_version_minor,
+                                            uint8_t* firmware_version_major,
+                                            uint8_t* firmware_version_minor) {
+  CHECK(functions_);
+  uint32_t result = CKR_OK;
+  CK_TOKEN_INFO token_info;
+  result = functions_->C_GetTokenInfo(slot_id, &token_info);
+  LOG_CK_RV_ERR_RETURN(result);
+  *label = CharBufferToString(token_info.label, arraysize(token_info.label));
+  *manufacturer_id = CharBufferToString(token_info.manufacturerID,
+                                        arraysize(token_info.manufacturerID));
+  *model = CharBufferToString(token_info.model, arraysize(token_info.model));
+  *serial_number = CharBufferToString(token_info.serialNumber,
+                                      arraysize(token_info.serialNumber));
+  *flags = token_info.flags;
+  *max_session_count = token_info.ulMaxSessionCount;
+  *session_count = token_info.ulSessionCount;
+  *max_session_count_rw = token_info.ulMaxRwSessionCount;
+  *session_count_rw = token_info.ulRwSessionCount;
+  *max_pin_len = token_info.ulMaxPinLen;
+  *min_pin_len = token_info.ulMinPinLen;
+  *total_public_memory = token_info.ulTotalPublicMemory;
+  *free_public_memory = token_info.ulFreePublicMemory;
+  *total_private_memory = token_info.ulTotalPrivateMemory;
+  *free_private_memory = token_info.ulFreePrivateMemory;
+  *hardware_version_major = token_info.hardwareVersion.major;
+  *hardware_version_minor = token_info.hardwareVersion.minor;
+  *firmware_version_major = token_info.firmwareVersion.major;
+  *firmware_version_minor = token_info.firmwareVersion.minor;
+  return CKR_OK;
+}
+
 }  // namespace

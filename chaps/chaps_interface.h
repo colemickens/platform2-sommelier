@@ -43,6 +43,27 @@ public:
                                uint8_t* hardware_version_minor,
                                uint8_t* firmware_version_major,
                                uint8_t* firmware_version_minor) = 0;
+  // PKCS #11 v2.20 section 11.5 page 109.
+  virtual uint32_t GetTokenInfo(uint32_t slot_id,
+                                std::string* label,
+                                std::string* manufacturer_id,
+                                std::string* model,
+                                std::string* serial_number,
+                                uint32_t* flags,
+                                uint32_t* max_session_count,
+                                uint32_t* session_count,
+                                uint32_t* max_session_count_rw,
+                                uint32_t* session_count_rw,
+                                uint32_t* max_pin_len,
+                                uint32_t* min_pin_len,
+                                uint32_t* total_public_memory,
+                                uint32_t* free_public_memory,
+                                uint32_t* total_private_memory,
+                                uint32_t* free_private_memory,
+                                uint8_t* hardware_version_major,
+                                uint8_t* hardware_version_minor,
+                                uint8_t* firmware_version_major,
+                                uint8_t* firmware_version_minor) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

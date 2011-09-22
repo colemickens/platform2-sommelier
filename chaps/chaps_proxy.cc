@@ -78,4 +78,56 @@ uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
   return result;
 }
 
+uint32_t ChapsProxyImpl::GetTokenInfo(uint32_t slot_id,
+                                      std::string* label,
+                                      std::string* manufacturer_id,
+                                      std::string* model,
+                                      std::string* serial_number,
+                                      uint32_t* flags,
+                                      uint32_t* max_session_count,
+                                      uint32_t* session_count,
+                                      uint32_t* max_session_count_rw,
+                                      uint32_t* session_count_rw,
+                                      uint32_t* max_pin_len,
+                                      uint32_t* min_pin_len,
+                                      uint32_t* total_public_memory,
+                                      uint32_t* free_public_memory,
+                                      uint32_t* total_private_memory,
+                                      uint32_t* free_private_memory,
+                                      uint8_t* hardware_version_major,
+                                      uint8_t* hardware_version_minor,
+                                      uint8_t* firmware_version_major,
+                                      uint8_t* firmware_version_minor) {
+  uint32_t result = CKR_OK;
+  if (!proxy_.get())
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  try {
+    proxy_->GetTokenInfo(slot_id,
+                         *label,
+                         *manufacturer_id,
+                         *model,
+                         *serial_number,
+                         *flags,
+                         *max_session_count,
+                         *session_count,
+                         *max_session_count_rw,
+                         *session_count_rw,
+                         *max_pin_len,
+                         *min_pin_len,
+                         *total_public_memory,
+                         *free_public_memory,
+                         *total_private_memory,
+                         *free_private_memory,
+                         *hardware_version_major,
+                         *hardware_version_minor,
+                         *firmware_version_major,
+                         *firmware_version_minor,
+                         result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

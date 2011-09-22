@@ -8,7 +8,7 @@
 
 namespace chaps {
 
-const char* RVToString(CK_RV value) {
+const char* CK_RVToString(CK_RV value) {
   switch (value) {
     case CKR_OK:
       return "CKR_OK";
