@@ -38,6 +38,10 @@ DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 DEFINE_boolean large_test_partitions ${FLAGS_FALSE} \
 "Make partitions 9 and 10 large (for filesystem testing).  Default: false"
 
+# This is a workaround to prevent failures when installing custom
+# developer images on Cr-48.  See http://crosbug.com/20684
+DEFINE_boolean run_as_root ${FLAGS_FALSE} "Obsolete option - not used"
+
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "${FLAGS_ARGV}"
