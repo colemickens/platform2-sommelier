@@ -72,7 +72,9 @@ show_assets_message_image() {
   for locale in $locale_list; do
     image_file="/usr/share/chromeos-assets/images/messages/$locale/$message.png"
     if [ -f "$image_file" ]; then
-      ply-image "$image_file" >/dev/null 2>&1 || return $?
+      ply-image /usr/share/chromeos-assets/images/boot_splash.png \
+                /usr/share/chromeos-assets/images/boot_message.png \
+                "$image_file" >/dev/null 2>&1 || return $?
       return 0
     fi
   done
