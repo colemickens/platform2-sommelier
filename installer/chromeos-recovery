@@ -1,0 +1,14 @@
+#!/bin/sh -u
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Install Chrome/Chromium OS from the recovery installer.
+
+if [ $# -ne 1 ]; then
+  echo "usage:  $0 <source-device>" >&2
+  exit 1
+fi
+
+export IS_RECOVERY_INSTALL=1
+exec chromeos-install --yes --payload_image="$1" --use_payload_kern_b
