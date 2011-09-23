@@ -725,6 +725,12 @@ void GobiCdmaModem::SendActivationStateChanged(uint32_t mm_activation_error) {
   if ((p = status.find("payment_url")) != status.end()) {
     to_send["payment_url"] = p->second;
   }
+  if ((p = status.find("payment_url_method")) != status.end()) {
+    to_send["payment_url_method"] = p->second;
+  }
+  if ((p = status.find("payment_url_postdata")) != status.end()) {
+    to_send["payment_url_postdata"] = p->second;
+  }
 
   ActivationStateChanged(mm_activation_state,
                          mm_activation_error,
