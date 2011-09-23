@@ -731,7 +731,7 @@ void Daemon::RegisterDBusMessageHandler() {
                             &error) < 0) {
     LOG(FATAL) << "Failed to register name \""
                << power_manager::kPowerManagerServiceName << "\": "
-               << dbus_error_is_set(&error) ? error.message : "Unknown error";
+               << (dbus_error_is_set(&error) ? error.message : "Unknown error");
   }
 
   vector<string> matches;
