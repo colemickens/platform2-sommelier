@@ -177,7 +177,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
                             Return(true)));
     Expectation set_policy = EXPECT_CALL(*store_, Set(_))
         .InSequence(sequence)
-        .After(sign)
+        .After(sign, compare_keys)
         .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
@@ -345,6 +345,35 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .InSequence(s)
       .WillOnce(Return(false));
+
+  PolicyService::Error error;
+  bool is_owner = false;
+  EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                  &is_owner,
+                                                  &error));
+}
+
+TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
+  InitService(new KeyCheckUtil);
+  em::ChromeDeviceSettingsProto settings;
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+
+  Sequence s;
+  ExpectGetPolicy(s, policy_proto_);
+
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+  Expectation compare_keys =
+      EXPECT_CALL(*key_, Equals(_))
+          .WillRepeatedly(Return(false));
+  Expectation sign =
+      EXPECT_CALL(*key_, Sign(_, _, _))
+          .After(compare_keys)
+          .WillOnce(Return(false));
+
+  ExpectGetPolicy(s, new_policy_proto_);
+  EXPECT_CALL(*mitigator_, Mitigate(_))
+      .Times(0);
 
   PolicyService::Error error;
   bool is_owner = false;

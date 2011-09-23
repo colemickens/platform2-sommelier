@@ -52,8 +52,10 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
   bool can_access_key = CurrentUserHasOwnerKey(key()->public_key_der(), error);
-  if (can_access_key)
-    StoreOwnerProperties(current_user, NULL);
+  if (can_access_key) {
+    if (!StoreOwnerProperties(current_user, error))
+      return false;
+  }
 
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and she DOESN'T have the private half of the
@@ -155,9 +157,12 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   const uint8* data = reinterpret_cast<const uint8*>(new_data.c_str());
   if (!key() || !key()->Sign(data, new_data.length(), &sig)) {
     const char err_msg[] = "Could not sign policy containing new owner data.";
-    LOG_IF(ERROR, error) << err_msg;
-    LOG_IF(WARNING, !error) << err_msg;
-    error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
+    if (error) {
+      LOG(WARNING) << err_msg;
+      error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, err_msg);
+    } else {
+      LOG(ERROR) << err_msg;
+    }
     return false;
   }
 
@@ -180,13 +185,15 @@ bool DevicePolicyService::CurrentUserHasOwnerKey(const std::vector<uint8>& key,
   if (!nss_->OpenUserDB()) {
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
-    error->Set(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
+    if (error)
+      error->Set(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
     return false;
   }
   if (!nss_->GetPrivateKey(key)) {
     const char msg[] = "Could not verify that public key belongs to the owner.";
     LOG(WARNING) << msg;
-    error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+    if (error)
+      error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
     return false;
   }
   return true;
