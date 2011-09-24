@@ -47,9 +47,10 @@ TEST_BIN = session_manager_unittest
 TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
 	device_policy_service_unittest.o key_generator_unittest.o \
 	mock_constructors.o mock_nss_util.o nss_util_unittest.o \
-	owner_key_unittest.o policy_service_unittest.cc policy_store_unittest.o \
-	regen_mitigator_unittest.o session_manager_unittest.o \
-	session_manager_static_unittest.o system_utils_unittest.o
+	owner_key_unittest.o policy_service_unittest.cc \
+	policy_store_unittest.o regen_mitigator_unittest.o \
+	session_manager_unittest.o session_manager_static_unittest.o \
+	system_utils_unittest.o
 
 ROOT_FILES = use_webui_login use_touchui debug_with_asan
 
@@ -87,15 +88,15 @@ $(ROOT_FILES):
 $(BINDINGS):
 	mkdir -p $(BINDINGS)
 
-$(DBUS_SERVER): $(BINDINGS) $(DBUS_SOURCE)
+$(DBUS_SERVER): $(DBUS_SOURCE) | $(BINDINGS)
 	dbus-binding-tool --mode=glib-server \
 	 --prefix=`basename $(DBUS_SOURCE) .xml` $(DBUS_SOURCE) > $(DBUS_SERVER)
 
-$(DBUS_CLIENT): $(BINDINGS) $(DBUS_SOURCE)
+$(DBUS_CLIENT): $(DBUS_SOURCE) | $(BINDINGS)
 	dbus-binding-tool --mode=glib-client \
 	 --prefix=`basename $(DBUS_SOURCE) .xml` $(DBUS_SOURCE) > $(DBUS_CLIENT)
 
-$(PROTO_BINDINGS): $(BINDINGS) $(PROTO_DEFS)
+$(PROTO_BINDINGS): $(PROTO_DEFS) | $(BINDINGS)
 	protoc --proto_path=$(PROTO_PATH) --cpp_out=$(BINDINGS) $(PROTO_DEFS)
 
 clean:
