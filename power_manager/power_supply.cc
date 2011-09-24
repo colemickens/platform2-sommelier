@@ -9,7 +9,6 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_util.h"
-#include "cros/chromeos_power.h"
 
 namespace {
 
@@ -62,7 +61,7 @@ void PowerSupply::Init() {
   GetPowerSupplyPaths();
 }
 
-bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
+bool PowerSupply::GetPowerStatus(PowerStatus* status) {
   CHECK(status);
   // Look for battery path if none has been found yet.
   if (!battery_info_ || !line_power_info_)
@@ -137,25 +136,25 @@ bool PowerSupply::GetPowerStatus(chromeos::PowerStatus* status) {
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
-  status->battery_state = chromeos::BATTERY_STATE_UNKNOWN;
+  status->battery_state = BATTERY_STATE_UNKNOWN;
   if (line_power_on_) {
     if (charge_now_ >= charge_full_) {
-      status->battery_state = chromeos::BATTERY_STATE_FULLY_CHARGED;
+      status->battery_state = BATTERY_STATE_FULLY_CHARGED;
     } else {
       if (current_now_ <= 0)
         LOG(WARNING) << "Line power is on and battery is not fully charged "
                      << "but battery current is " << current_now_ << " A.";
-      status->battery_state = chromeos::BATTERY_STATE_CHARGING;
+      status->battery_state = BATTERY_STATE_CHARGING;
     }
   } else {
-    status->battery_state = chromeos::BATTERY_STATE_DISCHARGING;
+    status->battery_state = BATTERY_STATE_DISCHARGING;
     if (charge_now_ == 0)
-      status->battery_state = chromeos::BATTERY_STATE_EMPTY;
+      status->battery_state = BATTERY_STATE_EMPTY;
   }
   return true;
 }
 
-bool PowerSupply::GetPowerInformation(chromeos::PowerInformation* info) {
+bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   CHECK(info);
   GetPowerStatus(&info->power_status);
   if (!info->power_status.battery_is_present)
@@ -167,16 +166,16 @@ bool PowerSupply::GetPowerInformation(chromeos::PowerInformation* info) {
   battery_info_->ReadString("technology", &info->battery_technology);
 
   switch (info->power_status.battery_state) {
-    case chromeos::BATTERY_STATE_CHARGING:
+    case BATTERY_STATE_CHARGING:
       info->battery_state_string = "Charging";
       break;
-    case chromeos::BATTERY_STATE_DISCHARGING:
+    case BATTERY_STATE_DISCHARGING:
       info->battery_state_string = "Discharging";
       break;
-    case chromeos::BATTERY_STATE_EMPTY:
+    case BATTERY_STATE_EMPTY:
       info->battery_state_string = "Empty";
       break;
-    case chromeos::BATTERY_STATE_FULLY_CHARGED:
+    case BATTERY_STATE_FULLY_CHARGED:
       info->battery_state_string = "Fully charged";
       break;
     default:
@@ -244,7 +243,7 @@ double PowerSupply::GetLinearTimeToEmpty() {
                                                                 voltage_now_));
 }
 
-void PowerSupply::CalculateRemainingTime(chromeos::PowerStatus *status) {
+void PowerSupply::CalculateRemainingTime(PowerStatus *status) {
   CHECK(time_now_func);
   base::Time time_now = time_now_func();
   // This function might be called due to a race condition between the suspend

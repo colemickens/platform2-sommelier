@@ -54,7 +54,7 @@ void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
   }
 }
 
-void Daemon::GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info) {
+void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
   time_t now = time(NULL);
   GenerateBatteryDischargeRateMetric(info, now);
   GenerateBatteryRemainingChargeMetric(info, now);
@@ -71,8 +71,8 @@ gboolean Daemon::GenerateBacklightLevelMetric() {
   return true;
 }
 
-bool Daemon::GenerateBatteryDischargeRateMetric(
-    const chromeos::PowerStatus& info, time_t now) {
+bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
+                                                time_t now) {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
   if (plugged_state_ != kPowerDisconnected)
@@ -98,8 +98,8 @@ bool Daemon::GenerateBatteryDischargeRateMetric(
   return true;
 }
 
-bool Daemon::GenerateBatteryRemainingChargeMetric(
-    const chromeos::PowerStatus& info, time_t now) {
+bool Daemon::GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
+                                                  time_t now) {
   // The remaining battery charge metric is relevant and collected
   // only when running on battery.
   if (plugged_state_ != kPowerDisconnected)
@@ -119,8 +119,8 @@ bool Daemon::GenerateBatteryRemainingChargeMetric(
   return true;
 }
 
-bool Daemon::GenerateBatteryTimeToEmptyMetric(
-    const chromeos::PowerStatus& info, time_t now) {
+bool Daemon::GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
+                                              time_t now) {
   // The battery's remaining time to empty metric is relevant and
   // collected only when running on battery.
   if (plugged_state_ != kPowerDisconnected)

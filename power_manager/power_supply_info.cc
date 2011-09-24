@@ -14,7 +14,6 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/time.h"
-#include "cros/chromeos_power.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
 
@@ -99,8 +98,8 @@ int main(int, char*[]) {
   power_manager::PowerSupply power_supply(path);
   power_supply.Init();
 
-  chromeos::PowerInformation power_info;
-  chromeos::PowerStatus& power_status = power_info.power_status;
+  power_manager::PowerInformation power_info;
+  power_manager::PowerStatus& power_status = power_info.power_status;
   power_supply.GetPowerInformation(&power_info);
 
   InfoDisplay display;

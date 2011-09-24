@@ -21,7 +21,6 @@
 #include "base/time.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/glib/object.h"
-#include "cros/chromeos_power.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/file_tagger.h"
@@ -127,7 +126,7 @@ class Daemon : public XIdleObserver {
   // starting with the state provided except the locking timeout.
   void SetIdleOffset(int64 offset_ms, IdleState state);
 
-  static void OnPowerEvent(void* object, const chromeos::PowerStatus& info);
+  static void OnPowerEvent(void* object, const PowerStatus& info);
 
   // Handles power supply udev events.
   static gboolean UdevEventHandler(GIOChannel* source,
@@ -188,7 +187,7 @@ class Daemon : public XIdleObserver {
 
   // Generates UMA metrics on every power event based on the current
   // power status.
-  void GenerateMetricsOnPowerEvent(const chromeos::PowerStatus& info);
+  void GenerateMetricsOnPowerEvent(const PowerStatus& info);
 
   // Generates UMA metrics about the current backlight level.
   // Always returns true.
@@ -196,18 +195,18 @@ class Daemon : public XIdleObserver {
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryDischargeRateMetric(const chromeos::PowerStatus& info,
+  bool GenerateBatteryDischargeRateMetric(const PowerStatus& info,
                                           time_t now);
 
   // Generates a remaining battery charge UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingChargeMetric(const chromeos::PowerStatus& info,
+  bool GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
                                             time_t now);
 
   // Generates the battery's remaining time to empty UMA metric
   // sample. Returns true if a sample was sent to UMA, false
   // otherwise.
-  bool GenerateBatteryTimeToEmptyMetric(const chromeos::PowerStatus& info,
+  bool GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
                                         time_t now);
 
   // Sends a regular (exponential) histogram sample to Chrome for
@@ -315,7 +314,7 @@ class Daemon : public XIdleObserver {
   // requests for each field of the power status can be read directly from
   // this struct.  Otherwise we'd have to read the whole struct from
   // power_supply since it doesn't support reading individual fields.
-  chromeos::PowerStatus power_status_;
+  PowerStatus power_status_;
 
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;

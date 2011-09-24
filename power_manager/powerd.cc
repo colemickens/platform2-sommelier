@@ -390,7 +390,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     SendBrightnessChangedSignal(false);  // user_initiated=false
 }
 
-void Daemon::OnPowerEvent(void* object, const chromeos::PowerStatus& info) {
+void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
   Daemon* daemon = static_cast<Daemon*>(object);
   daemon->SetPlugged(info.line_power_on);
   daemon->GenerateMetricsOnPowerEvent(info);
@@ -601,11 +601,13 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                          kGetAllPropertiesMethod)) {
     LOG(INFO) << "Power supply all properties request";
 
-    chromeos::PowerStatus* status = &daemon->power_status_;
+    PowerStatus* status = &daemon->power_status_;
     // Use dbus_bool_t for boolean fields; it is not safe to pass bool fields
     // into a dbus message.
     dbus_bool_t line_power_on = status->line_power_on;
     dbus_bool_t battery_is_present = status->battery_is_present;
+    dbus_bool_t battery_is_charged =
+        status->battery_state == BATTERY_STATE_FULLY_CHARGED;
     DBusMessage *reply = dbus_message_new_method_return(message);
     CHECK(reply != NULL);
     dbus_message_append_args(reply,
@@ -617,7 +619,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
         DBUS_TYPE_INT64,   &status->battery_time_to_full,
         DBUS_TYPE_DOUBLE,  &status->battery_percentage,
         DBUS_TYPE_BOOLEAN, &battery_is_present,
-        DBUS_TYPE_INT32,   &status->battery_state,
+        DBUS_TYPE_BOOLEAN, &battery_is_charged,
         DBUS_TYPE_INVALID);
 
     if (!dbus_connection_send(connection, reply, NULL)) {

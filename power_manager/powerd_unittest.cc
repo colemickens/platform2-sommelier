@@ -121,8 +121,8 @@ class DaemonTest : public Test {
   }
 
   // Resets all fields of |info| to 0.
-  void ResetPowerStatus(chromeos::PowerStatus& status) {
-    memset(&status, 0, sizeof(chromeos::PowerStatus));
+  void ResetPowerStatus(PowerStatus& status) {
+    memset(&status, 0, sizeof(PowerStatus));
   }
 
   StrictMock<MockBacklight> backlight_;
@@ -130,7 +130,7 @@ class DaemonTest : public Test {
   StrictMock<MockAudioDetector> audio_detector_;
   StrictMock<MockMonitorReconfigure> monitor_reconfigure_;
   PowerPrefs prefs_;
-  chromeos::PowerStatus status_;
+  PowerStatus status_;
   BacklightController backlight_ctl_;
 
   // StrictMock turns all unexpected calls into hard failures.

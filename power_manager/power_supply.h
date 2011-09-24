@@ -14,12 +14,69 @@
 #include "base/time.h"
 #include "power_manager/power_prefs.h"
 
-namespace chromeos {
-struct PowerInformation;
-struct PowerStatus;
-} // namespace chromeos
-
 namespace power_manager {
+
+enum BatteryState {
+  BATTERY_STATE_UNKNOWN,
+  BATTERY_STATE_CHARGING,
+  BATTERY_STATE_DISCHARGING,
+  BATTERY_STATE_EMPTY,
+  BATTERY_STATE_FULLY_CHARGED
+};
+
+// Structures used for passing power supply info.
+struct PowerStatus {
+  bool line_power_on;
+
+  // Amount of energy, measured in Wh, in the battery.
+  double battery_energy;
+
+  // Amount of energy being drained from the battery, measured in W. If
+  // positive, the source is being discharged, if negative it's being charged.
+  double battery_energy_rate;
+
+  double battery_voltage;
+
+  // Time in seconds until the battery is considered empty, 0 for unknown.
+  ::int64 battery_time_to_empty;
+  // Time in seconds until the battery is considered full. 0 for unknown.
+  ::int64 battery_time_to_full;
+
+  double battery_percentage;
+  bool battery_is_present;  // [needed?]
+
+  BatteryState battery_state;
+};
+
+struct PowerInformation {
+  PowerStatus power_status;
+
+  // Amount of energy, measured in Wh, in the battery when it's considered
+  // empty.
+  double battery_energy_empty;
+
+  // Amount of energy, measured in Wh, in the battery when it's considered full.
+  double battery_energy_full;
+
+  // Amount of energy, measured in Wh, the battery is designed to hold when it's
+  // considered full.
+  double battery_energy_full_design;
+
+  bool battery_is_rechargeable;  // [needed?]
+  double battery_capacity;
+
+  std::string battery_technology;  // [needed?]
+
+  std::string battery_vendor;
+  std::string battery_model;
+  std::string battery_serial;
+
+  std::string line_power_vendor;
+  std::string line_power_model;
+  std::string line_power_serial;
+
+  std::string battery_state_string;
+};
 
 // Used to read power supply status from sysfs, e.g. whether on AC or battery,
 // charge and voltage level, current, etc.
@@ -32,10 +89,10 @@ class PowerSupply {
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
-  bool GetPowerStatus(chromeos::PowerStatus* status);
+  bool GetPowerStatus(PowerStatus* status);
 
   // Read data from power supply sysfs for PowerInformation structure.
-  bool GetPowerInformation(chromeos::PowerInformation* info);
+  bool GetPowerInformation(PowerInformation* info);
 
   const FilePath& line_power_path() const { return line_power_path_; }
   const FilePath& battery_path() const { return battery_path_; }
@@ -64,7 +121,7 @@ class PowerSupply {
   double GetLinearTimeToEmpty();
 
   // Determine remaining time when charging or discharging.
-  void CalculateRemainingTime(chromeos::PowerStatus *status);
+  void CalculateRemainingTime(PowerStatus *status);
 
   // Offsets the timestamps used in hysteresis calculations.  This is used when
   // suspending and resuming -- the time while suspended should not count toward

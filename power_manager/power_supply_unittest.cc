@@ -13,7 +13,6 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/memory/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
-#include "cros/chromeos_power.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/signal_callback.h"
 
@@ -79,7 +78,7 @@ class PowerSupplyTest : public ::testing::Test {
 // Test system without power supply sysfs (e.g. virtual machine).
 TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
   power_supply_->Init();
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   // In absence of power supply sysfs, default assumption is line power on, no
   // battery present.
@@ -102,7 +101,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
                          iter->second.c_str(),
                          iter->second.length());
   power_supply_->Init();
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_FALSE(power_status.battery_is_present);
@@ -132,7 +131,7 @@ TEST_F(PowerSupplyTest, TestCharging) {
                          iter->second.c_str(),
                          iter->second.length());
   power_supply_->Init();
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
@@ -167,7 +166,7 @@ TEST_F(PowerSupplyTest, TestDischarging) {
                          iter->second.c_str(),
                          iter->second.length());
   power_supply_->Init();
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
@@ -236,7 +235,7 @@ gboolean HysteresisTestLoop(gpointer data) {
   // Tell GetCurrentTime() to return the simulated time.
   current_time = start_time +
                  base::TimeDelta::FromMilliseconds(test_data->time);
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(test_data->power_supply->GetPowerStatus(&power_status));
   EXPECT_EQ(values->time_to_empty, power_status.battery_time_to_empty);
   LOG_IF(INFO, values->time_to_empty !=
@@ -403,7 +402,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
                          iter->second.length());
   power_supply_->Init();
   power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
-  chromeos::PowerStatus power_status;
+  PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   sleep(6);
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
