@@ -391,7 +391,6 @@ class SessionManagerService
   static const char kLoginUserTypeMetric[];
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
-  static const char kIOThreadName[];
   static const char *kValidSessionServices[];
 
   // TODO(cmasone): consider tracking job, pid and watcher in one struct.
@@ -416,9 +415,6 @@ class SessionManagerService
 
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];
-
-  // A thread on which to perform blocking operations
-  base::Thread io_thread_;
 
   scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<FileChecker> file_checker_;

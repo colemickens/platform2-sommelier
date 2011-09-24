@@ -31,8 +31,7 @@ class DevicePolicyService : public PolicyService {
   // Instantiates a regular (non-testing) device policy service instance.
   static DevicePolicyService* Create(
       OwnerKeyLossMitigator* mitigator,
-      const scoped_refptr<base::MessageLoopProxy>& main_loop,
-      const scoped_refptr<base::MessageLoopProxy>& io_loop);
+      const scoped_refptr<base::MessageLoopProxy>& main_loop);
 
   // Checks whether the given |current_user| is the device owner. The result of
   // the check is returned in |is_owner|. If so, it is validated that the device
@@ -67,7 +66,6 @@ class DevicePolicyService : public PolicyService {
   DevicePolicyService(PolicyStore* policy_store,
                       OwnerKey* policy_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
-                      const scoped_refptr<base::MessageLoopProxy>& io_loop,
                       NssUtil* nss,
                       OwnerKeyLossMitigator* mitigator);
 
@@ -77,12 +75,10 @@ class DevicePolicyService : public PolicyService {
   // PersistPolicy().
   // Returns false on failure, with |error| set appropriately. |error| can be
   // NULL, should you wish to ignore the particulars.
-  bool StoreOwnerProperties(const std::string& current_user,
-                            Error* error);
+  bool StoreOwnerProperties(const std::string& current_user, Error* error);
 
   // Checks the user's NSS database to see if she has the private key.
-  bool CurrentUserHasOwnerKey(const std::vector<uint8>& key,
-                              Error* error);
+  bool CurrentUserHasOwnerKey(const std::vector<uint8>& key, Error* error);
 
   // Returns true if the current user is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.

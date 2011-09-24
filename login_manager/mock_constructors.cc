@@ -34,7 +34,7 @@ MockChildJob::MockChildJob() {
 MockChildJob::~MockChildJob() {}
 
 MockDevicePolicyService::MockDevicePolicyService()
-  : DevicePolicyService(NULL, NULL, NULL, NULL, NULL, NULL) {}
+  : DevicePolicyService(NULL, NULL, NULL, NULL, NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)
@@ -50,8 +50,7 @@ MockMitigator::~MockMitigator() {}
 MockOwnerKey::MockOwnerKey() : OwnerKey(FilePath("")) {}
 MockOwnerKey::~MockOwnerKey() {}
 
-MockPolicyService::MockPolicyService()
-  : PolicyService(NULL, NULL, NULL, NULL) {}
+MockPolicyService::MockPolicyService() : PolicyService(NULL, NULL, NULL) {}
 MockPolicyService::~MockPolicyService() {}
 
 MockPolicyServiceCompletion::MockPolicyServiceCompletion() {}

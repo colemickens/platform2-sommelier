@@ -46,12 +46,10 @@ PolicyService::Delegate::~Delegate() {
 PolicyService::PolicyService(
     PolicyStore* policy_store,
     OwnerKey* policy_key,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop,
-    const scoped_refptr<base::MessageLoopProxy>& io_loop)
+    const scoped_refptr<base::MessageLoopProxy>& main_loop)
     : policy_store_(policy_store),
       policy_key_(policy_key),
       main_loop_(main_loop),
-      io_loop_(io_loop),
       delegate_(NULL) {
 }
 
@@ -98,38 +96,31 @@ bool PolicyService::Retrieve(std::vector<uint8>* policy_blob) {
 }
 
 bool PolicyService::PersistPolicySync() {
-  base::WaitableEvent event(true, false);
-  io_loop_->PostTask(FROM_HERE,
-                     NewRunnableMethod(this,
-                                       &PolicyService::PersistPolicyOnIOLoop,
-                                       static_cast<Completion*>(NULL),
-                                       &event));
-  event.Wait();
+  bool status = store()->Persist();
+  OnPolicyPersisted(NULL, status);
+  return status;
 }
 
 void PolicyService::PersistKey() {
-  io_loop_->PostTask(
+  main_loop_->PostTask(
       FROM_HERE,
-      NewRunnableMethod(this,
-                        &PolicyService::PersistKeyOnIOLoop));
+      NewRunnableMethod(this, &PolicyService::PersistKeyOnLoop));
 }
 
 void PolicyService::PersistPolicy() {
-  io_loop_->PostTask(
+  main_loop_->PostTask(
       FROM_HERE,
       NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyOnIOLoop,
-                        static_cast<Completion*>(NULL),
-                        static_cast<base::WaitableEvent*>(NULL)));
+                        &PolicyService::PersistPolicyOnLoop,
+                        static_cast<Completion*>(NULL)));
 }
 
 void PolicyService::PersistPolicyWithCompletion(Completion* completion) {
-  io_loop_->PostTask(
+  main_loop_->PostTask(
       FROM_HERE,
       NewRunnableMethod(this,
-                        &PolicyService::PersistPolicyOnIOLoop,
-                        completion,
-                        static_cast<base::WaitableEvent*>(NULL)));
+                        &PolicyService::PersistPolicyOnLoop,
+                        completion));
 }
 
 bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
@@ -188,26 +179,14 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
   return true;
 }
 
-void PolicyService::PersistKeyOnIOLoop() {
-  DCHECK(io_loop_->BelongsToCurrentThread());
-  bool status = key()->Persist();
-  main_loop_->PostTask(FROM_HERE,
-                       NewRunnableMethod(this,
-                                         &PolicyService::OnKeyPersisted,
-                                         status));
+void PolicyService::PersistKeyOnLoop() {
+  DCHECK(main_loop_->BelongsToCurrentThread());
+  OnKeyPersisted(key()->Persist());
 }
 
-void PolicyService::PersistPolicyOnIOLoop(Completion* completion,
-                                          base::WaitableEvent* event) {
-  DCHECK(io_loop_->BelongsToCurrentThread());
-  bool status = store()->Persist();
-  if (event)
-    event->Signal();
-  main_loop_->PostTask(FROM_HERE,
-                       NewRunnableMethod(this,
-                                         &PolicyService::OnPolicyPersisted,
-                                         completion,
-                                         status));
+void PolicyService::PersistPolicyOnLoop(Completion* completion) {
+  DCHECK(main_loop_->BelongsToCurrentThread());
+  OnPolicyPersisted(completion, store()->Persist());
 }
 
 void PolicyService::OnKeyPersisted(bool status) {

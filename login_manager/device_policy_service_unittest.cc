@@ -92,7 +92,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::CreateForCurrentThread());
     service_ = new DevicePolicyService(store_, key_,
-                                       message_loop, message_loop,
+                                       message_loop,
                                        nss,
                                        mitigator_.get());
 

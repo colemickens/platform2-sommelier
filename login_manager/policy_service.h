@@ -79,8 +79,7 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   // Takes ownership of |policy_store| and |policy_key|.
   PolicyService(PolicyStore* policy_store,
                 OwnerKey* policy_key,
-                const scoped_refptr<base::MessageLoopProxy>& main_loop,
-                const scoped_refptr<base::MessageLoopProxy>& io_loop);
+                const scoped_refptr<base::MessageLoopProxy>& main_loop);
   virtual ~PolicyService();
 
   // Reads policy key and data from disk.
@@ -139,12 +138,11 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
 
  private:
   // Takes care of persisting the policy key to disk.
-  void PersistKeyOnIOLoop();
+  void PersistKeyOnLoop();
 
-  // Persists policy to disk on the IO thread. If |completion| and |event|,
-  // respectively, are non-NULL, they will be signaled when done.
-  void PersistPolicyOnIOLoop(Completion* completion,
-                             base::WaitableEvent* event);
+  // Persists policy to disk on the main thread. If |completion| is non-NULL
+  // it will be signaled when done.
+  void PersistPolicyOnLoop(Completion* completion);
 
   // Completes a key storage operation on the UI thread, reporting the result to
   // the delegate.
@@ -166,7 +164,6 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   scoped_ptr<PolicyStore> policy_store_;
   scoped_ptr<OwnerKey> policy_key_;
   scoped_refptr<base::MessageLoopProxy> main_loop_;
-  scoped_refptr<base::MessageLoopProxy> io_loop_;
   Delegate* delegate_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyService);

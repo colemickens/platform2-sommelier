@@ -176,8 +176,6 @@ const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 const char SessionManagerService::kTestingChannelFlag[] =
     "--testing-channel=NamedTestingInterface:";
 // static
-const char SessionManagerService::kIOThreadName[] = "ThreadForIO";
-// static
 const char SessionManagerService::kStarted[] = "started";
 // static
 const char SessionManagerService::kStopping[] = "stopping";
@@ -221,12 +219,9 @@ SessionManagerService::SessionManagerService(
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
-      io_thread_(kIOThreadName),
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
-  io_thread_.Start();
-
   int pipefd[2];
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
   g_shutdown_pipe_read_fd = pipefd[0];
@@ -285,9 +280,7 @@ bool SessionManagerService::Initialize() {
   if (!Reset())
     return false;
 
-  device_policy_ = DevicePolicyService::Create(mitigator_.get(),
-                                               message_loop_,
-                                               io_thread_.message_loop_proxy());
+  device_policy_ = DevicePolicyService::Create(mitigator_.get(), message_loop_);
   device_policy_->set_delegate(this);
   return true;
 }
@@ -405,7 +398,6 @@ bool SessionManagerService::Shutdown() {
   }
 
   device_policy_->PersistPolicySync();
-  io_thread_.Stop();
   message_loop_->PostTask(FROM_HERE, new MessageLoop::QuitTask());
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;

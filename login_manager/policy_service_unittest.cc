@@ -65,7 +65,7 @@ class PolicyServiceTest : public testing::Test {
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::CreateForCurrentThread());
-    service_ = new PolicyService(store_, key_, message_loop, message_loop);
+    service_ = new PolicyService(store_, key_, message_loop);
     service_->set_delegate(&delegate_);
   }
 
@@ -415,60 +415,16 @@ TEST_F(PolicyServiceTest, Retrieve) {
                          policy_data.begin()));
 }
 
-class PolicyServiceThreadTest : public testing::Test {
- public:
-  PolicyServiceThreadTest()
-      : io_thread_("policy service test IO thread") {
-    io_thread_.Start();
-  }
-
-  virtual void SetUp() {
-    key_ = new StrictMock<MockOwnerKey>;
-    store_ = new StrictMock<MockPolicyStore>;
-    service_ =
-        new PolicyService(store_, key_,
-                          base::MessageLoopProxy::CreateForCurrentThread(),
-                          io_thread_.message_loop_proxy());
-    service_->set_delegate(&delegate_);
-  }
-
-  void QuitMainLoop() {
-    main_loop_.PostTask(FROM_HERE, new MessageLoop::QuitTask());
-  }
-
-  MessageLoop main_loop_;
-  base::Thread io_thread_;
-
-  // Use StrictMock to make sure that no unexpected policy or key mutations can
-  // occur without the test failing.
-  StrictMock<MockOwnerKey>* key_;
-  StrictMock<MockPolicyStore>* store_;
-  MockPolicyServiceDelegate delegate_;
-
-  scoped_refptr<PolicyService> service_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(PolicyServiceThreadTest);
-};
-
-TEST_F(PolicyServiceThreadTest, PersistPolicySyncSuccess) {
-  EXPECT_CALL(*store_, Persist())
-      .WillOnce(Return(true));
+TEST_F(PolicyServiceTest, PersistPolicySyncSuccess) {
+  EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
+  EXPECT_CALL(delegate_, OnPolicyPersisted(true)).Times(1);
   service_->PersistPolicySync();
-  EXPECT_CALL(delegate_, OnPolicyPersisted(true))
-      .WillOnce(InvokeWithoutArgs(this,
-                                  &PolicyServiceThreadTest::QuitMainLoop));
-  main_loop_.Run();
 }
 
-TEST_F(PolicyServiceThreadTest, PersistPolicySyncFailure) {
-  EXPECT_CALL(*store_, Persist())
-      .WillOnce(Return(false));
+TEST_F(PolicyServiceTest, PersistPolicySyncFailure) {
+  EXPECT_CALL(*store_, Persist()).WillOnce(Return(false));
+  EXPECT_CALL(delegate_, OnPolicyPersisted(false)).Times(1);
   service_->PersistPolicySync();
-  EXPECT_CALL(delegate_, OnPolicyPersisted(false))
-      .WillOnce(InvokeWithoutArgs(this,
-                                  &PolicyServiceThreadTest::QuitMainLoop));
-  main_loop_.Run();
 }
 
 }  // namespace login_manager

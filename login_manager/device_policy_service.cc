@@ -34,13 +34,11 @@ DevicePolicyService::~DevicePolicyService() {
 // static
 DevicePolicyService* DevicePolicyService::Create(
     OwnerKeyLossMitigator* mitigator,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop,
-    const scoped_refptr<base::MessageLoopProxy>& io_loop) {
+    const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   NssUtil* nss = NssUtil::Create();
   return new DevicePolicyService(new PolicyStore(FilePath(kPolicyPath)),
                                  new OwnerKey(nss->GetOwnerKeyFilePath()),
                                  main_loop,
-                                 io_loop,
                                  nss,
                                  mitigator);
 }
@@ -97,10 +95,9 @@ DevicePolicyService::DevicePolicyService(
     PolicyStore* policy_store,
     OwnerKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
-    const scoped_refptr<base::MessageLoopProxy>& io_loop,
     NssUtil* nss,
     OwnerKeyLossMitigator* mitigator)
-    : PolicyService(policy_store, policy_key, main_loop, io_loop),
+    : PolicyService(policy_store, policy_key, main_loop),
       nss_(nss),
       mitigator_(mitigator) {
 }
