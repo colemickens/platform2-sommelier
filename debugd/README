@@ -1,0 +1,6 @@
+debugd: system debug daemon
+
+This daemon exposes system debugging information over DBus. Some of this
+information requires privileges (root, access to particular DBus APIs, etc) to
+get at. The goal of this exercise is to allow restriction of user-facing debug
+tools so that they can just talk to this daemon over dbus and nothing else.
