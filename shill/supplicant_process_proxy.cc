@@ -44,20 +44,20 @@ SupplicantProcessProxy::Proxy::Proxy(
 SupplicantProcessProxy::Proxy::~Proxy() {}
 
 void SupplicantProcessProxy::Proxy::InterfaceAdded(
-    const ::DBus::Path& path,
-    const map<string, ::DBus::Variant> &properties) {
+    const ::DBus::Path& /*path*/,
+    const map<string, ::DBus::Variant> &/*properties*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::InterfaceRemoved(
-    const ::DBus::Path& path) {
+    const ::DBus::Path& /*path*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantProcessProxy::Proxy::PropertiesChanged(
-    const map<string, ::DBus::Variant>& properties) {
+    const map<string, ::DBus::Variant>& /*properties*/) {
   LOG(INFO) << __func__;
   // XXX
 }

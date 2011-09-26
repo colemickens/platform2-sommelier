@@ -150,7 +150,7 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   return true;
 }
 
-bool Profile::Load(StoreInterface *storage) {
+bool Profile::Load(StoreInterface */*storage*/) {
   return false;
 }
 

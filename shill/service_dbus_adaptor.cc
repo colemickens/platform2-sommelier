@@ -64,7 +64,8 @@ void ServiceDBusAdaptor::SetProperty(const string& name,
   DBusAdaptor::DispatchOnType(service_->mutable_store(), name, value, &error);
 }
 
-void ServiceDBusAdaptor::ClearProperty(const string& , ::DBus::Error &error) {
+void ServiceDBusAdaptor::ClearProperty(const string& ,
+                                       ::DBus::Error &/*error*/) {
 }
 
 void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
@@ -73,18 +74,18 @@ void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
+void ServiceDBusAdaptor::Disconnect(::DBus::Error &/*error*/) {
 }
 
-void ServiceDBusAdaptor::Remove(::DBus::Error &error) {
+void ServiceDBusAdaptor::Remove(::DBus::Error &/*error*/) {
 }
 
 void ServiceDBusAdaptor::MoveBefore(const ::DBus::Path& ,
-                                    ::DBus::Error &error) {
+                                    ::DBus::Error &/*error*/) {
 }
 
 void ServiceDBusAdaptor::MoveAfter(const ::DBus::Path& ,
-                                   ::DBus::Error &error) {
+                                   ::DBus::Error &/*error*/) {
 }
 
 void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,

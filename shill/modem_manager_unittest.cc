@@ -47,9 +47,9 @@ class ModemManagerTest : public Test {
     explicit TestProxyFactory(ModemManagerTest *test) : test_(test) {}
 
     virtual ModemManagerProxyInterface *CreateModemManagerProxy(
-        ModemManager *manager,
-        const string &path,
-        const string &service) {
+        ModemManager */*manager*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->proxy_.release();
     }
 

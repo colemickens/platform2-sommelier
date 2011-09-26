@@ -112,7 +112,6 @@ TEST_F(ByteStringTest, UInt32) {
 
 TEST_F(ByteStringTest, Resize) {
   ByteString bs1(kTest2, sizeof(kTest2));
-  uint32 val;
 
   bs1.Resize(sizeof(kTest2) + 10);
   EXPECT_EQ(sizeof(kTest2) + 10, bs1.GetLength());

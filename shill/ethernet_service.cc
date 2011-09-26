@@ -41,7 +41,7 @@ EthernetService::EthernetService(ControlInterface *control_interface,
 
 EthernetService::~EthernetService() { }
 
-void EthernetService::Connect(Error *error) { }
+void EthernetService::Connect(Error */*error*/) { }
 
 void EthernetService::Disconnect() { }
 

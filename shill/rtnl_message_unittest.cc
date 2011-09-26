@@ -417,7 +417,7 @@ class RTNLMessageTest : public Test {
   }
 
   void TestParseRoute(const ByteString &packet,
-                      RTNLMessage::Mode mode,
+                      RTNLMessage::Mode /*mode*/,
                       IPAddress::Family family,
                       int interface_index,
                       const IPAddress &dst,

@@ -76,7 +76,7 @@ void ModemManager::Disconnect() {
   proxy_.reset();
 }
 
-void ModemManager::OnAppear(GDBusConnection *connection,
+void ModemManager::OnAppear(GDBusConnection */*connection*/,
                             const gchar *name,
                             const gchar *name_owner,
                             gpointer user_data) {
@@ -85,7 +85,7 @@ void ModemManager::OnAppear(GDBusConnection *connection,
   manager->Connect(name_owner);
 }
 
-void ModemManager::OnVanish(GDBusConnection *connection,
+void ModemManager::OnVanish(GDBusConnection */*connection*/,
                             const gchar *name,
                             gpointer user_data) {
   LOG(INFO) << "Modem manager " << name << " vanished.";

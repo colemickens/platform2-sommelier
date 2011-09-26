@@ -16,8 +16,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
-#include <dbus-c++/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -145,14 +145,14 @@ class WiFiMainTest : public Test {
     explicit TestProxyFactory(WiFiMainTest *test) : test_(test) {}
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
-        const char *dbus_path, const char *dbus_addr) {
+        const char */*dbus_path*/, const char */*dbus_addr*/) {
       return test_->supplicant_process_proxy_.release();
     }
 
     virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-        const WiFiRefPtr &wifi,
-        const DBus::Path &object_path,
-        const char *dbus_addr) {
+        const WiFiRefPtr &/*wifi*/,
+        const DBus::Path &/*object_path*/,
+        const char */*dbus_addr*/) {
       return test_->supplicant_interface_proxy_.release();
     }
 

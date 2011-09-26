@@ -16,27 +16,28 @@ NiceMockControl::NiceMockControl() {}
 
 NiceMockControl::~NiceMockControl() {}
 
-DeviceAdaptorInterface *NiceMockControl::CreateDeviceAdaptor(Device *device) {
+DeviceAdaptorInterface *NiceMockControl::CreateDeviceAdaptor(
+    Device */*device*/) {
   return new NiceMock<DeviceMockAdaptor>();
 }
 
 IPConfigAdaptorInterface *NiceMockControl::CreateIPConfigAdaptor(
-    IPConfig *config) {
+    IPConfig */*config*/) {
   return new NiceMock<IPConfigMockAdaptor>();
 }
 
 ManagerAdaptorInterface *NiceMockControl::CreateManagerAdaptor(
-    Manager *manager) {
+    Manager */*manager*/) {
   return new NiceMock<ManagerMockAdaptor>();
 }
 
 ProfileAdaptorInterface *NiceMockControl::CreateProfileAdaptor(
-    Profile *profile) {
+    Profile */*profile*/) {
   return new NiceMock<ProfileMockAdaptor>();
 }
 
 ServiceAdaptorInterface *NiceMockControl::CreateServiceAdaptor(
-    Service *service) {
+    Service */*service*/) {
   return new NiceMock<ServiceMockAdaptor>();
 }
 

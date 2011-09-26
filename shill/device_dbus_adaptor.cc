@@ -71,7 +71,7 @@ void DeviceDBusAdaptor::SetProperty(const string& name,
 }
 
 void DeviceDBusAdaptor::ClearProperty(const std::string& ,
-                                      ::DBus::Error &error) {
+                                      ::DBus::Error &/*error*/) {
 }
 
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
@@ -81,7 +81,7 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 }
 
 ::DBus::Path DeviceDBusAdaptor::AddIPConfig(const string& ,
-                                            ::DBus::Error &error) {
+                                            ::DBus::Error &/*error*/) {
   return ::DBus::Path();
 }
 

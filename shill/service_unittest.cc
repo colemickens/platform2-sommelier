@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include <dbus-c++/dbus.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus-c++/dbus.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -48,7 +48,7 @@ class ServiceUnderTest : public Service {
       : Service(control_interface, dispatcher, manager, "stub") {}
   virtual ~ServiceUnderTest() {}
 
-  virtual void Connect(Error *error) {}
+  virtual void Connect(Error */*error*/) {}
   virtual void Disconnect() {}
   virtual string CalculateState() { return ""; }
   virtual string GetRpcIdentifier() const { return ServiceMockAdaptor::kRpcId; }

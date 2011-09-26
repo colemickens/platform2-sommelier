@@ -56,7 +56,7 @@ class DHCPConfigTest : public PropertyStoreTest {
    public:
     explicit TestProxyFactory(DHCPConfigTest *test) : test_(test) {}
 
-    virtual DHCPProxyInterface *CreateDHCPProxy(const string &service) {
+    virtual DHCPProxyInterface *CreateDHCPProxy(const string &/*service*/) {
       return test_->proxy_.release();
     }
 

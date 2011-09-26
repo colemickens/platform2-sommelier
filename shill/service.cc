@@ -158,14 +158,15 @@ Service::Service(ControlInterface *control_interface,
 
 Service::~Service() {}
 
-void Service::ActivateCellularModem(const std::string &carrier, Error *error) {
+void Service::ActivateCellularModem(const std::string &/*carrier*/,
+                                    Error *error) {
   const string kMessage = "Service doesn't support cellular modem activation.";
   LOG(ERROR) << kMessage;
   CHECK(error);
   error->Populate(Error::kInvalidArguments, kMessage);
 }
 
-bool Service::TechnologyIs(const Technology::Identifier type) const {
+bool Service::TechnologyIs(const Technology::Identifier /*type*/) const {
   return false;
 }
 

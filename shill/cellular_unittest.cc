@@ -148,36 +148,37 @@ class CellularTest : public testing::Test {
    public:
     explicit TestProxyFactory(CellularTest *test) : test_(test) {}
 
-    virtual ModemProxyInterface *CreateModemProxy(ModemProxyListener *listener,
-                                                  const string &path,
-                                                  const string &service) {
+    virtual ModemProxyInterface *CreateModemProxy(
+        ModemProxyListener */*listener*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->proxy_.release();
     }
 
     virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
-        const string &path,
-        const string &service) {
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->simple_proxy_.release();
     }
 
     virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-        ModemCDMAProxyListener *listener,
-        const string &path,
-        const string &service) {
+        ModemCDMAProxyListener */*listener*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->cdma_proxy_.release();
     }
 
     virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-        ModemGSMCardProxyListener *listener,
-        const string &path,
-        const string &service) {
+        ModemGSMCardProxyListener */*listener*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->gsm_card_proxy_.release();
     }
 
     virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-        ModemGSMNetworkProxyListener *listener,
-        const string &path,
-        const string &service) {
+        ModemGSMNetworkProxyListener */*listener*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->gsm_network_proxy_.release();
     }
 

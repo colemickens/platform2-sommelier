@@ -967,7 +967,7 @@ void Cellular::OnCDMASignalQualityChanged(uint32 strength) {
   HandleNewSignalQuality(strength);
 }
 
-void Cellular::OnGSMNetworkModeChanged(uint32 mode) {
+void Cellular::OnGSMNetworkModeChanged(uint32 /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }
@@ -987,9 +987,9 @@ void Cellular::OnGSMSignalQualityChanged(uint32 quality) {
   HandleNewSignalQuality(quality);
 }
 
-void Cellular::OnModemStateChanged(uint32 old_state,
-                                   uint32 new_state,
-                                   uint32 reason) {
+void Cellular::OnModemStateChanged(uint32 /*old_state*/,
+                                   uint32 /*new_state*/,
+                                   uint32 /*reason*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
 }

@@ -140,14 +140,14 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
 }
 
 void Modem::OnDBusPropertiesChanged(
-    const string &interface,
-    const DBusPropertiesMap &changed_properties,
-    const vector<string> &invalidated_properties) {
+    const string &/*interface*/,
+    const DBusPropertiesMap &/*changed_properties*/,
+    const vector<string> &/*invalidated_properties*/) {
   // Ignored.
 }
 
 void Modem::OnModemManagerPropertiesChanged(
-    const string &interface,
+    const string &/*interface*/,
     const DBusPropertiesMap &properties) {
   if (!device_.get()) {
     return;

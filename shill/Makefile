@@ -5,8 +5,6 @@
 CXX ?= g++
 CXXFLAGS ?= -fno-strict-aliasing
 CXXFLAGS += -Wall -Wextra -Werror -Wuninitialized -Woverloaded-virtual
-# Disable a warning which occurs repeatedly in the dbus-c++ headers.
-CXXFLAGS += -Wno-unused
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config

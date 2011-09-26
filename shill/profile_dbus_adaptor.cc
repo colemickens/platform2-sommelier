@@ -71,13 +71,13 @@ void ProfileDBusAdaptor::SetProperty(const string &name,
 }
 
 map<string, ::DBus::Variant> ProfileDBusAdaptor::GetEntry(
-    const std::string& name,
-    ::DBus::Error &error) {
+    const std::string& /*name*/,
+    ::DBus::Error &/*error*/) {
   return map<string, ::DBus::Variant>();
 }
 
-void ProfileDBusAdaptor::DeleteEntry(const std::string& name,
-                                     ::DBus::Error &error) {
+void ProfileDBusAdaptor::DeleteEntry(const std::string& /*name*/,
+                                     ::DBus::Error &/*error*/) {
 }
 
 }  // namespace shill

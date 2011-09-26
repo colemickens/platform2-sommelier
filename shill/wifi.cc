@@ -178,7 +178,7 @@ void WiFi::Stop() {
           << " ServiceMap entries.";
 }
 
-void WiFi::Scan(Error *error) {
+void WiFi::Scan(Error */*error*/) {
   LOG(INFO) << __func__;
 
   // needs to send a D-Bus message, but may be called from D-Bus
@@ -214,7 +214,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
 }
 
 void WiFi::BSSAdded(
-    const ::DBus::Path &BSS,
+    const ::DBus::Path &/*BSS*/,
     const std::map<string, ::DBus::Variant> &properties) {
   // TODO(quiche): write test to verify correct behavior in the case
   // where we get multiple BSSAdded events for a single endpoint.

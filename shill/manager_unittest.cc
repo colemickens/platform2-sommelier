@@ -207,7 +207,6 @@ TEST_F(ManagerTest, GetDevicesProperty) {
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
-    bool expected = true;
     DBusAdaptor::GetProperties(manager()->store(), &props, &dbus_error);
     ASSERT_FALSE(props.find(flimflam::kDevicesProperty) == props.end());
     Strings devices =

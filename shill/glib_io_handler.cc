@@ -19,8 +19,8 @@ GlibIOInputHandler::GlibIOInputHandler(int fd,
   channel_ = g_io_channel_unix_new(fd);
   g_io_channel_set_close_on_unref(channel_, TRUE);
   source_id_ = g_io_add_watch(channel_,
-                              (GIOCondition)(G_IO_IN | G_IO_NVAL |
-                                             G_IO_HUP | G_IO_ERR),
+                              static_cast<GIOCondition>(
+                                  G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR),
                               DispatchIOHandler, this);
 }
 

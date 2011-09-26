@@ -53,7 +53,7 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   virtual ~ConstPropertyAccessor() {}
 
   const T &Get() { return *property_; }
-  bool Set(const T &value) { return false; }
+  bool Set(const T &/*value*/) { return false; }
 
  private:
   const T * const property_;

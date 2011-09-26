@@ -58,12 +58,12 @@ SupplicantInterfaceProxy::Proxy::Proxy(
 
 SupplicantInterfaceProxy::Proxy::~Proxy() {}
 
-void SupplicantInterfaceProxy::Proxy::BlobAdded(const string &blobname) {
+void SupplicantInterfaceProxy::Proxy::BlobAdded(const string &/*blobname*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
-void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string &blobname) {
+void SupplicantInterfaceProxy::Proxy::BlobRemoved(const string &/*blobname*/) {
   LOG(INFO) << __func__;
   // XXX
 }
@@ -75,32 +75,32 @@ void SupplicantInterfaceProxy::Proxy::BSSAdded(
   wifi_->BSSAdded(BSS, properties);
 }
 
-void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
+void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &/*BSS*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(
-    const ::DBus::Path &network,
-    const std::map<string, ::DBus::Variant> &properties) {
+    const ::DBus::Path &/*network*/,
+    const std::map<string, ::DBus::Variant> &/*properties*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
-    const ::DBus::Path &network) {
+    const ::DBus::Path &/*network*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(
-    const ::DBus::Path &network) {
+    const ::DBus::Path &/*network*/) {
   LOG(INFO) << __func__;
   // XXX
 }
 
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant> &properties) {
+    const std::map<string, ::DBus::Variant> &/*properties*/) {
   LOG(INFO) << __func__;
   // XXX
 }

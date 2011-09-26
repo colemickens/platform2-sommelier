@@ -84,7 +84,7 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
 // static
 bool DBusAdaptor::GetProperties(const PropertyStore &store,
                                 map<string, ::DBus::Variant> *out,
-                                ::DBus::Error *error) {
+                                ::DBus::Error */*error*/) {
   {
     PropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())

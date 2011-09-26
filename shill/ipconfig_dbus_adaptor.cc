@@ -77,19 +77,19 @@ void IPConfigDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-void IPConfigDBusAdaptor::ClearProperty(const std::string& name,
-                                        ::DBus::Error &error) {
+void IPConfigDBusAdaptor::ClearProperty(const std::string& /*name*/,
+                                        ::DBus::Error &/*error*/) {
 }
 
-void IPConfigDBusAdaptor::Remove(::DBus::Error &error) {
+void IPConfigDBusAdaptor::Remove(::DBus::Error &/*error*/) {
 }
 
-void IPConfigDBusAdaptor::MoveBefore(const ::DBus::Path& path,
-                                     ::DBus::Error &error) {
+void IPConfigDBusAdaptor::MoveBefore(const ::DBus::Path& /*path*/,
+                                     ::DBus::Error &/*error*/) {
 }
 
-void IPConfigDBusAdaptor::MoveAfter(const ::DBus::Path& path,
-                                    ::DBus::Error &error) {
+void IPConfigDBusAdaptor::MoveAfter(const ::DBus::Path& /*path*/,
+                                    ::DBus::Error &/*error*/) {
 }
 
 }  // namespace shill

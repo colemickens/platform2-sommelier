@@ -135,7 +135,7 @@ void Device::Stop() {
           << (selected_service_.get() ? "is set." : "is not set.");
 }
 
-bool Device::TechnologyIs(const Technology::Identifier type) const {
+bool Device::TechnologyIs(const Technology::Identifier /*type*/) const {
   return false;
 }
 
@@ -154,29 +154,30 @@ void Device::Scan(Error *error) {
   error->Populate(Error::kNotSupported, kMessage);
 }
 
-void Device::RegisterOnNetwork(const std::string &network_id, Error *error) {
+void Device::RegisterOnNetwork(const std::string &/*network_id*/,
+                               Error *error) {
   const string kMessage = "Device doesn't support network registration.";
   LOG(ERROR) << kMessage;
   CHECK(error);
   error->Populate(Error::kNotSupported, kMessage);
 }
 
-void Device::RequirePIN(const string &pin, bool require, Error *error) {
+void Device::RequirePIN(const string &/*pin*/, bool /*require*/, Error *error) {
   const string kMessage = "Device doesn't support RequirePIN.";
   LOG(ERROR) << kMessage;
   CHECK(error);
   error->Populate(Error::kNotSupported, kMessage);
 }
 
-void Device::EnterPIN(const string &pin, Error *error) {
+void Device::EnterPIN(const string &/*pin*/, Error *error) {
   const string kMessage = "Device doesn't support EnterPIN.";
   LOG(ERROR) << kMessage;
   CHECK(error);
   error->Populate(Error::kNotSupported, kMessage);
 }
 
-void Device::UnblockPIN(const string &unblock_code,
-                        const string &pin,
+void Device::UnblockPIN(const string &/*unblock_code*/,
+                        const string &/*pin*/,
                         Error *error) {
   const string kMessage = "Device doesn't support UnblockPIN.";
   LOG(ERROR) << kMessage;
@@ -184,8 +185,8 @@ void Device::UnblockPIN(const string &unblock_code,
   error->Populate(Error::kNotSupported, kMessage);
 }
 
-void Device::ChangePIN(const string &old_pin,
-                       const string &new_pin,
+void Device::ChangePIN(const string &/*old_pin*/,
+                       const string &/*new_pin*/,
                        Error *error) {
   const string kMessage = "Device doesn't support ChangePIN.";
   LOG(ERROR) << kMessage;

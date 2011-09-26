@@ -93,14 +93,15 @@ DHCPCDProxy::Proxy::Proxy(DBus::Connection *connection,
 
 DHCPCDProxy::Proxy::~Proxy() {}
 
-void DHCPCDProxy::Proxy::Event(const uint32_t &pid,
-                               const std::string &reason,
-                               const DHCPConfig::Configuration &configuration) {
+void DHCPCDProxy::Proxy::Event(
+    const uint32_t &/*pid*/,
+    const std::string &/*reason*/,
+    const DHCPConfig::Configuration &/*configuration*/) {
   NOTREACHED();
 }
 
-void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &pid,
-                                       const std::string &status) {
+void DHCPCDProxy::Proxy::StatusChanged(const uint32_t &/*pid*/,
+                                       const std::string &/*status*/) {
   NOTREACHED();
 }
 

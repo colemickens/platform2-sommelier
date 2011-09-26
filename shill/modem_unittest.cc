@@ -67,9 +67,9 @@ class ModemTest : public Test {
     explicit TestProxyFactory(ModemTest *test) : test_(test) {}
 
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        DBusPropertiesProxyListener *listener,
-        const string &path,
-        const string &service) {
+        DBusPropertiesProxyListener */*listener*/,
+        const string &/*path*/,
+        const string &/*service*/) {
       return test_->proxy_.release();
     }
 

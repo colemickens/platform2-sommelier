@@ -91,32 +91,33 @@ void ManagerDBusAdaptor::SetProperty(const string &name,
   }
 }
 
-string ManagerDBusAdaptor::GetState(::DBus::Error &error) {
+string ManagerDBusAdaptor::GetState(::DBus::Error &/*error*/) {
   return string();
 }
 
 ::DBus::Path ManagerDBusAdaptor::CreateProfile(const string &name,
-                                               ::DBus::Error &error) {
+                                               ::DBus::Error &/*error*/) {
   NOTIMPLEMENTED();
   // TODO(quiche): implement this
   return ::DBus::Path("/" + name);
 }
 
-void ManagerDBusAdaptor::RemoveProfile(const string &name,
-                                       ::DBus::Error &error) {
+void ManagerDBusAdaptor::RemoveProfile(const string &/*name*/,
+                                       ::DBus::Error &/*error*/) {
 }
 
 ::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &name,
-                                             ::DBus::Error &error) {
+                                             ::DBus::Error &/*error*/) {
   NOTIMPLEMENTED();
   // TODO(quiche): implement this
   return ::DBus::Path("/" + name);
 }
 
-void ManagerDBusAdaptor::PopProfile(const std::string &, ::DBus::Error &error) {
+void ManagerDBusAdaptor::PopProfile(const std::string &,
+                                    ::DBus::Error &/*error*/) {
 }
 
-void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
+void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &/*error*/) {
 }
 
 void ManagerDBusAdaptor::RequestScan(const string &technology,
@@ -127,11 +128,11 @@ void ManagerDBusAdaptor::RequestScan(const string &technology,
 }
 
 void ManagerDBusAdaptor::EnableTechnology(const string &,
-                                          ::DBus::Error &error) {
+                                          ::DBus::Error &/*error*/) {
 }
 
 void ManagerDBusAdaptor::DisableTechnology(const string &,
-                                           ::DBus::Error &error) {
+                                           ::DBus::Error &/*error*/) {
 }
 
 // deprecated synonym for GetWifiService
@@ -164,36 +165,36 @@ void ManagerDBusAdaptor::DisableTechnology(const string &,
 
 void ManagerDBusAdaptor::ConfigureWifiService(
     const map<string, ::DBus::Variant> &,
-    ::DBus::Error &error) {
+    ::DBus::Error &/*error*/) {
 }
 
 ::DBus::Path ManagerDBusAdaptor::GetVPNService(
     const map<string, ::DBus::Variant> &,
-    ::DBus::Error &error) {
+    ::DBus::Error &/*error*/) {
   return ::DBus::Path();
 }
 
 void ManagerDBusAdaptor::RegisterAgent(const ::DBus::Path &,
-                                       ::DBus::Error &error) {
+                                       ::DBus::Error &/*error*/) {
 }
 
 void ManagerDBusAdaptor::UnregisterAgent(const ::DBus::Path &,
-                                         ::DBus::Error &error) {
+                                         ::DBus::Error &/*error*/) {
 }
 
-int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &error) {
+int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &/*error*/) {
   return logging::GetMinLogLevel();
 }
 
 void ManagerDBusAdaptor::SetDebugLevel(const int32_t &level,
-                                      ::DBus::Error &error) {
+                                       ::DBus::Error &/*error*/) {
   if (level < logging::LOG_NUM_SEVERITIES)
     logging::SetMinLogLevel(level);
   else
     LOG(WARNING) << "Ignoring attempt to set log level to " << level;
 }
 
-string ManagerDBusAdaptor::GetServiceOrder(::DBus::Error &error) {
+string ManagerDBusAdaptor::GetServiceOrder(::DBus::Error &/*error*/) {
   return manager_->GetTechnologyOrder();
 }
 

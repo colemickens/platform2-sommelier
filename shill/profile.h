@@ -111,7 +111,8 @@ class Profile : public base::RefCounted<Profile> {
   static bool IsValidIdentifierToken(const std::string &token);
 
   // Returns true if |candidate| can be merged into |service|.
-  bool Mergeable(const ServiceRefPtr &service, const ServiceRefPtr &candiate) {
+  bool Mergeable(const ServiceRefPtr &/*service*/,
+                 const ServiceRefPtr &/*candiate*/) {
     return false;
   }
 
