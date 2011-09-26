@@ -11,6 +11,7 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "base/memory/scoped_ptr.h"
 #include "power_manager/mock_xsync.h"
 #include "power_manager/xidle.h"
 #include "power_manager/xidle_observer.h"
@@ -20,16 +21,15 @@ namespace power_manager {
 class XIdleTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    // Mock out XIdle's XSync by replacing it with MockXSync.  Save the old
-    // XSync pointer, because it needs to be freed later.
     xsync_ = new MockXSync();
     CHECK(xsync_);
-    idle_.xsync_.reset(xsync_);
+    // Mock out XIdle's XSync by replacing it with MockXSync.
+    idle_.reset(new XIdle(xsync_));
   }
   virtual void TearDown() {
-    idle_.ClearTimeouts();
+    idle_->ClearTimeouts();
   }
-  XIdle idle_;
+  scoped_ptr<XIdle> idle_;
   MockXSync* xsync_;
 };
 
@@ -86,17 +86,17 @@ class XIdleObserverTest : public XIdleObserver {
 };
 
 TEST_F(XIdleTest, GetIdleTimeTest) {
-  ASSERT_TRUE(idle_.Init(NULL));
+  ASSERT_TRUE(idle_->Init(NULL));
   int64 idle_time = kint64max;
-  ASSERT_TRUE(idle_.GetIdleTime(&idle_time));
+  ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
   ASSERT_NE(idle_time, kint64max);
 }
 
 TEST_F(XIdleTest, GetIdleTimeWhenNonIdleTest) {
-  ASSERT_TRUE(idle_.Init(NULL));
+  ASSERT_TRUE(idle_->Init(NULL));
   int64 idle_time = kint64max;
   FakeMotionEvent(xsync_);
-  ASSERT_TRUE(idle_.GetIdleTime(&idle_time));
+  ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
   ASSERT_LT(idle_time, 50);
 }
 
@@ -104,9 +104,9 @@ TEST_F(XIdleTest, MonitorTest) {
   FakeMotionEvent(xsync_);
   GMainLoop* loop = g_main_loop_new(NULL, false);
   XIdleObserverTest observer(loop, xsync_);
-  ASSERT_TRUE(idle_.Init(&observer));
+  ASSERT_TRUE(idle_->Init(&observer));
   g_timeout_add(1000, XIdleObserverTest::Quit, &observer);
-  idle_.AddIdleTimeout(50);
+  idle_->AddIdleTimeout(50);
   g_main_loop_run(loop);
   ASSERT_GT(observer.count_, 1);
   ASSERT_LT(observer.count_, 41);

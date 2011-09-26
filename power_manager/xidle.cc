@@ -18,6 +18,12 @@ XIdle::XIdle()
       min_timeout_(kint64max) {
 }
 
+XIdle::XIdle(XSync *xsync)
+    : xsync_(xsync),
+      idle_counter_(0),
+      min_timeout_(kint64max) {
+}
+
 XIdle::~XIdle() {
   ClearTimeouts();
 }

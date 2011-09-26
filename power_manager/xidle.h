@@ -25,6 +25,7 @@ class XIdleObserver;
 class XIdle {
  public:
   XIdle();
+  XIdle(XSync *xsync);
   ~XIdle();
 
   // Initialize the object with the given |observer|.
@@ -55,8 +56,6 @@ class XIdle {
   bool ClearTimeouts();
 
  private:
-  friend class XIdleTest;
-
   // Create an XSyncAlarm. Returns the new alarm.
   //
   // If test_type is XSyncPositiveTransition, the alarm triggers when the
