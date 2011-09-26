@@ -101,7 +101,7 @@ power_prefs = gdk_env.Library('power_prefs', ['power_prefs.cc',
                                               'power_constants.cc'])
 powerd_env = xidle_env.Clone()
 powerd_env.Append(LIBS=Split(
-    'chromeos crosapi gflags pthread dl metrics X11 Xrandr udev'))
+    'chromeos gflags pthread dl metrics X11 Xrandr udev'))
 powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
