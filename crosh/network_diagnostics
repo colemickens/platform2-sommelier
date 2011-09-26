@@ -11,15 +11,10 @@ IW=/usr/sbin/iw
 ARP=/sbin/arp
 ARPING=/sbin/arping
 HTPDATE=/usr/sbin/htpdate
-
-# Cheesy option parsing until there's more than one option
 anonymize_macs=${ANONYMIZE_MACS-yes}
-if [ "${1}" = "--show-macs" ]; then
-    anonymize_macs=no
-    shift
-fi
+default_run=yes
 
-test_host=${1-www.google.com}
+test_host=www.google.com
 fail_count=0
 declare -A fn_entry
 
@@ -402,6 +397,14 @@ diag_link_wifi () {
   diag_dhcp ${ifc} -${tail} ${file}
 }
 
+# Print out WiFi debugging info
+diag_wifi () {
+  for dir in /sys/kernel/debug/ieee80211/phy*/ath9k; do
+    [ -d "${dir}" ] && head -1000 ${dir}/{dma,interrupt,recv,xmit,samples} | \
+      mac_anonymize
+  done
+}
+
 # Perform diagnostics on a WAN interface
 diag_link_cellular () {
   fn_enter ${FUNCNAME} $*
@@ -460,6 +463,12 @@ diag_link () {
 
   echo "Last 10 kernel messages for ${ifc}:"
   tail_logs | grep "kernel:.*${ifc}" | tail -10
+}
+
+diag_linkall () {
+  for ifc in $(get_iflist); do
+    diag_link ${ifc}
+  done
 }
 
 # Perform generic diagonostics on a network interface
@@ -660,12 +669,68 @@ diag_run () {
   diag_date ${host}
 }
 
+usage () {
+  echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help] <host>"
+  echo "    --date:      Diagnose time-of-day"
+  echo "    --flimflam:  Diagnose flimflam status"
+  echo "    --interface: Diagnose interface status"
+  echo "    --link:      Diagnose all network links"
+  echo "    --show-macs: Display full MAC addresses"
+  echo "    --wifi:      Display driver-specific debugging information"
+  echo "    --help:      Display this message"
+  echo "    <host>       Hustname to perform web access test on"
+}
+
+main () {
+  if [ $# -gt 0 ]; then
+    default_run=yes
+    for param in $@; do
+      case $param in
+        --date)
+          default_run=no
+          diag_date ${test_host}
+          ;;
+        --flimflam)
+          default_run=no
+          diag_flimflam
+          ;;
+        --interface)
+          default_run=no
+          diag_ifall
+          ;;
+        --link)
+          default_run=no
+          diag_linkall
+          ;;
+        --show-macs)
+          anonymize_macs=no
+          ;;
+        --wifi)
+          default_run=no
+          diag_wifi
+          ;;
+        --help|-help|-h|-*)
+          usage
+          exit 0
+          ;;
+        *)
+          test_host=$param
+          ;;
+      esac
+    done
+    if [ "${default_run}" = "no" ] ; then
+      exit ${fail_count}
+    fi
+  fi
+  diag_run ${test_host}
+}
+
 if [ -d /home/${USER}/user/Downloads ] ; then
   # Log this output to somewhere the user can upload from
-  diag_run ${test_host} 2>&1 | \
+  main $@ 2>&1 | \
     tee $(unique_file /home/${USER}/user/Downloads/network_diagnostics_\*.txt)
 else
-  diag_run ${test_host}
+  main $@
 fi
 
 exit ${fail_count}
