@@ -133,7 +133,7 @@ mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
 clobber-log --restore "$SCRIPT" "$@"
 
 # Tag that we're in developer mode otherwise we may get wiped again.
-if crossystem devsw_boot?1 && ! crossystem mainfw_act?recovery; then
+if crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"; then
   touch /mnt/stateful_partition/.developer_mode
 fi
 

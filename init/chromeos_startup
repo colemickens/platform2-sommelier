@@ -84,12 +84,12 @@ fi
 # DEV_MODE is used to determine if we're booted in developer mode,
 # by checking only the developer and recovery switch states.
 # Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
-crossystem devsw_boot?1 && ! crossystem mainfw_act?recovery
+crossystem "devsw_boot?1" && ! crossystem "mainfw_act?recovery"
 DEV_MODE=$((! $?))
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
-crossystem cros_debug?1
+crossystem "cros_debug?1"
 CROS_DEBUG=$((! $?))
 
 # Check if we need to perform firmware update: only if fwupdate_tries is
