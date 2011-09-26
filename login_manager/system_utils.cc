@@ -134,8 +134,14 @@ void SystemUtils::BroadcastSignal(gobject::SessionManager* origin,
                                   guint signal,
                                   const char* payload,
                                   const char* user) {
-  DCHECK(origin && payload && user);
+  CHECK(origin && payload && user);
   g_signal_emit(origin, signal, 0, payload, user);
+}
+
+void SystemUtils::BroadcastSignalNoArgs(gobject::SessionManager* origin,
+                                        guint signal) {
+  CHECK(origin);
+  g_signal_emit(origin, signal, 0);
 }
 
 void SystemUtils::SendSignalToChromium(const char* signal_name,

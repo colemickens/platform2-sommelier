@@ -308,6 +308,7 @@ class SessionManagerService
   // D-Bus signals.
   enum Signals {
     kSignalSessionStateChanged,
+    kSignalLoginPromptVisible,
     kNumSignals
   };
 

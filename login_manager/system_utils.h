@@ -67,6 +67,11 @@ class SystemUtils {
                                const char* payload,
                                const char* user);
 
+  // Broadcasts |signal| over DBus, originating from |origin|.  It is
+  // an error to pass NULL for |origin|.
+  virtual void BroadcastSignalNoArgs(gobject::SessionManager* origin,
+                                     guint signal);
+
   // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
   //                API out of the session_manager.
   // http://code.google.com/p/chromium-os/issues/detail?id=5929

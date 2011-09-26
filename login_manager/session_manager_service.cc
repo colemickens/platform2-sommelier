@@ -275,6 +275,15 @@ bool SessionManagerService::Initialize() {
                    2,               // num params
                    G_TYPE_STRING,   // "started", "stopping", or "stopped"
                    G_TYPE_STRING);  // current user
+  signals_[kSignalLoginPromptVisible] =
+      g_signal_new("login_prompt_visible",
+                   gobject::session_manager_get_type(),
+                   G_SIGNAL_RUN_LAST,
+                   0,               // class offset
+                   NULL, NULL,      // accumulator and data
+                   NULL,            // Use default marshaller.
+                   G_TYPE_NONE,     // return type
+                   0);              // num params
 
   LOG(INFO) << "SessionManagerService starting";
   if (!Reset())
@@ -473,6 +482,8 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
 
 gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
   bootstat_log("login-prompt-visible");
+  system_->BroadcastSignalNoArgs(session_manager_,
+                                 signals_[kSignalLoginPromptVisible]);
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 

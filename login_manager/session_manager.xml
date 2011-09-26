@@ -16,6 +16,8 @@
     </method>
     <method name="EmitLoginPromptVisible">
     </method>
+    <signal name="LoginPromptVisible">
+    </signal>
     <method name="EnableChromeTesting">
       <arg type="b" name="force_relaunch" direction="in" />
       <arg type="as" name="extra_arguments" direction="in" />
