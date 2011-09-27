@@ -567,6 +567,40 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                     kPowerButtonUp)) {
     LOG(INFO) << "Button Up event";
     daemon->power_button_handler_->HandleButtonUp();
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kDecreaseScreenBrightness)) {
+    LOG(INFO) << "Decrease screen brightness request.";
+    dbus_bool_t allow_off = false;
+    DBusError error;
+    dbus_error_init(&error);
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_BOOLEAN, &allow_off,
+                              DBUS_TYPE_INVALID) == FALSE) {
+      LOG(WARNING) << "Error reading args from "
+                   << kDecreaseScreenBrightness << ": "
+                   << (dbus_error_is_set(&error) ? error.message
+                                                 : "Unknown error");
+    }
+    daemon->DecreaseScreenBrightness(allow_off, true);
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kIncreaseScreenBrightness)) {
+    LOG(INFO) << "Increase screen brightness request.";
+    daemon->IncreaseScreenBrightness(true);
+  } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
+                                         kGetIdleTime)) {
+    LOG(INFO) << "Idle time request.";
+    int64 idle_time_ms = 0;
+    CHECK(daemon->GetIdleTime(&idle_time_ms));
+    DBusMessage *reply = dbus_message_new_method_return(message);
+    CHECK(reply);
+    dbus_message_append_args(reply,
+                             DBUS_TYPE_INT64, &idle_time_ms,
+                             DBUS_TYPE_INVALID);
+    if (!dbus_connection_send(connection, reply, NULL)) {
+      LOG(WARNING) << "Failed to send reply message.";
+      // Other dbus clients may be interested in consuming this signal.
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kCleanShutdown)) {
     LOG(INFO) << "Clean shutdown/restart event";

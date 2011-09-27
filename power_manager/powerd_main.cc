@@ -122,9 +122,9 @@ int main(int argc, char* argv[]) {
   // Create and initialize the D-Bus power manager service.
   ::g_type_init();
   power_manager::PowerManagerService manager(&daemon);
-  if (!manager.Initialize())
-    LOG(ERROR) << "Cannot initialize power manager service";
-  else if (!manager.Register(chromeos::dbus::GetSystemBusConnection()))
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  if (!manager.Register(connection))
     LOG(ERROR) << "Cannot register power manager service";
   daemon.Run();
   return 0;
