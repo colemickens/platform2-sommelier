@@ -137,7 +137,7 @@ if [ "$(echo "$@" | grep -- "--usb")" -o "$REMOVABLE" = "1" ]; then
 fi
 
 # Force dev behavior on dev images.
-/usr/bin/crossystem cros_debug?1
+/usr/bin/crossystem "cros_debug?1"
 DEVMODE=$((!$?))
 
 if [ "$(echo "$@" | grep -- "--dev")" -o "$DEVMODE" = "1" ]; then
