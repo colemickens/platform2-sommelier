@@ -17,13 +17,6 @@
 #include "utils.h"
 
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#else
-#define V1 "v1"
-#endif
-
-
 GLuint GenerateAndBindTexture() {
   GLuint name = ~0;
   glGenTextures(1, &name);
@@ -62,7 +55,7 @@ const char kVertexShader[] =
     "varying vec4 v1;"
     "void main() {"
     "    gl_Position = vertices;"
-    "    " V1 " = vec4(vertices.yx, 0.0, 0.0);"
+    "    v1 = vec4(vertices.yx, 0.0, 0.0);"
     "}";
 
 const char kFragmentShader[] =
@@ -70,7 +63,7 @@ const char kFragmentShader[] =
     "uniform vec4 color;"
     "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = color * texture2D(tex, " V1 ".xy);"
+    "    gl_FragColor = color * texture2D(tex, v1.xy);"
     "}";
 
 // Command line flags

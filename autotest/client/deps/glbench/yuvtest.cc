@@ -78,12 +78,7 @@ GLuint YuvToRgbTest::YuvToRgbShaderProgram(GLuint vertex_buffer,
     goto done;
 
   {
-#if defined(I915_WORKAROUND)
-    const char* header = "#define I915_WORKAROUND 1\n";
-#else
-    const char* header = NULL;
-#endif
-    program = InitShaderProgramWithHeader(header, yuv_to_rgb_vertex,
+    program = InitShaderProgramWithHeader(NULL, yuv_to_rgb_vertex,
                                           yuv_to_rgb_fragment);
 
     int imageWidthUniform = glGetUniformLocation(program, "imageWidth");

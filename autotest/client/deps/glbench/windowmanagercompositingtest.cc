@@ -109,30 +109,20 @@ bool WindowManagerCompositingTest::TestFunc(int iter) {
   return true;
 }
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#define V2 "gl_TexCoord[1]"
-#define V3 "gl_TexCoord[2]"
-#else
-#define V1 "v1"
-#define V2 "v2"
-#define V3 "v3"
-#endif
-
 const char *kBasicTextureVertexShader =
     "attribute vec4 c1;"
     "attribute vec4 c2;"
     "varying vec4 v1;"
     "void main() {"
     "    gl_Position = c1;"
-    "    " V1 " = c2;"
+    "    v1 = c2;"
     "}";
 
 const char *kBasicTextureFragmentShader =
     "uniform sampler2D texture_sampler;"
     "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = texture2D(texture_sampler, " V1 ".st);"
+    "    gl_FragColor = texture2D(texture_sampler, v1.st);"
     "}";
 
 GLuint BasicTextureShaderProgram(GLuint vertex_buffer, GLuint texture_buffer) {
@@ -166,8 +156,8 @@ const char *kDoubleTextureBlendVertexShader =
     "varying vec4 v2;"
     "void main() {"
     "    gl_Position = c1;"
-    "    " V1 " = c2;"
-    "    " V2 " = c3;"
+    "    v1 = c2;"
+    "    v2 = c3;"
     "}";
 
 const char *kDoubleTextureBlendFragmentShader =
@@ -176,8 +166,8 @@ const char *kDoubleTextureBlendFragmentShader =
     "varying vec4 v1;"
     "varying vec4 v2;"
     "void main() {"
-    "    vec4 one = texture2D(texture_sampler_0, " V1 ".st);"
-    "    vec4 two = texture2D(texture_sampler_1, " V2 ".st);"
+    "    vec4 one = texture2D(texture_sampler_0, v1.st);"
+    "    vec4 two = texture2D(texture_sampler_1, v2.st);"
     "    gl_FragColor = mix(one, two, 0.5);"
     "}";
 
@@ -223,9 +213,9 @@ const char *triple_texture_blend_vertex_shader =
 "varying vec4 v3;"
 "void main() {"
 "    gl_Position = c1;"
-"    " V1 " = c2;"
-"    " V2 " = c3;"
-"    " V3 " = c4;"
+"    v1 = c2;"
+"    v2 = c3;"
+"    v3 = c4;"
 "}";
 
 const char *triple_texture_blend_fragment_shader =
@@ -236,9 +226,9 @@ const char *triple_texture_blend_fragment_shader =
 "varying vec4 v2;"
 "varying vec4 v3;"
 "void main() {"
-"    vec4 one = texture2D(texture_sampler_0, " V1 ".st);"
-"    vec4 two = texture2D(texture_sampler_1, " V2 ".st);"
-"    vec4 three = texture2D(texture_sampler_2, " V3 ".st);"
+"    vec4 one = texture2D(texture_sampler_0, v1.st);"
+"    vec4 two = texture2D(texture_sampler_1, v2.st);"
+"    vec4 three = texture2D(texture_sampler_2, v3.st);"
 "    gl_FragColor = mix(mix(one, two, 0.5), three, 0.5);"
 "}";
 
@@ -283,10 +273,6 @@ GLuint TripleTextureBlendShaderProgram(GLuint vertex_buffer,
 
   return program;
 }
-
-#undef V1
-#undef V2
-#undef V3
 
 void WindowManagerCompositingTest::InitializeCompositing() {
   InitBaseTexture();

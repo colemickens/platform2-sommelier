@@ -38,26 +38,20 @@ class TextureUpdateTest : public TestBase {
   DISALLOW_COPY_AND_ASSIGN(TextureUpdateTest);
 };
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#else
-#define V1 "v1"
-#endif
-
 static const char* kVertexShader =
     "attribute vec4 c1;"
     "attribute vec4 c2;"
     "varying vec4 v1;"
     "void main() {"
     "  gl_Position = c1;"
-       V1 "= c2;"
+    "  v1 = c2;"
     "}";
 
 static const char* kFragmentShader =
     "varying vec4 v1;"
     "uniform sampler2D texture;"
     "void main() {"
-    "  gl_FragColor = texture2D(texture, " V1 ".xy);"
+    "  gl_FragColor = texture2D(texture, v1.xy);"
     "}";
 
 bool TextureUpdateTest::TestFunc(int iter) {

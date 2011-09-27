@@ -21,12 +21,6 @@ class FillRateTest : public DrawArraysTestFunc {
   DISALLOW_COPY_AND_ASSIGN(FillRateTest);
 };
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#else
-#define V1 "v1"
-#endif
-
 const char* kVertexShader1 =
     "attribute vec4 position;"
     "void main() {"
@@ -47,14 +41,14 @@ const char* kVertexShader2 =
     "varying vec4 v1;"
     "void main() {"
     "  gl_Position = position * vec4(scale, scale, 1., 1.);"
-    "  " V1 " = texcoord;"
+    "  v1 = texcoord;"
     "}";
 
 const char* kFragmentShader2 =
     "uniform sampler2D texture;"
     "varying vec4 v1;"
     "void main() {"
-    "  gl_FragColor = texture2D(texture, " V1 ".xy);"
+    "  gl_FragColor = texture2D(texture, v1.xy);"
     "}";
 
 bool FillRateTest::Run() {

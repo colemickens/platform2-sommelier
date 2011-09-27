@@ -45,13 +45,8 @@ varying vec2 yPlane;
 varying vec2 uvPlane;
 
 void main() {
-#if defined(I915_WORKAROUND)
-  float yChannel = texture2D(ySampler, gl_TexCoord[0].xy).r;
-  vec2 uvChannel = texture2D(uvSampler, gl_TexCoord[0].zw).ra;
-#else
   float yChannel = texture2D(ySampler, yPlane).r;
   vec2 uvChannel = texture2D(uvSampler, uvPlane).ra;
-#endif
   /*
    * This does the colorspace conversion from Y'UV to RGB as a matrix
    * multiply.  It also does the offset of the U and V channels from

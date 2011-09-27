@@ -41,26 +41,20 @@ GLuint GenerateAndBindTexture() {
   return name;
 }
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#else
-#define V1 "v1"
-#endif
-
 const char *vertex_shader =
     "attribute vec4 c;"
     "uniform float shift;"
     "varying vec4 v1;"
     "void main() {"
     "    gl_Position = c;"
-    "    " V1 " = vec4(c.y, c.x - shift, 0.0, 0.0);"
+    "    v1 = vec4(c.y, c.x - shift, 0.0, 0.0);"
     "}";
 
 const char *fragment_shader =
     "uniform sampler2D tex;"
     "varying vec4 v1;"
     "void main() {"
-    "    gl_FragColor = texture2D(tex, " V1 ".xy);"
+    "    gl_FragColor = texture2D(tex, v1.xy);"
     "}";
 
 

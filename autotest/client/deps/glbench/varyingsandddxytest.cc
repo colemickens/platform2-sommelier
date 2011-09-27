@@ -21,33 +21,12 @@ class VaryingsAndDdxyShaderTest : public DrawElementsTestFunc {
   DISALLOW_COPY_AND_ASSIGN(VaryingsAndDdxyShaderTest);
 };
 
-#if defined(I915_WORKAROUND)
-#define V1 "gl_TexCoord[0]"
-#define V2 "gl_TexCoord[1]"
-#define V3 "gl_TexCoord[2]"
-#define V4 "gl_TexCoord[3]"
-#define V5 "gl_TexCoord[4]"
-#define V6 "gl_TexCoord[5]"
-#define V7 "gl_TexCoord[6]"
-#define V8 "gl_TexCoord[7]"
-#else
-#define V1 "v1"
-#define V2 "v2"
-#define V3 "v3"
-#define V4 "v4"
-#define V5 "v5"
-#define V6 "v6"
-#define V7 "v7"
-#define V8 "v8"
-#endif
-
-
 const char *vertex_shader_1_varying =
 "attribute vec4 c;"
 "varying vec4 v1;"
 "void main() {"
 "  gl_Position = c;"
-   V1 "= c;"
+"  v1 = c;"
 "}";
 
 const char *vertex_shader_2_varying =
@@ -56,7 +35,7 @@ const char *vertex_shader_2_varying =
 "varying vec4 v2;"
 "void main() {"
 "  gl_Position = c;"
-   V1 "=" V2 "= c/2.;"
+"  v1 = v2 = c/2.;"
 "}";
 
 const char *vertex_shader_4_varying =
@@ -67,7 +46,7 @@ const char *vertex_shader_4_varying =
 "varying vec4 v4;"
 "void main() {"
 "  gl_Position = c;"
-   V1 "=" V2 "=" V3 "=" V4 "= c/4.;"
+"  v1 = v2 = v3 = v4 = c/4.;"
 "}";
 
 const char *vertex_shader_8_varying =
@@ -82,20 +61,20 @@ const char *vertex_shader_8_varying =
 "varying vec4 v8;"
 "void main() {"
 "  gl_Position = c;"
-   V1 "=" V2 "=" V3 "=" V4 "=" V5 "=" V6 "=" V7 "=" V8 "= c/8.;"
+"  v1 = v2 = v3 = v4 = v5 = v6 = v7 = v8 = c/8.;"
 "}";
 
 const char *fragment_shader_1_varying =
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor =" V1 ";"
+"  gl_FragColor = v1;"
 "}";
 
 const char *fragment_shader_2_varying =
 "varying vec4 v1;"
 "varying vec4 v2;"
 "void main() {"
-"  gl_FragColor =" V1 "+" V2 ";"
+"  gl_FragColor = v1 + v2;"
 "}";
 
 const char *fragment_shader_4_varying =
@@ -104,7 +83,7 @@ const char *fragment_shader_4_varying =
 "varying vec4 v3;"
 "varying vec4 v4;"
 "void main() {"
-"  gl_FragColor =" V1 "+" V2 "+" V3 "+" V4 ";"
+"  gl_FragColor = v1 + v2 + v3 + v4;"
 "}";
 
 const char *fragment_shader_8_varying =
@@ -117,7 +96,7 @@ const char *fragment_shader_8_varying =
 "varying vec4 v7;"
 "varying vec4 v8;"
 "void main() {"
-"  gl_FragColor =" V1 "+" V2 "+" V3 "+" V4 "+" V5 "+" V6 "+" V7 "+" V8 ";"
+"  gl_FragColor = v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8;"
 "}";
 
 GLuint VaryingsShaderProgram(int varyings_count, GLuint vertex_buffer) {
@@ -158,14 +137,14 @@ const char *fragment_shader_ddx =
 "#extension GL_OES_standard_derivatives : enable\n"
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(dFdx(" V1 ".x), 0., 0., 1.);"
+"  gl_FragColor = vec4(dFdx(v1.x), 0., 0., 1.);"
 "}";
 
 const char *fragment_shader_ddy =
 "#extension GL_OES_standard_derivatives : enable\n"
 "varying vec4 v1;"
 "void main() {"
-"  gl_FragColor = vec4(dFdy(" V1 ".y), 0., 0., 1.);"
+"  gl_FragColor = vec4(dFdy(v1.y), 0., 0., 1.);"
 "}";
 
 GLuint DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {

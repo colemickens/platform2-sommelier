@@ -181,23 +181,14 @@ void main() {
    * the location in the image stream, using floor in several places
    * which makes it hard to use parametric coordinates.
    */
-#if defined(I915_WORKAROUND)
-  vec2 pixelPosition = vec2(floor(imageWidth * gl_TexCoord[0].x),
-                            floor(imageHeight * gl_TexCoord[0].y));
-#else
   vec2 pixelPosition = vec2(floor(imageWidth * v1.x),
                             floor(imageHeight * v1.y));
-#endif
 
   /*
    * We can use the parametric coordinates to get the Y channel, since it's
    * a relatively normal image.
    */
-#if defined(I915_WORKAROUND)
-  float yChannel = getYPixel(vec2(gl_TexCoord[0]));
-#else
   float yChannel = getYPixel(vec2(v1));
-#endif
 
   /*
    * As noted above, the U and V planes are smashed onto the end of

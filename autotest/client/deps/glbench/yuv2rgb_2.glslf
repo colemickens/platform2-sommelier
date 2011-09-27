@@ -51,23 +51,13 @@ void main() {
   /*
    * If the height of the original image is even, offset_odd is not needed.
    */
-#if defined(I915_WORKAROUND)
-  vec2 offset_even = vec2(texture2D(paritySampler, gl_TexCoord[0].xy).x * 0.5,
-                          0.0);
-#else
   vec2 offset_even = vec2(texture2D(paritySampler, lineCounter).x * 0.5, 0.0);
-#endif
   vec2 offset_odd = vec2(0.5 - offset_even.x, 0.0);
 
-#if defined(I915_WORKAROUND)
-  float yChannel = texture2D(textureSampler, gl_TexCoord[0].zw).x;
-  float uChannel = texture2D(textureSampler, gl_TexCoord[1].xy + offset_even).x;
-  float vChannel = texture2D(textureSampler, gl_TexCoord[1].zw + offset_odd).x;
-#else
   float yChannel = texture2D(textureSampler, yPlane).x;
   float uChannel = texture2D(textureSampler, uPlane + offset_even).x;
   float vChannel = texture2D(textureSampler, vPlane + offset_odd).x;
-#endif
+
   /*
    * This does the colorspace conversion from Y'UV to RGB as a matrix
    * multiply.  It also does the offset of the U and V channels from

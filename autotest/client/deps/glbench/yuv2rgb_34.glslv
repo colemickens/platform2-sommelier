@@ -35,10 +35,5 @@ varying vec2 uvPlane;
 
 void main() {
   gl_Position = c;
-#if defined(I915_WORKAROUND)
-  gl_TexCoord[0] = vec4(c.xy, c.xy);
-  gl_TexCoord[0].yw = vec2(1., 1.) - gl_TexCoord[0].yw;
-#else
   yPlane = uvPlane = vec2(c.x, 1. - c.y);
-#endif
 }
