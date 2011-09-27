@@ -403,6 +403,18 @@ diag_wifi () {
     [ -d "${dir}" ] && head -1000 ${dir}/{dma,interrupt,recv,xmit,samples} | \
       mac_anonymize
   done
+  for ifc in $(get_iflist); do
+    if is_wifi ${ifc} ; then
+      echo "iw dev ${ifc} survey dump:"
+      ${IW} dev ${ifc} survey dump | mac_anonymize
+      echo "iw dev ${ifc} station dump:"
+      ${IW} dev ${ifc} station dump | mac_anonymize
+      echo "iw dev ${ifc} scan dump:"
+      ${IW} dev ${ifc} scan dump | mac_anonymize | grep -v SSID
+      echo "iw dev ${ifc} link:"
+      ${IW} dev ${ifc} link | mac_anonymize | grep -v SSID
+    fi
+  done
 }
 
 # Perform diagnostics on a WAN interface
@@ -441,6 +453,15 @@ is_modem () {
   return 1
 }
 
+is_wifi () {
+  local ifc=$1
+  if expr ${ifc} : wlan > /dev/null || \
+     [ -e /sys/class/net/${ifc}/phy80211 ] ; then
+    return 0
+  fi
+  return 1
+}
+
 # Perform type-specific link diagnostics on a network interface
 diag_link () {
   fn_enter ${FUNCNAME} $*
@@ -452,8 +473,7 @@ diag_link () {
     pass "${ifc}: link not detected"
   fi
 
-  if expr ${ifc} : wlan > /dev/null || \
-     [ -e /sys/class/net/${ifc}/phy80211 ] ; then
+  if is_wifi ${ifc} ; then
     diag_link_wifi ${ifc}
   elif is_modem ${ifc}; then
     diag_link_cellular ${ifc}
