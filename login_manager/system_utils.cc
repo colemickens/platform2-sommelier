@@ -39,7 +39,7 @@ SystemUtils::SystemUtils() {}
 SystemUtils::~SystemUtils() {}
 
 int SystemUtils::IsDevMode() {
-  int dev_mode_code = system("crossystem cros_debug?0");
+  int dev_mode_code = system("crossystem 'cros_debug?0'");
   if (WIFEXITED(dev_mode_code)) {
     return WEXITSTATUS(dev_mode_code);
   }
