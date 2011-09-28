@@ -33,23 +33,15 @@ class XIdleTest : public ::testing::Test {
   MockXSync* xsync_;
 };
 
-// Simulate the effect of user motion.
-// This used to be a simple function returning void, but by making it a glib
-// timeout callback, it can be scheduled to be called in the future as well.
-static gboolean FakeMotionEvent(gpointer xsync) {
-  reinterpret_cast<MockXSync*>(xsync)->FakeRelativeMotionEvent(0, 0, 0);
-  return false;
-}
-
 class XIdleObserverTest : public XIdleObserver {
  public:
-  explicit XIdleObserverTest(GMainLoop* loop, MockXSync* xsync)
+  explicit XIdleObserverTest(MockXSync* xsync)
       : count_(0),
-        loop_(loop),
         xsync_(xsync) {}
 
   // Overridden from XIdleObsever:
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+    bool do_fake_motion_event = false;
     // The following setup results in alternating between going into idle and
     // coming out of idle.
     if ((count_ % 2) == 0) {
@@ -58,58 +50,73 @@ class XIdleObserverTest : public XIdleObserver {
       ASSERT_TRUE(is_idle);
       ASSERT_GT(idle_time_ms, 49);
       ASSERT_LT(idle_time_ms, 500);
-      // Get out of idle by invoking a fake motion event.  This should be
-      // scheduled instead of called directly, because count__ needs to be
-      // incremented before it is called.
-      g_timeout_add(0, FakeMotionEvent, xsync_);
+      // Get out of idle by invoking a fake motion event.  This should be done
+      // AFTER count_ had been incremented, since it depends on the next value
+      // of count_.
+      do_fake_motion_event = true;
     } else {
       // When the idle event count so far (excluding current event) is odd,
       // check to make sure that the previous event had invoked the fake motion
       // event, taking the system out of idle.
       ASSERT_FALSE(is_idle);
-      ASSERT_LT(idle_time_ms, 50);
+      ASSERT_EQ(idle_time_ms, 0);
     }
     ++count_;
-  }
-
-  static gboolean Quit(gpointer data) {
-    XIdleObserverTest* observer = static_cast<XIdleObserverTest*>(data);
-    g_main_loop_quit(observer->loop_);
-    return false;
+    if (do_fake_motion_event)
+      xsync_->FakeMotionEvent();
   }
 
   int count_;
 
  private:
-  GMainLoop* loop_;
   MockXSync* xsync_;
 };
 
+// Test idle time when there is no user input.
 TEST_F(XIdleTest, GetIdleTimeTest) {
   ASSERT_TRUE(idle_->Init(NULL));
   int64 idle_time = kint64max;
   ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
-  ASSERT_NE(idle_time, kint64max);
+  // Initial idle time should be zero.
+  ASSERT_EQ(0, idle_time);
+  for (int i = 0; i < 10; ++i) {
+    xsync_->Run(10, 1);
+    ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
+    // Idle time should increase when the time simulator runs.
+    ASSERT_EQ((i + 1) * 10, idle_time);
+  }
 }
 
+// Test idle time when there is user input.
 TEST_F(XIdleTest, GetIdleTimeWhenNonIdleTest) {
   ASSERT_TRUE(idle_->Init(NULL));
   int64 idle_time = kint64max;
-  FakeMotionEvent(xsync_);
+  // Let the time run for a bit.
+  xsync_->Run(30, 1);
   ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
-  ASSERT_LT(idle_time, 50);
+  ASSERT_EQ(idle_time, 30);
+  // Simulate user input event.
+  xsync_->FakeMotionEvent();
+  ASSERT_TRUE(idle_->GetIdleTime(&idle_time));
+  ASSERT_EQ(idle_time, 0);
 }
 
 TEST_F(XIdleTest, MonitorTest) {
-  FakeMotionEvent(xsync_);
-  GMainLoop* loop = g_main_loop_new(NULL, false);
-  XIdleObserverTest observer(loop, xsync_);
+  xsync_->FakeMotionEvent();
+  // Register observer with XIdle, so it can count XIdle events.
+  XIdleObserverTest observer(xsync_);
   ASSERT_TRUE(idle_->Init(&observer));
-  g_timeout_add(1000, XIdleObserverTest::Quit, &observer);
+  // Set an idle timeout.
   idle_->AddIdleTimeout(50);
-  g_main_loop_run(loop);
-  ASSERT_GT(observer.count_, 1);
-  ASSERT_LT(observer.count_, 41);
+  // Advance the simulated time.
+  xsync_->Run(100, 1);
+  // There should have have only been one timeout trigger, at t=50.
+  // The trigger would have resulted in two observer counts.
+  ASSERT_EQ(2, observer.count_);
+  // Run for another 100 time units.  There should be two more triggers, at
+  // t=100 and t=150.  That increases the observer count by 4.
+  xsync_->Run(100, 1);
+  ASSERT_EQ(6, observer.count_);
 }
 
 }  // namespace power_manager

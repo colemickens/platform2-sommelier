@@ -30,7 +30,8 @@ struct MockGdkXEvent {
 namespace power_manager {
 
 MockXSync::MockXSync()
-    : last_activity_time_(base::Time::Now()),
+    : last_activity_time_(0),
+      current_time_(0),
       event_handler_func(NULL),
       event_handler_data_(NULL) {}
 
@@ -56,7 +57,7 @@ gboolean MockXSync::TimeoutHandler(MockAlarm *alarm) {
   // this is a positive transition alarm.
   if (alarm->positive_transition)
     CHECK(current_idle_time >= alarm->idle_time);
-
+  GdkFilterReturn handler_result = GDK_FILTER_CONTINUE;
   // Invoke the event handler callback if one has been provided.
   if (event_handler_func) {
     // Create and initialize a new X event object.
@@ -68,12 +69,13 @@ gboolean MockXSync::TimeoutHandler(MockAlarm *alarm) {
     XSync::Int64ToValue(&alarm_event->counter_value, current_idle_time);
     XSync::Int64ToValue(&alarm_event->alarm_value, alarm->idle_time);
     // Call the event handler to simulate what happens during a gdk event.
-    event_handler_func(&gxevent, NULL, event_handler_data_);
+    handler_result = event_handler_func(&gxevent, NULL, event_handler_data_);
   } else {
     LOG(WARNING) << "No event handler callback specified.";
   }
-  // Release the alarm handle.
-  DestroyMockAlarm(alarm);
+  // Release the alarm if necessary.
+  if (handler_result == GDK_FILTER_REMOVE)
+    DestroyMockAlarm(alarm);
   return false;
 }
 
@@ -108,38 +110,11 @@ XSyncAlarm MockXSync::CreateAlarm(uint64 mask, XSyncAlarmAttributes* attrs) {
   int64 current_idle_time;
   CHECK(QueryCounterInt64(counter, &current_idle_time));
 
-  if (test_type == XSyncPositiveTransition) {
-    alarm->positive_transition = true;
-    // Positive transition means idle time exceeds given wait value.
-    if (current_idle_time < wait_value) {
-      // Create a timeout now.  Assume there will be no further user input.
-      // TODO(sque): That assumption is based on current xidle unit test usage.
-      // Update this if it changes.
-      TimeoutHandlerArgs* args = CreateTimeoutHandlerArgs(this, alarm);
-      CHECK(args);
-      alarm->ref_count += 1;
+  alarm->positive_transition = (test_type == XSyncPositiveTransition);
 
-      // For some reason, the timeout happens a millisecond sooner than expected
-      // so increase the timeout interval to compensate.
-      g_timeout_add(wait_value - current_idle_time + 1, &TimeoutHandlerThunk,
-                    args);
-    } else {
-      // Event handler creates timeout when user goes active.
-      // TODO(sque): Not used in XIdle unit tests, so not implemented for now.
-    }
-  } else { // if (test_type == XSyncNegativeTransition)
-    // Negative transition means it is triggered when idle time goes below the
-    // wait value.
-    alarm->positive_transition = false;
-    // There is no need to create a timeout event for a negative transition.
-    // The only way a decrease in idle time can happen is if the system comes
-    // out of idle.  That is done in FakeRelativeMotionEvent().
-  }
   // Save this alarm locally until it is deleted.
   alarms_.insert(alarm);
 
-  // TODO(sque): is this legit?  XSyncAlarm is just an integer handle (XID) I
-  // believe, but there's no guarantee that it will always be.
   return reinterpret_cast<XSyncAlarm>(alarm);
 }
 
@@ -195,7 +170,7 @@ bool MockXSync::QueryCounterInt64(XSyncCounter counter, int64* value) {
     return false;
   CHECK(value);
   // Compute and return the time since last activity.
-  *value = (base::Time::Now() - last_activity_time_).InMilliseconds();
+  *value = GetIdleTime();
   return true;
 }
 
@@ -210,20 +185,35 @@ bool MockXSync::QueryCounter(XSyncCounter counter, XSyncValue* value) {
 
 void MockXSync::FakeRelativeMotionEvent(int, int, uint64) {
   // Store the current idle time before coming out of idle.
-  int64 idle_time;
-  CHECK(QueryCounterInt64(kIdleCounter, &idle_time));
+  int64 idle_time = GetIdleTime();
   // Simulate an activity at the current time by resetting the time of last
   // activity to the current time.
-  last_activity_time_ = base::Time::Now();
+  last_activity_time_ = GetTimeNow();
 
   // Since this brings the system out of idle, find and handle all negative
   // transition alarms.
+  TestAlarms(false, idle_time);
+}
+
+void MockXSync::Run(int64 total_time, int64 interval) {
+  // Simulate the passage of time by running a loop over the given interval.
+  CHECK(total_time >= 0);
+  CHECK(interval > 0);
+  for (int64 runtime = 0; runtime < total_time; runtime += interval) {
+    TestAlarms(true, GetIdleTime());
+    // Update the time counter.
+    current_time_ += interval;
+  }
+}
+
+void MockXSync::TestAlarms(bool positive_transition, int64 idle_time) {
   AlarmSet::const_iterator iter;
   for (iter = alarms_.begin(); iter != alarms_.end(); ++iter) {
     MockAlarm* alarm = *iter;
     CHECK(alarm);
-    // Disregard all the positive transition alarms.
-    if (alarm->positive_transition)
+    // Disregard all the alarms that were not requested to be tested, either
+    // negative or positive transitions.
+    if (positive_transition != alarm->positive_transition)
       continue;
     // Invoke the alarm if the idle time had at least as long as the alarm's
     // required idle time.
