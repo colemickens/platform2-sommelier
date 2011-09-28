@@ -248,12 +248,6 @@ gboolean HysteresisTestLoop(gpointer data) {
   return false;
 }
 
-gboolean QuitLoop(gpointer data) {
-  GMainLoop* loop = static_cast<GMainLoop*>(data);
-  g_main_loop_quit(loop);
-  return false;
-}
-
 } // namespace
 
 TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
@@ -347,17 +341,6 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
     file_util::WriteFile(path.Append(iter->first),
                          iter->second.c_str(),
                          iter->second.length());
-  int num_entries = sizeof(value_table) / sizeof(value_table[0]);
-  for (int i = 0; i < num_entries; ++i) {
-    HysteresisTestData* data = new HysteresisTestData;
-    CHECK(data);
-    data->power_supply = power_supply_.get();
-    data->values = &value_table[i];
-    data->path = &path;
-    data->index = i;
-    data->time = kPollIntervalMs * (i + 1);
-    g_timeout_add(kPollIntervalMs * (i + 1), HysteresisTestLoop, data);
-  }
 
   // Initialize the power supply object the first time around.
   power_supply_->Init();
@@ -369,12 +352,17 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
   // Save the starting time so it can be used for custom time readings.
   start_time = base::Time::Now();
 
-  GMainLoop* loop = g_main_loop_new(NULL, false);
-  g_timeout_add(kPollIntervalMs * (num_entries + 1), QuitLoop, loop);
-  g_main_loop_run(loop);
-  // Wait for test event loop to finish running.
-  while (g_main_loop_is_running(loop))
-    sleep(1);
+  int num_entries = sizeof(value_table) / sizeof(value_table[0]);
+  for (int i = 0; i < num_entries; ++i) {
+    HysteresisTestData* data = new HysteresisTestData;
+    CHECK(data);
+    data->power_supply = power_supply_.get();
+    data->values = &value_table[i];
+    data->path = &path;
+    data->index = i;
+    data->time = kPollIntervalMs * (i + 1);
+    HysteresisTestLoop(data);
+  }
 }
 
 // Test battery discharge while suspending and resuming.
@@ -402,9 +390,11 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
                          iter->second.length());
   power_supply_->Init();
   power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
+  power_supply_->time_now_func = GetCurrentTime;
+
   PowerStatus power_status;
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
-  sleep(6);
+  current_time += base::TimeDelta::FromSeconds(6);
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
@@ -419,12 +409,12 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   file_util::WriteFile(path.Append("battery/current_now"),
                        base::IntToString(kCurrentNowInt / 10).c_str(),
                        base::IntToString(kCurrentNowInt / 10).length());
-  sleep(8);
+  current_time += base::TimeDelta::FromSeconds(8);
   // Verify that the time remaining hasn't increased dramatically.
   EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status));
   EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty,
               time_to_empty * power_supply_->acceptable_variance_);
-  sleep(2);
+  current_time += base::TimeDelta::FromSeconds(2);
   // Restore normal current reading.
   file_util::WriteFile(path.Append("battery/current_now"),
                        base::IntToString(kCurrentNowInt).c_str(),
