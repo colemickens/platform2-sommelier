@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.debugd">
+    <method name="PingStart">
+      <tp:docstring>
+        Starts pinging the specified hostname with the specified options, with
+        output directed to the given output file descriptor. The returned opaque
+        string functions as a handle for this particular ping.
+      </tp:docstring>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send output to.
+        </tp:docstring>
+      </arg>
+      <arg name="destination" type="s" direction="in">
+        <tp:docstring>
+          Destination host to connect to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the ping command. Accepted keys include:
+            count (int default 4): Number of packets to send.
+            interval (int): Time to wait between packets.
+            numeric (bool): Print numeric remote hosts.
+            packetsize (int): Size of each packet sent.
+            waittime (int): Time to wait for a response.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this ping.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="PingStop">
+      <tp:docstring>
+        Stops a running ping.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the ping to stop. If an empty string is passed, stops all
+        running pings.
+      </arg>
+    </method>
+  </interface>
+</node>

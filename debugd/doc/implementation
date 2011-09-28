@@ -1,0 +1,11 @@
+Implementation: debugd
+
+The debug daemon uses the DBus C API (documented at
+<http://dbus.freedesktop.org/doc/api/html/index.html>) directly despite being
+written in C++. This is mostly to reduce attack surface and complexity, but also
+because of the simplicity of our use case: we have a single object that exposes
+a single interface with only synchronous methods. Methods are bound in a table
+of (name, function) pairs; new methods are added by adding entries to this
+table.
+
+(The implementation docs will go here once there's more of an implementation.)
