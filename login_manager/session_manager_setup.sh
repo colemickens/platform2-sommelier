@@ -252,7 +252,7 @@ bootstat x-started
 # When X starts, it copies the contents of the framebuffer to the root
 # window.  We clear the framebuffer here to make sure that it doesn't flash
 # back onscreen when X exits later.
-ply-image --clear &
+ply-image --clear 0x000000 &
 
 #
 # Reset PATH to exclude directories unneeded by session_manager.
