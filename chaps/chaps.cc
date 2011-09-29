@@ -10,11 +10,13 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
+#include <base/synchronization/waitable_event.h>
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
+using base::WaitableEvent;
 using std::string;
 using std::vector;
 
@@ -22,7 +24,7 @@ static const CK_BYTE kChapsLibraryVersionMajor = 0;
 static const CK_BYTE kChapsLibraryVersionMinor = 1;
 
 // The global proxy instance. This is valid only when g_is_initialized is true.
-static chaps::ChapsInterface* g_proxy = NULL;
+static scoped_ptr<chaps::ChapsInterface> g_proxy;
 
 // Set to true when using a mock proxy.
 static bool g_is_using_mock = false;
@@ -31,12 +33,14 @@ static bool g_is_using_mock = false;
 // When not using a mock proxy this is synonymous with (g_proxy != NULL).
 static bool g_is_initialized = false;
 
+// This event is not signaled until C_Finalize is called and then becomes
+// signaled.
+static scoped_ptr<WaitableEvent> g_finalize_event;
+
 // Tear down helper.
 static void TearDown() {
-  if (g_is_initialized && !g_is_using_mock) {
-    delete g_proxy;
-    g_proxy = NULL;
-  }
+  if (g_is_initialized && !g_is_using_mock)
+    g_proxy.reset();
   g_is_initialized = false;
 }
 
@@ -44,13 +48,15 @@ namespace chaps {
 
 // Helpers to support a mock proxy (useful in testing).
 void EnableMockProxy(ChapsInterface* proxy, bool is_initialized) {
-  g_proxy = proxy;
+  g_proxy.reset(proxy);
   g_is_using_mock = true;
   g_is_initialized = is_initialized;
 }
 
 void DisableMockProxy() {
-  g_proxy = NULL;
+  // We want to release, not reset b/c we don't own the mock proxy.
+  ChapsInterface* ignore = g_proxy.release();
+  (void)ignore;
   g_is_using_mock = false;
   g_is_initialized = false;
 }
@@ -65,11 +71,32 @@ void DisableMockProxy() {
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (g_is_initialized)
     return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+  // Validate args (if any).
+  if (pInitArgs) {
+    CK_C_INITIALIZE_ARGS_PTR args =
+        reinterpret_cast<CK_C_INITIALIZE_ARGS_PTR>(pInitArgs);
+    if (args->pReserved)
+      return CKR_ARGUMENTS_BAD;
+    // If one of the following is NULL, they all must be NULL.
+    if ((!args->CreateMutex || !args->DestroyMutex ||
+         !args->LockMutex || !args->UnlockMutex) &&
+        (args->CreateMutex || args->DestroyMutex ||
+         args->LockMutex || args->UnlockMutex))
+      return CKR_ARGUMENTS_BAD;
+    // We require OS locking.
+    if (((args->flags & CKF_OS_LOCKING_OK) == 0) && args->CreateMutex)
+      return CKR_CANT_LOCK;
+  }
   // If we're not using a mock proxy instance we need to create one.
   if (!g_is_using_mock)
-    g_proxy = new chaps::ChapsProxyImpl();
-  if (!g_proxy)
+    g_proxy.reset(new chaps::ChapsProxyImpl());
+  if (!g_proxy.get())
     return CKR_HOST_MEMORY;
+
+  g_finalize_event.reset(new WaitableEvent(true, false));
+  if (!g_finalize_event.get())
+    return CKR_HOST_MEMORY;
+
   g_is_initialized = true;
   return CKR_OK;
 }
@@ -81,6 +108,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
     return CKR_ARGUMENTS_BAD;
   if (!g_is_initialized)
     return CKR_CRYPTOKI_NOT_INITIALIZED;
+
+  if (g_finalize_event.get())
+    g_finalize_event->Signal();
   TearDown();
   return CKR_OK;
 }
@@ -198,4 +228,23 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   chaps::CopyToCharBuffer(serial_number.c_str(), pInfo->serialNumber,
                           arraysize(pInfo->serialNumber));
   return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 110.
+// Currently, slot events via D-Bus are not supported because no slot events
+// occur with TPM-based tokens.  We want this call to behave properly so we'll
+// block the calling thread (if not CKF_DONT_BLOCK) until C_Finalize is called.
+CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
+                         CK_SLOT_ID_PTR pSlot,
+                         CK_VOID_PTR pReserved) {
+  if (!g_is_initialized || !g_finalize_event.get())
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  if (!pSlot)
+    return CKR_ARGUMENTS_BAD;
+  // Currently, all supported tokens are not removable - i.e. no slot events.
+  if (CKF_DONT_BLOCK & flags)
+    return CKR_NO_EVENT;
+  // Block until C_Finalize.
+  g_finalize_event->Wait();
+  return CKR_CRYPTOKI_NOT_INITIALIZED;
 }

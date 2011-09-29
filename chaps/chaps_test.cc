@@ -49,6 +49,26 @@ TEST(TestInitialize,InitializeWithArgs) {
   EXPECT_EQ(CKR_OK, C_Finalize(NULL_PTR));
 }
 
+TEST(TestInitialize,InitializeWithBadArgs) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_C_INITIALIZE_ARGS args;
+  memset(&args, 0, sizeof(args));
+  args.CreateMutex = (CK_CREATEMUTEX)1;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Initialize(&args));
+  memset(&args, 0, sizeof(args));
+  args.pReserved = (CK_VOID_PTR)1;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Initialize(&args));
+}
+
+TEST(TestInitialize,InitializeNoLocking) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_C_INITIALIZE_ARGS args;
+  memset(&args, 0xFF, sizeof(args));
+  args.flags = 0;
+  args.pReserved = 0;
+  EXPECT_EQ(CKR_CANT_LOCK, C_Initialize(&args));
+}
+
 TEST(TestInitialize,FinalizeWithArgs) {
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Finalize((void*)1));
 }
@@ -239,6 +259,43 @@ TEST(TestTokenInfo,TokenInfoNotInit) {
   chaps::ChapsProxyMock proxy(false);
   CK_TOKEN_INFO info;
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_GetTokenInfo(1, &info));
+}
+
+// WaitSlotEvent Tests
+TEST(TestWaitSlotEvent,SlotEventNonBlock) {
+  chaps::ChapsProxyMock proxy(true);
+  CK_SLOT_ID slot = 0;
+  EXPECT_EQ(CKR_NO_EVENT, C_WaitForSlotEvent(CKF_DONT_BLOCK, &slot, NULL));
+}
+
+// This is a helper function for the SlotEventBlock test.
+static void* CallFinalize(void*) {
+  // The main thread has likely already proceeded into C_WaitForSlotEvent but to
+  // increase this chance we'll yield for a bit. The test will pass even in the
+  // unlikely event that we hit C_Finalize before the main thread begins
+  // waiting.
+  usleep(10000);
+  C_Finalize(NULL);
+  return NULL;
+}
+
+TEST(TestWaitSlotEvent,SlotEventBlock) {
+  chaps::ChapsProxyMock proxy(true);
+  CK_SLOT_ID slot = 0;
+  pthread_t thread;
+  pthread_create(&thread, NULL, CallFinalize, NULL);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_WaitForSlotEvent(0, &slot, NULL));
+}
+
+TEST(TestWaitSlotEvent,SlotEventNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_SLOT_ID slot = 0;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_WaitForSlotEvent(0, &slot, NULL));
+}
+
+TEST(TestWaitSlotEvent,SlotEventBadArgs) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_WaitForSlotEvent(0, NULL, NULL));
 }
 
 int main(int argc, char** argv) {

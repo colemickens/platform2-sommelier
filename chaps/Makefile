@@ -46,12 +46,12 @@ $(OUT)chapsd_test: $(OUT)chapsd_test.o $(OUT)chaps_service_redirect.o
 	$(call cxx_binary, -lgtest -lgflags -lchaps -ldl)
 RM_ON_CLEAN += $(OUT)chapsd_test
 
-$(OUT)chaps_test: $(OUT)chaps_test.o
-	$(call cxx_binary, -lgtest -lgmock -lchaps)
+$(OUT)chaps_test: $(OUT)chaps_test.o $(OUT)libchaps.so
+	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)chaps_test
 
 # Some shortcuts
-all: $(OUT)libchaps.so $(OUT)chapsd $(OUT)chaps_test $(OUT)chapsd_test
+all: $(OUT)libchaps.so $(OUT)chapsd
 
 dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
               $(OUT)include/chaps/chaps_proxy_generated.h
@@ -59,7 +59,7 @@ dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
 tests: $(OUT)libchaps.so $(OUT)chaps_test $(OUT)chapsd_test
 
 runtests: tests
-	LD_LIBRARY_PATH=$(OUT) "$(OUT)chaps_test"
+	$(OUT)chaps_test
 # This will have to wait until it does not depend on opencryptoki.
 # For now this test must be run on a live system.
 #LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"
