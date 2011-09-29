@@ -176,7 +176,8 @@ class WiFiMainTest : public Test {
     return wifi_->supplicant_interface_proxy_.get();
   }
   void InitiateConnect(WiFiService *service) {
-    wifi_->ConnectTo(service);
+    map<string, ::DBus::Variant> params;
+    wifi_->ConnectTo(service, params);
   }
   bool IsLinkUp() {
     return wifi_->link_up_;

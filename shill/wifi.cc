@@ -32,6 +32,7 @@
 #include "shill/supplicant_process_proxy_interface.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
+#include "shill/wpa_supplicant.h"
 
 using std::map;
 using std::string;
@@ -55,17 +56,6 @@ const char WiFi::kManagerErrorUnsupportedServiceType[] =
     "service type is unsupported";
 const char WiFi::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
-const char WiFi::kSupplicantPath[]        = "/fi/w1/wpa_supplicant1";
-const char WiFi::kSupplicantDBusAddr[]    = "fi.w1.wpa_supplicant1";
-const char WiFi::kSupplicantWiFiDriver[]  = "nl80211";
-const char WiFi::kSupplicantErrorInterfaceExists[] =
-    "fi.w1.wpa_supplicant1.InterfaceExists";
-const char WiFi::kSupplicantPropertySSID[]        = "ssid";
-const char WiFi::kSupplicantPropertyNetworkMode[] = "mode";
-const char WiFi::kSupplicantPropertyKeyMode[]     = "key_mgmt";
-const char WiFi::kSupplicantPropertyScanType[]    = "Type";
-const char WiFi::kSupplicantKeyModeNone[] = "NONE";
-const char WiFi::kSupplicantScanTypeActive[] = "active";
 
 // NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
@@ -109,19 +99,19 @@ void WiFi::Start() {
 
   supplicant_process_proxy_.reset(
       ProxyFactory::factory()->CreateSupplicantProcessProxy(
-          kSupplicantPath, kSupplicantDBusAddr));
+          wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
   try {
     std::map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
         append_string(link_name().c_str());
     create_interface_args["Driver"].writer().
-        append_string(kSupplicantWiFiDriver);
+        append_string(wpa_supplicant::kDriverNL80211);
     // TODO(quiche) create_interface_args["ConfigFile"].writer().append_string
     // (file with pkcs config info)
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
   } catch (const DBus::Error e) {  // NOLINT
-    if (!strcmp(e.name(), kSupplicantErrorInterfaceExists)) {
+    if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
       interface_path =
           supplicant_process_proxy_->GetInterface(link_name());
       // XXX crash here, if device missing?
@@ -132,7 +122,7 @@ void WiFi::Start() {
 
   supplicant_interface_proxy_.reset(
       ProxyFactory::factory()->CreateSupplicantInterfaceProxy(
-          this, interface_path, kSupplicantDBusAddr));
+          this, interface_path, wpa_supplicant::kDBusAddr));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
 
@@ -239,25 +229,21 @@ void WiFi::ScanDone() {
       task_factory_.NewRunnableMethod(&WiFi::ScanDoneTask));
 }
 
-void WiFi::ConnectTo(WiFiService *service) {
-  std::map<string, DBus::Variant> add_network_args;
-  DBus::MessageIter writer;
+void WiFi::ConnectTo(WiFiService *service,
+                     const map<string, DBus::Variant> &service_params) {
   DBus::Path network_path;
 
   // TODO(quiche): handle cases where already connected
 
-  add_network_args[kSupplicantPropertyNetworkMode].writer().
-      append_uint32(WiFiEndpoint::ModeStringToUint(service->mode()));
-  add_network_args[kSupplicantPropertyKeyMode].writer().
-      append_string(service->key_management().c_str());
-  // TODO(quiche): figure out why we can't use operator<< without the
-  // temporary variable.
-  writer = add_network_args[kSupplicantPropertySSID].writer();
-  writer << service->ssid();
-  // TODO(quiche): set scan_ssid=1, like flimflam does?
+  // TODO(quiche): set scan_ssid=1 in service_params, like flimflam does?
+  try {
+    network_path =
+        supplicant_interface_proxy_->AddNetwork(service_params);
+  } catch (const DBus::Error e) {  // NOLINT
+    LOG(ERROR) << "exception while adding network: " << e.what();
+    return;
+  }
 
-  network_path =
-      supplicant_interface_proxy_->AddNetwork(add_network_args);
   supplicant_interface_proxy_->SelectNetwork(network_path);
   // XXX add to favorite networks list?
 
@@ -289,10 +275,9 @@ void WiFi::ScanDoneTask() {
       LOG(INFO) << "found new endpoint. "
                 << "ssid: " << endpoint.ssid_string() << ", "
                 << "bssid: " << endpoint.bssid_string() << ", "
-                << "signal: " << endpoint.signal_strength();
+                << "signal: " << endpoint.signal_strength() << ", "
+                << "security: " << endpoint.security_mode();
 
-      // XXX key mode should reflect endpoint params (not always use
-      // kSupplicantKeyModeNone)
       WiFiServiceRefPtr service(
           new WiFiService(control_interface(),
                           dispatcher(),
@@ -300,7 +285,7 @@ void WiFi::ScanDoneTask() {
                           this,
                           endpoint.ssid(),
                           endpoint.network_mode(),
-                          kSupplicantKeyModeNone));
+                          endpoint.security_mode()));
       services()->push_back(service);
       service_by_private_id_[service_id_private] = service;
       manager()->RegisterService(service);
@@ -315,8 +300,8 @@ void WiFi::ScanDoneTask() {
 void WiFi::ScanTask() {
   VLOG(2) << "WiFi " << link_name() << " scan requested.";
   std::map<string, DBus::Variant> scan_args;
-  scan_args[kSupplicantPropertyScanType].writer().
-      append_string(kSupplicantScanTypeActive);
+  scan_args[wpa_supplicant::kPropertyScanType].writer().
+      append_string(wpa_supplicant::kScanTypeActive);
   // TODO(quiche) indicate scanning in UI
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;

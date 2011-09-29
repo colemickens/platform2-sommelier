@@ -1,0 +1,43 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/wpa_supplicant.h"
+
+namespace shill {
+
+namespace wpa_supplicant {
+const char kBSSPropertyBSSID[]      = "BSSID";
+const char kBSSPropertySSID[]       = "SSID";
+const char kBSSPropertyMode[]       = "Mode";
+const char kBSSPropertySignal[]     = "Signal";
+const char kDBusAddr[]              = "fi.w1.wpa_supplicant1";
+const char kDBusPath[]              = "/fi/w1/wpa_supplicant1";
+const char kDriverNL80211[]         = "nl80211";
+const char kErrorInterfaceExists[]  = "fi.w1.wpa_supplicant1.InterfaceExists";
+const char kKeyManagementMethodSuffixEAP[] = "-eap";
+const char kKeyManagementMethodSuffixPSK[] = "-psk";
+const char kKeyModeNone[]           = "NONE";
+const char kNetworkModeInfrastructure[] = "infrastructure";
+const char kNetworkModeAdHoc[]       = "ad-hoc";
+const char kNetworkModeAccessPoint[] = "ap";
+const char kNetworkPropertyMode[]   = "mode";
+const char kNetworkPropertySSID[]   = "ssid";
+const char kPropertyKeyManagement[] = "key_mgmt";
+const char kPropertyPreSharedKey[]  = "psk";
+const char kPropertyPrivacy[]       = "Privacy";
+const char kPropertyRSN[]           = "RSN";
+const char kPropertyScanType[]      = "Type";
+const char kPropertySecurityProtocol[] = "proto";
+const char kPropertyWPA[]           = "WPA";
+const char kScanTypeActive[]        = "active";
+const char kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
+const char kSecurityModeRSN[]       = "RSN";
+const char kSecurityModeWPA[]       = "WPA";
+
+const uint32_t kNetworkModeInfrastructureInt = 0;
+const uint32_t kNetworkModeAdHocInt          = 1;
+const uint32_t kNetworkModeAccessPointInt    = 2;
+};
+
+}  // namespace shill

@@ -47,7 +47,9 @@ class WiFi : public Device {
   void ScanDone();
 
   // called by WiFiService
-  void ConnectTo(WiFiService *service);
+  virtual void ConnectTo(
+      WiFiService *service,
+      const std::map<std::string, ::DBus::Variant> &service_params);
 
   // called by Manager
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
@@ -64,16 +66,6 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
-  static const char kSupplicantPath[];
-  static const char kSupplicantDBusAddr[];
-  static const char kSupplicantWiFiDriver[];
-  static const char kSupplicantErrorInterfaceExists[];
-  static const char kSupplicantPropertySSID[];
-  static const char kSupplicantPropertyNetworkMode[];
-  static const char kSupplicantPropertyKeyMode[];
-  static const char kSupplicantPropertyScanType[];
-  static const char kSupplicantKeyModeNone[];
-  static const char kSupplicantScanTypeActive[];
 
   void ScanDoneTask();
   void ScanTask();

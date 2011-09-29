@@ -131,7 +131,8 @@ SHILL_OBJS = \
 	technology.o \
 	wifi.o \
 	wifi_endpoint.o \
-	wifi_service.o
+	wifi_service.o \
+	wpa_supplicant.o
 
 SHILL_BIN = shill
 SHILL_MAIN_OBJ = shill_main.o
@@ -199,6 +200,7 @@ TEST_OBJS = \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \
+	wifi_endpoint_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o
 

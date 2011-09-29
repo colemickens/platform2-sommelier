@@ -31,10 +31,12 @@ To keep the shill source code consistent, please follow the conventions below:
   - Read data via the appropriate named method, rather than depending on
     implicit conversion. E.g.,
 
+       ::DBus::Variant var;
        int8 data = var.reader().get_byte();
 
     rather than
 
+       ::DBus::Variant var;
        int8 data = var;
 
     RATIONALE: The explicit version is only marginally longer than the
@@ -44,11 +46,51 @@ To keep the shill source code consistent, please follow the conventions below:
   - Where there is no named method, call the appropriate cast operator
     explicitly. E.g.
 
+    ::DBus::Variant var;
     vector<unsigned int> data = var.operator vector<unsigned int>();
 
     RATIONALE: Calling the cast operator explicitly avoids conflicts with
     constructors that might also be used to make the conversion. It also
     avoids requiring that the reader understand C++ conversion rules.
+
+  - Write data via the appropriate named method. E.g.,
+
+       ::DBus::Variant var;
+       int16_t data;
+       var.writer().append_int16(data);
+
+    rather than
+
+       ::DBus::Variant var;
+       int16_t data;
+       var.writer() << data;
+
+    RATIONALE: Similarly as for reading, the explicit version is only
+    marginally longer, and does not require the reader to understand
+    overload resolution.
+
+  - Where there is no named method, write by using the stream
+    insertion operator. E.g.
+
+       ::DBus::Variant var;
+       ::DBus::MessageIter writer;
+       map<string, string> data;
+       writer = var.writer();
+       writer << data;
+
+    RATIONALE: This case is somewhat unfortunate, because it's not as
+    clear as its analogue for reading. However, the alternative is to
+    duplicate the code of the stream insertion operator overloads.
+
+    Note that the writer can't be omitted. E.g.
+
+       ::DBus::Variant var;
+       map<string, string> data;
+       var.writer() << data;
+
+    does not work (at least for some types of |data|). Without the
+    intermediate variable, g++ seems to ignore templates during
+    overload resolution.
 
 - When deferring work from a signal handler (e.g. a D-Bus callback) to
   the event loop, name the deferred work function by adding "Task" to

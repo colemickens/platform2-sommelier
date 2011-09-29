@@ -11,11 +11,14 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/dbus.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/shill_event.h"
 #include "shill/wifi.h"
+#include "shill/wifi_endpoint.h"
+#include "shill/wpa_supplicant.h"
 
 using std::string;
 
@@ -27,15 +30,13 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const WiFiRefPtr &device,
                          const std::vector<uint8_t> ssid,
                          const std::string &mode,
-                         const std::string &key_management)
+                         const std::string &security)
     : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
-      security_(flimflam::kSecurityNone),
+      security_(security),
       mode_(mode),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
-  SetEAPKeyManagement(key_management);
-
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
   store->RegisterString(flimflam::kPassphraseProperty, &passphrase_);
@@ -54,8 +55,30 @@ WiFiService::WiFiService(ControlInterface *control_interface,
            "_" +
            string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size()));
 
-  // TODO(quiche): set based on security properties
-  need_passphrase_ = false;
+  // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
+  // a service that is not 802.1x.
+  if (security_ == flimflam::kSecurity8021x) {
+    NOTIMPLEMENTED();
+    // XXX needs_passpharse_ = false ?
+  } else if (security_ == flimflam::kSecurityPsk) {
+    SetEAPKeyManagement("WPA-PSK");
+    need_passphrase_ = true;
+  } else if (security_ == flimflam::kSecurityRsn) {
+    SetEAPKeyManagement("WPA-PSK");
+    need_passphrase_ = true;
+  } else if (security_ == flimflam::kSecurityWpa) {
+    SetEAPKeyManagement("WPA-PSK");
+    need_passphrase_ = true;
+  } else if (security_ == flimflam::kSecurityWep) {
+    SetEAPKeyManagement("NONE");
+    need_passphrase_ = true;
+  } else if (security_ == flimflam::kSecurityNone) {
+    SetEAPKeyManagement("NONE");
+    need_passphrase_ = false;
+  } else {
+    LOG(ERROR) << "unsupported security method " << security_;
+  }
+
   // TODO(quiche): figure out when to set true
   hidden_ssid_ = false;
 }
@@ -105,7 +128,39 @@ const std::vector<uint8_t> &WiFiService::ssid() const {
 
 // private methods
 void WiFiService::ConnectTask() {
-  wifi_->ConnectTo(this);
+  std::map<string, DBus::Variant> params;
+  DBus::MessageIter writer;
+
+  params[wpa_supplicant::kNetworkPropertyMode].writer().
+      append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
+
+  if (security_ == flimflam::kSecurity8021x) {
+    NOTIMPLEMENTED();
+  } else if (security_ == flimflam::kSecurityPsk) {
+    NOTIMPLEMENTED();
+  } else if (security_ == flimflam::kSecurityRsn) {
+    NOTIMPLEMENTED();
+  } else if (security_ == flimflam::kSecurityWpa) {
+    params[wpa_supplicant::kPropertySecurityProtocol].writer().
+        append_string(wpa_supplicant::kSecurityModeWPA);
+    params[wpa_supplicant::kPropertyPreSharedKey].writer().
+        append_string(passphrase_.c_str());
+  } else if (security_ == flimflam::kSecurityWep) {
+    NOTIMPLEMENTED();
+  } else if (security_ == flimflam::kSecurityNone) {
+    // nothing special to do here
+  } else {
+    LOG(ERROR) << "can't connect. unsupported security method " << security_;
+  }
+
+  params[wpa_supplicant::kPropertyKeyManagement].writer().
+      append_string(key_management().c_str());
+  // TODO(quiche): figure out why we can't use operator<< without the
+  // temporary variable.
+  writer = params[wpa_supplicant::kNetworkPropertySSID].writer();
+  writer << ssid_;
+
+  wifi_->ConnectTo(this, params);
 }
 
 string WiFiService::GetDeviceRpcId() {

@@ -27,7 +27,7 @@ class WiFiService : public Service {
               const WiFiRefPtr &device,
               const std::vector<uint8_t> ssid,
               const std::string &mode,
-              const std::string &key_management);
+              const std::string &security);
   ~WiFiService();
 
   // Inherited from Service.
@@ -44,6 +44,8 @@ class WiFiService : public Service {
   const std::vector<uint8_t> &ssid() const;
 
  private:
+  FRIEND_TEST(WiFiServiceTest, ConnectTask);
+
   void ConnectTask();
 
   std::string GetDeviceRpcId();
