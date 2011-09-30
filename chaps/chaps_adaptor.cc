@@ -146,4 +146,21 @@ uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
   return service_->SetPIN(session_id, tmp_old_pin, tmp_new_pin);
 }
 
+void ChapsAdaptor::OpenSession(const uint32_t& slot_id, const uint32_t& flags,
+                               uint32_t& session_id,
+                               uint32_t& result,
+                               ::DBus::Error &error) {
+  result = service_->OpenSession(slot_id, flags, &session_id);
+}
+
+uint32_t ChapsAdaptor::CloseSession(const uint32_t& session_id,
+                                    ::DBus::Error &error) {
+  return service_->CloseSession(session_id);
+}
+
+uint32_t ChapsAdaptor::CloseAllSessions(const uint32_t& slot_id,
+                                        ::DBus::Error &error) {
+  return service_->CloseAllSessions(slot_id);
+}
+
 }  // namespace

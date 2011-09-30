@@ -81,6 +81,13 @@ public:
   // PKCS #11 v2.20 section 11.5 page 116.
   virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
                           const std::string* new_pin) = 0;
+  // PKCS #11 v2.20 section 11.6 page 117.
+  virtual uint32_t OpenSession(uint32_t slot_id, uint32_t flags,
+                               uint32_t* session) = 0;
+  // PKCS #11 v2.20 section 11.6 page 118.
+  virtual uint32_t CloseSession(uint32_t session) = 0;
+  // PKCS #11 v2.20 section 11.6 page 120.
+  virtual uint32_t CloseAllSessions(uint32_t slot_id) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

@@ -41,7 +41,6 @@ uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
                                      vector<uint32_t>* slot_list) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!slot_list, CKR_ARGUMENTS_BAD);
-
   uint32_t result = CKR_OK;
   try {
     proxy_->GetSlotList(token_present, *slot_list, result);
@@ -65,7 +64,6 @@ uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
       !hardware_version_major || !hardware_version_minor ||
       !firmware_version_major || !firmware_version_minor)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-
   uint32_t result = CKR_OK;
   try {
     proxy_->GetSlotInfo(slot_id,
@@ -113,7 +111,6 @@ uint32_t ChapsProxyImpl::GetTokenInfo(uint32_t slot_id,
       !hardware_version_major || !hardware_version_minor ||
       !firmware_version_major || !firmware_version_minor)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-
   uint32_t result = CKR_OK;
   try {
     proxy_->GetTokenInfo(slot_id,
@@ -149,7 +146,6 @@ uint32_t ChapsProxyImpl::GetMechanismList(
     vector<uint32_t>* mechanism_list) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
-
   uint32_t result = CKR_OK;
   try {
     proxy_->GetMechanismList(slot_id, *mechanism_list, result);
@@ -168,7 +164,6 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint32_t slot_id,
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   if (!min_key_size || !max_key_size || !flags)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-
   uint32_t result = CKR_OK;
   try {
     proxy_->GetMechanismInfo(slot_id,
@@ -187,7 +182,6 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint32_t slot_id,
 uint32_t ChapsProxyImpl::InitToken(uint32_t slot_id, const string* so_pin,
                                    const string& label) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-
   uint32_t result = CKR_OK;
   try {
     string tmp_pin;
@@ -203,7 +197,6 @@ uint32_t ChapsProxyImpl::InitToken(uint32_t slot_id, const string* so_pin,
 
 uint32_t ChapsProxyImpl::InitPIN(uint32_t session_id, const string* pin) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-
   uint32_t result = CKR_OK;
   try {
     string tmp_pin;
@@ -220,7 +213,6 @@ uint32_t ChapsProxyImpl::InitPIN(uint32_t session_id, const string* pin) {
 uint32_t ChapsProxyImpl::SetPIN(uint32_t session_id, const string* old_pin,
                                 const string* new_pin) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
-
   uint32_t result = CKR_OK;
   try {
     string tmp_old_pin;
@@ -238,5 +230,42 @@ uint32_t ChapsProxyImpl::SetPIN(uint32_t session_id, const string* old_pin,
   return result;
 }
 
+uint32_t ChapsProxyImpl::OpenSession(uint32_t slot_id, uint32_t flags,
+                                     uint32_t* session_id) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->OpenSession(slot_id, flags, *session_id, result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::CloseSession(uint32_t session_id) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->CloseSession(session_id);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::CloseAllSessions(uint32_t slot_id) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->CloseAllSessions(slot_id);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
 
 }  // namespace

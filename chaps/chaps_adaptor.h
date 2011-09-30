@@ -87,6 +87,13 @@ public:
                           const bool& use_null_new_pin,
                           const std::string& optional_new_pin,
                           ::DBus::Error &error);
+  virtual void OpenSession(const uint32_t& slot_id, const uint32_t& flags,
+                           uint32_t& session_id, uint32_t& result,
+                           ::DBus::Error &error);
+  virtual uint32_t CloseSession(const uint32_t& session_id,
+                                ::DBus::Error &error);
+  virtual uint32_t CloseAllSessions(const uint32_t& slot_id,
+                                    ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

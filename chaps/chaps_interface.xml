@@ -132,6 +132,32 @@
       </arg>
     </method>
 
+    <!-- PKCS #11 v2.20 section 11.6 page 117. -->
+    <method name="OpenSession">
+      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="u" name="flags" direction="in"/>
+      <arg type="u" name="session_id" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.6 page 118. -->
+    <method name="CloseSession">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.6 page 120. -->
+    <method name="CloseAllSessions">
+      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
   </interface>
 </node>
 

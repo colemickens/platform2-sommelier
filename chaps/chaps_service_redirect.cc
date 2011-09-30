@@ -71,7 +71,6 @@ uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
   CHECK(functions_);
   if (!slot_list || slot_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-
   CK_ULONG count = 0;
   // First, call with NULL to retrieve the slot count.
   CK_RV result = functions_->C_GetSlotList(token_present, NULL, &count);
@@ -101,7 +100,6 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
       !firmware_version_major || !firmware_version_minor) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   }
-
   CK_SLOT_INFO slot_info;
   CK_RV result = functions_->C_GetSlotInfo(slot_id, &slot_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -147,7 +145,6 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
       !firmware_version_major || !firmware_version_minor) {
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   }
-
   CK_TOKEN_INFO token_info;
   CK_RV result = functions_->C_GetTokenInfo(slot_id, &token_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -181,7 +178,6 @@ uint32_t ChapsServiceRedirect::GetMechanismList(
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list || mechanism_list->size() > 0,
                           CKR_ARGUMENTS_BAD);
-
   CK_ULONG count = 0;
   // First, call with NULL to retrieve the mechanism count.
   CK_RV result = functions_->C_GetMechanismList(slot_id, NULL, &count);
@@ -205,7 +201,6 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
   CHECK(functions_);
   if (!min_key_size || !max_key_size || !flags)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-
   CK_MECHANISM_INFO mech_info;
   CK_RV result = functions_->C_GetMechanismInfo(slot_id,
                                                    mechanism_type,
@@ -220,7 +215,6 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
 uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id, const string* so_pin,
                                          const string& label) {
   CHECK(functions_);
-
   CK_UTF8CHAR_PTR pin_buffer =
       so_pin ? StringToCharBuffer(so_pin->data()) : NULL;
   CK_ULONG pin_length = so_pin ? static_cast<CK_ULONG>(so_pin->length()) : 0;
@@ -236,7 +230,6 @@ uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id, const string* so_pin,
 
 uint32_t ChapsServiceRedirect::InitPIN(uint32_t session_id, const string* pin) {
   CHECK(functions_);
-
   CK_UTF8CHAR_PTR pin_buffer = pin ? StringToCharBuffer(pin->data()) : NULL;
   CK_ULONG pin_length = pin ? static_cast<CK_ULONG>(pin->length()) : 0;
   CK_RV result = functions_->C_InitPIN(session_id, pin_buffer, pin_length);
@@ -248,7 +241,6 @@ uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
                                       const string* old_pin,
                                       const string* new_pin) {
   CHECK(functions_);
-
   CK_UTF8CHAR_PTR old_pin_buffer =
       old_pin ? StringToCharBuffer(old_pin->data()) : NULL;
   CK_ULONG old_pin_length =
@@ -260,6 +252,32 @@ uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
   CK_RV result = functions_->C_SetPIN(session_id,
                                       old_pin_buffer, old_pin_length,
                                       new_pin_buffer, new_pin_length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::OpenSession(uint32_t slot_id, uint32_t flags,
+                                           uint32_t* session_id) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!session_id, CKR_ARGUMENTS_BAD);
+  CK_SESSION_HANDLE handle;
+  uint32_t result = functions_->C_OpenSession(slot_id, flags, NULL, NULL,
+                                              &handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *session_id = handle;
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::CloseSession(uint32_t session_id) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_CloseSession(session_id);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::CloseAllSessions(uint32_t slot_id) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_CloseAllSessions(slot_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

@@ -116,10 +116,9 @@ protected:
 
 TEST_F(TestSlotList,SlotListOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(false),_))
+  EXPECT_CALL(proxy, GetSlotList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID slots[3];
   CK_ULONG num_slots = 3;
   EXPECT_EQ(CKR_OK, C_GetSlotList(CK_FALSE, slots, &num_slots));
@@ -144,10 +143,9 @@ TEST_F(TestSlotList,SlotListNotInit) {
 
 TEST_F(TestSlotList,SlotListNoBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(false),_))
+  EXPECT_CALL(proxy, GetSlotList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
                       Return(CKR_OK)));
-
   CK_ULONG num_slots = 17;
   EXPECT_EQ(CKR_OK, C_GetSlotList(CK_FALSE, NULL, &num_slots));
   EXPECT_EQ(num_slots, slot_list_all_.size());
@@ -155,10 +153,9 @@ TEST_F(TestSlotList,SlotListNoBuffer) {
 
 TEST_F(TestSlotList,SlotListSmallBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(false),_))
+  EXPECT_CALL(proxy, GetSlotList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID slots[2];
   CK_ULONG num_slots = 2;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL, C_GetSlotList(CK_FALSE, slots, &num_slots));
@@ -167,10 +164,9 @@ TEST_F(TestSlotList,SlotListSmallBuffer) {
 
 TEST_F(TestSlotList,SlotListLargeBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(false),_))
+  EXPECT_CALL(proxy, GetSlotList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
   EXPECT_EQ(CKR_OK, C_GetSlotList(CK_FALSE, slots, &num_slots));
@@ -182,10 +178,9 @@ TEST_F(TestSlotList,SlotListLargeBuffer) {
 
 TEST_F(TestSlotList,SlotListPresentOnly) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(true),_))
+  EXPECT_CALL(proxy, GetSlotList(true,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_present_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
   EXPECT_EQ(CKR_OK, C_GetSlotList(CK_TRUE, slots, &num_slots));
@@ -196,10 +191,9 @@ TEST_F(TestSlotList,SlotListPresentOnly) {
 
 TEST_F(TestSlotList,SlotListFailure) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(Eq(false),_))
+  EXPECT_CALL(proxy, GetSlotList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_present_),
                       Return(CKR_FUNCTION_FAILED)));
-
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetSlotList(CK_FALSE, slots, &num_slots));
@@ -208,9 +202,8 @@ TEST_F(TestSlotList,SlotListFailure) {
 // Slot Info Tests
 TEST(TestSlotInfo,SlotInfoOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotInfo(Eq(1),_,_,_,_,_,_,_))
+  EXPECT_CALL(proxy, GetSlotInfo(1,_,_,_,_,_,_,_))
       .WillOnce(DoAll(SetArgumentPointee<3>(1), Return(CKR_OK)));
-
   CK_SLOT_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetSlotInfo(1, &info));
@@ -232,9 +225,8 @@ TEST(TestSlotInfo,SlotInfoNotInit) {
 
 TEST(TestSlotInfo,SlotInfoFailure) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotInfo(Eq(1),_,_,_,_,_,_,_))
+  EXPECT_CALL(proxy, GetSlotInfo(1,_,_,_,_,_,_,_))
       .WillOnce(Return(CKR_FUNCTION_FAILED));
-
   CK_SLOT_INFO info;
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetSlotInfo(1, &info));
 }
@@ -312,10 +304,9 @@ protected:
 
 TEST_F(TestMechList,MechListOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+  EXPECT_CALL(proxy, GetMechanismList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID mechs[3];
   CK_ULONG num_mechs = 3;
   EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, mechs, &num_mechs));
@@ -340,10 +331,9 @@ TEST_F(TestMechList,MechListNotInit) {
 
 TEST_F(TestMechList,MechListNoBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+  EXPECT_CALL(proxy, GetMechanismList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
                       Return(CKR_OK)));
-
   CK_ULONG num_mechs = 17;
   EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, NULL, &num_mechs));
   EXPECT_EQ(num_mechs, mech_list_all_.size());
@@ -351,10 +341,9 @@ TEST_F(TestMechList,MechListNoBuffer) {
 
 TEST_F(TestMechList,MechListSmallBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+  EXPECT_CALL(proxy, GetMechanismList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID mechs[2];
   CK_ULONG num_mechs = 2;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL, C_GetMechanismList(CK_FALSE, mechs,
@@ -364,10 +353,9 @@ TEST_F(TestMechList,MechListSmallBuffer) {
 
 TEST_F(TestMechList,MechListLargeBuffer) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+  EXPECT_CALL(proxy, GetMechanismList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
   EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, mechs, &num_mechs));
@@ -379,10 +367,9 @@ TEST_F(TestMechList,MechListLargeBuffer) {
 
 TEST_F(TestMechList,MechListPresentOnly) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(true),_))
+  EXPECT_CALL(proxy, GetMechanismList(true,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
                       Return(CKR_OK)));
-
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
   EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_TRUE, mechs, &num_mechs));
@@ -393,10 +380,9 @@ TEST_F(TestMechList,MechListPresentOnly) {
 
 TEST_F(TestMechList,MechListFailure) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+  EXPECT_CALL(proxy, GetMechanismList(false,_))
       .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
                       Return(CKR_FUNCTION_FAILED)));
-
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetMechanismList(CK_FALSE, mechs,
@@ -406,9 +392,8 @@ TEST_F(TestMechList,MechListFailure) {
 // Mechanism Info Tests
 TEST(TestMechInfo,MechInfoOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(Eq(1),Eq(2),_,_,_))
+  EXPECT_CALL(proxy, GetMechanismInfo(1,2,_,_,_))
       .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
-
   CK_MECHANISM_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetMechanismInfo(1, 2, &info));
@@ -428,9 +413,8 @@ TEST(TestMechInfo,MechInfoNotInit) {
 
 TEST(TestMechInfo,MechInfoFailure) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(Eq(1),Eq(2),_,_,_))
+  EXPECT_CALL(proxy, GetMechanismInfo(1,2,_,_,_))
       .WillOnce(Return(CKR_MECHANISM_INVALID));
-
   CK_MECHANISM_INFO info;
   EXPECT_EQ(CKR_MECHANISM_INVALID, C_GetMechanismInfo(1, 2, &info));
 }
@@ -438,9 +422,8 @@ TEST(TestMechInfo,MechInfoFailure) {
 // Init Token Tests
 TEST(TestInitToken,InitTokenOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+  EXPECT_CALL(proxy, InitToken(1,_,_))
       .WillOnce(Return(CKR_OK));
-
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
@@ -450,7 +433,6 @@ TEST(TestInitToken,InitTokenOK) {
 
 TEST(TestInitToken,InitTokenNotInit) {
   chaps::ChapsProxyMock proxy(false);
-
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
   memcpy(label, "test", 4);
@@ -459,15 +441,13 @@ TEST(TestInitToken,InitTokenNotInit) {
 
 TEST(TestInitToken,InitTokenNULLLabel) {
   chaps::ChapsProxyMock proxy(true);
-
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_InitToken(1, NULL, 0, NULL));
 }
 
 TEST(TestInitToken,InitTokenNULLPin) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+  EXPECT_CALL(proxy, InitToken(1,_,_))
       .WillOnce(Return(CKR_OK));
-
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
   memcpy(label, "test", 4);
@@ -476,9 +456,8 @@ TEST(TestInitToken,InitTokenNULLPin) {
 
 TEST(TestInitToken,InitTokenFail) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+  EXPECT_CALL(proxy, InitToken(1,_,_))
       .WillOnce(Return(CKR_PIN_INVALID));
-
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
   memcpy(label, "test", 4);
@@ -488,65 +467,128 @@ TEST(TestInitToken,InitTokenFail) {
 // Init PIN Tests
 TEST(TestInitPIN,InitPINOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+  EXPECT_CALL(proxy, InitPIN(1,_))
       .WillOnce(Return(CKR_OK));
-
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   EXPECT_EQ(CKR_OK, C_InitPIN(1, pin, 4));
 }
 
 TEST(TestInitPIN,InitPINNotInit) {
   chaps::ChapsProxyMock proxy(false);
-
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_InitPIN(1, NULL, 0));
 }
 
 TEST(TestInitPIN,InitPINNULLPin) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+  EXPECT_CALL(proxy, InitPIN(1,_))
       .WillOnce(Return(CKR_OK));
-
   EXPECT_EQ(CKR_OK, C_InitPIN(1, NULL, 0));
 }
 
 TEST(TestInitPIN,InitPINFail) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+  EXPECT_CALL(proxy, InitPIN(1,_))
       .WillOnce(Return(CKR_PIN_INVALID));
-
   EXPECT_EQ(CKR_PIN_INVALID, C_InitPIN(1, NULL, 0));
 }
 
 // Set PIN Tests
 TEST(TestSetPIN,SetPINOK) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+  EXPECT_CALL(proxy, SetPIN(1,_,_))
       .WillOnce(Return(CKR_OK));
-
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   EXPECT_EQ(CKR_OK, C_SetPIN(1, pin, 4, pin, 4));
 }
 
 TEST(TestSetPIN,SetPINNotInit) {
   chaps::ChapsProxyMock proxy(false);
-
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SetPIN(1, NULL, 0, NULL, 0));
 }
 
 TEST(TestSetPIN,SetPINNULLPin) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+  EXPECT_CALL(proxy, SetPIN(1,_,_))
       .WillOnce(Return(CKR_OK));
-
   EXPECT_EQ(CKR_OK, C_SetPIN(1, NULL, 0, NULL, 0));
 }
 
 TEST(TestSetPIN,SetPINFail) {
   chaps::ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+  EXPECT_CALL(proxy, SetPIN(1,_,_))
       .WillOnce(Return(CKR_PIN_INVALID));
-
   EXPECT_EQ(CKR_PIN_INVALID, C_SetPIN(1, NULL, 0, NULL, 0));
+}
+
+// Open Session Tests
+TEST(OpenSession, OpenSessionOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, OpenSession(1,CKF_SERIAL_SESSION,_))
+      .WillOnce(DoAll(SetArgumentPointee<2>(3), Return(CKR_OK)));
+  CK_SESSION_HANDLE session;
+  EXPECT_EQ(CKR_OK, C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, &session));
+  EXPECT_EQ(session, 3);
+}
+
+TEST(OpenSession,OpenSessionNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_SESSION_HANDLE session;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, &session));
+}
+
+TEST(OpenSession,OpenSessionNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, NULL));
+}
+
+TEST(OpenSession,OpenSessionFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, OpenSession(1,CKF_SERIAL_SESSION,_))
+      .WillOnce(Return(CKR_SESSION_COUNT));
+  CK_SESSION_HANDLE session;
+  EXPECT_EQ(CKR_SESSION_COUNT,
+            C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, &session));
+}
+
+// Close Session Tests
+TEST(CloseSession, CloseSessionOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, CloseSession(1))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_CloseSession(1));
+}
+
+TEST(CloseSession,CloseSessionNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_CloseSession(1));
+}
+
+TEST(CloseSession,CloseSessionFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, CloseSession(1))
+      .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_CloseSession(1));
+}
+
+TEST(CloseSession, CloseAllSessionsOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, CloseAllSessions(1))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_CloseAllSessions(1));
+}
+
+TEST(CloseSession,CloseAllSessionsNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_CloseAllSessions(1));
+}
+
+TEST(CloseSession,CloseAllSessionsFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, CloseAllSessions(1))
+      .WillOnce(Return(CKR_SLOT_ID_INVALID));
+  EXPECT_EQ(CKR_SLOT_ID_INVALID, C_CloseAllSessions(1));
 }
 
 int main(int argc, char** argv) {

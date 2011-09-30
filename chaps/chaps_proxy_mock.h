@@ -67,6 +67,9 @@ public:
   MOCK_METHOD2(InitPIN, uint32_t (uint32_t, const std::string*));
   MOCK_METHOD3(SetPIN, uint32_t (uint32_t, const std::string*,
                                  const std::string*));
+  MOCK_METHOD3(OpenSession, uint32_t (uint32_t, uint32_t, uint32_t*));
+  MOCK_METHOD1(CloseSession, uint32_t (uint32_t));
+  MOCK_METHOD1(CloseAllSessions, uint32_t (uint32_t));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

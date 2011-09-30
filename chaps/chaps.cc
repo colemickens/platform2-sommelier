@@ -105,7 +105,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(pReserved, CKR_ARGUMENTS_BAD);
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-
   if (g_finalize_event.get())
     g_finalize_event->Signal();
   TearDown();
@@ -118,7 +117,6 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
 CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
   chaps::CopyToCharBuffer("Chromium OS", pInfo->manufacturerID,
@@ -137,7 +135,6 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
                     CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
-
   vector<uint32_t> slot_list;
   CK_RV result = g_proxy->GetSlotList((tokenPresent != CK_FALSE), &slot_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -156,7 +153,6 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-
   string slot_description;
   string manufacturer_id;
   CK_RV result = g_proxy->GetSlotInfo(
@@ -180,7 +176,6 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-
   string label;
   string manufacturer_id;
   string model;
@@ -225,7 +220,6 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
                          CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pSlot, CKR_ARGUMENTS_BAD);
-
   // Currently, all supported tokens are not removable - i.e. no slot events.
   if (CKF_DONT_BLOCK & flags)
     return CKR_NO_EVENT;
@@ -241,7 +235,6 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
                          CK_ULONG_PTR pulCount) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
-
   vector<uint32_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismList(slotID, &mechanism_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -264,7 +257,6 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
                          CK_MECHANISM_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-
   vector<uint32_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismInfo(
       slotID,
@@ -283,7 +275,6 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
                   CK_UTF8CHAR_PTR pLabel) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pLabel, CKR_ARGUMENTS_BAD);
-
   string pin = chaps::CharBufferToString(pPin, ulPinLen);
   string label = chaps::CharBufferToString(pLabel, chaps::kTokenLabelSize);
   string* pin_ptr = (!pPin) ? NULL : &pin;
@@ -297,7 +288,6 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
                 CK_UTF8CHAR_PTR pPin,
                 CK_ULONG ulPinLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-
   string pin = chaps::CharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitPIN(hSession, pin_ptr);
@@ -312,12 +302,44 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
                CK_UTF8CHAR_PTR pNewPin,
                CK_ULONG ulNewLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-
   string old_pin = chaps::CharBufferToString(pOldPin, ulOldLen);
   string* old_pin_ptr = (!pOldPin) ? NULL : &old_pin;
   string new_pin = chaps::CharBufferToString(pNewPin, ulNewLen);
   string* new_pin_ptr = (!pNewPin) ? NULL : &new_pin;
   CK_RV result = g_proxy->SetPIN(hSession, old_pin_ptr, new_pin_ptr);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.6 page 117.
+CK_RV C_OpenSession(CK_SLOT_ID slotID,
+                    CK_FLAGS flags,
+                    CK_VOID_PTR pApplication,
+                    CK_NOTIFY Notify,
+                    CK_SESSION_HANDLE_PTR phSession) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!phSession, CKR_ARGUMENTS_BAD);
+  // pApplication and Notify are intentionally ignored.  We don't support
+  // notification callbacks and the PKCS #11 specification does not require us
+  // to.  See PKCS #11 v2.20 section 11.17 for details.
+  CK_RV result = g_proxy->OpenSession(slotID, flags,
+                                      chaps::PreservedCK_ULONG(phSession));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.6 page 118.
+CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = g_proxy->CloseSession(hSession);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.6 page 120.
+CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = g_proxy->CloseAllSessions(slotID);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

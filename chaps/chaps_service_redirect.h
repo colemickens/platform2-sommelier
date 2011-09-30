@@ -61,6 +61,10 @@ public:
   virtual uint32_t InitPIN(uint32_t session_id, const std::string* pin);
   virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
                           const std::string* new_pin);
+  virtual uint32_t OpenSession(uint32_t slot_id, uint32_t flags,
+                               uint32_t* session_id);
+  virtual uint32_t CloseSession(uint32_t session_id);
+  virtual uint32_t CloseAllSessions(uint32_t slot_id);
 private:
   std::string library_path_;
   void* library_;

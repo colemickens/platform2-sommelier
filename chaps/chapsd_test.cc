@@ -196,6 +196,27 @@ TEST_F(TestP11, SetPIN) {
   EXPECT_NE(CKR_OK, chaps_->SetPIN(0, NULL, NULL));
 }
 
+TEST_F(TestP11, OpenCloseSession) {
+  uint32_t session = 0;
+  // Test successful RO and RW sessions.
+  EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION, &session));
+  EXPECT_EQ(CKR_OK, chaps_->CloseSession(session));
+  EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
+                                        &session));
+  EXPECT_EQ(CKR_OK, chaps_->CloseSession(session));
+  // Test double close.
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->CloseSession(session));
+  // Test error cases.
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            chaps_->OpenSession(0, CKF_SERIAL_SESSION, NULL));
+  EXPECT_EQ(CKR_SESSION_PARALLEL_NOT_SUPPORTED,
+            chaps_->OpenSession(0, 0, &session));
+  // Test CloseAllSessions.
+  EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION, &session));
+  EXPECT_EQ(CKR_OK, chaps_->CloseAllSessions(0));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->CloseSession(session));
+}
+
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   ::testing::InitGoogleTest(&argc, argv);
