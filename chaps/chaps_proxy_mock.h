@@ -59,6 +59,9 @@ public:
     *flags = 1;
     return 0;
   }
+  MOCK_METHOD2(GetMechanismList, uint32_t (uint32_t, std::vector<uint32_t>*));
+  MOCK_METHOD5(GetMechanismInfo, uint32_t (uint32_t, uint32_t, uint32_t*,
+                                           uint32_t*, uint32_t*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

@@ -97,4 +97,25 @@ void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
                                   &firmware_version_minor);
 }
 
+void ChapsAdaptor::GetMechanismList(const uint32_t& slot_id,
+                                    std::vector<uint32_t>& mechanism_list,
+                                    uint32_t& result,
+                                    ::DBus::Error &error) {
+  result = service_->GetMechanismList(slot_id, &mechanism_list);
+}
+
+void ChapsAdaptor::GetMechanismInfo(const uint32_t& slot_id,
+                                    const uint32_t& mechanism_type,
+                                    uint32_t& min_key_size,
+                                    uint32_t& max_key_size,
+                                    uint32_t& flags,
+                                    uint32_t& result,
+                                    ::DBus::Error &error) {
+  result = service_->GetMechanismInfo(slot_id,
+                                      mechanism_type,
+                                      &min_key_size,
+                                      &max_key_size,
+                                      &flags);
+}
+
 }  // namespace

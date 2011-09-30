@@ -69,33 +69,31 @@ void DisableMockProxy() {
 // PKCS #11 v2.20 section 11.4 page 102.
 // Connects to the D-Bus service.
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
-  if (g_is_initialized)
-    return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+  LOG_CK_RV_AND_RETURN_IF(g_is_initialized, CKR_CRYPTOKI_ALREADY_INITIALIZED);
   // Validate args (if any).
   if (pInitArgs) {
     CK_C_INITIALIZE_ARGS_PTR args =
         reinterpret_cast<CK_C_INITIALIZE_ARGS_PTR>(pInitArgs);
-    if (args->pReserved)
-      return CKR_ARGUMENTS_BAD;
+    LOG_CK_RV_AND_RETURN_IF(args->pReserved, CKR_ARGUMENTS_BAD);
     // If one of the following is NULL, they all must be NULL.
     if ((!args->CreateMutex || !args->DestroyMutex ||
          !args->LockMutex || !args->UnlockMutex) &&
         (args->CreateMutex || args->DestroyMutex ||
-         args->LockMutex || args->UnlockMutex))
-      return CKR_ARGUMENTS_BAD;
+         args->LockMutex || args->UnlockMutex)) {
+      LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+    }
     // We require OS locking.
-    if (((args->flags & CKF_OS_LOCKING_OK) == 0) && args->CreateMutex)
-      return CKR_CANT_LOCK;
+    if (((args->flags & CKF_OS_LOCKING_OK) == 0) && args->CreateMutex) {
+      LOG_CK_RV_AND_RETURN(CKR_CANT_LOCK);
+    }
   }
   // If we're not using a mock proxy instance we need to create one.
   if (!g_is_using_mock)
     g_proxy.reset(new chaps::ChapsProxyImpl());
-  if (!g_proxy.get())
-    return CKR_HOST_MEMORY;
+  CHECK(g_proxy.get());
 
   g_finalize_event.reset(new WaitableEvent(true, false));
-  if (!g_finalize_event.get())
-    return CKR_HOST_MEMORY;
+  CHECK(g_finalize_event.get());
 
   g_is_initialized = true;
   return CKR_OK;
@@ -104,10 +102,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 // PKCS #11 v2.20 section 11.4 page 104.
 // Closes the D-Bus service connection.
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
-  if (pReserved != NULL_PTR)
-    return CKR_ARGUMENTS_BAD;
-  if (!g_is_initialized)
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  LOG_CK_RV_AND_RETURN_IF(pReserved, CKR_ARGUMENTS_BAD);
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
 
   if (g_finalize_event.get())
     g_finalize_event->Signal();
@@ -119,10 +115,9 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
 // Provide library info locally.
 // TODO(dkrahn): i18n of strings - crosbug.com/20637
 CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
-  if (!g_is_initialized)
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
-  if (pInfo == NULL_PTR)
-    return CKR_ARGUMENTS_BAD;
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
+
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
   chaps::CopyToCharBuffer("Chromium OS", pInfo->manufacturerID,
@@ -139,22 +134,18 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
 CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
                     CK_SLOT_ID_PTR pSlotList,
                     CK_ULONG_PTR pulCount) {
-  if (!g_is_initialized)
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
-  if (pulCount == NULL_PTR)
-    return CKR_ARGUMENTS_BAD;
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
 
-  CK_RV result = CKR_OK;
   vector<uint32_t> slot_list;
-  result = g_proxy->GetSlotList((tokenPresent != CK_FALSE), &slot_list);
-  LOG_CK_RV_ERR_RETURN(result);
+  CK_RV result = g_proxy->GetSlotList((tokenPresent != CK_FALSE), &slot_list);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   size_t max_copy = static_cast<size_t>(*pulCount);
   *pulCount = static_cast<CK_ULONG>(slot_list.size());
-  if (pSlotList == NULL_PTR)
+  if (!pSlotList)
     return CKR_OK;
+  LOG_CK_RV_AND_RETURN_IF(slot_list.size() > max_copy, CKR_BUFFER_TOO_SMALL);
   for (size_t i = 0; i < slot_list.size(); i++) {
-    if (i >= max_copy)
-      return CKR_BUFFER_TOO_SMALL;
     pSlotList[i] = slot_list[i];
   }
   return CKR_OK;
@@ -162,15 +153,12 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 
 // PKCS #11 v2.20 section 11.5 page 108.
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
-  if (!g_is_initialized)
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
-  if (pInfo == NULL_PTR)
-    return CKR_ARGUMENTS_BAD;
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
 
-  CK_RV result = CKR_OK;
   string slot_description;
   string manufacturer_id;
-  result = g_proxy->GetSlotInfo(
+  CK_RV result = g_proxy->GetSlotInfo(
       slotID,
       &slot_description,
       &manufacturer_id,
@@ -179,7 +167,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
       static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
-  LOG_CK_RV_ERR_RETURN(result);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   chaps::CopyToCharBuffer(slot_description.c_str(), pInfo->slotDescription,
                           arraysize(pInfo->slotDescription));
   chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
@@ -189,17 +177,14 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
 
 // PKCS #11 v2.20 section 11.5 page 109.
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
-  if (!g_is_initialized)
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
-  if (pInfo == NULL_PTR)
-    return CKR_ARGUMENTS_BAD;
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
 
-  CK_RV result = CKR_OK;
   std::string label;
   std::string manufacturer_id;
   std::string model;
   std::string serial_number;
-  result = g_proxy->GetTokenInfo(
+  CK_RV result = g_proxy->GetTokenInfo(
       slotID,
       &label,
       &manufacturer_id,
@@ -220,7 +205,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
       static_cast<uint8_t*>(&pInfo->hardwareVersion.minor),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
-  LOG_CK_RV_ERR_RETURN(result);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   chaps::CopyToCharBuffer(label.c_str(), pInfo->label, arraysize(pInfo->label));
   chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
                           arraysize(pInfo->manufacturerID));
@@ -237,14 +222,55 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
                          CK_SLOT_ID_PTR pSlot,
                          CK_VOID_PTR pReserved) {
-  if (!g_is_initialized || !g_finalize_event.get())
-    return CKR_CRYPTOKI_NOT_INITIALIZED;
-  if (!pSlot)
-    return CKR_ARGUMENTS_BAD;
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pSlot, CKR_ARGUMENTS_BAD);
+
   // Currently, all supported tokens are not removable - i.e. no slot events.
   if (CKF_DONT_BLOCK & flags)
     return CKR_NO_EVENT;
   // Block until C_Finalize.
+  CHECK(g_finalize_event.get());
   g_finalize_event->Wait();
   return CKR_CRYPTOKI_NOT_INITIALIZED;
+}
+
+// PKCS #11 v2.20 section 11.5 page 111.
+CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
+                         CK_MECHANISM_TYPE_PTR pMechanismList,
+                         CK_ULONG_PTR pulCount) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
+
+  std::vector<uint32_t> mechanism_list;
+  CK_RV result = g_proxy->GetMechanismList(slotID, &mechanism_list);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Copy the mechanism list to caller-supplied memory.
+  size_t max_copy = static_cast<size_t>(*pulCount);
+  *pulCount = static_cast<CK_ULONG>(mechanism_list.size());
+  if (!pMechanismList)
+    return CKR_OK;
+  LOG_CK_RV_AND_RETURN_IF(mechanism_list.size() > max_copy,
+                          CKR_BUFFER_TOO_SMALL);
+  for (size_t i = 0; i < mechanism_list.size(); i++) {
+    pMechanismList[i] = static_cast<CK_MECHANISM_TYPE>(mechanism_list[i]);
+  }
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 112.
+CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
+                         CK_MECHANISM_TYPE type,
+                         CK_MECHANISM_INFO_PTR pInfo) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
+
+  std::vector<uint32_t> mechanism_list;
+  CK_RV result = g_proxy->GetMechanismInfo(
+      slotID,
+      type,
+      chaps::PreservedCK_ULONG(&pInfo->ulMinKeySize),
+      chaps::PreservedCK_ULONG(&pInfo->ulMaxKeySize),
+      chaps::PreservedCK_ULONG(&pInfo->flags));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
 }

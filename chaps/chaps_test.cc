@@ -28,9 +28,9 @@ TEST(TestInitialize,InitializeNULL) {
   EXPECT_EQ(CKR_OK, C_Finalize(NULL_PTR));
 }
 
-TEST(TestInitialize,InitializeOutOfMem) {
+TEST(TestInitializeDeathTest,InitializeOutOfMem) {
   chaps::EnableMockProxy(NULL, false);
-  EXPECT_EQ(CKR_HOST_MEMORY, C_Initialize(NULL_PTR));
+  EXPECT_DEATH_IF_SUPPORTED(C_Initialize(NULL_PTR), "Check failed");
   chaps::DisableMockProxy();
 }
 
@@ -297,6 +297,144 @@ TEST(TestWaitSlotEvent,SlotEventBadArgs) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_WaitForSlotEvent(0, NULL, NULL));
 }
+
+// Mechanism List Tests
+class TestMechList : public ::testing::Test {
+protected:
+  virtual void SetUp() {
+    uint32_t mech_array[3] = {1, 2, 3};
+    mech_list_all_.assign(&mech_array[0], &mech_array[3]);
+    mech_list_present_.assign(&mech_array[1], &mech_array[3]);
+  }
+  vector<uint32_t> mech_list_all_;
+  vector<uint32_t> mech_list_present_;
+};
+
+TEST_F(TestMechList,MechListOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+                      Return(CKR_OK)));
+
+  CK_SLOT_ID mechs[3];
+  CK_ULONG num_mechs = 3;
+  EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, mechs, &num_mechs));
+  EXPECT_EQ(num_mechs, mech_list_all_.size());
+  EXPECT_EQ(mechs[0], mech_list_all_[0]);
+  EXPECT_EQ(mechs[1], mech_list_all_[1]);
+  EXPECT_EQ(mechs[2], mech_list_all_[2]);
+}
+
+TEST_F(TestMechList,MechListNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GetMechanismList(CK_FALSE, NULL, NULL));
+}
+
+TEST_F(TestMechList,MechListNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_SLOT_ID mechs[3];
+  CK_ULONG num_mechs = 3;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_GetMechanismList(CK_FALSE, mechs, &num_mechs));
+}
+
+TEST_F(TestMechList,MechListNoBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+                      Return(CKR_OK)));
+
+  CK_ULONG num_mechs = 17;
+  EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, NULL, &num_mechs));
+  EXPECT_EQ(num_mechs, mech_list_all_.size());
+}
+
+TEST_F(TestMechList,MechListSmallBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+                      Return(CKR_OK)));
+
+  CK_SLOT_ID mechs[2];
+  CK_ULONG num_mechs = 2;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, C_GetMechanismList(CK_FALSE, mechs,
+                                                     &num_mechs));
+  EXPECT_EQ(num_mechs, mech_list_all_.size());
+}
+
+TEST_F(TestMechList,MechListLargeBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+                      Return(CKR_OK)));
+
+  CK_SLOT_ID mechs[4];
+  CK_ULONG num_mechs = 4;
+  EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, mechs, &num_mechs));
+  EXPECT_EQ(num_mechs, mech_list_all_.size());
+  EXPECT_EQ(mechs[0], mech_list_all_[0]);
+  EXPECT_EQ(mechs[1], mech_list_all_[1]);
+  EXPECT_EQ(mechs[2], mech_list_all_[2]);
+}
+
+TEST_F(TestMechList,MechListPresentOnly) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(true),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
+                      Return(CKR_OK)));
+
+  CK_SLOT_ID mechs[4];
+  CK_ULONG num_mechs = 4;
+  EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_TRUE, mechs, &num_mechs));
+  EXPECT_EQ(num_mechs, mech_list_present_.size());
+  EXPECT_EQ(mechs[0], mech_list_present_[0]);
+  EXPECT_EQ(mechs[1], mech_list_present_[1]);
+}
+
+TEST_F(TestMechList,MechListFailure) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismList(Eq(false),_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
+                      Return(CKR_FUNCTION_FAILED)));
+
+  CK_SLOT_ID mechs[4];
+  CK_ULONG num_mechs = 4;
+  EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetMechanismList(CK_FALSE, mechs,
+                                                    &num_mechs));
+}
+
+// Mechanism Info Tests
+TEST(TestMechInfo,MechInfoOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismInfo(Eq(1),Eq(2),_,_,_))
+      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
+
+  CK_MECHANISM_INFO info;
+  memset(&info, 0, sizeof(info));
+  EXPECT_EQ(CKR_OK, C_GetMechanismInfo(1, 2, &info));
+  EXPECT_EQ(1, info.flags);
+}
+
+TEST(TestMechInfo,MechInfoNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GetMechanismInfo(1, 2, NULL));
+}
+
+TEST(TestMechInfo,MechInfoNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_MECHANISM_INFO info;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_GetMechanismInfo(1, 2, &info));
+}
+
+TEST(TestMechInfo,MechInfoFailure) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetMechanismInfo(Eq(1),Eq(2),_,_,_))
+      .WillOnce(Return(CKR_MECHANISM_INVALID));
+
+  CK_MECHANISM_INFO info;
+  EXPECT_EQ(CKR_MECHANISM_INVALID, C_GetMechanismInfo(1, 2, &info));
+}
+
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);

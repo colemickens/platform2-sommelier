@@ -69,18 +69,17 @@ uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
                                            vector<uint32_t>* slot_list) {
   CHECK(functions_);
   if (!slot_list || slot_list->size() > 0)
-    return CKR_ARGUMENTS_BAD;
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
 
-  uint32_t result = CKR_OK;
   CK_ULONG count = 0;
   // First, call with NULL to retrieve the slot count.
-  result = functions_->C_GetSlotList(token_present, NULL, &count);
-  LOG_CK_RV_ERR_RETURN(result);
+  uint32_t result = functions_->C_GetSlotList(token_present, NULL, &count);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   scoped_array<CK_SLOT_ID> slot_array(new CK_SLOT_ID[count]);
   CHECK(slot_array.get()) << "GetSlotList out of memory.";
   // Now, query the actual list.
   result = functions_->C_GetSlotList(token_present, slot_array.get(), &count);
-  LOG_CK_RV_ERR_RETURN(result);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   for (CK_ULONG i = 0; i < count; i++) {
     slot_list->push_back(static_cast<uint32_t>(slot_array[i]));
   }
@@ -99,13 +98,12 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   if (!slot_description || !manufacturer_id || !flags ||
       !hardware_version_major || !hardware_version_minor ||
       !firmware_version_major || !firmware_version_minor) {
-    return CKR_ARGUMENTS_BAD;
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   }
 
-  uint32_t result = CKR_OK;
   CK_SLOT_INFO slot_info;
-  result = functions_->C_GetSlotInfo(slot_id, &slot_info);
-  LOG_CK_RV_ERR_RETURN(result);
+  uint32_t result = functions_->C_GetSlotInfo(slot_id, &slot_info);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *slot_description = CharBufferToString(slot_info.slotDescription,
                                          arraysize(slot_info.slotDescription));
   *manufacturer_id = CharBufferToString(slot_info.manufacturerID,
@@ -139,10 +137,19 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
                                             uint8_t* firmware_version_major,
                                             uint8_t* firmware_version_minor) {
   CHECK(functions_);
-  uint32_t result = CKR_OK;
+  if (!label || !manufacturer_id || !model || !serial_number || !flags ||
+      !max_session_count || !session_count || !max_session_count_rw ||
+      !session_count_rw || !max_pin_len || !min_pin_len ||
+      !total_public_memory || !free_public_memory || !total_private_memory ||
+      !total_public_memory ||
+      !hardware_version_major || !hardware_version_minor ||
+      !firmware_version_major || !firmware_version_minor) {
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  }
+
   CK_TOKEN_INFO token_info;
-  result = functions_->C_GetTokenInfo(slot_id, &token_info);
-  LOG_CK_RV_ERR_RETURN(result);
+  uint32_t result = functions_->C_GetTokenInfo(slot_id, &token_info);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *label = CharBufferToString(token_info.label, arraysize(token_info.label));
   *manufacturer_id = CharBufferToString(token_info.manufacturerID,
                                         arraysize(token_info.manufacturerID));
@@ -164,6 +171,48 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
   *hardware_version_minor = token_info.hardwareVersion.minor;
   *firmware_version_major = token_info.firmwareVersion.major;
   *firmware_version_minor = token_info.firmwareVersion.minor;
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetMechanismList(
+    uint32_t slot_id,
+    std::vector<uint32_t>* mechanism_list) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!mechanism_list || mechanism_list->size() > 0,
+                          CKR_ARGUMENTS_BAD);
+
+  CK_ULONG count = 0;
+  // First, call with NULL to retrieve the mechanism count.
+  uint32_t result = functions_->C_GetMechanismList(slot_id, NULL, &count);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  scoped_array<CK_MECHANISM_TYPE> mech_array(new CK_MECHANISM_TYPE[count]);
+  LOG_CK_RV_AND_RETURN_IF(!mech_array.get(), CKR_HOST_MEMORY);
+  // Now, query the actual list.
+  result = functions_->C_GetMechanismList(slot_id, mech_array.get(), &count);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  for (CK_ULONG i = 0; i < count; i++) {
+    mechanism_list->push_back(static_cast<uint32_t>(mech_array[i]));
+  }
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
+                                                uint32_t mechanism_type,
+                                                uint32_t* min_key_size,
+                                                uint32_t* max_key_size,
+                                                uint32_t* flags) {
+  CHECK(functions_);
+  if (!min_key_size || !max_key_size || !flags)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+
+  CK_MECHANISM_INFO mech_info;
+  uint32_t result = functions_->C_GetMechanismInfo(slot_id,
+                                                   mechanism_type,
+                                                   &mech_info);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *min_key_size = static_cast<uint32_t>(mech_info.ulMinKeySize);
+  *max_key_size = static_cast<uint32_t>(mech_info.ulMaxKeySize);
+  *flags = static_cast<uint32_t>(mech_info.flags);
   return CKR_OK;
 }
 

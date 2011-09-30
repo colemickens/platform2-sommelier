@@ -36,10 +36,17 @@ const char* CK_RVToString(CK_RV value);
 #define LOG_CK_RV_ERR(value) LOG_IF(ERROR, ((value) != CKR_OK)) << __func__ << \
     " - " << chaps::CK_RVToString(value);
 
-// This macro is a like LOG_CK_RV_IF but also returns the value when it is not
-// CKR_OK.
-#define LOG_CK_RV_ERR_RETURN(value) LOG_CK_RV_ERR(value); \
-    if ((value) != CKR_OK) {return (value);}
+// This macro logs and returns the given CK_RV value.
+#define LOG_CK_RV_AND_RETURN(value) {LOG_CK_RV(value); return (value);}
+
+// This macro logs and returns the given CK_RV value if the given condition is
+// true.
+#define LOG_CK_RV_AND_RETURN_IF(condition, value) if (condition) \
+    LOG_CK_RV_AND_RETURN(value)
+
+// This macro logs and returns the given CK_RV value if the value is not CKR_OK.
+#define LOG_CK_RV_AND_RETURN_IF_ERR(value) \
+    LOG_CK_RV_AND_RETURN_IF((value) != CKR_OK, value)
 
 // This function constructs a string object from a CK_UTF8CHAR array.  The array
 // does not need to be NULL-terminated.

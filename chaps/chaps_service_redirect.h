@@ -49,6 +49,13 @@ public:
                                 uint8_t* hardware_version_minor,
                                 uint8_t* firmware_version_major,
                                 uint8_t* firmware_version_minor);
+  virtual uint32_t GetMechanismList(uint32_t slot_id,
+                                    std::vector<uint32_t>* mechanism_list);
+  virtual uint32_t GetMechanismInfo(uint32_t slot_id,
+                                    uint32_t mechanism_type,
+                                    uint32_t* min_key_size,
+                                    uint32_t* max_key_size,
+                                    uint32_t* flags);
 private:
   std::string library_path_;
   void* library_;

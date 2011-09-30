@@ -51,7 +51,7 @@
       </arg>
     </method>
 
-    <!-- PKCS #11 v2.20 section 11.5 -->
+    <!-- PKCS #11 v2.20 section 11.5 page 109. -->
     <method name="GetTokenInfo">
       <arg type="u" name="slot_id" direction="in"/>
       <arg type="s" name="label" direction="out"/>
@@ -73,6 +73,27 @@
       <arg type="y" name="hardware_version_minor" direction="out"/>
       <arg type="y" name="firmware_version_major" direction="out"/>
       <arg type="y" name="firmware_version_minor" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.5 page 111. -->
+    <method name="GetMechanismList">
+      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="au" name="mechanism_list" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.5 page 112. -->
+    <method name="GetMechanismInfo">
+      <arg type="u" name="slot_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="u" name="min_key_size" direction="out"/>
+      <arg type="u" name="max_key_size" direction="out"/>
+      <arg type="u" name="flags" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>

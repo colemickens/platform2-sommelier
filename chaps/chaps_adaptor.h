@@ -61,6 +61,17 @@ public:
                             uint8_t& firmware_version_minor,
                             uint32_t& result,
                             ::DBus::Error &error);
+  virtual void GetMechanismList(const uint32_t& slot_id,
+                                std::vector<uint32_t>& mechanism_list,
+                                uint32_t& result,
+                                ::DBus::Error &error);
+  virtual void GetMechanismInfo(const uint32_t& slot_id,
+                                const uint32_t& mechanism_type,
+                                uint32_t& min_key_size,
+                                uint32_t& max_key_size,
+                                uint32_t& flags,
+                                uint32_t& result,
+                                ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

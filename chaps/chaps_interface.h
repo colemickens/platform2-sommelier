@@ -64,6 +64,15 @@ public:
                                 uint8_t* hardware_version_minor,
                                 uint8_t* firmware_version_major,
                                 uint8_t* firmware_version_minor) = 0;
+  // PKCS #11 v2.20 section 11.5 page 111.
+  virtual uint32_t GetMechanismList(uint32_t slot_id,
+                                    std::vector<uint32_t>* mechanism_list) = 0;
+  // PKCS #11 v2.20 section 11.5 page 112.
+  virtual uint32_t GetMechanismInfo(uint32_t slot_id,
+                                    uint32_t mechanism_type,
+                                    uint32_t* min_key_size,
+                                    uint32_t* max_key_size,
+                                    uint32_t* flags) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);
