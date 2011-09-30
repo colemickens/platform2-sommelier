@@ -51,6 +51,9 @@ class DiskManager : public MountManager,
   // Returns true on success.
   virtual bool Initialize();
 
+  // Stops a session for |user|. Returns true on success.
+  virtual bool StopSession(const std::string& user);
+
   // Returns true if mounting |source_path| is supported.
   virtual bool CanMount(const std::string& source_path) const;
 

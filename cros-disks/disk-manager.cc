@@ -66,6 +66,10 @@ bool DiskManager::Initialize() {
   return MountManager::Initialize();
 }
 
+bool DiskManager::StopSession(const string& user) {
+  return UnmountAll();
+}
+
 vector<Disk> DiskManager::EnumerateDisks() const {
   vector<Disk> disks;
 
