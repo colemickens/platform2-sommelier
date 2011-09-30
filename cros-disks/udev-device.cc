@@ -196,7 +196,7 @@ bool UdevDevice::IsMediaAvailable() const {
 bool UdevDevice::IsAutoMountable() {
   // TODO(benchan): Find a reliable way to detect if a device is a removable
   // storage as the removable attribute in sysfs does not always tell the truth.
-  if (IsOnBootDevice() || IsVirtual())
+  if (IsOnBootDevice() || IsVirtual() || !IsMediaAvailable())
     return false;
 
   // Ignore a device that is neither marked as a partition nor a filesystem,
