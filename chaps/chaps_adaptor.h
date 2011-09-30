@@ -72,6 +72,21 @@ public:
                                 uint32_t& flags,
                                 uint32_t& result,
                                 ::DBus::Error &error);
+  virtual uint32_t InitToken(const uint32_t& slot_id,
+                             const bool& use_null_pin,
+                             const std::string& optional_so_pin,
+                             const std::string& new_token_label,
+                             ::DBus::Error &error);
+  virtual uint32_t InitPIN(const uint32_t& session_id,
+                           const bool& use_null_pin,
+                           const std::string& optional_user_pin,
+                           ::DBus::Error &error);
+  virtual uint32_t SetPIN(const uint32_t& session_id,
+                          const bool& use_null_old_pin,
+                          const std::string& optional_old_pin,
+                          const bool& use_null_new_pin,
+                          const std::string& optional_new_pin,
+                          ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

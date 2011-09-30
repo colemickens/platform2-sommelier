@@ -4,7 +4,8 @@
 
 namespace chaps {
 
-static const char* kChapsServicePath = "/org/chromium/Chaps";
-static const char* kChapsServiceName = "org.chromium.Chaps";
+extern const char* kChapsServicePath;
+extern const char* kChapsServiceName;
+extern const int kTokenLabelSize;
 
 }  // namespace

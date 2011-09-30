@@ -15,13 +15,13 @@ namespace chaps {
 
 // CopyToCharBuffer copies a NULL-terminated string to a space-padded
 // CK_UTF8CHAR buffer (not NULL-terminated).
-inline void CopyToCharBuffer(const char* source, CK_UTF8CHAR_PTR buffer,
+inline void CopyToCharBuffer(const std::string& source, CK_UTF8CHAR_PTR buffer,
                              size_t buffer_size) {
-  size_t copy_size = strlen(source);
+  size_t copy_size = source.length();
   if (copy_size > buffer_size)
     copy_size = buffer_size;
   memset(buffer, ' ', buffer_size);
-  memcpy(buffer, source, copy_size);
+  memcpy(buffer, source.data(), copy_size);
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
@@ -49,10 +49,19 @@ const char* CK_RVToString(CK_RV value);
     LOG_CK_RV_AND_RETURN_IF((value) != CKR_OK, value)
 
 // This function constructs a string object from a CK_UTF8CHAR array.  The array
-// does not need to be NULL-terminated.
+// does not need to be NULL-terminated. If buffer is NULL, an empty string will
+// be returned.
 inline std::string CharBufferToString(CK_UTF8CHAR_PTR buffer,
                                       size_t buffer_size) {
+  if (!buffer)
+    return std::string();
   return std::string(reinterpret_cast<char*>(buffer), buffer_size);
+}
+
+// This functions converts a string to a CK_UTF8CHAR_PTR which points to the
+// same buffer.
+inline CK_UTF8CHAR_PTR StringToCharBuffer(const char* str) {
+  return reinterpret_cast<CK_UTF8CHAR_PTR>(const_cast<char*>(str));
 }
 
 // This class preserves a variable that needs to be temporarily converted to

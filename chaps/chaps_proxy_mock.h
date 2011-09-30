@@ -62,6 +62,11 @@ public:
   MOCK_METHOD2(GetMechanismList, uint32_t (uint32_t, std::vector<uint32_t>*));
   MOCK_METHOD5(GetMechanismInfo, uint32_t (uint32_t, uint32_t, uint32_t*,
                                            uint32_t*, uint32_t*));
+  MOCK_METHOD3(InitToken, uint32_t (uint32_t, const std::string*,
+                                    const std::string&));
+  MOCK_METHOD2(InitPIN, uint32_t (uint32_t, const std::string*));
+  MOCK_METHOD3(SetPIN, uint32_t (uint32_t, const std::string*,
+                                 const std::string*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

@@ -73,6 +73,14 @@ public:
                                     uint32_t* min_key_size,
                                     uint32_t* max_key_size,
                                     uint32_t* flags) = 0;
+  // PKCS #11 v2.20 section 11.5 page 113.
+  virtual uint32_t InitToken(uint32_t slot_id, const std::string* so_pin,
+                             const std::string& label) = 0;
+  // PKCS #11 v2.20 section 11.5 page 115.
+  virtual uint32_t InitPIN(uint32_t session_id, const std::string* pin) = 0;
+  // PKCS #11 v2.20 section 11.5 page 116.
+  virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
+                          const std::string* new_pin) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

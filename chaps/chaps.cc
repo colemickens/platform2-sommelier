@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -180,10 +181,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
 
-  std::string label;
-  std::string manufacturer_id;
-  std::string model;
-  std::string serial_number;
+  string label;
+  string manufacturer_id;
+  string model;
+  string serial_number;
   CK_RV result = g_proxy->GetTokenInfo(
       slotID,
       &label,
@@ -241,7 +242,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulCount, CKR_ARGUMENTS_BAD);
 
-  std::vector<uint32_t> mechanism_list;
+  vector<uint32_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismList(slotID, &mechanism_list);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   // Copy the mechanism list to caller-supplied memory.
@@ -264,13 +265,59 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
 
-  std::vector<uint32_t> mechanism_list;
+  vector<uint32_t> mechanism_list;
   CK_RV result = g_proxy->GetMechanismInfo(
       slotID,
       type,
       chaps::PreservedCK_ULONG(&pInfo->ulMinKeySize),
       chaps::PreservedCK_ULONG(&pInfo->ulMaxKeySize),
       chaps::PreservedCK_ULONG(&pInfo->flags));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 113.
+CK_RV C_InitToken(CK_SLOT_ID slotID,
+                  CK_UTF8CHAR_PTR pPin,
+                  CK_ULONG ulPinLen,
+                  CK_UTF8CHAR_PTR pLabel) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pLabel, CKR_ARGUMENTS_BAD);
+
+  string pin = chaps::CharBufferToString(pPin, ulPinLen);
+  string label = chaps::CharBufferToString(pLabel, chaps::kTokenLabelSize);
+  string* pin_ptr = (!pPin) ? NULL : &pin;
+  CK_RV result = g_proxy->InitToken(slotID, pin_ptr, label);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 115.
+CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
+                CK_UTF8CHAR_PTR pPin,
+                CK_ULONG ulPinLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+
+  string pin = chaps::CharBufferToString(pPin, ulPinLen);
+  string* pin_ptr = (!pPin) ? NULL : &pin;
+  CK_RV result = g_proxy->InitPIN(hSession, pin_ptr);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.5 page 116.
+CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
+               CK_UTF8CHAR_PTR pOldPin,
+               CK_ULONG ulOldLen,
+               CK_UTF8CHAR_PTR pNewPin,
+               CK_ULONG ulNewLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+
+  string old_pin = chaps::CharBufferToString(pOldPin, ulOldLen);
+  string* old_pin_ptr = (!pOldPin) ? NULL : &old_pin;
+  string new_pin = chaps::CharBufferToString(pNewPin, ulNewLen);
+  string* new_pin_ptr = (!pNewPin) ? NULL : &new_pin;
+  CK_RV result = g_proxy->SetPIN(hSession, old_pin_ptr, new_pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

@@ -35,6 +35,10 @@ static chaps::ChapsInterface* CreateChapsInstance() {
 class TestP11 : public ::testing::Test {
 protected:
   virtual void SetUp() {
+    // The current user's token will be used so the token will already be
+    // initialized and changes to token objects will persist.  The user pin can
+    // be assumed to be "111111" and the so pin can be assumed to be "000000".
+    // This approach will be used as long as we redirect to openCryptoki.
     chaps_.reset(CreateChapsInstance());
     ASSERT_TRUE(chaps_ != NULL);
   }
@@ -170,6 +174,26 @@ TEST_F(TestP11, MechInfo) {
                                     &max_key_size,
                                     NULL);
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
+}
+
+TEST_F(TestP11, InitToken) {
+  string pin = "test";
+  string label = "test";
+  EXPECT_NE(CKR_OK, chaps_->InitToken(0, &pin, label));
+  EXPECT_NE(CKR_OK, chaps_->InitToken(0, NULL, label));
+}
+
+TEST_F(TestP11, InitPIN) {
+  string pin = "test";
+  EXPECT_NE(CKR_OK, chaps_->InitPIN(0, &pin));
+  EXPECT_NE(CKR_OK, chaps_->InitPIN(0, NULL));
+}
+
+TEST_F(TestP11, SetPIN) {
+  string pin = "test";
+  string pin2 = "test2";
+  EXPECT_NE(CKR_OK, chaps_->SetPIN(0, &pin, &pin2));
+  EXPECT_NE(CKR_OK, chaps_->SetPIN(0, NULL, NULL));
 }
 
 int main(int argc, char** argv) {

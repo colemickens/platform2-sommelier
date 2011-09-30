@@ -50,13 +50,19 @@ $(OUT)chaps_test: $(OUT)chaps_test.o $(OUT)libchaps.so
 	$(call cxx_binary, -lgtest -lgmock)
 RM_ON_CLEAN += $(OUT)chaps_test
 
+$(OUT)chaps_live_test: $(OUT)chaps_test.o
+	$(call cxx_binary, -lgtest -lgmock -lchaps)
+RM_ON_CLEAN += $(OUT)chaps_live_test
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
 dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
               $(OUT)include/chaps/chaps_proxy_generated.h
 
-tests: $(OUT)libchaps.so $(OUT)chaps_test $(OUT)chapsd_test
+tests: $(OUT)chaps_test
+
+live_tests: $(OUT)chaps_live_test $(OUT)chapsd_test
 
 runtests: tests
 	$(OUT)chaps_test

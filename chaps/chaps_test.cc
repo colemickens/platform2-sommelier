@@ -435,6 +435,119 @@ TEST(TestMechInfo,MechInfoFailure) {
   EXPECT_EQ(CKR_MECHANISM_INVALID, C_GetMechanismInfo(1, 2, &info));
 }
 
+// Init Token Tests
+TEST(TestInitToken,InitTokenOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+      .WillOnce(Return(CKR_OK));
+
+  CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
+  CK_UTF8CHAR label[32];
+  memset(label, ' ', 32);
+  memcpy(label, "test", 4);
+  EXPECT_EQ(CKR_OK, C_InitToken(1, pin, 4, label));
+}
+
+TEST(TestInitToken,InitTokenNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+
+  CK_UTF8CHAR label[32];
+  memset(label, ' ', 32);
+  memcpy(label, "test", 4);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_InitToken(1, NULL, 0, label));
+}
+
+TEST(TestInitToken,InitTokenNULLLabel) {
+  chaps::ChapsProxyMock proxy(true);
+
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_InitToken(1, NULL, 0, NULL));
+}
+
+TEST(TestInitToken,InitTokenNULLPin) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+      .WillOnce(Return(CKR_OK));
+
+  CK_UTF8CHAR label[32];
+  memset(label, ' ', 32);
+  memcpy(label, "test", 4);
+  EXPECT_EQ(CKR_OK, C_InitToken(1, NULL, 0, label));
+}
+
+TEST(TestInitToken,InitTokenFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitToken(Eq(1),_,_))
+      .WillOnce(Return(CKR_PIN_INVALID));
+
+  CK_UTF8CHAR label[32];
+  memset(label, ' ', 32);
+  memcpy(label, "test", 4);
+  EXPECT_EQ(CKR_PIN_INVALID, C_InitToken(1, NULL, 0, label));
+}
+
+// Init PIN Tests
+TEST(TestInitPIN,InitPINOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+      .WillOnce(Return(CKR_OK));
+
+  CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
+  EXPECT_EQ(CKR_OK, C_InitPIN(1, pin, 4));
+}
+
+TEST(TestInitPIN,InitPINNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_InitPIN(1, NULL, 0));
+}
+
+TEST(TestInitPIN,InitPINNULLPin) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+      .WillOnce(Return(CKR_OK));
+
+  EXPECT_EQ(CKR_OK, C_InitPIN(1, NULL, 0));
+}
+
+TEST(TestInitPIN,InitPINFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, InitPIN(Eq(1),_))
+      .WillOnce(Return(CKR_PIN_INVALID));
+
+  EXPECT_EQ(CKR_PIN_INVALID, C_InitPIN(1, NULL, 0));
+}
+
+// Set PIN Tests
+TEST(TestSetPIN,SetPINOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+      .WillOnce(Return(CKR_OK));
+
+  CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
+  EXPECT_EQ(CKR_OK, C_SetPIN(1, pin, 4, pin, 4));
+}
+
+TEST(TestSetPIN,SetPINNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SetPIN(1, NULL, 0, NULL, 0));
+}
+
+TEST(TestSetPIN,SetPINNULLPin) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+      .WillOnce(Return(CKR_OK));
+
+  EXPECT_EQ(CKR_OK, C_SetPIN(1, NULL, 0, NULL, 0));
+}
+
+TEST(TestSetPIN,SetPINFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SetPIN(Eq(1),_,_))
+      .WillOnce(Return(CKR_PIN_INVALID));
+
+  EXPECT_EQ(CKR_PIN_INVALID, C_SetPIN(1, NULL, 0, NULL, 0));
+}
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);

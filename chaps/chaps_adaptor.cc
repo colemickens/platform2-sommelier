@@ -118,4 +118,32 @@ void ChapsAdaptor::GetMechanismInfo(const uint32_t& slot_id,
                                       &flags);
 }
 
+uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
+                                 const bool& use_null_pin,
+                                 const std::string& optional_so_pin,
+                                 const std::string& new_token_label,
+                                 ::DBus::Error &error) {
+  const string* tmp_pin = use_null_pin ? NULL : &optional_so_pin;
+  return service_->InitToken(slot_id, tmp_pin, new_token_label);
+}
+
+uint32_t ChapsAdaptor::InitPIN(const uint32_t& session_id,
+                               const bool& use_null_pin,
+                               const std::string& optional_user_pin,
+                               ::DBus::Error &error) {
+  const string* tmp_pin = use_null_pin ? NULL : &optional_user_pin;
+  return service_->InitPIN(session_id, tmp_pin);
+}
+
+uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
+                              const bool& use_null_old_pin,
+                              const std::string& optional_old_pin,
+                              const bool& use_null_new_pin,
+                              const std::string& optional_new_pin,
+                              ::DBus::Error &error) {
+  const string* tmp_old_pin = use_null_old_pin ? NULL : &optional_old_pin;
+  const string* tmp_new_pin = use_null_new_pin ? NULL : &optional_new_pin;
+  return service_->SetPIN(session_id, tmp_old_pin, tmp_new_pin);
+}
+
 }  // namespace

@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
 
 using std::string;
@@ -73,7 +74,7 @@ uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
 
   CK_ULONG count = 0;
   // First, call with NULL to retrieve the slot count.
-  uint32_t result = functions_->C_GetSlotList(token_present, NULL, &count);
+  CK_RV result = functions_->C_GetSlotList(token_present, NULL, &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   scoped_array<CK_SLOT_ID> slot_array(new CK_SLOT_ID[count]);
   CHECK(slot_array.get()) << "GetSlotList out of memory.";
@@ -102,7 +103,7 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   }
 
   CK_SLOT_INFO slot_info;
-  uint32_t result = functions_->C_GetSlotInfo(slot_id, &slot_info);
+  CK_RV result = functions_->C_GetSlotInfo(slot_id, &slot_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *slot_description = CharBufferToString(slot_info.slotDescription,
                                          arraysize(slot_info.slotDescription));
@@ -148,7 +149,7 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
   }
 
   CK_TOKEN_INFO token_info;
-  uint32_t result = functions_->C_GetTokenInfo(slot_id, &token_info);
+  CK_RV result = functions_->C_GetTokenInfo(slot_id, &token_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *label = CharBufferToString(token_info.label, arraysize(token_info.label));
   *manufacturer_id = CharBufferToString(token_info.manufacturerID,
@@ -183,7 +184,7 @@ uint32_t ChapsServiceRedirect::GetMechanismList(
 
   CK_ULONG count = 0;
   // First, call with NULL to retrieve the mechanism count.
-  uint32_t result = functions_->C_GetMechanismList(slot_id, NULL, &count);
+  CK_RV result = functions_->C_GetMechanismList(slot_id, NULL, &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   scoped_array<CK_MECHANISM_TYPE> mech_array(new CK_MECHANISM_TYPE[count]);
   LOG_CK_RV_AND_RETURN_IF(!mech_array.get(), CKR_HOST_MEMORY);
@@ -206,13 +207,60 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
 
   CK_MECHANISM_INFO mech_info;
-  uint32_t result = functions_->C_GetMechanismInfo(slot_id,
+  CK_RV result = functions_->C_GetMechanismInfo(slot_id,
                                                    mechanism_type,
                                                    &mech_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *min_key_size = static_cast<uint32_t>(mech_info.ulMinKeySize);
   *max_key_size = static_cast<uint32_t>(mech_info.ulMaxKeySize);
   *flags = static_cast<uint32_t>(mech_info.flags);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id, const string* so_pin,
+                                         const string& label) {
+  CHECK(functions_);
+
+  CK_UTF8CHAR_PTR pin_buffer =
+      so_pin ? StringToCharBuffer(so_pin->data()) : NULL;
+  CK_ULONG pin_length = so_pin ? static_cast<CK_ULONG>(so_pin->length()) : 0;
+  CK_UTF8CHAR label_buffer[chaps::kTokenLabelSize];
+  CopyToCharBuffer(label.c_str(), label_buffer, chaps::kTokenLabelSize);
+  CK_RV result = functions_->C_InitToken(slot_id,
+                                         pin_buffer,
+                                         pin_length,
+                                         label_buffer);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::InitPIN(uint32_t session_id, const string* pin) {
+  CHECK(functions_);
+
+  CK_UTF8CHAR_PTR pin_buffer = pin ? StringToCharBuffer(pin->data()) : NULL;
+  CK_ULONG pin_length = pin ? static_cast<CK_ULONG>(pin->length()) : 0;
+  CK_RV result = functions_->C_InitPIN(session_id, pin_buffer, pin_length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
+                                      const string* old_pin,
+                                      const string* new_pin) {
+  CHECK(functions_);
+
+  CK_UTF8CHAR_PTR old_pin_buffer =
+      old_pin ? StringToCharBuffer(old_pin->data()) : NULL;
+  CK_ULONG old_pin_length =
+      old_pin ? static_cast<CK_ULONG>(old_pin->length()) : 0;
+  CK_UTF8CHAR_PTR new_pin_buffer =
+      new_pin ? StringToCharBuffer(new_pin->data()) : NULL;
+  CK_ULONG new_pin_length =
+      new_pin ? static_cast<CK_ULONG>(new_pin->length()) : 0;
+  CK_RV result = functions_->C_SetPIN(session_id,
+                                      old_pin_buffer, old_pin_length,
+                                      new_pin_buffer, new_pin_length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
 

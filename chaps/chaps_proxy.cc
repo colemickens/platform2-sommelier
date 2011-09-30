@@ -85,10 +85,10 @@ uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
 }
 
 uint32_t ChapsProxyImpl::GetTokenInfo(uint32_t slot_id,
-                                      std::string* label,
-                                      std::string* manufacturer_id,
-                                      std::string* model,
-                                      std::string* serial_number,
+                                      string* label,
+                                      string* manufacturer_id,
+                                      string* model,
+                                      string* serial_number,
                                       uint32_t* flags,
                                       uint32_t* max_session_count,
                                       uint32_t* session_count,
@@ -146,7 +146,7 @@ uint32_t ChapsProxyImpl::GetTokenInfo(uint32_t slot_id,
 
 uint32_t ChapsProxyImpl::GetMechanismList(
     uint32_t slot_id,
-    std::vector<uint32_t>* mechanism_list) {
+    vector<uint32_t>* mechanism_list) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list, CKR_ARGUMENTS_BAD);
 
@@ -183,5 +183,60 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint32_t slot_id,
   }
   return result;
 }
+
+uint32_t ChapsProxyImpl::InitToken(uint32_t slot_id, const string* so_pin,
+                                   const string& label) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+
+  uint32_t result = CKR_OK;
+  try {
+    string tmp_pin;
+    if (so_pin)
+      tmp_pin = *so_pin;
+    result = proxy_->InitToken(slot_id, (so_pin == NULL), tmp_pin, label);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::InitPIN(uint32_t session_id, const string* pin) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+
+  uint32_t result = CKR_OK;
+  try {
+    string tmp_pin;
+    if (pin)
+      tmp_pin = *pin;
+    result = proxy_->InitPIN(session_id, (pin == NULL), tmp_pin);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::SetPIN(uint32_t session_id, const string* old_pin,
+                                const string* new_pin) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+
+  uint32_t result = CKR_OK;
+  try {
+    string tmp_old_pin;
+    if (old_pin)
+      tmp_old_pin = *old_pin;
+    string tmp_new_pin;
+    if (new_pin)
+      tmp_new_pin = *new_pin;
+    result = proxy_->SetPIN(session_id, (old_pin == NULL), tmp_old_pin,
+                            (new_pin == NULL), tmp_new_pin);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 
 }  // namespace

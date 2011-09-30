@@ -2,11 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
-
 #include "chaps_utility.h"
 
+#include <stdio.h>
+
+#include "chaps.h"
+
 namespace chaps {
+
+// define const values
+const char* kChapsServicePath = "/org/chromium/Chaps";
+const char* kChapsServiceName = "org.chromium.Chaps";
+const int kTokenLabelSize = 32;
 
 const char* CK_RVToString(CK_RV value) {
   switch (value) {
