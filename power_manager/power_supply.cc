@@ -23,7 +23,10 @@ const double kDoubleScaleFactor = 0.000001;
 // How much the remaining time can vary, as a fraction of the baseline time.
 const double kAcceptableVariance = 0.02;
 
-// Allow three minutes before deciding on an acceptable time.
+// Initially, allow 10 seconds before deciding on an acceptable time.
+const base::TimeDelta kHysteresisTimeFast = base::TimeDelta::FromSeconds(10);
+
+// Allow three minutes before deciding on a new acceptable time.
 const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
 
 // Converts time from hours to seconds.
@@ -44,7 +47,7 @@ PowerSupply::PowerSupply(const FilePath& power_supply_path)
       battery_info_(NULL),
       power_supply_path_(power_supply_path),
       acceptable_variance_(kAcceptableVariance),
-      hysteresis_time_(kHysteresisTime),
+      hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
       time_now_func(base::Time::Now),
       is_suspended_(false) {}
@@ -299,6 +302,10 @@ void PowerSupply::CalculateRemainingTime(PowerStatus *status) {
       last_poll_time_ = base::Time();
       discharge_start_time_ = base::Time();
       last_acceptable_range_time_ = base::Time();
+      // Make sure that when the system switches to battery power, the initial
+      // hysteresis time will be very short, so it can find an acceptable
+      // battery remaining time as quickly as possible.
+      hysteresis_time_ = kHysteresisTimeFast;
     } else if (!found_acceptable_time_range_) {
       // No base range found, need to give it some time to stabilize.  For now,
       // use the simple linear calculation for time.
@@ -312,6 +319,9 @@ void PowerSupply::CalculateRemainingTime(PowerStatus *status) {
         acceptable_time_ = time_to_empty;
         found_acceptable_time_range_ = true;
         last_poll_time_ = last_acceptable_range_time_ = time_now;
+        // Since an acceptable time has been found, start using the normal
+        // hysteresis time going forward.
+        hysteresis_time_ = kHysteresisTime;
       }
     } else {
       double calculated_time = GetLinearTimeToEmpty();

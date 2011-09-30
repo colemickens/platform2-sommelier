@@ -344,9 +344,6 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
 
   // Initialize the power supply object the first time around.
   power_supply_->Init();
-  // Override the default hysteresis time with something short, so the test
-  // doesn't take forever.  In this case, we want 4 seconds.
-  power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
   // PowerSupply should use custom time function instead of base::Time::Now().
   power_supply_->time_now_func = GetCurrentTime;
   // Save the starting time so it can be used for custom time readings.
@@ -361,6 +358,9 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
     data->path = &path;
     data->index = i;
     data->time = kPollIntervalMs * (i + 1);
+    // Override the default hysteresis time with something short, so the test
+    // doesn't take forever.  In this case, we want 4 seconds.
+    power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
     HysteresisTestLoop(data);
   }
 }
