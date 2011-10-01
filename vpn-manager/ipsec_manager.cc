@@ -48,7 +48,8 @@ const char kPlutoPidFile[] = "/var/run/pluto.pid";
 const mode_t kIpsecRunPathMode = (S_IRUSR | S_IWUSR | S_IXUSR |
                                   S_IRGRP | S_IWGRP | S_IXGRP);
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
-const char kIpsecMalformedPayloadPattern[] = "*malformed payload in packet*";
+const char kIpsecAuthenticationFailurePattern[] =
+    "*discarding duplicate packet*STATE_MAIN_I3*";
 
 // Give IPsec layer 2 seconds to shut down before killing it.
 const int kTermTimeout = 2;
@@ -468,7 +469,7 @@ void IpsecManager::Stop() {
 
 void IpsecManager::OnSyslogOutput(const std::string& prefix,
                                   const std::string& line) {
-  if (MatchPattern(line, kIpsecMalformedPayloadPattern)) {
+  if (MatchPattern(line, kIpsecAuthenticationFailurePattern)) {
     if (psk_file_.empty()) {
       LOG(ERROR) << "IPsec certificate authentication failed";
       RegisterError(kServiceErrorIpsecCertificateAuthenticationFailed);
