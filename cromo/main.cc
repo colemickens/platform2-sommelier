@@ -65,7 +65,7 @@ static void exit_main_loop(void) {
 }
 
 static gboolean do_signal(void *arg) {
-  int sig = reinterpret_cast<int>(arg);
+  long sig = reinterpret_cast<long>(arg);
   LOG(INFO) << "Signal: " << sig;
 
   if (sig == SIGTERM || sig == SIGINT) {
@@ -122,10 +122,11 @@ class LogSinkSyslog : public google::LogSink {
     static const int glog_to_syslog[NUM_SEVERITIES] = {
       LOG_INFO, LOG_WARNING, LOG_ERR, LOG_CRIT};
     CHECK(severity < google::NUM_SEVERITIES && severity >= 0);
+    CHECK(message_len <= INT_MAX);
 
     syslog(glog_to_syslog[severity],
            "%s:%d %.*s",
-           base_filename, line, message_len, message);
+           base_filename, line, static_cast<int>(message_len), message);
   }
 
   virtual ~LogSinkSyslog() {
