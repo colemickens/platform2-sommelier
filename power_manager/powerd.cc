@@ -531,6 +531,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                                          kScreenIsLockedMethod)) {
     LOG(INFO) << "ScreenIsLocked event";
     daemon->locker_.set_locked(true);
+    daemon->power_button_handler_->HandleScreenLocked();
     daemon->suspender_.CheckSuspend();
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                     kScreenIsUnlockedMethod)) {

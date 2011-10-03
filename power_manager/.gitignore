@@ -1,0 +1,9 @@
+.sconsign.dblite
+*.[ao]
+*_unittest
+backlight-tool
+power-supply-info
+power_manager_bindings_server.h
+power[dm]
+suspend_delay_sample
+xidle-example

@@ -7,6 +7,7 @@
 #include <gdk/gdkx.h>
 
 #include "base/logging.h"
+#include "base/time.h"
 #include "power_manager/backlight_controller.h"
 #include "power_manager/powerd.h"
 #include "power_manager/screen_locker.h"
@@ -31,6 +32,10 @@ static const guint kLockToShutdownTimeoutMs = 600;
 // system.
 static const guint kShutdownAnimationMs = 150;
 
+// Avoid sending a second lock request for this many milliseconds after one has
+// already been sent.
+static const int64 kRecentLockRequestMs = 2000;
+
 // If the ID pointed to by |timeout_id| is non-zero, remove the timeout and set
 // the memory to 0.
 static void RemoveTimeoutIfSet(guint* timeout_id) {
@@ -46,7 +51,8 @@ PowerButtonHandler::PowerButtonHandler(Daemon* daemon)
       lock_to_shutdown_timeout_id_(0),
       shutdown_timeout_id_(0),
       real_shutdown_timeout_id_(0),
-      shutting_down_(false) {
+      shutting_down_(false),
+      should_add_shutdown_timeout_after_lock_(false) {
 }
 
 PowerButtonHandler::~PowerButtonHandler() {
@@ -65,6 +71,22 @@ void PowerButtonHandler::HandleButtonDown() {
                            !daemon_->locker()->is_locked();
 
 #ifdef NEW_POWER_BUTTON
+  // There's a small window of time between when we ask the session manager to
+  // lock the screen and when we receive confirmation that the screen has been
+  // locked -- see http://crosbug.com/21137.  If we see the power button get
+  // pressed in that window but we haven't yet heard that the screen is locked,
+  // wait for confirmation before starting the pre-shutdown process.
+  const base::TimeTicks request_time =
+      daemon_->locker()->last_lock_request_time();
+  const bool recently_sent_lock_request =
+      !request_time.is_null() &&
+      (base::TimeTicks::Now() - request_time <=
+       base::TimeDelta::FromMilliseconds(kRecentLockRequestMs));
+  if (recently_sent_lock_request && !daemon_->locker()->is_locked()) {
+    should_add_shutdown_timeout_after_lock_ = true;
+    return;
+  }
+
   // Power button release supported. This allows us to schedule events based
   // on how long the button was held down.
   if (should_lock) {
@@ -93,6 +115,8 @@ void PowerButtonHandler::HandleButtonUp() {
   if (shutting_down_)
     return;
 
+  should_add_shutdown_timeout_after_lock_ = false;
+
 #ifdef NEW_POWER_BUTTON
   if (lock_timeout_id_) {
     RemoveTimeoutIfSet(&lock_timeout_id_);
@@ -106,6 +130,13 @@ void PowerButtonHandler::HandleButtonUp() {
   }
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
 #endif
+}
+
+void PowerButtonHandler::HandleScreenLocked() {
+  if (should_add_shutdown_timeout_after_lock_) {
+    should_add_shutdown_timeout_after_lock_ = false;
+    AddShutdownTimeout();
+  }
 }
 
 gboolean PowerButtonHandler::OnLockTimeout() {
@@ -122,7 +153,14 @@ gboolean PowerButtonHandler::OnLockTimeout() {
 
 gboolean PowerButtonHandler::OnLockToShutdownTimeout() {
   lock_to_shutdown_timeout_id_ = 0;
-  AddShutdownTimeout();
+
+  // If the screen is already locked, then start the pre-shutdown process.
+  // Otherwise, wait until we get notification that it's locked.
+  if (daemon_->locker()->is_locked())
+    AddShutdownTimeout();
+  else
+    should_add_shutdown_timeout_after_lock_ = true;
+
   return FALSE;
 }
 

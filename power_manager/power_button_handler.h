@@ -27,6 +27,9 @@ class PowerButtonHandler {
   void HandleButtonDown();
   void HandleButtonUp();
 
+  // Handle notification from Chrome that the screen has been locked.
+  void HandleScreenLocked();
+
  private:
   // Lock the screen and add a timeout for OnLockToShutdownTimeout().
   SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnLockTimeout);
@@ -69,6 +72,10 @@ class PowerButtonHandler {
 
   // Are we in the process of shutting down the system?
   bool shutting_down_;
+
+  // Should we call AddShutdownTimeout() when we receive notification that the
+  // screen has been locked?
+  bool should_add_shutdown_timeout_after_lock_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerButtonHandler);
 };
