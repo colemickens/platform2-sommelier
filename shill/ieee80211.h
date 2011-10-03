@@ -14,6 +14,10 @@ const unsigned int kWEP40AsciiLen = 5;
 const unsigned int kWEP40HexLen = 10;
 const unsigned int kWEP104AsciiLen = 13;
 const unsigned int kWEP104HexLen = 26;
+
+const unsigned int kWPAAsciiMinLen = 8;
+const unsigned int kWPAAsciiMaxLen = 63;
+const unsigned int kWPAHexLen = 64;
 };
 
 }  // namespace shill

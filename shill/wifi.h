@@ -72,6 +72,8 @@ class WiFi : public Device {
 
   static std::string ParseWEPPassphrase(const std::string &passphrase,
                                         Error *error);
+  static std::string ParseWPAPassphrase(const std::string &passphrase,
+                                        Error *error);
   static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
   static bool CheckWEPPrefix(const std::string &passphrase, Error *error);

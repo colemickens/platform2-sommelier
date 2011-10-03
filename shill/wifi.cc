@@ -376,6 +376,14 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     if (error->IsFailure()) {
       return NULL;
     }
+  } else if (security_method == flimflam::kSecurityPsk ||
+             security_method == flimflam::kSecurityWpa ||
+             security_method == flimflam::kSecurityRsn) {
+    string passphrase = args.GetString(flimflam::kPassphraseProperty);
+    passphrase = ParseWPAPassphrase(passphrase, error);
+    if (error->IsFailure()) {
+      return NULL;
+    }
   }
 
   WiFiService *service = NULL;
@@ -422,6 +430,32 @@ string WiFi::ParseWEPPassphrase(const string &passphrase, Error *error) {
     default:
       error->Populate(Error::kInvalidPassphrase);
       break;
+  }
+
+  // TODO(quiche): may need to normalize passphrase format
+  if (error->IsSuccess()) {
+    return passphrase;
+  } else {
+    return "";
+  }
+}
+
+// static
+string WiFi::ParseWPAPassphrase(const string &passphrase, Error *error) {
+  unsigned int length = passphrase.length();
+  vector<uint8> passphrase_bytes;
+
+  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
+    if (length != IEEE_80211::kWPAHexLen &&
+        (length < IEEE_80211::kWPAAsciiMinLen ||
+         length > IEEE_80211::kWPAAsciiMaxLen)) {
+      error->Populate(Error::kInvalidPassphrase);
+    }
+  } else {
+    if (length < IEEE_80211::kWPAAsciiMinLen ||
+        length > IEEE_80211::kWPAAsciiMaxLen) {
+      error->Populate(Error::kInvalidPassphrase);
+    }
   }
 
   // TODO(quiche): may need to normalize passphrase format

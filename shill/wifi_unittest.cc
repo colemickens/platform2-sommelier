@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/ieee80211.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_device.h"
@@ -50,6 +51,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
 using ::testing::Throw;
+using ::testing::Values;
 
 namespace shill {
 
@@ -103,7 +105,7 @@ TEST_F(WiFiPropertyTest, Dispatch) {
   }
 }
 
-class WiFiMainTest : public Test {
+class WiFiMainTest : public ::testing::TestWithParam<string> {
  public:
   WiFiMainTest()
       : manager_(&control_interface_, NULL, NULL),
@@ -582,5 +584,38 @@ TEST_F(WiFiMainTest, GetWifiServiceWEP104HexWithKeyIndexAndBase) {
              "0:0x0102030405060708090a0b0c0d", e);
   EXPECT_TRUE(e.IsSuccess());
 }
+
+class WiFiGetServiceSuccessTest : public WiFiMainTest {};
+class WiFiGetServiceFailureTest : public WiFiMainTest {};
+
+TEST_P(WiFiGetServiceSuccessTest, Passphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wpa", GetParam().c_str(), e);
+  EXPECT_TRUE(e.IsSuccess());
+}
+
+TEST_P(WiFiGetServiceFailureTest, Passphrase) {
+  Error e;
+  GetService("wifi", "an_ssid", "managed", "wpa", GetParam().c_str(), e);
+  EXPECT_EQ(Error::kInvalidPassphrase, e.type());
+}
+
+INSTANTIATE_TEST_CASE_P(
+    WiFiGetServiceSuccessTestInstance,
+    WiFiGetServiceSuccessTest,
+    Values(
+        string(IEEE_80211::kWPAAsciiMinLen, 'Z'),
+        string(IEEE_80211::kWPAAsciiMaxLen, 'Z'),
+        // subtle: invalid length for hex key, but valid as ascii passphrase
+        string(IEEE_80211::kWPAHexLen-1, '1'),
+        string(IEEE_80211::kWPAHexLen, '1')));
+
+INSTANTIATE_TEST_CASE_P(
+    WiFiGetServiceFailureTestInstance,
+    WiFiGetServiceFailureTest,
+    Values(
+        string(IEEE_80211::kWPAAsciiMinLen-1, 'Z'),
+        string(IEEE_80211::kWPAAsciiMaxLen+1, 'Z'),
+        string(IEEE_80211::kWPAHexLen+1, '1')));
 
 }  // namespace shill
