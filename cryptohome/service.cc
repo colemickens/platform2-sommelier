@@ -107,12 +107,12 @@ class TimerCollection {
 
 // static
 const HistogramParams TimerCollection::kHistogramParams[kNumTimerTypes] = {
-  {"Cryptohome.TimeToMountAsync", 0, 2000, 50},
-  {"Cryptohome.TimeToMountSync", 0, 2000, 50},
-  {"Cryptohome.TimeToMountGuestAsync", 0, 2000, 50},
-  {"Cryptohome.TimeToMountGuestSync", 0, 2000, 50},
-  {"Cryptohome.TimeToTakeTpmOwnership", 0, 10000, 50},
-  {"Cryptohome.TimeToInitPkcs11", 0, 100000, 50}
+  {"Cryptohome.TimeToMountAsync", 0, 4000, 50},
+  {"Cryptohome.TimeToMountSync", 0, 4000, 50},
+  {"Cryptohome.TimeToMountGuestAsync", 0, 4000, 50},
+  {"Cryptohome.TimeToMountGuestSync", 0, 4000, 50},
+  {"Cryptohome.TimeToTakeTpmOwnership", 0, 100000, 50},
+  {"Cryptohome.TimeToInitPkcs11", 1000, 100000, 50}
 };
 // A note on the PKCS#11 initialization time:
 // Max sample for PKCS#11 initialization time is 100s, since we are interested
