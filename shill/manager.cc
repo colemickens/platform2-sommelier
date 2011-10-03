@@ -160,6 +160,10 @@ bool Manager::MoveToActiveProfile(const ProfileRefPtr &from,
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
+  // TODO(pstew): Should DefaultProfile have a list of devices, analogous to
+  // the list of services that it manages?  If so, we should do a similar merge
+  // thing here.
+
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -186,8 +190,12 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
-  // This should look for |to_manage| in the real profiles and, if found,
-  // do...something...to merge the meaningful state, I guess.
+  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if ((*it)->MergeService(to_manage))  // this will merge, if possible.
+      break;
+  }
 
   // If not found, add it to the ephemeral profile
   ephemeral_profile_->AdoptService(to_manage);
