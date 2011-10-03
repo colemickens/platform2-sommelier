@@ -54,11 +54,11 @@ find_current_locale() {
   fi
 }
 
-# Shows PNG message-type image files on screen center if available.
-# Arguments: message name in /usr/share/chromeos-assets/images/messages/$locale
+# Shows boot messages in assets folder on screen center if available.
+# Arguments: message in /usr/share/chromeos-assets/text/boot_messages/$locale
 show_assets_message_image() {
   local message="$1"
-  local locale locale_list image_file
+  local locale locale_list
 
   # Build locale list
   locale="$(find_current_locale)" || locale=""
@@ -69,16 +69,7 @@ show_assets_message_image() {
   done
   locale_list="$locale_list en-US en"
 
-  for locale in $locale_list; do
-    image_file="/usr/share/chromeos-assets/images/messages/$locale/$message.png"
-    if [ -f "$image_file" ]; then
-      ply-image /usr/share/chromeos-assets/images/boot_splash.png \
-                /usr/share/chromeos-assets/images/boot_message.png \
-                "$image_file" >/dev/null 2>&1 || return $?
-      return 0
-    fi
-  done
-  return 1
+  display_boot_message "$message" "$locale_list" || return "$?"
 }
 
 # Prints the two byte hex code of the matched char or
