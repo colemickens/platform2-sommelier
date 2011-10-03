@@ -9,7 +9,7 @@ CPPFLAGS ?= $(INCLUDE_DIRS) $($(*F)_CPPFLAGS)
 CXXFLAGS += -Wall -Werror -g -O0 $($(*F)_CXXFLAGS)
 LDLIBS = $(shell $(PKG_CONFIG) --libs gobject-2.0 gthread-2.0 \
 	 dbus-1 dbus-glib-1 dbus-c++-1) -lgflags -lglog -ldl -lchromeos \
-	 -lmetrics
+	 -lmetrics -lminijail
 LDLIBS_UNITTEST = $(LDLIBS) -lgtest
 
 LDFLAGS_CROMO = -Wl,--dynamic-list-cpp-typeinfo,--dynamic-list=$(SYMFILE)
@@ -68,6 +68,7 @@ SRCS = carrier.cc \
        main.cc \
        modem_handler.cc \
        plugin_manager.cc \
+       sandbox.cc \
        sms_message.cc \
        utilities.cc
 

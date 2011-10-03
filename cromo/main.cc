@@ -19,6 +19,7 @@
 
 #include "carrier.h"
 #include "plugin_manager.h"
+#include "sandbox.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -183,6 +184,12 @@ class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
 
 int main(int argc, char* argv[]) {
   google::LogSinkSyslog syslogger;
+
+  // Drop privs right away for now.
+  // TODO(ellyjones): once we do more serious sandboxing, this will need to be
+  // broken into two parts, one to be done pre-plugin load and one to be done
+  // post-plugin load -- or we can just do the whole thing post-plugin load.
+  Sandbox::Enter();
 
   // Can't use LOG here, unfortunately :( we don't want it to be an error but we
   // do want it logged regardless of priority level.
