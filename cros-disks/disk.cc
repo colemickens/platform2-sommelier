@@ -17,6 +17,7 @@ const char kFallbackPresentationName[] = "Untitled";
 const char kDeviceIsDrive[] = "DeviceIsDrive";
 const char kDevicePresentationHide[] = "DevicePresentationHide";
 const char kDeviceIsMounted[] = "DeviceIsMounted";
+const char kDeviceMediaType[] = "DeviceMediaType";
 const char kDeviceMountPaths[] = "DeviceMountPaths";
 const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
 const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
@@ -55,6 +56,7 @@ Disk::Disk()
     uuid_(),
     label_(),
     drive_model_(),
+    media_type_(kDeviceMediaUnknown),
     device_capacity_(0),
     bytes_remaining_(0) {
 }
@@ -90,6 +92,7 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());
   disk[kDeviceIsOpticalDisc].writer().append_bool(is_optical_disk());
+  disk[kDeviceMediaType].writer().append_uint32(media_type());
   disk[kDeviceSize].writer().append_uint64(device_capacity());
   disk[kReadOnly].writer().append_bool(is_read_only());
   DBus::MessageIter iter = disk[kDeviceMountPaths].writer();

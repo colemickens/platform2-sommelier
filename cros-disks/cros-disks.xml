@@ -6,6 +6,7 @@
       <tp:member name="DeviceIsDrive" type="b"> </tp:member>
       <tp:member name="DevicePresentationHide" type="b"> </tp:member>
       <tp:member name="DeviceIsMounted" type="b"> </tp:member>
+      <tp:member name="DeviceMediaType" type="u"> </tp:member>
       <tp:member name="DeviceMountPaths" type="s"> </tp:member>
       <tp:member name="DeviceIsMediaAvailable" type="b"> </tp:member>
       <tp:member name="DeviceIsOnBootDevice" type="b"> </tp:member>

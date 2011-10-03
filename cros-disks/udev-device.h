@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/disk.h"
+#include "cros-disks/service-constants.h"
 
 struct udev_device;
 
@@ -51,6 +52,9 @@ class UdevDevice {
 
   // Gets the number of primary partitions on the device.
   size_t GetPrimaryPartitionCount() const;
+
+  // Gets the device media type used on the device.
+  DeviceMediaType GetDeviceMediaType() const;
 
   // Checks if a device should be auto-mounted. Currently, all external
   // disk devices, which are neither on the boot device nor virtual,

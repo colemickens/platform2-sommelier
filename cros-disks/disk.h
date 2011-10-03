@@ -13,6 +13,8 @@
 
 #include <base/basictypes.h>
 
+#include "cros-disks/service-constants.h"
+
 namespace cros_disks {
 
 typedef std::map<std::string, DBus::Variant> DBusDisk;
@@ -65,9 +67,8 @@ class Disk {
   bool is_rotational() const { return is_rotational_; }
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
-  bool is_optical_disk() const { return is_optical_disk_; }
-  void set_is_optical_disk(bool is_optical_disk) {
-    is_optical_disk_ = is_optical_disk;
+  bool is_optical_disk() const {
+    return media_type_ == kDeviceMediaOpticalDisc;
   }
 
   bool is_read_only() const { return is_read_only_; }
@@ -107,6 +108,9 @@ class Disk {
     drive_model_ = drive_model;
   }
 
+  uint32 media_type() const { return media_type_; }
+  void set_media_type(uint32 media_type) { media_type_ = media_type; }
+
   uint64 device_capacity() const { return device_capacity_; }
   void set_device_capacity(uint64 device_capacity) {
     device_capacity_ = device_capacity;
@@ -135,6 +139,7 @@ class Disk {
   std::string uuid_;
   std::string label_;
   std::string drive_model_;
+  uint32 media_type_;
   uint64 device_capacity_;
   uint64 bytes_remaining_;
 };

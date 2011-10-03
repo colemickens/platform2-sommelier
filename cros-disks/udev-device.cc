@@ -17,6 +17,7 @@
 #include <rootdev/rootdev.h>
 
 #include "cros-disks/mount-info.h"
+#include "cros-disks/usb-device-info.h"
 
 using std::string;
 using std::vector;
@@ -24,6 +25,8 @@ using std::vector;
 namespace {
 
 const char kNullDeviceFile[] = "/dev/null";
+const char kAttributeIdProduct[] = "idProduct";
+const char kAttributeIdVendor[] = "idVendor";
 const char kAttributePartition[] = "partition";
 const char kAttributeRange[] = "range";
 const char kAttributeReadOnly[] = "ro";
@@ -34,12 +37,15 @@ const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
 const char kPropertyBlkIdFilesystemUUID[] = "UUID";
 const char kPropertyCDROM[] = "ID_CDROM";
 const char kPropertyCDROMMedia[] = "ID_CDROM_MEDIA";
+const char kPropertyDeviceType[] = "DEVTYPE";
+const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
 const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
 const char kPropertyModel[] = "ID_MODEL";
 const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
 const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
+const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
 const char* kNonAutoMountableFilesystemLabels[] = {
   "C-ROOT", "C-STATE", NULL
 };
@@ -173,6 +179,32 @@ size_t UdevDevice::GetPrimaryPartitionCount() const {
   return partition_count;
 }
 
+DeviceMediaType UdevDevice::GetDeviceMediaType() const {
+  if (IsPropertyTrue(kPropertyCDROM))
+    return kDeviceMediaOpticalDisc;
+
+  // Search up the parent device tree to obtain the vendor and product ID
+  // of the first device with a device type "usb_device". Then look up the
+  // media type based on the vendor and product ID from a USB device info file.
+  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char *device_type =
+        udev_device_get_property_value(dev, kPropertyDeviceType);
+    if (device_type && strcmp(device_type, kPropertyDeviceTypeUSBDevice) == 0) {
+      const char *vendor_id =
+          udev_device_get_sysattr_value(dev, kAttributeIdVendor);
+      const char *product_id =
+          udev_device_get_sysattr_value(dev, kAttributeIdProduct);
+      if (vendor_id && product_id) {
+        USBDeviceInfo info;
+        info.RetrieveFromFile(kUSBDeviceInfoFile);
+        return info.GetDeviceMediaType(vendor_id, product_id);
+      }
+    }
+  }
+
+  return kDeviceMediaUnknown;
+}
+
 bool UdevDevice::IsMediaAvailable() const {
   bool is_media_available = true;
   if (IsAttributeTrue(kAttributeRemovable)) {
@@ -299,11 +331,11 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_read_only(IsAttributeTrue(kAttributeReadOnly));
   disk.set_is_drive(HasAttribute(kAttributeRange));
   disk.set_is_rotational(HasProperty(kPropertyRotationRate));
-  disk.set_is_optical_disk(IsPropertyTrue(kPropertyCDROM));
   disk.set_is_hidden(IsHidden());
   disk.set_is_media_available(IsMediaAvailable());
   disk.set_is_on_boot_device(IsOnBootDevice());
   disk.set_is_virtual(IsVirtual());
+  disk.set_media_type(GetDeviceMediaType());
   disk.set_drive_model(GetProperty(kPropertyModel));
   disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
   disk.set_uuid(GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
