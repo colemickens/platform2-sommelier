@@ -44,7 +44,8 @@ class WiFiService : public Service {
   const std::vector<uint8_t> &ssid() const;
 
  private:
-  FRIEND_TEST(WiFiServiceTest, ConnectTask);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
 
   void ConnectTask();
 

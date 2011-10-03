@@ -79,7 +79,7 @@ TEST_F(WiFiServiceTest, StorageId) {
   EXPECT_NE(id.find(string(flimflam::kModeManaged), mac_pos), string::npos);
 }
 
-TEST_F(WiFiServiceTest, ConnectTask) {
+TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   vector<uint8_t> ssid(5, 0);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
@@ -88,6 +88,20 @@ TEST_F(WiFiServiceTest, ConnectTask) {
                                                    ssid,
                                                    flimflam::kModeManaged,
                                                    flimflam::kSecurityWpa);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  wifi_service->ConnectTask();
+}
+
+TEST_F(WiFiServiceTest, ConnectTaskRSN) {
+  vector<uint8_t> ssid(5, 0);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityRsn);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
   wifi_service->ConnectTask();

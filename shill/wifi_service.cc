@@ -139,7 +139,10 @@ void WiFiService::ConnectTask() {
   } else if (security_ == flimflam::kSecurityPsk) {
     NOTIMPLEMENTED();
   } else if (security_ == flimflam::kSecurityRsn) {
-    NOTIMPLEMENTED();
+    params[wpa_supplicant::kPropertySecurityProtocol].writer().
+        append_string(wpa_supplicant::kSecurityModeRSN);
+    params[wpa_supplicant::kPropertyPreSharedKey].writer().
+        append_string(passphrase_.c_str());
   } else if (security_ == flimflam::kSecurityWpa) {
     params[wpa_supplicant::kPropertySecurityProtocol].writer().
         append_string(wpa_supplicant::kSecurityModeWPA);
