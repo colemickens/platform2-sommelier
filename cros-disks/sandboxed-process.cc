@@ -26,6 +26,11 @@ void SandboxedProcess::AddArgument(const std::string& argument) {
   arguments_.push_back(argument);
 }
 
+void SandboxedProcess::LoadSeccompFilterPolicy(const string& policy_file) {
+  minijail_parse_seccomp_filters(jail_, policy_file.c_str());
+  minijail_use_seccomp_filter(jail_);
+}
+
 void SandboxedProcess::SetCapabilities(uint64_t capabilities) {
   minijail_use_caps(jail_, capabilities);
 }

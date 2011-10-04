@@ -56,7 +56,6 @@ TEST_F(ArchiveManagerTest, CanMount) {
 }
 
 TEST_F(ArchiveManagerTest, CanUnmount) {
-  platform_.set_experimental_features_enabled(true);
   EXPECT_FALSE(manager_.CanUnmount("/dev/sda1"));
   EXPECT_FALSE(manager_.CanUnmount("/devices/block/sda/sda1"));
   EXPECT_FALSE(manager_.CanUnmount("/sys/devices/block/sda/sda1"));
@@ -88,12 +87,13 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
   vector<string> options;
 
   platform_.set_experimental_features_enabled(true);
+  manager_.avfs_started_ = true;
   EXPECT_EQ(kMountErrorUnsupportedArchive,
             manager_.DoMount(source_path, filesystem_type, options,
                              mount_path));
 }
 
-TEST_F(ArchiveManagerTest, DoMountFailedWithExperimentalFeaturesDisabled) {
+TEST_F(ArchiveManagerTest, DoMountFailedWithArchiveSupportDisabled) {
   string filesystem_type;
   string source_path = "/media/archive/test.zip/doc.zip";
   string mount_path = "/media/archive/doc.zip";

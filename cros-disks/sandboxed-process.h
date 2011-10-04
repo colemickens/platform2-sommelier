@@ -26,6 +26,10 @@ class SandboxedProcess {
   // Adds an argument to the end of the argument list.
   void AddArgument(const std::string& argument);
 
+  // Loads the seccomp filters from |policy_file|. The calling process will be
+  // aborted if |policy_file| does not exist, cannot be read or is malformed.
+  void LoadSeccompFilterPolicy(const std::string& policy_file);
+
   // Sets the process capabilities of the process to be sandboxed.
   void SetCapabilities(uint64_t capabilities);
 

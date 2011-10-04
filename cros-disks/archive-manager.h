@@ -25,9 +25,6 @@ class ArchiveManager : public MountManager {
   // Returns true on success.
   virtual bool Initialize();
 
-  // Starts a session for |user|. Returns true on success.
-  virtual bool StartSession(const std::string& user);
-
   // Stops a session for |user|. Returns true on success.
   virtual bool StopSession(const std::string& user);
 
@@ -71,6 +68,14 @@ class ArchiveManager : public MountManager {
   // path inside the AVFS mount.
   std::string GetAVFSPath(const std::string& path) const;
 
+  // Starts AVFS daemons to initialize AVFS mounts. Returns true on success or
+  // if the AVFS daemons have started.
+  bool StartAVFS();
+
+  // Stops AVFS daemons and unmounts AVFS mounts. Returns true on success or if
+  // the AVFS daemons have not yet started.
+  bool StopAVFS();
+
   // Mounts |base_path| to |avfs_path| via AVFS. Return true on success.
   bool MountAVFSPath(const std::string& base_path,
                      const std::string& avfs_path) const;
@@ -78,10 +83,12 @@ class ArchiveManager : public MountManager {
   // A set of supported archive file extensions.
   std::set<std::string> extensions_;
 
+  // This variable is set to true if the AVFS daemons have started.
+  bool avfs_started_;
+
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);
-  FRIEND_TEST(ArchiveManagerTest,
-              DoMountFailedWithExperimentalFeaturesDisabled);
+  FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithArchiveSupportDisabled);
   FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension);
 };
 

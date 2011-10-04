@@ -94,6 +94,8 @@ class Platform {
 
   uid_t mount_user_id() const { return mount_user_id_; }
 
+  const std::string& mount_user() const { return mount_user_; }
+
  private:
   // This variable is set to true if the experimental features are enabled.
   bool experimental_features_enabled_;
@@ -103,6 +105,9 @@ class Platform {
 
   // User ID to perform mount operations.
   uid_t mount_user_id_;
+
+  // User ID to perform mount operations.
+  std::string mount_user_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };

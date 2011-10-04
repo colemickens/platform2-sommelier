@@ -1,0 +1,58 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# This file is used by CrosDisks to specify the seccomp filter policy for
+# sandboxing AVFS processes on x86-32 platforms.
+#
+exit: 1
+read: 1
+write: 1
+# TODO(benchan): Prohibit or restrict write access.
+# Investigate if open('/dev/fuse', O_RDWR) can be avoided.
+open: 1
+close: 1
+waitpid: 1
+unlink: 1
+execve: 1
+chdir: 1
+mount: 1
+pause: 1
+access: 1
+mkdir: 1
+rmdir: 1
+brk: 1
+umask: 1
+dup2: 1
+setsid: 1
+gettimeofday: 1
+munmap: 1
+# Allow only these sub-calls: socketpair, sendmsg, recvmsg
+socketcall: call==8 || call==16 || call==17
+sigreturn: 1
+clone: 1
+mprotect: 1
+# TODO(benchan): Check if fchdir can be prohibited (needed for chroot jail)
+fchdir: 1
+_llseek: 1
+writev: 1
+poll: 1
+rt_sigaction: 1
+rt_sigprocmask: 1
+mmap2: 1
+stat64: 1
+lstat64: 1
+fstat64: 1
+getuid32: 1
+getgid32: 1
+geteuid32: 1
+setfsuid32: 1
+setfsgid32: 1
+madvise: 1
+getdents64: 1
+fcntl64: 1
+futex: 1
+set_thread_area: 1
+exit_group: 1
+tgkill: 1
+set_robust_list: 1

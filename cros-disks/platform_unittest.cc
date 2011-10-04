@@ -310,14 +310,17 @@ TEST_F(PlatformTest, SetMountUserToRoot) {
   EXPECT_TRUE(platform_.SetMountUser("root"));
   EXPECT_EQ(0, platform_.mount_user_id());
   EXPECT_EQ(0, platform_.mount_group_id());
+  EXPECT_EQ("root", platform_.mount_user());
 }
 
 TEST_F(PlatformTest, SetMountUserToNonexistentUser) {
   uid_t user_id = platform_.mount_user_id();
   gid_t group_id = platform_.mount_group_id();
+  string user = platform_.mount_user();
   EXPECT_FALSE(platform_.SetMountUser("nonexistent-user"));
   EXPECT_EQ(user_id, platform_.mount_user_id());
   EXPECT_EQ(group_id, platform_.mount_group_id());
+  EXPECT_EQ(user, platform_.mount_user());
 }
 
 TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {

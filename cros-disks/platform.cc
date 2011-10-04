@@ -30,7 +30,8 @@ namespace cros_disks {
 Platform::Platform()
     : experimental_features_enabled_(false),
       mount_group_id_(0),
-      mount_user_id_(0) {
+      mount_user_id_(0),
+      mount_user_("root") {
 }
 
 Platform::~Platform() {
@@ -153,7 +154,11 @@ bool Platform::GetPermissions(const string& path, mode_t* mode) const {
 }
 
 bool Platform::SetMountUser(const string& user_name) {
-  return GetUserAndGroupId(user_name, &mount_user_id_, &mount_group_id_);
+  if (GetUserAndGroupId(user_name, &mount_user_id_, &mount_group_id_)) {
+    mount_user_ = user_name;
+    return true;
+  }
+  return false;
 }
 
 bool Platform::RemoveEmptyDirectory(const string& path) const {

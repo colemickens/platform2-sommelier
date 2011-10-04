@@ -7,6 +7,7 @@
 #include <linux/capability.h>
 
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_util.h>
 
@@ -35,6 +36,10 @@ const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
 // created under /media/<sub type>/<mount dir>, so it always has 4 components
 // in the path: '/', 'media', '<sub type>', '<mount dir>'
 size_t kNumComponentsInMountDirectoryPath = 4;
+// TODO(wad,benchan): Revisit the location of policy files once more system
+// daemons are sandboxed with seccomp filters.
+const char kAVFSSeccompFilterPolicyFile[] =
+    "/opt/google/cros-disks/avfsd-seccomp.policy";
 const char kAVFSMountProgram[] = "/usr/bin/avfsd";
 const char kAVFSRootDirectory[] = "/var/run/avfsroot";
 const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
@@ -52,7 +57,8 @@ namespace cros_disks {
 
 ArchiveManager::ArchiveManager(const string& mount_root,
                                Platform* platform)
-    : MountManager(mount_root, platform) {
+    : MountManager(mount_root, platform),
+      avfs_started_(false) {
 }
 
 bool ArchiveManager::Initialize() {
@@ -60,41 +66,8 @@ bool ArchiveManager::Initialize() {
   return MountManager::Initialize();
 }
 
-bool ArchiveManager::StartSession(const string& user) {
-  uid_t user_id = platform_->mount_user_id();
-  gid_t group_id = platform_->mount_group_id();
-
-  if (!platform_->CreateDirectory(kAVFSRootDirectory) ||
-      !platform_->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
-      !platform_->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
-    platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
-    return false;
-  }
-
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
-    const string& avfs_path = kAVFSPathMapping[i].avfs_path;
-    if (!platform_->CreateDirectory(avfs_path) ||
-        !platform_->SetOwnership(avfs_path, user_id, group_id) ||
-        !platform_->SetPermissions(avfs_path, S_IRWXU) ||
-        !MountAVFSPath(kAVFSPathMapping[i].base_path, avfs_path)) {
-      StopSession(user);
-      return false;
-    }
-  }
-  return true;
-}
-
 bool ArchiveManager::StopSession(const string& user) {
-  // Unmounts all mounted archives before unmounting AVFS mounts.
-  bool all_unmounted = UnmountAll();
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
-    const string& path = kAVFSPathMapping[i].avfs_path;
-    if (!platform_->Unmount(path))
-      all_unmounted = false;
-    platform_->RemoveEmptyDirectory(path);
-  }
-  platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
-  return all_unmounted;
+  return StopAVFS();
 }
 
 bool ArchiveManager::CanMount(const string& source_path) const {
@@ -126,6 +99,11 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   if (avfs_path.empty() || !platform_->experimental_features_enabled()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
     return kMountErrorUnsupportedArchive;
+  }
+
+  if (!StartAVFS()) {
+    LOG(ERROR) << "Failed to start AVFS mounts.";
+    return kMountErrorInternal;
   }
 
   // Perform a bind mount from the archive path under the AVFS mount
@@ -186,6 +164,51 @@ string ArchiveManager::GetAVFSPath(const string& path) const {
   return string();
 }
 
+bool ArchiveManager::StartAVFS() {
+  if (avfs_started_)
+    return true;
+
+  uid_t user_id = platform_->mount_user_id();
+  gid_t group_id = platform_->mount_group_id();
+
+  if (!platform_->CreateDirectory(kAVFSRootDirectory) ||
+      !platform_->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
+      !platform_->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
+    platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
+    return false;
+  }
+
+  avfs_started_ = true;
+  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+    const string& avfs_path = kAVFSPathMapping[i].avfs_path;
+    if (!platform_->CreateDirectory(avfs_path) ||
+        !platform_->SetOwnership(avfs_path, user_id, group_id) ||
+        !platform_->SetPermissions(avfs_path, S_IRWXU) ||
+        !MountAVFSPath(kAVFSPathMapping[i].base_path, avfs_path)) {
+      StopAVFS();
+      return false;
+    }
+  }
+  return true;
+}
+
+bool ArchiveManager::StopAVFS() {
+  if (!avfs_started_)
+    return true;
+
+  avfs_started_ = false;
+  // Unmounts all mounted archives before unmounting AVFS mounts.
+  bool all_unmounted = UnmountAll();
+  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+    const string& path = kAVFSPathMapping[i].avfs_path;
+    if (!platform_->Unmount(path))
+      all_unmounted = false;
+    platform_->RemoveEmptyDirectory(path);
+  }
+  platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
+  return all_unmounted;
+}
+
 bool ArchiveManager::MountAVFSPath(const string& base_path,
                                    const string& avfs_path) const {
   MountInfo mount_info;
@@ -200,10 +223,22 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   SandboxedProcess mount_process;
   mount_process.AddArgument(kAVFSMountProgram);
   mount_process.AddArgument("-o");
-  mount_process.AddArgument("ro,nodev,noexec,nosuid,modules=subdir,subdir=" +
-                            base_path);
+  mount_process.AddArgument("ro,nodev,noexec,nosuid"
+                            ",user=" + platform_->mount_user() +
+                            ",modules=subdir,subdir=" + base_path);
   mount_process.AddArgument(avfs_path);
-  mount_process.SetCapabilities(kAVFSMountProgramCapabilities);
+  if (file_util::PathExists(FilePath(kAVFSSeccompFilterPolicyFile))) {
+    mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
+  } else {
+    // TODO(benchan): Remove this fallback mechanism once we have policy files
+    //                for all supported platforms.
+    LOG(WARNING) << "Seccomp filter policy '" << kAVFSSeccompFilterPolicyFile
+                 << "' not found. Use POSIX capabilities mechanism instead";
+    mount_process.SetCapabilities(kAVFSMountProgramCapabilities);
+  }
+  // TODO(benchan): Enable PID and VFS namespace.
+  // TODO(wad,ellyjones,benchan): Enable network namespace once libminijail
+  // supports it.
   mount_process.SetUserId(platform_->mount_user_id());
   mount_process.SetGroupId(platform_->mount_group_id());
   if (mount_process.Run() != 0 ||
