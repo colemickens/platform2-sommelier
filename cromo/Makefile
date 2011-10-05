@@ -37,6 +37,7 @@ XMLFILES := mm-mobile-error.xml \
             mm-serial-error.xml \
             org.freedesktop.ModemManager.Modem.xml \
             org.freedesktop.ModemManager.Modem.Cdma.xml \
+	    org.freedesktop.ModemManager.Modem.Firmware.xml \
             org.freedesktop.ModemManager.Modem.Gsm.xml \
             org.freedesktop.ModemManager.Modem.Gsm.Card.xml \
             org.freedesktop.ModemManager.Modem.Gsm.Contacts.xml \
