@@ -370,134 +370,37 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     return NULL;
   }
 
-  if (security_method == flimflam::kSecurityWep) {
-    string passphrase = args.GetString(flimflam::kPassphraseProperty);
-    passphrase = ParseWEPPassphrase(passphrase, error);
-    if (error->IsFailure()) {
-      return NULL;
-    }
-  } else if (security_method == flimflam::kSecurityPsk ||
-             security_method == flimflam::kSecurityWpa ||
-             security_method == flimflam::kSecurityRsn) {
-    string passphrase = args.GetString(flimflam::kPassphraseProperty);
-    passphrase = ParseWPAPassphrase(passphrase, error);
-    if (error->IsFailure()) {
-      return NULL;
-    }
-  }
-
   WiFiService *service = NULL;
 
   // TODO(quiche): search for existing service
 
   if (service == NULL) {
-    // TODO(quiche): construct a new service
+    service = new WiFiService(control_interface(),
+                              dispatcher(),
+                              manager(),
+                              this,
+                              vector<uint8_t>(ssid.begin(), ssid.end()),
+                              flimflam::kModeManaged,
+                              security_method);
+    services()->push_back(service);
+    // TODO(quiche): add to service_by_private_id_?
+    // TODO(quiche): register service with manager
   }
 
-  // TODO(quiche): apply configuration parameters
+  if (security_method == flimflam::kSecurityWep ||
+      security_method == flimflam::kSecurityPsk ||
+      security_method == flimflam::kSecurityWpa ||
+      security_method == flimflam::kSecurityRsn) {
+    service->SetPassphrase(args.GetString(flimflam::kPassphraseProperty),
+                           error);
+    if (error->IsFailure()) {
+      return NULL;
+    }
+  }
+
+  // TODO(quiche): apply any other configuration parameters
 
   return service;
-}
-
-// static
-string WiFi::ParseWEPPassphrase(const string &passphrase, Error *error) {
-  unsigned int length = passphrase.length();
-
-  switch (length) {
-    case IEEE_80211::kWEP40AsciiLen:
-    case IEEE_80211::kWEP104AsciiLen:
-      break;
-    case IEEE_80211::kWEP40AsciiLen + 2:
-    case IEEE_80211::kWEP104AsciiLen + 2:
-      CheckWEPKeyIndex(passphrase, error);
-      break;
-    case IEEE_80211::kWEP40HexLen:
-    case IEEE_80211::kWEP104HexLen:
-      CheckWEPIsHex(passphrase, error);
-      break;
-    case IEEE_80211::kWEP40HexLen + 2:
-    case IEEE_80211::kWEP104HexLen + 2:
-      (CheckWEPKeyIndex(passphrase, error) ||
-       CheckWEPPrefix(passphrase, error)) &&
-          CheckWEPIsHex(passphrase.substr(2), error);
-      break;
-    case IEEE_80211::kWEP40HexLen + 4:
-    case IEEE_80211::kWEP104HexLen + 4:
-      CheckWEPKeyIndex(passphrase, error) &&
-          CheckWEPPrefix(passphrase.substr(2), error) &&
-          CheckWEPIsHex(passphrase.substr(4), error);
-      break;
-    default:
-      error->Populate(Error::kInvalidPassphrase);
-      break;
-  }
-
-  // TODO(quiche): may need to normalize passphrase format
-  if (error->IsSuccess()) {
-    return passphrase;
-  } else {
-    return "";
-  }
-}
-
-// static
-string WiFi::ParseWPAPassphrase(const string &passphrase, Error *error) {
-  unsigned int length = passphrase.length();
-  vector<uint8> passphrase_bytes;
-
-  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
-    if (length != IEEE_80211::kWPAHexLen &&
-        (length < IEEE_80211::kWPAAsciiMinLen ||
-         length > IEEE_80211::kWPAAsciiMaxLen)) {
-      error->Populate(Error::kInvalidPassphrase);
-    }
-  } else {
-    if (length < IEEE_80211::kWPAAsciiMinLen ||
-        length > IEEE_80211::kWPAAsciiMaxLen) {
-      error->Populate(Error::kInvalidPassphrase);
-    }
-  }
-
-  // TODO(quiche): may need to normalize passphrase format
-  if (error->IsSuccess()) {
-    return passphrase;
-  } else {
-    return "";
-  }
-}
-
-// static
-bool WiFi::CheckWEPIsHex(const string &passphrase, Error *error) {
-  vector<uint8> passphrase_bytes;
-  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
-    return true;
-  } else {
-    error->Populate(Error::kInvalidPassphrase);
-    return false;
-  }
-}
-
-// static
-bool WiFi::CheckWEPKeyIndex(const string &passphrase, Error *error) {
-  if (StartsWithASCII(passphrase, "0:", false) ||
-      StartsWithASCII(passphrase, "1:", false) ||
-      StartsWithASCII(passphrase, "2:", false) ||
-      StartsWithASCII(passphrase, "3:", false)) {
-    return true;
-  } else {
-    error->Populate(Error::kInvalidPassphrase);
-    return false;
-  }
-}
-
-// static
-bool WiFi::CheckWEPPrefix(const string &passphrase, Error *error) {
-  if (StartsWithASCII(passphrase, "0x", false)) {
-    return true;
-  } else {
-    error->Populate(Error::kInvalidPassphrase);
-    return false;
-  }
 }
 
 }  // namespace shill

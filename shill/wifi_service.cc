@@ -15,12 +15,15 @@
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/error.h"
+#include "shill/ieee80211.h"
 #include "shill/shill_event.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -126,6 +129,16 @@ const std::vector<uint8_t> &WiFiService::ssid() const {
   return ssid_;
 }
 
+void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
+  if (security_ == flimflam::kSecurityWep) {
+    passphrase_ = ParseWEPPassphrase(passphrase, error);
+  } else if (security_ == flimflam::kSecurityPsk ||
+             security_ == flimflam::kSecurityWpa ||
+             security_ == flimflam::kSecurityRsn) {
+    passphrase_ = ParseWPAPassphrase(passphrase, error);
+  }
+}
+
 // private methods
 void WiFiService::ConnectTask() {
   std::map<string, DBus::Variant> params;
@@ -168,6 +181,107 @@ void WiFiService::ConnectTask() {
 
 string WiFiService::GetDeviceRpcId() {
   return wifi_->GetRpcIdentifier();
+}
+
+// static
+string WiFiService::ParseWEPPassphrase(const string &passphrase, Error *error) {
+  unsigned int length = passphrase.length();
+
+  switch (length) {
+    case IEEE_80211::kWEP40AsciiLen:
+    case IEEE_80211::kWEP104AsciiLen:
+      break;
+    case IEEE_80211::kWEP40AsciiLen + 2:
+    case IEEE_80211::kWEP104AsciiLen + 2:
+      CheckWEPKeyIndex(passphrase, error);
+      break;
+    case IEEE_80211::kWEP40HexLen:
+    case IEEE_80211::kWEP104HexLen:
+      CheckWEPIsHex(passphrase, error);
+      break;
+    case IEEE_80211::kWEP40HexLen + 2:
+    case IEEE_80211::kWEP104HexLen + 2:
+      (CheckWEPKeyIndex(passphrase, error) ||
+       CheckWEPPrefix(passphrase, error)) &&
+          CheckWEPIsHex(passphrase.substr(2), error);
+      break;
+    case IEEE_80211::kWEP40HexLen + 4:
+    case IEEE_80211::kWEP104HexLen + 4:
+      CheckWEPKeyIndex(passphrase, error) &&
+          CheckWEPPrefix(passphrase.substr(2), error) &&
+          CheckWEPIsHex(passphrase.substr(4), error);
+      break;
+    default:
+      error->Populate(Error::kInvalidPassphrase);
+      break;
+  }
+
+  // TODO(quiche): may need to normalize passphrase format
+  if (error->IsSuccess()) {
+    return passphrase;
+  } else {
+    return "";
+  }
+}
+
+// static
+string WiFiService::ParseWPAPassphrase(const string &passphrase, Error *error) {
+  unsigned int length = passphrase.length();
+  vector<uint8> passphrase_bytes;
+
+  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
+    if (length != IEEE_80211::kWPAHexLen &&
+        (length < IEEE_80211::kWPAAsciiMinLen ||
+         length > IEEE_80211::kWPAAsciiMaxLen)) {
+      error->Populate(Error::kInvalidPassphrase);
+    }
+  } else {
+    if (length < IEEE_80211::kWPAAsciiMinLen ||
+        length > IEEE_80211::kWPAAsciiMaxLen) {
+      error->Populate(Error::kInvalidPassphrase);
+    }
+  }
+
+  // TODO(quiche): may need to normalize passphrase format
+  if (error->IsSuccess()) {
+    return passphrase;
+  } else {
+    return "";
+  }
+}
+
+// static
+bool WiFiService::CheckWEPIsHex(const string &passphrase, Error *error) {
+  vector<uint8> passphrase_bytes;
+  if (base::HexStringToBytes(passphrase, &passphrase_bytes)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
+}
+
+// static
+bool WiFiService::CheckWEPKeyIndex(const string &passphrase, Error *error) {
+  if (StartsWithASCII(passphrase, "0:", false) ||
+      StartsWithASCII(passphrase, "1:", false) ||
+      StartsWithASCII(passphrase, "2:", false) ||
+      StartsWithASCII(passphrase, "3:", false)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
+}
+
+// static
+bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
+  if (StartsWithASCII(passphrase, "0x", false)) {
+    return true;
+  } else {
+    error->Populate(Error::kInvalidPassphrase);
+    return false;
+  }
 }
 
 }  // namespace shill

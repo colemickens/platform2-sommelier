@@ -70,14 +70,6 @@ class WiFi : public Device {
   void ScanDoneTask();
   void ScanTask();
 
-  static std::string ParseWEPPassphrase(const std::string &passphrase,
-                                        Error *error);
-  static std::string ParseWPAPassphrase(const std::string &passphrase,
-                                        Error *error);
-  static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
-  static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
-  static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
-
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;

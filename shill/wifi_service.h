@@ -17,6 +17,7 @@ namespace shill {
 
 class ControlInterface;
 class EventDispatcher;
+class Error;
 class Manager;
 
 class WiFiService : public Service {
@@ -43,6 +44,8 @@ class WiFiService : public Service {
   const std::string &key_management() const;
   const std::vector<uint8_t> &ssid() const;
 
+  void SetPassphrase(const std::string &passphrase, Error *error);
+
  private:
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
@@ -50,6 +53,14 @@ class WiFiService : public Service {
   void ConnectTask();
 
   std::string GetDeviceRpcId();
+
+  static std::string ParseWEPPassphrase(const std::string &passphrase,
+                                        Error *error);
+  static std::string ParseWPAPassphrase(const std::string &passphrase,
+                                        Error *error);
+  static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
+  static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
+  static bool CheckWEPPrefix(const std::string &passphrase, Error *error);
 
   // Properties
   std::string passphrase_;

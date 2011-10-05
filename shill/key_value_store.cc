@@ -24,13 +24,13 @@ bool KeyValueStore::ContainsString(const string &name) const {
 
 bool KeyValueStore::GetBool(const string &name) const {
   map<string, bool>::const_iterator it(bool_properties_.find(name));
-  CHECK(it != bool_properties_.end());
+  CHECK(it != bool_properties_.end()) << "for bool property " << name;
   return it->second;
 }
 
 const string &KeyValueStore::GetString(const string &name) const {
   map<string, string>::const_iterator it(string_properties_.find(name));
-  CHECK(it != string_properties_.end());
+  CHECK(it != string_properties_.end()) << "for string property " << name;
   return it->second;
 }
 
