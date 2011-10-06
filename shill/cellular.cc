@@ -111,6 +111,7 @@ Cellular::Cellular(ControlInterface *control_interface,
              link_name,
              address,
              interface_index),
+      proxy_factory_(ProxyFactory::GetInstance()),
       type_(type),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
@@ -329,24 +330,21 @@ void Cellular::Stop() {
 
 void Cellular::InitProxies() {
   VLOG(2) << __func__;
-  proxy_.reset(
-      ProxyFactory::factory()->CreateModemProxy(this, dbus_path_, dbus_owner_));
+  proxy_.reset(proxy_factory_->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
-      ProxyFactory::factory()->CreateModemSimpleProxy(
-          dbus_path_, dbus_owner_));
+      proxy_factory_->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
   switch (type_) {
     case kTypeGSM:
       gsm_card_proxy_.reset(
-          ProxyFactory::factory()->CreateModemGSMCardProxy(
+          proxy_factory_->CreateModemGSMCardProxy(
               this, dbus_path_, dbus_owner_));
       gsm_network_proxy_.reset(
-          ProxyFactory::factory()->CreateModemGSMNetworkProxy(
+          proxy_factory_->CreateModemGSMNetworkProxy(
               this, dbus_path_, dbus_owner_));
       break;
     case kTypeCDMA:
       cdma_proxy_.reset(
-          ProxyFactory::factory()->CreateModemCDMAProxy(
-              this, dbus_path_, dbus_owner_));
+          proxy_factory_->CreateModemCDMAProxy(this, dbus_path_, dbus_owner_));
       break;
     default: NOTREACHED();
   }

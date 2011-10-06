@@ -50,6 +50,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
                        const string &device_name,
                        GLib *glib)
     : IPConfig(control_interface, device_name, kType),
+      proxy_factory_(ProxyFactory::GetInstance()),
       provider_(provider),
       pid_(0),
       child_watch_tag_(0),
@@ -117,7 +118,7 @@ void DHCPConfig::InitProxy(const string &service) {
 void DHCPConfig::InitProxyTask(const string &service) {
   if (!proxy_.get()) {
     VLOG(2) << "Init DHCP Proxy: " << device_name() << " at " << service;
-    proxy_.reset(ProxyFactory::factory()->CreateDHCPProxy(service));
+    proxy_.reset(proxy_factory_->CreateDHCPProxy(service));
   }
 }
 

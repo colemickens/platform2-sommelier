@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/lazy_instance.h>
 #include <base/memory/scoped_ptr.h>
 #include <dbus-c++/dbus.h>
 
@@ -35,8 +36,10 @@ class SupplicantProcessProxyInterface;
 // Global DBus proxy factory that can be mocked out in tests.
 class ProxyFactory {
  public:
-  ProxyFactory();
   virtual ~ProxyFactory();
+
+  // Since this is a singleton, use ProxyFactory::GetInstance()->Foo()
+  static ProxyFactory *GetInstance();
 
   void Init();
 
@@ -84,13 +87,13 @@ class ProxyFactory {
 
   virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
 
-  static ProxyFactory *factory() { return factory_; }
-  static void set_factory(ProxyFactory *factory) { factory_ = factory; }
+  DBus::Connection *connection() const { return connection_.get(); }
 
-  DBus::Connection *connection() { return connection_.get(); }
+ protected:
+  ProxyFactory();
 
  private:
-  static ProxyFactory *factory_;
+  friend struct base::DefaultLazyInstanceTraits<ProxyFactory>;
 
   scoped_ptr<DBus::Connection> connection_;
 

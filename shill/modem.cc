@@ -31,7 +31,8 @@ Modem::Modem(const std::string &owner,
              ControlInterface *control_interface,
              EventDispatcher *dispatcher,
              Manager *manager)
-    : owner_(owner),
+    : proxy_factory_(ProxyFactory::GetInstance()),
+      owner_(owner),
       path_(path),
       task_factory_(this),
       control_interface_(control_interface),
@@ -56,7 +57,7 @@ void Modem::InitTask() {
   CHECK(!device_.get());
 
   dbus_properties_proxy_.reset(
-      ProxyFactory::factory()->CreateDBusPropertiesProxy(this, path_, owner_));
+      proxy_factory_->CreateDBusPropertiesProxy(this, path_, owner_));
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties =

@@ -9,7 +9,6 @@
 
 #include "shill/glib.h"
 #include "shill/manager.h"
-#include "shill/proxy_factory.h"
 #include "shill/shill_event.h"
 #include "shill/sockets.h"
 
@@ -38,7 +37,6 @@ class Daemon {
   EventDispatcher dispatcher_;
   Sockets sockets_;
   GLib glib_;
-  ProxyFactory proxy_factory_;
 };
 
 }  // namespace shill

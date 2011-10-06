@@ -20,6 +20,7 @@ class ControlInterface;
 class DHCPCDListener;
 class EventDispatcher;
 class GLib;
+class ProxyFactory;
 
 // DHCPProvider is a singleton providing the main DHCP configuration
 // entrypoint. Once the provider is initialized through its Init method, DHCP
@@ -71,6 +72,9 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   // A single listener is used to catch signals from all DHCP clients and
   // dispatch them to the appropriate DHCP configuration instance.

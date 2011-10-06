@@ -20,6 +20,7 @@ namespace shill {
 class ControlInterface;
 class EventDispatcher;
 class Manager;
+class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
@@ -70,6 +71,9 @@ class Modem : public DBusPropertiesProxyListener {
   virtual void OnModemManagerPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &properties);
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   // A proxy to the org.freedesktop.DBus.Properties interface used to obtain
   // ModemManager.Modem properties and watch for property changes.

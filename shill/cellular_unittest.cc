@@ -131,14 +131,14 @@ class CellularTest : public testing::Test {
   virtual ~CellularTest() {}
 
   virtual void SetUp() {
-    ProxyFactory::set_factory(&proxy_factory_);
+    device_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
   }
 
   virtual void TearDown() {
-    ProxyFactory::set_factory(NULL);
+    device_->proxy_factory_ = NULL;
     device_->Stop();
     device_->set_dhcp_provider(NULL);
   }

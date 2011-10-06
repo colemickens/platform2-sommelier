@@ -96,12 +96,12 @@ const char ModemTest::kPath[] = "/org/chromium/ModemManager/Gobi/0";
 void ModemTest::SetUp() {
   EXPECT_EQ(kOwner, modem_.owner_);
   EXPECT_EQ(kPath, modem_.path_);
-  ProxyFactory::set_factory(&proxy_factory_);
+  modem_.proxy_factory_ = &proxy_factory_;
   SetSockets(&sockets_);
 }
 
 void ModemTest::TearDown() {
-  ProxyFactory::set_factory(NULL);
+  modem_.proxy_factory_ = NULL;
   SetSockets(NULL);
 }
 

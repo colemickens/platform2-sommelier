@@ -44,11 +44,11 @@ class DHCPConfigTest : public PropertyStoreTest {
                                glib())) {}
 
   virtual void SetUp() {
-    ProxyFactory::set_factory(&proxy_factory_);
+    config_->proxy_factory_ = &proxy_factory_;
   }
 
   virtual void TearDown() {
-    ProxyFactory::set_factory(NULL);
+    config_->proxy_factory_ = NULL;
   }
 
  protected:

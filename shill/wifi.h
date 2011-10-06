@@ -19,6 +19,7 @@ namespace shill {
 
 class Error;
 class KeyValueStore;
+class ProxyFactory;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WiFiService;
@@ -69,6 +70,9 @@ class WiFi : public Device {
 
   void ScanDoneTask();
   void ScanTask();
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;

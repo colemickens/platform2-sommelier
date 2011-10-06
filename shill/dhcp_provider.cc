@@ -19,7 +19,8 @@ static base::LazyInstance<DHCPProvider> g_dhcp_provider(
     base::LINKER_INITIALIZED);
 
 DHCPProvider::DHCPProvider()
-    : control_interface_(NULL),
+    : proxy_factory_(ProxyFactory::GetInstance()),
+      control_interface_(NULL),
       dispatcher_(NULL),
       glib_(NULL) {
   VLOG(2) << __func__;
@@ -37,8 +38,7 @@ void DHCPProvider::Init(ControlInterface *control_interface,
                         EventDispatcher *dispatcher,
                         GLib *glib) {
   VLOG(2) << __func__;
-  listener_.reset(
-      new DHCPCDListener(ProxyFactory::factory()->connection(), this));
+  listener_.reset(new DHCPCDListener(proxy_factory_->connection(), this));
   glib_ = glib;
   control_interface_ = control_interface;
   dispatcher_ = dispatcher;

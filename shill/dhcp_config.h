@@ -21,6 +21,7 @@ class DHCPProvider;
 class DHCPProxyInterface;
 class EventDispatcher;
 class GLib;
+class ProxyFactory;
 
 class DHCPConfig : public IPConfig {
  public:
@@ -114,6 +115,9 @@ class DHCPConfig : public IPConfig {
   // Cleans up remaining state from a running client, if any, including freeing
   // its GPid, exit watch callback, and state files.
   void CleanupClientState();
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   DHCPProvider *provider_;
 

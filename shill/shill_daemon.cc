@@ -12,6 +12,7 @@
 #include <base/logging.h>
 
 #include "shill/dhcp_provider.h"
+#include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 #include "shill/shill_config.h"
 
@@ -40,8 +41,7 @@ void Daemon::AddDeviceToBlackList(const string &device_name) {
 
 void Daemon::Start() {
   glib_.TypeInit();
-  proxy_factory_.Init();
-  ProxyFactory::set_factory(&proxy_factory_);
+  ProxyFactory::GetInstance()->Init();
   RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
   DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
   manager_.Start();

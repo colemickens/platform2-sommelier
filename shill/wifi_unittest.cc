@@ -124,16 +124,17 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                                         kDeviceName,
                                         &glib_)),
         proxy_factory_(this) {
-    ProxyFactory::set_factory(&proxy_factory_);
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
   }
 
   virtual void SetUp() {
+    wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
   }
 
   virtual void TearDown() {
+    wifi_->proxy_factory_ = NULL;
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)

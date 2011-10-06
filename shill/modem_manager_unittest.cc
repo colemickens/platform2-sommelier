@@ -36,9 +36,9 @@ class ModemManagerTest : public Test {
                        &glib_),
         proxy_(new MockModemManagerProxy()),
         proxy_factory_(this) {
-    ProxyFactory::set_factory(&proxy_factory_);
   }
 
+  virtual void SetUp();
   virtual void TearDown();
 
  protected:
@@ -76,9 +76,13 @@ const char ModemManagerTest::kPath[] = "/org/chromium/ModemManager";
 const char ModemManagerTest::kOwner[] = ":1.17";
 const char ModemManagerTest::kModemPath[] = "/org/chromium/ModemManager/Gobi/0";
 
+void ModemManagerTest::SetUp() {
+  modem_manager_.proxy_factory_ = &proxy_factory_;
+}
+
 void ModemManagerTest::TearDown() {
   modem_manager_.watcher_id_ = 0;
-  ProxyFactory::set_factory(NULL);
+  modem_manager_.proxy_factory_ = NULL;
 }
 
 TEST_F(ModemManagerTest, Start) {

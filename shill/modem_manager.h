@@ -21,6 +21,7 @@ class EventDispatcher;
 class Manager;
 class Modem;
 class ModemManagerProxyInterface;
+class ProxyFactory;
 
 // Handles a modem manager service and creates and destroys modem instances.
 class ModemManager {
@@ -73,6 +74,9 @@ class ModemManager {
   static void OnVanish(GDBusConnection *connection,
                        const gchar *name,
                        gpointer user_data);
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   const std::string service_;
   const std::string path_;

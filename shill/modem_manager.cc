@@ -23,7 +23,8 @@ ModemManager::ModemManager(const string &service,
                            EventDispatcher *dispatcher,
                            Manager *manager,
                            GLib *glib)
-    : service_(service),
+    : proxy_factory_(ProxyFactory::GetInstance()),
+      service_(service),
       path_(path),
       watcher_id_(0),
       control_interface_(control_interface),
@@ -59,8 +60,7 @@ void ModemManager::Stop() {
 
 void ModemManager::Connect(const string &owner) {
   owner_ = owner;
-  proxy_.reset(
-      ProxyFactory::factory()->CreateModemManagerProxy(this, path_, owner_));
+  proxy_.reset(proxy_factory_->CreateModemManagerProxy(this, path_, owner_));
 
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   vector<DBus::Path> devices = proxy_->EnumerateDevices();

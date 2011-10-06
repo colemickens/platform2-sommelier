@@ -21,11 +21,16 @@ using std::string;
 
 namespace shill {
 
-ProxyFactory *ProxyFactory::factory_ = NULL;
+static base::LazyInstance<ProxyFactory> g_proxy_factory(
+    base::LINKER_INITIALIZED);
 
 ProxyFactory::ProxyFactory() {}
 
 ProxyFactory::~ProxyFactory() {}
+
+ProxyFactory *ProxyFactory::GetInstance() {
+  return g_proxy_factory.Pointer();
+}
 
 void ProxyFactory::Init() {
   CHECK(DBus::default_dispatcher);  // Initialized in DBusControl::Init.

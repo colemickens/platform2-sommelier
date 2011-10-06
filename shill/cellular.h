@@ -24,6 +24,7 @@ namespace shill {
 
 class Error;
 class ModemSimpleProxyInterface;
+class ProxyFactory;
 
 class Cellular : public Device,
                  public ModemCDMAProxyListener,
@@ -151,6 +152,7 @@ class Cellular : public Device,
                          Error *error);
 
  private:
+  friend class CellularTest;
   FRIEND_TEST(CellularTest, Activate);
   FRIEND_TEST(CellularTest, ActivateError);
   FRIEND_TEST(CellularTest, CreateService);
@@ -313,6 +315,9 @@ class Cellular : public Device,
   virtual void OnModemStateChanged(uint32 old_state,
                                    uint32 new_state,
                                    uint32 reason);
+
+  // Store cached copies of singletons for speed/ease of testing.
+  ProxyFactory *proxy_factory_;
 
   Type type_;
   State state_;

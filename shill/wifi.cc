@@ -70,6 +70,7 @@ WiFi::WiFi(ControlInterface *control_interface,
              link,
              address,
              interface_index),
+      proxy_factory_(ProxyFactory::GetInstance()),
       task_factory_(this),
       bgscan_short_interval_(0),
       bgscan_signal_threshold_(0),
@@ -98,7 +99,7 @@ void WiFi::Start() {
   ::DBus::Path interface_path;
 
   supplicant_process_proxy_.reset(
-      ProxyFactory::factory()->CreateSupplicantProcessProxy(
+      proxy_factory_->CreateSupplicantProcessProxy(
           wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
   try {
     std::map<string, DBus::Variant> create_interface_args;
@@ -121,7 +122,7 @@ void WiFi::Start() {
   }
 
   supplicant_interface_proxy_.reset(
-      ProxyFactory::factory()->CreateSupplicantInterfaceProxy(
+      proxy_factory_->CreateSupplicantInterfaceProxy(
           this, interface_path, wpa_supplicant::kDBusAddr));
 
   // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
