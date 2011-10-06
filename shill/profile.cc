@@ -183,9 +183,10 @@ vector<string> Profile::EnumerateEntries() {
   return rpc_ids;
 }
 
-void Profile::HelpRegisterDerivedStrings(const string &name,
-                                         Strings(Profile::*get)(void),
-                                         bool(Profile::*set)(const Strings&)) {
+void Profile::HelpRegisterDerivedStrings(
+    const string &name,
+    Strings(Profile::*get)(void),
+    void(Profile::*set)(const Strings&, Error *)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));

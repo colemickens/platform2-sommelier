@@ -176,12 +176,14 @@ class Service : public base::RefCounted<Service> {
 
   virtual std::string CalculateState();
 
-  void HelpRegisterDerivedBool(const std::string &name,
-                               bool(Service::*get)(void),
-                               bool(Service::*set)(const bool&));
-  void HelpRegisterDerivedString(const std::string &name,
-                                 std::string(Service::*get)(void),
-                                 bool(Service::*set)(const std::string&));
+  void HelpRegisterDerivedBool(
+      const std::string &name,
+      bool(Service::*get)(void),
+      void(Service::*set)(const bool&, Error *));
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(Service::*get)(void),
+      void(Service::*set)(const std::string&, Error *));
 
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the

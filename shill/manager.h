@@ -102,12 +102,14 @@ class Manager {
   std::vector<std::string> EnumerateWatchedServices();
   std::string GetActiveProfileName();
 
-  void HelpRegisterDerivedString(const std::string &name,
-                                 std::string(Manager::*get)(void),
-                                 bool(Manager::*set)(const std::string&));
-  void HelpRegisterDerivedStrings(const std::string &name,
-                                  Strings(Manager::*get)(void),
-                                  bool(Manager::*set)(const Strings&));
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(Manager::*get)(void),
+      void(Manager::*set)(const std::string&, Error *));
+  void HelpRegisterDerivedStrings(
+      const std::string &name,
+      Strings(Manager::*get)(void),
+      void(Manager::*set)(const Strings&, Error *));
 
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();

@@ -132,7 +132,7 @@ class Device : public base::RefCounted<Device> {
 
   void HelpRegisterDerivedStrings(const std::string &name,
                                   Strings(Device::*get)(void),
-                                  bool(Device::*set)(const Strings&));
+                                  void(Device::*set)(const Strings&, Error *));
 
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }

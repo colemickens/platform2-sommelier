@@ -239,12 +239,10 @@ class Cellular : public Device,
 
   StrIntPair SimLockStatusToProperty();
 
-  void HelpRegisterDerivedStringmaps(const std::string &name,
-                                     Stringmaps(Cellular::*get)(void),
-                                     bool(Cellular::*set)(const Stringmaps&));
-  void HelpRegisterDerivedStrIntPair(const std::string &name,
-                                     StrIntPair(Cellular::*get)(void),
-                                     bool(Cellular::*set)(const StrIntPair&));
+  void HelpRegisterDerivedStrIntPair(
+      const std::string &name,
+      StrIntPair(Cellular::*get)(void),
+      void(Cellular::*set)(const StrIntPair&, Error *));
 
   void InitProxies();
 

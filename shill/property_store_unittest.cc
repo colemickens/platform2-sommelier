@@ -62,7 +62,8 @@ const ::DBus::Variant PropertyStoreTest::kUint32V =
     DBusAdaptor::Uint32ToVariant(0);
 
 PropertyStoreTest::PropertyStoreTest()
-    : invalid_args_(Error::GetName(Error::kInvalidArguments)),
+    : internal_error_(Error::GetName(Error::kInternalError)),
+      invalid_args_(Error::GetName(Error::kInvalidArguments)),
       invalid_prop_(Error::GetName(Error::kInvalidProperty)),
       path_(dir_.CreateUniqueTempDir() ? dir_.path().value() : ""),
       manager_(control_interface(),
@@ -97,10 +98,17 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kInt16V,
            PropertyStoreTest::kInt32V,
            PropertyStoreTest::kStringmapV,
-           PropertyStoreTest::kStringmapsV,
            PropertyStoreTest::kStringsV,
            PropertyStoreTest::kStrIntPairV,
            PropertyStoreTest::kUint16V,
            PropertyStoreTest::kUint32V));
+
+TEST_F(PropertyStoreTest, SetStringmapsProperty) {
+  PropertyStore store;
+  ::DBus::Error error;
+  EXPECT_FALSE(DBusAdaptor::DispatchOnType(
+      &store, "", PropertyStoreTest::kStringmapsV, &error));
+  EXPECT_EQ(internal_error(), error.name());
+}
 
 }  // namespace shill

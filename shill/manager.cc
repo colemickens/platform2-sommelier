@@ -259,17 +259,19 @@ ServiceRefPtr Manager::FindService(const string& name) {
   return NULL;
 }
 
-void Manager::HelpRegisterDerivedString(const string &name,
-                                    string(Manager::*get)(void),
-                                    bool(Manager::*set)(const string&)) {
+void Manager::HelpRegisterDerivedString(
+    const string &name,
+    string(Manager::*get)(void),
+    void(Manager::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Manager, string>(this, get, set)));
 }
 
-void Manager::HelpRegisterDerivedStrings(const string &name,
-                                     Strings(Manager::*get)(void),
-                                     bool(Manager::*set)(const Strings&)) {
+void Manager::HelpRegisterDerivedStrings(
+    const string &name,
+    Strings(Manager::*get)(void),
+    void(Manager::*set)(const Strings &, Error *)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set)));

@@ -335,17 +335,19 @@ string Service::CalculateState() {
   }
 }
 
-void Service::HelpRegisterDerivedBool(const string &name,
-                                      bool(Service::*get)(void),
-                                      bool(Service::*set)(const bool&)) {
+void Service::HelpRegisterDerivedBool(
+    const string &name,
+    bool(Service::*get)(void),
+    void(Service::*set)(const bool&, Error *)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set)));
 }
 
-void Service::HelpRegisterDerivedString(const string &name,
-                                        string(Service::*get)(void),
-                                        bool(Service::*set)(const string&)) {
+void Service::HelpRegisterDerivedString(
+    const string &name,
+    string(Service::*get)(void),
+    void(Service::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));

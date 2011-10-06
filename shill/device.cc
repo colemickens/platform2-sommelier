@@ -257,9 +257,10 @@ bool Device::AcquireDHCPConfig() {
   return ipconfig_->RequestIP();
 }
 
-void Device::HelpRegisterDerivedStrings(const string &name,
-                                        Strings(Device::*get)(void),
-                                        bool(Device::*set)(const Strings&)) {
+void Device::HelpRegisterDerivedStrings(
+    const string &name,
+    Strings(Device::*get)(void),
+    void(Device::*set)(const Strings&, Error *)) {
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));

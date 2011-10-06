@@ -9,6 +9,7 @@
 #include <base/logging.h>
 
 #include "shill/accessor_interface.h"
+#include "shill/error.h"
 
 namespace shill {
 
@@ -34,9 +35,8 @@ class PropertyAccessor : public AccessorInterface<T> {
   virtual ~PropertyAccessor() {}
 
   const T &Get() { return *property_; }
-  bool Set(const T &value) {
+  void Set(const T &value, Error */*error*/) {
     *property_ = value;
-    return true;
   }
 
  private:
@@ -53,7 +53,11 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   virtual ~ConstPropertyAccessor() {}
 
   const T &Get() { return *property_; }
-  bool Set(const T &/*value*/) { return false; }
+  void Set(const T &/*value*/, Error *error) {
+    // TODO(quiche): check if this is the right error.
+    // (maybe Error::kPermissionDenied instead?)
+    error->Populate(Error::kInvalidArguments, "Property is read-only");
+  }
 
  private:
   const T * const property_;
@@ -70,7 +74,9 @@ class CustomAccessor : public AccessorInterface<T> {
   // |setter| is allowed to be NULL, in which case we will simply reject
   // attempts to set via the accessor.
   // It is an error to pass NULL for either of the other two arguments.
-  CustomAccessor(C *target, T(C::*getter)(), bool(C::*setter)(const T&))
+  CustomAccessor(C *target,
+                 T(C::*getter)(),
+                 void(C::*setter)(const T&, Error *))
       : target_(target),
         getter_(getter),
         setter_(setter) {
@@ -80,7 +86,13 @@ class CustomAccessor : public AccessorInterface<T> {
   virtual ~CustomAccessor() {}
 
   const T &Get() { return storage_ = (target_->*getter_)(); }
-  bool Set(const T &value) { return setter_ && (target_->*setter_)(value); }
+  void Set(const T &value, Error *error) {
+    if (setter_) {
+      (target_->*setter_)(value, error);
+    } else {
+      error->Populate(Error::kInvalidArguments, "Property is read-only");
+    }
+  }
 
  private:
   C * const target_;
@@ -88,7 +100,7 @@ class CustomAccessor : public AccessorInterface<T> {
   // return a reference.
   T storage_;
   T(C::*getter_)(void);
-  bool(C::*setter_)(const T&);
+  void(C::*setter_)(const T&, Error *);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };
 

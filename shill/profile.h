@@ -116,9 +116,10 @@ class Profile : public base::RefCounted<Profile> {
     return false;
   }
 
-  void HelpRegisterDerivedStrings(const std::string &name,
-                                  Strings(Profile::*get)(void),
-                                  bool(Profile::*set)(const Strings&));
+  void HelpRegisterDerivedStrings(
+      const std::string &name,
+      Strings(Profile::*get)(void),
+      void(Profile::*set)(const Strings&, Error *));
 
   // Persists |services_| to disk.
   bool SaveServices(StoreInterface *storage);

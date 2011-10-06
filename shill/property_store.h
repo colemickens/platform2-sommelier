@@ -68,7 +68,13 @@ class PropertyStore {
                                  uint32 value,
                                  Error *error);
 
-  // Accessors for iterators over property maps.
+  // We do not provide methods for reading individual properties,
+  // because we don't need them to implement the flimflam API. (The flimflam
+  // API only allows fetching all properties at once -- not individual
+  // properties.)
+
+  // Accessors for iterators over property maps. Useful for dumping all
+  // properties.
   PropertyConstIterator<bool> GetBoolPropertiesIter() const;
   PropertyConstIterator<int16> GetInt16PropertiesIter() const;
   PropertyConstIterator<int32> GetInt32PropertiesIter() const;
@@ -112,6 +118,14 @@ class PropertyStore {
                                  const StrIntPairAccessor &accessor);
 
  private:
+  template <class V>
+  bool SetProperty(
+      const std::string &name,
+      const V &value,
+      Error *error,
+      std::map< std::string, std::tr1::shared_ptr< AccessorInterface<V> > > &,
+      const std::string &value_type_english);
+
   // These are std::maps instead of something cooler because the common
   // operation is iterating through them and returning all properties.
   std::map<std::string, BoolAccessor> bool_properties_;

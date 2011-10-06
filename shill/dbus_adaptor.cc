@@ -42,43 +42,43 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
                                  const string &name,
                                  const ::DBus::Variant &value,
                                  ::DBus::Error *error) {
-  bool set = false;
-  Error e(Error::kInvalidArguments, "Could not write " + name);
+  Error e;
 
   if (DBusAdaptor::IsBool(value.signature()))
-    set = store->SetBoolProperty(name, value.reader().get_bool(), &e);
+    store->SetBoolProperty(name, value.reader().get_bool(), &e);
   else if (DBusAdaptor::IsByte(value.signature()))
-    set = store->SetUint8Property(name, value.reader().get_byte(), &e);
+    store->SetUint8Property(name, value.reader().get_byte(), &e);
   else if (DBusAdaptor::IsInt16(value.signature()))
-    set = store->SetInt16Property(name, value.reader().get_int16(), &e);
+    store->SetInt16Property(name, value.reader().get_int16(), &e);
   else if (DBusAdaptor::IsInt32(value.signature()))
-    set = store->SetInt32Property(name, value.reader().get_int32(), &e);
+    store->SetInt32Property(name, value.reader().get_int32(), &e);
   else if (DBusAdaptor::IsPath(value.signature()))
-    set = store->SetStringProperty(name, value.reader().get_path(), &e);
+    store->SetStringProperty(name, value.reader().get_path(), &e);
   else if (DBusAdaptor::IsString(value.signature()))
-    set = store->SetStringProperty(name, value.reader().get_string(), &e);
+    store->SetStringProperty(name, value.reader().get_string(), &e);
   else if (DBusAdaptor::IsStringmap(value.signature()))
-    set = store->SetStringmapProperty(name,
-                                      value.operator map<string, string>(),
-                                      &e);
-  else if (DBusAdaptor::IsStringmaps(value.signature()))
+    store->SetStringmapProperty(name,
+                                value.operator map<string, string>(),
+                                &e);
+  else if (DBusAdaptor::IsStringmaps(value.signature())) {
     VLOG(1) << " can't yet handle setting type " << value.signature();
-  else if (DBusAdaptor::IsStrings(value.signature()))
-    set = store->SetStringsProperty(name, value.operator vector<string>(), &e);
+    e.Populate(Error::kInternalError);
+  } else if (DBusAdaptor::IsStrings(value.signature()))
+    store->SetStringsProperty(name, value.operator vector<string>(), &e);
   else if (DBusAdaptor::IsUint16(value.signature()))
-    set = store->SetUint16Property(name, value.reader().get_uint16(), &e);
+    store->SetUint16Property(name, value.reader().get_uint16(), &e);
   else if (DBusAdaptor::IsUint32(value.signature()))
-    set = store->SetUint32Property(name, value.reader().get_uint32(), &e);
-  else
+    store->SetUint32Property(name, value.reader().get_uint32(), &e);
+  else {
     NOTREACHED() << " unknown type: " << value.signature();
-
-  if (!set && error) {
-    if (!store->Contains(name))
-      Error(Error::kInvalidProperty, name + " is invalid.").ToDBusError(error);
-    else
-      e.ToDBusError(error);
+    e.Populate(Error::kInternalError);
   }
-  return set;
+
+  if (error != NULL) {
+    e.ToDBusError(error);
+  }
+
+  return e.IsSuccess();
 }
 
 // static

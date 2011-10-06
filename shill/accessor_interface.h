@@ -15,6 +15,8 @@
 
 namespace shill {
 
+class Error;
+
 // A templated abstract base class for objects that can be used to access
 // properties stored in objects that are meant to be made available over RPC.
 // The intended usage is that an object stores a maps of strings to
@@ -28,8 +30,8 @@ class AccessorInterface {
 
   // Provides read-only access.
   virtual const T &Get() = 0;
-  // Attempts to set the wrapped value.  Returns true upon success.
-  virtual bool Set(const T &value) = 0;
+  // Attempts to set the wrapped value. Sets |error| on failure.
+  virtual void Set(const T &value, Error *error) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);

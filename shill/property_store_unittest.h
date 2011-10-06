@@ -58,10 +58,12 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   const std::string &run_path() const { return path_; }
   const std::string &storage_path() const { return path_; }
 
+  const std::string &internal_error() const { return internal_error_; }
   const std::string &invalid_args() const { return invalid_args_; }
   const std::string &invalid_prop() const { return invalid_prop_; }
 
  private:
+  const std::string internal_error_;
   const std::string invalid_args_;
   const std::string invalid_prop_;
   ScopedTempDir dir_;

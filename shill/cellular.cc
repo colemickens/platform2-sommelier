@@ -1010,7 +1010,7 @@ StrIntPair Cellular::SimLockStatusToProperty() {
 void Cellular::HelpRegisterDerivedStrIntPair(
     const string &name,
     StrIntPair(Cellular::*get)(void),
-    bool(Cellular::*set)(const StrIntPair&)) {
+    void(Cellular::*set)(const StrIntPair&, Error *)) {
   mutable_store()->RegisterDerivedStrIntPair(
       name,
       StrIntPairAccessor(

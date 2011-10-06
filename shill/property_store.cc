@@ -42,101 +42,57 @@ bool PropertyStore::Contains(const std::string &prop) const {
 bool PropertyStore::SetBoolProperty(const std::string& name,
                                     bool value,
                                     Error *error) {
-  VLOG(2) << "Setting " << name << " as a bool.";
-  bool set = (ContainsKey(bool_properties_, name) &&
-              bool_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W bool.");
-  return set;
+  return SetProperty(name, value, error, bool_properties_, "a bool");
 }
 
 bool PropertyStore::SetInt16Property(const std::string& name,
                                      int16 value,
                                      Error *error) {
-  VLOG(2) << "Setting " << name << " as an int16.";
-  bool set = (ContainsKey(int16_properties_, name) &&
-              int16_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W int16.");
-  return set;
+  return SetProperty(name, value, error, int16_properties_, "an int16");
 }
 
 bool PropertyStore::SetInt32Property(const std::string& name,
                                      int32 value,
                                      Error *error) {
-  VLOG(2) << "Setting " << name << " as an int32.";
-  bool set = (ContainsKey(int32_properties_, name) &&
-              int32_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W int32.");
-  return set;
+  return SetProperty(name, value, error, int32_properties_, "an int32.");
 }
 
 bool PropertyStore::SetStringProperty(const std::string& name,
                                       const std::string& value,
                                       Error *error) {
-  VLOG(2) << "Setting " << name << " as a string.";
-  bool set = (ContainsKey(string_properties_, name) &&
-              string_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W string.");
-  return set;
+  return SetProperty(name, value, error, string_properties_, "a string");
 }
 
 bool PropertyStore::SetStringmapProperty(
     const std::string& name,
     const std::map<std::string, std::string>& values,
     Error *error) {
-  VLOG(2) << "Setting " << name << " as a string map.";
-  bool set = (ContainsKey(stringmap_properties_, name) &&
-              stringmap_properties_[name]->Set(values));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W strmap.");
-  return set;
+  return SetProperty(name, values, error, stringmap_properties_,
+                     "a string map");
 }
 
 bool PropertyStore::SetStringsProperty(const std::string& name,
                                        const std::vector<std::string>& values,
                                        Error *error) {
-  VLOG(2) << "Setting " << name << " as a string list.";
-  bool set = (ContainsKey(strings_properties_, name) &&
-              strings_properties_[name]->Set(values));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W str list.");
-  return set;
+  return SetProperty(name, values, error, strings_properties_, "a string list");
 }
 
 bool PropertyStore::SetUint8Property(const std::string& name,
                                      uint8 value,
                                      Error *error) {
-  VLOG(2) << "Setting " << name << " as a uint8.";
-  bool set = (ContainsKey(uint8_properties_, name) &&
-              uint8_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W uint8.");
-  return set;
+  return SetProperty(name, value, error, uint8_properties_, "a uint8");
 }
 
 bool PropertyStore::SetUint16Property(const std::string& name,
                                       uint16 value,
                                       Error *error) {
-  VLOG(2) << "Setting " << name << " as a uint16.";
-  bool set = (ContainsKey(uint16_properties_, name) &&
-              uint16_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W uint16.");
-  return set;
+  return SetProperty(name, value, error, uint16_properties_, "a uint16");
 }
 
 bool PropertyStore::SetUint32Property(const std::string& name,
                                       uint32 value,
                                       Error *error) {
-  VLOG(2) << "Setting " << name << " as a uint32.";
-  bool set = (ContainsKey(uint32_properties_, name) &&
-              uint32_properties_[name]->Set(value));
-  if (!set && error)
-    error->Populate(Error::kInvalidArguments, name + " is not a R/W uint32.");
-  return set;
+  return SetProperty(name, value, error, uint32_properties_, "a uint32");
 }
 
 PropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter() const {
@@ -294,5 +250,29 @@ void PropertyStore::RegisterDerivedStrIntPair(const std::string &name,
                                               const StrIntPairAccessor &acc) {
   strintpair_properties_[name] = acc;
 }
+
+// private
+template <class V>
+bool PropertyStore::SetProperty(
+    const string &name,
+    const V &value,
+    Error *error,
+    map< string, std::tr1::shared_ptr< AccessorInterface<V> > >&collection,
+    const string &value_type_english) {
+  VLOG(2) << "Setting " << name << " as " << value_type_english << ".";
+  if (ContainsKey(collection, name)) {
+    collection[name]->Set(value, error);
+  } else {
+    if (Contains(name)) {
+      error->Populate(
+          Error::kInvalidArguments,
+          "Property " + name + " is not " + value_type_english + ".");
+    } else {
+      error->Populate(
+          Error::kInvalidProperty, "Property " + name + " does not exist.");
+    }
+  }
+  return error->IsSuccess();
+};
 
 }  // namespace shill
