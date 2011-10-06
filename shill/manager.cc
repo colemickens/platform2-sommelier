@@ -97,10 +97,6 @@ Manager::Manager(ControlInterface *control_interface,
 
   // TODO(cmasone): Wire these up once we actually put in profile support.
   // known_properties_.push_back(flimflam::kProfilesProperty);
-  profiles_.push_back(new DefaultProfile(control_interface_,
-                                         this,
-                                         storage_path_,
-                                         props_));
   VLOG(2) << "Manager initialized.";
 }
 
@@ -120,6 +116,12 @@ void Manager::Start() {
 
   CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
 
+  profiles_.push_back(new DefaultProfile(control_interface_,
+                                         this,
+                                         storage_path_,
+                                         props_));
+  CHECK(profiles_[0]->InitStorage(glib_));
+
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();
@@ -131,25 +133,21 @@ void Manager::Stop() {
   // Persist profile, device, service information to disk.
   vector<ProfileRefPtr>::iterator it;
   for (it = profiles_.begin(); it != profiles_.end(); ++it) {
-    KeyFileStore storage(glib_);
-    FilePath profile_path;
-    CHECK((*it)->GetStoragePath(&profile_path));
-    storage.set_path(profile_path);
-    if (storage.Open()) {
-      (*it)->Finalize(&storage);
-      storage.Close();
-    } else {
-      LOG(ERROR) << "Could not open storage at " << profile_path.value();
-    }
+    (*it)->Finalize();
   }
-  ephemeral_profile_->Finalize(NULL);
+  ephemeral_profile_->Finalize();
 
   adaptor_->UpdateRunning();
   modem_info_.Stop();
   device_info_.Stop();
 }
 
+void Manager::AdoptProfile(const ProfileRefPtr &profile) {
+  profiles_.push_back(profile);
+}
+
 const ProfileRefPtr &Manager::ActiveProfile() {
+  DCHECK_NE(profiles_.size(), 0);
   return profiles_.back();
 }
 

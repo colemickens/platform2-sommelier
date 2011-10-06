@@ -25,17 +25,17 @@ Config::Config() : use_flimflam_(false) {
 
 Config::~Config() {}
 
-std::string Config::RunDirectory() {
+std::string Config::GetRunDirectory() {
   return kDefaultRunDirectory;
 }
 
-std::string Config::StorageDirectory() {
+std::string Config::GetStorageDirectory() {
   return (use_flimflam_ ?
           kFlimflamStorageDirectory :
           kDefaultStorageDirectory);
 }
 
-std::string Config::UserStorageDirectoryFormat() {
+std::string Config::GetUserStorageDirectoryFormat() {
   return (use_flimflam_ ?
           kFlimflamUserStorageFormat :
           kDefaultUserStorageFormat);

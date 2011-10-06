@@ -29,9 +29,9 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       manager_(control_,
                &dispatcher_,
                &glib_,
-               config->RunDirectory(),
-               config->StorageDirectory(),
-               config->UserStorageDirectoryFormat()) {
+               config->GetRunDirectory(),
+               config->GetStorageDirectory(),
+               config->GetUserStorageDirectoryFormat()) {
 }
 Daemon::~Daemon() {}
 

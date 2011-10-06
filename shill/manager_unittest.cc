@@ -23,6 +23,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
+#include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
 #include "shill/wifi_service.h"
@@ -174,6 +175,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
 }
 
 TEST_F(ManagerTest, GetProperties) {
+  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
+  manager()->AdoptProfile(profile);
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
   {
@@ -202,6 +205,8 @@ TEST_F(ManagerTest, GetProperties) {
 }
 
 TEST_F(ManagerTest, GetDevicesProperty) {
+  ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
+  manager()->AdoptProfile(profile);
   manager()->RegisterDevice(mock_devices_[0].get());
   manager()->RegisterDevice(mock_devices_[1].get());
   {
@@ -224,7 +229,16 @@ TEST_F(ManagerTest, MoveService) {
                   run_path(),
                   storage_path(),
                   string());
-
+  {
+    Profile::Identifier id;
+    id.identifier = "irrelevant";
+    ProfileRefPtr profile(
+        new Profile(control_interface(), &manager, id, "", false));
+    MockStore *storage = new MockStore;
+    EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
+    profile->set_storage(storage);
+    manager.AdoptProfile(profile);
+  }
   // I want to ensure that the Profiles are managing this Service object
   // lifetime properly, so I can't hold a ref to it here.
   ProfileRefPtr profile(new MockProfile(control_interface(), &manager, ""));

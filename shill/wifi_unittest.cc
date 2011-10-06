@@ -108,7 +108,7 @@ TEST_F(WiFiPropertyTest, Dispatch) {
 class WiFiMainTest : public ::testing::TestWithParam<string> {
  public:
   WiFiMainTest()
-      : manager_(&control_interface_, NULL, NULL),
+      : manager_(&control_interface_, NULL, &glib_),
         wifi_(new WiFi(&control_interface_,
                        &dispatcher_,
                        &manager_,
@@ -131,6 +131,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
+    EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
   }
 
   virtual void TearDown() {

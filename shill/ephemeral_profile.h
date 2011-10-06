@@ -29,10 +29,10 @@ class EphemeralProfile : public Profile {
   virtual ~EphemeralProfile();
 
   // Merely stop managing service persistence; flush nothing to disk.
-  virtual void Finalize(StoreInterface *storage);
+  virtual void Finalize();
 
   // Should not be called.
-  virtual bool Save(StoreInterface *storage);
+  virtual bool Save();
 
   // Leaves |path| untouched and returns false.
   virtual bool GetStoragePath(FilePath */*path*/) { return false; }

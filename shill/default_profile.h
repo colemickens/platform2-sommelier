@@ -33,7 +33,7 @@ class DefaultProfile : public Profile {
   // Persists profile information, as well as that of discovered devices
   // and bound services, to disk.
   // Returns true on success, false on failure.
-  virtual bool Save(StoreInterface *storage);
+  virtual bool Save();
 
   // Sets |path| to the persistent store file path for the default, global
   // profile. Returns true on success, and false if unable to determine an

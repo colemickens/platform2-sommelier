@@ -81,24 +81,26 @@ TEST_F(DefaultProfileTest, GetProperties) {
 }
 
 TEST_F(DefaultProfileTest, Save) {
-  MockStore storage;
-  EXPECT_CALL(storage, SetString(DefaultProfile::kStorageId,
-                                 DefaultProfile::kStorageName,
-                                 DefaultProfile::kDefaultId))
+  scoped_ptr<MockStore> storage(new MockStore);
+  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageName,
+                                        DefaultProfile::kDefaultId))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage, SetString(DefaultProfile::kStorageId,
-                                 DefaultProfile::kStorageCheckPortalList,
-                                 ""))
+  EXPECT_CALL(*storage.get(), SetString(DefaultProfile::kStorageId,
+                                        DefaultProfile::kStorageCheckPortalList,
+                                        ""))
       .WillOnce(Return(true));
-  EXPECT_CALL(storage, SetBool(DefaultProfile::kStorageId,
-                               DefaultProfile::kStorageOfflineMode,
-                               false))
+  EXPECT_CALL(*storage.get(), SetBool(DefaultProfile::kStorageId,
+                                      DefaultProfile::kStorageOfflineMode,
+                                      false))
       .WillOnce(Return(true));
+  EXPECT_CALL(*storage.get(), Flush()).WillOnce(Return(true));
 
-  EXPECT_CALL(*device_.get(), Save(&storage)).WillOnce(Return(true));
+  EXPECT_CALL(*device_.get(), Save(storage.get())).WillOnce(Return(true));
+  profile_->set_storage(storage.release());
 
   manager()->RegisterDevice(device_);
-  ASSERT_TRUE(profile_->Save(&storage));
+  ASSERT_TRUE(profile_->Save());
   manager()->DeregisterDevice(device_);
 }
 

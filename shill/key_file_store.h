@@ -39,6 +39,7 @@ class KeyFileStore : public StoreInterface {
   bool Close();
 
   // Inherited from StoreInterface.
+  virtual bool Flush();
   virtual std::set<std::string> GetGroups();
   virtual bool ContainsGroup(const std::string &group);
   virtual bool DeleteKey(const std::string &group, const std::string &key);

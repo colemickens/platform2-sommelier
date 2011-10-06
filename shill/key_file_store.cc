@@ -55,11 +55,16 @@ bool KeyFileStore::Open() {
 }
 
 bool KeyFileStore::Close() {
+  bool success = Flush();
+  ReleaseKeyFile();
+  return success;
+}
+
+bool KeyFileStore::Flush() {
   CHECK(key_file_);
   GError *error = NULL;
   gsize length = 0;
   gchar *data = glib_->KeyFileToData(key_file_, &length, &error);
-  ReleaseKeyFile();
 
   bool success = true;
   if (path_.empty()) {

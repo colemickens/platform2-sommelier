@@ -31,6 +31,7 @@
 using std::map;
 using std::string;
 using testing::_;
+using testing::AnyNumber;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -135,6 +136,7 @@ class CellularTest : public testing::Test {
     static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
+    EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
   }
 
   virtual void TearDown() {

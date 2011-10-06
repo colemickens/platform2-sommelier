@@ -16,6 +16,9 @@ class StoreInterface {
  public:
   virtual ~StoreInterface() {}
 
+  // Flush current in-memory data to disk.
+  virtual bool Flush() = 0;
+
   // Returns a set of all groups contained in the store.
   virtual std::set<std::string> GetGroups() = 0;
 

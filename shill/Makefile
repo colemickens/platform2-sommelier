@@ -125,6 +125,7 @@ SHILL_OBJS = \
 	shill_config.o \
 	shill_daemon.o \
 	shill_event.o \
+	shill_test_config.o \
 	sockets.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \

@@ -49,20 +49,20 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
 
 DefaultProfile::~DefaultProfile() {}
 
-bool DefaultProfile::Save(StoreInterface *storage) {
-  storage->SetString(kStorageId, kStorageName, GetFriendlyName());
-  storage->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);
-  storage->SetString(kStorageId,
-                     kStorageCheckPortalList,
-                     props_.check_portal_list);
+bool DefaultProfile::Save() {
+  storage()->SetString(kStorageId, kStorageName, GetFriendlyName());
+  storage()->SetBool(kStorageId, kStorageOfflineMode, props_.offline_mode);
+  storage()->SetString(kStorageId,
+                       kStorageCheckPortalList,
+                       props_.check_portal_list);
   vector<DeviceRefPtr>::iterator it;
   for (it = manager()->devices_begin(); it != manager()->devices_end(); ++it) {
-    if (!(*it)->Save(storage)) {
+    if (!(*it)->Save(storage())) {
       LOG(ERROR) << "Could not save " << (*it)->UniqueName();
       return false;
     }
   }
-  return Profile::Save(storage);
+  return Profile::Save();
 }
 
 bool DefaultProfile::GetStoragePath(FilePath *path) {

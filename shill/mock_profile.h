@@ -22,6 +22,7 @@ class MockProfile : public Profile {
   virtual ~MockProfile();
 
   MOCK_METHOD1(GetStoragePath, bool(FilePath *));
+  MOCK_METHOD0(Save, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockProfile);

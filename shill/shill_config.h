@@ -18,9 +18,9 @@ class Config {
 
   void UseFlimflamStorageDirs() { use_flimflam_ = true; }
 
-  std::string RunDirectory();
-  std::string StorageDirectory();
-  std::string UserStorageDirectoryFormat();
+  virtual std::string GetRunDirectory();
+  virtual std::string GetStorageDirectory();
+  virtual std::string GetUserStorageDirectoryFormat();
 
  private:
   static const char kDefaultRunDirectory[];

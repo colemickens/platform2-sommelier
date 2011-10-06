@@ -14,8 +14,8 @@
 
 #include "shill/io_handler.h"
 #include "shill/mock_control.h"
-#include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
+#include "shill/shill_test_config.h"
 
 namespace shill {
 using ::testing::Test;
@@ -122,7 +122,7 @@ class ShillDaemonTest : public Test {
     ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
   }
  protected:
-  Config config_;
+  TestConfig config_;
   Daemon daemon_;
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;

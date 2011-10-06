@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
 #include <gtest/gtest.h>
 
@@ -28,7 +29,8 @@ namespace shill {
 class ProfileTest : public PropertyStoreTest {
  public:
   ProfileTest()
-      : profile_(new MockProfile(control_interface(), manager(), "")) {
+      : store_(new MockStore),
+        profile_(new MockProfile(control_interface(), manager(), "")) {
   }
 
   MockService *CreateMockService() {
@@ -38,7 +40,7 @@ class ProfileTest : public PropertyStoreTest {
   }
 
  protected:
-  MockStore store_;
+  scoped_ptr<MockStore> store_;
   scoped_refptr<MockProfile> profile_;
 };
 
@@ -141,15 +143,20 @@ TEST_F(ProfileTest, ServiceManagement) {
 }
 
 TEST_F(ProfileTest, Finalize) {
+  Profile::Identifier id;
+  id.identifier = "irrelevant";
+  ProfileRefPtr profile(
+      new Profile(control_interface(), manager(), id, "", false));
   scoped_refptr<MockService> service1(CreateMockService());
   scoped_refptr<MockService> service2(CreateMockService());
   EXPECT_CALL(*service1.get(), Save(_)).WillOnce(Return(true));
   EXPECT_CALL(*service2.get(), Save(_)).WillOnce(Return(true));
 
-  ASSERT_TRUE(profile_->AdoptService(service1));
-  ASSERT_TRUE(profile_->AdoptService(service2));
+  ASSERT_TRUE(profile->AdoptService(service1));
+  ASSERT_TRUE(profile->AdoptService(service2));
 
-  profile_->Finalize(&store_);
+  profile->set_storage(store_.release());
+  profile->Finalize();
 }
 
 TEST_F(ProfileTest, EntryEnumeration) {

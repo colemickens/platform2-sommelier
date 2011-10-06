@@ -17,6 +17,7 @@ class MockStore : public StoreInterface {
   MockStore();
   virtual ~MockStore();
 
+  MOCK_METHOD0(Flush, bool());
   MOCK_METHOD0(GetGroups, std::set<std::string>());
   MOCK_METHOD1(ContainsGroup, bool(const std::string &group));
   MOCK_METHOD2(DeleteKey,

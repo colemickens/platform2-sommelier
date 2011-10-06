@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/stl_util-inl.h>
 #include <base/string_util.h>
@@ -16,6 +17,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
+#include "shill/key_file_store.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
@@ -57,12 +59,36 @@ Profile::~Profile() {
   DCHECK_EQ(services_.size(), 0);
 }
 
+bool Profile::InitStorage(GLib *glib) {
+  FilePath final_path;
+  if (!GetStoragePath(&final_path)) {
+    PLOG(ERROR) <<
+        base::StringPrintf("Could not set up profile storage for %s:%s",
+                           name_.user.c_str(), name_.identifier.c_str());
+    return false;
+  }
+  scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+  storage->set_path(final_path);
+  if (!storage->Open()) {
+    PLOG(ERROR) <<
+        base::StringPrintf("Could not open profile storage for %s:%s",
+                           name_.user.c_str(), name_.identifier.c_str());
+    return false;
+  }
+  set_storage(storage.release());
+  return true;
+}
+
 string Profile::GetFriendlyName() {
   return (name_.user.empty() ? "" : name_.user + "/") + name_.identifier;
 }
 
 string Profile::GetRpcIdentifier() {
   return adaptor_->GetRpcIdentifier();
+}
+
+void Profile::set_storage(StoreInterface *storage) {
+  storage_.reset(storage);
 }
 
 bool Profile::AdoptService(const ServiceRefPtr &service) {
@@ -90,10 +116,11 @@ bool Profile::DemoteService(const string &name) {
 }
 
 bool Profile::MergeService(const ServiceRefPtr &service) {
+  // TODO(cmasone): Make |service| just load itself from |store_|.
   map<string, ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (Mergeable(it->second, service))
-      return true;  // TODO(cmasone): Perform merge.
+      return true;
   }
   return false;
 }
@@ -104,8 +131,8 @@ ServiceRefPtr Profile::FindService(const std::string& name) {
   return NULL;
 }
 
-void Profile::Finalize(StoreInterface *storage) {
-  Save(storage);
+void Profile::Finalize() {
+  Save();
   services_.clear();
 }
 
@@ -150,12 +177,8 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   return true;
 }
 
-bool Profile::Load(StoreInterface */*storage*/) {
-  return false;
-}
-
-bool Profile::Save(StoreInterface *storage) {
-  return SaveServices(storage);
+bool Profile::Save() {
+  return SaveServices() && storage_->Flush();
 }
 
 bool Profile::GetStoragePath(FilePath *path) {
@@ -192,12 +215,12 @@ void Profile::HelpRegisterDerivedStrings(
       StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));
 }
 
-bool Profile::SaveServices(StoreInterface *storage) {
+bool Profile::SaveServices() {
   for (map<string, ServiceRefPtr>::iterator it = services_.begin();
        it != services_.end();
        ++it) {
     VLOG(1) << "Saving service named " << it->first;
-    if (!it->second->Save(storage))
+    if (!it->second->Save(storage()))
       return false;
   }
   return true;

@@ -25,11 +25,11 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 
 EphemeralProfile::~EphemeralProfile() {}
 
-void EphemeralProfile::Finalize(StoreInterface */*storage*/) {
+void EphemeralProfile::Finalize() {
   services()->clear();
 }
 
-bool EphemeralProfile::Save(StoreInterface */*storage*/) {
+bool EphemeralProfile::Save() {
   NOTREACHED();
   return false;
 }
