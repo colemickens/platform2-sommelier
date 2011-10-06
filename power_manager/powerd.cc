@@ -443,7 +443,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
     SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
-  if (is_idle && backlight_controller_->state() == BACKLIGHT_IDLE_OFF &&
+  if (is_idle && backlight_controller_->state() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
     // Delay suspend if audio is active.
     bool audio_is_playing = false;
