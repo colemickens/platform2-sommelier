@@ -108,7 +108,7 @@ RSAPrivateKey* NssUtilImpl::GetPrivateKey(
     const std::vector<uint8>& public_key_der) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
-    return false;
+    return NULL;
   }
   return RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
 }
