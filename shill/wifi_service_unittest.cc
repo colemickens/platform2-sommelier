@@ -4,6 +4,7 @@
 
 #include "shill/wifi_service.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,7 @@
 #include "shill/shill_event.h"
 #include "shill/wpa_supplicant.h"
 
+using std::map;
 using std::string;
 using std::vector;
 
@@ -77,6 +79,22 @@ TEST_F(WiFiServiceTest, StorageId) {
   size_t mac_pos = id.find(StringToLowerASCII(string(fake_mac)));
   EXPECT_NE(mac_pos, string::npos);
   EXPECT_NE(id.find(string(flimflam::kModeManaged), mac_pos), string::npos);
+}
+
+TEST_F(WiFiServiceTest, NonUTF8SSID) {
+  vector<uint8_t> ssid;
+
+  ssid.push_back(0xff);  // not a valid UTF-8 byte-sequence
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   "none");
+  map<string, ::DBus::Variant> properties;
+  // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
+  DBusAdaptor::GetProperties(wifi_service->store(), &properties, NULL);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {

@@ -79,7 +79,8 @@ Service::Service(ControlInterface *control_interface,
       save_credentials_(true),
       type_(type),
       dispatcher_(dispatcher),
-      name_(base::UintToString(serial_number_++)),
+      unique_name_(base::UintToString(serial_number_++)),
+      friendly_name_(unique_name_),
       available_(false),
       configured_(false),
       configuration_(NULL),
@@ -129,7 +130,7 @@ Service::Service(ControlInterface *control_interface,
                           &Service::IsActive,
                           NULL);
   // flimflam::kModeProperty: Registered in WiFiService
-  store_.RegisterConstString(flimflam::kNameProperty, &name_);
+  store_.RegisterConstString(flimflam::kNameProperty, &friendly_name_);
   // flimflam::kPassphraseProperty: Registered in WiFiService
   // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
@@ -242,7 +243,7 @@ bool Service::Save(StoreInterface *storage) {
     storage->SetString(id, kStorageCheckPortal, check_portal_);
   }
   storage->SetBool(id, kStorageFavorite, favorite_);
-  storage->SetString(id, kStorageName, name_);
+  storage->SetString(id, kStorageName, friendly_name_);
   SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
   if (priority_ != kPriorityNone) {
     storage->SetInt(id, kStoragePriority, priority_);

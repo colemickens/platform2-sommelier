@@ -190,6 +190,8 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
+  VLOG(2) << __func__ << to_manage->UniqueName();
+
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
        it != profiles_.end();
        ++it) {
@@ -201,11 +203,9 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   ephemeral_profile_->AdoptService(to_manage);
 
   // Now add to OUR list.
-  // TODO(cmasone): Keep this list sorted.
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_manage->UniqueName() == (*it)->UniqueName())
-      return;
+    CHECK(to_manage->UniqueName() != (*it)->UniqueName());
   }
   services_.push_back(to_manage);
   SortServices();

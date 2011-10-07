@@ -120,7 +120,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
-  const std::string &UniqueName() const { return name_; }
+  const std::string &UniqueName() const { return unique_name_; }
 
   virtual std::string GetRpcIdentifier() const;
 
@@ -171,8 +171,8 @@ class Service : public base::RefCounted<Service> {
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
-  const std::string &name() const { return name_; }
-  void set_name(const std::string &n) { name_ = n; }
+  const std::string &friendly_name() const { return friendly_name_; }
+  void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   virtual std::string CalculateState();
 
@@ -266,7 +266,8 @@ class Service : public base::RefCounted<Service> {
 
   EventDispatcher *dispatcher_;
   static unsigned int serial_number_;
-  std::string name_;
+  std::string unique_name_;  // MUST be unique amongst service instances
+  std::string friendly_name_;  // MAY be same as |unique_name_|
   bool available_;
   bool configured_;
   Configuration *configuration_;

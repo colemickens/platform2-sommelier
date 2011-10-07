@@ -12,6 +12,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
+#include <glib.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -51,12 +52,16 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
-  store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
 
-  hex_ssid_ = base::HexEncode(&(*ssid_.begin()), ssid_.size());
-  set_name(name() +
-           "_" +
-           string(reinterpret_cast<const char*>(ssid_.data()), ssid_.size()));
+  hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
+  string ssid_string(
+      reinterpret_cast<const char *>(ssid_.data()), ssid_.size());
+  if (SanitizeSSID(&ssid_string)) {
+    // WifiHexSsid property should only be present if Name property
+    // has been munged.
+    store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
+  }
+  set_friendly_name(ssid_string);
 
   // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
   // a service that is not 802.1x.
@@ -282,6 +287,23 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
     error->Populate(Error::kInvalidPassphrase);
     return false;
   }
+}
+
+bool WiFiService::SanitizeSSID(string *ssid) {
+  CHECK(ssid);
+
+  size_t ssid_len = ssid->length();
+  size_t i;
+  bool changed = false;
+
+  for (i=0; i < ssid_len; ++i) {
+    if (!g_ascii_isprint((*ssid)[i])) {
+      (*ssid)[i] = '?';
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 }  // namespace shill
