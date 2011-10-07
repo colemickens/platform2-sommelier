@@ -727,7 +727,7 @@ gboolean Daemon::PollPowerSupply() {
   // Send a signal once the power supply status has been obtained.
   DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
                                                  kPowerManagerInterface,
-                                                 "PowerSupplyPoll");
+                                                 kPowerSupplyPollSignal);
   CHECK(message != NULL);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
