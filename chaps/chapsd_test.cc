@@ -45,6 +45,25 @@ protected:
   scoped_ptr<chaps::ChapsInterface> chaps_;
 };
 
+// Test fixture for testing with a valid open session.
+class TestP11Session : public TestP11 {
+ protected:
+  virtual void SetUp() {
+    TestP11::SetUp();
+    EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
+                                          &session_id_));
+    EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION,
+                                          &readonly_session_id_));
+  }
+  virtual void TearDown() {
+    EXPECT_EQ(CKR_OK, chaps_->CloseSession(session_id_));
+    EXPECT_EQ(CKR_OK, chaps_->CloseSession(readonly_session_id_));
+    TestP11::TearDown();
+  }
+  uint32_t session_id_;
+  uint32_t readonly_session_id_;
+};
+
 TEST_F(TestP11, SlotList) {
   vector<uint32_t> slot_list;
   uint32_t result = chaps_->GetSlotList(false, &slot_list);
@@ -183,17 +202,17 @@ TEST_F(TestP11, InitToken) {
   EXPECT_NE(CKR_OK, chaps_->InitToken(0, NULL, label));
 }
 
-TEST_F(TestP11, InitPIN) {
+TEST_F(TestP11Session, InitPIN) {
   string pin = "test";
-  EXPECT_NE(CKR_OK, chaps_->InitPIN(0, &pin));
-  EXPECT_NE(CKR_OK, chaps_->InitPIN(0, NULL));
+  EXPECT_NE(CKR_OK, chaps_->InitPIN(session_id_, &pin));
+  EXPECT_NE(CKR_OK, chaps_->InitPIN(session_id_, NULL));
 }
 
-TEST_F(TestP11, SetPIN) {
+TEST_F(TestP11Session, SetPIN) {
   string pin = "test";
   string pin2 = "test2";
-  EXPECT_NE(CKR_OK, chaps_->SetPIN(0, &pin, &pin2));
-  EXPECT_NE(CKR_OK, chaps_->SetPIN(0, NULL, NULL));
+  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, &pin, &pin2));
+  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, NULL, NULL));
 }
 
 TEST_F(TestP11, OpenCloseSession) {
@@ -215,6 +234,55 @@ TEST_F(TestP11, OpenCloseSession) {
   EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION, &session));
   EXPECT_EQ(CKR_OK, chaps_->CloseAllSessions(0));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->CloseSession(session));
+}
+
+TEST_F(TestP11Session, GetSessionInfo) {
+  uint32_t slot_id, state, flags, device_error;
+  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(session_id_, &slot_id, &state,
+                                           &flags, &device_error));
+  EXPECT_EQ(0, slot_id);
+  EXPECT_EQ(CKS_RW_PUBLIC_SESSION, state);
+  EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, flags);
+  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(readonly_session_id_, &slot_id,
+                                           &state, &flags, &device_error));
+  EXPECT_EQ(0, slot_id);
+  EXPECT_EQ(CKS_RO_PUBLIC_SESSION, state);
+  EXPECT_EQ(CKF_SERIAL_SESSION, flags);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            chaps_->GetSessionInfo(17, &slot_id, &state, &flags,
+                                   &device_error));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(session_id_,
+                                                      NULL,
+                                                      &state,
+                                                      &flags,
+                                                      &device_error));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(session_id_,
+                                                      &slot_id,
+                                                      NULL,
+                                                      &flags,
+                                                      &device_error));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(session_id_,
+                                                      &slot_id,
+                                                      &state,
+                                                      NULL,
+                                                      &device_error));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetSessionInfo(session_id_,
+                                                      &slot_id,
+                                                      &state,
+                                                      &flags,
+                                                      NULL));
+}
+
+TEST_F(TestP11Session, GetOperationState) {
+  vector<uint8_t> state;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->GetOperationState(17, &state));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetOperationState(session_id_, NULL));
+}
+
+TEST_F(TestP11Session, SetOperationState) {
+  vector<uint8_t> state(10, 0);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            chaps_->SetOperationState(17, state, 0, 0));
 }
 
 int main(int argc, char** argv) {

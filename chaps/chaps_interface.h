@@ -88,6 +88,21 @@ public:
   virtual uint32_t CloseSession(uint32_t session) = 0;
   // PKCS #11 v2.20 section 11.6 page 120.
   virtual uint32_t CloseAllSessions(uint32_t slot_id) = 0;
+  // PKCS #11 v2.20 section 11.6 page 120.
+  virtual uint32_t GetSessionInfo(uint32_t session_id,
+                                  uint32_t* slot_id,
+                                  uint32_t* state,
+                                  uint32_t* flags,
+                                  uint32_t* device_error) = 0;
+  // PKCS #11 v2.20 section 11.6 page 121.
+  virtual uint32_t GetOperationState(uint32_t session_id,
+                                     std::vector<uint8_t>* operation_state) = 0;
+  // PKCS #11 v2.20 section 11.6 page 123.
+  virtual uint32_t SetOperationState(
+      uint32_t session_id,
+      const std::vector<uint8_t>& operation_state,
+      uint32_t encryption_key_handle,
+      uint32_t authentication_key_handle) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

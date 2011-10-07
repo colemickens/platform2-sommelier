@@ -343,3 +343,59 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.6 page 120.
+CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
+
+  CK_RV result = g_proxy->GetSessionInfo(
+      hSession,
+      chaps::PreservedCK_ULONG(&pInfo->slotID),
+      chaps::PreservedCK_ULONG(&pInfo->state),
+      chaps::PreservedCK_ULONG(&pInfo->flags),
+      chaps::PreservedCK_ULONG(&pInfo->ulDeviceError));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.6 page 121.
+CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
+                          CK_BYTE_PTR pOperationState,
+                          CK_ULONG_PTR pulOperationStateLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pulOperationStateLen, CKR_ARGUMENTS_BAD);
+
+  std::vector<uint8_t> operation_state;
+  CK_RV result = g_proxy->GetOperationState(hSession, &operation_state);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Copy the data and length to caller-supplied memory.
+  size_t max_copy = static_cast<size_t>(*pulOperationStateLen);
+  *pulOperationStateLen = static_cast<CK_ULONG>(operation_state.size());
+  if (!pOperationState)
+    return CKR_OK;
+  LOG_CK_RV_AND_RETURN_IF(operation_state.size() > max_copy,
+                          CKR_BUFFER_TOO_SMALL);
+  memcpy(pOperationState, &operation_state.front(), operation_state.size());
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.6 page 123.
+CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
+                          CK_BYTE_PTR pOperationState,
+                          CK_ULONG ulOperationStateLen,
+                          CK_OBJECT_HANDLE hEncryptionKey,
+                          CK_OBJECT_HANDLE hAuthenticationKey) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pOperationState, CKR_ARGUMENTS_BAD);
+
+  vector<uint8_t> operation_state(&pOperationState[0],
+                                  &pOperationState[ulOperationStateLen]);
+  CK_RV result = g_proxy->SetOperationState(hSession,
+                                            operation_state,
+                                            hEncryptionKey,
+                                            hAuthenticationKey);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+

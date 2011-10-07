@@ -70,7 +70,13 @@ public:
   MOCK_METHOD3(OpenSession, uint32_t (uint32_t, uint32_t, uint32_t*));
   MOCK_METHOD1(CloseSession, uint32_t (uint32_t));
   MOCK_METHOD1(CloseAllSessions, uint32_t (uint32_t));
-
+  MOCK_METHOD5(GetSessionInfo, uint32_t (uint32_t, uint32_t*, uint32_t*,
+                                         uint32_t*, uint32_t*));
+  MOCK_METHOD2(GetOperationState, uint32_t (uint32_t, std::vector<uint8_t>*));
+  MOCK_METHOD4(SetOperationState, uint32_t (uint32_t,
+                                            const std::vector<uint8_t>&,
+                                            uint32_t,
+                                            uint32_t));
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);
 };

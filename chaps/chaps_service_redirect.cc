@@ -203,8 +203,8 @@ uint32_t ChapsServiceRedirect::GetMechanismInfo(uint32_t slot_id,
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
   CK_MECHANISM_INFO mech_info;
   CK_RV result = functions_->C_GetMechanismInfo(slot_id,
-                                                   mechanism_type,
-                                                   &mech_info);
+                                                mechanism_type,
+                                                &mech_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *min_key_size = static_cast<uint32_t>(mech_info.ulMinKeySize);
   *max_key_size = static_cast<uint32_t>(mech_info.ulMaxKeySize);
@@ -278,6 +278,59 @@ uint32_t ChapsServiceRedirect::CloseSession(uint32_t session_id) {
 uint32_t ChapsServiceRedirect::CloseAllSessions(uint32_t slot_id) {
   CHECK(functions_);
   uint32_t result = functions_->C_CloseAllSessions(slot_id);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetSessionInfo(uint32_t session_id,
+                                              uint32_t* slot_id,
+                                              uint32_t* state,
+                                              uint32_t* flags,
+                                              uint32_t* device_error) {
+  CHECK(functions_);
+  if (!slot_id || !state || !flags || !device_error)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  CK_SESSION_INFO info;
+  uint32_t result = functions_->C_GetSessionInfo(session_id, &info);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *slot_id = static_cast<uint32_t>(info.slotID);
+  *state = static_cast<uint32_t>(info.state);
+  *flags = static_cast<uint32_t>(info.flags);
+  *device_error = static_cast<uint32_t>(info.ulDeviceError);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetOperationState(
+    uint32_t session_id,
+    std::vector<uint8_t>* operation_state) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
+  CK_ULONG size = 0;
+  // First, call with NULL to retrieve the state size.
+  CK_RV result = functions_->C_GetOperationState(session_id, NULL, &size);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  scoped_array<CK_BYTE> buffer(new CK_BYTE[size]);
+  LOG_CK_RV_AND_RETURN_IF(!buffer.get(), CKR_HOST_MEMORY);
+  // Now, get the actual state data.
+  result = functions_->C_GetOperationState(session_id, buffer.get(), &size);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  operation_state->assign(&buffer[0], &buffer[size]);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SetOperationState(
+    uint32_t session_id,
+    const std::vector<uint8_t>& operation_state,
+    uint32_t encryption_key_handle,
+    uint32_t authentication_key_handle) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_SetOperationState(
+      session_id,
+      static_cast<CK_BYTE_PTR>(
+          const_cast<unsigned char*>(&operation_state.front())),
+      static_cast<CK_ULONG>(operation_state.size()),
+      static_cast<CK_OBJECT_HANDLE>(encryption_key_handle),
+      static_cast<CK_OBJECT_HANDLE>(authentication_key_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

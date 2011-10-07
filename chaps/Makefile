@@ -57,6 +57,11 @@ RM_ON_CLEAN += $(OUT)chaps_live_test
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
+lib: $(OUT)libchaps.so
+
+chapsd: $(OUT)chapsd
+	@echo
+
 dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
               $(OUT)include/chaps/chaps_proxy_generated.h
 

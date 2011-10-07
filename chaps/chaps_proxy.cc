@@ -268,4 +268,57 @@ uint32_t ChapsProxyImpl::CloseAllSessions(uint32_t slot_id) {
   return result;
 }
 
+uint32_t ChapsProxyImpl::GetSessionInfo(uint32_t session_id,
+                                        uint32_t* slot_id,
+                                        uint32_t* state,
+                                        uint32_t* flags,
+                                        uint32_t* device_error) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!slot_id || !state || !flags || !device_error)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->GetSessionInfo(session_id, *slot_id, *state, *flags, *device_error,
+                           result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::GetOperationState(
+    uint32_t session_id,
+    std::vector<uint8_t>* operation_state) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->GetOperationState(session_id, *operation_state, result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::SetOperationState(
+    uint32_t session_id,
+    const std::vector<uint8_t>& operation_state,
+    uint32_t encryption_key_handle,
+    uint32_t authentication_key_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->SetOperationState(session_id,
+                                       operation_state,
+                                       encryption_key_handle,
+                                       authentication_key_handle);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

@@ -72,6 +72,18 @@ public:
                                uint32_t* session_id);
   virtual uint32_t CloseSession(uint32_t session_id);
   virtual uint32_t CloseAllSessions(uint32_t slot_id);
+  virtual uint32_t GetSessionInfo(uint32_t session_id,
+                                  uint32_t* slot_id,
+                                  uint32_t* state,
+                                  uint32_t* flags,
+                                  uint32_t* device_error);
+  virtual uint32_t GetOperationState(uint32_t session_id,
+                                     std::vector<uint8_t>* operation_state);
+  virtual uint32_t SetOperationState(
+      uint32_t session_id,
+      const std::vector<uint8_t>& operation_state,
+      uint32_t encryption_key_handle,
+      uint32_t authentication_key_handle);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.

@@ -163,4 +163,37 @@ uint32_t ChapsAdaptor::CloseAllSessions(const uint32_t& slot_id,
   return service_->CloseAllSessions(slot_id);
 }
 
+void ChapsAdaptor::GetSessionInfo(const uint32_t& session_id,
+                                  uint32_t& slot_id,
+                                  uint32_t& state,
+                                  uint32_t& flags,
+                                  uint32_t& device_error,
+                                  uint32_t& result,
+                                  ::DBus::Error &error) {
+  result = service_->GetSessionInfo(session_id,
+                                    &slot_id,
+                                    &state,
+                                    &flags,
+                                    &device_error);
+}
+
+void ChapsAdaptor::GetOperationState(const uint32_t& session_id,
+                                     std::vector<uint8_t>& operation_state,
+                                     uint32_t& result,
+                                     ::DBus::Error &error) {
+  result = service_->GetOperationState(session_id, &operation_state);
+}
+
+uint32_t ChapsAdaptor::SetOperationState(
+      const uint32_t& session_id,
+      const std::vector<uint8_t>& operation_state,
+      const uint32_t& encryption_key_handle,
+      const uint32_t& authentication_key_handle,
+      ::DBus::Error &error) {
+  return service_->SetOperationState(session_id,
+                                     operation_state,
+                                     encryption_key_handle,
+                                     authentication_key_handle);
+}
+
 }  // namespace

@@ -94,6 +94,23 @@ public:
                                 ::DBus::Error &error);
   virtual uint32_t CloseAllSessions(const uint32_t& slot_id,
                                     ::DBus::Error &error);
+  virtual void GetSessionInfo(const uint32_t& session_id,
+                              uint32_t& slot_id,
+                              uint32_t& state,
+                              uint32_t& flags,
+                              uint32_t& device_error,
+                              uint32_t& result,
+                              ::DBus::Error &error);
+  virtual void GetOperationState(const uint32_t& session_id,
+                                 std::vector<uint8_t>& operation_state,
+                                 uint32_t& result,
+                                 ::DBus::Error &error);
+  virtual uint32_t SetOperationState(
+      const uint32_t& session_id,
+      const std::vector<uint8_t>& operation_state,
+      const uint32_t& encryption_key_handle,
+      const uint32_t& authentication_key_handle,
+      ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

@@ -521,7 +521,7 @@ TEST(TestSetPIN,SetPINFail) {
 }
 
 // Open Session Tests
-TEST(OpenSession, OpenSessionOK) {
+TEST(TestOpenSession, OpenSessionOK) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, OpenSession(1,CKF_SERIAL_SESSION,_))
       .WillOnce(DoAll(SetArgumentPointee<2>(3), Return(CKR_OK)));
@@ -530,20 +530,20 @@ TEST(OpenSession, OpenSessionOK) {
   EXPECT_EQ(session, 3);
 }
 
-TEST(OpenSession,OpenSessionNotInit) {
+TEST(TestOpenSession,OpenSessionNotInit) {
   chaps::ChapsProxyMock proxy(false);
   CK_SESSION_HANDLE session;
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
             C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, &session));
 }
 
-TEST(OpenSession,OpenSessionNull) {
+TEST(TestOpenSession,OpenSessionNull) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, NULL));
 }
 
-TEST(OpenSession,OpenSessionFail) {
+TEST(TestOpenSession,OpenSessionFail) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, OpenSession(1,CKF_SERIAL_SESSION,_))
       .WillOnce(Return(CKR_SESSION_COUNT));
@@ -553,42 +553,180 @@ TEST(OpenSession,OpenSessionFail) {
 }
 
 // Close Session Tests
-TEST(CloseSession, CloseSessionOK) {
+TEST(TestCloseSession, CloseSessionOK) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, CloseSession(1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_CloseSession(1));
 }
 
-TEST(CloseSession,CloseSessionNotInit) {
+TEST(TestCloseSession,CloseSessionNotInit) {
   chaps::ChapsProxyMock proxy(false);
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_CloseSession(1));
 }
 
-TEST(CloseSession,CloseSessionFail) {
+TEST(TestCloseSession,CloseSessionFail) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, CloseSession(1))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_CloseSession(1));
 }
 
-TEST(CloseSession, CloseAllSessionsOK) {
+TEST(TestCloseSession, CloseAllSessionsOK) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, CloseAllSessions(1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_CloseAllSessions(1));
 }
 
-TEST(CloseSession,CloseAllSessionsNotInit) {
+TEST(TestCloseSession,CloseAllSessionsNotInit) {
   chaps::ChapsProxyMock proxy(false);
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_CloseAllSessions(1));
 }
 
-TEST(CloseSession,CloseAllSessionsFail) {
+TEST(TestCloseSession,CloseAllSessionsFail) {
   chaps::ChapsProxyMock proxy(true);
   EXPECT_CALL(proxy, CloseAllSessions(1))
       .WillOnce(Return(CKR_SLOT_ID_INVALID));
   EXPECT_EQ(CKR_SLOT_ID_INVALID, C_CloseAllSessions(1));
+}
+
+// Get Session Info Tests
+TEST(TestGetSessionInfo, GetSessionInfoOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetSessionInfo(1,_,_,_,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(2), Return(CKR_OK)));
+  CK_SESSION_INFO info;
+  EXPECT_EQ(CKR_OK, C_GetSessionInfo(1, &info));
+  EXPECT_EQ(2, info.slotID);
+}
+
+TEST(TestGetSessionInfo,GetSessionInfoNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_SESSION_INFO info;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_GetSessionInfo(1, &info));
+}
+
+TEST(TestGetSessionInfo,GetSessionInfoNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GetSessionInfo(1, NULL));
+}
+
+TEST(TestGetSessionInfo,GetSessionInfoFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetSessionInfo(1,_,_,_,_))
+      .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
+  CK_SESSION_INFO info;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_GetSessionInfo(1, &info));
+}
+
+// Get Operation State Tests
+class TestGetOperationState : public ::testing::Test {
+protected:
+  virtual void SetUp() {
+    uint8_t byte_array[3] = {1, 2, 3};
+    buffer_.assign(&byte_array[0], &byte_array[3]);
+  }
+  vector<uint8_t> buffer_;
+};
+
+TEST_F(TestGetOperationState, GetOperationStateOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetOperationState(1,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_OK, C_GetOperationState(1, buffer, &size));
+  EXPECT_EQ(buffer[0], buffer_[0]);
+  EXPECT_EQ(buffer[1], buffer_[1]);
+  EXPECT_EQ(buffer[2], buffer_[2]);
+}
+
+TEST_F(TestGetOperationState,GetOperationStateNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GetOperationState(CK_FALSE, NULL, NULL));
+}
+
+TEST_F(TestGetOperationState,GetOperationStateNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_GetOperationState(1, buffer, &size));
+}
+
+TEST_F(TestGetOperationState,GetOperationStateNoBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetOperationState(1,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  CK_ULONG size = 17;
+  EXPECT_EQ(CKR_OK, C_GetOperationState(1, NULL, &size));
+  EXPECT_EQ(size, buffer_.size());
+}
+
+TEST_F(TestGetOperationState,GetOperationStateSmallBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetOperationState(1,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  CK_BYTE buffer[2];
+  CK_ULONG size = 2;
+  EXPECT_EQ(CKR_BUFFER_TOO_SMALL, C_GetOperationState(1, buffer, &size));
+  EXPECT_EQ(size, buffer_.size());
+}
+
+TEST_F(TestGetOperationState,GetOperationStateLargeBuffer) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetOperationState(1,_))
+      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  CK_BYTE buffer[4];
+  CK_ULONG size = 4;
+  EXPECT_EQ(CKR_OK, C_GetOperationState(1, buffer, &size));
+  EXPECT_EQ(size, buffer_.size());
+  EXPECT_EQ(buffer[0], buffer_[0]);
+  EXPECT_EQ(buffer[1], buffer_[1]);
+  EXPECT_EQ(buffer[2], buffer_[2]);
+}
+
+TEST_F(TestGetOperationState,GetOperationStateFailure) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GetOperationState(1,_))
+      .WillOnce(Return(CKR_STATE_UNSAVEABLE));
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_STATE_UNSAVEABLE, C_GetOperationState(1, buffer, &size));
+}
+
+// Set Operation State Tests
+TEST(TestSetOperationState, SetOperationStateOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SetOperationState(1,_,2,3))
+      .WillOnce(Return(CKR_OK));
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_OK, C_SetOperationState(1, buffer, size, 2, 3));
+}
+
+TEST(TestSetOperationState,SetOperationStateNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_SetOperationState(1, buffer, size, 2, 3));
+}
+
+TEST(TestSetOperationState,SetOperationStateNull) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SetOperationState(1, NULL, 0, 2, 3));
+}
+
+TEST(TestSetOperationState,SetOperationStateFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SetOperationState(1,_,2,3))
+      .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
+  CK_BYTE buffer[3];
+  CK_ULONG size = 3;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            C_SetOperationState(1, buffer, size, 2, 3));
 }
 
 int main(int argc, char** argv) {
