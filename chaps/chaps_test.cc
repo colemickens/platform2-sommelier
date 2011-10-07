@@ -729,6 +729,54 @@ TEST(TestSetOperationState,SetOperationStateFail) {
             C_SetOperationState(1, buffer, size, 2, 3));
 }
 
+// Login Tests
+TEST(TestLogin,LoginOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Login(1,CKU_USER,_))
+      .WillOnce(Return(CKR_OK));
+  CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
+  EXPECT_EQ(CKR_OK, C_Login(1, CKU_USER, pin, 4));
+}
+
+TEST(TestLogin,LoginNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Login(1, CKU_USER, NULL, 0));
+}
+
+TEST(TestLogin,LoginNULLPin) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Login(1,CKU_USER,_))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_Login(1, CKU_USER, NULL, 0));
+}
+
+TEST(TestLogin,LoginFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Login(1,CKU_USER,_))
+      .WillOnce(Return(CKR_PIN_INVALID));
+  EXPECT_EQ(CKR_PIN_INVALID, C_Login(1, CKU_USER, NULL, 0));
+}
+
+// Logout Tests
+TEST(TestLogout,LogoutOK) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Logout(1))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_Logout(1));
+}
+
+TEST(TestLogout,LogoutNotInit) {
+  chaps::ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Logout(1));
+}
+
+TEST(TestLogout,LogoutFail) {
+  chaps::ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Logout(1))
+      .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_Logout(1));
+}
+
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);
   return RUN_ALL_TESTS();

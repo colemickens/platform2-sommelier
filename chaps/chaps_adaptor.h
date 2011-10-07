@@ -111,6 +111,12 @@ public:
       const uint32_t& encryption_key_handle,
       const uint32_t& authentication_key_handle,
       ::DBus::Error &error);
+  virtual uint32_t Login(const uint32_t& session_id,
+                         const uint32_t& user_type,
+                         const bool& use_null_pin,
+                         const std::string& optional_pin,
+                         ::DBus::Error &error);
+  virtual uint32_t Logout(const uint32_t& session_id, ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

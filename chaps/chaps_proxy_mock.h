@@ -77,6 +77,9 @@ public:
                                             const std::vector<uint8_t>&,
                                             uint32_t,
                                             uint32_t));
+  MOCK_METHOD3(Login, uint32_t (uint32_t, uint32_t, const std::string*));
+  MOCK_METHOD1(Logout, uint32_t (uint32_t));
+
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);
 };

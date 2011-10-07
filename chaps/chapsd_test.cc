@@ -285,6 +285,19 @@ TEST_F(TestP11Session, SetOperationState) {
             chaps_->SetOperationState(17, state, 0, 0));
 }
 
+TEST_F(TestP11Session, Login) {
+  string pin = "test";
+  EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, &pin));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Login(17, CKU_USER, &pin));
+  EXPECT_EQ(CKR_USER_TYPE_INVALID, chaps_->Login(session_id_, 17, &pin));
+  EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, NULL));
+}
+
+TEST_F(TestP11Session, Logout) {
+  EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, chaps_->Logout(session_id_));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Logout(17));
+}
+
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   ::testing::InitGoogleTest(&argc, argv);

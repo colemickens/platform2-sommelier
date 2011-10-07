@@ -84,6 +84,10 @@ public:
       const std::vector<uint8_t>& operation_state,
       uint32_t encryption_key_handle,
       uint32_t authentication_key_handle);
+  virtual uint32_t Login(uint32_t session_id,
+                         uint32_t user_type,
+                         const std::string* pin);
+  virtual uint32_t Logout(uint32_t session_id);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.

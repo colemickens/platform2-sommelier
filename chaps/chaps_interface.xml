@@ -190,6 +190,24 @@
       </arg>
     </method>
 
+    <!-- PKCS #11 v2.20 section 11.6 page 125. -->
+    <method name="Login">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="user_type" direction="in"/>
+      <arg type="b" name="use_null_pin" direction="in"/>
+      <arg type="s" name="optional_pin" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.6 page 127. -->
+    <method name="Logout">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
   </interface>
 </node>
 

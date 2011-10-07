@@ -103,6 +103,12 @@ public:
       const std::vector<uint8_t>& operation_state,
       uint32_t encryption_key_handle,
       uint32_t authentication_key_handle) = 0;
+  // PKCS #11 v2.20 section 11.6 page 125.
+  virtual uint32_t Login(uint32_t session_id,
+                         uint32_t user_type,
+                         const std::string* pin) = 0;
+  // PKCS #11 v2.20 section 11.6 page 127.
+  virtual uint32_t Logout(uint32_t session_id) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

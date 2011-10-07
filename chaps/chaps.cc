@@ -399,3 +399,24 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
   return CKR_OK;
 }
 
+CK_RV C_Login(CK_SESSION_HANDLE hSession,
+              CK_USER_TYPE userType,
+              CK_UTF8CHAR_PTR pPin,
+              CK_ULONG ulPinLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  string pin = chaps::CharBufferToString(pPin, ulPinLen);
+  string* pin_ptr = (!pPin) ? NULL : &pin;
+  CK_RV result = g_proxy->Login(hSession, userType, pin_ptr);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+
+CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = g_proxy->Logout(hSession);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+

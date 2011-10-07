@@ -196,4 +196,18 @@ uint32_t ChapsAdaptor::SetOperationState(
                                      authentication_key_handle);
 }
 
+uint32_t ChapsAdaptor::Login(const uint32_t& session_id,
+                         const uint32_t& user_type,
+                         const bool& use_null_pin,
+                         const std::string& optional_pin,
+                         ::DBus::Error &error) {
+  const string* pin = use_null_pin ? NULL : &optional_pin;
+  return service_->Login(session_id, user_type, pin);
+}
+
+uint32_t ChapsAdaptor::Logout(const uint32_t& session_id,
+                              ::DBus::Error &error) {
+  return service_->Logout(session_id);
+}
+
 }  // namespace

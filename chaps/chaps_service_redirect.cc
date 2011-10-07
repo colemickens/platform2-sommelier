@@ -335,4 +335,26 @@ uint32_t ChapsServiceRedirect::SetOperationState(
   return CKR_OK;
 }
 
+uint32_t ChapsServiceRedirect::Login(uint32_t session_id,
+                                     uint32_t user_type,
+                                     const std::string* pin) {
+  CHECK(functions_);
+  CK_UTF8CHAR_PTR pin_buffer = pin ? StringToCharBuffer(pin->data()) : NULL;
+  CK_ULONG pin_length = pin ? static_cast<CK_ULONG>(pin->length()) : 0;
+  uint32_t result = functions_->C_Login(session_id,
+                                        user_type,
+                                        pin_buffer,
+                                        pin_length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  LOG(INFO) << "Login success!";
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Logout(uint32_t session_id) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_Logout(session_id);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
 }  // namespace

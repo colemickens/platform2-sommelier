@@ -321,4 +321,33 @@ uint32_t ChapsProxyImpl::SetOperationState(
   return result;
 }
 
+uint32_t ChapsProxyImpl::Login(uint32_t session_id,
+                               uint32_t user_type,
+                               const std::string* pin) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    string tmp_pin;
+    if (pin)
+      tmp_pin = *pin;
+    result = proxy_->Login(session_id, user_type, (pin == NULL), tmp_pin);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::Logout(uint32_t session_id) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->Logout(session_id);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace
