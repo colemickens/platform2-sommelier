@@ -49,3 +49,4 @@ update_engine.log,cat $(ls -1tr /var/log/update_engine | tail -5 | sed s.^./var/
 verified boot,/usr/share/userfeedback/scripts/get_log /var/log/debug_vboot_noisy.log
 vpd_2.0,/usr/share/userfeedback/scripts/get_log /var/log/vpd_2.0.txt
 setxkbmap,/usr/bin/setxkbmap -print -query
+wifi_status,/usr/bin/network_diagnostics --wifi
