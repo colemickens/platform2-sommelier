@@ -208,7 +208,15 @@ gboolean GobiGsmModem::NewSmsCallback(gpointer data) {
       static_cast<GobiGsmModem *>(handler_->LookupByDbusPath(*args->path));
   if (modem == NULL)
     return FALSE;
-  modem->SmsReceived(args->message_index, true);
+
+  DBus::Error error;
+  SmsMessage* sms = modem->sms_cache_.SmsReceived(args->message_index, error,
+                                                  modem);
+  if (error.is_set())
+    return FALSE;
+
+  modem->SmsReceived(sms->index(), sms->is_complete());
+
   return FALSE;
 }
 
@@ -693,34 +701,58 @@ std::string GobiGsmModem::GetMsIsdn(DBus::Error& error) {
 //======================================================================
 // DBUS Methods: Modem.Gsm.SMS
 
-void GobiGsmModem::Delete(const uint32_t& index, DBus::Error &error) {
+SmsMessageFragment* GobiGsmModem::GetSms(int index, DBus::Error& error)
+{
+  ULONG tag, format, size;
+  BYTE message[200];
+
+  size = sizeof(message);
+  ULONG rc = sdk_->GetSMS(gobi::kSmsNonVolatileMemory, index,
+                          &tag, &format, &size, message);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMS, rc, kSdkError, NULL);
+
+  LOG(INFO) << "GetSms: " << "tag " << tag << " format " << format
+            << " size " << size;
+
+  return SmsMessageFragment::CreateFragment(message, size, index);
+}
+
+void GobiGsmModem::DeleteSms(int index, DBus::Error& error)
+{
   ULONG lindex = index;
   ULONG rc = sdk_->DeleteSMS(gobi::kSmsNonVolatileMemory, &lindex, NULL);
   ENSURE_SDK_SUCCESS(DeleteSMS, rc, kSdkError);
 }
 
+std::vector<int> GobiGsmModem::ListSms(DBus::Error& error)
+{
+  ULONG items[100];
+  ULONG num_items;
+  std::vector<int> result;
+
+  num_items = sizeof(items) / (2 * sizeof(items[0]));
+  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL,
+                              &num_items, (BYTE *)items);
+  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, result);
+  LOG(INFO) << "GetSmsList: got " << num_items << " messages";
+
+  for (ULONG i = 0 ; i < num_items ; i++)
+    result.push_back(items[2 * i]);
+
+  return result;
+}
+
+void GobiGsmModem::Delete(const uint32_t& index, DBus::Error &error) {
+  sms_cache_.Delete(index, error, this);
+}
+
 utilities::DBusPropertyMap GobiGsmModem::Get(const uint32_t& index,
                                              DBus::Error &error) {
-  ULONG tag, format, size;
-  BYTE message[400];
-  utilities::DBusPropertyMap result;
+  return sms_cache_.Get(index, error, this);
+}
 
-  size = sizeof(message);
-  ULONG rc = sdk_->GetSMS(gobi::kSmsNonVolatileMemory, index,
-                          &tag, &format, &size, message);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMS, rc, kSdkError, result);
-  LOG(INFO) << "GetSms: " << "tag " << tag << " format " << format
-            << " size " << size;
-
-  scoped_ptr<SmsMessage> sms(SmsMessage::CreateMessage(message, size));
-
-  if (sms.get() != NULL) {
-    result["number"].writer().append_string(sms->sender_address().c_str());
-    result["smsc"].writer().append_string(sms->smsc_address().c_str());
-    result["text"].writer().append_string(sms->text().c_str());
-    result["timestamp"].writer().append_string(sms->timestamp().c_str());
-  }
-  return result;
+std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
+  return sms_cache_.List(error, this);
 }
 
 std::string GobiGsmModem::GetSmsc(DBus::Error &error) {
@@ -742,27 +774,6 @@ void GobiGsmModem::SetSmsc(const std::string& smsc, DBus::Error &error) {
   ENSURE_SDK_SUCCESS(GetSMSCAddress, rc, kSdkError);
 }
 
-std::vector<utilities::DBusPropertyMap> GobiGsmModem::List(DBus::Error &error) {
-  std::vector<utilities::DBusPropertyMap> result;
-  ULONG items[100];
-  ULONG num_items;
-
-  num_items = sizeof(items) / (2 * sizeof(items[0]));
-  ULONG rc = sdk_->GetSMSList(gobi::kSmsNonVolatileMemory, NULL,
-                              &num_items, (BYTE *)items);
-  ENSURE_SDK_SUCCESS_WITH_RESULT(GetSMSList, rc, kSdkError, result);
-  LOG(INFO) << "GetSmsList: got " << num_items << " messages";
-
-  for (ULONG i = 0 ; i < num_items ; i++) {
-    int index = items[2 * i];
-    utilities::DBusPropertyMap sms_result;
-    sms_result = GobiGsmModem::Get(index, error);
-    sms_result["index"].writer().append_uint32(index);
-    result.push_back(sms_result);
-  }
-
-  return result;
-}
 
 std::vector<uint32_t> GobiGsmModem::Save(
     const utilities::DBusPropertyMap& properties,

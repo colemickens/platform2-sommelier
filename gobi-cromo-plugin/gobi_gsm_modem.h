@@ -12,12 +12,15 @@
 #include <cromo/modem-gsm-card_server_glue.h>
 #include <cromo/modem-gsm-network_server_glue.h>
 #include <cromo/modem-gsm-sms_server_glue.h>
+#include <cromo/sms_cache.h>
+
 class GobiModem;
 
 typedef std::vector<std::map<std::string, std::string> > ScannedNetworkList;
 
 class GobiGsmModem
     : public GobiModem,
+      public SmsModemOperations,
       public org::freedesktop::ModemManager::Modem::Gsm_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::Card_adaptor,
       public org::freedesktop::ModemManager::Modem::Gsm::Network_adaptor,
@@ -85,6 +88,11 @@ class GobiGsmModem
                              const uint32_t& bfr,
                              DBus::Error &error);
 
+  // Low-level implementation routines for the SMS code
+  virtual SmsMessageFragment* GetSms(int index, DBus::Error& error);
+  virtual void DeleteSms(int index, DBus::Error& error);
+  virtual std::vector<int> ListSms(DBus::Error& error) ;
+
  protected:
   void GetGsmRegistrationInfo(uint32_t* registration_state,
                               std::string* operator_code,
@@ -127,6 +135,7 @@ class GobiGsmModem
 
   static gboolean CheckDataCapabilities(gpointer data);
 
+  SmsCache sms_cache_;
 };
 
 
