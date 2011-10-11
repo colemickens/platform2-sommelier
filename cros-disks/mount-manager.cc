@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <utility>
 
 #include <base/file_path.h>
 #include <base/logging.h>
@@ -17,6 +18,7 @@
 
 using std::map;
 using std::pair;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -83,7 +85,7 @@ MountErrorType MountManager::Mount(const string& source_path,
     //                with those used in previous mount.
     if (mount_path->empty() || *mount_path == actual_mount_path) {
       *mount_path = actual_mount_path;
-      return kMountErrorNone;
+      return GetMountErrorOfReservedMountPath(actual_mount_path);
     } else {
       return kMountErrorPathAlreadyMounted;
     }
@@ -94,7 +96,7 @@ MountErrorType MountManager::Mount(const string& source_path,
     actual_mount_path = SuggestMountPath(source_path);
     mount_path_created =
         platform_->CreateOrReuseEmptyDirectoryWithFallback(
-            &actual_mount_path, kMaxNumMountTrials, reserved_mount_paths_);
+            &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
   } else {
     actual_mount_path = *mount_path;
     mount_path_created = !IsMountPathReserved(actual_mount_path) &&
@@ -124,7 +126,7 @@ MountErrorType MountManager::Mount(const string& source_path,
   } else if (ShouldReserveMountPathOnError(error_type)) {
     LOG(INFO) << "Reserving mount path '" << actual_mount_path
               << "' for '" << source_path << "'";
-    ReserveMountPath(actual_mount_path);
+    ReserveMountPath(actual_mount_path, error_type);
   } else {
     LOG(ERROR) << "Failed to mount path '" << source_path << "'";
     platform_->RemoveEmptyDirectory(actual_mount_path);
@@ -231,8 +233,30 @@ bool MountManager::IsMountPathReserved(const string& mount_path) const {
   return ContainsKey(reserved_mount_paths_, mount_path);
 }
 
-void MountManager::ReserveMountPath(const string& mount_path) {
-  reserved_mount_paths_.insert(mount_path);
+MountErrorType MountManager::GetMountErrorOfReservedMountPath(
+    const string& mount_path) const {
+  ReservedMountPathMap::const_iterator path_iterator =
+      reserved_mount_paths_.find(mount_path);
+  if (path_iterator != reserved_mount_paths_.end()) {
+    return path_iterator->second;
+  }
+  return kMountErrorNone;
+}
+
+set<string> MountManager::GetReservedMountPaths() const {
+  set<string> reserved_paths;
+  for (ReservedMountPathMap::const_iterator
+       path_iterator = reserved_mount_paths_.begin();
+       path_iterator != reserved_mount_paths_.end();
+       ++path_iterator) {
+    reserved_paths.insert(path_iterator->first);
+  }
+  return reserved_paths;
+}
+
+void MountManager::ReserveMountPath(const string& mount_path,
+                                    MountErrorType error_type) {
+  reserved_mount_paths_.insert(std::make_pair(mount_path, error_type));
 }
 
 void MountManager::UnreserveMountPath(const string& mount_path) {

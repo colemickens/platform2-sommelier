@@ -100,11 +100,23 @@ class MountManager {
   // is not found in the cache.
   bool RemoveMountPathFromCache(const std::string& mount_path);
 
-  // Return true if |mount_path| is reserved.
+  // Returns true if |mount_path| is reserved.
   bool IsMountPathReserved(const std::string& mount_path) const;
 
-  // Adds |mount_path| to the set of reserved mount paths.
-  void ReserveMountPath(const std::string& mount_path);
+  // Returns the mount error that caused |mount_path| to be reserved, or
+  // kMountErrorNone if |mount_path| is not a reserved path.
+  MountErrorType GetMountErrorOfReservedMountPath(
+      const std::string& mount_path) const;
+
+  // Returns a set of reserved mount paths.
+  std::set<std::string> GetReservedMountPaths() const;
+
+  // Adds |mount_path| to the set of reserved mount paths. Also records
+  // |error_type| that caused the mount path to be reserved. If a |mount_path|
+  // has been reserved, subsequent calls to this method with the same
+  // |mount_path| but different |error_type| are ignored.
+  void ReserveMountPath(const std::string& mount_path,
+                        MountErrorType error_type);
 
   // Removes |mount_path| from the set of reserved mount paths.
   void UnreserveMountPath(const std::string& mount_path);
@@ -113,6 +125,10 @@ class MountManager {
   // Type definition of a cache mapping a source path to its mount path of
   // filesystems mounted by the manager.
   typedef std::map<std::string, std::string> MountPathMap;
+
+  // Type definition of a cache mapping a reserved mount path to the mount
+  // error that caused the mount path to be reserved.
+  typedef std::map<std::string, MountErrorType> ReservedMountPathMap;
 
   // Implemented by a derived class to mount |source_path| to |mount_path|
   // as |filesystem_type| with |options|.
@@ -151,8 +167,9 @@ class MountManager {
   // The root directory under which mount directories are created.
   std::string mount_root_;
 
-  // A set of reserved mount paths.
-  std::set<std::string> reserved_mount_paths_;
+  // A cache mapping a reserved mount path to the error that caused
+  // the path to reserved.
+  ReservedMountPathMap reserved_mount_paths_;
 
   // An object that provides platform service.
   Platform* platform_;
