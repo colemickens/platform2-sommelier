@@ -52,8 +52,18 @@ const char* CK_RVToString(CK_RV value);
 // This function constructs a string object from a CK_UTF8CHAR array.  The array
 // does not need to be NULL-terminated. If buffer is NULL, an empty string will
 // be returned.
-inline std::string CharBufferToString(CK_UTF8CHAR_PTR buffer,
-                                      size_t buffer_size) {
+inline std::string ConvertCharBufferToString(CK_UTF8CHAR_PTR buffer,
+                                             size_t buffer_size) {
+  if (!buffer)
+    return std::string();
+  return std::string(reinterpret_cast<char*>(buffer), buffer_size);
+}
+
+// This function constructs a string object from a CK_BYTE array.  The array
+// does not need to be NULL-terminated. If buffer is NULL, an empty string will
+// be returned.
+inline std::string ConvertByteBufferToString(CK_BYTE_PTR buffer,
+                                             CK_ULONG buffer_size) {
   if (!buffer)
     return std::string();
   return std::string(reinterpret_cast<char*>(buffer), buffer_size);
@@ -61,8 +71,22 @@ inline std::string CharBufferToString(CK_UTF8CHAR_PTR buffer,
 
 // This functions converts a string to a CK_UTF8CHAR_PTR which points to the
 // same buffer.
-inline CK_UTF8CHAR_PTR StringToCharBuffer(const char* str) {
+inline CK_UTF8CHAR_PTR ConvertStringToCharBuffer(const char* str) {
   return reinterpret_cast<CK_UTF8CHAR_PTR>(const_cast<char*>(str));
+}
+
+// This function changes the container class for an array of bytes from string
+// to vector.
+inline std::vector<uint8_t> ConvertByteStringToVector(const std::string& s) {
+  const uint8_t* front = reinterpret_cast<const uint8_t*>(s.data());
+  return std::vector<uint8_t>(front, front + s.length());
+}
+
+// This function changes the container class for an array of bytes from vector
+// to string.
+inline std::string ConvertByteVectorToString(const std::vector<uint8_t>& v) {
+  const char* front = reinterpret_cast<const char*>(&v.front());
+  return std::string(front, v.size());
 }
 
 // This class preserves a variable that needs to be temporarily converted to
@@ -89,40 +113,6 @@ class PreservedValue {
 
 typedef PreservedValue<CK_ULONG, uint32_t> PreservedCK_ULONG;
 typedef PreservedValue<uint32_t, CK_ULONG> PreservedUint32_t;
-
-// This function encodes a PKCS #11 template as an attribute-value map.
-AttributeValueMap EncodeAttributes(CK_ATTRIBUTE_PTR attributes,
-                                   CK_ULONG num_attributes);
-
-// This function decodes an attribute-value map into a PKCS #11 template.  The
-// number of attributes in the template will always be the same as the size of
-// the attribute map provided. The CK_ATTRIBUTE_PTR returned should be freed
-// using FreeAttributes.
-CK_ATTRIBUTE_PTR DecodeAttributes(const AttributeValueMap& attributes);
-
-// This function frees an attribute list created by DecodeAttributes.
-void FreeAttributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes);
-
-// This class frees attributes on destruction; similar to scoped_ptr but for use
-// with DecodeAttributes and FreeAttributes.
-class ScopedAttributes {
- public:
-  ScopedAttributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes)
-      : attributes_(attributes),
-        num_attributes_(num_attributes) {}
-  ~ScopedAttributes() {
-    FreeAttributes(attributes_, num_attributes_);
-  }
-  operator CK_ATTRIBUTE_PTR() {
-    return attributes_;
-  }
-
- private:
-  CK_ATTRIBUTE_PTR attributes_;
-  CK_ULONG num_attributes_;
-
-  DISALLOW_COPY_AND_ASSIGN(ScopedAttributes);
-};
 
 }  // namespace
 #endif  // CHAPS_CHAPS_UTILITY_H

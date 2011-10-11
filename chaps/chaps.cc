@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 
+#include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
@@ -275,8 +276,9 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
                   CK_UTF8CHAR_PTR pLabel) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pLabel, CKR_ARGUMENTS_BAD);
-  string pin = chaps::CharBufferToString(pPin, ulPinLen);
-  string label = chaps::CharBufferToString(pLabel, chaps::kTokenLabelSize);
+  string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
+  string label = chaps::ConvertCharBufferToString(pLabel,
+                                                  chaps::kTokenLabelSize);
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitToken(slotID, pin_ptr, label);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -288,7 +290,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
                 CK_UTF8CHAR_PTR pPin,
                 CK_ULONG ulPinLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  string pin = chaps::CharBufferToString(pPin, ulPinLen);
+  string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitPIN(hSession, pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -302,9 +304,9 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
                CK_UTF8CHAR_PTR pNewPin,
                CK_ULONG ulNewLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  string old_pin = chaps::CharBufferToString(pOldPin, ulOldLen);
+  string old_pin = chaps::ConvertCharBufferToString(pOldPin, ulOldLen);
   string* old_pin_ptr = (!pOldPin) ? NULL : &old_pin;
-  string new_pin = chaps::CharBufferToString(pNewPin, ulNewLen);
+  string new_pin = chaps::ConvertCharBufferToString(pNewPin, ulNewLen);
   string* new_pin_ptr = (!pNewPin) ? NULL : &new_pin;
   CK_RV result = g_proxy->SetPIN(hSession, old_pin_ptr, new_pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -366,17 +368,17 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pulOperationStateLen, CKR_ARGUMENTS_BAD);
 
-  std::vector<uint8_t> operation_state;
+  string operation_state;
   CK_RV result = g_proxy->GetOperationState(hSession, &operation_state);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   // Copy the data and length to caller-supplied memory.
   size_t max_copy = static_cast<size_t>(*pulOperationStateLen);
-  *pulOperationStateLen = static_cast<CK_ULONG>(operation_state.size());
+  *pulOperationStateLen = static_cast<CK_ULONG>(operation_state.length());
   if (!pOperationState)
     return CKR_OK;
-  LOG_CK_RV_AND_RETURN_IF(operation_state.size() > max_copy,
+  LOG_CK_RV_AND_RETURN_IF(operation_state.length() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
-  memcpy(pOperationState, &operation_state.front(), operation_state.size());
+  memcpy(pOperationState, operation_state.data(), operation_state.length());
   return CKR_OK;
 }
 
@@ -389,8 +391,8 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pOperationState, CKR_ARGUMENTS_BAD);
 
-  vector<uint8_t> operation_state(&pOperationState[0],
-                                  &pOperationState[ulOperationStateLen]);
+  string operation_state =
+      chaps::ConvertByteBufferToString(pOperationState, ulOperationStateLen);
   CK_RV result = g_proxy->SetOperationState(hSession,
                                             operation_state,
                                             hEncryptionKey,
@@ -405,7 +407,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,
               CK_UTF8CHAR_PTR pPin,
               CK_ULONG ulPinLen) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  string pin = chaps::CharBufferToString(pPin, ulPinLen);
+  string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->Login(hSession, userType, pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -428,9 +430,13 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (pTemplate == NULL_PTR || phObject == NULL_PTR)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  string serialized_attributes;
+  if (!attributes.Serialize(&serialized_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = g_proxy->CreateObject(
       hSession,
-      chaps::EncodeAttributes(pTemplate, ulCount),
+      serialized_attributes,
       chaps::PreservedCK_ULONG(phObject));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
@@ -445,10 +451,14 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE    hSession,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   if (pTemplate == NULL_PTR || phNewObject == NULL_PTR)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  string serialized_attributes;
+  if (!attributes.Serialize(&serialized_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = g_proxy->CopyObject(
       hSession,
       hObject,
-      chaps::EncodeAttributes(pTemplate, ulCount),
+      serialized_attributes,
       chaps::PreservedCK_ULONG(phNewObject));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
@@ -461,3 +471,64 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.7 page 132.
+CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
+                      CK_OBJECT_HANDLE  hObject,
+                      CK_ULONG_PTR      pulSize) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pulSize, CKR_ARGUMENTS_BAD);
+  CK_RV result = g_proxy->GetObjectSize(hSession,
+                                        hObject,
+                                        chaps::PreservedCK_ULONG(pulSize));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.7 page 133.
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
+                          CK_OBJECT_HANDLE  hObject,
+                          CK_ATTRIBUTE_PTR  pTemplate,
+                          CK_ULONG          ulCount) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  string serialized_attributes_in;
+  if (!attributes.Serialize(&serialized_attributes_in))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  string serialized_attributes_out;
+  CK_RV result = g_proxy->GetAttributeValue(hSession,
+                                            hObject,
+                                            serialized_attributes_in,
+                                            &serialized_attributes_out);
+  // There are a few errors that can be returned while information about one or
+  // more attributes has been provided.  We need to continue in these cases.
+  if (result != CKR_OK &&
+      result != CKR_ATTRIBUTE_TYPE_INVALID &&
+      result != CKR_ATTRIBUTE_SENSITIVE &&
+      result != CKR_BUFFER_TOO_SMALL)
+    LOG_CK_RV_AND_RETURN(result);
+  // Chapsd ensures the value is serialized correctly; we can assert.
+  CHECK(attributes.ParseAndFill(serialized_attributes_out));
+  return result;
+}
+
+// PKCS #11 v2.20 section 11.7 page 135.
+CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
+                          CK_OBJECT_HANDLE  hObject,
+                          CK_ATTRIBUTE_PTR  pTemplate,
+                          CK_ULONG          ulCount) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pTemplate, CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  string serialized_attributes;
+  if (!attributes.Serialize(&serialized_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  CK_RV result = g_proxy->SetAttributeValue(hSession,
+                                            hObject,
+                                            serialized_attributes);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+

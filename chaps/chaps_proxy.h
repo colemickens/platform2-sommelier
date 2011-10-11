@@ -78,10 +78,10 @@ public:
                                   uint32_t* flags,
                                   uint32_t* device_error);
   virtual uint32_t GetOperationState(uint32_t session_id,
-                                     std::vector<uint8_t>* operation_state);
+                                     std::string* operation_state);
   virtual uint32_t SetOperationState(
       uint32_t session_id,
-      const std::vector<uint8_t>& operation_state,
+      const std::string& operation_state,
       uint32_t encryption_key_handle,
       uint32_t authentication_key_handle);
   virtual uint32_t Login(uint32_t session_id,
@@ -89,14 +89,24 @@ public:
                          const std::string* pin);
   virtual uint32_t Logout(uint32_t session_id);
   virtual uint32_t CreateObject(uint32_t session_id,
-                                const AttributeValueMap& attributes,
+                                const std::string& attributes,
                                 uint32_t* new_object_handle);
   virtual uint32_t CopyObject(uint32_t session_id,
                               uint32_t object_handle,
-                              const AttributeValueMap& attributes,
+                              const std::string& attributes,
                               uint32_t* new_object_handle);
   virtual uint32_t DestroyObject(uint32_t session_id,
                                  uint32_t object_handle);
+  virtual uint32_t GetObjectSize(uint32_t session_id,
+                                 uint32_t object_handle,
+                                 uint32_t* object_size);
+  virtual uint32_t GetAttributeValue(uint32_t session_id,
+                                     uint32_t object_handle,
+                                     const std::string& attributes_in,
+                                     std::string* attributes_out);
+  virtual uint32_t SetAttributeValue(uint32_t session_id,
+                                     uint32_t object_handle,
+                                     const std::string& attributes);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.

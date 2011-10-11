@@ -72,18 +72,23 @@ public:
   MOCK_METHOD1(CloseAllSessions, uint32_t (uint32_t));
   MOCK_METHOD5(GetSessionInfo, uint32_t (uint32_t, uint32_t*, uint32_t*,
                                          uint32_t*, uint32_t*));
-  MOCK_METHOD2(GetOperationState, uint32_t (uint32_t, std::vector<uint8_t>*));
+  MOCK_METHOD2(GetOperationState, uint32_t (uint32_t, std::string*));
   MOCK_METHOD4(SetOperationState, uint32_t (uint32_t,
-                                            const std::vector<uint8_t>&,
+                                            const std::string&,
                                             uint32_t,
                                             uint32_t));
   MOCK_METHOD3(Login, uint32_t (uint32_t, uint32_t, const std::string*));
   MOCK_METHOD1(Logout, uint32_t (uint32_t));
-  MOCK_METHOD3(CreateObject, uint32_t (uint32_t, const AttributeValueMap&,
+  MOCK_METHOD3(CreateObject, uint32_t (uint32_t, const std::string&,
                                        uint32_t*));
   MOCK_METHOD4(CopyObject, uint32_t (uint32_t, uint32_t,
-                                     const AttributeValueMap&, uint32_t*));
+                                     const std::string&, uint32_t*));
   MOCK_METHOD2(DestroyObject, uint32_t (uint32_t, uint32_t));
+  MOCK_METHOD3(GetObjectSize, uint32_t (uint32_t, uint32_t, uint32_t*));
+  MOCK_METHOD4(GetAttributeValue, uint32_t (uint32_t, uint32_t,
+                                            const std::string&, std::string*));
+  MOCK_METHOD3(SetAttributeValue, uint32_t (uint32_t, uint32_t,
+                                            const std::string&));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

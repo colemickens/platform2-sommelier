@@ -9,36 +9,49 @@ include common.mk
 
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
+PROTOC = protoc
 
 INCLUDE_DIRS = -I$(OUT)include -I.. \
-               $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-c++-1)
-LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs dbus-1 dbus-c++-1)
+               $(shell $(PKG_CONFIG) --cflags dbus-1 dbus-c++-1 protobuf)
+LIB_DIRS = -L$(OUT) $(shell $(PKG_CONFIG) --libs dbus-1 dbus-c++-1 protobuf)
 
 CXXFLAGS := $(INCLUDE_DIRS) $(CXXFLAGS)
 LDFLAGS += -lbase $(LIB_DIRS)
 
 # Rules
-$(OUT)include/chaps/chaps_proxy_generated.h: chaps_interface.xml
-	@mkdir -p $(dir $@)
-	@$(DBUSXX_XML2CPP) $< --proxy=$@
-RM_ON_CLEAN += $(OUT)include/chaps/chaps_proxy_generated.h
-RMDIR_ON_CLEAN += $(OUT)include $(OUT)include/chaps
+chaps_proxy_generated.h: chaps_interface.xml
+	$(DBUSXX_XML2CPP) $< --proxy=$@
+RM_ON_CLEAN += chaps_proxy_generated.h
 
-$(OUT)include/chaps/chaps_adaptor_generated.h: chaps_interface.xml
-	@mkdir -p $(dir $@)
-	@$(DBUSXX_XML2CPP) $< --adaptor=$@
-RM_ON_CLEAN += $(OUT)include/chaps/chaps_adaptor_generated.h
+chaps_adaptor_generated.h: chaps_interface.xml
+	$(DBUSXX_XML2CPP) $< --adaptor=$@
+RM_ON_CLEAN += chaps_adaptor_generated.h
 
-$(OUT)libchaps.so: dbus-headers $(OUT)chaps.o \
-                                $(OUT)chaps_proxy.o \
-                                $(OUT)chaps_utility.o
+attributes.pb.h: attributes.proto
+	$(PROTOC) -I. --cpp_out=. $<
+RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
+
+attributes.pb.cc: attributes.pb.h
+	@echo
+
+$(OUT)libchaps.so: dbus-headers \
+                   protobufs \
+                   $(OUT)chaps.o \
+                   $(OUT)chaps_proxy.o \
+                   $(OUT)chaps_utility.o \
+                   $(OUT)attributes.pb.o \
+                   $(OUT)attributes.o
 	$(call cxx_library)
 RM_ON_CLEAN += $(OUT)libchaps.so
 
-$(OUT)chapsd: dbus-headers $(OUT)chapsd.o \
-                           $(OUT)chaps_service_redirect.o \
-                           $(OUT)chaps_adaptor.o \
-                           $(OUT)chaps_utility.o
+$(OUT)chapsd: dbus-headers \
+              protobufs \
+              $(OUT)chapsd.o \
+              $(OUT)chaps_service_redirect.o \
+              $(OUT)chaps_adaptor.o \
+              $(OUT)chaps_utility.o \
+              $(OUT)attributes.pb.o \
+              $(OUT)attributes.o
 	$(call cxx_binary, -ldl)
 RM_ON_CLEAN += $(OUT)chapsd
 
@@ -62,8 +75,10 @@ lib: $(OUT)libchaps.so
 chapsd: $(OUT)chapsd
 	@echo
 
-dbus-headers: $(OUT)include/chaps/chaps_adaptor_generated.h \
-              $(OUT)include/chaps/chaps_proxy_generated.h
+dbus-headers: chaps_adaptor_generated.h \
+              chaps_proxy_generated.h
+
+protobufs: attributes.pb.h
 
 tests: $(OUT)chaps_test
 

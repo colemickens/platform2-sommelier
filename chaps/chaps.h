@@ -11,7 +11,4 @@ extern const char* kChapsServicePath;
 extern const char* kChapsServiceName;
 extern const int kTokenLabelSize;
 
-// A PKCS #11 template is encoded as an attribute-value map for dbus-c++.
-typedef std::map<uint32_t, std::vector<uint8_t> > AttributeValueMap;
-
 }  // namespace

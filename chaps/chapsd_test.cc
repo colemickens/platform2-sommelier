@@ -8,6 +8,7 @@
 #include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
+#include "chaps/attributes.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_service_redirect.h"
@@ -32,6 +33,20 @@ static chaps::ChapsInterface* CreateChapsInstance() {
       return service.release();
   }
   return NULL;
+}
+
+static bool SerializeAttributes(CK_ATTRIBUTE_PTR attributes,
+                                CK_ULONG num_attributes,
+                                string* serialized) {
+  Attributes tmp(attributes, num_attributes);
+  return tmp.Serialize(serialized);
+}
+
+static bool ParseAndFillAttributes(const string& serialized,
+                                   CK_ATTRIBUTE_PTR attributes,
+                                   CK_ULONG num_attributes) {
+  Attributes tmp(attributes, num_attributes);
+  return tmp.ParseAndFill(serialized);
 }
 
 // Default test fixture for PKCS #11 calls.
@@ -65,6 +80,36 @@ class TestP11Session : public TestP11 {
   }
   uint32_t session_id_;
   uint32_t readonly_session_id_;
+};
+
+class TestP11Object : public TestP11Session {
+ protected:
+  virtual void SetUp() {
+    TestP11Session::SetUp();
+    CK_OBJECT_CLASS class_value = CKO_DATA;
+    CK_UTF8CHAR label[] = "A data object";
+    CK_UTF8CHAR application[] = "An application";
+    CK_BYTE data[] = "Sample data";
+    CK_BBOOL false_value = CK_FALSE;
+    CK_ATTRIBUTE attributes[] = {
+      {CKA_CLASS, &class_value, sizeof(class_value)},
+      {CKA_TOKEN, &false_value, sizeof(false_value)},
+      {CKA_LABEL, label, sizeof(label)-1},
+      {CKA_APPLICATION, application, sizeof(application)-1},
+      {CKA_VALUE, data, sizeof(data)}
+    };
+    string serialized;
+    Attributes tmp(attributes, 5);
+    ASSERT_TRUE(tmp.Serialize(&serialized));
+    ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_,
+                                           serialized,
+                                           &object_handle_));
+  }
+  virtual void TearDown() {
+    ASSERT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, object_handle_));
+    TestP11Session::TearDown();
+  }
+  uint32_t object_handle_;
 };
 
 TEST_F(TestP11, SlotList) {
@@ -198,6 +243,10 @@ TEST_F(TestP11, MechInfo) {
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
 }
 
+// TODO: Issue# 22297
+// These PIN-related tests can mess up a live token.  Leave them until we're
+// no longer using openCryptoki.
+#if 0
 TEST_F(TestP11, InitToken) {
   string pin = "test";
   string label = "test";
@@ -217,6 +266,7 @@ TEST_F(TestP11Session, SetPIN) {
   EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, &pin, &pin2));
   EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, NULL, NULL));
 }
+#endif
 
 TEST_F(TestP11, OpenCloseSession) {
   uint32_t session = 0;
@@ -277,17 +327,21 @@ TEST_F(TestP11Session, GetSessionInfo) {
 }
 
 TEST_F(TestP11Session, GetOperationState) {
-  vector<uint8_t> state;
+  string state;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->GetOperationState(17, &state));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetOperationState(session_id_, NULL));
 }
 
 TEST_F(TestP11Session, SetOperationState) {
-  vector<uint8_t> state(10, 0);
+  string state(10, 0);
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             chaps_->SetOperationState(17, state, 0, 0));
 }
 
+// TODO: Issue# 22297
+// These PIN-related tests can mess up a live token.  Leave them until we're
+// no longer using openCryptoki.
+#if 0
 TEST_F(TestP11Session, Login) {
   string pin = "test";
   EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, &pin));
@@ -295,6 +349,7 @@ TEST_F(TestP11Session, Login) {
   EXPECT_EQ(CKR_USER_TYPE_INVALID, chaps_->Login(session_id_, 17, &pin));
   EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, NULL));
 }
+#endif
 
 TEST_F(TestP11Session, Logout) {
   EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, chaps_->Logout(session_id_));
@@ -318,24 +373,90 @@ TEST_F(TestP11Session, CreateObject) {
   CK_ATTRIBUTE attributes2[] = {
     {CKA_VALUE, data2, sizeof(data2)}
   };
-  AttributeValueMap attribute_map = EncodeAttributes(attributes, 5);
+  string attribute_serial;
+  ASSERT_TRUE(SerializeAttributes(attributes, 5, &attribute_serial));
   uint32_t handle = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
-            chaps_->CreateObject(session_id_, attribute_map, NULL));
-  EXPECT_EQ(CKR_OK, chaps_->CreateObject(session_id_, attribute_map, &handle));
-  AttributeValueMap attribute_map2 = EncodeAttributes(attributes2, 1);
-  uint32_t handle2 = 0;
+            chaps_->CreateObject(session_id_, attribute_serial, NULL));
   EXPECT_EQ(CKR_OK,
-            chaps_->CopyObject(session_id_, handle, attribute_map2, &handle2));
+            chaps_->CreateObject(session_id_, attribute_serial, &handle));
+  string attribute_serial2;
+  ASSERT_TRUE(SerializeAttributes(attributes2, 1, &attribute_serial2));
+  uint32_t handle2 = 0;
+  EXPECT_EQ(CKR_OK, chaps_->CopyObject(session_id_,
+                                       handle,
+                                       attribute_serial2,
+                                       &handle2));
   EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, handle));
   EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, handle2));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
-            chaps_->CreateObject(17, attribute_map, &handle));
+            chaps_->CreateObject(17, attribute_serial, &handle));
   EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE,
-            chaps_->CreateObject(session_id_, attribute_map2, &handle));
+            chaps_->CreateObject(session_id_, attribute_serial2, &handle));
 }
 
-} // namespace chaps
+TEST_F(TestP11Object, GetObjectSize) {
+  uint32_t size;
+  EXPECT_EQ(CKR_OK, chaps_->GetObjectSize(session_id_, object_handle_, &size));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+      chaps_->GetObjectSize(session_id_, object_handle_, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+      chaps_->GetObjectSize(17, object_handle_, &size));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
+      chaps_->GetObjectSize(session_id_, 17, &size));
+}
+
+TEST_F(TestP11Object, GetAttributeValue) {
+  CK_BYTE buffer[100];
+  CK_ATTRIBUTE query[1] = {{CKA_VALUE, buffer, sizeof(buffer)}};
+  string serial_query;
+  ASSERT_TRUE(SerializeAttributes(query, 1, &serial_query));
+  string response;
+  EXPECT_EQ(CKR_OK, chaps_->GetAttributeValue(session_id_,
+                                              object_handle_,
+                                              serial_query,
+                                              &response));
+  EXPECT_TRUE(ParseAndFillAttributes(response, query, 1));
+  CK_BYTE data[] = "Sample data";
+  EXPECT_EQ(sizeof(data), query[0].ulValueLen);
+  EXPECT_EQ(0, memcmp(data, query[0].pValue, query[0].ulValueLen));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetAttributeValue(session_id_,
+                                                         object_handle_,
+                                                         serial_query,
+                                                         NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+      chaps_->GetAttributeValue(17, object_handle_, serial_query, &response));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
+      chaps_->GetAttributeValue(session_id_, 17, serial_query, &response));
+}
+
+TEST_F(TestP11Object, SetAttributeValue) {
+  CK_BYTE buffer[100];
+  memset(buffer, 0xAA, sizeof(buffer));
+  CK_ATTRIBUTE attributes[1] = {{CKA_VALUE, buffer, sizeof(buffer)}};
+  string serial;
+  ASSERT_TRUE(SerializeAttributes(attributes, 1, &serial));
+  EXPECT_EQ(CKR_OK, chaps_->SetAttributeValue(session_id_,
+                                              object_handle_,
+                                              serial));
+  CK_BYTE buffer2[100];
+  memset(buffer2, 0xBB, sizeof(buffer2));
+  attributes[0].pValue = buffer2;
+  ASSERT_TRUE(SerializeAttributes(attributes, 1, &serial));
+  string response;
+  EXPECT_EQ(CKR_OK, chaps_->GetAttributeValue(session_id_,
+                                              object_handle_,
+                                              serial,
+                                              &response));
+  EXPECT_TRUE(ParseAndFillAttributes(response, attributes, 1));
+  EXPECT_EQ(0, memcmp(buffer, buffer2, 100));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+      chaps_->SetAttributeValue(17, object_handle_, serial));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
+      chaps_->SetAttributeValue(session_id_, 17, serial));
+}
+
+}  // namespace chaps
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);

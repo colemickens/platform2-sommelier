@@ -119,20 +119,35 @@ public:
   virtual uint32_t Logout(const uint32_t& session_id, ::DBus::Error &error);
   virtual void CreateObject(
       const uint32_t& session_id,
-      const std::map<uint32_t, std::vector<uint8_t> >& attributes,
+      const std::vector<uint8_t>& attributes,
       uint32_t& new_object_handle,
       uint32_t& result,
       ::DBus::Error &error);
   virtual void CopyObject(
       const uint32_t& session_id,
       const uint32_t& object_handle,
-      const std::map<uint32_t, std::vector<uint8_t> >& attributes,
+      const std::vector<uint8_t>& attributes,
       uint32_t& new_object_handle,
       uint32_t& result,
       ::DBus::Error &error);
   virtual uint32_t DestroyObject(const uint32_t& session_id,
                                  const uint32_t& object_handle,
                                  ::DBus::Error &error);
+  virtual void GetObjectSize(const uint32_t& session_id,
+                             const uint32_t& object_handle,
+                             uint32_t& object_size,
+                             uint32_t& result,
+                             ::DBus::Error &error);
+  virtual void GetAttributeValue(const uint32_t& session_id,
+                                 const uint32_t& object_handle,
+                                 const std::vector<uint8_t>& attributes_in,
+                                 std::vector<uint8_t>& attributes_out,
+                                 uint32_t& result,
+                                 ::DBus::Error &error);
+  virtual uint32_t SetAttributeValue(const uint32_t& session_id,
+                                     const uint32_t& object_handle,
+                                     const std::vector<uint8_t>& attributes,
+                                     ::DBus::Error &error);
 
 private:
   ChapsInterface* service_;

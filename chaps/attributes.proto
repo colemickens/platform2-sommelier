@@ -1,0 +1,15 @@
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+package chaps;
+
+message Attribute {
+  required uint32 type = 1;
+  optional bytes value = 2;
+  optional sint32 length = 3;
+}
+
+message AttributeList {
+  repeated Attribute attribute = 1;
+}

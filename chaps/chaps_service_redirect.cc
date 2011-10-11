@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 
+#include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
 
@@ -103,10 +104,12 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
   CK_SLOT_INFO slot_info;
   CK_RV result = functions_->C_GetSlotInfo(slot_id, &slot_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *slot_description = CharBufferToString(slot_info.slotDescription,
-                                         arraysize(slot_info.slotDescription));
-  *manufacturer_id = CharBufferToString(slot_info.manufacturerID,
-                                        arraysize(slot_info.manufacturerID));
+  *slot_description =
+      ConvertCharBufferToString(slot_info.slotDescription,
+                                arraysize(slot_info.slotDescription));
+  *manufacturer_id =
+      ConvertCharBufferToString(slot_info.manufacturerID,
+                                arraysize(slot_info.manufacturerID));
   *flags = static_cast<uint32_t>(slot_info.flags);
   *hardware_version_major = slot_info.hardwareVersion.major;
   *hardware_version_minor = slot_info.hardwareVersion.minor;
@@ -116,10 +119,10 @@ uint32_t ChapsServiceRedirect::GetSlotInfo(uint32_t slot_id,
 }
 
 uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
-                                            std::string* label,
-                                            std::string* manufacturer_id,
-                                            std::string* model,
-                                            std::string* serial_number,
+                                            string* label,
+                                            string* manufacturer_id,
+                                            string* model,
+                                            string* serial_number,
                                             uint32_t* flags,
                                             uint32_t* max_session_count,
                                             uint32_t* session_count,
@@ -148,12 +151,16 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
   CK_TOKEN_INFO token_info;
   CK_RV result = functions_->C_GetTokenInfo(slot_id, &token_info);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *label = CharBufferToString(token_info.label, arraysize(token_info.label));
-  *manufacturer_id = CharBufferToString(token_info.manufacturerID,
-                                        arraysize(token_info.manufacturerID));
-  *model = CharBufferToString(token_info.model, arraysize(token_info.model));
-  *serial_number = CharBufferToString(token_info.serialNumber,
-                                      arraysize(token_info.serialNumber));
+  *label =
+      ConvertCharBufferToString(token_info.label, arraysize(token_info.label));
+  *manufacturer_id =
+      ConvertCharBufferToString(token_info.manufacturerID,
+                                arraysize(token_info.manufacturerID));
+  *model = ConvertCharBufferToString(token_info.model,
+                                     arraysize(token_info.model));
+  *serial_number =
+      ConvertCharBufferToString(token_info.serialNumber,
+                                arraysize(token_info.serialNumber));
   *flags = token_info.flags;
   *max_session_count = token_info.ulMaxSessionCount;
   *session_count = token_info.ulSessionCount;
@@ -174,7 +181,7 @@ uint32_t ChapsServiceRedirect::GetTokenInfo(uint32_t slot_id,
 
 uint32_t ChapsServiceRedirect::GetMechanismList(
     uint32_t slot_id,
-    std::vector<uint32_t>* mechanism_list) {
+    vector<uint32_t>* mechanism_list) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!mechanism_list || mechanism_list->size() > 0,
                           CKR_ARGUMENTS_BAD);
@@ -216,7 +223,7 @@ uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id, const string* so_pin,
                                          const string& label) {
   CHECK(functions_);
   CK_UTF8CHAR_PTR pin_buffer =
-      so_pin ? StringToCharBuffer(so_pin->data()) : NULL;
+      so_pin ? ConvertStringToCharBuffer(so_pin->data()) : NULL;
   CK_ULONG pin_length = so_pin ? static_cast<CK_ULONG>(so_pin->length()) : 0;
   CK_UTF8CHAR label_buffer[chaps::kTokenLabelSize];
   CopyToCharBuffer(label.c_str(), label_buffer, chaps::kTokenLabelSize);
@@ -230,7 +237,8 @@ uint32_t ChapsServiceRedirect::InitToken(uint32_t slot_id, const string* so_pin,
 
 uint32_t ChapsServiceRedirect::InitPIN(uint32_t session_id, const string* pin) {
   CHECK(functions_);
-  CK_UTF8CHAR_PTR pin_buffer = pin ? StringToCharBuffer(pin->data()) : NULL;
+  CK_UTF8CHAR_PTR pin_buffer =
+      pin ? ConvertStringToCharBuffer(pin->data()) : NULL;
   CK_ULONG pin_length = pin ? static_cast<CK_ULONG>(pin->length()) : 0;
   CK_RV result = functions_->C_InitPIN(session_id, pin_buffer, pin_length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
@@ -242,11 +250,11 @@ uint32_t ChapsServiceRedirect::SetPIN(uint32_t session_id,
                                       const string* new_pin) {
   CHECK(functions_);
   CK_UTF8CHAR_PTR old_pin_buffer =
-      old_pin ? StringToCharBuffer(old_pin->data()) : NULL;
+      old_pin ? ConvertStringToCharBuffer(old_pin->data()) : NULL;
   CK_ULONG old_pin_length =
       old_pin ? static_cast<CK_ULONG>(old_pin->length()) : 0;
   CK_UTF8CHAR_PTR new_pin_buffer =
-      new_pin ? StringToCharBuffer(new_pin->data()) : NULL;
+      new_pin ? ConvertStringToCharBuffer(new_pin->data()) : NULL;
   CK_ULONG new_pin_length =
       new_pin ? static_cast<CK_ULONG>(new_pin->length()) : 0;
   CK_RV result = functions_->C_SetPIN(session_id,
@@ -302,7 +310,7 @@ uint32_t ChapsServiceRedirect::GetSessionInfo(uint32_t session_id,
 
 uint32_t ChapsServiceRedirect::GetOperationState(
     uint32_t session_id,
-    std::vector<uint8_t>* operation_state) {
+    string* operation_state) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   CK_ULONG size = 0;
@@ -314,20 +322,19 @@ uint32_t ChapsServiceRedirect::GetOperationState(
   // Now, get the actual state data.
   result = functions_->C_GetOperationState(session_id, buffer.get(), &size);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  operation_state->assign(&buffer[0], &buffer[size]);
+  *operation_state = ConvertByteBufferToString(buffer.get(), size);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::SetOperationState(
     uint32_t session_id,
-    const std::vector<uint8_t>& operation_state,
+    const string& operation_state,
     uint32_t encryption_key_handle,
     uint32_t authentication_key_handle) {
   CHECK(functions_);
   uint32_t result = functions_->C_SetOperationState(
       session_id,
-      static_cast<CK_BYTE_PTR>(
-          const_cast<unsigned char*>(&operation_state.front())),
+      reinterpret_cast<CK_BYTE_PTR>(const_cast<char*>(operation_state.data())),
       static_cast<CK_ULONG>(operation_state.size()),
       static_cast<CK_OBJECT_HANDLE>(encryption_key_handle),
       static_cast<CK_OBJECT_HANDLE>(authentication_key_handle));
@@ -337,9 +344,10 @@ uint32_t ChapsServiceRedirect::SetOperationState(
 
 uint32_t ChapsServiceRedirect::Login(uint32_t session_id,
                                      uint32_t user_type,
-                                     const std::string* pin) {
+                                     const string* pin) {
   CHECK(functions_);
-  CK_UTF8CHAR_PTR pin_buffer = pin ? StringToCharBuffer(pin->data()) : NULL;
+  CK_UTF8CHAR_PTR pin_buffer =
+      pin ? ConvertStringToCharBuffer(pin->data()) : NULL;
   CK_ULONG pin_length = pin ? static_cast<CK_ULONG>(pin->length()) : 0;
   uint32_t result = functions_->C_Login(session_id,
                                         user_type,
@@ -357,17 +365,17 @@ uint32_t ChapsServiceRedirect::Logout(uint32_t session_id) {
 }
 
 uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
-                                            const AttributeValueMap& attributes,
+                                            const string& attributes,
                                             uint32_t* new_object_handle) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
-  CK_ULONG num_attributes = static_cast<CK_ULONG>(attributes.size());
-  ScopedAttributes decoded_attributes(DecodeAttributes(attributes),
-                                      num_attributes);
+  Attributes tmp;
+  if (!tmp.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   uint32_t result = functions_->C_CreateObject(
       session_id,
-      decoded_attributes,
-      num_attributes,
+      tmp.attributes(),
+      tmp.num_attributes(),
       PreservedUint32_t(new_object_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
@@ -375,18 +383,18 @@ uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
 
 uint32_t ChapsServiceRedirect::CopyObject(uint32_t session_id,
                                           uint32_t object_handle,
-                                          const AttributeValueMap& attributes,
+                                          const string& attributes,
                                           uint32_t* new_object_handle) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
-  CK_ULONG num_attributes = static_cast<CK_ULONG>(attributes.size());
-  ScopedAttributes decoded_attributes(DecodeAttributes(attributes),
-                                      num_attributes);
+  Attributes tmp;
+  if (!tmp.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   uint32_t result = functions_->C_CopyObject(
       session_id,
       object_handle,
-      decoded_attributes,
-      num_attributes,
+      tmp.attributes(),
+      tmp.num_attributes(),
       PreservedUint32_t(new_object_handle));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
@@ -396,6 +404,53 @@ uint32_t ChapsServiceRedirect::DestroyObject(uint32_t session_id,
                                              uint32_t object_handle) {
   CHECK(functions_);
   uint32_t result = functions_->C_DestroyObject(session_id, object_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetObjectSize(uint32_t session_id,
+                                       uint32_t object_handle,
+                                       uint32_t* object_size) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
+  uint32_t result = functions_->C_GetObjectSize(session_id,
+                                                object_handle,
+                                                PreservedUint32_t(object_size));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GetAttributeValue(uint32_t session_id,
+                                           uint32_t object_handle,
+                                           const string& attributes_in,
+                                           string* attributes_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
+  Attributes tmp;
+  if (!tmp.Parse(attributes_in))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_GetAttributeValue(session_id,
+                                                    object_handle,
+                                                    tmp.attributes(),
+                                                    tmp.num_attributes());
+  if (result != CKR_OK)
+    LOG_CK_RV(result);
+  if (!tmp.Serialize(attributes_out))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  return result;
+}
+
+uint32_t ChapsServiceRedirect::SetAttributeValue(uint32_t session_id,
+                                           uint32_t object_handle,
+                                           const string& attributes) {
+  CHECK(functions_);
+  Attributes tmp;
+  if (!tmp.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_SetAttributeValue(session_id,
+                                                    object_handle,
+                                                    tmp.attributes(),
+                                                    tmp.num_attributes());
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

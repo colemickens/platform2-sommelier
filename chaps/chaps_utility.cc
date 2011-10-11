@@ -4,11 +4,8 @@
 
 #include "chaps/chaps_utility.h"
 
-#include <stdio.h>
-
-#include <base/logging.h>
-
 #include "chaps/chaps.h"
+#include "pkcs11/cryptoki.h"
 
 namespace chaps {
 
@@ -16,48 +13,6 @@ namespace chaps {
 const char* kChapsServicePath = "/org/chromium/Chaps";
 const char* kChapsServiceName = "org.chromium.Chaps";
 const int kTokenLabelSize = 32;
-
-AttributeValueMap EncodeAttributes(CK_ATTRIBUTE_PTR attributes,
-                                   CK_ULONG num_attributes) {
-  AttributeValueMap encoded_attributes;
-  for (CK_ULONG i = 0; i < num_attributes; ++i) {
-    // Interpret the value as a byte array; we don't care what it actually is.
-    uint8_t* byte_value = reinterpret_cast<uint8_t*>(attributes[i].pValue);
-    // Encode the value as a vector.
-    std::vector<uint8_t> encoded_value(&byte_value[0],
-                                       &byte_value[attributes[i].ulValueLen]);
-    // Push the entry into the map.
-    encoded_attributes[attributes[i].type] = encoded_value;
-  }
-  return encoded_attributes;
-}
-
-CK_ATTRIBUTE_PTR DecodeAttributes(const AttributeValueMap& attributes) {
-  CK_ATTRIBUTE_PTR decoded_attributes = new CK_ATTRIBUTE[attributes.size()];
-  CHECK(decoded_attributes) << "Out of memory!";
-  AttributeValueMap::const_iterator iterator = attributes.begin();
-  for (size_t i = 0; iterator != attributes.end(); ++iterator, ++i) {
-    decoded_attributes[i].type =
-        static_cast<CK_ATTRIBUTE_TYPE>(iterator->first);
-    decoded_attributes[i].ulValueLen =
-        static_cast<CK_ULONG>(iterator->second.size());
-    decoded_attributes[i].pValue = new CK_BYTE[iterator->second.size()];
-    CHECK(decoded_attributes[i].pValue) << "Out of memory!";
-    memcpy(decoded_attributes[i].pValue,
-           &iterator->second.front(),
-           iterator->second.size());
-  }
-  return decoded_attributes;
-}
-
-void FreeAttributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes) {
-  for (CK_ULONG i = 0; i < num_attributes; ++i) {
-    // This was allocated as a CK_BYTE array, delete the same way.
-    CK_BYTE_PTR value = reinterpret_cast<CK_BYTE_PTR>(attributes[i].pValue);
-    delete [] value;
-  }
-  delete [] attributes;
-}
 
 const char* CK_RVToString(CK_RV value) {
   switch (value) {

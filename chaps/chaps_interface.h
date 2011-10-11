@@ -98,11 +98,11 @@ public:
                                   uint32_t* device_error) = 0;
   // PKCS #11 v2.20 section 11.6 page 121.
   virtual uint32_t GetOperationState(uint32_t session_id,
-                                     std::vector<uint8_t>* operation_state) = 0;
+                                     std::string* operation_state) = 0;
   // PKCS #11 v2.20 section 11.6 page 123.
   virtual uint32_t SetOperationState(
       uint32_t session_id,
-      const std::vector<uint8_t>& operation_state,
+      const std::string& operation_state,
       uint32_t encryption_key_handle,
       uint32_t authentication_key_handle) = 0;
   // PKCS #11 v2.20 section 11.6 page 125.
@@ -113,16 +113,29 @@ public:
   virtual uint32_t Logout(uint32_t session_id) = 0;
   // PKCS #11 v2.20 section 11.7 page 128.
   virtual uint32_t CreateObject(uint32_t session_id,
-                                const AttributeValueMap& attributes,
+                                const std::string& attributes,
                                 uint32_t* new_object_handle) = 0;
   // PKCS #11 v2.20 section 11.7 page 130.
   virtual uint32_t CopyObject(uint32_t session_id,
                               uint32_t object_handle,
-                              const AttributeValueMap& attributes,
+                              const std::string& attributes,
                               uint32_t* new_object_handle) = 0;
   // PKCS #11 v2.20 section 11.7 page 131.
   virtual uint32_t DestroyObject(uint32_t session_id,
                                  uint32_t object_handle) = 0;
+  // PKCS #11 v2.20 section 11.7 page 132.
+  virtual uint32_t GetObjectSize(uint32_t session_id,
+                                 uint32_t object_handle,
+                                 uint32_t* object_size) = 0;
+  // PKCS #11 v2.20 section 11.7 page 133.
+  virtual uint32_t GetAttributeValue(uint32_t session_id,
+                                     uint32_t object_handle,
+                                     const std::string& attributes_in,
+                                     std::string* attributes_out) = 0;
+  // PKCS #11 v2.20 section 11.7 page 135.
+  virtual uint32_t SetAttributeValue(uint32_t session_id,
+                                     uint32_t object_handle,
+                                     const std::string& attributes) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

@@ -287,14 +287,15 @@ uint32_t ChapsProxyImpl::GetSessionInfo(uint32_t session_id,
   return result;
 }
 
-uint32_t ChapsProxyImpl::GetOperationState(
-    uint32_t session_id,
-    std::vector<uint8_t>* operation_state) {
+uint32_t ChapsProxyImpl::GetOperationState(uint32_t session_id,
+                                           string* operation_state) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_OK;
   try {
-    proxy_->GetOperationState(session_id, *operation_state, result);
+    vector<uint8_t> tmp;
+    proxy_->GetOperationState(session_id, tmp, result);
+    *operation_state = ConvertByteVectorToString(tmp);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -302,18 +303,18 @@ uint32_t ChapsProxyImpl::GetOperationState(
   return result;
 }
 
-uint32_t ChapsProxyImpl::SetOperationState(
-    uint32_t session_id,
-    const std::vector<uint8_t>& operation_state,
-    uint32_t encryption_key_handle,
-    uint32_t authentication_key_handle) {
+uint32_t ChapsProxyImpl::SetOperationState(uint32_t session_id,
+                                           const string& operation_state,
+                                           uint32_t encryption_key_handle,
+                                           uint32_t authentication_key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_OK;
   try {
-    result = proxy_->SetOperationState(session_id,
-                                       operation_state,
-                                       encryption_key_handle,
-                                       authentication_key_handle);
+    result = proxy_->SetOperationState(
+        session_id,
+        ConvertByteStringToVector(operation_state),
+        encryption_key_handle,
+        authentication_key_handle);
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();
@@ -323,7 +324,7 @@ uint32_t ChapsProxyImpl::SetOperationState(
 
 uint32_t ChapsProxyImpl::Login(uint32_t session_id,
                                uint32_t user_type,
-                               const std::string* pin) {
+                               const string* pin) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_OK;
   try {
@@ -351,14 +352,14 @@ uint32_t ChapsProxyImpl::Logout(uint32_t session_id) {
 }
 
 uint32_t ChapsProxyImpl::CreateObject(uint32_t session_id,
-                                      const AttributeValueMap& attributes,
+                                      const string& attributes,
                                       uint32_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
   uint32_t result = CKR_OK;
   try {
     proxy_->CreateObject(session_id,
-                         attributes,
+                         ConvertByteStringToVector(attributes),
                          *new_object_handle,
                          result);
   } catch (DBus::Error err) {
@@ -370,7 +371,7 @@ uint32_t ChapsProxyImpl::CreateObject(uint32_t session_id,
 
 uint32_t ChapsProxyImpl::CopyObject(uint32_t session_id,
                                     uint32_t object_handle,
-                                    const AttributeValueMap& attributes,
+                                    const string& attributes,
                                     uint32_t* new_object_handle) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
@@ -378,7 +379,7 @@ uint32_t ChapsProxyImpl::CopyObject(uint32_t session_id,
   try {
     proxy_->CopyObject(session_id,
                        object_handle,
-                       attributes,
+                       ConvertByteStringToVector(attributes),
                        *new_object_handle,
                        result);
   } catch (DBus::Error err) {
@@ -394,6 +395,59 @@ uint32_t ChapsProxyImpl::DestroyObject(uint32_t session_id,
   uint32_t result = CKR_OK;
   try {
     result = proxy_->DestroyObject(session_id, object_handle);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::GetObjectSize(uint32_t session_id,
+                                       uint32_t object_handle,
+                                       uint32_t* object_size) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->GetObjectSize(session_id, object_handle, *object_size, result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::GetAttributeValue(uint32_t session_id,
+                                           uint32_t object_handle,
+                                           const string& attributes_in,
+                                           string* attributes_out) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    vector<uint8_t> tmp;
+    proxy_->GetAttributeValue(session_id,
+                              object_handle,
+                              ConvertByteStringToVector(attributes_in),
+                              tmp,
+                              result);
+    *attributes_out = ConvertByteVectorToString(tmp);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::SetAttributeValue(uint32_t session_id,
+                                           uint32_t object_handle,
+                                           const string& attributes) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->SetAttributeValue(session_id,
+                                       object_handle,
+                                       ConvertByteStringToVector(attributes));
   } catch (DBus::Error err) {
     result = CKR_GENERAL_ERROR;
     LOG(ERROR) << "DBus::Error - " << err.what();

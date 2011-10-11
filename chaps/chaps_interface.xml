@@ -212,7 +212,7 @@
     <!-- PKCS #11 v2.20 section 11.7 page 128. -->
     <method name="CreateObject">
       <arg type="u" name="session_id" direction="in"/>
-      <arg type="a{uay}" name="attributes" direction="in"/>
+      <arg type="ay" name="attributes" direction="in"/>
       <arg type="u" name="new_object_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -223,7 +223,7 @@
     <method name="CopyObject">
       <arg type="u" name="session_id" direction="in"/>
       <arg type="u" name="object_handle" direction="in"/>
-      <arg type="a{uay}" name="attributes" direction="in"/>
+      <arg type="ay" name="attributes" direction="in"/>
       <arg type="u" name="new_object_handle" direction="out"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -238,6 +238,38 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 132. -->
+    <method name="GetObjectSize">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="u" name="object_size" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 133. -->
+    <method name="GetAttributeValue">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="ay" name="attributes_in" direction="in"/>
+      <arg type="ay" name="attributes_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 135. -->
+    <method name="SetAttributeValue">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="ay" name="attributes" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
   </interface>
 </node>
 
