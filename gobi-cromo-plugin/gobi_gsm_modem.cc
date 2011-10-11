@@ -6,11 +6,12 @@
 
 #include "gobi_modem_handler.h"
 #include <base/scoped_ptr.h>
-#include <base/string_util.h>
 #include <cromo/carrier.h>
 #include <cromo/sms_message.h>
 #include <mm/mm-modem.h>
 
+#include <ctype.h> // for isspace(), to implement TrimWhitespaceASCII()
+#include <stdio.h> // for sscanf()
 #include <sstream>
 
 static const uint32_t kPinRetriesNotKnown = 999;
@@ -223,6 +224,23 @@ static std::string MakeOperatorCode(WORD mcc, WORD mnc) {
   return opercode.str();
 }
 
+// Trims any whitespace from both ends of the input string
+// Local implementation to avoid the need to pull in <base/string_util.h>
+static void TrimWhitespaceASCII(const std::string &input, std::string *output)
+{
+  size_t start, end, size;
+
+  size = input.size();
+
+  for (start = 0 ; start < size && isspace(input[start]); start++)
+    ;
+  for (end = size; end > start && isspace(input[end-1]); end--)
+    ;
+
+  *output = input.substr(start, end-start);
+}
+
+
 // returns <registration status, operator code, operator name>
 void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
                                           std::string* operator_code,
@@ -269,7 +287,7 @@ void GobiGsmModem::GetGsmRegistrationInfo(uint32_t* registration_state,
       break;
   }
   *operator_code = MakeOperatorCode(mcc, mnc);
-  TrimWhitespaceASCII(netname, TRIM_ALL, operator_name);
+  TrimWhitespaceASCII(netname, operator_name);
   LOG(INFO) << "GSM reg info: "
             << *registration_state << ", "
             << *operator_code << ", "
@@ -463,7 +481,7 @@ ScannedNetworkList GobiGsmModem::Scan(DBus::Error& error) {
     netprops["operator-num"] = MakeOperatorCode(net->mcc, net->mnc);
     if (strlen(net->description) != 0) {
       std::string operator_name;
-      TrimWhitespaceASCII(net->description, TRIM_ALL, &operator_name);
+      TrimWhitespaceASCII(net->description, &operator_name);
       netprops["operator-short"] = operator_name;
     }
     list.push_back(netprops);
