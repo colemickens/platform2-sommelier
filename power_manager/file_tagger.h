@@ -30,6 +30,10 @@ class FileTagger {
   void HandleLowBatteryEvent();     // Creates the low battery indicator file
   void HandleSafeBatteryEvent();    // Deletes the low battery indicator file
 
+  bool can_tag_files() const {
+    return can_tag_files_;
+  }
+
  private:
   friend class FileTaggerTest;
   FRIEND_TEST(FileTaggerTest, SuspendFile);
