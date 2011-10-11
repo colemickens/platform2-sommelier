@@ -350,4 +350,55 @@ uint32_t ChapsProxyImpl::Logout(uint32_t session_id) {
   return result;
 }
 
+uint32_t ChapsProxyImpl::CreateObject(uint32_t session_id,
+                                      const AttributeValueMap& attributes,
+                                      uint32_t* new_object_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->CreateObject(session_id,
+                         attributes,
+                         *new_object_handle,
+                         result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::CopyObject(uint32_t session_id,
+                                    uint32_t object_handle,
+                                    const AttributeValueMap& attributes,
+                                    uint32_t* new_object_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->CopyObject(session_id,
+                       object_handle,
+                       attributes,
+                       *new_object_handle,
+                       result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::DestroyObject(uint32_t session_id,
+                                       uint32_t object_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->DestroyObject(session_id, object_handle);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

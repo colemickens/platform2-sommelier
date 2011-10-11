@@ -208,6 +208,36 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 128. -->
+    <method name="CreateObject">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="a{uay}" name="attributes" direction="in"/>
+      <arg type="u" name="new_object_handle" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 130. -->
+    <method name="CopyObject">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="a{uay}" name="attributes" direction="in"/>
+      <arg type="u" name="new_object_handle" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.7 page 131. -->
+    <method name="DestroyObject">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="object_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
   </interface>
 </node>
 

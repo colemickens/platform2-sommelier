@@ -80,7 +80,7 @@ uint32_t ChapsServiceRedirect::GetSlotList(bool token_present,
   // Now, query the actual list.
   result = functions_->C_GetSlotList(token_present, slot_array.get(), &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  for (CK_ULONG i = 0; i < count; i++) {
+  for (CK_ULONG i = 0; i < count; ++i) {
     slot_list->push_back(static_cast<uint32_t>(slot_array[i]));
   }
   return CKR_OK;
@@ -187,7 +187,7 @@ uint32_t ChapsServiceRedirect::GetMechanismList(
   // Now, query the actual list.
   result = functions_->C_GetMechanismList(slot_id, mech_array.get(), &count);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  for (CK_ULONG i = 0; i < count; i++) {
+  for (CK_ULONG i = 0; i < count; ++i) {
     mechanism_list->push_back(static_cast<uint32_t>(mech_array[i]));
   }
   return CKR_OK;
@@ -346,13 +346,56 @@ uint32_t ChapsServiceRedirect::Login(uint32_t session_id,
                                         pin_buffer,
                                         pin_length);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  LOG(INFO) << "Login success!";
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::Logout(uint32_t session_id) {
   CHECK(functions_);
   uint32_t result = functions_->C_Logout(session_id);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
+                                            const AttributeValueMap& attributes,
+                                            uint32_t* new_object_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
+  CK_ULONG num_attributes = static_cast<CK_ULONG>(attributes.size());
+  ScopedAttributes decoded_attributes(DecodeAttributes(attributes),
+                                      num_attributes);
+  uint32_t result = functions_->C_CreateObject(
+      session_id,
+      decoded_attributes,
+      num_attributes,
+      PreservedUint32_t(new_object_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::CopyObject(uint32_t session_id,
+                                          uint32_t object_handle,
+                                          const AttributeValueMap& attributes,
+                                          uint32_t* new_object_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
+  CK_ULONG num_attributes = static_cast<CK_ULONG>(attributes.size());
+  ScopedAttributes decoded_attributes(DecodeAttributes(attributes),
+                                      num_attributes);
+  uint32_t result = functions_->C_CopyObject(
+      session_id,
+      object_handle,
+      decoded_attributes,
+      num_attributes,
+      PreservedUint32_t(new_object_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DestroyObject(uint32_t session_id,
+                                             uint32_t object_handle) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_DestroyObject(session_id, object_handle);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

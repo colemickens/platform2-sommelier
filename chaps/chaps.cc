@@ -143,7 +143,7 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
   if (!pSlotList)
     return CKR_OK;
   LOG_CK_RV_AND_RETURN_IF(slot_list.size() > max_copy, CKR_BUFFER_TOO_SMALL);
-  for (size_t i = 0; i < slot_list.size(); i++) {
+  for (size_t i = 0; i < slot_list.size(); ++i) {
     pSlotList[i] = slot_list[i];
   }
   return CKR_OK;
@@ -245,7 +245,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
     return CKR_OK;
   LOG_CK_RV_AND_RETURN_IF(mechanism_list.size() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
-  for (size_t i = 0; i < mechanism_list.size(); i++) {
+  for (size_t i = 0; i < mechanism_list.size(); ++i) {
     pMechanismList[i] = static_cast<CK_MECHANISM_TYPE>(mechanism_list[i]);
   }
   return CKR_OK;
@@ -399,6 +399,7 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
   return CKR_OK;
 }
 
+// PKCS #11 v2.20 section 11.6 page 125.
 CK_RV C_Login(CK_SESSION_HANDLE hSession,
               CK_USER_TYPE userType,
               CK_UTF8CHAR_PTR pPin,
@@ -411,7 +412,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,
   return CKR_OK;
 }
 
-
+// PKCS #11 v2.20 section 11.6 page 127.
 CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->Logout(hSession);
@@ -419,4 +420,44 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
   return CKR_OK;
 }
 
+// PKCS #11 v2.20 section 11.7 page 128.
+CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
+                     CK_ATTRIBUTE_PTR  pTemplate,
+                     CK_ULONG          ulCount,
+                     CK_OBJECT_HANDLE_PTR phObject) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (pTemplate == NULL_PTR || phObject == NULL_PTR)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  CK_RV result = g_proxy->CreateObject(
+      hSession,
+      chaps::EncodeAttributes(pTemplate, ulCount),
+      chaps::PreservedCK_ULONG(phObject));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
 
+// PKCS #11 v2.20 section 11.7 page 130.
+CK_RV C_CopyObject(CK_SESSION_HANDLE    hSession,
+                   CK_OBJECT_HANDLE     hObject,
+                   CK_ATTRIBUTE_PTR     pTemplate,
+                   CK_ULONG             ulCount,
+                   CK_OBJECT_HANDLE_PTR phNewObject) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (pTemplate == NULL_PTR || phNewObject == NULL_PTR)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  CK_RV result = g_proxy->CopyObject(
+      hSession,
+      hObject,
+      chaps::EncodeAttributes(pTemplate, ulCount),
+      chaps::PreservedCK_ULONG(phNewObject));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.7 page 131.
+CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = g_proxy->DestroyObject(hSession, hObject);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}

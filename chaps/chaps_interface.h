@@ -11,6 +11,8 @@
 
 #include <base/basictypes.h>
 
+#include "chaps/chaps.h"
+
 namespace chaps {
 
 // ChapsInterface provides an abstract interface closely matching the
@@ -109,6 +111,18 @@ public:
                          const std::string* pin) = 0;
   // PKCS #11 v2.20 section 11.6 page 127.
   virtual uint32_t Logout(uint32_t session_id) = 0;
+  // PKCS #11 v2.20 section 11.7 page 128.
+  virtual uint32_t CreateObject(uint32_t session_id,
+                                const AttributeValueMap& attributes,
+                                uint32_t* new_object_handle) = 0;
+  // PKCS #11 v2.20 section 11.7 page 130.
+  virtual uint32_t CopyObject(uint32_t session_id,
+                              uint32_t object_handle,
+                              const AttributeValueMap& attributes,
+                              uint32_t* new_object_handle) = 0;
+  // PKCS #11 v2.20 section 11.7 page 131.
+  virtual uint32_t DestroyObject(uint32_t session_id,
+                                 uint32_t object_handle) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

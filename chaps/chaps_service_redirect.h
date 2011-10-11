@@ -81,6 +81,16 @@ public:
                          uint32_t user_type,
                          const std::string* pin);
   virtual uint32_t Logout(uint32_t session_id);
+  virtual uint32_t CreateObject(uint32_t session_id,
+                                const AttributeValueMap& attributes,
+                                uint32_t* new_object_handle);
+  virtual uint32_t CopyObject(uint32_t session_id,
+                              uint32_t object_handle,
+                              const AttributeValueMap& attributes,
+                              uint32_t* new_object_handle);
+  virtual uint32_t DestroyObject(uint32_t session_id,
+                                 uint32_t object_handle);
+
 private:
   std::string library_path_;
   void* library_;

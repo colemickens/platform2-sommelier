@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 
+#include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -87,6 +88,41 @@ class PreservedValue {
 };
 
 typedef PreservedValue<CK_ULONG, uint32_t> PreservedCK_ULONG;
+typedef PreservedValue<uint32_t, CK_ULONG> PreservedUint32_t;
+
+// This function encodes a PKCS #11 template as an attribute-value map.
+AttributeValueMap EncodeAttributes(CK_ATTRIBUTE_PTR attributes,
+                                   CK_ULONG num_attributes);
+
+// This function decodes an attribute-value map into a PKCS #11 template.  The
+// number of attributes in the template will always be the same as the size of
+// the attribute map provided. The CK_ATTRIBUTE_PTR returned should be freed
+// using FreeAttributes.
+CK_ATTRIBUTE_PTR DecodeAttributes(const AttributeValueMap& attributes);
+
+// This function frees an attribute list created by DecodeAttributes.
+void FreeAttributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes);
+
+// This class frees attributes on destruction; similar to scoped_ptr but for use
+// with DecodeAttributes and FreeAttributes.
+class ScopedAttributes {
+ public:
+  ScopedAttributes(CK_ATTRIBUTE_PTR attributes, CK_ULONG num_attributes)
+      : attributes_(attributes),
+        num_attributes_(num_attributes) {}
+  ~ScopedAttributes() {
+    FreeAttributes(attributes_, num_attributes_);
+  }
+  operator CK_ATTRIBUTE_PTR() {
+    return attributes_;
+  }
+
+ private:
+  CK_ATTRIBUTE_PTR attributes_;
+  CK_ULONG num_attributes_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedAttributes);
+};
 
 }  // namespace
 #endif  // CHAPS_CHAPS_UTILITY_H

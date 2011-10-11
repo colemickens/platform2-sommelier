@@ -11,11 +11,14 @@
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_service_redirect.h"
+#include "chaps/chaps_utility.h"
 
 using std::string;
 using std::vector;
 
 DEFINE_bool(use_dbus, false, "");
+
+namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
   if (FLAGS_use_dbus) {
@@ -70,7 +73,7 @@ TEST_F(TestP11, SlotList) {
   EXPECT_EQ(CKR_OK, result);
   EXPECT_LT(0, slot_list.size());
   printf("Slots: ");
-  for (size_t i = 0; i < slot_list.size(); i++) {
+  for (size_t i = 0; i < slot_list.size(); ++i) {
     printf("%d ", slot_list[i]);
   }
   printf("\n");
@@ -297,6 +300,42 @@ TEST_F(TestP11Session, Logout) {
   EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, chaps_->Logout(session_id_));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Logout(17));
 }
+
+TEST_F(TestP11Session, CreateObject) {
+  CK_OBJECT_CLASS class_value = CKO_DATA;
+  CK_UTF8CHAR label[] = "A data object";
+  CK_UTF8CHAR application[] = "An application";
+  CK_BYTE data[] = "Sample data";
+  CK_BYTE data2[] = "Sample data 2";
+  CK_BBOOL false_value = CK_FALSE;
+  CK_ATTRIBUTE attributes[] = {
+    {CKA_CLASS, &class_value, sizeof(class_value)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_LABEL, label, sizeof(label)-1},
+    {CKA_APPLICATION, application, sizeof(application)-1},
+    {CKA_VALUE, data, sizeof(data)}
+  };
+  CK_ATTRIBUTE attributes2[] = {
+    {CKA_VALUE, data2, sizeof(data2)}
+  };
+  AttributeValueMap attribute_map = EncodeAttributes(attributes, 5);
+  uint32_t handle = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            chaps_->CreateObject(session_id_, attribute_map, NULL));
+  EXPECT_EQ(CKR_OK, chaps_->CreateObject(session_id_, attribute_map, &handle));
+  AttributeValueMap attribute_map2 = EncodeAttributes(attributes2, 1);
+  uint32_t handle2 = 0;
+  EXPECT_EQ(CKR_OK,
+            chaps_->CopyObject(session_id_, handle, attribute_map2, &handle2));
+  EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, handle));
+  EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, handle2));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            chaps_->CreateObject(17, attribute_map, &handle));
+  EXPECT_EQ(CKR_TEMPLATE_INCOMPLETE,
+            chaps_->CreateObject(session_id_, attribute_map2, &handle));
+}
+
+} // namespace chaps
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);

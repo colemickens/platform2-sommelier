@@ -210,4 +210,30 @@ uint32_t ChapsAdaptor::Logout(const uint32_t& session_id,
   return service_->Logout(session_id);
 }
 
+void ChapsAdaptor::CreateObject(
+      const uint32_t& session_id,
+      const std::map<uint32_t, std::vector<uint8_t> >& attributes,
+      uint32_t& new_object_handle,
+      uint32_t& result,
+      ::DBus::Error &error) {
+  result = service_->CreateObject(session_id, attributes, &new_object_handle);
+}
+
+void ChapsAdaptor::CopyObject(
+      const uint32_t& session_id,
+      const uint32_t& object_handle,
+      const std::map<uint32_t, std::vector<uint8_t> >& attributes,
+      uint32_t& new_object_handle,
+      uint32_t& result,
+      ::DBus::Error &error) {
+  result = service_->CopyObject(session_id, object_handle, attributes,
+                                &new_object_handle);
+}
+
+uint32_t ChapsAdaptor::DestroyObject(const uint32_t& session_id,
+                                 const uint32_t& object_handle,
+                                 ::DBus::Error &error) {
+  return service_->DestroyObject(session_id, object_handle);
+}
+
 }  // namespace
