@@ -71,8 +71,10 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status) {
   // is still valid.  Better safe than sorry.
   if ((!line_power_info_ || !file_util::PathExists(line_power_path_)) &&
       (!battery_info_ || !file_util::PathExists(battery_path_))) {
+#ifndef IS_DESKTOP
     // A hack for situations like VMs where there is no power supply sysfs.
     LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
+#endif
     status->line_power_on = line_power_on_ = true;
     status->battery_is_present = battery_is_present_ = false;
     return true;
