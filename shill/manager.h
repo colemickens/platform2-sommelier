@@ -59,14 +59,14 @@ class Manager {
   void AdoptProfile(const ProfileRefPtr &profile);
 
   const ProfileRefPtr &ActiveProfile();
-  bool MoveToActiveProfile(const ProfileRefPtr &from,
-                           const ServiceRefPtr &to_move);
+  bool MoveServiceToProfile(const ServiceRefPtr &to_move,
+                            const ProfileRefPtr &destination);
 
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceRefPtr &to_forget);
 
   virtual void RegisterService(const ServiceRefPtr &to_manage);
-  virtual void DeregisterService(const ServiceConstRefPtr &to_forget);
+  virtual void DeregisterService(const ServiceRefPtr &to_forget);
   virtual void UpdateService(const ServiceConstRefPtr &to_update);
 
   void FilterByTechnology(Technology::Identifier tech,

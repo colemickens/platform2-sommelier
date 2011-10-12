@@ -22,7 +22,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
-#include "shill/service.h"
+#include "shill/service_under_test.h"
 
 using std::map;
 using std::string;
@@ -35,32 +35,6 @@ using testing::StrictMock;
 using testing::Test;
 
 namespace shill {
-
-// This is a simple Service subclass with all the pure-virutal methods stubbed
-class ServiceUnderTest : public Service {
- public:
-  static const char kRpcId[];
-  static const char kStorageId[];
-
-  ServiceUnderTest(ControlInterface *control_interface,
-                   EventDispatcher *dispatcher,
-                   Manager *manager)
-      : Service(control_interface, dispatcher, manager, "stub") {}
-  virtual ~ServiceUnderTest() {}
-
-  virtual void Connect(Error */*error*/) {}
-  virtual void Disconnect() {}
-  virtual string CalculateState() { return ""; }
-  virtual string GetRpcIdentifier() const { return ServiceMockAdaptor::kRpcId; }
-  virtual string GetDeviceRpcId() { return kRpcId; }
-  virtual string GetStorageIdentifier() { return kStorageId; }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
-};
-
-const char ServiceUnderTest::kRpcId[] = "mock-device-rpc";
-const char ServiceUnderTest::kStorageId[] = "service";
 
 class ServiceTest : public PropertyStoreTest {
  public:

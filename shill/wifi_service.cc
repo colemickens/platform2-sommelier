@@ -115,7 +115,7 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
   return wifi_->TechnologyIs(type);
 }
 
-string WiFiService::GetStorageIdentifier() {
+string WiFiService::GetStorageIdentifier() const {
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                flimflam::kTypeWifi,
                                                wifi_->address().c_str(),

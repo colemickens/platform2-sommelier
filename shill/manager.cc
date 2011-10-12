@@ -133,9 +133,8 @@ void Manager::Stop() {
   // Persist profile, device, service information to disk.
   vector<ProfileRefPtr>::iterator it;
   for (it = profiles_.begin(); it != profiles_.end(); ++it) {
-    (*it)->Finalize();
+    (*it)->Save();
   }
-  ephemeral_profile_->Finalize();
 
   adaptor_->UpdateRunning();
   modem_info_.Stop();
@@ -151,17 +150,14 @@ const ProfileRefPtr &Manager::ActiveProfile() {
   return profiles_.back();
 }
 
-bool Manager::MoveToActiveProfile(const ProfileRefPtr &from,
-                                  const ServiceRefPtr &to_move) {
-  return ActiveProfile()->AdoptService(to_move) &&
-      from->AbandonService(to_move->UniqueName());
+bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
+                                   const ProfileRefPtr &destination) {
+  const ProfileRefPtr from = to_move->profile();
+  return destination->AdoptService(to_move) &&
+      from->AbandonService(to_move);
 }
 
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
-  // TODO(pstew): Should DefaultProfile have a list of devices, analogous to
-  // the list of services that it manages?  If so, we should do a similar merge
-  // thing here.
-
   vector<DeviceRefPtr>::iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if (to_manage.get() == it->get())
@@ -172,6 +168,13 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   // TODO(pstew): Should check configuration
   if (running_)
     to_manage->Start();
+
+  // NB: Should we keep a ptr to default profile and only persist that here?
+  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    (*it)->Save();
+  }
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
@@ -190,15 +193,16 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   VLOG(2) << __func__ << to_manage->UniqueName();
 
+  bool merged = false;
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
-       it != profiles_.end();
+       !merged && it != profiles_.end();
        ++it) {
-    if ((*it)->MergeService(to_manage))  // this will merge, if possible.
-      break;
+    merged = (*it)->MergeService(to_manage);  // Will merge, if possible.
   }
 
   // If not found, add it to the ephemeral profile
-  ephemeral_profile_->AdoptService(to_manage);
+  if (!merged)
+    ephemeral_profile_->AdoptService(to_manage);
 
   // Now add to OUR list.
   vector<ServiceRefPtr>::iterator it;
@@ -216,11 +220,7 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
                                           service_paths);
 }
 
-void Manager::DeregisterService(const ServiceConstRefPtr &to_forget) {
-  // If the service is in the ephemeral profile, destroy it.
-  if (!ephemeral_profile_->AbandonService(to_forget->UniqueName())) {
-    // if it's in one of the real profiles...um...I guess mark it unconnectable?
-  }
+void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->UniqueName() == (*it)->UniqueName()) {

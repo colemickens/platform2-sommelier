@@ -31,7 +31,7 @@ class EthernetService : public Service {
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // ethernet_<MAC>
-  virtual std::string GetStorageIdentifier();
+  virtual std::string GetStorageIdentifier() const;
 
  private:
   static const char kServiceType[];

@@ -25,8 +25,17 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 
 EphemeralProfile::~EphemeralProfile() {}
 
-void EphemeralProfile::Finalize() {
-  services()->clear();
+bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
+  VLOG(2) << "Adding " << service->UniqueName() << " to ephemeral profile.";
+  service->set_profile(this);
+  return true;
+}
+
+bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
+  if (service->profile() == this)
+    service->set_profile(NULL);
+  VLOG(2) << "Removing " << service->UniqueName() << " from ephemeral profile.";
+  return true;
 }
 
 bool EphemeralProfile::Save() {

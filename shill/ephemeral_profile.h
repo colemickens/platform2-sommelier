@@ -28,8 +28,8 @@ class EphemeralProfile : public Profile {
   EphemeralProfile(ControlInterface *control_interface, Manager *manager);
   virtual ~EphemeralProfile();
 
-  // Merely stop managing service persistence; flush nothing to disk.
-  virtual void Finalize();
+  virtual bool AdoptService(const ServiceRefPtr &service);
+  virtual bool AbandonService(const ServiceRefPtr &service);
 
   // Should not be called.
   virtual bool Save();

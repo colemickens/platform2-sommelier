@@ -7,19 +7,24 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_util.h>
 #include <gtest/gtest.h>
 
+#include "shill/glib.h"
+#include "shill/key_file_store.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
+#include "shill/service_under_test.h"
 
 using std::set;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::Invoke;
 using testing::Return;
 using testing::SetArgumentPointee;
 using testing::StrictMock;
@@ -28,9 +33,9 @@ namespace shill {
 
 class ProfileTest : public PropertyStoreTest {
  public:
-  ProfileTest()
-      : store_(new MockStore),
-        profile_(new MockProfile(control_interface(), manager(), "")) {
+  ProfileTest() {
+    Profile::Identifier id("rather", "irrelevant");
+    profile_ = new Profile(control_interface(), manager(), id, "", false);
   }
 
   MockService *CreateMockService() {
@@ -39,9 +44,19 @@ class ProfileTest : public PropertyStoreTest {
                                        manager());
   }
 
+  virtual void SetUp() {
+    PropertyStoreTest::SetUp();
+    FilePath final_path(storage_path());
+    final_path = final_path.Append("test.profile");
+    scoped_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
+    storage->set_path(final_path);
+    ASSERT_TRUE(storage->Open());
+    profile_->set_storage(storage.release());  // Passes ownership.
+  }
+
  protected:
-  scoped_ptr<MockStore> store_;
-  scoped_refptr<MockProfile> profile_;
+  GLib real_glib_;
+  ProfileRefPtr profile_;
 };
 
 TEST_F(ProfileTest, IsValidIdentifierToken) {
@@ -89,8 +104,7 @@ TEST_F(ProfileTest, ParseIdentifier) {
 TEST_F(ProfileTest, GetFriendlyName) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";
-  Profile::Identifier id;
-  id.identifier = kIdentifier;
+  Profile::Identifier id(kIdentifier);
   ProfileRefPtr profile(
       new Profile(control_interface(), manager(), id, "", false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
@@ -104,8 +118,7 @@ TEST_F(ProfileTest, GetStoragePath) {
   static const char kIdentifier[] = "someprofile";
   static const char kFormat[] = "/a/place/for/%s";
   FilePath path;
-  Profile::Identifier id;
-  id.identifier = kIdentifier;
+  Profile::Identifier id(kIdentifier);
   ProfileRefPtr profile(
       new Profile(control_interface(), manager(), id, "", false));
   EXPECT_FALSE(profile->GetStoragePath(&path));
@@ -118,75 +131,96 @@ TEST_F(ProfileTest, GetStoragePath) {
 }
 
 TEST_F(ProfileTest, ServiceManagement) {
-  string service1_name;
-  string service2_name;
-  {
-    ServiceRefPtr service1(CreateMockService());
-    ServiceRefPtr service2(CreateMockService());
-    service1_name = service1->UniqueName();
-    service2_name = service2->UniqueName();
-    ASSERT_TRUE(profile_->AdoptService(service1));
-    ASSERT_TRUE(profile_->AdoptService(service2));
-    ASSERT_FALSE(profile_->AdoptService(service1));
-  }
-  ASSERT_TRUE(profile_->FindService(service1_name).get() != NULL);
-  ASSERT_TRUE(profile_->FindService(service2_name).get() != NULL);
+  scoped_refptr<MockService> service1(CreateMockService());
+  scoped_refptr<MockService> service2(CreateMockService());
 
-  ASSERT_TRUE(profile_->AbandonService(service1_name));
-  ASSERT_TRUE(profile_->FindService(service1_name).get() == NULL);
-  ASSERT_TRUE(profile_->FindService(service2_name).get() != NULL);
+  EXPECT_CALL(*service1.get(), Save(_))
+      .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
+  EXPECT_CALL(*service2.get(), Save(_))
+      .WillRepeatedly(Invoke(service2.get(), &MockService::FauxSave));
 
-  ASSERT_FALSE(profile_->AbandonService(service1_name));
-  ASSERT_TRUE(profile_->AbandonService(service2_name));
-  ASSERT_TRUE(profile_->FindService(service1_name).get() == NULL);
-  ASSERT_TRUE(profile_->FindService(service2_name).get() == NULL);
+  ASSERT_TRUE(profile_->AdoptService(service1));
+  ASSERT_TRUE(profile_->AdoptService(service2));
+
+  // Ensure services are in the profile now.
+  ASSERT_TRUE(profile_->ContainsService(service1));
+  ASSERT_TRUE(profile_->ContainsService(service2));
+
+  // Ensure we can't add them twice.
+  ASSERT_FALSE(profile_->AdoptService(service1));
+  ASSERT_FALSE(profile_->AdoptService(service2));
+
+  // Ensure that we can abandon individually, and that doing so is idempotent.
+  ASSERT_TRUE(profile_->AbandonService(service1));
+  ASSERT_FALSE(profile_->ContainsService(service1));
+  ASSERT_TRUE(profile_->AbandonService(service1));
+  ASSERT_TRUE(profile_->ContainsService(service2));
+
+  // Clean up.
+  ASSERT_TRUE(profile_->AbandonService(service2));
+  ASSERT_FALSE(profile_->ContainsService(service1));
+  ASSERT_FALSE(profile_->ContainsService(service2));
 }
 
-TEST_F(ProfileTest, Finalize) {
-  Profile::Identifier id;
-  id.identifier = "irrelevant";
-  ProfileRefPtr profile(
-      new Profile(control_interface(), manager(), id, "", false));
+TEST_F(ProfileTest, ServiceMerge) {
+  ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
+                                              dispatcher(),
+                                              manager()));
+  service1->set_favorite(!service1->favorite());
+  ASSERT_TRUE(profile_->AdoptService(service1));
+  ASSERT_TRUE(profile_->ContainsService(service1));
+
+  // Create new service; ask Profile to merge it with a known, matching,
+  // service; ensure that settings from |service1| wind up in |service2|.
+  ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
+                                              dispatcher(),
+                                              manager()));
+  bool orig_favorite = service2->favorite();
+  ASSERT_TRUE(profile_->MergeService(service2));
+  ASSERT_EQ(service1->favorite(), service2->favorite());
+  ASSERT_NE(orig_favorite, service2->favorite());
+
+  // Clean up.
+  ASSERT_TRUE(profile_->AbandonService(service1));
+  ASSERT_FALSE(profile_->ContainsService(service1));
+  ASSERT_FALSE(profile_->ContainsService(service2));
+}
+
+TEST_F(ProfileTest, Save) {
   scoped_refptr<MockService> service1(CreateMockService());
   scoped_refptr<MockService> service2(CreateMockService());
   EXPECT_CALL(*service1.get(), Save(_)).WillOnce(Return(true));
   EXPECT_CALL(*service2.get(), Save(_)).WillOnce(Return(true));
 
-  ASSERT_TRUE(profile->AdoptService(service1));
-  ASSERT_TRUE(profile->AdoptService(service2));
+  ASSERT_TRUE(profile_->AdoptService(service1));
+  ASSERT_TRUE(profile_->AdoptService(service2));
 
-  profile->set_storage(store_.release());
-  profile->Finalize();
+  profile_->Save();
 }
 
 TEST_F(ProfileTest, EntryEnumeration) {
-  scoped_refptr<MockService> service1(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  manager()));
-  scoped_refptr<MockService> service2(
-      new StrictMock<MockService>(control_interface(),
-                                  dispatcher(),
-                                  manager()));
+  scoped_refptr<MockService> service1(CreateMockService());
+  scoped_refptr<MockService> service2(CreateMockService());
+  EXPECT_CALL(*service1.get(), Save(_))
+      .WillRepeatedly(Invoke(service1.get(), &MockService::FauxSave));
+  EXPECT_CALL(*service2.get(), Save(_))
+      .WillRepeatedly(Invoke(service2.get(), &MockService::FauxSave));
+
   string service1_name(service1->UniqueName());
   string service2_name(service2->UniqueName());
 
-  EXPECT_CALL(*service1.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(service1_name));
-  EXPECT_CALL(*service2.get(), GetRpcIdentifier())
-      .WillRepeatedly(Return(service2_name));
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->AdoptService(service2));
 
   ASSERT_EQ(profile_->EnumerateEntries().size(), 2);
 
-  ASSERT_TRUE(profile_->AbandonService(service1_name));
+  ASSERT_TRUE(profile_->AbandonService(service1));
   ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
 
-  ASSERT_FALSE(profile_->AbandonService(service1_name));
+  ASSERT_TRUE(profile_->AbandonService(service1));
   ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
 
-  ASSERT_TRUE(profile_->AbandonService(service2_name));
+  ASSERT_TRUE(profile_->AbandonService(service2));
   ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
 }
 

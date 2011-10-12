@@ -59,7 +59,7 @@ bool CellularService::TechnologyIs(const Technology::Identifier type) const {
   return cellular_->TechnologyIs(type);
 }
 
-string CellularService::GetStorageIdentifier() {
+string CellularService::GetStorageIdentifier() const {
   string id = base::StringPrintf("%s_%s_%s",
                                  kServiceType,
                                  cellular_->address().c_str(),

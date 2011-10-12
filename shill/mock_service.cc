@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/refptr_types.h"
+#include "shill/store_interface.h"
 
 using std::string;
 using testing::_;
@@ -26,12 +27,18 @@ MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager)
     : Service(control_interface, dispatcher, manager, "mock") {
-  ON_CALL(*this, GetRpcIdentifier()).WillByDefault(Return(""));
+  const string &id = UniqueName();
+  EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
+  EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
   ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
 }
 
 MockService::~MockService() {}
+
+bool MockService::FauxSave(StoreInterface *store) {
+  return store->SetString(UniqueName(), "dummy", "dummy");
+}
 
 }  // namespace shill

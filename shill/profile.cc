@@ -4,7 +4,7 @@
 
 #include "shill/profile.h"
 
-#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -23,7 +23,7 @@
 #include "shill/service.h"
 #include "shill/store_interface.h"
 
-using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -55,9 +55,7 @@ Profile::Profile(ControlInterface *control_interface,
                              NULL);
 }
 
-Profile::~Profile() {
-  DCHECK_EQ(services_.size(), 0);
-}
+Profile::~Profile() {}
 
 bool Profile::InitStorage(GLib *glib) {
   FilePath final_path;
@@ -92,48 +90,32 @@ void Profile::set_storage(StoreInterface *storage) {
 }
 
 bool Profile::AdoptService(const ServiceRefPtr &service) {
-  if (ContainsKey(services_, service->UniqueName()))
+  if (storage_->ContainsGroup(service->GetStorageIdentifier()))
     return false;
   service->set_profile(this);
-  services_[service->UniqueName()] = service;
-  return true;
+  return service->Save(storage_.get()) && storage_->Flush();
 }
 
-bool Profile::AbandonService(const string &name) {
-  map<string, ServiceRefPtr>::iterator to_abandon = services_.find(name);
-  if (to_abandon != services_.end()) {
-    services_.erase(to_abandon);
-    return true;
-  }
-  return false;
+bool Profile::AbandonService(const ServiceRefPtr &service) {
+  if (service->profile() == this)
+    service->set_profile(NULL);
+  return storage_->DeleteGroup(service->GetStorageIdentifier()) &&
+      storage_->Flush();
 }
 
-bool Profile::DemoteService(const string &name) {
-  map<string, ServiceRefPtr>::iterator to_demote = services_.find(name);
-  if (to_demote == services_.end())
-    return false;
-  return true;  // TODO(cmasone): mark |to_demote| as inactive or something.
+bool Profile::UpdateService(const ServiceRefPtr &service) {
+  return service->Save(storage_.get()) && storage_->Flush();
 }
 
 bool Profile::MergeService(const ServiceRefPtr &service) {
-  // TODO(cmasone): Make |service| just load itself from |store_|.
-  map<string, ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    if (Mergeable(it->second, service))
-      return true;
-  }
-  return false;
+  if (!storage_->ContainsGroup(service->GetStorageIdentifier()))
+    return false;
+  service->set_profile(this);
+  return service->Load(storage_.get());
 }
 
-ServiceRefPtr Profile::FindService(const std::string& name) {
-  if (ContainsKey(services_, name))
-    return services_[name];
-  return NULL;
-}
-
-void Profile::Finalize() {
-  Save();
-  services_.clear();
+bool Profile::ContainsService(const ServiceConstRefPtr &service) {
+  return storage_->ContainsGroup(service->GetStorageIdentifier());
 }
 
 bool Profile::IsValidIdentifierToken(const std::string &token) {
@@ -178,7 +160,7 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
 }
 
 bool Profile::Save() {
-  return SaveServices() && storage_->Flush();
+  return storage_->Flush();
 }
 
 bool Profile::GetStoragePath(FilePath *path) {
@@ -198,12 +180,10 @@ vector<string> Profile::EnumerateAvailableServices() {
 }
 
 vector<string> Profile::EnumerateEntries() {
-  vector<string> rpc_ids;
-  map<string, ServiceRefPtr>::const_iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    rpc_ids.push_back(it->second->GetRpcIdentifier());
-  }
-  return rpc_ids;
+  // TODO(someone): Determine if we care about this wasteful copying; consider
+  // making GetGroups return a vector.
+  set<string> groups(storage_->GetGroups());
+  return vector<string>(groups.begin(), groups.end());
 }
 
 void Profile::HelpRegisterDerivedStrings(
@@ -213,17 +193,6 @@ void Profile::HelpRegisterDerivedStrings(
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));
-}
-
-bool Profile::SaveServices() {
-  for (map<string, ServiceRefPtr>::iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    VLOG(1) << "Saving service named " << it->first;
-    if (!it->second->Save(storage()))
-      return false;
-  }
-  return true;
 }
 
 }  // namespace shill

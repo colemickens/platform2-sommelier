@@ -199,6 +199,7 @@ TEST_OBJS = \
 	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
 	rtnl_message_unittest.o \
+	service_under_test.o \
 	service_unittest.o \
 	shill_unittest.o \
 	testrunner.o \

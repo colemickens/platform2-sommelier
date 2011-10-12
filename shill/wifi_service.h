@@ -38,7 +38,7 @@ class WiFiService : public Service {
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
-  std::string GetStorageIdentifier();
+  std::string GetStorageIdentifier() const;
 
   const std::string &mode() const;
   const std::string &key_management() const;

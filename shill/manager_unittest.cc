@@ -15,7 +15,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/glib.h"
+#include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -26,6 +29,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
+#include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
 
 using std::map;
@@ -35,6 +39,7 @@ using std::vector;
 
 namespace shill {
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -77,6 +82,23 @@ class ManagerTest : public PropertyStoreTest {
     return (devices.size() == 1 && devices[0].get() == device.get());
   }
   bool ServiceOrderIs(ServiceRefPtr svc1, ServiceRefPtr svc2);
+
+  Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
+    Profile::Identifier id("rather", "irrelevant");
+    scoped_ptr<Profile> profile(new Profile(control_interface(),
+                                            manager,
+                                            id,
+                                            "",
+                                            false));
+    FilePath final_path(storage_path());
+    final_path = final_path.Append("test.profile");
+    scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
+    storage->set_path(final_path);
+    if (!storage->Open())
+      return NULL;
+    profile->set_storage(storage.release());  // Passes ownership.
+    return profile.release();
+  }
 
  protected:
   scoped_refptr<MockWiFi> mock_wifi_;
@@ -140,6 +162,10 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   run_path(),
                   storage_path(),
                   string());
+  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ASSERT_TRUE(profile.get());
+  manager.AdoptProfile(profile);
+
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
@@ -171,6 +197,66 @@ TEST_F(ManagerTest, ServiceRegistration) {
   EXPECT_TRUE(manager.FindService(service1_name).get() != NULL);
   EXPECT_TRUE(manager.FindService(service2_name).get() != NULL);
 
+  manager.Stop();
+}
+
+TEST_F(ManagerTest, RegisterKnownService) {
+  // It's much easier and safer to use a real GLib for this test.
+  GLib glib;
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  string());
+  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ASSERT_TRUE(profile.get());
+  manager.AdoptProfile(profile);
+  {
+    ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
+                                                dispatcher(),
+                                                &manager));
+    service1->set_favorite(!service1->favorite());
+    ASSERT_TRUE(profile->AdoptService(service1));
+    ASSERT_TRUE(profile->ContainsService(service1));
+  }  // Force destruction of service1.
+
+  ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
+                                              dispatcher(),
+                                              &manager));
+  manager.RegisterService(service2);
+  EXPECT_EQ(service2->profile().get(), profile.get());
+  manager.Stop();
+}
+
+TEST_F(ManagerTest, RegisterUnknownService) {
+  // It's much easier and safer to use a real GLib for this test.
+  GLib glib;
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  string());
+  ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
+  ASSERT_TRUE(profile.get());
+  manager.AdoptProfile(profile);
+  {
+    ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
+                                                dispatcher(),
+                                                &manager));
+    service1->set_favorite(!service1->favorite());
+    ASSERT_TRUE(profile->AdoptService(service1));
+    ASSERT_TRUE(profile->ContainsService(service1));
+  }  // Force destruction of service1.
+  scoped_refptr<MockService> mock_service2(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                &manager));
+  EXPECT_CALL(*mock_service2.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(mock_service2->UniqueName()));
+  manager.RegisterService(mock_service2);
+  EXPECT_NE(mock_service2->profile().get(), profile.get());
   manager.Stop();
 }
 
@@ -221,62 +307,43 @@ TEST_F(ManagerTest, GetDevicesProperty) {
 }
 
 TEST_F(ManagerTest, MoveService) {
-  // It's much easier and safer to use a real GLib for this test.
-  GLib glib;
   Manager manager(control_interface(),
                   dispatcher(),
-                  &glib,
+                  glib(),
                   run_path(),
                   storage_path(),
                   string());
+  scoped_refptr<MockService> s2(new MockService(control_interface(),
+                                                dispatcher(),
+                                                &manager));
+  // Inject an actual profile, backed by a fake StoreInterface
   {
-    Profile::Identifier id;
-    id.identifier = "irrelevant";
+    Profile::Identifier id("irrelevant");
     ProfileRefPtr profile(
         new Profile(control_interface(), &manager, id, "", false));
     MockStore *storage = new MockStore;
-    EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
+    // Say we don't have |s2| the first time asked, then that we do.
+    EXPECT_CALL(*storage, ContainsGroup(s2->GetStorageIdentifier()))
+        .WillOnce(Return(false))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*storage, Flush())
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(true));
     profile->set_storage(storage);
     manager.AdoptProfile(profile);
   }
-  // I want to ensure that the Profiles are managing this Service object
-  // lifetime properly, so I can't hold a ref to it here.
-  ProfileRefPtr profile(new MockProfile(control_interface(), &manager, ""));
-  string service_name;
-  {
-    scoped_refptr<MockService> s2(
-        new MockService(control_interface(),
-                        dispatcher(),
-                        &manager));
-    EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));
+  // Create a profile that already has |s2| in it.
+  ProfileRefPtr profile(new EphemeralProfile(control_interface(), &manager));
+  profile->AdoptService(s2);
 
-    profile->AdoptService(s2);
-    s2->set_profile(profile);
-    service_name = s2->UniqueName();
-  }
-
-  // Now, move the |service| to another profile.
-  ASSERT_TRUE(manager.MoveToActiveProfile(profile,
-                                           profile->FindService(service_name)));
+  // Now, move the Service |s2| to another profile.
+  EXPECT_CALL(*s2.get(), Save(_)).WillOnce(Return(true));
+  ASSERT_TRUE(manager.MoveServiceToProfile(s2, manager.ActiveProfile()));
 
   // Force destruction of the original Profile, to ensure that the Service
   // is kept alive and populated with data.
   profile = NULL;
-  {
-    ServiceRefPtr serv(manager.ActiveProfile()->FindService(service_name));
-    ASSERT_TRUE(serv.get() != NULL);
-    Error error(Error::kInvalidProperty, "");
-    ::DBus::Error dbus_error;
-    map<string, ::DBus::Variant> props;
-    bool expected = true;
-    serv->mutable_store()->SetBoolProperty(flimflam::kAutoConnectProperty,
-                                           expected,
-                                           &error);
-    DBusAdaptor::GetProperties(serv->store(), &props, &dbus_error);
-    ASSERT_TRUE(ContainsKey(props, flimflam::kAutoConnectProperty));
-    EXPECT_EQ(props[flimflam::kAutoConnectProperty].reader().get_bool(),
-              expected);
-  }
+  ASSERT_TRUE(manager.ActiveProfile()->ContainsService(s2));
   manager.Stop();
 }
 

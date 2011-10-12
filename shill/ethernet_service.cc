@@ -53,7 +53,7 @@ std::string EthernetService::GetDeviceRpcId() {
   return ethernet_->GetRpcIdentifier();
 }
 
-string EthernetService::GetStorageIdentifier() {
+string EthernetService::GetStorageIdentifier() const {
   return base::StringPrintf("%s_%s",
                             kServiceType, ethernet_->address().c_str());
 }

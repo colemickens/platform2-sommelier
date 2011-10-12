@@ -36,7 +36,7 @@ class CellularService : public Service {
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // cellular_<MAC>_<Service_Operator_Name>
-  std::string GetStorageIdentifier();
+  std::string GetStorageIdentifier() const;
 
   const std::string &activation_state() const { return activation_state_; }
   void set_activation_state(const std::string &state) {

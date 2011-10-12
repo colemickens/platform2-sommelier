@@ -8,10 +8,13 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/key_file_store.h"
+#include "shill/glib.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -31,7 +34,7 @@ class DefaultProfileTest : public PropertyStoreTest {
   DefaultProfileTest()
       : profile_(new DefaultProfile(control_interface(),
                                     manager(),
-                                    FilePath(kTestStoragePath),
+                                    FilePath(storage_path()),
                                     properties_)),
         device_(new MockDevice(control_interface(),
                                dispatcher(),
@@ -43,9 +46,20 @@ class DefaultProfileTest : public PropertyStoreTest {
 
   virtual ~DefaultProfileTest() {}
 
+  virtual void SetUp() {
+    PropertyStoreTest::SetUp();
+    FilePath final_path;
+    ASSERT_TRUE(profile_->GetStoragePath(&final_path));
+    scoped_ptr<KeyFileStore> storage(new KeyFileStore(&real_glib_));
+    storage->set_path(final_path);
+    ASSERT_TRUE(storage->Open());
+    profile_->set_storage(storage.release());  // Passes ownership.
+  }
+
  protected:
   static const char kTestStoragePath[];
 
+  GLib real_glib_;
   ProfileRefPtr profile_;
   scoped_refptr<MockDevice> device_;
   Manager::Properties properties_;
@@ -107,7 +121,7 @@ TEST_F(DefaultProfileTest, Save) {
 TEST_F(DefaultProfileTest, GetStoragePath) {
   FilePath path;
   EXPECT_TRUE(profile_->GetStoragePath(&path));
-  EXPECT_EQ(string(kTestStoragePath) + "/default.profile", path.value());
+  EXPECT_EQ(storage_path() + "/default.profile", path.value());
 }
 
 }  // namespace shill

@@ -63,28 +63,25 @@ class Profile : public base::RefCounted<Profile> {
   // Begin managing the persistence of |service|.
   // Returns true if |service| is new to this profile and was added,
   // false if the |service| already existed.
-  bool AdoptService(const ServiceRefPtr &service);
+  virtual bool AdoptService(const ServiceRefPtr &service);
 
-  // Cease managing the persistence of the Service named |name|.
-  // Returns true if |name| was found and abandoned, false if not found.
-  bool AbandonService(const std::string &name);
+  // Cease managing the persistence of the Service |service|.
+  // Returns true if |service| was found and abandoned, or not found.
+  // Returns false if can't be abandoned.
+  virtual bool AbandonService(const ServiceRefPtr &service);
 
-  // Continue persisting the Service named |name|, but don't consider it
-  // usable for connectivity.
-  // Returns true if |name| was found and demoted, false if not found.
-  bool DemoteService(const std::string &name);
+  // Clobbers persisted notion of |service| with data from |service|.
+  // Returns true if |service| was found and updated, false if not found.
+  bool UpdateService(const ServiceRefPtr &service);
 
   // Determine if |service| represents a service that's already in |services_|.
   // If so, merge them smartly and return true.  If not, return false.
   bool MergeService(const ServiceRefPtr &service);
 
-  ServiceRefPtr FindService(const std::string& name);
+  bool ContainsService(const ServiceConstRefPtr &service);
 
   std::vector<std::string> EnumerateAvailableServices();
   std::vector<std::string> EnumerateEntries();
-
-  // Flush any pending entry info to disk and stop managing service persistence.
-  virtual void Finalize();
 
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
@@ -100,15 +97,12 @@ class Profile : public base::RefCounted<Profile> {
  protected:
   // Protected getters
   Manager *manager() const { return manager_; }
-  std::map<std::string, ServiceRefPtr> *services() { return &services_; }
   StoreInterface *storage() { return storage_.get(); }
 
  private:
   friend class ProfileAdaptorInterface;
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
   FRIEND_TEST(ProfileTest, ParseIdentifier);
-  // TODO(cmasone): once we can add services organically, take this out.
-  FRIEND_TEST(ServiceTest, MoveService);
 
   static bool IsValidIdentifierToken(const std::string &token);
 
@@ -118,24 +112,14 @@ class Profile : public base::RefCounted<Profile> {
   // on success.
   static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
 
-  // Returns true if |candidate| can be merged into |service|.
-  bool Mergeable(const ServiceRefPtr &/*service*/,
-                 const ServiceRefPtr &/*candiate*/) {
-    return false;
-  }
-
   void HelpRegisterDerivedStrings(
       const std::string &name,
       Strings(Profile::*get)(void),
       void(Profile::*set)(const Strings&, Error *));
 
-  // Persists |services_| to disk via |storage_|.
-  bool SaveServices();
-
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
   Manager *manager_;
-  std::map<std::string, ServiceRefPtr> services_;
 
   // Shared with |adaptor_| via public getter.
   PropertyStore store_;

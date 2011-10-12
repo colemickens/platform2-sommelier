@@ -125,7 +125,7 @@ class Service : public base::RefCounted<Service> {
   virtual std::string GetRpcIdentifier() const;
 
   // Returns the unique persistent storage identifier for the service.
-  virtual std::string GetStorageIdentifier() = 0;
+  virtual std::string GetStorageIdentifier() const = 0;
 
   // Loads the service from persistent |storage|. Returns true on success.
   virtual bool Load(StoreInterface *storage);
