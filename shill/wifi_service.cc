@@ -36,8 +36,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const std::string &mode,
                          const std::string &security)
     : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
+      need_passphrase_(false),
       security_(security),
       mode_(mode),
+      hidden_ssid_(false),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
