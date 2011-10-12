@@ -185,7 +185,8 @@ mac_anonymize () {
       -e 's/\(\/[0-9a-fA-F]\{8\}\)[0-9a-fA-F]\{4\}\([^0-9a-fA-F]\)/\1####\2/' \
       -e 's/\(\/.*Passphrase \).*/\1[removed]/' \
       -e 's/\(\/.*PSK \).*/\1[removed]/' \
-      -e 's/\(\/.*Password \).*/\1[removed]/'
+      -e 's/\(\/.*Password \).*/\1[removed]/' \
+      -e 's/\(UUID: \).*/\1[removed]/'
 }
 
 # Read the logs
