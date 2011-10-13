@@ -152,6 +152,8 @@ install-programs:
 	install -t $(DESTDIR)$(DBUSDATADIR) -m 0644 $(DBUSCONFIGFILE)
 	install -t $(DESTDIR)/usr/bin mm-cromo-command
 
+tests: $(TESTS)
+
 install-tests: $(TESTS)
 	install -d $(DESTDIR)/usr/bin
 	install -t $(DESTDIR)/usr/bin $^
