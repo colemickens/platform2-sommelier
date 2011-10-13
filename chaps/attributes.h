@@ -16,9 +16,7 @@ namespace chaps {
 // This class encapsulates an array of CK_ATTRIBUTEs and provides serialization.
 class Attributes {
  public:
-  // This constructor initializes with a NULL array.  Methods that operate on
-  // the current array (e.g. Serialize, ParseAndFill) cannot be used with a NULL
-  // array.
+  // This constructor initializes with a NULL array.
   Attributes();
   // This constructor does not take ownership of the array.  I.e. No memory
   // deallocation will be performed when the object destructs.

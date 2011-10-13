@@ -531,4 +531,45 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
   return CKR_OK;
 }
 
+// PKCS #11 v2.20 section 11.7 page 136.
+CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
+                        CK_ATTRIBUTE_PTR  pTemplate,
+                        CK_ULONG          ulCount) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pTemplate && ulCount > 0, CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  string serialized_attributes;
+  if (!attributes.Serialize(&serialized_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  CK_RV result = g_proxy->FindObjectsInit(hSession, serialized_attributes);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.7 page 137.
+CK_RV C_FindObjects(CK_SESSION_HANDLE    hSession,
+                    CK_OBJECT_HANDLE_PTR phObject,
+                    CK_ULONG             ulMaxObjectCount,
+                    CK_ULONG_PTR         pulObjectCount) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!phObject || !pulObjectCount, CKR_ARGUMENTS_BAD);
+  std::vector<uint32_t> object_list;
+  CK_RV result = g_proxy->FindObjects(hSession, ulMaxObjectCount, &object_list);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  LOG_CK_RV_AND_RETURN_IF(object_list.size() > ulMaxObjectCount,
+                          CKR_GENERAL_ERROR);
+  *pulObjectCount = static_cast<CK_ULONG>(object_list.size());
+  for (size_t i = 0; i < object_list.size(); i++) {
+    phObject[i] = static_cast<CK_OBJECT_HANDLE>(object_list[i]);
+  }
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.7 page 138.
+CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  CK_RV result = g_proxy->FindObjectsFinal(hSession);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
 

@@ -455,4 +455,46 @@ uint32_t ChapsProxyImpl::SetAttributeValue(uint32_t session_id,
   return result;
 }
 
+uint32_t ChapsProxyImpl::FindObjectsInit(uint32_t session_id,
+                                         const std::string& attributes) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->FindObjectsInit(session_id,
+                                     ConvertByteStringToVector(attributes));
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::FindObjects(uint32_t session_id,
+                                     uint32_t max_object_count,
+                                     std::vector<uint32_t>* object_list) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!object_list || object_list->size() > 0)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_OK;
+  try {
+    proxy_->FindObjects(session_id, max_object_count, *object_list, result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::FindObjectsFinal(uint32_t session_id) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  uint32_t result = CKR_OK;
+  try {
+    result = proxy_->FindObjectsFinal(session_id);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

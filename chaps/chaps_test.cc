@@ -1126,6 +1126,105 @@ TEST_F(TestAttributes, SetAttributeValueFail) {
       C_SetAttributeValue(1, 2, attribute_template2_, 2));
 }
 
+// FindObjects Tests
+TEST_F(TestAttributes, FindObjectsInitOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, FindObjectsInit(1, attributes_))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_FindObjectsInit(1, attribute_template_, 2));
+}
+
+TEST(TestFindObjects, FindObjectsInitNULL) {
+  ChapsProxyMock proxy(true);
+  string empty;
+  EXPECT_CALL(proxy, FindObjectsInit(1, empty))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_FindObjectsInit(1, NULL, 1));
+  EXPECT_EQ(CKR_OK, C_FindObjectsInit(1, NULL, 0));
+}
+
+TEST(TestFindObjects, FindObjectsInitNotInit) {
+  ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_FindObjectsInit(1, NULL, 0));
+}
+
+TEST(TestFindObjects, FindObjectsInitFail) {
+  ChapsProxyMock proxy(true);
+  string empty;
+  EXPECT_CALL(proxy, FindObjectsInit(1, empty))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsInit(1, NULL, 0));
+}
+
+TEST(TestFindObjects, FindObjectsOK) {
+  ChapsProxyMock proxy(true);
+  vector<uint32_t> object_list;
+  object_list.push_back(20);
+  object_list.push_back(21);
+  EXPECT_CALL(proxy, FindObjects(1, 7, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(object_list), Return(CKR_OK)));
+  CK_OBJECT_HANDLE object_array[7];
+  CK_ULONG size = 0;
+  EXPECT_EQ(CKR_OK, C_FindObjects(1, object_array, 7, &size));
+  EXPECT_EQ(size, 2);
+  EXPECT_EQ(object_array[0], object_list[0]);
+  EXPECT_EQ(object_array[1], object_list[1]);
+}
+
+TEST(TestFindObjects, FindObjectsNULL) {
+  ChapsProxyMock proxy(true);
+  CK_OBJECT_HANDLE object_array[7];
+  CK_ULONG size = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_FindObjects(1, NULL, 7, &size));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_FindObjects(1, object_array, 7, NULL));
+}
+
+TEST(TestFindObjects, FindObjectsOverflow) {
+  ChapsProxyMock proxy(true);
+  vector<uint32_t> object_list(8, 20);
+  EXPECT_CALL(proxy, FindObjects(1, 7, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(object_list), Return(CKR_OK)));
+  CK_OBJECT_HANDLE object_array[7];
+  CK_ULONG size = 0;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_FindObjects(1, object_array, 7, &size));
+}
+
+TEST(TestFindObjects, FindObjectsNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_OBJECT_HANDLE object_array[7];
+  CK_ULONG size = 0;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_FindObjects(1, object_array, 7, &size));
+}
+
+TEST(TestFindObjects, FindObjectsFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, FindObjects(1, 7, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  CK_OBJECT_HANDLE object_array[7];
+  CK_ULONG size = 0;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjects(1, object_array, 7, &size));
+}
+
+TEST(TestFindObjects, FindObjectsFinalOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, FindObjectsFinal(1))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_EQ(CKR_OK, C_FindObjectsFinal(1));
+}
+
+TEST(TestFindObjects, FindObjectsFinalNotInit) {
+  ChapsProxyMock proxy(false);
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_FindObjectsFinal(1));
+}
+
+TEST(TestFindObjects, FindObjectsFinalFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, FindObjectsFinal(1))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsFinal(1));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

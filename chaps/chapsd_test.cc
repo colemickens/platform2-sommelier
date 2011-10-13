@@ -243,10 +243,10 @@ TEST_F(TestP11, MechInfo) {
   EXPECT_EQ(CKR_ARGUMENTS_BAD, result);
 }
 
-// TODO: Issue# 22297
+// TODO(dkrahn): crosbug.com/22297
 // These PIN-related tests can mess up a live token.  Leave them until we're
 // no longer using openCryptoki.
-#if 0
+#ifdef CHAPS_TOKEN_INIT_TESTS
 TEST_F(TestP11, InitToken) {
   string pin = "test";
   string label = "test";
@@ -338,10 +338,10 @@ TEST_F(TestP11Session, SetOperationState) {
             chaps_->SetOperationState(17, state, 0, 0));
 }
 
-// TODO: Issue# 22297
+// TODO(dkrahn): crosbug.com/22297
 // These PIN-related tests can mess up a live token.  Leave them until we're
 // no longer using openCryptoki.
-#if 0
+#ifdef CHAPS_TOKEN_LOGIN_TESTS
 TEST_F(TestP11Session, Login) {
   string pin = "test";
   EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, &pin));
@@ -454,6 +454,42 @@ TEST_F(TestP11Object, SetAttributeValue) {
       chaps_->SetAttributeValue(17, object_handle_, serial));
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
       chaps_->SetAttributeValue(session_id_, 17, serial));
+}
+
+TEST_F(TestP11Object, FindObjects) {
+  vector<uint32_t> objects;
+  EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, ""));
+  EXPECT_EQ(CKR_OK, chaps_->FindObjects(session_id_, 10, &objects));
+  EXPECT_EQ(CKR_OK, chaps_->FindObjectsFinal(session_id_));
+  EXPECT_GT(objects.size(), 0);
+  EXPECT_LT(objects.size(), 11);
+
+  CK_OBJECT_CLASS class_value = CKO_DATA;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_ATTRIBUTE attributes[2] = {
+    {CKA_CLASS, &class_value, sizeof(class_value)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)}
+  };
+  string serial;
+  ASSERT_TRUE(SerializeAttributes(attributes, 2, &serial));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            chaps_->FindObjectsInit(session_id_, "invalid_string"));
+  EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, serial));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->FindObjects(session_id_, 10, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->FindObjects(session_id_, 10, &objects));
+  objects.clear();
+  EXPECT_EQ(CKR_OK, chaps_->FindObjects(session_id_, 10, &objects));
+  EXPECT_EQ(CKR_OK, chaps_->FindObjectsFinal(session_id_));
+  EXPECT_EQ(objects.size(), 1);
+  // Operation state management tests.
+  objects.clear();
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            chaps_->FindObjects(session_id_, 10, &objects));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            chaps_->FindObjectsFinal(session_id_));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsInit(17, ""));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjects(17, 10, &objects));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsFinal(17));
 }
 
 }  // namespace chaps

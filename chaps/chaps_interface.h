@@ -136,6 +136,15 @@ public:
   virtual uint32_t SetAttributeValue(uint32_t session_id,
                                      uint32_t object_handle,
                                      const std::string& attributes) = 0;
+  // PKCS #11 v2.20 section 11.7 page 136.
+  virtual uint32_t FindObjectsInit(uint32_t session_id,
+                                   const std::string& attributes) = 0;
+  // PKCS #11 v2.20 section 11.7 page 137.
+  virtual uint32_t FindObjects(uint32_t session_id,
+                               uint32_t max_object_count,
+                               std::vector<uint32_t>* object_list) = 0;
+  // PKCS #11 v2.20 section 11.7 page 138.
+  virtual uint32_t FindObjectsFinal(uint32_t session_id) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

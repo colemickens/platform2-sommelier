@@ -409,8 +409,8 @@ uint32_t ChapsServiceRedirect::DestroyObject(uint32_t session_id,
 }
 
 uint32_t ChapsServiceRedirect::GetObjectSize(uint32_t session_id,
-                                       uint32_t object_handle,
-                                       uint32_t* object_size) {
+                                             uint32_t object_handle,
+                                             uint32_t* object_size) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
   uint32_t result = functions_->C_GetObjectSize(session_id,
@@ -421,9 +421,9 @@ uint32_t ChapsServiceRedirect::GetObjectSize(uint32_t session_id,
 }
 
 uint32_t ChapsServiceRedirect::GetAttributeValue(uint32_t session_id,
-                                           uint32_t object_handle,
-                                           const string& attributes_in,
-                                           string* attributes_out) {
+                                                 uint32_t object_handle,
+                                                 const string& attributes_in,
+                                                 string* attributes_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   Attributes tmp;
@@ -441,16 +441,55 @@ uint32_t ChapsServiceRedirect::GetAttributeValue(uint32_t session_id,
 }
 
 uint32_t ChapsServiceRedirect::SetAttributeValue(uint32_t session_id,
-                                           uint32_t object_handle,
-                                           const string& attributes) {
+                                                 uint32_t object_handle,
+                                                 const string& attributes) {
   CHECK(functions_);
   Attributes tmp;
-  if (!tmp.Parse(attributes))
-    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   uint32_t result = functions_->C_SetAttributeValue(session_id,
                                                     object_handle,
                                                     tmp.attributes(),
                                                     tmp.num_attributes());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::FindObjectsInit(uint32_t session_id,
+                                               const std::string& attributes) {
+  CHECK(functions_);
+  Attributes tmp;
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_FindObjectsInit(session_id,
+                                                  tmp.attributes(),
+                                                  tmp.num_attributes());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::FindObjects(uint32_t session_id,
+                                           uint32_t max_object_count,
+                                           std::vector<uint32_t>* object_list) {
+  CHECK(functions_);
+  if (!object_list || object_list->size() > 0)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  scoped_array<CK_OBJECT_HANDLE> object_handles(
+      new CK_OBJECT_HANDLE[max_object_count]);
+  CHECK(object_handles.get());
+  CK_ULONG object_count = 0;
+  uint32_t result = functions_->C_FindObjects(session_id,
+                                              object_handles.get(),
+                                              max_object_count,
+                                              &object_count);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  for (CK_ULONG i = 0; i < object_count; i++) {
+    object_list->push_back(static_cast<uint32_t>(object_handles[i]));
+  }
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::FindObjectsFinal(uint32_t session_id) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_FindObjectsFinal(session_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }

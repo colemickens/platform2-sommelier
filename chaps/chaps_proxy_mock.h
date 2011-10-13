@@ -89,6 +89,10 @@ public:
                                             const std::string&, std::string*));
   MOCK_METHOD3(SetAttributeValue, uint32_t (uint32_t, uint32_t,
                                             const std::string&));
+  MOCK_METHOD2(FindObjectsInit, uint32_t (uint32_t, const std::string&));
+  MOCK_METHOD3(FindObjects, uint32_t (uint32_t, uint32_t,
+                                      std::vector<uint32_t>*));
+  MOCK_METHOD1(FindObjectsFinal, uint32_t (uint32_t));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

@@ -30,7 +30,7 @@ ChapsAdaptor::~ChapsAdaptor() {}
 void ChapsAdaptor::GetSlotList(const bool& token_present,
                                vector<uint32_t>& slotList,
                                uint32_t& result,
-                               ::DBus::Error &error) {
+                               ::DBus::Error& /*error*/) {
   result = service_->GetSlotList(token_present, &slotList);
 }
 
@@ -43,7 +43,7 @@ void ChapsAdaptor::GetSlotInfo(const uint32_t& slot_id,
                                uint8_t& firmware_version_major,
                                uint8_t& firmware_version_minor,
                                uint32_t& result,
-                               ::DBus::Error &error) {
+                               ::DBus::Error& /*error*/) {
   result = service_->GetSlotInfo(slot_id,
                                  &slot_description,
                                  &manufacturer_id,
@@ -75,7 +75,7 @@ void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
                                 uint8_t& firmware_version_major,
                                 uint8_t& firmware_version_minor,
                                 uint32_t& result,
-                                ::DBus::Error &error) {
+                                ::DBus::Error& /*error*/) {
   result = service_->GetTokenInfo(slot_id,
                                   &label,
                                   &manufacturer_id,
@@ -101,7 +101,7 @@ void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
 void ChapsAdaptor::GetMechanismList(const uint32_t& slot_id,
                                     vector<uint32_t>& mechanism_list,
                                     uint32_t& result,
-                                    ::DBus::Error &error) {
+                                    ::DBus::Error& /*error*/) {
   result = service_->GetMechanismList(slot_id, &mechanism_list);
 }
 
@@ -111,7 +111,7 @@ void ChapsAdaptor::GetMechanismInfo(const uint32_t& slot_id,
                                     uint32_t& max_key_size,
                                     uint32_t& flags,
                                     uint32_t& result,
-                                    ::DBus::Error &error) {
+                                    ::DBus::Error& /*error*/) {
   result = service_->GetMechanismInfo(slot_id,
                                       mechanism_type,
                                       &min_key_size,
@@ -123,7 +123,7 @@ uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
                                  const bool& use_null_pin,
                                  const string& optional_so_pin,
                                  const string& new_token_label,
-                                 ::DBus::Error &error) {
+                                 ::DBus::Error& /*error*/) {
   const string* tmp_pin = use_null_pin ? NULL : &optional_so_pin;
   return service_->InitToken(slot_id, tmp_pin, new_token_label);
 }
@@ -131,7 +131,7 @@ uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
 uint32_t ChapsAdaptor::InitPIN(const uint32_t& session_id,
                                const bool& use_null_pin,
                                const string& optional_user_pin,
-                               ::DBus::Error &error) {
+                               ::DBus::Error& /*error*/) {
   const string* tmp_pin = use_null_pin ? NULL : &optional_user_pin;
   return service_->InitPIN(session_id, tmp_pin);
 }
@@ -141,7 +141,7 @@ uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
                               const string& optional_old_pin,
                               const bool& use_null_new_pin,
                               const string& optional_new_pin,
-                              ::DBus::Error &error) {
+                              ::DBus::Error& /*error*/) {
   const string* tmp_old_pin = use_null_old_pin ? NULL : &optional_old_pin;
   const string* tmp_new_pin = use_null_new_pin ? NULL : &optional_new_pin;
   return service_->SetPIN(session_id, tmp_old_pin, tmp_new_pin);
@@ -150,17 +150,17 @@ uint32_t ChapsAdaptor::SetPIN(const uint32_t& session_id,
 void ChapsAdaptor::OpenSession(const uint32_t& slot_id, const uint32_t& flags,
                                uint32_t& session_id,
                                uint32_t& result,
-                               ::DBus::Error &error) {
+                               ::DBus::Error& /*error*/) {
   result = service_->OpenSession(slot_id, flags, &session_id);
 }
 
 uint32_t ChapsAdaptor::CloseSession(const uint32_t& session_id,
-                                    ::DBus::Error &error) {
+                                    ::DBus::Error& /*error*/) {
   return service_->CloseSession(session_id);
 }
 
 uint32_t ChapsAdaptor::CloseAllSessions(const uint32_t& slot_id,
-                                        ::DBus::Error &error) {
+                                        ::DBus::Error& /*error*/) {
   return service_->CloseAllSessions(slot_id);
 }
 
@@ -170,7 +170,7 @@ void ChapsAdaptor::GetSessionInfo(const uint32_t& session_id,
                                   uint32_t& flags,
                                   uint32_t& device_error,
                                   uint32_t& result,
-                                  ::DBus::Error &error) {
+                                  ::DBus::Error& /*error*/) {
   result = service_->GetSessionInfo(session_id,
                                     &slot_id,
                                     &state,
@@ -181,7 +181,7 @@ void ChapsAdaptor::GetSessionInfo(const uint32_t& session_id,
 void ChapsAdaptor::GetOperationState(const uint32_t& session_id,
                                      vector<uint8_t>& operation_state,
                                      uint32_t& result,
-                                     ::DBus::Error &error) {
+                                     ::DBus::Error& /*error*/) {
   string tmp;
   result = service_->GetOperationState(session_id, &tmp);
   operation_state = ConvertByteStringToVector(tmp);
@@ -192,7 +192,7 @@ uint32_t ChapsAdaptor::SetOperationState(
       const vector<uint8_t>& operation_state,
       const uint32_t& encryption_key_handle,
       const uint32_t& authentication_key_handle,
-      ::DBus::Error &error) {
+      ::DBus::Error& /*error*/) {
   return service_->SetOperationState(session_id,
                                      ConvertByteVectorToString(operation_state),
                                      encryption_key_handle,
@@ -203,13 +203,13 @@ uint32_t ChapsAdaptor::Login(const uint32_t& session_id,
                          const uint32_t& user_type,
                          const bool& use_null_pin,
                          const string& optional_pin,
-                         ::DBus::Error &error) {
+                         ::DBus::Error& /*error*/) {
   const string* pin = use_null_pin ? NULL : &optional_pin;
   return service_->Login(session_id, user_type, pin);
 }
 
 uint32_t ChapsAdaptor::Logout(const uint32_t& session_id,
-                              ::DBus::Error &error) {
+                              ::DBus::Error& /*error*/) {
   return service_->Logout(session_id);
 }
 
@@ -218,7 +218,7 @@ void ChapsAdaptor::CreateObject(
       const vector<uint8_t>& attributes,
       uint32_t& new_object_handle,
       uint32_t& result,
-      ::DBus::Error &error) {
+      ::DBus::Error& /*error*/) {
   result = service_->CreateObject(session_id,
                                   ConvertByteVectorToString(attributes),
                                   &new_object_handle);
@@ -230,7 +230,7 @@ void ChapsAdaptor::CopyObject(
       const vector<uint8_t>& attributes,
       uint32_t& new_object_handle,
       uint32_t& result,
-      ::DBus::Error &error) {
+      ::DBus::Error& /*error*/) {
   result = service_->CopyObject(session_id,
                                 object_handle,
                                 ConvertByteVectorToString(attributes),
@@ -239,7 +239,7 @@ void ChapsAdaptor::CopyObject(
 
 uint32_t ChapsAdaptor::DestroyObject(const uint32_t& session_id,
                                  const uint32_t& object_handle,
-                                 ::DBus::Error &error) {
+                                 ::DBus::Error& /*error*/) {
   return service_->DestroyObject(session_id, object_handle);
 }
 
@@ -247,7 +247,7 @@ void ChapsAdaptor::GetObjectSize(const uint32_t& session_id,
                            const uint32_t& object_handle,
                            uint32_t& object_size,
                            uint32_t& result,
-                           ::DBus::Error &error) {
+                           ::DBus::Error& /*error*/) {
   result = service_->GetObjectSize(session_id, object_handle, &object_size);
 }
 
@@ -256,7 +256,7 @@ void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
                                const std::vector<uint8_t>& attributes_in,
                                std::vector<uint8_t>& attributes_out,
                                uint32_t& result,
-                               ::DBus::Error &error) {
+                               ::DBus::Error& /*error*/) {
   string tmp;
   result = service_->GetAttributeValue(session_id,
                                        object_handle,
@@ -268,10 +268,30 @@ void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
 uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
                                    const uint32_t& object_handle,
                                    const std::vector<uint8_t>& attributes,
-                                   ::DBus::Error &error) {
+                                   ::DBus::Error& /*error*/) {
   return service_->SetAttributeValue(session_id,
                                      object_handle,
                                      ConvertByteVectorToString(attributes));
+}
+
+uint32_t ChapsAdaptor::FindObjectsInit(const uint32_t& session_id,
+                                       const std::vector<uint8_t>& attributes,
+                                       ::DBus::Error& /*error*/) {
+  return service_->FindObjectsInit(session_id,
+                                   ConvertByteVectorToString(attributes));
+}
+
+void ChapsAdaptor::FindObjects(const uint32_t& session_id,
+                               const uint32_t& max_object_count,
+                               std::vector<uint32_t>& object_list,
+                               uint32_t& result,
+                               ::DBus::Error& /*error*/) {
+  result = service_->FindObjects(session_id, max_object_count, &object_list);
+}
+
+uint32_t ChapsAdaptor::FindObjectsFinal(const uint32_t& session_id,
+                                        ::DBus::Error& /*error*/) {
+  return service_->FindObjectsFinal(session_id);
 }
 
 }  // namespace

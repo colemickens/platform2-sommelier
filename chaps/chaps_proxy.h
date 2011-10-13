@@ -107,6 +107,12 @@ public:
   virtual uint32_t SetAttributeValue(uint32_t session_id,
                                      uint32_t object_handle,
                                      const std::string& attributes);
+  virtual uint32_t FindObjectsInit(uint32_t session_id,
+                                   const std::string& attributes);
+  virtual uint32_t FindObjects(uint32_t session_id,
+                               uint32_t max_object_count,
+                               std::vector<uint32_t>* object_list);
+  virtual uint32_t FindObjectsFinal(uint32_t session_id);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.
