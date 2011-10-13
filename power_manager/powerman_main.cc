@@ -10,6 +10,8 @@
 #include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
+#include "power_manager/backlight_interface.h"
+#include "power_manager/external_backlight.h"
 #include "power_manager/powerman.h"
 
 using std::string;
@@ -69,8 +71,15 @@ int main(int argc, char* argv[]) {
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
+
+  power_manager::ExternalBacklight backlight;
+  backlight.Init();
+
   FilePath run_dir(FLAGS_run_dir);
-  power_manager::PowerManDaemon daemon(&prefs, &metrics_lib, run_dir);
+  power_manager::PowerManDaemon daemon(&prefs,
+                                       &metrics_lib,
+                                       &backlight,
+                                       run_dir);
   daemon.Init();
   daemon.Run();
   return 0;
