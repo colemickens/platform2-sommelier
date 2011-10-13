@@ -1,0 +1,77 @@
+Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+Use of this source code is governed by a BSD-style license that can be
+found in the LICENSE file.
+
+Intro
+-----
+We test shill using two sets of tests: unit tests, and integration
+tests. The unit tests are built using Google Test [1] and Google Mock
+[2]; the integration tests use autotest [3].
+
+Running unit tests
+------------------
+- build the shill_unittest target
+- run the resulting shill_unittest binary
+- if you're using our ebuild scripts, you can do both by running
+  (chroot)$ FEATURES="test" emerge-x86-generic shill
+
+Running integration tests
+-------------------------
+- build a test image, suitable for a VM:
+  (chroot) src/scripts$ ./build_packages --board=x86-generic
+  (chroot) src/scripts$ ./build_image --board=x86-generic --withdev \
+                            --test --noenable_rootfs_verification
+  (chroot) src/scripts$ ./image_to_vm.sh --board=x86-generic --test_image
+
+- start the VM
+  (host)$ sudo kvm -m 1024 -vga std -pidfile /tmp/kvm.pid \
+              -net nic,model=virtio -net user,hostfwd=tcp::9222-:22 \
+              -hda <path to chroot>/src/build/images/x86-generic/latest/chromiumos_qemu_image.bin
+
+- open a root shell on the VM console
+  - in VM console, log in as guest
+  - hit C-A-t to open a shell (use right control and alt, to avoid escaping
+    out of VM's mouse capture)
+
+  crosh> shell
+  chronos@localhost / $ sudo bash
+
+- load shill onto VM image
+  localhost / # FEATURES="nostrip" gmerge shill
+
+- stop flimflam, and start shill
+  localhost / # stop flimflam
+  localhost / # shill --v=1000 \
+            --device-black-list=managed0,managed1,mon.managed0,mon.managed1
+  (the black list keep shill from configuring the devices used by the hostapd
+  processes.)
+
+- run the tests
+  (chroot) src/scripts$ ./run_remote_tests.sh --board=x86-generic \
+                            --remote=127.0.0.1 --ssh_port 9222 \
+                            --args="config_file=wifi_vm_config" WiFiManager
+
+- configuration note: if you use a different port
+  (e.g. hostfwd=tcp::9223-:22), you'll need to change:
+    - the ssh_port argument to run_remote_tests
+    - the port numbers in
+      <chroot>/third_party/autotest/files/client/config/wifi_vm_config
+
+- debugging test failures
+  - "grep shill /var/log/messages" for log messages
+  - "grep wpa_supplicant /var/log/messages" for supplicant log messages
+  - "wpa_debug debug" to increase supplicant log level
+  - try resetting the test infrastructure
+    - rmmod mac80211_hwsim mac80211 cfg80211
+    - restart wpasupplicant
+    - rm /tmp/hostapd-test.control/*
+
+- additional test suites: we have a number of other WiFi test suites
+  (in addition to WiFiManager). these are: WiFiMatFunc, WiFiPerf,
+  WiFiRoaming, WiFiSecMat. the WiFiPerf tests are probably not too
+  relevant to shill (just yet), but the rest probably are.
+
+[1] http://code.google.com/p/googletest/
+[2] http://code.google.com/p/googlemock/
+[3] http://autotest.kernel.org/,
+    http://www.chromium.org/chromium-os/testing/testing-faq
