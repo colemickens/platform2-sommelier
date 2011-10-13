@@ -201,6 +201,19 @@ set_carrier () {
 	    "string:$carrier"
 }
 
+MADISON_CONFIG_GROUP_LOCATION=/var/lib/cromo/madison-config-group;
+
+set_madison_config () {
+	group="$*";
+
+	echo Setting madison config group to "$group".
+
+	echo "$group" > $MADISON_CONFIG_GROUP_LOCATION;
+
+	echo "You will need to restart cromo to use the new configuration."
+	echo "Reboot, or run 'restart cromo' from a root shell if you can.";
+}
+
 usage () {
 	echo "Usage: $0 <command> [args...]"
 	echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
@@ -210,6 +223,7 @@ usage () {
 	echo "  status                                       Display modem status"
 	echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
 	echo "  set-carrier [-modem <modem>] <carrier-name>  Set modem carrier firmware"
+	echo "  set-madison-config <config-group-name>       Set Madison config group"
 	exit 0
 }
 
@@ -235,6 +249,9 @@ case "$cmd" in
 		;;
 	set-carrier)
 		set_carrier "$@"
+		;;
+	set-madison-config)
+		set_madison_config "$@"
 		;;
 	*)
 		usage
