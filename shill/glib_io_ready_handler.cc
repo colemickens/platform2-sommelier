@@ -14,12 +14,13 @@ namespace shill {
 static gboolean DispatchIOHandler(GIOChannel *chan,
                                   GIOCondition cond,
                                   gpointer data) {
-  Callback1<int>::Type *callback = static_cast<Callback1<int>::Type *>(data);
+  Callback1<int>::Type *callback =
+    reinterpret_cast<Callback1<int>::Type *>(data);
+
+  callback->Run(g_io_channel_unix_get_fd(chan));
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
     return FALSE;
-
-  callback->Run(g_io_channel_unix_get_fd(chan));
 
   return TRUE;
 }

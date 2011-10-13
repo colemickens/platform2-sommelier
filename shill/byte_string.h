@@ -52,6 +52,7 @@ class ByteString {
   bool IsZero() const;
   bool Equals(const ByteString &b) const;
   void Append(const ByteString &b);
+  void Clear() { data_.clear(); }
   void Resize(int size) {
     data_.resize(size, 0);
   }

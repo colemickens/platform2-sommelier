@@ -71,6 +71,7 @@ DBUS_PROXY_BINDINGS = $(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
 SHILL_OBJS = \
+	async_connection.o \
 	byte_string.o \
 	cellular.o \
 	cellular_capability.o \
@@ -102,6 +103,7 @@ SHILL_OBJS = \
 	glib.o \
 	glib_io_ready_handler.o \
 	glib_io_input_handler.o \
+	http_proxy.o \
 	ip_address.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
@@ -151,6 +153,7 @@ SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = \
+	async_connection_unittest.o \
 	byte_string_unittest.o \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
@@ -169,12 +172,14 @@ TEST_OBJS = \
 	dhcp_provider_unittest.o \
 	dns_client_unittest.o \
 	error_unittest.o \
+	http_proxy_unittest.o \
 	ip_address_unittest.o \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	manager_unittest.o \
 	mock_adaptors.o \
 	mock_ares.o \
+	mock_async_connection.o \
 	mock_control.o \
 	mock_dbus_properties_proxy.o \
 	mock_device.o \
@@ -182,6 +187,7 @@ TEST_OBJS = \
 	mock_dhcp_config.o \
 	mock_dhcp_provider.o \
 	mock_dhcp_proxy.o \
+	mock_dns_client.o \
 	mock_event_dispatcher.o \
 	mock_glib.o \
 	mock_ipconfig.o \

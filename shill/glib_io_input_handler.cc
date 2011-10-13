@@ -17,6 +17,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   unsigned char buf[4096];
   gsize len;
   GIOError err;
+  gboolean ret = TRUE;
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
     return FALSE;
@@ -26,13 +27,14 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   if (err) {
     if (err == G_IO_ERROR_AGAIN)
       return TRUE;
-    return FALSE;
+    len = 0;
+    ret = FALSE;
   }
 
   InputData input_data(buf, len);
   callback->Run(&input_data);
 
-  return TRUE;
+  return ret;
 }
 
 GlibIOInputHandler::GlibIOInputHandler(int fd,

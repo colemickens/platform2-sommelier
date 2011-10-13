@@ -24,6 +24,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/http_proxy.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"

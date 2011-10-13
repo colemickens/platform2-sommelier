@@ -46,12 +46,12 @@ class DNSClient {
             int timeout_ms,
             EventDispatcher *dispatcher,
             Callback1<bool>::Type *callback);
-  ~DNSClient();
+  virtual ~DNSClient();
 
-  bool Start(const std::string &hostname);
-  void Stop();
-  const IPAddress &address() const { return address_; }
-  const std::string &error() const { return error_; }
+  virtual bool Start(const std::string &hostname);
+  virtual void Stop();
+  virtual const IPAddress &address() const { return address_; }
+  virtual const std::string &error() const { return error_; }
 
  private:
   friend class DNSClientTest;
