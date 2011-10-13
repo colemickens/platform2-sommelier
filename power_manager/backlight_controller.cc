@@ -117,6 +117,8 @@ bool BacklightController::GetCurrentBrightness(double* level) {
   if (!backlight_->GetBrightness(&raw_level, &max_))
     return false;
 
+  num_steps_ = std::max(static_cast<int64>(1),
+                        std::min(kMaxBrightnessSteps, max_));
   *level = RawBrightnessToLocalBrightness(raw_level);
   return true;
 }
@@ -130,7 +132,10 @@ bool BacklightController::GetTargetBrightness(double* level) {
 void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!IsInitialized())
     return;
-
+  int64 current_level;
+  backlight_->GetBrightness(&current_level, &max_);
+  num_steps_ = std::max(static_cast<int64>(1),
+                        std::min(kMaxBrightnessSteps, max_));
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
   double new_brightness = ClampToMin(local_brightness_ + step_size);
@@ -149,6 +154,10 @@ void BacklightController::DecreaseBrightness(bool allow_off,
   if (!IsInitialized())
     return;
 
+  int64 current_level;
+  backlight_->GetBrightness(&current_level, &max_);
+  num_steps_ = std::max(static_cast<int64>(1),
+                        std::min(kMaxBrightnessSteps, max_));
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
 
@@ -462,8 +471,10 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
 
 bool BacklightController::SetBrightnessGradual(int64 target_level) {
   LOG(INFO) << "Attempting to set brightness to " << target_level;
-  int64 current_level, max_level;
-  backlight_->GetBrightness(&current_level, &max_level);
+  int64 current_level;
+  backlight_->GetBrightness(&current_level, &max_);
+  num_steps_ = std::max(static_cast<int64>(1),
+                        std::min(kMaxBrightnessSteps, max_));
   LOG(INFO) << "Current actual brightness: " << current_level;
   LOG(INFO) << "Current target brightness: " << target_raw_brightness_;
 

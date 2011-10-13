@@ -17,11 +17,16 @@
 #include "base/string_util.h"
 #include "power_manager/ambient_light_sensor.h"
 #include "power_manager/audio_detector.h"
-#include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 #include "power_manager/video_detector.h"
+
+#ifdef IS_DESKTOP
+#include "power_manager/external_backlight_client.h"
+#else
+#include "power_manager/backlight.h"
+#endif
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -89,10 +94,15 @@ int main(int argc, char* argv[]) {
                              FLAGS_default_prefs_dir);
   power_manager::PowerPrefs prefs(prefs_dir, default_prefs_dir);
   gdk_init(&argc, &argv);
+#ifdef IS_DESKTOP
+  power_manager::ExternalBacklightClient backlight;
+  LOG_IF(WARNING, !backlight.Init()) << "Cannot initialize backlight";
+#else
   power_manager::Backlight backlight;
   LOG_IF(WARNING, !backlight.Init(FilePath(power_manager::kBacklightPath),
                                   power_manager::kBacklightPattern))
       << "Cannot initialize backlight";
+#endif
   power_manager::BacklightController backlight_ctl(&backlight, &prefs);
   LOG_IF(WARNING, !backlight_ctl.Init()) << "Cannot initialize backlight "
       "controller";

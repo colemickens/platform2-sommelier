@@ -16,6 +16,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/backlight_interface.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerman.h"
 #include "power_manager/util.h"
@@ -34,12 +35,14 @@ namespace power_manager {
 
 PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
                                MetricsLibraryInterface* metrics_lib,
+                               BacklightInterface* backlight,
                                const FilePath& run_dir)
   : loop_(NULL),
     use_input_for_lid_(1),
     prefs_(prefs),
     lidstate_(LID_STATE_OPENED),
     metrics_lib_(metrics_lib),
+    backlight_(backlight),
     retry_suspend_count_(0),
     suspend_pid_(0),
     lid_id_(0),
@@ -185,7 +188,7 @@ bool PowerManDaemon::CancelDBusRequest() {
 }
 
 DBusHandlerResult PowerManDaemon::DBusMessageHandler(
-    DBusConnection*, DBusMessage* message, void* data) {
+    DBusConnection* connection, DBusMessage* message, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
   if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                              kSuspendSignal)) {
@@ -257,7 +260,42 @@ DBusHandlerResult PowerManDaemon::DBusMessageHandler(
                    << " signal";
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-   } else {
+  } else if (dbus_message_is_method_call(message, kRootPowerManagerInterface,
+                                         kExternalBacklightGetMethod)) {
+    LOG(INFO) << "External backlight get brightness method call.";
+    int64 level = 0;
+    int64 max_level = 0;
+    dbus_bool_t result = FALSE;
+    if (daemon->backlight_)
+      result = daemon->backlight_->GetBrightness(&level, &max_level);
+    DBusMessage *reply = dbus_message_new_method_return(message);
+    CHECK(reply);
+    dbus_message_append_args(reply,
+                             DBUS_TYPE_INT64, &level,
+                             DBUS_TYPE_INT64, &max_level,
+                             DBUS_TYPE_BOOLEAN, &result,
+                             DBUS_TYPE_INVALID);
+    if (!dbus_connection_send(connection, reply, NULL)) {
+      LOG(WARNING) << "Failed to send reply message.";
+      // Other dbus clients may be interested in consuming this signal.
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    return DBUS_HANDLER_RESULT_HANDLED;
+  } else if (dbus_message_is_method_call(message, kRootPowerManagerInterface,
+                                         kExternalBacklightSetMethod)) {
+    int64 level = 0;
+    DBusError error;
+    dbus_error_init(&error);
+    if (dbus_message_get_args(message, &error,
+                              DBUS_TYPE_INT64, &level,
+                              DBUS_TYPE_INVALID) == FALSE) {
+      LOG(WARNING) << "Trouble reading args of set brightness method call.";
+      return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+    if (daemon->backlight_)
+      daemon->backlight_->SetBrightness(level);
+    return DBUS_HANDLER_RESULT_HANDLED;
+  } else {
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
   return DBUS_HANDLER_RESULT_HANDLED;
@@ -312,20 +350,50 @@ void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
   }
 }
 
-
 void PowerManDaemon::AddDBusMatch(DBusConnection *connection,
                                   const char *interface) {
   AddDBusMatch(connection, interface, NULL);
 }
 
+void PowerManDaemon::AddDBusMethod(DBusConnection *connection,
+                                   const char *interface,
+                                   const char *path) {
+  DBusError error;
+  dbus_error_init(&error);
+  std::string filter;
+  filter = StringPrintf("type='method_call', interface='%s', path='%s'",
+                        interface, path);
+  dbus_bus_add_match(connection, filter.c_str(), &error);
+  if (dbus_error_is_set(&error)) {
+    LOG(ERROR) << "Failed to add a match:" << error.name << ", message="
+               << error.message;
+    NOTREACHED();
+  }
+}
+
 void PowerManDaemon::RegisterDBusMessageHandler() {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  DBusError error;
+  dbus_error_init(&error);
+  if (dbus_bus_request_name(connection,
+                            kRootPowerManagerServiceName,
+                            0,
+                            &error) < 0) {
+    LOG(FATAL) << "Failed to register name \""
+               << kRootPowerManagerServiceName << "\": "
+               << (dbus_error_is_set(&error) ? error.message : "Unknown error");
+  }
+
   AddDBusMatch(connection,
                login_manager::kSessionManagerInterface,
                login_manager::kSessionManagerSessionStateChanged);
   AddDBusMatch(connection, kRootPowerManagerInterface);
   AddDBusMatch(connection, kPowerManagerInterface);
+  AddDBusMethod(connection,
+                kRootPowerManagerInterface,
+                kPowerManagerServicePath);
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));
 
