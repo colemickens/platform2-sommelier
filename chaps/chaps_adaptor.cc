@@ -182,9 +182,7 @@ void ChapsAdaptor::GetOperationState(const uint32_t& session_id,
                                      vector<uint8_t>& operation_state,
                                      uint32_t& result,
                                      ::DBus::Error& /*error*/) {
-  string tmp;
-  result = service_->GetOperationState(session_id, &tmp);
-  operation_state = ConvertByteStringToVector(tmp);
+  result = service_->GetOperationState(session_id, &operation_state);
 }
 
 uint32_t ChapsAdaptor::SetOperationState(
@@ -194,7 +192,7 @@ uint32_t ChapsAdaptor::SetOperationState(
       const uint32_t& authentication_key_handle,
       ::DBus::Error& /*error*/) {
   return service_->SetOperationState(session_id,
-                                     ConvertByteVectorToString(operation_state),
+                                     operation_state,
                                      encryption_key_handle,
                                      authentication_key_handle);
 }
@@ -220,7 +218,7 @@ void ChapsAdaptor::CreateObject(
       uint32_t& result,
       ::DBus::Error& /*error*/) {
   result = service_->CreateObject(session_id,
-                                  ConvertByteVectorToString(attributes),
+                                  attributes,
                                   &new_object_handle);
 }
 
@@ -233,7 +231,7 @@ void ChapsAdaptor::CopyObject(
       ::DBus::Error& /*error*/) {
   result = service_->CopyObject(session_id,
                                 object_handle,
-                                ConvertByteVectorToString(attributes),
+                                attributes,
                                 &new_object_handle);
 }
 
@@ -257,12 +255,10 @@ void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
                                std::vector<uint8_t>& attributes_out,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
-  string tmp;
   result = service_->GetAttributeValue(session_id,
                                        object_handle,
-                                       ConvertByteVectorToString(attributes_in),
-                                       &tmp);
-  attributes_out = ConvertByteStringToVector(tmp);
+                                       attributes_in,
+                                       &attributes_out);
 }
 
 uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
@@ -271,14 +267,13 @@ uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
                                    ::DBus::Error& /*error*/) {
   return service_->SetAttributeValue(session_id,
                                      object_handle,
-                                     ConvertByteVectorToString(attributes));
+                                     attributes);
 }
 
 uint32_t ChapsAdaptor::FindObjectsInit(const uint32_t& session_id,
                                        const std::vector<uint8_t>& attributes,
                                        ::DBus::Error& /*error*/) {
-  return service_->FindObjectsInit(session_id,
-                                   ConvertByteVectorToString(attributes));
+  return service_->FindObjectsInit(session_id, attributes);
 }
 
 void ChapsAdaptor::FindObjects(const uint32_t& session_id,
@@ -292,6 +287,109 @@ void ChapsAdaptor::FindObjects(const uint32_t& session_id,
 uint32_t ChapsAdaptor::FindObjectsFinal(const uint32_t& session_id,
                                         ::DBus::Error& /*error*/) {
   return service_->FindObjectsFinal(session_id);
+}
+
+uint32_t ChapsAdaptor::EncryptInit(
+    const uint32_t& session_id,
+    const uint32_t& mechanism_type,
+    const std::vector<uint8_t>& mechanism_parameter,
+    const uint32_t& key_handle,
+    ::DBus::Error& /*error*/) {
+  return service_->EncryptInit(session_id,
+                               mechanism_type,
+                               mechanism_parameter,
+                               key_handle);
+}
+
+void ChapsAdaptor::Encrypt(const uint32_t& session_id,
+                           const std::vector<uint8_t>& data_in,
+                           const uint32_t& max_out_length,
+                           uint32_t& actual_out_length,
+                           std::vector<uint8_t>& data_out,
+                           uint32_t& result,
+                           ::DBus::Error& /*error*/) {
+  result = service_->Encrypt(session_id,
+                             data_in,
+                             max_out_length,
+                             &actual_out_length,
+                             &data_out);
+}
+
+void ChapsAdaptor::EncryptUpdate(const uint32_t& session_id,
+                                 const std::vector< uint8_t >& data_in,
+                                 const uint32_t& max_out_length,
+                                 uint32_t& actual_out_length,
+                                 std::vector<uint8_t>& data_out,
+                                 uint32_t& result, ::DBus::Error& /*error*/) {
+  result = service_->EncryptUpdate(session_id,
+                                   data_in,
+                                   max_out_length,
+                                   &actual_out_length,
+                                   &data_out);
+}
+
+void ChapsAdaptor::EncryptFinal(const uint32_t& session_id,
+                                const uint32_t& max_out_length,
+                                uint32_t& actual_out_length,
+                                std::vector<uint8_t>& data_out,
+                                uint32_t& result,
+                                ::DBus::Error& /*error*/) {
+  result = service_->EncryptFinal(session_id,
+                                  max_out_length,
+                                  &actual_out_length,
+                                  &data_out);
+}
+
+uint32_t ChapsAdaptor::DecryptInit(
+    const uint32_t& session_id,
+    const uint32_t& mechanism_type,
+    const std::vector<uint8_t>& mechanism_parameter,
+    const uint32_t& key_handle,
+    ::DBus::Error& /*error*/) {
+  return service_->DecryptInit(session_id,
+                               mechanism_type,
+                               mechanism_parameter,
+                               key_handle);
+}
+
+void ChapsAdaptor::Decrypt(const uint32_t& session_id,
+                           const std::vector< uint8_t >& data_in,
+                           const uint32_t& max_out_length,
+                           uint32_t& actual_out_length,
+                           std::vector<uint8_t>& data_out,
+                           uint32_t& result,
+                           ::DBus::Error& /*error*/) {
+  result = service_->Decrypt(session_id,
+                             data_in,
+                             max_out_length,
+                             &actual_out_length,
+                             &data_out);
+}
+
+void ChapsAdaptor::DecryptUpdate(const uint32_t& session_id,
+                                 const std::vector<uint8_t>& data_in,
+                                 const uint32_t& max_out_length,
+                                 uint32_t& actual_out_length,
+                                 std::vector<uint8_t>& data_out,
+                                 uint32_t& result,
+                                 ::DBus::Error& /*error*/) {
+  result = service_->DecryptUpdate(session_id,
+                                   data_in,
+                                   max_out_length,
+                                   &actual_out_length,
+                                   &data_out);
+}
+
+void ChapsAdaptor::DecryptFinal(const uint32_t& session_id,
+                                const uint32_t& max_out_length,
+                                uint32_t& actual_out_length,
+                                std::vector<uint8_t>& data_out,
+                                uint32_t& result,
+                                ::DBus::Error& /*error*/) {
+  result = service_->DecryptFinal(session_id,
+                                  max_out_length,
+                                  &actual_out_length,
+                                  &data_out);
 }
 
 }  // namespace

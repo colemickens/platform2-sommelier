@@ -5,14 +5,17 @@
 #include "attributes.h"
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
 
 #include "attributes.pb.h"
+#include "chaps_utility.h"
 
 using std::string;
+using std::vector;
 
 namespace chaps {
 
@@ -30,16 +33,20 @@ Attributes::~Attributes() {
   Free();
 }
 
-bool Attributes::Serialize(std::string* serialized_attributes) const {
-  return SerializeInternal(attributes_,
-                           num_attributes_,
-                           true,  // Allow nesting.
-                           serialized_attributes);
+bool Attributes::Serialize(vector<uint8_t>* serialized_attributes) const {
+  string tmp;
+  if (!SerializeInternal(attributes_,
+                         num_attributes_,
+                         true,  // Allow nesting.
+                         &tmp))
+    return false;
+  *serialized_attributes = ConvertByteStringToVector(tmp);
+  return true;
 }
 
-bool Attributes::Parse(const std::string& serialized_attributes) {
+bool Attributes::Parse(const vector<uint8_t>& serialized_attributes) {
   Free();
-  bool success = ParseInternal(serialized_attributes,
+  bool success = ParseInternal(ConvertByteVectorToString(serialized_attributes),
                                true,  // Allow nesting.
                                &attributes_,
                                &num_attributes_);
@@ -47,8 +54,8 @@ bool Attributes::Parse(const std::string& serialized_attributes) {
   return success;
 }
 
-bool Attributes::ParseAndFill(const std::string& serialized_attributes) {
-  return ParseAndFillInternal(serialized_attributes,
+bool Attributes::ParseAndFill(const vector<uint8_t>& serialized_attributes) {
+  return ParseAndFillInternal(ConvertByteVectorToString(serialized_attributes),
                               true,  // Allow nesting.
                               attributes_,
                               num_attributes_);
@@ -182,14 +189,14 @@ bool Attributes::ParseAndFillInternal(const string& serialized,
     return false;
   }
   if (num_attributes != IntToValueLength(attribute_list.attribute_size())) {
-    LOG(ERROR) << "Attribute array size mismatch (expect=" << num_attributes
+    LOG(ERROR) << "Attribute array size mismatch (expected=" << num_attributes
                << ", actual=" << attribute_list.attribute_size() << ").";
     return false;
   }
   for (int i = 0; i < attribute_list.attribute_size(); ++i) {
     const Attribute& attribute = attribute_list.attribute(i);
     if (attributes[i].type != attribute.type()) {
-      LOG(ERROR) << "Attribute type mismatch (expect=" << attributes[i].type
+      LOG(ERROR) << "Attribute type mismatch (expected=" << attributes[i].type
                  << ", actual=" << attribute.type() << ").";
       return false;
     }

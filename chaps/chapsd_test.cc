@@ -37,12 +37,12 @@ static chaps::ChapsInterface* CreateChapsInstance() {
 
 static bool SerializeAttributes(CK_ATTRIBUTE_PTR attributes,
                                 CK_ULONG num_attributes,
-                                string* serialized) {
+                                vector<uint8_t>* serialized) {
   Attributes tmp(attributes, num_attributes);
   return tmp.Serialize(serialized);
 }
 
-static bool ParseAndFillAttributes(const string& serialized,
+static bool ParseAndFillAttributes(const vector<uint8_t>& serialized,
                                    CK_ATTRIBUTE_PTR attributes,
                                    CK_ULONG num_attributes) {
   Attributes tmp(attributes, num_attributes);
@@ -98,9 +98,8 @@ class TestP11Object : public TestP11Session {
       {CKA_APPLICATION, application, sizeof(application)-1},
       {CKA_VALUE, data, sizeof(data)}
     };
-    string serialized;
-    Attributes tmp(attributes, 5);
-    ASSERT_TRUE(tmp.Serialize(&serialized));
+    vector<uint8_t> serialized;
+    ASSERT_TRUE(SerializeAttributes(attributes, 5, &serialized));
     ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_,
                                            serialized,
                                            &object_handle_));
@@ -327,13 +326,13 @@ TEST_F(TestP11Session, GetSessionInfo) {
 }
 
 TEST_F(TestP11Session, GetOperationState) {
-  string state;
+  vector<uint8_t> state;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->GetOperationState(17, &state));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetOperationState(session_id_, NULL));
 }
 
 TEST_F(TestP11Session, SetOperationState) {
-  string state(10, 0);
+  vector<uint8_t> state(10, 0);
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             chaps_->SetOperationState(17, state, 0, 0));
 }
@@ -373,14 +372,14 @@ TEST_F(TestP11Session, CreateObject) {
   CK_ATTRIBUTE attributes2[] = {
     {CKA_VALUE, data2, sizeof(data2)}
   };
-  string attribute_serial;
+  vector<uint8_t> attribute_serial;
   ASSERT_TRUE(SerializeAttributes(attributes, 5, &attribute_serial));
   uint32_t handle = 0;
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             chaps_->CreateObject(session_id_, attribute_serial, NULL));
   EXPECT_EQ(CKR_OK,
             chaps_->CreateObject(session_id_, attribute_serial, &handle));
-  string attribute_serial2;
+  vector<uint8_t> attribute_serial2;
   ASSERT_TRUE(SerializeAttributes(attributes2, 1, &attribute_serial2));
   uint32_t handle2 = 0;
   EXPECT_EQ(CKR_OK, chaps_->CopyObject(session_id_,
@@ -409,9 +408,9 @@ TEST_F(TestP11Object, GetObjectSize) {
 TEST_F(TestP11Object, GetAttributeValue) {
   CK_BYTE buffer[100];
   CK_ATTRIBUTE query[1] = {{CKA_VALUE, buffer, sizeof(buffer)}};
-  string serial_query;
+  vector<uint8_t> serial_query;
   ASSERT_TRUE(SerializeAttributes(query, 1, &serial_query));
-  string response;
+  vector<uint8_t> response;
   EXPECT_EQ(CKR_OK, chaps_->GetAttributeValue(session_id_,
                                               object_handle_,
                                               serial_query,
@@ -434,7 +433,7 @@ TEST_F(TestP11Object, SetAttributeValue) {
   CK_BYTE buffer[100];
   memset(buffer, 0xAA, sizeof(buffer));
   CK_ATTRIBUTE attributes[1] = {{CKA_VALUE, buffer, sizeof(buffer)}};
-  string serial;
+  vector<uint8_t> serial;
   ASSERT_TRUE(SerializeAttributes(attributes, 1, &serial));
   EXPECT_EQ(CKR_OK, chaps_->SetAttributeValue(session_id_,
                                               object_handle_,
@@ -443,7 +442,7 @@ TEST_F(TestP11Object, SetAttributeValue) {
   memset(buffer2, 0xBB, sizeof(buffer2));
   attributes[0].pValue = buffer2;
   ASSERT_TRUE(SerializeAttributes(attributes, 1, &serial));
-  string response;
+  vector<uint8_t> response;
   EXPECT_EQ(CKR_OK, chaps_->GetAttributeValue(session_id_,
                                               object_handle_,
                                               serial,
@@ -458,7 +457,8 @@ TEST_F(TestP11Object, SetAttributeValue) {
 
 TEST_F(TestP11Object, FindObjects) {
   vector<uint32_t> objects;
-  EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, ""));
+  vector<uint8_t> empty;
+  EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, empty));
   EXPECT_EQ(CKR_OK, chaps_->FindObjects(session_id_, 10, &objects));
   EXPECT_EQ(CKR_OK, chaps_->FindObjectsFinal(session_id_));
   EXPECT_GT(objects.size(), 0);
@@ -470,10 +470,11 @@ TEST_F(TestP11Object, FindObjects) {
     {CKA_CLASS, &class_value, sizeof(class_value)},
     {CKA_TOKEN, &false_value, sizeof(false_value)}
   };
-  string serial;
+  vector<uint8_t> serial;
   ASSERT_TRUE(SerializeAttributes(attributes, 2, &serial));
   EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
-            chaps_->FindObjectsInit(session_id_, "invalid_string"));
+            chaps_->FindObjectsInit(session_id_,
+                                    vector<uint8_t>(20, 0)));
   EXPECT_EQ(CKR_OK, chaps_->FindObjectsInit(session_id_, serial));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->FindObjects(session_id_, 10, NULL));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->FindObjects(session_id_, 10, &objects));
@@ -487,9 +488,151 @@ TEST_F(TestP11Object, FindObjects) {
             chaps_->FindObjects(session_id_, 10, &objects));
   EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
             chaps_->FindObjectsFinal(session_id_));
-  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsInit(17, ""));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsInit(17, empty));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjects(17, 10, &objects));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsFinal(17));
+}
+
+static vector<uint8_t> SubVector(const vector<uint8_t>& v,
+                                 int offset,
+                                 int size) {
+  const uint8_t* front = &v.front() + offset;
+  return vector<uint8_t>(front, front + size);
+}
+
+static void AppendVector(vector<uint8_t>& v1, const vector<uint8_t>& v2) {
+  v1.insert(v1.end(), v2.begin(), v2.end());
+}
+
+TEST_F(TestP11Session, Encrypt) {
+  // Create a session key.
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_AES;
+  CK_BYTE key_value[32] = {0};
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_ATTRIBUTE key_desc[] = {
+    {CKA_CLASS, &key_class, sizeof(key_class)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+    {CKA_DECRYPT, &true_value, sizeof(true_value)},
+    {CKA_VALUE, key_value, sizeof(key_value)}
+  };
+  vector<uint8_t> key;
+  ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
+  uint32_t key_handle = 0;
+  ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
+  // Test encrypt.
+  vector<uint8_t> parameter;
+  EXPECT_EQ(CKR_OK, chaps_->EncryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  vector<uint8_t> data(48, 2), encrypted;
+  uint32_t not_used = 0;
+  const uint32_t max_out = 100;
+  EXPECT_EQ(CKR_OK, chaps_->Encrypt(session_id_,
+                                    data,
+                                    max_out,
+                                    &not_used,
+                                    &encrypted));
+  EXPECT_EQ(CKR_OK, chaps_->EncryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  vector<uint8_t> encrypted2, tmp;
+  EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
+                                          SubVector(data, 0, 3),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(encrypted2, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
+                                          SubVector(data, 3, 27),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(encrypted2, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
+                                          SubVector(data, 30, 18),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(encrypted2, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->EncryptFinal(session_id_,
+                                         max_out,
+                                         &not_used,
+                                         &tmp));
+  AppendVector(encrypted2, tmp);
+  tmp.clear();
+  EXPECT_EQ(encrypted.size(), encrypted2.size());
+  EXPECT_EQ(0, memcmp(&encrypted.front(),
+                      &encrypted2.front(),
+                      encrypted.size()));
+  // Test decrypt.
+  EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  vector<uint8_t> decrypted;
+  EXPECT_EQ(CKR_OK, chaps_->Decrypt(session_id_,
+                                    encrypted,
+                                    max_out,
+                                    &not_used,
+                                    &decrypted));
+  EXPECT_EQ(data.size(), decrypted.size());
+  EXPECT_EQ(0, memcmp(&data.front(), &decrypted.front(), data.size()));
+  decrypted.clear();
+  EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
+                                          SubVector(encrypted, 0, 16),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(decrypted, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
+                                          SubVector(encrypted, 16, 17),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(decrypted, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
+                                          SubVector(encrypted, 33, 15),
+                                          max_out,
+                                          &not_used,
+                                          &tmp));
+  AppendVector(decrypted, tmp);
+  tmp.clear();
+  EXPECT_EQ(CKR_OK, chaps_->DecryptFinal(session_id_,
+                                         max_out,
+                                         &not_used,
+                                         &tmp));
+  AppendVector(decrypted, tmp);
+  tmp.clear();
+  EXPECT_EQ(data.size(), decrypted.size());
+  EXPECT_EQ(0, memcmp(&data.front(), &decrypted.front(), data.size()));
+  // Bad arg cases.
+  EXPECT_EQ(CKR_OK, chaps_->EncryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->Encrypt(session_id_, data, max_out, NULL,
+                                               NULL));
+  EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
+                                        CKM_AES_ECB,
+                                        parameter,
+                                        key_handle));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->Decrypt(session_id_, data, max_out, NULL,
+                                               NULL));
 }
 
 }  // namespace chaps

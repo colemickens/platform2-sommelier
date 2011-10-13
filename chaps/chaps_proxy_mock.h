@@ -72,27 +72,65 @@ public:
   MOCK_METHOD1(CloseAllSessions, uint32_t (uint32_t));
   MOCK_METHOD5(GetSessionInfo, uint32_t (uint32_t, uint32_t*, uint32_t*,
                                          uint32_t*, uint32_t*));
-  MOCK_METHOD2(GetOperationState, uint32_t (uint32_t, std::string*));
+  MOCK_METHOD2(GetOperationState, uint32_t (uint32_t, std::vector<uint8_t>*));
   MOCK_METHOD4(SetOperationState, uint32_t (uint32_t,
-                                            const std::string&,
+                                            const std::vector<uint8_t>&,
                                             uint32_t,
                                             uint32_t));
   MOCK_METHOD3(Login, uint32_t (uint32_t, uint32_t, const std::string*));
   MOCK_METHOD1(Logout, uint32_t (uint32_t));
-  MOCK_METHOD3(CreateObject, uint32_t (uint32_t, const std::string&,
+  MOCK_METHOD3(CreateObject, uint32_t (uint32_t, const std::vector<uint8_t>&,
                                        uint32_t*));
   MOCK_METHOD4(CopyObject, uint32_t (uint32_t, uint32_t,
-                                     const std::string&, uint32_t*));
+                                     const std::vector<uint8_t>&, uint32_t*));
   MOCK_METHOD2(DestroyObject, uint32_t (uint32_t, uint32_t));
   MOCK_METHOD3(GetObjectSize, uint32_t (uint32_t, uint32_t, uint32_t*));
   MOCK_METHOD4(GetAttributeValue, uint32_t (uint32_t, uint32_t,
-                                            const std::string&, std::string*));
+                                            const std::vector<uint8_t>&,
+                                            std::vector<uint8_t>*));
   MOCK_METHOD3(SetAttributeValue, uint32_t (uint32_t, uint32_t,
-                                            const std::string&));
-  MOCK_METHOD2(FindObjectsInit, uint32_t (uint32_t, const std::string&));
+                                            const std::vector<uint8_t>&));
+  MOCK_METHOD2(FindObjectsInit, uint32_t (uint32_t,
+                                          const std::vector<uint8_t>&));
   MOCK_METHOD3(FindObjects, uint32_t (uint32_t, uint32_t,
                                       std::vector<uint32_t>*));
   MOCK_METHOD1(FindObjectsFinal, uint32_t (uint32_t));
+  MOCK_METHOD4(EncryptInit, uint32_t (uint32_t,
+                               uint32_t,
+                               const std::vector<uint8_t>&,
+                               uint32_t key_handle));
+  MOCK_METHOD5(Encrypt, uint32_t (uint32_t,
+                                   const std::vector<uint8_t>&,
+                                   uint32_t,
+                                   uint32_t*,
+                                   std::vector<uint8_t>*));
+  MOCK_METHOD5(EncryptUpdate, uint32_t (uint32_t,
+                                 const std::vector<uint8_t>&,
+                                 uint32_t,
+                                 uint32_t*,
+                                 std::vector<uint8_t>*));
+  MOCK_METHOD4(EncryptFinal, uint32_t (uint32_t,
+                                uint32_t,
+                                uint32_t*,
+                                std::vector<uint8_t>*));
+  MOCK_METHOD4(DecryptInit, uint32_t (uint32_t,
+                               uint32_t,
+                               const std::vector<uint8_t>&,
+                               uint32_t));
+  MOCK_METHOD5(Decrypt, uint32_t (uint32_t,
+                           const std::vector<uint8_t>&,
+                           uint32_t,
+                           uint32_t*,
+                           std::vector<uint8_t>*));
+  MOCK_METHOD5(DecryptUpdate, uint32_t (uint32_t,
+                                 const std::vector<uint8_t>&,
+                                 uint32_t,
+                                 uint32_t*,
+                                 std::vector<uint8_t>*));
+  MOCK_METHOD4(DecryptFinal, uint32_t (uint32_t,
+                                uint32_t,
+                                uint32_t*,
+                                std::vector<uint8_t>*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

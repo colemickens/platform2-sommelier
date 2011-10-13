@@ -158,6 +158,55 @@ public:
                            ::DBus::Error& error);
   virtual uint32_t FindObjectsFinal(const uint32_t& session_id,
                                     ::DBus::Error& error);
+  virtual uint32_t EncryptInit(const uint32_t& session_id,
+                               const uint32_t& mechanism_type,
+                               const std::vector<uint8_t>& mechanism_parameter,
+                               const uint32_t& key_handle,
+                               ::DBus::Error& error);
+  virtual void Encrypt(const uint32_t& session_id,
+                       const std::vector<uint8_t>& data_in,
+                       const uint32_t& max_out_length,
+                       uint32_t& actual_out_length,
+                       std::vector<uint8_t>& data_out,
+                       uint32_t& result,
+                       ::DBus::Error& error);
+  virtual void EncryptUpdate(const uint32_t& session_id,
+                             const std::vector< uint8_t >& data_in,
+                             const uint32_t& max_out_length,
+                             uint32_t& actual_out_length,
+                             std::vector<uint8_t>& data_out,
+                             uint32_t& result, ::DBus::Error& error);
+  virtual void EncryptFinal(const uint32_t& session_id,
+                            const uint32_t& max_out_length,
+                            uint32_t& actual_out_length,
+                            std::vector<uint8_t>& data_out,
+                            uint32_t& result,
+                            ::DBus::Error& error);
+  virtual uint32_t DecryptInit(const uint32_t& session_id,
+                               const uint32_t& mechanism_type,
+                               const std::vector<uint8_t>& mechanism_parameter,
+                               const uint32_t& key_handle,
+                               ::DBus::Error& error);
+  virtual void Decrypt(const uint32_t& session_id,
+                       const std::vector< uint8_t >& data_in,
+                       const uint32_t& max_out_length,
+                       uint32_t& actual_out_length,
+                       std::vector<uint8_t>& data_out,
+                       uint32_t& result,
+                       ::DBus::Error& error);
+  virtual void DecryptUpdate(const uint32_t& session_id,
+                             const std::vector<uint8_t>& data_in,
+                             const uint32_t& max_out_length,
+                             uint32_t& actual_out_length,
+                             std::vector<uint8_t>& data_out,
+                             uint32_t& result,
+                             ::DBus::Error& error);
+  virtual void DecryptFinal(const uint32_t& session_id,
+                            const uint32_t& max_out_length,
+                            uint32_t& actual_out_length,
+                            std::vector<uint8_t>& data_out,
+                            uint32_t& result,
+                            ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

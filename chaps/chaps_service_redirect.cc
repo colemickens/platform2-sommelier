@@ -310,7 +310,7 @@ uint32_t ChapsServiceRedirect::GetSessionInfo(uint32_t session_id,
 
 uint32_t ChapsServiceRedirect::GetOperationState(
     uint32_t session_id,
-    string* operation_state) {
+    vector<uint8_t>* operation_state) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!operation_state, CKR_ARGUMENTS_BAD);
   CK_ULONG size = 0;
@@ -322,19 +322,19 @@ uint32_t ChapsServiceRedirect::GetOperationState(
   // Now, get the actual state data.
   result = functions_->C_GetOperationState(session_id, buffer.get(), &size);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  *operation_state = ConvertByteBufferToString(buffer.get(), size);
+  *operation_state = ConvertByteBufferToVector(buffer.get(), size);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::SetOperationState(
     uint32_t session_id,
-    const string& operation_state,
+    const vector<uint8_t>& operation_state,
     uint32_t encryption_key_handle,
     uint32_t authentication_key_handle) {
   CHECK(functions_);
   uint32_t result = functions_->C_SetOperationState(
       session_id,
-      reinterpret_cast<CK_BYTE_PTR>(const_cast<char*>(operation_state.data())),
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&operation_state.front())),
       static_cast<CK_ULONG>(operation_state.size()),
       static_cast<CK_OBJECT_HANDLE>(encryption_key_handle),
       static_cast<CK_OBJECT_HANDLE>(authentication_key_handle));
@@ -365,7 +365,7 @@ uint32_t ChapsServiceRedirect::Logout(uint32_t session_id) {
 }
 
 uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
-                                            const string& attributes,
+                                            const vector<uint8_t>& attributes,
                                             uint32_t* new_object_handle) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
@@ -383,7 +383,7 @@ uint32_t ChapsServiceRedirect::CreateObject(uint32_t session_id,
 
 uint32_t ChapsServiceRedirect::CopyObject(uint32_t session_id,
                                           uint32_t object_handle,
-                                          const string& attributes,
+                                          const vector<uint8_t>& attributes,
                                           uint32_t* new_object_handle) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!new_object_handle, CKR_ARGUMENTS_BAD);
@@ -420,10 +420,11 @@ uint32_t ChapsServiceRedirect::GetObjectSize(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::GetAttributeValue(uint32_t session_id,
-                                                 uint32_t object_handle,
-                                                 const string& attributes_in,
-                                                 string* attributes_out) {
+uint32_t ChapsServiceRedirect::GetAttributeValue(
+    uint32_t session_id,
+    uint32_t object_handle,
+    const vector<uint8_t>& attributes_in,
+    vector<uint8_t>* attributes_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
   Attributes tmp;
@@ -440,9 +441,10 @@ uint32_t ChapsServiceRedirect::GetAttributeValue(uint32_t session_id,
   return result;
 }
 
-uint32_t ChapsServiceRedirect::SetAttributeValue(uint32_t session_id,
-                                                 uint32_t object_handle,
-                                                 const string& attributes) {
+uint32_t ChapsServiceRedirect::SetAttributeValue(
+    uint32_t session_id,
+    uint32_t object_handle,
+    const vector<uint8_t>& attributes) {
   CHECK(functions_);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
@@ -454,8 +456,9 @@ uint32_t ChapsServiceRedirect::SetAttributeValue(uint32_t session_id,
   return CKR_OK;
 }
 
-uint32_t ChapsServiceRedirect::FindObjectsInit(uint32_t session_id,
-                                               const std::string& attributes) {
+uint32_t ChapsServiceRedirect::FindObjectsInit(
+    uint32_t session_id,
+    const std::vector<uint8_t>& attributes) {
   CHECK(functions_);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
@@ -491,6 +494,172 @@ uint32_t ChapsServiceRedirect::FindObjectsFinal(uint32_t session_id) {
   CHECK(functions_);
   uint32_t result = functions_->C_FindObjectsFinal(session_id);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::EncryptInit(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const std::vector<uint8_t>& mechanism_parameter,
+    uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_EncryptInit(
+      session_id,
+      &mechanism,
+      static_cast<CK_OBJECT_HANDLE>(key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Encrypt(uint32_t session_id,
+                                       const std::vector<uint8_t>& data_in,
+                                       uint32_t max_out_length,
+                                       uint32_t* actual_out_length,
+                                       std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_Encrypt(session_id,
+                                          in_bytes,
+                                          data_in.size(),
+                                          out_bytes.get(),
+                                          &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::EncryptUpdate(
+    uint32_t session_id,
+    const std::vector<uint8_t>& data_in,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_EncryptUpdate(session_id,
+                                                in_bytes,
+                                                data_in.size(),
+                                                out_bytes.get(),
+                                                &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::EncryptFinal(uint32_t session_id,
+                                            uint32_t max_out_length,
+                                            uint32_t* actual_out_length,
+                                            std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_EncryptFinal(session_id,
+                                               out_bytes.get(),
+                                               &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DecryptInit(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const std::vector<uint8_t>& mechanism_parameter,
+    uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_DecryptInit(
+      session_id,
+      &mechanism,
+      static_cast<CK_OBJECT_HANDLE>(key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Decrypt(uint32_t session_id,
+                                       const std::vector<uint8_t>& data_in,
+                                       uint32_t max_out_length,
+                                       uint32_t* actual_out_length,
+                                       std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_Decrypt(session_id,
+                                          in_bytes,
+                                          data_in.size(),
+                                          out_bytes.get(),
+                                          &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DecryptUpdate(
+    uint32_t session_id,
+    const std::vector<uint8_t>& data_in,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_DecryptUpdate(session_id,
+                                                in_bytes,
+                                                data_in.size(),
+                                                out_bytes.get(),
+                                                &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DecryptFinal(uint32_t session_id,
+                                            uint32_t max_out_length,
+                                            uint32_t* actual_out_length,
+                                            std::vector<uint8_t>* data_out) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
+  CHECK(out_bytes.get());
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_DecryptFinal(session_id,
+                                               out_bytes.get(),
+                                               &length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *actual_out_length = static_cast<uint32_t>(length);
+  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 

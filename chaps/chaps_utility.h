@@ -6,6 +6,7 @@
 #define CHAPS_CHAPS_UTILITY_H
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
@@ -87,6 +88,15 @@ inline std::vector<uint8_t> ConvertByteStringToVector(const std::string& s) {
 inline std::string ConvertByteVectorToString(const std::vector<uint8_t>& v) {
   const char* front = reinterpret_cast<const char*>(&v.front());
   return std::string(front, v.size());
+}
+
+// This function constructs a vector object from a CK_BYTE array.If buffer is
+// NULL, an empty vector will be returned.
+inline std::vector<uint8_t> ConvertByteBufferToVector(CK_BYTE_PTR buffer,
+                                                      CK_ULONG buffer_size) {
+  if (!buffer)
+    return std::vector<uint8_t>();
+  return std::vector<uint8_t>(buffer, buffer + buffer_size);
 }
 
 // This class preserves a variable that needs to be temporarily converted to

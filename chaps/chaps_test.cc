@@ -27,12 +27,12 @@ namespace chaps {
 
 static bool SerializeAttributes(CK_ATTRIBUTE_PTR attributes,
                                 CK_ULONG num_attributes,
-                                string* serialized) {
+                                vector<uint8_t>* serialized) {
   Attributes tmp(attributes, num_attributes);
   return tmp.Serialize(serialized);
 }
 
-static bool ParseAndFillAttributes(const string& serialized,
+static bool ParseAndFillAttributes(const vector<uint8_t>& serialized,
                                    CK_ATTRIBUTE_PTR attributes,
                                    CK_ULONG num_attributes) {
   Attributes tmp(attributes, num_attributes);
@@ -642,9 +642,10 @@ TEST(TestGetSessionInfo, GetSessionInfoFail) {
 class TestGetOperationState : public ::testing::Test {
 protected:
   virtual void SetUp() {
-    buffer_ = "123";
+    uint8_t tmp[3] = {1, 2, 3};
+    buffer_ = vector<uint8_t>(&tmp[0], &tmp[3]);
   }
-  string buffer_;
+  vector<uint8_t> buffer_;
 };
 
 TEST_F(TestGetOperationState, GetOperationStateOK) {
@@ -654,6 +655,7 @@ TEST_F(TestGetOperationState, GetOperationStateOK) {
   CK_BYTE buffer[3];
   CK_ULONG size = 3;
   EXPECT_EQ(CKR_OK, C_GetOperationState(1, buffer, &size));
+  EXPECT_EQ(size, buffer_.size());
   EXPECT_EQ(buffer[0], buffer_[0]);
   EXPECT_EQ(buffer[1], buffer_[1]);
   EXPECT_EQ(buffer[2], buffer_[2]);
@@ -837,9 +839,9 @@ protected:
     return true;
   }
 
-  string attributes_;
-  string attributes2_;
-  string attributes3_;
+  vector<uint8_t> attributes_;
+  vector<uint8_t> attributes2_;
+  vector<uint8_t> attributes3_;
   CK_ATTRIBUTE attribute_template_[2];
   char buf_[2][10];
   CK_ATTRIBUTE attribute_template2_[2];
@@ -915,14 +917,14 @@ TEST_F(TestAttributes, CopyObjectFail) {
 
 // Attribute Serialization Tests
 TEST_F(TestAttributes, TestAttributesSerialize) {
-  string serialized;
+  vector<uint8_t> serialized;
   EXPECT_TRUE(SerializeAttributes(attribute_template_, 2, &serialized));
   EXPECT_TRUE(serialized == attributes_);
   Attributes tmp;
   EXPECT_TRUE(tmp.Parse(attributes_));
   EXPECT_TRUE(CompareAttributes(tmp.attributes(),
                                 attribute_template_, 2));
-  string serialized2;
+  vector<uint8_t> serialized2;
   EXPECT_TRUE(SerializeAttributes(tmp.attributes(), 2, &serialized2));
   EXPECT_TRUE(attributes_ == serialized2);
   EXPECT_TRUE(tmp.Parse(serialized));
@@ -939,7 +941,8 @@ TEST_F(TestAttributes, TestAttributesFill) {
   EXPECT_TRUE(ParseAndFillAttributes(attributes_, tmp_array, 2));
   EXPECT_TRUE(CompareAttributes(attribute_template_, tmp_array, 2));
   EXPECT_FALSE(ParseAndFillAttributes(attributes_, NULL, 2));
-  EXPECT_FALSE(ParseAndFillAttributes("invalid_string", tmp_array, 2));
+  EXPECT_FALSE(ParseAndFillAttributes(vector<uint8_t>(20, 0),
+                                      tmp_array, 2));
   EXPECT_FALSE(ParseAndFillAttributes(attributes_, tmp_array, 1));
   EXPECT_FALSE(ParseAndFillAttributes(attributes_, tmp_array, 3));
   tmp_array[0].pValue = NULL;
@@ -962,7 +965,7 @@ TEST_F(TestAttributes, TestAttributesNested) {
     {CKA_AC_ISSUER, issuer, 8},
     {CKA_WRAP_TEMPLATE, tmp_array_inner, sizeof(tmp_array_inner)}
   };
-  string serialized;
+  vector<uint8_t> serialized;
   EXPECT_TRUE(SerializeAttributes(tmp_array, 3, &serialized));
   Attributes parsed;
   EXPECT_TRUE(parsed.Parse(serialized));
@@ -1091,7 +1094,7 @@ TEST_F(TestAttributes, GetAttributeValueFail) {
 
 TEST(GetAttributeValueDeathTest, GetAttributeValueFailFatal) {
   ChapsProxyMock proxy(true);
-  string invalid("invalid_string");
+  vector<uint8_t> invalid(20, 0);
   ON_CALL(proxy, GetAttributeValue(1, 2, _, _))
       .WillByDefault(DoAll(SetArgumentPointee<3>(invalid), Return(CKR_OK)));
   CK_ATTRIBUTE tmp;
@@ -1136,7 +1139,7 @@ TEST_F(TestAttributes, FindObjectsInitOK) {
 
 TEST(TestFindObjects, FindObjectsInitNULL) {
   ChapsProxyMock proxy(true);
-  string empty;
+  vector<uint8_t> empty;
   EXPECT_CALL(proxy, FindObjectsInit(1, empty))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_FindObjectsInit(1, NULL, 1));
@@ -1150,7 +1153,7 @@ TEST(TestFindObjects, FindObjectsInitNotInit) {
 
 TEST(TestFindObjects, FindObjectsInitFail) {
   ChapsProxyMock proxy(true);
-  string empty;
+  vector<uint8_t> empty;
   EXPECT_CALL(proxy, FindObjectsInit(1, empty))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsInit(1, NULL, 0));
@@ -1223,6 +1226,314 @@ TEST(TestFindObjects, FindObjectsFinalFail) {
   EXPECT_CALL(proxy, FindObjectsFinal(1))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsFinal(1));
+}
+
+class TestEncrypt : public ::testing::Test {
+ protected:
+  void SetUp() {
+    data_in_ = vector<uint8_t>(10, 1);
+    data_out_ = vector<uint8_t>(10, 2);
+    parameter_ = vector<uint8_t>(12, 0xAA);
+    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    mechanism_ = mechanism;
+    buffer_in_ = (CK_BYTE_PTR)&data_in_.front();
+    length_in_ = data_in_.size();
+    length_out_max_ = 20;
+    buffer_out_expected_ = (CK_BYTE_PTR)&data_out_.front();
+    length_out_expected_ = data_out_.size();
+  }
+  vector<uint8_t> data_in_;
+  vector<uint8_t> data_out_;
+  vector<uint8_t> parameter_;
+  CK_MECHANISM mechanism_;
+  CK_BYTE_PTR buffer_in_;
+  CK_ULONG length_in_;
+  CK_BYTE buffer_out_[20];
+  CK_ULONG length_out_max_;
+  CK_ULONG length_out_;
+  CK_BYTE_PTR buffer_out_expected_;
+  CK_ULONG length_out_expected_;
+};
+
+// Encrypt / Decrypt Tests
+TEST_F(TestEncrypt, EncryptOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, EncryptInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, DecryptInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     SetArgumentPointee<3>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     SetArgumentPointee<3>(data_out_),
+                     Return(CKR_OK)));
+
+  EXPECT_EQ(CKR_OK, C_EncryptInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_OK, C_DecryptInit(1, &mechanism_, 3));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_Encrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_Decrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_EncryptUpdate(1,
+                                    buffer_in_,
+                                    length_in_,
+                                    buffer_out_,
+                                    &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_DecryptUpdate(1,
+                                    buffer_in_,
+                                    length_in_,
+                                    buffer_out_,
+                                    &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_EncryptFinal(1, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_DecryptFinal(1, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+}
+
+TEST_F(TestEncrypt, EncryptBadOutput) {
+  ChapsProxyMock proxy(true);
+  // This should trigger an error because length_out_expected_ is still 10.
+  length_out_max_ = 8;
+  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     SetArgumentPointee<3>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     SetArgumentPointee<3>(data_out_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_Encrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_Decrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_EncryptUpdate(1,
+                                              buffer_in_,
+                                              length_in_,
+                                              buffer_out_,
+                                              &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_DecryptUpdate(1,
+                                              buffer_in_,
+                                              length_in_,
+                                              buffer_out_,
+                                              &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_EncryptFinal(1, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_DecryptFinal(1, buffer_out_, &length_out_));
+}
+
+TEST_F(TestEncrypt, EncryptFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, EncryptInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DecryptInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_EncryptInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DecryptInit(1, &mechanism_, 3));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_Encrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_Decrypt(1, buffer_in_, length_in_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_EncryptUpdate(1,
+                                              buffer_in_,
+                                              length_in_,
+                                              buffer_out_,
+                                              &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DecryptUpdate(1,
+                                              buffer_in_,
+                                              length_in_,
+                                              buffer_out_,
+                                              &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_EncryptFinal(1, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_DecryptFinal(1, buffer_out_, &length_out_));
+}
+
+TEST_F(TestEncrypt, EncryptLengthOnly) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Encrypt(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptFinal(1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
+                     Return(CKR_OK)));
+
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_Encrypt(1, buffer_in_, length_in_, NULL, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_Decrypt(1, buffer_in_, length_in_, NULL, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_EncryptUpdate(1,
+                                    buffer_in_,
+                                    length_in_,
+                                    NULL,
+                                    &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_DecryptUpdate(1,
+                                    buffer_in_,
+                                    length_in_,
+                                    NULL,
+                                    &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_EncryptFinal(1, NULL, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_DecryptFinal(1, NULL, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+}
+
+TEST_F(TestEncrypt, EncryptNoInput) {
+  ChapsProxyMock proxy(true);
+  vector<uint8_t> empty;
+  EXPECT_CALL(proxy, Encrypt(1, empty, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(1, empty, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_Encrypt(1, NULL, 0, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,  C_Decrypt(1, NULL, 0, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+}
+
+TEST_F(TestEncrypt, EncryptBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_EncryptInit(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptInit(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Encrypt(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Decrypt(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Encrypt(1, NULL, 3, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Decrypt(1, NULL, 3, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_EncryptUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_EncryptUpdate(1, NULL, 0, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptUpdate(1, NULL, 0, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_EncryptFinal(1, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptFinal(1, p, NULL));
+}
+
+TEST_F(TestEncrypt, EncryptNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_EncryptInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DecryptInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Encrypt(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Decrypt(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_EncryptUpdate(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DecryptUpdate(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_EncryptFinal(1, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DecryptFinal(1, p, ul));
 }
 
 }  // namespace chaps

@@ -6,6 +6,7 @@
 #define CHAPS_ATTRIBUTES_H
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
@@ -25,16 +26,16 @@ class Attributes {
   CK_ATTRIBUTE_PTR attributes() const {return attributes_;}
   CK_ULONG num_attributes() const {return num_attributes_;}
   // This method serializes the current array of attributes.
-  virtual bool Serialize(std::string* serialized_attributes) const;
+  virtual bool Serialize(std::vector<uint8_t>* serialized_attributes) const;
   // This method parses a serialized array of attributes into a new CK_ATTRIBUTE
   // array.  Any previous array will be deleted if necessary and discarded.
-  virtual bool Parse(const std::string& serialized_attributes);
+  virtual bool Parse(const std::vector<uint8_t>& serialized_attributes);
   // This method parses a serialized array of attributes and fills the current
   // attribute array with the values.  No memory will be allocated.  The number
   // and type of attributes parsed must match exactly the number and type of
   // attributes in the current array.  Also, the current array must have all
   // necessary memory allocated to receive parsed values.
-  virtual bool ParseAndFill(const std::string& serialized_attributes);
+  virtual bool ParseAndFill(const std::vector<uint8_t>& serialized_attributes);
 
   // This method determines if a given attribute holds a nested attribute array.
   static bool IsAttributeNested(CK_ATTRIBUTE_TYPE type);
@@ -54,7 +55,7 @@ class Attributes {
                      bool is_nesting_allowed,
                      CK_ATTRIBUTE_PTR* attributes,
                      CK_ULONG* num_attributes);
-  bool ParseAndFillInternal(const std::string& serialized,
+  bool ParseAndFillInternal(const std::string& serialized_attributes,
                             bool is_nesting_allowed,
                             CK_ATTRIBUTE_PTR attributes,
                             CK_ULONG num_attributes);

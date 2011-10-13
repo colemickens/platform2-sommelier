@@ -78,10 +78,10 @@ public:
                                   uint32_t* flags,
                                   uint32_t* device_error);
   virtual uint32_t GetOperationState(uint32_t session_id,
-                                     std::string* operation_state);
+                                     std::vector<uint8_t>* operation_state);
   virtual uint32_t SetOperationState(
       uint32_t session_id,
-      const std::string& operation_state,
+      const std::vector<uint8_t>& operation_state,
       uint32_t encryption_key_handle,
       uint32_t authentication_key_handle);
   virtual uint32_t Login(uint32_t session_id,
@@ -89,11 +89,11 @@ public:
                          const std::string* pin);
   virtual uint32_t Logout(uint32_t session_id);
   virtual uint32_t CreateObject(uint32_t session_id,
-                                const std::string& attributes,
+                                const std::vector<uint8_t>& attributes,
                                 uint32_t* new_object_handle);
   virtual uint32_t CopyObject(uint32_t session_id,
                               uint32_t object_handle,
-                              const std::string& attributes,
+                              const std::vector<uint8_t>& attributes,
                               uint32_t* new_object_handle);
   virtual uint32_t DestroyObject(uint32_t session_id,
                                  uint32_t object_handle);
@@ -102,17 +102,53 @@ public:
                                  uint32_t* object_size);
   virtual uint32_t GetAttributeValue(uint32_t session_id,
                                      uint32_t object_handle,
-                                     const std::string& attributes_in,
-                                     std::string* attributes_out);
+                                     const std::vector<uint8_t>& attributes_in,
+                                     std::vector<uint8_t>* attributes_out);
   virtual uint32_t SetAttributeValue(uint32_t session_id,
                                      uint32_t object_handle,
-                                     const std::string& attributes);
+                                     const std::vector<uint8_t>& attributes);
   virtual uint32_t FindObjectsInit(uint32_t session_id,
-                                   const std::string& attributes);
+                                   const std::vector<uint8_t>& attributes);
   virtual uint32_t FindObjects(uint32_t session_id,
                                uint32_t max_object_count,
                                std::vector<uint32_t>* object_list);
   virtual uint32_t FindObjectsFinal(uint32_t session_id);
+  virtual uint32_t EncryptInit(uint32_t session_id,
+                               uint32_t mechanism_type,
+                               const std::vector<uint8_t>& mechanism_parameter,
+                               uint32_t key_handle);
+  virtual uint32_t Encrypt(uint32_t session_id,
+                           const std::vector<uint8_t>& data_in,
+                           uint32_t max_out_length,
+                           uint32_t* actual_out_length,
+                           std::vector<uint8_t>* data_out);
+  virtual uint32_t EncryptUpdate(uint32_t session_id,
+                                 const std::vector<uint8_t>& data_in,
+                                 uint32_t max_out_length,
+                                 uint32_t* actual_out_length,
+                                 std::vector<uint8_t>* data_out);
+  virtual uint32_t EncryptFinal(uint32_t session_id,
+                                uint32_t max_out_length,
+                                uint32_t* actual_out_length,
+                                std::vector<uint8_t>* data_out);
+  virtual uint32_t DecryptInit(uint32_t session_id,
+                               uint32_t mechanism_type,
+                               const std::vector<uint8_t>& mechanism_parameter,
+                               uint32_t key_handle);
+  virtual uint32_t Decrypt(uint32_t session_id,
+                           const std::vector<uint8_t>& data_in,
+                           uint32_t max_out_length,
+                           uint32_t* actual_out_length,
+                           std::vector<uint8_t>* data_out);
+  virtual uint32_t DecryptUpdate(uint32_t session_id,
+                                 const std::vector<uint8_t>& data_in,
+                                 uint32_t max_out_length,
+                                 uint32_t* actual_out_length,
+                                 std::vector<uint8_t>* data_out);
+  virtual uint32_t DecryptFinal(uint32_t session_id,
+                                uint32_t max_out_length,
+                                uint32_t* actual_out_length,
+                                std::vector<uint8_t>* data_out);
 
 private:
   // This class provides the link to the dbus-c++ generated proxy.

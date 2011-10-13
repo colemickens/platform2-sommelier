@@ -297,6 +297,97 @@
       </arg>
     </method>
 
+    <!-- PKCS #11 v2.20 section 11.8 page 139. -->
+    <method name="EncryptInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.8 page 140. -->
+    <method name="Encrypt">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.8 page 141. -->
+    <method name="EncryptUpdate">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.8 page 141. -->
+    <method name="EncryptFinal">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.9 page 144. -->
+    <method name="DecryptInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.9 page 145. -->
+    <method name="Decrypt">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.9 page 146. -->
+    <method name="DecryptUpdate">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.9 page 146. -->
+    <method name="DecryptFinal">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data_out" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
   </interface>
 </node>
 
