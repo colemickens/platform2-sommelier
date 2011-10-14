@@ -58,6 +58,7 @@ PowerButtonHandler::PowerButtonHandler(Daemon* daemon)
 PowerButtonHandler::~PowerButtonHandler() {
   RemoveTimeoutIfSet(&lock_timeout_id_);
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
+  RemoveTimeoutIfSet(&lock_fail_timeout_id_);
   RemoveTimeoutIfSet(&shutdown_timeout_id_);
   RemoveTimeoutIfSet(&real_shutdown_timeout_id_);
 }
@@ -136,6 +137,7 @@ void PowerButtonHandler::HandleButtonUp() {
 void PowerButtonHandler::HandleScreenLocked() {
   if (should_add_shutdown_timeout_after_lock_) {
     should_add_shutdown_timeout_after_lock_ = false;
+    RemoveTimeoutIfSet(&lock_fail_timeout_id_);
     AddShutdownTimeout();
   }
 }
@@ -163,9 +165,9 @@ gboolean PowerButtonHandler::OnLockToShutdownTimeout() {
     should_add_shutdown_timeout_after_lock_ = true;
     // check again in kShutdownTimeoutMs if the screen is still not locked.
     lock_fail_timeout_id_ =
-      g_timeout_add(kShutdownTimeoutMs,
-                    PowerButtonHandler::OnLockFailTimeoutThunk,
-                    this);
+        g_timeout_add(kShutdownTimeoutMs,
+                      PowerButtonHandler::OnLockFailTimeoutThunk,
+                      this);
   }
 
   return FALSE;
