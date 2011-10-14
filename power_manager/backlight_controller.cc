@@ -213,6 +213,12 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     CHECK(DPMSEnable(GDK_DISPLAY()));
     if (new_state == BACKLIGHT_ACTIVE)
       CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOn));
+#ifdef IS_DESKTOP
+    // TODO(sque): will be deprecated once we have external display backlight
+    // control.  chrome-os-partner:6320
+    else if (new_state == BACKLIGHT_IDLE_OFF)
+      CHECK(DPMSForceLevel(GDK_DISPLAY(), DPMSModeOff));
+#endif // defined(IS_DESKTOP)
   }
   return true;
 }
