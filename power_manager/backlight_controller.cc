@@ -174,7 +174,10 @@ void BacklightController::DecreaseBrightness(bool allow_off) {
 }
 
 bool BacklightController::SetPowerState(PowerState new_state) {
-#ifndef IS_DESKTOP
+  PowerState old_state = state_;
+#ifdef IS_DESKTOP
+  state_ = new_state;
+#else
   if (new_state == state_ || !is_initialized_)
     return false;
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
@@ -186,21 +189,21 @@ bool BacklightController::SetPowerState(PowerState new_state) {
                                  new_state == BACKLIGHT_ALREADY_DIMMED))
     return false;
 
+  state_ = new_state;
+  WriteBrightness(true);
+
   // Do not go to dim if backlight is already dimmed.
   if (new_state == BACKLIGHT_DIM &&
       local_brightness_ < ClampToMin(kIdleBrightness))
     new_state = BACKLIGHT_ALREADY_DIMMED;
-
-  WriteBrightness(true);
 
   if (light_sensor_)
     light_sensor_->EnableOrDisableSensor(state_);
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 #endif // defined(IS_DESKTOP)
 
-  LOG(INFO) << PowerStateToString(state_) << " -> "
+  LOG(INFO) << PowerStateToString(old_state) << " -> "
             << PowerStateToString(new_state);
-  state_ = new_state;
 
   if (GDK_DISPLAY() == NULL)
     return true;
