@@ -154,7 +154,7 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
       if (bit_offset == 0)
         octet = gsm7[i];
       else
-        octet = (gsm7[i] << bit_offset) | gsm7[i+1] >> (8 - bit_offset);
+        octet = (gsm7[i] >> bit_offset) | gsm7[i+1] << (8 - bit_offset);
       uint8_t mask = 0xff >> (j + 1);
       uint8_t c = ((octet & mask) << j) | saved_bits;
       *cp++ = c;

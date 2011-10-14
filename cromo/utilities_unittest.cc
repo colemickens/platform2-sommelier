@@ -182,16 +182,33 @@ TEST(Utilities, Gsm7Utf8RoundTrip) {
 }
 
 // packed GSM-7 encoding starting at a 3-bit offset
-const uint8_t gsm1_bit_offset[] = {
-  10, 0x1d, 0x06, 0x53, 0x7f, 0xa8, 0xd2, 0xfb, 0x3d, 0x86, 0xe0
+// hand-constructed
+const uint8_t gsm1_bit_offset_3[] = {
+  10, 0x40, 0x97, 0xd9, 0xec, 0x37, 0xba, 0xcc, 0x66, 0xbf, 0x01
 };
 
 TEST(Utilities, Gsm7ToUtf8BitOffset) {
   using utilities::Gsm7ToUtf8String;
   std::string out;
 
-  out = Gsm7ToUtf8String(&gsm1_bit_offset[1], gsm1_bit_offset[0], 3);
+  out = Gsm7ToUtf8String(&gsm1_bit_offset_3[1], gsm1_bit_offset_3[0], 3);
   EXPECT_EQ("hellohello", out);
+}
+
+// packed GSM-7 encoding starting at a 1-bit offset
+// taken from data seen in the wild (second part of a long
+// "hellohellohello..."  message)
+const uint8_t gsm1_bit_offset_1[] = {
+  17, 0xd8, 0x6f, 0x74, 0x99, 0xcd, 0x7e, 0xa3, 0xcb, 0x6c, 0xf6, 0x1b, 0x5d,
+  0x66, 0xb3, 0xdf
+};
+
+TEST(Utilities, Gsm7ToUtf8BitOffset1) {
+  using utilities::Gsm7ToUtf8String;
+  std::string out;
+
+  out = Gsm7ToUtf8String(&gsm1_bit_offset_1[1], gsm1_bit_offset_1[0], 1);
+  EXPECT_EQ("lohellohellohello", out);
 }
 
 TEST(Utilities, Gsm7InvalidCharacter) {
