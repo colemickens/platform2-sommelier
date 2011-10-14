@@ -136,13 +136,13 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     if (key()->IsPopulated()) {
       if (policy.has_new_public_key_signature() && (flags & KEY_ROTATE)) {
         // Graceful key rotation.
-        LOG(INFO) << "Rotating policy key.";
+        LOG(INFO) << "Attempting policy key rotation.";
         std::vector<uint8> sig;
         NssUtil::BlobFromBuffer(policy.new_public_key_signature(), &sig);
         installed = key()->Rotate(der, sig);
       }
     } else if (flags & KEY_INSTALL_NEW) {
-      LOG(INFO) << "Installing new policy key.";
+      LOG(INFO) << "Attempting to install new policy key.";
       installed = key()->PopulateFromBuffer(der);
     }
     if (!installed && (flags & KEY_CLOBBER)) {
