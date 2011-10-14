@@ -39,6 +39,11 @@ class PowerButtonHandler {
   // down the machine.  Starts the shutdown timeout.
   SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnLockToShutdownTimeout);
 
+  // The power button has been held continuously through the unlocked state
+  // but we have not been ack'd by the screen lock. Starts the shutdown timeout
+  // to ignore the nonresponsive screenlocker.
+  SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnLockFailTimeout);
+
   // Tell the window manager to start playing the shutdown animation and add a
   // timeout for OnRealShutdownTimeout() to fire after the animation is done.
   SIGNAL_CALLBACK_0(PowerButtonHandler, gboolean, OnShutdownTimeout);
@@ -67,6 +72,7 @@ class PowerButtonHandler {
   // 0 if unregistered.
   guint lock_timeout_id_;
   guint lock_to_shutdown_timeout_id_;
+  guint lock_fail_timeout_id_;
   guint shutdown_timeout_id_;
   guint real_shutdown_timeout_id_;
 

@@ -129,6 +129,7 @@ void PowerButtonHandler::HandleButtonUp() {
         chromeos::WM_IPC_POWER_BUTTON_ABORTED_SHUTDOWN);
   }
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
+  RemoveTimeoutIfSet(&lock_fail_timeout_id_);
 #endif
 }
 
@@ -156,11 +157,28 @@ gboolean PowerButtonHandler::OnLockToShutdownTimeout() {
 
   // If the screen is already locked, then start the pre-shutdown process.
   // Otherwise, wait until we get notification that it's locked.
-  if (daemon_->locker()->is_locked())
+  if (daemon_->locker()->is_locked()) {
     AddShutdownTimeout();
-  else
+  } else {
     should_add_shutdown_timeout_after_lock_ = true;
+    // check again in kShutdownTimeoutMs if the screen is still not locked.
+    lock_fail_timeout_id_ =
+      g_timeout_add(kShutdownTimeoutMs,
+                    PowerButtonHandler::OnLockFailTimeoutThunk,
+                    this);
+  }
 
+  return FALSE;
+}
+
+gboolean PowerButtonHandler::OnLockFailTimeout() {
+  lock_fail_timeout_id_ = 0;
+  if (should_add_shutdown_timeout_after_lock_ &&
+      !daemon_->locker()->is_locked()) {
+    LOG(WARNING) << "Lock screen never locked. Continuing with shutdown.";
+    should_add_shutdown_timeout_after_lock_ = false;
+    AddShutdownTimeout();
+  }
   return FALSE;
 }
 
