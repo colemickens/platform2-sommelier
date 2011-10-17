@@ -10,12 +10,17 @@
 
 static const uint8_t kMsgTypeMask          = 0x03;
 static const uint8_t kMsgTypeDeliver       = 0x00;
+// udhi is "User Data Header Indicator"
 static const uint8_t kTpUdhi               = 0x40;
 
 static const uint8_t kTypeOfAddrNumMask    = 0x70;
 static const uint8_t kTypeOfAddrNumIntl    = 0x10;
 static const uint8_t kTypeOfAddrNumAlpha   = 0x50;
 static const uint8_t kTypeOfAddrIntlE164   = 0x91;
+
+// SMS user data header information element IDs
+static const uint8_t kConcatenatedSms8bit = 0x00;
+static const uint8_t kConcatenatedSms16bit = 0x08;
 
 static const uint8_t kSmscTimestampLen = 7;
 static const size_t  kMinPduLen = 7 + kSmscTimestampLen;
@@ -62,12 +67,26 @@ static std::string SemiOctetsToBcdString(const uint8_t* octets,
   return bcd;
 }
 
-SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
+SmsMessageFragment* SmsMessageFragment::CreateFragment(const uint8_t* pdu,
+                                                       size_t pdu_len,
+                                                       int index) {
   // Make sure the PDU is of a valid size
   if (pdu_len < kMinPduLen) {
     LOG(INFO) << "PDU too short: have " << pdu_len << " need " << kMinPduLen;
     return NULL;
   }
+
+#if 0
+  {
+    std::string hexpdu;
+    const char *hex="0123456789abcdef";
+    for (unsigned int i = 0 ; i < pdu_len ; i++) {
+      hexpdu += hex[pdu[i] >> 4];
+      hexpdu += hex[pdu[i] & 0xf];
+    }
+    LOG(INFO) << "PDU: " << hexpdu;
+  }
+#endif
 
   // Format of message:
   //
@@ -236,30 +255,57 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   size_t user_data_len = pdu[user_data_len_offset];
   uint8_t bit_offset = 0;
 
+  uint16_t part_reference = 0;
+  uint8_t part_sequence = 1;
+  uint8_t part_count = 1;
+
   if ((pdu[msg_start_offset] & kTpUdhi) == kTpUdhi)
     user_data_header_len = pdu[user_data_offset] + 1;
+
+  if (user_data_header_len != 0) {
+    // Parse the user data headers
+    for (int offset = msg_body_offset + 1;
+         offset < msg_body_offset + user_data_header_len; ) {
+      // Information element ID and length
+      int ie_id = pdu[offset++];
+      int ie_len = pdu[offset++];
+      LOG(INFO) << "Information element type " << ie_id
+                << " len " << ie_len;
+      if (ie_id == kConcatenatedSms8bit && ie_len == 3) {
+        part_reference = pdu[offset];
+        part_count = pdu[offset + 1];
+        part_sequence = pdu[offset + 2];
+        LOG(INFO) << "ref " << (int)part_reference
+                  << " count " << (int)part_count
+                  << " seq " << (int)part_sequence;
+      } else if (ie_id == kConcatenatedSms16bit && ie_len == 4) {
+        part_reference = (pdu[offset] << 8) | pdu[offset + 1];
+        part_count = pdu[offset + 2];
+        part_sequence = pdu[offset + 3];
+        LOG(INFO) << "ref " << (int)part_reference
+                  << " count " << (int)part_count
+                  << " seq " << (int)part_sequence;
+      }
+      offset += ie_len;
+    }
+    msg_body_offset += user_data_header_len;
+  }
+
   if (scheme == dcs_gsm7) {
     if (user_data_header_len != 0) {
       size_t len_adjust = (user_data_header_len * 8 + 6) / 7;
       user_data_len -= len_adjust;
       bit_offset = len_adjust * 7 - user_data_header_len * 8;
-      msg_body_offset += user_data_header_len;
     }
     msg_text = utilities::Gsm7ToUtf8String(&pdu[msg_body_offset],
                                            user_data_len,
                                            bit_offset);
   } else if (scheme == dcs_ucs2) {
-    if (user_data_header_len != 0) {
-      user_data_len -= user_data_header_len;
-      msg_body_offset += user_data_header_len;
-    }
+    user_data_len -= user_data_header_len;
     msg_text = utilities::Ucs2ToUtf8String(&pdu[msg_body_offset],
                                            user_data_len);
   } else {  // 8-bit data: just copy it as-is
-    if (user_data_header_len != 0) {
-      user_data_len -= user_data_header_len;
-      msg_body_offset += user_data_header_len;
-    }
+    user_data_len -= user_data_header_len;
     msg_text.assign(reinterpret_cast<const char *>(&pdu[msg_body_offset]),
                     user_data_len);
   }
@@ -275,5 +321,81 @@ SmsMessage* SmsMessage::CreateMessage(const uint8_t* pdu, size_t pdu_len) {
   sc_timestamp += (quarter_hours / 40) + '0';
   sc_timestamp += (quarter_hours / 4) % 10 + '0';
 
-  return new SmsMessage(smsc_addr, sender_addr, sc_timestamp, msg_text);
+  return new SmsMessageFragment(smsc_addr, sender_addr, sc_timestamp, msg_text,
+                                part_reference, part_sequence, part_count,
+                                index);
+}
+
+SmsMessage::SmsMessage(SmsMessageFragment *base) :
+    base_(base),
+    num_remaining_parts_(base->part_count() - 1),
+    fragments_(base->part_count())
+{
+  fragments_[base->part_sequence() - 1] = base;
+  LOG(INFO) << "Created new message with base ref " << base->part_reference();
+}
+
+void SmsMessage::add(SmsMessageFragment *sms)
+{
+  if (sms->part_reference() != base_->part_reference()) {
+    LOG(WARNING) << "Attempt to add SMS part with reference "
+                 << sms->part_reference()
+                 << " to multipart SMS with reference "
+                 << base_->part_reference();
+    return;
+  }
+  int sequence = sms->part_sequence();
+  if (sequence > base_->part_count()) {
+    LOG(WARNING) << "SMS part out of range: "
+                 << sequence << " vs. " << base_->part_count();
+    return;
+  }
+  if (fragments_[sequence - 1] != NULL) {
+    LOG(WARNING) << "Part " << sequence << " already exists in message";
+    return;
+  }
+  num_remaining_parts_--;
+  fragments_[sequence - 1] = sms;
+}
+
+bool SmsMessage::is_complete()
+{
+  return num_remaining_parts_ == 0;
+}
+
+std::string& SmsMessage::text()
+{
+  // This could be more clever about not recomputing if the message is complete.
+  composite_text_.clear();
+
+  for (int i = 0 ; i < base_->part_count(); i++)
+    if (fragments_[i] != NULL)
+      composite_text_ += fragments_[i]->text();
+
+  return composite_text_;
+}
+
+std::vector<int> SmsMessage::index_list()
+{
+  std::vector<int> ret;
+  for (std::vector<SmsMessageFragment *>::iterator it = fragments_.begin();
+       it != fragments_.end();
+       ++it) {
+    if (*it != NULL)
+      ret.push_back((*it)->index());
+  }
+
+  return ret;
+}
+
+SmsMessage::~SmsMessage()
+{
+  for (std::vector<SmsMessageFragment *>::iterator it = fragments_.begin();
+       it != fragments_.end();
+       ++it) {
+    if (*it != NULL) {
+      delete *it;
+      *it = NULL;
+    }
+  }
 }

@@ -27,13 +27,27 @@ TEST(CreateSmsMessage, SimpleMessage) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(pdu,
+                                                                sizeof(pdu),
+                                                                1);
 
+  ASSERT_TRUE(NULL != frag);
+  EXPECT_EQ("+12345678901", frag->smsc_address());
+  EXPECT_EQ("+18005551212", frag->sender_address());
+  EXPECT_EQ("110101123456+00", frag->timestamp());
+  EXPECT_EQ("hellohello", frag->text());
+  EXPECT_EQ(1, frag->index());
+  EXPECT_EQ(1, frag->part_count());
+  EXPECT_EQ(1, frag->part_sequence());
+
+  SmsMessage* sms = new SmsMessage(frag);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_TRUE(sms->is_complete());
 }
 
 TEST(CreateSmsMessage, ExtendedChars) {
@@ -65,13 +79,17 @@ TEST(CreateSmsMessage, ExtendedChars) {
     0x0e, 0xba, 0x97, 0xd9, 0x6c, 0x17
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12404492164", sms->smsc_address());
   EXPECT_EQ("+16175927198", sms->sender_address());
   EXPECT_EQ("110228115050-05", sms->timestamp());
   EXPECT_EQ("Here's a longer message [{with some extended characters}] "
             "thrown in, such as £ and ΩΠΨ and §¿ as well.", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
@@ -83,12 +101,16 @@ TEST(CreateSmsMessage, AlphaSenderAndUcs2Text) {
     0x42, 0x04, 0x35, 0x04, 0x41, 0x04, 0x42
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+79037011111", sms->smsc_address());
   EXPECT_EQ("InternetSMS", sms->sender_address());
   EXPECT_EQ("110329192004+04", sms->timestamp());
   EXPECT_EQ("тест", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, NonzeroPid) {
@@ -109,12 +131,16 @@ TEST(CreateSmsMessage, NonzeroPid) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, MoreMessagesBitClear) {
@@ -135,12 +161,16 @@ TEST(CreateSmsMessage, MoreMessagesBitClear) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
@@ -159,12 +189,16 @@ TEST(CreateSmsMessage, TimeZoneOffsetGreaterThanTen) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+03", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
@@ -183,12 +217,16 @@ TEST(CreateSmsMessage, NegativeTimeZoneOffset) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456-03", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, NationalSenderNumber) {
@@ -201,12 +239,16 @@ TEST(CreateSmsMessage, NationalSenderNumber) {
     0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("18005551212", sms->sender_address()); /* no plus */
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 static const char expected_8bit_data[] = {
@@ -222,12 +264,16 @@ TEST(CreateSmsMessage, 8BitData) {
     0x97, 0xd9, 0xec, 0x37, 0xde
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ(expected_8bit_data, sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, InsufficientUserData) {
@@ -247,7 +293,9 @@ TEST(CreateSmsMessage, InsufficientUserData) {
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   EXPECT_TRUE(NULL == sms);
 }
 
@@ -286,7 +334,9 @@ TEST(CreateSmsMessage, GroupFDataCodingScheme) {
     0xCA, 0xD9, 0x66
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+33609001390", sms->smsc_address());
   EXPECT_EQ("1800", sms->sender_address());
@@ -295,6 +345,8 @@ TEST(CreateSmsMessage, GroupFDataCodingScheme) {
             "Voici votre nouveau mot de passe : sw2ced pour gérer "
             "votre compte SFR sur www.sfr.fr ou par téléphone au 963",
             sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, GroupF8BitDataCodingScheme) {
@@ -306,12 +358,16 @@ TEST(CreateSmsMessage, GroupF8BitDataCodingScheme) {
     0x97, 0xd9, 0xec, 0x37, 0xde
   };
 
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ(expected_8bit_data, sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, ReservedCodingScheme) {
@@ -330,13 +386,17 @@ TEST(CreateSmsMessage, ReservedCodingScheme) {
     // TP-UD user data:
     0xe8, 0x32, 0x9b, 0xfd, 0x46, 0x97, 0xd9, 0xec, 0x37
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
 
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
@@ -359,13 +419,17 @@ TEST(CreateSmsMessage, UserDataHeaderWithFillBits) {
     // TP-UD user data (first byte has 3 fill bits):
     0x40, 0x97, 0xd9, 0xec, 0x37, 0xba, 0xcc, 0x66, 0xbf, 0x01
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* sms = SmsMessageFragment::CreateFragment(pdu,
+                                                               sizeof(pdu),
+                                                               1);
 
   ASSERT_TRUE(NULL != sms);
   EXPECT_EQ("+12345678901", sms->smsc_address());
   EXPECT_EQ("+18005551212", sms->sender_address());
   EXPECT_EQ("110101123456+00", sms->timestamp());
   EXPECT_EQ("hellohello", sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(1, sms->part_count());
 }
 
 TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
@@ -405,17 +469,137 @@ TEST(CreateSmsMessage, UserDataHeaderNoFillBits) {
     0x2d, 0x4e, 0x97, 0xd9, 0xa0, 0xb4, 0x9b, 0x5e,
     0x96, 0xbb, 0xcb
   };
-  SmsMessage* sms = SmsMessage::CreateMessage(pdu, sizeof(pdu));
+  SmsMessageFragment* frag = SmsMessageFragment::CreateFragment(pdu,
+                                                                sizeof(pdu),
+                                                                1);
 
-  ASSERT_TRUE(NULL != sms);
+  ASSERT_TRUE(NULL != frag);
+  EXPECT_EQ("+31653131316", frag->smsc_address());
+  EXPECT_EQ("1002", frag->sender_address());
+  EXPECT_EQ("110629233219+02", frag->timestamp());
+  EXPECT_EQ("Welkom, bel om uw Voicemail te beluisteren naar +31612001233"
+            " (PrePay: *100*1233#). Voicemail ontvangen is altijd gratis."
+            " Voor gebruik van mobiel interne", frag->text());
+  EXPECT_EQ(1, frag->index());
+  EXPECT_EQ(0x0010, frag->part_reference());
+  EXPECT_EQ(2, frag->part_count());
+  EXPECT_EQ(1, frag->part_sequence());
+
+  SmsMessage* sms = new SmsMessage(frag);
   EXPECT_EQ("+31653131316", sms->smsc_address());
   EXPECT_EQ("1002", sms->sender_address());
   EXPECT_EQ("110629233219+02", sms->timestamp());
   EXPECT_EQ("Welkom, bel om uw Voicemail te beluisteren naar +31612001233"
             " (PrePay: *100*1233#). Voicemail ontvangen is altijd gratis."
             " Voor gebruik van mobiel interne", sms->text());
-
+  EXPECT_FALSE(sms->is_complete());
+  EXPECT_EQ(0x0010, sms->part_reference());
 }
+
+TEST(CreateSmsMessage, TwoPart) {
+  static const uint8_t pdu1[] = {
+    0x07, 0x91, 0x41, 0x40, 0x54, 0x05, 0x10, 0xf0,
+    0x44, 0x0b, 0x91, 0x61, 0x71, 0x05, 0x64, 0x29,
+    0xf5, 0x00, 0x00, 0x11, 0x01, 0x52, 0x41, 0x04,
+    0x41, 0x8a, 0xa0, 0x05, 0x00, 0x03, 0x9c, 0x02,
+    0x01, 0xa8, 0xe8, 0xf4, 0x1c, 0x94, 0x9e, 0x83,
+    0xc2, 0x20, 0x7a, 0x79, 0x4e, 0x77, 0x29, 0x82,
+    0xa0, 0x3b, 0x3a, 0x4c, 0xff, 0x81, 0x82, 0x20,
+    0x7a, 0x79, 0x4e, 0x77, 0x81, 0xa8, 0xe8, 0xf4,
+    0x1c, 0x94, 0x9e, 0x83, 0xde, 0x6e, 0x76, 0x1e,
+    0x14, 0x06, 0xd1, 0xcb, 0x73, 0xba, 0x4b, 0x01,
+    0xa2, 0xa2, 0xd3, 0x73, 0x50, 0x7a, 0x0e, 0x0a,
+    0x83, 0xe8, 0xe5, 0x39, 0xdd, 0xa5, 0x08, 0x82,
+    0xee, 0xe8, 0x30, 0xfd, 0x07, 0x0a, 0x82, 0xe8,
+    0xe5, 0x39, 0xdd, 0x05, 0xa2, 0xa2, 0xd3, 0x73,
+    0x50, 0x7a, 0x0e, 0x7a, 0xbb, 0xd9, 0x79, 0x50,
+    0x18, 0x44, 0x2f, 0xcf, 0xe9, 0x2e, 0x05, 0x88,
+    0x8a, 0x4e, 0xcf, 0x41, 0xe9, 0x39, 0x28, 0x0c,
+    0xa2, 0x97, 0xe7, 0x74, 0x97, 0x22, 0x08, 0xba,
+    0xa3, 0xc3, 0xf4, 0x1f, 0x28, 0x08, 0xa2, 0x97,
+    0xe7, 0x74, 0x17, 0x88, 0x8a, 0x4e, 0xcf, 0x41,
+    0xe9, 0x39, 0xe8, 0xed, 0x66, 0xe7, 0x41
+  };
+
+  static const uint8_t pdu2[] = {
+    0x07, 0x91, 0x41, 0x40, 0x54, 0x05, 0x10, 0xf1,
+    0x44, 0x0b, 0x91, 0x61, 0x71, 0x05, 0x64, 0x29,
+    0xf5, 0x00, 0x00, 0x11, 0x01, 0x52, 0x41, 0x04,
+    0x51, 0x8a, 0x1d, 0x05, 0x00, 0x03, 0x9c, 0x02,
+    0x02, 0xc2, 0x20, 0x7a, 0x79, 0x4e, 0x77, 0x81,
+    0xa6, 0xe5, 0xf1, 0xdb, 0x4d, 0x06, 0xb5, 0xcb,
+    0xf3, 0x79, 0xf8, 0x5c, 0x06,
+  };
+
+  SmsMessageFragment* frag1 = SmsMessageFragment::CreateFragment(pdu1,
+                                                                 sizeof(pdu1),
+                                                                 1);
+
+  ASSERT_TRUE(NULL != frag1);
+  EXPECT_EQ("+14044550010", frag1->smsc_address());
+  EXPECT_EQ("+16175046925", frag1->sender_address());
+  EXPECT_EQ("111025144014-07", frag1->timestamp());
+  const char *frag1_text =
+      "This is a test.\n"
+      "A what? A test. This is only a test.\n"
+      " This is a test.\n"
+      "A what? A test. This is only a test.\n"
+      " This is a test.\n"
+      "A what? A test. This is only ";
+  EXPECT_EQ(frag1_text, frag1->text());
+  EXPECT_EQ(1, frag1->index());
+  EXPECT_EQ(156, frag1->part_reference());
+  EXPECT_EQ(2, frag1->part_count());
+  EXPECT_EQ(1, frag1->part_sequence());
+
+  SmsMessageFragment* frag2 = SmsMessageFragment::CreateFragment(pdu2,
+                                                                 sizeof(pdu2),
+                                                                 2);
+  ASSERT_TRUE(NULL != frag2);
+  EXPECT_EQ("+14044550011", frag2->smsc_address());
+  EXPECT_EQ("+16175046925", frag2->sender_address());
+  EXPECT_EQ("111025144015-07", frag2->timestamp());
+  EXPECT_EQ("a test. Second message", frag2->text());
+  EXPECT_EQ(2, frag2->index());
+  EXPECT_EQ(156, frag2->part_reference());
+  EXPECT_EQ(2, frag2->part_count());
+  EXPECT_EQ(2, frag2->part_sequence());
+
+  SmsMessage* sms = new SmsMessage(frag1);
+
+  ASSERT_TRUE(NULL != sms);
+  EXPECT_FALSE(sms->is_complete());
+
+  sms->add(frag2);
+  EXPECT_EQ("+14044550010", sms->smsc_address());
+  EXPECT_EQ("+16175046925", sms->sender_address());
+  EXPECT_EQ("111025144014-07", sms->timestamp());
+  const char *sms_text =
+      "This is a test.\n"
+      "A what? A test. This is only a test.\n"
+      " This is a test.\n"
+      "A what? A test. This is only a test.\n"
+      " This is a test.\n"
+      "A what? A test. This is only a test. Second message";
+  EXPECT_EQ(sms_text, sms->text());
+  EXPECT_EQ(1, sms->index());
+  EXPECT_EQ(156, sms->part_reference());
+  EXPECT_TRUE(sms->is_complete());
+
+  SmsMessage* sms2 = new SmsMessage(frag2);
+  ASSERT_TRUE(NULL != sms2);
+  EXPECT_FALSE(sms2->is_complete());
+
+  sms2->add(frag1);
+  EXPECT_EQ("+14044550011", sms2->smsc_address());
+  EXPECT_EQ("+16175046925", sms2->sender_address());
+  EXPECT_EQ("111025144015-07", sms2->timestamp());
+  EXPECT_EQ(sms_text, sms2->text());
+  EXPECT_EQ(2, sms2->index());
+  EXPECT_EQ(156, sms2->part_reference());
+  EXPECT_TRUE(sms2->is_complete());
+}
+
 
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
