@@ -574,6 +574,24 @@ class Mount : public EntropySource {
   void GetUserSalt(const Credentials& credentials, bool force_new,
                    SecureBlob* salt) const;
 
+  // Ensures that a specified directory exists, with all path components but the
+  // last one owned by kMountOwnerUid:kMountOwnerGid and the last component
+  // owned by final_uid:final_gid.
+  //
+  // Parameters
+  //   fp - Directory to check
+  //   final_uid - uid that must own the directory
+  //   final_gid - gid that muts own the directory
+  bool EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
+                         gid_t final_gid) const;
+
+  // Ensures that root and user mountpoints for the specified user are present.
+  // Returns false if the mountpoints were not present and could not be created.
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  bool EnsureUserMountPoints(const Credentials& credentials) const;
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;

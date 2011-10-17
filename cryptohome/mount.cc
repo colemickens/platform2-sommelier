@@ -14,6 +14,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/string_util.h>
 #include <base/values.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <set>
 
@@ -145,6 +146,9 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
                                        GetUserDirectory(credentials).c_str()));
   if (file_util::PathExists(old_image_path)) {
     file_util::Delete(FilePath(GetUserDirectory(credentials)), true);
+  }
+  if (!EnsureUserMountPoints(credentials)) {
+    return false;
   }
   // Now check for the presence of a vault directory
   FilePath vault_path(GetUserVaultPath(credentials));
@@ -284,7 +288,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // /home/.shadow/$hash/mount/user: owned by chronos
   // /home/chronos: owned by chronos
   // /home/chronos/user: owned by chronos
-  // /home/chronos-root: owned by root
+  // /home/user/$hash: owned by chronos
+  // /home/root/$hash: owned by root
 
   string vault_path = GetUserVaultPath(credentials);
   // Create vault_path/user as a passthrough directory, move all the (encrypted)
@@ -982,7 +987,9 @@ bool Mount::MountGuestCryptohome() const {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of guestfs path: "
                  << home_dir_;
-      platform_->Unmount(home_dir_, false, NULL);
+      platform_->Unmount(home_dir_,
+                         false,  // not lazy
+                         NULL);  // ignore was_busy
       return false;
     }
   }
@@ -997,7 +1004,9 @@ bool Mount::MountGuestCryptohome() const {
                                  default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't create user Downloads directory: "
                  << downloads_path.value();
-      platform_->Unmount(home_dir_, false, NULL);
+      platform_->Unmount(home_dir_,
+                         false,  // not lazy
+                         NULL);  // ignore was_busy
       return false;
     }
   }
@@ -1372,6 +1381,72 @@ bool Mount::DecryptVaultKeysetOld(const Credentials& credentials,
     return false;
   }
 
+  return true;
+}
+
+bool Mount::EnsureDirHasOwner(const FilePath& fp, uid_t final_uid,
+                              gid_t final_gid) const {
+  std::vector<std::string> path_parts;
+  fp.GetComponents(&path_parts);
+  FilePath check_path("/");
+  // Note that since check_path starts off at /, we don't want to re-append /,
+  // which is path_parts[0]. Also, Append() DCHECKs if you pass it an absolute
+  // path, which / is.
+  for (size_t i = 1; i < path_parts.size(); i++) {
+    check_path = check_path.Append(path_parts[i]);
+    bool last = (i == (path_parts.size() - 1));
+    uid_t uid = last ? final_uid : kMountOwnerUid;
+    gid_t gid = last ? final_gid : kMountOwnerGid;
+    struct stat st;
+    if (!platform_->Stat(check_path.value(), &st)) {
+      // Dirent not there, so create and set ownership.
+      if (!platform_->CreateDirectory(check_path.value())) {
+        PLOG(ERROR) << "Can't create: " << check_path.value();
+        return false;
+      }
+      if (!platform_->SetOwnership(check_path.value(), uid, gid)) {
+        PLOG(ERROR) << "Can't chown/chgrp: " << check_path.value()
+                    << " uid " << uid << " gid " << gid;
+        return false;
+      }
+    } else {
+      // Dirent there; make sure it's acceptable.
+      if (!S_ISDIR(st.st_mode)) {
+        LOG(ERROR) << "Non-directory path: " << check_path.value();
+        return false;
+      }
+      if (st.st_uid != uid) {
+        LOG(ERROR) << "Owner mismatch: " << check_path.value()
+                   << " " << st.st_uid << " != " << uid;
+        return false;
+      }
+      if (st.st_gid != gid) {
+        LOG(ERROR) << "Group mismatch: " << check_path.value()
+                   << " " << st.st_gid << " != " << gid;
+        return false;
+      }
+      if (st.st_mode & S_IWOTH) {
+        LOG(ERROR) << "Permissions too lenient: " << check_path.value()
+                   << " has " << std::oct << st.st_mode;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
+  const std::string username = credentials.GetFullUsernameString();
+  FilePath root_path = chromeos::cryptohome::home::GetRootPath(username);
+  FilePath user_path = chromeos::cryptohome::home::GetUserPath(username);
+  if (!EnsureDirHasOwner(root_path, kMountOwnerUid, kMountOwnerGid)) {
+    LOG(ERROR) << "Couldn't ensure root path: " << root_path.value();
+    return false;
+  }
+  if (!EnsureDirHasOwner(user_path, default_user_, default_access_group_)) {
+    LOG(ERROR) << "Couldn't ensure user path: " << user_path.value();
+    return false;
+  }
   return true;
 }
 
