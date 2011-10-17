@@ -114,6 +114,7 @@ commonlib_sources = env.Split("""crypto.cc
                               """)
 server_sources = env.Split("""cryptohomed.cc""")
 client_sources = env.Split("""cryptohome.cc""")
+path_sources = env.Split("""cryptohome-path.cc""")
 test_sources = env.Split("""cryptohome_event_source_unittest.cc
                             crypto_unittest.cc
                             service_unittest.cc
@@ -178,6 +179,9 @@ env_client = env.Clone()
 env_client.Append(LIBS=['cryptohome'])
 env_client.DbusClientBindings('bindings/client.h', 'cryptohome.xml')
 env_client.Program('cryptohome', client_sources)
+
+env_path = env.Clone()
+env_path.Program('cryptohome-path', path_sources)
 
 # TODO(wad) we'll probably want a separate runner for client roundtrip tests
 env_tests = env.Clone()
