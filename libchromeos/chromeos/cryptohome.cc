@@ -16,8 +16,8 @@ namespace chromeos {
 namespace cryptohome {
 namespace home {
 
-static const char *kUserHomePrefix = "/home/user-";
-static const char *kRootHomePrefix = "/home/root-";
+static const char *kUserHomePrefix = "/home/user/";
+static const char *kRootHomePrefix = "/home/root/";
 static const char *kSystemSaltPath = "/home/.shadow/salt";
 
 static std::string* salt = NULL;
