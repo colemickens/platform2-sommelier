@@ -13,10 +13,9 @@
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/metrics_constants.h"
-#include "power_manager/mock_audio_detector.h"
+#include "power_manager/mock_activity_detector.h"
 #include "power_manager/mock_backlight.h"
 #include "power_manager/mock_monitor_reconfigure.h"
-#include "power_manager/mock_video_detector.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/powerd.h"
 
@@ -227,8 +226,8 @@ class DaemonTest : public Test {
   }
 
   StrictMock<MockBacklight> backlight_;
-  StrictMock<MockVideoDetector> video_detector_;
-  StrictMock<MockAudioDetector> audio_detector_;
+  StrictMock<MockActivityDetector> video_detector_;
+  StrictMock<MockActivityDetector> audio_detector_;
   StrictMock<MockMonitorReconfigure> monitor_reconfigure_;
   PluggedState plugged_state_;
   PowerPrefs prefs_;

@@ -21,13 +21,12 @@
 #include "chromeos/dbus/service_constants.h"
 #include "chromeos/glib/object.h"
 #include "cros/chromeos_wm_ipc_enums.h"
-#include "power_manager/audio_detector_interface.h"
+#include "power_manager/activity_detector_interface.h"
 #include "power_manager/metrics_constants.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
 #include "power_manager/power_supply.h"
 #include "power_manager/power_supply_properties.pb.h"
-#include "power_manager/video_detector_interface.h"
 #include "power_manager/util.h"
 
 #if !defined(USE_AURA)
@@ -54,6 +53,9 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 // Time between battery polls, in milliseconds.
 const int64 kBatteryPollIntervalMs = 30000;
 
+// How frequently audio should be checked before suspending.
+const int64 kAudioCheckIntervalMs = 1000;
+
 } // namespace
 
 namespace power_manager {
@@ -73,8 +75,8 @@ enum { kBrightnessDown, kBrightnessUp, kBrightnessEnumMax };
 Daemon::Daemon(BacklightController* backlight_controller,
                PowerPrefs* prefs,
                MetricsLibraryInterface* metrics_lib,
-               VideoDetectorInterface* video_detector,
-               AudioDetectorInterface* audio_detector,
+               ActivityDetectorInterface* video_detector,
+               ActivityDetectorInterface* audio_detector,
                MonitorReconfigure* monitor_reconfigure,
                BacklightInterface* keyboard_backlight,
                const FilePath& run_dir)
@@ -345,8 +347,17 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
     CHECK(idle_.AddIdleTimeout(fuzz_ms_));
   if (kMetricIdleMin <= dim_ms_ - fuzz_ms_)
     CHECK(idle_.AddIdleTimeout(kMetricIdleMin));
+  // XIdle timeout events for dimming and idle-off.
   CHECK(idle_.AddIdleTimeout(dim_ms_));
   CHECK(idle_.AddIdleTimeout(off_ms_));
+  // This is to start polling audio before a suspend.
+  // |suspend_ms_| must be >= |off_ms_| + |react_ms_|, so if the following
+  // condition is false, then they must be equal.  In that case, the idle
+  // timeout at |off_ms_| would be equivalent, and the following timeout would
+  // be redundant.
+  if (suspend_ms_ - react_ms_ > off_ms_)
+    CHECK(idle_.AddIdleTimeout(suspend_ms_ - react_ms_));
+  // XIdle timeout events for lock and/or suspend.
   if (lock_ms_ < suspend_ms_ - fuzz_ms_ || lock_ms_ - fuzz_ms_ > suspend_ms_) {
     CHECK(idle_.AddIdleTimeout(lock_ms_));
     CHECK(idle_.AddIdleTimeout(suspend_ms_));
@@ -371,6 +382,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     // fade from suspend, we would want to have this state to make sure the
     // backlight is set to zero when suspended.
     backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    audio_detector_->Disable();
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
     if (util::LoggedIn())
@@ -384,6 +396,7 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
         suspender_.CancelSuspend();
       }
     }
+    audio_detector_->Disable();
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
   }
@@ -445,9 +458,9 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     bool video_is_playing = false;
     int64 dim_timeout = kPowerConnected == plugged_state_ ? plugged_dim_ms_ :
                                                             unplugged_dim_ms_;
-    CHECK(video_detector_->GetVideoActivity(dim_timeout,
-                                            &video_time_ms,
-                                            &video_is_playing));
+    CHECK(video_detector_->GetActivity(dim_timeout,
+                                       &video_time_ms,
+                                       &video_is_playing));
     if (video_is_playing)
       SetIdleOffset(idle_time_ms - video_time_ms, kIdleNormal);
   }
@@ -457,12 +470,18 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     SetIdleOffset(idle_time_ms, kIdleScreenOff);
   }
   if (is_idle && backlight_controller_->state() != BACKLIGHT_SUSPENDED &&
+      idle_time_ms >= suspend_ms_ - react_ms_) {
+    // Before suspending, make sure there is no audio playing for a period of
+    // time, so start polling for audio detection early.
+    audio_detector_->Enable();
+  }
+  if (is_idle && backlight_controller_->state() != BACKLIGHT_SUSPENDED &&
       idle_time_ms >= suspend_ms_) {
-    // Delay suspend if audio is active.
+    int64 audio_time_ms = 0;
     bool audio_is_playing = false;
-    // TODO(sque): Add a CHECK once AudioDetector is more flexible and supports
-    // various audio sysfs across different systems.
-    audio_detector_->GetAudioStatus(&audio_is_playing);
+    CHECK(audio_detector_->GetActivity(kAudioCheckIntervalMs,
+                                       &audio_time_ms,
+                                       &audio_is_playing));
     if (audio_is_playing) {
       LOG(INFO) << "Delaying suspend because audio is playing.";
       // Increase the suspend offset by the react time.  Since the offset is
@@ -471,6 +490,12 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
       int64 base_suspend_ms = (plugged_state_ == kPowerConnected) ?
                                plugged_suspend_ms_ : unplugged_suspend_ms_;
       SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_, kIdleSuspend);
+      // This is the tricky part.  Since the audio detection happens |react_ms_|
+      // ms before suspend time, and suspend timeout gets offset by |react_ms_|
+      // ms each time there is audio, there is no time to disable and reenable
+      // audio detection using an idle timeout.  So audio detection should stay
+      // on until either the system goes to suspend out the user comes out of
+      // idle.
     }
   }
 
@@ -589,9 +614,9 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
     daemon->PollPowerSupply();
   } else {
     LOG(ERROR) << "Can't get receive_device()";
-    return false;
+    return FALSE;
   }
-  return true;
+  return TRUE;
 }
 
 void Daemon::RegisterUdevEventHandler() {
@@ -924,7 +949,7 @@ gboolean Daemon::PollPowerSupply() {
   if (!dbus_connection_send(connection, message, NULL))
     LOG(WARNING) << "Sending battery poll signal failed.";
   // Always repeat polling.
-  return true;
+  return TRUE;
 }
 
 void Daemon::OnLowBattery(double battery_percentage) {
@@ -970,7 +995,7 @@ gboolean Daemon::CleanShutdownTimedOut() {
   } else {
     LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
   }
-  return false;
+  return FALSE;
 }
 
 void Daemon::OnPowerStateChange(const char* state) {
@@ -1121,7 +1146,7 @@ gboolean Daemon::PrefChangeHandler(const char* name,
                          daemon->lock_on_idle_suspend_);
     daemon->SetIdleOffset(0, kIdleNormal);
   }
-  return true;
+  return TRUE;
 }
 
 void Daemon::HandleResume() {

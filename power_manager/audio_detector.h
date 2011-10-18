@@ -7,22 +7,37 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
-#include "power_manager/audio_detector_interface.h"
+#include "base/time.h"
+#include "power_manager/activity_detector_interface.h"
+#include "power_manager/signal_callback.h"
 
 namespace power_manager {
 
-class AudioDetector : public AudioDetectorInterface {
+typedef int gboolean;
+typedef unsigned int guint;
+
+class AudioDetector : public ActivityDetectorInterface {
  public:
   AudioDetector();
   virtual ~AudioDetector() {}
 
   void Init();
 
-  // Overridden from AudioDetectorInterface.
-  virtual bool GetAudioStatus(bool* is_active);
+  // Overridden from ActivityDetectorInterface.
+  virtual bool GetActivity(int64 activity_threshold_ms,
+                           int64* time_since_activity_ms,
+                           bool* is_active);
+  virtual bool Enable();
+  virtual bool Disable();
 
  private:
+  SIGNAL_CALLBACK_0(AudioDetector, gboolean, Poll);
+  bool GetAudioStatus(bool* is_active);
+
   FilePath audio_status_path_;
+  base::Time last_audio_time_;
+  bool polling_enabled_;
+  guint poll_loop_id_;
 
   DISALLOW_COPY_AND_ASSIGN(AudioDetector);
 };

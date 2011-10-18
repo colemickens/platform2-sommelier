@@ -7,25 +7,29 @@
 
 #include <gdk/gdkx.h>
 
-#include "power_manager/video_detector_interface.h"
+#include "power_manager/activity_detector_interface.h"
 
 namespace power_manager {
 
-class VideoDetector : public VideoDetectorInterface {
+class VideoDetector : public ActivityDetectorInterface {
  public:
   VideoDetector();
   virtual ~VideoDetector() {}
   void Init();
 
-  // GetVideoActivity should be called from OnIdleEvent when a transition to
-  // idle state is imminent.
+  // GetActivity should be called from OnIdleEvent when a transition to idle
+  // state is imminent.
   // Sets |is_active| to true if video activity has been detected, otherwise
   // sets |is_active| to false.
   //
   // On success, returns true; otherwise return false.
-  bool GetVideoActivity(int64 activity_threshold_ms,
-                        int64* time_since_activity_ms,
-                        bool* is_active);
+  virtual bool GetActivity(int64 activity_threshold_ms,
+                           int64* time_since_activity_ms,
+                           bool* is_active);
+
+  // These are not used by the video detector, which is not poll-driven.
+  virtual bool Enable() { return true; }
+  virtual bool Disable() { return true; }
 
  private:
   bool GetRootWindowProperty(Atom property, unsigned char** data);

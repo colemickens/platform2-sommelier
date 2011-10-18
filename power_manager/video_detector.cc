@@ -20,9 +20,9 @@ void VideoDetector::Init() {
   DCHECK(root_window_ != None);
 }
 
-bool VideoDetector::GetVideoActivity(int64 activity_threshold_ms,
-                                     int64* time_since_activity_ms,
-                                     bool* is_active) {
+bool VideoDetector::GetActivity(int64 activity_threshold_ms,
+                                int64* time_since_activity_ms,
+                                bool* is_active) {
   time_t* data = NULL;
   CHECK(NULL != is_active);
   if (GetRootWindowProperty(video_time_atom_, (unsigned char**)&data)) {

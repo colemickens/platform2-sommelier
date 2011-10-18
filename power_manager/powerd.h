@@ -36,10 +36,9 @@
 
 namespace power_manager {
 
-class AudioDetectorInterface;
+class ActivityDetectorInterface;
 class MonitorReconfigure;
 class PowerButtonHandler;
-class VideoDetectorInterface;
 
 typedef std::vector<int64> IdleThresholds;
 
@@ -51,8 +50,8 @@ class Daemon : public XIdleObserver,
   Daemon(BacklightController* ctl,
          PowerPrefs* prefs,
          MetricsLibraryInterface* metrics_lib,
-         VideoDetectorInterface* video_detector,
-         AudioDetectorInterface* audio_detector,
+         ActivityDetectorInterface* video_detector,
+         ActivityDetectorInterface* audio_detector,
          MonitorReconfigure* monitor_reconfigure,
          BacklightInterface* keyboard_backlight,
          const FilePath& run_dir);
@@ -332,8 +331,8 @@ class Daemon : public XIdleObserver,
   BacklightController* backlight_controller_;
   PowerPrefs* prefs_;
   MetricsLibraryInterface* metrics_lib_;
-  VideoDetectorInterface* video_detector_;
-  AudioDetectorInterface* audio_detector_;
+  ActivityDetectorInterface* video_detector_;
+  ActivityDetectorInterface* audio_detector_;
   XIdle idle_;
   MonitorReconfigure* monitor_reconfigure_;
   BacklightInterface* keyboard_backlight_;
