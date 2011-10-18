@@ -66,9 +66,6 @@ class GobiCdmaModem
 
 
   // ======================================================================
-  static void CleanupActivationTimeoutCallback(gpointer data);
-  static gboolean ActivationTimeoutCallback(gpointer data);
-  guint32 activation_callback_id_;
 
   struct ActivationStatusArgs : public CallbackArgs {
     ActivationStatusArgs(ULONG device_activation_state)

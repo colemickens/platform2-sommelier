@@ -180,10 +180,6 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
 
   if (modem != NULL) {
-    if (modem->activation_callback_id_) {
-      g_source_remove(modem->activation_callback_id_);
-      modem->activation_callback_id_ = 0;
-    }
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
       modem->activation_time_.StopIfStarted();
@@ -206,23 +202,6 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   }
   delete args;
   return FALSE;
-}
-
-gboolean GobiCdmaModem::ActivationTimeoutCallback(gpointer data) {
-  CallbackArgs* args = static_cast<CallbackArgs*>(data);
-
-  GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
-  if (modem == NULL)
-    return FALSE;
-
-  LOG(ERROR) << "ActivationTimeout";
-  modem->SendActivationStateChanged(MM_MODEM_CDMA_ACTIVATION_ERROR_TIMED_OUT);
-  return FALSE;
-}
-
-void GobiCdmaModem::CleanupActivationTimeoutCallback(gpointer data) {
-  CallbackArgs *args = static_cast<CallbackArgs*>(data);
-  delete args;
 }
 
 static void OMADMAlertCallback(ULONG type, USHORT id) {
@@ -309,10 +288,6 @@ void GobiCdmaModem::GetTechnologySpecificStatus(DBusPropertyMap* properties) {
 // values from MM_MODEM_CDMA_ACTIVATION_ERROR
 uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
                              DBus::Error& activation_started_error) {
-  // TODO(ellyjones): This is a guess based on empirical observations; someone
-  // must know a real reasonable value for it. Find out what such a value is and
-  // insert it here.
-  static const int kActivationTimeoutSec = 5;
   LOG(INFO) << "Activate(" << carrier_name << ")";
 
   // Check current firmware to see whether it's for the requested carrier
@@ -404,24 +379,8 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
       return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
       break;
   }
-
-  if (activation_callback_id_) {
-    g_source_remove(activation_callback_id_);
-    activation_callback_id_ = 0;
-  }
-
-  activation_callback_id_ = g_timeout_add_seconds_full(
-      G_PRIORITY_DEFAULT,
-      kActivationTimeoutSec,
-      ActivationTimeoutCallback,
-      new CallbackArgs(
-          new DBus::Path(connected_modem_->path())),
-      CleanupActivationTimeoutCallback);
-  // We've successfully fired off an activation attempt, so we return
-  // the "error" of saying so.
-  activation_started_error.set(kOperationInitiatedError, "");
-  // Return will be ignored; DBus Error sent insteaad
-  return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
+  // Unreached, but compiler does not know that
+  return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
 }
 
 void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
@@ -526,7 +485,7 @@ uint32_t GobiCdmaModem::ActivateOtasp(const std::string& number) {
   if (rc != 0) {
     LOG(ERROR) << "OTASP activation failed: " << rc;
     return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
-   }
+  }
   return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
 }
 
