@@ -199,6 +199,9 @@ if [ -f /root/.use_touchui ] ; then
       TOUCH_UI_FLAGS="$TOUCH_UI_FLAGS --touch-devices='$DEVICE_LIST'"
     fi
   fi
+fi
+
+if [ -f /root/.no_wm ]; then
   WM_SCRIPT=""
 fi
 
