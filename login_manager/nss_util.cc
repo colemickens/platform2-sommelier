@@ -13,9 +13,14 @@
 #include <crypto/rsa_private_key.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
-#include <cros/chromeos_login.h>
 
 using crypto::RSAPrivateKey;
+
+namespace {
+// This should match the same constant in Chrome tree:
+// chrome/browser/chromeos/login/owner_key_utils.cc
+const char kOwnerKeyFile[] = "/var/lib/whitelist/owner.key";
+}  // namespace
 
 namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
@@ -118,7 +123,7 @@ RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
 }
 
 FilePath NssUtilImpl::GetOwnerKeyFilePath() {
-  return FilePath(chromeos::kOwnerKeyFile);
+  return FilePath(kOwnerKeyFile);
 }
 
 // This is pretty much just a blind passthrough, so I won't test it
