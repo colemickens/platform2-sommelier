@@ -17,8 +17,16 @@ struct InputData {
 
 class IOHandler {
  public:
+  enum ReadyMode {
+    kModeInput,
+    kModeOutput
+  };
+
   IOHandler() {}
   virtual ~IOHandler() {}
+
+  virtual void Start() {}
+  virtual void Stop() {}
 };
 
 }  // namespace shill

@@ -95,7 +95,8 @@ SHILL_OBJS = \
 	ethernet_service.o \
 	event_dispatcher.o \
 	glib.o \
-	glib_io_handler.o \
+	glib_io_ready_handler.o \
+	glib_io_input_handler.o \
 	ip_address.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \

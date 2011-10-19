@@ -11,6 +11,8 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 
+#include "shill/io_handler.h"
+
 namespace base {
 class MessageLoopProxy;
 }  // namespace base
@@ -18,9 +20,6 @@ class MessageLoopProxy;
 class Task;
 
 namespace shill {
-
-class InputData;
-class IOHandler;
 
 // This is the main event dispatcher.  It contains a central instance, and is
 // the entity responsible for dispatching events out of all queues to their
@@ -43,6 +42,11 @@ class EventDispatcher {
   virtual IOHandler *CreateInputHandler(
       int fd,
       Callback1<InputData *>::Type *callback);
+
+  virtual IOHandler *CreateReadyHandler(
+      int fd,
+      IOHandler::ReadyMode mode,
+      Callback1<int>::Type *callback);
 
  private:
   scoped_ptr<MessageLoop> dont_use_directly_;

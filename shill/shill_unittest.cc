@@ -32,20 +32,24 @@ class MockEventDispatchTester {
         triggered_(false),
         callback_count_(0),
         got_data_(false),
+        got_ready_(false),
         data_callback_(NULL),
         input_handler_(NULL),
         tester_factory_(this) {
+  }
+
+  void ScheduleFailSafe() {
+    // Set up a failsafe, so the test still exits even if something goes
+    // wrong.  The Factory owns the RunnableMethod, but we get a pointer to it.
+    failsafe_ = tester_factory_.NewRunnableMethod(
+        &MockEventDispatchTester::StopDispatcher);
+    dispatcher_->PostDelayedTask(failsafe_, 100);
   }
 
   void ScheduleTimedTasks() {
     dispatcher_->PostDelayedTask(
         tester_factory_.NewRunnableMethod(&MockEventDispatchTester::Trigger),
         10);
-    // also set up a failsafe, so the test still exits even if something goes
-    // wrong.  The Factory owns the RunnableMethod, but we get a pointer to it.
-    failsafe_ = tester_factory_.NewRunnableMethod(
-        &MockEventDispatchTester::QuitRegardless);
-    dispatcher_->PostDelayedTask(failsafe_, 100);
   }
 
   void RescheduleUnlessTriggered() {
@@ -56,11 +60,11 @@ class MockEventDispatchTester {
               &MockEventDispatchTester::RescheduleUnlessTriggered));
     } else {
       failsafe_->Cancel();
-      QuitRegardless();
+      StopDispatcher();
     }
   }
 
-  void QuitRegardless() {
+  void StopDispatcher() {
     dispatcher_->PostTask(new MessageLoop::QuitTask);
   }
 
@@ -76,20 +80,66 @@ class MockEventDispatchTester {
                                     inputData->len, inputData->buf);
     got_data_ = true;
     IOComplete(inputData->len);
-    QuitRegardless();
+    StopDispatcher();
   }
 
   bool GetData() { return got_data_; }
 
   void ListenIO(int fd) {
-    data_callback_.reset(NewCallback(this,
-                                     &MockEventDispatchTester::HandleData));
-    input_handler_.reset(dispatcher_->CreateInputHandler(fd,
-                                                         data_callback_.get()));
+    data_callback_.reset(
+        NewCallback(this, &MockEventDispatchTester::HandleData));
+    input_handler_.reset(
+        dispatcher_->CreateInputHandler(fd, data_callback_.get()));
   }
 
   void StopListenIO() {
     got_data_ = false;
+    input_handler_.reset(NULL);
+  }
+
+  void HandleReady(int fd) {
+    // Stop event handling after we receive in input-ready event.  We should
+    // no longer be called until events are re-enabled.
+    input_handler_->Stop();
+
+    if (got_ready_) {
+      // If we're still getting events after we have stopped them, something
+      // is really wrong, and we cannot just depend on ASSERT_FALSE() to get
+      // us out of it.  Make sure the dispatcher is also stopped, or else we
+      // could end up never exiting.
+      StopDispatcher();
+      ASSERT_FALSE(got_ready_) << "failed to stop Input Ready events";
+    }
+    got_ready_ = true;
+
+    LOG(INFO) << "MockEventDispatchTester handling ready for fd " << fd;
+    IOComplete(callback_count_);
+
+    if (callback_count_) {
+      StopDispatcher();
+    } else {
+      // Restart Ready events after 10 millisecond delay.
+      callback_count_++;
+      dispatcher_->PostDelayedTask(tester_factory_.NewRunnableMethod(
+          &MockEventDispatchTester::RestartReady), 10);
+    }
+  }
+
+  void RestartReady() {
+    got_ready_ = false;
+    input_handler_->Start();
+  }
+
+  void ListenReady(int fd) {
+    ready_callback_.reset(
+        NewCallback(this, &MockEventDispatchTester::HandleReady));
+    input_handler_.reset(
+        dispatcher_->CreateReadyHandler(fd, IOHandler::kModeInput,
+                                        ready_callback_.get()));
+  }
+
+  void StopListenReady() {
+    got_ready_ = false;
     input_handler_.reset(NULL);
   }
 
@@ -101,7 +151,9 @@ class MockEventDispatchTester {
   bool triggered_;
   int callback_count_;
   bool got_data_;
+  bool got_ready_;
   scoped_ptr<Callback1<InputData*>::Type> data_callback_;
+  scoped_ptr<Callback1<int>::Type> ready_callback_;
   scoped_ptr<IOHandler> input_handler_;
   ScopedRunnableMethodFactory<MockEventDispatchTester> tester_factory_;
   CancelableTask* failsafe_;
@@ -121,6 +173,7 @@ class ShillDaemonTest : public Test {
     // Tests initialization done by the daemon's constructor
     ASSERT_NE(reinterpret_cast<Config*>(NULL), daemon_.config_);
     ASSERT_NE(reinterpret_cast<ControlInterface*>(NULL), daemon_.control_);
+    dispatcher_test_.ScheduleFailSafe();
   }
  protected:
   TestConfig config_;
@@ -132,12 +185,14 @@ class ShillDaemonTest : public Test {
 };
 
 
-TEST_F(ShillDaemonTest, EventDispatcher) {
+TEST_F(ShillDaemonTest, EventDispatcherTimer) {
   EXPECT_CALL(dispatcher_test_, CallbackComplete(Gt(0)));
   dispatcher_test_.ScheduleTimedTasks();
   dispatcher_test_.RescheduleUnlessTriggered();
   dispatcher_->DispatchForever();
+}
 
+TEST_F(ShillDaemonTest, EventDispatcherIO) {
   EXPECT_CALL(dispatcher_test_, IOComplete(16));
   int pipefd[2];
   ASSERT_EQ(pipe(pipefd), 0);
@@ -147,6 +202,22 @@ TEST_F(ShillDaemonTest, EventDispatcher) {
 
   dispatcher_->DispatchForever();
   dispatcher_test_.StopListenIO();
+}
+
+TEST_F(ShillDaemonTest, EventDispatcherReady) {
+  EXPECT_CALL(dispatcher_test_, IOComplete(0))
+      .Times(1);
+  EXPECT_CALL(dispatcher_test_, IOComplete(1))
+      .Times(1);
+
+  int pipefd[2];
+  ASSERT_EQ(pipe(pipefd), 0);
+
+  dispatcher_test_.ListenReady(pipefd[0]);
+  ASSERT_EQ(write(pipefd[1], "This is a test?!", 16), 16);
+
+  dispatcher_->DispatchForever();
+  dispatcher_test_.StopListenReady();
 }
 
 }  // namespace shill

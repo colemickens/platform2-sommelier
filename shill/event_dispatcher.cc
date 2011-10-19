@@ -10,7 +10,8 @@
 #include <base/callback_old.h>
 #include <base/message_loop_proxy.h>
 
-#include "shill/glib_io_handler.h"
+#include "shill/glib_io_input_handler.h"
+#include "shill/glib_io_ready_handler.h"
 
 namespace shill {
 
@@ -40,7 +41,18 @@ bool EventDispatcher::PostDelayedTask(Task *task, int64 delay_ms) {
 IOHandler *EventDispatcher::CreateInputHandler(
     int fd,
     Callback1<InputData *>::Type *callback) {
-  return new GlibIOInputHandler(fd, callback);
+  IOHandler *handler = new GlibIOInputHandler(fd, callback);
+  handler->Start();
+  return handler;
+}
+
+IOHandler *EventDispatcher::CreateReadyHandler(
+    int fd,
+    IOHandler::ReadyMode mode,
+    Callback1<int>::Type *callback) {
+  IOHandler *handler = new GlibIOReadyHandler(fd, mode, callback);
+  handler->Start();
+  return handler;
 }
 
 }  // namespace shill
