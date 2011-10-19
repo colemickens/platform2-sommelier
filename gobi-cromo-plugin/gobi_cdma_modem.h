@@ -43,6 +43,10 @@ class GobiCdmaModem
       const std::map<std::string, std::string>& properties,
       DBus::Error &error);
 
+  // DBUS Methods: ModemSimple
+  virtual void Connect(const utilities::DBusPropertyMap& properties,
+                       DBus::Error& error);
+
  protected:
   void GetCdmaRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
                                 ULONG* roaming_state, DBus::Error& error);
@@ -105,11 +109,14 @@ class GobiCdmaModem
   void SendActivationStateFailed();
 
   MetricsStopwatch activation_time_;
+  bool activation_in_progress_;
 
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOmadm();
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOtasp(const std::string& number);
+  // Perform actions necessary when activation as finished
+  void ActivationFinished(void);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GobiCdmaModem);

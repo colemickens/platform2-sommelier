@@ -25,7 +25,8 @@ GobiCdmaModem::GobiCdmaModem(DBus::Connection& connection,
                              gobi::Sdk* sdk,
                              GobiModemHelper *modem_helper)
     : GobiModem(connection, path, device, sdk, modem_helper),
-      activation_time_(METRIC_BASE_NAME "Activation", 0, 150000, 20) {
+      activation_time_(METRIC_BASE_NAME "Activation", 0, 150000, 20),
+      activation_in_progress_(false) {
 }
 
 GobiCdmaModem::~GobiCdmaModem() {
@@ -182,7 +183,7 @@ gboolean GobiCdmaModem::ActivationStatusCallback(gpointer data) {
   if (modem != NULL) {
     if (args->device_activation_state == gobi::kActivated ||
         args->device_activation_state == gobi::kNotActivated) {
-      modem->activation_time_.StopIfStarted();
+      modem->ActivationFinished();
     }
     if (args->device_activation_state == gobi::kActivated) {
       DBus::Error error;
@@ -232,7 +233,7 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
   }
 
   if (activation_done) {
-    modem->activation_time_.Stop();
+    modem->ActivationFinished();
   }
 
   delete args;
@@ -267,6 +268,16 @@ void GobiCdmaModem::RegisterCallbacks() {
 
 //======================================================================
 // DBUS Methods: overridden Modem.Simple
+void GobiCdmaModem::Connect(const DBusPropertyMap& properties,
+                            DBus::Error& error) {
+  if (activation_in_progress_) {
+    LOG(WARNING) << "Connect while modem is activating";
+    error.set(kConnectError, "Modem is activating");
+    return;
+  }
+  GobiModem::Connect(properties, error);
+}
+
 void GobiCdmaModem::GetTechnologySpecificStatus(DBusPropertyMap* properties) {
   WORD prl_version;
   ULONG rc = sdk_->GetPRLVersion(&prl_version);
@@ -353,34 +364,37 @@ uint32_t GobiCdmaModem::Activate(const std::string& carrier_name,
     }
   }
 
+  uint32_t ret;
   activation_time_.Start();
   switch (carrier->activation_method()) {
     case Carrier::kOmadm:
-      return ActivateOmadm();
+      ret = ActivateOmadm();
       break;
 
-    case Carrier::kOtasp: {
-        uint32_t immediate_return;
-        if (carrier->CdmaCarrierSpecificActivate(
-                status, this, &immediate_return)) {
-          return immediate_return;
-        }
+    case Carrier::kOtasp:
+      if (carrier->CdmaCarrierSpecificActivate(status, this, &ret)) {
+        // ret is set in call above
+        break;
       }
       if (carrier->activation_code() == NULL) {
         LOG(ERROR) << "Number was not supplied for OTASP activation";
-        return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
+        ret = MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
+        break;
       }
-      return ActivateOtasp(carrier->activation_code());
+      ret = ActivateOtasp(carrier->activation_code());
       break;
 
     default:
       LOG(ERROR) << "Unknown activation method: "
                    << carrier->activation_method();
-      return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
+      ret = MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
       break;
   }
-  // Unreached, but compiler does not know that
-  return MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN;
+  if (ret == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR)
+    // Record that activation is in progress
+    activation_in_progress_ = true;
+
+  return ret;
 }
 
 void GobiCdmaModem::ActivateManual(const DBusPropertyMap& const_properties,
@@ -487,6 +501,11 @@ uint32_t GobiCdmaModem::ActivateOtasp(const std::string& number) {
     return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
   }
   return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
+}
+
+void GobiCdmaModem::ActivationFinished(void) {
+  activation_time_.StopIfStarted();
+  activation_in_progress_ = false;
 }
 
 std::string GobiCdmaModem::GetEsn(DBus::Error& error) {
