@@ -388,7 +388,10 @@ fi
 if [ -n "${FLAGS_pmbr_code}" ]; then
   PMBRCODE="${FLAGS_pmbr_code}"
 elif [ "$ARCH" = "ARM" ]; then
-  PMBRCODE=/dev/zero
+  # Store the existing PMBR from the destination in the temp pmbr file so we can
+  # restore it when we're installing the GPT. This ensures that we preserve
+  # settings set by crossystem (such as dev_boot_usb).
+  sudo dd bs=512 count=1 if=$DST of=$PMBRCODE
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
   # on legacy-BIOS devices.
