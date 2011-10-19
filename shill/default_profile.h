@@ -12,11 +12,11 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

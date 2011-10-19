@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_EVENT_
-#define SHILL_EVENT_
+#ifndef SHILL_EVENT_DISPATCHER_
+#define SHILL_EVENT_DISPATCHER_
 
 #include <base/basictypes.h>
 #include <base/callback_old.h>
@@ -19,8 +19,8 @@ class Task;
 
 namespace shill {
 
-class IOInputHandler;
 class InputData;
+class IOHandler;
 
 // This is the main event dispatcher.  It contains a central instance, and is
 // the entity responsible for dispatching events out of all queues to their
@@ -40,7 +40,7 @@ class EventDispatcher {
   bool PostTask(Task *task);
   bool PostDelayedTask(Task *task, int64 delay_ms);
 
-  virtual IOInputHandler *CreateInputHandler(
+  virtual IOHandler *CreateInputHandler(
       int fd,
       Callback1<InputData *>::Type *callback);
 
@@ -53,4 +53,4 @@ class EventDispatcher {
 
 }  // namespace shill
 
-#endif  // SHILL_EVENT_
+#endif  // SHILL_EVENT_DISPATCHER_

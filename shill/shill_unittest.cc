@@ -95,13 +95,14 @@ class MockEventDispatchTester {
 
   MOCK_METHOD1(CallbackComplete, void(int));
   MOCK_METHOD1(IOComplete, void(int));
+
  private:
   EventDispatcher *dispatcher_;
   bool triggered_;
   int callback_count_;
   bool got_data_;
   scoped_ptr<Callback1<InputData*>::Type> data_callback_;
-  scoped_ptr<IOInputHandler> input_handler_;
+  scoped_ptr<IOHandler> input_handler_;
   ScopedRunnableMethodFactory<MockEventDispatchTester> tester_factory_;
   CancelableTask* failsafe_;
 };

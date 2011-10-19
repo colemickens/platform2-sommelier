@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -21,7 +22,6 @@
 #include "shill/mock_property_store.h"
 #include "shill/mock_service.h"
 #include "shill/property_store_unittest.h"
-#include "shill/shill_event.h"
 
 using std::map;
 using std::string;

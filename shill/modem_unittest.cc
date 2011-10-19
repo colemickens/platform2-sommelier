@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 
 #include "shill/cellular.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -21,7 +22,6 @@
 #include "shill/modem.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
-#include "shill/shill_event.h"
 
 using std::string;
 using std::vector;

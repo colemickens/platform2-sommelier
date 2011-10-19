@@ -23,12 +23,12 @@
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
-#include "shill/shill_event.h"
 #include "shill/store_interface.h"
 
 using base::StringPrintf;

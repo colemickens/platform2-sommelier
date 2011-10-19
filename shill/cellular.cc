@@ -22,13 +22,13 @@
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
-#include "shill/shill_event.h"
 
 using std::make_pair;
 using std::map;

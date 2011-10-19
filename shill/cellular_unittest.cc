@@ -13,6 +13,7 @@
 
 #include "shill/cellular_service.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
@@ -26,7 +27,6 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
-#include "shill/shill_event.h"
 
 using std::map;
 using std::string;

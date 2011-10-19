@@ -9,9 +9,9 @@
 #include <vector>
 
 #include "shill/dbus_bindings/supplicant-interface.h"
+#include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

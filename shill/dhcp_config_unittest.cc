@@ -12,12 +12,12 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/dhcp_provider.h"
+#include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
-#include "shill/shill_event.h"
 
 using std::string;
 using std::vector;

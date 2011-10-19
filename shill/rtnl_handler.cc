@@ -18,13 +18,13 @@
 
 #include <base/logging.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
-#include "shill/shill_event.h"
 #include "shill/sockets.h"
 
 using std::string;

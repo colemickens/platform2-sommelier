@@ -13,10 +13,10 @@
 
 #include "shill/dhcpcd_proxy.h"
 #include "shill/dhcp_provider.h"
+#include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/ip_address.h"
 #include "shill/proxy_factory.h"
-#include "shill/shill_event.h"
 
 using std::string;
 using std::vector;

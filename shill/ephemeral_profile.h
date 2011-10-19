@@ -10,10 +10,10 @@
 
 #include <base/memory/scoped_ptr.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

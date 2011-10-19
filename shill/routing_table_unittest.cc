@@ -26,7 +26,7 @@ namespace shill {
 
 class TestEventDispatcher : public EventDispatcher {
  public:
-  virtual IOInputHandler *CreateInputHandler(
+  virtual IOHandler *CreateInputHandler(
       int /*fd*/,
       Callback1<InputData*>::Type */*callback*/) {
     return NULL;

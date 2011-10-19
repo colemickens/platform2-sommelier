@@ -17,11 +17,11 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_glib.h"
 #include "shill/property_store.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

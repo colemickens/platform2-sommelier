@@ -8,8 +8,8 @@
 #include <string>
 
 #include "shill/device.h"
+#include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

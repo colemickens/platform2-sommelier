@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/glib_io_handler.h"
+
 #include <stdio.h>
 #include <glib.h>
-
-#include "shill/glib_io_handler.h"
 
 namespace shill {
 
@@ -50,7 +50,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   }
 
   InputData input_data(buf, len);
-  handler->callback_->Run(&input_data);
+  handler->callback()->Run(&input_data);
 
   return TRUE;
 }

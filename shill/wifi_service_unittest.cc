@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -20,7 +21,6 @@
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
-#include "shill/shill_event.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;

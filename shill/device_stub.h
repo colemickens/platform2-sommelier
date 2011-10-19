@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "shill/device.h"
+#include "shill/event_dispatcher.h"
 #include "shill/service.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

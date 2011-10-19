@@ -93,6 +93,7 @@ SHILL_OBJS = \
 	error.o \
 	ethernet.o \
 	ethernet_service.o \
+	event_dispatcher.o \
 	glib.o \
 	glib_io_handler.o \
 	ip_address.o \
@@ -124,7 +125,6 @@ SHILL_OBJS = \
 	service_dbus_adaptor.o \
 	shill_config.o \
 	shill_daemon.o \
-	shill_event.o \
 	shill_test_config.o \
 	sockets.o \
 	supplicant_interface_proxy.o \

@@ -15,7 +15,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/endpoint.h"
-#include "shill/shill_event.h"
+#include "shill/event_dispatcher.h"
 
 namespace shill {
 

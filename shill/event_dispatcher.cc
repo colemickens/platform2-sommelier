@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/shill_event.h"
+#include "shill/event_dispatcher.h"
 
 #include <stdio.h>
 #include <glib.h>
@@ -37,7 +37,7 @@ bool EventDispatcher::PostDelayedTask(Task *task, int64 delay_ms) {
   return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
 }
 
-IOInputHandler *EventDispatcher::CreateInputHandler(
+IOHandler *EventDispatcher::CreateInputHandler(
     int fd,
     Callback1<InputData *>::Type *callback) {
   return new GlibIOInputHandler(fd, callback);

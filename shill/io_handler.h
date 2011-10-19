@@ -15,10 +15,10 @@ struct InputData {
   size_t len;
 };
 
-class IOInputHandler {
+class IOHandler {
  public:
-  IOInputHandler() {}
-  virtual ~IOInputHandler() {}
+  IOHandler() {}
+  virtual ~IOHandler() {}
 };
 
 }  // namespace shill

@@ -16,10 +16,10 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/event_dispatcher.h"
 #include "shill/modem_info.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
-#include "shill/shill_event.h"
 #include "shill/wifi.h"
 
 namespace shill {

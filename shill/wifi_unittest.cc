@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
 #include "shill/key_value_store.h"
 #include "shill/manager.h"
@@ -35,7 +36,6 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
-#include "shill/shill_event.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi.h"
 #include "shill/wifi_service.h"

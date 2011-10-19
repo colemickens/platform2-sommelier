@@ -16,9 +16,9 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/manager.h"
-#include "shill/shill_event.h"
 #include "shill/ethernet_service.h"
+#include "shill/event_dispatcher.h"
+#include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/rtnl_handler.h"
 

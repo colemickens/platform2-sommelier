@@ -15,6 +15,7 @@
 
 #include "shill/dbus_adaptor.h"
 #include "shill/ethernet_service.h"
+#include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -22,7 +23,6 @@
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service.h"
-#include "shill/shill_event.h"
 
 using std::map;
 using std::string;

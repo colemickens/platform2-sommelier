@@ -7,9 +7,9 @@
 
 #include <string>
 
+#include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
-#include "shill/shill_event.h"
 #include "shill/sockets.h"
 
 namespace shill {

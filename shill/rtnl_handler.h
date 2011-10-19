@@ -17,10 +17,10 @@
 
 #include "shill/device.h"
 
+#include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
 #include "shill/rtnl_listener.h"
 #include "shill/rtnl_message.h"
-#include "shill/shill_event.h"
 
 struct nlmsghdr;
 
@@ -133,7 +133,7 @@ class RTNLHandler {
 
   std::vector<RTNLListener *> listeners_;
   scoped_ptr<Callback1<InputData *>::Type> rtnl_callback_;
-  scoped_ptr<IOInputHandler> rtnl_handler_;
+  scoped_ptr<IOHandler> rtnl_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(RTNLHandler);
 };

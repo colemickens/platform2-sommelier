@@ -13,12 +13,12 @@
 
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
+#include "shill/event_dispatcher.h"
 #include "shill/modem_cdma_proxy_interface.h"
 #include "shill/modem_gsm_card_proxy_interface.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
-#include "shill/shill_event.h"
 
 namespace shill {
 

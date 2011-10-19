@@ -14,14 +14,17 @@
 
 namespace shill {
 
-class GlibIOInputHandler : public IOInputHandler {
+class GlibIOInputHandler : public IOHandler {
  public:
+  GlibIOInputHandler(int fd, Callback1<InputData*>::Type *callback);
+  ~GlibIOInputHandler();
+  Callback1<InputData *>::Type *callback() { return callback_; }
+
+ private:
   GIOChannel *channel_;
   Callback1<InputData *>::Type *callback_;
   guint source_id_;
 
-  GlibIOInputHandler(int fd, Callback1<InputData*>::Type *callback);
-  ~GlibIOInputHandler();
 };
 
 
