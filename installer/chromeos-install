@@ -7,7 +7,7 @@
 
 # Load functions and constants for chromeos-install.
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
-. /usr/lib/shflags || exit 1
+. /usr/share/misc/shflags || exit 1
 
 DEFINE_string dst "" "Destination device"
 DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \

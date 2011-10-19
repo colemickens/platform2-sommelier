@@ -10,7 +10,7 @@
 
 # Load helper functions
 . /usr/sbin/chromeos-common.sh || exit 1
-. /usr/lib/shflags || exit 1
+. /usr/share/misc/shflags || exit 1
 
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output. Default: false"
 DEFINE_boolean postcommit ${FLAGS_FALSE} "Obsolete option -- do nothing."
