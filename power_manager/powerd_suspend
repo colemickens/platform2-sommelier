@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-. /usr/lib/shflags
+. /usr/share/misc/shflags
 
 DEFINE_boolean test $FLAGS_FALSE "support power_Resume test" t
 DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
