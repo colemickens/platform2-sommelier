@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -29,7 +29,7 @@ rotate_file() {
 
 rotate_logs() {
   echo Rotating rsyslogd logs
-  for x in messages secure faillog; do
+  for x in messages secure faillog session_manager; do
     rotate_file "/var/log/${x}"
   done
   sudo pkill -HUP rsyslogd
@@ -45,6 +45,12 @@ remove_old_dated_files /var/log/window_manager chromeos-wm.*-*
 
 # Remove old window manager logs (logged in)
 remove_old_dated_files /home/chronos/user/log chromeos-wm.*-*
+
+# Remove old chrome logs (not logged in)
+remove_old_dated_files /var/log/chrome chrome_*-*
+
+# Remove old chrome logs (logged in)
+remove_old_dated_files /home/chronos/user/log chrome_*-*
 
 # Remove old screen locker logs
 remove_old_dated_files /home/chronos/user/log screen-locker.*-*
