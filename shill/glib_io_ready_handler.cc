@@ -46,7 +46,7 @@ GlibIOReadyHandler::GlibIOReadyHandler(int fd,
 
 GlibIOReadyHandler::~GlibIOReadyHandler() {
   g_source_remove(source_id_);
-  g_io_channel_shutdown(channel_, TRUE, NULL);
+  // NB: We don't shut down the channel since we don't own it
   g_io_channel_unref(channel_);
 }
 

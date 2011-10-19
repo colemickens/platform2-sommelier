@@ -12,7 +12,7 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
-BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt
+BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares
 BASE_INCLUDE_DIRS = -I..
 BASE_LIB_DIRS =
 
@@ -88,6 +88,7 @@ SHILL_OBJS = \
 	dhcp_config.o \
 	dhcp_provider.o \
 	dhcpcd_proxy.o \
+	dns_client.o \
 	endpoint.o \
 	ephemeral_profile.o \
 	error.o \
@@ -124,9 +125,11 @@ SHILL_OBJS = \
 	rtnl_message.o \
 	service.o \
 	service_dbus_adaptor.o \
+	shill_ares.o \
 	shill_config.o \
 	shill_daemon.o \
 	shill_test_config.o \
+	shill_time.o \
 	sockets.o \
 	supplicant_interface_proxy.o \
 	supplicant_process_proxy.o \
@@ -154,12 +157,14 @@ TEST_OBJS = \
 	device_unittest.o \
 	dhcp_config_unittest.o \
 	dhcp_provider_unittest.o \
+	dns_client_unittest.o \
 	error_unittest.o \
 	ip_address_unittest.o \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	manager_unittest.o \
 	mock_adaptors.o \
+	mock_ares.o \
 	mock_control.o \
 	mock_dbus_properties_proxy.o \
 	mock_device.o \
@@ -167,6 +172,7 @@ TEST_OBJS = \
 	mock_dhcp_config.o \
 	mock_dhcp_provider.o \
 	mock_dhcp_proxy.o \
+	mock_event_dispatcher.o \
 	mock_glib.o \
 	mock_ipconfig.o \
 	mock_manager.o \
@@ -186,6 +192,7 @@ TEST_OBJS = \
 	mock_store.o \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_process_proxy.o \
+	mock_time.o \
 	mock_wifi.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \

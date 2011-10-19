@@ -29,15 +29,15 @@ class EventDispatcher {
   EventDispatcher();
   virtual ~EventDispatcher();
 
-  void DispatchForever();
+  virtual void DispatchForever();
 
   // Processes all pending events that can run and returns.
-  void DispatchPendingEvents();
+  virtual void DispatchPendingEvents();
 
   // These are thin wrappers around calls of the same name in
   // <base/message_loop_proxy.h>
-  bool PostTask(Task *task);
-  bool PostDelayedTask(Task *task, int64 delay_ms);
+  virtual bool PostTask(Task *task);
+  virtual bool PostDelayedTask(Task *task, int64 delay_ms);
 
   virtual IOHandler *CreateInputHandler(
       int fd,

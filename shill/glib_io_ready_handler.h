@@ -20,9 +20,9 @@ namespace shill {
 // sockets and effort to working with peripheral libraries.
 class GlibIOReadyHandler : public IOHandler {
  public:
-    GlibIOReadyHandler(int fd,
-                       IOHandler::ReadyMode mode,
-                       Callback1<int>::Type *callback);
+  GlibIOReadyHandler(int fd,
+                     IOHandler::ReadyMode mode,
+                     Callback1<int>::Type *callback);
   ~GlibIOReadyHandler();
 
   virtual void Start();
