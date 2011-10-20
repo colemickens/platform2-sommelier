@@ -327,6 +327,9 @@ main() {
     /usr/sbin/lightup_screen >/dev/null 2>&1
   fi
 
+  # Prevent screen from blanking after inactivity (see console_codes(4)).
+  (printf "\033[9;0]\033[14;0]" >/dev/console || true) 2>/dev/null
+
   case "$mode" in
     "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
       "update_firmware" | "wipe" | "self_repair" )
