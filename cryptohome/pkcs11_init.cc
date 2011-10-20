@@ -62,7 +62,8 @@ const std::string Pkcs11Init::kPkcs11InitializedFile =
     "/home/chronos/user/.tpm/.isinitialized";
 
 extern const char* kTpmOwnedFile;
-extern const std::string kDefaultSharedUser;
+extern const char kDefaultSharedUser[];
+extern const char kDefaultSharedAccessGroup[];
 
 // Helper function to copy a CK_CHAR string |src| to another CK_CHAR string
 // |dest| with at most most |len-1| characters. |dest| is then null-terminated.
@@ -84,6 +85,11 @@ bool Pkcs11Init::InitializeOpencryptoki() {
   // Determine required uid and gids.
   if (!platform_->GetGroupId(kPkcs11Group, &pkcs11_group_id_)) {
     LOG(ERROR) << "Couldn't get the group ID for group " << kPkcs11Group;
+    return false;
+  }
+  if (!platform_->GetGroupId(kDefaultSharedAccessGroup, &access_group_id_)) {
+    LOG(ERROR) << "Couldn't get the group ID for group "
+               << kDefaultSharedAccessGroup;
     return false;
   }
   if (!platform_->GetUserId(kDefaultSharedUser, &chronos_user_id_,
@@ -321,7 +327,7 @@ bool Pkcs11Init::SetupUserTokenDirectory() {
   mode_t user_dir_perms = S_IRWXU | S_IXGRP;  // u+rwx g+x
   if (!platform_->SetOwnership(std::string(kUserDir),
                                chronos_user_id_,
-                               pkcs11_group_id_)) {
+                               access_group_id_)) {
     LOG(ERROR) << "Couldn't set file ownership for " << kUserDir;
     return false;
   }

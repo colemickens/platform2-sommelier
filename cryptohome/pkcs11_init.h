@@ -24,7 +24,8 @@ namespace cryptohome {
 class Pkcs11Init {
  public:
   Pkcs11Init() : is_opencryptoki_ready_(false), is_initialized_(false),
-                 pkcs11_group_id_(0), chronos_user_id_(0), chronos_group_id_(0),
+                 pkcs11_group_id_(0), access_group_id_(0),
+                 chronos_user_id_(0), chronos_group_id_(0),
                  default_platform_(new Platform),
                  platform_(default_platform_.get()),
                  default_process_(new chromeos::ProcessImpl),
@@ -130,6 +131,7 @@ class Pkcs11Init {
   bool is_initialized_;
 
   gid_t pkcs11_group_id_;
+  gid_t access_group_id_;
   uid_t chronos_user_id_;
   gid_t chronos_group_id_;
 

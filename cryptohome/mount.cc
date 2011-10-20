@@ -29,24 +29,25 @@ using std::string;
 
 namespace cryptohome {
 
-const std::string kDefaultUserRoot = "/home/chronos";
-const std::string kDefaultHomeDir = "/home/chronos/user";
-const std::string kDefaultShadowRoot = "/home/.shadow";
-const std::string kDefaultSharedUser = "chronos";
-const std::string kDefaultSkeletonSource = "/etc/skel";
+const char kDefaultUserRoot[] = "/home/chronos";
+const char kDefaultHomeDir[] = "/home/chronos/user";
+const char kDefaultShadowRoot[] = "/home/.shadow";
+const char kDefaultSharedUser[] = "chronos";
+const char kDefaultSharedAccessGroup[] = "chronos-access";
+const char kDefaultSkeletonSource[] = "/etc/skel";
 const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
 const uid_t kMountOwnerUid = 0;
 const gid_t kMountOwnerGid = 0;
 // TODO(fes): Remove once UI for BWSI switches to MountGuest()
-const std::string kIncognitoUser = "incognito";
+const char kIncognitoUser[] = "incognito";
 // The length of a user's directory name in the shadow root (equal to the length
 // of the ascii version of a SHA1 hash)
 const unsigned int kUserDirNameLength = 40;
 // Encrypted files/directories in ecryptfs have file names that start with the
 // following constant.  When clearing tracked subdirectories, we ignore these
 // and only delete the pass-through directories.
-const std::string kEncryptedFilePrefix = "ECRYPTFS_FNEK_ENCRYPTED.";
+const char kEncryptedFilePrefix[] = "ECRYPTFS_FNEK_ENCRYPTED.";
 // Tracked directories - special sub-directories of the cryptohome
 // vault, that are visible even if not mounted. Contents is still encrypted.
 const char kCacheDir[] = "Cache";
@@ -61,12 +62,13 @@ const struct TrackedDir {
 const char kVaultDir[] = "vault";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
-const std::string kDefaultEcryptfsCryptoAlg = "aes";
+const char kDefaultEcryptfsCryptoAlg[] = "aes";
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
 Mount::Mount()
     : default_user_(-1),
       default_group_(-1),
+      default_access_group_(-1),
       default_username_(kDefaultSharedUser),
       home_dir_(kDefaultHomeDir),
       shadow_root_(kDefaultShadowRoot),
@@ -96,6 +98,12 @@ bool Mount::Init() {
   // Get the user id and group id of the default user
   if (!platform_->GetUserId(default_username_, &default_user_,
                            &default_group_)) {
+    result = false;
+  }
+
+  // Get the group id of the default shared access group.
+  if (!platform_->GetGroupId(kDefaultSharedAccessGroup,
+                             &default_access_group_)) {
     result = false;
   }
 
@@ -318,6 +326,12 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
   if (created) {
     CopySkeletonForUser(credentials);
+  }
+
+  if (!SetupGroupAccess()) {
+    if (mount_error)
+      *mount_error = MOUNT_ERROR_FATAL;
+    return false;
   }
 
   if (mount_error) {
@@ -683,6 +697,23 @@ void Mount::SetOwnerUser(const string& username) {
   }
 }
 
+bool Mount::SetupGroupAccess() const {
+  if (!set_vault_ownership_)
+    return true;
+
+  // Make the following directories group accessible by other system daemons:
+  //   /home/chronos/user
+  //   /home/chronos/user/Downloads
+  FilePath downloads_path = FilePath(home_dir_).Append(kDownloadsDir);
+  mode_t mode = S_IXGRP;
+  if (!platform_->SetGroupAccessible(home_dir_, default_access_group_, mode) ||
+      !platform_->SetGroupAccessible(downloads_path.value(),
+                                     default_access_group_, mode))
+    return false;
+
+  return true;
+}
+
 bool Mount::TestCredentials(const Credentials& credentials) const {
   // If the current logged in user matches, use the UserSession to verify the
   // credentials.  This is less costly than a trip to the TPM, and only verifies
@@ -950,13 +981,32 @@ bool Mount::MountGuestCryptohome() const {
     if (!platform_->SetOwnership(home_dir_, default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of guestfs path: "
-                 << home_dir_.c_str();
-      bool was_busy;
-      platform_->Unmount(home_dir_.c_str(), false, &was_busy);
+                 << home_dir_;
+      platform_->Unmount(home_dir_, false, NULL);
       return false;
     }
   }
   CopySkeleton();
+
+  // Create the Downloads directory if it does not exist so that it can
+  // later be made group accessible when SetupGroupAccess() is called.
+  FilePath downloads_path = FilePath(home_dir_).Append(kDownloadsDir);
+  if (!file_util::DirectoryExists(downloads_path)) {
+    if (!file_util::CreateDirectory(downloads_path) ||
+        !platform_->SetOwnership(downloads_path.value(),
+                                 default_user_, default_group_)) {
+      LOG(ERROR) << "Couldn't create user Downloads directory: "
+                 << downloads_path.value();
+      platform_->Unmount(home_dir_, false, NULL);
+      return false;
+    }
+  }
+
+  if (!SetupGroupAccess()) {
+    platform_->Unmount(home_dir_, false, NULL);
+    return false;
+  }
+
   return true;
 }
 

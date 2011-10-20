@@ -350,8 +350,22 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
   }
 }
 
+bool Platform::GetOwnership(const string& path,
+                            uid_t* user_id, gid_t* group_id) const {
+  struct stat path_status;
+  if (stat(path.c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "stat() of " << path << " failed.";
+    return false;
+  }
+  if (user_id)
+    *user_id = path_status.st_uid;
+  if (group_id)
+    *group_id = path_status.st_gid;
+  return true;
+}
+
 bool Platform::SetOwnership(const std::string& path, uid_t user_id,
-                            gid_t group_id) {
+                            gid_t group_id) const {
   if (chown(path.c_str(), user_id, group_id)) {
     PLOG(ERROR) << "chown() of " << path.c_str() << " to (" << user_id
                 << "," << group_id << ") failed.";
@@ -360,7 +374,17 @@ bool Platform::SetOwnership(const std::string& path, uid_t user_id,
   return true;
 }
 
-bool Platform::SetPermissions(const std::string& path, mode_t mode) {
+bool Platform::GetPermissions(const string& path, mode_t* mode) const {
+  struct stat path_status;
+  if (stat(path.c_str(), &path_status) != 0) {
+    PLOG(ERROR) << "stat() of " << path << " failed.";
+    return false;
+  }
+  *mode = path_status.st_mode;
+  return true;
+}
+
+bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   if (chmod(path.c_str(), mode)) {
     PLOG(ERROR) << "chmod() of " << path.c_str() << " to (" << std::oct << mode
                 << ") failed.";
@@ -371,7 +395,7 @@ bool Platform::SetPermissions(const std::string& path, mode_t mode) {
 
 bool Platform::SetOwnershipRecursive(const std::string& directory,
                                      uid_t user_id,
-                                     gid_t group_id) {
+                                     gid_t group_id) const {
   std::vector<std::string> to_recurse;
   to_recurse.push_back(directory);
   while (to_recurse.size()) {
@@ -406,7 +430,7 @@ bool Platform::SetOwnershipRecursive(const std::string& directory,
 
 bool Platform::SetPermissionsRecursive(const std::string& directory,
                                        mode_t dir_mode,
-                                       mode_t file_mode) {
+                                       mode_t file_mode) const {
   std::vector<std::string> to_recurse;
   to_recurse.push_back(directory);
   while (to_recurse.size()) {
@@ -439,12 +463,26 @@ bool Platform::SetPermissionsRecursive(const std::string& directory,
   return true;
 }
 
-int Platform::SetMask(int new_mask) {
+bool Platform::SetGroupAccessible(const string& path, gid_t group_id,
+                                  mode_t group_mode) const {
+  uid_t user_id;
+  mode_t mode;
+  if (!GetOwnership(path, &user_id, NULL) ||
+      !GetPermissions(path, &mode) ||
+      !SetOwnership(path, user_id, group_id) ||
+      !SetPermissions(path, (mode & ~S_IRWXG) | (group_mode & S_IRWXG))) {
+    LOG(ERROR) << "Couldn't set up group access on directory: " << path;
+    return false;
+  }
+  return true;
+}
+
+int Platform::SetMask(int new_mask) const {
   return umask(new_mask);
 }
 
 bool Platform::GetUserId(const std::string& user, uid_t* user_id,
-                         gid_t* group_id) {
+                         gid_t* group_id) const {
   // Load the passwd entry
   long user_name_length = sysconf(_SC_GETPW_R_SIZE_MAX);
   if (user_name_length == -1) {
@@ -461,7 +499,7 @@ bool Platform::GetUserId(const std::string& user, uid_t* user_id,
   return true;
 }
 
-bool Platform::GetGroupId(const std::string& group, gid_t* group_id) {
+bool Platform::GetGroupId(const std::string& group, gid_t* group_id) const {
   // Load the group entry
   long group_name_length = sysconf(_SC_GETGR_R_SIZE_MAX);
   if (group_name_length == -1) {

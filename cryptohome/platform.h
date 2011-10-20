@@ -143,6 +143,16 @@ class Platform {
   //   pids (OUT) - the list of PIDs
   void GetPidsForUser(uid_t uid, std::vector<pid_t>* pids);
 
+  // Calls the platform stat() function to obtain the ownership of
+  // a given path. The path may be a directory or a file.
+  //
+  // Parameters
+  //   path - The path to look up
+  //   user_id - The user ID of the path. NULL if the result is not needed.
+  //   group_id - The group ID of the path. NULL if the result is not needed.
+  virtual bool GetOwnership(const std::string& path, uid_t* user_id,
+                            gid_t* group_id) const;
+
   // Calls the platform chown() function on the given path.
   //
   // The path may be a directory or a file.
@@ -152,7 +162,15 @@ class Platform {
   //   user_id - The user_id to assign ownership to
   //   group_id - The group_id to assign ownership to
   virtual bool SetOwnership(const std::string& directory, uid_t user_id,
-                            gid_t group_id);
+                            gid_t group_id) const;
+
+  // Calls the platform stat() function to obtain the permissions of
+  // the given path. The path may be a directory or a file.
+  //
+  // Parameters
+  //   path - The path to look up
+  //   mode - The permissions of the path
+  virtual bool GetPermissions(const std::string& path, mode_t* mode) const;
 
   // Calls the platform chmod() function on the given path.
   // The path may be a directory or a file.
@@ -160,7 +178,7 @@ class Platform {
   // Parameters
   //   path - The path to change the permissions on
   //   mode - the mode to change the permissions to
-  virtual bool SetPermissions(const std::string& path, mode_t mode);
+  virtual bool SetPermissions(const std::string& path, mode_t mode) const;
 
   // Calls the platform chown() function recursively on the directory
   //
@@ -170,7 +188,7 @@ class Platform {
   //   group_id - The group_id to assign ownership to
   virtual bool SetOwnershipRecursive(const std::string& directory,
                                      uid_t user_id,
-                                     gid_t group_id);
+                                     gid_t group_id) const;
 
   // Calls the platform chmod() function recursively on the directory
   //
@@ -180,13 +198,23 @@ class Platform {
   //   file_mode - the file mode to change the permissions to
   virtual bool SetPermissionsRecursive(const std::string& directory,
                                        mode_t dir_mode,
-                                       mode_t file_mode);
+                                       mode_t file_mode) const;
+
+  // Sets the path accessible by a group with specified permissions
+  //
+  // Parameters
+  //   path - The path to change the ownership and permissions on
+  //   group_id - The group ID to assign to the path
+  //   group_mode - The group permissions to assign to the path
+  virtual bool SetGroupAccessible(const std::string& path,
+                                  gid_t group_id,
+                                  mode_t group_mode) const;
 
   // Sets the current umask, returning the old mask
   //
   // Parameters
   //   new_mask - The mask to set
-  virtual int SetMask(int new_mask);
+  virtual int SetMask(int new_mask) const;
 
   // Returns the user and group ids for a user
   //
@@ -195,14 +223,14 @@ class Platform {
   //   user_id (OUT) - The user ID on success
   //   group_id (OUT) - The group ID on success
   virtual bool GetUserId(const std::string& user, uid_t* user_id,
-                         gid_t* group_id);
+                         gid_t* group_id) const;
 
   // Returns the group id for a group
   //
   // Parameters
   //   group - The group name to query for
   //   group_id (OUT) - The group ID on success
-  virtual bool GetGroupId(const std::string& group, gid_t* group_id);
+  virtual bool GetGroupId(const std::string& group, gid_t* group_id) const;
 
   // Return the available disk space in bytes on the volume containing |path|,
   // or -1 on failure.

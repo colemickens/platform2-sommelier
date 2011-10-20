@@ -29,15 +29,17 @@
 namespace cryptohome {
 
 // The directory to mount the user's cryptohome at
-extern const std::string kDefaultHomeDir;
+extern const char kDefaultHomeDir[];
 // The directory containing the system salt and the user vaults
-extern const std::string kDefaultShadowRoot;
+extern const char kDefaultShadowRoot[];
 // The default shared user (chronos)
-extern const std::string kDefaultSharedUser;
+extern const char kDefaultSharedUser[];
+// The default shared access group (chronos-access)
+extern const char kDefaultSharedAccessGroup[];
 // The default skeleton source (/etc/skel)
-extern const std::string kDefaultSkeletonSource;
+extern const char kDefaultSkeletonSource[];
 // The incognito user
-extern const std::string kIncognitoUser;
+extern const char kIncognitoUser[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const char kCacheDir[];
 extern const char kDownloadsDir[];
@@ -186,6 +188,10 @@ class Mount : public EntropySource {
   // The Owner user is the logical owner of the device this is running on.
   // It implies that the vault should not be deleted during Automatic recovery.
   virtual void SetOwnerUser(const std::string& username);
+
+  // Changes the group ownership and permissions on those directories inside
+  // the cryptohome that need to be accessible by other system daemons
+  virtual bool SetupGroupAccess() const;
 
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
@@ -575,6 +581,10 @@ class Mount : public EntropySource {
   // The gid of the shared user.  Ownership of the user's vault is set to this
   // gid.
   gid_t default_group_;
+
+  // The gid of the shared access group.  Ownership of the user's home and
+  // Downloads directory to this gid.
+  gid_t default_access_group_;
 
   // The shared user name.  This user's uid/gid is used for vault ownership.
   std::string default_username_;
