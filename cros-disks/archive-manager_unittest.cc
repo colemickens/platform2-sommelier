@@ -86,21 +86,7 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
   string mount_path = "/media/archive/doc.zip";
   vector<string> options;
 
-  platform_.set_experimental_features_enabled(true);
   manager_.avfs_started_ = true;
-  EXPECT_EQ(kMountErrorUnsupportedArchive,
-            manager_.DoMount(source_path, filesystem_type, options,
-                             mount_path));
-}
-
-TEST_F(ArchiveManagerTest, DoMountFailedWithArchiveSupportDisabled) {
-  string filesystem_type;
-  string source_path = "/media/archive/test.zip/doc.zip";
-  string mount_path = "/media/archive/doc.zip";
-  vector<string> options;
-
-  platform_.set_experimental_features_enabled(false);
-  manager_.RegisterFileExtension("zip");
   EXPECT_EQ(kMountErrorUnsupportedArchive,
             manager_.DoMount(source_path, filesystem_type, options,
                              mount_path));

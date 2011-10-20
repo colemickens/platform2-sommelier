@@ -88,7 +88,6 @@ class ArchiveManager : public MountManager {
 
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);
-  FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithArchiveSupportDisabled);
   FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension);
 };
 

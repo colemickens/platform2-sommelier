@@ -9,6 +9,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <base/string_util.h>
 
 #include "cros-disks/mount-info.h"
@@ -36,6 +37,8 @@ const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
 // created under /media/<sub type>/<mount dir>, so it always has 4 components
 // in the path: '/', 'media', '<sub type>', '<mount dir>'
 size_t kNumComponentsInMountDirectoryPath = 4;
+const char kAVFSMountGroup[] = "chronos-access";
+const char kAVFSMountUser[] = "avfs";
 // TODO(wad,benchan): Revisit the location of policy files once more system
 // daemons are sandboxed with seccomp filters.
 const char kAVFSSeccompFilterPolicyFile[] =
@@ -96,7 +99,7 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
   string avfs_path = GetAVFSPath(source_path);
-  if (avfs_path.empty() || !platform_->experimental_features_enabled()) {
+  if (avfs_path.empty()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
     return kMountErrorUnsupportedArchive;
   }
@@ -168,10 +171,10 @@ bool ArchiveManager::StartAVFS() {
   if (avfs_started_)
     return true;
 
-  uid_t user_id = platform_->mount_user_id();
-  gid_t group_id = platform_->mount_group_id();
-
-  if (!platform_->CreateDirectory(kAVFSRootDirectory) ||
+  uid_t user_id;
+  gid_t group_id;
+  if (!platform_->GetUserAndGroupId(kAVFSMountUser, &user_id, &group_id) ||
+      !platform_->CreateDirectory(kAVFSRootDirectory) ||
       !platform_->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
       !platform_->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
     platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
@@ -220,12 +223,19 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
     return false;
   }
 
+  uid_t user_id;
+  gid_t group_id;
+  if (!platform_->GetUserAndGroupId(kAVFSMountUser, &user_id, NULL) ||
+      !platform_->GetGroupId(kAVFSMountGroup, &group_id)) {
+    return false;
+  }
+
   SandboxedProcess mount_process;
   mount_process.AddArgument(kAVFSMountProgram);
   mount_process.AddArgument("-o");
-  mount_process.AddArgument("ro,nodev,noexec,nosuid"
-                            ",user=" + platform_->mount_user() +
-                            ",modules=subdir,subdir=" + base_path);
+  mount_process.AddArgument(base::StringPrintf(
+      "ro,nodev,noexec,nosuid,allow_other,user=%s,modules=subdir,subdir=%s",
+      kAVFSMountUser, base_path.c_str()));
   mount_process.AddArgument(avfs_path);
   if (file_util::PathExists(FilePath(kAVFSSeccompFilterPolicyFile))) {
     mount_process.LoadSeccompFilterPolicy(kAVFSSeccompFilterPolicyFile);
@@ -239,8 +249,8 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
   // TODO(benchan): Enable PID and VFS namespace.
   // TODO(wad,ellyjones,benchan): Enable network namespace once libminijail
   // supports it.
-  mount_process.SetUserId(platform_->mount_user_id());
-  mount_process.SetGroupId(platform_->mount_group_id());
+  mount_process.SetUserId(user_id);
+  mount_process.SetGroupId(group_id);
   if (mount_process.Run() != 0 ||
       !mount_info.RetrieveFromCurrentProcess() ||
       !mount_info.HasMountPath(avfs_path)) {
