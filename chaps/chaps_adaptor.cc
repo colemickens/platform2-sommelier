@@ -251,8 +251,8 @@ void ChapsAdaptor::GetObjectSize(const uint32_t& session_id,
 
 void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
                                const uint32_t& object_handle,
-                               const std::vector<uint8_t>& attributes_in,
-                               std::vector<uint8_t>& attributes_out,
+                               const vector<uint8_t>& attributes_in,
+                               vector<uint8_t>& attributes_out,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
   result = service_->GetAttributeValue(session_id,
@@ -263,7 +263,7 @@ void ChapsAdaptor::GetAttributeValue(const uint32_t& session_id,
 
 uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
                                    const uint32_t& object_handle,
-                                   const std::vector<uint8_t>& attributes,
+                                   const vector<uint8_t>& attributes,
                                    ::DBus::Error& /*error*/) {
   return service_->SetAttributeValue(session_id,
                                      object_handle,
@@ -271,14 +271,14 @@ uint32_t ChapsAdaptor::SetAttributeValue(const uint32_t& session_id,
 }
 
 uint32_t ChapsAdaptor::FindObjectsInit(const uint32_t& session_id,
-                                       const std::vector<uint8_t>& attributes,
+                                       const vector<uint8_t>& attributes,
                                        ::DBus::Error& /*error*/) {
   return service_->FindObjectsInit(session_id, attributes);
 }
 
 void ChapsAdaptor::FindObjects(const uint32_t& session_id,
                                const uint32_t& max_object_count,
-                               std::vector<uint32_t>& object_list,
+                               vector<uint32_t>& object_list,
                                uint32_t& result,
                                ::DBus::Error& /*error*/) {
   result = service_->FindObjects(session_id, max_object_count, &object_list);
@@ -292,7 +292,7 @@ uint32_t ChapsAdaptor::FindObjectsFinal(const uint32_t& session_id,
 uint32_t ChapsAdaptor::EncryptInit(
     const uint32_t& session_id,
     const uint32_t& mechanism_type,
-    const std::vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& mechanism_parameter,
     const uint32_t& key_handle,
     ::DBus::Error& /*error*/) {
   return service_->EncryptInit(session_id,
@@ -302,10 +302,10 @@ uint32_t ChapsAdaptor::EncryptInit(
 }
 
 void ChapsAdaptor::Encrypt(const uint32_t& session_id,
-                           const std::vector<uint8_t>& data_in,
+                           const vector<uint8_t>& data_in,
                            const uint32_t& max_out_length,
                            uint32_t& actual_out_length,
-                           std::vector<uint8_t>& data_out,
+                           vector<uint8_t>& data_out,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
   result = service_->Encrypt(session_id,
@@ -316,10 +316,10 @@ void ChapsAdaptor::Encrypt(const uint32_t& session_id,
 }
 
 void ChapsAdaptor::EncryptUpdate(const uint32_t& session_id,
-                                 const std::vector< uint8_t >& data_in,
+                                 const vector<uint8_t>& data_in,
                                  const uint32_t& max_out_length,
                                  uint32_t& actual_out_length,
-                                 std::vector<uint8_t>& data_out,
+                                 vector<uint8_t>& data_out,
                                  uint32_t& result, ::DBus::Error& /*error*/) {
   result = service_->EncryptUpdate(session_id,
                                    data_in,
@@ -331,7 +331,7 @@ void ChapsAdaptor::EncryptUpdate(const uint32_t& session_id,
 void ChapsAdaptor::EncryptFinal(const uint32_t& session_id,
                                 const uint32_t& max_out_length,
                                 uint32_t& actual_out_length,
-                                std::vector<uint8_t>& data_out,
+                                vector<uint8_t>& data_out,
                                 uint32_t& result,
                                 ::DBus::Error& /*error*/) {
   result = service_->EncryptFinal(session_id,
@@ -343,7 +343,7 @@ void ChapsAdaptor::EncryptFinal(const uint32_t& session_id,
 uint32_t ChapsAdaptor::DecryptInit(
     const uint32_t& session_id,
     const uint32_t& mechanism_type,
-    const std::vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& mechanism_parameter,
     const uint32_t& key_handle,
     ::DBus::Error& /*error*/) {
   return service_->DecryptInit(session_id,
@@ -353,10 +353,10 @@ uint32_t ChapsAdaptor::DecryptInit(
 }
 
 void ChapsAdaptor::Decrypt(const uint32_t& session_id,
-                           const std::vector< uint8_t >& data_in,
+                           const vector<uint8_t>& data_in,
                            const uint32_t& max_out_length,
                            uint32_t& actual_out_length,
-                           std::vector<uint8_t>& data_out,
+                           vector<uint8_t>& data_out,
                            uint32_t& result,
                            ::DBus::Error& /*error*/) {
   result = service_->Decrypt(session_id,
@@ -367,10 +367,10 @@ void ChapsAdaptor::Decrypt(const uint32_t& session_id,
 }
 
 void ChapsAdaptor::DecryptUpdate(const uint32_t& session_id,
-                                 const std::vector<uint8_t>& data_in,
+                                 const vector<uint8_t>& data_in,
                                  const uint32_t& max_out_length,
                                  uint32_t& actual_out_length,
-                                 std::vector<uint8_t>& data_out,
+                                 vector<uint8_t>& data_out,
                                  uint32_t& result,
                                  ::DBus::Error& /*error*/) {
   result = service_->DecryptUpdate(session_id,
@@ -383,13 +383,185 @@ void ChapsAdaptor::DecryptUpdate(const uint32_t& session_id,
 void ChapsAdaptor::DecryptFinal(const uint32_t& session_id,
                                 const uint32_t& max_out_length,
                                 uint32_t& actual_out_length,
-                                std::vector<uint8_t>& data_out,
+                                vector<uint8_t>& data_out,
                                 uint32_t& result,
                                 ::DBus::Error& /*error*/) {
   result = service_->DecryptFinal(session_id,
                                   max_out_length,
                                   &actual_out_length,
                                   &data_out);
+}
+
+uint32_t ChapsAdaptor::DigestInit(
+    const uint32_t& session_id,
+    const uint32_t& mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    ::DBus::Error& /*error*/) {
+  return service_->DigestInit(session_id,
+                              mechanism_type,
+                              mechanism_parameter);
+}
+
+void ChapsAdaptor::Digest(const uint32_t& session_id,
+                          const vector<uint8_t>& data_in,
+                          const uint32_t& max_out_length,
+                          uint32_t& actual_out_length,
+                          vector<uint8_t>& digest,
+                          uint32_t& result,
+                          ::DBus::Error& /*error*/) {
+  result = service_->Digest(session_id,
+                            data_in,
+                            max_out_length,
+                            &actual_out_length,
+                            &digest);
+}
+
+uint32_t ChapsAdaptor::DigestUpdate(const uint32_t& session_id,
+                                    const vector<uint8_t>& data_in,
+                                    ::DBus::Error& /*error*/) {
+  return service_->DigestUpdate(session_id, data_in);
+}
+
+uint32_t ChapsAdaptor::DigestKey(const uint32_t& session_id,
+                                 const uint32_t& key_handle,
+                                 ::DBus::Error& /*error*/) {
+  return service_->DigestKey(session_id, key_handle);
+}
+
+void ChapsAdaptor::DigestFinal(const uint32_t& session_id,
+                               const uint32_t& max_out_length,
+                               uint32_t& actual_out_length,
+                               vector<uint8_t>& digest,
+                               uint32_t& result,
+                               ::DBus::Error& /*error*/) {
+  result = service_->DigestFinal(session_id,
+                                 max_out_length,
+                                 &actual_out_length,
+                                 &digest);
+}
+
+uint32_t ChapsAdaptor::SignInit(const uint32_t& session_id,
+                                const uint32_t& mechanism_type,
+                                const vector<uint8_t>& mechanism_parameter,
+                                const uint32_t& key_handle,
+                                ::DBus::Error& /*error*/) {
+  return service_->SignInit(session_id,
+                            mechanism_type,
+                            mechanism_parameter,
+                            key_handle);
+}
+
+void ChapsAdaptor::Sign(const uint32_t& session_id,
+                        const vector<uint8_t>& data,
+                        const uint32_t& max_out_length,
+                        uint32_t& actual_out_length,
+                        vector<uint8_t>& signature,
+                        uint32_t& result,
+                        ::DBus::Error& /*error*/) {
+  result = service_->Sign(session_id,
+                          data,
+                          max_out_length,
+                          &actual_out_length,
+                          &signature);
+}
+
+uint32_t ChapsAdaptor::SignUpdate(const uint32_t& session_id,
+                                  const vector<uint8_t>& data_part,
+                                  ::DBus::Error& /*error*/) {
+  return service_->SignUpdate(session_id, data_part);
+}
+
+void ChapsAdaptor::SignFinal(const uint32_t& session_id,
+                             const uint32_t& max_out_length,
+                             uint32_t& actual_out_length,
+                             vector<uint8_t>& signature,
+                             uint32_t& result, ::DBus::Error& /*error*/) {
+  result = service_->SignFinal(session_id,
+                               max_out_length,
+                               &actual_out_length,
+                               &signature);
+}
+
+uint32_t ChapsAdaptor::SignRecoverInit(
+      const uint32_t& session_id,
+      const uint32_t& mechanism_type,
+      const vector<uint8_t>& mechanism_parameter,
+      const uint32_t& key_handle,
+      ::DBus::Error& /*error*/) {
+  return service_->SignRecoverInit(session_id,
+                                   mechanism_type,
+                                   mechanism_parameter,
+                                   key_handle);
+}
+
+void ChapsAdaptor::SignRecover(const uint32_t& session_id,
+                               const vector<uint8_t>& data,
+                               const uint32_t& max_out_length,
+                               uint32_t& actual_out_length,
+                               vector<uint8_t>& signature,
+                               uint32_t& result,
+                               ::DBus::Error& /*error*/) {
+  result = service_->SignRecover(session_id,
+                                 data,
+                                 max_out_length,
+                                 &actual_out_length,
+                                 &signature);
+}
+
+uint32_t ChapsAdaptor::VerifyInit(const uint32_t& session_id,
+                                  const uint32_t& mechanism_type,
+                                  const vector<uint8_t>& mechanism_parameter,
+                                  const uint32_t& key_handle,
+                                  ::DBus::Error& /*error*/) {
+  return service_->VerifyInit(session_id,
+                              mechanism_type,
+                              mechanism_parameter,
+                              key_handle);
+}
+
+uint32_t ChapsAdaptor::Verify(const uint32_t& session_id,
+                              const vector<uint8_t>& data,
+                              const vector<uint8_t>& signature,
+                              ::DBus::Error& /*error*/) {
+  return service_->Verify(session_id, data, signature);
+}
+
+uint32_t ChapsAdaptor::VerifyUpdate(const uint32_t& session_id,
+                                    const vector<uint8_t>& data_part,
+                                    ::DBus::Error& /*error*/) {
+  return service_->VerifyUpdate(session_id, data_part);
+}
+
+uint32_t ChapsAdaptor::VerifyFinal(const uint32_t& session_id,
+                                   const vector<uint8_t>& signature,
+                                   ::DBus::Error& /*error*/) {
+  return service_->VerifyFinal(session_id, signature);
+}
+
+uint32_t ChapsAdaptor::VerifyRecoverInit(
+      const uint32_t& session_id,
+      const uint32_t& mechanism_type,
+      const vector<uint8_t>& mechanism_parameter,
+      const uint32_t& key_handle,
+      ::DBus::Error& /*error*/) {
+  return service_->VerifyRecoverInit(session_id,
+                                     mechanism_type,
+                                     mechanism_parameter,
+                                     key_handle);
+}
+
+void ChapsAdaptor::VerifyRecover(const uint32_t& session_id,
+                                 const vector<uint8_t>& signature,
+                                 const uint32_t& max_out_length,
+                                 uint32_t& actual_out_length,
+                                 vector<uint8_t>& data,
+                                 uint32_t& result,
+                                 ::DBus::Error& /*error*/) {
+  result = service_->VerifyRecover(session_id,
+                                   signature,
+                                   max_out_length,
+                                   &actual_out_length,
+                                   &data);
 }
 
 }  // namespace

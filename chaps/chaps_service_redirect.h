@@ -142,6 +142,68 @@ public:
                                 uint32_t max_out_length,
                                 uint32_t* actual_out_length,
                                 std::vector<uint8_t>* data_out);
+  virtual uint32_t DigestInit(uint32_t session_id,
+                              uint32_t mechanism_type,
+                              const std::vector<uint8_t>& mechanism_parameter);
+  virtual uint32_t Digest(uint32_t session_id,
+                          const std::vector<uint8_t>& data_in,
+                          uint32_t max_out_length,
+                          uint32_t* actual_out_length,
+                          std::vector<uint8_t>* digest);
+  virtual uint32_t DigestUpdate(uint32_t session_id,
+                                const std::vector<uint8_t>& data_in);
+  virtual uint32_t DigestKey(uint32_t session_id,
+                             uint32_t key_handle);
+  virtual uint32_t DigestFinal(uint32_t session_id,
+                               uint32_t max_out_length,
+                               uint32_t* actual_out_length,
+                               std::vector<uint8_t>* digest);
+  virtual uint32_t SignInit(uint32_t session_id,
+                            uint32_t mechanism_type,
+                            const std::vector<uint8_t>& mechanism_parameter,
+                            uint32_t key_handle);
+  virtual uint32_t Sign(uint32_t session_id,
+                        const std::vector<uint8_t>& data,
+                        uint32_t max_out_length,
+                        uint32_t* actual_out_length,
+                        std::vector<uint8_t>* signature);
+  virtual uint32_t SignUpdate(uint32_t session_id,
+                              const std::vector<uint8_t>& data_part);
+  virtual uint32_t SignFinal(uint32_t session_id,
+                             uint32_t max_out_length,
+                             uint32_t* actual_out_length,
+                             std::vector<uint8_t>* signature);
+  virtual uint32_t SignRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle);
+  virtual uint32_t SignRecover(uint32_t session_id,
+                               const std::vector<uint8_t>& data,
+                               uint32_t max_out_length,
+                               uint32_t* actual_out_length,
+                               std::vector<uint8_t>* signature);
+  virtual uint32_t VerifyInit(uint32_t session_id,
+                              uint32_t mechanism_type,
+                              const std::vector<uint8_t>& mechanism_parameter,
+                              uint32_t key_handle);
+  virtual uint32_t Verify(uint32_t session_id,
+                          const std::vector<uint8_t>& data,
+                          const std::vector<uint8_t>& signature);
+  virtual uint32_t VerifyUpdate(uint32_t session_id,
+                                const std::vector<uint8_t>& data_part);
+  virtual uint32_t VerifyFinal(uint32_t session_id,
+                               const std::vector<uint8_t>& signature);
+  virtual uint32_t VerifyRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle);
+  virtual uint32_t VerifyRecover(uint32_t session_id,
+                                 const std::vector<uint8_t>& signature,
+                                 uint32_t max_out_length,
+                                 uint32_t* actual_out_length,
+                                 std::vector<uint8_t>* data);
 
 private:
   std::string library_path_;

@@ -388,6 +388,185 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>
+
+    <!-- PKCS #11 v2.20 section 11.10 page 148. -->
+    <method name="DigestInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.10 page 149. -->
+    <method name="Digest">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="digest" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.10 page 150. -->
+    <method name="DigestUpdate">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_in" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.10 page 150. -->
+    <method name="DigestKey">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.10 page 151. -->
+    <method name="DigestFinal">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="digest" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 152. -->
+    <method name="SignInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 153. -->
+    <method name="Sign">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="signature" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 154. -->
+    <method name="SignUpdate">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_part" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 154. -->
+    <method name="SignFinal">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="signature" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 155. -->
+    <method name="SignRecoverInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.11 page 156. -->
+    <method name="SignRecover">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="signature" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 157. -->
+    <method name="VerifyInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 158. -->
+    <method name="Verify">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data" direction="in"/>
+      <arg type="ay" name="signature" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 159. -->
+    <method name="VerifyUpdate">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="data_part" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 159. -->
+    <method name="VerifyFinal">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="signature" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 161. -->
+    <method name="VerifyRecoverInit">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.12 page 161. -->
+    <method name="VerifyRecover">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="ay" name="signature" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="data" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
   </interface>
 </node>
 

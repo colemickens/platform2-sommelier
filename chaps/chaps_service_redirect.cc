@@ -458,7 +458,7 @@ uint32_t ChapsServiceRedirect::SetAttributeValue(
 
 uint32_t ChapsServiceRedirect::FindObjectsInit(
     uint32_t session_id,
-    const std::vector<uint8_t>& attributes) {
+    const vector<uint8_t>& attributes) {
   CHECK(functions_);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
@@ -471,7 +471,7 @@ uint32_t ChapsServiceRedirect::FindObjectsInit(
 
 uint32_t ChapsServiceRedirect::FindObjects(uint32_t session_id,
                                            uint32_t max_object_count,
-                                           std::vector<uint32_t>* object_list) {
+                                           vector<uint32_t>* object_list) {
   CHECK(functions_);
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
@@ -500,7 +500,7 @@ uint32_t ChapsServiceRedirect::FindObjectsFinal(uint32_t session_id) {
 uint32_t ChapsServiceRedirect::EncryptInit(
     uint32_t session_id,
     uint32_t mechanism_type,
-    const std::vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
   CHECK(functions_);
   CK_MECHANISM mechanism;
@@ -516,48 +516,58 @@ uint32_t ChapsServiceRedirect::EncryptInit(
 }
 
 uint32_t ChapsServiceRedirect::Encrypt(uint32_t session_id,
-                                       const std::vector<uint8_t>& data_in,
+                                       const vector<uint8_t>& data_in,
                                        uint32_t max_out_length,
                                        uint32_t* actual_out_length,
-                                       std::vector<uint8_t>* data_out) {
+                                       vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_Encrypt(session_id,
                                           in_bytes,
                                           data_in.size(),
                                           out_bytes.get(),
                                           &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::EncryptUpdate(
     uint32_t session_id,
-    const std::vector<uint8_t>& data_in,
+    const vector<uint8_t>& data_in,
     uint32_t max_out_length,
     uint32_t* actual_out_length,
-    std::vector<uint8_t>* data_out) {
+    vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_EncryptUpdate(session_id,
                                                 in_bytes,
                                                 data_in.size(),
                                                 out_bytes.get(),
                                                 &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
@@ -565,17 +575,22 @@ uint32_t ChapsServiceRedirect::EncryptUpdate(
 uint32_t ChapsServiceRedirect::EncryptFinal(uint32_t session_id,
                                             uint32_t max_out_length,
                                             uint32_t* actual_out_length,
-                                            std::vector<uint8_t>* data_out) {
+                                            vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_EncryptFinal(session_id,
                                                out_bytes.get(),
                                                &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
@@ -583,7 +598,7 @@ uint32_t ChapsServiceRedirect::EncryptFinal(uint32_t session_id,
 uint32_t ChapsServiceRedirect::DecryptInit(
     uint32_t session_id,
     uint32_t mechanism_type,
-    const std::vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
   CHECK(functions_);
   CK_MECHANISM mechanism;
@@ -599,48 +614,59 @@ uint32_t ChapsServiceRedirect::DecryptInit(
 }
 
 uint32_t ChapsServiceRedirect::Decrypt(uint32_t session_id,
-                                       const std::vector<uint8_t>& data_in,
+                                       const vector<uint8_t>& data_in,
                                        uint32_t max_out_length,
                                        uint32_t* actual_out_length,
-                                       std::vector<uint8_t>* data_out) {
+                                       vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_Decrypt(session_id,
                                           in_bytes,
                                           data_in.size(),
                                           out_bytes.get(),
                                           &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
-  *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  if (out_bytes.get())
+    *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 
 uint32_t ChapsServiceRedirect::DecryptUpdate(
     uint32_t session_id,
-    const std::vector<uint8_t>& data_in,
+    const vector<uint8_t>& data_in,
     uint32_t max_out_length,
     uint32_t* actual_out_length,
-    std::vector<uint8_t>* data_out) {
+    vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
   CK_BYTE_PTR in_bytes =
       static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_DecryptUpdate(session_id,
                                                 in_bytes,
                                                 data_in.size(),
                                                 out_bytes.get(),
                                                 &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
@@ -648,18 +674,334 @@ uint32_t ChapsServiceRedirect::DecryptUpdate(
 uint32_t ChapsServiceRedirect::DecryptFinal(uint32_t session_id,
                                             uint32_t max_out_length,
                                             uint32_t* actual_out_length,
-                                            std::vector<uint8_t>* data_out) {
+                                            vector<uint8_t>* data_out) {
   CHECK(functions_);
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[max_out_length]);
-  CHECK(out_bytes.get());
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
   CK_ULONG length = max_out_length;
   uint32_t result = functions_->C_DecryptFinal(session_id,
                                                out_bytes.get(),
                                                &length);
-  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
   *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
   *data_out = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DigestInit(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_DigestInit(session_id, &mechanism);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Digest(uint32_t session_id,
+                                      const vector<uint8_t>& data_in,
+                                      uint32_t max_out_length,
+                                      uint32_t* actual_out_length,
+                                      vector<uint8_t>* digest) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_Digest(session_id,
+                                         in_bytes,
+                                         data_in.size(),
+                                         out_bytes.get(),
+                                         &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *digest = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DigestUpdate(uint32_t session_id,
+                                            const vector<uint8_t>& data_in) {
+  CHECK(functions_);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_in.front()));
+  uint32_t result = functions_->C_DigestUpdate(session_id,
+                                               in_bytes,
+                                               data_in.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DigestKey(uint32_t session_id,
+                                         uint32_t key_handle) {
+  CHECK(functions_);
+  uint32_t result = functions_->C_DigestKey(session_id, key_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DigestFinal(uint32_t session_id,
+                                           uint32_t max_out_length,
+                                           uint32_t* actual_out_length,
+                                           vector<uint8_t>* digest) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_DigestFinal(session_id,
+                                              out_bytes.get(),
+                                              &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *digest = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SignInit(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_SignInit(session_id, &mechanism, key_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Sign(uint32_t session_id,
+                                    const vector<uint8_t>& data,
+                                    uint32_t max_out_length,
+                                    uint32_t* actual_out_length,
+                                    vector<uint8_t>* signature) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_Sign(session_id,
+                                       in_bytes,
+                                       data.size(),
+                                       out_bytes.get(),
+                                       &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *signature = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SignUpdate(uint32_t session_id,
+                                          const vector<uint8_t>& data_part) {
+  CHECK(functions_);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_part.front()));
+  uint32_t result = functions_->C_SignUpdate(session_id,
+                                             in_bytes,
+                                             data_part.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SignFinal(uint32_t session_id,
+                                         uint32_t max_out_length,
+                                         uint32_t* actual_out_length,
+                                         vector<uint8_t>* signature) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_SignFinal(session_id,
+                                            out_bytes.get(),
+                                            &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *signature = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SignRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_SignRecoverInit(session_id,
+                                                  &mechanism,
+                                                  key_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::SignRecover(uint32_t session_id,
+                                           const vector<uint8_t>& data,
+                                           uint32_t max_out_length,
+                                           uint32_t* actual_out_length,
+                                           vector<uint8_t>* signature) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_SignRecover(session_id,
+                                              in_bytes,
+                                              data.size(),
+                                              out_bytes.get(),
+                                              &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *signature = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::VerifyInit(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_VerifyInit(session_id,
+                                             &mechanism,
+                                             key_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::Verify(uint32_t session_id,
+                                      const vector<uint8_t>& data,
+                                      const vector<uint8_t>& signature) {
+  CHECK(functions_);
+  CK_BYTE_PTR data_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data.front()));
+  CK_BYTE_PTR sig_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+  uint32_t result = functions_->C_Verify(session_id,
+                                         data_bytes,
+                                         data.size(),
+                                         sig_bytes,
+                                         signature.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::VerifyUpdate(uint32_t session_id,
+                                            const vector<uint8_t>& data_part) {
+  CHECK(functions_);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&data_part.front()));
+  uint32_t result = functions_->C_VerifyUpdate(session_id,
+                                               in_bytes,
+                                               data_part.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::VerifyFinal(uint32_t session_id,
+                                           const vector<uint8_t>& signature) {
+  CHECK(functions_);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+  uint32_t result = functions_->C_VerifyFinal(session_id,
+                                              in_bytes,
+                                              signature.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::VerifyRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle) {
+  CHECK(functions_);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  uint32_t result = functions_->C_VerifyRecoverInit(session_id,
+                                                    &mechanism,
+                                                    key_handle);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::VerifyRecover(uint32_t session_id,
+                                             const vector<uint8_t>& signature,
+                                             uint32_t max_out_length,
+                                             uint32_t* actual_out_length,
+                                             vector<uint8_t>* data) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&signature.front()));
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_VerifyRecover(session_id,
+                                                in_bytes,
+                                                signature.size(),
+                                                out_bytes.get(),
+                                                &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *data = ConvertByteBufferToVector(out_bytes.get(), length);
   return CKR_OK;
 }
 

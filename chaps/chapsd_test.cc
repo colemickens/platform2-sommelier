@@ -49,6 +49,13 @@ static bool ParseAndFillAttributes(const vector<uint8_t>& serialized,
   return tmp.ParseAndFill(serialized);
 }
 
+static vector<uint8_t> SubVector(const vector<uint8_t>& v,
+                                 int offset,
+                                 int size) {
+  const uint8_t* front = &v.front() + offset;
+  return vector<uint8_t>(front, front + size);
+}
+
 // Default test fixture for PKCS #11 calls.
 class TestP11 : public ::testing::Test {
 protected:
@@ -493,17 +500,6 @@ TEST_F(TestP11Object, FindObjects) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsFinal(17));
 }
 
-static vector<uint8_t> SubVector(const vector<uint8_t>& v,
-                                 int offset,
-                                 int size) {
-  const uint8_t* front = &v.front() + offset;
-  return vector<uint8_t>(front, front + size);
-}
-
-static void AppendVector(vector<uint8_t>& v1, const vector<uint8_t>& v2) {
-  v1.insert(v1.end(), v2.begin(), v2.end());
-}
-
 TEST_F(TestP11Session, Encrypt) {
   // Create a session key.
   CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
@@ -547,32 +543,31 @@ TEST_F(TestP11Session, Encrypt) {
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(encrypted2, tmp);
+  encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
                                           SubVector(data, 3, 27),
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(encrypted2, tmp);
+  encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptUpdate(session_id_,
                                           SubVector(data, 30, 18),
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(encrypted2, tmp);
+  encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->EncryptFinal(session_id_,
                                          max_out,
                                          &not_used,
                                          &tmp));
-  AppendVector(encrypted2, tmp);
+  encrypted2.insert(encrypted2.end(), tmp.begin(), tmp.end());
   tmp.clear();
-  EXPECT_EQ(encrypted.size(), encrypted2.size());
-  EXPECT_EQ(0, memcmp(&encrypted.front(),
-                      &encrypted2.front(),
-                      encrypted.size()));
+  EXPECT_TRUE(std::equal(encrypted.begin(),
+                         encrypted.end(),
+                         encrypted2.begin()));
   // Test decrypt.
   EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
                                         CKM_AES_ECB,
@@ -584,8 +579,7 @@ TEST_F(TestP11Session, Encrypt) {
                                     max_out,
                                     &not_used,
                                     &decrypted));
-  EXPECT_EQ(data.size(), decrypted.size());
-  EXPECT_EQ(0, memcmp(&data.front(), &decrypted.front(), data.size()));
+  EXPECT_TRUE(std::equal(data.begin(), data.end(), decrypted.begin()));
   decrypted.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptInit(session_id_,
                                         CKM_AES_ECB,
@@ -596,30 +590,29 @@ TEST_F(TestP11Session, Encrypt) {
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(decrypted, tmp);
+  decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
                                           SubVector(encrypted, 16, 17),
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(decrypted, tmp);
+  decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptUpdate(session_id_,
                                           SubVector(encrypted, 33, 15),
                                           max_out,
                                           &not_used,
                                           &tmp));
-  AppendVector(decrypted, tmp);
+  decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
   EXPECT_EQ(CKR_OK, chaps_->DecryptFinal(session_id_,
                                          max_out,
                                          &not_used,
                                          &tmp));
-  AppendVector(decrypted, tmp);
+  decrypted.insert(decrypted.end(), tmp.begin(), tmp.end());
   tmp.clear();
-  EXPECT_EQ(data.size(), decrypted.size());
-  EXPECT_EQ(0, memcmp(&data.front(), &decrypted.front(), data.size()));
+  EXPECT_TRUE(std::equal(data.begin(), data.end(), decrypted.begin()));
   // Bad arg cases.
   EXPECT_EQ(CKR_OK, chaps_->EncryptInit(session_id_,
                                         CKM_AES_ECB,
@@ -633,6 +626,90 @@ TEST_F(TestP11Session, Encrypt) {
                                         key_handle));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->Decrypt(session_id_, data, max_out, NULL,
                                                NULL));
+}
+
+TEST_F(TestP11Session, Digest) {
+  vector<uint8_t> parameter;
+  vector<uint8_t> data(100, 2), digest;
+  uint32_t not_used = 0;
+  const uint32_t max_out = 100;
+  EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
+  EXPECT_EQ(CKR_OK,
+            chaps_->Digest(session_id_, data, max_out, &not_used, &digest));
+  EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
+  EXPECT_EQ(CKR_OK, chaps_->DigestUpdate(session_id_, SubVector(data, 0, 10)));
+  EXPECT_EQ(CKR_OK, chaps_->DigestUpdate(session_id_, SubVector(data, 10, 90)));
+  vector<uint8_t> digest2;
+  EXPECT_EQ(CKR_OK,
+            chaps_->DigestFinal(session_id_, max_out, &not_used, &digest2));
+  EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest2.begin()));
+
+  // Create a session key.
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
+  CK_BYTE key_value[100] = {0};
+  memcpy(key_value, &data.front(), 100);
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_ATTRIBUTE key_desc[] = {
+    {CKA_CLASS, &key_class, sizeof(key_class)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_VALUE, key_value, sizeof(key_value)}
+  };
+  vector<uint8_t> key;
+  ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
+  uint32_t key_handle = 0;
+  ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
+  EXPECT_EQ(CKR_OK, chaps_->DigestInit(session_id_, CKM_SHA_1, parameter));
+  EXPECT_EQ(CKR_OK, chaps_->DigestKey(session_id_, key_handle));
+  vector<uint8_t> digest3;
+  EXPECT_EQ(CKR_OK,
+            chaps_->DigestFinal(session_id_, max_out, &not_used, &digest3));
+  EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest3.begin()));
+}
+
+TEST_F(TestP11Session, Sign) {
+  // Create a session key.
+  CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
+  CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
+  CK_BYTE key_value[32] = {0};
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_ATTRIBUTE key_desc[] = {
+    {CKA_CLASS, &key_class, sizeof(key_class)},
+    {CKA_KEY_TYPE, &key_type, sizeof(key_type)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_VALUE, key_value, sizeof(key_value)}
+  };
+  vector<uint8_t> key;
+  ASSERT_TRUE(SerializeAttributes(key_desc, 6, &key));
+  uint32_t key_handle = 0;
+  ASSERT_EQ(CKR_OK, chaps_->CreateObject(session_id_, key, &key_handle));
+  // Sign / Verify using SHA-1 HMAC.
+  vector<uint8_t> parameter;
+  EXPECT_EQ(CKR_OK, chaps_->SignInit(session_id_,
+                                     CKM_SHA_1_HMAC,
+                                     parameter,
+                                     key_handle));
+  vector<uint8_t> data(100, 2), signature;
+  uint32_t not_used = 0;
+  const uint32_t max_out = 100;
+  EXPECT_EQ(CKR_OK, chaps_->Sign(session_id_,
+                                 data,
+                                 max_out,
+                                 &not_used,
+                                 &signature));
+  EXPECT_EQ(signature.size(), 20);
+  EXPECT_EQ(CKR_OK, chaps_->VerifyInit(session_id_,
+                                       CKM_SHA_1_HMAC,
+                                       parameter,
+                                       key_handle));
+  EXPECT_EQ(CKR_OK, chaps_->Verify(session_id_, data, signature));
 }
 
 }  // namespace chaps

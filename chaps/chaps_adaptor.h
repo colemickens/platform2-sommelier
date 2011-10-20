@@ -171,7 +171,7 @@ public:
                        uint32_t& result,
                        ::DBus::Error& error);
   virtual void EncryptUpdate(const uint32_t& session_id,
-                             const std::vector< uint8_t >& data_in,
+                             const std::vector<uint8_t>& data_in,
                              const uint32_t& max_out_length,
                              uint32_t& actual_out_length,
                              std::vector<uint8_t>& data_out,
@@ -188,7 +188,7 @@ public:
                                const uint32_t& key_handle,
                                ::DBus::Error& error);
   virtual void Decrypt(const uint32_t& session_id,
-                       const std::vector< uint8_t >& data_in,
+                       const std::vector<uint8_t>& data_in,
                        const uint32_t& max_out_length,
                        uint32_t& actual_out_length,
                        std::vector<uint8_t>& data_out,
@@ -207,6 +207,91 @@ public:
                             std::vector<uint8_t>& data_out,
                             uint32_t& result,
                             ::DBus::Error& error);
+  virtual uint32_t DigestInit(const uint32_t& session_id,
+                              const uint32_t& mechanism_type,
+                              const std::vector<uint8_t>& mechanism_parameter,
+                              ::DBus::Error& error);
+  virtual void Digest(const uint32_t& session_id,
+                      const std::vector<uint8_t>& data_in,
+                      const uint32_t& max_out_length,
+                      uint32_t& actual_out_length,
+                      std::vector<uint8_t>& digest,
+                      uint32_t& result,
+                      ::DBus::Error& error);
+  virtual uint32_t DigestUpdate(const uint32_t& session_id,
+                                const std::vector<uint8_t>& data_in,
+                                ::DBus::Error& error);
+  virtual uint32_t DigestKey(const uint32_t& session_id,
+                             const uint32_t& key_handle,
+                             ::DBus::Error& error);
+  virtual void DigestFinal(const uint32_t& session_id,
+                           const uint32_t& max_out_length,
+                           uint32_t& actual_out_length,
+                           std::vector<uint8_t>& digest,
+                           uint32_t& result,
+                           ::DBus::Error& error);
+  virtual uint32_t SignInit(const uint32_t& session_id,
+                            const uint32_t& mechanism_type,
+                            const std::vector<uint8_t>& mechanism_parameter,
+                            const uint32_t& key_handle,
+                            ::DBus::Error& error);
+  virtual void Sign(const uint32_t& session_id,
+                    const std::vector<uint8_t>& data,
+                    const uint32_t& max_out_length,
+                    uint32_t& actual_out_length,
+                    std::vector<uint8_t>& signature,
+                    uint32_t& result,
+                    ::DBus::Error& error);
+  virtual uint32_t SignUpdate(const uint32_t& session_id,
+                              const std::vector<uint8_t>& data_part,
+                              ::DBus::Error& error);
+  virtual void SignFinal(const uint32_t& session_id,
+                         const uint32_t& max_out_length,
+                         uint32_t& actual_out_length,
+                         std::vector<uint8_t>& signature,
+                         uint32_t& result,
+                         ::DBus::Error& error);
+  virtual uint32_t SignRecoverInit(
+      const uint32_t& session_id,
+      const uint32_t& mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      const uint32_t& key_handle,
+      ::DBus::Error& error);
+  virtual void SignRecover(const uint32_t& session_id,
+                           const std::vector<uint8_t>& data,
+                           const uint32_t& max_out_length,
+                           uint32_t& actual_out_length,
+                           std::vector<uint8_t>& signature,
+                           uint32_t& result,
+                           ::DBus::Error& error);
+  virtual uint32_t VerifyInit(const uint32_t& session_id,
+                              const uint32_t& mechanism_type,
+                              const std::vector<uint8_t>& mechanism_parameter,
+                              const uint32_t& key_handle,
+                              ::DBus::Error& error);
+  virtual uint32_t Verify(const uint32_t& session_id,
+                          const std::vector<uint8_t>& data,
+                          const std::vector<uint8_t>& signature,
+                          ::DBus::Error& error);
+  virtual uint32_t VerifyUpdate(const uint32_t& session_id,
+                                const std::vector<uint8_t>& data_part,
+                                ::DBus::Error& error);
+  virtual uint32_t VerifyFinal(const uint32_t& session_id,
+                               const std::vector<uint8_t>& signature,
+                               ::DBus::Error& error);
+  virtual uint32_t VerifyRecoverInit(
+      const uint32_t& session_id,
+      const uint32_t& mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      const uint32_t& key_handle,
+      ::DBus::Error& error);
+  virtual void VerifyRecover(const uint32_t& session_id,
+                             const std::vector<uint8_t>& signature,
+                             const uint32_t& max_out_length,
+                             uint32_t& actual_out_length,
+                             std::vector<uint8_t>& data,
+                             uint32_t& result,
+                             ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

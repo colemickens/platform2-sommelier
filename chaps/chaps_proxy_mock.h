@@ -131,6 +131,66 @@ public:
                                 uint32_t,
                                 uint32_t*,
                                 std::vector<uint8_t>*));
+  MOCK_METHOD3(DigestInit, uint32_t (uint32_t,
+                                     uint32_t,
+                                     const std::vector<uint8_t>&));
+  MOCK_METHOD5(Digest, uint32_t (uint32_t,
+                                 const std::vector<uint8_t>&,
+                                 uint32_t,
+                                 uint32_t*,
+                                 std::vector<uint8_t>*));
+  MOCK_METHOD2(DigestUpdate, uint32_t (uint32_t,
+                                       const std::vector<uint8_t>&));
+  MOCK_METHOD2(DigestKey, uint32_t (uint32_t,
+                                    uint32_t));
+  MOCK_METHOD4(DigestFinal, uint32_t (uint32_t,
+                                      uint32_t,
+                                      uint32_t*,
+                                      std::vector<uint8_t>*));
+  MOCK_METHOD4(SignInit, uint32_t (uint32_t,
+                                   uint32_t,
+                                   const std::vector<uint8_t>&,
+                                   uint32_t));
+  MOCK_METHOD5(Sign, uint32_t (uint32_t,
+                               const std::vector<uint8_t>&,
+                               uint32_t,
+                               uint32_t*,
+                               std::vector<uint8_t>*));
+  MOCK_METHOD2(SignUpdate, uint32_t (uint32_t,
+                                     const std::vector<uint8_t>&));
+  MOCK_METHOD4(SignFinal, uint32_t (uint32_t,
+                                    uint32_t,
+                                    uint32_t*,
+                                    std::vector<uint8_t>*));
+  MOCK_METHOD4(SignRecoverInit, uint32_t (uint32_t,
+                                          uint32_t,
+                                          const std::vector<uint8_t>&,
+                                          uint32_t));
+  MOCK_METHOD5(SignRecover, uint32_t (uint32_t,
+                                      const std::vector<uint8_t>&,
+                                      uint32_t,
+                                      uint32_t*,
+                                      std::vector<uint8_t>*));
+  MOCK_METHOD4(VerifyInit, uint32_t (uint32_t,
+                                     uint32_t,
+                                     const std::vector<uint8_t>&,
+                                     uint32_t));
+  MOCK_METHOD3(Verify, uint32_t (uint32_t,
+                                 const std::vector<uint8_t>&,
+                                 const std::vector<uint8_t>&));
+  MOCK_METHOD2(VerifyUpdate, uint32_t (uint32_t,
+                                       const std::vector<uint8_t>&));
+  MOCK_METHOD2(VerifyFinal, uint32_t (uint32_t,
+                               const std::vector<uint8_t>&));
+  MOCK_METHOD4(VerifyRecoverInit, uint32_t (uint32_t,
+                                            uint32_t,
+                                            const std::vector<uint8_t>&,
+                                            uint32_t));
+  MOCK_METHOD5(VerifyRecover, uint32_t (uint32_t,
+                                        const std::vector<uint8_t>&,
+                                        uint32_t,
+                                        uint32_t*,
+                                        std::vector<uint8_t>*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

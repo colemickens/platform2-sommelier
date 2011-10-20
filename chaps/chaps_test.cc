@@ -1536,6 +1536,366 @@ TEST_F(TestEncrypt, EncryptNotInit) {
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DecryptFinal(1, p, ul));
 }
 
+class TestDigest : public ::testing::Test {
+ protected:
+  void SetUp() {
+    data_ = vector<uint8_t>(10, 1);
+    digest_ = vector<uint8_t>(10, 2);
+    parameter_ = vector<uint8_t>(12, 0xAA);
+    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    mechanism_ = mechanism;
+    data_buffer_ = (CK_BYTE_PTR)&data_.front();
+    digest_buffer_ = (CK_BYTE_PTR)&digest_.front();
+    data_length_ = data_.size();
+    digest_length_ = digest_.size();
+    length_out_max_ = 20;
+  }
+  vector<uint8_t> data_;
+  vector<uint8_t> digest_;
+  vector<uint8_t> parameter_;
+  CK_MECHANISM mechanism_;
+  CK_BYTE_PTR data_buffer_;
+  CK_ULONG data_length_;
+  CK_BYTE buffer_out_[20];
+  CK_ULONG length_out_max_;
+  CK_ULONG length_out_;
+  CK_BYTE_PTR digest_buffer_;
+  CK_ULONG digest_length_;
+};
+
+// Digest Tests
+TEST_F(TestDigest, DigestOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, DigestInit(1, 2, parameter_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
+                     SetArgumentPointee<4>(digest_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DigestUpdate(1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, DigestKey(1, 2)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
+                     SetArgumentPointee<3>(digest_),
+                     Return(CKR_OK)));
+
+  EXPECT_EQ(CKR_OK, C_DigestInit(1, &mechanism_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_Digest(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, digest_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, digest_buffer_, digest_length_));
+  EXPECT_EQ(CKR_OK, C_DigestUpdate(1, data_buffer_, data_length_));
+  EXPECT_EQ(CKR_OK, C_DigestKey(1, 2));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_DigestFinal(1, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, digest_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, digest_buffer_, digest_length_));
+}
+
+TEST_F(TestDigest, DigestBadOutput) {
+  ChapsProxyMock proxy(true);
+  // This should trigger an error because digest_length_ is still 10.
+  length_out_max_ = 8;
+  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
+                     SetArgumentPointee<4>(digest_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
+                     SetArgumentPointee<3>(digest_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_Digest(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_DigestFinal(1, buffer_out_, &length_out_));
+}
+
+TEST_F(TestDigest, DigestFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, DigestInit(1, 2, parameter_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DigestUpdate(1, data_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DigestKey(1, 2)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DigestInit(1, &mechanism_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_Digest(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DigestUpdate(1, data_buffer_, data_length_));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DigestKey(1, 2));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_DigestFinal(1, buffer_out_, &length_out_));
+}
+
+TEST_F(TestDigest, DigestLengthOnly) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Digest(1, data_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DigestFinal(1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
+                     Return(CKR_OK)));
+
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_Digest(1, data_buffer_, data_length_, NULL, &length_out_));
+  EXPECT_EQ(length_out_, digest_length_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_DigestFinal(1, NULL, &length_out_));
+  EXPECT_EQ(length_out_, digest_length_);
+}
+
+TEST_F(TestDigest, DigestNoInput) {
+  ChapsProxyMock proxy(true);
+  vector<uint8_t> empty;
+  EXPECT_CALL(proxy, Digest(1, empty, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
+                     SetArgumentPointee<4>(digest_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_Digest(1, NULL, 0, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, digest_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, digest_buffer_, digest_length_));
+}
+
+TEST_F(TestDigest, DigestBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestInit(1, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Digest(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Digest(1, NULL, 3, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestUpdate(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestUpdate(1, NULL, 0));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestFinal(1, p, NULL));
+}
+
+TEST_F(TestDigest, DigestNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DigestInit(1, &mechanism_));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Digest(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DigestUpdate(1, p, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DigestKey(1, 2));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_DigestFinal(1, p, ul));
+}
+
+class TestSign : public ::testing::Test {
+ protected:
+  void SetUp() {
+    data_ = vector<uint8_t>(10, 1);
+    signature_ = vector<uint8_t>(10, 2);
+    parameter_ = vector<uint8_t>(12, 0xAA);
+    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    mechanism_ = mechanism;
+    data_buffer_ = (CK_BYTE_PTR)&data_.front();
+    signature_buffer_ = (CK_BYTE_PTR)&signature_.front();
+    data_length_ = data_.size();
+    signature_length_ = signature_.size();
+    length_out_max_ = 20;
+  }
+  vector<uint8_t> data_;
+  vector<uint8_t> signature_;
+  vector<uint8_t> parameter_;
+  CK_MECHANISM mechanism_;
+  CK_BYTE_PTR data_buffer_;
+  CK_ULONG data_length_;
+  CK_BYTE buffer_out_[20];
+  CK_ULONG length_out_max_;
+  CK_ULONG length_out_;
+  CK_BYTE_PTR signature_buffer_;
+  CK_ULONG signature_length_;
+};
+
+// Sign / Verify Tests
+TEST_F(TestSign, SignOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SignInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, VerifyInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
+                     SetArgumentPointee<4>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Verify(1, data_, signature_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, SignUpdate(1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, VerifyUpdate(1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
+                     SetArgumentPointee<3>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, VerifyFinal(1, signature_)).
+      WillOnce(Return(CKR_OK));
+
+  EXPECT_EQ(CKR_OK, C_SignInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_OK, C_VerifyInit(1, &mechanism_, 3));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK,
+            C_Sign(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, signature_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, signature_buffer_, signature_length_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_Verify(1, data_buffer_, data_length_,
+                             signature_buffer_, signature_length_));
+  EXPECT_EQ(CKR_OK, C_SignUpdate(1, data_buffer_, data_length_));
+  EXPECT_EQ(CKR_OK, C_VerifyUpdate(1, data_buffer_, data_length_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_SignFinal(1, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, signature_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, signature_buffer_, signature_length_));
+  EXPECT_EQ(CKR_OK, C_VerifyFinal(1, signature_buffer_, signature_length_));
+}
+
+TEST_F(TestSign, SignBadOutput) {
+  ChapsProxyMock proxy(true);
+  // This should trigger an error because signature_length_ is still 10.
+  length_out_max_ = 8;
+  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
+                     SetArgumentPointee<4>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
+                     SetArgumentPointee<3>(signature_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_Sign(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR,
+            C_SignFinal(1, buffer_out_, &length_out_));
+}
+
+TEST_F(TestSign, SignFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, SignInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, VerifyInit(1, 2, parameter_, 3)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, Verify(1, data_, signature_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, SignUpdate(1, data_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, VerifyUpdate(1, data_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, VerifyFinal(1, signature_)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_SignInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_VerifyInit(1, &mechanism_, 3));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_Sign(1, data_buffer_, data_length_, buffer_out_, &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_Verify(1, data_buffer_, data_length_,
+                                         signature_buffer_, signature_length_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_SignUpdate(1, data_buffer_, data_length_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_VerifyUpdate(1, data_buffer_, data_length_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_SignFinal(1, buffer_out_, &length_out_));
+  EXPECT_EQ(CKR_SESSION_CLOSED,
+            C_VerifyFinal(1, signature_buffer_, signature_length_));
+}
+
+TEST_F(TestSign, SignLengthOnly) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, Sign(1, data_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, SignFinal(1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
+                     Return(CKR_OK)));
+
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_Sign(1, data_buffer_, data_length_, NULL, &length_out_));
+  EXPECT_EQ(length_out_, signature_length_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK,
+            C_SignFinal(1, NULL, &length_out_));
+  EXPECT_EQ(length_out_, signature_length_);
+}
+
+TEST_F(TestSign, SignNoInput) {
+  ChapsProxyMock proxy(true);
+  vector<uint8_t> empty;
+  EXPECT_CALL(proxy, Sign(1, empty, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
+                     SetArgumentPointee<4>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Verify(1, empty, signature_)).
+      WillOnce(Return(CKR_OK));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_Sign(1, NULL, 0, buffer_out_, &length_out_));
+  EXPECT_EQ(length_out_, signature_length_);
+  EXPECT_EQ(0, memcmp(buffer_out_, signature_buffer_, signature_length_));
+  EXPECT_EQ(CKR_OK,  C_Verify(1, NULL, 0,
+                              signature_buffer_, signature_length_));
+}
+
+TEST_F(TestSign, SignBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignInit(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyInit(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Sign(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Sign(1, NULL, 3, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Verify(1, NULL, 3, p, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Verify(1, p, 3, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_Verify(1, p, 3, NULL, 0));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignUpdate(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignUpdate(1, NULL, 0));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyUpdate(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyUpdate(1, NULL, 0));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignFinal(1, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyFinal(1, NULL, 3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_VerifyFinal(1, NULL, 0));
+}
+
+TEST_F(TestSign, SignNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SignInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_VerifyInit(1, &mechanism_, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Sign(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_Verify(1, p, 3, p, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SignUpdate(1, p, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_VerifyUpdate(1, p, 3));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SignFinal(1, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_VerifyFinal(1, p, 3));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

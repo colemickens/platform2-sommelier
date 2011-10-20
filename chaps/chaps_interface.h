@@ -190,6 +190,86 @@ public:
                                 uint32_t max_out_length,
                                 uint32_t* actual_out_length,
                                 std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.10 page 148.
+  virtual uint32_t DigestInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter) = 0;
+  // PKCS #11 v2.20 section 11.10 page 149.
+  virtual uint32_t Digest(uint32_t session_id,
+                          const std::vector<uint8_t>& data_in,
+                          uint32_t max_out_length,
+                          uint32_t* actual_out_length,
+                          std::vector<uint8_t>* digest) = 0;
+  // PKCS #11 v2.20 section 11.10 page 150.
+  virtual uint32_t DigestUpdate(uint32_t session_id,
+                                const std::vector<uint8_t>& data_in) = 0;
+  // PKCS #11 v2.20 section 11.10 page 150.
+  virtual uint32_t DigestKey(uint32_t session_id,
+                             uint32_t key_handle) = 0;
+  // PKCS #11 v2.20 section 11.10 page 151.
+  virtual uint32_t DigestFinal(uint32_t session_id,
+                               uint32_t max_out_length,
+                               uint32_t* actual_out_length,
+                               std::vector<uint8_t>* digest) = 0;
+  // PKCS #11 v2.20 section 11.11 page 152.
+  virtual uint32_t SignInit(uint32_t session_id,
+                            uint32_t mechanism_type,
+                            const std::vector<uint8_t>& mechanism_parameter,
+                            uint32_t key_handle) = 0;
+  // PKCS #11 v2.20 section 11.11 page 153.
+  virtual uint32_t Sign(uint32_t session_id,
+                        const std::vector<uint8_t>& data,
+                        uint32_t max_out_length,
+                        uint32_t* actual_out_length,
+                        std::vector<uint8_t>* signature) = 0;
+  // PKCS #11 v2.20 section 11.11 page 154.
+  virtual uint32_t SignUpdate(uint32_t session_id,
+                              const std::vector<uint8_t>& data_part) = 0;
+  // PKCS #11 v2.20 section 11.11 page 154.
+  virtual uint32_t SignFinal(uint32_t session_id,
+                             uint32_t max_out_length,
+                             uint32_t* actual_out_length,
+                             std::vector<uint8_t>* signature) = 0;
+  // PKCS #11 v2.20 section 11.11 page 155.
+  virtual uint32_t SignRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle) = 0;
+  // PKCS #11 v2.20 section 11.11 page 156.
+  virtual uint32_t SignRecover(uint32_t session_id,
+                               const std::vector<uint8_t>& data,
+                               uint32_t max_out_length,
+                               uint32_t* actual_out_length,
+                               std::vector<uint8_t>* signature) = 0;
+  // PKCS #11 v2.20 section 11.12 page 157.
+  virtual uint32_t VerifyInit(uint32_t session_id,
+                              uint32_t mechanism_type,
+                              const std::vector<uint8_t>& mechanism_parameter,
+                              uint32_t key_handle) = 0;
+  // PKCS #11 v2.20 section 11.12 page 158.
+  virtual uint32_t Verify(uint32_t session_id,
+                          const std::vector<uint8_t>& data,
+                          const std::vector<uint8_t>& signature) = 0;
+  // PKCS #11 v2.20 section 11.12 page 159.
+  virtual uint32_t VerifyUpdate(uint32_t session_id,
+                                const std::vector<uint8_t>& data_part) = 0;
+  // PKCS #11 v2.20 section 11.12 page 159.
+  virtual uint32_t VerifyFinal(uint32_t session_id,
+                               const std::vector<uint8_t>& signature) = 0;
+  // PKCS #11 v2.20 section 11.12 page 161.
+  virtual uint32_t VerifyRecoverInit(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      uint32_t key_handle) = 0;
+  // PKCS #11 v2.20 section 11.12 page 161.
+  virtual uint32_t VerifyRecover(uint32_t session_id,
+                                 const std::vector<uint8_t>& signature,
+                                 uint32_t max_out_length,
+                                 uint32_t* actual_out_length,
+                                 std::vector<uint8_t>* data) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);
