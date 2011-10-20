@@ -226,6 +226,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
 bool BacklightController::OnPlugEvent(bool is_plugged) {
   if ((brightness_offset_ && is_plugged == plugged_state_) || !is_initialized_)
     return false;
+  bool is_first_time = (plugged_state_ == kPowerUnknown);
   if (is_plugged) {
     brightness_offset_ = &plugged_brightness_offset_;
     plugged_state_ = kPowerConnected;
@@ -236,9 +237,10 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
     // If the backlight is in active-but-off state, plugging in AC power
     // shouldn't exit the state.  The plugged brightness should be set to off as
     // well.
-    if (IsBacklightActiveOff() ||
-        unplugged_brightness_offset_ > plugged_brightness_offset_)
-      plugged_brightness_offset_ = unplugged_brightness_offset_;
+    if (!is_first_time &&
+        (IsBacklightActiveOff() ||
+         unplugged_brightness_offset_ > plugged_brightness_offset_))
+        plugged_brightness_offset_ = unplugged_brightness_offset_;
   } else {
     brightness_offset_ = &unplugged_brightness_offset_;
     plugged_state_ = kPowerDisconnected;
@@ -246,7 +248,8 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
     // the unplugged brightness so that it is not greater than plugged
     // brightness.  Otherwise there will be an unnatural increase in brightness
     // when the user switches from AC to battery power.
-    if (plugged_brightness_offset_ < unplugged_brightness_offset_)
+    if (!is_first_time &&
+        plugged_brightness_offset_ < unplugged_brightness_offset_)
       unplugged_brightness_offset_ = plugged_brightness_offset_;
   }
 
