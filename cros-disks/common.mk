@@ -38,7 +38,8 @@
 #   - COLOR=[0|1] to set ANSI color output (default: 1)
 #   - VERBOSE=[0|1] to hide/show commands (default: 0)
 #   - MODE=dbg to turn down optimizations (default: opt)
-#   - ARCH=[x86|arm|supported qemu name] (default: from portage or uname -m)
+#   - ARCH=[x86|amd64|arm|supported qemu name]
+#     (default: from portage or uname -m)
 #   - SPLITDEBUG=[0|1] splits debug info in target.debug (default: 0)
 #        If NOSTRIP=1, SPLITDEBUG will never strip the final emitted objects.
 #   - NOSTRIP=[0|1] determines if binaries are stripped. (default: 1)
@@ -131,7 +132,7 @@ endef
 
 #
 # Default variables for use in including makefiles
-# 
+#
 
 # All objects for .c files at the top level
 C_OBJECTS := $(patsubst %.c,$(OUT)%.o,$(wildcard *.c))
@@ -301,15 +302,15 @@ endef
 # Architecture detection and QEMU wrapping
 #
 
-ARCH ?= $(shell uname -m)
 HOST_ARCH ?= $(shell uname -m)
 # emake will supply "x86" or "arm" for ARCH, but
 # if uname -m runs and you get x86_64, then this subst
 # will break.
+QEMU_ARCH = $(ARCH)
 ifeq ($(subst x86,i386,$(ARCH)),i386)
   QEMU_ARCH := $(subst x86,i386,$(ARCH))  # x86 -> i386
-else
-  QEMU_ARCH = $(ARCH)
+else ifeq ($(subst amd64,x86_64,$(ARCH)),x86_64)
+  QEMU_ARCH := $(subst amd64,x86_64,$(ARCH))  # amd64 -> x86_64
 endif
 
 # If we're cross-compiling, try to use qemu for running the tests.
@@ -356,7 +357,7 @@ all:
 tests: small_tests large_tests
 
 small_tests: qemu FORCE
-	$(call TEST_implementation) 
+	$(call TEST_implementation)
 
 large_tests: qemu FORCE
 	$(call TEST_implementation)
@@ -365,7 +366,7 @@ qemu_clean: FORCE
 ifeq ($(USE_QEMU),1)
 	$(call silent_rm,$(PWD)/qemu-$(QEMU_ARCH))
 endif
-	
+
 qemu: FORCE
 ifeq ($(USE_QEMU),1)
 	$(QUIET)$(ECHO) "QEMU	Preparing qemu-$(QEMU_ARCH)"
@@ -385,7 +386,7 @@ endif
 
 VALGRIND_CMD =
 ifeq ($(VALGRIND),1)
-  VALGRIND_CMD = /usr/bin/valgrind --tool=memcheck $(VALGRIND_ARGS) --  
+  VALGRIND_CMD = /usr/bin/valgrind --tool=memcheck $(VALGRIND_ARGS) --
 endif
 
 define TEST_implementation
@@ -421,7 +422,7 @@ define reverse
 $(if $(1),$(call reverse,$(wordlist 2,$(words $(1)),$(1)))) $(firstword $(1))
 endef
 
-rm_clean: FORCE 
+rm_clean: FORCE
 	$(call silent_rm,$(RM_ON_CLEAN))
 
 rmdir_clean: FORCE rm_clean
@@ -474,4 +475,3 @@ SUBMODULE_DIRS = $(wildcard $(MODULE)/*/module.mk)
 include $(wildcard $(OUT)$(MODULE)/*.d)
 include $(SUBMODULE_DIRS)
 endif
-
