@@ -239,16 +239,7 @@ SessionManagerService::~SessionManagerService() {
 
   // Remove this in case it was added by StopSession().
   g_idle_remove_by_data(this);
-
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  action.sa_handler = SIG_DFL;
-  CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
-  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
-  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
-  CHECK(sigaction(SIGINT, &action, NULL) == 0);
-  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
-
+  RevertHandlers();
   STLDeleteElements(&child_jobs_);
 }
 
@@ -425,6 +416,7 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
   int pid = fork();
   if (pid == 0) {
+    RevertHandlers();
     child_job->Run();
     exit(1);  // Run() is not supposed to return.
   }
@@ -988,6 +980,17 @@ void SessionManagerService::SetupHandlers() {
   // And SIGHUP, for when the terminal disappears. On shutdown, many Linux
   // distros send SIGHUP, SIGTERM, and then SIGKILL.
   action.sa_handler = SIGHUPHandler;
+  CHECK(sigaction(SIGHUP, &action, NULL) == 0);
+}
+
+void SessionManagerService::RevertHandlers() {
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  action.sa_handler = SIG_DFL;
+  CHECK(sigaction(SIGUSR1, &action, NULL) == 0);
+  CHECK(sigaction(SIGALRM, &action, NULL) == 0);
+  CHECK(sigaction(SIGTERM, &action, NULL) == 0);
+  CHECK(sigaction(SIGINT, &action, NULL) == 0);
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 

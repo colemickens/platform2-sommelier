@@ -342,6 +342,9 @@ class SessionManagerService
   // Setup any necessary signal handlers.
   void SetupHandlers();
 
+  // Set all changed signal handlers back to the default behavior.
+  void RevertHandlers();
+
   // Returns true if the current user has the private half of |pub_key|
   // in his nssdb.  Returns false if not, or if that cannot be determined.
   // |error| is set appropriately on failure.
