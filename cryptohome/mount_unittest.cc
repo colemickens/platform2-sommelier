@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,9 +31,10 @@
 
 namespace cryptohome {
 using std::string;
+using ::testing::InSequence;
+using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::_;
-using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
@@ -411,7 +412,8 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
-      .WillOnce(Return(true));
+      .Times(3)
+      .WillRepeatedly(Return(true));
 
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
@@ -451,7 +453,8 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
-      .WillOnce(Return(true));
+      .Times(3)
+      .WillRepeatedly(Return(true));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
@@ -575,7 +578,8 @@ TEST_F(MountTest, MigrationOfTrackedDirs) {
   // subdirs "Cache" and "Downloads".
   FilePath cache_dir(home_dir.Append(kCacheDir));
   FilePath downloads_dir(home_dir.Append(kDownloadsDir));
-  LOG(INFO) << "mkcache: " << cache_dir.value() << " " << file_util::CreateDirectory(cache_dir);
+  LOG(INFO) << "mkcache: " << cache_dir.value() << " "
+            << file_util::CreateDirectory(cache_dir);
   LOG(INFO) << "mkdownload: " << downloads_dir.value() << " "
             << file_util::CreateDirectory(downloads_dir);
 
@@ -658,7 +662,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
-      .WillOnce(Return(true));
+      .Times(3)
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
@@ -679,8 +684,8 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
   EXPECT_CALL(platform, Unmount(_, _, _))
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
+      .Times(4)
+      .WillRepeatedly(Return(true));
   mount.UnmountCryptohome();
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(mount.LoadVaultKeyset(up, &serialized2));
@@ -1055,7 +1060,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
-      .WillOnce(Return(true));
+      .Times(3)
+      .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_.MountCryptohome(
       username_passkey_[0], Mount::MountArgs(), &error));
   const string current_uservault = image_path_[0].Append(kVaultDir).value();
@@ -1086,8 +1092,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Now unmount the user. So it (user[0]) should be cached and may be
   // deleted next when it becomes old.
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
+      .Times(4)
+      .WillRepeatedly(Return(true));
   mount_.UnmountCryptohome();
 
   // Now pretend we have lack of free space.
@@ -1106,4 +1112,52 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   EXPECT_TRUE(file_util::PathExists(image_path_[3]));
 }
 
-} // namespace cryptohome
+TEST_F(MountTest, MountForUserOrderingTest) {
+  // Checks that mounts made with MountForUser/BindForUser are undone in the
+  // right order.
+  InSequence sequence;
+  Mount mount;
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockPlatform> platform;
+  mount.set_platform(&platform);
+
+  mount.get_crypto()->set_tpm(&tpm);
+  mount.set_shadow_root(kImageDir);
+  mount.set_skel_source(kSkelDir);
+  mount.set_use_tpm(false);
+  EXPECT_TRUE(mount.Init());
+  UserSession session;
+  Crypto crypto;
+  SecureBlob salt;
+  salt.resize(16);
+  crypto.GetSecureRandom(static_cast<unsigned char*>(salt.data()), salt.size());
+  session.Init(&crypto, salt);
+  UsernamePasskey up("username", SecureBlob("password", 8));
+  EXPECT_TRUE(session.SetUser(up));
+
+
+  std::string src = "/src";
+  std::string dest0 = "/dest/foo";
+  std::string dest1 = "/dest/bar";
+  std::string dest2 = "/dest/baz";
+  EXPECT_CALL(platform, Mount(src, dest0, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Bind(src, dest1))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Mount(src, dest2, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Unmount(dest2, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Unmount(dest1, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(platform, Unmount(dest0, _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(mount.MountForUser(&session, src, dest0, "", ""));
+  EXPECT_TRUE(mount.BindForUser(&session, src, dest1));
+  EXPECT_TRUE(mount.MountForUser(&session, src, dest2, "", ""));
+  mount.UnmountAllForUser(&session);
+  EXPECT_FALSE(mount.UnmountForUser(&session));
+}
+
+}  // namespace cryptohome

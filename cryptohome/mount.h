@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,6 +16,7 @@
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
+#include <gtest/gtest.h>
 
 #include "credentials.h"
 #include "crypto.h"
@@ -226,7 +227,7 @@ class Mount : public EntropySource {
   virtual void MigrateToUserHome(const std::string& dir) const;
 
   // Mounts a guest home directory to the cryptohome mount point
-  virtual bool MountGuestCryptohome() const;
+  virtual bool MountGuestCryptohome();
 
   // Returns the system salt
   virtual void GetSystemSalt(chromeos::Blob* salt) const;
@@ -488,8 +489,14 @@ class Mount : public EntropySource {
   // Returns the mounted userhome path (e.g. /home/.shadow/.../mount/user)
   //
   // Parameters
-  //  credentials - The Credentials representing the user
+  //   credentials - The Credentials representing the user
   std::string GetMountedUserHomePath(const Credentials& credentials) const;
+
+  // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
+  //
+  // Parameters
+  //   credentials - The Credentials representing the user
+  std::string GetMountedRootHomePath(const Credentials& credentials) const;
 
   // Set/get last access timestamp cache instance for test purposes.
   UserOldestActivityTimestampCache* user_timestamp_cache() const {
@@ -592,6 +599,56 @@ class Mount : public EntropySource {
   //   credentials - The Credentials representing the user
   bool EnsureUserMountPoints(const Credentials& credentials) const;
 
+  // Mount a mount point for a user, remembering it for later unmounting
+  // Returns true if the mount succeeds, false otherwise
+  //
+  // Parameters
+  //   user - User to mount for
+  //   src - Directory to mount from
+  //   dest - Directory to mount to
+  //   type - Filesystem type to mount with
+  //   options - Filesystem options to supply
+  bool MountForUser(UserSession* user,
+                    const std::string& src,
+                    const std::string& dest,
+                    const std::string& type,
+                    const std::string& options);
+
+  // Bind a mount point for a user, remembering it for later unmounting
+  // Returns true if the bind succeeds, false otherwise
+  //
+  // Parameters
+  //   user - User to mount for
+  //   src - Directory to bind from
+  //   dest - Directory to bind to
+  bool BindForUser(UserSession* user,
+                   const std::string& src,
+                   const std::string& dest);
+
+  // Pops a mount point from user's stack and unmounts it
+  // Returns true if there was a mount to unmount, false otherwise
+  // Relies on ForceUnmount internally; see the caveat listed for it
+  //
+  // Parameters
+  //   user - User for whom to unmount
+  bool UnmountForUser(UserSession* user);
+
+  // Unmounts all mount points for a user
+  // Relies on ForceUnmount() internally; see the caveat listed for it
+  //
+  // Parameters
+  //   user - User for whom to unmount
+  void UnmountAllForUser(UserSession* user);
+
+  // Forcibly unmounts a mountpoint, killing processes with open handles to it
+  // if necessary. Note that this approach is not bulletproof - if a process can
+  // avoid being killed by racing against us, then grab a handle to the
+  // mountpoint, it can prevent the lazy unmount from ever completing.
+  //
+  // Parameters
+  //   mount_point - Mount point to unmount
+  void ForceUnmount(const std::string& mount_point);
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -656,6 +713,8 @@ class Mount : public EntropySource {
 
   // Time delta of last user's activity to be considered as old.
   base::TimeDelta old_user_last_activity_time_;
+
+  FRIEND_TEST(MountTest, MountForUserOrderingTest);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };
