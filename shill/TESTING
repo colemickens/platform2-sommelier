@@ -14,6 +14,13 @@ Running unit tests
 - run the resulting shill_unittest binary
 - if you're using our ebuild scripts, you can do both by running
   (chroot)$ FEATURES="test" emerge-x86-generic shill
+- run the unit tests from your host machine under gdb
+  (chroot)$ FEATURES="test noclean" emerge-x86-generic shill
+  (chroot)$ gdb_x86_local --board x86-generic \
+                /build/x86-generic/tmp/portage/chromeos-base/shill-9999/work/shill-9999/shill_unittest
+  (Of course if the unit tests segfaulted, you wouldn't need the emerge
+  step since the build directory would have been retained in the course
+  of the test failing.)
 
 Running integration tests
 -------------------------
