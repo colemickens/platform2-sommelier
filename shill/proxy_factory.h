@@ -16,19 +16,19 @@
 
 namespace shill {
 
+class DBusPropertiesProxyDelegate;
 class DBusPropertiesProxyInterface;
-class DBusPropertiesProxyListener;
 class DHCPProxyInterface;
+class ModemCDMAProxyDelegate;
 class ModemCDMAProxyInterface;
-class ModemCDMAProxyListener;
+class ModemGSMCardProxyDelegate;
 class ModemGSMCardProxyInterface;
-class ModemGSMCardProxyListener;
+class ModemGSMNetworkProxyDelegate;
 class ModemGSMNetworkProxyInterface;
-class ModemGSMNetworkProxyListener;
 class ModemManager;
 class ModemManagerProxyInterface;
+class ModemProxyDelegate;
 class ModemProxyInterface;
-class ModemProxyListener;
 class ModemSimpleProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
@@ -44,7 +44,7 @@ class ProxyFactory {
   void Init();
 
   virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-      DBusPropertiesProxyListener *listener,
+      DBusPropertiesProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
@@ -53,7 +53,7 @@ class ProxyFactory {
       const std::string &path,
       const std::string &service);
 
-  virtual ModemProxyInterface *CreateModemProxy(ModemProxyListener *listener,
+  virtual ModemProxyInterface *CreateModemProxy(ModemProxyDelegate *delegate,
                                                 const std::string &path,
                                                 const std::string &service);
 
@@ -62,17 +62,17 @@ class ProxyFactory {
       const std::string &service);
 
   virtual ModemCDMAProxyInterface *CreateModemCDMAProxy(
-      ModemCDMAProxyListener *listener,
+      ModemCDMAProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
   virtual ModemGSMCardProxyInterface *CreateModemGSMCardProxy(
-      ModemGSMCardProxyListener *listener,
+      ModemGSMCardProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 
   virtual ModemGSMNetworkProxyInterface *CreateModemGSMNetworkProxy(
-      ModemGSMNetworkProxyListener *listener,
+      ModemGSMNetworkProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 

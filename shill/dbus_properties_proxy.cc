@@ -11,11 +11,11 @@ namespace shill {
 using std::string;
 using std::vector;
 
-DBusPropertiesProxy::DBusPropertiesProxy(DBusPropertiesProxyListener *listener,
+DBusPropertiesProxy::DBusPropertiesProxy(DBusPropertiesProxyDelegate *delegate,
                                          DBus::Connection *connection,
                                          const string &path,
                                          const string &service)
-    : proxy_(listener, connection, path, service) {}
+    : proxy_(delegate, connection, path, service) {}
 
 DBusPropertiesProxy::~DBusPropertiesProxy() {}
 
@@ -23,12 +23,12 @@ DBusPropertiesMap DBusPropertiesProxy::GetAll(const string &interface_name) {
   return proxy_.GetAll(interface_name);
 }
 
-DBusPropertiesProxy::Proxy::Proxy(DBusPropertiesProxyListener *listener,
+DBusPropertiesProxy::Proxy::Proxy(DBusPropertiesProxyDelegate *delegate,
                                   DBus::Connection *connection,
                                   const string &path,
                                   const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),
-      listener_(listener) {}
+      delegate_(delegate) {}
 
 DBusPropertiesProxy::Proxy::~Proxy() {}
 
@@ -36,7 +36,7 @@ void DBusPropertiesProxy::Proxy::MmPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &properties) {
   VLOG(2) << __func__ << "(" << interface << ")";
-  listener_->OnModemManagerPropertiesChanged(interface, properties);
+  delegate_->OnModemManagerPropertiesChanged(interface, properties);
 }
 
 void DBusPropertiesProxy::Proxy::PropertiesChanged(
@@ -44,7 +44,7 @@ void DBusPropertiesProxy::Proxy::PropertiesChanged(
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
   VLOG(2) << __func__ << "(" << interface << ")";
-  listener_->OnDBusPropertiesChanged(
+  delegate_->OnDBusPropertiesChanged(
       interface, changed_properties, invalidated_properties);
 }
 

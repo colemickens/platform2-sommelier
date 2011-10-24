@@ -39,10 +39,10 @@ void ProxyFactory::Init() {
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
-    DBusPropertiesProxyListener *listener,
+    DBusPropertiesProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new DBusPropertiesProxy(listener, connection(), path, service);
+  return new DBusPropertiesProxy(delegate, connection(), path, service);
 }
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
@@ -53,10 +53,10 @@ ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
 }
 
 ModemProxyInterface *ProxyFactory::CreateModemProxy(
-    ModemProxyListener *listener,
+    ModemProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemProxy(listener, connection(), path, service);
+  return new ModemProxy(delegate, connection(), path, service);
 }
 
 ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
@@ -66,24 +66,24 @@ ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
 }
 
 ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(
-    ModemCDMAProxyListener *listener,
+    ModemCDMAProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemCDMAProxy(listener, connection(), path, service);
+  return new ModemCDMAProxy(delegate, connection(), path, service);
 }
 
 ModemGSMCardProxyInterface *ProxyFactory::CreateModemGSMCardProxy(
-    ModemGSMCardProxyListener *listener,
+    ModemGSMCardProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemGSMCardProxy(listener, connection(), path, service);
+  return new ModemGSMCardProxy(delegate, connection(), path, service);
 }
 
 ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
-    ModemGSMNetworkProxyListener *listener,
+    ModemGSMNetworkProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemGSMNetworkProxy(listener, connection(), path, service);
+  return new ModemGSMNetworkProxy(delegate, connection(), path, service);
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(

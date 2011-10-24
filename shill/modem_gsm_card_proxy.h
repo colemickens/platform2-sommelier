@@ -15,8 +15,8 @@ namespace shill {
 class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Card DBus object proxy at |path| owned
-  // by |service|. Callbacks will be dispatched to |listener|.
-  ModemGSMCardProxy(ModemGSMCardProxyListener *listener,
+  // by |service|. Callbacks will be dispatched to |delegate|.
+  ModemGSMCardProxy(ModemGSMCardProxyDelegate *delegate,
                     DBus::Connection *connection,
                     const std::string &path,
                     const std::string &service);
@@ -38,7 +38,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
       : public org::freedesktop::ModemManager::Modem::Gsm::Card_proxy,
         public DBus::ObjectProxy {
    public:
-    Proxy(ModemGSMCardProxyListener *listener,
+    Proxy(ModemGSMCardProxyDelegate *delegate,
           DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
@@ -48,7 +48,7 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
     // Signal callbacks inherited from ModemManager::Modem::Gsm::Card_proxy.
     // None.
 
-    ModemGSMCardProxyListener *listener_;
+    ModemGSMCardProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

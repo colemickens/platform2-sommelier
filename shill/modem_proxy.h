@@ -16,8 +16,8 @@ namespace shill {
 class ModemProxy : public ModemProxyInterface {
  public:
   // Constructs a ModemManager.Modem DBus object proxy at |path| owned by
-  // |service|. Caught signals will be dispatched to |listener|.
-  ModemProxy(ModemProxyListener *listener,
+  // |service|. Caught signals will be dispatched to |delegate|.
+  ModemProxy(ModemProxyDelegate *delegate,
              DBus::Connection *connection,
              const std::string &path,
              const std::string &service);
@@ -31,7 +31,7 @@ class ModemProxy : public ModemProxyInterface {
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemProxyListener *listener,
+    Proxy(ModemProxyDelegate *delegate,
           DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
@@ -43,7 +43,7 @@ class ModemProxy : public ModemProxyInterface {
                               const uint32 &_new,
                               const uint32 &reason);
 
-    ModemProxyListener *listener_;
+    ModemProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -28,10 +28,10 @@ class ModemCDMAProxyInterface {
   virtual const std::string MEID() = 0;
 };
 
-// ModemManager.Modem.CDMA signal listener to be associated with the proxy.
-class ModemCDMAProxyListener {
+// ModemManager.Modem.CDMA signal delegate to be associated with the proxy.
+class ModemCDMAProxyDelegate {
  public:
-  virtual ~ModemCDMAProxyListener() {}
+  virtual ~ModemCDMAProxyDelegate() {}
 
   virtual void OnCDMAActivationStateChanged(
       uint32 activation_state,

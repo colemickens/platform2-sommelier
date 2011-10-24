@@ -33,11 +33,11 @@ class ModemGSMNetworkProxyInterface {
   virtual uint32 AccessTechnology() = 0;
 };
 
-// ModemManager.Modem.Gsm.Network signal listener to be associated with the
+// ModemManager.Modem.Gsm.Network signal delegate to be associated with the
 // proxy.
-class ModemGSMNetworkProxyListener {
+class ModemGSMNetworkProxyDelegate {
  public:
-  virtual ~ModemGSMNetworkProxyListener() {}
+  virtual ~ModemGSMNetworkProxyDelegate() {}
 
   virtual void OnGSMNetworkModeChanged(uint32 mode) = 0;
   virtual void OnGSMRegistrationInfoChanged(

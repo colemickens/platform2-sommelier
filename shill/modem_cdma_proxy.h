@@ -14,8 +14,8 @@ namespace shill {
 class ModemCDMAProxy : public ModemCDMAProxyInterface {
  public:
   // Constructs a ModemManager.Modem.CDMA DBus object proxy at |path| owned by
-  // |service|. Caught signals will be dispatched to |listener|.
-  ModemCDMAProxy(ModemCDMAProxyListener *listener,
+  // |service|. Caught signals will be dispatched to |delegate|.
+  ModemCDMAProxy(ModemCDMAProxyDelegate *delegate,
                  DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);
@@ -31,7 +31,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
   class Proxy : public org::freedesktop::ModemManager::Modem::Cdma_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(ModemCDMAProxyListener *listener,
+    Proxy(ModemCDMAProxyDelegate *delegate,
           DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
@@ -47,7 +47,7 @@ class ModemCDMAProxy : public ModemCDMAProxyInterface {
     virtual void RegistrationStateChanged(const uint32 &cdma_1x_state,
                                           const uint32 &evdo_state);
 
-    ModemCDMAProxyListener *listener_;
+    ModemCDMAProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -13,8 +13,8 @@ namespace shill {
 class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Network DBus object proxy at |path|
-  // owned by |service|. Caught signals will be dispatched to |listener|.
-  ModemGSMNetworkProxy(ModemGSMNetworkProxyListener *listener,
+  // owned by |service|. Caught signals will be dispatched to |delegate|.
+  ModemGSMNetworkProxy(ModemGSMNetworkProxyDelegate *delegate,
                        DBus::Connection *connection,
                        const std::string &path,
                        const std::string &service);
@@ -32,7 +32,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
       : public org::freedesktop::ModemManager::Modem::Gsm::Network_proxy,
         public DBus::ObjectProxy {
    public:
-    Proxy(ModemGSMNetworkProxyListener *listener,
+    Proxy(ModemGSMNetworkProxyDelegate *delegate,
           DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
@@ -46,7 +46,7 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
                                   const std::string &operator_name);
     virtual void NetworkMode(const uint32_t &mode);
 
-    ModemGSMNetworkProxyListener *listener_;
+    ModemGSMNetworkProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

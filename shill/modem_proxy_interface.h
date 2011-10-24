@@ -21,10 +21,10 @@ class ModemProxyInterface {
   virtual Info GetInfo() = 0;
 };
 
-// ModemManager.Modem signal listener to be associated with the proxy.
-class ModemProxyListener {
+// ModemManager.Modem signal delegate to be associated with the proxy.
+class ModemProxyDelegate {
  public:
-  virtual ~ModemProxyListener() {}
+  virtual ~ModemProxyDelegate() {}
 
   virtual void OnModemStateChanged(uint32 old_state,
                                    uint32 new_state,

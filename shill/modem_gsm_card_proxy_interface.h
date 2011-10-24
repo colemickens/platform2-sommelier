@@ -27,11 +27,11 @@ class ModemGSMCardProxyInterface {
                          const std::string &new_pin) = 0;
 };
 
-// ModemManager.Modem.Gsm.Card callback listener to be associated with the
+// ModemManager.Modem.Gsm.Card callback delegate to be associated with the
 // proxy.
-class ModemGSMCardProxyListener {
+class ModemGSMCardProxyDelegate {
  public:
-  virtual ~ModemGSMCardProxyListener() {}
+  virtual ~ModemGSMCardProxyDelegate() {}
 };
 
 }  // namespace shill

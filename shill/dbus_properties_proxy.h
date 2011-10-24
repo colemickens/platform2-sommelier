@@ -14,7 +14,7 @@ namespace shill {
 
 class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
  public:
-  DBusPropertiesProxy(DBusPropertiesProxyListener *listener,
+  DBusPropertiesProxy(DBusPropertiesProxyDelegate *delegate,
                       DBus::Connection *connection,
                       const std::string &path,
                       const std::string &service);
@@ -27,7 +27,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
   class Proxy : public org::freedesktop::DBus::Properties_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBusPropertiesProxyListener *listener,
+    Proxy(DBusPropertiesProxyDelegate *delegate,
           DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
@@ -43,7 +43,7 @@ class DBusPropertiesProxy : public DBusPropertiesProxyInterface {
         const DBusPropertiesMap &changed_properties,
         const std::vector<std::string> &invalidated_properties);
 
-    DBusPropertiesProxyListener *listener_;
+    DBusPropertiesProxyDelegate *delegate_;
 
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };

@@ -20,10 +20,10 @@ class DBusPropertiesProxyInterface {
   virtual DBusPropertiesMap GetAll(const std::string &interface_name) = 0;
 };
 
-// DBus.Properties signal listener to be associated with the proxy.
-class DBusPropertiesProxyListener {
+// DBus.Properties signal delegate to be associated with the proxy.
+class DBusPropertiesProxyDelegate {
  public:
-  virtual ~DBusPropertiesProxyListener() {}
+  virtual ~DBusPropertiesProxyDelegate() {}
 
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,

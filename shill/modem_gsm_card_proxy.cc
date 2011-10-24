@@ -8,11 +8,11 @@ using std::string;
 
 namespace shill {
 
-ModemGSMCardProxy::ModemGSMCardProxy(ModemGSMCardProxyListener *listener,
+ModemGSMCardProxy::ModemGSMCardProxy(ModemGSMCardProxyDelegate *delegate,
                                      DBus::Connection *connection,
                                      const string &path,
                                      const string &service)
-    : proxy_(listener, connection, path, service) {}
+    : proxy_(delegate, connection, path, service) {}
 
 ModemGSMCardProxy::~ModemGSMCardProxy() {}
 
@@ -49,12 +49,12 @@ void ModemGSMCardProxy::ChangePIN(const string &old_pin,
   proxy_.ChangePin(old_pin, new_pin);
 }
 
-ModemGSMCardProxy::Proxy::Proxy(ModemGSMCardProxyListener *listener,
+ModemGSMCardProxy::Proxy::Proxy(ModemGSMCardProxyDelegate *delegate,
                                 DBus::Connection *connection,
                                 const string &path,
                                 const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),
-      listener_(listener) {}
+      delegate_(delegate) {}
 
 ModemGSMCardProxy::Proxy::~Proxy() {}
 

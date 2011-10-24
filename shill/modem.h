@@ -24,7 +24,7 @@ class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular
 // device.
-class Modem : public DBusPropertiesProxyListener {
+class Modem : public DBusPropertiesProxyDelegate {
  public:
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
@@ -63,7 +63,7 @@ class Modem : public DBusPropertiesProxyListener {
   // properties are invalid.
   void CreateCellularDevice(const DBusPropertiesMap &properties);
 
-  // Signal callbacks inherited from DBusPropertiesProxyListener.
+  // Signal callbacks inherited from DBusPropertiesProxyDelegate.
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,

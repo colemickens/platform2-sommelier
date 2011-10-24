@@ -10,11 +10,11 @@ using std::string;
 
 namespace shill {
 
-ModemCDMAProxy::ModemCDMAProxy(ModemCDMAProxyListener *listener,
+ModemCDMAProxy::ModemCDMAProxy(ModemCDMAProxyDelegate *delegate,
                                DBus::Connection *connection,
                                const string &path,
                                const string &service)
-    : proxy_(listener, connection, path, service) {}
+    : proxy_(delegate, connection, path, service) {}
 
 ModemCDMAProxy::~ModemCDMAProxy() {}
 
@@ -35,12 +35,12 @@ const string ModemCDMAProxy::MEID() {
   return proxy_.Meid();
 }
 
-ModemCDMAProxy::Proxy::Proxy(ModemCDMAProxyListener *listener,
+ModemCDMAProxy::Proxy::Proxy(ModemCDMAProxyDelegate *delegate,
                              DBus::Connection *connection,
                              const string &path,
                              const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),
-      listener_(listener) {}
+      delegate_(delegate) {}
 
 ModemCDMAProxy::Proxy::~Proxy() {}
 
@@ -50,20 +50,20 @@ void ModemCDMAProxy::Proxy::ActivationStateChanged(
     const DBusPropertiesMap &status_changes) {
   VLOG(2) << __func__ << "(" << activation_state << ", " << activation_error
           << ")";
-  listener_->OnCDMAActivationStateChanged(
+  delegate_->OnCDMAActivationStateChanged(
       activation_state, activation_error, status_changes);
 }
 
 void ModemCDMAProxy::Proxy::SignalQuality(const uint32 &quality) {
   VLOG(2) << __func__ << "(" << quality << ")";
-  listener_->OnCDMASignalQualityChanged(quality);
+  delegate_->OnCDMASignalQualityChanged(quality);
 }
 
 void ModemCDMAProxy::Proxy::RegistrationStateChanged(
     const uint32 &cdma_1x_state,
     const uint32 &evdo_state) {
   VLOG(2) << __func__ << "(" << cdma_1x_state << ", " << evdo_state << ")";
-  listener_->OnCDMARegistrationStateChanged(cdma_1x_state, evdo_state);
+  delegate_->OnCDMARegistrationStateChanged(cdma_1x_state, evdo_state);
 }
 
 }  // namespace shill

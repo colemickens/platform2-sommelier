@@ -27,10 +27,10 @@ class ModemSimpleProxyInterface;
 class ProxyFactory;
 
 class Cellular : public Device,
-                 public ModemCDMAProxyListener,
-                 public ModemGSMCardProxyListener,
-                 public ModemGSMNetworkProxyListener,
-                 public ModemProxyListener {
+                 public ModemCDMAProxyDelegate,
+                 public ModemGSMCardProxyDelegate,
+                 public ModemGSMNetworkProxyDelegate,
+                 public ModemProxyDelegate {
  public:
   enum Type {
     kTypeGSM,
@@ -293,7 +293,7 @@ class Cellular : public Device,
   Stringmap ParseScanResult(
       const ModemGSMNetworkProxyInterface::ScanResult &result);
 
-  // Signal callbacks inherited from ModemCDMAProxyListener.
+  // Signal callbacks inherited from ModemCDMAProxyDelegate.
   virtual void OnCDMAActivationStateChanged(
       uint32 activation_state,
       uint32 activation_error,
@@ -302,14 +302,14 @@ class Cellular : public Device,
                                               uint32 state_evdo);
   virtual void OnCDMASignalQualityChanged(uint32 strength);
 
-  // Signal callbacks inherited from ModemGSMNetworkProxyListener.
+  // Signal callbacks inherited from ModemGSMNetworkProxyDelegate.
   virtual void OnGSMNetworkModeChanged(uint32 mode);
   virtual void OnGSMRegistrationInfoChanged(uint32 status,
                                             const std::string &operator_code,
                                             const std::string &operator_name);
   virtual void OnGSMSignalQualityChanged(uint32 quality);
 
-  // Signal callbacks inherited from ModemProxyListener.
+  // Signal callbacks inherited from ModemProxyDelegate.
   virtual void OnModemStateChanged(uint32 old_state,
                                    uint32 new_state,
                                    uint32 reason);

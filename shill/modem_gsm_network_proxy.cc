@@ -11,11 +11,11 @@ using std::string;
 namespace shill {
 
 ModemGSMNetworkProxy::ModemGSMNetworkProxy(
-    ModemGSMNetworkProxyListener *listener,
+    ModemGSMNetworkProxyDelegate *delegate,
     DBus::Connection *connection,
     const string &path,
     const string &service)
-    : proxy_(listener, connection, path, service) {}
+    : proxy_(delegate, connection, path, service) {}
 
 ModemGSMNetworkProxy::~ModemGSMNetworkProxy() {}
 
@@ -40,18 +40,18 @@ uint32 ModemGSMNetworkProxy::AccessTechnology() {
   return proxy_.AccessTechnology();
 }
 
-ModemGSMNetworkProxy::Proxy::Proxy(ModemGSMNetworkProxyListener *listener,
+ModemGSMNetworkProxy::Proxy::Proxy(ModemGSMNetworkProxyDelegate *delegate,
                                    DBus::Connection *connection,
                                    const string &path,
                                    const string &service)
     : DBus::ObjectProxy(*connection, path, service.c_str()),
-      listener_(listener) {}
+      delegate_(delegate) {}
 
 ModemGSMNetworkProxy::Proxy::~Proxy() {}
 
 void ModemGSMNetworkProxy::Proxy::SignalQuality(const uint32 &quality) {
   VLOG(2) << __func__ << "(" << quality << ")";
-  listener_->OnGSMSignalQualityChanged(quality);
+  delegate_->OnGSMSignalQualityChanged(quality);
 }
 
 void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
@@ -60,12 +60,12 @@ void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
     const string &operator_name) {
   VLOG(2) << __func__ << "(" << status << ", " << operator_code << ", "
           << operator_name << ")";
-  listener_->OnGSMRegistrationInfoChanged(status, operator_code, operator_name);
+  delegate_->OnGSMRegistrationInfoChanged(status, operator_code, operator_name);
 }
 
 void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
   VLOG(2) << __func__ << "(" << mode << ")";
-  listener_->OnGSMNetworkModeChanged(mode);
+  delegate_->OnGSMNetworkModeChanged(mode);
 }
 
 }  // namespace shill
