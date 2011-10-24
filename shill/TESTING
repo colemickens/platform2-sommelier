@@ -22,6 +22,13 @@ Running unit tests
   step since the build directory would have been retained in the course
   of the test failing.)
 
+- for an incremental workflow, you can setup like this:
+  (chroot)$ cros_workon --board x86-generic shill
+- incrementally build like this:
+  (chroot)$ CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
+- and then debug tests like this:
+  (chroot)$ gdb_x86_local --board x86-generic /path/to/checkout/src/platform/shill/shill_unittest
+
 Running integration tests
 -------------------------
 - build a test image, suitable for a VM:
