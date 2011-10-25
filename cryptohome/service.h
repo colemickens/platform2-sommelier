@@ -172,9 +172,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                          gchar** OUT_user_pin,
                                          GError** error);
+  // Returns the label of the TPM token along with its user PIN.
+  virtual gboolean Pkcs11GetTpmTokenInfoForUser(gchar *username,
+                                                gchar** OUT_label,
+                                                gchar** OUT_user_pin,
+                                                GError** error);
 
   // Returns in |OUT_ready| whether the TPM token is ready for use.
   virtual gboolean Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error);
+  virtual gboolean Pkcs11IsTpmTokenReadyForUser(gchar *username,
+                                                gboolean* OUT_ready,
+                                                GError** error);
   virtual gboolean GetStatusString(gchar** OUT_status, GError** error);
 
   // InstallAttributes methods

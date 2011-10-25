@@ -35,6 +35,10 @@ class Pkcs11Init {
   virtual void GetTpmTokenInfo(gchar **OUT_label,
                                gchar **OUT_user_pin);
 
+  virtual void GetTpmTokenInfoForUser(gchar *username,
+                                      gchar **OUT_label,
+                                      gchar **OUT_user_pin);
+
   // Initialize
   virtual bool InitializeOpencryptoki();
 

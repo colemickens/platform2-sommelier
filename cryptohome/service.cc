@@ -859,6 +859,13 @@ gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   return TRUE;
 }
 
+gboolean Service::Pkcs11IsTpmTokenReadyForUser(gchar* username,
+                                               gboolean* OUT_ready,
+                                               GError** error) {
+  // TODO(ellyjones): make this really check per user. crosbug.com/22127
+  return Pkcs11IsTpmTokenReady(OUT_ready, error);
+}
+
 gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                         gchar** OUT_user_pin,
                                         GError** error) {
@@ -866,6 +873,15 @@ gboolean Service::Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                 OUT_user_pin);
   return TRUE;
 }
+
+gboolean Service::Pkcs11GetTpmTokenInfoForUser(gchar* username,
+                                               gchar** OUT_label,
+                                               gchar** OUT_user_pin,
+                                               GError** error) {
+  pkcs11_init_->GetTpmTokenInfoForUser(username, OUT_label, OUT_user_pin);
+  return TRUE;
+}
+
 
 gboolean Service::InstallAttributesGet(gchar* name,
                                        GArray** OUT_value,

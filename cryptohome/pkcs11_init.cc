@@ -12,6 +12,7 @@
 
 #include <base/logging.h>
 #include <base/string_util.h>
+#include <chromeos/cryptohome.h>
 #include <errno.h>
 #include <glib.h>
 #include <opencryptoki/pkcs11.h>
@@ -76,6 +77,14 @@ void CKCharcpy(CK_CHAR* dest, const CK_CHAR* src, CK_ULONG len) {
 
 void Pkcs11Init::GetTpmTokenInfo(gchar **OUT_label,
                                  gchar **OUT_user_pin) {
+  *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));
+  *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
+}
+
+void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
+                                        gchar **OUT_label,
+                                        gchar **OUT_user_pin) {
+  // TODO(ellyjones): make this work for real, perhaps? crosbug.com/22127
   *OUT_label = g_strdup(reinterpret_cast<const gchar *>(kDefaultLabel));
   *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
 }

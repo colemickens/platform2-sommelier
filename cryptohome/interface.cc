@@ -222,10 +222,26 @@ gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               GError **error) {
   CRYPTOHOME_WRAP_METHOD(Pkcs11GetTpmTokenInfo, OUT_label, OUT_user_pin);
 }
+gboolean cryptohome_pkcs11_get_tpm_token_info_for_user(Cryptohome *self,
+                                                       gchar *username,
+                                                       gchar **OUT_label,
+                                                       gchar **OUT_user_pin,
+                                                       GError **error) {
+  CRYPTOHOME_WRAP_METHOD(Pkcs11GetTpmTokenInfoForUser,
+                         username,
+                         OUT_label,
+                         OUT_user_pin);
+}
 gboolean cryptohome_pkcs11_is_tpm_token_ready(Cryptohome *self,
                                     gboolean *OUT_ready,
                                     GError **error) {
   CRYPTOHOME_WRAP_METHOD(Pkcs11IsTpmTokenReady, OUT_ready);
+}
+gboolean cryptohome_pkcs11_is_tpm_token_ready_for_user(Cryptohome *self,
+                                    gchar *username,
+                                    gboolean *OUT_ready,
+                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(Pkcs11IsTpmTokenReadyForUser, username, OUT_ready);
 }
 gboolean cryptohome_get_status_string(Cryptohome *self,
                                       gchar **OUT_status,
