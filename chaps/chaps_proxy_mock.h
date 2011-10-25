@@ -191,6 +191,26 @@ public:
                                         uint32_t,
                                         uint32_t*,
                                         std::vector<uint8_t>*));
+  MOCK_METHOD5(DigestEncryptUpdate, uint32_t (uint32_t,
+                                              const std::vector<uint8_t>&,
+                                              uint32_t,
+                                              uint32_t*,
+                                              std::vector<uint8_t>*));
+  MOCK_METHOD5(DecryptDigestUpdate, uint32_t (uint32_t,
+                                              const std::vector<uint8_t>&,
+                                              uint32_t,
+                                              uint32_t*,
+                                              std::vector<uint8_t>*));
+  MOCK_METHOD5(SignEncryptUpdate, uint32_t (uint32_t,
+                                            const std::vector<uint8_t>&,
+                                            uint32_t,
+                                            uint32_t*,
+                                            std::vector<uint8_t>*));
+  MOCK_METHOD5(DecryptVerifyUpdate, uint32_t (uint32_t,
+                                              const std::vector<uint8_t>&,
+                                              uint32_t,
+                                              uint32_t*,
+                                              std::vector<uint8_t>*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

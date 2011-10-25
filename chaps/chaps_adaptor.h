@@ -292,6 +292,34 @@ public:
                              std::vector<uint8_t>& data,
                              uint32_t& result,
                              ::DBus::Error& error);
+  virtual void DigestEncryptUpdate(const uint32_t& session_id,
+                                   const std::vector<uint8_t>& data_in,
+                                   const uint32_t& max_out_length,
+                                   uint32_t& actual_out_length,
+                                   std::vector<uint8_t>& data_out,
+                                   uint32_t& result,
+                                   ::DBus::Error& error);
+  virtual void DecryptDigestUpdate(const uint32_t& session_id,
+                                   const std::vector<uint8_t>& data_in,
+                                   const uint32_t& max_out_length,
+                                   uint32_t& actual_out_length,
+                                   std::vector<uint8_t>& data_out,
+                                   uint32_t& result,
+                                   ::DBus::Error& error);
+  virtual void SignEncryptUpdate(const uint32_t& session_id,
+                                 const std::vector<uint8_t>& data_in,
+                                 const uint32_t& max_out_length,
+                                 uint32_t& actual_out_length,
+                                 std::vector<uint8_t>& data_out,
+                                 uint32_t& result,
+                                 ::DBus::Error& error);
+  virtual void DecryptVerifyUpdate(const uint32_t& session_id,
+                                   const std::vector<uint8_t>& data_in,
+                                   const uint32_t& max_out_length,
+                                   uint32_t& actual_out_length,
+                                   std::vector<uint8_t>& data_out,
+                                   uint32_t& result,
+                                   ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

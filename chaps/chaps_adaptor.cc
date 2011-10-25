@@ -564,4 +564,60 @@ void ChapsAdaptor::VerifyRecover(const uint32_t& session_id,
                                    &data);
 }
 
+void ChapsAdaptor::DigestEncryptUpdate(const uint32_t& session_id,
+                                       const vector<uint8_t>& data_in,
+                                       const uint32_t& max_out_length,
+                                       uint32_t& actual_out_length,
+                                       vector<uint8_t>& data_out,
+                                       uint32_t& result,
+                                       ::DBus::Error& /*error*/) {
+  result = service_->DigestEncryptUpdate(session_id,
+                                         data_in,
+                                         max_out_length,
+                                         &actual_out_length,
+                                         &data_out);
+}
+
+void ChapsAdaptor::DecryptDigestUpdate(const uint32_t& session_id,
+                                       const vector<uint8_t>& data_in,
+                                       const uint32_t& max_out_length,
+                                       uint32_t& actual_out_length,
+                                       vector<uint8_t>& data_out,
+                                       uint32_t& result,
+                                       ::DBus::Error& /*error*/) {
+  result = service_->DecryptDigestUpdate(session_id,
+                                         data_in,
+                                         max_out_length,
+                                         &actual_out_length,
+                                         &data_out);
+}
+
+void ChapsAdaptor::SignEncryptUpdate(const uint32_t& session_id,
+                                     const vector<uint8_t>& data_in,
+                                     const uint32_t& max_out_length,
+                                     uint32_t& actual_out_length,
+                                     vector<uint8_t>& data_out,
+                                     uint32_t& result,
+                                     ::DBus::Error& /*error*/) {
+  result = service_->SignEncryptUpdate(session_id,
+                                       data_in,
+                                       max_out_length,
+                                       &actual_out_length,
+                                       &data_out);
+}
+
+void ChapsAdaptor::DecryptVerifyUpdate(const uint32_t& session_id,
+                                       const vector<uint8_t>& data_in,
+                                       const uint32_t& max_out_length,
+                                       uint32_t& actual_out_length,
+                                       vector<uint8_t>& data_out,
+                                       uint32_t& result,
+                                       ::DBus::Error& /*error*/) {
+  result = service_->DecryptVerifyUpdate(session_id,
+                                         data_in,
+                                         max_out_length,
+                                         &actual_out_length,
+                                         &data_out);
+}
+
 }  // namespace

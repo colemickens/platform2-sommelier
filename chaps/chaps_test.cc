@@ -1896,6 +1896,217 @@ TEST_F(TestSign, SignNotInit) {
   EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_VerifyFinal(1, p, 3));
 }
 
+// Dual-Function Tests
+TEST_F(TestEncrypt, DualOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_DigestEncryptUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          buffer_out_,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_DecryptDigestUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          buffer_out_,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_SignEncryptUpdate(1,
+                                        buffer_in_,
+                                        length_in_,
+                                        buffer_out_,
+                                        &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_OK, C_DecryptVerifyUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          buffer_out_,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  EXPECT_EQ(0, memcmp(buffer_out_, buffer_out_expected_, length_out_expected_));
+}
+
+TEST_F(TestEncrypt, DualBadOutput) {
+  ChapsProxyMock proxy(true);
+  // This should trigger an error because length_out_expected_ is still 10.
+  length_out_max_ = 8;
+  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     SetArgumentPointee<4>(data_out_),
+                     Return(CKR_OK)));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_DigestEncryptUpdate(1,
+                                                    buffer_in_,
+                                                    length_in_,
+                                                    buffer_out_,
+                                                    &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_DecryptDigestUpdate(1,
+                                                    buffer_in_,
+                                                    length_in_,
+                                                    buffer_out_,
+                                                    &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_SignEncryptUpdate(1,
+                                                  buffer_in_,
+                                                  length_in_,
+                                                  buffer_out_,
+                                                  &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_GENERAL_ERROR, C_DecryptVerifyUpdate(1,
+                                                    buffer_in_,
+                                                    length_in_,
+                                                    buffer_out_,
+                                                    &length_out_));
+}
+
+TEST_F(TestEncrypt, DualFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
+      WillOnce(Return(CKR_SESSION_CLOSED));
+
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DigestEncryptUpdate(1,
+                                                      buffer_in_,
+                                                      length_in_,
+                                                      buffer_out_,
+                                                      &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DecryptDigestUpdate(1,
+                                                      buffer_in_,
+                                                      length_in_,
+                                                      buffer_out_,
+                                                      &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_SignEncryptUpdate(1,
+                                                    buffer_in_,
+                                                    length_in_,
+                                                    buffer_out_,
+                                                    &length_out_));
+  length_out_ = length_out_max_;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DecryptVerifyUpdate(1,
+                                                      buffer_in_,
+                                                      length_in_,
+                                                      buffer_out_,
+                                                      &length_out_));
+}
+
+TEST_F(TestEncrypt, DualLengthOnly) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+                     Return(CKR_OK)));
+
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_DigestEncryptUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          NULL,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_DecryptDigestUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          NULL,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_SignEncryptUpdate(1,
+                                        buffer_in_,
+                                        length_in_,
+                                        NULL,
+                                        &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+  length_out_ = 0;
+  EXPECT_EQ(CKR_OK, C_DecryptVerifyUpdate(1,
+                                          buffer_in_,
+                                          length_in_,
+                                          NULL,
+                                          &length_out_));
+  EXPECT_EQ(length_out_, length_out_expected_);
+}
+
+TEST_F(TestEncrypt, DualBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestEncryptUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DigestEncryptUpdate(1, NULL, 0, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptDigestUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptDigestUpdate(1, NULL, 0, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignEncryptUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SignEncryptUpdate(1, NULL, 0, p, ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptVerifyUpdate(1, p, 3, p, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DecryptVerifyUpdate(1, NULL, 0, p, ul));
+}
+
+TEST_F(TestEncrypt, DualNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE_PTR p = (CK_BYTE_PTR)0x1234;
+  CK_ULONG_PTR ul = (CK_ULONG_PTR)0x1234;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_DigestEncryptUpdate(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_DecryptDigestUpdate(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_SignEncryptUpdate(1, p, 3, p, ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_DecryptVerifyUpdate(1, p, 3, p, ul));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

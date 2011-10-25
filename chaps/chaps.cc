@@ -1109,3 +1109,109 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.13 page 163.
+CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
+                            CK_BYTE_PTR pPart,
+                            CK_ULONG ulPartLen,
+                            CK_BYTE_PTR pEncryptedPart,
+                            CK_ULONG_PTR pulEncryptedPartLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t data_out_length;
+  uint32_t max_out_length =
+      pEncryptedPart ? static_cast<uint32_t>(*pulEncryptedPartLen) : 0;
+  CK_RV result = g_proxy->DigestEncryptUpdate(
+      hSession,
+      chaps::ConvertByteBufferToVector(pPart, ulPartLen),
+      max_out_length,
+      &data_out_length,
+      &data_out);
+  result = HandlePKCS11Output(result,
+                              data_out,
+                              data_out_length,
+                              pEncryptedPart,
+                              pulEncryptedPartLen);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.13 page 165.
+CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
+                            CK_BYTE_PTR pEncryptedPart,
+                            CK_ULONG ulEncryptedPartLen,
+                            CK_BYTE_PTR pPart,
+                            CK_ULONG_PTR pulPartLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t data_out_length;
+  uint32_t max_out_length = pPart ? static_cast<uint32_t>(*pulPartLen) : 0;
+  CK_RV result = g_proxy->DecryptDigestUpdate(
+      hSession,
+      chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
+      max_out_length,
+      &data_out_length,
+      &data_out);
+  result = HandlePKCS11Output(result,
+                              data_out,
+                              data_out_length,
+                              pPart,
+                              pulPartLen);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.13 page 169.
+CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
+                          CK_BYTE_PTR pPart,
+                          CK_ULONG ulPartLen,
+                          CK_BYTE_PTR pEncryptedPart,
+                          CK_ULONG_PTR pulEncryptedPartLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pPart || !pulEncryptedPartLen, CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t data_out_length;
+  uint32_t max_out_length =
+      pEncryptedPart ? static_cast<uint32_t>(*pulEncryptedPartLen) : 0;
+  CK_RV result = g_proxy->SignEncryptUpdate(
+      hSession,
+      chaps::ConvertByteBufferToVector(pPart, ulPartLen),
+      max_out_length,
+      &data_out_length,
+      &data_out);
+  result = HandlePKCS11Output(result,
+                              data_out,
+                              data_out_length,
+                              pEncryptedPart,
+                              pulEncryptedPartLen);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.13 page 171.
+CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
+                            CK_BYTE_PTR pEncryptedPart,
+                            CK_ULONG ulEncryptedPartLen,
+                            CK_BYTE_PTR pPart,
+                            CK_ULONG_PTR pulPartLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!pEncryptedPart || !pulPartLen, CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t data_out_length;
+  uint32_t max_out_length = pPart ? static_cast<uint32_t>(*pulPartLen) : 0;
+  CK_RV result = g_proxy->DecryptVerifyUpdate(
+      hSession,
+      chaps::ConvertByteBufferToVector(pEncryptedPart, ulEncryptedPartLen),
+      max_out_length,
+      &data_out_length,
+      &data_out);
+  result = HandlePKCS11Output(result,
+                              data_out,
+                              data_out_length,
+                              pPart,
+                              pulPartLen);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}

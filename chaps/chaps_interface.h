@@ -270,6 +270,30 @@ public:
                                  uint32_t max_out_length,
                                  uint32_t* actual_out_length,
                                  std::vector<uint8_t>* data) = 0;
+  // PKCS #11 v2.20 section 11.13 page 163.
+  virtual uint32_t DigestEncryptUpdate(uint32_t session_id,
+                                       const std::vector<uint8_t>& data_in,
+                                       uint32_t max_out_length,
+                                       uint32_t* actual_out_length,
+                                       std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.13 page 165.
+  virtual uint32_t DecryptDigestUpdate(uint32_t session_id,
+                                       const std::vector<uint8_t>& data_in,
+                                       uint32_t max_out_length,
+                                       uint32_t* actual_out_length,
+                                       std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.13 page 169.
+  virtual uint32_t SignEncryptUpdate(uint32_t session_id,
+                                     const std::vector<uint8_t>& data_in,
+                                     uint32_t max_out_length,
+                                     uint32_t* actual_out_length,
+                                     std::vector<uint8_t>* data_out) = 0;
+  // PKCS #11 v2.20 section 11.13 page 171.
+  virtual uint32_t DecryptVerifyUpdate(uint32_t session_id,
+                                       const std::vector<uint8_t>& data_in,
+                                       uint32_t max_out_length,
+                                       uint32_t* actual_out_length,
+                                       std::vector<uint8_t>* data_out) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

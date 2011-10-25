@@ -951,4 +951,95 @@ uint32_t ChapsProxyImpl::VerifyRecover(uint32_t session_id,
   return result;
 }
 
+uint32_t ChapsProxyImpl::DigestEncryptUpdate(
+    uint32_t session_id,
+    const vector<uint8_t>& data_in,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    vector<uint8_t>* data_out) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->DigestEncryptUpdate(session_id,
+                                data_in,
+                                max_out_length,
+                                *actual_out_length,
+                                *data_out,
+                                result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::DecryptDigestUpdate(
+    uint32_t session_id,
+    const vector<uint8_t>& data_in,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    vector<uint8_t>* data_out) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->DecryptDigestUpdate(session_id,
+                                data_in,
+                                max_out_length,
+                                *actual_out_length,
+                                *data_out,
+                                result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::SignEncryptUpdate(uint32_t session_id,
+                                           const vector<uint8_t>& data_in,
+                                           uint32_t max_out_length,
+                                           uint32_t* actual_out_length,
+                                           vector<uint8_t>* data_out) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->SignEncryptUpdate(session_id,
+                              data_in,
+                              max_out_length,
+                              *actual_out_length,
+                              *data_out,
+                              result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
+    uint32_t session_id,
+    const vector<uint8_t>& data_in,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    vector<uint8_t>* data_out) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->DecryptVerifyUpdate(session_id,
+                                data_in,
+                                max_out_length,
+                                *actual_out_length,
+                                *data_out,
+                                result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace
