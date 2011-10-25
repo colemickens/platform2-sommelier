@@ -723,6 +723,9 @@ main () {
           default_run=no
           diag_linkall
           ;;
+        --no-log)
+          : # Handled below before starting main
+          ;;
         --show-macs)
           anonymize_macs=no
           ;;
@@ -746,7 +749,8 @@ main () {
   diag_run ${test_host}
 }
 
-if [ -d /home/${USER}/user/Downloads ] ; then
+if [ -d /home/${USER}/user/Downloads ] && \
+    ! expr "$*" : '.*--no-log' >/dev/null; then
   # Log this output to somewhere the user can upload from
   main $@ 2>&1 | \
     tee $(unique_file /home/${USER}/user/Downloads/network_diagnostics_\*.txt)
