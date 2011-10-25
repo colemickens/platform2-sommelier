@@ -51,6 +51,13 @@ Running integration tests
                             --remote=127.0.0.1 --ssh_port 9222 \
                             --args="config_file=wifi_vm_config" WiFiManager
 
+  To run a specific test out of the test suite, use test_pat option to --args.
+
+  # Example: To just run the 035CheckWEPKeySyntax test:
+  (chroot) src/scripts$ ./run_remote_tests.sh --board=x86-generic \
+                            --remote=127.0.0.1 --ssh_port 9222 \
+                            --args="config_file=wifi_vm_config test_pat=035CheckWEPKeySyntax" WiFiManager
+
 - configuration note: if you use a different port
   (e.g. hostfwd=tcp::9223-:22), you'll need to change:
     - the ssh_port argument to run_remote_tests
