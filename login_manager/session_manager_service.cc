@@ -850,14 +850,14 @@ void SessionManagerService::HandleChildExit(GPid pid,
       child_job ? child_job->GetName().c_str() : "",
       pid);
   if (manager->screen_locked_) {
-    LOG(ERROR) << "Screen locked, shutting down",
+    LOG(ERROR) << "Screen locked, shutting down";
     ServiceShutdown(data);
     return;
   }
 
   if (child_job) {
     if (manager->ShouldStopChild(child_job)) {
-      LOG(INFO) << "Child stopped, shutting down",
+      LOG(INFO) << "Child stopped, shutting down";
       ServiceShutdown(data);
     } else if (manager->ShouldRunChildren()) {
       // TODO(cmasone): deal with fork failing in RunChild()
