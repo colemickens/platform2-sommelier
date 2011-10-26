@@ -227,12 +227,30 @@ MADISON_CONFIG_GROUP_LOCATION=/var/lib/cromo/madison-config-group;
 set_madison_config () {
 	group="$*";
 
+	if [ -z "$group" ] ; then
+		echo "No config group specified."
+		echo "Usage: modem set-madison-config <config-group-name>"
+		return
+	fi
+
+	if [ ! -w $MADISON_CONFIG_GROUP_LOCATION ] ; then
+		echo "$MADISON_CONFIG_GROUP_LOCATION is not a writable file."
+		echo "Please reboot (or restart cromo) and try again.";
+		return
+	fi
+
+	if [ `realpath $MADISON_CONFIG_GROUP_LOCATION` != \
+	     "$MADISON_CONFIG_GROUP_LOCATION" ] ; then
+		echo "$MADISON_CONFIG_GROUP_LOCATION points somewhere strange."
+		echo "Please reboot (or restart cromo) and try again."
+		return
+	fi
+
 	echo Setting madison config group to "$group".
 
 	echo "$group" > $MADISON_CONFIG_GROUP_LOCATION;
 
-	echo "You will need to restart cromo to use the new configuration."
-	echo "Reboot, or run 'restart cromo' from a root shell if you can.";
+	echo "Please reboot (or restart cromo) to use the new config group."
 }
 
 usage () {
