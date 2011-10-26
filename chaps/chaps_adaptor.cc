@@ -620,4 +620,38 @@ void ChapsAdaptor::DecryptVerifyUpdate(const uint32_t& session_id,
                                          &data_out);
 }
 
+void ChapsAdaptor::GenerateKey(
+    const uint32_t& session_id,
+    const uint32_t& mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& attributes,
+    uint32_t& key_handle,
+    uint32_t& result,
+    ::DBus::Error& /*error*/) {
+  result = service_->GenerateKey(session_id,
+                                 mechanism_type,
+                                 mechanism_parameter,
+                                 attributes,
+                                 &key_handle);
+}
+
+void ChapsAdaptor::GenerateKeyPair(
+    const uint32_t& session_id,
+    const uint32_t& mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& public_attributes,
+    const vector<uint8_t>& private_attributes,
+    uint32_t& public_key_handle,
+    uint32_t& private_key_handle,
+    uint32_t& result,
+    ::DBus::Error& /*error*/) {
+  result = service_->GenerateKeyPair(session_id,
+                                     mechanism_type,
+                                     mechanism_parameter,
+                                     public_attributes,
+                                     private_attributes,
+                                     &public_key_handle,
+                                     &private_key_handle);
+}
+
 }  // namespace

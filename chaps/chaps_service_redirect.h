@@ -224,6 +224,19 @@ public:
                                        uint32_t max_out_length,
                                        uint32_t* actual_out_length,
                                        std::vector<uint8_t>* data_out);
+  virtual uint32_t GenerateKey(uint32_t session_id,
+                               uint32_t mechanism_type,
+                               const std::vector<uint8_t>& mechanism_parameter,
+                               const std::vector<uint8_t>& attributes,
+                               uint32_t* key_handle);
+  virtual uint32_t GenerateKeyPair(
+      uint32_t session_id,
+      uint32_t mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      const std::vector<uint8_t>& public_attributes,
+      const std::vector<uint8_t>& private_attributes,
+      uint32_t* public_key_handle,
+      uint32_t* private_key_handle);
 
 private:
   std::string library_path_;

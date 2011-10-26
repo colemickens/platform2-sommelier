@@ -1215,3 +1215,66 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.14 page 175.
+CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
+                    CK_MECHANISM_PTR pMechanism,
+                    CK_ATTRIBUTE_PTR pTemplate,
+                    CK_ULONG ulCount,
+                    CK_OBJECT_HANDLE_PTR phKey) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pMechanism || (!pTemplate && ulCount > 0) || !phKey)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulCount);
+  vector<uint8_t> serialized;
+  if (!attributes.Serialize(&serialized))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  CK_RV result = g_proxy->GenerateKey(
+      hSession,
+      pMechanism->mechanism,
+      chaps::ConvertByteBufferToVector(
+          reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
+          pMechanism->ulParameterLen),
+      serialized,
+      chaps::PreservedCK_ULONG(phKey));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.14 page 176.
+CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
+                        CK_MECHANISM_PTR pMechanism,
+                        CK_ATTRIBUTE_PTR pPublicKeyTemplate,
+                        CK_ULONG ulPublicKeyAttributeCount,
+                        CK_ATTRIBUTE_PTR pPrivateKeyTemplate,
+                        CK_ULONG ulPrivateKeyAttributeCount,
+                        CK_OBJECT_HANDLE_PTR phPublicKey,
+                        CK_OBJECT_HANDLE_PTR phPrivateKey) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pMechanism ||
+      (!pPublicKeyTemplate && ulPublicKeyAttributeCount > 0) ||
+      (!pPrivateKeyTemplate && ulPrivateKeyAttributeCount > 0) ||
+      !phPublicKey ||
+      !phPrivateKey)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes public_attributes(pPublicKeyTemplate,
+                                      ulPublicKeyAttributeCount);
+  chaps::Attributes private_attributes(pPrivateKeyTemplate,
+                                       ulPrivateKeyAttributeCount);
+  vector<uint8_t> public_serialized, private_serialized;
+  if (!public_attributes.Serialize(&public_serialized) ||
+      !private_attributes.Serialize(&private_serialized))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  CK_RV result = g_proxy->GenerateKeyPair(
+      hSession,
+      pMechanism->mechanism,
+      chaps::ConvertByteBufferToVector(
+          reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
+          pMechanism->ulParameterLen),
+      public_serialized,
+      private_serialized,
+      chaps::PreservedCK_ULONG(phPublicKey),
+      chaps::PreservedCK_ULONG(phPrivateKey));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}

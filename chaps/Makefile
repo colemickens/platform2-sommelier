@@ -75,6 +75,9 @@ lib: $(OUT)libchaps.so
 chapsd: $(OUT)chapsd
 	@echo
 
+chapsd_test: $(OUT)chapsd_test
+	@echo
+
 dbus-headers: chaps_adaptor_generated.h \
               chaps_proxy_generated.h
 

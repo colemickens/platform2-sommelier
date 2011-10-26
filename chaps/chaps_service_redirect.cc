@@ -1121,4 +1121,63 @@ uint32_t ChapsServiceRedirect::DecryptVerifyUpdate(
   return CKR_OK;
 }
 
+uint32_t ChapsServiceRedirect::GenerateKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  Attributes parsed_attributes;
+  if (!parsed_attributes.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_GenerateKey(
+      session_id,
+      &mechanism,
+      parsed_attributes.attributes(),
+      parsed_attributes.num_attributes(),
+      PreservedUint32_t(key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GenerateKeyPair(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& public_attributes,
+    const vector<uint8_t>& private_attributes,
+    uint32_t* public_key_handle,
+    uint32_t* private_key_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
+                          CKR_ARGUMENTS_BAD);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  Attributes public_parsed_attributes;
+  if (!public_parsed_attributes.Parse(public_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  Attributes private_parsed_attributes;
+  if (!private_parsed_attributes.Parse(private_attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_GenerateKeyPair(
+      session_id,
+      &mechanism,
+      public_parsed_attributes.attributes(),
+      public_parsed_attributes.num_attributes(),
+      private_parsed_attributes.attributes(),
+      private_parsed_attributes.num_attributes(),
+      PreservedUint32_t(public_key_handle),
+      PreservedUint32_t(private_key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
 }  // namespace

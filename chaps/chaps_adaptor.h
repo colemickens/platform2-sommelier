@@ -320,6 +320,23 @@ public:
                                    std::vector<uint8_t>& data_out,
                                    uint32_t& result,
                                    ::DBus::Error& error);
+  virtual void GenerateKey(const uint32_t& session_id,
+                           const uint32_t& mechanism_type,
+                           const std::vector<uint8_t>& mechanism_parameter,
+                           const std::vector<uint8_t>& attributes,
+                           uint32_t& key_handle,
+                           uint32_t& result,
+                           ::DBus::Error& error);
+  virtual void GenerateKeyPair(
+      const uint32_t& session_id,
+      const uint32_t& mechanism_type,
+      const std::vector<uint8_t>& mechanism_parameter,
+      const std::vector<uint8_t>& public_attributes,
+      const std::vector<uint8_t>& private_attributes,
+      uint32_t& public_key_handle,
+      uint32_t& private_key_handle,
+      uint32_t& result,
+      ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

@@ -1042,4 +1042,55 @@ uint32_t ChapsProxyImpl::DecryptVerifyUpdate(
   return result;
 }
 
+uint32_t ChapsProxyImpl::GenerateKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->GenerateKey(session_id,
+                        mechanism_type,
+                        mechanism_parameter,
+                        attributes,
+                        *key_handle,
+                        result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::GenerateKeyPair(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    const vector<uint8_t>& public_attributes,
+    const vector<uint8_t>& private_attributes,
+    uint32_t* public_key_handle,
+    uint32_t* private_key_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
+                          CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->GenerateKeyPair(session_id,
+                            mechanism_type,
+                            mechanism_parameter,
+                            public_attributes,
+                            private_attributes,
+                            *public_key_handle,
+                            *private_key_handle,
+                            result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

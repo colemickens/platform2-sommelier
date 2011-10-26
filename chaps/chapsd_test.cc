@@ -66,33 +66,61 @@ protected:
     // This approach will be used as long as we redirect to openCryptoki.
     chaps_.reset(CreateChapsInstance());
     ASSERT_TRUE(chaps_ != NULL);
+    so_pin_ = "000000";
+    user_pin_ = "111111";
   }
   scoped_ptr<chaps::ChapsInterface> chaps_;
+  string so_pin_;
+  string user_pin_;
 };
 
 // Test fixture for testing with a valid open session.
-class TestP11Session : public TestP11 {
+class TestP11PublicSession : public TestP11 {
  protected:
   virtual void SetUp() {
     TestP11::SetUp();
-    EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
+    ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
                                           &session_id_));
-    EXPECT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION,
-                                          &readonly_session_id_));
+    uint32_t result = chaps_->Logout(session_id_);
+    ASSERT_TRUE(result == CKR_OK || result == CKR_USER_NOT_LOGGED_IN);
   }
   virtual void TearDown() {
+    uint32_t result = chaps_->Logout(session_id_);
+    ASSERT_TRUE(result == CKR_OK || result == CKR_USER_NOT_LOGGED_IN);
     EXPECT_EQ(CKR_OK, chaps_->CloseSession(session_id_));
-    EXPECT_EQ(CKR_OK, chaps_->CloseSession(readonly_session_id_));
     TestP11::TearDown();
   }
   uint32_t session_id_;
-  uint32_t readonly_session_id_;
 };
 
-class TestP11Object : public TestP11Session {
+class TestP11UserSession : public TestP11PublicSession {
  protected:
   virtual void SetUp() {
-    TestP11Session::SetUp();
+    TestP11PublicSession::SetUp();
+    uint32_t result = chaps_->Login(session_id_, CKU_USER, &user_pin_);
+    ASSERT_TRUE(result == CKR_OK || result == CKR_USER_ALREADY_LOGGED_IN);
+  }
+  virtual void TearDown() {
+    TestP11PublicSession::TearDown();
+  }
+};
+
+class TestP11SOSession : public TestP11PublicSession {
+ protected:
+  virtual void SetUp() {
+    TestP11PublicSession::SetUp();
+    uint32_t result = chaps_->Login(session_id_, CKU_SO, &so_pin_);
+    ASSERT_TRUE(result == CKR_OK || result == CKR_USER_ALREADY_LOGGED_IN);
+  }
+  virtual void TearDown() {
+    TestP11PublicSession::TearDown();
+  }
+};
+
+class TestP11Object : public TestP11PublicSession {
+ protected:
+  virtual void SetUp() {
+    TestP11PublicSession::SetUp();
     CK_OBJECT_CLASS class_value = CKO_DATA;
     CK_UTF8CHAR label[] = "A data object";
     CK_UTF8CHAR application[] = "An application";
@@ -113,7 +141,7 @@ class TestP11Object : public TestP11Session {
   }
   virtual void TearDown() {
     ASSERT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, object_handle_));
-    TestP11Session::TearDown();
+    TestP11PublicSession::TearDown();
   }
   uint32_t object_handle_;
 };
@@ -254,23 +282,48 @@ TEST_F(TestP11, MechInfo) {
 // no longer using openCryptoki.
 #ifdef CHAPS_TOKEN_INIT_TESTS
 TEST_F(TestP11, InitToken) {
-  string pin = "test";
   string label = "test";
-  EXPECT_NE(CKR_OK, chaps_->InitToken(0, &pin, label));
+  ASSERT_EQ(CKR_OK, chaps_->CloseAllSessions(0));
   EXPECT_NE(CKR_OK, chaps_->InitToken(0, NULL, label));
+  uint32_t result = chaps_->InitToken(0, &so_pin_, label);
+  if (result == CKR_PIN_INCORRECT) {
+    string alt_pin = "87654321";
+    ASSERT_EQ(CKR_OK, chaps_->InitToken(0, &alt_pin, label));
+    uint32_t session = 0;
+    ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
+                                          &session));
+    ASSERT_EQ(CKR_OK, chaps_->Login(session, CKU_SO, &alt_pin));
+    ASSERT_EQ(CKR_OK, chaps_->SetPIN(session, &alt_pin, &so_pin_));
+    ASSERT_EQ(CKR_OK, chaps_->CloseSession(session));
+  } else {
+    ASSERT_EQ(CKR_OK, result);
+  }
+
+  // Put the token back in a usable state. This is required if we're testing on
+  // a live token.
+  uint32_t session = 0;
+  ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
+                                        &session));
+  ASSERT_EQ(CKR_OK, chaps_->Login(session, CKU_SO, &so_pin_));
+  ASSERT_EQ(CKR_OK, chaps_->InitPIN(session, &user_pin_));
+  ASSERT_EQ(CKR_OK, chaps_->Logout(session));
+  ASSERT_EQ(CKR_OK, chaps_->CloseSession(session));
 }
 
-TEST_F(TestP11Session, InitPIN) {
-  string pin = "test";
-  EXPECT_NE(CKR_OK, chaps_->InitPIN(session_id_, &pin));
+TEST_F(TestP11SOSession, InitPIN) {
   EXPECT_NE(CKR_OK, chaps_->InitPIN(session_id_, NULL));
+  EXPECT_EQ(CKR_OK, chaps_->InitPIN(session_id_, &user_pin_));
 }
 
-TEST_F(TestP11Session, SetPIN) {
-  string pin = "test";
-  string pin2 = "test2";
-  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, &pin, &pin2));
+TEST_F(TestP11UserSession, SetPIN) {
+  string bad_pin = "123456";
+  string other_pin = "222222";
+  EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, &bad_pin, &other_pin));
   EXPECT_NE(CKR_OK, chaps_->SetPIN(session_id_, NULL, NULL));
+  ASSERT_EQ(CKR_OK, chaps_->SetPIN(session_id_, &user_pin_, &other_pin));
+  // Put the PIN back to what it was. This is required if we're testing on a
+  // live token.
+  ASSERT_EQ(CKR_OK, chaps_->SetPIN(session_id_, &other_pin, &user_pin_));
 }
 #endif
 
@@ -295,15 +348,19 @@ TEST_F(TestP11, OpenCloseSession) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->CloseSession(session));
 }
 
-TEST_F(TestP11Session, GetSessionInfo) {
+TEST_F(TestP11PublicSession, GetSessionInfo) {
   uint32_t slot_id, state, flags, device_error;
   EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(session_id_, &slot_id, &state,
                                            &flags, &device_error));
   EXPECT_EQ(0, slot_id);
   EXPECT_EQ(CKS_RW_PUBLIC_SESSION, state);
   EXPECT_EQ(CKF_SERIAL_SESSION|CKF_RW_SESSION, flags);
-  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(readonly_session_id_, &slot_id,
+  uint32_t readonly_session_id;
+  ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION,
+                                        &readonly_session_id));
+  EXPECT_EQ(CKR_OK, chaps_->GetSessionInfo(readonly_session_id, &slot_id,
                                            &state, &flags, &device_error));
+  EXPECT_EQ(CKR_OK, chaps_->CloseSession(readonly_session_id));
   EXPECT_EQ(0, slot_id);
   EXPECT_EQ(CKS_RO_PUBLIC_SESSION, state);
   EXPECT_EQ(CKF_SERIAL_SESSION, flags);
@@ -332,37 +389,34 @@ TEST_F(TestP11Session, GetSessionInfo) {
                                                       NULL));
 }
 
-TEST_F(TestP11Session, GetOperationState) {
+TEST_F(TestP11PublicSession, GetOperationState) {
   vector<uint8_t> state;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->GetOperationState(17, &state));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->GetOperationState(session_id_, NULL));
 }
 
-TEST_F(TestP11Session, SetOperationState) {
+TEST_F(TestP11PublicSession, SetOperationState) {
   vector<uint8_t> state(10, 0);
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
             chaps_->SetOperationState(17, state, 0, 0));
 }
 
-// TODO(dkrahn): crosbug.com/22297
-// These PIN-related tests can mess up a live token.  Leave them until we're
-// no longer using openCryptoki.
-#ifdef CHAPS_TOKEN_LOGIN_TESTS
-TEST_F(TestP11Session, Login) {
-  string pin = "test";
-  EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, &pin));
-  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Login(17, CKU_USER, &pin));
-  EXPECT_EQ(CKR_USER_TYPE_INVALID, chaps_->Login(session_id_, 17, &pin));
+TEST_F(TestP11PublicSession, Login) {
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            chaps_->Login(17, CKU_USER, &user_pin_));
+  EXPECT_EQ(CKR_USER_TYPE_INVALID, chaps_->Login(session_id_, 17, &user_pin_));
   EXPECT_NE(CKR_OK, chaps_->Login(session_id_, CKU_USER, NULL));
+  EXPECT_EQ(CKR_OK, chaps_->Login(session_id_, CKU_USER, &user_pin_));
 }
-#endif
 
-TEST_F(TestP11Session, Logout) {
+TEST_F(TestP11PublicSession, Logout) {
   EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, chaps_->Logout(session_id_));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->Logout(17));
+  ASSERT_EQ(CKR_OK, chaps_->Login(session_id_, CKU_USER, &user_pin_));
+  EXPECT_EQ(CKR_OK, chaps_->Logout(session_id_));
 }
 
-TEST_F(TestP11Session, CreateObject) {
+TEST_F(TestP11PublicSession, CreateObject) {
   CK_OBJECT_CLASS class_value = CKO_DATA;
   CK_UTF8CHAR label[] = "A data object";
   CK_UTF8CHAR application[] = "An application";
@@ -500,7 +554,7 @@ TEST_F(TestP11Object, FindObjects) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, chaps_->FindObjectsFinal(17));
 }
 
-TEST_F(TestP11Session, Encrypt) {
+TEST_F(TestP11PublicSession, Encrypt) {
   // Create a session key.
   CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
   CK_KEY_TYPE key_type = CKK_AES;
@@ -628,7 +682,7 @@ TEST_F(TestP11Session, Encrypt) {
                                                NULL));
 }
 
-TEST_F(TestP11Session, Digest) {
+TEST_F(TestP11PublicSession, Digest) {
   vector<uint8_t> parameter;
   vector<uint8_t> data(100, 2), digest;
   uint32_t not_used = 0;
@@ -671,7 +725,7 @@ TEST_F(TestP11Session, Digest) {
   EXPECT_TRUE(std::equal(digest.begin(), digest.end(), digest3.begin()));
 }
 
-TEST_F(TestP11Session, Sign) {
+TEST_F(TestP11PublicSession, Sign) {
   // Create a session key.
   CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
   CK_KEY_TYPE key_type = CKK_GENERIC_SECRET;
@@ -710,6 +764,69 @@ TEST_F(TestP11Session, Sign) {
                                        parameter,
                                        key_handle));
   EXPECT_EQ(CKR_OK, chaps_->Verify(session_id_, data, signature));
+}
+
+TEST_F(TestP11UserSession, GenerateKey) {
+  vector<uint8_t> empty;
+  uint32_t key_handle;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_ULONG key_length = 32;
+  CK_ATTRIBUTE attributes[] = {
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+    {CKA_DECRYPT, &true_value, sizeof(true_value)},
+    {CKA_VALUE_LEN, &key_length, sizeof(key_length)}
+  };
+  vector<uint8_t> serialized;
+  ASSERT_TRUE(SerializeAttributes(attributes, 5, &serialized));
+  ASSERT_EQ(CKR_OK, chaps_->GenerateKey(session_id_,
+                                        CKM_AES_KEY_GEN,
+                                        empty,
+                                        serialized,
+                                        &key_handle));
+  EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, key_handle));
+}
+
+TEST_F(TestP11UserSession, GenerateKeyPair) {
+  vector<uint8_t> empty;
+  uint32_t public_key, private_key;
+  CK_ULONG bits = 1024;
+  CK_BYTE e[] = {1, 0, 1};
+  CK_BBOOL false_value = CK_FALSE;
+  CK_BBOOL true_value = CK_TRUE;
+  CK_ATTRIBUTE public_attributes[] = {
+    {CKA_ENCRYPT, &true_value, sizeof(true_value)},
+    {CKA_VERIFY, &true_value, sizeof(true_value)},
+    {CKA_WRAP, &false_value, sizeof(false_value)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_PRIVATE, &false_value, sizeof(false_value)},
+    {CKA_MODULUS_BITS, &bits, sizeof(bits)},
+    {CKA_PUBLIC_EXPONENT, e, sizeof(e)}
+  };
+  CK_BYTE id[] = {'A'};
+  CK_ATTRIBUTE private_attributes[] = {
+    {CKA_DECRYPT, &true_value, sizeof(true_value)},
+    {CKA_SIGN, &true_value, sizeof(true_value)},
+    {CKA_UNWRAP, &false_value, sizeof(false_value)},
+    {CKA_SENSITIVE, &true_value, sizeof(true_value)},
+    {CKA_TOKEN, &false_value, sizeof(false_value)},
+    {CKA_PRIVATE, &true_value, sizeof(true_value)},
+    {CKA_ID, &id, sizeof(id)},
+  };
+  vector<uint8_t> public_serialized, private_serialized;
+  ASSERT_TRUE(SerializeAttributes(public_attributes, 7, &public_serialized));
+  ASSERT_TRUE(SerializeAttributes(private_attributes, 7, &private_serialized));
+  ASSERT_EQ(CKR_OK, chaps_->GenerateKeyPair(session_id_,
+                                            CKM_RSA_PKCS_KEY_PAIR_GEN,
+                                            empty,
+                                            public_serialized,
+                                            private_serialized,
+                                            &public_key,
+                                            &private_key));
+  EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, public_key));
+  EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, private_key));
 }
 
 }  // namespace chaps

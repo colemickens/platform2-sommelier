@@ -2107,6 +2107,129 @@ TEST_F(TestEncrypt, DualNotInit) {
             C_DecryptVerifyUpdate(1, p, 3, p, ul));
 }
 
+// Generate Key Tests
+class TestGenKey : public TestAttributes {
+ protected:
+  void SetUp() {
+    TestAttributes::SetUp();
+    parameter_ = vector<uint8_t>(12, 0xAA);
+    CK_MECHANISM mechanism = {2, (void*)&parameter_.front(), parameter_.size()};
+    mechanism_ = mechanism;
+  }
+  void TearDown() {
+    TestAttributes::TearDown();
+  }
+  vector<uint8_t> parameter_;
+  CK_MECHANISM mechanism_;
+};
+
+TEST_F(TestGenKey, GenKeyOK) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GenerateKey(1, 2, parameter_, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GenerateKeyPair(2, 2,
+                                     parameter_,
+                                     attributes2_,
+                                     attributes3_,
+                                     _, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(2),
+                      SetArgumentPointee<6>(3),
+                      Return(CKR_OK)));
+
+  CK_OBJECT_HANDLE key;
+  EXPECT_EQ(CKR_OK,
+            C_GenerateKey(1, &mechanism_, attribute_template_, 2, &key));
+  EXPECT_EQ(key, 1);
+  CK_OBJECT_HANDLE keypair[2];
+  EXPECT_EQ(CKR_OK,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], &keypair[1]));
+  EXPECT_EQ(keypair[0], 2);
+  EXPECT_EQ(keypair[1], 3);
+}
+
+TEST_F(TestGenKey, GenKeyFail) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, GenerateKey(1, 2, parameter_, attributes_, _))
+      .WillOnce(Return(CKR_MECHANISM_INVALID));
+  EXPECT_CALL(proxy, GenerateKeyPair(2, 2,
+                                     parameter_,
+                                     attributes2_,
+                                     attributes3_,
+                                     _, _))
+      .WillOnce(Return(CKR_MECHANISM_INVALID));
+
+  CK_OBJECT_HANDLE key;
+  EXPECT_EQ(CKR_MECHANISM_INVALID,
+            C_GenerateKey(1, &mechanism_, attribute_template_, 2, &key));
+  CK_OBJECT_HANDLE keypair[2];
+  EXPECT_EQ(CKR_MECHANISM_INVALID,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], &keypair[1]));
+}
+
+TEST_F(TestGenKey, GenKeyBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_OBJECT_HANDLE key;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKey(1, NULL, attribute_template_, 2, &key));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKey(1, &mechanism_, NULL, 2, &key));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKey(1, &mechanism_, attribute_template_, 2, NULL));
+  CK_OBJECT_HANDLE keypair[2];
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKeyPair(2,
+                              NULL,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], &keypair[1]));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              NULL, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], &keypair[1]));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              NULL, 2,
+                              &keypair[0], &keypair[1]));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              NULL, &keypair[1]));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], NULL));
+}
+
+TEST_F(TestGenKey, GenKeyNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_OBJECT_HANDLE key;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_GenerateKey(1, &mechanism_, attribute_template_, 2, &key));
+  CK_OBJECT_HANDLE keypair[2];
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_GenerateKeyPair(2,
+                              &mechanism_,
+                              attribute_template2_, 2,
+                              attribute_template3_, 2,
+                              &keypair[0], &keypair[1]));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {
