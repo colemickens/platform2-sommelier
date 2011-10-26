@@ -30,14 +30,16 @@ Modem::Modem(const std::string &owner,
              const std::string &path,
              ControlInterface *control_interface,
              EventDispatcher *dispatcher,
-             Manager *manager)
+             Manager *manager,
+             mobile_provider_db *provider_db)
     : proxy_factory_(ProxyFactory::GetInstance()),
       owner_(owner),
       path_(path),
       task_factory_(this),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
-      manager_(manager) {
+      manager_(manager),
+      provider_db_(provider_db) {
   LOG(INFO) << "Modem created: " << owner << " at " << path;
 }
 
@@ -120,7 +122,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
                          interface_index,
                          type,
                          owner_,
-                         path_);
+                         path_,
+                         provider_db_);
 
   uint32 modem_state = Cellular::kModemStateUnknown;
   DBusProperties::GetUint32(properties, kPropertyState, &modem_state);

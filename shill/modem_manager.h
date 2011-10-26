@@ -14,6 +14,8 @@
 
 #include "shill/glib.h"
 
+struct mobile_provider_db;
+
 namespace shill {
 
 class ControlInterface;
@@ -31,7 +33,8 @@ class ModemManager {
                ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Manager *manager,
-               GLib *glib);
+               GLib *glib,
+               mobile_provider_db *provider_db);
   ~ModemManager();
 
   // Starts watching for and handling the DBus modem manager service.
@@ -91,6 +94,7 @@ class ModemManager {
   EventDispatcher *dispatcher_;
   Manager *manager_;
   GLib *glib_;
+  mobile_provider_db *provider_db_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
 };

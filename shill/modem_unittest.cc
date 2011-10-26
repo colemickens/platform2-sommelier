@@ -52,7 +52,12 @@ class ModemTest : public Test {
       : manager_(&control_interface_, &dispatcher_, &glib_),
         proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
-        modem_(kOwner, kPath, &control_interface_, &dispatcher_, &manager_) {}
+        modem_(kOwner,
+               kPath,
+               &control_interface_,
+               &dispatcher_,
+               &manager_,
+               NULL) {}
 
   virtual void SetUp();
   virtual void TearDown();

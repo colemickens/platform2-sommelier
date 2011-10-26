@@ -16,6 +16,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
+#include <mobile_provider.h>
 
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
@@ -106,7 +107,8 @@ Cellular::Cellular(ControlInterface *control_interface,
                    int interface_index,
                    Type type,
                    const string &owner,
-                   const string &path)
+                   const string &path,
+                   mobile_provider_db *provider_db)
     : Device(control_interface,
              dispatcher,
              manager,
@@ -119,6 +121,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
+      provider_db_(provider_db),
       task_factory_(this),
       allow_roaming_(false),
       scanning_(false),
@@ -374,7 +377,7 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetString(properties, "imei", &imei_);
   if (DBusProperties::GetString(properties, "imsi", &imsi_) &&
       type_ == kTypeGSM) {
-    // TODO(petkov): Set GSM provider.
+    // TODO(petkov): Set GSM provider based on IMSI and SPN.
   }
   DBusProperties::GetString(properties, "esn", &esn_);
   DBusProperties::GetString(properties, "mdn", &mdn_);
@@ -612,6 +615,7 @@ void Cellular::GetGSMRegistrationState() {
   gsm_.operator_name = info._3;
   VLOG(2) << "GSM Registration: " << gsm_.registration_state << ", "
           << gsm_.network_id << ", "  << gsm_.operator_name;
+  UpdateGSMOperatorInfo();
 }
 
 void Cellular::HandleNewRegistrationState() {
@@ -649,8 +653,6 @@ void Cellular::HandleNewRegistrationStateTask() {
   }
   service_->set_network_tech(network_tech);
   service_->set_roaming_state(GetRoamingStateString());
-  // TODO(petkov): For GSM, update the serving operator based on the network id
-  // and the mobile provider database.
 }
 
 void Cellular::GetModemSignalQuality() {
@@ -697,12 +699,12 @@ void Cellular::CreateService() {
   switch (type_) {
     case kTypeGSM:
       service_->set_activation_state(flimflam::kActivationStateActivated);
-      // TODO(petkov): Set serving operator.
+      UpdateServingOperator();
       break;
     case kTypeCDMA:
       service_->set_payment_url(cdma_.payment_url);
       service_->set_usage_url(cdma_.usage_url);
-      service_->set_serving_operator(home_provider_);
+      UpdateServingOperator();
       HandleNewCDMAActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
       break;
     default:
@@ -833,9 +835,6 @@ Stringmap Cellular::ParseScanResult(
       "current",
       "forbidden",
     };
-    // TODO(petkov): Do we need the finer level of granularity here or can we
-    // use the same granularity as GetNetworkTechnologyString (e.g.,
-    // HSDPA->"HSPA").
     static const char * const kTechnologyString[] = {
       flimflam::kNetworkTechnologyGsm,
       "GSM Compact",
@@ -874,8 +873,21 @@ Stringmap Cellular::ParseScanResult(
       LOG(WARNING) << "Unknown network property ignored: " << it->first;
     }
   }
-  // TODO(petkov): If long name is not set and there's a network ID, do a mobile
-  // database lookup (crosbug.com/19699).
+  // If the long name is not available but the network ID is, look up the long
+  // name in the mobile provider database.
+  if ((!ContainsKey(parsed, flimflam::kLongNameProperty) ||
+       parsed[flimflam::kLongNameProperty].empty()) &&
+      ContainsKey(parsed, flimflam::kNetworkIdProperty)) {
+    mobile_provider *provider =
+        mobile_provider_lookup_by_network(
+            provider_db_, parsed[flimflam::kNetworkIdProperty].c_str());
+    if (provider) {
+      const char *long_name = mobile_provider_get_name(provider);
+      if (long_name && *long_name) {
+        parsed[flimflam::kLongNameProperty] = long_name;
+      }
+    }
+  }
   return parsed;
 }
 
@@ -963,6 +975,7 @@ void Cellular::OnGSMRegistrationInfoChanged(uint32 status,
   gsm_.registration_state = status;
   gsm_.network_id = operator_code;
   gsm_.operator_name = operator_name;
+  UpdateGSMOperatorInfo();
   HandleNewRegistrationState();
 }
 
@@ -983,6 +996,47 @@ void Cellular::SetGSMAccessTechnology(uint32 access_technology) {
   gsm_.access_technology = access_technology;
   if (service_.get()) {
     service_->set_network_tech(GetNetworkTechnologyString());
+  }
+}
+
+void Cellular::UpdateGSMOperatorInfo() {
+  if (!gsm_.network_id.empty()) {
+    VLOG(2) << "Looking up network id: " << gsm_.network_id;
+    mobile_provider *provider =
+        mobile_provider_lookup_by_network(provider_db_,
+                                          gsm_.network_id.c_str());
+    if (provider) {
+      const char *provider_name = mobile_provider_get_name(provider);
+      if (provider_name && *provider_name) {
+        gsm_.operator_name = provider_name;
+        gsm_.operator_country = provider->country;
+        VLOG(2) << "Operator name: " << gsm_.operator_name
+                << ", country: " << gsm_.operator_country;
+      }
+    } else {
+      VLOG(2) << "GSM provider not found.";
+    }
+  }
+  UpdateServingOperator();
+}
+
+void Cellular::UpdateServingOperator() {
+  if (!service_.get()) {
+    return;
+  }
+  switch (type_) {
+    case kTypeGSM: {
+      Operator oper;
+      oper.SetName(gsm_.operator_name);
+      oper.SetCode(gsm_.network_id);
+      oper.SetCountry(gsm_.operator_country);
+      service_->set_serving_operator(oper);
+      break;
+    }
+    case kTypeCDMA:
+      service_->set_serving_operator(home_provider_);
+      break;
+    default: NOTREACHED();
   }
 }
 

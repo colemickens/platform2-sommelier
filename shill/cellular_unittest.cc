@@ -10,6 +10,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
+#include <mobile_provider.h>
 
 #include "shill/cellular_service.h"
 #include "shill/error.h"
@@ -49,7 +50,8 @@ class CellularPropertyTest : public PropertyStoreTest {
                              3,
                              Cellular::kTypeGSM,
                              "",
-                             "")) {}
+                             "",
+                             NULL)) {}
   virtual ~CellularPropertyTest() {}
 
  protected:
@@ -128,8 +130,14 @@ class CellularTest : public testing::Test {
                              3,
                              Cellular::kTypeGSM,
                              kDBusOwner,
-                             kDBusPath)) {}
-  virtual ~CellularTest() {}
+                             kDBusPath,
+                             NULL)),
+        provider_db_(NULL) {}
+
+  virtual ~CellularTest() {
+    mobile_provider_close_db(provider_db_);
+    provider_db_ = NULL;
+  }
 
   virtual void SetUp() {
     device_->proxy_factory_ = &proxy_factory_;
@@ -200,6 +208,7 @@ class CellularTest : public testing::Test {
   static const char kMSISDN[];
   static const char kPIN[];
   static const char kPUK[];
+  static const char kTestMobileProviderDBPath[];
 
   void StartRTNLHandler();
   void StopRTNLHandler();
@@ -222,6 +231,7 @@ class CellularTest : public testing::Test {
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   CellularRefPtr device_;
+  mobile_provider_db *provider_db_;
 };
 
 const char CellularTest::kTestDeviceName[] = "usb0";
@@ -235,6 +245,8 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kPIN[] = "9876";
 const char CellularTest::kPUK[] = "8765";
+const char CellularTest::kTestMobileProviderDBPath[] =
+    "provider_db_unittest.bfd";
 
 TEST_F(CellularTest, GetTypeString) {
   EXPECT_EQ("CellularTypeGSM", device_->GetTypeString());
@@ -414,6 +426,9 @@ TEST_F(CellularTest, StartCDMARegister) {
 
 TEST_F(CellularTest, StartGSMRegister) {
   device_->type_ = Cellular::kTypeGSM;
+  provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+  ASSERT_TRUE(provider_db_);
+  device_->provider_db_ = provider_db_;
   static const char kNetwork[] = "My Favorite GSM Network";
   const int kStrength = 70;
   device_->selected_network_ = kNetwork;
@@ -429,7 +444,9 @@ TEST_F(CellularTest, StartGSMRegister) {
       .WillOnce(Return(MM_MODEM_GSM_ACCESS_TECH_EDGE));
   EXPECT_CALL(*proxy_, GetInfo()).WillOnce(Return(ModemProxyInterface::Info()));
   ModemGSMNetworkProxyInterface::RegistrationInfo reg_info;
+  static const char kNetworkID[] = "22803";
   reg_info._1 = MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING;
+  reg_info._2 = kNetworkID;
   EXPECT_CALL(*gsm_network_proxy_, GetRegistrationInfo())
       .WillOnce(Return(reg_info));
   EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
@@ -446,6 +463,9 @@ TEST_F(CellularTest, StartGSMRegister) {
             device_->service_->network_tech());
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
+  EXPECT_EQ(kNetworkID, device_->service_->serving_operator().GetCode());
+  EXPECT_EQ("Orange", device_->service_->serving_operator().GetName());
+  EXPECT_EQ("ch", device_->service_->serving_operator().GetCountry());
 }
 
 TEST_F(CellularTest, StartConnected) {
@@ -843,6 +863,19 @@ TEST_F(CellularTest, ParseScanResult) {
             parsed[flimflam::kTechnologyProperty]);
 }
 
+TEST_F(CellularTest, ParseScanResultProviderLookup) {
+  provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+  ASSERT_TRUE(provider_db_);
+  device_->provider_db_ = provider_db_;
+  static const char kID[] = "310210";
+  ModemGSMNetworkProxyInterface::ScanResult result;
+  result[Cellular::kNetworkPropertyID] = kID;
+  Stringmap parsed = device_->ParseScanResult(result);
+  EXPECT_EQ(2, parsed.size());
+  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
+  EXPECT_EQ("T-Mobile", parsed[flimflam::kLongNameProperty]);
+}
+
 TEST_F(CellularTest, Activate) {
   Error error;
   device_->type_ = Cellular::kTypeCDMA;
@@ -900,6 +933,20 @@ TEST_F(CellularTest, SetGSMAccessTechnology) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, device_->gsm_.access_technology);
   EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
             device_->service_->network_tech());
+}
+
+TEST_F(CellularTest, UpdateGSMOperatorInfo) {
+  static const char kOperatorName[] = "Swisscom";
+  provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+  ASSERT_TRUE(provider_db_);
+  device_->provider_db_ = provider_db_;
+  device_->gsm_.network_id = "22801";
+  device_->service_ = new CellularService(
+      &control_interface_, &dispatcher_, &manager_, device_);
+  device_->UpdateGSMOperatorInfo();
+  EXPECT_EQ(kOperatorName, device_->gsm_.operator_name);
+  EXPECT_EQ("ch", device_->gsm_.operator_country);
+  EXPECT_EQ(kOperatorName, device_->service_->serving_operator().GetName());
 }
 
 }  // namespace shill

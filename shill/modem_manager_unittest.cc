@@ -33,7 +33,8 @@ class ModemManagerTest : public Test {
                        &control_interface_,
                        &dispatcher_,
                        &manager_,
-                       &glib_),
+                       &glib_,
+                       NULL),
         proxy_(new MockModemManagerProxy()),
         proxy_factory_(this) {
   }

@@ -10,6 +10,8 @@
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+struct mobile_provider_db;
+
 namespace shill {
 
 class ControlInterface;
@@ -37,6 +39,7 @@ class ModemInfo {
 
   static const char kCromoService[];
   static const char kCromoPath[];
+  static const char kMobileProviderDBPath[];
 
   // Registers a new ModemManager service handler and starts it.
   void RegisterModemManager(const std::string &service,
@@ -48,6 +51,9 @@ class ModemInfo {
   EventDispatcher *dispatcher_;
   Manager *manager_;
   GLib *glib_;
+
+  std::string provider_db_path_;  // For testing.
+  mobile_provider_db *provider_db_;  // Database instance owned by |this|.
 
   DISALLOW_COPY_AND_ASSIGN(ModemInfo);
 };

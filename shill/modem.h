@@ -15,6 +15,8 @@
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/refptr_types.h"
 
+struct mobile_provider_db;
+
 namespace shill {
 
 class ControlInterface;
@@ -33,7 +35,8 @@ class Modem : public DBusPropertiesProxyDelegate {
         const std::string &path,
         ControlInterface *control_interface,
         EventDispatcher *dispatcher,
-        Manager *manager);
+        Manager *manager,
+        mobile_provider_db *provider_db);
   ~Modem();
 
   // Asynchronously initializes support for the modem, possibly constructing a
@@ -88,6 +91,7 @@ class Modem : public DBusPropertiesProxyDelegate {
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Manager *manager_;
+  mobile_provider_db *provider_db_;
 
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };

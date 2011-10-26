@@ -12,7 +12,7 @@ DBUSXX_XML2CPP = dbusxx-xml2cpp
 
 # libevent, gdk and gtk-2.0 are needed to leverage chrome's MessageLoop
 # TODO(cmasone): explore if newer versions of libbase let us avoid this.
-BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares
+BASE_LIBS = -lbase -lchromeos -levent -lpthread -lrt -lcares -lmobile-provider
 BASE_INCLUDE_DIRS = -I..
 BASE_LIB_DIRS =
 

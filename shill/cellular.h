@@ -20,6 +20,8 @@
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 
+struct mobile_provider_db;
+
 namespace shill {
 
 class CellularCapability;
@@ -117,7 +119,8 @@ class Cellular : public Device,
            int interface_index,
            Type type,
            const std::string &owner,
-           const std::string &path);
+           const std::string &path,
+           mobile_provider_db *provider_db);
   virtual ~Cellular();
 
   // Asynchronously connects the modem to the network. Populates |error| on
@@ -195,6 +198,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
   FRIEND_TEST(CellularTest, ParseScanResult);
+  FRIEND_TEST(CellularTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularTest, RegisterOnNetwork);
   FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, RequirePIN);
@@ -207,6 +211,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, UnblockPIN);
   FRIEND_TEST(CellularTest, UnblockPINError);
+  FRIEND_TEST(CellularTest, UpdateGSMOperatorInfo);
 
   struct CDMA {
     CDMA();
@@ -227,6 +232,7 @@ class Cellular : public Device,
     uint32 access_technology;
     std::string network_id;
     std::string operator_name;
+    std::string operator_country;
     std::string spn;
   };
 
@@ -307,6 +313,13 @@ class Cellular : public Device,
 
   void HandleNewCDMAActivationState(uint32 error);
 
+  // Updates the GSM operator name and country based on a newly obtained network
+  // id.
+  void UpdateGSMOperatorInfo();
+
+  // Updates the serving operator on the active service.
+  void UpdateServingOperator();
+
   Stringmap ParseScanResult(
       const ModemGSMNetworkProxyInterface::ScanResult &result);
 
@@ -347,6 +360,8 @@ class Cellular : public Device,
   scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
   scoped_ptr<ModemGSMCardProxyInterface> gsm_card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
+
+  mobile_provider_db *provider_db_;
 
   CDMA cdma_;
   GSM gsm_;

@@ -22,7 +22,8 @@ ModemManager::ModemManager(const string &service,
                            ControlInterface *control_interface,
                            EventDispatcher *dispatcher,
                            Manager *manager,
-                           GLib *glib)
+                           GLib *glib,
+                           mobile_provider_db *provider_db)
     : proxy_factory_(ProxyFactory::GetInstance()),
       service_(service),
       path_(path),
@@ -30,7 +31,8 @@ ModemManager::ModemManager(const string &service,
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       manager_(manager),
-      glib_(glib) {}
+      glib_(glib),
+      provider_db_(provider_db) {}
 
 ModemManager::~ModemManager() {
   Stop();
@@ -100,8 +102,12 @@ void ModemManager::AddModem(const std::string &path) {
     LOG(INFO) << "Modem already exists; ignored.";
     return;
   }
-  shared_ptr<Modem> modem(
-      new Modem(owner_, path, control_interface_, dispatcher_, manager_));
+  shared_ptr<Modem> modem(new Modem(owner_,
+                                    path,
+                                    control_interface_,
+                                    dispatcher_,
+                                    manager_,
+                                    provider_db_));
   modems_[path] = modem;
   modem->Init();
 }
