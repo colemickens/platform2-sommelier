@@ -309,6 +309,30 @@ public:
       const std::vector<uint8_t>& private_attributes,
       uint32_t* public_key_handle,
       uint32_t* private_key_handle) = 0;
+  // PKCS #11 v2.20 section 11.14 page 178.
+  virtual uint32_t WrapKey(uint32_t session_id,
+                           uint32_t mechanism_type,
+                           const std::vector<uint8_t>& mechanism_parameter,
+                           uint32_t wrapping_key_handle,
+                           uint32_t key_handle,
+                           uint32_t max_out_length,
+                           uint32_t* actual_out_length,
+                           std::vector<uint8_t>* wrapped_key) = 0;
+  // PKCS #11 v2.20 section 11.14 page 180.
+  virtual uint32_t UnwrapKey(uint32_t session_id,
+                             uint32_t mechanism_type,
+                             const std::vector<uint8_t>& mechanism_parameter,
+                             uint32_t wrapping_key_handle,
+                             const std::vector<uint8_t>& wrapped_key,
+                             const std::vector<uint8_t>& attributes,
+                             uint32_t* key_handle) = 0;
+  // PKCS #11 v2.20 section 11.14 page 182.
+  virtual uint32_t DeriveKey(uint32_t session_id,
+                             uint32_t mechanism_type,
+                             const std::vector<uint8_t>& mechanism_parameter,
+                             uint32_t base_key_handle,
+                             const std::vector<uint8_t>& attributes,
+                             uint32_t* key_handle) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

@@ -1180,4 +1180,97 @@ uint32_t ChapsServiceRedirect::GenerateKeyPair(
   return CKR_OK;
 }
 
+uint32_t ChapsServiceRedirect::WrapKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t wrapping_key_handle,
+    uint32_t key_handle,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    vector<uint8_t>* wrapped_key) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
+                          CKR_ARGUMENTS_BAD);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  scoped_array<CK_BYTE> out_bytes(NULL);
+  if (max_out_length) {
+    out_bytes.reset(new CK_BYTE[max_out_length]);
+    CHECK(out_bytes.get());
+  }
+  CK_ULONG length = max_out_length;
+  uint32_t result = functions_->C_WrapKey(session_id,
+                                          &mechanism,
+                                          wrapping_key_handle,
+                                          key_handle,
+                                          out_bytes.get(),
+                                          &length);
+  // Provide the length before checking the result. This handles cases like
+  // CKR_BUFFER_TOO_SMALL.
+  *actual_out_length = static_cast<uint32_t>(length);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *wrapped_key = ConvertByteBufferToVector(out_bytes.get(), length);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::UnwrapKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t wrapping_key_handle,
+    const vector<uint8_t>& wrapped_key,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  Attributes parsed_attributes;
+  if (!parsed_attributes.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&wrapped_key.front()));
+  uint32_t result = functions_->C_UnwrapKey(session_id,
+                                            &mechanism,
+                                            wrapping_key_handle,
+                                            in_bytes,
+                                            wrapped_key.size(),
+                                            parsed_attributes.attributes(),
+                                            parsed_attributes.num_attributes(),
+                                            PreservedUint32_t(key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::DeriveKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t base_key_handle,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  CK_MECHANISM mechanism;
+  mechanism.mechanism = static_cast<CK_MECHANISM_TYPE>(mechanism_type);
+  mechanism.pParameter = const_cast<uint8_t*>(&mechanism_parameter.front());
+  mechanism.ulParameterLen = mechanism_parameter.size();
+  Attributes parsed_attributes;
+  if (!parsed_attributes.Parse(attributes))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = functions_->C_DeriveKey(session_id,
+                                            &mechanism,
+                                            base_key_handle,
+                                            parsed_attributes.attributes(),
+                                            parsed_attributes.num_attributes(),
+                                            PreservedUint32_t(key_handle));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
 }  // namespace

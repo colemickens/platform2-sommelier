@@ -1093,4 +1093,86 @@ uint32_t ChapsProxyImpl::GenerateKeyPair(
   return result;
 }
 
+uint32_t ChapsProxyImpl::WrapKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t wrapping_key_handle,
+    uint32_t key_handle,
+    uint32_t max_out_length,
+    uint32_t* actual_out_length,
+    vector<uint8_t>* wrapped_key) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
+                          CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->WrapKey(session_id,
+                    mechanism_type,
+                    mechanism_parameter,
+                    wrapping_key_handle,
+                    key_handle,
+                    max_out_length,
+                    *actual_out_length,
+                    *wrapped_key,
+                    result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::UnwrapKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t wrapping_key_handle,
+    const vector<uint8_t>& wrapped_key,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->UnwrapKey(session_id,
+                      mechanism_type,
+                      mechanism_parameter,
+                      wrapping_key_handle,
+                      wrapped_key,
+                      attributes,
+                      *key_handle,
+                      result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::DeriveKey(
+    uint32_t session_id,
+    uint32_t mechanism_type,
+    const vector<uint8_t>& mechanism_parameter,
+    uint32_t base_key_handle,
+    const vector<uint8_t>& attributes,
+    uint32_t* key_handle) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->DeriveKey(session_id,
+                      mechanism_type,
+                      mechanism_parameter,
+                      base_key_handle,
+                      attributes,
+                      *key_handle,
+                      result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace

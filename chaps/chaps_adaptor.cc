@@ -654,4 +654,58 @@ void ChapsAdaptor::GenerateKeyPair(
                                      &private_key_handle);
 }
 
+void ChapsAdaptor::WrapKey(const uint32_t& session_id,
+                           const uint32_t& mechanism_type,
+                           const vector<uint8_t>& mechanism_parameter,
+                           const uint32_t& wrapping_key_handle,
+                           const uint32_t& key_handle,
+                           const uint32_t& max_out_length,
+                           uint32_t& actual_out_length,
+                           vector<uint8_t>& wrapped_key,
+                           uint32_t& result,
+                           ::DBus::Error& /*error*/) {
+  result = service_->WrapKey(session_id,
+                             mechanism_type,
+                             mechanism_parameter,
+                             wrapping_key_handle,
+                             key_handle,
+                             max_out_length,
+                             &actual_out_length,
+                             &wrapped_key);
+}
+
+void ChapsAdaptor::UnwrapKey(const uint32_t& session_id,
+                             const uint32_t& mechanism_type,
+                             const vector<uint8_t>& mechanism_parameter,
+                             const uint32_t& wrapping_key_handle,
+                             const vector<uint8_t>& wrapped_key,
+                             const vector<uint8_t>& attributes,
+                             uint32_t& key_handle,
+                             uint32_t& result,
+                             ::DBus::Error& /*error*/) {
+  result = service_->UnwrapKey(session_id,
+                               mechanism_type,
+                               mechanism_parameter,
+                               wrapping_key_handle,
+                               wrapped_key,
+                               attributes,
+                               &key_handle);
+}
+
+void ChapsAdaptor::DeriveKey(const uint32_t& session_id,
+                             const uint32_t& mechanism_type,
+                             const vector<uint8_t>& mechanism_parameter,
+                             const uint32_t& base_key_handle,
+                             const vector<uint8_t>& attributes,
+                             uint32_t& key_handle,
+                             uint32_t& result,
+                             ::DBus::Error& /*error*/) {
+  result = service_->DeriveKey(session_id,
+                               mechanism_type,
+                               mechanism_parameter,
+                               base_key_handle,
+                               attributes,
+                               &key_handle);
+}
+
 }  // namespace

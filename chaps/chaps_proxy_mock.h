@@ -223,6 +223,27 @@ public:
                                           const std::vector<uint8_t>&,
                                           uint32_t*,
                                           uint32_t*));
+  MOCK_METHOD8(WrapKey, uint32_t (uint32_t,
+                                  uint32_t,
+                                  const std::vector<uint8_t>&,
+                                  uint32_t,
+                                  uint32_t,
+                                  uint32_t,
+                                  uint32_t*,
+                                  std::vector<uint8_t>*));
+  MOCK_METHOD7(UnwrapKey, uint32_t (uint32_t,
+                                    uint32_t,
+                                    const std::vector<uint8_t>&,
+                                    uint32_t,
+                                    const std::vector<uint8_t>&,
+                                    const std::vector<uint8_t>&,
+                                    uint32_t*));
+  MOCK_METHOD6(DeriveKey, uint32_t (uint32_t,
+                                    uint32_t,
+                                    const std::vector<uint8_t>&,
+                                    uint32_t,
+                                    const std::vector<uint8_t>&,
+                                    uint32_t*));
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsProxyMock);

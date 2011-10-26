@@ -285,20 +285,7 @@ TEST_F(TestP11, InitToken) {
   string label = "test";
   ASSERT_EQ(CKR_OK, chaps_->CloseAllSessions(0));
   EXPECT_NE(CKR_OK, chaps_->InitToken(0, NULL, label));
-  uint32_t result = chaps_->InitToken(0, &so_pin_, label);
-  if (result == CKR_PIN_INCORRECT) {
-    string alt_pin = "87654321";
-    ASSERT_EQ(CKR_OK, chaps_->InitToken(0, &alt_pin, label));
-    uint32_t session = 0;
-    ASSERT_EQ(CKR_OK, chaps_->OpenSession(0, CKF_SERIAL_SESSION|CKF_RW_SESSION,
-                                          &session));
-    ASSERT_EQ(CKR_OK, chaps_->Login(session, CKU_SO, &alt_pin));
-    ASSERT_EQ(CKR_OK, chaps_->SetPIN(session, &alt_pin, &so_pin_));
-    ASSERT_EQ(CKR_OK, chaps_->CloseSession(session));
-  } else {
-    ASSERT_EQ(CKR_OK, result);
-  }
-
+  ASSERT_EQ(CKR_OK, chaps_->InitToken(0, &so_pin_, label);
   // Put the token back in a usable state. This is required if we're testing on
   // a live token.
   uint32_t session = 0;
@@ -827,6 +814,30 @@ TEST_F(TestP11UserSession, GenerateKeyPair) {
                                             &private_key));
   EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, public_key));
   EXPECT_EQ(CKR_OK, chaps_->DestroyObject(session_id_, private_key));
+}
+
+TEST_F(TestP11PublicSession, WrapKey) {
+  uint32_t not_used;
+  vector<uint8_t> empty;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->WrapKey(session_id_,
+                                               CKM_RSA_PKCS, empty,
+                                               0, 1,
+                                               1000, &not_used,
+                                               NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->UnwrapKey(session_id_,
+                                                 CKM_RSA_PKCS, empty,
+                                                 0, empty,
+                                                 empty, NULL));
+}
+
+TEST_F(TestP11PublicSession, DeriveKey) {
+  vector<uint8_t> empty;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, chaps_->DeriveKey(session_id_,
+                                                 CKM_SHA1_KEY_DERIVATION,
+                                                 empty,
+                                                 1,
+                                                 empty,
+                                                 NULL));
 }
 
 }  // namespace chaps

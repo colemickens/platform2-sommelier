@@ -2230,6 +2230,109 @@ TEST_F(TestGenKey, GenKeyNotInit) {
                               &keypair[0], &keypair[1]));
 }
 
+// Wrap / Derive Key Tests
+TEST_F(TestGenKey, WrapKeyOK) {
+  ChapsProxyMock proxy(true);
+  vector<uint8_t> wrapped(10, 0xAA);
+  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 10, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(10),
+                      SetArgumentPointee<7>(wrapped),
+                      Return(CKR_OK)));
+  EXPECT_CALL(proxy, UnwrapKey(1, 2, parameter_, 3, wrapped, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(10), Return(CKR_OK)));
+  EXPECT_CALL(proxy, DeriveKey(1, 2, parameter_, 3, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(11), Return(CKR_OK)));
+  CK_BYTE buffer[10];
+  CK_ULONG length = 10;
+  EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, buffer, &length));
+  EXPECT_EQ(length, wrapped.size());
+  EXPECT_EQ(0, memcmp(buffer, &wrapped.front(), length));
+  CK_OBJECT_HANDLE key = 0;
+  EXPECT_EQ(CKR_OK, C_UnwrapKey(1,
+                                &mechanism_,
+                                3,
+                                &wrapped.front(),
+                                wrapped.size(),
+                                attribute_template_, 2,
+                                &key));
+  EXPECT_EQ(key, 10);
+  EXPECT_EQ(CKR_OK, C_DeriveKey(1,
+                                &mechanism_,
+                                3,
+                                attribute_template_, 2,
+                                &key));
+  EXPECT_EQ(key, 11);
+}
+
+TEST_F(TestGenKey, WrapKeyFail) {
+  ChapsProxyMock proxy(true);
+  vector<uint8_t> wrapped(10, 0xAA);
+  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 10, _, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, UnwrapKey(1, 2, parameter_, 3, wrapped, attributes_, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, DeriveKey(1, 2, parameter_, 3, attributes_, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  CK_BYTE buffer[10];
+  CK_ULONG length = 10;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_WrapKey(1,
+                                          &mechanism_,
+                                          3, 4,
+                                          buffer, &length));
+  CK_OBJECT_HANDLE key = 0;
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_UnwrapKey(1,
+                                &mechanism_,
+                                3,
+                                &wrapped.front(),
+                                wrapped.size(),
+                                attribute_template_, 2,
+                                &key));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_DeriveKey(1,
+                                &mechanism_,
+                                3,
+                                attribute_template_, 2,
+                                &key));
+}
+
+TEST_F(TestGenKey, WrapKeyLengthOnly) {
+  ChapsProxyMock proxy(true);
+  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 0, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(10),
+                      Return(CKR_OK)));
+  CK_ULONG length = 5;
+  EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, NULL, &length));
+  EXPECT_EQ(length, 10);
+}
+
+TEST_F(TestGenKey, WrapKeyBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE b = 0;
+  CK_ULONG ul = 0;
+  CK_OBJECT_HANDLE h = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_WrapKey(1, NULL, 2, 3, NULL, &ul));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_WrapKey(1, &mechanism_, 2, 3, NULL, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_UnwrapKey(1, NULL, 2, &b, 3, NULL, 0, &h));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_UnwrapKey(1, &mechanism_, 2, NULL, 3, NULL, 0, &h));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            C_UnwrapKey(1, &mechanism_, 2, &b, 3, NULL, 0, NULL));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DeriveKey(1, NULL, 2, NULL, 0, &h));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_DeriveKey(1, &mechanism_, 2, NULL, 0, NULL));
+}
+
+TEST_F(TestGenKey, WrapKeyNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE b = 0;
+  CK_ULONG ul = 0;
+  CK_OBJECT_HANDLE h = 0;
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_WrapKey(1, &mechanism_, 2, 3, NULL, &ul));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_UnwrapKey(1, &mechanism_, 2, &b, 3, NULL, 0, &h));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED,
+            C_DeriveKey(1, &mechanism_, 2, NULL, 0, &h));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

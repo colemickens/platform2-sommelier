@@ -641,6 +641,48 @@
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
     </method>
+
+    <!-- PKCS #11 v2.20 section 11.14 page 178. -->
+    <method name="WrapKey">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="wrapping_key_handle" direction="in"/>
+      <arg type="u" name="key_handle" direction="in"/>
+      <arg type="u" name="max_out_length" direction="in"/>
+      <arg type="u" name="actual_out_length" direction="out"/>
+      <arg type="ay" name="wrapped_key" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.14 page 180. -->
+    <method name="UnwrapKey">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="wrapping_key_handle" direction="in"/>
+      <arg type="ay" name="wrapped_key" direction="in"/>
+      <arg type="ay" name="attributes" direction="in"/>
+      <arg type="u" name="key_handle" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <!-- PKCS #11 v2.20 section 11.14 page 182. -->
+    <method name="DeriveKey">
+      <arg type="u" name="session_id" direction="in"/>
+      <arg type="u" name="mechanism_type" direction="in"/>
+      <arg type="ay" name="mechanism_parameter" direction="in"/>
+      <arg type="u" name="base_key_handle" direction="in"/>
+      <arg type="ay" name="attributes" direction="in"/>
+      <arg type="u" name="key_handle" direction="out"/>
+      <arg type="u" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
   </interface>
 </node>
 

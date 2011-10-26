@@ -337,6 +337,33 @@ public:
       uint32_t& private_key_handle,
       uint32_t& result,
       ::DBus::Error& error);
+  virtual void WrapKey(const uint32_t& session_id,
+                       const uint32_t& mechanism_type,
+                       const std::vector<uint8_t>& mechanism_parameter,
+                       const uint32_t& wrapping_key_handle,
+                       const uint32_t& key_handle,
+                       const uint32_t& max_out_length,
+                       uint32_t& actual_out_length,
+                       std::vector<uint8_t>& wrapped_key,
+                       uint32_t& result,
+                       ::DBus::Error& error);
+  virtual void UnwrapKey(const uint32_t& session_id,
+                         const uint32_t& mechanism_type,
+                         const std::vector<uint8_t>& mechanism_parameter,
+                         const uint32_t& wrapping_key_handle,
+                         const std::vector<uint8_t>& wrapped_key,
+                         const std::vector<uint8_t>& attributes,
+                         uint32_t& key_handle,
+                         uint32_t& result,
+                         ::DBus::Error& error);
+  virtual void DeriveKey(const uint32_t& session_id,
+                         const uint32_t& mechanism_type,
+                         const std::vector<uint8_t>& mechanism_parameter,
+                         const uint32_t& base_key_handle,
+                         const std::vector<uint8_t>& attributes,
+                         uint32_t& key_handle,
+                         uint32_t& result,
+                         ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

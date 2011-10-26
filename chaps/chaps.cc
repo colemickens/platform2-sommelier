@@ -1278,3 +1278,94 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.14 page 178.
+CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
+                CK_MECHANISM_PTR pMechanism,
+                CK_OBJECT_HANDLE hWrappingKey,
+                CK_OBJECT_HANDLE hKey,
+                CK_BYTE_PTR pWrappedKey,
+                CK_ULONG_PTR pulWrappedKeyLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pMechanism || !pulWrappedKeyLen)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t data_out_length;
+  uint32_t max_out_length =
+      pWrappedKey ? static_cast<uint32_t>(*pulWrappedKeyLen) : 0;
+  uint32_t result = g_proxy->WrapKey(
+      hSession,
+      pMechanism->mechanism,
+      chaps::ConvertByteBufferToVector(
+          reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
+          pMechanism->ulParameterLen),
+      hWrappingKey,
+      hKey,
+      max_out_length,
+      &data_out_length,
+      &data_out);
+  result = HandlePKCS11Output(result,
+                              data_out,
+                              data_out_length,
+                              pWrappedKey,
+                              pulWrappedKeyLen);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.14 page 180.
+CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
+                  CK_MECHANISM_PTR pMechanism,
+                  CK_OBJECT_HANDLE hUnwrappingKey,
+                  CK_BYTE_PTR pWrappedKey,
+                  CK_ULONG ulWrappedKeyLen,
+                  CK_ATTRIBUTE_PTR pTemplate,
+                  CK_ULONG ulAttributeCount,
+                  CK_OBJECT_HANDLE_PTR phKey) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pMechanism || !pWrappedKey || !phKey)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulAttributeCount);
+  vector<uint8_t> serialized;
+  if (!attributes.Serialize(&serialized))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = g_proxy->UnwrapKey(
+      hSession,
+      pMechanism->mechanism,
+      chaps::ConvertByteBufferToVector(
+          reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
+          pMechanism->ulParameterLen),
+      hUnwrappingKey,
+      chaps::ConvertByteBufferToVector(pWrappedKey, ulWrappedKeyLen),
+      serialized,
+      chaps::PreservedCK_ULONG(phKey));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.14 page 182.
+CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
+                  CK_MECHANISM_PTR pMechanism,
+                  CK_OBJECT_HANDLE hBaseKey,
+                  CK_ATTRIBUTE_PTR pTemplate,
+                  CK_ULONG ulAttributeCount,
+                  CK_OBJECT_HANDLE_PTR phKey) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pMechanism || !phKey)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  chaps::Attributes attributes(pTemplate, ulAttributeCount);
+  vector<uint8_t> serialized;
+  if (!attributes.Serialize(&serialized))
+    LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
+  uint32_t result = g_proxy->DeriveKey(
+      hSession,
+      pMechanism->mechanism,
+      chaps::ConvertByteBufferToVector(
+          reinterpret_cast<CK_BYTE_PTR>(pMechanism->pParameter),
+          pMechanism->ulParameterLen),
+      hBaseKey,
+      serialized,
+      chaps::PreservedCK_ULONG(phKey));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
