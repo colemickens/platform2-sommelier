@@ -496,6 +496,7 @@ TEST_F(CellularTest, StartLinked) {
 
 TEST_F(CellularTest, InitProxiesCDMA) {
   device_->type_ = Cellular::kTypeCDMA;
+  device_->InitCapability();
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
@@ -506,6 +507,7 @@ TEST_F(CellularTest, InitProxiesCDMA) {
 
 TEST_F(CellularTest, InitProxiesGSM) {
   device_->type_ = Cellular::kTypeGSM;
+  device_->InitCapability();
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());

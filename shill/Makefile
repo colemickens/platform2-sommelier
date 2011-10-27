@@ -72,6 +72,9 @@ DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 SHILL_OBJS = \
 	byte_string.o \
 	cellular.o \
+	cellular_capability.o \
+	cellular_capability_cdma.o \
+	cellular_capability_gsm.o \
 	cellular_service.o \
 	connection.o \
 	crypto_des_cbc.o \

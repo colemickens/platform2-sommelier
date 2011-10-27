@@ -17,6 +17,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
 
+#include "shill/cellular_capability_cdma.h"
+#include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_service.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -302,6 +304,7 @@ void Cellular::SetState(State state) {
 void Cellular::Start() {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
   Device::Start();
+  InitCapability();  // For now, only a single capability is supported.
   InitProxies();
   EnableModem();
   if (type_ == kTypeGSM) {
@@ -317,6 +320,7 @@ void Cellular::Start() {
 }
 
 void Cellular::Stop() {
+  capability_.reset();
   proxy_.reset();
   simple_proxy_.reset();
   cdma_proxy_.reset();
@@ -328,26 +332,25 @@ void Cellular::Stop() {
   Device::Stop();
 }
 
+void Cellular::InitCapability() {
+  VLOG(2) << __func__;
+  switch (type_) {
+    case kTypeGSM:
+      capability_.reset(new CellularCapabilityGSM(this));
+      break;
+    case kTypeCDMA:
+      capability_.reset(new CellularCapabilityCDMA(this));
+      break;
+    default: NOTREACHED();
+  }
+}
+
 void Cellular::InitProxies() {
   VLOG(2) << __func__;
   proxy_.reset(proxy_factory_->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
       proxy_factory_->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
-  switch (type_) {
-    case kTypeGSM:
-      gsm_card_proxy_.reset(
-          proxy_factory_->CreateModemGSMCardProxy(
-              this, dbus_path_, dbus_owner_));
-      gsm_network_proxy_.reset(
-          proxy_factory_->CreateModemGSMNetworkProxy(
-              this, dbus_path_, dbus_owner_));
-      break;
-    case kTypeCDMA:
-      cdma_proxy_.reset(
-          proxy_factory_->CreateModemCDMAProxy(this, dbus_path_, dbus_owner_));
-      break;
-    default: NOTREACHED();
-  }
+  capability_->InitProxies();
 }
 
 void Cellular::EnableModem() {

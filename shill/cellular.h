@@ -22,6 +22,7 @@
 
 namespace shill {
 
+class CellularCapability;
 class Error;
 class ModemSimpleProxyInterface;
 class ProxyFactory;
@@ -132,6 +133,21 @@ class Cellular : public Device,
 
   const SimLockStatus &sim_lock_status() const { return sim_lock_status_; }
   void set_sim_lock_status(const SimLockStatus &s) { sim_lock_status_ = s; }
+
+  const std::string &dbus_owner() const { return dbus_owner_; }
+  const std::string &dbus_path() const { return dbus_path_; }
+
+  ProxyFactory *proxy_factory() const { return proxy_factory_; }
+
+  void set_modem_cdma_proxy(ModemCDMAProxyInterface *proxy) {
+    cdma_proxy_.reset(proxy);
+  }
+  void set_modem_gsm_card_proxy(ModemGSMCardProxyInterface *proxy) {
+    gsm_card_proxy_.reset(proxy);
+  }
+  void set_modem_gsm_network_proxy(ModemGSMNetworkProxyInterface *proxy) {
+    gsm_network_proxy_.reset(proxy);
+  }
 
   void SetGSMAccessTechnology(uint32 access_technology);
 
@@ -244,6 +260,7 @@ class Cellular : public Device,
       StrIntPair(Cellular::*get)(void),
       void(Cellular::*set)(const StrIntPair&, Error *));
 
+  void InitCapability();
   void InitProxies();
 
   std::string GetTypeString() const;
@@ -320,6 +337,8 @@ class Cellular : public Device,
   Type type_;
   State state_;
   ModemState modem_state_;
+
+  scoped_ptr<CellularCapability> capability_;
 
   const std::string dbus_owner_;  // ModemManager.Modem
   const std::string dbus_path_;  // ModemManager.Modem
