@@ -38,13 +38,19 @@ bool ResolutionSelector::FindBestResolutions(
     Mode* lcd_resolution,
     Mode* external_resolution,
     Mode* screen_resolution) {
-  DCHECK(!lcd_modes.empty());
+
+  // On desktop variants, it's legit to have no display at all.
+  if (lcd_modes.empty()) {
+    LOG(INFO) << "We have no display at all";
+    return true;
+  }
 
   // If there's no external display, just use the highest resolution
   // available from the LCD.
   if (external_modes.empty()) {
     *lcd_resolution = *screen_resolution = lcd_modes[0];
     external_resolution->name.clear();
+    LOG(INFO) << "We have no external display";
     return true;
   }
 

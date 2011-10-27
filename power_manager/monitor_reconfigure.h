@@ -10,6 +10,7 @@
 #include <X11/extensions/Xrandr.h>
 
 #include <map>
+#include <set>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -46,22 +47,31 @@ class MonitorReconfigure {
   void SetProjectionCallback(void (*func)(void*), void* data);
 
  private:
-  // Initializes the |lcd_output_| and |external_output_| members.
-  bool DetermineOutputs();
+
+  // Get the XRRModeInfo for |mode|.
+  XRRModeInfo* GetModeInfo(RRMode mode);
+
+  // Find a usable Crtc, i.e. one in |crtcs| but not in |used_crtcs|.
+  RRCrtc FindUsableCrtc(const std::set<RRCrtc>& used_crtcs,
+                        const RRCrtc* crtcs,
+                        int ncrtcs);
+
+  // Initializes the |usable_outputs_| and |usable_outputs_info_| members.
+  void DetermineOutputs();
 
   // Sorts |output_info|'s modes by decreasing number of pixels, storing the
   // results in |modes_out|.
   void SortModesByResolution(RROutput output,
                              std::vector<ResolutionSelector::Mode>* modes_out);
 
-  // Set the resolution for a particular device or for the screen.
-  bool SetDeviceResolution(RROutput output,
-                           const XRROutputInfo* output_info,
-                           const ResolutionSelector::Mode& resolution);
+  // Set the resolution for the screen.
   bool SetScreenResolution(const ResolutionSelector::Mode& resolution);
 
-  // Disable output to a device.
-  bool DisableDevice(const XRROutputInfo* output_info);
+  // Disables all disconnected outputs.
+  void DisableDisconnectedOutputs();
+
+  // Enables all connected and usable outputs.
+  void EnableUsableOutputs(const std::vector<RRMode>& resolutions);
 
   // Callback to watch for xrandr hotplug events.
   SIGNAL_CALLBACK_2(MonitorReconfigure, GdkFilterReturn, GdkEventFilter,
@@ -79,11 +89,9 @@ class MonitorReconfigure {
   Window window_;
   XRRScreenResources* screen_info_;
 
-  RROutput lcd_output_;
-  XRROutputInfo* lcd_output_info_;
-
-  RROutput external_output_;
-  XRROutputInfo* external_output_info_;
+  // The list of usable (connected) outputs and their info.
+  std::vector<RROutput> usable_outputs_;
+  std::vector<XRROutputInfo*> usable_outputs_info_;
 
   // Are we projecting?
   bool is_projecting_;
