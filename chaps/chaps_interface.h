@@ -333,6 +333,13 @@ public:
                              uint32_t base_key_handle,
                              const std::vector<uint8_t>& attributes,
                              uint32_t* key_handle) = 0;
+  // PKCS #11 v2.20 section 11.15 page 184.
+  virtual uint32_t SeedRandom(uint32_t session_id,
+                              const std::vector<uint8_t>& seed) = 0;
+  // PKCS #11 v2.20 section 11.15 page 184.
+  virtual uint32_t GenerateRandom(uint32_t session_id,
+                                  uint32_t num_bytes,
+                                  std::vector<uint8_t>* random_data) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

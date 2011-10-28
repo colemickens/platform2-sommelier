@@ -840,6 +840,12 @@ TEST_F(TestP11PublicSession, DeriveKey) {
                                                  NULL));
 }
 
+TEST_F(TestP11PublicSession, Random) {
+  vector<uint8_t> data(8, 0xAA);
+  EXPECT_EQ(CKR_OK, chaps_->SeedRandom(session_id_, data));
+  EXPECT_EQ(CKR_OK, chaps_->GenerateRandom(session_id_, 32, &data));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

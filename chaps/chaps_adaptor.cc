@@ -708,4 +708,18 @@ void ChapsAdaptor::DeriveKey(const uint32_t& session_id,
                                &key_handle);
 }
 
+uint32_t ChapsAdaptor::SeedRandom(const uint32_t& session_id,
+                              const vector<uint8_t>& seed,
+                              ::DBus::Error& /*error*/) {
+  return service_->SeedRandom(session_id, seed);
+}
+
+void ChapsAdaptor::GenerateRandom(const uint32_t& session_id,
+                              const uint32_t& num_bytes,
+                              vector<uint8_t>& random_data,
+                              uint32_t& result,
+                              ::DBus::Error& /*error*/) {
+  result = service_->GenerateRandom(session_id, num_bytes, &random_data);
+}
+
 }  // namespace

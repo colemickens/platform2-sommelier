@@ -161,6 +161,22 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   return CKR_OK;
 }
 
+// PKCS #11 v2.20 section 11.4 page 106.
+CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
+  static CK_VERSION version = {2, 20};
+  static CK_FUNCTION_LIST functionList = {
+    version,
+    // Let pkcs11f.h populate the function pointers in order.
+#define CK_PKCS11_FUNCTION_INFO(func) &func,
+    // We want only the function names, not the arguments.
+#undef CK_NEED_ARG_LIST
+#include "pkcs11/pkcs11f.h"
+#undef CK_PKCS11_FUNCTION_INFO
+  };
+  *ppFunctionList = &functionList;
+  return CKR_OK;
+}
+
 // PKCS #11 v2.20 section 11.5 page 106.
 CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
                     CK_SLOT_ID_PTR pSlotList,
@@ -1369,3 +1385,43 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   return CKR_OK;
 }
+
+// PKCS #11 v2.20 section 11.15 page 184.
+CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
+                   CK_BYTE_PTR pSeed,
+                   CK_ULONG ulSeedLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!pSeed || ulSeedLen == 0)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  uint32_t result = g_proxy->SeedRandom(
+      hSession,
+      chaps::ConvertByteBufferToVector(pSeed, ulSeedLen));
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.15 page 184.
+CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
+                       CK_BYTE_PTR RandomData,
+                       CK_ULONG ulRandomLen) {
+  LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
+  if (!RandomData || ulRandomLen == 0)
+    LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
+  vector<uint8_t> data_out;
+  uint32_t result = g_proxy->GenerateRandom(hSession, ulRandomLen, &data_out);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  LOG_CK_RV_AND_RETURN_IF(data_out.size() != ulRandomLen, CKR_GENERAL_ERROR);
+  memcpy(RandomData, &data_out.front(), ulRandomLen);
+  return CKR_OK;
+}
+
+// PKCS #11 v2.20 section 11.16 page 185.
+CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) {
+  return CKR_FUNCTION_NOT_PARALLEL;
+}
+
+// PKCS #11 v2.20 section 11.16 page 186.
+CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) {
+  return CKR_FUNCTION_NOT_PARALLEL;
+}
+

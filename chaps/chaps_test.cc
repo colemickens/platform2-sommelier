@@ -2333,6 +2333,55 @@ TEST_F(TestGenKey, WrapKeyNotInit) {
             C_DeriveKey(1, &mechanism_, 2, NULL, 0, &h));
 }
 
+TEST(TestRandom, RandomOK) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE data_buffer[20];
+  CK_BYTE data_buffer2[20];
+  CK_ULONG data_length = 20;
+  memset(data_buffer, 0xAA, 20);
+  memset(data_buffer2, 0xBB, 20);
+  vector<uint8_t> data(&data_buffer[0], &data_buffer[20]);
+  EXPECT_CALL(proxy, SeedRandom(1, data))
+      .WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, GenerateRandom(1, data_length, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(data), Return(CKR_OK)));
+  EXPECT_EQ(CKR_OK, C_SeedRandom(1, data_buffer, data_length));
+  EXPECT_EQ(CKR_OK, C_GenerateRandom(1, data_buffer2, data_length));
+  EXPECT_EQ(0, memcmp(data_buffer, data_buffer2, data_length));
+}
+
+TEST(TestRandom, RandomFail) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE data_buffer[20];
+  CK_BYTE data_buffer2[20];
+  CK_ULONG data_length = 20;
+  memset(data_buffer, 0xAA, 20);
+  memset(data_buffer2, 0xBB, 20);
+  vector<uint8_t> data(&data_buffer[0], &data_buffer[20]);
+  EXPECT_CALL(proxy, SeedRandom(1, data))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_CALL(proxy, GenerateRandom(1, data_length, _))
+      .WillOnce(Return(CKR_SESSION_CLOSED));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_SeedRandom(1, data_buffer, data_length));
+  EXPECT_EQ(CKR_SESSION_CLOSED, C_GenerateRandom(1, data_buffer2, data_length));
+}
+
+TEST(TestRandom, RandomBadArgs) {
+  ChapsProxyMock proxy(true);
+  CK_BYTE data_buffer[20] = {0};
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SeedRandom(1, NULL, 1));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_SeedRandom(1, data_buffer, 0));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GenerateRandom(1, NULL, 1));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, C_GenerateRandom(1, data_buffer, 0));
+}
+
+TEST(TestRandom, RandomNotInit) {
+  ChapsProxyMock proxy(false);
+  CK_BYTE data_buffer[20] = {0};
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_SeedRandom(1, data_buffer, 1));
+  EXPECT_EQ(CKR_CRYPTOKI_NOT_INITIALIZED, C_GenerateRandom(1, data_buffer, 1));
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

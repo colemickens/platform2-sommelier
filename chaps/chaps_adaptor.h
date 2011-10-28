@@ -364,6 +364,14 @@ public:
                          uint32_t& key_handle,
                          uint32_t& result,
                          ::DBus::Error& error);
+  virtual uint32_t SeedRandom(const uint32_t& session_id,
+                              const std::vector<uint8_t>& seed,
+                              ::DBus::Error& error);
+  virtual void GenerateRandom(const uint32_t& session_id,
+                              const uint32_t& num_bytes,
+                              std::vector<uint8_t>& random_data,
+                              uint32_t& result,
+                              ::DBus::Error& error);
 
 private:
   ChapsInterface* service_;

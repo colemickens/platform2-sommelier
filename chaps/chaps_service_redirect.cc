@@ -1273,4 +1273,30 @@ uint32_t ChapsServiceRedirect::DeriveKey(
   return CKR_OK;
 }
 
+uint32_t ChapsServiceRedirect::SeedRandom(uint32_t session_id,
+                                          const vector<uint8_t>& seed) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
+  CK_BYTE_PTR in_bytes =
+      static_cast<CK_BYTE_PTR>(const_cast<uint8_t*>(&seed.front()));
+  uint32_t result = functions_->C_SeedRandom(session_id, in_bytes, seed.size());
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  return CKR_OK;
+}
+
+uint32_t ChapsServiceRedirect::GenerateRandom(uint32_t session_id,
+                                              uint32_t num_bytes,
+                                              vector<uint8_t>* random_data) {
+  CHECK(functions_);
+  LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
+  scoped_array<CK_BYTE> out_bytes(new CK_BYTE[num_bytes]);
+  CHECK(out_bytes.get());
+  uint32_t result = functions_->C_GenerateRandom(session_id,
+                                                 out_bytes.get(),
+                                                 num_bytes);
+  LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  *random_data = ConvertByteBufferToVector(out_bytes.get(), num_bytes);
+  return CKR_OK;
+}
+
 }  // namespace

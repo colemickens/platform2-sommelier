@@ -258,6 +258,11 @@ public:
                              uint32_t base_key_handle,
                              const std::vector<uint8_t>& attributes,
                              uint32_t* key_handle);
+  virtual uint32_t SeedRandom(uint32_t session_id,
+                              const std::vector<uint8_t>& seed);
+  virtual uint32_t GenerateRandom(uint32_t session_id,
+                                  uint32_t num_bytes,
+                                  std::vector<uint8_t>* random_data);
 
 private:
   std::string library_path_;

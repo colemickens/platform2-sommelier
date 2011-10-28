@@ -1175,4 +1175,33 @@ uint32_t ChapsProxyImpl::DeriveKey(
   return result;
 }
 
+uint32_t ChapsProxyImpl::SeedRandom(uint32_t session_id,
+                                    const vector<uint8_t>& seed) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    result = proxy_->SeedRandom(session_id, seed);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
+uint32_t ChapsProxyImpl::GenerateRandom(uint32_t session_id,
+                                        uint32_t num_bytes,
+                                        vector<uint8_t>* random_data) {
+  LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
+  LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
+  uint32_t result = CKR_GENERAL_ERROR;
+  try {
+    proxy_->GenerateRandom(session_id, num_bytes, *random_data, result);
+  } catch (DBus::Error err) {
+    result = CKR_GENERAL_ERROR;
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+  return result;
+}
+
 }  // namespace
