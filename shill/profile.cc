@@ -57,21 +57,60 @@ Profile::Profile(ControlInterface *control_interface,
 
 Profile::~Profile() {}
 
-bool Profile::InitStorage(GLib *glib) {
+bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
+                          Error *error) {
   FilePath final_path;
   if (!GetStoragePath(&final_path)) {
-    PLOG(ERROR) <<
+    const string kMessage =
         base::StringPrintf("Could not set up profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str());
+    LOG(ERROR) << kMessage;
+    if (error) {
+      error->Populate(Error::kInvalidArguments, kMessage);
+    }
     return false;
   }
   scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
   storage->set_path(final_path);
+  bool already_exists = storage->IsNonEmpty();
+  if (!already_exists && storage_option != kCreateNew &&
+      storage_option != kCreateOrOpenExisting) {
+    const string kMessage =
+        base::StringPrintf("Profile storage for %s:%s does not already exist",
+                           name_.user.c_str(), name_.identifier.c_str());
+    LOG(ERROR) << kMessage;
+    if (error) {
+      error->Populate(Error::kNotFound, kMessage);
+    }
+    return false;
+  } else if (already_exists && storage_option != kOpenExisting &&
+             storage_option != kCreateOrOpenExisting) {
+    const string kMessage =
+        base::StringPrintf("Profile storage for %s:%s already exists",
+                           name_.user.c_str(), name_.identifier.c_str());
+    LOG(ERROR) << kMessage;
+    if (error) {
+      error->Populate(Error::kAlreadyExists, kMessage);
+    }
+    return false;
+  }
   if (!storage->Open()) {
-    PLOG(ERROR) <<
+    const string kMessage =
         base::StringPrintf("Could not open profile storage for %s:%s",
                            name_.user.c_str(), name_.identifier.c_str());
+    LOG(ERROR) << kMessage;
+    if (error) {
+      error->Populate(Error::kInternalError, kMessage);
+    }
     return false;
+  }
+  if (!already_exists) {
+    // Add a descriptive header to the profile so even if nothing is stored
+    // to it, it still has some content.  Completely empty keyfiles are not
+    // valid for reading.
+    storage->SetHeader(
+        base::StringPrintf("Profile %s:%s", name_.user.c_str(),
+                           name_.identifier.c_str()));
   }
   set_storage(storage.release());
   return true;
@@ -157,6 +196,10 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   parsed->user = "";
   parsed->identifier = raw;
   return true;
+}
+
+bool Profile::MatchesIdentifier(const Identifier &name) const {
+  return name.user == name_.user && name.identifier == name_.identifier;
 }
 
 bool Profile::Save() {

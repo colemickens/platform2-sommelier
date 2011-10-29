@@ -54,6 +54,21 @@ class ProfileTest : public PropertyStoreTest {
     profile_->set_storage(storage.release());  // Passes ownership.
   }
 
+  bool ProfileInitStorage(const Profile::Identifier &id,
+                          Profile::InitStorageOption storage_option,
+                          bool save,
+                          Error::Type error_type) {
+    Error error;
+    ProfileRefPtr profile(
+        new Profile(control_interface(), manager(), id, storage_path(), false));
+    bool ret = profile->InitStorage(&real_glib_, storage_option, &error);
+    EXPECT_EQ(error_type, error.type());
+    if (ret && save) {
+      EXPECT_TRUE(profile->Save());
+    }
+    return ret;
+  }
+
  protected:
   GLib real_glib_;
   ProfileRefPtr profile_;
@@ -222,6 +237,56 @@ TEST_F(ProfileTest, EntryEnumeration) {
 
   ASSERT_TRUE(profile_->AbandonService(service2));
   ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
+}
+
+TEST_F(ProfileTest, MatchesIdentifier) {
+  static const char kUser[] = "theUser";
+  static const char kIdentifier[] = "theIdentifier";
+  Profile::Identifier id(kUser, kIdentifier);
+  ProfileRefPtr profile(
+      new Profile(control_interface(), manager(), id, "", false));
+  EXPECT_TRUE(profile->MatchesIdentifier(id));
+  EXPECT_FALSE(profile->MatchesIdentifier(Profile::Identifier(kUser, "")));
+  EXPECT_FALSE(
+      profile->MatchesIdentifier(Profile::Identifier("", kIdentifier)));
+  EXPECT_FALSE(
+      profile->MatchesIdentifier(Profile::Identifier(kIdentifier, kUser)));
+}
+
+TEST_F(ProfileTest, InitStorage) {
+  Profile::Identifier id("theUser", "theIdentifier");
+
+  // Profile doesn't exist but we wanted it to.
+  EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
+                                  Error::kNotFound));
+
+  // Success case, with a side effect of creating the profile.
+  EXPECT_TRUE(ProfileInitStorage(id, Profile::kCreateNew, true,
+                                 Error::kSuccess));
+
+  // The results from our two test cases above will now invert since
+  // the profile now exists.  First, we now succeed if we require that
+  // the profile already exist...
+  EXPECT_TRUE(ProfileInitStorage(id, Profile::kOpenExisting, false,
+                                 Error::kSuccess));
+
+  // And we fail if we require that it doesn't.
+  EXPECT_FALSE(ProfileInitStorage(id, Profile::kCreateNew, false,
+                                  Error::kAlreadyExists));
+
+  // As a sanity check, ensure "create or open" works for both profile-exists...
+  EXPECT_TRUE(ProfileInitStorage(id, Profile::kCreateOrOpenExisting, false,
+                                 Error::kSuccess));
+
+  // ...and for a new profile that doesn't exist.
+  Profile::Identifier id2("theUser", "theIdentifier2");
+  // Let's just make double-check that this profile really doesn't exist.
+  ASSERT_FALSE(ProfileInitStorage(id2, Profile::kOpenExisting, false,
+                                  Error::kNotFound));
+
+  // Then test that with "create or open" we succeed.
+  EXPECT_TRUE(ProfileInitStorage(id2, Profile::kCreateOrOpenExisting, false,
+                                 Error::kSuccess));
 }
 
 }  // namespace shill

@@ -132,6 +132,14 @@ void GLib::KeyFileSetBoolean(GKeyFile *key_file,
   g_key_file_set_boolean(key_file, group_name, key, value);
 }
 
+gboolean GLib::KeyFileSetComment(GKeyFile *key_file,
+                                 const gchar *group_name,
+                                 const gchar *key,
+                                 const gchar *comment,
+                                 GError **error) {
+  return g_key_file_set_comment(key_file, group_name, key, comment, error);
+}
+
 void GLib::KeyFileSetInteger(GKeyFile *key_file,
                              const gchar *group_name,
                              const gchar *key,

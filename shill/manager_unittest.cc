@@ -9,7 +9,9 @@
 #include <glib.h>
 
 #include <base/logging.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <base/stl_util-inl.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -72,6 +74,7 @@ class ManagerTest : public PropertyStoreTest {
                                                      "null2",
                                                      "addr2",
                                                      2));
+    manager()->connect_profiles_to_rpc_ = false;
   }
   virtual ~ManagerTest() {}
 
@@ -100,6 +103,40 @@ class ManagerTest : public PropertyStoreTest {
     return profile.release();
   }
 
+  bool CreateBackingStoreForService(ScopedTempDir *temp_dir,
+                                    const string &profile_identifier,
+                                    const string &service_name) {
+    GLib glib;
+    KeyFileStore store(&glib);
+    store.set_path(temp_dir->path().Append(profile_identifier + ".profile"));
+    return store.Open() &&
+        store.SetString(service_name, "rather", "irrelevant") &&
+        store.Close();
+  }
+
+  Error::Type TestCreateProfile(Manager *manager, const string &name) {
+    Error error;
+    manager->CreateProfile(name, &error);
+    return error.type();
+  }
+
+  Error::Type TestPopAnyProfile(Manager *manager) {
+    Error error;
+    manager->PopAnyProfile(&error);
+    return error.type();
+  }
+
+  Error::Type TestPopProfile(Manager *manager, const string &name) {
+    Error error;
+    manager->PopProfile(name, &error);
+    return error.type();
+  }
+
+  Error::Type TestPushProfile(Manager *manager, const string &name) {
+    Error error;
+    manager->PushProfile(name, &error);
+    return error.type();
+  }
  protected:
   scoped_refptr<MockWiFi> mock_wifi_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
@@ -345,6 +382,140 @@ TEST_F(ManagerTest, MoveService) {
   profile = NULL;
   ASSERT_TRUE(manager.ActiveProfile()->ContainsService(s2));
   manager.Stop();
+}
+
+TEST_F(ManagerTest, CreateProfile) {
+  // It's much easier to use real Glib here since we want the storage
+  // side-effects.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+
+  // Invalid name should be rejected.
+  EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, ""));
+
+  // Valid name is still rejected because we can't create a profile
+  // that doesn't have a user component.  Such profile names are
+  // reserved for the single DefaultProfile the manager creates
+  // at startup.
+  EXPECT_EQ(Error::kInvalidArguments, TestCreateProfile(&manager, "valid"));
+
+  // We should succeed in creating a valid user profile.
+  const char kProfile[] = "~user/profile";
+  EXPECT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile));
+
+  // We should fail in creating it a second time (already exists).
+  EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile));
+}
+
+TEST_F(ManagerTest, PushPopProfile) {
+  // It's much easier to use real Glib in creating a Manager for this
+  // test here since we want the storage side-effects.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+
+  // Pushing an invalid profile should fail.
+  EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, ""));
+
+  // Pushing a default profile name should fail.
+  EXPECT_EQ(Error::kInvalidArguments, TestPushProfile(&manager, "default"));
+
+  const char kProfile0[] = "~user/profile0";
+  const char kProfile1[] = "~user/profile1";
+
+  // Create a couple of profiles.
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile0));
+  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager, kProfile1));
+
+  // Push these profiles on the stack.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile1));
+
+  // Pushing a profile a second time should fail.
+  EXPECT_EQ(Error::kAlreadyExists, TestPushProfile(&manager, kProfile0));
+  EXPECT_EQ(Error::kAlreadyExists, TestPushProfile(&manager, kProfile1));
+
+  // Active profile should be the last one we pushed.
+  EXPECT_EQ(kProfile1, "~" + manager.GetActiveProfileName());
+
+  // Make sure a profile name that doesn't exist fails.
+  const char kProfile2Id[] = "profile2";
+  const string kProfile2 = base::StringPrintf("~user/%s", kProfile2Id);
+  EXPECT_EQ(Error::kNotFound, TestPushProfile(&manager, kProfile2));
+
+  // Create a new service, with a specific storage name.
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                &manager));
+  const char kServiceName[] = "service_storage_name";
+  EXPECT_CALL(*service.get(), GetStorageIdentifier())
+      .WillRepeatedly(Return(kServiceName));
+  EXPECT_CALL(*service.get(), Load(_))
+      .WillRepeatedly(Return(true));
+
+  // Add this service to the manager -- it should end up in the ephemeral
+  // profile.
+  manager.RegisterService(service);
+  ASSERT_EQ(manager.ephemeral_profile_, service->profile());
+
+  // Create storage for a profile that contains the service storage name.
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, kProfile2Id,
+                                           kServiceName));
+
+  // When we push the profile, the service should move away from the
+  // ephemeral profile to this new profile since it has an entry for
+  // this service.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile2));
+  EXPECT_NE(manager.ephemeral_profile_, service->profile());
+  EXPECT_EQ(kProfile2, "~" + service->profile()->GetFriendlyName());
+
+  // Insert another profile that should supersede ownership of the service.
+  const char kProfile3Id[] = "profile3";
+  const string kProfile3 = base::StringPrintf("~user/%s", kProfile3Id);
+  ASSERT_TRUE(CreateBackingStoreForService(&temp_dir, kProfile3Id,
+                                           kServiceName));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile3));
+  EXPECT_EQ(kProfile3, "~" + service->profile()->GetFriendlyName());
+
+  // Popping an invalid profile name should fail.
+  EXPECT_EQ(Error::kInvalidArguments, TestPopProfile(&manager, "~"));
+
+  // Popping an profile that is not at the top of the stack should fail.
+  EXPECT_EQ(Error::kNotSupported, TestPopProfile(&manager, kProfile0));
+
+  // Popping the top profile should succeed.
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kProfile3));
+
+  // Moreover the service should have switched profiles to profile 2.
+  EXPECT_EQ(kProfile2, "~" + service->profile()->GetFriendlyName());
+
+  // Popping the top profile should succeed.
+  EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+
+  // The service should now revert to the ephemeral profile.
+  EXPECT_EQ(manager.ephemeral_profile_, service->profile());
+
+  // Pop the remaining two services off the stack.
+  EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+  EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
+
+  // Next pop should fail with "stack is empty".
+  EXPECT_EQ(Error::kNotFound, TestPopAnyProfile(&manager));
 }
 
 TEST_F(ManagerTest, Dispatch) {

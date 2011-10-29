@@ -29,13 +29,17 @@ void KeyFileStore::ReleaseKeyFile() {
   }
 }
 
+bool KeyFileStore::IsNonEmpty() {
+  int64 file_size = 0;
+  return file_util::GetFileSize(path_, &file_size) && file_size != 0;
+}
+
 bool KeyFileStore::Open() {
   CHECK(!path_.empty());
   CHECK(!key_file_);
   crypto_.Init();
   key_file_ = glib_->KeyFileNew();
-  int64 file_size = 0;
-  if (!file_util::GetFileSize(path_, &file_size) || file_size == 0) {
+  if (!IsNonEmpty()) {
     LOG(INFO) << "Creating a new key file at " << path_.value();
     return true;
   }
@@ -124,6 +128,17 @@ bool KeyFileStore::DeleteGroup(const string &group) {
   glib_->KeyFileRemoveGroup(key_file_, group.c_str(), &error);
   if (error && error->code != G_KEY_FILE_ERROR_GROUP_NOT_FOUND) {
     LOG(ERROR) << "Failed to delete group " << group << ": "
+               << glib_->ConvertErrorToMessage(error);
+    return false;
+  }
+  return true;
+}
+
+bool KeyFileStore::SetHeader(const string &header) {
+  GError *error = NULL;
+  glib_->KeyFileSetComment(key_file_, NULL, NULL, header.c_str(), &error);
+  if (error) {
+    LOG(ERROR) << "Failed to to set header: "
                << glib_->ConvertErrorToMessage(error);
     return false;
   }

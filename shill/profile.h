@@ -29,6 +29,11 @@ class StoreInterface;
 
 class Profile : public base::RefCounted<Profile> {
  public:
+  enum InitStorageOption {
+    kOpenExisting,
+    kCreateNew,
+    kCreateOrOpenExisting
+  };
   struct Identifier {
     Identifier() {}
     explicit Identifier(const std::string &i) : identifier(i) {}
@@ -49,7 +54,9 @@ class Profile : public base::RefCounted<Profile> {
   virtual ~Profile();
 
   // Set up persistent storage for this Profile.
-  bool InitStorage(GLib *glib);
+  bool InitStorage(GLib *glib,
+                   InitStorageOption storage_option,
+                   Error *error);
 
   std::string GetFriendlyName();
 
@@ -86,31 +93,37 @@ class Profile : public base::RefCounted<Profile> {
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
 
-  // Sets |path| to the persistent store file path for a profile identified by
-  // |name_|. Returns true on success, and false if unable to determine an
-  // appropriate file location. |name_| must be a valid identifier,
-  // possibly parsed and validated through Profile::ParseIdentifier.
-  //
-  // In the default implementation, |name_.user| cannot be empty.
-  virtual bool GetStoragePath(FilePath *path);
+  // Parses a profile identifier. There're two acceptable forms of the |raw|
+  // identifier: "identifier" and "~user/identifier". Both "user" and
+  // "identifier" must be suitable for use in a D-Bus object path. Returns true
+  // on success.
+  static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
+
+  // Returns whether |name| matches this Profile's |name_|.
+  virtual bool MatchesIdentifier(const Identifier &name) const;
 
  protected:
   // Protected getters
   Manager *manager() const { return manager_; }
   StoreInterface *storage() { return storage_.get(); }
 
+  // Sets |path| to the persistent store file path for a profile identified by
+  // |name_|. Returns true on success, and false if unable to determine an
+  // appropriate file location. |name_| must be a valid identifier,
+  // possibly parsed and validated through Profile::ParseIdentifier.
+  //
+  // In the default implementation, |name_.user| cannot be empty, because
+  // all regular profiles should be associated with a user.
+  virtual bool GetStoragePath(FilePath *path);
+
  private:
+  friend class DefaultProfileTest;
   friend class ProfileAdaptorInterface;
+  FRIEND_TEST(DefaultProfileTest, GetStoragePath);
+  FRIEND_TEST(ProfileTest, GetStoragePath);
   FRIEND_TEST(ProfileTest, IsValidIdentifierToken);
-  FRIEND_TEST(ProfileTest, ParseIdentifier);
 
   static bool IsValidIdentifierToken(const std::string &token);
-
-  // Parses a profile identifier. There're two acceptable forms of the |raw|
-  // identifier: "identifier" and "~user/identifier". Both "user" and
-  // "identifier" must be suitable for use in a D-Bus object path. Returns true
-  // on success.
-  static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
 
   void HelpRegisterDerivedStrings(
       const std::string &name,

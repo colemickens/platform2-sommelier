@@ -35,6 +35,7 @@ class DefaultProfile : public Profile {
   // Returns true on success, false on failure.
   virtual bool Save();
 
+ protected:
   // Sets |path| to the persistent store file path for the default, global
   // profile. Returns true on success, and false if unable to determine an
   // appropriate file location.
@@ -44,6 +45,7 @@ class DefaultProfile : public Profile {
 
  private:
   FRIEND_TEST(DefaultProfileTest, Save);
+  FRIEND_TEST(DefaultProfileTest, GetStoragePath);
 
   static const char kDefaultId[];
   static const char kStorageId[];

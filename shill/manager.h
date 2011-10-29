@@ -54,8 +54,6 @@ class Manager {
   void Stop();
 
   // Pushes |profile| onto stack of managed profiles.
-  // TODO(someone): CreateProfile and PushProfile should be implemented
-  // using this.
   void AdoptProfile(const ProfileRefPtr &profile);
 
   const ProfileRefPtr &ActiveProfile();
@@ -80,6 +78,14 @@ class Manager {
   void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
+  // Create a profile.  This does not affect the profile stack.
+  void CreateProfile(const std::string &name, Error *error);
+  // Pushes existing profile with name |name| onto stack of managed profiles.
+  void PushProfile(const std::string &name, Error *error);
+  // Pops profile named |name| off the top of the stack of managed profiles.
+  void PopProfile(const std::string &name, Error *error);
+  // Remove the active profile.
+  void PopAnyProfile(Error *error);
 
   virtual DeviceInfo *device_info() { return &device_info_; }
   PropertyStore *mutable_store() { return &store_; }
@@ -93,6 +99,7 @@ class Manager {
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  FRIEND_TEST(ManagerTest, PushPopProfile);
   FRIEND_TEST(ManagerTest, SortServices);
 
   static const char kManagerErrorNoDevice[];
@@ -116,6 +123,7 @@ class Manager {
       Strings(Manager::*get)(void),
       void(Manager::*set)(const Strings&, Error *));
 
+  void PopProfileInternal();
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
 
@@ -126,6 +134,8 @@ class Manager {
   DeviceInfo device_info_;
   ModemInfo modem_info_;
   bool running_;
+  // Used to facilitate unit tests which can't use RPC.
+  bool connect_profiles_to_rpc_;
   std::vector<DeviceRefPtr> devices_;
   // We store Services in a vector, because we want to keep them sorted.
   std::vector<ServiceRefPtr> services_;

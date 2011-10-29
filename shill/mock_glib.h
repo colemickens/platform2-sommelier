@@ -70,6 +70,11 @@ class MockGLib : public GLib {
                                        const gchar *group_name,
                                        const gchar *key,
                                        gboolean value));
+  MOCK_METHOD5(KeyFileSetComment, gboolean(GKeyFile *key_file,
+                                           const gchar *group_name,
+                                           const gchar *key,
+                                           const gchar *comment,
+                                           GError **error));
   MOCK_METHOD4(KeyFileSetInteger, void(GKeyFile *key_file,
                                        const gchar *group_name,
                                        const gchar *key,

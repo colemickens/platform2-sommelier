@@ -31,6 +31,9 @@ class StoreInterface {
   // Deletes |group|. Returns true on success.
   virtual bool DeleteGroup(const std::string &group) = 0;
 
+  // Sets a descriptive header on the key file.
+  virtual bool SetHeader(const std::string &header) = 0;
+
   // Gets a string |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
   // in the store).

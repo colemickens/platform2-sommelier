@@ -23,6 +23,7 @@ class MockStore : public StoreInterface {
   MOCK_METHOD2(DeleteKey,
                bool(const std::string &group, const std::string &key));
   MOCK_METHOD1(DeleteGroup, bool(const std::string &group));
+  MOCK_METHOD1(SetHeader, bool(const std::string &header));
   MOCK_METHOD3(GetString, bool(const std::string &group,
                                const std::string &key,
                                std::string *value));

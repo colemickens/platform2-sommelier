@@ -64,6 +64,7 @@ void KeyFileStoreTest::WriteKeyFile(string data) {
 TEST_F(KeyFileStoreTest, OpenClose) {
   EXPECT_FALSE(store_.key_file_);
 
+  EXPECT_FALSE(store_.IsNonEmpty());
   ASSERT_TRUE(store_.Open());
   EXPECT_TRUE(store_.key_file_);
   EXPECT_EQ(1, store_.crypto_.cryptos_.size());
@@ -95,6 +96,7 @@ TEST_F(KeyFileStoreTest, GetGroups) {
                                   "[%s]\n"
                                   "[%s]\n",
                                   kGroupA, kGroupB, kGroupC));
+  EXPECT_TRUE(store_.IsNonEmpty());
   ASSERT_TRUE(store_.Open());
   set<string> groups = store_.GetGroups();
   EXPECT_EQ(3, groups.size());
@@ -494,6 +496,20 @@ TEST_F(KeyFileStoreTest, Flush) {
   EXPECT_TRUE(store_.DeleteKey(kGroup, kKey1));
   ASSERT_TRUE(store_.Flush());
   ASSERT_FALSE(OpenCheckClose(kGroup, kKey1, kValue1));
+}
+
+TEST_F(KeyFileStoreTest, EmptyFile) {
+  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_.Close());
+  EXPECT_FALSE(store_.IsNonEmpty());
+}
+
+TEST_F(KeyFileStoreTest, SetHeader) {
+  ASSERT_TRUE(store_.Open());
+  ASSERT_TRUE(store_.SetHeader("this is a test"));
+  ASSERT_TRUE(store_.Close());
+  EXPECT_TRUE(store_.IsNonEmpty());
+  ASSERT_TRUE(store_.Open());
 }
 
 TEST_F(KeyFileStoreTest, Combo) {

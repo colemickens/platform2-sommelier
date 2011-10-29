@@ -59,6 +59,7 @@ Manager::Manager(ControlInterface *control_interface,
     device_info_(control_interface, dispatcher, this),
     modem_info_(control_interface, dispatcher, this, glib),
     running_(false),
+    connect_profiles_to_rpc_(true),
     ephemeral_profile_(new EphemeralProfile(control_interface, this)),
     control_interface_(control_interface),
     glib_(glib) {
@@ -120,7 +121,7 @@ void Manager::Start() {
                                          this,
                                          storage_path_,
                                          props_));
-  CHECK(profiles_[0]->InitStorage(glib_));
+  CHECK(profiles_[0]->InitStorage(glib_, Profile::kCreateOrOpenExisting, NULL));
 
   running_ = true;
   adaptor_->UpdateRunning();
@@ -143,6 +144,153 @@ void Manager::Stop() {
 
 void Manager::AdoptProfile(const ProfileRefPtr &profile) {
   profiles_.push_back(profile);
+}
+
+void Manager::CreateProfile(const std::string &name, Error *error) {
+  Profile::Identifier ident;
+  if (!Profile::ParseIdentifier(name, &ident)) {
+    const string kMessage = "Invalid profile name " + name;
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
+  ProfileRefPtr profile(new Profile(control_interface_,
+                                    this,
+                                    ident,
+                                    user_storage_format_,
+                                    false));
+  if (!profile->InitStorage(glib_, Profile::kCreateNew, error)) {
+    return;
+  }
+
+  // Save profile data out, and then let the scoped pointer fall out of scope.
+  if (!profile->Save()) {
+    const string kMessage = "Profile name " + name + " could not be saved";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInternalError, kMessage);
+    return;
+  }
+}
+
+void Manager::PushProfile(const string &name, Error *error) {
+
+  Profile::Identifier ident;
+  if (!Profile::ParseIdentifier(name, &ident)) {
+    const string kMessage = "Invalid profile name " + name;
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
+
+  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if ((*it)->MatchesIdentifier(ident)) {
+      const string kMessage = "Profile name " + name + " is already on stack";
+      LOG(ERROR) << kMessage;
+      CHECK(error);
+      error->Populate(Error::kAlreadyExists, kMessage);
+      return;
+    }
+  }
+
+  if (ident.user.empty()) {
+    // The manager will have only one machine-wide profile, and this is the
+    // DefaultProfile.  This means no other profiles can be loaded that do
+    // not have a user component.
+    // TODO(pstew): This is all well and good, but WiFi autotests try to
+    // creating a default profile (by a name other than "default") in order
+    // to avoid leaving permanent side effects to devices under test.  This
+    // whole thing will need to be reworked in order to allow that to happen,
+    // or the autotests (or their expectations) will need to change.
+    const string kMessage = "Cannot load non-default global profile " + name;
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
+
+  ProfileRefPtr profile(new Profile(control_interface_,
+                                    this,
+                                    ident,
+                                    user_storage_format_,
+                                    connect_profiles_to_rpc_));
+  if (!profile->InitStorage(glib_, Profile::kOpenExisting, error)) {
+    return;
+  }
+
+  AdoptProfile(profile);
+
+  // Offer each registered Service the opportunity to join this new Profile.
+  vector<ServiceRefPtr>::iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    profile->MergeService(*it);
+  }
+
+  // TODO(pstew): Now shop the Profile contents around to Devices which
+  // can create non-visible services.
+}
+
+void Manager::PopProfileInternal() {
+  CHECK(!profiles_.empty());
+  ProfileRefPtr active_profile = profiles_.back();
+  profiles_.pop_back();
+  vector<ServiceRefPtr>::iterator s_it;
+  for (s_it = services_.begin(); s_it != services_.end(); ++s_it) {
+    if ((*s_it)->profile().get() == active_profile.get()) {
+      vector<ProfileRefPtr>::reverse_iterator p_it;
+      for (p_it = profiles_.rbegin(); p_it != profiles_.rend(); ++p_it) {
+        if ((*p_it)->MergeService(*s_it)) {
+          break;
+        }
+      }
+      if (p_it == profiles_.rend()) {
+        ephemeral_profile_->AdoptService(*s_it);
+      }
+    }
+  }
+}
+
+void Manager::PopProfile(const std::string &name, Error *error) {
+  Profile::Identifier ident;
+  if (profiles_.empty()) {
+    const string kMessage = "Profile stack is empty";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kNotFound, kMessage);
+    return;
+  }
+  ProfileRefPtr active_profile = profiles_.back();
+  if (!Profile::ParseIdentifier(name, &ident)) {
+    const string kMessage = "Invalid profile name " + name;
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kInvalidArguments, kMessage);
+    return;
+  }
+  if (!active_profile->MatchesIdentifier(ident)) {
+    const string kMessage = name + " is not the active profile";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kNotSupported, kMessage);
+    return;
+  }
+  PopProfileInternal();
+}
+
+void Manager::PopAnyProfile(Error *error) {
+  Profile::Identifier ident;
+  if (profiles_.empty()) {
+    const string kMessage = "Profile stack is empty";
+    LOG(ERROR) << kMessage;
+    CHECK(error);
+    error->Populate(Error::kNotFound, kMessage);
+    return;
+  }
+  PopProfileInternal();
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() {

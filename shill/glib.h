@@ -90,6 +90,12 @@ class GLib {
                                  const gchar *group_name,
                                  const gchar *key,
                                  gboolean value);
+  // g_key_file_set_comment
+  virtual gboolean KeyFileSetComment(GKeyFile *key_file,
+                                     const gchar *group_name,
+                                     const gchar *key,
+                                     const gchar *comment,
+                                     GError **error);
   // g_key_file_set_integer
   virtual void KeyFileSetInteger(GKeyFile *key_file,
                                  const gchar *group_name,

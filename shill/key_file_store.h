@@ -25,6 +25,9 @@ class KeyFileStore : public StoreInterface {
   void set_path(const FilePath &path) { path_ = path; }
   const FilePath &path() const { return path_; }
 
+  // Returns true if the store exists and is non-empty.
+  bool IsNonEmpty();
+
   // Opens the store. Returns true on success. This method must be
   // invoked before using any of the getters or setters.
   // This method does not complete gracefully if invoked on a store
@@ -44,6 +47,7 @@ class KeyFileStore : public StoreInterface {
   virtual bool ContainsGroup(const std::string &group);
   virtual bool DeleteKey(const std::string &group, const std::string &key);
   virtual bool DeleteGroup(const std::string &group);
+  virtual bool SetHeader(const std::string &header);
   virtual bool GetString(const std::string &group,
                          const std::string &key,
                          std::string *value);
