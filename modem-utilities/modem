@@ -239,7 +239,7 @@ set_madison_config () {
 		return
 	fi
 
-	if [ `realpath $MADISON_CONFIG_GROUP_LOCATION` != \
+	if [ `readlink -f $MADISON_CONFIG_GROUP_LOCATION` != \
 	     "$MADISON_CONFIG_GROUP_LOCATION" ] ; then
 		echo "$MADISON_CONFIG_GROUP_LOCATION points somewhere strange."
 		echo "Please reboot (or restart cromo) and try again."
