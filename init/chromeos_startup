@@ -1,10 +1,30 @@
 #!/bin/sh
 
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-
+UNDO_MOUNTS=
+mount_in_stateful_or_fail()
+{
+  local mount_point
+  if mount "$@" ; then
+    # Last parameter contains the mount point
+    shift $(( $# - 1 ))
+    # Push it on the undo stack if we fail later
+    UNDO_MOUNTS="$1 ${UNDO_MOUNTS}"
+    return
+  fi
+  # On failure unmount all saved mount points and repair stateful
+  for mount_point in ${UNDO_MOUNTS}; do
+    umount -n ${mount_point}
+  done
+  umount -n /mnt/stateful_partition
+  [ -z "$BOOT_SPLASH_PID" ] || wait $BOOT_SPLASH_PID
+  chromeos-boot-alert self_repair /dev/tty1
+  clobber-log --repair "$STATE_DEV" "Self-repair incoherent stateful partition"
+  exec clobber-state "fast keepimg"
+}
 # The kernel mounts /proc, /sys and /dev during initialization, prior
 # to starting init.
 
@@ -245,8 +265,8 @@ chown chronos:chronos /mnt/stateful_partition/var/log/window_manager
 
 # Mount some /var directories and /home.  These mounts inherit
 # nodev,noexec,nosuid from /mnt/stateful_partition above.
-mount -n --bind /mnt/stateful_partition/var /var
-mount -n --bind /mnt/stateful_partition/home /home
+mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/var /var
+mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/home /home
 # If we're mod_for_test, both /home and /tmp need to be mounted without noexec
 #mod_for_test#mount -n -o remount,exec,suid /home
 #mod_for_test#mount -n -o remount,exec,suid /tmp
@@ -261,13 +281,16 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
     mkdir -p -m 0755 /mnt/stateful_partition/dev_image
   fi
   # Mount and then remount to enable exec/suid
-  mount -n --bind /mnt/stateful_partition/dev_image /usr/local
+  mount_in_stateful_or_fail -n --bind /mnt/stateful_partition/dev_image \
+    /usr/local
   mount -n -o remount,exec,suid /usr/local
 fi
 
-mount -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun /var/run
+mount_in_stateful_or_fail -n -t tmpfs -o mode=0755,nodev,noexec,nosuid varrun \
+  /var/run
 touch /var/run/.ramfs  # TODO: Is this needed?
-mount -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
+mount_in_stateful_or_fail -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock \
+  /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
