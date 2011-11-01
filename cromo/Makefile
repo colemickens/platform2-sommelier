@@ -23,7 +23,8 @@ CROMO = cromo
 # without pulling in all of cromo
 LIBCROMO = libcromo.a
 PLUGINS = dummy_modem.so
-PLUGINDIR ?= /usr/lib/cromo/plugins
+LIBDIR = /usr/lib
+PLUGINDIR ?= $(LIBDIR)/cromo/plugins
 DBUSDATADIR ?= /etc/dbus-1/system.d
 DBUSCONFIGFILE ?= org.chromium.ModemManager.conf
 DBUSIFACEDIR ?= $(ROOT)/usr/share/dbus-1/interfaces
@@ -164,8 +165,8 @@ install-tests: $(TESTS)
 	install -t $(DESTDIR)/usr/bin $^
 
 install-libs: $(LIBCROMO)
-	install -d $(DESTDIR)/usr/lib
-	install -t $(DESTDIR)/usr/lib $(LIBCROMO)
+	install -d $(DESTDIR)$(LIBDIR)
+	install -t $(DESTDIR)$(LIBDIR) $(LIBCROMO)
 
 install: $(INSTALL_TARGETS)
 
