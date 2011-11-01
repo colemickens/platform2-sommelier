@@ -66,7 +66,7 @@ std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,
       "[lac managed]\n"
       "lns = %s\n"
       "require chap = yes\n"
-      "refuse pap = yes\n"
+      "refuse pap = no\n"
       "require authentication = yes\n"
       "name = me\n"
       "%s"

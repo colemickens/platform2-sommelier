@@ -20,7 +20,7 @@
 DEFINE_bool(defaultroute, true, "defaultroute");
 DEFINE_bool(length_bit, true, "length bit");
 DEFINE_bool(require_chap, true, "require chap");
-DEFINE_bool(refuse_pap, true, "refuse chap");
+DEFINE_bool(refuse_pap, false, "refuse chap");
 DEFINE_bool(require_authentication, true, "require authentication");
 DEFINE_string(password, "", "password (insecure - use pppd plugin instead)");
 DEFINE_bool(ppp_debug, true, "ppp debug");
