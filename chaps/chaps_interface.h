@@ -38,8 +38,8 @@ public:
                                std::vector<uint32_t>* slot_list) = 0;
   // PKCS #11 v2.20 section 11.5 page 108.
   virtual uint32_t GetSlotInfo(uint32_t slot_id,
-                               std::string* slot_description,
-                               std::string* manufacturer_id,
+                               std::vector<uint8_t>* slot_description,
+                               std::vector<uint8_t>* manufacturer_id,
                                uint32_t* flags,
                                uint8_t* hardware_version_major,
                                uint8_t* hardware_version_minor,
@@ -47,10 +47,10 @@ public:
                                uint8_t* firmware_version_minor) = 0;
   // PKCS #11 v2.20 section 11.5 page 109.
   virtual uint32_t GetTokenInfo(uint32_t slot_id,
-                                std::string* label,
-                                std::string* manufacturer_id,
-                                std::string* model,
-                                std::string* serial_number,
+                                std::vector<uint8_t>* label,
+                                std::vector<uint8_t>* manufacturer_id,
+                                std::vector<uint8_t>* model,
+                                std::vector<uint8_t>* serial_number,
                                 uint32_t* flags,
                                 uint32_t* max_session_count,
                                 uint32_t* session_count,
@@ -76,12 +76,14 @@ public:
                                     uint32_t* max_key_size,
                                     uint32_t* flags) = 0;
   // PKCS #11 v2.20 section 11.5 page 113.
-  virtual uint32_t InitToken(uint32_t slot_id, const std::string* so_pin,
-                             const std::string& label) = 0;
+  virtual uint32_t InitToken(uint32_t slot_id,
+                             const std::string* so_pin,
+                             const std::vector<uint8_t>& label) = 0;
   // PKCS #11 v2.20 section 11.5 page 115.
   virtual uint32_t InitPIN(uint32_t session_id, const std::string* pin) = 0;
   // PKCS #11 v2.20 section 11.5 page 116.
-  virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
+  virtual uint32_t SetPIN(uint32_t session_id,
+                          const std::string* old_pin,
                           const std::string* new_pin) = 0;
   // PKCS #11 v2.20 section 11.6 page 117.
   virtual uint32_t OpenSession(uint32_t slot_id, uint32_t flags,

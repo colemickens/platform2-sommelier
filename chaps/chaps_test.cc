@@ -8,6 +8,9 @@
 
 #include "chaps/chaps_proxy_mock.h"
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -225,8 +228,10 @@ TEST(TestSlotInfo, SlotInfoOK) {
   CK_SLOT_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetSlotInfo(1, &info));
-  EXPECT_EQ(string(64, ' '), string((char*)info.slotDescription, 64));
-  EXPECT_EQ(string(32, ' '), string((char*)info.manufacturerID, 32));
+  uint8_t spaces[64];
+  memset(spaces, ' ', arraysize(spaces));
+  EXPECT_EQ(0, memcmp(spaces, info.slotDescription, 64));
+  EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
   EXPECT_EQ(1, info.flags);
 }
 
@@ -255,8 +260,10 @@ TEST(TestTokenInfo, TokenInfoOK) {
   CK_TOKEN_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetTokenInfo(1, &info));
-  EXPECT_EQ(std::string(16, ' '), std::string((char*)info.serialNumber, 16));
-  EXPECT_EQ(std::string(32, ' '), std::string((char*)info.manufacturerID, 32));
+  uint8_t spaces[64];
+  memset(spaces, ' ', arraysize(spaces));
+  EXPECT_EQ(0, memcmp(spaces, info.serialNumber, 16));
+  EXPECT_EQ(0, memcmp(spaces, info.manufacturerID, 32));
   EXPECT_EQ(1, info.flags);
 }
 

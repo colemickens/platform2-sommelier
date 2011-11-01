@@ -121,8 +121,13 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     }
   }
   // If we're not using a mock proxy instance we need to create one.
-  if (!g_is_using_mock)
-    g_proxy.reset(new chaps::ChapsProxyImpl());
+  if (!g_is_using_mock) {
+    scoped_ptr<chaps::ChapsProxyImpl> proxy(new chaps::ChapsProxyImpl());
+    CHECK(proxy.get());
+    if (!proxy->Init())
+      LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);
+    g_proxy.reset(proxy.release());
+  }
   CHECK(g_proxy.get());
 
   g_finalize_event.reset(new WaitableEvent(true, false));
@@ -151,11 +156,13 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
-  chaps::CopyToCharBuffer("Chromium OS", pInfo->manufacturerID,
-                          arraysize(pInfo->manufacturerID));
+  chaps::CopyStringToCharBuffer("Chromium OS",
+                                pInfo->manufacturerID,
+                                arraysize(pInfo->manufacturerID));
   pInfo->flags = 0;
-  chaps::CopyToCharBuffer("Chaps Client Library", pInfo->libraryDescription,
-                          arraysize(pInfo->libraryDescription));
+  chaps::CopyStringToCharBuffer("Chaps Client Library",
+                                pInfo->libraryDescription,
+                                arraysize(pInfo->libraryDescription));
   pInfo->libraryVersion.major = kChapsLibraryVersionMajor;
   pInfo->libraryVersion.minor = kChapsLibraryVersionMinor;
   return CKR_OK;
@@ -201,8 +208,8 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  string slot_description;
-  string manufacturer_id;
+  vector<uint8_t> slot_description;
+  vector<uint8_t> manufacturer_id;
   CK_RV result = g_proxy->GetSlotInfo(
       slotID,
       &slot_description,
@@ -213,10 +220,12 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
       static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  chaps::CopyToCharBuffer(slot_description.c_str(), pInfo->slotDescription,
-                          arraysize(pInfo->slotDescription));
-  chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
-                          arraysize(pInfo->manufacturerID));
+  chaps::CopyVectorToCharBuffer(slot_description,
+                                pInfo->slotDescription,
+                                arraysize(pInfo->slotDescription));
+  chaps::CopyVectorToCharBuffer(manufacturer_id,
+                                pInfo->manufacturerID,
+                                arraysize(pInfo->manufacturerID));
   return CKR_OK;
 }
 
@@ -224,10 +233,10 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
 CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pInfo, CKR_ARGUMENTS_BAD);
-  string label;
-  string manufacturer_id;
-  string model;
-  string serial_number;
+  vector<uint8_t> label;
+  vector<uint8_t> manufacturer_id;
+  vector<uint8_t> model;
+  vector<uint8_t> serial_number;
   CK_RV result = g_proxy->GetTokenInfo(
       slotID,
       &label,
@@ -250,12 +259,18 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
       static_cast<uint8_t*>(&pInfo->firmwareVersion.major),
       static_cast<uint8_t*>(&pInfo->firmwareVersion.minor));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
-  chaps::CopyToCharBuffer(label.c_str(), pInfo->label, arraysize(pInfo->label));
-  chaps::CopyToCharBuffer(manufacturer_id.c_str(), pInfo->manufacturerID,
-                          arraysize(pInfo->manufacturerID));
-  chaps::CopyToCharBuffer(model.c_str(), pInfo->model, arraysize(pInfo->model));
-  chaps::CopyToCharBuffer(serial_number.c_str(), pInfo->serialNumber,
-                          arraysize(pInfo->serialNumber));
+  chaps::CopyVectorToCharBuffer(label,
+                                pInfo->label,
+                                arraysize(pInfo->label));
+  chaps::CopyVectorToCharBuffer(manufacturer_id,
+                                pInfo->manufacturerID,
+                                arraysize(pInfo->manufacturerID));
+  chaps::CopyVectorToCharBuffer(model,
+                                pInfo->model,
+                                arraysize(pInfo->model));
+  chaps::CopyVectorToCharBuffer(serial_number,
+                                pInfo->serialNumber,
+                                arraysize(pInfo->serialNumber));
   return CKR_OK;
 }
 
@@ -324,8 +339,8 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   LOG_CK_RV_AND_RETURN_IF(!pLabel, CKR_ARGUMENTS_BAD);
   string pin = chaps::ConvertCharBufferToString(pPin, ulPinLen);
-  string label = chaps::ConvertCharBufferToString(pLabel,
-                                                  chaps::kTokenLabelSize);
+  vector<uint8_t> label =
+      chaps::ConvertByteBufferToVector(pLabel, chaps::kTokenLabelSize);
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitToken(slotID, pin_ptr, label);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);

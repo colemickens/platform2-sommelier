@@ -12,7 +12,7 @@ namespace chaps {
 // define const values
 const char* kChapsServicePath = "/org/chromium/Chaps";
 const char* kChapsServiceName = "org.chromium.Chaps";
-const int kTokenLabelSize = 32;
+const size_t kTokenLabelSize = 32;
 
 const char* CK_RVToString(CK_RV value) {
   switch (value) {

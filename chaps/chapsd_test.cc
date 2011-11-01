@@ -161,8 +161,8 @@ TEST_F(TestP11, SlotList) {
 }
 
 TEST_F(TestP11, SlotInfo) {
-  string description;
-  string manufacturer;
+  vector<uint8_t> description;
+  vector<uint8_t> manufacturer;
   uint32_t flags;
   uint8_t version[4];
   uint32_t result = chaps_->GetSlotInfo(0, &description,
@@ -170,7 +170,6 @@ TEST_F(TestP11, SlotInfo) {
                                         &version[0], &version[1],
                                         &version[2], &version[3]);
   EXPECT_EQ(CKR_OK, result);
-  printf("Slot Info: %s - %s\n", manufacturer.c_str(), description.c_str());
   result = chaps_->GetSlotInfo(0, NULL, &manufacturer, &flags,
                                &version[0], &version[1],
                                &version[2], &version[3]);
@@ -182,10 +181,10 @@ TEST_F(TestP11, SlotInfo) {
 }
 
 TEST_F(TestP11, TokenInfo) {
-  string label;
-  string manufacturer;
-  string model;
-  string serial_number;
+  vector<uint8_t> label;
+  vector<uint8_t> manufacturer;
+  vector<uint8_t> model;
+  vector<uint8_t> serial_number;
   uint32_t flags;
   uint8_t version[4];
   uint32_t not_used[10];
@@ -199,11 +198,6 @@ TEST_F(TestP11, TokenInfo) {
                                          &version[0], &version[1],
                                          &version[2], &version[3]);
   EXPECT_EQ(CKR_OK, result);
-  printf("Token Info: %s - %s - %s - %s\n",
-         manufacturer.c_str(),
-         model.c_str(),
-         label.c_str(),
-         serial_number.c_str());
   result = chaps_->GetTokenInfo(0, NULL, &manufacturer,
                                 &model, &serial_number, &flags,
                                 &not_used[0], &not_used[1],

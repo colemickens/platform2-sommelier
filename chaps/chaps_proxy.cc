@@ -52,8 +52,8 @@ uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
 }
 
 uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
-                                     string* slot_description,
-                                     string* manufacturer_id,
+                                     vector<uint8_t>* slot_description,
+                                     vector<uint8_t>* manufacturer_id,
                                      uint32_t* flags,
                                      uint8_t* hardware_version_major,
                                      uint8_t* hardware_version_minor,
@@ -83,10 +83,10 @@ uint32_t ChapsProxyImpl::GetSlotInfo(uint32_t slot_id,
 }
 
 uint32_t ChapsProxyImpl::GetTokenInfo(uint32_t slot_id,
-                                      string* label,
-                                      string* manufacturer_id,
-                                      string* model,
-                                      string* serial_number,
+                                      vector<uint8_t>* label,
+                                      vector<uint8_t>* manufacturer_id,
+                                      vector<uint8_t>* model,
+                                      vector<uint8_t>* serial_number,
                                       uint32_t* flags,
                                       uint32_t* max_session_count,
                                       uint32_t* session_count,
@@ -179,8 +179,9 @@ uint32_t ChapsProxyImpl::GetMechanismInfo(uint32_t slot_id,
   return result;
 }
 
-uint32_t ChapsProxyImpl::InitToken(uint32_t slot_id, const string* so_pin,
-                                   const string& label) {
+uint32_t ChapsProxyImpl::InitToken(uint32_t slot_id,
+                                   const string* so_pin,
+                                   const vector<uint8_t>& label) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;
   try {
@@ -210,7 +211,8 @@ uint32_t ChapsProxyImpl::InitPIN(uint32_t session_id, const string* pin) {
   return result;
 }
 
-uint32_t ChapsProxyImpl::SetPIN(uint32_t session_id, const string* old_pin,
+uint32_t ChapsProxyImpl::SetPIN(uint32_t session_id,
+                                const string* old_pin,
                                 const string* new_pin) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);
   uint32_t result = CKR_GENERAL_ERROR;

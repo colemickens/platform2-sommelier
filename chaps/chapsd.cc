@@ -10,6 +10,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/scoped_ptr.h>
+#include <chromeos/syslog_logging.h>
 #include <dbus-c++/dbus.h>
 
 #include "chaps/chaps_adaptor.h"
@@ -24,12 +25,14 @@ static void Terminate(int sig) {
 int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   CommandLine::StringVector args = CommandLine::ForCurrentProcess()->args();
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
   g_dispatcher.reset(new DBus::BusDispatcher());
   CHECK(g_dispatcher.get());
   DBus::default_dispatcher = g_dispatcher.get();
   if (args.size() == 0)
     // Currently, only redirecting to a library is implemented.
     LOG(FATAL) << "Usage: chapsd LIBRARY";
+  LOG(INFO) << "Starting PKCS #11 services (" << args[0] << ").";
   scoped_ptr<chaps::ChapsServiceRedirect> lib_target(
       new chaps::ChapsServiceRedirect(args[0].c_str()));
   CHECK(lib_target.get()) << "Out of memory.";

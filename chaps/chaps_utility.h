@@ -15,15 +15,26 @@
 
 namespace chaps {
 
-// CopyToCharBuffer copies a NULL-terminated string to a space-padded
-// CK_UTF8CHAR buffer (not NULL-terminated).
-inline void CopyToCharBuffer(const std::string& source, CK_UTF8CHAR_PTR buffer,
-                             size_t buffer_size) {
+// Copy*ToCharBuffer copies to a space-padded CK_UTF8CHAR buffer (not
+// NULL-terminated).
+inline void CopyStringToCharBuffer(const std::string& source,
+                                   CK_UTF8CHAR_PTR buffer,
+                                   size_t buffer_size) {
   size_t copy_size = source.length();
   if (copy_size > buffer_size)
     copy_size = buffer_size;
   memset(buffer, ' ', buffer_size);
   memcpy(buffer, source.data(), copy_size);
+}
+
+inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
+                                   CK_UTF8CHAR_PTR buffer,
+                                   size_t buffer_size) {
+  size_t copy_size = source.size();
+  if (copy_size > buffer_size)
+    copy_size = buffer_size;
+  memset(buffer, ' ', buffer_size);
+  memcpy(buffer, &source.front(), copy_size);
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".

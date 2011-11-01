@@ -31,16 +31,16 @@ public:
 
   MOCK_METHOD2(GetSlotList, uint32_t (bool, std::vector<uint32_t>*));
   MOCK_METHOD8(GetSlotInfo, uint32_t (uint32_t,
-                                      std::string*,
-                                      std::string*,
+                                      std::vector<uint8_t>*,
+                                      std::vector<uint8_t>*,
                                       uint32_t*,
                                       uint8_t*, uint8_t*,
                                       uint8_t*, uint8_t*));
   virtual uint32_t GetTokenInfo(uint32_t slot_id,
-                                std::string* label,
-                                std::string* manufacturer_id,
-                                std::string* model,
-                                std::string* serial_number,
+                                std::vector<uint8_t>* label,
+                                std::vector<uint8_t>* manufacturer_id,
+                                std::vector<uint8_t>* model,
+                                std::vector<uint8_t>* serial_number,
                                 uint32_t* flags,
                                 uint32_t* max_session_count,
                                 uint32_t* session_count,
@@ -63,7 +63,7 @@ public:
   MOCK_METHOD5(GetMechanismInfo, uint32_t (uint32_t, uint32_t, uint32_t*,
                                            uint32_t*, uint32_t*));
   MOCK_METHOD3(InitToken, uint32_t (uint32_t, const std::string*,
-                                    const std::string&));
+                                    const std::vector<uint8_t>&));
   MOCK_METHOD2(InitPIN, uint32_t (uint32_t, const std::string*));
   MOCK_METHOD3(SetPIN, uint32_t (uint32_t, const std::string*,
                                  const std::string*));

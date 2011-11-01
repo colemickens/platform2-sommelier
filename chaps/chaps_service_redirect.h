@@ -16,24 +16,31 @@ class ChapsServiceRedirect : public ChapsInterface {
 public:
   explicit ChapsServiceRedirect(const char* library_path);
   virtual ~ChapsServiceRedirect();
+  // Initialization is performed in two stages. This initial stage loads the
+  // target library and finds function pointers.  This method must be called
+  // before any other methods.  The target library will not be initialized
+  // (via C_Initialize) until the second stage which occurs automatically when
+  // the first ChapsInterface method is called.  This gives callers an
+  // opportunity to perform initialization tasks specific to the target library
+  // before C_Initialize is attempted.
   bool Init();
   void TearDown();
   // ChapsInterface methods
   virtual uint32_t GetSlotList(bool token_present,
                                std::vector<uint32_t>* slot_list);
   virtual uint32_t GetSlotInfo(uint32_t slot_id,
-                               std::string* slot_description,
-                               std::string* manufacturer_id,
+                               std::vector<uint8_t>* slot_description,
+                               std::vector<uint8_t>* manufacturer_id,
                                uint32_t* flags,
                                uint8_t* hardware_version_major,
                                uint8_t* hardware_version_minor,
                                uint8_t* firmware_version_major,
                                uint8_t* firmware_version_minor);
   virtual uint32_t GetTokenInfo(uint32_t slot_id,
-                                std::string* label,
-                                std::string* manufacturer_id,
-                                std::string* model,
-                                std::string* serial_number,
+                                std::vector<uint8_t>* label,
+                                std::vector<uint8_t>* manufacturer_id,
+                                std::vector<uint8_t>* model,
+                                std::vector<uint8_t>* serial_number,
                                 uint32_t* flags,
                                 uint32_t* max_session_count,
                                 uint32_t* session_count,
@@ -56,10 +63,12 @@ public:
                                     uint32_t* min_key_size,
                                     uint32_t* max_key_size,
                                     uint32_t* flags);
-  virtual uint32_t InitToken(uint32_t slot_id, const std::string* so_pin,
-                             const std::string& label);
+  virtual uint32_t InitToken(uint32_t slot_id,
+                             const std::string* so_pin,
+                             const std::vector<uint8_t>& label);
   virtual uint32_t InitPIN(uint32_t session_id, const std::string* pin);
-  virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
+  virtual uint32_t SetPIN(uint32_t session_id,
+                          const std::string* old_pin,
                           const std::string* new_pin);
   virtual uint32_t OpenSession(uint32_t slot_id, uint32_t flags,
                                uint32_t* session_id);
@@ -265,9 +274,16 @@ public:
                                   std::vector<uint8_t>* random_data);
 
 private:
+  // This method implements the second stage of initialization.  It is called
+  // automatically by the first call to a ChapsInterface method and will call
+  // C_Initialize on the target library.
+  bool Init2();
+  bool SetProcessUserAndGroup();
+
   std::string library_path_;
   void* library_;
   CK_FUNCTION_LIST_PTR functions_;
+  bool is_initialized_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsServiceRedirect);
 };

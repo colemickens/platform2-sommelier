@@ -29,18 +29,18 @@ public:
   virtual uint32_t GetSlotList(bool token_present,
                                std::vector<uint32_t>* slot_list);
   virtual uint32_t GetSlotInfo(uint32_t slot_id,
-                               std::string* slot_description,
-                               std::string* manufacturer_id,
+                               std::vector<uint8_t>* slot_description,
+                               std::vector<uint8_t>* manufacturer_id,
                                uint32_t* flags,
                                uint8_t* hardware_version_major,
                                uint8_t* hardware_version_minor,
                                uint8_t* firmware_version_major,
                                uint8_t* firmware_version_minor);
   virtual uint32_t GetTokenInfo(uint32_t slot_id,
-                                std::string* label,
-                                std::string* manufacturer_id,
-                                std::string* model,
-                                std::string* serial_number,
+                                std::vector<uint8_t>* label,
+                                std::vector<uint8_t>* manufacturer_id,
+                                std::vector<uint8_t>* model,
+                                std::vector<uint8_t>* serial_number,
                                 uint32_t* flags,
                                 uint32_t* max_session_count,
                                 uint32_t* session_count,
@@ -63,10 +63,12 @@ public:
                                     uint32_t* min_key_size,
                                     uint32_t* max_key_size,
                                     uint32_t* flags);
-  virtual uint32_t InitToken(uint32_t slot_id, const std::string* so_pin,
-                             const std::string& label);
+  virtual uint32_t InitToken(uint32_t slot_id,
+                             const std::string* so_pin,
+                             const std::vector<uint8_t>& label);
   virtual uint32_t InitPIN(uint32_t session_id, const std::string* pin);
-  virtual uint32_t SetPIN(uint32_t session_id, const std::string* old_pin,
+  virtual uint32_t SetPIN(uint32_t session_id,
+                          const std::string* old_pin,
                           const std::string* new_pin);
   virtual uint32_t OpenSession(uint32_t slot_id, uint32_t flags,
                                uint32_t* session_id);

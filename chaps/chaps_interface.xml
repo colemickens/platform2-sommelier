@@ -39,8 +39,8 @@
     <!-- PKCS #11 v2.20 section 11.5 page 108. -->
     <method name="GetSlotInfo">
       <arg type="u" name="slot_id" direction="in"/>
-      <arg type="s" name="slot_description" direction="out"/>
-      <arg type="s" name="manufacturer_id" direction="out"/>
+      <arg type="ay" name="slot_description" direction="out"/>
+      <arg type="ay" name="manufacturer_id" direction="out"/>
       <arg type="u" name="flags" direction="out"/>
       <arg type="y" name="hardware_version_major" direction="out"/>
       <arg type="y" name="hardware_version_minor" direction="out"/>
@@ -54,10 +54,10 @@
     <!-- PKCS #11 v2.20 section 11.5 page 109. -->
     <method name="GetTokenInfo">
       <arg type="u" name="slot_id" direction="in"/>
-      <arg type="s" name="label" direction="out"/>
-      <arg type="s" name="manufacturer_id" direction="out"/>
-      <arg type="s" name="model" direction="out"/>
-      <arg type="s" name="serial_number" direction="out"/>
+      <arg type="ay" name="label" direction="out"/>
+      <arg type="ay" name="manufacturer_id" direction="out"/>
+      <arg type="ay" name="model" direction="out"/>
+      <arg type="ay" name="serial_number" direction="out"/>
       <arg type="u" name="flags" direction="out"/>
       <arg type="u" name="max_session_count" direction="out"/>
       <arg type="u" name="session_count" direction="out"/>
@@ -104,7 +104,7 @@
       <arg type="u" name="slot_id" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_so_pin" direction="in"/>
-      <arg type="s" name="new_token_label" direction="in"/>
+      <arg type="ay" name="new_token_label" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>

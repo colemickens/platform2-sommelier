@@ -9,6 +9,6 @@ namespace chaps {
 
 extern const char* kChapsServicePath;
 extern const char* kChapsServiceName;
-extern const int kTokenLabelSize;
+extern const size_t kTokenLabelSize;
 
 }  // namespace
