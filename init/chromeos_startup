@@ -228,22 +228,16 @@ if [ -O "$RESET_FILE" ]; then
 fi
 
 # Make sure stateful partition has some basic directories
-mkdir -p -m 0755 /mnt/stateful_partition/etc
-mkdir -p -m 0755 /mnt/stateful_partition/home
-mkdir -p -m 0755 /mnt/stateful_partition/home/chronos
-mkdir -p -m 0755 /mnt/stateful_partition/var
-mkdir -p -m 0755 /mnt/stateful_partition/var/cache
-mkdir -p -m 0755 /mnt/stateful_partition/var/db
-mkdir -p -m 0755 /mnt/stateful_partition/var/empty
-mkdir -p -m 0755 /mnt/stateful_partition/var/lib
-mkdir -p -m 0755 /mnt/stateful_partition/var/lib/ureadahead
-mkdir -p -m 0755 /mnt/stateful_partition/var/lock
-mkdir -p -m 0755 /mnt/stateful_partition/var/log
-mkdir -p -m 0755 /mnt/stateful_partition/var/log/metrics
-mkdir -p -m 0755 /mnt/stateful_partition/var/log/window_manager
-mkdir -p -m 0755 /mnt/stateful_partition/var/run
-mkdir -p -m 1777 /mnt/stateful_partition/var/tmp
+for d in etc home home/chronos home/root home/user var var/cache var/db \
+         var/empty var/lib var/lib/ureadahead var/lock var/log \
+         var/log/metrics var/log/window_manager var/run var/tmp; do
+  mkdir -p -m 0755 /mnt/stateful_partition/$d
+done
 
+# /var/tmp must be world-writeable and sticky
+chmod 1777 /mnt/stateful_partition/var/tmp
+# /home/root must be group-writeable and sticky
+chmod 1771 /mnt/stateful_partition/home/root
 # Selected directories must belong to the chronos user.
 chown chronos:chronos /mnt/stateful_partition/home/chronos
 chown chronos:chronos /mnt/stateful_partition/var/log/metrics
