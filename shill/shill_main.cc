@@ -70,6 +70,13 @@ void SetupLogging(bool foreground) {
   chromeos::InitLog(log_flags);
 }
 
+void DeleteDBusControl(void* param) {
+  VLOG(2) << __func__;
+  shill::DBusControl* dbus_control =
+      reinterpret_cast<shill::DBusControl*>(param);
+  delete dbus_control;
+}
+
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
@@ -105,10 +112,13 @@ int main(int argc, char** argv) {
     config.UseFlimflamStorageDirs();
 
   // TODO(pstew): This should be chosen based on config
-  scoped_ptr<shill::DBusControl> dbus_control(new shill::DBusControl());
+  // Make sure we delete the DBusControl object AFTER the LazyInstances
+  // since some LazyInstances destructors rely on D-Bus being around.
+  shill::DBusControl* dbus_control = new shill::DBusControl();
+  exit_manager.RegisterCallback(DeleteDBusControl, dbus_control);
   dbus_control->Init();
 
-  shill::Daemon daemon(&config, dbus_control.get());
+  shill::Daemon daemon(&config, dbus_control);
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
     vector<string> device_list;
