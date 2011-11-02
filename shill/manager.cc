@@ -137,6 +137,12 @@ void Manager::Stop() {
     (*it)->Save();
   }
 
+  vector<ServiceRefPtr>::iterator services_it;
+  for (services_it = services_.begin(); services_it != services_.end();
+       ++services_it) {
+    (*services_it)->Disconnect();
+  }
+
   adaptor_->UpdateRunning();
   modem_info_.Stop();
   device_info_.Stop();

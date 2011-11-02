@@ -701,4 +701,14 @@ TEST_F(ManagerTest, SortServices) {
   manager()->DeregisterService(mock_service1);
 }
 
+TEST_F(ManagerTest, DisconnectServicesOnStop) {
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  manager()->RegisterService(mock_service);
+  EXPECT_CALL(*mock_service.get(), Disconnect()).Times(1);
+  manager()->Stop();
+}
+
 }  // namespace shill

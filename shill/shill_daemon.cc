@@ -47,10 +47,20 @@ void Daemon::Start() {
   manager_.Start();
 }
 
+void Daemon::Stop() {
+  manager_.Stop();
+}
+
 void Daemon::Run() {
   Start();
   VLOG(1) << "Running main loop.";
   dispatcher_.DispatchForever();
+  VLOG(1) << "Exited main loop.";
+  Stop();
+}
+
+void Daemon::Quit() {
+  dispatcher_.PostTask(new MessageLoop::QuitTask);
 }
 
 

@@ -25,11 +25,13 @@ class Daemon {
 
   void AddDeviceToBlackList(const std::string &device_name);
   void Run();
+  void Quit();
 
  private:
   friend class ShillDaemonTest;
 
   void Start();
+  void Stop();
 
   Config *config_;
   ControlInterface *control_;

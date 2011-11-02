@@ -14,6 +14,10 @@
 #include <base/string_split.h>
 #include <chromeos/syslog_logging.h>
 
+extern "C" {
+#include <glib-unix.h>
+}
+
 #include "shill/dbus_control.h"
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
@@ -77,6 +81,12 @@ void DeleteDBusControl(void* param) {
   delete dbus_control;
 }
 
+gboolean ExitSigHandler(gpointer data) {
+  shill::Daemon* daemon = reinterpret_cast<shill::Daemon*>(data);
+  daemon->Quit();
+  return TRUE;
+}
+
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
@@ -130,6 +140,10 @@ int main(int argc, char** argv) {
       daemon.AddDeviceToBlackList(*i);
     }
   }
+
+  g_unix_signal_add(SIGINT, ExitSigHandler, &daemon);
+  g_unix_signal_add(SIGTERM, ExitSigHandler, &daemon);
+
   daemon.Run();
 
   return 0;
