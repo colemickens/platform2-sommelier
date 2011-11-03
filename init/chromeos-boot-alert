@@ -327,8 +327,8 @@ main() {
     /usr/sbin/lightup_screen >/dev/null 2>&1
   fi
 
-  # Prevent screen from blanking after inactivity (see console_codes(4)).
-  (printf "\033[9;0]\033[14;0]" >/dev/console || true) 2>/dev/null
+  # Hides cursor and prevents console from blanking after long inactivity.
+  setterm -cursor off -blank 0 -powersave off -powerdown 0 >"$STDOUT" || true
 
   case "$mode" in
     "warn_dev" | "enter_dev" | "leave_dev" | "dev_fwcheck" | \
