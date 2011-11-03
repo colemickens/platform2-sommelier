@@ -62,6 +62,10 @@ class Error {
   static std::string GetName(Type type);
   static std::string GetDefaultMessage(Type type);
 
+  // Log an error message.  If |error| is non-NULL, also populate it.
+  static void PopulateAndLog(Error *error, Type type,
+                             const std::string &message);
+
  private:
   struct Info {
     const char *name;  // Error type name.

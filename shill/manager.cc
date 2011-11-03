@@ -151,10 +151,8 @@ void Manager::Stop() {
 void Manager::CreateProfile(const std::string &name, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
-    const string kMessage = "Invalid profile name " + name;
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid profile name " + name);
     return;
   }
   ProfileRefPtr profile(new Profile(control_interface_,
@@ -168,22 +166,17 @@ void Manager::CreateProfile(const std::string &name, Error *error) {
 
   // Save profile data out, and then let the scoped pointer fall out of scope.
   if (!profile->Save()) {
-    const string kMessage = "Profile name " + name + " could not be saved";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInternalError, kMessage);
+    Error::PopulateAndLog(error, Error::kInternalError,
+                          "Profile name " + name + " could not be saved");
     return;
   }
 }
 
 void Manager::PushProfile(const string &name, Error *error) {
-
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
-    const string kMessage = "Invalid profile name " + name;
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid profile name " + name);
     return;
   }
 
@@ -191,10 +184,8 @@ void Manager::PushProfile(const string &name, Error *error) {
        it != profiles_.end();
        ++it) {
     if ((*it)->MatchesIdentifier(ident)) {
-      const string kMessage = "Profile name " + name + " is already on stack";
-      LOG(ERROR) << kMessage;
-      CHECK(error);
-      error->Populate(Error::kAlreadyExists, kMessage);
+      Error::PopulateAndLog(error, Error::kAlreadyExists,
+                            "Profile name " + name + " is already on stack");
       return;
     }
   }
@@ -208,10 +199,8 @@ void Manager::PushProfile(const string &name, Error *error) {
     // to avoid leaving permanent side effects to devices under test.  This
     // whole thing will need to be reworked in order to allow that to happen,
     // or the autotests (or their expectations) will need to change.
-    const string kMessage = "Cannot load non-default global profile " + name;
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Cannot load non-default global profile " + name);
     return;
   }
 
@@ -259,25 +248,18 @@ void Manager::PopProfileInternal() {
 void Manager::PopProfile(const std::string &name, Error *error) {
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    const string kMessage = "Profile stack is empty";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotFound, kMessage);
+    Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
     return;
   }
   ProfileRefPtr active_profile = profiles_.back();
   if (!Profile::ParseIdentifier(name, &ident)) {
-    const string kMessage = "Invalid profile name " + name;
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid profile name " + name);
     return;
   }
   if (!active_profile->MatchesIdentifier(ident)) {
-    const string kMessage = name + " is not the active profile";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          name + " is not the active profile");
     return;
   }
   PopProfileInternal();
@@ -286,10 +268,7 @@ void Manager::PopProfile(const std::string &name, Error *error) {
 void Manager::PopAnyProfile(Error *error) {
   Profile::Identifier ident;
   if (profiles_.empty()) {
-    const string kMessage = "Profile stack is empty";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotFound, kMessage);
+    Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
     return;
   }
   PopProfileInternal();
@@ -506,10 +485,8 @@ void Manager::RequestScan(const string &technology, Error *error) {
     }
   } else {
     // TODO(quiche): support scanning for other technologies?
-    const string kMessage = "Unrecognized technology " + technology;
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Unrecognized technology " + technology);
   }
 }
 
@@ -537,14 +514,14 @@ void Manager::SetTechnologyOrder(const string &order, Error *error) {
     Technology::Identifier identifier = Technology::IdentifierFromName(*it);
 
     if (identifier == Technology::kUnknown) {
-      error->Populate(Error::kInvalidArguments, *it +
-                      " is an unknown technology name");
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            *it + " is an unknown technology name");
       return;
     }
 
     if (ContainsKey(seen, identifier)) {
-      error->Populate(Error::kInvalidArguments, *it +
-                      " is duplicated in the list");
+      Error::PopulateAndLog(error, Error::kInvalidArguments,
+                            *it + " is duplicated in the list");
       return;
     }
     seen[identifier] = true;

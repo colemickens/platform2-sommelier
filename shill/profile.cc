@@ -61,13 +61,9 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
                           Error *error) {
   FilePath final_path;
   if (!GetStoragePath(&final_path)) {
-    const string kMessage =
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
         base::StringPrintf("Could not set up profile storage for %s:%s",
-                           name_.user.c_str(), name_.identifier.c_str());
-    LOG(ERROR) << kMessage;
-    if (error) {
-      error->Populate(Error::kInvalidArguments, kMessage);
-    }
+                           name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
   scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
@@ -75,33 +71,21 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
   bool already_exists = storage->IsNonEmpty();
   if (!already_exists && storage_option != kCreateNew &&
       storage_option != kCreateOrOpenExisting) {
-    const string kMessage =
+    Error::PopulateAndLog(error, Error::kNotFound,
         base::StringPrintf("Profile storage for %s:%s does not already exist",
-                           name_.user.c_str(), name_.identifier.c_str());
-    LOG(ERROR) << kMessage;
-    if (error) {
-      error->Populate(Error::kNotFound, kMessage);
-    }
+                           name_.user.c_str(), name_.identifier.c_str()));
     return false;
   } else if (already_exists && storage_option != kOpenExisting &&
              storage_option != kCreateOrOpenExisting) {
-    const string kMessage =
+    Error::PopulateAndLog(error, Error::kAlreadyExists,
         base::StringPrintf("Profile storage for %s:%s already exists",
-                           name_.user.c_str(), name_.identifier.c_str());
-    LOG(ERROR) << kMessage;
-    if (error) {
-      error->Populate(Error::kAlreadyExists, kMessage);
-    }
+                           name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
   if (!storage->Open()) {
-    const string kMessage =
+    Error::PopulateAndLog(error, Error::kInternalError,
         base::StringPrintf("Could not open profile storage for %s:%s",
-                           name_.user.c_str(), name_.identifier.c_str());
-    LOG(ERROR) << kMessage;
-    if (error) {
-      error->Populate(Error::kInternalError, kMessage);
-    }
+                           name_.user.c_str(), name_.identifier.c_str()));
     return false;
   }
   if (!already_exists) {

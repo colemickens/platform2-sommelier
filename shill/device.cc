@@ -148,50 +148,38 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
 
 void Device::Scan(Error *error) {
   VLOG(2) << "Device " << link_name_ << " scan requested.";
-  const string kMessage = "Device doesn't support scan.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support scan.");
 }
 
 void Device::RegisterOnNetwork(const std::string &/*network_id*/,
                                Error *error) {
-  const string kMessage = "Device doesn't support network registration.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support network registration.");
 }
 
 void Device::RequirePIN(const string &/*pin*/, bool /*require*/, Error *error) {
-  const string kMessage = "Device doesn't support RequirePIN.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support RequirePIN.");
 }
 
 void Device::EnterPIN(const string &/*pin*/, Error *error) {
-  const string kMessage = "Device doesn't support EnterPIN.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support EnterPIN.");
 }
 
 void Device::UnblockPIN(const string &/*unblock_code*/,
                         const string &/*pin*/,
                         Error *error) {
-  const string kMessage = "Device doesn't support UnblockPIN.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support UnblockPIN.");
 }
 
 void Device::ChangePIN(const string &/*old_pin*/,
                        const string &/*new_pin*/,
                        Error *error) {
-  const string kMessage = "Device doesn't support ChangePIN.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kNotSupported, kMessage);
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support ChangePIN.");
 }
 
 string Device::GetRpcIdentifier() {

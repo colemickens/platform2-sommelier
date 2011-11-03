@@ -466,10 +466,8 @@ void Cellular::RegisterGSMModem() {
 void Cellular::RegisterOnNetwork(const string &network_id, Error *error) {
   LOG(INFO) << __func__ << "(" << network_id << ")";
   if (type_ != kTypeGSM) {
-    const string kMessage = "Network registration supported only for GSM.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "Network registration supported only for GSM.");
     return;
   }
   // Defer registration because we may be in a dbus-c++ callback.
@@ -490,10 +488,8 @@ void Cellular::RegisterOnNetworkTask(const string &network_id) {
 void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
   VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
   if (type_ != kTypeGSM) {
-    const string kMessage = "RequirePIN supported only for GSM.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "RequirePIN supported only for GSM.");
     return;
   }
   // Defer registration because we may be in a dbus-c++ callback.
@@ -511,10 +507,8 @@ void Cellular::RequirePINTask(const string &pin, bool require) {
 void Cellular::EnterPIN(const string &pin, Error *error) {
   VLOG(2) << __func__ << "(" << pin << ")";
   if (type_ != kTypeGSM) {
-    const string kMessage = "EnterPIN supported only for GSM.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "EnterPIN supported only for GSM.");
     return;
   }
   // Defer registration because we may be in a dbus-c++ callback.
@@ -534,10 +528,8 @@ void Cellular::UnblockPIN(const string &unblock_code,
                           Error *error) {
   VLOG(2) << __func__ << "(" << unblock_code << ", " << pin << ")";
   if (type_ != kTypeGSM) {
-    const string kMessage = "UnblockPIN supported only for GSM.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "UnblockPIN supported only for GSM.");
     return;
   }
   // Defer registration because we may be in a dbus-c++ callback.
@@ -558,10 +550,8 @@ void Cellular::ChangePIN(const string &old_pin,
                          Error *error) {
   VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
   if (type_ != kTypeGSM) {
-    const string kMessage = "ChangePIN supported only for GSM.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "ChangePIN supported only for GSM.");
     return;
   }
   // Defer registration because we may be in a dbus-c++ callback.
@@ -725,18 +715,17 @@ void Cellular::Connect(Error *error) {
   VLOG(2) << __func__;
   if (state_ == kStateConnected ||
       state_ == kStateLinked) {
-    LOG(ERROR) << "Already connected; connection request ignored.";
-    CHECK(error);
-    error->Populate(Error::kAlreadyConnected);
+    Error::PopulateAndLog(error, Error::kAlreadyConnected,
+                          "Already connected; connection request ignored.");
     return;
   }
   CHECK_EQ(kStateRegistered, state_);
 
   if (!allow_roaming_ &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
-    LOG(ERROR) << "Roaming disallowed; connection request ignored.";
+    Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
+                          "Roaming disallowed; connection request ignored.");
     CHECK(error);
-    error->Populate(Error::kNotOnHomeNetwork);
     return;
   }
 
@@ -804,10 +793,8 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
 void Cellular::Scan(Error *error) {
   VLOG(2) << __func__;
   if (type_ != kTypeGSM) {
-    const string kMessage = "Network scanning support for GSM only.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kNotSupported, kMessage);
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "Network scanning support for GSM only.");
     return;
   }
   // Defer scan because we may be in a dbus-c++ callback.
@@ -892,18 +879,14 @@ Stringmap Cellular::ParseScanResult(
 void Cellular::Activate(const string &carrier, Error *error) {
   VLOG(2) << __func__ << "(" << carrier << ")";
   if (type_ != kTypeCDMA) {
-    const string kMessage = "Unable to activate non-CDMA modem.";
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Unable to activate non-CDMA modem.");
     return;
   }
   if (state_ != kStateEnabled &&
       state_ != kStateRegistered) {
-    const string kMessage = "Unable to activate in " + GetStateString(state_);
-    LOG(ERROR) << kMessage;
-    CHECK(error);
-    error->Populate(Error::kInvalidArguments, kMessage);
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Unable to activate in " + GetStateString(state_));
     return;
   }
   // Defer connect because we may be in a dbus-c++ callback.

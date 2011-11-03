@@ -86,4 +86,12 @@ string Error::GetDefaultMessage(Type type) {
   return kInfos[type].message;
 }
 
+// static
+void Error::PopulateAndLog(Error *error, Type type, const string &message) {
+  LOG(ERROR) << message;
+  if (error) {
+    error->Populate(type, message);
+  }
+}
+
 }  // namespace shill
