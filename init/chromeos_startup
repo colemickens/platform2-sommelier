@@ -345,6 +345,13 @@ fi
 # That file is created by cryptohome once the device has been
 # enterprise-enrolled or been claimed by a local user.
 #
+# Old versions of Chromium OS (11 and earlier) didn't have the code generating
+# install_attributes.pb in cryptohome when claiming the device, so the check
+# would fail for users upgrading from devices that have been setup originally
+# on these versions. Our best-effort attmept at catching this is to also check
+# for /var/lib/whitelist/owner.key. Note that this may not work perfectly once
+# we have support for transitioning ownership.
+#
 # We currently also check /root/.forget_usernames in order to not generate
 # /tmp/machine-info on test images. This is because test images are used for
 # measuring boot times and these should not include additional steps that are
@@ -359,6 +366,7 @@ fi
 #   /tmp/machine-info should be removed after OOBE because it contains data to
 #   identify a machine and is world-readable.
 if [ ! -e /home/.shadow/install_attributes.pb -a \
+     ! -e /var/lib/whitelist/owner.key -a \
      ! -e /root/.forget_usernames ]; then
   MACHINE_INFO=/tmp/machine-info
   touch $MACHINE_INFO
