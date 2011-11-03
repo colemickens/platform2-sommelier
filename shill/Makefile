@@ -37,6 +37,7 @@ DBUS_ADAPTOR_HEADERS = \
 DBUS_PROXY_HEADERS = \
 	dbus-properties.h \
 	dhcpcd.h \
+	power_manager.h \
 	supplicant-bss.h \
 	supplicant-interface.h \
 	supplicant-network.h \
@@ -117,6 +118,7 @@ SHILL_OBJS = \
 	modem_manager_proxy.o \
 	modem_proxy.o \
 	modem_simple_proxy.o \
+	power_manager_proxy.o \
 	profile.o \
 	profile_dbus_adaptor.o \
 	property_store.o \
@@ -185,6 +187,7 @@ TEST_OBJS = \
 	mock_modem_manager_proxy.o \
 	mock_modem_proxy.o \
 	mock_modem_simple_proxy.o \
+	mock_power_manager_proxy.o \
 	mock_profile.o \
 	mock_property_store.o \
 	mock_resolver.o \

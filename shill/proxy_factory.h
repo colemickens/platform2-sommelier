@@ -30,6 +30,8 @@ class ModemManagerProxyInterface;
 class ModemProxyDelegate;
 class ModemProxyInterface;
 class ModemSimpleProxyInterface;
+class PowerManagerProxyDelegate;
+class PowerManagerProxyInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 
@@ -75,6 +77,9 @@ class ProxyFactory {
       ModemGSMNetworkProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
+
+  virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
+      PowerManagerProxyDelegate *delegate);
 
   virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
       const char *dbus_path,

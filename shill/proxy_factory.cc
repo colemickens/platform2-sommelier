@@ -14,6 +14,7 @@
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
 #include "shill/modem_simple_proxy.h"
+#include "shill/power_manager_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
 #include "shill/supplicant_process_proxy.h"
 
@@ -84,6 +85,11 @@ ModemGSMNetworkProxyInterface *ProxyFactory::CreateModemGSMNetworkProxy(
     const string &path,
     const string &service) {
   return new ModemGSMNetworkProxy(delegate, connection(), path, service);
+}
+
+PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
+    PowerManagerProxyDelegate *delegate) {
+  return new PowerManagerProxy(delegate, connection());
 }
 
 SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
