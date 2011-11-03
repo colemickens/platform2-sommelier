@@ -148,10 +148,6 @@ void Manager::Stop() {
   device_info_.Stop();
 }
 
-void Manager::AdoptProfile(const ProfileRefPtr &profile) {
-  profiles_.push_back(profile);
-}
-
 void Manager::CreateProfile(const std::string &name, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
@@ -228,7 +224,7 @@ void Manager::PushProfile(const string &name, Error *error) {
     return;
   }
 
-  AdoptProfile(profile);
+  profiles_.push_back(profile);
 
   // Offer each registered Service the opportunity to join this new Profile.
   vector<ServiceRefPtr>::iterator it;

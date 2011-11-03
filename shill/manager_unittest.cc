@@ -86,6 +86,10 @@ class ManagerTest : public PropertyStoreTest {
   }
   bool ServiceOrderIs(ServiceRefPtr svc1, ServiceRefPtr svc2);
 
+  void AdoptProfile(Manager *manager, ProfileRefPtr profile) {
+    manager->profiles_.push_back(profile);
+  }
+
   Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
     Profile::Identifier id("rather", "irrelevant");
     scoped_ptr<Profile> profile(new Profile(control_interface(),
@@ -201,7 +205,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
-  manager.AdoptProfile(profile);
+  AdoptProfile(&manager, profile);
 
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(control_interface(),
@@ -248,7 +252,7 @@ TEST_F(ManagerTest, RegisterKnownService) {
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
-  manager.AdoptProfile(profile);
+  AdoptProfile(&manager, profile);
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
@@ -277,7 +281,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                   string());
   ProfileRefPtr profile(CreateProfileForManager(&manager, &glib));
   ASSERT_TRUE(profile.get());
-  manager.AdoptProfile(profile);
+  AdoptProfile(&manager, profile);
   {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
@@ -299,7 +303,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
 
 TEST_F(ManagerTest, GetProperties) {
   ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  manager()->AdoptProfile(profile);
+  AdoptProfile(manager(), profile);
   map<string, ::DBus::Variant> props;
   Error error(Error::kInvalidProperty, "");
   {
@@ -329,7 +333,7 @@ TEST_F(ManagerTest, GetProperties) {
 
 TEST_F(ManagerTest, GetDevicesProperty) {
   ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
-  manager()->AdoptProfile(profile);
+  AdoptProfile(manager(), profile);
   manager()->RegisterDevice(mock_devices_[0].get());
   manager()->RegisterDevice(mock_devices_[1].get());
   {
@@ -367,7 +371,7 @@ TEST_F(ManagerTest, MoveService) {
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
     profile->set_storage(storage);
-    manager.AdoptProfile(profile);
+    AdoptProfile(&manager, profile);
   }
   // Create a profile that already has |s2| in it.
   ProfileRefPtr profile(new EphemeralProfile(control_interface(), &manager));

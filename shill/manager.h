@@ -53,9 +53,6 @@ class Manager {
   void Start();
   void Stop();
 
-  // Pushes |profile| onto stack of managed profiles.
-  void AdoptProfile(const ProfileRefPtr &profile);
-
   const ProfileRefPtr &ActiveProfile();
   bool MoveServiceToProfile(const ServiceRefPtr &to_move,
                             const ProfileRefPtr &destination);
