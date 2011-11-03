@@ -199,6 +199,10 @@ string Service::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
+bool Service::IsLoadableFrom(StoreInterface *storage) const {
+  return storage->ContainsGroup(GetStorageIdentifier());
+}
+
 bool Service::Load(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   if (!storage->ContainsGroup(id)) {

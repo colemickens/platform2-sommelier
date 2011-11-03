@@ -146,15 +146,15 @@ bool Profile::UpdateService(const ServiceRefPtr &service) {
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
-bool Profile::MergeService(const ServiceRefPtr &service) {
-  if (!storage_->ContainsGroup(service->GetStorageIdentifier()))
+bool Profile::ConfigureService(const ServiceRefPtr &service) {
+  if (!ContainsService(service))
     return false;
   service->set_profile(this);
   return service->Load(storage_.get());
 }
 
 bool Profile::ContainsService(const ServiceConstRefPtr &service) {
-  return storage_->ContainsGroup(service->GetStorageIdentifier());
+  return service->IsLoadableFrom(storage_.get());
 }
 
 bool Profile::IsValidIdentifierToken(const std::string &token) {

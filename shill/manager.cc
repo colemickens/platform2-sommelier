@@ -233,7 +233,7 @@ void Manager::PushProfile(const string &name, Error *error) {
   // Offer each registered Service the opportunity to join this new Profile.
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    profile->MergeService(*it);
+    profile->ConfigureService(*it);
   }
 
   // TODO(pstew): Now shop the Profile contents around to Devices which
@@ -249,7 +249,7 @@ void Manager::PopProfileInternal() {
     if ((*s_it)->profile().get() == active_profile.get()) {
       vector<ProfileRefPtr>::reverse_iterator p_it;
       for (p_it = profiles_.rbegin(); p_it != profiles_.rend(); ++p_it) {
-        if ((*p_it)->MergeService(*s_it)) {
+        if ((*p_it)->ConfigureService(*s_it)) {
           break;
         }
       }
@@ -347,15 +347,15 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   VLOG(2) << __func__ << to_manage->UniqueName();
 
-  bool merged = false;
+  bool configured = false;
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
-       !merged && it != profiles_.end();
+       !configured && it != profiles_.end();
        ++it) {
-    merged = (*it)->MergeService(to_manage);  // Will merge, if possible.
+    configured = (*it)->ConfigureService(to_manage);
   }
 
   // If not found, add it to the ephemeral profile
-  if (!merged)
+  if (!configured)
     ephemeral_profile_->AdoptService(to_manage);
 
   // Now add to OUR list.

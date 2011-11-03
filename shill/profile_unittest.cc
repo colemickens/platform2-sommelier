@@ -177,7 +177,7 @@ TEST_F(ProfileTest, ServiceManagement) {
   ASSERT_FALSE(profile_->ContainsService(service2));
 }
 
-TEST_F(ProfileTest, ServiceMerge) {
+TEST_F(ProfileTest, ServiceConfigure) {
   ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
                                               manager()));
@@ -191,7 +191,7 @@ TEST_F(ProfileTest, ServiceMerge) {
                                               dispatcher(),
                                               manager()));
   bool orig_favorite = service2->favorite();
-  ASSERT_TRUE(profile_->MergeService(service2));
+  ASSERT_TRUE(profile_->ConfigureService(service2));
   ASSERT_EQ(service1->favorite(), service2->favorite());
   ASSERT_NE(orig_favorite, service2->favorite());
 

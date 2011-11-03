@@ -81,10 +81,12 @@ class Profile : public base::RefCounted<Profile> {
   // Returns true if |service| was found and updated, false if not found.
   bool UpdateService(const ServiceRefPtr &service);
 
-  // Determine if |service| represents a service that's already in |services_|.
-  // If so, merge them smartly and return true.  If not, return false.
-  bool MergeService(const ServiceRefPtr &service);
+  // Ask |service| if it can configure itself from the profile.  If it can,
+  // change the service to point at this profile, ask |service| to perform
+  // the configuration and return true.  If not, return false.
+  bool ConfigureService(const ServiceRefPtr &service);
 
+  // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr &service);
 
   std::vector<std::string> EnumerateAvailableServices();

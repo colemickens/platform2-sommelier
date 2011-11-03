@@ -127,6 +127,9 @@ class Service : public base::RefCounted<Service> {
   // Returns the unique persistent storage identifier for the service.
   virtual std::string GetStorageIdentifier() const = 0;
 
+  // Returns whether the service configuration can be loaded from |storage|.
+  virtual bool IsLoadableFrom(StoreInterface *storage) const;
+
   // Loads the service from persistent |storage|. Returns true on success.
   virtual bool Load(StoreInterface *storage);
 
