@@ -148,8 +148,9 @@ deps = [testrunner, 'plug_dimmer_unittest.cc', backlight_controller, backlight,
 tests.append(dimmer_unittest_env.Program('plug_dimmer_unittest', deps))
 powerd_unittest_env = powerd_env.Clone()
 powerd_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))
-deps = [testrunner, 'powerd_unittest.cc', powerd_lib, util_lib, xidle,
-        backlight_controller, backlight, power_prefs]
+deps = [testrunner, 'powerd_unittest.cc', 'backlight_controller_unittest.cc',
+        powerd_lib, util_lib, xidle, backlight_controller, backlight,
+        power_prefs]
 tests.append(powerd_unittest_env.Program('powerd_unittest', deps))
 file_tagger_unittest_env = powerd_env.Clone()
 file_tagger_unittest_env.Append(LIBS=Split('gtest gmock Xtst'))

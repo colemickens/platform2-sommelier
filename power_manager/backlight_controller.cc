@@ -83,6 +83,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       max_percent_(100.),
       num_steps_(kMaxBrightnessSteps),
       is_initialized_(false),
+      target_raw_brightness_(0),
       is_in_transition_(false) {}
 
 bool BacklightController::Init() {
@@ -91,6 +92,7 @@ bool BacklightController::Init() {
     ReadPrefs();
     is_initialized_ = true;
     local_brightness_ = RawBrightnessToLocalBrightness(level);
+    target_raw_brightness_ = level;
 
     // If there are fewer steps than the max, adjust for it.
     // TODO(sque): this is not ideal for some cases, such as max=17, where the
@@ -152,19 +154,16 @@ void BacklightController::DecreaseBrightness(bool allow_off) {
 
   // Determine the adjustment step size.
   double step_size = (max_percent_ - min_percent_) / num_steps_;
-  double new_brightness = ClampToMin(local_brightness_ - step_size);
 
-  if ((new_brightness == min_percent_ && min_percent_ > 0) ||
-      new_brightness != local_brightness_) {
-    // Set backlight to zero if there is no change in the brightness, but
-    // already at a nonzero minimum. (Can go one step lower to zero.)
-    if (allow_off && (new_brightness == 0 ||
-                      (new_brightness == min_percent_ && min_percent_ > 0))) {
-      // Explicitly et new brightness to zero in case backlight was adjusted
-      // from min -> 0.
-      new_brightness = 0;
-    }
+  // Lower backlight to the next step, turn it off if already at the minimum.
+  double new_brightness;
+  if (local_brightness_ > min_percent_)
+    new_brightness = ClampToMin(local_brightness_ - step_size);
+  else
+    new_brightness = 0;
 
+  if (new_brightness != local_brightness_ &&
+      (allow_off || new_brightness > 0)) {
     // Allow large swing in |brightness_offset_| for absolute brightness
     // outside of clamped brightness region.
     double absolute_brightness = als_brightness_level_ + *brightness_offset_;
