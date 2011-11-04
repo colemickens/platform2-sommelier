@@ -74,7 +74,7 @@ Service::Service(ControlInterface *control_interface,
       connectable_(false),
       favorite_(false),
       priority_(kPriorityNone),
-      security_(0),
+      security_level_(0),
       strength_(0),
       save_credentials_(true),
       type_(type),
@@ -318,7 +318,7 @@ bool Service::Compare(ServiceRefPtr a,
       return ret;
   }
 
-  if (DecideBetween(a->security(), b->security(), &ret) ||
+  if (DecideBetween(a->security_level(), b->security_level(), &ret) ||
       DecideBetween(a->strength(), b->strength(), &ret)) {
     return ret;
   }
