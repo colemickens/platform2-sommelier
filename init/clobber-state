@@ -118,7 +118,7 @@ if [ "$FAST_WIPE" = "fast" ]; then
     dd bs=4M count=1 if=/dev/zero of=${OTHER_ROOT_DEV}
     dd bs=4M count=1 if=/dev/zero of=${OTHER_KERNEL_DEV}
   fi
-  /sbin/mkfs.ext3 "$STATE_DEV"
+  /sbin/mkfs.ext4 "$STATE_DEV"
 else
 
   if [ -z "${KEEPIMG}" ]; then
@@ -129,12 +129,12 @@ else
   # Wipe everything on the stateful partition.
   wipedev ${STATE_DEV}
 
-  /sbin/mkfs.ext3 "$STATE_DEV"
+  /sbin/mkfs.ext4 "$STATE_DEV"
   # TODO(wad) tune2fs.
 fi
 
 # Mount the fresh image for last minute additions.
-mount -n -t ext3 "${STATE_DEV}" /mnt/stateful_partition
+mount -n -t ext4 "${STATE_DEV}" /mnt/stateful_partition
 
 # Restore the log file
 clobber-log --restore "$SCRIPT" "$@"
