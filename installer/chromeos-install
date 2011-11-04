@@ -462,7 +462,7 @@ fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
 if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   echo "Clearing the stateful partition..."
   loop_offset_setup $DST $START_STATEFUL
-  sudo mkfs.ext3 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+  sudo mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
     $(($NUM_STATEFUL_SECTORS / 8))
   # Need to synchronize before releasing loop device, otherwise calling
   # loop_offset_cleanup may return "device busy" error.
