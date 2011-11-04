@@ -145,8 +145,8 @@ class Service : public base::RefCounted<Service> {
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
 
-  int32 security() const { return security_; }
-  void set_security(int32 security) { security_ = security; }
+  int32 security_level() const { return security_level_; }
+  void set_security_level(int32 security) { security_level_ = security; }
 
   int32 strength() const { return strength_; }
   void set_strength(int32 strength) { strength_ = strength; }
@@ -257,7 +257,7 @@ class Service : public base::RefCounted<Service> {
   std::string error_;
   bool favorite_;
   int32 priority_;
-  int32 security_;
+  int32 security_level_;
   int32 strength_;
   std::string proxy_config_;
   bool save_credentials_;

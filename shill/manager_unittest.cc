@@ -652,7 +652,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   // Security
-  mock_service0->set_security(1);
+  mock_service0->set_security_level(1);
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
