@@ -51,6 +51,7 @@ RM_ON_CLEAN += $(OUT)libchaps.so
 $(OUT)chapsd: dbus-headers \
               protobufs \
               $(OUT)chapsd.o \
+              $(OUT)chaps_service.o \
               $(OUT)chaps_service_redirect.o \
               $(OUT)chaps_adaptor.o \
               $(OUT)chaps_utility.o \
@@ -75,6 +76,14 @@ $(OUT)vpn_replay: $(OUT)vpn_replay.o
 	$(call cxx_binary, -lchaps)
 RM_ON_CLEAN += $(OUT)vpn_replay
 
+$(OUT)chaps_service_test: $(OUT)chaps_service_test.o \
+                          $(OUT)chaps_service.o \
+                          $(OUT)attributes.pb.o \
+                          $(OUT)attributes.o \
+                          $(OUT)chaps_utility.o
+	$(call cxx_binary, -lgtest -lgmock)
+RM_ON_CLEAN += $(OUT)chaps_service_test
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
@@ -91,7 +100,7 @@ dbus-headers: chaps_adaptor_generated.h \
 
 protobufs: attributes.pb.h
 
-tests: $(OUT)chaps_test
+tests: $(OUT)chaps_test $(OUT)chaps_service_test
 
 live_tests: $(OUT)chaps_live_test $(OUT)chapsd_test
 
@@ -99,6 +108,7 @@ perf: $(OUT)vpn_replay
 
 runtests: tests
 	$(OUT)chaps_test
+	$(OUT)chaps_service_test
 # This will have to wait until it does not depend on opencryptoki.
 # For now this test must be run on a live system.
 #LD_LIBRARY_PATH=$(OUT) "$(OUT)chapsd_test"
