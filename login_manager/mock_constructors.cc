@@ -41,7 +41,7 @@ MockFileChecker::MockFileChecker(std::string filename)
   : FileChecker(filename) {}
 MockFileChecker::~MockFileChecker() {}
 
-MockKeyGenerator::MockKeyGenerator() {}
+MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL) {}
 MockKeyGenerator::~MockKeyGenerator() {}
 
 MockMitigator::MockMitigator() {}

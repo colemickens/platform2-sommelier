@@ -38,6 +38,9 @@ class SystemUtils {
   // Returns time, in seconds, since the unix epoch.
   virtual time_t time(time_t* t);
 
+  // Forks a new process.  In the parent, returns child's pid.  In child, 0.
+  virtual pid_t fork();
+
   // Returns 0 if normal mode, 1 if developer mode, -1 if error.
   virtual int IsDevMode();
 

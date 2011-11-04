@@ -66,6 +66,10 @@ time_t SystemUtils::time(time_t* t) {
   return ::time(t);
 }
 
+pid_t SystemUtils::fork() {
+  return ::fork();
+}
+
 bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
   base::TimeTicks start = base::TimeTicks::Now();
   base::TimeDelta max_elapsed = base::TimeDelta::FromSeconds(timeout);

@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "login_manager/mock_child_job.h"
+#include "login_manager/mock_child_process.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/session_manager_service.h"
 
@@ -53,11 +54,12 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
       .Times(1);
   EXPECT_CALL(*k_job, IsDesiredUidSet())
       .WillRepeatedly(Return(true));
-  ON_CALL(*k_job, Run())
-      .WillByDefault(Invoke(CleanExit));
-  int keygen_pid = 8;
 
-  KeyGenerator keygen;
+  MockChildProcess proc(8, 0, manager_->test_api());
+  EXPECT_CALL(utils_, fork())
+      .WillOnce(Return(proc.pid()));
+
+  KeyGenerator keygen(&utils_);
   keygen.InjectMockKeygenJob(k_job);  // Takes ownership.
   EXPECT_TRUE(keygen.Start(getuid(), manager_.get()));
 }

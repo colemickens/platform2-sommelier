@@ -13,12 +13,13 @@ namespace login_manager {
 class ChildJobInterface;
 class MockChildJob;
 class SessionManagerService;
+class SystemUtils;
 
 class KeyGenerator {
  public:
   static const char kTemporaryKeyFilename[];
 
-  KeyGenerator();
+  explicit KeyGenerator(SystemUtils *utils);  // |utils| is owned by the caller.
   virtual ~KeyGenerator();
 
   // Use |key| to start the generation of a new Owner keypair as user |uid|.
@@ -34,6 +35,7 @@ class KeyGenerator {
   static const char kKeygenExecutable[];
 
   scoped_ptr<ChildJobInterface> keygen_job_;
+  SystemUtils *utils_;
   DISALLOW_COPY_AND_ASSIGN(KeyGenerator);
 };
 

@@ -19,7 +19,7 @@ const char KeyGenerator::kKeygenExecutable[] = "/sbin/keygen";
 // static
 const char KeyGenerator::kTemporaryKeyFilename[] = "key.pub";
 
-KeyGenerator::KeyGenerator() {}
+KeyGenerator::KeyGenerator(SystemUtils *utils) : utils_(utils) {}
 
 KeyGenerator::~KeyGenerator() {}
 
@@ -51,7 +51,7 @@ bool KeyGenerator::Start(uid_t uid,
 }
 
 int KeyGenerator::RunJob(ChildJobInterface* job) {
-  int pid = fork();
+  int pid = utils_->fork();
   if (pid == 0) {
     job->Run();
     exit(1);  // Run() is not supposed to return.

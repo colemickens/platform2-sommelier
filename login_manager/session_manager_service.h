@@ -109,6 +109,16 @@ class SessionManagerService
       session_manager_service_->screen_locked_ = screen_locked;
     }
 
+    void ScheduleChildExit(pid_t pid, int status) {
+      session_manager_service_->message_loop_->PostTask(
+          FROM_HERE,
+          NewRunnableFunction(
+              &HandleChildExit,
+              pid,
+              status,
+              reinterpret_cast<void*>(session_manager_service_)));
+    }
+
    private:
     friend class SessionManagerService;
     explicit TestApi(SessionManagerService* session_manager_service)

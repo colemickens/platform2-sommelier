@@ -46,11 +46,12 @@ SESSION_OBJS = session_manager_main.o
 TEST_BIN = session_manager_unittest
 TEST_OBJS = session_manager_testrunner.o child_job_unittest.o \
 	device_policy_service_unittest.o key_generator_unittest.o \
-	mock_constructors.o mock_nss_util.o nss_util_unittest.o \
-	owner_key_unittest.o policy_service_unittest.cc \
+	mock_child_process.o mock_constructors.o mock_nss_util.o \
+	nss_util_unittest.o owner_key_unittest.o policy_service_unittest.cc \
 	policy_store_unittest.o regen_mitigator_unittest.o \
-	session_manager_unittest.o session_manager_static_unittest.o \
-	system_utils_unittest.o
+	session_manager_unittest.o session_manager_dbus_unittest.o \
+	session_manager_process_unittest.o \
+	session_manager_static_unittest.o system_utils_unittest.o
 
 ROOT_FILES = use_touchui debug_with_asan no_wm
 

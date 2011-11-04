@@ -215,7 +215,7 @@ SessionManagerService::SessionManagerService(
       dont_use_directly_(new MessageLoopForUI),
       message_loop_(base::MessageLoopProxy::CreateForCurrentThread()),
       system_(utils),
-      gen_(new KeyGenerator),
+      gen_(new KeyGenerator(utils)),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
@@ -414,7 +414,7 @@ void SessionManagerService::RunChildren() {
 
 int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
-  int pid = fork();
+  int pid = system_->fork();
   if (pid == 0) {
     RevertHandlers();
     child_job->Run();
@@ -435,6 +435,7 @@ void SessionManagerService::KillChild(const ChildJobInterface* child_job,
   if (child_job->IsDesiredUidSet())
     to_kill_as = child_job->GetDesiredUid();
   system_->kill(-child_pid, to_kill_as, SIGKILL);
+  // Process will be reaped on the way into HandleChildExit.
 }
 
 void SessionManagerService::AdoptChild(ChildJobInterface* child_job,
@@ -497,8 +498,11 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
 
     // Get a temporary filename in the temporary directory.
     char* temp_path = tempnam(temp_dir_path.value().c_str(), "");
-    if (!temp_path)
+    if (!temp_path) {
+      PLOG(ERROR) << "Can't get temp file name in " << temp_dir_path.value()
+                  << ": ";
       return FALSE;
+    }
     chrome_testing_path_ = temp_path;
     free(temp_path);
   }
@@ -820,7 +824,7 @@ void SessionManagerService::HandleChildExit(GPid pid,
   // If I could wait for descendants here, I would.  Instead, I kill them.
   kill(-pid, SIGKILL);
 
-  DLOG(INFO) << "Handling child process exit.";
+  DLOG(INFO) << "Handling child process exit: " << pid;
   if (WIFSIGNALED(status)) {
     DLOG(INFO) << "  Exited with signal " << WTERMSIG(status);
   } else if (WIFEXITED(status)) {
@@ -1046,6 +1050,8 @@ void SessionManagerService::CleanupChildren(int timeout) {
       LOG(WARNING) << "Killing child process " << pid << " " << timeout
                    << "seconds after sending KILL/TERM signal";
       system_->kill(pid, uid, SIGABRT);
+    } else {
+      DLOG(INFO) << "Cleaned up child " << pid;
     }
   }
 }
