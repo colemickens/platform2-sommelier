@@ -19,6 +19,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
+#include "shill/store_interface.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
@@ -27,6 +28,8 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 
 WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
@@ -91,6 +94,9 @@ WiFiService::WiFiService(ControlInterface *control_interface,
 
   // TODO(quiche): figure out when to set true
   hidden_ssid_ = false;
+
+  // Until we know better (at Profile load time), use the generic name.
+  storage_identifier_ = GetGenericStorageIdentifier();
 }
 
 WiFiService::~WiFiService() {
@@ -116,14 +122,8 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
 }
 
 string WiFiService::GetStorageIdentifier() const {
-  return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
-                                               flimflam::kTypeWifi,
-                                               wifi_->address().c_str(),
-                                               hex_ssid_.c_str(),
-                                               mode_.c_str(),
-                                               security_.c_str()));
+  return storage_identifier_;
 }
-
 const string &WiFiService::mode() const {
   return mode_;
 }
@@ -144,6 +144,49 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
              security_ == flimflam::kSecurityRsn) {
     passphrase_ = ParseWPAPassphrase(passphrase, error);
   }
+}
+
+bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
+  return storage->ContainsGroup(GetGenericStorageIdentifier()) ||
+      storage->ContainsGroup(GetSpecificStorageIdentifier());
+}
+
+bool WiFiService::Load(StoreInterface *storage) {
+  // First find out which storage identifier is available in priority order
+  // of specific, generic.
+  string id = GetSpecificStorageIdentifier();
+  if (!storage->ContainsGroup(id)) {
+    id = GetGenericStorageIdentifier();
+    if (!storage->ContainsGroup(id)) {
+      LOG(WARNING) << "Service is not available in the persistent store: "
+                   << id;
+      return false;
+    }
+  }
+
+  // Set our storage identifier to match the storage name in the Profile.
+  storage_identifier_ = id;
+
+  // Load properties common to all Services.
+  if (!Service::Load(storage)) {
+    return false;
+  }
+
+  // Load properties specific to WiFi services.
+  storage->GetBool(id, kStorageHiddenSSID, &hidden_ssid_);
+  return true;
+}
+
+bool WiFiService::Save(StoreInterface *storage) {
+  // Save properties common to all Services.
+  if (!Service::Save(storage)) {
+    return false;
+  }
+
+  // Save properties specific to WiFi services.
+  const string id = GetStorageIdentifier();
+  storage->SetBool(id, kStorageHiddenSSID, &hidden_ssid_);
+  return true;
 }
 
 // private methods
@@ -306,6 +349,29 @@ bool WiFiService::SanitizeSSID(string *ssid) {
   }
 
   return changed;
+}
+
+string WiFiService::GetGenericStorageIdentifier() const {
+  if (security_ == flimflam::kSecurityRsn ||
+      security_ == flimflam::kSecurityWpa) {
+    return GetStorageIdentifierForSecurity(flimflam::kSecurityPsk);
+  } else {
+    return GetStorageIdentifierForSecurity(security_);
+  }
+}
+
+string WiFiService::GetSpecificStorageIdentifier() const {
+  return GetStorageIdentifierForSecurity(security_);
+}
+
+string WiFiService::GetStorageIdentifierForSecurity(
+    const string &security) const {
+   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+                                               flimflam::kTypeWifi,
+                                               wifi_->address().c_str(),
+                                               hex_ssid_.c_str(),
+                                               mode_.c_str(),
+                                               security.c_str()));
 }
 
 }  // namespace shill

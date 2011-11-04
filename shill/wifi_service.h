@@ -46,9 +46,19 @@ class WiFiService : public Service {
 
   void SetPassphrase(const std::string &passphrase, Error *error);
 
+  // Overrride Load and Save from parent Service class.  We will call
+  // the parent method.
+  virtual bool IsLoadableFrom(StoreInterface *storage) const;
+  virtual bool Load(StoreInterface *storage);
+  virtual bool Save(StoreInterface *storage);
+
  private:
+  friend class WiFiServiceSecurityTest;
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
+  FRIEND_TEST(WiFiServiceTest, LoadHidden);
+
+  static const char kStorageHiddenSSID[];
 
   void ConnectTask();
 
@@ -66,6 +76,15 @@ class WiFiService : public Service {
   // characters were changed
   static bool SanitizeSSID(std::string *ssid);
 
+  // Profile data for a WPA/RSN service can be stored under a number of
+  // different names.  These functions create different storage identifiers
+  // based on whether they are referred to by their generic "psk" name or
+  // if they use the (legacy) specific "wpa" or "rsn" names.
+  std::string GetGenericStorageIdentifier() const;
+  std::string GetSpecificStorageIdentifier() const;
+  std::string GetStorageIdentifierForSecurity(
+      const std::string &security) const;
+
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
@@ -79,6 +98,7 @@ class WiFiService : public Service {
   uint16 frequency_;
   uint16 physical_mode_;
   std::string hex_ssid_;
+  std::string storage_identifier_;
 
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;
