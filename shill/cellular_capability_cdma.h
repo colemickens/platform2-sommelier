@@ -13,7 +13,7 @@ class CellularCapabilityCDMA : public CellularCapability {
  public:
   CellularCapabilityCDMA(Cellular *cellular);
 
-  // Inherited from CellularCapability;
+  // Inherited from CellularCapability.
   virtual void InitProxies();
 
  private:

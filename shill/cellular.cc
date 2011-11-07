@@ -492,85 +492,21 @@ void Cellular::RegisterOnNetworkTask(const string &network_id) {
 }
 
 void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
-  VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "RequirePIN supported only for GSM.");
-    return;
-  }
-  // Defer registration because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::RequirePINTask, pin, require));
-}
-
-void Cellular::RequirePINTask(const string &pin, bool require) {
-  VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_card_proxy_->EnablePIN(pin, require);
+  capability_->RequirePIN(pin, require, error);
 }
 
 void Cellular::EnterPIN(const string &pin, Error *error) {
-  VLOG(2) << __func__ << "(" << pin << ")";
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "EnterPIN supported only for GSM.");
-    return;
-  }
-  // Defer registration because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::EnterPINTask, pin));
+  capability_->EnterPIN(pin, error);
 }
 
-void Cellular::EnterPINTask(const string &pin) {
-  VLOG(2) << __func__ << "(" << pin << ")";
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_card_proxy_->SendPIN(pin);
+void Cellular::UnblockPIN(
+    const string &unblock_code, const string &pin, Error *error) {
+  capability_->UnblockPIN(unblock_code, pin, error);
 }
 
-void Cellular::UnblockPIN(const string &unblock_code,
-                          const string &pin,
-                          Error *error) {
-  VLOG(2) << __func__ << "(" << unblock_code << ", " << pin << ")";
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "UnblockPIN supported only for GSM.");
-    return;
-  }
-  // Defer registration because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &Cellular::UnblockPINTask, unblock_code, pin));
-}
-
-void Cellular::UnblockPINTask(const string &unblock_code, const string &pin) {
-  VLOG(2) << __func__ << "(" << unblock_code << ", " << pin << ")";
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_card_proxy_->SendPUK(unblock_code, pin);
-}
-
-void Cellular::ChangePIN(const string &old_pin,
-                         const string &new_pin,
-                         Error *error) {
-  VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "ChangePIN supported only for GSM.");
-    return;
-  }
-  // Defer registration because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &Cellular::ChangePINTask, old_pin, new_pin));
-}
-
-void Cellular::ChangePINTask(const string &old_pin, const string &new_pin) {
-  VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_card_proxy_->ChangePIN(old_pin, new_pin);
+void Cellular::ChangePIN(
+    const string &old_pin, const string &new_pin, Error *error) {
+  capability_->ChangePIN(old_pin, new_pin, error);
 }
 
 void Cellular::GetModemInfo() {

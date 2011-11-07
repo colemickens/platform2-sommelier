@@ -88,6 +88,8 @@ class Device : public base::RefCounted<Device> {
   const PropertyStore &store() const { return store_; }
   RTNLHandler *rtnl_handler() { return rtnl_handler_; }
 
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+
   bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
 
@@ -136,7 +138,6 @@ class Device : public base::RefCounted<Device> {
 
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
-  EventDispatcher *dispatcher() const { return dispatcher_; }
   Manager *manager() const { return manager_; }
   std::vector<ServiceRefPtr> *services() { return &services_; }
 

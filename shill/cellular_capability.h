@@ -5,11 +5,15 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_
 #define SHILL_CELLULAR_CAPABILITY_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 namespace shill {
 
 class Cellular;
+class Error;
+class EventDispatcher;
 class ProxyFactory;
 
 // Cellular devices instantiate subclasses of CellularCapability that handle the
@@ -22,9 +26,20 @@ class CellularCapability {
 
   Cellular *cellular() const { return cellular_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  EventDispatcher *dispatcher() const;
 
   // Initialize RPC proxies.
   virtual void InitProxies() = 0;
+
+  // PIN management. The default implementation fails by populating |error|.
+  virtual void RequirePIN(const std::string &pin, bool require, Error *error);
+  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void UnblockPIN(const std::string &unblock_code,
+                          const std::string &pin,
+                          Error *error);
+  virtual void ChangePIN(const std::string &old_pin,
+                         const std::string &new_pin,
+                         Error *error);
 
  private:
   Cellular *cellular_;

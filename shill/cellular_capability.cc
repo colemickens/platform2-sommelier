@@ -5,6 +5,9 @@
 #include "shill/cellular_capability.h"
 
 #include "shill/cellular.h"
+#include "shill/error.h"
+
+using std::string;
 
 namespace shill {
 
@@ -13,5 +16,34 @@ CellularCapability::CellularCapability(Cellular *cellular)
       proxy_factory_(cellular->proxy_factory()) {}
 
 CellularCapability::~CellularCapability() {}
+
+EventDispatcher *CellularCapability::dispatcher() const {
+  return cellular()->dispatcher();
+}
+
+void CellularCapability::RequirePIN(const string &/*pin*/,
+                                    bool /*require*/,
+                                    Error *error) {
+  Error::PopulateAndLog(
+      error, Error::kNotSupported, "RequirePIN not supported.");
+}
+
+void CellularCapability::EnterPIN(const string &/*pin*/, Error *error) {
+  Error::PopulateAndLog(error, Error::kNotSupported, "EnterPIN not supported.");
+}
+
+void CellularCapability::UnblockPIN(const string &/*unblock_code*/,
+                                    const string &/*pin*/,
+                                    Error *error) {
+  Error::PopulateAndLog(
+      error, Error::kNotSupported, "UnblockPIN not supported.");
+}
+
+void CellularCapability::ChangePIN(const string &/*old_pin*/,
+                                   const string &/*new_pin*/,
+                                   Error *error) {
+  Error::PopulateAndLog(
+      error, Error::kNotSupported, "ChangePIN not supported.");
+}
 
 }  // namespace shill
