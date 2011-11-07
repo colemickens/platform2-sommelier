@@ -200,7 +200,13 @@ void WiFiService::ConnectTask() {
   if (security_ == flimflam::kSecurity8021x) {
     NOTIMPLEMENTED();
   } else if (security_ == flimflam::kSecurityPsk) {
-    NOTIMPLEMENTED();
+    const string psk_proto = StringPrintf("%s %s",
+                                          wpa_supplicant::kSecurityModeWPA,
+                                          wpa_supplicant::kSecurityModeRSN);
+    params[wpa_supplicant::kPropertySecurityProtocol].writer().
+        append_string(psk_proto.c_str());
+    params[wpa_supplicant::kPropertyPreSharedKey].writer().
+        append_string(passphrase_.c_str());
   } else if (security_ == flimflam::kSecurityRsn) {
     params[wpa_supplicant::kPropertySecurityProtocol].writer().
         append_string(wpa_supplicant::kSecurityModeRSN);
@@ -214,9 +220,9 @@ void WiFiService::ConnectTask() {
   } else if (security_ == flimflam::kSecurityWep) {
     NOTIMPLEMENTED();
   } else if (security_ == flimflam::kSecurityNone) {
-    // nothing special to do here
+    // Nothing special to do here.
   } else {
-    LOG(ERROR) << "can't connect. unsupported security method " << security_;
+    LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
   }
 
   params[wpa_supplicant::kPropertyKeyManagement].writer().

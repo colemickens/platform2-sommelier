@@ -196,6 +196,20 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   wifi_service->ConnectTask();
 }
 
+TEST_F(WiFiServiceTest, ConnectTaskPSK) {
+  vector<uint8_t> ssid(5, 0);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityPsk);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  wifi_service->ConnectTask();
+}
+
 TEST_F(WiFiServiceTest, LoadHidden) {
   vector<uint8_t> ssid(5, 0);
   ssid.push_back(0xff);

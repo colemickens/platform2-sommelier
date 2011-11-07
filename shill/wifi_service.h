@@ -56,6 +56,7 @@ class WiFiService : public Service {
   friend class WiFiServiceSecurityTest;
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
 
   static const char kStorageHiddenSSID[];

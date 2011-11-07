@@ -303,7 +303,7 @@ void WiFi::ScanTask() {
   std::map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
-  // TODO(quiche) indicate scanning in UI
+  // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;
 }
