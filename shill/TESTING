@@ -86,6 +86,16 @@ Running integration tests
     - rmmod mac80211_hwsim mac80211 cfg80211
     - restart wpasupplicant
     - rm /tmp/hostapd-test.control/*
+  - examine autotest log files
+    - check how far the test got before it failed
+      $ grep -a ': step ' <test output>/<suite name>/<suite name>.<test name>/debug/<suite name>.<test name>.INFO
+      e.g.
+      (chroot) $ grep -a ': step ' /tmp/run_remote_tests.abcd/network_WiFiRoaming/network_WiFiRoaming.002Suspend/debug/network_WiFiRoaming.002Suspend.INFO
+    - read the log file
+      (chroot) $ LESSOPEN= less /tmp/run_remote_tests.abcd/network_WiFiRoaming/network_WiFiRoaming.002Suspend/debug/network_WiFiRoaming.002Suspend.INFO
+
+      (LESSOPEN= prevents less from misinterpreting the logs as binary files,
+       and piping them through hexdump.)
 
 - additional test suites: we have a number of other WiFi test suites
   (in addition to WiFiManager). these are: WiFiMatFunc, WiFiPerf,
