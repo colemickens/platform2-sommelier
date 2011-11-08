@@ -32,8 +32,10 @@ bool ChapsProxyImpl::Init() {
       proxy_.reset(new Proxy(connection, kChapsServicePath,
                              kChapsServiceName));
     }
-    if (proxy_.get())
+    if (proxy_.get()) {
+      LOG(INFO) << "Chaps proxy initialized (" << kChapsServicePath << ").";
       return true;
+    }
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();
   }

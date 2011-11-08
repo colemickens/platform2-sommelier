@@ -134,6 +134,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   CHECK(g_finalize_event.get());
 
   g_is_initialized = true;
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -145,6 +146,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   if (g_finalize_event.get())
     g_finalize_event->Signal();
   TearDown();
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -165,6 +167,7 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
                                 arraysize(pInfo->libraryDescription));
   pInfo->libraryVersion.major = kChapsLibraryVersionMajor;
   pInfo->libraryVersion.minor = kChapsLibraryVersionMinor;
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -181,6 +184,7 @@ CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
 #undef CK_PKCS11_FUNCTION_INFO
   };
   *ppFunctionList = &functionList;
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -201,6 +205,7 @@ CK_RV C_GetSlotList(CK_BBOOL tokenPresent,
   for (size_t i = 0; i < slot_list.size(); ++i) {
     pSlotList[i] = slot_list[i];
   }
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -226,6 +231,7 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   chaps::CopyVectorToCharBuffer(manufacturer_id,
                                 pInfo->manufacturerID,
                                 arraysize(pInfo->manufacturerID));
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -271,6 +277,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   chaps::CopyVectorToCharBuffer(serial_number,
                                 pInfo->serialNumber,
                                 arraysize(pInfo->serialNumber));
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -311,6 +318,7 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID,
   for (size_t i = 0; i < mechanism_list.size(); ++i) {
     pMechanismList[i] = static_cast<CK_MECHANISM_TYPE>(mechanism_list[i]);
   }
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -328,6 +336,7 @@ CK_RV C_GetMechanismInfo(CK_SLOT_ID slotID,
       chaps::PreservedCK_ULONG(&pInfo->ulMaxKeySize),
       chaps::PreservedCK_ULONG(&pInfo->flags));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -344,6 +353,7 @@ CK_RV C_InitToken(CK_SLOT_ID slotID,
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitToken(slotID, pin_ptr, label);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -356,6 +366,7 @@ CK_RV C_InitPIN(CK_SESSION_HANDLE hSession,
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->InitPIN(hSession, pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -372,6 +383,7 @@ CK_RV C_SetPIN(CK_SESSION_HANDLE hSession,
   string* new_pin_ptr = (!pNewPin) ? NULL : &new_pin;
   CK_RV result = g_proxy->SetPIN(hSession, old_pin_ptr, new_pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -389,6 +401,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID,
   CK_RV result = g_proxy->OpenSession(slotID, flags,
                                       chaps::PreservedCK_ULONG(phSession));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -397,6 +410,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->CloseSession(hSession);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -405,6 +419,7 @@ CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->CloseAllSessions(slotID);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -420,6 +435,7 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
       chaps::PreservedCK_ULONG(&pInfo->flags),
       chaps::PreservedCK_ULONG(&pInfo->ulDeviceError));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -441,6 +457,7 @@ CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF(operation_state.size() > max_copy,
                           CKR_BUFFER_TOO_SMALL);
   memcpy(pOperationState, &operation_state.front(), operation_state.size());
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -461,6 +478,7 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession,
                                             hEncryptionKey,
                                             hAuthenticationKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -474,6 +492,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,
   string* pin_ptr = (!pPin) ? NULL : &pin;
   CK_RV result = g_proxy->Login(hSession, userType, pin_ptr);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -482,6 +501,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->Logout(hSession);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -502,6 +522,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession,
       serialized_attributes,
       chaps::PreservedCK_ULONG(phObject));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -524,6 +545,7 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession,
       serialized_attributes,
       chaps::PreservedCK_ULONG(phNewObject));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -532,6 +554,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->DestroyObject(hSession, hObject);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -545,6 +568,7 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession,
                                         hObject,
                                         chaps::PreservedCK_ULONG(pulSize));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -573,6 +597,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(result);
   // Chapsd ensures the value is serialized correctly; we can assert.
   CHECK(attributes.ParseAndFill(serialized_attributes_out));
+  VLOG(1) << __func__ << " - " << chaps::CK_RVToString(result);
   return result;
 }
 
@@ -591,6 +616,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession,
                                             hObject,
                                             serialized_attributes);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -606,6 +632,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession,
     LOG_CK_RV_AND_RETURN(CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = g_proxy->FindObjectsInit(hSession, serialized_attributes);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -625,6 +652,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession,
   for (size_t i = 0; i < object_list.size(); i++) {
     phObject[i] = static_cast<CK_OBJECT_HANDLE>(object_list[i]);
   }
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -633,6 +661,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->FindObjectsFinal(hSession);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -650,6 +679,7 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession,
           pMechanism->ulParameterLen),
       hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -678,6 +708,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession,
                               pEncryptedData,
                               pulEncryptedDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -705,6 +736,7 @@ CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession,
                               pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -728,6 +760,7 @@ CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession,
                               pLastEncryptedPart,
                               pulLastEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -745,6 +778,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession,
           pMechanism->ulParameterLen),
       hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -773,6 +807,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession,
                               pData,
                               pulDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -800,6 +835,7 @@ CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession,
                               pPart,
                               pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -823,6 +859,7 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession,
                               pLastPart,
                               pulLastPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -838,6 +875,7 @@ CK_RV C_DigestInit(CK_SESSION_HANDLE hSession,
                                      pMechanism->mechanism,
                                      parameter);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -865,6 +903,7 @@ CK_RV C_Digest(CK_SESSION_HANDLE hSession,
                               pDigest,
                               pulDigestLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -878,6 +917,7 @@ CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession,
       hSession,
       chaps::ConvertByteBufferToVector(pPart, ulPartLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -886,6 +926,7 @@ CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hKey) {
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
   CK_RV result = g_proxy->DigestKey(hSession, hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -908,6 +949,7 @@ CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession,
                               pDigest,
                               pulDigestLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -925,6 +967,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession,
                                    parameter,
                                    hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -953,6 +996,7 @@ CK_RV C_Sign (CK_SESSION_HANDLE hSession,
                               pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -966,6 +1010,7 @@ CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession,
                                      chaps::ConvertByteBufferToVector(pPart,
                                                                ulPartLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -989,6 +1034,7 @@ CK_RV C_SignFinal(CK_SESSION_HANDLE hSession,
                               pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1006,6 +1052,7 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession,
                                           parameter,
                                           hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1034,6 +1081,7 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession,
                               pSignature,
                               pulSignatureLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1051,6 +1099,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession,
                                      parameter,
                                      hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1068,6 +1117,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession,
       chaps::ConvertByteBufferToVector(pData, ulDataLen),
       chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1081,6 +1131,7 @@ CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession,
       hSession,
       chaps::ConvertByteBufferToVector(pPart, ulPartLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1094,6 +1145,7 @@ CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession,
       hSession,
       chaps::ConvertByteBufferToVector(pSignature, ulSignatureLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1111,6 +1163,7 @@ CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession,
                                      parameter,
                                      hKey);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1138,6 +1191,7 @@ CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession,
                               pData,
                               pulDataLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1165,6 +1219,7 @@ CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession,
                               pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1191,6 +1246,7 @@ CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession,
                               pPart,
                               pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1218,6 +1274,7 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession,
                               pEncryptedPart,
                               pulEncryptedPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1244,6 +1301,7 @@ CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession,
                               pPart,
                               pulPartLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1269,6 +1327,7 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession,
       serialized,
       chaps::PreservedCK_ULONG(phKey));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1307,6 +1366,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession,
       chaps::PreservedCK_ULONG(phPublicKey),
       chaps::PreservedCK_ULONG(phPrivateKey));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1341,6 +1401,7 @@ CK_RV C_WrapKey(CK_SESSION_HANDLE hSession,
                               pWrappedKey,
                               pulWrappedKeyLen);
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1371,6 +1432,7 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession,
       serialized,
       chaps::PreservedCK_ULONG(phKey));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1398,6 +1460,7 @@ CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession,
       serialized,
       chaps::PreservedCK_ULONG(phKey));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1412,6 +1475,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession,
       hSession,
       chaps::ConvertByteBufferToVector(pSeed, ulSeedLen));
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 
@@ -1427,6 +1491,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
   LOG_CK_RV_AND_RETURN_IF(data_out.size() != ulRandomLen, CKR_GENERAL_ERROR);
   memcpy(RandomData, &data_out.front(), ulRandomLen);
+  VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
 }
 

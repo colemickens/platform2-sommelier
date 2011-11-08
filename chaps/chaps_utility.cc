@@ -4,8 +4,19 @@
 
 #include "chaps/chaps_utility.h"
 
+#include <stdio.h>
+
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
+
+using std::string;
+using std::stringstream;
+using std::vector;
 
 namespace chaps {
 
@@ -188,6 +199,283 @@ const char* CK_RVToString(CK_RV value) {
       return "CKR_VENDOR_DEFINED";
   }
   return "Unknown";
+}
+
+string AttributeToString(CK_ATTRIBUTE_TYPE attribute) {
+  switch (attribute) {
+    case CKA_CLASS:
+      return "CKA_CLASS";
+    case CKA_TOKEN:
+      return "CKA_TOKEN";
+    case CKA_PRIVATE:
+      return "CKA_PRIVATE";
+    case CKA_LABEL:
+      return "CKA_LABEL";
+    case CKA_APPLICATION:
+      return "CKA_APPLICATION";
+    case CKA_VALUE:
+      return "CKA_VALUE";
+    case CKA_OBJECT_ID:
+      return "CKA_OBJECT_ID";
+    case CKA_CERTIFICATE_TYPE:
+      return "CKA_CERTIFICATE_TYPE";
+    case CKA_ISSUER:
+      return "CKA_ISSUER";
+    case CKA_SERIAL_NUMBER:
+      return "CKA_SERIAL_NUMBER";
+    case CKA_AC_ISSUER:
+      return "CKA_AC_ISSUER";
+    case CKA_OWNER:
+      return "CKA_OWNER";
+    case CKA_ATTR_TYPES:
+      return "CKA_ATTR_TYPES";
+    case CKA_TRUSTED:
+      return "CKA_TRUSTED";
+    case CKA_CERTIFICATE_CATEGORY:
+      return "CKA_CERTIFICATE_CATEGORY";
+    case CKA_CHECK_VALUE:
+      return "CKA_CHECK_VALUE";
+    case CKA_JAVA_MIDP_SECURITY_DOMAIN:
+      return "CKA_JAVA_MIDP_SECURITY_DOMAIN";
+    case CKA_URL:
+      return "CKA_URL";
+    case CKA_HASH_OF_SUBJECT_PUBLIC_KEY:
+      return "CKA_HASH_OF_SUBJECT_PUBLIC_KEY";
+    case CKA_HASH_OF_ISSUER_PUBLIC_KEY:
+      return "CKA_HASH_OF_ISSUER_PUBLIC_KEY";
+    case CKA_KEY_TYPE:
+      return "CKA_KEY_TYPE";
+    case CKA_SUBJECT:
+      return "CKA_SUBJECT";
+    case CKA_ID:
+      return "CKA_ID";
+    case CKA_SENSITIVE:
+      return "CKA_SENSITIVE";
+    case CKA_ENCRYPT:
+      return "CKA_ENCRYPT";
+    case CKA_DECRYPT:
+      return "CKA_DECRYPT";
+    case CKA_WRAP:
+      return "CKA_WRAP";
+    case CKA_UNWRAP:
+      return "CKA_UNWRAP";
+    case CKA_SIGN:
+      return "CKA_SIGN";
+    case CKA_SIGN_RECOVER:
+      return "CKA_SIGN_RECOVER";
+    case CKA_VERIFY:
+      return "CKA_VERIFY";
+    case CKA_VERIFY_RECOVER:
+      return "CKA_VERIFY_RECOVER";
+    case CKA_DERIVE:
+      return "CKA_DERIVE";
+    case CKA_START_DATE:
+      return "CKA_START_DATE";
+    case CKA_END_DATE:
+      return "CKA_END_DATE";
+    case CKA_MODULUS:
+      return "CKA_MODULUS";
+    case CKA_MODULUS_BITS:
+      return "CKA_MODULUS_BITS";
+    case CKA_PUBLIC_EXPONENT:
+      return "CKA_PUBLIC_EXPONENT";
+    case CKA_PRIVATE_EXPONENT:
+      return "CKA_PRIVATE_EXPONENT";
+    case CKA_PRIME_1:
+      return "CKA_PRIME_1";
+    case CKA_PRIME_2:
+      return "CKA_PRIME_2";
+    case CKA_EXPONENT_1:
+      return "CKA_EXPONENT_1";
+    case CKA_EXPONENT_2:
+      return "CKA_EXPONENT_2";
+    case CKA_COEFFICIENT:
+      return "CKA_COEFFICIENT";
+    case CKA_PRIME:
+      return "CKA_PRIME";
+    case CKA_SUBPRIME:
+      return "CKA_SUBPRIME";
+    case CKA_BASE:
+      return "CKA_BASE";
+    case CKA_PRIME_BITS:
+      return "CKA_PRIME_BITS";
+    case CKA_SUBPRIME_BITS:
+      return "CKA_SUBPRIME_BITS";
+    case CKA_VALUE_BITS:
+      return "CKA_VALUE_BITS";
+    case CKA_VALUE_LEN:
+      return "CKA_VALUE_LEN";
+    case CKA_EXTRACTABLE:
+      return "CKA_EXTRACTABLE";
+    case CKA_LOCAL:
+      return "CKA_LOCAL";
+    case CKA_NEVER_EXTRACTABLE:
+      return "CKA_NEVER_EXTRACTABLE";
+    case CKA_ALWAYS_SENSITIVE:
+      return "CKA_ALWAYS_SENSITIVE";
+    case CKA_KEY_GEN_MECHANISM:
+      return "CKA_KEY_GEN_MECHANISM";
+    case CKA_MODIFIABLE:
+      return "CKA_MODIFIABLE";
+    case CKA_ECDSA_PARAMS:
+      return "CKA_ECDSA_PARAMS";
+    case CKA_EC_POINT:
+      return "CKA_EC_POINT";
+    case CKA_SECONDARY_AUTH:
+      return "CKA_SECONDARY_AUTH";
+    case CKA_AUTH_PIN_FLAGS:
+      return "CKA_AUTH_PIN_FLAGS";
+    case CKA_ALWAYS_AUTHENTICATE:
+      return "CKA_ALWAYS_AUTHENTICATE";
+    case CKA_WRAP_WITH_TRUSTED:
+      return "CKA_WRAP_WITH_TRUSTED";
+    case CKA_WRAP_TEMPLATE:
+      return "CKA_WRAP_TEMPLATE";
+    case CKA_UNWRAP_TEMPLATE:
+      return "CKA_UNWRAP_TEMPLATE";
+    default:
+      stringstream ss;
+      ss << attribute;
+      return ss.str();
+  }
+  return string();
+}
+
+static uint32_t ExtractU32(const vector<uint8_t>& value) {
+  if (value.size() == 1) {
+    return static_cast<uint32_t>(value[0]);
+  } else if (value.size() == 4) {
+    return *reinterpret_cast<const uint32_t*>(&value[0]);
+  }
+  return 0;
+}
+
+static string PrintClass(const vector<uint8_t>& value) {
+  uint32_t num_value = ExtractU32(value);
+  switch (num_value) {
+    case CKO_DATA:
+      return "CKO_DATA";
+    case CKO_CERTIFICATE:
+      return "CKO_CERTIFICATE";
+    case CKO_PUBLIC_KEY:
+      return "CKO_PUBLIC_KEY";
+    case CKO_PRIVATE_KEY:
+      return "CKO_PRIVATE_KEY";
+    case CKO_SECRET_KEY:
+      return "CKO_SECRET_KEY";
+    case CKO_HW_FEATURE:
+      return "CKO_HW_FEATURE";
+    case CKO_DOMAIN_PARAMETERS:
+      return "CKO_DOMAIN_PARAMETERS";
+    case CKO_MECHANISM:
+      return "CKO_MECHANISM";
+    default:
+      stringstream ss;
+      ss << num_value;
+      return ss.str();
+  }
+  return string();
+}
+
+static string PrintKeyType(const vector<uint8_t>& value) {
+  uint32_t num_value = ExtractU32(value);
+  switch (num_value) {
+    case CKK_RSA:
+      return "CKK_RSA";
+    case CKK_DSA:
+      return "CKK_DSA";
+    case CKK_DH:
+      return "CKK_DH";
+    case CKK_GENERIC_SECRET:
+      return "CKK_GENERIC_SECRET";
+    case CKK_RC2:
+      return "CKK_RC2";
+    case CKK_RC4:
+      return "CKK_RC4";
+    case CKK_RC5:
+      return "CKK_RC5";
+    case CKK_DES:
+      return "CKK_DES";
+    case CKK_DES3:
+      return "CKK_DES3";
+    case CKK_AES:
+      return "CKK_AES";
+    default:
+      stringstream ss;
+      ss << num_value;
+      return ss.str();
+  }
+  return string();
+}
+
+static string PrintYesNo(const vector<uint8_t>& value) {
+  if (!ExtractU32(value))
+    return "No";
+  return "Yes";
+}
+
+string ValueToString(CK_ATTRIBUTE_TYPE attribute,
+                     const vector<uint8_t>& value) {
+  // Some values are sensitive; take a white-list approach.
+  switch (attribute) {
+    case CKA_CLASS:
+      return PrintClass(value);
+    case CKA_KEY_TYPE:
+      return PrintKeyType(value);
+    case CKA_TOKEN:
+    case CKA_PRIVATE:
+    case CKA_EXTRACTABLE:
+    case CKA_SENSITIVE:
+    case CKA_ENCRYPT:
+    case CKA_DECRYPT:
+    case CKA_WRAP:
+    case CKA_UNWRAP:
+    case CKA_SIGN:
+    case CKA_SIGN_RECOVER:
+    case CKA_VERIFY:
+    case CKA_VERIFY_RECOVER:
+    case CKA_DERIVE:
+    case CKA_NEVER_EXTRACTABLE:
+    case CKA_ALWAYS_SENSITIVE:
+    case CKA_ALWAYS_AUTHENTICATE:
+      return PrintYesNo(value);
+    case CKA_ID:
+      return PrintIntVector(value);
+    case CKA_LABEL:
+    case CKA_SUBJECT:
+    case CKA_ISSUER:
+      return ConvertVectorToString(value);
+    default:
+      return "***";
+  }
+  return string();
+}
+
+string PrintAttributes(const vector<uint8_t>& serialized,
+                       bool is_value_enabled) {
+  stringstream ss;
+  ss << "{";
+  Attributes attributes;
+  if (attributes.Parse(serialized)) {
+    for (CK_ULONG i = 0; i < attributes.num_attributes(); i++) {
+      CK_ATTRIBUTE& attribute = attributes.attributes()[i];
+      if (i > 0)
+        ss << ", ";
+      ss << AttributeToString(attribute.type);
+      if (is_value_enabled) {
+        if (attribute.pValue) {
+          uint8_t* buf = reinterpret_cast<uint8_t*>(attribute.pValue);
+          vector<uint8_t> value(&buf[0],
+                                &buf[attribute.ulValueLen]);
+          ss << "=" << ValueToString(attribute.type, value);
+        } else {
+          ss << " length=" << attribute.ulValueLen;
+        }
+      }
+    }
+  }
+  ss << "}";
+  return ss.str();
 }
 
 }  // namespace

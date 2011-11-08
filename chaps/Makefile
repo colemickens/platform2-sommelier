@@ -69,6 +69,10 @@ $(OUT)chaps_live_test: $(OUT)chaps_test.o
 	$(call cxx_binary, -lgtest -lgmock -lchaps)
 RM_ON_CLEAN += $(OUT)chaps_live_test
 
+$(OUT)vpn_replay: $(OUT)vpn_replay.o
+	$(call cxx_binary, -lchaps)
+RM_ON_CLEAN += $(OUT)vpn_replay
+
 # Some shortcuts
 all: $(OUT)libchaps.so $(OUT)chapsd
 
@@ -88,6 +92,8 @@ protobufs: attributes.pb.h
 tests: $(OUT)chaps_test
 
 live_tests: $(OUT)chaps_live_test $(OUT)chapsd_test
+
+perf: $(OUT)vpn_replay
 
 runtests: tests
 	$(OUT)chaps_test

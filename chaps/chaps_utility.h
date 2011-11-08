@@ -5,6 +5,7 @@
 #ifndef CHAPS_CHAPS_UTILITY_H
 #define CHAPS_CHAPS_UTILITY_H
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -37,8 +38,39 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
   memcpy(buffer, &source.front(), copy_size);
 }
 
+inline std::string ConvertVectorToString(const std::vector<uint8_t>& value) {
+  return std::string(reinterpret_cast<const char*>(&value[0]), value.size());
+}
+
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
 const char* CK_RVToString(CK_RV value);
+
+// AttributeToString stringifies a PKCS #11 attribute type.
+std::string AttributeToString(CK_ATTRIBUTE_TYPE attribute);
+
+// ValueToString stringifies a PKCS #11 attribute value.
+std::string ValueToString(CK_ATTRIBUTE_TYPE attribute,
+                          const std::vector<uint8_t>& value);
+
+// PrintAttributes parses serialized attributes and prints in the form:
+// "{attribute1[=value1], attribute2[=value2]}".
+std::string PrintAttributes(const std::vector<uint8_t>& serialized,
+                            bool is_value_enabled);
+
+// PrintIntVector prints a vector in array literal form.  E.g. "{0, 1, 2}".
+// ** A static cast to 'int' must be possible for type T.
+template <class T>
+std::string PrintIntVector(const std::vector<T>& v) {
+  std::stringstream ss;
+  ss << "{";
+  for (size_t i = 0; i < v.size(); i++) {
+    if (i > 0)
+      ss << ", ";
+    ss << static_cast<int>(v[i]);
+  }
+  ss << "}";
+  return ss.str();
+}
 
 // This macro logs the current function name and the CK_RV value provided.
 #define LOG_CK_RV(value) LOG(ERROR) << __func__ << " - " << \
