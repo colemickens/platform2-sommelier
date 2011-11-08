@@ -20,7 +20,6 @@
 #include "power_manager/backlight.h"
 #include "power_manager/monitor_reconfigure.h"
 #include "power_manager/power_constants.h"
-#include "power_manager/power_manager_service.h"
 #include "power_manager/powerd.h"
 #include "power_manager/video_detector.h"
 
@@ -119,13 +118,6 @@ int main(int argc, char* argv[]) {
                                run_dir);
 
   daemon.Init();
-  // Create and initialize the D-Bus power manager service.
-  ::g_type_init();
-  power_manager::PowerManagerService manager(&daemon);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  if (!manager.Register(connection))
-    LOG(ERROR) << "Cannot register power manager service";
   daemon.Run();
   return 0;
 }
