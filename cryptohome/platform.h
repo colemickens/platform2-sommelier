@@ -143,6 +143,21 @@ class Platform {
   //   pids (OUT) - the list of PIDs
   void GetPidsForUser(uid_t uid, std::vector<pid_t>* pids);
 
+  // Terminates or kills processes (except the current) that have the name
+  // specified.  Returns true if it tried to kill any processes.
+  //
+  // Parameters
+  //   name - The process name to search for.
+  //   hard - If true, send a SIGKILL instead of SIGTERM.
+  virtual bool TerminatePidsByName(const std::string& name, bool hard);
+
+  // Returns a vector of PIDs with a given name.
+  //
+  // Parameters
+  //   name - The process name to search for.
+  //   pids (OUT) - The list of PIDs.
+  void GetPidsByName(const std::string& name, std::vector<pid_t>* pids);
+
   // Calls the platform stat() function to obtain the ownership of
   // a given path. The path may be a directory or a file.
   //

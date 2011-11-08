@@ -108,6 +108,20 @@ bool Pkcs11Init::InitializeOpencryptoki() {
     return false;
   }
 
+  // We need to get PKCS #11 daemons into an initial state.  This is necessary
+  // for force_pkcs11_init.  Pkcsslotd will be restarted below; chapsd will be
+  // immediately respawned by init.
+  const std::string kChapsdProcessName("chapsd");
+  const std::string kPkcsslotdProcessName("pkcsslotd");
+  if (platform_->TerminatePidsByName(kChapsdProcessName, false))
+    LOG(INFO) << "Terminated " << kChapsdProcessName;
+  if (platform_->TerminatePidsByName(kPkcsslotdProcessName, false))
+    LOG(INFO) << "Terminated " << kPkcsslotdProcessName;
+  if (platform_->TerminatePidsByName(kChapsdProcessName, true))
+    LOG(INFO) << "Killed " << kChapsdProcessName;
+  if (platform_->TerminatePidsByName(kPkcsslotdProcessName, true))
+    LOG(INFO) << "Killed " << kPkcsslotdProcessName;
+
   if (!IsOpencryptokiDirectoryValid() &&
       !SetupOpencryptokiDirectory())
     return false;
@@ -120,6 +134,18 @@ bool Pkcs11Init::InitializeOpencryptoki() {
   // token.
   if (!StartPkcs11Daemon())
     return false;
+  // Wait for chapsd to respawn.  Normally, it is running by now so this should
+  // be quick.
+  std::vector<pid_t> pids;
+  int waited = 0;
+  const int max_wait = 1000;
+  platform_->GetPidsByName(kChapsdProcessName, &pids);
+  while (pids.size() == 0 && waited < max_wait) {
+    usleep(100000);
+    waited += 100;
+    pids.clear();
+    platform_->GetPidsByName(kChapsdProcessName, &pids);
+  }
 
   is_opencryptoki_ready_ = true;
   return true;
@@ -532,7 +558,7 @@ bool Pkcs11Init::CheckTokenInSlot(CK_SLOT_ID slot_id,
   if (strncmp(reinterpret_cast<const char*>(expected_label),
               reinterpret_cast<const char*>(token_info.label), kMaxLabelLen)) {
     LOG(WARNING) << "Token Label (" << token_info.label << ") does not match "
-                 << "expected label (expected_label)";
+                 << "expected label (" << expected_label << ")";
     return false;
   }
 

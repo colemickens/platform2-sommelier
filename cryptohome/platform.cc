@@ -124,10 +124,10 @@ bool Platform::Unmount(const std::string& path, bool lazy, bool* was_busy) {
 bool Platform::TerminatePidsWithOpenFiles(const std::string& path, bool hard) {
   std::vector<pid_t> pids;
   LookForOpenFiles(path, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
+  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
     pid_t pid = static_cast<pid_t>(*it);
     if (pid != getpid()) {
-      if (hard) {
+      if (!hard) {
         kill(pid, SIGTERM);
       } else {
         kill(pid, SIGKILL);
@@ -142,7 +142,7 @@ void Platform::GetProcessesWithOpenFiles(
     std::vector<ProcessInformation>* processes) {
   std::vector<pid_t> pids;
   LookForOpenFiles(path, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
+  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
     pid_t pid = static_cast<pid_t>(*it);
     processes->push_back(ProcessInformation());
     GetProcessOpenFileInformation(pid, path,
@@ -285,10 +285,10 @@ bool Platform::IsPathChild(const std::string& parent,
 bool Platform::TerminatePidsForUser(const uid_t uid, bool hard) {
   std::vector<pid_t> pids;
   GetPidsForUser(uid, &pids);
-  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); it++) {
+  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
     pid_t pid = static_cast<pid_t>(*it);
     if (pid != getpid()) {
-      if (hard) {
+      if (!hard) {
         kill(pid, SIGTERM);
       } else {
         kill(pid, SIGKILL);
@@ -320,13 +320,13 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
     }
 
     size_t uid_loc = contents.find("Uid:");
-    if (!uid_loc) {
+    if (uid_loc == string::npos) {
       continue;
     }
     uid_loc += 4;
 
     size_t uid_end = contents.find("\n", uid_loc);
-    if (!uid_end) {
+    if (uid_end == string::npos) {
       continue;
     }
 
@@ -336,7 +336,7 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
     Tokenize(contents, " \t", &tokens);
 
     for (std::vector<std::string>::iterator it = tokens.begin();
-        it != tokens.end(); it++) {
+        it != tokens.end(); ++it) {
       std::string& value = *it;
       if (value.length() == 0) {
         continue;
@@ -347,6 +347,52 @@ void Platform::GetPidsForUser(uid_t uid, std::vector<pid_t>* pids) {
         break;
       }
     }
+  }
+}
+
+bool Platform::TerminatePidsByName(const string& name, bool hard) {
+  std::vector<pid_t> pids;
+  GetPidsByName(name, &pids);
+  for (std::vector<pid_t>::iterator it = pids.begin(); it != pids.end(); ++it) {
+    pid_t pid = static_cast<pid_t>(*it);
+    if (pid != getpid()) {
+      if (!hard) {
+        kill(pid, SIGTERM);
+      } else {
+        kill(pid, SIGKILL);
+      }
+    }
+  }
+  return (pids.size() != 0);
+}
+
+void Platform::GetPidsByName(const string& name, std::vector<pid_t>* pids) {
+  // Open /proc.
+  file_util::FileEnumerator proc_dir_enum(FilePath(proc_dir_), false,
+      file_util::FileEnumerator::DIRECTORIES);
+  // List PIDs in /proc.
+  FilePath pid_path;
+  while (!(pid_path = proc_dir_enum.Next()).empty()) {
+    pid_t pid = static_cast<pid_t>(atoi(pid_path.BaseName().value().c_str()));
+    if (pid <= 1)
+      continue;
+    // Open /proc/<pid>/status.
+    FilePath status_path = pid_path.Append("status");
+    string contents;
+    if (!file_util::ReadFileToString(status_path, &contents))
+      continue;
+    // Parse the process name from the status file.
+    // E.g. "Name: chrome".
+    size_t name_loc = contents.find("Name:\t");
+    if (name_loc == string::npos)
+      continue;
+    name_loc += 6;
+    size_t name_end = contents.find("\n", name_loc);
+    if (name_end == string::npos)
+      continue;
+    string proc_name = contents.substr(name_loc, name_end - name_loc);
+    if (name == proc_name)
+      pids->push_back(pid);
   }
 }
 
