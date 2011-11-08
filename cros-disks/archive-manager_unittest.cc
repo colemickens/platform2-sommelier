@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
 
 using std::string;
@@ -22,10 +23,11 @@ namespace cros_disks {
 class ArchiveManagerTest : public ::testing::Test {
  public:
   ArchiveManagerTest()
-      : manager_(kMountRootDirectory, &platform_) {
+      : manager_(kMountRootDirectory, &platform_, &metrics_) {
   }
 
  protected:
+  Metrics metrics_;
   Platform platform_;
   ArchiveManager manager_;
 };
@@ -107,11 +109,17 @@ TEST_F(ArchiveManagerTest, RegisterFileExtension) {
   EXPECT_TRUE(manager_.IsFileExtensionSupported(extension));
 }
 
-TEST_F(ArchiveManagerTest, GetAVFSPath) {
-  EXPECT_EQ("",
-            manager_.GetAVFSPath("/home/chronos/user/Downloads/doc.zip"));
+TEST_F(ArchiveManagerTest, GetFileExtension) {
+  EXPECT_EQ("", manager_.GetFileExtension(""));
+  EXPECT_EQ("", manager_.GetFileExtension("test"));
+  EXPECT_EQ("", manager_.GetFileExtension("/tmp/test"));
+  EXPECT_EQ("zip", manager_.GetFileExtension("test.zip"));
+  EXPECT_EQ("zip", manager_.GetFileExtension("test.ZIP"));
+  EXPECT_EQ("zip", manager_.GetFileExtension("/tmp/test.zip"));
+  EXPECT_EQ("rar", manager_.GetFileExtension("/tmp/test.rar"));
+}
 
-  manager_.RegisterFileExtension("zip");
+TEST_F(ArchiveManagerTest, GetAVFSPath) {
   EXPECT_EQ("", manager_.GetAVFSPath(""));
   EXPECT_EQ("", manager_.GetAVFSPath("test.zip"));
   EXPECT_EQ("", manager_.GetAVFSPath("/tmp/test.zip"));

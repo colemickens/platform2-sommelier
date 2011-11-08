@@ -19,7 +19,8 @@ namespace cros_disks {
 // filesystem.
 class ArchiveManager : public MountManager {
  public:
-  ArchiveManager(const std::string& mount_root, Platform* platform);
+  ArchiveManager(const std::string& mount_root, Platform* platform,
+                 Metrics* metrics);
 
   // Initializes the manager and registers default file extensions.
   // Returns true on success.
@@ -63,8 +64,11 @@ class ArchiveManager : public MountManager {
   virtual std::string SuggestMountPath(const std::string& source_path) const;
 
  private:
+  // Returns the extension of a file, in lower case, at the specified |path|.
+  std::string GetFileExtension(const std::string& path) const;
+
   // Returns the corresponding path inside the AVFS mount of a given path,
-  // or an empty string if the given path is not supported or has corresponding
+  // or an empty string if the given path does not have a corresponding
   // path inside the AVFS mount.
   std::string GetAVFSPath(const std::string& path) const;
 
@@ -87,6 +91,7 @@ class ArchiveManager : public MountManager {
   bool avfs_started_;
 
   FRIEND_TEST(ArchiveManagerTest, GetAVFSPath);
+  FRIEND_TEST(ArchiveManagerTest, GetFileExtension);
   FRIEND_TEST(ArchiveManagerTest, SuggestMountPath);
   FRIEND_TEST(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension);
 };

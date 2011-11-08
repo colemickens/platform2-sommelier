@@ -44,7 +44,8 @@ class UdevDevice;
 class DiskManager : public MountManager,
                     public DeviceEventSourceInterface {
  public:
-  DiskManager(const std::string& mount_root, Platform* platform);
+  DiskManager(const std::string& mount_root, Platform* platform,
+              Metrics* metrics);
   virtual ~DiskManager();
 
   // Initializes the disk manager and registers default filesystems.

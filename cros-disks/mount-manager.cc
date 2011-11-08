@@ -34,11 +34,14 @@ const unsigned kMaxNumMountTrials = 10000;
 
 namespace cros_disks {
 
-MountManager::MountManager(const string& mount_root, Platform* platform)
+MountManager::MountManager(const string& mount_root, Platform* platform,
+                           Metrics* metrics)
     : mount_root_(mount_root),
-      platform_(platform) {
+      platform_(platform),
+      metrics_(metrics) {
   CHECK(!mount_root_.empty()) << "Invalid mount root directory";
   CHECK(platform_) << "Invalid platform object";
+  CHECK(metrics_) << "Invalid metrics object";
 }
 
 MountManager::~MountManager() {

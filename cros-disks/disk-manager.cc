@@ -15,6 +15,7 @@
 #include "cros-disks/disk.h"
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
+#include "cros-disks/metrics.h"
 #include "cros-disks/mount-options.h"
 #include "cros-disks/ntfs-mounter.h"
 #include "cros-disks/platform.h"
@@ -41,8 +42,9 @@ const char kPropertyDiskMediaChange[] = "DISK_MEDIA_CHANGE";
 
 namespace cros_disks {
 
-DiskManager::DiskManager(const string& mount_root, Platform* platform)
-    : MountManager(mount_root, platform),
+DiskManager::DiskManager(const string& mount_root, Platform* platform,
+                         Metrics* metrics)
+    : MountManager(mount_root, platform, metrics),
       udev_(udev_new()),
       udev_monitor_fd_(0) {
   CHECK(udev_) << "Failed to initialize udev";
@@ -391,6 +393,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
 
   string device_filesystem_type = filesystem_type.empty() ?
       disk.filesystem_type() : filesystem_type;
+  metrics_->RecordDeviceMediaType(disk.media_type());
+  metrics_->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
                << source_path << "'";

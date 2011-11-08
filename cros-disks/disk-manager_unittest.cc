@@ -13,6 +13,7 @@
 #include "cros-disks/disk.h"
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
+#include "cros-disks/metrics.h"
 #include "cros-disks/mounter.h"
 #include "cros-disks/ntfs-mounter.h"
 #include "cros-disks/platform.h"
@@ -32,10 +33,11 @@ namespace cros_disks {
 class DiskManagerTest : public ::testing::Test {
  public:
   DiskManagerTest()
-      : manager_(kMountRootDirectory, &platform_) {
+      : manager_(kMountRootDirectory, &platform_, &metrics_) {
   }
 
  protected:
+  Metrics metrics_;
   Platform platform_;
   DiskManager manager_;
 };

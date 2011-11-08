@@ -12,6 +12,7 @@
 #include <base/stringprintf.h>
 #include <base/string_util.h>
 
+#include "cros-disks/metrics.h"
 #include "cros-disks/mount-info.h"
 #include "cros-disks/mount-options.h"
 #include "cros-disks/platform.h"
@@ -59,8 +60,9 @@ const AVFSPathMapping kAVFSPathMapping[] = {
 namespace cros_disks {
 
 ArchiveManager::ArchiveManager(const string& mount_root,
-                               Platform* platform)
-    : MountManager(mount_root, platform),
+                               Platform* platform,
+                               Metrics* metrics)
+    : MountManager(mount_root, platform, metrics),
       avfs_started_(false) {
 }
 
@@ -98,7 +100,13 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   CHECK(!source_path.empty()) << "Invalid source path argument";
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
-  string avfs_path = GetAVFSPath(source_path);
+  string extension = GetFileExtension(source_path);
+  metrics_->RecordArchiveType(extension);
+
+  string avfs_path;
+  if (IsFileExtensionSupported(extension)) {
+    avfs_path = GetAVFSPath(source_path);
+  }
   if (avfs_path.empty()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
     return kMountErrorUnsupportedArchive;
@@ -146,7 +154,7 @@ void ArchiveManager::RegisterFileExtension(const string& extension) {
   extensions_.insert(extension);
 }
 
-string ArchiveManager::GetAVFSPath(const string& path) const {
+string ArchiveManager::GetFileExtension(const string& path) const {
   FilePath file_path(path);
   string extension = file_path.Extension();
   if (!extension.empty()) {
@@ -154,14 +162,16 @@ string ArchiveManager::GetAVFSPath(const string& path) const {
     extension.erase(0, 1);
     StringToLowerASCII(&extension);
   }
+  return extension;
+}
 
-  if (IsFileExtensionSupported(extension)) {
-    for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
-      FilePath base_path(kAVFSPathMapping[i].base_path);
-      FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
-      if (base_path.AppendRelativePath(file_path, &avfs_path)) {
-        return avfs_path.value() + "#";
-      }
+string ArchiveManager::GetAVFSPath(const string& path) const {
+  FilePath file_path(path);
+  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+    FilePath base_path(kAVFSPathMapping[i].base_path);
+    FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
+    if (base_path.AppendRelativePath(file_path, &avfs_path)) {
+      return avfs_path.value() + "#";
     }
   }
   return string();

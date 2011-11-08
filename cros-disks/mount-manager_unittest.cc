@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
 
 using std::set;
@@ -57,8 +58,8 @@ class MockPlatform : public Platform {
 // A mock mount manager class for testing the mount manager base class.
 class MountManagerUnderTest : public MountManager {
  public:
-  explicit MountManagerUnderTest(Platform* platform)
-      : MountManager(kMountRootDirectory, platform) {
+  explicit MountManagerUnderTest(Platform* platform, Metrics* metrics)
+      : MountManager(kMountRootDirectory, platform, metrics) {
   }
 
   MOCK_CONST_METHOD1(CanMount, bool(const string& source_path));
@@ -77,10 +78,11 @@ class MountManagerUnderTest : public MountManager {
 class MountManagerTest : public ::testing::Test {
  public:
   MountManagerTest()
-      : manager_(&platform_) {
+      : manager_(&platform_, &metrics_) {
   }
 
  protected:
+  Metrics metrics_;
   MockPlatform platform_;
   MountManagerUnderTest manager_;
   string filesystem_type_;

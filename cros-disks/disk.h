@@ -108,8 +108,8 @@ class Disk {
     drive_model_ = drive_model;
   }
 
-  uint32 media_type() const { return media_type_; }
-  void set_media_type(uint32 media_type) { media_type_ = media_type; }
+  DeviceMediaType media_type() const { return media_type_; }
+  void set_media_type(DeviceMediaType media_type) { media_type_ = media_type; }
 
   uint64 device_capacity() const { return device_capacity_; }
   void set_device_capacity(uint64 device_capacity) {
@@ -139,7 +139,7 @@ class Disk {
   std::string uuid_;
   std::string label_;
   std::string drive_model_;
-  uint32 media_type_;
+  DeviceMediaType media_type_;
   uint64 device_capacity_;
   uint64 bytes_remaining_;
 };

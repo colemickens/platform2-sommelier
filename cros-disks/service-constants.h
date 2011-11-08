@@ -16,6 +16,7 @@ enum DeviceMediaType {
   kDeviceMediaSD = 2,
   kDeviceMediaOpticalDisc = 3,
   kDeviceMediaMobile = 4,
+  kDeviceMediaMaxValue = 5,
 };
 
 enum MountSourceType {

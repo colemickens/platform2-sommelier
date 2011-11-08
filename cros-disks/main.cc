@@ -17,13 +17,13 @@
 #include <base/string_util.h>
 #include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
-#include <metrics/metrics_library.h>
 
 #include "cros-disks/archive-manager.h"
 #include "cros-disks/cros-disks-server-impl.h"
 #include "cros-disks/device-event-moderator.h"
 #include "cros-disks/disk-manager.h"
 #include "cros-disks/format-manager.h"
+#include "cros-disks/metrics.h"
 #include "cros-disks/platform.h"
 #include "cros-disks/power-manager-proxy.h"
 #include "cros-disks/session-manager-proxy.h"
@@ -33,6 +33,7 @@ using cros_disks::CrosDisksServer;
 using cros_disks::DeviceEventModerator;
 using cros_disks::DiskManager;
 using cros_disks::FormatManager;
+using cros_disks::Metrics;
 using cros_disks::Platform;
 using cros_disks::PowerManagerProxy;
 using cros_disks::SessionManagerProxy;
@@ -105,13 +106,17 @@ int main(int argc, char** argv) {
       << "'" << kNonPrivilegedMountUser
       << "' is not available for non-privileged mount operations.";
 
+  LOG(INFO) << "Initializing the metrics library";
+  Metrics metrics;
+
   LOG(INFO) << "Creating the archive manager";
-  ArchiveManager archive_manager(kArchiveMountRootDirectory, &platform);
+  ArchiveManager archive_manager(kArchiveMountRootDirectory, &platform,
+                                 &metrics);
   CHECK(archive_manager.Initialize())
       << "Failed to initialize the archive manager";
 
   LOG(INFO) << "Creating the disk manager";
-  DiskManager disk_manager(kDiskMountRootDirectory, &platform);
+  DiskManager disk_manager(kDiskMountRootDirectory, &platform, &metrics);
   CHECK(disk_manager.Initialize()) << "Failed to initialize the disk manager";
 
   FormatManager format_manager;
@@ -131,10 +136,6 @@ int main(int argc, char** argv) {
   SessionManagerProxy session_manager_proxy(&server_conn);
   session_manager_proxy.AddObserver(&cros_disks_server);
   session_manager_proxy.AddObserver(&event_moderator);
-
-  LOG(INFO) << "Initializing the metrics library";
-  MetricsLibrary metrics_lib;
-  metrics_lib.Init();
 
   // Setup a monitor
   g_io_add_watch_full(g_io_channel_unix_new(disk_manager.udev_monitor_fd()),

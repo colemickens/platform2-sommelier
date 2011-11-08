@@ -17,6 +17,7 @@
 
 namespace cros_disks {
 
+class Metrics;
 class Platform;
 
 // A base class for managing mounted filesystems of certain kinds.
@@ -26,7 +27,8 @@ class Platform;
 // supporting certain kinds of filesystem.
 class MountManager {
  public:
-  MountManager(const std::string& mount_root, Platform* platform);
+  MountManager(const std::string& mount_root, Platform* platform,
+               Metrics* metrics);
   virtual ~MountManager();
 
   // Initializes the mount manager. Returns true on success.
@@ -173,6 +175,9 @@ class MountManager {
 
   // An object that provides platform service.
   Platform* platform_;
+
+  // An object that collects UMA metrics.
+  Metrics* metrics_;
 
  private:
   FRIEND_TEST(MountManagerTest, ExtractSupportedUnmountOptions);
