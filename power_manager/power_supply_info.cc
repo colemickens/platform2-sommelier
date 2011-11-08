@@ -123,11 +123,12 @@ int main(int, char*[]) {
     display.PrintValue("voltage (V)", power_status.battery_voltage);
     display.PrintValue("energy (Wh)", power_status.battery_energy);
     display.PrintValue("energy rate (W)", power_status.battery_energy_rate);
-    CHECK(power_status.battery_voltage > 0);
-    display.PrintValue("charge (Ah)", power_status.battery_energy /
-                                      power_status.battery_voltage);
-    display.PrintValue("current (A)", power_status.battery_energy_rate /
-                                      power_status.battery_voltage);
+    if (power_status.battery_voltage > 0) {
+      display.PrintValue("charge (Ah)", power_status.battery_energy /
+                                        power_status.battery_voltage);
+      display.PrintValue("current (A)", power_status.battery_energy_rate /
+                                        power_status.battery_voltage);
+    }
     if (power_status.line_power_on)
       display.PrintValue("time to full",
                          SecondsToString(power_status.battery_time_to_full));
