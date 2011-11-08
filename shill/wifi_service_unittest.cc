@@ -70,7 +70,8 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
                            wifi(),
                            ssid,
                            flimflam::kModeManaged,
-                           security);
+                           security,
+                           false);
   }
 
   bool TestStorageSecurityIs(WiFiServiceRefPtr wifi_service,
@@ -139,7 +140,8 @@ TEST_F(WiFiServiceTest, StorageId) {
                                                    wifi(),
                                                    ssid,
                                                    flimflam::kModeManaged,
-                                                   flimflam::kSecurityNone);
+                                                   flimflam::kSecurityNone,
+                                                   false);
   string id = wifi_service->GetStorageIdentifier();
   for (uint i = 0; i < id.length(); ++i) {
     EXPECT_TRUE(id[i] == '_' ||
@@ -162,7 +164,8 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
                                                    wifi(),
                                                    ssid,
                                                    flimflam::kModeManaged,
-                                                   flimflam::kSecurityNone);
+                                                   flimflam::kSecurityNone,
+                                                   false);
   map<string, ::DBus::Variant> properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
   DBusAdaptor::GetProperties(wifi_service->store(), &properties, NULL);
@@ -176,7 +179,8 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
                                                    wifi(),
                                                    ssid,
                                                    flimflam::kModeManaged,
-                                                   flimflam::kSecurityWpa);
+                                                   flimflam::kSecurityWpa,
+                                                   false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
   wifi_service->ConnectTask();
@@ -190,7 +194,8 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
                                                    wifi(),
                                                    ssid,
                                                    flimflam::kModeManaged,
-                                                   flimflam::kSecurityRsn);
+                                                   flimflam::kSecurityRsn,
+                                                   false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
   wifi_service->ConnectTask();
@@ -204,7 +209,8 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
                                                    wifi(),
                                                    ssid,
                                                    flimflam::kModeManaged,
-                                                   flimflam::kSecurityPsk);
+                                                   flimflam::kSecurityPsk,
+                                                   false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
   wifi_service->ConnectTask();
@@ -220,7 +226,8 @@ TEST_F(WiFiServiceTest, LoadHidden) {
                                               wifi(),
                                               ssid,
                                               flimflam::kModeManaged,
-                                              flimflam::kSecurityNone);
+                                              flimflam::kSecurityNone,
+                                              false);
   ASSERT_FALSE(service->hidden_ssid_);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();

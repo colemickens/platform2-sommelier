@@ -139,7 +139,6 @@ class Device : public base::RefCounted<Device> {
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
   Manager *manager() const { return manager_; }
-  std::vector<ServiceRefPtr> *services() { return &services_; }
 
  private:
   friend class DeviceAdaptorInterface;
@@ -169,7 +168,6 @@ class Device : public base::RefCounted<Device> {
 
   PropertyStore store_;
 
-  std::vector<ServiceRefPtr> services_;
   const int interface_index_;
   bool running_;
   const std::string link_name_;

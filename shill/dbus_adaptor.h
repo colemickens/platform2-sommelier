@@ -43,6 +43,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
       Error *error);
 
   static ::DBus::Variant BoolToVariant(bool value);
+  static ::DBus::Variant ByteArraysToVariant(const ByteArrays &value);
   static ::DBus::Variant ByteToVariant(uint8 value);
   static ::DBus::Variant Int16ToVariant(int16 value);
   static ::DBus::Variant Int32ToVariant(int32 value);
@@ -59,6 +60,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
 
   static bool IsBool(::DBus::Signature signature);
   static bool IsByte(::DBus::Signature signature);
+  static bool IsByteArrays(::DBus::Signature signature);
   static bool IsInt16(::DBus::Signature signature);
   static bool IsInt32(::DBus::Signature signature);
   static bool IsPath(::DBus::Signature signature);
@@ -71,6 +73,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsUint32(::DBus::Signature signature);
 
  private:
+  static const char kByteArraysSig[];
   static const char kPathArraySig[];
   static const char kStringmapSig[];
   static const char kStringmapsSig[];

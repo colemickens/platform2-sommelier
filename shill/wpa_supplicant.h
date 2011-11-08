@@ -32,6 +32,7 @@ extern const char kPropertyMode[];
 extern const char kPropertyPreSharedKey[];
 extern const char kPropertyPrivacy[];
 extern const char kPropertyRSN[];
+extern const char kPropertyScanSSIDs[];
 extern const char kPropertyScanType[];
 extern const char kPropertySecurityProtocol[];
 extern const char kPropertySignal[];
@@ -44,6 +45,7 @@ extern const char kSecurityModeWPA[];
 extern const uint32_t kNetworkModeInfrastructureInt;
 extern const uint32_t kNetworkModeAdHocInt;
 extern const uint32_t kNetworkModeAccessPointInt;
+extern const uint32_t kScanMaxSSIDsPerScan;
 };
 
 }  // namespace shill

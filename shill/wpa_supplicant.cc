@@ -27,6 +27,7 @@ const char kPropertyKeyManagement[] = "key_mgmt";
 const char kPropertyPreSharedKey[]  = "psk";
 const char kPropertyPrivacy[]       = "Privacy";
 const char kPropertyRSN[]           = "RSN";
+const char kPropertyScanSSIDs[]     = "SSIDs";
 const char kPropertyScanType[]      = "Type";
 const char kPropertySecurityProtocol[] = "proto";
 const char kPropertyWPA[]           = "WPA";
@@ -38,6 +39,7 @@ const char kSecurityModeWPA[]       = "WPA";
 const uint32_t kNetworkModeInfrastructureInt = 0;
 const uint32_t kNetworkModeAdHocInt          = 1;
 const uint32_t kNetworkModeAccessPointInt    = 2;
+const uint32_t kScanMaxSSIDsPerScan          = 4;
 };
 
 }  // namespace shill

@@ -63,6 +63,9 @@ class DBusAdaptorTest : public PropertyStoreTest {
         service_(new MockService(control_interface(),
                                  dispatcher(),
                                  manager())) {
+    ex_bytearrays_.push_back(ByteArray());
+    bytearrays_v_ = DBusAdaptor::ByteArraysToVariant(ex_bytearrays_);
+
     ex_stringmap_[ex_string_] = ex_string_;
     stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
 
@@ -75,6 +78,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
  protected:
   bool ex_bool_;
   uint8 ex_byte_;
+  ByteArrays ex_bytearrays_;
   uint16 ex_uint16_;
   uint32 ex_uint32_;
   int16 ex_int16_;
@@ -88,6 +92,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
 
   ::DBus::Variant bool_v_;
   ::DBus::Variant byte_v_;
+  ::DBus::Variant bytearrays_v_;
   ::DBus::Variant int16_v_;
   ::DBus::Variant int32_v_;
   ::DBus::Variant path_v_;
@@ -109,6 +114,8 @@ TEST_F(DBusAdaptorTest, Conversions) {
 
   EXPECT_EQ(0, PropertyStoreTest::kByteV.reader().get_byte());
   EXPECT_EQ(ex_byte_, byte_v_.reader().get_byte());
+
+  EXPECT_TRUE(ex_bytearrays_ == bytearrays_v_.operator ByteArrays());
 
   EXPECT_EQ(0, PropertyStoreTest::kUint16V.reader().get_uint16());
   EXPECT_EQ(ex_uint16_, uint16_v_.reader().get_uint16());
@@ -136,6 +143,7 @@ TEST_F(DBusAdaptorTest, Conversions) {
 
 TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_TRUE(DBusAdaptor::IsBool(bool_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsByteArrays(bytearrays_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsByte(byte_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsInt16(int16_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsInt32(int32_v_.signature()));

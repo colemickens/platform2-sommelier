@@ -125,8 +125,6 @@ void Device::Stop() {
   adaptor_->UpdateEnabled();
   rtnl_handler_->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 
-  VLOG(3) << "Device " << link_name_ << " has " << services_.size()
-          << " remaining services.";
   VLOG(3) << "Device " << link_name_ << " ipconfig_ "
           << (ipconfig_.get() ? "is set." : "is not set.");
   VLOG(3) << "Device " << link_name_ << " connection_ "

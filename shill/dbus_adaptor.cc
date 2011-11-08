@@ -22,6 +22,8 @@ using std::vector;
 namespace shill {
 
 // static
+const char DBusAdaptor::kByteArraysSig[] = "aay";
+// static
 const char DBusAdaptor::kPathArraySig[] = "ao";
 // static
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
@@ -163,6 +165,18 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
+::DBus::Variant DBusAdaptor::ByteArraysToVariant(const ByteArrays &value) {
+  ::DBus::MessageIter writer;
+  ::DBus::Variant v;
+
+  // TODO(quiche): figure out why we can't use operator<< without the
+  // temporary variable.
+  writer = v.writer();
+  writer << value;
+  return v;
+}
+
+// static
 ::DBus::Variant DBusAdaptor::ByteToVariant(uint8 value) {
   ::DBus::Variant v;
   v.writer().append_byte(value);
@@ -265,6 +279,11 @@ bool DBusAdaptor::IsBool(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsByte(::DBus::Signature signature) {
   return signature == ::DBus::type<uint8>::sig();
+}
+
+// static
+bool DBusAdaptor::IsByteArrays(::DBus::Signature signature) {
+  return signature == DBusAdaptor::kByteArraysSig;
 }
 
 // static

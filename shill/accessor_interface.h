@@ -63,6 +63,8 @@ class StrIntPair {
   std::map<std::string, uint32> uint_property_;
 };
 
+typedef std::vector<uint8_t> ByteArray;
+typedef std::vector<ByteArray> ByteArrays;
 typedef std::vector<std::string> Strings;
 typedef std::map<std::string, std::string> Stringmap;
 typedef std::vector<Stringmap> Stringmaps;

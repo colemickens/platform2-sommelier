@@ -37,12 +37,13 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const WiFiRefPtr &device,
                          const std::vector<uint8_t> ssid,
                          const std::string &mode,
-                         const std::string &security)
+                         const std::string &security,
+                         bool hidden_ssid)
     : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
       need_passphrase_(false),
       security_(security),
       mode_(mode),
-      hidden_ssid_(false),
+      hidden_ssid_(hidden_ssid),
       task_factory_(this),
       wifi_(device),
       ssid_(ssid) {
@@ -91,9 +92,6 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   } else {
     LOG(ERROR) << "unsupported security method " << security_;
   }
-
-  // TODO(quiche): figure out when to set true
-  hidden_ssid_ = false;
 
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetGenericStorageIdentifier();

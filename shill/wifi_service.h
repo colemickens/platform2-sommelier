@@ -28,7 +28,8 @@ class WiFiService : public Service {
               const WiFiRefPtr &device,
               const std::vector<uint8_t> ssid,
               const std::string &mode,
-              const std::string &security);
+              const std::string &security,
+              bool hidden_ssid);
   ~WiFiService();
 
   // Inherited from Service.
@@ -51,6 +52,8 @@ class WiFiService : public Service {
   virtual bool IsLoadableFrom(StoreInterface *storage) const;
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
+
+  bool hidden_ssid() const { return hidden_ssid_; }
 
  private:
   friend class WiFiServiceSecurityTest;

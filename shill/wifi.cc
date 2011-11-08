@@ -11,6 +11,7 @@
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
+#include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -35,6 +37,7 @@
 #include "shill/wpa_supplicant.h"
 
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -147,12 +150,12 @@ void WiFi::Stop() {
   endpoint_by_bssid_.clear();
   service_by_private_id_.clear();       // breaks reference cycles
 
-  for (std::vector<ServiceRefPtr>::const_iterator it = services()->begin();
-       it != services()->end();
+  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
        ++it) {
     manager()->DeregisterService(*it);
   }
-  services()->clear();                  // breaks reference cycles
+  services_.clear();                  // breaks reference cycles
 
   Device::Stop();
   // XXX anything else to do?
@@ -257,6 +260,33 @@ void WiFi::ConnectTo(WiFiService *service,
   SelectService(service);
 }
 
+ByteArrays WiFi::GetHiddenSSIDList() {
+  // Create a unique set of hidden SSIDs.
+  set<ByteArray> hidden_ssids_set;
+  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if ((*it)->hidden_ssid()) {
+      hidden_ssids_set.insert((*it)->ssid());
+    }
+  }
+  ByteArrays hidden_ssids(hidden_ssids_set.begin(), hidden_ssids_set.end());
+  if (!hidden_ssids.empty()) {
+    // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
+    // not fit in.
+    if (hidden_ssids.size() >= wpa_supplicant::kScanMaxSSIDsPerScan) {
+      hidden_ssids.erase(
+          hidden_ssids.begin() + wpa_supplicant::kScanMaxSSIDsPerScan - 1,
+          hidden_ssids.end());
+    }
+    // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
+    // SSIDs to wpa_supplicant, we need to explicitly specify the default
+    // behavior of doing a broadcast probe.
+    hidden_ssids.push_back(ByteArray());
+  }
+  return hidden_ssids;
+}
+
 void WiFi::ScanDoneTask() {
   LOG(INFO) << __func__;
 
@@ -279,6 +309,7 @@ void WiFi::ScanDoneTask() {
                 << "signal: " << endpoint.signal_strength() << ", "
                 << "security: " << endpoint.security_mode();
 
+      const bool hidden_ssid = false;
       WiFiServiceRefPtr service(
           new WiFiService(control_interface(),
                           dispatcher(),
@@ -286,8 +317,9 @@ void WiFi::ScanDoneTask() {
                           this,
                           endpoint.ssid(),
                           endpoint.network_mode(),
-                          endpoint.security_mode()));
-      services()->push_back(service);
+                          endpoint.security_mode(),
+                          hidden_ssid));
+      services_.push_back(service);
       service_by_private_id_[service_id_private] = service;
       manager()->RegisterService(service);
 
@@ -303,6 +335,13 @@ void WiFi::ScanTask() {
   std::map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
+
+  ByteArrays hidden_ssids = GetHiddenSSIDList();
+  if (!hidden_ssids.empty()) {
+    scan_args[wpa_supplicant::kPropertyScanSSIDs] =
+        DBusAdaptor::ByteArraysToVariant(hidden_ssids);
+  }
+
   // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;
@@ -371,6 +410,11 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     return NULL;
   }
 
+  bool hidden_ssid = false;
+  if (args.ContainsBool(flimflam::kWifiHiddenSsid)) {
+    hidden_ssid = args.GetBool(flimflam::kWifiHiddenSsid);
+  }
+
   WiFiService *service = NULL;
 
   // TODO(quiche): search for existing service
@@ -382,8 +426,9 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
                               this,
                               vector<uint8_t>(ssid.begin(), ssid.end()),
                               flimflam::kModeManaged,
-                              security_method);
-    services()->push_back(service);
+                              security_method,
+                              hidden_ssid);
+    services_.push_back(service);
     // TODO(quiche): add to service_by_private_id_?
     // TODO(quiche): register service with manager
   }

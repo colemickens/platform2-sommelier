@@ -68,6 +68,7 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
 
+  ByteArrays GetHiddenSSIDList();
   void ScanDoneTask();
   void ScanTask();
 
@@ -87,6 +88,7 @@ class WiFi : public Device {
   bool scan_pending_;
   uint16 scan_interval_;
   bool link_up_;
+  std::vector<WiFiServiceRefPtr> services_;
 
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   DISALLOW_COPY_AND_ASSIGN(WiFi);
