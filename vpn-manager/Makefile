@@ -11,7 +11,7 @@ L2TPIPSEC_OBJS = \
 	ipsec_manager.o \
 	l2tp_manager.o \
 	service_manager.o
-PKCS11_LIB = /usr/lib/opencryptoki/libopencryptoki.so.0
+PKCS11_LIB = /usr/lib/libchaps.so
 TEST_OBJS = $(L2TPIPSEC_OBJS)
 TEST_BINS = \
 	ipsec_manager_test \
