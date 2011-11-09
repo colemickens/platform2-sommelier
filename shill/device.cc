@@ -245,7 +245,7 @@ bool Device::AcquireDHCPConfig() {
 
 void Device::HelpRegisterDerivedStrings(
     const string &name,
-    Strings(Device::*get)(void),
+    Strings(Device::*get)(Error *),
     void(Device::*set)(const Strings&, Error *)) {
   store_.RegisterDerivedStrings(
       name,
@@ -307,7 +307,7 @@ string Device::SerializeIPConfigs(const string &suffix) {
   return StringPrintf("%s:%s", suffix.c_str(), ipconfig_->type().c_str());
 }
 
-vector<string> Device::AvailableIPConfigs() {
+vector<string> Device::AvailableIPConfigs(Error */*error*/) {
   string id = (ipconfig_.get() ? ipconfig_->GetRpcIdentifier() : string());
   return vector<string>(1, id);
 }

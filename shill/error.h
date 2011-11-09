@@ -49,6 +49,8 @@ class Error {
   void Populate(Type type);  // Uses the default message for |type|.
   void Populate(Type type, const std::string &message);
 
+  void Reset();
+
   // Sets the DBus |error| and returns true if Error represents failure.
   // Leaves |error| unchanged, and returns false, otherwise.
   bool ToDBusError(::DBus::Error *error) const;

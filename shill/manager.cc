@@ -388,7 +388,7 @@ ServiceRefPtr Manager::FindService(const string& name) {
 
 void Manager::HelpRegisterDerivedString(
     const string &name,
-    string(Manager::*get)(void),
+    string(Manager::*get)(Error *),
     void(Manager::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
@@ -397,7 +397,7 @@ void Manager::HelpRegisterDerivedString(
 
 void Manager::HelpRegisterDerivedStrings(
     const string &name,
-    Strings(Manager::*get)(void),
+    Strings(Manager::*get)(Error *),
     void(Manager::*set)(const Strings &, Error *)) {
   store_.RegisterDerivedStrings(
       name,
@@ -408,27 +408,27 @@ void Manager::SortServices() {
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
 }
 
-string Manager::CalculateState() {
+string Manager::CalculateState(Error */*error*/) {
   return flimflam::kStateOffline;
 }
 
-vector<string> Manager::AvailableTechnologies() {
+vector<string> Manager::AvailableTechnologies(Error */*error*/) {
   return vector<string>();
 }
 
-vector<string> Manager::ConnectedTechnologies() {
+vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
   return vector<string>();
 }
 
-string Manager::DefaultTechnology() {
+string Manager::DefaultTechnology(Error */*error*/) {
   return "";
 }
 
-vector<string> Manager::EnabledTechnologies() {
+vector<string> Manager::EnabledTechnologies(Error */*error*/) {
   return vector<string>();
 }
 
-vector<string> Manager::EnumerateDevices() {
+vector<string> Manager::EnumerateDevices(Error */*error*/) {
   vector<string> device_rpc_ids;
   for (vector<DeviceRefPtr>::const_iterator it = devices_.begin();
        it != devices_.end();
@@ -438,7 +438,7 @@ vector<string> Manager::EnumerateDevices() {
   return device_rpc_ids;
 }
 
-vector<string> Manager::EnumerateAvailableServices() {
+vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
   vector<string> service_rpc_ids;
   for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
@@ -448,12 +448,12 @@ vector<string> Manager::EnumerateAvailableServices() {
   return service_rpc_ids;
 }
 
-vector<string> Manager::EnumerateWatchedServices() {
+vector<string> Manager::EnumerateWatchedServices(Error *error) {
   // TODO(cmasone): Filter this list for services in appropriate states.
-  return EnumerateAvailableServices();
+  return EnumerateAvailableServices(error);
 }
 
-string Manager::GetActiveProfileName() {
+string Manager::GetActiveProfileName(Error */*error*/) {
   return ActiveProfile()->GetFriendlyName();
 }
 

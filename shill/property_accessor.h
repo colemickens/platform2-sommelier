@@ -7,6 +7,7 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
 #include "shill/accessor_interface.h"
 #include "shill/error.h"
@@ -34,7 +35,7 @@ class PropertyAccessor : public AccessorInterface<T> {
   }
   virtual ~PropertyAccessor() {}
 
-  const T &Get() { return *property_; }
+  T Get(Error */*error*/) { return *property_; }
   void Set(const T &value, Error */*error*/) {
     *property_ = value;
   }
@@ -52,7 +53,7 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
   }
   virtual ~ConstPropertyAccessor() {}
 
-  const T &Get() { return *property_; }
+  T Get(Error */*error*/) { return *property_; }
   void Set(const T &/*value*/, Error *error) {
     // TODO(quiche): check if this is the right error.
     // (maybe Error::kPermissionDenied instead?)
@@ -62,6 +63,31 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
  private:
   const T * const property_;
   DISALLOW_COPY_AND_ASSIGN(ConstPropertyAccessor);
+};
+
+template <class T>
+class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
+ public:
+  explicit WriteOnlyPropertyAccessor(T *property) : property_(property) {
+    DCHECK(property);
+  }
+  virtual ~WriteOnlyPropertyAccessor() {}
+
+  T Get(Error *error) {
+    error->Populate(Error::kPermissionDenied, "Property is write-only");
+    return T();
+  }
+  void Set(const T &value, Error */*error*/) {
+    *property_ = value;
+  }
+
+ private:
+  FRIEND_TEST(PropertyAccessorTest, SignedIntCorrectness);
+  FRIEND_TEST(PropertyAccessorTest, UnsignedIntCorrectness);
+  FRIEND_TEST(PropertyAccessorTest, StringCorrectness);
+
+  T * const property_;
+  DISALLOW_COPY_AND_ASSIGN(WriteOnlyPropertyAccessor);
 };
 
 // CustomAccessor<> allows custom getter and setter methods to be provided.
@@ -75,17 +101,23 @@ class CustomAccessor : public AccessorInterface<T> {
   // attempts to set via the accessor.
   // It is an error to pass NULL for either of the other two arguments.
   CustomAccessor(C *target,
-                 T(C::*getter)(),
+                 T(C::*getter)(Error *),
                  void(C::*setter)(const T&, Error *))
       : target_(target),
         getter_(getter),
         setter_(setter) {
     DCHECK(target);
-    DCHECK(getter);
   }
   virtual ~CustomAccessor() {}
 
-  const T &Get() { return storage_ = (target_->*getter_)(); }
+  T Get(Error *error) {
+    if (getter_)
+      return storage_ = (target_->*getter_)(error);
+
+    error->Populate(Error::kPermissionDenied, "Property is write-only");
+    return T();
+  }
+
   void Set(const T &value, Error *error) {
     if (setter_) {
       (target_->*setter_)(value, error);
@@ -99,7 +131,7 @@ class CustomAccessor : public AccessorInterface<T> {
   // Get() returns a const&, so we need to have internal storage to which to
   // return a reference.
   T storage_;
-  T(C::*getter_)(void);
+  T(C::*getter_)(Error *);
   void(C::*setter_)(const T&, Error *);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };

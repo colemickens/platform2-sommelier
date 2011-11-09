@@ -29,13 +29,13 @@ void ServiceUnderTest::Connect(Error */*error*/) {}
 
 void ServiceUnderTest::Disconnect() {}
 
-string ServiceUnderTest::CalculateState() { return ""; }
+string ServiceUnderTest::CalculateState(Error */*error*/) { return ""; }
 
 string ServiceUnderTest::GetRpcIdentifier() const {
   return ServiceMockAdaptor::kRpcId;
 }
 
-string ServiceUnderTest::GetDeviceRpcId() { return kRpcId; }
+string ServiceUnderTest::GetDeviceRpcId(Error */*error*/) { return kRpcId; }
 
 string ServiceUnderTest::GetStorageIdentifier() const { return kStorageId; }
 

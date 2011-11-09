@@ -68,7 +68,7 @@ class Manager {
                           std::vector<DeviceRefPtr> *found);
 
   ServiceRefPtr FindService(const std::string& name);
-  std::vector<std::string> EnumerateAvailableServices();
+  std::vector<std::string> EnumerateAvailableServices(Error *error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
@@ -101,23 +101,23 @@ class Manager {
 
   static const char kManagerErrorNoDevice[];
 
-  std::string CalculateState();
-  std::vector<std::string> AvailableTechnologies();
-  std::vector<std::string> ConnectedTechnologies();
-  std::string DefaultTechnology();
-  std::vector<std::string> EnabledTechnologies();
-  std::vector<std::string> EnumerateDevices();
+  std::string CalculateState(Error *error);
+  std::vector<std::string> AvailableTechnologies(Error *error);
+  std::vector<std::string> ConnectedTechnologies(Error *error);
+  std::string DefaultTechnology(Error *error);
+  std::vector<std::string> EnabledTechnologies(Error *error);
+  std::vector<std::string> EnumerateDevices(Error *error);
   // TODO(cmasone): This should be implemented by filtering |services_|.
-  std::vector<std::string> EnumerateWatchedServices();
-  std::string GetActiveProfileName();
+  std::vector<std::string> EnumerateWatchedServices(Error *error);
+  std::string GetActiveProfileName(Error *error);
 
   void HelpRegisterDerivedString(
       const std::string &name,
-      std::string(Manager::*get)(void),
+      std::string(Manager::*get)(Error *),
       void(Manager::*set)(const std::string&, Error *));
   void HelpRegisterDerivedStrings(
       const std::string &name,
-      Strings(Manager::*get)(void),
+      Strings(Manager::*get)(Error *),
       void(Manager::*set)(const Strings&, Error *));
 
   void PopProfileInternal();

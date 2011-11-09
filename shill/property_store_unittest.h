@@ -31,7 +31,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   // can be ordering issues if your constructors have side effects.
   // These constructors don't, and declaring these as static lets me
   // autogenerate a bunch of unit test code that I would otherwise need to
-  // copypasta.  So I think it's safe and worth it.
+  // copypaste.  So I think it's safe and worth it.
   static const ::DBus::Variant kBoolV;
   static const ::DBus::Variant kByteV;
   static const ::DBus::Variant kInt16V;

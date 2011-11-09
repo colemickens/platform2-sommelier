@@ -264,11 +264,11 @@ class Cellular : public Device,
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  StrIntPair SimLockStatusToProperty();
+  StrIntPair SimLockStatusToProperty(Error *error);
 
   void HelpRegisterDerivedStrIntPair(
       const std::string &name,
-      StrIntPair(Cellular::*get)(void),
+      StrIntPair(Cellular::*get)(Error *),
       void(Cellular::*set)(const StrIntPair&, Error *));
 
   void InitCapability();

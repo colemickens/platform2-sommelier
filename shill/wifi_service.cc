@@ -237,7 +237,7 @@ void WiFiService::ConnectTask() {
   wifi_->ConnectTo(this, params);
 }
 
-string WiFiService::GetDeviceRpcId() {
+string WiFiService::GetDeviceRpcId(Error */*error*/) {
   return wifi_->GetRpcIdentifier();
 }
 

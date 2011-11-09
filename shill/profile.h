@@ -89,8 +89,8 @@ class Profile : public base::RefCounted<Profile> {
   // Return whether |service| can configure itself from the profile.
   bool ContainsService(const ServiceConstRefPtr &service);
 
-  std::vector<std::string> EnumerateAvailableServices();
-  std::vector<std::string> EnumerateEntries();
+  std::vector<std::string> EnumerateAvailableServices(Error *error);
+  std::vector<std::string> EnumerateEntries(Error *error);
 
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
@@ -129,7 +129,7 @@ class Profile : public base::RefCounted<Profile> {
 
   void HelpRegisterDerivedStrings(
       const std::string &name,
-      Strings(Profile::*get)(void),
+      Strings(Profile::*get)(Error *),
       void(Profile::*set)(const Strings&, Error *));
 
   // Data members shared with subclasses via getter/setters above in the

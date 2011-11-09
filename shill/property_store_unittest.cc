@@ -111,4 +111,162 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
   EXPECT_EQ(internal_error(), error.name());
 }
 
+TEST_F(PropertyStoreTest, WriteOnlyProperties) {
+  // Test that properties registered as write-only are not returned
+  // when using Get*PropertiesIter().
+  PropertyStore store;
+  Error error;
+  {
+    const string keys[]  = {"boolp1", "boolp2"};
+    bool values[] = {true, true};
+    store.RegisterWriteOnlyBool(keys[0], &values[0]);
+    store.RegisterBool(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_TRUE(values[1] == it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"int16p1", "int16p2"};
+    int16 values[] = {127, 128};
+    store.RegisterWriteOnlyInt16(keys[0], &values[0]);
+    store.RegisterInt16(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_EQ(values[1], it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"int32p1", "int32p2"};
+    int32 values[] = {127, 128};
+    store.RegisterWriteOnlyInt32(keys[0], &values[0]);
+    store.RegisterInt32(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_EQ(values[1], it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"stringp1", "stringp2"};
+    string values[] = {"noooo", "yesss"};
+    store.RegisterWriteOnlyString(keys[0], &values[0]);
+    store.RegisterString(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_EQ(values[1], it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"stringmapp1", "stringmapp2"};
+    Stringmap values[2];
+    values[0]["noooo"] = "yesss";
+    values[1]["yesss"] = "noooo";
+    store.RegisterWriteOnlyStringmap(keys[0], &values[0]);
+    store.RegisterStringmap(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<Stringmap> it =
+        store.GetStringmapPropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_TRUE(values[1] == it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"stringmapsp1", "stringmapsp2"};
+    Stringmaps values[2];
+    Stringmap element;
+    element["noooo"] = "yesss";
+    values[0].push_back(element);
+    element["yesss"] = "noooo";
+    values[1].push_back(element);
+
+    store.RegisterWriteOnlyStringmaps(keys[0], &values[0]);
+    store.RegisterStringmaps(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<Stringmaps> it =
+        store.GetStringmapsPropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_TRUE(values[1] == it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"stringsp1", "stringsp2"};
+    Strings values[2];
+    string element;
+    element = "noooo";
+    values[0].push_back(element);
+    element = "yesss";
+    values[1].push_back(element);
+    store.RegisterWriteOnlyStrings(keys[0], &values[0]);
+    store.RegisterStrings(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<Strings> it =
+        store.GetStringsPropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_TRUE(values[1] == it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"uint8p1", "uint8p2"};
+    uint8 values[] = {127, 128};
+    store.RegisterWriteOnlyUint8(keys[0], &values[0]);
+    store.RegisterUint8(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_EQ(values[1], it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+  {
+    const string keys[] = {"uint16p", "uint16p1"};
+    uint16 values[] = {127, 128};
+    store.RegisterWriteOnlyUint16(keys[0], &values[0]);
+    store.RegisterUint16(keys[1], &values[1]);
+
+    ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
+    error.Reset();
+    EXPECT_FALSE(it.AtEnd());
+    EXPECT_EQ(keys[1], it.Key());
+    EXPECT_EQ(values[1], it.Value(&error));
+    EXPECT_TRUE(error.IsSuccess());
+    it.Advance();
+    EXPECT_TRUE(it.AtEnd());
+  }
+}
+
 }  // namespace shill

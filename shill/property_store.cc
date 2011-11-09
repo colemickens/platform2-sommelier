@@ -95,47 +95,60 @@ bool PropertyStore::SetUint32Property(const std::string& name,
   return SetProperty(name, value, error, uint32_properties_, "a uint32");
 }
 
-PropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter() const {
-  return PropertyConstIterator<bool>(bool_properties_);
-}
-
-PropertyConstIterator<int16> PropertyStore::GetInt16PropertiesIter() const {
-  return PropertyConstIterator<int16>(int16_properties_);
-}
-
-PropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter() const {
-  return PropertyConstIterator<int32>(int32_properties_);
-}
-
-PropertyConstIterator<std::string> PropertyStore::GetStringPropertiesIter()
+ReadablePropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter()
     const {
-  return PropertyConstIterator<std::string>(string_properties_);
+  return ReadablePropertyConstIterator<bool>(bool_properties_);
 }
 
-PropertyConstIterator<Stringmap> PropertyStore::GetStringmapPropertiesIter()
+ReadablePropertyConstIterator<int16> PropertyStore::GetInt16PropertiesIter()
     const {
-  return PropertyConstIterator<Stringmap>(stringmap_properties_);
+  return ReadablePropertyConstIterator<int16>(int16_properties_);
 }
 
-PropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter() const {
-  return PropertyConstIterator<Strings>(strings_properties_);
-}
-
-PropertyConstIterator<StrIntPair> PropertyStore::GetStrIntPairPropertiesIter()
+ReadablePropertyConstIterator<int32> PropertyStore::GetInt32PropertiesIter()
     const {
-  return PropertyConstIterator<StrIntPair>(strintpair_properties_);
+  return ReadablePropertyConstIterator<int32>(int32_properties_);
 }
 
-PropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter() const {
-  return PropertyConstIterator<uint8>(uint8_properties_);
+ReadablePropertyConstIterator<std::string>
+PropertyStore::GetStringPropertiesIter() const {
+  return ReadablePropertyConstIterator<std::string>(string_properties_);
 }
 
-PropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter() const {
-  return PropertyConstIterator<uint16>(uint16_properties_);
+ReadablePropertyConstIterator<Stringmap>
+PropertyStore::GetStringmapPropertiesIter() const {
+  return ReadablePropertyConstIterator<Stringmap>(stringmap_properties_);
 }
 
-PropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter() const {
-  return PropertyConstIterator<uint32>(uint32_properties_);
+ReadablePropertyConstIterator<Stringmaps>
+PropertyStore::GetStringmapsPropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<Stringmaps>(stringmaps_properties_);
+}
+
+ReadablePropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<Strings>(strings_properties_);
+}
+
+ReadablePropertyConstIterator<StrIntPair>
+PropertyStore::GetStrIntPairPropertiesIter() const {
+  return ReadablePropertyConstIterator<StrIntPair>(strintpair_properties_);
+}
+
+ReadablePropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<uint8>(uint8_properties_);
+}
+
+ReadablePropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<uint16>(uint16_properties_);
+}
+
+ReadablePropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<uint32>(uint32_properties_);
 }
 
 void PropertyStore::RegisterBool(const string &name, bool *prop) {
@@ -144,6 +157,11 @@ void PropertyStore::RegisterBool(const string &name, bool *prop) {
 
 void PropertyStore::RegisterConstBool(const string &name, const bool *prop) {
   bool_properties_[name] = BoolAccessor(new ConstPropertyAccessor<bool>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyBool(const string &name, bool *prop) {
+  bool_properties_[name] = BoolAccessor(
+      new WriteOnlyPropertyAccessor<bool>(prop));
 }
 
 void PropertyStore::RegisterInt16(const string &name, int16 *prop) {
@@ -155,6 +173,10 @@ void PropertyStore::RegisterConstInt16(const string &name, const int16 *prop) {
       Int16Accessor(new ConstPropertyAccessor<int16>(prop));
 }
 
+void PropertyStore::RegisterWriteOnlyInt16(const string &name, int16 *prop) {
+  int16_properties_[name] =
+      Int16Accessor(new WriteOnlyPropertyAccessor<int16>(prop));
+}
 void PropertyStore::RegisterInt32(const string &name, int32 *prop) {
   int32_properties_[name] = Int32Accessor(new PropertyAccessor<int32>(prop));
 }
@@ -162,6 +184,11 @@ void PropertyStore::RegisterInt32(const string &name, int32 *prop) {
 void PropertyStore::RegisterConstInt32(const string &name, const int32 *prop) {
   int32_properties_[name] =
       Int32Accessor(new ConstPropertyAccessor<int32>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyInt32(const string &name, int32 *prop) {
+  int32_properties_[name] =
+      Int32Accessor(new WriteOnlyPropertyAccessor<int32>(prop));
 }
 
 void PropertyStore::RegisterString(const string &name, string *prop) {
@@ -172,6 +199,11 @@ void PropertyStore::RegisterConstString(const string &name,
                                         const string *prop) {
   string_properties_[name] =
       StringAccessor(new ConstPropertyAccessor<string>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyString(const string &name, string *prop) {
+  string_properties_[name] =
+      StringAccessor(new WriteOnlyPropertyAccessor<string>(prop));
 }
 
 void PropertyStore::RegisterStringmap(const string &name, Stringmap *prop) {
@@ -185,6 +217,12 @@ void PropertyStore::RegisterConstStringmap(const string &name,
       StringmapAccessor(new ConstPropertyAccessor<Stringmap>(prop));
 }
 
+void PropertyStore::RegisterWriteOnlyStringmap(const string &name,
+                                               Stringmap *prop) {
+  stringmap_properties_[name] =
+      StringmapAccessor(new WriteOnlyPropertyAccessor<Stringmap>(prop));
+}
+
 void PropertyStore::RegisterStringmaps(const string &name, Stringmaps *prop) {
   stringmaps_properties_[name] =
       StringmapsAccessor(new PropertyAccessor<Stringmaps>(prop));
@@ -194,6 +232,12 @@ void PropertyStore::RegisterConstStringmaps(const string &name,
                                             const Stringmaps *prop) {
   stringmaps_properties_[name] =
       StringmapsAccessor(new ConstPropertyAccessor<Stringmaps>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyStringmaps(const string &name,
+                                                Stringmaps *prop) {
+  stringmaps_properties_[name] =
+      StringmapsAccessor(new WriteOnlyPropertyAccessor<Stringmaps>(prop));
 }
 
 void PropertyStore::RegisterStrings(const string &name, Strings *prop) {
@@ -207,6 +251,12 @@ void PropertyStore::RegisterConstStrings(const string &name,
       StringsAccessor(new ConstPropertyAccessor<Strings>(prop));
 }
 
+void PropertyStore::RegisterWriteOnlyStrings(const string &name,
+                                             Strings *prop) {
+  strings_properties_[name] =
+      StringsAccessor(new WriteOnlyPropertyAccessor<Strings>(prop));
+}
+
 void PropertyStore::RegisterUint8(const string &name, uint8 *prop) {
   uint8_properties_[name] = Uint8Accessor(new PropertyAccessor<uint8>(prop));
 }
@@ -214,6 +264,11 @@ void PropertyStore::RegisterUint8(const string &name, uint8 *prop) {
 void PropertyStore::RegisterConstUint8(const string &name, const uint8 *prop) {
   uint8_properties_[name] =
       Uint8Accessor(new ConstPropertyAccessor<uint8>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyUint8(const string &name, uint8 *prop) {
+  uint8_properties_[name] =
+      Uint8Accessor(new WriteOnlyPropertyAccessor<uint8>(prop));
 }
 
 void PropertyStore::RegisterUint16(const std::string &name, uint16 *prop) {
@@ -224,6 +279,11 @@ void PropertyStore::RegisterConstUint16(const string &name,
                                         const uint16 *prop) {
   uint16_properties_[name] =
       Uint16Accessor(new ConstPropertyAccessor<uint16>(prop));
+}
+
+void PropertyStore::RegisterWriteOnlyUint16(const string &name, uint16 *prop) {
+  uint16_properties_[name] =
+      Uint16Accessor(new WriteOnlyPropertyAccessor<uint16>(prop));
 }
 
 void PropertyStore::RegisterDerivedBool(const std::string &name,

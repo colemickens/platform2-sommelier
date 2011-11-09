@@ -23,14 +23,14 @@ class MockService : public Service {
 
   MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD0(Disconnect, void());
-  MOCK_METHOD0(CalculateState, std::string());
+  MOCK_METHOD1(CalculateState, std::string(Error *error));
   MOCK_CONST_METHOD1(TechnologyIs,
                      bool(const Technology::Identifier technology));
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_CONST_METHOD0(state, ConnectState());
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_CONST_METHOD0(failure, ConnectFailure());
-  MOCK_METHOD0(GetDeviceRpcId, std::string());
+  MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));

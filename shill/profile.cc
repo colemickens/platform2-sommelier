@@ -202,11 +202,11 @@ bool Profile::GetStoragePath(FilePath *path) {
   return true;
 }
 
-vector<string> Profile::EnumerateAvailableServices() {
-  return manager_->EnumerateAvailableServices();
+vector<string> Profile::EnumerateAvailableServices(Error *error) {
+  return manager_->EnumerateAvailableServices(error);
 }
 
-vector<string> Profile::EnumerateEntries() {
+vector<string> Profile::EnumerateEntries(Error */*error*/) {
   // TODO(someone): Determine if we care about this wasteful copying; consider
   // making GetGroups return a vector.
   set<string> groups(storage_->GetGroups());
@@ -215,7 +215,7 @@ vector<string> Profile::EnumerateEntries() {
 
 void Profile::HelpRegisterDerivedStrings(
     const string &name,
-    Strings(Profile::*get)(void),
+    Strings(Profile::*get)(Error *),
     void(Profile::*set)(const Strings&, Error *)) {
   store_.RegisterDerivedStrings(
       name,

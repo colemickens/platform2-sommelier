@@ -101,7 +101,7 @@ class Service : public base::RefCounted<Service> {
   // Base method always returns false.
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
-  virtual bool IsActive();
+  virtual bool IsActive(Error *error);
 
   virtual ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
@@ -177,15 +177,15 @@ class Service : public base::RefCounted<Service> {
   const std::string &friendly_name() const { return friendly_name_; }
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
-  virtual std::string CalculateState();
+  virtual std::string CalculateState(Error *error);
 
   void HelpRegisterDerivedBool(
       const std::string &name,
-      bool(Service::*get)(void),
+      bool(Service::*get)(Error *),
       void(Service::*set)(const bool&, Error *));
   void HelpRegisterDerivedString(
       const std::string &name,
-      std::string(Service::*get)(void),
+      std::string(Service::*get)(Error *),
       void(Service::*set)(const std::string&, Error *));
 
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
@@ -239,9 +239,9 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageProxyConfig[];
   static const char kStorageSaveCredentials[];
 
-  virtual std::string GetDeviceRpcId() = 0;
+  virtual std::string GetDeviceRpcId(Error *error) = 0;
 
-  std::string GetProfileRpcId() {
+  std::string GetProfileRpcId(Error */*error*/) {
     return "";  // Will need to call Profile to get this.
   }
 

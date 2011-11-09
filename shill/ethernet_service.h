@@ -36,7 +36,7 @@ class EthernetService : public Service {
  private:
   static const char kServiceType[];
 
-  std::string GetDeviceRpcId();
+  std::string GetDeviceRpcId(Error *error);
 
   EthernetRefPtr ethernet_;
   DISALLOW_COPY_AND_ASSIGN(EthernetService);

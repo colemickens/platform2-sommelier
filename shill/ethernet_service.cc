@@ -49,7 +49,7 @@ bool EthernetService::TechnologyIs(const Technology::Identifier type) const {
   return ethernet_->TechnologyIs(type);
 }
 
-std::string EthernetService::GetDeviceRpcId() {
+std::string EthernetService::GetDeviceRpcId(Error */*error*/) {
   return ethernet_->GetRpcIdentifier();
 }
 

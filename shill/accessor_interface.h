@@ -28,8 +28,8 @@ class AccessorInterface {
   AccessorInterface() {}
   virtual ~AccessorInterface() {}
 
-  // Provides read-only access.
-  virtual const T &Get() = 0;
+  // Provides read-only access. Sets |error| on failure.
+  virtual T Get(Error *error) = 0;
   // Attempts to set the wrapped value. Sets |error| on failure.
   virtual void Set(const T &value, Error *error) = 0;
 

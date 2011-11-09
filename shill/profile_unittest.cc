@@ -224,19 +224,20 @@ TEST_F(ProfileTest, EntryEnumeration) {
   string service1_name(service1->UniqueName());
   string service2_name(service2->UniqueName());
 
+  Error error;
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->AdoptService(service2));
 
-  ASSERT_EQ(profile_->EnumerateEntries().size(), 2);
+  ASSERT_EQ(profile_->EnumerateEntries(&error).size(), 2);
 
   ASSERT_TRUE(profile_->AbandonService(service1));
-  ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
+  ASSERT_EQ(profile_->EnumerateEntries(&error)[0], service2_name);
 
   ASSERT_TRUE(profile_->AbandonService(service1));
-  ASSERT_EQ(profile_->EnumerateEntries()[0], service2_name);
+  ASSERT_EQ(profile_->EnumerateEntries(&error)[0], service2_name);
 
   ASSERT_TRUE(profile_->AbandonService(service2));
-  ASSERT_EQ(profile_->EnumerateEntries().size(), 0);
+  ASSERT_EQ(profile_->EnumerateEntries(&error).size(), 0);
 }
 
 TEST_F(ProfileTest, MatchesIdentifier) {

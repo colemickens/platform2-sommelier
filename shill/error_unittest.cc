@@ -34,6 +34,13 @@ TEST_F(ErrorTest, ConstructorCustomMessage) {
   EXPECT_EQ(kMessage, e.message());
 }
 
+TEST_F(ErrorTest, Reset) {
+  Error e(Error::kAlreadyExists);
+  e.Reset();
+  EXPECT_EQ(Error::kSuccess, e.type());
+  EXPECT_EQ(Error::GetDefaultMessage(Error::kSuccess), e.message());
+}
+
 TEST_F(ErrorTest, PopulateDefaultMessage) {
   Error e;
   e.Populate(Error::kInternalError);

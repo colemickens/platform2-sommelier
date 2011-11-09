@@ -712,7 +712,7 @@ void Cellular::UpdateServingOperator() {
   }
 }
 
-StrIntPair Cellular::SimLockStatusToProperty() {
+StrIntPair Cellular::SimLockStatusToProperty(Error */*error*/) {
   return StrIntPair(make_pair(flimflam::kSIMLockTypeProperty,
                               sim_lock_status_.lock_type),
                     make_pair(flimflam::kSIMLockRetriesLeftProperty,
@@ -721,7 +721,7 @@ StrIntPair Cellular::SimLockStatusToProperty() {
 
 void Cellular::HelpRegisterDerivedStrIntPair(
     const string &name,
-    StrIntPair(Cellular::*get)(void),
+    StrIntPair(Cellular::*get)(Error *),
     void(Cellular::*set)(const StrIntPair&, Error *)) {
   mutable_store()->RegisterDerivedStrIntPair(
       name,

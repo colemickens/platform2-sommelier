@@ -75,36 +75,45 @@ class PropertyStore {
 
   // Accessors for iterators over property maps. Useful for dumping all
   // properties.
-  PropertyConstIterator<bool> GetBoolPropertiesIter() const;
-  PropertyConstIterator<int16> GetInt16PropertiesIter() const;
-  PropertyConstIterator<int32> GetInt32PropertiesIter() const;
-  PropertyConstIterator<std::string> GetStringPropertiesIter() const;
-  PropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
-  PropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
-  PropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter() const;
-  PropertyConstIterator<Strings> GetStringsPropertiesIter() const;
-  PropertyConstIterator<uint8> GetUint8PropertiesIter() const;
-  PropertyConstIterator<uint16> GetUint16PropertiesIter() const;
-  PropertyConstIterator<uint32> GetUint32PropertiesIter() const;
+  ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
+  ReadablePropertyConstIterator<int16> GetInt16PropertiesIter() const;
+  ReadablePropertyConstIterator<int32> GetInt32PropertiesIter() const;
+  ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
+  ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
+  ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
+  ReadablePropertyConstIterator<StrIntPair> GetStrIntPairPropertiesIter() const;
+  ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
+  ReadablePropertyConstIterator<uint8> GetUint8PropertiesIter() const;
+  ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
+  ReadablePropertyConstIterator<uint32> GetUint32PropertiesIter() const;
 
   void RegisterBool(const std::string &name, bool *prop);
   void RegisterConstBool(const std::string &name, const bool *prop);
+  void RegisterWriteOnlyBool(const std::string &name, bool *prop);
   void RegisterInt16(const std::string &name, int16 *prop);
   void RegisterConstInt16(const std::string &name, const int16 *prop);
+  void RegisterWriteOnlyInt16(const std::string &name, int16 *prop);
   void RegisterInt32(const std::string &name, int32 *prop);
   void RegisterConstInt32(const std::string &name, const int32 *prop);
+  void RegisterWriteOnlyInt32(const std::string &name, int32 *prop);
   void RegisterString(const std::string &name, std::string *prop);
   void RegisterConstString(const std::string &name, const std::string *prop);
+  void RegisterWriteOnlyString(const std::string &name, std::string *prop);
   void RegisterStringmap(const std::string &name, Stringmap *prop);
   void RegisterConstStringmap(const std::string &name, const Stringmap *prop);
+  void RegisterWriteOnlyStringmap(const std::string &name, Stringmap *prop);
   void RegisterStringmaps(const std::string &name, Stringmaps *prop);
   void RegisterConstStringmaps(const std::string &name, const Stringmaps *prop);
+  void RegisterWriteOnlyStringmaps(const std::string &name, Stringmaps *prop);
   void RegisterStrings(const std::string &name, Strings *prop);
   void RegisterConstStrings(const std::string &name, const Strings *prop);
+  void RegisterWriteOnlyStrings(const std::string &name, Strings *prop);
   void RegisterUint8(const std::string &name, uint8 *prop);
   void RegisterConstUint8(const std::string &name, const uint8 *prop);
+  void RegisterWriteOnlyUint8(const std::string &name, uint8 *prop);
   void RegisterUint16(const std::string &name, uint16 *prop);
   void RegisterConstUint16(const std::string &name, const uint16 *prop);
+  void RegisterWriteOnlyUint16(const std::string &name, uint16 *prop);
 
   void RegisterDerivedBool(const std::string &name,
                            const BoolAccessor &accessor);

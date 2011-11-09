@@ -42,7 +42,7 @@ const Error::Info Error::kInfos[kNumErrors] = {
 const char Error::kInterfaceName[] = SHILL_INTERFACE;
 
 Error::Error() {
-  Populate(kSuccess);
+  Reset();
 }
 
 Error::Error(Type type) {
@@ -63,6 +63,10 @@ void Error::Populate(Type type, const string &message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
+}
+
+void Error::Reset() {
+  Populate(kSuccess);
 }
 
 bool Error::ToDBusError(::DBus::Error *error) const {

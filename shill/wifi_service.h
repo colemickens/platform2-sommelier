@@ -67,7 +67,7 @@ class WiFiService : public Service {
 
   void ConnectTask();
 
-  std::string GetDeviceRpcId();
+  std::string GetDeviceRpcId(Error *error);
 
   static std::string ParseWEPPassphrase(const std::string &passphrase,
                                         Error *error);

@@ -229,7 +229,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   manager.RegisterService(mock_service);
   manager.RegisterService(mock_service2);
 
-  vector<string> rpc_ids = manager.EnumerateAvailableServices();
+  Error error;
+  vector<string> rpc_ids = manager.EnumerateAvailableServices(&error);
   set<string> ids(rpc_ids.begin(), rpc_ids.end());
   EXPECT_EQ(2, ids.size());
   EXPECT_TRUE(ContainsKey(ids, mock_service->GetRpcIdentifier()));
@@ -453,8 +454,9 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(Error::kAlreadyExists, TestPushProfile(&manager, kProfile0));
   EXPECT_EQ(Error::kAlreadyExists, TestPushProfile(&manager, kProfile1));
 
+  Error error;
   // Active profile should be the last one we pushed.
-  EXPECT_EQ(kProfile1, "~" + manager.GetActiveProfileName());
+  EXPECT_EQ(kProfile1, "~" + manager.GetActiveProfileName(&error));
 
   // Make sure a profile name that doesn't exist fails.
   const char kProfile2Id[] = "profile2";

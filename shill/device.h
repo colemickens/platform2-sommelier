@@ -133,7 +133,7 @@ class Device : public base::RefCounted<Device> {
   void SetServiceFailure(Service::ConnectFailure failure_state);
 
   void HelpRegisterDerivedStrings(const std::string &name,
-                                  Strings(Device::*get)(void),
+                                  Strings(Device::*get)(Error *),
                                   void(Device::*set)(const Strings&, Error *));
 
   // Property getters reserved for subclasses
@@ -158,7 +158,7 @@ class Device : public base::RefCounted<Device> {
   // |suffix| is injected into the storage identifier used for the configs.
   std::string SerializeIPConfigs(const std::string &suffix);
 
-  std::vector<std::string> AvailableIPConfigs();
+  std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
 
   // Properties

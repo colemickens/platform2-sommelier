@@ -64,7 +64,7 @@ class CellularService : public Service {
  private:
   static const char kServiceType[];
 
-  virtual std::string GetDeviceRpcId();
+  virtual std::string GetDeviceRpcId(Error *error);
 
   // Properties
   std::string activation_state_;

@@ -87,50 +87,53 @@ bool DBusAdaptor::DispatchOnType(PropertyStore *store,
 bool DBusAdaptor::GetProperties(const PropertyStore &store,
                                 map<string, ::DBus::Variant> *out,
                                 ::DBus::Error */*error*/) {
+  Error e;
   {
-    PropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
+    ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = BoolToVariant(it.Value());
+      (*out)[it.Key()] = BoolToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
+    ReadablePropertyConstIterator<int16> it = store.GetInt16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = Int16ToVariant(it.Value());
+      (*out)[it.Key()] = Int16ToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
+    ReadablePropertyConstIterator<int32> it = store.GetInt32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = Int32ToVariant(it.Value());
+      (*out)[it.Key()] = Int32ToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<string> it = store.GetStringPropertiesIter();
+    ReadablePropertyConstIterator<string> it = store.GetStringPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = StringToVariant(it.Value());
+      (*out)[it.Key()] = StringToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<Stringmap> it = store.GetStringmapPropertiesIter();
+    ReadablePropertyConstIterator<Stringmap> it =
+        store.GetStringmapPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = StringmapToVariant(it.Value());
+      (*out)[it.Key()]= StringmapToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<Strings> it = store.GetStringsPropertiesIter();
+    ReadablePropertyConstIterator<Strings> it =
+        store.GetStringsPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = StringsToVariant(it.Value());
+      (*out)[it.Key()] = StringsToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
+    ReadablePropertyConstIterator<uint8> it = store.GetUint8PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = ByteToVariant(it.Value());
+      (*out)[it.Key()] = ByteToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
+    ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = Uint16ToVariant(it.Value());
+      (*out)[it.Key()] = Uint16ToVariant(it.Value(&e));
   }
   {
-    PropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
+    ReadablePropertyConstIterator<uint32> it = store.GetUint32PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance())
-      (*out)[it.Key()] = Uint32ToVariant(it.Value());
+      (*out)[it.Key()] = Uint32ToVariant(it.Value(&e));
   }
   return true;
 }
@@ -139,7 +142,7 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
 void DBusAdaptor::ArgsToKeyValueStore(
     const map<string, ::DBus::Variant> &args,
     KeyValueStore *out,
-    Error *error) {  // XXX should be ::DBus::Error?
+    Error *error) {  // TODO(quiche): Should be ::DBus::Error?
   for (map<string, ::DBus::Variant>::const_iterator it = args.begin();
        it != args.end();
        ++it) {
@@ -152,7 +155,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
       out->SetBool(it->first, it->second.reader().get_bool());
     } else {
       error->Populate(Error::kInternalError);
-      return;  // skip remaining args after error
+      return;  // Skip remaining args after error.
     }
   }
 }

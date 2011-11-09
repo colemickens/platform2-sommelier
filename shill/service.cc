@@ -171,7 +171,7 @@ bool Service::TechnologyIs(const Technology::Identifier /*type*/) const {
   return false;
 }
 
-bool Service::IsActive() {
+bool Service::IsActive(Error */*error*/) {
   return state_ != kStateUnknown &&
     state_ != kStateIdle &&
     state_ != kStateFailure;
@@ -187,7 +187,8 @@ void Service::SetState(ConnectState state) {
     failure_ = kFailureUnknown;
   }
   manager_->UpdateService(this);
-  adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState());
+  Error error;
+  adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState(&error));
 }
 
 void Service::SetFailure(ConnectFailure failure) {
@@ -330,7 +331,7 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
-string Service::CalculateState() {
+string Service::CalculateState(Error */*error*/) {
   switch (state_) {
     case kStateConnected:
       return flimflam::kStateReady;
@@ -342,7 +343,7 @@ string Service::CalculateState() {
 
 void Service::HelpRegisterDerivedBool(
     const string &name,
-    bool(Service::*get)(void),
+    bool(Service::*get)(Error *),
     void(Service::*set)(const bool&, Error *)) {
   store_.RegisterDerivedBool(
       name,
@@ -351,7 +352,7 @@ void Service::HelpRegisterDerivedBool(
 
 void Service::HelpRegisterDerivedString(
     const string &name,
-    string(Service::*get)(void),
+    string(Service::*get)(Error *),
     void(Service::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
