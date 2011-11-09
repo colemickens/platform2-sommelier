@@ -745,12 +745,16 @@ void Daemon::OnLowBattery(double battery_percentage) {
     return;
   }
   if (kPowerDisconnected == plugged_state_ && !low_battery_ &&
-      battery_percentage <= low_battery_suspend_percent_) {
+      battery_percentage <= low_battery_suspend_percent_ &&
+      battery_percentage >= 0) {
     // Shut the system down when low battery condition is encountered.
     LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
     low_battery_ = true;
     file_tagger_.HandleLowBatteryEvent();
     OnRequestShutdown(true);  // notify_window_manager=true
+  } else if (battery_percentage < 0) {
+    LOG(INFO) << "Battery is at " << battery_percentage << "%, may not be "
+              << "fully initialized yet.";
   } else if (kPowerConnected == plugged_state_ ||
              battery_percentage > low_battery_suspend_percent_ ) {
     LOG(INFO) << "Battery condition is safe (plugged in or not low) : "

@@ -134,10 +134,10 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status) {
 
   CalculateRemainingTime(status);
 
-  if (charge_full_ > 0)
+  if (charge_full_ > 0 && charge_full_design_ > 0)
     status->battery_percentage = 100. * charge_now_ / charge_full_;
   else
-    status->battery_percentage = 0;
+    status->battery_percentage = -1;
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
