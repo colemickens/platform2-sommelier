@@ -15,6 +15,8 @@ class CellularCapabilityCDMA : public CellularCapability {
 
   // Inherited from CellularCapability.
   virtual void InitProxies();
+  virtual std::string GetNetworkTechnologyString() const;
+  virtual std::string GetRoamingStateString() const;
 
   // Obtains the MEID.
   virtual void GetIdentifiers();

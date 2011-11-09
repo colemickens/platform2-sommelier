@@ -186,84 +186,6 @@ string Cellular::GetStateString(State state) {
   return StringPrintf("CellularStateUnknown-%d", state);
 }
 
-string Cellular::GetNetworkTechnologyString() const {
-  switch (type_) {
-    case kTypeGSM:
-      if (gsm_.registration_state == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
-          gsm_.registration_state == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
-        switch (gsm_.access_technology) {
-          case MM_MODEM_GSM_ACCESS_TECH_GSM:
-          case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
-            return flimflam::kNetworkTechnologyGsm;
-          case MM_MODEM_GSM_ACCESS_TECH_GPRS:
-            return flimflam::kNetworkTechnologyGprs;
-          case MM_MODEM_GSM_ACCESS_TECH_EDGE:
-            return flimflam::kNetworkTechnologyEdge;
-          case MM_MODEM_GSM_ACCESS_TECH_UMTS:
-            return flimflam::kNetworkTechnologyUmts;
-          case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
-          case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
-          case MM_MODEM_GSM_ACCESS_TECH_HSPA:
-            return flimflam::kNetworkTechnologyHspa;
-          case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
-            return flimflam::kNetworkTechnologyHspaPlus;
-          default:
-            NOTREACHED();
-        }
-      }
-      break;
-    case kTypeCDMA:
-      if (cdma_.registration_state_evdo !=
-          MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
-        return flimflam::kNetworkTechnologyEvdo;
-      }
-      if (cdma_.registration_state_1x !=
-          MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
-        return flimflam::kNetworkTechnology1Xrtt;
-      }
-      break;
-    default:
-      NOTREACHED();
-  }
-  return "";
-}
-
-string Cellular::GetRoamingStateString() const {
-  switch (type_) {
-    case kTypeGSM:
-      switch (gsm_.registration_state) {
-        case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
-          return flimflam::kRoamingStateHome;
-        case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
-          return flimflam::kRoamingStateRoaming;
-        default:
-          break;
-      }
-      break;
-    case kTypeCDMA: {
-      uint32 state = cdma_.registration_state_evdo;
-      if (state == MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
-        state = cdma_.registration_state_1x;
-      }
-      switch (state) {
-        case MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN:
-        case MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED:
-          break;
-        case MM_MODEM_CDMA_REGISTRATION_STATE_HOME:
-          return flimflam::kRoamingStateHome;
-        case MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING:
-          return flimflam::kRoamingStateRoaming;
-        default:
-          NOTREACHED();
-      }
-      break;
-    }
-    default:
-      NOTREACHED();
-  }
-  return flimflam::kRoamingStateUnknown;
-}
-
 // static
 string Cellular::GetCDMAActivationStateString(uint32 state) {
   switch (state) {
@@ -510,7 +432,7 @@ void Cellular::HandleNewRegistrationState() {
 
 void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
-  const string network_tech = GetNetworkTechnologyString();
+  const string network_tech = capability_->GetNetworkTechnologyString();
   if (network_tech.empty()) {
     if (state_ == kStateLinked) {
       manager()->DeregisterService(service_);
@@ -536,7 +458,7 @@ void Cellular::HandleNewRegistrationStateTask() {
     EstablishLink();
   }
   service_->set_network_tech(network_tech);
-  service_->set_roaming_state(GetRoamingStateString());
+  service_->set_roaming_state(capability_->GetRoamingStateString());
 }
 
 void Cellular::GetModemSignalQuality() {
@@ -879,7 +801,7 @@ void Cellular::SetGSMAccessTechnology(uint32 access_technology) {
   CHECK_EQ(kTypeGSM, type_);
   gsm_.access_technology = access_technology;
   if (service_.get()) {
-    service_->set_network_tech(GetNetworkTechnologyString());
+    service_->set_network_tech(capability_->GetNetworkTechnologyString());
   }
 }
 

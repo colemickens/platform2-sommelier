@@ -28,6 +28,8 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error);
+  virtual std::string GetNetworkTechnologyString() const;
+  virtual std::string GetRoamingStateString() const;
 
   // Obtains the IMEI, IMSI, SPN and MSISDN.
   virtual void GetIdentifiers();

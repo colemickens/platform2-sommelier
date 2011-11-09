@@ -4,7 +4,9 @@
 
 #include "shill/cellular_capability_gsm.h"
 
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <mm/mm-modem.h>
 
 #include "shill/cellular.h"
 #include "shill/error.h"
@@ -42,6 +44,14 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   void SetCardProxy() {
     capability_.card_proxy_.reset(card_proxy_.release());
+  }
+
+  void SetAccessTechnology(uint32 technology) {
+    cellular_->gsm_.access_technology = technology;
+  }
+
+  void SetRegistrationState(uint32 state) {
+    cellular_->gsm_.registration_state = state;
   }
 
   NiceMockControl control_;
@@ -111,6 +121,60 @@ TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
+  EXPECT_EQ("", capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
+  EXPECT_EQ("", capability_.GetNetworkTechnologyString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
+  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT);
+  EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
+  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_EDGE);
+  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_UMTS);
+  EXPECT_EQ(flimflam::kNetworkTechnologyUmts,
+            capability_.GetNetworkTechnologyString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSDPA);
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSUPA);
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSPA);
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
+            capability_.GetNetworkTechnologyString());
+  SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS);
+  EXPECT_EQ(flimflam::kNetworkTechnologyHspaPlus,
+            capability_.GetNetworkTechnologyString());
+}
+
+TEST_F(CellularCapabilityGSMTest, GetRoamingStateString) {
+  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+            capability_.GetRoamingStateString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
+  EXPECT_EQ(flimflam::kRoamingStateHome,
+            capability_.GetRoamingStateString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
+  EXPECT_EQ(flimflam::kRoamingStateRoaming,
+            capability_.GetRoamingStateString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING);
+  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+            capability_.GetRoamingStateString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED);
+  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+            capability_.GetRoamingStateString());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE);
+  EXPECT_EQ(flimflam::kRoamingStateUnknown,
+            capability_.GetRoamingStateString());
 }
 
 }  // namespace shill

@@ -5,6 +5,8 @@
 #include "shill/cellular_capability_gsm.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
+#include <mm/mm-modem.h>
 
 #include "shill/cellular.h"
 #include "shill/proxy_factory.h"
@@ -118,6 +120,46 @@ void CellularCapabilityGSM::ChangePINTask(
   VLOG(2) << __func__ << "(" << old_pin << ", " << new_pin << ")";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   card_proxy_->ChangePIN(old_pin, new_pin);
+}
+
+string CellularCapabilityGSM::GetNetworkTechnologyString() const {
+  if (cellular()->gsm_registration_state() ==
+      MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
+      cellular()->gsm_registration_state() ==
+      MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
+    switch (cellular()->gsm_access_technology()) {
+      case MM_MODEM_GSM_ACCESS_TECH_GSM:
+      case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
+        return flimflam::kNetworkTechnologyGsm;
+      case MM_MODEM_GSM_ACCESS_TECH_GPRS:
+        return flimflam::kNetworkTechnologyGprs;
+      case MM_MODEM_GSM_ACCESS_TECH_EDGE:
+        return flimflam::kNetworkTechnologyEdge;
+      case MM_MODEM_GSM_ACCESS_TECH_UMTS:
+        return flimflam::kNetworkTechnologyUmts;
+      case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
+      case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
+      case MM_MODEM_GSM_ACCESS_TECH_HSPA:
+        return flimflam::kNetworkTechnologyHspa;
+      case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
+        return flimflam::kNetworkTechnologyHspaPlus;
+      default:
+        NOTREACHED();
+    }
+  }
+  return "";
+}
+
+string CellularCapabilityGSM::GetRoamingStateString() const {
+  switch (cellular()->gsm_registration_state()) {
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
+      return flimflam::kRoamingStateHome;
+    case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
+      return flimflam::kRoamingStateRoaming;
+    default:
+      break;
+  }
+  return flimflam::kRoamingStateUnknown;
 }
 
 }  // namespace shill

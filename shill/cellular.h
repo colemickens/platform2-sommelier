@@ -138,6 +138,16 @@ class Cellular : public Device,
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
+  uint32 gsm_registration_state() const { return gsm_.registration_state; }
+  uint32 gsm_access_technology() const { return gsm_.access_technology; }
+
+  uint32 cdma_registration_state_evdo() const {
+    return cdma_.registration_state_evdo;
+  }
+  uint32 cdma_registration_state_1x() const {
+    return cdma_.registration_state_1x;
+  }
+
   const std::string &meid() const { return meid_; }
   void set_meid(const std::string &meid) { meid_ = meid; }
 
@@ -188,18 +198,16 @@ class Cellular : public Device,
 
  private:
   friend class CellularTest;
+  friend class CellularCapabilityCDMATest;
+  friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularTest, Activate);
   FRIEND_TEST(CellularTest, ActivateError);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
-  FRIEND_TEST(CellularTest, GetCDMANetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
-  FRIEND_TEST(CellularTest, GetCDMARoamingStateString);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
-  FRIEND_TEST(CellularTest, GetGSMNetworkTechnologyString);
-  FRIEND_TEST(CellularTest, GetGSMRoamingStateString);
   FRIEND_TEST(CellularTest, GetGSMSignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
@@ -273,11 +281,6 @@ class Cellular : public Device,
 
   std::string GetTypeString() const;
   static std::string GetStateString(State state);
-
-  // Returns an empty string if the network technology is unknown.
-  std::string GetNetworkTechnologyString() const;
-
-  std::string GetRoamingStateString() const;
 
   static std::string GetCDMAActivationStateString(uint32 state);
   static std::string GetCDMAActivationErrorString(uint32 error);

@@ -44,6 +44,11 @@ class CellularCapability {
                          const std::string &new_pin,
                          Error *error);
 
+  // Returns an empty string if the network technology is unknown.
+  virtual std::string GetNetworkTechnologyString() const = 0;
+
+  virtual std::string GetRoamingStateString() const = 0;
+
  private:
   Cellular *cellular_;
   ProxyFactory *proxy_factory_;
