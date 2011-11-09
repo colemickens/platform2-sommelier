@@ -26,6 +26,9 @@ bool ChapsProxyImpl::Init() {
     if (!proxy_.get()) {
       // Establish a D-Bus connection.
       DBus::Connection connection = DBus::Connection::SystemBus();
+      // Set the timeout to 5 minutes; some TPM operations can take long.  In
+      // practice, calls have been noted to take more than 1 minute.
+      connection.set_timeout(300000);
       proxy_.reset(new Proxy(connection, kChapsServicePath,
                              kChapsServiceName));
     }
