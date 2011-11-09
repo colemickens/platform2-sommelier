@@ -517,7 +517,6 @@ TEST_F(CellularTest, InitProxiesCDMA) {
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
   EXPECT_TRUE(device_->cdma_proxy_.get());
-  EXPECT_FALSE(device_->gsm_card_proxy_.get());
   EXPECT_FALSE(device_->gsm_network_proxy_.get());
 }
 
@@ -527,7 +526,6 @@ TEST_F(CellularTest, InitProxiesGSM) {
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
-  EXPECT_TRUE(device_->gsm_card_proxy_.get());
   EXPECT_TRUE(device_->gsm_network_proxy_.get());
   EXPECT_FALSE(device_->cdma_proxy_.get());
 }
@@ -617,35 +615,6 @@ TEST_F(CellularTest, GetGSMSignalQuality) {
   EXPECT_EQ(0, device_->service_->strength());
   device_->GetModemSignalQuality();
   EXPECT_EQ(kStrength, device_->service_->strength());
-}
-
-TEST_F(CellularTest, GetCDMAIdentifiers) {
-  device_->type_ = Cellular::kTypeCDMA;
-  EXPECT_CALL(*cdma_proxy_, MEID()).WillOnce(Return(kMEID));
-  device_->cdma_proxy_.reset(cdma_proxy_.release());
-  device_->GetModemIdentifiers();
-  EXPECT_EQ(kMEID, device_->meid_);
-  device_->GetModemIdentifiers();
-  EXPECT_EQ(kMEID, device_->meid_);
-}
-
-TEST_F(CellularTest, GetGSMIdentifiers) {
-  device_->type_ = Cellular::kTypeGSM;
-  EXPECT_CALL(*gsm_card_proxy_, GetIMEI()).WillOnce(Return(kIMEI));
-  EXPECT_CALL(*gsm_card_proxy_, GetIMSI()).WillOnce(Return(kIMSI));
-  EXPECT_CALL(*gsm_card_proxy_, GetSPN()).WillOnce(Return(kTestCarrier));
-  EXPECT_CALL(*gsm_card_proxy_, GetMSISDN()).WillOnce(Return(kMSISDN));
-  device_->gsm_card_proxy_.reset(gsm_card_proxy_.release());
-  device_->GetModemIdentifiers();
-  EXPECT_EQ(kIMEI, device_->imei_);
-  EXPECT_EQ(kIMSI, device_->imsi_);
-  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
-  EXPECT_EQ(kMSISDN, device_->mdn_);
-  device_->GetModemIdentifiers();
-  EXPECT_EQ(kIMEI, device_->imei_);
-  EXPECT_EQ(kIMSI, device_->imsi_);
-  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
-  EXPECT_EQ(kMSISDN, device_->mdn_);
 }
 
 TEST_F(CellularTest, CreateService) {

@@ -16,6 +16,9 @@ class CellularCapabilityCDMA : public CellularCapability {
   // Inherited from CellularCapability.
   virtual void InitProxies();
 
+  // Obtains the MEID.
+  virtual void GetIdentifiers();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityCDMA);
 };

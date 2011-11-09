@@ -15,7 +15,6 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/modem_cdma_proxy_interface.h"
-#include "shill/modem_gsm_card_proxy_interface.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
@@ -31,7 +30,6 @@ class ProxyFactory;
 
 class Cellular : public Device,
                  public ModemCDMAProxyDelegate,
-                 public ModemGSMCardProxyDelegate,
                  public ModemGSMNetworkProxyDelegate,
                  public ModemProxyDelegate {
  public:
@@ -140,6 +138,21 @@ class Cellular : public Device,
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
+  const std::string &meid() const { return meid_; }
+  void set_meid(const std::string &meid) { meid_ = meid; }
+
+  const std::string &imei() const { return imei_; }
+  void set_imei(const std::string &imei) { imei_ = imei; }
+
+  const std::string &imsi() const { return imsi_; }
+  void set_imsi(const std::string &imsi) { imsi_ = imsi; }
+
+  const std::string &spn() const { return gsm_.spn; }
+  void set_spn(const std::string &spn) { gsm_.spn = spn; }
+
+  const std::string &mdn() const { return mdn_; }
+  void set_mdn(const std::string &mdn) { mdn_ = mdn; }
+
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
 
   ModemCDMAProxyInterface *modem_cdma_proxy() const {
@@ -147,12 +160,6 @@ class Cellular : public Device,
   }
   void set_modem_cdma_proxy(ModemCDMAProxyInterface *proxy) {
     cdma_proxy_.reset(proxy);
-  }
-  ModemGSMCardProxyInterface *modem_gsm_card_proxy() const {
-    return gsm_card_proxy_.get();
-  }
-  void set_modem_gsm_card_proxy(ModemGSMCardProxyInterface *proxy) {
-    gsm_card_proxy_.reset(proxy);
   }
   ModemGSMNetworkProxyInterface *modem_gsm_network_proxy() const {
     return gsm_network_proxy_.get();
@@ -187,12 +194,10 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
-  FRIEND_TEST(CellularTest, GetCDMAIdentifiers);
   FRIEND_TEST(CellularTest, GetCDMANetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetCDMARoamingStateString);
   FRIEND_TEST(CellularTest, GetCDMASignalQuality);
-  FRIEND_TEST(CellularTest, GetGSMIdentifiers);
   FRIEND_TEST(CellularTest, GetGSMNetworkTechnologyString);
   FRIEND_TEST(CellularTest, GetGSMRoamingStateString);
   FRIEND_TEST(CellularTest, GetGSMSignalQuality);
@@ -282,12 +287,6 @@ class Cellular : public Device,
   void GetGSMProperties();
   void RegisterGSMModem();
 
-  // Obtains the modem identifiers: MEID for CDMA; IMEI, IMSI, SPN and MSISDN
-  // for GSM.
-  void GetModemIdentifiers();
-  void GetCDMAIdentifiers();
-  void GetGSMIdentifiers();
-
   // Obtains modem's manufacturer, model ID, and hardware revision.
   void GetModemInfo();
 
@@ -355,7 +354,6 @@ class Cellular : public Device,
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
   scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
-  scoped_ptr<ModemGSMCardProxyInterface> gsm_card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
 
   mobile_provider_db *provider_db_;

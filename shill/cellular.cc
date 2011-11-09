@@ -314,7 +314,7 @@ void Cellular::Start() {
     RegisterGSMModem();
   }
   GetModemStatus();
-  GetModemIdentifiers();
+  capability_->GetIdentifiers();
   if (type_ == kTypeGSM) {
     GetGSMProperties();
   }
@@ -327,7 +327,6 @@ void Cellular::Stop() {
   proxy_.reset();
   simple_proxy_.reset();
   cdma_proxy_.reset();
-  gsm_card_proxy_.reset();
   gsm_network_proxy_.reset();
   manager()->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
@@ -399,57 +398,6 @@ void Cellular::GetModemStatus() {
     // directly from the modem driver.
     DBusProperties::GetString(properties, "payment_url", &cdma_.payment_url);
     DBusProperties::GetString(properties, "usage_url", &cdma_.usage_url);
-  }
-}
-
-void Cellular::GetModemIdentifiers() {
-  VLOG(2) << __func__;
-  switch (type_) {
-    case kTypeGSM:
-      GetGSMIdentifiers();
-      break;
-    case kTypeCDMA:
-      GetCDMAIdentifiers();
-      break;
-    default: NOTREACHED();
-  }
-}
-
-void Cellular::GetCDMAIdentifiers() {
-  CHECK_EQ(kTypeCDMA, type_);
-  if (meid_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    meid_ = cdma_proxy_->MEID();
-    VLOG(2) << "MEID: " << imei_;
-  }
-}
-
-void Cellular::GetGSMIdentifiers() {
-  CHECK_EQ(kTypeGSM, type_);
-  if (imei_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    imei_ = gsm_card_proxy_->GetIMEI();
-    VLOG(2) << "IMEI: " << imei_;
-  }
-  if (imsi_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    imsi_ = gsm_card_proxy_->GetIMSI();
-    VLOG(2) << "IMSI: " << imsi_;
-  }
-  if (gsm_.spn.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    try {
-      gsm_.spn = gsm_card_proxy_->GetSPN();
-      VLOG(2) << "SPN: " << gsm_.spn;
-    } catch (const DBus::Error e) {
-      // Some modems don't support this call so catch the exception explicitly.
-      LOG(WARNING) << "Unable to obtain SPN: " << e.what();
-    }
-  }
-  if (mdn_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    mdn_ = gsm_card_proxy_->GetMSISDN();
-    VLOG(2) << "MSISDN/MDN: " << mdn_;
   }
 }
 

@@ -5,13 +5,16 @@
 #ifndef SHILL_CELLULAR_CAPABILITY_GSM_
 #define SHILL_CELLULAR_CAPABILITY_GSM_
 
+#include <base/memory/scoped_ptr.h>
 #include <base/task.h>
 
 #include "shill/cellular_capability.h"
+#include "shill/modem_gsm_card_proxy_interface.h"
 
 namespace shill {
 
-class CellularCapabilityGSM : public CellularCapability {
+class CellularCapabilityGSM : public CellularCapability,
+                              public ModemGSMCardProxyDelegate {
  public:
   CellularCapabilityGSM(Cellular *cellular);
 
@@ -26,11 +29,18 @@ class CellularCapabilityGSM : public CellularCapability {
                          const std::string &new_pin,
                          Error *error);
 
+  // Obtains the IMEI, IMSI, SPN and MSISDN.
+  virtual void GetIdentifiers();
+
  private:
+  friend class CellularCapabilityGSMTest;
+
   void RequirePINTask(const std::string &pin, bool require);
   void EnterPINTask(const std::string &pin);
   void UnblockPINTask(const std::string &unblock_code, const std::string &pin);
   void ChangePINTask(const std::string &old_pin, const std::string &new_pin);
+
+  scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
 
   ScopedRunnableMethodFactory<CellularCapabilityGSM> task_factory_;
 

@@ -150,6 +150,7 @@ SHILL_MAIN_OBJ = shill_main.o
 TEST_BIN = shill_unittest
 TEST_OBJS = \
 	byte_string_unittest.o \
+	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \

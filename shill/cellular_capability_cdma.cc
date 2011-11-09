@@ -23,4 +23,13 @@ void CellularCapabilityCDMA::InitProxies() {
                                             cellular()->dbus_owner()));
 }
 
+void CellularCapabilityCDMA::GetIdentifiers() {
+  VLOG(2) << __func__;
+  if (cellular()->meid().empty()) {
+    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    cellular()->set_meid(cellular()->modem_cdma_proxy()->MEID());
+    VLOG(2) << "MEID: " << cellular()->imei();
+  }
+}
+
 }  // namespace shill
