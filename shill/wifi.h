@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <dbus-c++/dbus.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
@@ -56,6 +57,9 @@ class WiFi : public Device {
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
  private:
+  FRIEND_TEST(WiFiMainTest, FindServiceWEP);
+  FRIEND_TEST(WiFiMainTest, FindServiceWPA);
+
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
 
@@ -68,6 +72,9 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
 
+  WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
+                                const std::string &mode,
+                                const std::string &security) const;
   ByteArrays GetHiddenSSIDList();
   void ScanDoneTask();
   void ScanTask();

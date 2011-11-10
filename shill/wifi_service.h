@@ -53,6 +53,7 @@ class WiFiService : public Service {
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
 
+  bool IsSecurityMatch(const std::string &security) const;
   bool hidden_ssid() const { return hidden_ssid_; }
 
  private:
@@ -79,6 +80,10 @@ class WiFiService : public Service {
   // replace non-ASCII characters with '?'. return true if one or more
   // characters were changed
   static bool SanitizeSSID(std::string *ssid);
+
+  // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
+  // This function maps them all into "psk".
+  static std::string GetSecurityClass(const std::string &security);
 
   // Profile data for a WPA/RSN service can be stored under a number of
   // different names.  These functions create different storage identifiers

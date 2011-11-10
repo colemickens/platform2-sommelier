@@ -187,6 +187,10 @@ bool WiFiService::Save(StoreInterface *storage) {
   return true;
 }
 
+bool WiFiService::IsSecurityMatch(const string &security) const {
+  return GetSecurityClass(security) == GetSecurityClass(security_);
+}
+
 // private methods
 void WiFiService::ConnectTask() {
   std::map<string, DBus::Variant> params;
@@ -338,6 +342,7 @@ bool WiFiService::CheckWEPPrefix(const string &passphrase, Error *error) {
   }
 }
 
+// static
 bool WiFiService::SanitizeSSID(string *ssid) {
   CHECK(ssid);
 
@@ -355,13 +360,18 @@ bool WiFiService::SanitizeSSID(string *ssid) {
   return changed;
 }
 
-string WiFiService::GetGenericStorageIdentifier() const {
-  if (security_ == flimflam::kSecurityRsn ||
-      security_ == flimflam::kSecurityWpa) {
-    return GetStorageIdentifierForSecurity(flimflam::kSecurityPsk);
+// static
+string WiFiService::GetSecurityClass(const string &security) {
+  if (security == flimflam::kSecurityRsn ||
+      security == flimflam::kSecurityWpa) {
+    return flimflam::kSecurityPsk;
   } else {
-    return GetStorageIdentifierForSecurity(security_);
+    return security;
   }
+}
+
+string WiFiService::GetGenericStorageIdentifier() const {
+  return GetStorageIdentifierForSecurity(GetSecurityClass(security_));
 }
 
 string WiFiService::GetSpecificStorageIdentifier() const {

@@ -260,6 +260,20 @@ void WiFi::ConnectTo(WiFiService *service,
   SelectService(service);
 }
 
+WiFiServiceRefPtr WiFi::FindService(const std::vector<uint8_t> &ssid,
+                                    const std::string &mode,
+                                    const std::string &security) const {
+  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    if ((*it)->ssid() == ssid && (*it)->mode() == mode &&
+        (*it)->IsSecurityMatch(security)) {
+      return *it;
+    }
+  }
+  return NULL;
+}
+
 ByteArrays WiFi::GetHiddenSSIDList() {
   // Create a unique set of hidden SSIDs.
   set<ByteArray> hidden_ssids_set;
@@ -410,21 +424,24 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     return NULL;
   }
 
-  bool hidden_ssid = false;
+  bool hidden_ssid;
   if (args.ContainsBool(flimflam::kWifiHiddenSsid)) {
     hidden_ssid = args.GetBool(flimflam::kWifiHiddenSsid);
+  } else {
+    // If the service is not found, and the caller hasn't specified otherwise,
+    // we assume this is is a hidden network.
+    hidden_ssid = true;
   }
 
-  WiFiService *service = NULL;
-
-  // TODO(quiche): search for existing service
-
-  if (service == NULL) {
+  vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
+  WiFiServiceRefPtr service(FindService(ssid_bytes, flimflam::kModeManaged,
+                                        security_method));
+  if (!service.get()) {
     service = new WiFiService(control_interface(),
                               dispatcher(),
                               manager(),
                               this,
-                              vector<uint8_t>(ssid.begin(), ssid.end()),
+                              ssid_bytes,
                               flimflam::kModeManaged,
                               security_method,
                               hidden_ssid);
