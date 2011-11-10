@@ -34,6 +34,9 @@ class CellularCapability {
   // Retrieves identifiers associated with the modem and the capability.
   virtual void GetIdentifiers() = 0;
 
+  // Retrieves the current cellular signal strength.
+  virtual void GetSignalQuality() = 0;
+
   // PIN management. The default implementation fails by populating |error|.
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
   virtual void EnterPIN(const std::string &pin, Error *error);

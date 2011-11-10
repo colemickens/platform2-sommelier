@@ -129,6 +129,8 @@ class Cellular : public Device,
   // unchanged otherwise.
   void Activate(const std::string &carrier, Error *error);
 
+  const CellularServiceRefPtr &service() const { return service_; }
+
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
 
@@ -180,6 +182,8 @@ class Cellular : public Device,
 
   void SetGSMAccessTechnology(uint32 access_technology);
 
+  void HandleNewSignalQuality(uint32 strength);
+
   // Inherited from Device.
   virtual void Start();
   virtual void Stop();
@@ -207,8 +211,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
-  FRIEND_TEST(CellularTest, GetCDMASignalQuality);
-  FRIEND_TEST(CellularTest, GetGSMSignalQuality);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetStateString);
@@ -303,12 +305,6 @@ class Cellular : public Device,
   void HandleNewRegistrationStateTask();
 
   void CreateService();
-
-  void GetModemSignalQuality();
-  uint32 GetCDMASignalQuality();
-  uint32 GetGSMSignalQuality();
-
-  void HandleNewSignalQuality(uint32 strength);
 
   void HandleNewCDMAActivationState(uint32 error);
 

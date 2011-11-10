@@ -9,6 +9,7 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular.h"
+#include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_modem_cdma_proxy.h"
@@ -34,6 +35,10 @@ class CellularCapabilityCDMATest : public testing::Test {
         proxy_(new MockModemCDMAProxy()),
         capability_(cellular_.get()) {}
 
+  virtual ~CellularCapabilityCDMATest() {
+    cellular_->service_ = NULL;
+  }
+
  protected:
   static const char kMEID[];
 
@@ -43,6 +48,15 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   void SetRegistrationState1x(uint32 state) {
     cellular_->cdma_.registration_state_1x = state;
+  }
+
+  void SetProxy() {
+    cellular_->set_modem_cdma_proxy(proxy_.release());
+  }
+
+  void SetService() {
+    cellular_->service_ = new CellularService(
+        &control_, &dispatcher_, NULL, cellular_);
   }
 
   NiceMockControl control_;
@@ -56,7 +70,7 @@ const char CellularCapabilityCDMATest::kMEID[] = "D1234567EF8901";
 
 TEST_F(CellularCapabilityCDMATest, GetIdentifiers) {
   EXPECT_CALL(*proxy_, MEID()).WillOnce(Return(kMEID));
-  cellular_->set_modem_cdma_proxy(proxy_.release());
+  SetProxy();
   capability_.GetIdentifiers();
   EXPECT_EQ(kMEID, cellular_->meid());
   capability_.GetIdentifiers();
@@ -94,6 +108,16 @@ TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
   EXPECT_EQ(flimflam::kRoamingStateRoaming,
             capability_.GetRoamingStateString());
+}
+
+TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
+  const int kStrength = 90;
+  EXPECT_CALL(*proxy_, GetSignalQuality()).WillOnce(Return(kStrength));
+  SetProxy();
+  SetService();
+  EXPECT_EQ(0, cellular_->service()->strength());
+  capability_.GetSignalQuality();
+  EXPECT_EQ(kStrength, cellular_->service()->strength());
 }
 
 }  // namespace shill

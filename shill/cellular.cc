@@ -452,42 +452,13 @@ void Cellular::HandleNewRegistrationStateTask() {
     // For now, no endpoint is created. Revisit if necessary.
     CreateService();
   }
-  GetModemSignalQuality();
+  capability_->GetSignalQuality();
   if (state_ == kStateRegistered && modem_state_ == kModemStateConnected) {
     SetState(kStateConnected);
     EstablishLink();
   }
   service_->set_network_tech(network_tech);
   service_->set_roaming_state(capability_->GetRoamingStateString());
-}
-
-void Cellular::GetModemSignalQuality() {
-  VLOG(2) << __func__;
-  uint32 strength = 0;
-  switch (type_) {
-    case kTypeGSM:
-      strength = GetGSMSignalQuality();
-      break;
-    case kTypeCDMA:
-      strength = GetCDMASignalQuality();
-      break;
-    default: NOTREACHED();
-  }
-  HandleNewSignalQuality(strength);
-}
-
-uint32 Cellular::GetCDMASignalQuality() {
-  VLOG(2) << __func__;
-  CHECK_EQ(kTypeCDMA, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  return cdma_proxy_->GetSignalQuality();
-}
-
-uint32 Cellular::GetGSMSignalQuality() {
-  VLOG(2) << __func__;
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  return gsm_network_proxy_->GetSignalQuality();
 }
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {

@@ -20,6 +20,7 @@ class CellularCapabilityGSM : public CellularCapability,
 
   // Inherited from CellularCapability.
   virtual void InitProxies();
+  virtual void GetSignalQuality();
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
   virtual void EnterPIN(const std::string &pin, Error *error);
   virtual void UnblockPIN(const std::string &unblock_code,

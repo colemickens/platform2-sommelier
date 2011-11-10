@@ -67,4 +67,11 @@ string CellularCapabilityCDMA::GetRoamingStateString() const {
   return flimflam::kRoamingStateUnknown;
 }
 
+void CellularCapabilityCDMA::GetSignalQuality() {
+  VLOG(2) << __func__;
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 strength = cellular()->modem_cdma_proxy()->GetSignalQuality();
+  cellular()->HandleNewSignalQuality(strength);
+}
+
 }  // namespace shill

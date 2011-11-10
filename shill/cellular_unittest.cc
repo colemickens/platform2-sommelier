@@ -492,42 +492,6 @@ TEST_F(CellularTest, GetCDMARegistrationState) {
   ASSERT_TRUE(device_->service_.get());
 }
 
-TEST_F(CellularTest, GetCDMASignalQuality) {
-  const int kStrength = 90;
-  device_->type_ = Cellular::kTypeCDMA;
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality())
-      .Times(2)
-      .WillRepeatedly(Return(kStrength));
-  device_->cdma_proxy_.reset(cdma_proxy_.release());
-
-  EXPECT_FALSE(device_->service_.get());
-  device_->GetModemSignalQuality();
-
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &manager_, device_);
-  EXPECT_EQ(0, device_->service_->strength());
-  device_->GetModemSignalQuality();
-  EXPECT_EQ(kStrength, device_->service_->strength());
-}
-
-TEST_F(CellularTest, GetGSMSignalQuality) {
-  const int kStrength = 80;
-  device_->type_ = Cellular::kTypeGSM;
-  EXPECT_CALL(*gsm_network_proxy_, GetSignalQuality())
-      .Times(2)
-      .WillRepeatedly(Return(kStrength));
-  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
-
-  EXPECT_FALSE(device_->service_.get());
-  device_->GetModemSignalQuality();
-
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &manager_, device_);
-  EXPECT_EQ(0, device_->service_->strength());
-  device_->GetModemSignalQuality();
-  EXPECT_EQ(kStrength, device_->service_->strength());
-}
-
 TEST_F(CellularTest, CreateService) {
   device_->type_ = Cellular::kTypeCDMA;
   static const char kPaymentURL[] = "https://payment.url";

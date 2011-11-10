@@ -9,9 +9,11 @@
 #include <mm/mm-modem.h>
 
 #include "shill/cellular.h"
+#include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
+#include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/nice_mock_control.h"
 
 using testing::Return;
@@ -32,7 +34,12 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                NULL)),
         card_proxy_(new MockModemGSMCardProxy()),
+        network_proxy_(new MockModemGSMNetworkProxy()),
         capability_(cellular_.get()) {}
+
+  virtual ~CellularCapabilityGSMTest() {
+    cellular_->service_ = NULL;
+  }
 
  protected:
   static const char kTestCarrier[];
@@ -54,10 +61,20 @@ class CellularCapabilityGSMTest : public testing::Test {
     cellular_->gsm_.registration_state = state;
   }
 
+  void SetNetworkProxy() {
+    cellular_->set_modem_gsm_network_proxy(network_proxy_.release());
+  }
+
+  void SetService() {
+    cellular_->service_ = new CellularService(
+        &control_, &dispatcher_, NULL, cellular_);
+  }
+
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   CellularRefPtr cellular_;
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
+  scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
   CellularCapabilityGSM capability_;
 };
 
@@ -84,6 +101,16 @@ TEST_F(CellularCapabilityGSMTest, GetIdentifiers) {
   EXPECT_EQ(kIMSI, cellular_->imsi());
   EXPECT_EQ(kTestCarrier, cellular_->spn());
   EXPECT_EQ(kMSISDN, cellular_->mdn());
+}
+
+TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
+  const int kStrength = 80;
+  EXPECT_CALL(*network_proxy_, GetSignalQuality()).WillOnce(Return(kStrength));
+  SetNetworkProxy();
+  SetService();
+  EXPECT_EQ(0, cellular_->service()->strength());
+  capability_.GetSignalQuality();
+  EXPECT_EQ(kStrength, cellular_->service()->strength());
 }
 
 TEST_F(CellularCapabilityGSMTest, RequirePIN) {

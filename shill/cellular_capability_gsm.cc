@@ -61,6 +61,13 @@ void CellularCapabilityGSM::GetIdentifiers() {
   }
 }
 
+void CellularCapabilityGSM::GetSignalQuality() {
+  VLOG(2) << __func__;
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 strength = cellular()->modem_gsm_network_proxy()->GetSignalQuality();
+  cellular()->HandleNewSignalQuality(strength);
+}
+
 void CellularCapabilityGSM::RequirePIN(
     const string &pin, bool require, Error */*error*/) {
   VLOG(2) << __func__ << "(" << pin << ", " << require << ")";
