@@ -234,6 +234,75 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   wifi_service->ConnectTask();
 }
 
+MATCHER(WEPSecurityArgsKeyIndex0, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("0")) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+           reader().get_uint32() == 0);
+}
+
+MATCHER(WEPSecurityArgsKeyIndex1, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("1")) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+           reader().get_uint32() == 1);
+}
+
+MATCHER(WEPSecurityArgsKeyIndex2, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("2")) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+           reader().get_uint32() == 2);
+}
+
+MATCHER(WEPSecurityArgsKeyIndex3, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("3")) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+           reader().get_uint32() == 3);
+}
+
+TEST_F(WiFiServiceTest, ConnectTaskWEP) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityWep,
+                                                   false);
+  Error error;
+  wifi_service->SetPassphrase("0:abcdefghijklm", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
+  wifi_service->ConnectTask();
+
+  wifi_service->SetPassphrase("abcdefghijklm", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex0()));
+  wifi_service->ConnectTask();
+
+  wifi_service->SetPassphrase("1:abcdefghijklm", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex1()));
+  wifi_service->ConnectTask();
+
+  wifi_service->SetPassphrase("2:abcdefghijklm", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex2()));
+  wifi_service->ConnectTask();
+
+  wifi_service->SetPassphrase("3:abcdefghijklm", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WEPSecurityArgsKeyIndex3()));
+  wifi_service->ConnectTask();
+}
+
 TEST_F(WiFiServiceTest, LoadHidden) {
   vector<uint8_t> ssid(5);
   ssid.push_back(0xff);

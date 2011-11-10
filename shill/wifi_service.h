@@ -61,6 +61,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
 
   static const char kStorageHiddenSSID[];
@@ -69,10 +70,14 @@ class WiFiService : public Service {
 
   std::string GetDeviceRpcId(Error *error);
 
-  static std::string ParseWEPPassphrase(const std::string &passphrase,
-                                        Error *error);
-  static std::string ParseWPAPassphrase(const std::string &passphrase,
-                                        Error *error);
+  static void ValidateWEPPassphrase(const std::string &passphrase,
+                                    Error *error);
+  static void ValidateWPAPassphrase(const std::string &passphrase,
+                                    Error *error);
+  static void ParseWEPPassphrase(const std::string &passphrase,
+                                 int *key_index,
+                                 std::vector<uint8> *password_bytes,
+                                 Error *error);
   static bool CheckWEPIsHex(const std::string &passphrase, Error *error);
   static bool CheckWEPKeyIndex(const std::string &passphrase, Error *error);
   static bool CheckWEPPrefix(const std::string &passphrase, Error *error);

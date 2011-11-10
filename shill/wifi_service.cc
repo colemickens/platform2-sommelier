@@ -136,12 +136,17 @@ const std::vector<uint8_t> &WiFiService::ssid() const {
 
 void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   if (security_ == flimflam::kSecurityWep) {
-    passphrase_ = ParseWEPPassphrase(passphrase, error);
+    ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == flimflam::kSecurityPsk ||
              security_ == flimflam::kSecurityWpa ||
              security_ == flimflam::kSecurityRsn) {
-    passphrase_ = ParseWPAPassphrase(passphrase, error);
+    ValidateWPAPassphrase(passphrase, error);
+  } else {
+    error->Populate(Error::kNotSupported);
   }
+
+  if (error->IsSuccess())
+    passphrase_ = passphrase;
 }
 
 bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
@@ -220,7 +225,17 @@ void WiFiService::ConnectTask() {
     params[wpa_supplicant::kPropertyPreSharedKey].writer().
         append_string(passphrase_.c_str());
   } else if (security_ == flimflam::kSecurityWep) {
-    NOTIMPLEMENTED();
+    params[wpa_supplicant::kPropertyAuthAlg].writer().
+        append_string(wpa_supplicant::kSecurityAuthAlg);
+    Error error;
+    int key_index;
+    std::vector<uint8> password_bytes;
+    ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &error);
+    writer = params[wpa_supplicant::kPropertyWEPKey +
+                    base::IntToString(key_index)].writer();
+    writer << password_bytes;
+    params[wpa_supplicant::kPropertyWEPTxKeyIndex].writer().
+        append_uint32(key_index);
   } else if (security_ == flimflam::kSecurityNone) {
     // Nothing special to do here.
   } else {
@@ -242,48 +257,14 @@ string WiFiService::GetDeviceRpcId(Error */*error*/) {
 }
 
 // static
-string WiFiService::ParseWEPPassphrase(const string &passphrase, Error *error) {
-  unsigned int length = passphrase.length();
-
-  switch (length) {
-    case IEEE_80211::kWEP40AsciiLen:
-    case IEEE_80211::kWEP104AsciiLen:
-      break;
-    case IEEE_80211::kWEP40AsciiLen + 2:
-    case IEEE_80211::kWEP104AsciiLen + 2:
-      CheckWEPKeyIndex(passphrase, error);
-      break;
-    case IEEE_80211::kWEP40HexLen:
-    case IEEE_80211::kWEP104HexLen:
-      CheckWEPIsHex(passphrase, error);
-      break;
-    case IEEE_80211::kWEP40HexLen + 2:
-    case IEEE_80211::kWEP104HexLen + 2:
-      (CheckWEPKeyIndex(passphrase, error) ||
-       CheckWEPPrefix(passphrase, error)) &&
-          CheckWEPIsHex(passphrase.substr(2), error);
-      break;
-    case IEEE_80211::kWEP40HexLen + 4:
-    case IEEE_80211::kWEP104HexLen + 4:
-      CheckWEPKeyIndex(passphrase, error) &&
-          CheckWEPPrefix(passphrase.substr(2), error) &&
-          CheckWEPIsHex(passphrase.substr(4), error);
-      break;
-    default:
-      error->Populate(Error::kInvalidPassphrase);
-      break;
-  }
-
-  // TODO(quiche): may need to normalize passphrase format
-  if (error->IsSuccess()) {
-    return passphrase;
-  } else {
-    return "";
-  }
+void WiFiService::ValidateWEPPassphrase(const std::string &passphrase,
+                                        Error *error) {
+  ParseWEPPassphrase(passphrase, NULL, NULL, error);
 }
 
 // static
-string WiFiService::ParseWPAPassphrase(const string &passphrase, Error *error) {
+void WiFiService::ValidateWPAPassphrase(const std::string &passphrase,
+                                        Error *error) {
   unsigned int length = passphrase.length();
   vector<uint8> passphrase_bytes;
 
@@ -299,12 +280,79 @@ string WiFiService::ParseWPAPassphrase(const string &passphrase, Error *error) {
       error->Populate(Error::kInvalidPassphrase);
     }
   }
+}
 
-  // TODO(quiche): may need to normalize passphrase format
+// static
+void WiFiService::ParseWEPPassphrase(const string &passphrase,
+                                     int *key_index,
+                                     std::vector<uint8> *password_bytes,
+                                     Error *error) {
+  unsigned int length = passphrase.length();
+  int key_index_local;
+  std::string password_text;
+  bool is_hex = false;
+
+  switch (length) {
+    case IEEE_80211::kWEP40AsciiLen:
+    case IEEE_80211::kWEP104AsciiLen:
+      key_index_local = 0;
+      password_text = passphrase;
+      break;
+    case IEEE_80211::kWEP40AsciiLen + 2:
+    case IEEE_80211::kWEP104AsciiLen + 2:
+      if (CheckWEPKeyIndex(passphrase, error)) {
+        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        password_text = passphrase.substr(2);
+      }
+      break;
+    case IEEE_80211::kWEP40HexLen:
+    case IEEE_80211::kWEP104HexLen:
+      if (CheckWEPIsHex(passphrase, error)) {
+        key_index_local = 0;
+        password_text = passphrase;
+        is_hex = true;
+      }
+      break;
+    case IEEE_80211::kWEP40HexLen + 2:
+    case IEEE_80211::kWEP104HexLen + 2:
+      if(CheckWEPKeyIndex(passphrase, error) &&
+         CheckWEPIsHex(passphrase.substr(2), error)) {
+        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        password_text = passphrase.substr(2);
+        is_hex = true;
+      } else if (CheckWEPPrefix(passphrase, error) &&
+                 CheckWEPIsHex(passphrase.substr(2), error)) {
+        key_index_local = 0;
+        password_text = passphrase.substr(2);
+        is_hex = true;
+      }
+      break;
+    case IEEE_80211::kWEP40HexLen + 4:
+    case IEEE_80211::kWEP104HexLen + 4:
+      if (CheckWEPKeyIndex(passphrase, error) &&
+          CheckWEPPrefix(passphrase.substr(2), error) &&
+          CheckWEPIsHex(passphrase.substr(4), error)) {
+        base::StringToInt(passphrase.substr(0,1), &key_index_local);
+        password_text = passphrase.substr(4);
+        is_hex = true;
+      }
+      break;
+    default:
+      error->Populate(Error::kInvalidPassphrase);
+      break;
+  }
+
   if (error->IsSuccess()) {
-    return passphrase;
-  } else {
-    return "";
+    if (key_index)
+      *key_index = key_index_local;
+    if (password_bytes) {
+      if (is_hex)
+        base::HexStringToBytes(password_text, password_bytes);
+      else
+        password_bytes->insert(password_bytes->end(),
+                               password_text.begin(),
+                               password_text.end());
+    }
   }
 }
 
