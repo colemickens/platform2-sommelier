@@ -7,6 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
+#include <mobile_provider.h>
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"
@@ -35,13 +36,17 @@ class CellularCapabilityGSMTest : public testing::Test {
                                NULL)),
         card_proxy_(new MockModemGSMCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
-        capability_(cellular_.get()) {}
+        capability_(cellular_.get()),
+        provider_db_(NULL) {}
 
   virtual ~CellularCapabilityGSMTest() {
     cellular_->service_ = NULL;
+    mobile_provider_close_db(provider_db_);
+    provider_db_ = NULL;
   }
 
  protected:
+  static const char kTestMobileProviderDBPath[];
   static const char kTestCarrier[];
   static const char kPIN[];
   static const char kPUK[];
@@ -53,6 +58,10 @@ class CellularCapabilityGSMTest : public testing::Test {
     capability_.card_proxy_.reset(card_proxy_.release());
   }
 
+  void SetNetworkProxy() {
+    cellular_->set_modem_gsm_network_proxy(network_proxy_.release());
+  }
+
   void SetAccessTechnology(uint32 technology) {
     cellular_->gsm_.access_technology = technology;
   }
@@ -61,13 +70,15 @@ class CellularCapabilityGSMTest : public testing::Test {
     cellular_->gsm_.registration_state = state;
   }
 
-  void SetNetworkProxy() {
-    cellular_->set_modem_gsm_network_proxy(network_proxy_.release());
-  }
-
   void SetService() {
     cellular_->service_ = new CellularService(
         &control_, &dispatcher_, NULL, cellular_);
+  }
+
+  void InitProviderDB() {
+    provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
+    ASSERT_TRUE(provider_db_);
+    cellular_->provider_db_ = provider_db_;
   }
 
   NiceMockControl control_;
@@ -76,8 +87,11 @@ class CellularCapabilityGSMTest : public testing::Test {
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
   CellularCapabilityGSM capability_;
+  mobile_provider_db *provider_db_;
 };
 
+const char CellularCapabilityGSMTest::kTestMobileProviderDBPath[] =
+    "provider_db_unittest.bfd";
 const char CellularCapabilityGSMTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularCapabilityGSMTest::kPIN[] = "9876";
 const char CellularCapabilityGSMTest::kPUK[] = "8765";
@@ -148,6 +162,58 @@ TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularCapabilityGSMTest, Scan) {
+  static const char kID0[] = "123";
+  static const char kID1[] = "456";
+  Error error;
+  capability_.Scan(&error);
+  EXPECT_TRUE(error.IsSuccess());
+  ModemGSMNetworkProxyInterface::ScanResults results;
+  results.push_back(ModemGSMNetworkProxyInterface::ScanResult());
+  results[0][CellularCapabilityGSM::kNetworkPropertyID] = kID0;
+  results.push_back(ModemGSMNetworkProxyInterface::ScanResult());
+  results[1][CellularCapabilityGSM::kNetworkPropertyID] = kID1;
+  EXPECT_CALL(*network_proxy_, Scan()).WillOnce(Return(results));
+  SetNetworkProxy();
+  capability_.found_networks_.resize(3, Stringmap());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(2, capability_.found_networks_.size());
+  EXPECT_EQ(kID0, capability_.found_networks_[0][flimflam::kNetworkIdProperty]);
+  EXPECT_EQ(kID1, capability_.found_networks_[1][flimflam::kNetworkIdProperty]);
+}
+
+TEST_F(CellularCapabilityGSMTest, ParseScanResult) {
+  static const char kID[] = "123";
+  static const char kLongName[] = "long name";
+  static const char kShortName[] = "short name";
+  ModemGSMNetworkProxyInterface::ScanResult result;
+  result[CellularCapabilityGSM::kNetworkPropertyStatus] = "1";
+  result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
+  result[CellularCapabilityGSM::kNetworkPropertyLongName] = kLongName;
+  result[CellularCapabilityGSM::kNetworkPropertyShortName] = kShortName;
+  result[CellularCapabilityGSM::kNetworkPropertyAccessTechnology] = "3";
+  result["unknown property"] = "random value";
+  Stringmap parsed = capability_.ParseScanResult(result);
+  EXPECT_EQ(5, parsed.size());
+  EXPECT_EQ("available", parsed[flimflam::kStatusProperty]);
+  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
+  EXPECT_EQ(kLongName, parsed[flimflam::kLongNameProperty]);
+  EXPECT_EQ(kShortName, parsed[flimflam::kShortNameProperty]);
+  EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
+            parsed[flimflam::kTechnologyProperty]);
+}
+
+TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
+  InitProviderDB();
+  static const char kID[] = "310210";
+  ModemGSMNetworkProxyInterface::ScanResult result;
+  result[CellularCapabilityGSM::kNetworkPropertyID] = kID;
+  Stringmap parsed = capability_.ParseScanResult(result);
+  EXPECT_EQ(2, parsed.size());
+  EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
+  EXPECT_EQ("T-Mobile", parsed[flimflam::kLongNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {

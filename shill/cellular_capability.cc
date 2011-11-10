@@ -46,4 +46,9 @@ void CellularCapability::ChangePIN(const string &/*old_pin*/,
       error, Error::kNotSupported, "ChangePIN not supported.");
 }
 
+void CellularCapability::Scan(Error *error) {
+  Error::PopulateAndLog(
+      error, Error::kNotSupported, "Network scanning not supported.");
+}
+
 }  // namespace shill

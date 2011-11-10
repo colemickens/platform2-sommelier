@@ -47,6 +47,9 @@ class CellularCapability {
                          const std::string &new_pin,
                          Error *error);
 
+  // Network scanning. The default implementation fails by populating |error|.
+  virtual void Scan(Error *error);
+
   // Returns an empty string if the network technology is unknown.
   virtual std::string GetNetworkTechnologyString() const = 0;
 

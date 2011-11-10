@@ -137,6 +137,8 @@ class Cellular : public Device,
   const SimLockStatus &sim_lock_status() const { return sim_lock_status_; }
   void set_sim_lock_status(const SimLockStatus &s) { sim_lock_status_ = s; }
 
+  mobile_provider_db *provider_db() const { return provider_db_; }
+
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
@@ -217,12 +219,9 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
-  FRIEND_TEST(CellularTest, ParseScanResult);
-  FRIEND_TEST(CellularTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularTest, RegisterOnNetwork);
   FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
-  FRIEND_TEST(CellularTest, Scan);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -252,18 +251,12 @@ class Cellular : public Device,
     std::string spn;
   };
 
-  static const char kNetworkPropertyAccessTechnology[];
-  static const char kNetworkPropertyID[];
-  static const char kNetworkPropertyLongName[];
-  static const char kNetworkPropertyShortName[];
-  static const char kNetworkPropertyStatus[];
   static const char kPhoneNumberCDMA[];
   static const char kPhoneNumberGSM[];
 
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
-  void ScanTask();
   void ActivateTask(const std::string &carrier);
   void RegisterOnNetworkTask(const std::string &network_id);
 
@@ -314,9 +307,6 @@ class Cellular : public Device,
 
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
-
-  Stringmap ParseScanResult(
-      const ModemGSMNetworkProxyInterface::ScanResult &result);
 
   // Signal callbacks inherited from ModemCDMAProxyDelegate.
   virtual void OnCDMAActivationStateChanged(
@@ -377,10 +367,7 @@ class Cellular : public Device,
   std::string manufacturer_;
   std::string firmware_revision_;
   std::string hardware_revision_;
-  bool scanning_;
-  uint16 scan_interval_;
   std::string selected_network_;
-  Stringmaps found_networks_;
   SimLockStatus sim_lock_status_;
   Operator home_provider_;
 

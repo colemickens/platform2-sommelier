@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mm/mm-modem.h>
@@ -41,11 +40,6 @@ using std::vector;
 namespace shill {
 
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
-const char Cellular::kNetworkPropertyAccessTechnology[] = "access-tech";
-const char Cellular::kNetworkPropertyID[] = "operator-num";
-const char Cellular::kNetworkPropertyLongName[] = "operator-long";
-const char Cellular::kNetworkPropertyShortName[] = "operator-short";
-const char Cellular::kNetworkPropertyStatus[] = "status";
 const char Cellular::kPhoneNumberCDMA[] = "#777";
 const char Cellular::kPhoneNumberGSM[] = "*99#";
 
@@ -123,9 +117,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_path_(path),
       provider_db_(provider_db),
       task_factory_(this),
-      allow_roaming_(false),
-      scanning_(false),
-      scan_interval_(0) {
+      allow_roaming_(false) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
@@ -134,8 +126,6 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kEsnProperty, &esn_);
   store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
                              &firmware_revision_);
-  store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
-                                 &found_networks_);
   store->RegisterConstString(flimflam::kHardwareRevisionProperty,
                              &hardware_revision_);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
@@ -154,9 +144,6 @@ Cellular::Cellular(ControlInterface *control_interface,
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
                                 NULL);
-
-  store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
-  store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
 
   VLOG(2) << "Cellular device " << this->link_name() << " initialized: "
           << GetTypeString();
@@ -379,6 +366,10 @@ void Cellular::ChangePIN(
   capability_->ChangePIN(old_pin, new_pin, error);
 }
 
+void Cellular::Scan(Error *error) {
+  capability_->Scan(error);
+}
+
 void Cellular::GetModemInfo() {
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   ModemProxyInterface::Info info = proxy_->GetInfo();
@@ -570,102 +561,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SelectService(NULL);
     DestroyIPConfig();
   }
-}
-
-void Cellular::Scan(Error *error) {
-  VLOG(2) << __func__;
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "Network scanning support for GSM only.");
-    return;
-  }
-  // Defer scan because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::ScanTask));
-}
-
-void Cellular::ScanTask() {
-  VLOG(2) << __func__;
-  // TODO(petkov): Defer scan requests if a scan is in progress already.
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). This is a
-  // must for this call which is basically a stub at this point.
-  ModemGSMNetworkProxyInterface::ScanResults results =
-      gsm_network_proxy_->Scan();
-  found_networks_.clear();
-  for (ModemGSMNetworkProxyInterface::ScanResults::const_iterator it =
-           results.begin(); it != results.end(); ++it) {
-    found_networks_.push_back(ParseScanResult(*it));
-  }
-}
-
-Stringmap Cellular::ParseScanResult(
-    const ModemGSMNetworkProxyInterface::ScanResult &result) {
-  Stringmap parsed;
-  for (ModemGSMNetworkProxyInterface::ScanResult::const_iterator it =
-           result.begin(); it != result.end(); ++it) {
-    // TODO(petkov): Define these in system_api/service_constants.h. The
-    // numerical values are taken from 3GPP TS 27.007 Section 7.3.
-    static const char * const kStatusString[] = {
-      "unknown",
-      "available",
-      "current",
-      "forbidden",
-    };
-    static const char * const kTechnologyString[] = {
-      flimflam::kNetworkTechnologyGsm,
-      "GSM Compact",
-      flimflam::kNetworkTechnologyUmts,
-      flimflam::kNetworkTechnologyEdge,
-      "HSDPA",
-      "HSUPA",
-      flimflam::kNetworkTechnologyHspa,
-    };
-    VLOG(2) << "Network property: " << it->first << " = " << it->second;
-    if (it->first == kNetworkPropertyStatus) {
-      int status = 0;
-      if (base::StringToInt(it->second, &status) &&
-          status >= 0 &&
-          status < static_cast<int>(arraysize(kStatusString))) {
-        parsed[flimflam::kStatusProperty] = kStatusString[status];
-      } else {
-        LOG(ERROR) << "Unexpected status value: " << it->second;
-      }
-    } else if (it->first == kNetworkPropertyID) {
-      parsed[flimflam::kNetworkIdProperty] = it->second;
-    } else if (it->first == kNetworkPropertyLongName) {
-      parsed[flimflam::kLongNameProperty] = it->second;
-    } else if (it->first == kNetworkPropertyShortName) {
-      parsed[flimflam::kShortNameProperty] = it->second;
-    } else if (it->first == kNetworkPropertyAccessTechnology) {
-      int tech = 0;
-      if (base::StringToInt(it->second, &tech) &&
-          tech >= 0 &&
-          tech < static_cast<int>(arraysize(kTechnologyString))) {
-        parsed[flimflam::kTechnologyProperty] = kTechnologyString[tech];
-      } else {
-        LOG(ERROR) << "Unexpected technology value: " << it->second;
-      }
-    } else {
-      LOG(WARNING) << "Unknown network property ignored: " << it->first;
-    }
-  }
-  // If the long name is not available but the network ID is, look up the long
-  // name in the mobile provider database.
-  if ((!ContainsKey(parsed, flimflam::kLongNameProperty) ||
-       parsed[flimflam::kLongNameProperty].empty()) &&
-      ContainsKey(parsed, flimflam::kNetworkIdProperty)) {
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(
-            provider_db_, parsed[flimflam::kNetworkIdProperty].c_str());
-    if (provider) {
-      const char *long_name = mobile_provider_get_name(provider);
-      if (long_name && *long_name) {
-        parsed[flimflam::kLongNameProperty] = long_name;
-      }
-    }
-  }
-  return parsed;
 }
 
 void Cellular::Activate(const string &carrier, Error *error) {
