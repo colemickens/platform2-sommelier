@@ -26,7 +26,7 @@ class WiFiService : public Service {
               EventDispatcher *dispatcher,
               Manager *manager,
               const WiFiRefPtr &device,
-              const std::vector<uint8_t> ssid,
+              const std::vector<uint8_t> &ssid,
               const std::string &mode,
               const std::string &security,
               bool hidden_ssid);

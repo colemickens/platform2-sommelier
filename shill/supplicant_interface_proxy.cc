@@ -100,9 +100,9 @@ void SupplicantInterfaceProxy::Proxy::NetworkSelected(
 }
 
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
-    const std::map<string, ::DBus::Variant> &/*properties*/) {
+    const std::map<string, ::DBus::Variant> &properties) {
   LOG(INFO) << __func__;
-  // XXX
+  wifi_->PropertiesChanged(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {

@@ -202,6 +202,7 @@ TEST_OBJS = \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
 	mock_wifi.o \
+	mock_wifi_service.o \
 	modem_info_unittest.o \
 	modem_manager_unittest.o \
 	modem_unittest.o \

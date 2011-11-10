@@ -59,6 +59,7 @@ const char WiFi::kManagerErrorUnsupportedServiceType[] =
     "service type is unsupported";
 const char WiFi::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
+const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 
 // NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
@@ -79,7 +80,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_(0),
       scan_pending_(false),
       scan_interval_(0),
-      link_up_(false) {
+      link_up_(false),
+      supplicant_state_(kInterfaceStateUnknown) {
   PropertyStore *store = this->mutable_store();
   store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
   store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
@@ -118,9 +120,9 @@ void WiFi::Start() {
     if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
       interface_path =
           supplicant_process_proxy_->GetInterface(link_name());
-      // XXX crash here, if device missing?
+      // TODO(quiche): Is it okay to crash here, if device is missing?
     } else {
-      // XXX
+      // TODO(quiche): Log error.
     }
   }
 
@@ -128,13 +130,13 @@ void WiFi::Start() {
       proxy_factory_->CreateSupplicantInterfaceProxy(
           this, interface_path, wpa_supplicant::kDBusAddr));
 
-  // TODO(quiche) set ApScan=1 and BSSExpireAge=190, like flimflam does?
+  // TODO(quiche) Set ApScan=1 and BSSExpireAge=190, like flimflam does?
 
-  // clear out any networks that might previously have been configured
+  // Clear out any networks that might previously have been configured
   // for this interface.
   supplicant_interface_proxy_->RemoveAllNetworks();
 
-  // flush interface's BSS cache, so that we get BSSAdded signals for
+  // Flush interface's BSS cache, so that we get BSSAdded signals for
   // all BSSes (not just new ones since the last scan).
   supplicant_interface_proxy_->FlushBSS(0);
 
@@ -144,7 +146,7 @@ void WiFi::Start() {
 
 void WiFi::Stop() {
   VLOG(2) << "WiFi " << link_name() << " stopping.";
-  // TODO(quiche): remove interface from supplicant
+  // TODO(quiche): Remove interface from supplicant.
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
   endpoint_by_bssid_.clear();
@@ -156,9 +158,10 @@ void WiFi::Stop() {
     manager()->DeregisterService(*it);
   }
   services_.clear();                  // breaks reference cycles
+  pending_service_ = NULL;            // breaks a reference cycle
 
   Device::Stop();
-  // XXX anything else to do?
+  // TODO(quiche): Anything else to do?
 
   VLOG(3) << "WiFi " << link_name() << " task_factory_ "
           << (task_factory_.empty() ? "is empty." : "is not empty.");
@@ -166,6 +169,8 @@ void WiFi::Stop() {
           << (supplicant_process_proxy_.get() ? "is set." : "is not set.");
   VLOG(3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
           << (supplicant_interface_proxy_.get() ? "is set." : "is not set.");
+  VLOG(3) << "WiFi " << link_name() << " pending_service_ "
+          << (pending_service_.get() ? "is set." : "is not set.");
   VLOG(3) << "WiFi " << link_name() << " has " << endpoint_by_bssid_.size()
           << " EndpointMap entries.";
   VLOG(3) << "WiFi " << link_name() << " has " << service_by_private_id_.size()
@@ -175,8 +180,8 @@ void WiFi::Stop() {
 void WiFi::Scan(Error */*error*/) {
   LOG(INFO) << __func__;
 
-  // needs to send a D-Bus message, but may be called from D-Bus
-  // signal handler context (via Manager::RequestScan). so defer work
+  // Needs to send a D-Bus message, but may be called from D-Bus
+  // signal handler context (via Manager::RequestScan). So defer work
   // to event loop.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&WiFi::ScanTask));
@@ -187,8 +192,8 @@ bool WiFi::TechnologyIs(const Technology::Identifier type) const {
 }
 
 void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
-  // TODO(quiche): figure out how to relate these events to supplicant
-  // events. e.g., may be we can ignore LinkEvent, in favor of events
+  // TODO(quiche): Figure out how to relate these events to supplicant
+  // events. E.g., may be we can ignore LinkEvent, in favor of events
   // from SupplicantInterfaceProxy?
   Device::LinkEvent(flags, change);
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
@@ -202,7 +207,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     LOG(INFO) << link_name() << " is down";
     link_up_ = false;
-    // TODO(quiche): attempt to reconnect to current SSID, another SSID,
+    // TODO(quiche): Attempt to reconnect to current SSID, another SSID,
     // or initiate a scan.
   }
 }
@@ -210,23 +215,31 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
 void WiFi::BSSAdded(
     const ::DBus::Path &/*BSS*/,
     const std::map<string, ::DBus::Variant> &properties) {
-  // TODO(quiche): write test to verify correct behavior in the case
+  // TODO(quiche): Write test to verify correct behavior in the case
   // where we get multiple BSSAdded events for a single endpoint.
-  // (old Endpoint's refcount should fall to zero, and old Endpoint
-  // should be destroyed)
+  // (Old Endpoint's refcount should fall to zero, and old Endpoint
+  // should be destroyed.)
   //
-  // note: we assume that BSSIDs are unique across endpoints. this
+  // Note: we assume that BSSIDs are unique across endpoints. This
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
   WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
   endpoint_by_bssid_[endpoint->bssid_hex()] = endpoint;
 }
 
+void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
+  // TODO(quiche): Handle changes in other properties.
+  if (ContainsKey(properties, wpa_supplicant::kInterfacePropertyState)) {
+    StateChanged(properties.find(wpa_supplicant::kInterfacePropertyState)->
+                 second.reader().get_string());
+  }
+}
+
 void WiFi::ScanDone() {
   LOG(INFO) << __func__;
 
-  // defer handling of scan result processing, because that processing
-  // may require the the registration of new D-Bus objects. and such
+  // Defer handling of scan result processing, because that processing
+  // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
   dispatcher()->PostTask(
@@ -237,9 +250,9 @@ void WiFi::ConnectTo(WiFiService *service,
                      const map<string, DBus::Variant> &service_params) {
   DBus::Path network_path;
 
-  // TODO(quiche): handle cases where already connected
+  // TODO(quiche): Handle cases where already connected.
 
-  // TODO(quiche): set scan_ssid=1 in service_params, like flimflam does?
+  // TODO(quiche): Set scan_ssid=1 in service_params, like flimflam does?
   try {
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
@@ -249,15 +262,16 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
-  // XXX add to favorite networks list?
+  // TODO(quiche): Add to favorite networks list?
 
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
   //
-  // TODO(quiche): when we add code for dealing with connection failures,
+  // TODO(quiche): When we add code for dealing with connection failures,
   // reconsider if this is the right place to change the selected service.
   // see discussion in crosbug.com/20191.
   SelectService(service);
+  pending_service_ = service;
 }
 
 WiFiServiceRefPtr WiFi::FindService(const std::vector<uint8_t> &ssid,
@@ -306,7 +320,7 @@ void WiFi::ScanDoneTask() {
 
   scan_pending_ = false;
 
-  // TODO(quiche): group endpoints into services, instead of creating
+  // TODO(quiche): Group endpoints into services, instead of creating
   // a service for every endpoint.
   for (EndpointMap::iterator i(endpoint_by_bssid_.begin());
        i != endpoint_by_bssid_.end(); ++i) {
@@ -341,7 +355,7 @@ void WiFi::ScanDoneTask() {
     }
   }
 
-  // TODO(quiche): unregister removed services from manager
+  // TODO(quiche): Unregister removed services from manager.
 }
 
 void WiFi::ScanTask() {
@@ -361,7 +375,45 @@ void WiFi::ScanTask() {
   scan_pending_ = true;
 }
 
-// used by manager, via static WiFi::GetService method
+void WiFi::StateChanged(const string &new_state) {
+  const string &old_state = supplicant_state_;
+
+  LOG(INFO) << link_name() << " " << __func__ << " "
+            << old_state << " -> " << new_state;
+
+  if (pending_service_.get()) {
+    if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
+      // TODO(quiche): Check if we have a race with LinkEvent and/or
+      // IPConfigUpdatedCallback here.
+
+      // After 802.11 negotiation is Completed, we start Configuring
+      // IP connectivity.
+      pending_service_->SetState(Service::kStateConfiguring);
+    } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
+      pending_service_->SetState(Service::kStateAssociating);
+    } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
+               new_state == wpa_supplicant::kInterfaceStateAssociating ||
+               new_state == wpa_supplicant::kInterfaceState4WayHandshake ||
+               new_state == wpa_supplicant::kInterfaceStateGroupHandshake) {
+      // Ignore transitions into these states from Completed, to avoid
+      // bothering the user when roaming, or re-keying.
+      if (old_state != wpa_supplicant::kInterfaceStateCompleted)
+        pending_service_->SetState(Service::kStateAssociating);
+    } else {
+      // Other transitions do not affect Service state.
+      //
+      // Note in particular that we ignore a State change into
+      // kInterfaceStateDisconnected, in favor of observing the corresponding
+      // change in CurrentBSS.
+      //
+      // TODO(quiche): Actually implement tracking of CurrentBSS.
+    }
+  }
+
+  supplicant_state_ = new_state;
+}
+
+// Used by Manager.
 WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
   if (!args.ContainsString(flimflam::kTypeProperty)) {
     error->Populate(Error::kInvalidArguments, kManagerErrorTypeRequired);
@@ -446,8 +498,8 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
                               security_method,
                               hidden_ssid);
     services_.push_back(service);
-    // TODO(quiche): add to service_by_private_id_?
-    // TODO(quiche): register service with manager
+    // TODO(quiche): Add to |service_by_private_id_|?
+    // TODO(quiche): Register |service| with Manager.
   }
 
   if (security_method == flimflam::kSecurityWep ||
@@ -461,7 +513,7 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     }
   }
 
-  // TODO(quiche): apply any other configuration parameters
+  // TODO(quiche): Apply any other configuration parameters.
 
   return service;
 }

@@ -46,6 +46,8 @@ class WiFi : public Device {
   // wpa_supplicant.
   void BSSAdded(const ::DBus::Path &BSS,
                 const std::map<std::string, ::DBus::Variant> &properties);
+  void PropertiesChanged(
+      const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
 
   // called by WiFiService
@@ -57,8 +59,10 @@ class WiFi : public Device {
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
  private:
+  friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   FRIEND_TEST(WiFiMainTest, FindServiceWEP);
   FRIEND_TEST(WiFiMainTest, FindServiceWPA);
+  FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
@@ -71,6 +75,7 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceType[];
   static const char kManagerErrorUnsupportedServiceMode[];
+  static const char kInterfaceStateUnknown[];
 
   WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
                                 const std::string &mode,
@@ -78,6 +83,7 @@ class WiFi : public Device {
   ByteArrays GetHiddenSSIDList();
   void ScanDoneTask();
   void ScanTask();
+  void StateChanged(const std::string &new_state);
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
@@ -96,8 +102,9 @@ class WiFi : public Device {
   uint16 scan_interval_;
   bool link_up_;
   std::vector<WiFiServiceRefPtr> services_;
+  WiFiServiceRefPtr pending_service_;
+  std::string supplicant_state_;
 
-  friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
 

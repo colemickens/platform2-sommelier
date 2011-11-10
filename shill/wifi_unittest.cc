@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
@@ -33,6 +34,7 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
+#include "shill/mock_wifi_service.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -48,6 +50,7 @@ using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DefaultValue;
 using ::testing::InSequence;
+using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::Test;
@@ -145,6 +148,8 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
 
  protected:
+  typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
+
   class TestProxyFactory : public ProxyFactory {
    public:
     explicit TestProxyFactory(WiFiMainTest *test) : test_(test) {}
@@ -180,12 +185,27 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   SupplicantInterfaceProxyInterface *GetSupplicantInterfaceProxy() {
     return wifi_->supplicant_interface_proxy_.get();
   }
-  void InitiateConnect(WiFiService *service) {
+  const string &GetSupplicantState() {
+    return wifi_->supplicant_state_;
+  }
+  void InitiateConnect(WiFiServiceRefPtr service) {
     map<string, ::DBus::Variant> params;
     wifi_->ConnectTo(service, params);
   }
   bool IsLinkUp() {
     return wifi_->link_up_;
+  }
+  MockWiFiServiceRefPtr MakeMockService() {
+    vector<uint8_t> ssid(1, 'a');
+    return new MockWiFiService(
+        &control_interface_,
+        &dispatcher_,
+        &manager_,
+        wifi_,
+        ssid,
+        flimflam::kModeManaged,
+        flimflam::kSecurityNone,
+        false);
   }
   void ReportBSS(const ::DBus::Path &bss_path,
                  const string &ssid,
@@ -197,6 +217,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
   void ReportScanDone() {
     wifi_->ScanDoneTask();
+  }
+  void ReportStateChanged(const string &new_state) {
+    wifi_->StateChanged(new_state);
   }
   void StartWiFi() {
     wifi_->Start();
@@ -737,6 +760,46 @@ TEST_F(WiFiMainTest, ScanHidden) {
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(HasHiddenSSID("an_ssid")));
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, InitialSupplicantState) {
+  EXPECT_EQ(WiFi::kInterfaceStateUnknown, GetSupplicantState());
+}
+
+TEST_F(WiFiMainTest, StateChangeNoService) {
+  // State change should succeed even if there is no pending Service.
+  ReportStateChanged(wpa_supplicant::kInterfaceStateScanning);
+  EXPECT_EQ(wpa_supplicant::kInterfaceStateScanning, GetSupplicantState());
+}
+
+TEST_F(WiFiMainTest, StateChangeWithService) {
+  // Forward transition should trigger a Service state change.
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  MockWiFiServiceRefPtr service = MakeMockService();
+  InitiateConnect(service);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateAssociating));
+  ReportStateChanged(wpa_supplicant::kInterfaceStateAssociated);
+  // Verify expectations now, because WiFi may report other state changes
+  // when WiFi is Stop()-ed (during TearDown()).
+  Mock::VerifyAndClearExpectations(service.get());
+}
+
+TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
+  // Some backwards transitions should not trigger a Service state change.
+  // Supplicant state should still be updated, however.
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  MockWiFiServiceRefPtr service = MakeMockService();
+  InitiateConnect(service);
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_CALL(*service.get(), SetState(_)).Times(0);
+  ReportStateChanged(wpa_supplicant::kInterfaceStateAuthenticating);
+  EXPECT_EQ(wpa_supplicant::kInterfaceStateAuthenticating,
+            GetSupplicantState());
+  // Verify expectations now, because WiFi may report other state changes
+  // when WiFi is Stop()-ed (during TearDown()).
+  Mock::VerifyAndClearExpectations(service.get());
 }
 
 }  // namespace shill

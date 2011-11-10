@@ -178,6 +178,10 @@ bool Service::IsActive(Error */*error*/) {
 }
 
 void Service::SetState(ConnectState state) {
+  // TODO(quiche): Print string, rather than enum.
+  LOG(INFO) << friendly_name_ << " " << __func__ << " "
+            << state_ << " -> " << state;
+
   if (state == state_) {
     return;
   }
