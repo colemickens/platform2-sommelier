@@ -40,6 +40,10 @@ class WiFiService : public Service {
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;
+  static bool ParseStorageIdentifier(const std::string &storage_name,
+                                     std::string *address,
+                                     std::string *mode,
+                                     std::string *security);
 
   const std::string &mode() const;
   const std::string &key_management() const;
@@ -53,6 +57,7 @@ class WiFiService : public Service {
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
 
+  virtual bool IsVisible() const;
   bool IsSecurityMatch(const std::string &security) const;
   bool hidden_ssid() const { return hidden_ssid_; }
 

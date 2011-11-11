@@ -148,7 +148,7 @@ void Manager::Stop() {
   device_info_.Stop();
 }
 
-void Manager::CreateProfile(const std::string &name, Error *error) {
+void Manager::CreateProfile(const string &name, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
@@ -216,13 +216,17 @@ void Manager::PushProfile(const string &name, Error *error) {
   profiles_.push_back(profile);
 
   // Offer each registered Service the opportunity to join this new Profile.
-  vector<ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
     profile->ConfigureService(*it);
   }
 
-  // TODO(pstew): Now shop the Profile contents around to Devices which
-  // can create non-visible services.
+  // Shop the Profile contents around to Devices which can create
+  // non-visible services.
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    profile->ConfigureDevice(*it);
+  }
 }
 
 void Manager::PopProfileInternal() {
@@ -240,12 +244,13 @@ void Manager::PopProfileInternal() {
       }
       if (p_it == profiles_.rend()) {
         ephemeral_profile_->AdoptService(*s_it);
+        (*s_it)->Unload();
       }
     }
   }
 }
 
-void Manager::PopProfile(const std::string &name, Error *error) {
+void Manager::PopProfile(const string &name, Error *error) {
   Profile::Identifier ident;
   if (profiles_.empty()) {
     Error::PopulateAndLog(error, Error::kNotFound, "Profile stack is empty");
@@ -294,16 +299,25 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   }
   devices_.push_back(to_manage);
 
-  // TODO(pstew): Should check configuration
-  if (running_)
-    to_manage->Start();
-
-  // NB: Should we keep a ptr to default profile and only persist that here?
+  // We are applying device properties from the DefaultProfile, and adding
+  // the union of hidden services in all loaded profiles to the device.
   for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
        it != profiles_.end();
        ++it) {
+    // Load device configuration, if any exists, as well as hidden services.
+    (*it)->ConfigureDevice(to_manage);
+
+    // Currently the only profile for which "Save" is implemented is the
+    // DefaultProfile.  It iterates over all Devices and stores their state.
+    // We perform the Save now in case the device we have just registered
+    // is new and needs to be added to the stored DefaultProfile.
     (*it)->Save();
   }
+
+  // In normal usage, running_ will always be true when we are here, however
+  // unit tests sometimes do things in otherwise invalid states.
+  if (running_ && to_manage->powered())
+    to_manage->Start();
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
@@ -323,8 +337,8 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   VLOG(2) << __func__ << to_manage->UniqueName();
 
   bool configured = false;
-  for (vector<ProfileRefPtr>::iterator it = profiles_.begin();
-       !configured && it != profiles_.end();
+  for (vector<ProfileRefPtr>::reverse_iterator it = profiles_.rbegin();
+       !configured && it != profiles_.rend();
        ++it) {
     configured = (*it)->ConfigureService(to_manage);
   }
@@ -340,13 +354,6 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   }
   services_.push_back(to_manage);
   SortServices();
-
-  vector<string> service_paths;
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    service_paths.push_back((*it)->GetRpcIdentifier());
-  }
-  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
-                                          service_paths);
 }
 
 void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
@@ -406,6 +413,16 @@ void Manager::HelpRegisterDerivedStrings(
 
 void Manager::SortServices() {
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
+
+  vector<string> service_paths;
+  vector<ServiceRefPtr>::iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    if ((*it)->IsVisible()) {
+      service_paths.push_back((*it)->GetRpcIdentifier());
+    }
+  }
+  adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
+                                          service_paths);
 }
 
 string Manager::CalculateState(Error */*error*/) {
@@ -460,7 +477,7 @@ string Manager::GetActiveProfileName(Error */*error*/) {
 // called via RPC (e.g., from ManagerDBusAdaptor)
 WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
                                           Error *error) {
-  std::vector<DeviceRefPtr> wifi_devices;
+  vector<DeviceRefPtr> wifi_devices;
   FilterByTechnology(Technology::kWifi, &wifi_devices);
   if (wifi_devices.empty()) {
     error->Populate(Error::kInvalidArguments, kManagerErrorNoDevice);

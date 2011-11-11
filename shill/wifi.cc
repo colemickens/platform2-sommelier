@@ -30,6 +30,7 @@
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/proxy_factory.h"
+#include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
 #include "shill/wifi_endpoint.h"
@@ -66,7 +67,7 @@ WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Manager *manager,
            const string& link,
-           const std::string &address,
+           const string &address,
            int interface_index)
     : Device(control_interface,
              dispatcher,
@@ -107,7 +108,7 @@ void WiFi::Start() {
       proxy_factory_->CreateSupplicantProcessProxy(
           wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
   try {
-    std::map<string, DBus::Variant> create_interface_args;
+    map<string, DBus::Variant> create_interface_args;
     create_interface_args["Ifname"].writer().
         append_string(link_name().c_str());
     create_interface_args["Driver"].writer().
@@ -177,6 +178,11 @@ void WiFi::Stop() {
           << " ServiceMap entries.";
 }
 
+bool WiFi::Load(StoreInterface *storage) {
+  LoadHiddenServices(storage);
+  return Device::Load(storage);
+}
+
 void WiFi::Scan(Error */*error*/) {
   LOG(INFO) << __func__;
 
@@ -214,7 +220,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
 
 void WiFi::BSSAdded(
     const ::DBus::Path &/*BSS*/,
-    const std::map<string, ::DBus::Variant> &properties) {
+    const map<string, ::DBus::Variant> &properties) {
   // TODO(quiche): Write test to verify correct behavior in the case
   // where we get multiple BSSAdded events for a single endpoint.
   // (Old Endpoint's refcount should fall to zero, and old Endpoint
@@ -262,7 +268,6 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
-  // TODO(quiche): Add to favorite networks list?
 
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
@@ -274,9 +279,9 @@ void WiFi::ConnectTo(WiFiService *service,
   pending_service_ = service;
 }
 
-WiFiServiceRefPtr WiFi::FindService(const std::vector<uint8_t> &ssid,
-                                    const std::string &mode,
-                                    const std::string &security) const {
+WiFiServiceRefPtr WiFi::FindService(const vector<uint8_t> &ssid,
+                                    const string &mode,
+                                    const string &security) const {
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
@@ -294,10 +299,11 @@ ByteArrays WiFi::GetHiddenSSIDList() {
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
-    if ((*it)->hidden_ssid()) {
+    if ((*it)->hidden_ssid() && (*it)->favorite()) {
       hidden_ssids_set.insert((*it)->ssid());
     }
   }
+  VLOG(2) << "Found " << hidden_ssids_set.size() << " hidden services";
   ByteArrays hidden_ssids(hidden_ssids_set.begin(), hidden_ssids_set.end());
   if (!hidden_ssids.empty()) {
     // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
@@ -313,6 +319,87 @@ ByteArrays WiFi::GetHiddenSSIDList() {
     hidden_ssids.push_back(ByteArray());
   }
   return hidden_ssids;
+}
+
+bool WiFi::LoadHiddenServices(StoreInterface *storage) {
+  bool created_hidden_service = false;
+  set<string> groups = storage->GetGroupsWithKey(flimflam::kWifiHiddenSsid);
+  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
+    bool is_hidden = false;
+    if (!storage->GetBool(*it, flimflam::kWifiHiddenSsid, &is_hidden)) {
+      VLOG(2) << "Storage group " << *it << " returned by GetGroupsWithKey "
+              << "failed for GetBool(" << flimflam::kWifiHiddenSsid
+              << ") -- possible non-bool key";
+      continue;
+    }
+    if (!is_hidden) {
+      continue;
+    }
+    string ssid_hex;
+    vector<uint8_t> ssid_bytes;
+    if (!storage->GetString(*it, flimflam::kSSIDProperty, &ssid_hex) ||
+        !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
+      VLOG(2) << "Hidden network is missing/invalid \""
+              << flimflam::kSSIDProperty << "\" property";
+      continue;
+    }
+    string device_address;
+    string network_mode;
+    string security;
+    // It is gross that we have to do this, but the only place we can
+    // get information about the service is from its storage name.
+    if (!WiFiService::ParseStorageIdentifier(*it, &device_address,
+                                             &network_mode, &security) ||
+        device_address != address()) {
+      VLOG(2) << "Hidden network has unparsable storage identifier \""
+              << *it << "\"";
+      continue;
+    }
+    if (FindService(ssid_bytes, network_mode, security).get()) {
+      // If service already exists, we have nothing to do, since the
+      // service has already loaded its configuration from storage.
+      // This is guaranteed to happen in both cases where Load() is
+      // called on a device (via a ConfigureDevice() call on the
+      // profile):
+      //  - In RegisterDevice() the Device hasn't been started yet,
+      //    so it has no services registered, except for those
+      //    created by previous iterations of LoadHiddenService().
+      //    The latter can happen if another profile in the Manager's
+      //    stack defines the same ssid/mode/security.  Even this
+      //    case is okay, since even if the profiles differ
+      //    materially on configuration and credentials, the "right"
+      //    one will be configured in the course of the
+      //    RegisterService() call below.
+      // - In PushProfile(), all registered services have been
+      //   introduced to the profile via ConfigureService() prior
+      //   to calling ConfigureDevice() on the profile.
+      continue;
+    }
+    WiFiServiceRefPtr service(new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              manager(),
+                                              this,
+                                              ssid_bytes,
+                                              network_mode,
+                                              security,
+                                              true));
+    services_.push_back(service);
+
+    // By registering the service, the rest of the configuration
+    // will be loaded from the profile into the service via ConfigureService().
+    manager()->RegisterService(service);
+
+    created_hidden_service = true;
+  }
+
+  // If we are idle and we created a service as a result of opening the
+  // profile, we should initiate a scan for our new hidden SSID.
+  if (running() && created_hidden_service &&
+      supplicant_state_ == wpa_supplicant::kInterfaceStateInactive) {
+    Scan(NULL);
+  }
+
+  return created_hidden_service;
 }
 
 void WiFi::ScanDoneTask() {
@@ -360,7 +447,7 @@ void WiFi::ScanDoneTask() {
 
 void WiFi::ScanTask() {
   VLOG(2) << "WiFi " << link_name() << " scan requested.";
-  std::map<string, DBus::Variant> scan_args;
+  map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
 

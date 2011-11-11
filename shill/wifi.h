@@ -38,6 +38,7 @@ class WiFi : public Device {
 
   virtual void Start();
   virtual void Stop();
+  virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
@@ -60,8 +61,6 @@ class WiFi : public Device {
 
  private:
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
-  FRIEND_TEST(WiFiMainTest, FindServiceWEP);
-  FRIEND_TEST(WiFiMainTest, FindServiceWPA);
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
@@ -81,6 +80,9 @@ class WiFi : public Device {
                                 const std::string &mode,
                                 const std::string &security) const;
   ByteArrays GetHiddenSSIDList();
+  // Create services for hidden networks stored in |storage|.  Returns true
+  // if any were found, otherwise returns false.
+  bool LoadHiddenServices(StoreInterface *storage);
   void ScanDoneTask();
   void ScanTask();
   void StateChanged(const std::string &new_state);

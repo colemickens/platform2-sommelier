@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
@@ -35,9 +36,9 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager,
                          const WiFiRefPtr &device,
-                         const std::vector<uint8_t> &ssid,
-                         const std::string &mode,
-                         const std::string &security,
+                         const vector<uint8_t> &ssid,
+                         const string &mode,
+                         const string &security,
                          bool hidden_ssid)
     : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
       need_passphrase_(false),
@@ -112,7 +113,6 @@ void WiFiService::Connect(Error */*error*/) {
 
 void WiFiService::Disconnect() {
   // TODO(quiche) RemoveNetwork from supplicant
-  // XXX remove from favorite networks list?
 }
 
 bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
@@ -130,7 +130,7 @@ const string &WiFiService::key_management() const {
   return GetEAPKeyManagement();
 }
 
-const std::vector<uint8_t> &WiFiService::ssid() const {
+const vector<uint8_t> &WiFiService::ssid() const {
   return ssid_;
 }
 
@@ -152,6 +152,17 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
 bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
   return storage->ContainsGroup(GetGenericStorageIdentifier()) ||
       storage->ContainsGroup(GetSpecificStorageIdentifier());
+}
+
+bool WiFiService::IsVisible() const {
+  // TODO(quiche): Write a function that returns whether (or which)
+  // endpoints are associated with this service.  crosbug.com/22948
+  const bool is_visible_in_scan = true;
+
+  // WiFi Services should be displayed only if they are in range (have
+  // endpoints that have shown up in a scan) or if the service is actively
+  // being connected.
+  return is_visible_in_scan || IsConnected() || IsConnecting();
 }
 
 bool WiFiService::Load(StoreInterface *storage) {
@@ -416,6 +427,22 @@ string WiFiService::GetSecurityClass(const string &security) {
   } else {
     return security;
   }
+}
+
+// static
+bool WiFiService::ParseStorageIdentifier(const string &storage_name,
+                                         string *address,
+                                         string *mode,
+                                         string *security) {
+  vector<string> wifi_parts;
+  base::SplitString(storage_name, '_', &wifi_parts);
+  if (wifi_parts.size() != 5 || wifi_parts[0] != flimflam::kTypeWifi) {
+    return false;
+  }
+  *address = wifi_parts[1];
+  *mode = wifi_parts[3];
+  *security = wifi_parts[4];
+  return true;
 }
 
 string WiFiService::GetGenericStorageIdentifier() const {

@@ -137,11 +137,15 @@ bool Profile::ConfigureService(const ServiceRefPtr &service) {
   return service->Load(storage_.get());
 }
 
+bool Profile::ConfigureDevice(const DeviceRefPtr &device) {
+  return device->Load(storage_.get());
+}
+
 bool Profile::ContainsService(const ServiceConstRefPtr &service) {
   return service->IsLoadableFrom(storage_.get());
 }
 
-bool Profile::IsValidIdentifierToken(const std::string &token) {
+bool Profile::IsValidIdentifierToken(const string &token) {
   if (token.empty()) {
     return false;
   }

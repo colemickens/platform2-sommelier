@@ -173,6 +173,27 @@ TEST_F(ManagerTest, DeviceRegistration) {
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[2], Technology::kCellular));
 }
 
+TEST_F(ManagerTest, DeviceRegistrationAndStart) {
+  manager()->running_ = true;
+  mock_devices_[0]->powered_ = true;
+  mock_devices_[1]->powered_ = false;
+  EXPECT_CALL(*mock_devices_[0].get(), Start())
+      .Times(1);
+  EXPECT_CALL(*mock_devices_[1].get(), Start())
+      .Times(0);
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+}
+
+TEST_F(ManagerTest, DeviceRegistrationWithProfile) {
+  MockProfile *profile = new MockProfile(control_interface(), manager(), "");
+  DeviceRefPtr device_ref(mock_devices_[0].get());
+  AdoptProfile(manager(), profile);  // Passes ownership.
+  EXPECT_CALL(*profile, ConfigureDevice(device_ref));
+  EXPECT_CALL(*profile, Save());
+  manager()->RegisterDevice(mock_devices_[0]);
+}
+
 TEST_F(ManagerTest, DeviceDeregistration) {
   ON_CALL(*mock_devices_[0].get(), TechnologyIs(Technology::kEthernet))
       .WillByDefault(Return(true));

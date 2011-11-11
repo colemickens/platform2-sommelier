@@ -107,6 +107,36 @@ TEST_F(KeyFileStoreTest, GetGroups) {
   ASSERT_TRUE(store_.Close());
 }
 
+TEST_F(KeyFileStoreTest, GetGroupsWithKey) {
+  static const char kGroupA[] = "g-a";
+  static const char kGroupB[] = "g-b";
+  static const char kGroupC[] = "g-c";
+  static const char kKeyA[] = "k-a";
+  static const char kKeyB[] = "k-b";
+  static const char kValue[] = "true";
+  WriteKeyFile(base::StringPrintf("[%s]\n"
+                                  "%s=%s\n"
+                                  "[%s]\n"
+                                  "%s=%s\n"
+                                  "%s=%s\n"
+                                  "[%s]\n"
+                                  "%s=%s\n",
+                                  kGroupA, kKeyA, kValue,
+                                  kGroupB, kKeyA, kValue, kKeyB, kValue,
+                                  kGroupC, kKeyB, kValue));
+  EXPECT_TRUE(store_.IsNonEmpty());
+  ASSERT_TRUE(store_.Open());
+  set<string> groups_a = store_.GetGroupsWithKey(kKeyA);
+  EXPECT_EQ(2, groups_a.size());
+  EXPECT_TRUE(ContainsKey(groups_a, kGroupA));
+  EXPECT_TRUE(ContainsKey(groups_a, kGroupB));
+  set<string> groups_b = store_.GetGroupsWithKey(kKeyB);
+  EXPECT_EQ(2, groups_b.size());
+  EXPECT_TRUE(ContainsKey(groups_b, kGroupB));
+  EXPECT_TRUE(ContainsKey(groups_b, kGroupC));
+  ASSERT_TRUE(store_.Close());
+}
+
 TEST_F(KeyFileStoreTest, ContainsGroup) {
   static const char kGroupA[] = "group-a";
   static const char kGroupB[] = "group-b";

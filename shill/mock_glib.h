@@ -54,6 +54,10 @@ class MockGLib : public GLib {
                                               GError **error));
   MOCK_METHOD2(KeyFileHasGroup, gboolean(GKeyFile *key_file,
                                          const gchar *group_name));
+  MOCK_METHOD4(KeyFileHasKey, gboolean(GKeyFile *key_file,
+                                       const gchar *group_name,
+                                       const gchar *key,
+                                       GError **error));
   MOCK_METHOD4(KeyFileLoadFromFile, gboolean(GKeyFile *key_file,
                                              const gchar *file,
                                              GKeyFileFlags flags,

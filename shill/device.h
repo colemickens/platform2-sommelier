@@ -77,6 +77,7 @@ class Device : public base::RefCounted<Device> {
   const std::string &link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }
+  bool powered() const { return powered_; }
 
   const std::string &FriendlyName() const;
 
@@ -90,7 +91,12 @@ class Device : public base::RefCounted<Device> {
 
   EventDispatcher *dispatcher() const { return dispatcher_; }
 
-  bool Load(StoreInterface *storage);
+  // Load configuration for the device from |storage|.  This may include
+  // instantiating non-visible services for which configuration has been
+  // stored.
+  virtual bool Load(StoreInterface *storage);
+
+  // Save configuration for the device to |storage|.
   virtual bool Save(StoreInterface *storage);
 
   void set_dhcp_provider(DHCPProvider *provider) { dhcp_provider_ = provider; }
@@ -103,6 +109,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, Stop);
+  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(WiFiMainTest, Connect);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
@@ -139,6 +146,7 @@ class Device : public base::RefCounted<Device> {
   // Property getters reserved for subclasses
   ControlInterface *control_interface() const { return control_interface_; }
   Manager *manager() const { return manager_; }
+  bool running() const { return running_; }
 
  private:
   friend class DeviceAdaptorInterface;
@@ -162,14 +170,14 @@ class Device : public base::RefCounted<Device> {
   std::string GetRpcConnectionIdentifier();
 
   // Properties
-  bool powered_;  // TODO(pstew): Is this what |running_| is for?
+  bool powered_;  // indicates whether the device is configured to operate
   bool reconnect_;
   const std::string hardware_address_;
 
   PropertyStore store_;
 
   const int interface_index_;
-  bool running_;
+  bool running_;  // indicates whether the device is actually in operation
   const std::string link_name_;
   const std::string unique_id_;
   ControlInterface *control_interface_;

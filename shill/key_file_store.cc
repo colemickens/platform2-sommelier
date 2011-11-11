@@ -95,7 +95,7 @@ bool KeyFileStore::Flush() {
 set<string> KeyFileStore::GetGroups() {
   CHECK(key_file_);
   gsize length = 0;
-  gchar **groups = g_key_file_get_groups(key_file_, &length);
+  gchar **groups = glib_->KeyFileGetGroups(key_file_, &length);
   if (!groups) {
     LOG(ERROR) << "Unable to obtain groups.";
     return set<string>();
@@ -103,6 +103,19 @@ set<string> KeyFileStore::GetGroups() {
   set<string> group_set(groups, groups + length);
   glib_->Strfreev(groups);
   return group_set;
+}
+
+// Returns a set so that caller can easily test whether a particular group
+// is contained within this collection.
+set<string> KeyFileStore::GetGroupsWithKey(const string &key) {
+  set<string> groups = GetGroups();
+  set<string> groups_with_key;
+  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
+    if (glib_->KeyFileHasKey(key_file_, (*it).c_str(), key.c_str(), NULL)) {
+      groups_with_key.insert(*it);
+    }
+  }
+  return groups_with_key;
 }
 
 bool KeyFileStore::ContainsGroup(const string &group) {

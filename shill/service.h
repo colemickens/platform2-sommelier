@@ -133,8 +133,16 @@ class Service : public base::RefCounted<Service> {
   // Loads the service from persistent |storage|. Returns true on success.
   virtual bool Load(StoreInterface *storage);
 
+  // Indicate to service that it is no longer persisted to storage.  It
+  // should purge any stored profile state (e.g., credentials).
+  virtual void Unload();
+
   // Saves the service to persistent |storage|. Returns true on success.
   virtual bool Save(StoreInterface *storage);
+
+  // Returns true if the service RPC identifier should be part of the
+  // manager's advertised services list, false otherwise.
+  virtual bool IsVisible() const { return true; }
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }

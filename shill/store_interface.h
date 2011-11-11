@@ -22,6 +22,9 @@ class StoreInterface {
   // Returns a set of all groups contained in the store.
   virtual std::set<std::string> GetGroups() = 0;
 
+  // Returns the names of all groups that contain the named |key|.
+  virtual std::set<std::string> GetGroupsWithKey(const std::string &key) = 0;
+
   // Returns true if the store contains |group|, false otherwise.
   virtual bool ContainsGroup(const std::string &group) = 0;
 

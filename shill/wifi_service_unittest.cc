@@ -372,4 +372,27 @@ TEST_F(WiFiServiceSecurityTest, LoadMapping) {
                               false));
 }
 
+TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
+  vector<uint8_t> ssid(5);
+  ssid.push_back(0xff);
+
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  const string storage_id = service->GetStorageIdentifier();
+  string address;
+  string mode;
+  string security;
+  EXPECT_TRUE(service->ParseStorageIdentifier(storage_id, &address, &mode,
+                                              &security));
+  EXPECT_EQ(StringToLowerASCII(string(fake_mac)), address);
+  EXPECT_EQ(flimflam::kModeManaged, mode);
+  EXPECT_EQ(flimflam::kSecurityNone, security);
+}
+
 }  // namespace shill

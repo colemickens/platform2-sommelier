@@ -69,6 +69,11 @@ class GLib {
   // g_key_file_has_group
   virtual gboolean KeyFileHasGroup(GKeyFile *key_file,
                                    const gchar *group_name);
+  // g_key_file_has_key
+  virtual gboolean KeyFileHasKey(GKeyFile *key_file,
+                                 const gchar *group_name,
+                                 const gchar *key,
+                                 GError **error);
   // g_key_file_load_from_file
   virtual gboolean KeyFileLoadFromFile(GKeyFile *key_file,
                                        const gchar *file,

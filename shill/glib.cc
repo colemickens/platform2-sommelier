@@ -108,6 +108,13 @@ gboolean GLib::KeyFileHasGroup(GKeyFile *key_file,
   return g_key_file_has_group(key_file, group_name);
 }
 
+gboolean GLib::KeyFileHasKey(GKeyFile *key_file,
+                             const gchar *group_name,
+                             const gchar *key,
+                             GError **error) {
+  return g_key_file_has_key(key_file, group_name, key, error);
+}
+
 GKeyFile *GLib::KeyFileNew() {
   return g_key_file_new();
 }

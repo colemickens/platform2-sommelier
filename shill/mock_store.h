@@ -19,6 +19,8 @@ class MockStore : public StoreInterface {
 
   MOCK_METHOD0(Flush, bool());
   MOCK_METHOD0(GetGroups, std::set<std::string>());
+  MOCK_METHOD1(GetGroupsWithKey,
+               std::set<std::string>(const std::string &key));
   MOCK_METHOD1(ContainsGroup, bool(const std::string &group));
   MOCK_METHOD2(DeleteKey,
                bool(const std::string &group, const std::string &key));

@@ -96,6 +96,7 @@ class Manager {
  private:
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, PushPopProfile);
   FRIEND_TEST(ManagerTest, SortServices);
 

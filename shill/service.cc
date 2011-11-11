@@ -159,8 +159,7 @@ Service::Service(ControlInterface *control_interface,
 
 Service::~Service() {}
 
-void Service::ActivateCellularModem(const std::string &/*carrier*/,
-                                    Error *error) {
+void Service::ActivateCellularModem(const string &/*carrier*/, Error *error) {
   const string kMessage = "Service doesn't support cellular modem activation.";
   LOG(ERROR) << kMessage;
   CHECK(error);
@@ -235,7 +234,18 @@ bool Service::Load(StoreInterface *storage) {
   // "APN"
   // "LastGoodAPN"
 
+  favorite_ = true;
+
   return true;
+}
+
+void Service::Unload() {
+  auto_connect_ = false;
+  favorite_ = false;
+  // TODO(pstew): Call a centralized function to purge all profile-set
+  // state.  This should be called both from Load() and Unload() since
+  // even in Load() profiles aren't cumulative -- they're exclusive.
+  // crosbug.com/22946
 }
 
 bool Service::Save(StoreInterface *storage) {

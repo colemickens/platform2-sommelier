@@ -10,11 +10,13 @@
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -32,6 +34,7 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_rtnl_handler.h"
+#include "shill/mock_store.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/mock_wifi_service.h"
@@ -44,15 +47,20 @@
 #include "shill/wpa_supplicant.h"
 
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DefaultValue;
+using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
+using ::testing::StrEq;
+using ::testing::StrictMock;
 using ::testing::Test;
 using ::testing::Throw;
 using ::testing::Values;
@@ -227,15 +235,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   void StopWiFi() {
     wifi_->Stop();
   }
-  void GetHiddenService(const char *service_type,
-                        const char *ssid,
-                        const char *mode,
-                        Error *result) {
-    WiFiServiceRefPtr service =
-        GetServiceInner(service_type, ssid, mode, NULL, NULL, true, result);
-    EXPECT_TRUE(service->hidden_ssid());
-  }
-  void GetOpenService(const char *service_type,
+ void GetOpenService(const char *service_type,
                       const char *ssid,
                       const char *mode,
                       Error *result) {
@@ -255,7 +255,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                                     const char *mode,
                                     const char *security,
                                     const char *passphrase,
-                                    bool hidden,
+                                    bool allow_hidden,
                                     Error *result) {
     map<string, ::DBus::Variant> args;
     // in general, we want to avoid D-Bus specific code for any RPCs
@@ -272,13 +272,37 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
       args[flimflam::kSecurityProperty].writer().append_string(security);
     if (passphrase != NULL)
       args[flimflam::kPassphraseProperty].writer().append_string(passphrase);
-    if (hidden)
-      args[flimflam::kWifiHiddenSsid].writer().append_bool(true);
+    if (!allow_hidden)
+      args[flimflam::kWifiHiddenSsid].writer().append_bool(false);
 
     Error e;
     KeyValueStore args_kv;
     DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &e);
     return wifi_->GetService(args_kv, result);
+  }
+  WiFiServiceRefPtr FindService(const vector<uint8_t> &ssid,
+                                const string &mode,
+                                const string &security) {
+    return wifi_->FindService(ssid, mode, security);
+  }
+  bool LoadHiddenServices(StoreInterface *storage) {
+    return wifi_->LoadHiddenServices(storage);
+  }
+  void SetupHiddenStorage(MockStore *storage, const string &ssid, string *id) {
+    const string hex_ssid = base::HexEncode(ssid.data(), ssid.size());
+    *id = StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+                                                flimflam::kTypeWifi,
+                                                kDeviceAddress,
+                                                hex_ssid.c_str(),
+                                                flimflam::kModeManaged,
+                                                flimflam::kSecurityNone));
+    const char *groups[] = { id->c_str() };
+    EXPECT_CALL(*storage, GetGroupsWithKey(flimflam::kWifiHiddenSsid))
+        .WillRepeatedly(Return(set<string>(groups, groups + 1)));
+    EXPECT_CALL(*storage, GetBool(StrEq(*id), flimflam::kWifiHiddenSsid, _))
+        .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
+    EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
+        .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
   }
   MockManager *manager() {
     return &manager_;
@@ -314,7 +338,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
 };
 
 const char WiFiMainTest::kDeviceName[] = "wlan0";
-const char WiFiMainTest::kDeviceAddress[] = "00:01:02:03:04:05";
+const char WiFiMainTest::kDeviceAddress[] = "000102030405";
 const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
 
@@ -475,7 +499,7 @@ TEST_F(WiFiMainTest, Stop) {
 
 TEST_F(WiFiMainTest, GetWifiServiceOpen) {
   Error e;
-  GetOpenService("wifi", "an_ssid", flimflam::kModeManaged, &e);
+  GetOpenService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
@@ -488,7 +512,7 @@ TEST_F(WiFiMainTest, GetWifiServiceOpenNoType) {
 
 TEST_F(WiFiMainTest, GetWifiServiceOpenNoSSID) {
   Error e;
-  GetOpenService("wifi", NULL, flimflam::kModeManaged, &e);
+  GetOpenService(flimflam::kTypeWifi, NULL, flimflam::kModeManaged, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_EQ("must specify SSID", e.message());
 }
@@ -496,149 +520,151 @@ TEST_F(WiFiMainTest, GetWifiServiceOpenNoSSID) {
 TEST_F(WiFiMainTest, GetWifiServiceOpenLongSSID) {
   Error e;
   GetOpenService(
-      "wifi", "123456789012345678901234567890123", flimflam::kModeManaged, &e);
+      flimflam::kTypeWifi, "123456789012345678901234567890123",
+      flimflam::kModeManaged, &e);
   EXPECT_EQ(Error::kInvalidNetworkName, e.type());
   EXPECT_EQ("SSID is too long", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpenShortSSID) {
   Error e;
-  GetOpenService("wifi", "", flimflam::kModeManaged, &e);
+  GetOpenService(flimflam::kTypeWifi, "", flimflam::kModeManaged, &e);
   EXPECT_EQ(Error::kInvalidNetworkName, e.type());
   EXPECT_EQ("SSID is too short", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpenBadMode) {
   Error e;
-  GetOpenService("wifi", "an_ssid", "ad-hoc", &e);
+  GetOpenService(flimflam::kTypeWifi, "an_ssid", "ad-hoc", &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service mode is unsupported", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceOpenNoMode) {
   Error e;
-  GetOpenService("wifi", "an_ssid", NULL, &e);
+  GetOpenService(flimflam::kTypeWifi, "an_ssid", NULL, &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceRSN) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityRsn,
-             "secure password", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityRsn, "secure password", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceRSNNoPassword) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityRsn,
-             NULL, &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityRsn, NULL, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_EQ("must specify passphrase", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceBadSecurity) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, "rot-13", NULL, &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, "rot-13",
+             NULL, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("security mode is unsupported", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEPNoPassword) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             NULL, &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, NULL, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_EQ("must specify passphrase", e.message());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEPEmptyPassword) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "", &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40ASCII) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "abcde", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "abcde", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP104ASCII) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "abcdefghijklm", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "abcdefghijklm", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40ASCIIWithKeyIndex) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0:abcdefghijklm", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0:abcdefghijklm", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40Hex) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0102030405", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0102030405", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40HexBadPassphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "O102030405", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "O102030405", &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithKeyIndexBadPassphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "1:O102030405", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "1:O102030405", &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithKeyIndexAndBaseBadPassphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "1:0xO102030405", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "1:0xO102030405", &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP40HexWithBaseBadPassphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0xO102030405", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0xO102030405", &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP104Hex) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0102030405060708090a0b0c0d", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0102030405060708090a0b0c0d", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP104HexUppercase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0102030405060708090A0B0C0D", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0102030405060708090A0B0C0D", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP104HexWithKeyIndex) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0:0102030405060708090a0b0c0d", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0:0102030405060708090a0b0c0d", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiFiMainTest, GetWifiServiceWEP104HexWithKeyIndexAndBase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWep,
-             "0:0x0102030405060708090a0b0c0d", &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWep, "0:0x0102030405060708090a0b0c0d", &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
@@ -647,15 +673,15 @@ class WiFiGetServiceFailureTest : public WiFiMainTest {};
 
 TEST_P(WiFiGetServiceSuccessTest, Passphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWpa,
-             GetParam().c_str(), &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWpa, GetParam().c_str(), &e);
   EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_P(WiFiGetServiceFailureTest, Passphrase) {
   Error e;
-  GetService("wifi", "an_ssid", flimflam::kModeManaged, flimflam::kSecurityWpa,
-             GetParam().c_str(), &e);
+  GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+             flimflam::kSecurityWpa, GetParam().c_str(), &e);
   EXPECT_EQ(Error::kInvalidPassphrase, e.type());
 }
 
@@ -681,54 +707,52 @@ TEST_F(WiFiMainTest, FindServiceWEP) {
   const string ssid("an_ssid");
   {
     Error e;
-    GetService("wifi", ssid.c_str(), flimflam::kModeManaged,
+    GetService(flimflam::kTypeWifi, ssid.c_str(), flimflam::kModeManaged,
                flimflam::kSecurityWep, "abcde", &e);
     EXPECT_TRUE(e.IsSuccess());
   }
   vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
 
-  EXPECT_TRUE(wifi()->FindService(ssid_bytes, flimflam::kModeManaged,
-                                  flimflam::kSecurityWep).get());
-  EXPECT_FALSE(wifi()->FindService(ssid_bytes, flimflam::kModeManaged,
-                                   flimflam::kSecurityWpa).get());
+  EXPECT_TRUE(FindService(ssid_bytes, flimflam::kModeManaged,
+                          flimflam::kSecurityWep).get());
+  EXPECT_FALSE(FindService(ssid_bytes, flimflam::kModeManaged,
+                           flimflam::kSecurityWpa).get());
 }
 
 TEST_F(WiFiMainTest, FindServiceWPA) {
   const string ssid("an_ssid");
   {
     Error e;
-    GetService("wifi", ssid.c_str(), flimflam::kModeManaged,
+    GetService(flimflam::kTypeWifi, ssid.c_str(), flimflam::kModeManaged,
                flimflam::kSecurityRsn, "abcdefgh", &e);
     EXPECT_TRUE(e.IsSuccess());
   }
   vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-  WiFiServiceRefPtr wpa_service(
-      wifi()->FindService(ssid_bytes, flimflam::kModeManaged,
-                          flimflam::kSecurityWpa));
+  WiFiServiceRefPtr wpa_service(FindService(ssid_bytes, flimflam::kModeManaged,
+                                            flimflam::kSecurityWpa));
   EXPECT_TRUE(wpa_service.get());
-  WiFiServiceRefPtr rsn_service(
-      wifi()->FindService(ssid_bytes, flimflam::kModeManaged,
-                          flimflam::kSecurityRsn));
+  WiFiServiceRefPtr rsn_service(FindService(ssid_bytes, flimflam::kModeManaged,
+                                            flimflam::kSecurityRsn));
   EXPECT_TRUE(rsn_service.get());
   EXPECT_EQ(wpa_service.get(), rsn_service.get());
-  WiFiServiceRefPtr psk_service(
-      wifi()->FindService(ssid_bytes, flimflam::kModeManaged,
-                          flimflam::kSecurityPsk));
+  WiFiServiceRefPtr psk_service(FindService(ssid_bytes, flimflam::kModeManaged,
+                                            flimflam::kSecurityPsk));
   EXPECT_EQ(wpa_service.get(), psk_service.get());
   // Indirectly test FindService by doing a GetService on something that
   // already exists.
   {
     Error e;
     WiFiServiceRefPtr wpa_service2(
-        GetServiceInner("wifi", ssid.c_str(), flimflam::kModeManaged,
-                        flimflam::kSecurityWpa, "abcdefgh", false, &e));
+        GetServiceInner(flimflam::kTypeWifi, ssid.c_str(),
+                        flimflam::kModeManaged, flimflam::kSecurityWpa,
+                        "abcdefgh", false, &e));
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_EQ(wpa_service.get(), wpa_service2.get());
   }
 }
 
 MATCHER_P(HasHiddenSSID, ssid, "") {
-  std::map<string, DBus::Variant>::const_iterator it =
+  map<string, DBus::Variant>::const_iterator it =
       arg.find(wpa_supplicant::kPropertyScanSSIDs);
   if (it == arg.end()) {
     return false;
@@ -754,10 +778,36 @@ TEST_F(WiFiMainTest, ScanHidden) {
           DBus::Error(
               "fi.w1.wpa_supplicant1.InterfaceUnknown",
               "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
-  Error e;
-  GetHiddenService("wifi", "an_ssid", flimflam::kModeManaged, &e);
-  EXPECT_TRUE(e.IsSuccess());
-  EXPECT_CALL(*supplicant_interface_proxy_, Scan(HasHiddenSSID("an_ssid")));
+  {
+    // Create a hidden, favorite service.
+    Error e;
+    WiFiServiceRefPtr service =
+        GetServiceInner(flimflam::kTypeWifi, "ssid0", flimflam::kModeManaged,
+                        NULL, NULL, true, &e);
+    EXPECT_TRUE(e.IsSuccess());
+    EXPECT_TRUE(service->hidden_ssid());
+    service->set_favorite(true);
+  }
+  {
+    // Create a hidden, non-favorite service.
+    Error e;
+    WiFiServiceRefPtr service =
+        GetServiceInner(flimflam::kTypeWifi, "ssid1", flimflam::kModeManaged,
+                        NULL, NULL, true, &e);
+    EXPECT_TRUE(e.IsSuccess());
+    EXPECT_TRUE(service->hidden_ssid());
+  }
+  {
+    // Create a non-hidden, favorite service.
+    Error e;
+    WiFiServiceRefPtr service =
+        GetServiceInner(flimflam::kTypeWifi, "ssid2", flimflam::kModeManaged,
+                        NULL, NULL, false, &e);
+    EXPECT_TRUE(e.IsSuccess());
+    EXPECT_FALSE(service->hidden_ssid());
+    service->set_favorite(true);
+  }
+  EXPECT_CALL(*supplicant_interface_proxy_, Scan(HasHiddenSSID("ssid0")));
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
 }
@@ -800,6 +850,65 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Verify expectations now, because WiFi may report other state changes
   // when WiFi is Stop()-ed (during TearDown()).
   Mock::VerifyAndClearExpectations(service.get());
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesFailWithNoGroups) {
+  StrictMock<MockStore> storage;
+  EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kWifiHiddenSsid))
+      .WillOnce(Return(set<string>()));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesFailWithMissingHidden) {
+  string id;
+  StrictMock<MockStore> storage;
+  SetupHiddenStorage(&storage, "an_ssid", &id);
+  // Missing "Hidden" property.
+  EXPECT_CALL(storage, GetBool(StrEq(id), flimflam::kWifiHiddenSsid, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesFailWithFalseHidden) {
+  string id;
+  StrictMock<MockStore> storage;
+  SetupHiddenStorage(&storage, "an_ssid", &id);
+  // "Hidden" property set to "false".
+  EXPECT_CALL(storage, GetBool(StrEq(id), flimflam::kWifiHiddenSsid, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(true), Return(false)));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesFailWithMissingSSID) {
+  string id;
+  StrictMock<MockStore> storage;
+  SetupHiddenStorage(&storage, "an_ssid", &id);
+  // Missing "SSID" property.
+  EXPECT_CALL(storage, GetString(StrEq(id), flimflam::kSSIDProperty, _))
+      .WillOnce(Return(false));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+
+TEST_F(WiFiMainTest, LoadHiddenServicesFailWithFoundService) {
+  StrictMock<MockStore> storage;
+  string id;
+  SetupHiddenStorage(&storage, "an_ssid", &id);
+  Error e;
+  GetOpenService(flimflam::kTypeWifi, "an_ssid", NULL, &e);
+  ASSERT_TRUE(e.IsSuccess());
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesSuccess) {
+  StrictMock<MockStore> storage;
+  string ssid("an_ssid");
+  string id;
+  SetupHiddenStorage(&storage, ssid, &id);
+  EXPECT_TRUE(LoadHiddenServices(&storage));
+  vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
+  EXPECT_TRUE(FindService(ssid_bytes, flimflam::kModeManaged,
+                          flimflam::kSecurityNone).get());
 }
 
 }  // namespace shill
