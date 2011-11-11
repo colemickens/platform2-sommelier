@@ -59,6 +59,7 @@ DiskManager::DiskManager(const string& mount_root, Platform* platform,
 }
 
 DiskManager::~DiskManager() {
+  UnmountAll();
   udev_monitor_unref(udev_monitor_);
   udev_unref(udev_);
 }

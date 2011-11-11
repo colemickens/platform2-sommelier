@@ -66,6 +66,10 @@ ArchiveManager::ArchiveManager(const string& mount_root,
       avfs_started_(false) {
 }
 
+ArchiveManager::~ArchiveManager() {
+  UnmountAll();
+}
+
 bool ArchiveManager::Initialize() {
   RegisterDefaultFileExtensions();
   return MountManager::Initialize();

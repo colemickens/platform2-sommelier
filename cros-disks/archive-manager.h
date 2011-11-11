@@ -21,6 +21,7 @@ class ArchiveManager : public MountManager {
  public:
   ArchiveManager(const std::string& mount_root, Platform* platform,
                  Metrics* metrics);
+  virtual ~ArchiveManager();
 
   // Initializes the manager and registers default file extensions.
   // Returns true on success.

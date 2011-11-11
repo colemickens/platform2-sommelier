@@ -45,7 +45,9 @@ MountManager::MountManager(const string& mount_root, Platform* platform,
 }
 
 MountManager::~MountManager() {
-  UnmountAll();
+  // UnmountAll() should be called from a derived class instead of this base
+  // class as UnmountAll() eventually calls DoUnmount(), which is a pure
+  // virtual function and may crash when being invoked here.
 }
 
 bool MountManager::Initialize() {
