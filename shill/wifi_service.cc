@@ -49,7 +49,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
-  store->RegisterString(flimflam::kPassphraseProperty, &passphrase_);
+  store->RegisterWriteOnlyString(flimflam::kPassphraseProperty, &passphrase_);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
   store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);

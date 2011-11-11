@@ -61,7 +61,7 @@ const char WiFiServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 class WiFiServiceSecurityTest : public WiFiServiceTest {
  public:
   WiFiServiceRefPtr CreateServiceWithSecurity(const string &security) {
-    vector<uint8_t> ssid(5, 0);
+    vector<uint8_t> ssid(5);
     ssid.push_back(0xff);
 
     return new WiFiService(control_interface(),
@@ -125,13 +125,8 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
   }
 };
 
-MATCHER(WPASecurityArgs, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
-}
-
 TEST_F(WiFiServiceTest, StorageId) {
-  vector<uint8_t> ssid(5, 0);
+  vector<uint8_t> ssid(5);
   ssid.push_back(0xff);
 
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
@@ -154,6 +149,24 @@ TEST_F(WiFiServiceTest, StorageId) {
   EXPECT_NE(id.find(string(flimflam::kModeManaged), mac_pos), string::npos);
 }
 
+// Make sure the passphrase is registered as a write only property
+// by reading and comparing all string properties returned on the store.
+TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityWpa,
+                                                   false);
+  ReadablePropertyConstIterator<string> it =
+      (wifi_service->store()).GetStringPropertiesIter();
+  for( ; !it.AtEnd(); it.Advance())
+    EXPECT_NE(it.Key(), flimflam::kPassphraseProperty);
+}
+
 TEST_F(WiFiServiceTest, NonUTF8SSID) {
   vector<uint8_t> ssid;
 
@@ -171,8 +184,13 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
   DBusAdaptor::GetProperties(wifi_service->store(), &properties, NULL);
 }
 
+MATCHER(WPASecurityArgs, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
+}
+
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
-  vector<uint8_t> ssid(5, 0);
+  vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
                                                    manager(),
@@ -187,7 +205,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
-  vector<uint8_t> ssid(5, 0);
+  vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
                                                    manager(),
@@ -202,7 +220,7 @@ TEST_F(WiFiServiceTest, ConnectTaskRSN) {
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
-  vector<uint8_t> ssid(5, 0);
+  vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
                                                    dispatcher(),
                                                    manager(),
@@ -217,7 +235,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 }
 
 TEST_F(WiFiServiceTest, LoadHidden) {
-  vector<uint8_t> ssid(5, 0);
+  vector<uint8_t> ssid(5);
   ssid.push_back(0xff);
 
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
