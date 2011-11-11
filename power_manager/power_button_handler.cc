@@ -51,6 +51,8 @@ PowerButtonHandler::PowerButtonHandler(Daemon* daemon)
       lock_to_shutdown_timeout_id_(0),
       shutdown_timeout_id_(0),
       real_shutdown_timeout_id_(0),
+      lock_button_down_(false),
+      power_button_down_(false),
       shutting_down_(false),
       should_add_shutdown_timeout_after_lock_(false) {
 }
@@ -63,7 +65,7 @@ PowerButtonHandler::~PowerButtonHandler() {
   RemoveTimeoutIfSet(&real_shutdown_timeout_id_);
 }
 
-void PowerButtonHandler::HandleButtonDown() {
+void PowerButtonHandler::HandlePowerButtonDown() {
   if (shutting_down_)
     return;
 
@@ -71,6 +73,7 @@ void PowerButtonHandler::HandleButtonDown() {
                            !daemon_->current_user().empty() &&
                            !daemon_->locker()->is_locked();
 
+  power_button_down_ = true;
 #ifdef NEW_POWER_BUTTON
   // There's a small window of time between when we ask the session manager to
   // lock the screen and when we receive confirmation that the screen has been
@@ -112,10 +115,11 @@ void PowerButtonHandler::HandleButtonDown() {
 #endif
 }
 
-void PowerButtonHandler::HandleButtonUp() {
+void PowerButtonHandler::HandlePowerButtonUp() {
   if (shutting_down_)
     return;
 
+  power_button_down_ = false;
   should_add_shutdown_timeout_after_lock_ = false;
 
 #ifdef NEW_POWER_BUTTON
@@ -134,6 +138,37 @@ void PowerButtonHandler::HandleButtonUp() {
 #endif
 }
 
+void PowerButtonHandler::HandleLockButtonDown() {
+  if (shutting_down_)
+    return;
+
+  const bool should_lock = util::LoggedIn() &&
+                           !daemon_->current_user().empty() &&
+                           !daemon_->locker()->is_locked();
+  lock_button_down_ = true;
+  if (should_lock) {
+    NotifyWindowManagerAboutPowerButtonState(
+        chromeos::WM_IPC_POWER_BUTTON_PRE_LOCK);
+    RemoveTimeoutIfSet(&lock_timeout_id_);
+    lock_timeout_id_ =
+        g_timeout_add(kLockTimeoutMs,
+                      PowerButtonHandler::OnLockTimeoutThunk,
+                      this);
+  }
+}
+
+void PowerButtonHandler::HandleLockButtonUp() {
+  if (shutting_down_)
+    return;
+
+  lock_button_down_ = false;
+  if (lock_timeout_id_) {
+    RemoveTimeoutIfSet(&lock_timeout_id_);
+    NotifyWindowManagerAboutPowerButtonState(
+        chromeos::WM_IPC_POWER_BUTTON_ABORTED_LOCK);
+  }
+}
+
 void PowerButtonHandler::HandleScreenLocked() {
   if (should_add_shutdown_timeout_after_lock_) {
     should_add_shutdown_timeout_after_lock_ = false;
@@ -146,6 +181,10 @@ gboolean PowerButtonHandler::OnLockTimeout() {
   lock_timeout_id_ = 0;
   daemon_->locker()->LockScreen();
   daemon_->BrightenScreenIfOff();
+  if (lock_button_down_ && !power_button_down_)
+    return FALSE;
+
+  // Only transition to shutdown on a power button push, not lock button.
   RemoveTimeoutIfSet(&lock_to_shutdown_timeout_id_);
   lock_to_shutdown_timeout_id_ =
       g_timeout_add(kLockToShutdownTimeoutMs,

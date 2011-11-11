@@ -576,14 +576,22 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
     daemon->suspender_.CancelSuspend();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerButtonDown)) {
-    LOG(INFO) << "Button Down event";
+    LOG(INFO) << "Power Button Down event";
     daemon->OnPowerButtonDownMetric(base::Time::Now());
-    daemon->power_button_handler_->HandleButtonDown();
+    daemon->power_button_handler_->HandlePowerButtonDown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerButtonUp)) {
-    LOG(INFO) << "Button Up event";
+    LOG(INFO) << "Power Button Up event";
     daemon->OnPowerButtonUpMetric(base::Time::Now());
-    daemon->power_button_handler_->HandleButtonUp();
+    daemon->power_button_handler_->HandlePowerButtonUp();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kLockButtonDown)) {
+    LOG(INFO) << "Lock Button Down event";
+    daemon->power_button_handler_->HandleLockButtonDown();
+  } else if (dbus_message_is_signal(message, kPowerManagerInterface,
+                                    kLockButtonUp)) {
+    LOG(INFO) << "Lock Button Up event";
+    daemon->power_button_handler_->HandleLockButtonUp();
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseScreenBrightness)) {
     LOG(INFO) << "Decrease screen brightness request.";

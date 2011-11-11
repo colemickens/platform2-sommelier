@@ -24,8 +24,12 @@ class PowerButtonHandler {
   ~PowerButtonHandler();
 
   // Handle the power button being pressed or released.
-  void HandleButtonDown();
-  void HandleButtonUp();
+  void HandlePowerButtonDown();
+  void HandlePowerButtonUp();
+
+  // Handle the lock button being pressed or released.
+  void HandleLockButtonDown();
+  void HandleLockButtonUp();
 
   // Handle notification from Chrome that the screen has been locked.
   void HandleScreenLocked();
@@ -75,6 +79,8 @@ class PowerButtonHandler {
   guint lock_fail_timeout_id_;
   guint shutdown_timeout_id_;
   guint real_shutdown_timeout_id_;
+  bool lock_button_down_;
+  bool power_button_down_;
 
   // Are we in the process of shutting down the system?
   bool shutting_down_;

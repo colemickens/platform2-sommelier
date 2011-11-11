@@ -43,7 +43,8 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
     lidstate_(LID_STATE_OPENED),
     metrics_lib_(metrics_lib),
     backlight_(backlight),
-    power_button_state_(false),
+    power_button_state_(BUTTON_UP),
+    lock_button_state_(BUTTON_UP),
     retry_suspend_count_(0),
     suspend_pid_(0),
     lid_id_(0),
@@ -164,14 +165,27 @@ void PowerManDaemon::OnInputEvent(void* object, InputType type, int value) {
       break;
     }
     case PWRBUTTON: {
-      daemon->power_button_state_ = daemon->GetPowerButtonState(value);
+      ButtonState old_state = daemon->power_button_state_;
+      daemon->power_button_state_ = daemon->GetButtonState(value);
       LOG(INFO) << "PowerM Daemon - power button "
-                << (daemon->power_button_state_ == POWER_BUTTON_DOWN ?
-                    "down." : "up.");
-      if (daemon->power_button_state_ == POWER_BUTTON_DOWN)
-        util::SendSignalToPowerD(kPowerButtonDown);
-      else
+                << (daemon->power_button_state_ == BUTTON_UP ?
+                    "up." : "down.");
+      if (daemon->power_button_state_ == BUTTON_UP)
         util::SendSignalToPowerD(kPowerButtonUp);
+      else if (old_state == BUTTON_UP)
+        util::SendSignalToPowerD(kPowerButtonDown);
+      break;
+    }
+    case LOCKBUTTON: {
+      ButtonState old_state = daemon->lock_button_state_;
+      daemon->lock_button_state_ = daemon->GetButtonState(value);
+      LOG(INFO) << "PowerM Daemon - lock button "
+                << (daemon->lock_button_state_ == BUTTON_UP ?
+                    "up." : "down.");
+      if (daemon->lock_button_state_ == BUTTON_UP)
+        util::SendSignalToPowerD(kLockButtonUp);
+      else if (old_state == BUTTON_UP)
+        util::SendSignalToPowerD(kLockButtonDown);
       break;
     }
     default: {
