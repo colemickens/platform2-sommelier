@@ -891,8 +891,17 @@ void WiFi::ScanTask() {
   }
 
   // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
-  supplicant_interface_proxy_->Scan(scan_args);
-  scan_pending_ = true;
+  // FIXME(gauravsh): A scan can fail if, for example, wpa_supplicant
+  // was restarted. This is done by a few of the 802.1x tests.
+  // crosbug.com/25657
+  try {
+    supplicant_interface_proxy_->Scan(scan_args);
+    scan_pending_ = true;
+  } catch (const DBus::Error e) {  // NOLINT
+    LOG(WARNING) << "Scan failed. Attempting to re-connect to the supplicant.";
+    Stop();
+    Start();
+  }
 }
 
 void WiFi::StateChanged(const string &new_state) {

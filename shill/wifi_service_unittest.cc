@@ -53,7 +53,8 @@ class WiFiServiceTest : public PropertyStoreTest {
 
  protected:
   static const char fake_mac[];
-  bool CheckConnectable(const std::string &security, const char *passphrase) {
+  bool CheckConnectable(const std::string &security, const char *passphrase,
+                        Service::EapCredentials *eap) {
     Error error;
     vector<uint8_t> ssid(1, 'a');
     WiFiServiceRefPtr service = new WiFiService(control_interface(),
@@ -67,6 +68,9 @@ class WiFiServiceTest : public PropertyStoreTest {
                                                 false);
     if (passphrase)
       service->SetPassphrase(passphrase, &error);
+    if (eap) {
+      service->set_eap(*eap);
+    }
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid) {
@@ -257,6 +261,11 @@ MATCHER(WPASecurityArgs, "") {
       ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
 }
 
+MATCHER(EAPSecurityArgs, "") {
+  return ContainsKey(arg, wpa_supplicant::kNetworkPropertyEapIdentity) &&
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath);
+}
+
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
@@ -302,6 +311,25 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
                                                    false);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  wifi_service->ConnectTask();
+}
+
+TEST_F(WiFiServiceTest, ConnectTask8021x) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurity8021x,
+                                                   false);
+  Service::EapCredentials eap;
+  eap.identity = "identity";
+  wifi_service->set_eap(eap);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), EAPSecurityArgs()));
   wifi_service->ConnectTask();
 }
 
@@ -413,9 +441,8 @@ TEST_F(WiFiServiceSecurityTest, WPAMapping) {
                                  flimflam::kSecurityWep));
   EXPECT_TRUE(TestStorageMapping(flimflam::kSecurityNone,
                                  flimflam::kSecurityNone));
-  // TODO(pstew): 802.1x is in a NOTIMPLEMENTED block in wifi_service.cc
-  // EXPECT_TRUE(TestStorageMapping(flimflam::kSecurity8021x,
-  //                                flimflam::kSecurity8021x));
+  EXPECT_TRUE(TestStorageMapping(flimflam::kSecurity8021x,
+                                 flimflam::kSecurity8021x));
 }
 
 TEST_F(WiFiServiceSecurityTest, LoadMapping) {
@@ -510,27 +537,49 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL, NULL));
 
   // Open network should remain connectable if we try to set a password on it.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde"));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde", NULL));
 
   // WEP network with passphrase set should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde"));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde", NULL));
 
   // WEP network without passphrase set should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL, NULL));
 
   // A bad passphrase should not make a WEP network connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a"));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a", NULL));
 
   // Similar to WEP, for WPA.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh"));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a"));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh", NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL, NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a", NULL));
 
   // Unconfigured 802.1x should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, NULL));
+
+  Service::EapCredentials eap;
+  // Empty EAP credentials should not make a 802.1x network connectable.
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+
+  eap.identity = "something";
+  // If client certificate is being used, a private key must exist.
+  eap.client_cert = "some client cert";
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+  eap.private_key = "some private key";
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+
+  // Identity is always required.
+  eap.identity.clear();
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+
+  eap.identity = "something";
+  // For non EAP-TLS types, a password is required.
+  eap.eap = "Non-TLS";
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+  eap.password = "some password";
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {
@@ -592,6 +641,29 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   Error error;
   service->Disconnect(&error);
   EXPECT_FALSE(service->IsAutoConnectable());
+}
+
+TEST_F(WiFiServiceTest, Populate8021x) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  Service::EapCredentials eap;
+  eap.identity = "testidentity";
+  service->set_eap(eap);
+  map<string, ::DBus::Variant> params;
+  service->Populate8021xProperties(&params);
+  // Test that only non-empty 802.1x properties are populated.
+  EXPECT_TRUE(ContainsKey(params,
+                          wpa_supplicant::kNetworkPropertyEapIdentity));
+  EXPECT_FALSE(ContainsKey(params,
+                           wpa_supplicant::kNetworkPropertyEapKeyId));
 }
 
 }  // namespace shill

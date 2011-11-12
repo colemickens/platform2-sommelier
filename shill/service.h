@@ -174,6 +174,10 @@ class Service : public base::RefCounted<Service> {
   // connection to serve requests.
   virtual void SetConnection(ConnectionRefPtr connection);
 
+  // Examines the EAP credentials for the service and returns true if a
+  // connection attempt can be made.
+  bool Is8021xConnectable() const;
+
   // The inherited class should register any custom metrics in this method.
   virtual void InitializeCustomMetrics() const {}
 
@@ -203,6 +207,9 @@ class Service : public base::RefCounted<Service> {
 
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
+
+  const EapCredentials &eap() const { return eap_; }
+  virtual void set_eap(const EapCredentials &eap);
 
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }

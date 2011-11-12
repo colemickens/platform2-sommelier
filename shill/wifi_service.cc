@@ -5,6 +5,7 @@
 #include "shill/wifi_service.h"
 
 #include <string>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/stringprintf.h>
@@ -84,8 +85,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
   // a service that is not 802.1x.
   if (security_ == flimflam::kSecurity8021x) {
-    NOTIMPLEMENTED();
-    // XXX needs_passpharse_ = false ?
+    // Passphrases are not mandatory for 802.1X.
+    need_passphrase_ = false;
   } else if (security_ == flimflam::kSecurityPsk) {
     SetEAPKeyManagement("WPA-PSK");
   } else if (security_ == flimflam::kSecurityRsn) {
@@ -97,7 +98,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   } else if (security_ == flimflam::kSecurityNone) {
     SetEAPKeyManagement("NONE");
   } else {
-    LOG(ERROR) << "unsupported security method " << security_;
+    LOG(ERROR) << "Unsupported security method " << security_;
   }
 
   // Until we know better (at Profile load time), use the generic name.
@@ -128,7 +129,7 @@ void WiFiService::AutoConnect() {
 }
 
 void WiFiService::Connect(Error */*error*/) {
-  LOG(INFO) << __func__;
+  LOG(INFO) << "In " << __func__ << "():";
   // Defer handling, since dbus-c++ does not permit us to send an
   // outbound request while processing an inbound one.
   dispatcher()->PostTask(
@@ -341,7 +342,10 @@ void WiFiService::ConnectTask() {
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
   if (security_ == flimflam::kSecurity8021x) {
-    NOTIMPLEMENTED();
+    // If EAP key management is not set, set to a default.
+    if (GetEAPKeyManagement().empty())
+      SetEAPKeyManagement("WPA-EAP");
+    Populate8021xProperties(&params);
   } else if (security_ == flimflam::kSecurityPsk) {
     const string psk_proto = StringPrintf("%s %s",
                                           wpa_supplicant::kSecurityModeWPA,
@@ -378,7 +382,7 @@ void WiFiService::ConnectTask() {
     LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
   }
 
-  params[wpa_supplicant::kPropertyKeyManagement].writer().
+  params[wpa_supplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(key_management().c_str());
 
   // See note in dbus_adaptor.cc on why we need to use a local.
@@ -397,19 +401,21 @@ string WiFiService::GetDeviceRpcId(Error */*error*/) {
 }
 
 void WiFiService::UpdateConnectable() {
+  bool is_connectable = false;
   if (security_ == flimflam::kSecurityNone) {
     DCHECK(passphrase_.empty());
     need_passphrase_ = false;
+    is_connectable = true;
   } else if (security_ == flimflam::kSecurityWep ||
       security_ == flimflam::kSecurityWpa ||
       security_ == flimflam::kSecurityPsk ||
       security_ == flimflam::kSecurityRsn) {
     need_passphrase_ = passphrase_.empty();
-  } else {
-    // TODO(quiche): Handle connectability for 802.1x. (crosbug.com/23466)
-    need_passphrase_ = true;
+    is_connectable = !need_passphrase_;
+  } else if (security_ == flimflam::kSecurity8021x) {
+    is_connectable = Is8021xConnectable();
   }
-  set_connectable(!need_passphrase_);
+  set_connectable(is_connectable);
 }
 
 // static
@@ -606,6 +612,49 @@ string WiFiService::GetStorageIdentifierForSecurity(
                                                hex_ssid_.c_str(),
                                                mode_.c_str(),
                                                security.c_str()));
+}
+
+void WiFiService::set_eap(const EapCredentials &eap) {
+  Service::set_eap(eap);
+  UpdateConnectable();
+}
+
+void WiFiService::Populate8021xProperties(
+    std::map<string, DBus::Variant> *params) {
+  typedef std::pair<const char *, const char *> KeyVal;
+  KeyVal propertyvals[] = {
+    KeyVal(wpa_supplicant::kNetworkPropertyEapIdentity, eap().identity.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapEap, eap().eap.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapInnerEap,
+           eap().inner_eap.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapAnonymousIdentity,
+           eap().anonymous_identity.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapClientCert,
+           eap().client_cert.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapPrivateKey,
+           eap().private_key.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapPrivateKeyPassword,
+           eap().private_key_password.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCert, eap().ca_cert.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapCaPassword,
+           eap().password.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapCertId, eap().cert_id.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapKeyId, eap().key_id.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCertId,
+           eap().ca_cert_id.c_str()),
+    KeyVal(wpa_supplicant::kNetworkPropertyEapPin, eap().pin.c_str()),
+    // TODO(gauravsh): Support getting CA certificates out of the NSS certdb.
+    //                 crosbug.com/25663
+    KeyVal(wpa_supplicant::kNetworkPropertyCaPath, wpa_supplicant::kCaPath)
+  };
+
+  DBus::MessageIter writer;
+  for (size_t i = 0; i < arraysize(propertyvals); ++i) {
+    if (strlen(propertyvals[i].second) > 0) {
+      (*params)[propertyvals[i].first].writer().
+          append_string(propertyvals[i].second);
+    }
+  }
 }
 
 }  // namespace shill

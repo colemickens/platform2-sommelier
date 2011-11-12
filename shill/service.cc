@@ -359,6 +359,58 @@ void Service::SetConnection(ConnectionRefPtr connection) {
   connection_ = connection;
 }
 
+bool Service::Is8021xConnectable() const {
+  // We mirror all the flimflam checks (see service.c:is_connectable()).
+
+  // Identity is required.
+  if (eap_.identity.empty()) {
+    VLOG(2) << "Not connectable: Identity is empty.";
+    return false;
+  }
+
+  if (!eap_.client_cert.empty() || !eap_.cert_id.empty()) {
+    // If a client certificate is being used, we must have a private key.
+    if (eap_.private_key.empty() && eap_.key_id.empty()) {
+      VLOG(2) << "Not connectable. Client certificate but no private key.";
+      return false;
+    }
+  }
+  if (!eap_.cert_id.empty() || !eap_.key_id.empty() ||
+      !eap_.ca_cert_id.empty()) {
+    // If PKCS#11 data is needed, a PIN is required.
+    if (eap_.pin.empty()) {
+      VLOG(2) << "Not connectable. PKCS#11 data but no PIN.";
+      return false;
+    }
+  }
+
+  // For EAP-TLS, a client certificate is required.
+  if (eap_.eap.empty() || eap_.eap == "TLS") {
+    if (!eap_.client_cert.empty() || !eap_.cert_id.empty()) {
+      VLOG(2) << "Connectable. EAP-TLS with a client cert.";
+      return true;
+    }
+  }
+
+  // For EAP types other than TLS (e.g. EAP-TTLS or EAP-PEAP, password is the
+  // minimum requirement), at least an identity + password is required.
+  if (eap_.eap.empty() || eap_.eap != "TLS") {
+    if (!eap_.password.empty()) {
+      VLOG(2) << "Connectable. !EAP-TLS and has a password.";
+      return true;
+    }
+  }
+
+  VLOG(2) << "Not connectable. No suitable EAP configuration was found.";
+  return false;
+}
+
+void Service::set_eap(const EapCredentials &eap) {
+  eap_ = eap;
+  // Note: Connectability can only be updated by a subclass of Service
+  // with knowledge of whether the service actually uses 802.1x credentials.
+}
+
 // static
 const char *Service::ConnectFailureToString(const ConnectFailure &state) {
   switch (state) {
@@ -560,26 +612,27 @@ void Service::SaveString(StoreInterface *storage,
 }
 
 void Service::LoadEapCredentials(StoreInterface *storage, const string &id) {
-  storage->GetCryptedString(id, kStorageEapIdentity, &eap_.identity);
-  storage->GetString(id, kStorageEapEap, &eap_.eap);
-  storage->GetString(id, kStorageEapInnerEap, &eap_.inner_eap);
+  EapCredentials eap;
+  storage->GetCryptedString(id, kStorageEapIdentity, &eap.identity);
+  storage->GetString(id, kStorageEapEap, &eap.eap);
+  storage->GetString(id, kStorageEapInnerEap, &eap.inner_eap);
   storage->GetCryptedString(id,
                             kStorageEapAnonymousIdentity,
-                            &eap_.anonymous_identity);
-  storage->GetString(id, kStorageEapClientCert, &eap_.client_cert);
-  storage->GetString(id, kStorageEapCertID, &eap_.cert_id);
-  storage->GetString(id, kStorageEapPrivateKey, &eap_.private_key);
+                            &eap.anonymous_identity);
+  storage->GetString(id, kStorageEapClientCert, &eap.client_cert);
+  storage->GetString(id, kStorageEapCertID, &eap.cert_id);
+  storage->GetString(id, kStorageEapPrivateKey, &eap.private_key);
   storage->GetCryptedString(id,
                             kStorageEapPrivateKeyPassword,
-                            &eap_.private_key_password);
-  storage->GetString(id, kStorageEapKeyID, &eap_.key_id);
-  storage->GetString(id, kStorageEapCACert, &eap_.ca_cert);
-  storage->GetString(id, kStorageEapCACertID, &eap_.ca_cert_id);
-  storage->GetBool(id, kStorageEapUseSystemCAs, &eap_.use_system_cas);
-  storage->GetString(id, kStorageEapPIN, &eap_.pin);
-  storage->GetCryptedString(id, kStorageEapPassword, &eap_.password);
-  storage->GetString(id, kStorageEapKeyManagement, &eap_.key_management);
-  // TODO(quiche): Update Connectable property. (crosbug.com/23466)
+                            &eap.private_key_password);
+  storage->GetString(id, kStorageEapKeyID, &eap.key_id);
+  storage->GetString(id, kStorageEapCACert, &eap.ca_cert);
+  storage->GetString(id, kStorageEapCACertID, &eap.ca_cert_id);
+  storage->GetBool(id, kStorageEapUseSystemCAs, &eap.use_system_cas);
+  storage->GetString(id, kStorageEapPIN, &eap.pin);
+  storage->GetCryptedString(id, kStorageEapPassword, &eap.password);
+  storage->GetString(id, kStorageEapKeyManagement, &eap.key_management);
+  set_eap(eap);
 }
 
 void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {

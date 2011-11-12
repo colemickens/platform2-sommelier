@@ -75,6 +75,10 @@ class WiFiService : public Service {
   virtual void InitializeCustomMetrics() const;
   virtual void SendPostReadyStateMetrics() const;
 
+  // Override from parent Service class to correctly update connectability
+  // when the EAP credentials change for 802.1x networks.
+  void set_eap(const EapCredentials& eap);
+
  protected:
   virtual bool IsAutoConnectable() const;
 
@@ -82,6 +86,7 @@ class WiFiService : public Service {
   friend class WiFiServiceSecurityTest;
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
+  FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
@@ -89,6 +94,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
+  FRIEND_TEST(WiFiServiceTest, Populate8021x);
 
   static const char kStorageHiddenSSID[];
   static const char kStorageMode[];
@@ -136,6 +142,9 @@ class WiFiService : public Service {
   std::string GetSpecificStorageIdentifier() const;
   std::string GetStorageIdentifierForSecurity(
       const std::string &security) const;
+
+  // Populate the |params| map with available 802.1x EAP properties.
+  void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);
 
   // Properties
   std::string passphrase_;
