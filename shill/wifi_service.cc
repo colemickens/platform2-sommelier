@@ -244,8 +244,8 @@ void WiFiService::ConnectTask() {
 
   params[wpa_supplicant::kPropertyKeyManagement].writer().
       append_string(key_management().c_str());
-  // TODO(quiche): figure out why we can't use operator<< without the
-  // temporary variable.
+
+  // See note in dbus_adaptor.cc on why we need to use a local.
   writer = params[wpa_supplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
 

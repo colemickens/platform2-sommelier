@@ -172,8 +172,19 @@ void DBusAdaptor::ArgsToKeyValueStore(
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
 
-  // TODO(quiche): figure out why we can't use operator<< without the
-  // temporary variable.
+
+  // We have to use a local because the operator<< needs a reference
+  // to work on (the lhs) but writer() returns by-value. C++ prohibits
+  // initializing non-const references from a temporary.
+  // So:
+  //    v.writer() << value;
+  // would NOT automagically promote the returned value of v.writer() to
+  // a non-const reference (if you think about it, that's almost always not what
+  // you'd want. see: http://gcc.gnu.org/ml/gcc-help/2006-04/msg00075.html).
+  //
+  // One could consider changing writer() to return a reference, but then it
+  // changes writer() semantics as it can not be a const reference. writer()
+  // currently doesn't modify the original object on which it's called.
   writer = v.writer();
   writer << value;
   return v;
@@ -213,8 +224,7 @@ void DBusAdaptor::ArgsToKeyValueStore(
   ::DBus::MessageIter writer;
   ::DBus::Variant v;
 
-  // TODO(quiche): figure out why we can't use operator<< without the
-  // temporary variable.
+  // See note above on why we need to use a local.
   writer = v.writer();
   writer << value;
   return v;
