@@ -5,11 +5,11 @@
 # found in the LICENSE file.
 
 trap '' USR1 TTOU TTIN
-# The following code checks for a marker file, and if present, identifies
-# the syntp_drv serial device and disables it for testing.  The code is
-# normally not run, since the file is not there, and so it does not
-# proceed to the second (expensive) half of the test.
-if [ -f /home/chronos/.tp_disable ] ; then
+# The following code checks for a marker file, and if missing,
+# identifies the syntp_drv serial device and disables it for
+# testing. Note that we only consider the file missing if the parent
+# directory exists, but the marker doesn't.
+if [ -d /home/chronos -a ! -f /home/chronos/.syntp_enable ] ; then
   # serio_rawN devices come from the udev rules for the Synaptics binary
   # driver throwing the PS/2 interface into raw mode.  If we find any
   # that are TP devices, put them back into normal mode to use the default
