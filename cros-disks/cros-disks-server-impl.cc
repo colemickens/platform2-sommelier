@@ -127,6 +127,18 @@ void CrosDisksServer::Unmount(const string& path,
   }
 }
 
+void CrosDisksServer::UnmountAll(DBus::Error& error) {  // NOLINT
+  DoUnmountAll();
+}
+
+void CrosDisksServer::DoUnmountAll() {
+  for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
+       manager_iter != mount_managers_.end(); ++manager_iter) {
+    MountManager* manager = *manager_iter;
+    manager->UnmountAll();
+  }
+}
+
 vector<string> CrosDisksServer::DoEnumerateDevices(
     bool auto_mountable_only) const {
   vector<Disk> disks = disk_manager_->EnumerateDisks();

@@ -67,7 +67,8 @@ ArchiveManager::ArchiveManager(const string& mount_root,
 }
 
 ArchiveManager::~ArchiveManager() {
-  UnmountAll();
+  // StopAVFS() unmounts all mounted archives as well as AVFS mount points.
+  StopAVFS();
 }
 
 bool ArchiveManager::Initialize() {

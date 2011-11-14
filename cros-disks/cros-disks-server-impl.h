@@ -79,6 +79,9 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
       const std::vector<std::string>& options,
       DBus::Error& error);  // NOLINT
 
+  // Unmounts all paths mounted by Mount() when invoked.
+  virtual void UnmountAll(DBus::Error& error);  // NOLINT
+
   // Returns a list of device sysfs paths for all disk devices attached to
   // the system.
   virtual std::vector<std::string> EnumerateDevices(
@@ -119,6 +122,9 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // the system. If auto_mountable_only is true, only auto-mountable disk
   // devices are returned.
   std::vector<std::string> DoEnumerateDevices(bool auto_mountable_only) const;
+
+  // Unmounts all paths mounted by Mount().
+  void DoUnmountAll();
 
   Platform* platform_;
 
