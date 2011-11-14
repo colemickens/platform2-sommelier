@@ -573,52 +573,6 @@ TEST_F(CellularTest, RegisterOnNetworkError) {
   EXPECT_EQ("", device_->selected_network_);
 }
 
-TEST_F(CellularTest, Activate) {
-  Error error;
-  device_->type_ = Cellular::kTypeCDMA;
-  device_->state_ = Cellular::kStateEnabled;
-  EXPECT_CALL(*cdma_proxy_, Activate(kTestCarrier))
-      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  device_->Activate(kTestCarrier, &error);
-  EXPECT_TRUE(error.IsSuccess());
-  device_->cdma_proxy_.reset(cdma_proxy_.release());
-  device_->CreateService();
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
-            device_->cdma_.activation_state);
-  EXPECT_EQ(flimflam::kActivationStateActivating,
-            device_->service_->activation_state());
-  EXPECT_EQ("", device_->service_->error());
-}
-
-TEST_F(CellularTest, ActivateError) {
-  Error error;
-  device_->type_ = Cellular::kTypeGSM;
-  device_->Activate(kTestCarrier, &error);
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-
-  error.Populate(Error::kSuccess);
-  device_->type_ = Cellular::kTypeCDMA;
-  device_->Activate(kTestCarrier, &error);
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-
-  error.Populate(Error::kSuccess);
-  device_->state_ = Cellular::kStateRegistered;
-  EXPECT_CALL(*cdma_proxy_, Activate(kTestCarrier))
-      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
-  device_->Activate(kTestCarrier, &error);
-  EXPECT_TRUE(error.IsSuccess());
-  device_->cdma_proxy_.reset(cdma_proxy_.release());
-  device_->CreateService();
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
-            device_->cdma_.activation_state);
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
-            device_->service_->activation_state());
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
-            device_->service_->error());
-}
-
 TEST_F(CellularTest, SetGSMAccessTechnology) {
   device_->type_ = Cellular::kTypeGSM;
   device_->InitCapability();

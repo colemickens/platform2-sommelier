@@ -16,7 +16,8 @@ using std::string;
 namespace shill {
 
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
-    : CellularCapability(cellular) {}
+    : CellularCapability(cellular),
+      task_factory_(this) {}
 
 void CellularCapabilityCDMA::InitProxies() {
   VLOG(2) << __func__;
@@ -25,6 +26,38 @@ void CellularCapabilityCDMA::InitProxies() {
       proxy_factory()->CreateModemCDMAProxy(cellular(),
                                             cellular()->dbus_path(),
                                             cellular()->dbus_owner()));
+}
+
+void CellularCapabilityCDMA::Activate(const string &carrier, Error *error) {
+  VLOG(2) << __func__ << "(" << carrier << ")";
+  if (cellular()->state() != Cellular::kStateEnabled &&
+      cellular()->state() != Cellular::kStateRegistered) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Unable to activate in " +
+                          Cellular::GetStateString(cellular()->state()));
+    return;
+  }
+  // Defer because we may be in a dbus-c++ callback.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(
+          &CellularCapabilityCDMA::ActivateTask, carrier));
+}
+
+void CellularCapabilityCDMA::ActivateTask(const string &carrier) {
+  VLOG(2) << __func__ << "(" << carrier << ")";
+  if (cellular()->state() != Cellular::kStateEnabled &&
+      cellular()->state() != Cellular::kStateRegistered) {
+    LOG(ERROR) << "Unable to activate in "
+               << Cellular::GetStateString(cellular()->state());
+    return;
+  }
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 status = cellular()->modem_cdma_proxy()->Activate(carrier);
+  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
+    cellular()->set_cdma_activation_state(
+        MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING);
+  }
+  cellular()->HandleNewCDMAActivationState(status);
 }
 
 void CellularCapabilityCDMA::GetIdentifiers() {

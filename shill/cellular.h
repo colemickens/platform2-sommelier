@@ -131,6 +131,10 @@ class Cellular : public Device,
 
   const CellularServiceRefPtr &service() const { return service_; }
 
+  static std::string GetStateString(State state);
+
+  State state() const { return state_; }
+
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
 
@@ -150,6 +154,11 @@ class Cellular : public Device,
   }
   uint32 cdma_registration_state_1x() const {
     return cdma_.registration_state_1x;
+  }
+
+  uint32 cdma_activation_state() const { return cdma_.activation_state; }
+  void set_cdma_activation_state(uint32 state) {
+    cdma_.activation_state = state;
   }
 
   const std::string &meid() const { return meid_; }
@@ -186,6 +195,8 @@ class Cellular : public Device,
 
   void HandleNewSignalQuality(uint32 strength);
 
+  void HandleNewCDMAActivationState(uint32 error);
+
   // Inherited from Device.
   virtual void Start();
   virtual void Stop();
@@ -206,8 +217,6 @@ class Cellular : public Device,
   friend class CellularTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
-  FRIEND_TEST(CellularTest, Activate);
-  FRIEND_TEST(CellularTest, ActivateError);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
@@ -215,7 +224,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
-  FRIEND_TEST(CellularTest, GetStateString);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
@@ -257,7 +265,6 @@ class Cellular : public Device,
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
-  void ActivateTask(const std::string &carrier);
   void RegisterOnNetworkTask(const std::string &network_id);
 
   // Invoked when the modem is connected to the cellular network to transition
@@ -275,7 +282,6 @@ class Cellular : public Device,
   void InitProxies();
 
   std::string GetTypeString() const;
-  static std::string GetStateString(State state);
 
   static std::string GetCDMAActivationStateString(uint32 state);
   static std::string GetCDMAActivationErrorString(uint32 error);
@@ -298,8 +304,6 @@ class Cellular : public Device,
   void HandleNewRegistrationStateTask();
 
   void CreateService();
-
-  void HandleNewCDMAActivationState(uint32 error);
 
   // Updates the GSM operator name and country based on a newly obtained network
   // id.

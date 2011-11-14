@@ -31,6 +31,10 @@ class CellularCapability {
   // Initialize RPC proxies.
   virtual void InitProxies() = 0;
 
+  // Activates the modem. Populates |error| on failure, leaves it unchanged
+  // otherwise. The default implementation fails by populating |error|.
+  virtual void Activate(const std::string &carrier, Error *error);
+
   // Retrieves identifiers associated with the modem and the capability.
   virtual void GetIdentifiers() = 0;
 

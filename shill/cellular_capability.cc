@@ -21,6 +21,11 @@ EventDispatcher *CellularCapability::dispatcher() const {
   return cellular()->dispatcher();
 }
 
+void CellularCapability::Activate(const string &/*carrier*/, Error *error) {
+  Error::PopulateAndLog(error, Error::kInvalidArguments,
+                        "Activation not supported.");
+}
+
 void CellularCapability::RequirePIN(const string &/*pin*/,
                                     bool /*require*/,
                                     Error *error) {

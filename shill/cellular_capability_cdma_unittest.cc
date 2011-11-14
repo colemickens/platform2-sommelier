@@ -41,6 +41,7 @@ class CellularCapabilityCDMATest : public testing::Test {
 
  protected:
   static const char kMEID[];
+  static const char kTestCarrier[];
 
   void SetRegistrationStateEVDO(uint32 state) {
     cellular_->cdma_.registration_state_evdo = state;
@@ -59,6 +60,10 @@ class CellularCapabilityCDMATest : public testing::Test {
         &control_, &dispatcher_, NULL, cellular_);
   }
 
+  void SetDeviceState(Cellular::State state) {
+    cellular_->state_ = state;
+  }
+
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   CellularRefPtr cellular_;
@@ -67,6 +72,46 @@ class CellularCapabilityCDMATest : public testing::Test {
 };
 
 const char CellularCapabilityCDMATest::kMEID[] = "D1234567EF8901";
+const char CellularCapabilityCDMATest::kTestCarrier[] = "The Cellular Carrier";
+
+TEST_F(CellularCapabilityCDMATest, Activate) {
+  Error error;
+  SetDeviceState(Cellular::kStateEnabled);
+  EXPECT_CALL(*proxy_, Activate(kTestCarrier))
+      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
+  capability_.Activate(kTestCarrier, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  SetProxy();
+  SetService();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
+            cellular_->cdma_activation_state());
+  EXPECT_EQ(flimflam::kActivationStateActivating,
+            cellular_->service()->activation_state());
+  EXPECT_EQ("", cellular_->service()->error());
+}
+
+TEST_F(CellularCapabilityCDMATest, ActivateError) {
+  Error error;
+  capability_.Activate(kTestCarrier, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+
+  error.Reset();
+  SetDeviceState(Cellular::kStateRegistered);
+  EXPECT_CALL(*proxy_, Activate(kTestCarrier))
+      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
+  capability_.Activate(kTestCarrier, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  SetProxy();
+  SetService();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            cellular_->cdma_activation_state());
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+            cellular_->service()->activation_state());
+  EXPECT_EQ(flimflam::kErrorActivationFailed,
+            cellular_->service()->error());
+}
 
 TEST_F(CellularCapabilityCDMATest, GetIdentifiers) {
   EXPECT_CALL(*proxy_, MEID()).WillOnce(Return(kMEID));

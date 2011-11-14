@@ -348,6 +348,10 @@ void Cellular::RegisterOnNetworkTask(const string &network_id) {
   selected_network_ = network_id;
 }
 
+void Cellular::Activate(const std::string &carrier, Error *error) {
+  capability_->Activate(carrier, error);
+}
+
 void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
   capability_->RequirePIN(pin, require, error);
 }
@@ -561,40 +565,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SelectService(NULL);
     DestroyIPConfig();
   }
-}
-
-void Cellular::Activate(const string &carrier, Error *error) {
-  VLOG(2) << __func__ << "(" << carrier << ")";
-  if (type_ != kTypeCDMA) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Unable to activate non-CDMA modem.");
-    return;
-  }
-  if (state_ != kStateEnabled &&
-      state_ != kStateRegistered) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Unable to activate in " + GetStateString(state_));
-    return;
-  }
-  // Defer connect because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::ActivateTask, carrier));
-}
-
-void Cellular::ActivateTask(const string &carrier) {
-  VLOG(2) << __func__ << "(" << carrier << ")";
-  CHECK_EQ(kTypeCDMA, type_);
-  if (state_ != kStateEnabled &&
-      state_ != kStateRegistered) {
-    LOG(ERROR) << "Unable to activate in " << GetStateString(state_);
-    return;
-  }
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 status = cdma_proxy_->Activate(carrier);
-  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
-    cdma_.activation_state = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
-  }
-  HandleNewCDMAActivationState(status);
 }
 
 void Cellular::HandleNewCDMAActivationState(uint32 error) {
