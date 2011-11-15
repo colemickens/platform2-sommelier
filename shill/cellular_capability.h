@@ -35,11 +35,19 @@ class CellularCapability {
   // otherwise. The default implementation fails by populating |error|.
   virtual void Activate(const std::string &carrier, Error *error);
 
+  // Network registration.
+  virtual void Register();
+  virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+
   // Retrieves identifiers associated with the modem and the capability.
   virtual void GetIdentifiers() = 0;
 
+  virtual void GetProperties() = 0;
+
   // Retrieves the current cellular signal strength.
   virtual void GetSignalQuality() = 0;
+
+  virtual void GetRegistrationState() = 0;
 
   // PIN management. The default implementation fails by populating |error|.
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);

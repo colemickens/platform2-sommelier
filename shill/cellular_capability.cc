@@ -26,6 +26,14 @@ void CellularCapability::Activate(const string &/*carrier*/, Error *error) {
                         "Activation not supported.");
 }
 
+void CellularCapability::Register() {}
+
+void CellularCapability::RegisterOnNetwork(
+    const string &/*network_id*/, Error *error) {
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Network registration not supported.");
+}
+
 void CellularCapability::RequirePIN(const string &/*pin*/,
                                     bool /*require*/,
                                     Error *error) {

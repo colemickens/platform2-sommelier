@@ -59,7 +59,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
   void SetNetworkProxy() {
-    cellular_->set_modem_gsm_network_proxy(network_proxy_.release());
+    capability_.network_proxy_.reset(network_proxy_.release());
   }
 
   void SetAccessTechnology(uint32 technology) {
@@ -67,7 +67,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
   void SetRegistrationState(uint32 state) {
-    cellular_->gsm_.registration_state = state;
+    capability_.registration_state_ = state;
   }
 
   void SetService() {
@@ -125,6 +125,16 @@ TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
   EXPECT_EQ(0, cellular_->service()->strength());
   capability_.GetSignalQuality();
   EXPECT_EQ(kStrength, cellular_->service()->strength());
+}
+
+TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
+  Error error;
+  EXPECT_CALL(*network_proxy_, Register(kTestCarrier)).Times(1);
+  capability_.RegisterOnNetwork(kTestCarrier, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  SetNetworkProxy();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(kTestCarrier, capability_.selected_network_);
 }
 
 TEST_F(CellularCapabilityGSMTest, RequirePIN) {

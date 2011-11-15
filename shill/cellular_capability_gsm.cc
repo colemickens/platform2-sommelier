@@ -29,9 +29,12 @@ const char CellularCapabilityGSM::kNetworkPropertyStatus[] = "status";
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
     : CellularCapability(cellular),
       task_factory_(this),
+      registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       scanning_(false),
       scan_interval_(0) {
   PropertyStore *store = cellular->mutable_store();
+  store->RegisterConstString(flimflam::kSelectedNetworkProperty,
+                             &selected_network_);
   store->RegisterConstStringmaps(flimflam::kFoundNetworksProperty,
                                  &found_networks_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
@@ -44,9 +47,8 @@ void CellularCapabilityGSM::InitProxies() {
       proxy_factory()->CreateModemGSMCardProxy(this,
                                                cellular()->dbus_path(),
                                                cellular()->dbus_owner()));
-  // TODO(petkov): Move GSM-specific proxy ownership from Cellular to this.
-  cellular()->set_modem_gsm_network_proxy(
-      proxy_factory()->CreateModemGSMNetworkProxy(cellular(),
+  network_proxy_.reset(
+      proxy_factory()->CreateModemGSMNetworkProxy(this,
                                                   cellular()->dbus_path(),
                                                   cellular()->dbus_owner()));
 }
@@ -83,8 +85,56 @@ void CellularCapabilityGSM::GetIdentifiers() {
 void CellularCapabilityGSM::GetSignalQuality() {
   VLOG(2) << __func__;
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 strength = cellular()->modem_gsm_network_proxy()->GetSignalQuality();
+  uint32 strength = network_proxy_->GetSignalQuality();
   cellular()->HandleNewSignalQuality(strength);
+}
+
+void CellularCapabilityGSM::GetRegistrationState() {
+  VLOG(2) << __func__;
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  ModemGSMNetworkProxyInterface::RegistrationInfo info =
+      network_proxy_->GetRegistrationInfo();
+  registration_state_ = info._1;
+  cellular()->set_gsm_network_id(info._2);
+  cellular()->set_gsm_operator_name(info._3);
+  VLOG(2) << "GSM Registration: " << info._1 << ", "
+          << info._2 << ", "  << info._3;
+  cellular()->UpdateGSMOperatorInfo();
+  cellular()->HandleNewRegistrationState();
+}
+
+void CellularCapabilityGSM::GetProperties() {
+  VLOG(2) << __func__;
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  uint32 tech = network_proxy_->AccessTechnology();
+  cellular()->SetGSMAccessTechnology(tech);
+  VLOG(2) << "GSM AccessTechnology: " << tech;
+}
+
+void CellularCapabilityGSM::Register() {
+  LOG(INFO) << __func__ << " \"" << selected_network_ << "\"";
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  network_proxy_->Register(selected_network_);
+  // TODO(petkov): Handle registration failure including trying the home network
+  // when selected_network_ is not empty.
+}
+
+void CellularCapabilityGSM::RegisterOnNetwork(
+    const string &network_id, Error */*error*/) {
+  LOG(INFO) << __func__ << "(" << network_id << ")";
+  // Defer because we may be in a dbus-c++ callback.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(
+          &CellularCapabilityGSM::RegisterOnNetworkTask,
+          network_id));
+}
+
+void CellularCapabilityGSM::RegisterOnNetworkTask(const string &network_id) {
+  LOG(INFO) << __func__ << "(" << network_id << ")";
+  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  network_proxy_->Register(network_id);
+  // TODO(petkov): Handle registration failure.
+  selected_network_ = network_id;
 }
 
 void CellularCapabilityGSM::RequirePIN(
@@ -161,8 +211,7 @@ void CellularCapabilityGSM::ScanTask() {
   //
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). This is a
   // must for this call which is basically a stub at this point.
-  ModemGSMNetworkProxyInterface::ScanResults results =
-      cellular()->modem_gsm_network_proxy()->Scan();
+  ModemGSMNetworkProxyInterface::ScanResults results = network_proxy_->Scan();
   found_networks_.clear();
   for (ModemGSMNetworkProxyInterface::ScanResults::const_iterator it =
            results.begin(); it != results.end(); ++it) {
@@ -241,10 +290,8 @@ Stringmap CellularCapabilityGSM::ParseScanResult(
 }
 
 string CellularCapabilityGSM::GetNetworkTechnologyString() const {
-  if (cellular()->gsm_registration_state() ==
-      MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
-      cellular()->gsm_registration_state() ==
-      MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
+  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
+      registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
     switch (cellular()->gsm_access_technology()) {
       case MM_MODEM_GSM_ACCESS_TECH_GSM:
       case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
@@ -269,7 +316,7 @@ string CellularCapabilityGSM::GetNetworkTechnologyString() const {
 }
 
 string CellularCapabilityGSM::GetRoamingStateString() const {
-  switch (cellular()->gsm_registration_state()) {
+  switch (registration_state_) {
     case MM_MODEM_GSM_NETWORK_REG_STATUS_HOME:
       return flimflam::kRoamingStateHome;
     case MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING:
@@ -278,6 +325,24 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
       break;
   }
   return flimflam::kRoamingStateUnknown;
+}
+
+void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
+  // TODO(petkov): Implement this.
+  NOTIMPLEMENTED();
+}
+
+void CellularCapabilityGSM::OnGSMRegistrationInfoChanged(
+    uint32 status, const string &operator_code, const string &operator_name) {
+  registration_state_ = status;
+  cellular()->set_gsm_network_id(operator_code);
+  cellular()->set_gsm_operator_name(operator_name);
+  cellular()->UpdateGSMOperatorInfo();
+  cellular()->HandleNewRegistrationState();
+}
+
+void CellularCapabilityGSM::OnGSMSignalQualityChanged(uint32 quality) {
+  cellular()->HandleNewSignalQuality(quality);
 }
 
 }  // namespace shill

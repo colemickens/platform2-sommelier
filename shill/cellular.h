@@ -14,8 +14,6 @@
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
-#include "shill/modem_cdma_proxy_interface.h"
-#include "shill/modem_gsm_network_proxy_interface.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 
@@ -29,8 +27,6 @@ class ModemSimpleProxyInterface;
 class ProxyFactory;
 
 class Cellular : public Device,
-                 public ModemCDMAProxyDelegate,
-                 public ModemGSMNetworkProxyDelegate,
                  public ModemProxyDelegate {
  public:
   enum Type {
@@ -146,20 +142,19 @@ class Cellular : public Device,
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
-  uint32 gsm_registration_state() const { return gsm_.registration_state; }
-  uint32 gsm_access_technology() const { return gsm_.access_technology; }
+  void set_gsm_network_id(const std::string &id) { gsm_.network_id = id; }
+  void set_gsm_operator_name(const std::string &name) {
+    gsm_.operator_name = name;
+  }
 
-  uint32 cdma_registration_state_evdo() const {
-    return cdma_.registration_state_evdo;
-  }
-  uint32 cdma_registration_state_1x() const {
-    return cdma_.registration_state_1x;
-  }
+  uint32 gsm_access_technology() const { return gsm_.access_technology; }
 
   uint32 cdma_activation_state() const { return cdma_.activation_state; }
   void set_cdma_activation_state(uint32 state) {
     cdma_.activation_state = state;
   }
+
+  void set_cdma_payment_url(const std::string &url) { cdma_.payment_url = url; }
 
   const std::string &meid() const { return meid_; }
   void set_meid(const std::string &meid) { meid_ = meid; }
@@ -176,26 +171,24 @@ class Cellular : public Device,
   const std::string &mdn() const { return mdn_; }
   void set_mdn(const std::string &mdn) { mdn_ = mdn; }
 
-  ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  const std::string &min() const { return min_; }
+  void set_min(const std::string &min) { min_ = min; }
 
-  ModemCDMAProxyInterface *modem_cdma_proxy() const {
-    return cdma_proxy_.get();
-  }
-  void set_modem_cdma_proxy(ModemCDMAProxyInterface *proxy) {
-    cdma_proxy_.reset(proxy);
-  }
-  ModemGSMNetworkProxyInterface *modem_gsm_network_proxy() const {
-    return gsm_network_proxy_.get();
-  }
-  void set_modem_gsm_network_proxy(ModemGSMNetworkProxyInterface *proxy) {
-    gsm_network_proxy_.reset(proxy);
-  }
+  ProxyFactory *proxy_factory() const { return proxy_factory_; }
 
   void SetGSMAccessTechnology(uint32 access_technology);
 
   void HandleNewSignalQuality(uint32 strength);
 
+  // Processes a change in the modem registration state, possibly creating,
+  // destroying or updating the CellularService.
+  void HandleNewRegistrationState();
+
   void HandleNewCDMAActivationState(uint32 error);
+
+  // Updates the GSM operator name and country based on a newly obtained network
+  // id.
+  void UpdateGSMOperatorInfo();
 
   // Inherited from Device.
   virtual void Start();
@@ -221,14 +214,11 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
   FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
-  FRIEND_TEST(CellularTest, GetCDMARegistrationState);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
-  FRIEND_TEST(CellularTest, RegisterOnNetwork);
-  FRIEND_TEST(CellularTest, RegisterOnNetworkError);
   FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
@@ -239,8 +229,6 @@ class Cellular : public Device,
   struct CDMA {
     CDMA();
 
-    uint32 registration_state_evdo;
-    uint32 registration_state_1x;
     uint32 activation_state;
 
     uint16 prl_version;
@@ -251,7 +239,6 @@ class Cellular : public Device,
   struct GSM {
     GSM();
 
-    uint32 registration_state;
     uint32 access_technology;
     std::string network_id;
     std::string operator_name;
@@ -265,7 +252,6 @@ class Cellular : public Device,
   void SetState(State state);
 
   void ConnectTask(const DBusPropertiesMap &properties);
-  void RegisterOnNetworkTask(const std::string &network_id);
 
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
@@ -288,45 +274,16 @@ class Cellular : public Device,
 
   void EnableModem();
   void GetModemStatus();
-  void GetGSMProperties();
-  void RegisterGSMModem();
 
   // Obtains modem's manufacturer, model ID, and hardware revision.
   void GetModemInfo();
 
-  void GetModemRegistrationState();
-  void GetCDMARegistrationState();
-  void GetGSMRegistrationState();
-
-  // Processes a change in the modem registration state, possibly creating,
-  // destroying or updating the CellularService.
-  void HandleNewRegistrationState();
   void HandleNewRegistrationStateTask();
 
   void CreateService();
 
-  // Updates the GSM operator name and country based on a newly obtained network
-  // id.
-  void UpdateGSMOperatorInfo();
-
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
-
-  // Signal callbacks inherited from ModemCDMAProxyDelegate.
-  virtual void OnCDMAActivationStateChanged(
-      uint32 activation_state,
-      uint32 activation_error,
-      const DBusPropertiesMap &status_changes);
-  virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
-                                              uint32 state_evdo);
-  virtual void OnCDMASignalQualityChanged(uint32 strength);
-
-  // Signal callbacks inherited from ModemGSMNetworkProxyDelegate.
-  virtual void OnGSMNetworkModeChanged(uint32 mode);
-  virtual void OnGSMRegistrationInfoChanged(uint32 status,
-                                            const std::string &operator_code,
-                                            const std::string &operator_name);
-  virtual void OnGSMSignalQualityChanged(uint32 quality);
 
   // Signal callbacks inherited from ModemProxyDelegate.
   virtual void OnModemStateChanged(uint32 old_state,
@@ -346,8 +303,6 @@ class Cellular : public Device,
   const std::string dbus_path_;  // ModemManager.Modem
   scoped_ptr<ModemProxyInterface> proxy_;
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
-  scoped_ptr<ModemCDMAProxyInterface> cdma_proxy_;
-  scoped_ptr<ModemGSMNetworkProxyInterface> gsm_network_proxy_;
 
   mobile_provider_db *provider_db_;
 
@@ -371,7 +326,6 @@ class Cellular : public Device,
   std::string manufacturer_;
   std::string firmware_revision_;
   std::string hardware_revision_;
-  std::string selected_network_;
   SimLockStatus sim_lock_status_;
   Operator home_provider_;
 

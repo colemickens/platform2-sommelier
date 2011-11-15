@@ -15,7 +15,9 @@
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/nice_mock_control.h"
 
+using testing::_;
 using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
 
@@ -39,25 +41,35 @@ class CellularCapabilityCDMATest : public testing::Test {
     cellular_->service_ = NULL;
   }
 
+  virtual void TearDown() {
+    CellularCapability *capability = cellular_->capability_.release();
+    ASSERT_TRUE(capability == NULL || capability == &capability_);
+  }
+
  protected:
   static const char kMEID[];
   static const char kTestCarrier[];
 
   void SetRegistrationStateEVDO(uint32 state) {
-    cellular_->cdma_.registration_state_evdo = state;
+    capability_.registration_state_evdo_ = state;
   }
 
   void SetRegistrationState1x(uint32 state) {
-    cellular_->cdma_.registration_state_1x = state;
+    capability_.registration_state_1x_ = state;
   }
 
   void SetProxy() {
-    cellular_->set_modem_cdma_proxy(proxy_.release());
+    capability_.proxy_.reset(proxy_.release());
   }
 
   void SetService() {
     cellular_->service_ = new CellularService(
         &control_, &dispatcher_, NULL, cellular_);
+  }
+
+  void SetCapability() {
+    ASSERT_FALSE(cellular_->capability_.get());
+    cellular_->capability_.reset(&capability_);
   }
 
   void SetDeviceState(Cellular::State state) {
@@ -163,6 +175,28 @@ TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
   EXPECT_EQ(0, cellular_->service()->strength());
   capability_.GetSignalQuality();
   EXPECT_EQ(kStrength, cellular_->service()->strength());
+}
+
+TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
+  EXPECT_FALSE(cellular_->service().get());
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
+            capability_.registration_state_1x());
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
+            capability_.registration_state_evdo());
+  EXPECT_CALL(*proxy_, GetRegistrationState(_, _))
+      .WillOnce(DoAll(
+          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
+          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
+  EXPECT_CALL(*proxy_, GetSignalQuality()).WillOnce(Return(90));
+  SetProxy();
+  capability_.GetRegistrationState();
+  SetCapability();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
+            capability_.registration_state_1x());
+  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
+            capability_.registration_state_evdo());
+  ASSERT_TRUE(cellular_->service().get());
 }
 
 }  // namespace shill

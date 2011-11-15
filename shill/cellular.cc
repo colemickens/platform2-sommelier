@@ -84,14 +84,11 @@ const Stringmap &Cellular::Operator::ToDict() const {
 }
 
 Cellular::CDMA::CDMA()
-    : registration_state_evdo(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      registration_state_1x(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
+    : activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       prl_version(0) {}
 
 Cellular::GSM::GSM()
-    : registration_state(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
-      access_technology(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN) {}
+    : access_technology(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN) {}
 
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
@@ -138,8 +135,6 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kMinProperty, &min_);
   store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
-  store->RegisterConstString(flimflam::kSelectedNetworkProperty,
-                             &selected_network_);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
@@ -219,24 +214,18 @@ void Cellular::Start() {
   InitCapability();  // For now, only a single capability is supported.
   InitProxies();
   EnableModem();
-  if (type_ == kTypeGSM) {
-    RegisterGSMModem();
-  }
+  capability_->Register();
   GetModemStatus();
   capability_->GetIdentifiers();
-  if (type_ == kTypeGSM) {
-    GetGSMProperties();
-  }
+  capability_->GetProperties();
   GetModemInfo();
-  GetModemRegistrationState();
+  capability_->GetRegistrationState();
 }
 
 void Cellular::Stop() {
   capability_.reset();
   proxy_.reset();
   simple_proxy_.reset();
-  cdma_proxy_.reset();
-  gsm_network_proxy_.reset();
   manager()->DeregisterService(service_);
   service_ = NULL;  // Breaks a reference cycle.
   SetState(kStateDisabled);
@@ -310,46 +299,12 @@ void Cellular::GetModemStatus() {
   }
 }
 
-void Cellular::GetGSMProperties() {
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_.access_technology = gsm_network_proxy_->AccessTechnology();
-  VLOG(2) << "GSM AccessTechnology: " << gsm_.access_technology;
-}
-
-void Cellular::RegisterGSMModem() {
-  CHECK_EQ(kTypeGSM, type_);
-  LOG(INFO) << "Registering on \"" << selected_network_ << "\"";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_network_proxy_->Register(selected_network_);
-  // TODO(petkov): Handle registration failure including trying the home network
-  // when selected_network_ is not empty.
+void Cellular::Activate(const std::string &carrier, Error *error) {
+  capability_->Activate(carrier, error);
 }
 
 void Cellular::RegisterOnNetwork(const string &network_id, Error *error) {
-  LOG(INFO) << __func__ << "(" << network_id << ")";
-  if (type_ != kTypeGSM) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "Network registration supported only for GSM.");
-    return;
-  }
-  // Defer registration because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::RegisterOnNetworkTask,
-                                      network_id));
-}
-
-void Cellular::RegisterOnNetworkTask(const string &network_id) {
-  LOG(INFO) << __func__ << "(" << network_id << ")";
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  gsm_network_proxy_->Register(network_id);
-  // TODO(petkov): Handle registration failure.
-  selected_network_ = network_id;
-}
-
-void Cellular::Activate(const std::string &carrier, Error *error) {
-  capability_->Activate(carrier, error);
+  capability_->RegisterOnNetwork(network_id, error);
 }
 
 void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
@@ -382,41 +337,6 @@ void Cellular::GetModemInfo() {
   hardware_revision_ = info._3;
   VLOG(2) << "ModemInfo: " << manufacturer_ << ", " << model_id_ << ", "
           << hardware_revision_;
-}
-
-void Cellular::GetModemRegistrationState() {
-  switch (type_) {
-    case kTypeGSM:
-      GetGSMRegistrationState();
-      break;
-    case kTypeCDMA:
-      GetCDMARegistrationState();
-      break;
-    default: NOTREACHED();
-  }
-  HandleNewRegistrationState();
-}
-
-void Cellular::GetCDMARegistrationState() {
-  CHECK_EQ(kTypeCDMA, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  cdma_proxy_->GetRegistrationState(&cdma_.registration_state_1x,
-                                    &cdma_.registration_state_evdo);
-  VLOG(2) << "CDMA Registration: 1x(" << cdma_.registration_state_1x
-          << ") EVDO(" << cdma_.registration_state_evdo << ")";
-}
-
-void Cellular::GetGSMRegistrationState() {
-  CHECK_EQ(kTypeGSM, type_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  ModemGSMNetworkProxyInterface::RegistrationInfo info =
-      gsm_network_proxy_->GetRegistrationInfo();
-  gsm_.registration_state = info._1;
-  gsm_.network_id = info._2;
-  gsm_.operator_name = info._3;
-  VLOG(2) << "GSM Registration: " << gsm_.registration_state << ", "
-          << gsm_.network_id << ", "  << gsm_.operator_name;
-  UpdateGSMOperatorInfo();
 }
 
 void Cellular::HandleNewRegistrationState() {
@@ -574,56 +494,6 @@ void Cellular::HandleNewCDMAActivationState(uint32 error) {
   service_->set_activation_state(
       GetCDMAActivationStateString(cdma_.activation_state));
   service_->set_error(GetCDMAActivationErrorString(error));
-}
-
-void Cellular::OnCDMAActivationStateChanged(
-    uint32 activation_state,
-    uint32 activation_error,
-    const DBusPropertiesMap &status_changes) {
-  CHECK_EQ(kTypeCDMA, type_);
-  DBusProperties::GetString(status_changes, "mdn", &mdn_);
-  DBusProperties::GetString(status_changes, "min", &min_);
-  if (DBusProperties::GetString(
-          status_changes, "payment_url", &cdma_.payment_url) &&
-      service_.get()) {
-    service_->set_payment_url(cdma_.payment_url);
-  }
-  cdma_.activation_state = activation_state;
-  HandleNewCDMAActivationState(activation_error);
-}
-
-void Cellular::OnCDMARegistrationStateChanged(uint32 state_1x,
-                                              uint32 state_evdo) {
-  CHECK_EQ(kTypeCDMA, type_);
-  cdma_.registration_state_1x = state_1x;
-  cdma_.registration_state_evdo = state_evdo;
-  HandleNewRegistrationState();
-}
-
-void Cellular::OnCDMASignalQualityChanged(uint32 strength) {
-  CHECK_EQ(kTypeCDMA, type_);
-  HandleNewSignalQuality(strength);
-}
-
-void Cellular::OnGSMNetworkModeChanged(uint32 /*mode*/) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
-}
-
-void Cellular::OnGSMRegistrationInfoChanged(uint32 status,
-                                            const string &operator_code,
-                                            const string &operator_name) {
-  CHECK_EQ(kTypeGSM, type_);
-  gsm_.registration_state = status;
-  gsm_.network_id = operator_code;
-  gsm_.operator_name = operator_name;
-  UpdateGSMOperatorInfo();
-  HandleNewRegistrationState();
-}
-
-void Cellular::OnGSMSignalQualityChanged(uint32 quality) {
-  CHECK_EQ(kTypeGSM, type_);
-  HandleNewSignalQuality(quality);
 }
 
 void Cellular::OnModemStateChanged(uint32 /*old_state*/,

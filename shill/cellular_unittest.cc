@@ -12,6 +12,7 @@
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -328,11 +329,9 @@ TEST_F(CellularTest, StartGSMRegister) {
   provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
   ASSERT_TRUE(provider_db_);
   device_->provider_db_ = provider_db_;
-  static const char kNetwork[] = "My Favorite GSM Network";
   const int kStrength = 70;
-  device_->selected_network_ = kNetwork;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
-  EXPECT_CALL(*gsm_network_proxy_, Register(kNetwork)).Times(1);
+  EXPECT_CALL(*gsm_network_proxy_, Register("")).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
   EXPECT_CALL(*gsm_card_proxy_, GetIMEI()).WillOnce(Return(kIMEI));
@@ -419,8 +418,6 @@ TEST_F(CellularTest, InitProxiesCDMA) {
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
-  EXPECT_TRUE(device_->cdma_proxy_.get());
-  EXPECT_FALSE(device_->gsm_network_proxy_.get());
 }
 
 TEST_F(CellularTest, InitProxiesGSM) {
@@ -429,8 +426,6 @@ TEST_F(CellularTest, InitProxiesGSM) {
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
-  EXPECT_TRUE(device_->gsm_network_proxy_.get());
-  EXPECT_FALSE(device_->cdma_proxy_.get());
 }
 
 TEST_F(CellularTest, GetModemStatus) {
@@ -460,29 +455,6 @@ TEST_F(CellularTest, GetModemInfo) {
   EXPECT_EQ(kManufacturer, device_->manufacturer_);
   EXPECT_EQ(kModelID, device_->model_id_);
   EXPECT_EQ(kHWRev, device_->hardware_revision_);
-}
-
-TEST_F(CellularTest, GetCDMARegistrationState) {
-  EXPECT_FALSE(device_->service_.get());
-  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-            device_->cdma_.registration_state_1x);
-  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-            device_->cdma_.registration_state_evdo);
-  device_->type_ = Cellular::kTypeCDMA;
-  device_->InitCapability();
-  EXPECT_CALL(*cdma_proxy_, GetRegistrationState(_, _))
-      .WillOnce(DoAll(
-          SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
-          SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
-  EXPECT_CALL(*cdma_proxy_, GetSignalQuality()).WillOnce(Return(90));
-  device_->cdma_proxy_.reset(cdma_proxy_.release());
-  device_->GetModemRegistrationState();
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
-            device_->cdma_.registration_state_1x);
-  EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-            device_->cdma_.registration_state_evdo);
-  ASSERT_TRUE(device_->service_.get());
 }
 
 TEST_F(CellularTest, CreateService) {
@@ -551,28 +523,6 @@ TEST_F(CellularTest, Connect) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularTest, RegisterOnNetwork) {
-  Error error;
-  device_->type_ = Cellular::kTypeGSM;
-  EXPECT_CALL(*gsm_network_proxy_, Register(kTestCarrier)).Times(1);
-  device_->RegisterOnNetwork(kTestCarrier, &error);
-  EXPECT_TRUE(error.IsSuccess());
-  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(kTestCarrier, device_->selected_network_);
-}
-
-TEST_F(CellularTest, RegisterOnNetworkError) {
-  Error error;
-  device_->type_ = Cellular::kTypeCDMA;
-  EXPECT_CALL(*gsm_network_proxy_, Register(_)).Times(0);
-  device_->RegisterOnNetwork(kTestCarrier, &error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  device_->gsm_network_proxy_.reset(gsm_network_proxy_.release());
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ("", device_->selected_network_);
-}
-
 TEST_F(CellularTest, SetGSMAccessTechnology) {
   device_->type_ = Cellular::kTypeGSM;
   device_->InitCapability();
@@ -580,7 +530,8 @@ TEST_F(CellularTest, SetGSMAccessTechnology) {
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, device_->gsm_.access_technology);
   device_->service_ = new CellularService(
       &control_interface_, &dispatcher_, &manager_, device_);
-  device_->gsm_.registration_state = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get())->
+      registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
   device_->SetGSMAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, device_->gsm_.access_technology);
   EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
