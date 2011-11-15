@@ -589,7 +589,7 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetIdleTime)) {
     LOG(INFO) << "Idle time request.";
-    int64 idle_time_ms = 0;
+    int64 idle_time_ms = -1;
     CHECK(daemon->GetIdleTime(&idle_time_ms));
     DBusMessage *reply = dbus_message_new_method_return(message);
     CHECK(reply);
