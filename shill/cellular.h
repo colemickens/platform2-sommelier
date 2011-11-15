@@ -142,19 +142,8 @@ class Cellular : public Device,
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
-  void set_gsm_network_id(const std::string &id) { gsm_.network_id = id; }
-  void set_gsm_operator_name(const std::string &name) {
-    gsm_.operator_name = name;
-  }
-
-  uint32 gsm_access_technology() const { return gsm_.access_technology; }
-
-  uint32 cdma_activation_state() const { return cdma_.activation_state; }
-  void set_cdma_activation_state(uint32 state) {
-    cdma_.activation_state = state;
-  }
-
-  void set_cdma_payment_url(const std::string &url) { cdma_.payment_url = url; }
+  const Operator &home_provider() const { return home_provider_; }
+  void set_home_provider(const Operator &oper);
 
   const std::string &meid() const { return meid_; }
   void set_meid(const std::string &meid) { meid_ = meid; }
@@ -165,9 +154,6 @@ class Cellular : public Device,
   const std::string &imsi() const { return imsi_; }
   void set_imsi(const std::string &imsi) { imsi_ = imsi; }
 
-  const std::string &spn() const { return gsm_.spn; }
-  void set_spn(const std::string &spn) { gsm_.spn = spn; }
-
   const std::string &mdn() const { return mdn_; }
   void set_mdn(const std::string &mdn) { mdn_ = mdn; }
 
@@ -176,19 +162,13 @@ class Cellular : public Device,
 
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
 
-  void SetGSMAccessTechnology(uint32 access_technology);
-
   void HandleNewSignalQuality(uint32 strength);
 
   // Processes a change in the modem registration state, possibly creating,
   // destroying or updating the CellularService.
   void HandleNewRegistrationState();
 
-  void HandleNewCDMAActivationState(uint32 error);
-
-  // Updates the GSM operator name and country based on a newly obtained network
-  // id.
-  void UpdateGSMOperatorInfo();
+  void OnModemManagerPropertiesChanged(const DBusPropertiesMap &properties);
 
   // Inherited from Device.
   virtual void Start();
@@ -212,42 +192,15 @@ class Cellular : public Device,
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, GetCDMAActivationStateString);
-  FRIEND_TEST(CellularTest, GetCDMAActivationErrorString);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxiesCDMA);
   FRIEND_TEST(CellularTest, InitProxiesGSM);
-  FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
-  FRIEND_TEST(CellularTest, UpdateGSMOperatorInfo);
-
-  struct CDMA {
-    CDMA();
-
-    uint32 activation_state;
-
-    uint16 prl_version;
-    std::string payment_url;
-    std::string usage_url;
-  };
-
-  struct GSM {
-    GSM();
-
-    uint32 access_technology;
-    std::string network_id;
-    std::string operator_name;
-    std::string operator_country;
-    std::string spn;
-  };
-
-  static const char kPhoneNumberCDMA[];
-  static const char kPhoneNumberGSM[];
 
   void SetState(State state);
 
@@ -269,9 +222,6 @@ class Cellular : public Device,
 
   std::string GetTypeString() const;
 
-  static std::string GetCDMAActivationStateString(uint32 state);
-  static std::string GetCDMAActivationErrorString(uint32 error);
-
   void EnableModem();
   void GetModemStatus();
 
@@ -281,9 +231,6 @@ class Cellular : public Device,
   void HandleNewRegistrationStateTask();
 
   void CreateService();
-
-  // Updates the serving operator on the active service.
-  void UpdateServingOperator();
 
   // Signal callbacks inherited from ModemProxyDelegate.
   virtual void OnModemStateChanged(uint32 old_state,
@@ -305,9 +252,6 @@ class Cellular : public Device,
   scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
   mobile_provider_db *provider_db_;
-
-  CDMA cdma_;
-  GSM gsm_;
 
   CellularServiceRefPtr service_;
 

@@ -24,6 +24,8 @@ class CellularCapabilityGSM : public CellularCapability,
 
   // Inherited from CellularCapability.
   virtual void InitProxies();
+  virtual void UpdateStatus(const DBusPropertiesMap &properties);
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetSignalQuality();
   virtual void GetRegistrationState();
   virtual void GetProperties();
@@ -40,9 +42,14 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void Scan(Error *error);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
+  virtual void OnModemManagerPropertiesChanged(
+      const DBusPropertiesMap &properties);
+  virtual void OnServiceCreated();
 
   // Obtains the IMEI, IMSI, SPN and MSISDN.
   virtual void GetIdentifiers();
+
+  const std::string &spn() const { return spn_; }
 
  private:
   friend class CellularCapabilityGSMTest;
@@ -50,13 +57,16 @@ class CellularCapabilityGSM : public CellularCapability,
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
   FRIEND_TEST(CellularCapabilityGSMTest, Scan);
-  FRIEND_TEST(CellularTest, SetGSMAccessTechnology);
+  FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
+  FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
 
   static const char kNetworkPropertyAccessTechnology[];
   static const char kNetworkPropertyID[];
   static const char kNetworkPropertyLongName[];
   static const char kNetworkPropertyShortName[];
   static const char kNetworkPropertyStatus[];
+  static const char kPhoneNumber[];
+  static const char kPropertyAccessTechnology[];
 
   void RegisterOnNetworkTask(const std::string &network_id);
   void RequirePINTask(const std::string &pin, bool require);
@@ -64,6 +74,15 @@ class CellularCapabilityGSM : public CellularCapability,
   void UnblockPINTask(const std::string &unblock_code, const std::string &pin);
   void ChangePINTask(const std::string &old_pin, const std::string &new_pin);
   void ScanTask();
+
+  void SetAccessTechnology(uint32 access_technology);
+
+  // Updates the GSM operator name and country based on a newly obtained network
+  // id.
+  void UpdateOperatorInfo();
+
+  // Updates the serving operator on the active service.
+  void UpdateServingOperator();
 
   Stringmap ParseScanResult(
       const ModemGSMNetworkProxyInterface::ScanResult &result);
@@ -81,6 +100,11 @@ class CellularCapabilityGSM : public CellularCapability,
   ScopedRunnableMethodFactory<CellularCapabilityGSM> task_factory_;
 
   uint32 registration_state_;
+  uint32 access_technology_;
+  std::string network_id_;
+  std::string operator_name_;
+  std::string operator_country_;
+  std::string spn_;
 
   // Properties.
   std::string selected_network_;

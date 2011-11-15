@@ -9,6 +9,8 @@
 
 #include <base/basictypes.h>
 
+#include "shill/dbus_properties.h"
+
 namespace shill {
 
 class Cellular;
@@ -30,6 +32,10 @@ class CellularCapability {
 
   // Initialize RPC proxies.
   virtual void InitProxies() = 0;
+
+  virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
+
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties) = 0;
 
   // Activates the modem. Populates |error| on failure, leaves it unchanged
   // otherwise. The default implementation fails by populating |error|.
@@ -66,6 +72,12 @@ class CellularCapability {
   virtual std::string GetNetworkTechnologyString() const = 0;
 
   virtual std::string GetRoamingStateString() const = 0;
+
+  virtual void OnModemManagerPropertiesChanged(
+      const DBusPropertiesMap &properties) = 0;
+
+  // Invoked by the parent Cellular device when a new service is created.
+  virtual void OnServiceCreated() = 0;
 
  private:
   Cellular *cellular_;

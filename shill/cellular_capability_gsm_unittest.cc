@@ -63,7 +63,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   }
 
   void SetAccessTechnology(uint32 technology) {
-    cellular_->gsm_.access_technology = technology;
+    capability_.access_technology_ = technology;
   }
 
   void SetRegistrationState(uint32 state) {
@@ -108,12 +108,12 @@ TEST_F(CellularCapabilityGSMTest, GetIdentifiers) {
   capability_.GetIdentifiers();
   EXPECT_EQ(kIMEI, cellular_->imei());
   EXPECT_EQ(kIMSI, cellular_->imsi());
-  EXPECT_EQ(kTestCarrier, cellular_->spn());
+  EXPECT_EQ(kTestCarrier, capability_.spn());
   EXPECT_EQ(kMSISDN, cellular_->mdn());
   capability_.GetIdentifiers();
   EXPECT_EQ(kIMEI, cellular_->imei());
   EXPECT_EQ(kIMSI, cellular_->imsi());
-  EXPECT_EQ(kTestCarrier, cellular_->spn());
+  EXPECT_EQ(kTestCarrier, capability_.spn());
   EXPECT_EQ(kMSISDN, cellular_->mdn());
 }
 
@@ -224,6 +224,28 @@ TEST_F(CellularCapabilityGSMTest, ParseScanResultProviderLookup) {
   EXPECT_EQ(2, parsed.size());
   EXPECT_EQ(kID, parsed[flimflam::kNetworkIdProperty]);
   EXPECT_EQ("T-Mobile", parsed[flimflam::kLongNameProperty]);
+}
+
+TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
+  capability_.SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, capability_.access_technology_);
+  SetService();
+  capability_.registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  capability_.SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
+  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, capability_.access_technology_);
+  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
+            cellular_->service()->network_tech());
+}
+
+TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
+  static const char kOperatorName[] = "Swisscom";
+  InitProviderDB();
+  capability_.network_id_ = "22801";
+  SetService();
+  capability_.UpdateOperatorInfo();
+  EXPECT_EQ(kOperatorName, capability_.operator_name_);
+  EXPECT_EQ("ch", capability_.operator_country_);
+  EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {

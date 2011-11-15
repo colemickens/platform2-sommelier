@@ -18,7 +18,6 @@ using std::vector;
 namespace shill {
 
 // TODO(petkov): Consider generating these in mm/mm-modem.h.
-const char Modem::kPropertyAccessTechnology[] = "AccessTechnology";
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyState[] = "State";
@@ -164,12 +163,7 @@ void Modem::OnModemManagerPropertiesChanged(
                                 &lock_status.retries_left)) {
     device_->set_sim_lock_status(lock_status);
   }
-  uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
-  if (DBusProperties::GetUint32(properties,
-                                kPropertyAccessTechnology,
-                                &access_technology)) {
-    device_->SetGSMAccessTechnology(access_technology);
-  }
+  device_->OnModemManagerPropertiesChanged(properties);
 }
 
 }  // namespace shill

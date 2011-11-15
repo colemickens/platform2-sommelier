@@ -12,6 +12,7 @@
 #include <mobile_provider.h>
 
 #include "shill/cellular.h"
+#include "shill/cellular_service.h"
 #include "shill/proxy_factory.h"
 
 using std::string;
@@ -25,11 +26,15 @@ const char CellularCapabilityGSM::kNetworkPropertyLongName[] = "operator-long";
 const char CellularCapabilityGSM::kNetworkPropertyShortName[] =
     "operator-short";
 const char CellularCapabilityGSM::kNetworkPropertyStatus[] = "status";
+const char CellularCapabilityGSM::kPhoneNumber[] = "*99#";
+const char CellularCapabilityGSM::kPropertyAccessTechnology[] =
+    "AccessTechnology";
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
     : CellularCapability(cellular),
       task_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
+      access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       scanning_(false),
       scan_interval_(0) {
   PropertyStore *store = cellular->mutable_store();
@@ -53,6 +58,20 @@ void CellularCapabilityGSM::InitProxies() {
                                                   cellular()->dbus_owner()));
 }
 
+void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
+  string imsi;
+  if (DBusProperties::GetString(properties, "imsi", &imsi)) {
+    // TODO(petkov): Set GSM provider based on IMSI and SPN.
+  }
+}
+
+void CellularCapabilityGSM::SetupConnectProperties(
+    DBusPropertiesMap *properties) {
+  (*properties)[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
+      kPhoneNumber);
+  // TODO(petkov): Setup apn and "home_only".
+}
+
 void CellularCapabilityGSM::GetIdentifiers() {
   VLOG(2) << __func__;
   if (cellular()->imei().empty()) {
@@ -65,11 +84,11 @@ void CellularCapabilityGSM::GetIdentifiers() {
     cellular()->set_imsi(card_proxy_->GetIMSI());
     VLOG(2) << "IMSI: " << cellular()->imsi();
   }
-  if (cellular()->spn().empty()) {
+  if (spn_.empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
     try {
-      cellular()->set_spn(card_proxy_->GetSPN());
-      VLOG(2) << "SPN: " << cellular()->spn();
+      spn_ =  card_proxy_->GetSPN();
+      VLOG(2) << "SPN: " << spn_;
     } catch (const DBus::Error e) {
       // Some modems don't support this call so catch the exception explicitly.
       LOG(WARNING) << "Unable to obtain SPN: " << e.what();
@@ -95,11 +114,11 @@ void CellularCapabilityGSM::GetRegistrationState() {
   ModemGSMNetworkProxyInterface::RegistrationInfo info =
       network_proxy_->GetRegistrationInfo();
   registration_state_ = info._1;
-  cellular()->set_gsm_network_id(info._2);
-  cellular()->set_gsm_operator_name(info._3);
-  VLOG(2) << "GSM Registration: " << info._1 << ", "
-          << info._2 << ", "  << info._3;
-  cellular()->UpdateGSMOperatorInfo();
+  network_id_ = info._2;
+  operator_name_ = info._3;
+  VLOG(2) << "GSM Registration: " << registration_state_ << ", "
+          << network_id_ << ", "  << operator_name_;
+  UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
 
@@ -107,8 +126,42 @@ void CellularCapabilityGSM::GetProperties() {
   VLOG(2) << __func__;
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 tech = network_proxy_->AccessTechnology();
-  cellular()->SetGSMAccessTechnology(tech);
+  SetAccessTechnology(tech);
   VLOG(2) << "GSM AccessTechnology: " << tech;
+}
+
+void CellularCapabilityGSM::UpdateOperatorInfo() {
+  VLOG(2) << __func__;
+  if (!network_id_.empty()) {
+    VLOG(2) << "Looking up network id: " << network_id_;
+    mobile_provider *provider =
+        mobile_provider_lookup_by_network(cellular()->provider_db(),
+                                          network_id_.c_str());
+    if (provider) {
+      const char *provider_name = mobile_provider_get_name(provider);
+      if (provider_name && *provider_name) {
+        operator_name_ = provider_name;
+        operator_country_ = provider->country;
+        VLOG(2) << "Operator name: " << operator_name_
+                << ", country: " << operator_country_;
+      }
+    } else {
+      VLOG(2) << "GSM provider not found.";
+    }
+  }
+  UpdateServingOperator();
+}
+
+void CellularCapabilityGSM::UpdateServingOperator() {
+  VLOG(2) << __func__;
+  if (!cellular()->service().get()) {
+    return;
+  }
+  Cellular::Operator oper;
+  oper.SetName(operator_name_);
+  oper.SetCode(network_id_);
+  oper.SetCountry(operator_country_);
+  cellular()->service()->set_serving_operator(oper);
 }
 
 void CellularCapabilityGSM::Register() {
@@ -289,10 +342,17 @@ Stringmap CellularCapabilityGSM::ParseScanResult(
   return parsed;
 }
 
+void CellularCapabilityGSM::SetAccessTechnology(uint32 access_technology) {
+  access_technology_ = access_technology;
+  if (cellular()->service().get()) {
+    cellular()->service()->set_network_tech(GetNetworkTechnologyString());
+  }
+}
+
 string CellularCapabilityGSM::GetNetworkTechnologyString() const {
   if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
       registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
-    switch (cellular()->gsm_access_technology()) {
+    switch (access_technology_) {
       case MM_MODEM_GSM_ACCESS_TECH_GSM:
       case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
         return flimflam::kNetworkTechnologyGsm;
@@ -327,6 +387,22 @@ string CellularCapabilityGSM::GetRoamingStateString() const {
   return flimflam::kRoamingStateUnknown;
 }
 
+void CellularCapabilityGSM::OnModemManagerPropertiesChanged(
+    const DBusPropertiesMap &properties) {
+  uint32 access_technology = MM_MODEM_GSM_ACCESS_TECH_UNKNOWN;
+  if (DBusProperties::GetUint32(properties,
+                                kPropertyAccessTechnology,
+                                &access_technology)) {
+    SetAccessTechnology(access_technology);
+  }
+}
+
+void CellularCapabilityGSM::OnServiceCreated() {
+  cellular()->service()->set_activation_state(
+      flimflam::kActivationStateActivated);
+  UpdateServingOperator();
+}
+
 void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
   // TODO(petkov): Implement this.
   NOTIMPLEMENTED();
@@ -335,9 +411,9 @@ void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
 void CellularCapabilityGSM::OnGSMRegistrationInfoChanged(
     uint32 status, const string &operator_code, const string &operator_name) {
   registration_state_ = status;
-  cellular()->set_gsm_network_id(operator_code);
-  cellular()->set_gsm_operator_name(operator_name);
-  cellular()->UpdateGSMOperatorInfo();
+  network_id_ = operator_code;
+  operator_name_ = operator_name;
+  UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
 

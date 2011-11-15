@@ -51,7 +51,6 @@ class Modem : public DBusPropertiesProxyDelegate {
   FRIEND_TEST(ModemTest, CreateCellularDevice);
   FRIEND_TEST(ModemTest, Init);
 
-  static const char kPropertyAccessTechnology[];
   static const char kPropertyLinkName[];
   static const char kPropertyIPMethod[];
   static const char kPropertyState[];

@@ -40,8 +40,6 @@ using std::vector;
 namespace shill {
 
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
-const char Cellular::kPhoneNumberCDMA[] = "#777";
-const char Cellular::kPhoneNumberGSM[] = "*99#";
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -82,13 +80,6 @@ void Cellular::Operator::SetCountry(const string &country) {
 const Stringmap &Cellular::Operator::ToDict() const {
   return dict_;
 }
-
-Cellular::CDMA::CDMA()
-    : activation_state(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
-      prl_version(0) {}
-
-Cellular::GSM::GSM()
-    : access_technology(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN) {}
 
 Cellular::Cellular(ControlInterface *control_interface,
                    EventDispatcher *dispatcher,
@@ -134,7 +125,6 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kMeidProperty, &meid_);
   store->RegisterConstString(flimflam::kMinProperty, &min_);
   store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-  store->RegisterConstUint16(flimflam::kPRLVersionProperty, &cdma_.prl_version);
 
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &Cellular::SimLockStatusToProperty,
@@ -166,41 +156,6 @@ string Cellular::GetStateString(State state) {
     default: NOTREACHED();
   }
   return StringPrintf("CellularStateUnknown-%d", state);
-}
-
-// static
-string Cellular::GetCDMAActivationStateString(uint32 state) {
-  switch (state) {
-    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
-      return flimflam::kActivationStateActivated;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
-      return flimflam::kActivationStateActivating;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
-      return flimflam::kActivationStateNotActivated;
-    case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
-      return flimflam::kActivationStatePartiallyActivated;
-    default:
-      return flimflam::kActivationStateUnknown;
-  }
-}
-
-// static
-string Cellular::GetCDMAActivationErrorString(uint32 error) {
-  switch (error) {
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
-      return flimflam::kErrorNeedEvdo;
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING:
-      return flimflam::kErrorNeedHomeNetwork;
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
-      return flimflam::kErrorOtaspFailed;
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR:
-      return "";
-    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
-    default:
-      return flimflam::kErrorActivationFailed;
-  }
 }
 
 void Cellular::SetState(State state) {
@@ -264,18 +219,10 @@ void Cellular::GetModemStatus() {
   CHECK_EQ(kStateEnabled, state_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   DBusPropertiesMap properties = simple_proxy_->GetStatus();
-  if (DBusProperties::GetString(properties, "carrier", &carrier_) &&
-      type_ == kTypeCDMA) {
-    home_provider_.SetName(carrier_);
-    home_provider_.SetCode("");
-    home_provider_.SetCountry("us");
-  }
+  DBusProperties::GetString(properties, "carrier", &carrier_);
   DBusProperties::GetString(properties, "meid", &meid_);
   DBusProperties::GetString(properties, "imei", &imei_);
-  if (DBusProperties::GetString(properties, "imsi", &imsi_) &&
-      type_ == kTypeGSM) {
-    // TODO(petkov): Set GSM provider based on IMSI and SPN.
-  }
+  DBusProperties::GetString(properties, "imsi", &imsi_);
   DBusProperties::GetString(properties, "esn", &esn_);
   DBusProperties::GetString(properties, "mdn", &mdn_);
   DBusProperties::GetString(properties, "min", &min_);
@@ -287,16 +234,7 @@ void Cellular::GetModemStatus() {
     modem_state_ = static_cast<ModemState>(state);
   }
 
-  if (type_ == kTypeCDMA) {
-    DBusProperties::GetUint32(
-        properties, "activation_state", &cdma_.activation_state);
-    DBusProperties::GetUint16(properties, "prl_version", &cdma_.prl_version);
-    // TODO(petkov): For now, get the payment and usage URLs from ModemManager
-    // to match flimflam. In the future, provide a plugin API to get these
-    // directly from the modem driver.
-    DBusProperties::GetString(properties, "payment_url", &cdma_.payment_url);
-    DBusProperties::GetString(properties, "usage_url", &cdma_.usage_url);
-  }
+  capability_->UpdateStatus(properties);
 }
 
 void Cellular::Activate(const std::string &carrier, Error *error) {
@@ -388,20 +326,7 @@ void Cellular::CreateService() {
   CHECK(!service_.get());
   service_ =
       new CellularService(control_interface(), dispatcher(), manager(), this);
-  switch (type_) {
-    case kTypeGSM:
-      service_->set_activation_state(flimflam::kActivationStateActivated);
-      UpdateServingOperator();
-      break;
-    case kTypeCDMA:
-      service_->set_payment_url(cdma_.payment_url);
-      service_->set_usage_url(cdma_.usage_url);
-      UpdateServingOperator();
-      HandleNewCDMAActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
-      break;
-    default:
-      NOTREACHED();
-  }
+  capability_->OnServiceCreated();
 }
 
 bool Cellular::TechnologyIs(const Technology::Identifier type) const {
@@ -427,18 +352,7 @@ void Cellular::Connect(Error *error) {
   }
 
   DBusPropertiesMap properties;
-  const char *phone_number = NULL;
-  switch (type_) {
-    case kTypeGSM:
-      phone_number = kPhoneNumberGSM;
-      break;
-    case kTypeCDMA:
-      phone_number = kPhoneNumberCDMA;
-      break;
-    default: NOTREACHED();
-  }
-  properties[kConnectPropertyPhoneNumber].writer().append_string(phone_number);
-  // TODO(petkov): Setup apn and "home_only".
+  capability_->SetupConnectProperties(&properties);
 
   // Defer connect because we may be in a dbus-c++ callback.
   dispatcher()->PostTask(
@@ -487,15 +401,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void Cellular::HandleNewCDMAActivationState(uint32 error) {
-  if (!service_.get()) {
-    return;
-  }
-  service_->set_activation_state(
-      GetCDMAActivationStateString(cdma_.activation_state));
-  service_->set_error(GetCDMAActivationErrorString(error));
-}
-
 void Cellular::OnModemStateChanged(uint32 /*old_state*/,
                                    uint32 /*new_state*/,
                                    uint32 /*reason*/) {
@@ -503,52 +408,10 @@ void Cellular::OnModemStateChanged(uint32 /*old_state*/,
   NOTIMPLEMENTED();
 }
 
-void Cellular::SetGSMAccessTechnology(uint32 access_technology) {
-  CHECK_EQ(kTypeGSM, type_);
-  gsm_.access_technology = access_technology;
-  if (service_.get()) {
-    service_->set_network_tech(capability_->GetNetworkTechnologyString());
-  }
-}
-
-void Cellular::UpdateGSMOperatorInfo() {
-  if (!gsm_.network_id.empty()) {
-    VLOG(2) << "Looking up network id: " << gsm_.network_id;
-    mobile_provider *provider =
-        mobile_provider_lookup_by_network(provider_db_,
-                                          gsm_.network_id.c_str());
-    if (provider) {
-      const char *provider_name = mobile_provider_get_name(provider);
-      if (provider_name && *provider_name) {
-        gsm_.operator_name = provider_name;
-        gsm_.operator_country = provider->country;
-        VLOG(2) << "Operator name: " << gsm_.operator_name
-                << ", country: " << gsm_.operator_country;
-      }
-    } else {
-      VLOG(2) << "GSM provider not found.";
-    }
-  }
-  UpdateServingOperator();
-}
-
-void Cellular::UpdateServingOperator() {
-  if (!service_.get()) {
-    return;
-  }
-  switch (type_) {
-    case kTypeGSM: {
-      Operator oper;
-      oper.SetName(gsm_.operator_name);
-      oper.SetCode(gsm_.network_id);
-      oper.SetCountry(gsm_.operator_country);
-      service_->set_serving_operator(oper);
-      break;
-    }
-    case kTypeCDMA:
-      service_->set_serving_operator(home_provider_);
-      break;
-    default: NOTREACHED();
+void Cellular::OnModemManagerPropertiesChanged(
+    const DBusPropertiesMap &properties) {
+  if (capability_.get()) {
+    capability_->OnModemManagerPropertiesChanged(properties);
   }
 }
 
@@ -557,6 +420,10 @@ StrIntPair Cellular::SimLockStatusToProperty(Error */*error*/) {
                               sim_lock_status_.lock_type),
                     make_pair(flimflam::kSIMLockRetriesLeftProperty,
                               sim_lock_status_.retries_left));
+}
+
+void Cellular::set_home_provider(const Operator &oper) {
+  home_provider_.CopyFrom(oper);
 }
 
 void Cellular::HelpRegisterDerivedStrIntPair(

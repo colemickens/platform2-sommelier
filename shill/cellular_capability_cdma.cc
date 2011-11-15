@@ -16,16 +16,47 @@ using std::string;
 
 namespace shill {
 
+const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
+
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
     : CellularCapability(cellular),
       task_factory_(this),
+      activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
-      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {}
+      registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
+      prl_version_(0) {
+  PropertyStore *store = cellular->mutable_store();
+  store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
+}
 
 void CellularCapabilityCDMA::InitProxies() {
   VLOG(2) << __func__;
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
       this, cellular()->dbus_path(), cellular()->dbus_owner()));
+}
+
+void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
+  string carrier;
+  if (DBusProperties::GetString(properties, "carrier", &carrier)) {
+    Cellular::Operator oper;
+    oper.SetName(carrier);
+    oper.SetCountry("us");
+    cellular()->set_home_provider(oper);
+  }
+  DBusProperties::GetUint32(
+      properties, "activation_state", &activation_state_);
+  DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
+  // TODO(petkov): For now, get the payment and usage URLs from ModemManager
+  // to match flimflam. In the future, provide a plugin API to get these
+  // directly from the modem driver.
+  DBusProperties::GetString(properties, "payment_url", &payment_url_);
+  DBusProperties::GetString(properties, "usage_url", &usage_url_);
+}
+
+void CellularCapabilityCDMA::SetupConnectProperties(
+    DBusPropertiesMap *properties) {
+  (*properties)[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
+      kPhoneNumber);
 }
 
 void CellularCapabilityCDMA::Activate(const string &carrier, Error *error) {
@@ -54,10 +85,53 @@ void CellularCapabilityCDMA::ActivateTask(const string &carrier) {
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 status = proxy_->Activate(carrier);
   if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
-    cellular()->set_cdma_activation_state(
-        MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING);
+    activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   }
-  cellular()->HandleNewCDMAActivationState(status);
+  HandleNewActivationState(status);
+}
+
+void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
+  if (!cellular()->service().get()) {
+    return;
+  }
+  cellular()->service()->set_activation_state(
+      GetActivationStateString(activation_state_));
+  cellular()->service()->set_error(GetActivationErrorString(error));
+}
+
+// static
+string CellularCapabilityCDMA::GetActivationStateString(uint32 state) {
+  switch (state) {
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED:
+      return flimflam::kActivationStateActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING:
+      return flimflam::kActivationStateActivating;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED:
+      return flimflam::kActivationStateNotActivated;
+    case MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED:
+      return flimflam::kActivationStatePartiallyActivated;
+    default:
+      return flimflam::kActivationStateUnknown;
+  }
+}
+
+// static
+string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
+  switch (error) {
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE:
+      return flimflam::kErrorNeedEvdo;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING:
+      return flimflam::kErrorNeedHomeNetwork;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT:
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED:
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED:
+      return flimflam::kErrorOtaspFailed;
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR:
+      return "";
+    case MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL:
+    default:
+      return flimflam::kErrorActivationFailed;
+  }
 }
 
 void CellularCapabilityCDMA::GetIdentifiers() {
@@ -120,6 +194,21 @@ void CellularCapabilityCDMA::GetRegistrationState() {
   cellular()->HandleNewRegistrationState();
 }
 
+void CellularCapabilityCDMA::UpdateServingOperator() {
+  VLOG(2) << __func__;
+  if (cellular()->service().get()) {
+    cellular()->service()->set_serving_operator(cellular()->home_provider());
+  }
+}
+
+void CellularCapabilityCDMA::OnServiceCreated() {
+  VLOG(2) << __func__;
+  cellular()->service()->set_payment_url(payment_url_);
+  cellular()->service()->set_usage_url(usage_url_);
+  UpdateServingOperator();
+  HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
+}
+
 void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
     uint32 activation_state,
     uint32 activation_error,
@@ -133,15 +222,12 @@ void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
   if (DBusProperties::GetString(status_changes, "min", &min)) {
     cellular()->set_min(min);
   }
-  string payment_url;
-  if (DBusProperties::GetString(status_changes, "payment_url", &payment_url)) {
-    cellular()->set_cdma_payment_url(payment_url);
-    if (cellular()->service().get()) {
-      cellular()->service()->set_payment_url(payment_url);
-    }
+  if (DBusProperties::GetString(status_changes, "payment_url", &payment_url_) &&
+      cellular()->service().get()) {
+    cellular()->service()->set_payment_url(payment_url_);
   }
-  cellular()->set_cdma_activation_state(activation_state);
-  cellular()->HandleNewCDMAActivationState(activation_error);
+  activation_state_ = activation_state;
+  HandleNewActivationState(activation_error);
 }
 
 void CellularCapabilityCDMA::OnCDMARegistrationStateChanged(
@@ -151,6 +237,9 @@ void CellularCapabilityCDMA::OnCDMARegistrationStateChanged(
   registration_state_evdo_ = state_evdo;
   cellular()->HandleNewRegistrationState();
 }
+
+void CellularCapabilityCDMA::OnModemManagerPropertiesChanged(
+    const DBusPropertiesMap &/*properties*/) {}
 
 void CellularCapabilityCDMA::OnCDMASignalQualityChanged(uint32 strength) {
   cellular()->HandleNewSignalQuality(strength);

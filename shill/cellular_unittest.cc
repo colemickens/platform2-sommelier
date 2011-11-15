@@ -12,6 +12,7 @@
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_service.h"
 #include "shill/error.h"
@@ -87,14 +88,6 @@ TEST_F(CellularPropertyTest, Dispatch) {
     EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
                                              flimflam::kCarrierProperty,
                                              PropertyStoreTest::kStringV,
-                                             &error));
-    EXPECT_EQ(invalid_args(), error.name());
-  }
-  {
-    ::DBus::Error error;
-    EXPECT_FALSE(DBusAdaptor::DispatchOnType(device_->mutable_store(),
-                                             flimflam::kPRLVersionProperty,
-                                             PropertyStoreTest::kInt16V,
                                              &error));
     EXPECT_EQ(invalid_args(), error.name());
   }
@@ -205,6 +198,14 @@ class CellularTest : public testing::Test {
   void StartRTNLHandler();
   void StopRTNLHandler();
 
+  CellularCapabilityCDMA *GetCapabilityCDMA() {
+    return dynamic_cast<CellularCapabilityCDMA *>(device_->capability_.get());
+  }
+
+  CellularCapabilityGSM *GetCapabilityGSM() {
+    return dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get());
+  }
+
   NiceMockControl control_interface_;
   EventDispatcher dispatcher_;
   MockGLib glib_;
@@ -255,49 +256,6 @@ TEST_F(CellularTest, GetStateString) {
             device_->GetStateString(Cellular::kStateConnected));
   EXPECT_EQ("CellularStateLinked",
             device_->GetStateString(Cellular::kStateLinked));
-}
-
-TEST_F(CellularTest, GetCDMAActivationStateString) {
-  EXPECT_EQ(flimflam::kActivationStateActivated,
-            device_->GetCDMAActivationStateString(
-                MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStateActivating,
-            device_->GetCDMAActivationStateString(
-                MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING));
-  EXPECT_EQ(flimflam::kActivationStateNotActivated,
-            device_->GetCDMAActivationStateString(
-                MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStatePartiallyActivated,
-            device_->GetCDMAActivationStateString(
-                MM_MODEM_CDMA_ACTIVATION_STATE_PARTIALLY_ACTIVATED));
-  EXPECT_EQ(flimflam::kActivationStateUnknown,
-            device_->GetCDMAActivationStateString(123));
-}
-
-TEST_F(CellularTest, GetCDMAActivationErrorString) {
-  EXPECT_EQ(flimflam::kErrorNeedEvdo,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_WRONG_RADIO_INTERFACE));
-  EXPECT_EQ(flimflam::kErrorNeedHomeNetwork,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_ROAMING));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_COULD_NOT_CONNECT));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_SECURITY_AUTHENTICATION_FAILED));
-  EXPECT_EQ(flimflam::kErrorOtaspFailed,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_PROVISIONING_FAILED));
-  EXPECT_EQ("",
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
-            device_->GetCDMAActivationErrorString(
-                MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
-  EXPECT_EQ(flimflam::kErrorActivationFailed,
-            device_->GetCDMAActivationErrorString(1234));
 }
 
 TEST_F(CellularTest, StartCDMARegister) {
@@ -352,7 +310,7 @@ TEST_F(CellularTest, StartGSMRegister) {
   device_->Start();
   EXPECT_EQ(kIMEI, device_->imei_);
   EXPECT_EQ(kIMSI, device_->imsi_);
-  EXPECT_EQ(kTestCarrier, device_->gsm_.spn);
+  EXPECT_EQ(kTestCarrier, GetCapabilityGSM()->spn());
   EXPECT_EQ(kMSISDN, device_->mdn_);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
@@ -430,6 +388,7 @@ TEST_F(CellularTest, InitProxiesGSM) {
 
 TEST_F(CellularTest, GetModemStatus) {
   device_->type_ = Cellular::kTypeCDMA;
+  device_->InitCapability();
   DBusPropertiesMap props;
   props["carrier"].writer().append_string(kTestCarrier);
   props["unknown-property"].writer().append_string("irrelevant-value");
@@ -461,9 +420,10 @@ TEST_F(CellularTest, CreateService) {
   device_->type_ = Cellular::kTypeCDMA;
   static const char kPaymentURL[] = "https://payment.url";
   static const char kUsageURL[] = "https://usage.url";
-  device_->cdma_.payment_url = kPaymentURL;
-  device_->cdma_.usage_url = kUsageURL;
   device_->home_provider_.SetName(kTestCarrier);
+  device_->InitCapability();
+  GetCapabilityCDMA()->payment_url_ = kPaymentURL;
+  GetCapabilityCDMA()->usage_url_ = kUsageURL;
   device_->CreateService();
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(kPaymentURL, device_->service_->payment_url());
@@ -481,6 +441,8 @@ MATCHER(ContainsPhoneNumber, "") {
 }  // namespace {}
 
 TEST_F(CellularTest, Connect) {
+  device_->InitCapability();
+
   Error error;
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .Times(2)
@@ -515,41 +477,9 @@ TEST_F(CellularTest, Connect) {
   device_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());
 
-  DBusPropertiesMap properties;
-  properties[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
-      Cellular::kPhoneNumberGSM);
   EXPECT_CALL(*simple_proxy_, Connect(ContainsPhoneNumber())).Times(2);
   device_->simple_proxy_.reset(simple_proxy_.release());
   dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(CellularTest, SetGSMAccessTechnology) {
-  device_->type_ = Cellular::kTypeGSM;
-  device_->InitCapability();
-  device_->SetGSMAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
-  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, device_->gsm_.access_technology);
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &manager_, device_);
-  dynamic_cast<CellularCapabilityGSM *>(device_->capability_.get())->
-      registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
-  device_->SetGSMAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
-  EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, device_->gsm_.access_technology);
-  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
-            device_->service_->network_tech());
-}
-
-TEST_F(CellularTest, UpdateGSMOperatorInfo) {
-  static const char kOperatorName[] = "Swisscom";
-  provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
-  ASSERT_TRUE(provider_db_);
-  device_->provider_db_ = provider_db_;
-  device_->gsm_.network_id = "22801";
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &manager_, device_);
-  device_->UpdateGSMOperatorInfo();
-  EXPECT_EQ(kOperatorName, device_->gsm_.operator_name);
-  EXPECT_EQ("ch", device_->gsm_.operator_country);
-  EXPECT_EQ(kOperatorName, device_->service_->serving_operator().GetName());
 }
 
 }  // namespace shill
