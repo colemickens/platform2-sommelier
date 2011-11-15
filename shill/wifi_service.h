@@ -71,6 +71,12 @@ class WiFiService : public Service {
 
   static const char kStorageHiddenSSID[];
 
+  void HelpRegisterDerivedString(
+      PropertyStore *store,
+      const std::string &name,
+      std::string(WiFiService::*get)(Error *),
+      void(WiFiService::*set)(const std::string&, Error *));
+
   void ConnectTask();
 
   std::string GetDeviceRpcId(Error *error);

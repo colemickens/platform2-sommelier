@@ -20,6 +20,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
+#include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
@@ -50,7 +51,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
-  store->RegisterWriteOnlyString(flimflam::kPassphraseProperty, &passphrase_);
+  HelpRegisterDerivedString(store,
+                            flimflam::kPassphraseProperty,
+                            NULL,
+                            &WiFiService::SetPassphrase);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(flimflam::kSecurityProperty, &security_);
   store->RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
@@ -208,6 +212,16 @@ bool WiFiService::IsSecurityMatch(const string &security) const {
 }
 
 // private methods
+void WiFiService::HelpRegisterDerivedString(
+    PropertyStore *store,
+    const std::string &name,
+    std::string(WiFiService::*get)(Error *),
+    void(WiFiService::*set)(const std::string&, Error *)) {
+  store->RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
+}
+
 void WiFiService::ConnectTask() {
   std::map<string, DBus::Variant> params;
   DBus::MessageIter writer;

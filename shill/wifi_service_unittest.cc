@@ -167,6 +167,45 @@ TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
     EXPECT_NE(it.Key(), flimflam::kPassphraseProperty);
 }
 
+// Make sure setting the passphrase via D-Bus Service.SetProperty validates
+// the passphrase.
+TEST_F(WiFiServiceTest, PassphraseSetPropertyValidation) {
+  // We only spot check two password cases here to make sure the
+  // SetProperty code path does validation.  We're not going to exhaustively
+  // test for all types of passwords.
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityWep,
+                                                   false);
+  Error error;
+  EXPECT_TRUE(wifi_service->mutable_store()->SetStringProperty(
+                  flimflam::kPassphraseProperty, "0:abcde", &error));
+  EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
+                   flimflam::kPassphraseProperty, "invalid", &error));
+  EXPECT_EQ(Error::kInvalidPassphrase, error.type());
+}
+
+TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityNone,
+                                                   false);
+  Error error;
+  EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
+                   flimflam::kPassphraseProperty, "invalid", &error));
+  EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
 TEST_F(WiFiServiceTest, NonUTF8SSID) {
   vector<uint8_t> ssid;
 
