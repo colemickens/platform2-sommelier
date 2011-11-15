@@ -1,0 +1,104 @@
+Below is a summary of the code style conventions for Chromium OS
+upstart jobs.  Please use this style for all new upstart jobs.
+
+Due to history, not all jobs in this package conform to style; you
+are encouraged to update files to conform when you make changes.
+
+== Whitespace conventions:
+  * Indentation is in 2 column increments.
+  * Indent with spaces, not tabs.
+  * Lines should not exceed 72 columns; lines must not exceed 80
+    columns.
+  * Long lines may be continued with a '\' at end of line.  The
+    first continuation line must be indented at least 2 columns;
+    more may be used to align the text with some significant element
+    on the line being continued.  Subsequent continuation lines
+    should be indented to align with the first continuation line.
+
+
+== Standard template:
+  # Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+  # Use of this source code is governed by a BSD-style license that can be
+  # found in the LICENSE file.
+
+  description     "<description of job>"
+  author          "chromium-os-dev@chromium.org"
+
+  # Optional comment describing the job.  Explain anything
+  # non-obvious that's not explained in the description.  Explain
+  # any non-obvious dependencies in the start and stop conditions,
+  # and justify 'task' if necessary.  If everything you might say
+  # is covered in 'description', 'start on', 'stop on', etc., leave
+  # this out.
+  start on ...          # optional
+  stop on ...           # optional
+  task                  # optional
+
+  # other upstart stanzas as needed
+
+  pre-start ...         # optional
+
+  post-start ...        # optional
+
+  respawn               # optional
+  expect ...            # optional
+
+  exec ...              # optional, can't use this with "script"
+  script ...            # optional, can't use this with "exec"
+
+  pre-stop ...          # optional
+
+  post-stop ...         # optional
+
+
+== Notes about the use of 'task'
+For most jobs, you shouldn't need both 'stop on' and 'task'.  Use
+one or the other, or neither.  Don't break this rule unless you
+know what you're doing and explain it in the job's descriptive
+comments.
+
+The 'task' keyword does not mean "this job should not respawn"; it
+means that when the job starts, other jobs can be forced to wait for
+its completion.  In particular:
+  * If a task starts because of a 'start on starting x' clause, the
+    'x' job's pre-start, post-start, and main commands will be
+    delayed until the task terminates.
+  * If a task starts because of a 'start on stopping x' clause, the
+    'x' job's post-stop commands will be delayed until the task
+    terminates.
+  * If a task is started by 'initctl emit', the 'initctl' command
+    will wait for the task to terminate.
+Only use 'task' if the task's start conditions require one of these
+delays (e.g. to prevent a race condition).  If you use 'task', the
+reason should typically be explained in the job's descriptive
+comments.
+
+Don't use 'respawn' with 'task' unless you know what you're doing
+and explain it in the job's descriptive comments.
+
+
+== Format of 'script' and 'exec' commands:
+The 'exec' stanza must be a single shell command.  If the 'exec'
+command involves compound shell statements, such as a pipe, 'if', or
+'for', use 'script' instead of exec.
+
+A 'script' stanza (including for pre-start, pre-stop, etc.) consists
+of multiple shell commands, laid out as with this template:
+  script
+    # commands here, indented
+  end script
+
+The commands in 'script' and 'exec' stanzas must conform to
+Chromium OS shell style conventions, most notably:
+  * Use only POSIX standard features.  Note that the shell
+    interpreter is 'dash', not 'bash'.
+  * Use $() for command substitution, not ``
+  * Format 'if' statements like this:
+      if [ -f $testfile ] ; then
+        # ...
+      fi
+    Similar format rules apply to 'for', 'while', and other compound
+    statements.
+  * In general, don't use a fully qualified path name for a command
+    located in any of the following directories:
+      /bin /sbin /usr/bin /usr/sbin
