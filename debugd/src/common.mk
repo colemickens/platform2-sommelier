@@ -1,4 +1,4 @@
-# Copyright (C) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright (C) 2011 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.makefile file.
 #
@@ -38,9 +38,12 @@
 #   - COLOR=[0|1] to set ANSI color output (default: 1)
 #   - VERBOSE=[0|1] to hide/show commands (default: 0)
 #   - MODE=dbg to turn down optimizations (default: opt)
-#   - ARCH=[x86|arm|supported qemu name] (default: from portage or uname -m)
-#   - SPLITDEBUG=[0|1] splits debug info in target.debug (default: 1)
-#                      [SPLITDEBUG=0 MODE=opt will disable compiling with -g]
+#   - ARCH=[x86|amd64|arm|supported qemu name]
+#     (default: from portage or uname -m)
+#   - SPLITDEBUG=[0|1] splits debug info in target.debug (default: 0)
+#        If NOSTRIP=1, SPLITDEBUG will never strip the final emitted objects.
+#   - NOSTRIP=[0|1] determines if binaries are stripped. (default: 1)
+#        NOSTRIP=0 and MODE=opt will also drop -g from the CFLAGS.
 #   - VALGRIND=[0|1] runs tests under valgrind (default: 0)
 #   - OUT=/path/to/builddir puts all output in given path
 #           (default: $PWD/build-$MODE. Use OUT=. for normal behavior)
@@ -50,7 +53,8 @@
 # file does not use 'override' to control them.
 
 # Behavior configuration variables
-SPLITDEBUG ?= 1
+SPLITDEBUG ?= 0
+NOSTRIP ?= 1
 VALGRIND ?= 0
 COLOR ?= 1
 VERBOSE ?= 0
@@ -128,7 +132,7 @@ endef
 
 #
 # Default variables for use in including makefiles
-# 
+#
 
 # All objects for .c files at the top level
 C_OBJECTS := $(patsubst %.c,$(OUT)%.o,$(wildcard *.c))
@@ -165,22 +169,22 @@ endif
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-CXXFLAGS := $(CXXFLAGS) -Wall -Werror -fstack-protector-all  -DFORTIFY_SOURCE \
-  -O2 -ggdb3 -DNDEBUG -Wa,--noexecstack
-CFLAGS := $(CFLAGS) -Wall -Werror -fstack-protector-all -DFORTIFY_SOURCE \
-  -O2 -ggdb3 -DNDEBUG -Wa,--noexecstack
+CXXFLAGS := $(CXXFLAGS) -Wall -Werror -fstack-protector-all -fno-strict-aliasing -DFORTIFY_SOURCE \
+  -ggdb3 -Wa,--noexecstack -O1
+CFLAGS := $(CFLAGS) -Wall -Werror -fstack-protector-all -fno-strict-aliasing -DFORTIFY_SOURCE \
+  -ggdb3 -Wa,--noexecstack -O1
 
 ifeq ($(PROFILING),1)
-  CFLAGS := -pg 
+  CFLAGS := -pg
   CXXFLAGS := -pg
 endif
 
-ifeq ($(MODE),dbg)
-  CFLAGS := $(filter-out -O2 -DNDEBUG,$(CFLAGS)) -O1
-  CXXFLAGS := $(filter-out -O2 -DNDEBUG,$(CXXFLAGS)) -O1
-  # TODO: May need -nopie. need to check gdb
-else  # opt
-  ifeq ($(SPLITDEBUG),0)
+ifeq ($(MODE),opt)
+  # Up the optimizations.
+  CFLAGS := $(filter-out -O1,$(CFLAGS)) -O2
+  CXXFLAGS := $(filter-out -O1,$(CXXFLAGS)) -O2
+  # Only drop -g* if symbols aren't desired.
+  ifeq ($(NOSTRIP),0)
     # TODO: do we want -fomit-frame-pointer on x86?
     CFLAGS := $(filter-out -ggdb3,$(CFLAGS))
     CXXFLAGS := $(filter-out -ggdb3,$(CXXFLAGS))
@@ -222,7 +226,7 @@ define COMPILE_BINARY_implementation
   @$(ECHO) "LD$(1)	$(subst $(PWD)/,,$@)"
   $(QUIET)$($(1)) $(COMPILE_PIE_FLAGS) -o $@ \
     $(filter %.o %.so %.a,$(^:.o=.pie.o)) $(LDFLAGS) $(2)
-  $(call strip_library)
+  $(call conditional_strip)
   @$(ECHO) "BIN	$(COLOR_GREEN)$(subst $(PWD)/,,$@)$(COLOR_RESET)"
   @$(ECHO) "	$(COLOR_YELLOW)-----$(COLOR_RESET)"
 endef
@@ -239,21 +243,16 @@ define COMPILE_LIBRARY_implementation
   @$(ECHO) "SHARED$(1)	$(subst $(PWD)/,,$@)"
   $(QUIET)$($(1)) -shared -Wl,-E -o $@ \
     $(filter %.o %.so %.a,$(^:.o=.pic.o)) $(2) $(LDFLAGS)
-  $(call strip_library)
+  $(call conditional_strip)
   @$(ECHO) "LIB	$(COLOR_GREEN)$(subst $(PWD)/,,$@)$(COLOR_RESET)"
   @$(ECHO) "	$(COLOR_YELLOW)-----$(COLOR_RESET)"
 endef
 
-define strip_library
-  @$(ECHO) "STRIP	$(subst $(PWD)/,,$@)"
-  $(if $(filter 1,$(SPLITDEBUG)), @$(ECHO) -n "DEBUG	"; \
-    $(ECHO) "$(COLOR_YELLOW)$(subst $(PWD)/,,$@).debug$(COLOR_RESET)")
-  $(if $(filter 1,$(SPLITDEBUG)), \
-    $(QUIET)$(OBJCOPY) --only-keep-debug "$@" "$@.debug")
-  $(if $(filter-out dbg,$(MODE)),$(QUIET)$(STRIP) --strip-unneeded "$@",)
+define conditional_strip
+  $(if $(filter 0,$(NOSTRIP)),$(call strip_artifact))
 endef
 
-define strip_binary
+define strip_artifact
   @$(ECHO) "STRIP	$(subst $(PWD)/,,$@)"
   $(if $(filter 1,$(SPLITDEBUG)), @$(ECHO) -n "DEBUG	"; \
     $(ECHO) "$(COLOR_YELLOW)$(subst $(PWD)/,,$@).debug$(COLOR_RESET)")
@@ -303,15 +302,15 @@ endef
 # Architecture detection and QEMU wrapping
 #
 
-ARCH ?= $(shell uname -m)
 HOST_ARCH ?= $(shell uname -m)
 # emake will supply "x86" or "arm" for ARCH, but
 # if uname -m runs and you get x86_64, then this subst
 # will break.
+QEMU_ARCH = $(ARCH)
 ifeq ($(subst x86,i386,$(ARCH)),i386)
   QEMU_ARCH := $(subst x86,i386,$(ARCH))  # x86 -> i386
-else
-  QEMU_ARCH = $(ARCH)
+else ifeq ($(subst amd64,x86_64,$(ARCH)),x86_64)
+  QEMU_ARCH := $(subst amd64,x86_64,$(ARCH))  # amd64 -> x86_64
 endif
 
 # If we're cross-compiling, try to use qemu for running the tests.
@@ -335,6 +334,7 @@ ifneq ($(MAKECMDGOALS),clean)
   $(info - OUT=$(OUT))
   $(info - MODE=$(MODE))
   $(info - SPLITDEBUG=$(SPLITDEBUG))
+  $(info - NOSTRIP=$(NOSTRIP))
   $(info - VALGRIND=$(VALGRIND))
   $(info - COLOR=$(COLOR))
   $(info - ARCH=$(ARCH))
@@ -357,7 +357,7 @@ all:
 tests: small_tests large_tests
 
 small_tests: qemu FORCE
-	$(call TEST_implementation) 
+	$(call TEST_implementation)
 
 large_tests: qemu FORCE
 	$(call TEST_implementation)
@@ -366,7 +366,7 @@ qemu_clean: FORCE
 ifeq ($(USE_QEMU),1)
 	$(call silent_rm,$(PWD)/qemu-$(QEMU_ARCH))
 endif
-	
+
 qemu: FORCE
 ifeq ($(USE_QEMU),1)
 	$(QUIET)$(ECHO) "QEMU	Preparing qemu-$(QEMU_ARCH)"
@@ -386,7 +386,7 @@ endif
 
 VALGRIND_CMD =
 ifeq ($(VALGRIND),1)
-  VALGRIND_CMD = /usr/bin/valgrind --tool=memcheck $(VALGRIND_ARGS) --  
+  VALGRIND_CMD = /usr/bin/valgrind --tool=memcheck $(VALGRIND_ARGS) --
 endif
 
 define TEST_implementation
@@ -422,7 +422,7 @@ define reverse
 $(if $(1),$(call reverse,$(wordlist 2,$(words $(1)),$(1)))) $(firstword $(1))
 endef
 
-rm_clean: FORCE 
+rm_clean: FORCE
 	$(call silent_rm,$(RM_ON_CLEAN))
 
 rmdir_clean: FORCE rm_clean
@@ -475,4 +475,3 @@ SUBMODULE_DIRS = $(wildcard $(MODULE)/*/module.mk)
 include $(wildcard $(OUT)$(MODULE)/*.d)
 include $(SUBMODULE_DIRS)
 endif
-
