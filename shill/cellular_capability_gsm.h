@@ -20,10 +20,14 @@ class CellularCapabilityGSM : public CellularCapability,
                               public ModemGSMCardProxyDelegate,
                               public ModemGSMNetworkProxyDelegate {
  public:
+  static const char kPropertyUnlockRequired[];
+  static const char kPropertyUnlockRetries[];
+
   CellularCapabilityGSM(Cellular *cellular);
 
   // Inherited from CellularCapability.
-  virtual void InitProxies();
+  virtual void OnStart();
+  virtual void OnStop();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetSignalQuality();
@@ -50,6 +54,10 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void GetIdentifiers();
 
   const std::string &spn() const { return spn_; }
+  const std::string &sim_lock_type() const {
+    return sim_lock_status_.lock_type;
+  }
+  uint32 sim_lock_retries_left() const { return sim_lock_status_.retries_left; }
 
  private:
   friend class CellularCapabilityGSMTest;
@@ -59,6 +67,17 @@ class CellularCapabilityGSM : public CellularCapability,
   FRIEND_TEST(CellularCapabilityGSMTest, Scan);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
+
+  struct SimLockStatus {
+   public:
+    SimLockStatus() : retries_left(0) {}
+    SimLockStatus(const std::string &in_lock_type, uint32 in_retries_left)
+        : lock_type(in_lock_type),
+          retries_left(in_retries_left) {}
+
+    std::string lock_type;
+    uint32 retries_left;
+  };
 
   static const char kNetworkPropertyAccessTechnology[];
   static const char kNetworkPropertyID[];
@@ -87,6 +106,13 @@ class CellularCapabilityGSM : public CellularCapability,
   Stringmap ParseScanResult(
       const ModemGSMNetworkProxyInterface::ScanResult &result);
 
+  StrIntPair SimLockStatusToProperty(Error *error);
+
+  void HelpRegisterDerivedStrIntPair(
+      const std::string &name,
+      StrIntPair(CellularCapabilityGSM::*get)(Error *),
+      void(CellularCapabilityGSM::*set)(const StrIntPair&, Error *));
+
   // Signal callbacks inherited from ModemGSMNetworkProxyDelegate.
   virtual void OnGSMNetworkModeChanged(uint32 mode);
   virtual void OnGSMRegistrationInfoChanged(uint32 status,
@@ -111,6 +137,7 @@ class CellularCapabilityGSM : public CellularCapability,
   Stringmaps found_networks_;
   bool scanning_;
   uint16 scan_interval_;
+  SimLockStatus sim_lock_status_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
 };

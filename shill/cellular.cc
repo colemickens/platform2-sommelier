@@ -32,7 +32,6 @@
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 
-using std::make_pair;
 using std::map;
 using std::string;
 using std::vector;
@@ -126,9 +125,7 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kMinProperty, &min_);
   store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
 
-  HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
-                                &Cellular::SimLockStatusToProperty,
-                                NULL);
+  InitCapability();  // For now, only a single capability is supported.
 
   VLOG(2) << "Cellular device " << this->link_name() << " initialized: "
           << GetTypeString();
@@ -166,7 +163,7 @@ void Cellular::SetState(State state) {
 void Cellular::Start() {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
   Device::Start();
-  InitCapability();  // For now, only a single capability is supported.
+  capability_->OnStart();
   InitProxies();
   EnableModem();
   capability_->Register();
@@ -178,7 +175,7 @@ void Cellular::Start() {
 }
 
 void Cellular::Stop() {
-  capability_.reset();
+  capability_->OnStop();
   proxy_.reset();
   simple_proxy_.reset();
   manager()->DeregisterService(service_);
@@ -205,7 +202,6 @@ void Cellular::InitProxies() {
   proxy_.reset(proxy_factory_->CreateModemProxy(this, dbus_path_, dbus_owner_));
   simple_proxy_.reset(
       proxy_factory_->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
-  capability_->InitProxies();
 }
 
 void Cellular::EnableModem() {
@@ -410,30 +406,11 @@ void Cellular::OnModemStateChanged(uint32 /*old_state*/,
 
 void Cellular::OnModemManagerPropertiesChanged(
     const DBusPropertiesMap &properties) {
-  if (capability_.get()) {
-    capability_->OnModemManagerPropertiesChanged(properties);
-  }
-}
-
-StrIntPair Cellular::SimLockStatusToProperty(Error */*error*/) {
-  return StrIntPair(make_pair(flimflam::kSIMLockTypeProperty,
-                              sim_lock_status_.lock_type),
-                    make_pair(flimflam::kSIMLockRetriesLeftProperty,
-                              sim_lock_status_.retries_left));
+  capability_->OnModemManagerPropertiesChanged(properties);
 }
 
 void Cellular::set_home_provider(const Operator &oper) {
   home_provider_.CopyFrom(oper);
-}
-
-void Cellular::HelpRegisterDerivedStrIntPair(
-    const string &name,
-    StrIntPair(Cellular::*get)(Error *),
-    void(Cellular::*set)(const StrIntPair&, Error *)) {
-  mutable_store()->RegisterDerivedStrIntPair(
-      name,
-      StrIntPairAccessor(
-          new CustomAccessor<Cellular, StrIntPair>(this, get, set)));
 }
 
 }  // namespace shill

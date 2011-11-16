@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 
 #include "shill/cellular.h"
+#include "shill/cellular_capability_gsm.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -84,6 +85,11 @@ class ModemTest : public Test {
 
   static const char kOwner[];
   static const char kPath[];
+
+  CellularCapabilityGSM *GetCapabilityGSM() {
+    return dynamic_cast<CellularCapabilityGSM *>(
+        modem_.device_->capability_.get());
+  }
 
   MockGLib glib_;
   MockControl control_interface_;
@@ -163,14 +169,22 @@ TEST_F(ModemTest, CreateCellularDevice) {
   modem_.CreateCellularDevice(props);
   EXPECT_FALSE(modem_.device_.get());
 
-  props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_CDMA);
+  props[Modem::kPropertyType].writer().append_uint32(MM_MODEM_TYPE_GSM);
   props[Modem::kPropertyState].writer().append_uint32(
       Cellular::kModemStateDisabled);
+  static const char kLockType[] = "sim-pin";
+  const int kRetries = 2;
+  props[CellularCapabilityGSM::kPropertyUnlockRequired].writer().append_string(
+      kLockType);
+  props[CellularCapabilityGSM::kPropertyUnlockRetries].writer().append_uint32(
+      kRetries);
   modem_.CreateCellularDevice(props);
   ASSERT_TRUE(modem_.device_.get());
   EXPECT_EQ(kLinkName, modem_.device_->link_name());
   EXPECT_EQ(kTestInterfaceIndex, modem_.device_->interface_index());
   EXPECT_EQ(Cellular::kModemStateDisabled, modem_.device_->modem_state());
+  EXPECT_EQ(kLockType, GetCapabilityGSM()->sim_lock_type());
+  EXPECT_EQ(kRetries, GetCapabilityGSM()->sim_lock_retries_left());
 
   vector<DeviceRefPtr> devices;
   manager_.FilterByTechnology(Technology::kCellular, &devices);

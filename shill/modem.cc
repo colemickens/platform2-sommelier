@@ -22,8 +22,6 @@ const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyState[] = "State";
 const char Modem::kPropertyType[] = "Type";
-const char Modem::kPropertyUnlockRequired[] = "UnlockRequired";
-const char Modem::kPropertyUnlockRetries[] = "UnlockRetries";
 
 Modem::Modem(const std::string &owner,
              const std::string &path,
@@ -128,16 +126,8 @@ void Modem::CreateCellularDevice(const DBusPropertiesMap &properties) {
   DBusProperties::GetUint32(properties, kPropertyState, &modem_state);
   device_->set_modem_state(static_cast<Cellular::ModemState>(modem_state));
 
-  string unlock_required;
-  if (DBusProperties::GetString(
-          properties, kPropertyUnlockRequired, &unlock_required)) {
-    uint32 unlock_retries = 0;
-    DBusProperties::GetUint32(properties,
-                              kPropertyUnlockRetries,
-                              &unlock_retries);
-    device_->set_sim_lock_status(
-        Cellular::SimLockStatus(unlock_required, unlock_retries));
-  }
+  // Give the device a chance to extract any capability-specific properties.
+  device_->OnModemManagerPropertiesChanged(properties);
 
   manager_->device_info()->RegisterDevice(device_);
 }
@@ -152,18 +142,9 @@ void Modem::OnDBusPropertiesChanged(
 void Modem::OnModemManagerPropertiesChanged(
     const string &/*interface*/,
     const DBusPropertiesMap &properties) {
-  if (!device_.get()) {
-    return;
+  if (device_.get()) {
+    device_->OnModemManagerPropertiesChanged(properties);
   }
-  Cellular::SimLockStatus lock_status = device_->sim_lock_status();
-  if (DBusProperties::GetString(
-          properties, kPropertyUnlockRequired, &lock_status.lock_type) ||
-      DBusProperties::GetUint32(properties,
-                                kPropertyUnlockRetries,
-                                &lock_status.retries_left)) {
-    device_->set_sim_lock_status(lock_status);
-  }
-  device_->OnModemManagerPropertiesChanged(properties);
 }
 
 }  // namespace shill

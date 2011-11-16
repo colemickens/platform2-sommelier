@@ -35,15 +35,16 @@ class CellularCapabilityCDMATest : public testing::Test {
                                "",
                                NULL)),
         proxy_(new MockModemCDMAProxy()),
-        capability_(cellular_.get()) {}
+        capability_(NULL) {}
 
   virtual ~CellularCapabilityCDMATest() {
     cellular_->service_ = NULL;
+    capability_ = NULL;
   }
 
-  virtual void TearDown() {
-    CellularCapability *capability = cellular_->capability_.release();
-    ASSERT_TRUE(capability == NULL || capability == &capability_);
+  virtual void SetUp() {
+    capability_ =
+        dynamic_cast<CellularCapabilityCDMA *>(cellular_->capability_.get());
   }
 
  protected:
@@ -51,25 +52,20 @@ class CellularCapabilityCDMATest : public testing::Test {
   static const char kTestCarrier[];
 
   void SetRegistrationStateEVDO(uint32 state) {
-    capability_.registration_state_evdo_ = state;
+    capability_->registration_state_evdo_ = state;
   }
 
   void SetRegistrationState1x(uint32 state) {
-    capability_.registration_state_1x_ = state;
+    capability_->registration_state_1x_ = state;
   }
 
   void SetProxy() {
-    capability_.proxy_.reset(proxy_.release());
+    capability_->proxy_.reset(proxy_.release());
   }
 
   void SetService() {
     cellular_->service_ = new CellularService(
         &control_, &dispatcher_, NULL, cellular_);
-  }
-
-  void SetCapability() {
-    ASSERT_FALSE(cellular_->capability_.get());
-    cellular_->capability_.reset(&capability_);
   }
 
   void SetDeviceState(Cellular::State state) {
@@ -80,24 +76,28 @@ class CellularCapabilityCDMATest : public testing::Test {
   EventDispatcher dispatcher_;
   CellularRefPtr cellular_;
   scoped_ptr<MockModemCDMAProxy> proxy_;
-  CellularCapabilityCDMA capability_;
+  CellularCapabilityCDMA *capability_;  // Owned by |cellular_|.
 };
 
 const char CellularCapabilityCDMATest::kMEID[] = "D1234567EF8901";
 const char CellularCapabilityCDMATest::kTestCarrier[] = "The Cellular Carrier";
+
+TEST_F(CellularCapabilityCDMATest, PropertyStore) {
+  EXPECT_TRUE(cellular_->store().Contains(flimflam::kPRLVersionProperty));
+}
 
 TEST_F(CellularCapabilityCDMATest, Activate) {
   Error error;
   SetDeviceState(Cellular::kStateEnabled);
   EXPECT_CALL(*proxy_, Activate(kTestCarrier))
       .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  capability_.Activate(kTestCarrier, &error);
+  capability_->Activate(kTestCarrier, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetProxy();
   SetService();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
-            capability_.activation_state());
+            capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateActivating,
             cellular_->service()->activation_state());
   EXPECT_EQ("", cellular_->service()->error());
@@ -105,20 +105,20 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
 
 TEST_F(CellularCapabilityCDMATest, ActivateError) {
   Error error;
-  capability_.Activate(kTestCarrier, &error);
+  capability_->Activate(kTestCarrier, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 
   error.Reset();
   SetDeviceState(Cellular::kStateRegistered);
   EXPECT_CALL(*proxy_, Activate(kTestCarrier))
       .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
-  capability_.Activate(kTestCarrier, &error);
+  capability_->Activate(kTestCarrier, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetProxy();
   SetService();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
-            capability_.activation_state());
+            capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateNotActivated,
             cellular_->service()->activation_state());
   EXPECT_EQ(flimflam::kErrorActivationFailed,
@@ -171,43 +171,43 @@ TEST_F(CellularCapabilityCDMATest, GetActivationErrorString) {
 TEST_F(CellularCapabilityCDMATest, GetIdentifiers) {
   EXPECT_CALL(*proxy_, MEID()).WillOnce(Return(kMEID));
   SetProxy();
-  capability_.GetIdentifiers();
+  capability_->GetIdentifiers();
   EXPECT_EQ(kMEID, cellular_->meid());
-  capability_.GetIdentifiers();
+  capability_->GetIdentifiers();
   EXPECT_EQ(kMEID, cellular_->meid());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetNetworkTechnologyString) {
-  EXPECT_EQ("", capability_.GetNetworkTechnologyString());
+  EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
   EXPECT_EQ(flimflam::kNetworkTechnologyEvdo,
-            capability_.GetNetworkTechnologyString());
+            capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
   EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
-            capability_.GetNetworkTechnologyString());
+            capability_->GetNetworkTechnologyString());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetRoamingStateString) {
   EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_.GetRoamingStateString());
+            capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
   EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_.GetRoamingStateString());
+            capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kRoamingStateHome, capability_.GetRoamingStateString());
+  EXPECT_EQ(flimflam::kRoamingStateHome, capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
   EXPECT_EQ(flimflam::kRoamingStateRoaming,
-            capability_.GetRoamingStateString());
+            capability_->GetRoamingStateString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
   EXPECT_EQ(flimflam::kRoamingStateUnknown,
-            capability_.GetRoamingStateString());
+            capability_->GetRoamingStateString());
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
-  EXPECT_EQ(flimflam::kRoamingStateHome, capability_.GetRoamingStateString());
+  EXPECT_EQ(flimflam::kRoamingStateHome, capability_->GetRoamingStateString());
   SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
   EXPECT_EQ(flimflam::kRoamingStateRoaming,
-            capability_.GetRoamingStateString());
+            capability_->GetRoamingStateString());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
@@ -216,29 +216,28 @@ TEST_F(CellularCapabilityCDMATest, GetSignalQuality) {
   SetProxy();
   SetService();
   EXPECT_EQ(0, cellular_->service()->strength());
-  capability_.GetSignalQuality();
+  capability_->GetSignalQuality();
   EXPECT_EQ(kStrength, cellular_->service()->strength());
 }
 
 TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
   EXPECT_FALSE(cellular_->service().get());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-            capability_.registration_state_1x());
+            capability_->registration_state_1x());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
-            capability_.registration_state_evdo());
+            capability_->registration_state_evdo());
   EXPECT_CALL(*proxy_, GetRegistrationState(_, _))
       .WillOnce(DoAll(
           SetArgumentPointee<0>(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED),
           SetArgumentPointee<1>(MM_MODEM_CDMA_REGISTRATION_STATE_HOME)));
   EXPECT_CALL(*proxy_, GetSignalQuality()).WillOnce(Return(90));
   SetProxy();
-  capability_.GetRegistrationState();
-  SetCapability();
+  capability_->GetRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
-            capability_.registration_state_1x());
+            capability_->registration_state_1x());
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_HOME,
-            capability_.registration_state_evdo());
+            capability_->registration_state_evdo());
   ASSERT_TRUE(cellular_->service().get());
 }
 

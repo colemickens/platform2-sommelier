@@ -89,17 +89,6 @@ class Cellular : public Device,
     DISALLOW_COPY_AND_ASSIGN(Operator);
   };
 
-  struct SimLockStatus {
-   public:
-    SimLockStatus() : retries_left(0) {}
-    SimLockStatus(const std::string &in_lock_type, uint32 in_retries_left)
-        : lock_type(in_lock_type),
-          retries_left(in_retries_left) {}
-
-    std::string lock_type;
-    uint32 retries_left;
-  };
-
   static const char kConnectPropertyPhoneNumber[];
 
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
@@ -133,9 +122,6 @@ class Cellular : public Device,
 
   void set_modem_state(ModemState state) { modem_state_ = state; }
   ModemState modem_state() const { return modem_state_; }
-
-  const SimLockStatus &sim_lock_status() const { return sim_lock_status_; }
-  void set_sim_lock_status(const SimLockStatus &s) { sim_lock_status_ = s; }
 
   mobile_provider_db *provider_db() const { return provider_db_; }
 
@@ -190,13 +176,13 @@ class Cellular : public Device,
   friend class CellularTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
+  friend class ModemTest;
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
   FRIEND_TEST(CellularTest, GetTypeString);
-  FRIEND_TEST(CellularTest, InitProxiesCDMA);
-  FRIEND_TEST(CellularTest, InitProxiesGSM);
+  FRIEND_TEST(CellularTest, InitProxies);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
@@ -209,13 +195,6 @@ class Cellular : public Device,
   // Invoked when the modem is connected to the cellular network to transition
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
-
-  StrIntPair SimLockStatusToProperty(Error *error);
-
-  void HelpRegisterDerivedStrIntPair(
-      const std::string &name,
-      StrIntPair(Cellular::*get)(Error *),
-      void(Cellular::*set)(const StrIntPair&, Error *));
 
   void InitCapability();
   void InitProxies();
@@ -270,7 +249,6 @@ class Cellular : public Device,
   std::string manufacturer_;
   std::string firmware_revision_;
   std::string hardware_revision_;
-  SimLockStatus sim_lock_status_;
   Operator home_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);

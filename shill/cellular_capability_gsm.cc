@@ -13,8 +13,10 @@
 
 #include "shill/cellular.h"
 #include "shill/cellular_service.h"
+#include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
+using std::make_pair;
 using std::string;
 
 namespace shill {
@@ -29,6 +31,8 @@ const char CellularCapabilityGSM::kNetworkPropertyStatus[] = "status";
 const char CellularCapabilityGSM::kPhoneNumber[] = "*99#";
 const char CellularCapabilityGSM::kPropertyAccessTechnology[] =
     "AccessTechnology";
+const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
+const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
     : CellularCapability(cellular),
@@ -44,9 +48,30 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
                                  &found_networks_);
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
+  HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
+                                &CellularCapabilityGSM::SimLockStatusToProperty,
+                                NULL);
 }
 
-void CellularCapabilityGSM::InitProxies() {
+StrIntPair CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
+  return StrIntPair(make_pair(flimflam::kSIMLockTypeProperty,
+                              sim_lock_status_.lock_type),
+                    make_pair(flimflam::kSIMLockRetriesLeftProperty,
+                              sim_lock_status_.retries_left));
+}
+
+void CellularCapabilityGSM::HelpRegisterDerivedStrIntPair(
+    const string &name,
+    StrIntPair(CellularCapabilityGSM::*get)(Error *),
+    void(CellularCapabilityGSM::*set)(const StrIntPair &, Error *)) {
+  cellular()->mutable_store()->RegisterDerivedStrIntPair(
+      name,
+      StrIntPairAccessor(
+          new CustomAccessor<CellularCapabilityGSM, StrIntPair>(
+              this, get, set)));
+}
+
+void CellularCapabilityGSM::OnStart() {
   VLOG(2) << __func__;
   card_proxy_.reset(
       proxy_factory()->CreateModemGSMCardProxy(this,
@@ -56,6 +81,12 @@ void CellularCapabilityGSM::InitProxies() {
       proxy_factory()->CreateModemGSMNetworkProxy(this,
                                                   cellular()->dbus_path(),
                                                   cellular()->dbus_owner()));
+}
+
+void CellularCapabilityGSM::OnStop() {
+  VLOG(2) << __func__;
+  card_proxy_.reset();
+  network_proxy_.reset();
 }
 
 void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
@@ -395,6 +426,10 @@ void CellularCapabilityGSM::OnModemManagerPropertiesChanged(
                                 &access_technology)) {
     SetAccessTechnology(access_technology);
   }
+  DBusProperties::GetString(
+      properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type);
+  DBusProperties::GetUint32(
+      properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left);
 }
 
 void CellularCapabilityGSM::OnServiceCreated() {

@@ -29,10 +29,15 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 }
 
-void CellularCapabilityCDMA::InitProxies() {
+void CellularCapabilityCDMA::OnStart() {
   VLOG(2) << __func__;
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
       this, cellular()->dbus_path(), cellular()->dbus_owner()));
+}
+
+void CellularCapabilityCDMA::OnStop() {
+  VLOG(2) << __func__;
+  proxy_.reset();
 }
 
 void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {

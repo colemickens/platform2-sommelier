@@ -128,6 +128,7 @@ class CellularTest : public testing::Test {
 
   virtual void SetUp() {
     device_->proxy_factory_ = &proxy_factory_;
+    device_->capability_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
@@ -135,6 +136,7 @@ class CellularTest : public testing::Test {
   }
 
   virtual void TearDown() {
+    device_->capability_->proxy_factory_ = NULL;
     device_->proxy_factory_ = NULL;
     device_->Stop();
     device_->set_dhcp_provider(NULL);
@@ -198,6 +200,11 @@ class CellularTest : public testing::Test {
   void StartRTNLHandler();
   void StopRTNLHandler();
 
+  void SetCellularType(Cellular::Type type) {
+    device_->type_ = type;
+    device_->InitCapability();
+  }
+
   CellularCapabilityCDMA *GetCapabilityCDMA() {
     return dynamic_cast<CellularCapabilityCDMA *>(device_->capability_.get());
   }
@@ -241,7 +248,7 @@ const char CellularTest::kTestMobileProviderDBPath[] =
 
 TEST_F(CellularTest, GetTypeString) {
   EXPECT_EQ("CellularTypeGSM", device_->GetTypeString());
-  device_->type_ = Cellular::kTypeCDMA;
+  SetCellularType(Cellular::kTypeCDMA);
   EXPECT_EQ("CellularTypeCDMA", device_->GetTypeString());
 }
 
@@ -260,7 +267,7 @@ TEST_F(CellularTest, GetStateString) {
 
 TEST_F(CellularTest, StartCDMARegister) {
   const int kStrength = 90;
-  device_->type_ = Cellular::kTypeCDMA;
+  SetCellularType(Cellular::kTypeCDMA);
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
   EXPECT_CALL(*simple_proxy_, GetStatus())
       .WillOnce(Return(DBusPropertiesMap()));
@@ -283,7 +290,6 @@ TEST_F(CellularTest, StartCDMARegister) {
 }
 
 TEST_F(CellularTest, StartGSMRegister) {
-  device_->type_ = Cellular::kTypeGSM;
   provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
   ASSERT_TRUE(provider_db_);
   device_->provider_db_ = provider_db_;
@@ -327,7 +333,7 @@ TEST_F(CellularTest, StartGSMRegister) {
 TEST_F(CellularTest, StartConnected) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(Return(true));
-  device_->type_ = Cellular::kTypeCDMA;
+  SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->meid_ = kMEID;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
@@ -347,7 +353,7 @@ TEST_F(CellularTest, StartConnected) {
 TEST_F(CellularTest, StartLinked) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgumentPointee<1>(IFF_UP), Return(true)));
-  device_->type_ = Cellular::kTypeCDMA;
+  SetCellularType(Cellular::kTypeCDMA);
   device_->set_modem_state(Cellular::kModemStateConnected);
   device_->meid_ = kMEID;
   EXPECT_CALL(*proxy_, Enable(true)).Times(1);
@@ -370,25 +376,14 @@ TEST_F(CellularTest, StartLinked) {
   device_->SelectService(NULL);
 }
 
-TEST_F(CellularTest, InitProxiesCDMA) {
-  device_->type_ = Cellular::kTypeCDMA;
-  device_->InitCapability();
-  device_->InitProxies();
-  EXPECT_TRUE(device_->proxy_.get());
-  EXPECT_TRUE(device_->simple_proxy_.get());
-}
-
-TEST_F(CellularTest, InitProxiesGSM) {
-  device_->type_ = Cellular::kTypeGSM;
-  device_->InitCapability();
+TEST_F(CellularTest, InitProxies) {
   device_->InitProxies();
   EXPECT_TRUE(device_->proxy_.get());
   EXPECT_TRUE(device_->simple_proxy_.get());
 }
 
 TEST_F(CellularTest, GetModemStatus) {
-  device_->type_ = Cellular::kTypeCDMA;
-  device_->InitCapability();
+  SetCellularType(Cellular::kTypeCDMA);
   DBusPropertiesMap props;
   props["carrier"].writer().append_string(kTestCarrier);
   props["unknown-property"].writer().append_string("irrelevant-value");
@@ -417,11 +412,10 @@ TEST_F(CellularTest, GetModemInfo) {
 }
 
 TEST_F(CellularTest, CreateService) {
-  device_->type_ = Cellular::kTypeCDMA;
+  SetCellularType(Cellular::kTypeCDMA);
   static const char kPaymentURL[] = "https://payment.url";
   static const char kUsageURL[] = "https://usage.url";
   device_->home_provider_.SetName(kTestCarrier);
-  device_->InitCapability();
   GetCapabilityCDMA()->payment_url_ = kPaymentURL;
   GetCapabilityCDMA()->usage_url_ = kUsageURL;
   device_->CreateService();
@@ -441,8 +435,6 @@ MATCHER(ContainsPhoneNumber, "") {
 }  // namespace {}
 
 TEST_F(CellularTest, Connect) {
-  device_->InitCapability();
-
   Error error;
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .Times(2)

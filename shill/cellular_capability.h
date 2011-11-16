@@ -30,8 +30,9 @@ class CellularCapability {
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
   EventDispatcher *dispatcher() const;
 
-  // Initialize RPC proxies.
-  virtual void InitProxies() = 0;
+  // Invoked on starting and stopping the cellular device.
+  virtual void OnStart() = 0;
+  virtual void OnStop() = 0;
 
   virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
 
@@ -80,6 +81,8 @@ class CellularCapability {
   virtual void OnServiceCreated() = 0;
 
  private:
+  friend class CellularTest;
+
   Cellular *cellular_;
   ProxyFactory *proxy_factory_;
 

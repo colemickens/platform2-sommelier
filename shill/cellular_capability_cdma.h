@@ -21,7 +21,8 @@ class CellularCapabilityCDMA : public CellularCapability,
   CellularCapabilityCDMA(Cellular *cellular);
 
   // Inherited from CellularCapability.
-  virtual void InitProxies();
+  virtual void OnStart();
+  virtual void OnStop();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error);
