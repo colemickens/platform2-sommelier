@@ -150,6 +150,8 @@ class Service : public base::RefCounted<Service> {
   bool favorite() const { return favorite_; }
   void set_favorite(bool favorite) { favorite_ = favorite; }
 
+  const std::string &friendly_name() const { return friendly_name_; }
+
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
 
@@ -182,7 +184,6 @@ class Service : public base::RefCounted<Service> {
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
 
-  const std::string &friendly_name() const { return friendly_name_; }
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   virtual std::string CalculateState(Error *error);

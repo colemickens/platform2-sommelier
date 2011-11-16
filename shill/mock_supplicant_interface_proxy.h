@@ -22,6 +22,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
       const std::map<std::string, ::DBus::Variant> &args));
   MOCK_METHOD1(FlushBSS, void(const uint32_t &age));
   MOCK_METHOD0(RemoveAllNetworks, void());
+  MOCK_METHOD1(RemoveNetwork, void(const ::DBus::Path &network));
   MOCK_METHOD1(Scan,
                void(const std::map<std::string, ::DBus::Variant> &args));
   MOCK_METHOD1(SelectNetwork, void(const ::DBus::Path &network));

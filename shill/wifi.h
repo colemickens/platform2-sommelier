@@ -43,7 +43,7 @@ class WiFi : public Device {
   virtual bool TechnologyIs(const Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 
-  // called by SupplicantInterfaceProxy, in response to events from
+  // Called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void BSSAdded(const ::DBus::Path &BSS,
                 const std::map<std::string, ::DBus::Variant> &properties);
@@ -51,12 +51,12 @@ class WiFi : public Device {
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
 
-  // called by WiFiService
+  // Called by WiFiService.
   virtual void ConnectTo(
       WiFiService *service,
       const std::map<std::string, ::DBus::Variant> &service_params);
 
-  // called by Manager
+  // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
  private:
@@ -65,6 +65,7 @@ class WiFi : public Device {
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
+  typedef std::map<WiFiService *, std::string> ReverseServiceMap;
 
   static const char kManagerErrorPassphraseRequired[];
   static const char kManagerErrorSSIDTooLong[];
@@ -76,15 +77,23 @@ class WiFi : public Device {
   static const char kManagerErrorUnsupportedServiceMode[];
   static const char kInterfaceStateUnknown[];
 
+  WiFiServiceRefPtr CreateServiceForEndpoint(
+      const WiFiEndpoint &endpoint, bool hidden_ssid);
+  void CurrentBSSChanged(const ::DBus::Path &new_bss);
   WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
                                 const std::string &mode,
                                 const std::string &security) const;
   ByteArrays GetHiddenSSIDList();
+  void HandleDisconnect();
+  void HandleRoam(const ::DBus::Path &new_bssid);
   // Create services for hidden networks stored in |storage|.  Returns true
   // if any were found, otherwise returns false.
   bool LoadHiddenServices(StoreInterface *storage);
+  void PropertiesChangedTask(
+      const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
   void ScanTask();
+  WiFiServiceRefPtr GetServiceForEndpoint(const WiFiEndpoint &endpoint);
   void StateChanged(const std::string &new_state);
 
   // Store cached copies of singletons for speed/ease of testing.
@@ -94,7 +103,25 @@ class WiFi : public Device {
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
   EndpointMap endpoint_by_bssid_;
+  // The rpcid used as the key is wpa_supplicant's D-Bus path for the
+  // Endpoint (BSS, in supplicant parlance).
+  EndpointMap endpoint_by_rpcid_;
   ServiceMap service_by_private_id_;
+  // Map from Services to the D-Bus path for the corresponding wpa_supplicant
+  // Network.
+  ReverseServiceMap rpcid_by_service_;
+  bool link_up_;
+  std::vector<WiFiServiceRefPtr> services_;
+  // The Service we are presently connected to. May be NULL is we're not
+  // not connected to any Service.
+  WiFiServiceRefPtr current_service_;
+  // The Service we're attempting to connect to. May be NULL if we're
+  // not attempting to connect to a new Service. If non-NULL, should
+  // be distinct from |current_service_|. (A service should not
+  // simultaneously be both pending, and current.)
+  WiFiServiceRefPtr pending_service_;
+  std::string supplicant_state_;
+  std::string supplicant_bss_;
 
   // Properties
   std::string bgscan_method_;
@@ -102,10 +129,6 @@ class WiFi : public Device {
   int32 bgscan_signal_threshold_;
   bool scan_pending_;
   uint16 scan_interval_;
-  bool link_up_;
-  std::vector<WiFiServiceRefPtr> services_;
-  WiFiServiceRefPtr pending_service_;
-  std::string supplicant_state_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

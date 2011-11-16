@@ -88,9 +88,9 @@ To keep the shill source code consistent, please follow the conventions below:
        map<string, string> data;
        var.writer() << data;
 
-    does not work (at least for some types of |data|). Without the
-    intermediate variable, g++ seems to ignore templates during
-    overload resolution.
+    does not work. For an explanation of why the local variable
+    |writer| is needed, see the comment in
+    DBusAdaptor::ByteArraysToVariant.
 
 - When deferring work from a signal handler (e.g. a D-Bus callback) to
   the event loop, name the deferred work function by adding "Task" to

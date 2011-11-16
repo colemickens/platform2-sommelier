@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -37,6 +38,7 @@
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
 
+using base::StringPrintf;
 using std::map;
 using std::set;
 using std::string;
@@ -77,12 +79,13 @@ WiFi::WiFi(ControlInterface *control_interface,
              interface_index),
       proxy_factory_(ProxyFactory::GetInstance()),
       task_factory_(this),
+      link_up_(false),
+      supplicant_state_(kInterfaceStateUnknown),
+      supplicant_bss_("(unknown)"),
       bgscan_short_interval_(0),
       bgscan_signal_threshold_(0),
       scan_pending_(false),
-      scan_interval_(0),
-      link_up_(false),
-      supplicant_state_(kInterfaceStateUnknown) {
+      scan_interval_(0) {
   PropertyStore *store = this->mutable_store();
   store->RegisterString(flimflam::kBgscanMethodProperty, &bgscan_method_);
   store->RegisterUint16(flimflam::kBgscanShortIntervalProperty,
@@ -151,7 +154,9 @@ void WiFi::Stop() {
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
   endpoint_by_bssid_.clear();
+  endpoint_by_rpcid_.clear();
   service_by_private_id_.clear();       // breaks reference cycles
+  rpcid_by_service_.clear();
 
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
@@ -219,7 +224,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
 }
 
 void WiFi::BSSAdded(
-    const ::DBus::Path &/*BSS*/,
+    const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties) {
   // TODO(quiche): Write test to verify correct behavior in the case
   // where we get multiple BSSAdded events for a single endpoint.
@@ -231,14 +236,16 @@ void WiFi::BSSAdded(
   // lose.
   WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
   endpoint_by_bssid_[endpoint->bssid_hex()] = endpoint;
+  endpoint_by_rpcid_[path] = endpoint;
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
-  // TODO(quiche): Handle changes in other properties.
-  if (ContainsKey(properties, wpa_supplicant::kInterfacePropertyState)) {
-    StateChanged(properties.find(wpa_supplicant::kInterfacePropertyState)->
-                 second.reader().get_string());
-  }
+  LOG(INFO) << "In " << __func__ << "(): called";
+  // Called from D-Bus signal handler, but may need to send a D-Bus
+  // message. So defer work to event loop.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::PropertiesChangedTask,
+                                      properties));
 }
 
 void WiFi::ScanDone() {
@@ -254,14 +261,23 @@ void WiFi::ScanDone() {
 
 void WiFi::ConnectTo(WiFiService *service,
                      const map<string, DBus::Variant> &service_params) {
+  CHECK(service);
   DBus::Path network_path;
 
   // TODO(quiche): Handle cases where already connected.
+  // TODO(quiche): Handle case where there's already a pending
+  // connection attempt.
 
   // TODO(quiche): Set scan_ssid=1 in service_params, like flimflam does?
   try {
+    // TODO(quiche): Set a timeout here. In the normal case, we expect
+    // that, if wpa_supplicant fails to connect, it will eventually send
+    // a signal that its CurrentBSS has changed. But there may be cases
+    // where the signal is not sent. (crosbug.com/23206)
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
+    // TODO(quiche): Figure out when to remove services from this map.
+    rpcid_by_service_[service] = network_path;
   } catch (const DBus::Error e) {  // NOLINT
     LOG(ERROR) << "exception while adding network: " << e.what();
     return;
@@ -277,6 +293,195 @@ void WiFi::ConnectTo(WiFiService *service,
   // see discussion in crosbug.com/20191.
   SelectService(service);
   pending_service_ = service;
+  CHECK(current_service_.get() != pending_service_.get());
+}
+
+WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
+                                                 bool hidden_ssid) {
+  WiFiServiceRefPtr service =
+      new WiFiService(control_interface(),
+                      dispatcher(),
+                      manager(),
+                      this,
+                      endpoint.ssid(),
+                      endpoint.network_mode(),
+                      endpoint.security_mode(),
+                      hidden_ssid);
+  string service_id_private;
+  // TODO(quiche): Eliminate duplication with GetServiceForEndpoint.
+  service_id_private = endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
+  service_by_private_id_[service_id_private] = service;
+  return service;
+}
+
+void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
+  VLOG(3) << "WiFi " << link_name() << " CurrentBSS "
+          << supplicant_bss_ << " -> " << new_bss;
+  supplicant_bss_ = new_bss;
+  if (new_bss == wpa_supplicant::kCurrentBSSNull) {
+    HandleDisconnect();
+  } else {
+    HandleRoam(new_bss);
+  }
+
+  SelectService(current_service_);
+  CHECK(current_service_.get() != pending_service_.get() ||
+        current_service_.get() == NULL);
+
+  // TODO(quiche): Update BSSID property on the Service
+  // (crosbug.com/22377).
+}
+
+void WiFi::HandleDisconnect() {
+  // Identify the affected service. We expect to get a disconnect
+  // event when we fall off a Service that we were connected
+  // to. However, we also allow for the case where we get a disconnect
+  // event while attempting to connect from a disconnected state.
+  WiFiService *affected_service =
+      current_service_.get() ? current_service_.get() : pending_service_.get();
+
+  current_service_ = NULL;
+  if (!affected_service) {
+    VLOG(2) << "WiFi " << link_name()
+            << " disconnected while not connected or connecting";
+    return;
+  }
+
+  ReverseServiceMap::const_iterator rpcid_it =
+      rpcid_by_service_.find(affected_service);
+  if (rpcid_it == rpcid_by_service_.end()) {
+    VLOG(2) << "WiFi " << link_name() << " disconnected from "
+            << " (or failed to connect to) "
+            << affected_service->friendly_name() << ", "
+            << "but could not find supplicant network to disable.";
+    return;
+  }
+
+  VLOG(2) << "WiFi " << link_name() << " disconnected from "
+          << " (or failed to connect to) "
+          << affected_service->friendly_name();
+  // TODO(quiche): Reconsider giving up immediately. Maybe give
+  // wpa_supplicant some time to retry, first.
+  supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
+
+  if (affected_service == pending_service_.get()) {
+    // The attempt to connect to |pending_service_| failed. Clear
+    // |pending_service_|, to indicate we're no longer in the middle
+    // of a connect request.
+    pending_service_ = NULL;
+  } else if (pending_service_.get()) {
+    // We've attributed the disconnection to what was the
+    // |current_service_|, rather than the |pending_service_|.
+    //
+    // If we're wrong about that (i.e. supplicant reported this
+    // CurrentBSS change after attempting to connect to
+    // |pending_service_|), we're depending on supplicant to retry
+    // connecting to |pending_service_|, and delivering another
+    // CurrentBSS change signal in the future.
+    //
+    // Log this fact, to help us debug (in case our assumptions are
+    // wrong).
+    VLOG(2) << "WiFi " << link_name() << " pending connection to "
+            << pending_service_->friendly_name()
+            << " after disconnect";
+  }
+}
+
+// We use the term "Roam" loosely. In particular, we include the case
+// where we "Roam" to a BSS from the disconnected state.
+void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
+  EndpointMap::iterator endpoint_it = endpoint_by_rpcid_.find(new_bss);
+  if (endpoint_it == endpoint_by_rpcid_.end()) {
+    LOG(WARNING) << "WiFi " << link_name() << " connected to unknown BSS "
+                 << new_bss;
+    return;
+  }
+
+  const WiFiEndpoint &endpoint(*endpoint_it->second);
+  WiFiServiceRefPtr service = GetServiceForEndpoint(endpoint);
+  if (!service.get()) {
+      LOG(WARNING) << "WiFi " << link_name()
+                   << " could not find Service for Endpoint "
+                   << endpoint.bssid_string()
+                   << " (service will be unchanged)";
+      return;
+  }
+
+  VLOG(2) << "WiFi " << link_name()
+          << " roamed to Endpoint " << endpoint.bssid_string()
+          << " (SSID " << endpoint.ssid_string() << ")";
+
+  if (pending_service_.get() &&
+      service.get() != pending_service_.get()) {
+    // The Service we've roamed on to is not the one we asked for.
+    // We assume that this is transient, and that wpa_supplicant
+    // is trying / will try to connect to |pending_service_|.
+    //
+    // If it succeeds, we'll end up back here, but with |service|
+    // pointing at the same service as |pending_service_|.
+    //
+    // If it fails, we'll process things in HandleDisconnect.
+    //
+    // So we leave |pending_service_| untouched.
+    VLOG(2) << "WiFi " << link_name()
+            << " new current Endpoint "
+            << endpoint.bssid_string()
+            << " is not part of pending service "
+            << pending_service_->friendly_name();
+
+    // Sanity check: if we didn't roam onto |pending_service_|, we
+    // should still be on |current_service_|.
+    if (service.get() != current_service_.get()) {
+      LOG(WARNING) << "WiFi " << link_name()
+                   << " new current Endpoint "
+                   << endpoint.bssid_string()
+                   << " is neither part of pending service "
+                   << pending_service_->friendly_name()
+                   << " nor part of current service "
+                   << (current_service_.get() ?
+                       current_service_->friendly_name() :
+                       "(NULL)");
+      // Although we didn't expect to get here, we should keep
+      // |current_service_| in sync with what supplicant has done.
+      current_service_ = service;
+    }
+    return;
+  }
+
+  if (pending_service_.get()) {
+    // We assume service.get() == pending_service_.get() here, because
+    // of the return in the previous if clause.
+    //
+    // Boring case: we've connected to the service we asked
+    // for. Simply update |current_service_| and |pending_service_|.
+    current_service_ = service;
+    pending_service_ = NULL;
+    return;
+  }
+
+  // |pending_service_| was NULL, so we weren't attempting to connect
+  // to a new Service. Sanity check that we're still on
+  // |current_service_|.
+  if (service.get() != current_service_.get()) {
+    LOG(WARNING)
+        << "WiFi " << link_name()
+        << " new current Endpoint "
+        << endpoint.bssid_string()
+        << (current_service_.get() ?
+            StringPrintf("%s is not part of current service ",
+                         current_service_->friendly_name().c_str()) :
+            "with no current service");
+    // We didn't expect to be here, but let's cope as well as we
+    // can. Update |current_service_| to keep it in sync with
+    // supplicant.
+    current_service_ = service;
+    return;
+  }
+
+  // At this point, we know that |pending_service_| was NULL, and that
+  // we're still on |current_service_|. This is the most boring case
+  // of all, because there's no state to update here.
+  return;
 }
 
 WiFiServiceRefPtr WiFi::FindService(const vector<uint8_t> &ssid,
@@ -402,22 +607,36 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
   return created_hidden_service;
 }
 
+void WiFi::PropertiesChangedTask(
+    const map<string, ::DBus::Variant> &properties) {
+  // TODO(quiche): Handle changes in other properties (e.g. signal
+  // strength).
+
+  // Note that order matters here. In particular, we want to process
+  // changes in the current BSS before changes in state. This is so
+  // that we update the state of the correct Endpoint/Service.
+
+  map<string, ::DBus::Variant>::const_iterator properties_it =
+      properties.find(wpa_supplicant::kInterfacePropertyCurrentBSS);
+  if (properties_it != properties.end()) {
+    CurrentBSSChanged(properties_it->second.reader().get_path());
+  }
+
+  properties_it = properties.find(wpa_supplicant::kInterfacePropertyState);
+  if (properties_it != properties.end()) {
+    StateChanged(properties_it->second.reader().get_string());
+  }
+}
+
 void WiFi::ScanDoneTask() {
   LOG(INFO) << __func__;
 
   scan_pending_ = false;
 
-  // TODO(quiche): Group endpoints into services, instead of creating
-  // a service for every endpoint.
   for (EndpointMap::iterator i(endpoint_by_bssid_.begin());
        i != endpoint_by_bssid_.end(); ++i) {
     const WiFiEndpoint &endpoint(*(i->second));
-    string service_id_private;
-
-    service_id_private =
-        endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
-    if (service_by_private_id_.find(service_id_private) ==
-        service_by_private_id_.end()) {
+    if (!GetServiceForEndpoint(endpoint).get()) {
       LOG(INFO) << "found new endpoint. "
                 << "ssid: " << endpoint.ssid_string() << ", "
                 << "bssid: " << endpoint.bssid_string() << ", "
@@ -425,17 +644,9 @@ void WiFi::ScanDoneTask() {
                 << "security: " << endpoint.security_mode();
 
       const bool hidden_ssid = false;
-      WiFiServiceRefPtr service(
-          new WiFiService(control_interface(),
-                          dispatcher(),
-                          manager(),
-                          this,
-                          endpoint.ssid(),
-                          endpoint.network_mode(),
-                          endpoint.security_mode(),
-                          hidden_ssid));
+      WiFiServiceRefPtr service =
+          CreateServiceForEndpoint(endpoint, hidden_ssid);
       services_.push_back(service);
-      service_by_private_id_[service_id_private] = service;
       manager()->RegisterService(service);
 
       LOG(INFO) << "new service " << service->GetRpcIdentifier();
@@ -462,42 +673,90 @@ void WiFi::ScanTask() {
   scan_pending_ = true;
 }
 
-void WiFi::StateChanged(const string &new_state) {
-  const string &old_state = supplicant_state_;
-
-  LOG(INFO) << link_name() << " " << __func__ << " "
-            << old_state << " -> " << new_state;
-
-  if (pending_service_.get()) {
-    if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
-      // TODO(quiche): Check if we have a race with LinkEvent and/or
-      // IPConfigUpdatedCallback here.
-
-      // After 802.11 negotiation is Completed, we start Configuring
-      // IP connectivity.
-      pending_service_->SetState(Service::kStateConfiguring);
-    } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
-      pending_service_->SetState(Service::kStateAssociating);
-    } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
-               new_state == wpa_supplicant::kInterfaceStateAssociating ||
-               new_state == wpa_supplicant::kInterfaceState4WayHandshake ||
-               new_state == wpa_supplicant::kInterfaceStateGroupHandshake) {
-      // Ignore transitions into these states from Completed, to avoid
-      // bothering the user when roaming, or re-keying.
-      if (old_state != wpa_supplicant::kInterfaceStateCompleted)
-        pending_service_->SetState(Service::kStateAssociating);
-    } else {
-      // Other transitions do not affect Service state.
-      //
-      // Note in particular that we ignore a State change into
-      // kInterfaceStateDisconnected, in favor of observing the corresponding
-      // change in CurrentBSS.
-      //
-      // TODO(quiche): Actually implement tracking of CurrentBSS.
-    }
+WiFiServiceRefPtr WiFi::GetServiceForEndpoint(const WiFiEndpoint &endpoint) {
+  // TODO(quiche): We should probably be indexing on BSSID alone,
+  // rather than SSID + BSSID.
+  //
+  // The current arrangement allows us to pass tests in which an AP
+  // changes SSID, even though we don't update endpoint or service
+  // state when that happens. (This works because the difference in
+  // SSID means we don't find a match.)
+  //
+  // But with the current arrangment, we will likely fail if the AP
+  // changes its security requirements (unless it also changes its
+  // SSID). So the current scheme "overfits" the current tests.
+  //
+  // Furthermore, this causes the creation of a Service for every
+  // Endpoint, rather than grouping Endpoints with the same SSID into
+  // a single Service.
+  string service_id_private;
+  // TODO(quiche): Eliminate duplication with CreateServiceForEndpoint.
+  service_id_private = endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
+  ServiceMap::iterator it = service_by_private_id_.find(service_id_private);
+  if (it == service_by_private_id_.end()) {
+    return NULL;
   }
 
+  // TODO(quiche): Check that the service actually represents the
+  // endpoint, and warn if it does not. (This might happen if, e.g.,
+  // we failed to update the service, or service/endpoint
+  // association, when the endpoint was reconfigured.)
+  return it->second;
+}
+
+void WiFi::StateChanged(const string &new_state) {
+  const string old_state = supplicant_state_;
   supplicant_state_ = new_state;
+  LOG(INFO) << "WiFi " << link_name() << " " << __func__ << " "
+            << old_state << " -> " << new_state;
+
+  WiFiService *affected_service;
+  // Identify the service to which the state change applies. If
+  // |pending_service_| is non-NULL, then the state change applies to
+  // |pending_service_|. Otherwise, it applies to |current_service_|.
+  //
+  // This policy is driven by the fact that the |pending_service_|
+  // doesn't become the |current_service_| until wpa_supplicant
+  // reports a CurrentBSS change to the |pending_service_|. And the
+  // CurrentBSS change won't we reported until the |pending_service_|
+  // reaches the wpa_supplicant::kInterfaceStateCompleted state.
+  affected_service =
+      pending_service_.get() ? pending_service_.get() : current_service_.get();
+  if (!affected_service) {
+    VLOG(2) << "WiFi " << link_name() << " " << __func__
+            << " with no service";
+    return;
+  }
+
+  if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
+    // TODO(quiche): Check if we have a race with LinkEvent and/or
+    // IPConfigUpdatedCallback here.
+
+    // After 802.11 negotiation is Completed, we start Configuring
+    // IP connectivity.
+    affected_service->SetState(Service::kStateConfiguring);
+  } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
+    affected_service->SetState(Service::kStateAssociating);
+  } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
+             new_state == wpa_supplicant::kInterfaceStateAssociating ||
+             new_state == wpa_supplicant::kInterfaceState4WayHandshake ||
+             new_state == wpa_supplicant::kInterfaceStateGroupHandshake) {
+    // Ignore transitions into these states from Completed, to avoid
+    // bothering the user when roaming, or re-keying.
+    if (old_state != wpa_supplicant::kInterfaceStateCompleted)
+      affected_service->SetState(Service::kStateAssociating);
+    // TOOD(quiche): On backwards transitions, we should probably set
+    // a timeout for getting back into the completed state. At present,
+    // we depend on wpa_supplicant eventually reporting that CurrentBSS
+    // has changed. But there may be cases where that signal is sent.
+    // (crosbug.com/23207)
+  } else {
+    // Other transitions do not affect Service state.
+    //
+    // Note in particular that we ignore a State change into
+    // kInterfaceStateDisconnected, in favor of observing the corresponding
+    // change in CurrentBSS.
+  }
 }
 
 // Used by Manager.

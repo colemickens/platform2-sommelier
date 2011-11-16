@@ -29,6 +29,14 @@ Running unit tests
 - and then debug tests like this:
   (chroot)$ gdb_x86_local --board x86-generic /path/to/checkout/src/platform/shill/shill_unittest
 
+- you can specify arguments to the unit tests like this:
+  - full workflow:
+    (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
+      FEATURES="test" emerge-x86-generic shill
+  - incremenetal workflow:
+    (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
+      CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
+
 Running integration tests
 -------------------------
 - build a test image, suitable for a VM:

@@ -178,8 +178,18 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     WiFiMainTest *test_;
   };
 
+  WiFiServiceRefPtr CreateServiceForEndpoint(const WiFiEndpoint &endpoint) {
+    bool hidden_ssid = false;
+    return wifi_->CreateServiceForEndpoint(endpoint, hidden_ssid);
+  }
+  const WiFiServiceRefPtr &GetCurrentService() {
+    return wifi_->current_service_;
+  }
   const WiFi::EndpointMap &GetEndpointMap() {
     return wifi_->endpoint_by_bssid_;
+  }
+  const WiFiServiceRefPtr &GetPendingService() {
+    return wifi_->pending_service_;
   }
   const WiFi::ServiceMap &GetServiceMap() {
     return wifi_->service_by_private_id_;
@@ -203,6 +213,27 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   bool IsLinkUp() {
     return wifi_->link_up_;
   }
+  WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
+    map <string, ::DBus::Variant> args;
+    ::DBus::MessageIter writer;
+
+    writer = args[wpa_supplicant::kBSSPropertySSID].writer();
+    writer << vector<uint8_t>(ssid.begin(), ssid.end());
+
+    string bssid_nosep;
+    RemoveChars(bssid, ":", &bssid_nosep);
+    vector<uint8_t> bssid_bytes;
+    base::HexStringToBytes(bssid_nosep, &bssid_bytes);
+    writer = args[wpa_supplicant::kBSSPropertyBSSID].writer();
+    writer << bssid_bytes;
+
+    args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(0);
+    args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
+        wpa_supplicant::kNetworkModeInfrastructure);
+    // We indicate this is an open BSS by leaving out all security properties.
+
+    return new WiFiEndpoint(args);
+  }
   MockWiFiServiceRefPtr MakeMockService() {
     vector<uint8_t> ssid(1, 'a');
     return new MockWiFiService(
@@ -225,6 +256,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   }
   void ReportScanDone() {
     wifi_->ScanDoneTask();
+  }
+  void ReportCurrentBSSChanged(const string &new_bss) {
+    wifi_->CurrentBSSChanged(new_bss);
   }
   void ReportStateChanged(const string &new_state) {
     wifi_->StateChanged(new_state);
@@ -909,6 +943,77 @@ TEST_F(WiFiMainTest, LoadHiddenServicesSuccess) {
   vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
   EXPECT_TRUE(FindService(ssid_bytes, flimflam::kModeManaged,
                           flimflam::kSecurityNone).get());
+}
+
+TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+
+  // Note that the BSS handle used in this test ("an_ap") is not
+  // intended to reflect the format used by supplicant. It's just
+  // convenient for testing.
+
+  StartWiFi();
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+  EXPECT_EQ(service, GetPendingService().get());
+
+  ReportCurrentBSSChanged("an_ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_EQ(Service::kStateConfiguring, service->state());
+  EXPECT_EQ(service, GetCurrentService().get());
+  EXPECT_EQ(NULL, GetPendingService().get());
+
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+  EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_EQ(NULL, GetCurrentService().get());
+  EXPECT_EQ(NULL, GetPendingService().get());
+}
+
+TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiEndpointRefPtr ap2 = MakeEndpoint("another_ssid", "01:02:03:04:05:06");
+  WiFiServiceRefPtr service1 = CreateServiceForEndpoint(*ap1);
+  WiFiServiceRefPtr service2 = CreateServiceForEndpoint(*ap2);
+
+  // Note that the BSS handles used in this test ("ap1", "ap2") are
+  // not intended to reflect the format used by supplicant. They're
+  // just convenient for testing.
+
+  StartWiFi();
+  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service1);
+  ReportCurrentBSSChanged("ap1");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_EQ(service1.get(), GetCurrentService().get());
+
+  ReportCurrentBSSChanged("ap2");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_EQ(service2.get(), GetCurrentService().get());
+  EXPECT_EQ(Service::kStateIdle, service1->state());
+  EXPECT_EQ(Service::kStateConfiguring, service2->state());
+}
+
+TEST_F(WiFiMainTest, CurrentBSSChangeDisconnectedToConnected) {
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+
+  // Note that the BSS handle used in this test ("an_ap") is not
+  // intended to reflect the format used by supplicant. It's just
+  // convenient for testing.
+
+  StartWiFi();
+  ReportBSS("an_ap", ap->ssid_string(), ap->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("an_ap");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  EXPECT_EQ(service.get(), GetCurrentService().get());
+  EXPECT_EQ(Service::kStateConfiguring, service->state());
 }
 
 }  // namespace shill

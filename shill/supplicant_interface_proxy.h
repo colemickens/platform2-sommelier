@@ -31,6 +31,7 @@ class SupplicantInterfaceProxy
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void FlushBSS(const uint32_t &age);
   virtual void RemoveAllNetworks();
+  virtual void RemoveNetwork(const ::DBus::Path &network);
   virtual void Scan(
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void SelectNetwork(const ::DBus::Path &network);

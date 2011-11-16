@@ -39,6 +39,10 @@ void SupplicantInterfaceProxy::RemoveAllNetworks() {
   return proxy_.RemoveAllNetworks();
 }
 
+void SupplicantInterfaceProxy::RemoveNetwork(const ::DBus::Path &network) {
+  return proxy_.RemoveNetwork(network);
+}
+
 void SupplicantInterfaceProxy::Scan(
     const std::map<std::string, ::DBus::Variant> &args) {
   return proxy_.Scan(args);

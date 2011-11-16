@@ -30,7 +30,8 @@ WiFiEndpoint::WiFiEndpoint(
       properties.find(wpa_supplicant::kBSSPropertyBSSID)->second.
       operator std::vector<uint8_t>();
   signal_strength_ =
-      properties.find(wpa_supplicant::kBSSPropertySignal)->second;
+      properties.find(wpa_supplicant::kBSSPropertySignal)->second.
+      reader().get_int16();
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
   security_mode_ = ParseSecurity(properties);
