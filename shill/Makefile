@@ -228,7 +228,7 @@ TEST_OBJS = \
 all: $(SHILL_BIN) $(TEST_BIN)
 
 $(DBUS_PROXY_BINDINGS): %.h: %.xml
-	$(DBUSXX_XML2CPP) $< --proxy=$@
+	$(DBUSXX_XML2CPP) $< --proxy=$@ --sync --async
 
 $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
