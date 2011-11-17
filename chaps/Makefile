@@ -34,6 +34,8 @@ RM_ON_CLEAN += attributes.pb.h attributes.pb.cc
 attributes.pb.cc: attributes.pb.h
 	@echo
 
+attributes.cc: attributes.pb.h
+
 $(OUT)libchaps.so: dbus-headers \
                    protobufs \
                    $(OUT)chaps.o \
