@@ -334,7 +334,8 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
-  VLOG(2) << __func__ << to_manage->UniqueName();
+  VLOG(2) << "In " << __func__ << "(): Registering service "
+          << to_manage->UniqueName();
 
   bool configured = false;
   for (vector<ProfileRefPtr>::reverse_iterator it = profiles_.rbegin();
@@ -370,8 +371,9 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
 void Manager::UpdateService(const ServiceRefPtr &to_update) {
   CHECK(to_update);
   LOG(INFO) << "Service " << to_update->UniqueName() << " updated;"
-            << " state: " << to_update->state() << " failure: "
-            << to_update->failure();
+            << " state: " << Service::ConnectStateToString(to_update->state())
+            << " failure: "
+            << Service::ConnectFailureToString(to_update->failure());
   LOG(INFO) << "IsConnected(): " << to_update->IsConnected();
   if (to_update->IsConnected())
     to_update->MakeFavorite();

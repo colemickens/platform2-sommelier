@@ -177,9 +177,9 @@ bool Service::IsActive(Error */*error*/) {
 }
 
 void Service::SetState(ConnectState state) {
-  // TODO(quiche): Print string, rather than enum.
-  LOG(INFO) << friendly_name_ << " " << __func__ << " "
-            << state_ << " -> " << state;
+  LOG(INFO) << "In " << __func__ << "(): Service " << friendly_name_
+            << " state " << ConnectStateToString(state_) << " -> "
+            << ConnectStateToString(state);
 
   if (state == state_) {
     return;
@@ -303,6 +303,57 @@ void Service::MakeFavorite() {
 }
 
 // static
+const char *Service::ConnectFailureToString(const ConnectFailure &state) {
+  switch (state) {
+    case kFailureUnknown:
+      return "Unknown";
+    case kFailureActivationFailure:
+      return "Activation Failure";
+    case kFailureOutOfRange:
+      return "Out of range";
+    case kFailurePinMissing:
+      return "PIN missing";
+    case kFailureConfigurationFailed:
+      return "Configuration Failed";
+    case kFailureBadCredentials:
+      return "Bad Credentials";
+    case kFailureNeedEVDO:
+      return "Need EVDO";
+    case kFailureNeedHomeNetwork:
+      return "Need Home Network";
+    case kFailureOTASPFailure:
+      return "OTASP Failure";
+    case kFailureAAAFailure:
+      return "AAA Failure";
+  }
+  return "Invalid";
+}
+
+// static
+const char *Service::ConnectStateToString(const ConnectState &state) {
+  switch (state) {
+    case kStateUnknown:
+      return "Unknown";
+    case kStateIdle:
+      return "Idle";
+    case kStateAssociating:
+      return "Associating";
+    case kStateConfiguring:
+      return "Configuring";
+    case kStateConnected:
+      return "Connected";
+    case kStateDisconnected:
+      return "Disconnected";
+    case kStateFailure:
+      return "Failure";
+    case kStateOnline:
+      return "Online";
+  }
+  return "Invalid";
+}
+
+
+// static
 bool Service::DecideBetween(int a, int b, bool *decision) {
   if (a == b)
     return false;
@@ -360,11 +411,23 @@ void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
 string Service::CalculateState(Error */*error*/) {
   switch (state_) {
+    case kStateIdle:
+      return flimflam::kStateIdle;
+    case kStateAssociating:
+      return flimflam::kStateAssociation;
+    case kStateConfiguring:
+      return flimflam::kStateConfiguration;
     case kStateConnected:
       return flimflam::kStateReady;
+    case kStateDisconnected:
+      return flimflam::kStateDisconnect;
+    case kStateFailure:
+      return flimflam::kStateFailure;
+    case kStateOnline:
+      return flimflam::kStateOnline;
+    case kStateUnknown:
     default:
-      // TODO(quiche): provide strings for other states
-      return flimflam::kStateIdle;
+      return "";
   }
 }
 

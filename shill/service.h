@@ -62,7 +62,8 @@ class Service : public base::RefCounted<Service> {
     kStateConfiguring,
     kStateConnected,
     kStateDisconnected,
-    kStateFailure
+    kStateFailure,
+    kStateOnline
   };
   struct EapCredentials {
     EapCredentials() : use_system_cas(false) {}
@@ -165,6 +166,9 @@ class Service : public base::RefCounted<Service> {
 
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
+
+  static const char *ConnectFailureToString(const ConnectFailure &state);
+  static const char *ConnectStateToString(const ConnectState &state);
 
   // Compare two services.  Returns true if Service a should be displayed
   // above Service b
