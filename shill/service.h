@@ -90,7 +90,7 @@ class Service : public base::RefCounted<Service> {
   Service(ControlInterface *control_interface,
           EventDispatcher *dispatcher,
           Manager *manager,
-          const std::string &type);
+          Technology::Identifier technology);
   virtual ~Service();
 
   virtual void Connect(Error *error) = 0;
@@ -110,8 +110,8 @@ class Service : public base::RefCounted<Service> {
   virtual void SetState(ConnectState state);
 
   // State utility functions
-  bool IsConnected() const { return state() == kStateConnected; }
-  bool IsConnecting() const {
+  virtual bool IsConnected() const { return state() == kStateConnected; }
+  virtual bool IsConnecting() const {
     return state() == kStateAssociating || state() == kStateConfiguring;
   }
 
@@ -150,6 +150,9 @@ class Service : public base::RefCounted<Service> {
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
+  bool connectable() const { return connectable_; }
+  void set_connectable(bool connectable) { connectable_ = connectable; }
+
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.
 
@@ -163,6 +166,9 @@ class Service : public base::RefCounted<Service> {
 
   int32 strength() const { return strength_; }
   void set_strength(int32 strength) { strength_ = strength; }
+
+  virtual Technology::Identifier technology() const { return technology_; }
+  std::string GetTechnologyString(Error *error);
 
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
@@ -279,7 +285,7 @@ class Service : public base::RefCounted<Service> {
   std::string proxy_config_;
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.
-  const std::string type_;
+  Technology::Identifier technology_;
 
   ProfileRefPtr profile_;
   PropertyStore store_;

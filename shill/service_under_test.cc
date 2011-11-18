@@ -20,7 +20,7 @@ const char ServiceUnderTest::kStorageId[] = "service";
 ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
                                    EventDispatcher *dispatcher,
                                    Manager *manager)
-    : Service(control_interface, dispatcher, manager, "stub") {
+    : Service(control_interface, dispatcher, manager, Technology::kUnknown) {
 }
 
 ServiceUnderTest::~ServiceUnderTest() {}

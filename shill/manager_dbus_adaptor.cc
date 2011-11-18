@@ -57,6 +57,11 @@ void ManagerDBusAdaptor::EmitStringChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
+void ManagerDBusAdaptor::EmitStringsChanged(const string &name,
+                                            const vector<string> &value) {
+  PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
+}
+
 void ManagerDBusAdaptor::EmitRpcIdentifierArrayChanged(
     const string &name,
     const vector<string> &value) {

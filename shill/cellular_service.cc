@@ -24,7 +24,7 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  EventDispatcher *dispatcher,
                                  Manager *manager,
                                  const CellularRefPtr &device)
-    : Service(control_interface, dispatcher, manager, flimflam::kTypeCellular),
+    : Service(control_interface, dispatcher, manager, Technology::kCellular),
       strength_(0),
       cellular_(device) {
   PropertyStore *store = this->mutable_store();

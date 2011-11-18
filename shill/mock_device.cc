@@ -16,6 +16,7 @@ class ControlInterface;
 class EventDispatcher;
 
 using ::testing::_;
+using ::testing::DefaultValue;
 using ::testing::Return;
 using std::string;
 
@@ -30,8 +31,10 @@ MockDevice::MockDevice(ControlInterface *control_interface,
              manager,
              link_name,
              address,
-             interface_index) {
+             interface_index,
+             Technology::kUnknown) {
   ON_CALL(*this, TechnologyIs(_)).WillByDefault(Return(false));
+  DefaultValue<Technology::Identifier>::Set(Technology::kUnknown);
 }
 
 MockDevice::~MockDevice() {}

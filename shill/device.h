@@ -41,7 +41,8 @@ class Device : public base::RefCounted<Device> {
          Manager *manager,
          const std::string &link_name,
          const std::string &address,
-         int interface_index);
+         int interface_index,
+         Technology::Identifier technology);
   virtual ~Device();
 
   virtual void Start();
@@ -51,6 +52,9 @@ class Device : public base::RefCounted<Device> {
   // to Start()), or destroyed (if its refcount falls to zero).
   virtual void Stop();
 
+
+  // TODO(gauravsh): We do not really need this since technology() can be used
+  //                 to get a device's technology for direct comparison.
   // Base method always returns false.
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
@@ -70,6 +74,11 @@ class Device : public base::RefCounted<Device> {
                          const std::string &new_pin,
                          Error *error);
 
+  // Returns true if the selected service on the device (if any) is connected.
+  // Returns false if there is no selected service, or if the selected service
+  // is not connected.
+  bool IsConnected() const;
+
   std::string GetRpcIdentifier();
   std::string GetStorageIdentifier();
 
@@ -78,6 +87,7 @@ class Device : public base::RefCounted<Device> {
   int interface_index() const { return interface_index_; }
   const ConnectionRefPtr &connection() const { return connection_; }
   bool powered() const { return powered_; }
+  virtual Technology::Identifier technology() const { return technology_; }
 
   const std::string &FriendlyName() const;
 
@@ -112,6 +122,8 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, Stop);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
+  FRIEND_TEST(ManagerTest, ConnectedTechnologies);
+  FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
@@ -188,6 +200,7 @@ class Device : public base::RefCounted<Device> {
   IPConfigRefPtr ipconfig_;
   ConnectionRefPtr connection_;
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
+  Technology::Identifier technology_;
 
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;

@@ -14,7 +14,7 @@ using std::string;
 
 const char Technology::kUnknownName[] = "Unknown";
 
-
+// static
 Technology::Identifier Technology::IdentifierFromName(const std::string &name) {
   if (name == flimflam::kTypeEthernet) {
     return kEthernet;
@@ -27,6 +27,7 @@ Technology::Identifier Technology::IdentifierFromName(const std::string &name) {
   }
 }
 
+// static
 std::string Technology::NameFromIdentifier(Technology::Identifier id) {
   if (id == kEthernet) {
     return flimflam::kTypeEthernet;

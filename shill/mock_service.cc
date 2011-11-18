@@ -12,6 +12,7 @@
 
 #include "shill/refptr_types.h"
 #include "shill/store_interface.h"
+#include "shill/technology.h"
 
 using std::string;
 using testing::_;
@@ -26,7 +27,7 @@ class Manager;
 MockService::MockService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Manager *manager)
-    : Service(control_interface, dispatcher, manager, "mock") {
+    : Service(control_interface, dispatcher, manager, Technology::kUnknown) {
   const string &id = UniqueName();
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));

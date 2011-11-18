@@ -30,6 +30,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
 #include "shill/property_store_unittest.h"
+#include "shill/technology.h"
 
 using std::map;
 using std::string;
@@ -52,7 +53,8 @@ class DeviceTest : public PropertyStoreTest {
                            NULL,
                            kDeviceName,
                            kDeviceAddress,
-                           0)) {
+                           0,
+                           Technology::kUnknown)) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
   }

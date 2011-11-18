@@ -30,6 +30,7 @@
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
+#include "shill/technology.h"
 
 using base::StringPrintf;
 using std::string;
@@ -48,7 +49,8 @@ Device::Device(ControlInterface *control_interface,
                Manager *manager,
                const string &link_name,
                const string &address,
-               int interface_index)
+               int interface_index,
+               Technology::Identifier technology)
     : powered_(true),
       reconnect_(true),
       hardware_address_(address),
@@ -60,6 +62,7 @@ Device::Device(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       manager_(manager),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      technology_(technology),
       dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()) {
   store_.RegisterConstString(flimflam::kAddressProperty, &hardware_address_);
@@ -178,6 +181,12 @@ void Device::ChangePIN(const string &/*old_pin*/,
                        Error *error) {
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support ChangePIN.");
+}
+
+bool Device::IsConnected() const {
+  if (selected_service_)
+    return selected_service_->IsConnected();
+  return false;
 }
 
 string Device::GetRpcIdentifier() {

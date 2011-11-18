@@ -34,6 +34,7 @@
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
+#include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
@@ -76,7 +77,8 @@ WiFi::WiFi(ControlInterface *control_interface,
              manager,
              link,
              address,
-             interface_index),
+             interface_index,
+             Technology::kWifi),
       proxy_factory_(ProxyFactory::GetInstance()),
       task_factory_(this),
       link_up_(false),

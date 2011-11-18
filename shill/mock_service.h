@@ -10,6 +10,7 @@
 
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -26,8 +27,10 @@ class MockService : public Service {
   MOCK_METHOD1(CalculateState, std::string(Error *error));
   MOCK_CONST_METHOD1(TechnologyIs,
                      bool(const Technology::Identifier technology));
-  MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_CONST_METHOD0(state, ConnectState());
+  MOCK_METHOD1(SetState, void(ConnectState state));
+  MOCK_CONST_METHOD0(IsConnected, bool());
+  MOCK_CONST_METHOD0(IsConnecting, bool());
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_CONST_METHOD0(failure, ConnectFailure());
   MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));
@@ -35,7 +38,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));
-
+  MOCK_CONST_METHOD0(technology, Technology::Identifier());
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
   bool FauxSave(StoreInterface *store);

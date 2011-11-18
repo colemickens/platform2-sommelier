@@ -34,16 +34,14 @@ class DeviceStub : public Device {
              int interface_index,
              Technology::Identifier technology)
       : Device(control_interface, dispatcher, manager, link_name, address,
-               interface_index),
-        technology_(technology) {}
+               interface_index, technology) {}
   void Start() {}
   void Stop() {}
   bool TechnologyIs(const Technology::Identifier type) const {
-    return type == technology_;
+    return type == technology();
   }
 
  private:
-  Technology::Identifier technology_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceStub);
 };

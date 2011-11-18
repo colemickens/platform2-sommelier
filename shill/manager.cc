@@ -15,6 +15,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/stl_util-inl.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -38,6 +39,7 @@
 #include "shill/wifi_service.h"
 
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -318,6 +320,12 @@ void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   // unit tests sometimes do things in otherwise invalid states.
   if (running_ && to_manage->powered())
     to_manage->Start();
+
+  Error error;
+  adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
+                               AvailableTechnologies(&error));
+  adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+                               EnabledTechnologies(&error));
 }
 
 void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
@@ -327,6 +335,11 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
       VLOG(2) << "Deregistered device: " << to_forget->UniqueName();
       to_forget->Stop();
       devices_.erase(it);
+      Error error;
+      adaptor_->EmitStringsChanged(flimflam::kAvailableTechnologiesProperty,
+                                   AvailableTechnologies(&error));
+      adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
+                                   EnabledTechnologies(&error));
       return;
     }
   }
@@ -429,6 +442,12 @@ void Manager::SortServices() {
   }
   adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
                                           service_paths);
+
+  Error error;
+  adaptor_->EmitStringsChanged(flimflam::kConnectedTechnologiesProperty,
+                               ConnectedTechnologies(&error));
+  adaptor_->EmitStringChanged(flimflam::kDefaultTechnologyProperty,
+                              DefaultTechnology(&error));
 }
 
 string Manager::CalculateState(Error */*error*/) {
@@ -436,19 +455,35 @@ string Manager::CalculateState(Error */*error*/) {
 }
 
 vector<string> Manager::AvailableTechnologies(Error */*error*/) {
-  return vector<string>();
+  set<string> unique_technologies;
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    unique_technologies.insert(
+        Technology::NameFromIdentifier((*it)->technology()));
+  }
+  return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
 vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
-  return vector<string>();
+  set<string> unique_technologies;
+  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    if ((*it)->IsConnected())
+      unique_technologies.insert(
+          Technology::NameFromIdentifier((*it)->technology()));
+  }
+  return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
-string Manager::DefaultTechnology(Error */*error*/) {
-  return "";
+string Manager::DefaultTechnology(Error *error) {
+  return (!services_.empty() && services_[0]->IsConnected()) ?
+      services_[0]->GetTechnologyString(error) : "";
 }
 
-vector<string> Manager::EnabledTechnologies(Error */*error*/) {
-  return vector<string>();
+vector<string> Manager::EnabledTechnologies(Error *error) {
+  // TODO(gauravsh): This must be wired up to the RPC interface to handle
+  // enabled/disabled devices as set by the user. crosbug.com/23319
+  return AvailableTechnologies(error);
 }
 
 vector<string> Manager::EnumerateDevices(Error */*error*/) {

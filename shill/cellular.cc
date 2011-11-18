@@ -31,6 +31,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/technology.h"
 
 using std::map;
 using std::string;
@@ -96,7 +97,8 @@ Cellular::Cellular(ControlInterface *control_interface,
              manager,
              link_name,
              address,
-             interface_index),
+             interface_index,
+             Technology::kCellular),
       proxy_factory_(ProxyFactory::GetInstance()),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),

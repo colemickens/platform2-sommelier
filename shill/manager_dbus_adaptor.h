@@ -41,6 +41,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   void EmitUintChanged(const std::string &name, uint32 value);
   void EmitIntChanged(const std::string &name, int value);
   void EmitStringChanged(const std::string &name, const std::string &value);
+  void EmitStringsChanged(const std::string &name,
+                          const std::vector<std::string> &value);
   void EmitRpcIdentifierArrayChanged(
       const std::string &name, const std::vector<std::string> &value);
   void EmitStateChanged(const std::string &new_state);

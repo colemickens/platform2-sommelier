@@ -42,9 +42,11 @@ using std::vector;
 namespace shill {
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::ContainerEq;
 using ::testing::Ne;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrEq;
 using ::testing::Test;
 
 class ManagerTest : public PropertyStoreTest {
@@ -74,6 +76,12 @@ class ManagerTest : public PropertyStoreTest {
                                                      "null2",
                                                      "addr2",
                                                      2));
+    mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                     dispatcher(),
+                                                     manager(),
+                                                     "null3",
+                                                     "addr3",
+                                                     3));
     manager()->connect_profiles_to_rpc_ = false;
   }
   virtual ~ManagerTest() {}
@@ -200,18 +208,18 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ON_CALL(*mock_devices_[1].get(), TechnologyIs(Technology::kWifi))
       .WillByDefault(Return(true));
 
-  manager()->RegisterDevice(mock_devices_[0].get());
-  manager()->RegisterDevice(mock_devices_[1].get());
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
 
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 
   EXPECT_CALL(*mock_devices_[0].get(), Stop());
-  manager()->DeregisterDevice(mock_devices_[0].get());
+  manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
   EXPECT_CALL(*mock_devices_[1].get(), Stop());
-  manager()->DeregisterDevice(mock_devices_[1].get());
+  manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
 }
 
@@ -354,8 +362,8 @@ TEST_F(ManagerTest, GetProperties) {
 TEST_F(ManagerTest, GetDevicesProperty) {
   ProfileRefPtr profile(new MockProfile(control_interface(), manager(), ""));
   AdoptProfile(manager(), profile);
-  manager()->RegisterDevice(mock_devices_[0].get());
-  manager()->RegisterDevice(mock_devices_[1].get());
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
   {
     map<string, ::DBus::Variant> props;
     ::DBus::Error dbus_error;
@@ -702,7 +710,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  // Priority
+  // Priority.
   mock_service0->set_priority(1);
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
@@ -712,20 +720,152 @@ TEST_F(ManagerTest, SortServices) {
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
-  // Connecting
+  // Connecting.
   EXPECT_CALL(*mock_service0.get(), state())
       .WillRepeatedly(Return(Service::kStateAssociating));
+  EXPECT_CALL(*mock_service0.get(), IsConnecting())
+      .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  // Connected
+  // Connected.
   EXPECT_CALL(*mock_service1.get(), state())
       .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_service1.get(), IsConnected())
+      .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
+}
+
+TEST_F(ManagerTest, AvailableTechnologies) {
+  mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
+                                                   dispatcher(),
+                                                   manager(),
+                                                   "null4",
+                                                   "addr4",
+                                                   0));
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  manager()->RegisterDevice(mock_devices_[3]);
+
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+  ON_CALL(*mock_devices_[3].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  set<string> expected_technologies;
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kEthernet));
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kWifi));
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kCellular));
+  Error error;
+  vector<string> technologies = manager()->AvailableTechnologies(&error);
+
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+}
+
+TEST_F(ManagerTest, ConnectedTechnologies) {
+  scoped_refptr<MockService> connected_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> connected_service2(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> disconnected_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> disconnected_service2(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+
+  ON_CALL(*connected_service1.get(), IsConnected())
+      .WillByDefault(Return(true));
+  ON_CALL(*connected_service2.get(), IsConnected())
+      .WillByDefault(Return(true));
+
+  manager()->RegisterService(connected_service1);
+  manager()->RegisterService(connected_service2);
+  manager()->RegisterService(disconnected_service1);
+  manager()->RegisterService(disconnected_service2);
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  manager()->RegisterDevice(mock_devices_[3]);
+
+  ON_CALL(*mock_devices_[0].get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*mock_devices_[2].get(), technology())
+      .WillByDefault(Return(Technology::kCellular));
+  ON_CALL(*mock_devices_[3].get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  mock_devices_[0]->SelectService(connected_service1);
+  mock_devices_[1]->SelectService(disconnected_service1);
+  mock_devices_[2]->SelectService(disconnected_service2);
+  mock_devices_[3]->SelectService(connected_service2);
+
+  set<string> expected_technologies;
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kEthernet));
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kWifi));
+  Error error;
+
+  vector<string> technologies = manager()->ConnectedTechnologies(&error);
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+}
+
+TEST_F(ManagerTest, DefaultTechnology) {
+  scoped_refptr<MockService> connected_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> disconnected_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+
+  // Connected. WiFi.
+  ON_CALL(*connected_service.get(), IsConnected())
+      .WillByDefault(Return(true));
+  ON_CALL(*connected_service.get(), state())
+      .WillByDefault(Return(Service::kStateConnected));
+  ON_CALL(*connected_service.get(), technology())
+      .WillByDefault(Return(Technology::kWifi));
+
+  // Disconnected. Ethernet.
+  ON_CALL(*disconnected_service.get(), technology())
+      .WillByDefault(Return(Technology::kEthernet));
+
+  manager()->RegisterService(disconnected_service);
+  Error error;
+  EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(""));
+
+
+  manager()->RegisterService(connected_service);
+  // Connected service should be brought to the front now.
+  string expected_technology =
+      Technology::NameFromIdentifier(Technology::kWifi);
+  EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 
 TEST_F(ManagerTest, DisconnectServicesOnStop) {
@@ -747,8 +887,8 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   EXPECT_FALSE(mock_service->favorite());
   EXPECT_FALSE(mock_service->auto_connect());
 
-  EXPECT_CALL(*mock_service.get(), state())
-      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service);
   // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
   // to mock out MakeFavorite. And mocking that out would break the

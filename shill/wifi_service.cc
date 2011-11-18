@@ -41,7 +41,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          const string &mode,
                          const string &security,
                          bool hidden_ssid)
-    : Service(control_interface, dispatcher, manager, flimflam::kTypeWifi),
+    : Service(control_interface, dispatcher, manager, Technology::kWifi),
       need_passphrase_(false),
       security_(security),
       mode_(mode),

@@ -66,7 +66,7 @@ unsigned int Service::serial_number_ = 0;
 Service::Service(ControlInterface *control_interface,
                  EventDispatcher *dispatcher,
                  Manager *manager,
-                 const string &type)
+                 Technology::Identifier technology)
     : state_(kStateUnknown),
       failure_(kFailureUnknown),
       auto_connect_(false),
@@ -77,7 +77,7 @@ Service::Service(ControlInterface *control_interface,
       security_level_(0),
       strength_(0),
       save_credentials_(true),
-      type_(type),
+      technology_(technology),
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
@@ -142,13 +142,14 @@ Service::Service(ControlInterface *control_interface,
   // store_.RegisterConstStringmap(flimflam::kProviderProperty, &provider_);
 
   store_.RegisterBool(flimflam::kSaveCredentialsProperty, &save_credentials_);
-  store_.RegisterConstString(flimflam::kTypeProperty, &type_);
+  HelpRegisterDerivedString(flimflam::kTypeProperty,
+                            &Service::GetTechnologyString,
+                            NULL);
   // flimflam::kSecurityProperty: Registered in WiFiService
   HelpRegisterDerivedString(flimflam::kStateProperty,
                             &Service::CalculateState,
                             NULL);
   // flimflam::kSignalStrengthProperty: Registered in WiFi/CellularService
-  // flimflam::kTypeProperty: Registered in all derived classes.
   // flimflam::kWifiAuthMode: Registered in WiFiService
   // flimflam::kWifiHiddenSsid: Registered in WiFiService
   // flimflam::kWifiFrequency: Registered in WiFiService
@@ -354,6 +355,10 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
 
 
 // static
+string Service::GetTechnologyString(Error */*error*/) {
+  return Technology::NameFromIdentifier(technology());
+}
+
 bool Service::DecideBetween(int a, int b, bool *decision) {
   if (a == b)
     return false;
@@ -418,7 +423,9 @@ string Service::CalculateState(Error */*error*/) {
     case kStateConfiguring:
       return flimflam::kStateConfiguration;
     case kStateConnected:
-      return flimflam::kStateReady;
+      // TODO(gauravsh): Until portal handling is implemented, go to "online"
+      // instead of "ready" state. crosbug.com/23318
+      return flimflam::kStateOnline;
     case kStateDisconnected:
       return flimflam::kStateDisconnect;
     case kStateFailure:

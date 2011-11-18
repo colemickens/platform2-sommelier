@@ -31,6 +31,7 @@ class MockDevice : public Device {
                      bool(const Technology::Identifier technology));
   MOCK_METHOD1(Load, bool(StoreInterface*));
   MOCK_METHOD1(Save, bool(StoreInterface*));
+  MOCK_CONST_METHOD0(technology, Technology::Identifier());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDevice);

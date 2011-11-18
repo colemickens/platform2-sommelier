@@ -37,7 +37,8 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              manager,
              link_name,
              address,
-             interface_index),
+             interface_index,
+             Technology::kEthernet),
       service_registered_(false),
       link_up_(false) {
   VLOG(2) << "Ethernet device " << link_name << " initialized.";
