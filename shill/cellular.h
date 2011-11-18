@@ -181,7 +181,6 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, GetModemInfo);
   FRIEND_TEST(CellularTest, GetModemStatus);
-  FRIEND_TEST(CellularTest, GetTypeString);
   FRIEND_TEST(CellularTest, InitProxies);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
@@ -196,10 +195,8 @@ class Cellular : public Device,
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  void InitCapability();
+  void InitCapability(Type type);
   void InitProxies();
-
-  std::string GetTypeString() const;
 
   void EnableModem();
   void GetModemStatus();
@@ -219,7 +216,6 @@ class Cellular : public Device,
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 
-  Type type_;
   State state_;
   ModemState modem_state_;
 

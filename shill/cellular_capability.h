@@ -31,8 +31,11 @@ class CellularCapability {
   EventDispatcher *dispatcher() const;
 
   // Invoked on starting and stopping the cellular device.
-  virtual void OnStart() = 0;
-  virtual void OnStop() = 0;
+  virtual void OnDeviceStarted() = 0;
+  virtual void OnDeviceStopped() = 0;
+
+  // Invoked by the parent Cellular device when a new service is created.
+  virtual void OnServiceCreated() = 0;
 
   virtual void UpdateStatus(const DBusPropertiesMap &properties) = 0;
 
@@ -76,9 +79,6 @@ class CellularCapability {
 
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties) = 0;
-
-  // Invoked by the parent Cellular device when a new service is created.
-  virtual void OnServiceCreated() = 0;
 
  private:
   friend class CellularTest;

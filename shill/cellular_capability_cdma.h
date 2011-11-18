@@ -21,8 +21,9 @@ class CellularCapabilityCDMA : public CellularCapability,
   CellularCapabilityCDMA(Cellular *cellular);
 
   // Inherited from CellularCapability.
-  virtual void OnStart();
-  virtual void OnStop();
+  virtual void OnDeviceStarted();
+  virtual void OnDeviceStopped();
+  virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error);
@@ -33,7 +34,6 @@ class CellularCapabilityCDMA : public CellularCapability,
   virtual void GetProperties();
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
-  virtual void OnServiceCreated();
 
   // Obtains the MEID.
   virtual void GetIdentifiers();

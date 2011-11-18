@@ -41,6 +41,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
       scanning_(false),
       scan_interval_(0) {
+  VLOG(2) << "Cellular capability constructed: GSM";
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstString(flimflam::kSelectedNetworkProperty,
                              &selected_network_);
@@ -71,7 +72,7 @@ void CellularCapabilityGSM::HelpRegisterDerivedStrIntPair(
               this, get, set)));
 }
 
-void CellularCapabilityGSM::OnStart() {
+void CellularCapabilityGSM::OnDeviceStarted() {
   VLOG(2) << __func__;
   card_proxy_.reset(
       proxy_factory()->CreateModemGSMCardProxy(this,
@@ -83,10 +84,16 @@ void CellularCapabilityGSM::OnStart() {
                                                   cellular()->dbus_owner()));
 }
 
-void CellularCapabilityGSM::OnStop() {
+void CellularCapabilityGSM::OnDeviceStopped() {
   VLOG(2) << __func__;
   card_proxy_.reset();
   network_proxy_.reset();
+}
+
+void CellularCapabilityGSM::OnServiceCreated() {
+  cellular()->service()->set_activation_state(
+      flimflam::kActivationStateActivated);
+  UpdateServingOperator();
 }
 
 void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
@@ -430,12 +437,6 @@ void CellularCapabilityGSM::OnModemManagerPropertiesChanged(
       properties, kPropertyUnlockRequired, &sim_lock_status_.lock_type);
   DBusProperties::GetUint32(
       properties, kPropertyUnlockRetries, &sim_lock_status_.retries_left);
-}
-
-void CellularCapabilityGSM::OnServiceCreated() {
-  cellular()->service()->set_activation_state(
-      flimflam::kActivationStateActivated);
-  UpdateServingOperator();
 }
 
 void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {

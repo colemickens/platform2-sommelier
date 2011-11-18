@@ -26,8 +26,9 @@ class CellularCapabilityGSM : public CellularCapability,
   CellularCapabilityGSM(Cellular *cellular);
 
   // Inherited from CellularCapability.
-  virtual void OnStart();
-  virtual void OnStop();
+  virtual void OnDeviceStarted();
+  virtual void OnDeviceStopped();
+  virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetSignalQuality();
@@ -48,7 +49,6 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual std::string GetRoamingStateString() const;
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
-  virtual void OnServiceCreated();
 
   // Obtains the IMEI, IMSI, SPN and MSISDN.
   virtual void GetIdentifiers();

@@ -201,8 +201,7 @@ class CellularTest : public testing::Test {
   void StopRTNLHandler();
 
   void SetCellularType(Cellular::Type type) {
-    device_->type_ = type;
-    device_->InitCapability();
+    device_->InitCapability(type);
   }
 
   CellularCapabilityCDMA *GetCapabilityCDMA() {
@@ -245,12 +244,6 @@ const char CellularTest::kIMSI[] = "123456789012345";
 const char CellularTest::kMSISDN[] = "12345678901";
 const char CellularTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
-
-TEST_F(CellularTest, GetTypeString) {
-  EXPECT_EQ("CellularTypeGSM", device_->GetTypeString());
-  SetCellularType(Cellular::kTypeCDMA);
-  EXPECT_EQ("CellularTypeCDMA", device_->GetTypeString());
-}
 
 TEST_F(CellularTest, GetStateString) {
   EXPECT_EQ("CellularStateDisabled",

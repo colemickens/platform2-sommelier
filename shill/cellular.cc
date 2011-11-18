@@ -97,7 +97,6 @@ Cellular::Cellular(ControlInterface *control_interface,
              address,
              interface_index),
       proxy_factory_(ProxyFactory::GetInstance()),
-      type_(type),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
@@ -125,22 +124,12 @@ Cellular::Cellular(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kMinProperty, &min_);
   store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
 
-  InitCapability();  // For now, only a single capability is supported.
+  InitCapability(type);  // For now, only a single capability is supported.
 
-  VLOG(2) << "Cellular device " << this->link_name() << " initialized: "
-          << GetTypeString();
+  VLOG(2) << "Cellular device " << this->link_name() << " initialized.";
 }
 
 Cellular::~Cellular() {}
-
-string Cellular::GetTypeString() const {
-  switch (type_) {
-    case kTypeGSM: return "CellularTypeGSM";
-    case kTypeCDMA: return "CellularTypeCDMA";
-    default: NOTREACHED();
-  }
-  return StringPrintf("CellularTypeUnknown-%d", type_);
-}
 
 // static
 string Cellular::GetStateString(State state) {
@@ -163,7 +152,7 @@ void Cellular::SetState(State state) {
 void Cellular::Start() {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
   Device::Start();
-  capability_->OnStart();
+  capability_->OnDeviceStarted();
   InitProxies();
   EnableModem();
   capability_->Register();
@@ -175,7 +164,7 @@ void Cellular::Start() {
 }
 
 void Cellular::Stop() {
-  capability_->OnStop();
+  capability_->OnDeviceStopped();
   proxy_.reset();
   simple_proxy_.reset();
   manager()->DeregisterService(service_);
@@ -184,9 +173,11 @@ void Cellular::Stop() {
   Device::Stop();
 }
 
-void Cellular::InitCapability() {
-  VLOG(2) << __func__;
-  switch (type_) {
+void Cellular::InitCapability(Type type) {
+  // TODO(petkov): Consider moving capability construction into a factory that's
+  // external to the Cellular class.
+  VLOG(2) << __func__ << "(" << type << ")";
+  switch (type) {
     case kTypeGSM:
       capability_.reset(new CellularCapabilityGSM(this));
       break;
@@ -343,7 +334,6 @@ void Cellular::Connect(Error *error) {
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
-    CHECK(error);
     return;
   }
 

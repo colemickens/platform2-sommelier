@@ -25,19 +25,28 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       registration_state_1x_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       prl_version_(0) {
+  VLOG(2) << "Cellular capability constructed: CDMA";
   PropertyStore *store = cellular->mutable_store();
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 }
 
-void CellularCapabilityCDMA::OnStart() {
+void CellularCapabilityCDMA::OnDeviceStarted() {
   VLOG(2) << __func__;
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
       this, cellular()->dbus_path(), cellular()->dbus_owner()));
 }
 
-void CellularCapabilityCDMA::OnStop() {
+void CellularCapabilityCDMA::OnDeviceStopped() {
   VLOG(2) << __func__;
   proxy_.reset();
+}
+
+void CellularCapabilityCDMA::OnServiceCreated() {
+  VLOG(2) << __func__;
+  cellular()->service()->set_payment_url(payment_url_);
+  cellular()->service()->set_usage_url(usage_url_);
+  UpdateServingOperator();
+  HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
 void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
@@ -51,9 +60,9 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
   DBusProperties::GetUint32(
       properties, "activation_state", &activation_state_);
   DBusProperties::GetUint16(properties, "prl_version", &prl_version_);
-  // TODO(petkov): For now, get the payment and usage URLs from ModemManager
-  // to match flimflam. In the future, provide a plugin API to get these
-  // directly from the modem driver.
+  // TODO(petkov): For now, get the payment and usage URLs from ModemManager to
+  // match flimflam. In the future, get these from an alternative source (e.g.,
+  // database, carrier-specific properties, etc.).
   DBusProperties::GetString(properties, "payment_url", &payment_url_);
   DBusProperties::GetString(properties, "usage_url", &usage_url_);
 }
@@ -144,7 +153,7 @@ void CellularCapabilityCDMA::GetIdentifiers() {
   if (cellular()->meid().empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
     cellular()->set_meid(proxy_->MEID());
-    VLOG(2) << "MEID: " << cellular()->imei();
+    VLOG(2) << "MEID: " << cellular()->meid();
   }
 }
 
@@ -204,14 +213,6 @@ void CellularCapabilityCDMA::UpdateServingOperator() {
   if (cellular()->service().get()) {
     cellular()->service()->set_serving_operator(cellular()->home_provider());
   }
-}
-
-void CellularCapabilityCDMA::OnServiceCreated() {
-  VLOG(2) << __func__;
-  cellular()->service()->set_payment_url(payment_url_);
-  cellular()->service()->set_usage_url(usage_url_);
-  UpdateServingOperator();
-  HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
 }
 
 void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
