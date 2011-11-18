@@ -1,1 +1,42 @@
-Repo for common.mk
+common.mk: A common makefile helper for building daemons in Chromium OS
+
+= Overview
+
+common.mk is a centralized makefile providing a large number of features
+that ease regular development:
+- known good linker and compiler flags
+- target helpers for statically and dynamically linked binaries
+- target helpers for statically and dynamically linked libraries
+- target helper for running unittests under valgrind and qemu (when needed)
+- separation of build artifacts and source code
+
+In addition, common.mkl systems are fully parallelizable for all targets
+avoiding truncated file issues while still utilizing bigsmp systems as
+completely as possible.
+
+= Usage
+
+A new project should create a top-level Makefile and after the
+boilerplate, include common.mk.  After doing so, they may define their
+targets as usual.  If there are subdirectories, they will be pulled in
+automatically if they contain a 'module.mk' file.  This file will be
+just like the top-level Makefile except that all targets and
+dependencies should be referred to by their relative path to the
+top-level src. E.g., lib/foo.o instead of just foo.o.
+
+The Makefile may be called from the source directory with just "make"
+or from any other location with "make -C /path/to/source".  If the build
+artifacts should live somewhere other than $PWD/build-$MODE, then
+it may be called with "make -C /path/to/source OUT=$PWD", for instance.
+In addition to OUT and MODE, there are several commandline variables
+which may be set. See the comment in common.mk for full explanation and
+defaults.
+
+example/ contains a fully working example of a make hierarchy that
+explores all the different ways common.mk can be used.
+
+
+= Open issues
+
+- Defaulting to -fvisibility=internal
+- Test and examplem

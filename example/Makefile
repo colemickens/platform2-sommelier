@@ -1,0 +1,26 @@
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+include common.mk
+
+CFLAGS := -I$(SRC)/include $(CFLAGS)
+CXXFLAGS := -I$(SRC)/include $(CXXFLAGS)
+
+# Dummy target that is always run and says hello :)
+CXX_STATIC_BINARY(project_main): project_main.o \
+  CXX_STATIC_LIBRARY(component/libcomponent.pie.a)
+clean: CLEAN(project_main)
+all: CXX_STATIC_BINARY(project_main)
+# Convenience target.
+project_main: CXX_STATIC_BINARY(project_main)
+
+CXX_BINARY(project_test): project_main.o \
+  CXX_LIBRARY(component/libcomponent.so) \
+  CC_LIBRARY(component/subcomponent/libsubcomponent.so)
+clean: CLEAN(project_test)
+
+all: CXX_BINARY(project_test)
+
+TEST(project_main): GTEST_ARGS = --test
+tests: TEST(project_main) TEST(CXX_BINARY(project_test))
