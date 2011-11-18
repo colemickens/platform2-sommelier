@@ -39,6 +39,7 @@ using std::vector;
 namespace shill {
 
 const char Cellular::kConnectPropertyPhoneNumber[] = "number";
+const char Cellular::kPropertyIMSI[] = "imsi";
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -209,7 +210,7 @@ void Cellular::GetModemStatus() {
   DBusProperties::GetString(properties, "carrier", &carrier_);
   DBusProperties::GetString(properties, "meid", &meid_);
   DBusProperties::GetString(properties, "imei", &imei_);
-  DBusProperties::GetString(properties, "imsi", &imsi_);
+  DBusProperties::GetString(properties, kPropertyIMSI, &imsi_);
   DBusProperties::GetString(properties, "esn", &esn_);
   DBusProperties::GetString(properties, "mdn", &mdn_);
   DBusProperties::GetString(properties, "min", &min_);

@@ -10,9 +10,12 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"
+#include "shill/cellular.h"
 #include "shill/cellular_capability.h"
 #include "shill/modem_gsm_card_proxy_interface.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
+
+struct mobile_provider;
 
 namespace shill {
 
@@ -66,6 +69,7 @@ class CellularCapabilityGSM : public CellularCapability,
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
   FRIEND_TEST(CellularCapabilityGSMTest, Scan);
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
+  FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
 
   struct SimLockStatus {
@@ -95,6 +99,10 @@ class CellularCapabilityGSM : public CellularCapability,
   void ScanTask();
 
   void SetAccessTechnology(uint32 access_technology);
+
+  // Sets the upper level information about the home cellular provider from the
+  // modem's IMSI and SPN.
+  void SetHomeProvider();
 
   // Updates the GSM operator name and country based on a newly obtained network
   // id.
@@ -127,10 +135,9 @@ class CellularCapabilityGSM : public CellularCapability,
 
   uint32 registration_state_;
   uint32 access_technology_;
-  std::string network_id_;
-  std::string operator_name_;
-  std::string operator_country_;
+  Cellular::Operator serving_operator_;
   std::string spn_;
+  mobile_provider *home_provider_;
 
   // Properties.
   std::string selected_network_;

@@ -28,7 +28,7 @@ apn:1,isp.cingular,,
 name:,Data Connect (old)
 provider:1,4,0
 name:,T-Mobile
-networks:310160,310200,310210,310220,310230,310240,310250,310260,310270,310310,310490,310580,310660,310800
+networks:310160,310200,310210,310220,310230,310240,310250,310260,310270,310310
 apn:1,epc.tmobile.com,,
 name:,Internet/WebConnect
 apn:1,wap.voicestream.com,,

@@ -11,7 +11,6 @@
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
-#include "shill/cellular.h"
 #include "shill/cellular_service.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -39,6 +38,7 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
       task_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
+      home_provider_(NULL),
       scanning_(false),
       scan_interval_(0) {
   VLOG(2) << "Cellular capability constructed: GSM";
@@ -97,9 +97,8 @@ void CellularCapabilityGSM::OnServiceCreated() {
 }
 
 void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
-  string imsi;
-  if (DBusProperties::GetString(properties, "imsi", &imsi)) {
-    // TODO(petkov): Set GSM provider based on IMSI and SPN.
+  if (ContainsKey(properties, Cellular::kPropertyIMSI)) {
+    SetHomeProvider();
   }
 }
 
@@ -137,6 +136,7 @@ void CellularCapabilityGSM::GetIdentifiers() {
     cellular()->set_mdn(card_proxy_->GetMSISDN());
     VLOG(2) << "MSISDN/MDN: " << cellular()->mdn();
   }
+  SetHomeProvider();
 }
 
 void CellularCapabilityGSM::GetSignalQuality() {
@@ -152,10 +152,11 @@ void CellularCapabilityGSM::GetRegistrationState() {
   ModemGSMNetworkProxyInterface::RegistrationInfo info =
       network_proxy_->GetRegistrationInfo();
   registration_state_ = info._1;
-  network_id_ = info._2;
-  operator_name_ = info._3;
+  serving_operator_.SetCode(info._2);
+  serving_operator_.SetName(info._3);
   VLOG(2) << "GSM Registration: " << registration_state_ << ", "
-          << network_id_ << ", "  << operator_name_;
+          << serving_operator_.GetCode() << ", "
+          << serving_operator_.GetName();
   UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }
@@ -168,20 +169,58 @@ void CellularCapabilityGSM::GetProperties() {
   VLOG(2) << "GSM AccessTechnology: " << tech;
 }
 
+void CellularCapabilityGSM::SetHomeProvider() {
+  VLOG(2) << __func__ << "(IMSI: " << cellular()->imsi()
+          << " SPN: " << spn_ << ")";
+  // TODO(petkov): The test for NULL provider_db should be done by
+  // mobile_provider_lookup_best_match.
+  if (cellular()->imsi().empty() || !cellular()->provider_db()) {
+    return;
+  }
+  mobile_provider *provider =
+      mobile_provider_lookup_best_match(
+          cellular()->provider_db(), spn_.c_str(), cellular()->imsi().c_str());
+  if (!provider) {
+    VLOG(2) << "GSM provider not found.";
+    return;
+  }
+  home_provider_ = provider;
+  Cellular::Operator oper;
+  if (provider->networks) {
+    oper.SetCode(provider->networks[0]);
+  }
+  if (provider->country) {
+    oper.SetCountry(provider->country);
+  }
+  if (spn_.empty()) {
+    const char *name = mobile_provider_get_name(provider);
+    if (name) {
+      oper.SetName(name);
+    }
+  } else {
+    oper.SetName(spn_);
+  }
+  cellular()->set_home_provider(oper);
+  // TODO(petkov): Create APN list (crosbug.com/23201).
+}
+
 void CellularCapabilityGSM::UpdateOperatorInfo() {
   VLOG(2) << __func__;
-  if (!network_id_.empty()) {
-    VLOG(2) << "Looking up network id: " << network_id_;
+  const string &network_id = serving_operator_.GetCode();
+  if (!network_id.empty()) {
+    VLOG(2) << "Looking up network id: " << network_id;
     mobile_provider *provider =
         mobile_provider_lookup_by_network(cellular()->provider_db(),
-                                          network_id_.c_str());
+                                          network_id.c_str());
     if (provider) {
       const char *provider_name = mobile_provider_get_name(provider);
       if (provider_name && *provider_name) {
-        operator_name_ = provider_name;
-        operator_country_ = provider->country;
-        VLOG(2) << "Operator name: " << operator_name_
-                << ", country: " << operator_country_;
+        serving_operator_.SetName(provider_name);
+        if (provider->country) {
+          serving_operator_.SetCountry(provider->country);
+        }
+        VLOG(2) << "Operator name: " << serving_operator_.GetName()
+                << ", country: " << serving_operator_.GetCountry();
       }
     } else {
       VLOG(2) << "GSM provider not found.";
@@ -192,14 +231,9 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
 
 void CellularCapabilityGSM::UpdateServingOperator() {
   VLOG(2) << __func__;
-  if (!cellular()->service().get()) {
-    return;
+  if (cellular()->service().get()) {
+    cellular()->service()->set_serving_operator(serving_operator_);
   }
-  Cellular::Operator oper;
-  oper.SetName(operator_name_);
-  oper.SetCode(network_id_);
-  oper.SetCountry(operator_country_);
-  cellular()->service()->set_serving_operator(oper);
 }
 
 void CellularCapabilityGSM::Register() {
@@ -447,8 +481,8 @@ void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
 void CellularCapabilityGSM::OnGSMRegistrationInfoChanged(
     uint32 status, const string &operator_code, const string &operator_name) {
   registration_state_ = status;
-  network_id_ = operator_code;
-  operator_name_ = operator_name;
+  serving_operator_.SetCode(operator_code);
+  serving_operator_.SetName(operator_name);
   UpdateOperatorInfo();
   cellular()->HandleNewRegistrationState();
 }

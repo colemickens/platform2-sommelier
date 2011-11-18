@@ -90,6 +90,7 @@ class Cellular : public Device,
   };
 
   static const char kConnectPropertyPhoneNumber[];
+  static const char kPropertyIMSI[];
 
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,

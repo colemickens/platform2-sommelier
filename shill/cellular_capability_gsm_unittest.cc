@@ -102,7 +102,7 @@ const char CellularCapabilityGSMTest::kTestCarrier[] = "The Cellular Carrier";
 const char CellularCapabilityGSMTest::kPIN[] = "9876";
 const char CellularCapabilityGSMTest::kPUK[] = "8765";
 const char CellularCapabilityGSMTest::kIMEI[] = "987654321098765";
-const char CellularCapabilityGSMTest::kIMSI[] = "123456789012345";
+const char CellularCapabilityGSMTest::kIMSI[] = "310150123456789";
 const char CellularCapabilityGSMTest::kMSISDN[] = "12345678901";
 
 TEST_F(CellularCapabilityGSMTest, PropertyStore) {
@@ -115,11 +115,15 @@ TEST_F(CellularCapabilityGSMTest, GetIdentifiers) {
   EXPECT_CALL(*card_proxy_, GetSPN()).WillOnce(Return(kTestCarrier));
   EXPECT_CALL(*card_proxy_, GetMSISDN()).WillOnce(Return(kMSISDN));
   SetCardProxy();
+  InitProviderDB();
   capability_->GetIdentifiers();
   EXPECT_EQ(kIMEI, cellular_->imei());
   EXPECT_EQ(kIMSI, cellular_->imsi());
   EXPECT_EQ(kTestCarrier, capability_->spn());
   EXPECT_EQ(kMSISDN, cellular_->mdn());
+  EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
+  EXPECT_EQ("us", cellular_->home_provider().GetCountry());
+  EXPECT_EQ("310038", cellular_->home_provider().GetCode());
   capability_->GetIdentifiers();
   EXPECT_EQ(kIMEI, cellular_->imei());
   EXPECT_EQ(kIMSI, cellular_->imsi());
@@ -252,12 +256,46 @@ TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
 TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
   static const char kOperatorName[] = "Swisscom";
   InitProviderDB();
-  capability_->network_id_ = "22801";
+  capability_->serving_operator_.SetCode("22801");
   SetService();
   capability_->UpdateOperatorInfo();
-  EXPECT_EQ(kOperatorName, capability_->operator_name_);
-  EXPECT_EQ("ch", capability_->operator_country_);
+  EXPECT_EQ(kOperatorName, capability_->serving_operator_.GetName());
+  EXPECT_EQ("ch", capability_->serving_operator_.GetCountry());
   EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
+}
+
+TEST_F(CellularCapabilityGSMTest, UpdateStatus) {
+  InitProviderDB();
+  DBusPropertiesMap props;
+  cellular_->set_imsi("310240123456789");
+  props[Cellular::kPropertyIMSI].writer().append_string("");
+  capability_->UpdateStatus(props);
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+}
+
+TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
+  static const char kCountry[] = "us";
+  static const char kCode[] = "310160";
+  cellular_->set_imsi("310240123456789");
+
+  capability_->SetHomeProvider();  // No mobile provider DB available.
+  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
+
+  InitProviderDB();
+  capability_->SetHomeProvider();
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+
+  Cellular::Operator oper;
+  cellular_->set_home_provider(oper);
+  capability_->spn_ = kTestCarrier;
+  capability_->SetHomeProvider();
+  EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
