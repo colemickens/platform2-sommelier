@@ -33,7 +33,7 @@ extern const char kBacklightPath[];
 extern const char kBacklightPattern[];
 
 // Interface names.
-extern const char kLowerPowerManagerInterface[];
+extern const char kRootPowerManagerInterface[];
 
 // powerd -> powerm constants.
 extern const char kRestartSignal[];

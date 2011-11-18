@@ -36,19 +36,23 @@ const char kBacklightPath[] = "/sys/class/backlight";
 const char kBacklightPattern[] = "*";
 
 // Interface names.
-const char kLowerPowerManagerInterface[] = "org.chromium.LowerPowerManager";
+const char kRootPowerManagerInterface[] = "org.chromium.RootPowerManager";
+const char kRootPowerManagerServiceName[] = "org.chromium.RootPowerManager";
 
 // powerd -> powerm signals.
 const char kRestartSignal[] = "RestartSignal";
 const char kRequestCleanShutdown[] = "RequestCleanShutdown";
 const char kSuspendSignal[] = "SuspendSignal";
 const char kShutdownSignal[] = "ShutdownSignal";
+const char kExternalBacklightGetMethod[] = "ExternalBacklightGet";
+const char kExternalBacklightSetMethod[] = "ExternalBacklightSet";
 
 // powerm -> powerd signals.
 const char kLidClosed[] = "LidClosed";
 const char kLidOpened[] = "LidOpened";
 const char kPowerButtonDown[] = "PowerButtonDown";
 const char kPowerButtonUp[] = "PowerButtonUp";
+const char kExternalBacklightUpdate[] = "ExternalBacklightUpdate";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";

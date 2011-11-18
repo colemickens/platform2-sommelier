@@ -193,19 +193,19 @@ bool PowerManDaemon::CancelDBusRequest() {
 DBusHandlerResult PowerManDaemon::DBusMessageHandler(
     DBusConnection*, DBusMessage* message, void* data) {
   PowerManDaemon* daemon = static_cast<PowerManDaemon*>(data);
-  if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+  if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                              kSuspendSignal)) {
     LOG(INFO) << "Suspend event";
     daemon->Suspend();
-  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+  } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kShutdownSignal)) {
     LOG(INFO) << "Shutdown event";
     daemon->Shutdown();
-  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+  } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kRestartSignal)) {
     LOG(INFO) << "Restart event";
     daemon->Restart();
-  } else if (dbus_message_is_signal(message, kLowerPowerManagerInterface,
+  } else if (dbus_message_is_signal(message, kRootPowerManagerInterface,
                                     kRequestCleanShutdown)) {
     LOG(INFO) << "Request Clean Shutdown";
     util::Launch("initctl emit power-manager-clean-shutdown");
@@ -330,7 +330,7 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
   AddDBusMatch(connection,
                login_manager::kSessionManagerInterface,
                login_manager::kSessionManagerSessionStateChanged);
-  AddDBusMatch(connection, kLowerPowerManagerInterface);
+  AddDBusMatch(connection, kRootPowerManagerInterface);
   AddDBusMatch(connection, kPowerManagerInterface);
   CHECK(dbus_connection_add_filter(
       connection, &DBusMessageHandler, this, NULL));

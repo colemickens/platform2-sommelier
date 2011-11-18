@@ -112,10 +112,10 @@ void SendSignalToSessionManager(const char* signal) {
 void SendSignalToPowerM(const char* signal_name) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               "/",
-                              kLowerPowerManagerInterface);
+                              kRootPowerManagerInterface);
   DBusMessage* signal = ::dbus_message_new_signal(
       "/",
-      kLowerPowerManagerInterface,
+      kRootPowerManagerInterface,
       signal_name);
   CHECK(signal);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
