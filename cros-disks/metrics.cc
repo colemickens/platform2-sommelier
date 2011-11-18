@@ -79,7 +79,7 @@ void Metrics::RecordFilesystemType(const string& filesystem_type) {
 void Metrics::RecordDeviceMediaType(DeviceMediaType device_media_type) {
   if (!metrics_library_.SendEnumToUMA(kDeviceMediaTypeMetricName,
                                       device_media_type,
-                                      kDeviceMediaMaxValue))
+                                      DEVICE_MEDIA_NUM_VALUES))
     LOG(WARNING) << "Failed to send device media type sample to UMA";
 }
 

@@ -11,10 +11,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/disk.h"
-#include "cros-disks/service-constants.h"
 
 struct udev_device;
 

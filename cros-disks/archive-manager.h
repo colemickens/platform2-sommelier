@@ -35,7 +35,7 @@ class ArchiveManager : public MountManager {
 
   // Returns the type of mount sources supported by the manager.
   virtual MountSourceType GetMountSourceType() const {
-    return kMountSourceArchive;
+    return MOUNT_SOURCE_ARCHIVE;
   }
 
   // Returns true if an archive file extension is supported.

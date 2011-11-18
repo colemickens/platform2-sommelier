@@ -38,12 +38,12 @@ class USBDeviceInfoTest : public ::testing::Test {
 };
 
 TEST_F(USBDeviceInfoTest, GetDeviceMediaType) {
-  EXPECT_EQ(kDeviceMediaUSB, info_.GetDeviceMediaType("0bda", "0138"));
+  EXPECT_EQ(DEVICE_MEDIA_USB, info_.GetDeviceMediaType("0bda", "0138"));
 
   EXPECT_TRUE(info_.RetrieveFromFile(info_file_));
-  EXPECT_EQ(kDeviceMediaMobile, info_.GetDeviceMediaType("18d1", "4e11"));
-  EXPECT_EQ(kDeviceMediaSD, info_.GetDeviceMediaType("0bda", "0138"));
-  EXPECT_EQ(kDeviceMediaUSB, info_.GetDeviceMediaType("1234", "5678"));
+  EXPECT_EQ(DEVICE_MEDIA_MOBILE, info_.GetDeviceMediaType("18d1", "4e11"));
+  EXPECT_EQ(DEVICE_MEDIA_SD, info_.GetDeviceMediaType("0bda", "0138"));
+  EXPECT_EQ(DEVICE_MEDIA_USB, info_.GetDeviceMediaType("1234", "5678"));
 }
 
 TEST_F(USBDeviceInfoTest, RetrieveFromFile) {
@@ -51,11 +51,11 @@ TEST_F(USBDeviceInfoTest, RetrieveFromFile) {
 }
 
 TEST_F(USBDeviceInfoTest, ConvertToDeviceMediaType) {
-  EXPECT_EQ(kDeviceMediaMobile, info_.ConvertToDeviceMediaType("mobile"));
-  EXPECT_EQ(kDeviceMediaSD, info_.ConvertToDeviceMediaType("sd"));
-  EXPECT_EQ(kDeviceMediaUSB, info_.ConvertToDeviceMediaType("usb"));
-  EXPECT_EQ(kDeviceMediaUSB, info_.ConvertToDeviceMediaType(""));
-  EXPECT_EQ(kDeviceMediaUSB, info_.ConvertToDeviceMediaType("foo"));
+  EXPECT_EQ(DEVICE_MEDIA_MOBILE, info_.ConvertToDeviceMediaType("mobile"));
+  EXPECT_EQ(DEVICE_MEDIA_SD, info_.ConvertToDeviceMediaType("sd"));
+  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType("usb"));
+  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType(""));
+  EXPECT_EQ(DEVICE_MEDIA_USB, info_.ConvertToDeviceMediaType("foo"));
 }
 
 }  // namespace cros_disks

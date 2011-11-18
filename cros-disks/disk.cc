@@ -12,53 +12,30 @@ namespace {
 
 const char kFallbackPresentationName[] = "Untitled";
 
-// Keys that libcros expects to see on the wire.
-// TODO(rtc): We should probably stuff these in a shared header...
-const char kDeviceIsDrive[] = "DeviceIsDrive";
-const char kDevicePresentationHide[] = "DevicePresentationHide";
-const char kDeviceIsMounted[] = "DeviceIsMounted";
-const char kDeviceMediaType[] = "DeviceMediaType";
-const char kDeviceMountPaths[] = "DeviceMountPaths";
-const char kDeviceIsMediaAvailable[] = "DeviceIsMediaAvailable";
-const char kDeviceIsOnBootDevice[] = "DeviceIsOnBootDevice";
-const char kDeviceIsVirtual[] = "DeviceIsVirtual";
-const char kNativePath[] = "NativePath";
-const char kDeviceFile[] = "DeviceFile";
-const char kUuid[] = "IdUuid";
-const char kLabel[] = "IdLabel";
-const char kDriveModel[] = "DriveModel";
-const char kDriveIsRotational[] = "DriveIsRotational";
-const char kDeviceIsOpticalDisc[] = "DeviceIsOpticalDisc";
-const char kDeviceSize[] = "DeviceSize";
-const char kReadOnly[] = "DeviceIsReadOnly";
-
-// TODO(rtc): Figure out what this field is and include it in the response.
-const char kPartitionSlave[] = "PartitionSlave";
-
 }  // namespace
 
 namespace cros_disks {
 
 Disk::Disk()
-  : is_drive_(false),
-    is_hidden_(false),
-    is_auto_mountable_(false),
-    is_mounted_(false),
-    is_media_available_(false),
-    is_on_boot_device_(true),
-    is_rotational_(false),
-    is_optical_disk_(false),
-    is_read_only_(false),
-    is_virtual_(true),
-    mount_paths_(),
-    native_path_(),
-    device_file_(),
-    uuid_(),
-    label_(),
-    drive_model_(),
-    media_type_(kDeviceMediaUnknown),
-    device_capacity_(0),
-    bytes_remaining_(0) {
+    : is_drive_(false),
+      is_hidden_(false),
+      is_auto_mountable_(false),
+      is_mounted_(false),
+      is_media_available_(false),
+      is_on_boot_device_(true),
+      is_rotational_(false),
+      is_optical_disk_(false),
+      is_read_only_(false),
+      is_virtual_(true),
+      mount_paths_(),
+      native_path_(),
+      device_file_(),
+      uuid_(),
+      label_(),
+      drive_model_(),
+      media_type_(DEVICE_MEDIA_UNKNOWN),
+      device_capacity_(0),
+      bytes_remaining_(0) {
 }
 
 Disk::~Disk() {
@@ -87,14 +64,14 @@ DBusDisk Disk::ToDBusFormat() const {
   disk[kDeviceIsVirtual].writer().append_bool(is_virtual());
   disk[kNativePath].writer().append_string(native_path().c_str());
   disk[kDeviceFile].writer().append_string(device_file().c_str());
-  disk[kUuid].writer().append_string(uuid().c_str());
-  disk[kLabel].writer().append_string(label().c_str());
+  disk[kIdUuid].writer().append_string(uuid().c_str());
+  disk[kIdLabel].writer().append_string(label().c_str());
   disk[kDriveModel].writer().append_string(drive_model().c_str());
   disk[kDriveIsRotational].writer().append_bool(is_rotational());
   disk[kDeviceIsOpticalDisc].writer().append_bool(is_optical_disk());
   disk[kDeviceMediaType].writer().append_uint32(media_type());
   disk[kDeviceSize].writer().append_uint64(device_capacity());
-  disk[kReadOnly].writer().append_bool(is_read_only());
+  disk[kDeviceIsReadOnly].writer().append_bool(is_read_only());
   DBus::MessageIter iter = disk[kDeviceMountPaths].writer();
   iter << mount_paths();
   return disk;

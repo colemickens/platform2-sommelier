@@ -9,10 +9,9 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
-
-#include "cros-disks/service-constants.h"
 
 namespace cros_disks {
 

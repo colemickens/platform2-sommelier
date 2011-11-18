@@ -5,6 +5,7 @@
 #include "cros-disks/cros-disks-server-impl.h"
 
 #include <base/logging.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "cros-disks/archive-manager.h"
 #include "cros-disks/device-event.h"
@@ -16,17 +17,6 @@
 using std::string;
 using std::vector;
 
-namespace {
-
-// TODO(rtc): this should probably be a flag.
-// TODO(benchan): move these to common/chromeos/dbus/service_constants.
-const char kServicePath[] = "/org/chromium/CrosDisks";
-const char kServiceErrorName[] = "org.chromium.CrosDisks.Error";
-const char kPropertyExperimentalFeaturesEnabled[] =
-    "ExperimentalFeaturesEnabled";
-
-}  // namespace
-
 namespace cros_disks {
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
@@ -34,7 +24,7 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
                                  ArchiveManager* archive_manager,
                                  DiskManager* disk_manager,
                                  FormatManager* format_manager)
-    : DBus::ObjectAdaptor(connection, kServicePath),
+    : DBus::ObjectAdaptor(connection, kCrosDisksServicePath),
       platform_(platform),
       archive_manager_(archive_manager),
       disk_manager_(disk_manager),
@@ -89,7 +79,7 @@ void CrosDisksServer::Mount(const string& path,
                             const vector<string>& options,
                             DBus::Error& error) {  // NOLINT
   MountErrorType error_type = kMountErrorInvalidPath;
-  MountSourceType source_type = kMountSourceInvalid;
+  MountSourceType source_type = MOUNT_SOURCE_INVALID;
   string mount_path;
 
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
@@ -123,7 +113,7 @@ void CrosDisksServer::Unmount(const string& path,
 
   if (error_type != kMountErrorNone) {
     string message = "Failed to unmount '" + path + "'";
-    error.set(kServiceErrorName, message.c_str());
+    error.set(kCrosDisksServiceError, message.c_str());
   }
 }
 
@@ -169,7 +159,7 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
   if (!disk_manager_->GetDiskByDevicePath(device_path, &disk)) {
     string message = "Could not get the properties of device " + device_path;
     LOG(ERROR) << message;
-    error.set(kServiceErrorName, message.c_str());
+    error.set(kCrosDisksServiceError, message.c_str());
   }
   return disk.ToDBusFormat();
 }
@@ -223,8 +213,7 @@ void CrosDisksServer::InitializeProperties() {
   try {
     DBus::Variant value;
     value.writer().append_bool(platform_->experimental_features_enabled());
-    CrosDisks_adaptor::set_property(kPropertyExperimentalFeaturesEnabled,
-                                    value);
+    CrosDisks_adaptor::set_property(kExperimentalFeaturesEnabled, value);
   } catch (const DBus::Error& e) {  // NOLINT
     LOG(FATAL) << "Failed to initialize properties: " << e.what();
   }
@@ -233,7 +222,7 @@ void CrosDisksServer::InitializeProperties() {
 void CrosDisksServer::on_set_property(
     DBus::InterfaceAdaptor& interface,  // NOLINT
     const string& property, const DBus::Variant& value) {
-  if (property == kPropertyExperimentalFeaturesEnabled) {
+  if (property == kExperimentalFeaturesEnabled) {
     platform_->set_experimental_features_enabled(value.reader().get_bool());
   }
 }

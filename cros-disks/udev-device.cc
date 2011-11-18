@@ -181,7 +181,7 @@ size_t UdevDevice::GetPrimaryPartitionCount() const {
 
 DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   if (IsPropertyTrue(kPropertyCDROM))
-    return kDeviceMediaOpticalDisc;
+    return DEVICE_MEDIA_OPTICAL_DISC;
 
   // Search up the parent device tree to obtain the vendor and product ID
   // of the first device with a device type "usb_device". Then look up the
@@ -202,7 +202,7 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
     }
   }
 
-  return kDeviceMediaUnknown;
+  return DEVICE_MEDIA_UNKNOWN;
 }
 
 bool UdevDevice::IsMediaAvailable() const {

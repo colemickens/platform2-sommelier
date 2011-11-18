@@ -12,8 +12,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
-
-#include "cros-disks/service-constants.h"
+#include <chromeos/dbus/service_constants.h>
 
 namespace cros_disks {
 
@@ -68,7 +67,7 @@ class Disk {
   void set_is_rotational(bool is_rotational) { is_rotational_ = is_rotational; }
 
   bool is_optical_disk() const {
-    return media_type_ == kDeviceMediaOpticalDisc;
+    return media_type_ == DEVICE_MEDIA_OPTICAL_DISC;
   }
 
   bool is_read_only() const { return is_read_only_; }

@@ -38,7 +38,7 @@ DeviceMediaType USBDeviceInfo::GetDeviceMediaType(
   map<string, USBDeviceEntry>::const_iterator map_iterator = entries_.find(id);
   if (map_iterator != entries_.end())
     return map_iterator->second.media_type;
-  return kDeviceMediaUSB;
+  return DEVICE_MEDIA_USB;
 }
 
 bool USBDeviceInfo::RetrieveFromFile(const string& path) {
@@ -69,11 +69,11 @@ bool USBDeviceInfo::RetrieveFromFile(const string& path) {
 DeviceMediaType USBDeviceInfo::ConvertToDeviceMediaType(
     const string& str) const {
   if (str == "sd") {
-    return kDeviceMediaSD;
+    return DEVICE_MEDIA_SD;
   } else if (str == "mobile") {
-    return kDeviceMediaMobile;
+    return DEVICE_MEDIA_MOBILE;
   } else {
-    return kDeviceMediaUSB;
+    return DEVICE_MEDIA_USB;
   }
 }
 

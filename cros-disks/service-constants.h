@@ -10,22 +10,9 @@ namespace cros_disks {
 // TODO(benchan): Once these service constants become stable enough,
 // move them to system_api/dbus/service_constants.
 
-enum DeviceMediaType {
-  kDeviceMediaUnknown = 0,
-  kDeviceMediaUSB = 1,
-  kDeviceMediaSD = 2,
-  kDeviceMediaOpticalDisc = 3,
-  kDeviceMediaMobile = 4,
-  kDeviceMediaMaxValue = 5,
-};
-
-enum MountSourceType {
-  kMountSourceInvalid = 0,
-  kMountSourceRemovableDevice = 1,
-  kMountSourceArchive = 2,
-  kMountSourceNetworkStorage = 3,
-};
-
+// TODO(benchan): Before moving the MountErrorType enum to
+// system_api/dbus/service_constants and sync up with Chrome, make these
+// error values contiguous to make it straightforward to report via UMA.
 enum MountErrorType {
   kMountErrorNone = 0,
   kMountErrorUnknown = 1,

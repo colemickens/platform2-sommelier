@@ -16,6 +16,7 @@
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/string_util.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
 
@@ -29,7 +30,6 @@ DEFINE_int32(minloglevel, logging::LOG_WARNING,
              "Messages logged at a lower level than "
              "this don't actually get logged anywhere");
 
-static const char kCrosDisksBusName[] = "org.chromium.CrosDisks";
 static const char kUsageMessage[] = "Chromium OS Disk Daemon";
 
 // Always logs to the syslog and logs to stderr if
@@ -95,7 +95,7 @@ int main(int argc, char** argv) {
 
   LOG(INFO) << "Creating the cros-disks server";
   DBus::Connection server_conn = DBus::Connection::SystemBus();
-  server_conn.request_name(kCrosDisksBusName);
+  server_conn.request_name(cros_disks::kCrosDisksServiceName);
   Daemon daemon(&server_conn);
   daemon.Initialize();
 
