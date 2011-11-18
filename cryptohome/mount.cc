@@ -305,9 +305,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  if (!MountForUser(current_user_, vault_path, mount_point_, "ecryptfs",
-                    ecryptfs_options)) {
-    PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
+  if (!platform_->Mount(vault_path, mount_point_, "ecryptfs", ecryptfs_options)) {
+   PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
     if (mount_error) {
       *mount_error = MOUNT_ERROR_FATAL;
     }
@@ -319,37 +318,11 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   CreateTrackedSubdirectories(credentials, created);
 
   string user_home = GetMountedUserHomePath(credentials);
-  if (!BindForUser(current_user_, user_home, home_dir_)) {
+  if (!platform_->Bind(user_home, home_dir_)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> " << home_dir_;
-    UnmountAllForUser(current_user_);
-    if (mount_error) {
+    if (mount_error)
       *mount_error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
-
-  string user_multi_home =
-      chromeos::cryptohome::home::GetUserPath(username).value();
-  if (!BindForUser(current_user_, user_home, user_multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
-                << user_multi_home;
-    UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
-
-  string root_home = GetMountedRootHomePath(credentials);
-  string root_multi_home =
-      chromeos::cryptohome::home::GetRootPath(username).value();
-  if (!BindForUser(current_user_, root_home, root_multi_home)) {
-    PLOG(ERROR) << "Bind mount failed: " << root_home << " -> "
-                << root_multi_home;
-    UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
+    platform_->Unmount(mount_point_, false, NULL);
     return false;
   }
 
@@ -361,10 +334,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   }
 
   if (!SetupGroupAccess()) {
-    UnmountAllForUser(current_user_);
-    if (mount_error) {
+    if (mount_error)
       *mount_error = MOUNT_ERROR_FATAL;
-    }
     return false;
   }
 
@@ -376,46 +347,17 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   return true;
 }
 
-bool Mount::MountForUser(UserSession *user, const std::string& src,
-                         const std::string& dest, const std::string& type,
-                         const std::string& options) {
-  if (platform_->Mount(src, dest, type, options)) {
-    user->PushMount(dest);
-    return true;
-  }
-  return false;
-}
+bool Mount::UnmountCryptohome() {
+  UpdateCurrentUserActivityTimestamp(0);
+  current_user_->Reset();
 
-bool Mount::BindForUser(UserSession *user, const std::string& src,
-                        const std::string& dest) {
-  if (platform_->Bind(src, dest)) {
-    user->PushMount(dest);
-    return true;
-  }
-  return false;
-}
-
-bool Mount::UnmountForUser(UserSession *user) {
-  std::string mount_point;
-  if (!user->PopMount(&mount_point)) {
-    return false;
-  }
-  ForceUnmount(mount_point);
-  return true;
-}
-
-void Mount::UnmountAllForUser(UserSession *user) {
-  while (UnmountForUser(user)) { }
-}
-
-void Mount::ForceUnmount(const std::string& mount_point) {
   // Try an immediate unmount
   bool was_busy;
-  if (!platform_->Unmount(mount_point, false, &was_busy)) {
+  if (!platform_->Unmount(home_dir_, false, &was_busy)) {
     LOG(ERROR) << "Couldn't unmount vault immediately, was_busy = " << was_busy;
     if (was_busy) {
       std::vector<ProcessInformation> processes;
-      platform_->GetProcessesWithOpenFiles(mount_point, &processes);
+      platform_->GetProcessesWithOpenFiles(home_dir_, &processes);
       for (std::vector<ProcessInformation>::iterator proc_itr =
              processes.begin();
            proc_itr != processes.end();
@@ -438,15 +380,11 @@ void Mount::ForceUnmount(const std::string& mount_point) {
       sync();
     }
     // Failed to unmount immediately, do a lazy unmount
-    platform_->Unmount(mount_point, true, NULL);
+    platform_->Unmount(home_dir_, true, NULL);
     sync();
   }
-}
 
-bool Mount::UnmountCryptohome() {
-  UnmountAllForUser(current_user_);
-  UpdateCurrentUserActivityTimestamp(0);
-  current_user_->Reset();
+  platform_->Unmount(mount_point_, true, NULL);
 
   // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
@@ -515,9 +453,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   const int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
-  const FilePath dest = FilePath(
-                            VaultPathToUserPath(
-                                GetUserVaultPath(credentials)));
+  const FilePath dest = FilePath(VaultPathToUserPath(GetUserVaultPath(credentials)));
   const FilePath source = FilePath(GetMountedUserHomePath(credentials));
   if (!file_util::DirectoryExists(dest)) {
     LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
@@ -944,11 +880,11 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
         // always re-save.  Otherwise, check the table.
         if (crypto_error != Crypto::CE_NO_PUBLIC_KEY_HASH) {
           if (tpm_wrapped && should_tpm)
-            break;  // 5, 8
+            break; // 5, 8
           if (scrypt_wrapped && should_scrypt && !should_tpm)
-            break;  // 12
+            break; // 12
           if (!tpm_wrapped && !scrypt_wrapped && !should_tpm && !should_scrypt)
-            break;  // 1
+            break; // 1
         }
         // This is not considered a fatal error.  Re-saving with the desired
         // protection is ideal, but not required.
@@ -957,7 +893,7 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
         if (ReEncryptVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
           serialized->CopyFrom(new_serialized);
         }
-      } while (false);
+      } while(false);
     }
 
     return true;
@@ -1010,6 +946,7 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 
 bool Mount::MigratePasskey(const Credentials& credentials,
                            const char* old_key) const {
+
   std::string username = credentials.GetFullUsernameString();
   UsernamePasskey old_credentials(username.c_str(),
                                   SecureBlob(old_key, strlen(old_key)));
@@ -1037,12 +974,11 @@ bool Mount::MigratePasskey(const Credentials& credentials,
   return false;
 }
 
-bool Mount::MountGuestCryptohome() {
+bool Mount::MountGuestCryptohome() const {
   current_user_->Reset();
 
   // Attempt to mount guestfs
-  if (!MountForUser(current_user_, "guestfs", home_dir_, "tmpfs",
-                    "mode=0700")) {
+  if (!platform_->Mount("guestfs", home_dir_, "tmpfs", "mode=0700")) {
     LOG(ERROR) << "Cryptohome mount failed: " << errno << " for guestfs";
     return false;
   }
@@ -1123,22 +1059,17 @@ string Mount::GetUserMountDirectory(const Credentials& credentials) const {
                       credentials.GetObfuscatedUsername(system_salt_).c_str());
 }
 
+string Mount::GetMountedUserHomePath(const Credentials& credentials) const {
+  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
+                      kUserHomeSuffix);
+}
+
 string Mount::VaultPathToUserPath(const std::string& vault) const {
   return StringPrintf("%s/%s", vault.c_str(), kUserHomeSuffix);
 }
 
 string Mount::VaultPathToRootPath(const std::string& vault) const {
   return StringPrintf("%s/%s", vault.c_str(), kRootHomeSuffix);
-}
-
-string Mount::GetMountedUserHomePath(const Credentials& credentials) const {
-  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
-                      kUserHomeSuffix);
-}
-
-string Mount::GetMountedRootHomePath(const Credentials& credentials) const {
-  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
-                      kRootHomeSuffix);
 }
 
 void Mount::RecursiveCopy(const FilePath& destination,
@@ -1178,7 +1109,8 @@ void Mount::RecursiveCopy(const FilePath& destination,
   }
 }
 
-void Mount::MigrateToUserHome(const std::string& vault_path) const {
+void Mount::MigrateToUserHome(const std::string& vault_path) const
+{
   std::vector<string> ent_list;
   std::vector<string>::iterator ent_iter;
   FilePath user_path(VaultPathToUserPath(vault_path));
@@ -1214,8 +1146,7 @@ void Mount::MigrateToUserHome(const std::string& vault_path) const {
     return;
   }
 
-  if (!platform_->SetOwnership(user_path.value(), default_user_,
-                               default_group_)) {
+  if (!platform_->SetOwnership(user_path.value(), default_user_, default_group_)) {
     PLOG(ERROR) << "SetOwnership() failed: " << user_path.value();
     return;
   }
@@ -1519,4 +1450,4 @@ bool Mount::EnsureUserMountPoints(const Credentials& credentials) const {
   return true;
 }
 
-}  // namespace cryptohome
+} // namespace cryptohome

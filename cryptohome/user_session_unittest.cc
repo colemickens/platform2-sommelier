@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2009-2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -11,7 +11,6 @@
 #include <string>
 
 #include "crypto.h"
-#include "mock_platform.h"
 #include "username_passkey.h"
 
 namespace cryptohome {
@@ -82,20 +81,6 @@ TEST_F(UserSessionTest, VerifyTest) {
   session.Init(&crypto, salt);
   EXPECT_TRUE(session.SetUser(up));
   EXPECT_TRUE(session.Verify(up));
-}
-
-TEST_F(UserSessionTest, MountTest) {
-  Crypto crypto;
-  UserSession session;
-  std::string popped;
-  session.Init(&crypto, salt);
-  session.PushMount("/foo");
-  session.PushMount("/bar");
-  EXPECT_TRUE(session.PopMount(&popped));
-  EXPECT_EQ(popped, "/bar");
-  EXPECT_TRUE(session.PopMount(&popped));
-  EXPECT_EQ(popped, "/foo");
-  EXPECT_FALSE(session.PopMount(&popped));
 }
 
 }  // namespace cryptohome
