@@ -24,6 +24,9 @@ if [ -d /home/chronos -a ! -f /home/chronos/.syntp_enable ] ; then
     SERIAL_DEVICE=/sys$(dirname $(dirname $(udevadm info -q path -p $P)))
     echo -n "rescan" > ${SERIAL_DEVICE}/drvctl
   done
+else
+  udevadm trigger
+  udevadm settle
 fi
 # The '-noreset' works around an apparent bug in the X server that
 # makes us fail to boot sometimes; see http://crosbug.com/7578.
