@@ -106,7 +106,7 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   CHECK(!mount_path.empty()) << "Invalid mount path argument";
 
   string extension = GetFileExtension(source_path);
-  metrics_->RecordArchiveType(extension);
+  metrics()->RecordArchiveType(extension);
 
   string avfs_path;
   if (IsFileExtensionSupported(extension)) {
@@ -136,13 +136,13 @@ MountErrorType ArchiveManager::DoUnmount(const string& path,
                                          const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
   // TODO(benchan): Extract error from low-level unmount operation.
-  return platform_->Unmount(path) ? MOUNT_ERROR_NONE : MOUNT_ERROR_UNKNOWN;
+  return platform()->Unmount(path) ? MOUNT_ERROR_NONE : MOUNT_ERROR_UNKNOWN;
 }
 
 string ArchiveManager::SuggestMountPath(const string& source_path) const {
   // Use the archive name to name the mount directory.
   FilePath base_name = FilePath(source_path).BaseName();
-  return FilePath(mount_root_).Append(base_name).value();
+  return FilePath(mount_root()).Append(base_name).value();
 }
 
 bool ArchiveManager::IsFileExtensionSupported(
@@ -172,7 +172,7 @@ string ArchiveManager::GetFileExtension(const string& path) const {
 
 string ArchiveManager::GetAVFSPath(const string& path) const {
   FilePath file_path(path);
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     FilePath base_path(kAVFSPathMapping[i].base_path);
     FilePath avfs_path(kAVFSPathMapping[i].avfs_path);
     if (base_path.AppendRelativePath(file_path, &avfs_path)) {
@@ -188,20 +188,20 @@ bool ArchiveManager::StartAVFS() {
 
   uid_t user_id;
   gid_t group_id;
-  if (!platform_->GetUserAndGroupId(kAVFSMountUser, &user_id, &group_id) ||
-      !platform_->CreateDirectory(kAVFSRootDirectory) ||
-      !platform_->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
-      !platform_->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
-    platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
+  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, &group_id) ||
+      !platform()->CreateDirectory(kAVFSRootDirectory) ||
+      !platform()->SetOwnership(kAVFSRootDirectory, user_id, group_id) ||
+      !platform()->SetPermissions(kAVFSRootDirectory, S_IRWXU)) {
+    platform()->RemoveEmptyDirectory(kAVFSRootDirectory);
     return false;
   }
 
   avfs_started_ = true;
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     const string& avfs_path = kAVFSPathMapping[i].avfs_path;
-    if (!platform_->CreateDirectory(avfs_path) ||
-        !platform_->SetOwnership(avfs_path, user_id, group_id) ||
-        !platform_->SetPermissions(avfs_path, S_IRWXU) ||
+    if (!platform()->CreateDirectory(avfs_path) ||
+        !platform()->SetOwnership(avfs_path, user_id, group_id) ||
+        !platform()->SetPermissions(avfs_path, S_IRWXU) ||
         !MountAVFSPath(kAVFSPathMapping[i].base_path, avfs_path)) {
       StopAVFS();
       return false;
@@ -217,13 +217,13 @@ bool ArchiveManager::StopAVFS() {
   avfs_started_ = false;
   // Unmounts all mounted archives before unmounting AVFS mounts.
   bool all_unmounted = UnmountAll();
-  for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kAVFSPathMapping); ++i) {
+  for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     const string& path = kAVFSPathMapping[i].avfs_path;
-    if (!platform_->Unmount(path))
+    if (!platform()->Unmount(path))
       all_unmounted = false;
-    platform_->RemoveEmptyDirectory(path);
+    platform()->RemoveEmptyDirectory(path);
   }
-  platform_->RemoveEmptyDirectory(kAVFSRootDirectory);
+  platform()->RemoveEmptyDirectory(kAVFSRootDirectory);
   return all_unmounted;
 }
 
@@ -240,8 +240,8 @@ bool ArchiveManager::MountAVFSPath(const string& base_path,
 
   uid_t user_id;
   gid_t group_id;
-  if (!platform_->GetUserAndGroupId(kAVFSMountUser, &user_id, NULL) ||
-      !platform_->GetGroupId(kAVFSMountGroup, &group_id)) {
+  if (!platform()->GetUserAndGroupId(kAVFSMountUser, &user_id, NULL) ||
+      !platform()->GetGroupId(kAVFSMountGroup, &group_id)) {
     return false;
   }
 

@@ -23,14 +23,14 @@ class NTFSMounter : public Mounter {
               const std::string& target_path,
               const std::string& filesystem_type,
               const MountOptions& mount_options,
-              Platform* platform);
+              const Platform* platform);
 
  protected:
   // Mounts a device file using ntfs-3g.
   virtual MountErrorType MountImpl();
 
   // An object that provides platform service.
-  Platform* platform_;
+  const Platform* platform_;
 };
 
 }  // namespace cros_disks

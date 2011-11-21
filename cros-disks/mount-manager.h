@@ -161,16 +161,15 @@ class MountManager {
   bool IsPathImmediateChildOfParent(const std::string& path,
                                     const std::string& parent) const;
 
-  // A cache mapping a source path to its mount path of filesystems mounted
-  // by the manager.
-  MountPathMap mount_paths_;
+  const std::string& mount_root() const { return mount_root_; }
 
+  Platform* platform() const { return platform_; }
+
+  Metrics* metrics() const { return metrics_; }
+
+ private:
   // The root directory under which mount directories are created.
   std::string mount_root_;
-
-  // A cache mapping a reserved mount path to the error that caused
-  // the path to reserved.
-  ReservedMountPathMap reserved_mount_paths_;
 
   // An object that provides platform service.
   Platform* platform_;
@@ -178,7 +177,14 @@ class MountManager {
   // An object that collects UMA metrics.
   Metrics* metrics_;
 
- private:
+  // A cache mapping a source path to its mount path of filesystems mounted
+  // by the manager.
+  MountPathMap mount_paths_;
+
+  // A cache mapping a reserved mount path to the error that caused
+  // the path to reserved.
+  ReservedMountPathMap reserved_mount_paths_;
+
   FRIEND_TEST(MountManagerTest, ExtractSupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, ExtractUnsupportedUnmountOptions);
   FRIEND_TEST(MountManagerTest, IsPathImmediateChildOfParent);

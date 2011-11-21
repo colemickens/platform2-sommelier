@@ -265,7 +265,7 @@ const Filesystem* DiskManager::GetFilesystem(
   if (filesystem_iterator == filesystems_.end())
     return NULL;
 
-  if (!platform_->experimental_features_enabled() &&
+  if (!platform()->experimental_features_enabled() &&
       filesystem_iterator->second.is_experimental())
     return NULL;
 
@@ -330,8 +330,8 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   string default_user_id, default_group_id;
   bool set_user_and_group_id = filesystem.accepts_user_and_group_id();
   if (set_user_and_group_id) {
-    default_user_id = base::StringPrintf("%d", platform_->mount_user_id());
-    default_group_id = base::StringPrintf("%d", platform_->mount_group_id());
+    default_user_id = base::StringPrintf("%d", platform()->mount_user_id());
+    default_group_id = base::StringPrintf("%d", platform()->mount_group_id());
   }
 
   MountOptions mount_options;
@@ -357,7 +357,7 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
   if (mounter_type == NTFSMounter::kMounterType)
     return new(std::nothrow) NTFSMounter(disk.device_file(), target_path,
                                          filesystem.mount_type(),
-                                         mount_options, platform_);
+                                         mount_options, platform());
 
   LOG(FATAL) << "Invalid mounter type '" << mounter_type << "'";
   return NULL;
@@ -394,8 +394,8 @@ MountErrorType DiskManager::DoMount(const string& source_path,
 
   string device_filesystem_type = filesystem_type.empty() ?
       disk.filesystem_type() : filesystem_type;
-  metrics_->RecordDeviceMediaType(disk.media_type());
-  metrics_->RecordFilesystemType(device_filesystem_type);
+  metrics()->RecordDeviceMediaType(disk.media_type());
+  metrics()->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
                << source_path << "'";
@@ -438,7 +438,7 @@ string DiskManager::SuggestMountPath(const string& source_path) const {
   GetDiskByDevicePath(source_path, &disk);
   // If GetDiskByDevicePath fails, disk.GetPresentationName() returns
   // the fallback presentation name.
-  return string(mount_root_) + "/" + disk.GetPresentationName();
+  return string(mount_root()) + "/" + disk.GetPresentationName();
 }
 
 bool DiskManager::ShouldReserveMountPathOnError(

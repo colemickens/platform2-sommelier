@@ -42,7 +42,7 @@ NTFSMounter::NTFSMounter(const string& source_path,
                          const string& target_path,
                          const string& filesystem_type,
                          const MountOptions& mount_options,
-                         Platform* platform)
+                         const Platform* platform)
     : Mounter(source_path, target_path, filesystem_type, mount_options),
       platform_(platform) {
 }
