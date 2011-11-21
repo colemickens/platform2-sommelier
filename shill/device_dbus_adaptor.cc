@@ -57,6 +57,11 @@ void DeviceDBusAdaptor::EmitStringChanged(const std::string& name,
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
+void DeviceDBusAdaptor::EmitStringmapsChanged(const std::string &name,
+                                              const Stringmaps &value) {
+  PropertyChanged(name, DBusAdaptor::StringmapsToVariant(value));
+}
+
 map<string, ::DBus::Variant> DeviceDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   map<string, ::DBus::Variant> properties;

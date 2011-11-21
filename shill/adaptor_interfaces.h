@@ -10,6 +10,8 @@
 
 #include <base/basictypes.h>
 
+#include "shill/accessor_interface.h"
+
 namespace shill {
 
 // These are the functions that a Device adaptor must support
@@ -27,11 +29,13 @@ class DeviceAdaptorInterface {
 
   virtual void UpdateEnabled() = 0;
 
-  virtual void EmitBoolChanged(const std::string& name, bool value) = 0;
-  virtual void EmitUintChanged(const std::string& name, uint32 value) = 0;
-  virtual void EmitIntChanged(const std::string& name, int value) = 0;
-  virtual void EmitStringChanged(const std::string& name,
-                                 const std::string& value) = 0;
+  virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
+  virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
+  virtual void EmitIntChanged(const std::string &name, int value) = 0;
+  virtual void EmitStringChanged(const std::string &name,
+                                 const std::string &value) = 0;
+  virtual void EmitStringmapsChanged(const std::string &name,
+                                     const Stringmaps &value) = 0;
 };
 
 // These are the functions that an IPConfig adaptor must support

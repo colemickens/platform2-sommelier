@@ -101,6 +101,8 @@ class Device : public base::RefCounted<Device> {
 
   void set_dhcp_provider(DHCPProvider *provider) { dhcp_provider_ = provider; }
 
+  DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
+
  protected:
   FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);

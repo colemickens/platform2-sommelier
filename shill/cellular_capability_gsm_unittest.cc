@@ -13,10 +13,12 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/nice_mock_control.h"
 
+using testing::NiceMock;
 using testing::Return;
 
 namespace shill {
@@ -37,6 +39,7 @@ class CellularCapabilityGSMTest : public testing::Test {
         card_proxy_(new MockModemGSMCardProxy()),
         network_proxy_(new MockModemGSMNetworkProxy()),
         capability_(NULL),
+        device_adaptor_(NULL),
         provider_db_(NULL) {}
 
   virtual ~CellularCapabilityGSMTest() {
@@ -44,11 +47,14 @@ class CellularCapabilityGSMTest : public testing::Test {
     mobile_provider_close_db(provider_db_);
     provider_db_ = NULL;
     capability_ = NULL;
+    device_adaptor_ = NULL;
   }
 
   virtual void SetUp() {
     capability_ =
         dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
+    device_adaptor_ =
+        dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
   }
 
  protected:
@@ -93,6 +99,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   scoped_ptr<MockModemGSMCardProxy> card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
+  NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
   mobile_provider_db *provider_db_;
 };
 
@@ -143,7 +150,7 @@ TEST_F(CellularCapabilityGSMTest, GetSignalQuality) {
 
 TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
   Error error;
-  EXPECT_CALL(*network_proxy_, Register(kTestCarrier)).Times(1);
+  EXPECT_CALL(*network_proxy_, Register(kTestCarrier));
   capability_->RegisterOnNetwork(kTestCarrier, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetNetworkProxy();
@@ -153,7 +160,7 @@ TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
 
 TEST_F(CellularCapabilityGSMTest, RequirePIN) {
   Error error;
-  EXPECT_CALL(*card_proxy_, EnablePIN(kPIN, true)).Times(1);
+  EXPECT_CALL(*card_proxy_, EnablePIN(kPIN, true));
   capability_->RequirePIN(kPIN, true, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
@@ -162,7 +169,7 @@ TEST_F(CellularCapabilityGSMTest, RequirePIN) {
 
 TEST_F(CellularCapabilityGSMTest, EnterPIN) {
   Error error;
-  EXPECT_CALL(*card_proxy_, SendPIN(kPIN)).Times(1);
+  EXPECT_CALL(*card_proxy_, SendPIN(kPIN));
   capability_->EnterPIN(kPIN, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
@@ -171,7 +178,7 @@ TEST_F(CellularCapabilityGSMTest, EnterPIN) {
 
 TEST_F(CellularCapabilityGSMTest, UnblockPIN) {
   Error error;
-  EXPECT_CALL(*card_proxy_, SendPUK(kPUK, kPIN)).Times(1);
+  EXPECT_CALL(*card_proxy_, SendPUK(kPUK, kPIN));
   capability_->UnblockPIN(kPUK, kPIN, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
@@ -181,7 +188,7 @@ TEST_F(CellularCapabilityGSMTest, UnblockPIN) {
 TEST_F(CellularCapabilityGSMTest, ChangePIN) {
   static const char kOldPIN[] = "1111";
   Error error;
-  EXPECT_CALL(*card_proxy_, ChangePIN(kOldPIN, kPIN)).Times(1);
+  EXPECT_CALL(*card_proxy_, ChangePIN(kOldPIN, kPIN));
   capability_->ChangePIN(kOldPIN, kPIN, &error);
   EXPECT_TRUE(error.IsSuccess());
   SetCardProxy();
@@ -288,6 +295,7 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+  EXPECT_EQ(4, capability_->apn_list_.size());
 
   Cellular::Operator oper;
   cellular_->set_home_provider(oper);
@@ -296,6 +304,31 @@ TEST_F(CellularCapabilityGSMTest, SetHomeProvider) {
   EXPECT_EQ(kTestCarrier, cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
   EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+}
+
+namespace {
+
+MATCHER(SizeIs4, "") {
+  return arg.size() == 4;
+}
+
+}  // namespace
+
+TEST_F(CellularCapabilityGSMTest, InitAPNList) {
+  InitProviderDB();
+  capability_->home_provider_ =
+      mobile_provider_lookup_by_name(cellular_->provider_db(), "T-Mobile");
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_EQ(0, capability_->apn_list_.size());
+  EXPECT_CALL(*device_adaptor_,
+              EmitStringmapsChanged(flimflam::kCellularApnListProperty,
+                                    SizeIs4()));
+  capability_->InitAPNList();
+  EXPECT_EQ(4, capability_->apn_list_.size());
+  EXPECT_EQ("wap.voicestream.com",
+            capability_->apn_list_[1][flimflam::kApnProperty]);
+  EXPECT_EQ("Web2Go/t-zones",
+            capability_->apn_list_[1][flimflam::kApnNameProperty]);
 }
 
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {

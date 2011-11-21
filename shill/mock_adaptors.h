@@ -29,6 +29,8 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+  MOCK_METHOD2(EmitStringmapsChanged, void(const std::string &,
+                                           const Stringmaps &));
 
  private:
   const std::string rpc_id;

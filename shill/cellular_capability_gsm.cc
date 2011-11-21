@@ -11,6 +11,7 @@
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/cellular_service.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -52,6 +53,8 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
   HelpRegisterDerivedStrIntPair(flimflam::kSIMLockStatusProperty,
                                 &CellularCapabilityGSM::SimLockStatusToProperty,
                                 NULL);
+  store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
+                                 &apn_list_);
 }
 
 StrIntPair CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
@@ -201,7 +204,7 @@ void CellularCapabilityGSM::SetHomeProvider() {
     oper.SetName(spn_);
   }
   cellular()->set_home_provider(oper);
-  // TODO(petkov): Create APN list (crosbug.com/23201).
+  InitAPNList();
 }
 
 void CellularCapabilityGSM::UpdateOperatorInfo() {
@@ -234,6 +237,49 @@ void CellularCapabilityGSM::UpdateServingOperator() {
   if (cellular()->service().get()) {
     cellular()->service()->set_serving_operator(serving_operator_);
   }
+}
+
+void CellularCapabilityGSM::InitAPNList() {
+  VLOG(2) << __func__;
+  if (!home_provider_) {
+    return;
+  }
+  apn_list_.clear();
+  for (int i = 0; i < home_provider_->num_apns; ++i) {
+    Stringmap props;
+    mobile_apn *apn = home_provider_->apns[i];
+    if (apn->value) {
+      props[flimflam::kApnProperty] = apn->value;
+    }
+    if (apn->username) {
+      props[flimflam::kApnUsernameProperty] = apn->username;
+    }
+    if (apn->password) {
+      props[flimflam::kApnPasswordProperty] = apn->password;
+    }
+    // Find the first localized and non-localized name, if any.
+    const localized_name *lname = NULL;
+    const localized_name *name = NULL;
+    for (int j = 0; j < apn->num_names; ++j) {
+      if (apn->names[j]->lang) {
+        if (!lname) {
+          lname = apn->names[j];
+        }
+      } else if (!name) {
+        name = apn->names[j];
+      }
+    }
+    if (name) {
+      props[flimflam::kApnNameProperty] = name->name;
+    }
+    if (lname) {
+      props[flimflam::kApnLocalizedNameProperty] = lname->name;
+      props[flimflam::kApnLanguageProperty] = lname->lang;
+    }
+    apn_list_.push_back(props);
+  }
+  cellular()->adaptor()->EmitStringmapsChanged(
+      flimflam::kCellularApnListProperty, apn_list_);
 }
 
 void CellularCapabilityGSM::Register() {

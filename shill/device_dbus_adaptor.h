@@ -41,6 +41,8 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   virtual void EmitIntChanged(const std::string& name, int value);
   virtual void EmitStringChanged(const std::string& name,
                                  const std::string& value);
+  virtual void EmitStringmapsChanged(const std::string &name,
+                                     const Stringmaps &value);
 
   // Implementation of Device_adaptor.
   virtual std::map<std::string, ::DBus::Variant> GetProperties(

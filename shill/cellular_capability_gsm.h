@@ -64,6 +64,7 @@ class CellularCapabilityGSM : public CellularCapability,
 
  private:
   friend class CellularCapabilityGSMTest;
+  FRIEND_TEST(CellularCapabilityGSMTest, InitAPNList);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
   FRIEND_TEST(CellularCapabilityGSMTest, RegisterOnNetwork);
@@ -111,6 +112,9 @@ class CellularCapabilityGSM : public CellularCapability,
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
 
+  // Initializes the |apn_list_| property based on the current |home_provider_|.
+  void InitAPNList();
+
   Stringmap ParseScanResult(
       const ModemGSMNetworkProxyInterface::ScanResult &result);
 
@@ -145,6 +149,7 @@ class CellularCapabilityGSM : public CellularCapability,
   bool scanning_;
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
+  Stringmaps apn_list_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapabilityGSM);
 };
