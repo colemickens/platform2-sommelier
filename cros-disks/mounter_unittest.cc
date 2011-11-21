@@ -51,9 +51,9 @@ TEST_F(MounterTest, MountReadOnlySucceeded) {
   MounterUnderTest mounter(source_path_, target_path_,
                            filesystem_type_, mount_options_);
 
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(kMountErrorNone));
+  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(kMountErrorNone, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
 TEST_F(MounterTest, MountReadOnlyFailed) {
@@ -61,9 +61,9 @@ TEST_F(MounterTest, MountReadOnlyFailed) {
   MounterUnderTest mounter(source_path_, target_path_,
                            filesystem_type_, mount_options_);
 
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(kMountErrorInternal));
+  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_INTERNAL));
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(kMountErrorInternal, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
 }
 
 TEST_F(MounterTest, MountReadWriteSucceeded) {
@@ -72,9 +72,9 @@ TEST_F(MounterTest, MountReadWriteSucceeded) {
   MounterUnderTest mounter(source_path_, target_path_,
                            filesystem_type_, mount_options_);
 
-  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(kMountErrorNone));
+  EXPECT_CALL(mounter, MountImpl()).WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(kMountErrorNone, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
 }
 
 TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
@@ -84,10 +84,10 @@ TEST_F(MounterTest, MountReadWriteFailedButReadOnlySucceeded) {
                            filesystem_type_, mount_options_);
 
   EXPECT_CALL(mounter, MountImpl())
-    .WillOnce(Return(kMountErrorInternal))
-    .WillOnce(Return(kMountErrorNone));
+    .WillOnce(Return(MOUNT_ERROR_INTERNAL))
+    .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(kMountErrorNone, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
 }
 
@@ -98,10 +98,10 @@ TEST_F(MounterTest, MountReadWriteAndReadOnlyFailed) {
                            filesystem_type_, mount_options_);
 
   EXPECT_CALL(mounter, MountImpl())
-    .WillOnce(Return(kMountErrorInternal))
-    .WillOnce(Return(kMountErrorInternal));
+    .WillOnce(Return(MOUNT_ERROR_INTERNAL))
+    .WillOnce(Return(MOUNT_ERROR_INTERNAL));
   EXPECT_FALSE(mounter.mount_options().IsReadOnlyOptionSet());
-  EXPECT_EQ(kMountErrorInternal, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
   EXPECT_TRUE(mounter.mount_options().IsReadOnlyOptionSet());
 }
 

@@ -8,9 +8,9 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
 
 #include "cros-disks/mount-options.h"
-#include "cros-disks/service-constants.h"
 
 namespace cros_disks {
 

@@ -78,7 +78,7 @@ void CrosDisksServer::Mount(const string& path,
                             const string& filesystem_type,
                             const vector<string>& options,
                             DBus::Error& error) {  // NOLINT
-  MountErrorType error_type = kMountErrorInvalidPath;
+  MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   MountSourceType source_type = MOUNT_SOURCE_INVALID;
   string mount_path;
 
@@ -92,7 +92,7 @@ void CrosDisksServer::Mount(const string& path,
     }
   }
 
-  if (error_type != kMountErrorNone) {
+  if (error_type != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to mount '" << path << "'";
   }
   MountCompleted(error_type, path, source_type, mount_path);
@@ -101,7 +101,7 @@ void CrosDisksServer::Mount(const string& path,
 void CrosDisksServer::Unmount(const string& path,
                               const vector<string>& options,
                               DBus::Error& error) {  // NOLINT
-  MountErrorType error_type = kMountErrorInvalidPath;
+  MountErrorType error_type = MOUNT_ERROR_INVALID_PATH;
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {
     MountManager* manager = *manager_iter;
@@ -111,7 +111,7 @@ void CrosDisksServer::Unmount(const string& path,
     }
   }
 
-  if (error_type != kMountErrorNone) {
+  if (error_type != MOUNT_ERROR_NONE) {
     string message = "Failed to unmount '" + path + "'";
     error.set(kCrosDisksServiceError, message.c_str());
   }

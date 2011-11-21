@@ -234,7 +234,7 @@ TEST_F(DiskManagerTest, DoMountDiskWithNonexistentSourcePath) {
   string source_path = "/dev/nonexistent-path";
   string mount_path = "/tmp/cros-disks-test";
   vector<string> options;
-  EXPECT_EQ(kMountErrorInvalidDevicePath,
+  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH,
             manager_.DoMount(source_path, filesystem_type, options,
                              mount_path));
 }
@@ -243,7 +243,7 @@ TEST_F(DiskManagerTest, DoUnmountDiskWithInvalidUnmountOptions) {
   string source_path = "/dev/nonexistent-path";
   vector<string> options;
   options.push_back("invalid-unmount-option");
-  EXPECT_EQ(kMountErrorInvalidUnmountOptions,
+  EXPECT_EQ(MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS,
             manager_.DoUnmount(source_path, options));
 }
 

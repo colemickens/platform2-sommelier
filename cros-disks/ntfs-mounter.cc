@@ -50,7 +50,7 @@ NTFSMounter::NTFSMounter(const string& source_path,
 MountErrorType NTFSMounter::MountImpl() {
   if (!file_util::PathExists(FilePath(kMountProgramPath))) {
     LOG(ERROR) << "Failed to find the ntfs-3g mount program";
-    return kMountErrorMountProgramNotFound;
+    return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
 
   SandboxedProcess mount_process;
@@ -80,7 +80,7 @@ MountErrorType NTFSMounter::MountImpl() {
         !platform_->SetPermissions(source_path(), kSourcePathPermissions) ||
         !platform_->SetOwnership(target_path(), getuid(), mount_group_id) ||
         !platform_->SetPermissions(target_path(), kTargetPathPermissions)) {
-      return kMountErrorInternal;
+      return MOUNT_ERROR_INTERNAL;
     }
     mount_process.SetUserId(mount_user_id);
     mount_process.SetGroupId(mount_group_id);
@@ -99,9 +99,9 @@ MountErrorType NTFSMounter::MountImpl() {
   if (return_code != 0) {
     LOG(WARNING) << "NTFS-3G mount program failed with a return code "
                  << return_code;
-    return kMountErrorMountProgramFailed;
+    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
-  return kMountErrorNone;
+  return MOUNT_ERROR_NONE;
 }
 
 }  // namespace cros_disks

@@ -26,7 +26,7 @@ TEST_F(SystemMounterTest, RunAsRootMount) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
                         "tmpfs", MountOptions());
-  EXPECT_EQ(kMountErrorNone, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
   umount2(temp_dir.path().value().c_str(), MNT_FORCE);
 }
 
@@ -38,12 +38,12 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // about source path.
   SystemMounter mounter("/nonexistent", temp_dir.path().value(),
                         "ext2", MountOptions());
-  EXPECT_EQ(kMountErrorInvalidPath, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
 }
 
 TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   SystemMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions());
-  EXPECT_EQ(kMountErrorInvalidPath, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_INVALID_PATH, mounter.Mount());
 }
 
 TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
@@ -51,7 +51,7 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
                         "nonexistentfs", MountOptions());
-  EXPECT_EQ(kMountErrorUnsupportedFilesystem, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, mounter.Mount());
 }
 
 TEST_F(SystemMounterTest, RunAsRootMountWithInvalidMountOptions) {
@@ -63,7 +63,7 @@ TEST_F(SystemMounterTest, RunAsRootMountWithInvalidMountOptions) {
   mount_options.Initialize(options, false, "", "");
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
                         "tmpfs", mount_options);
-  EXPECT_EQ(kMountErrorInternal, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
 }
 
 }  // namespace cros_disks

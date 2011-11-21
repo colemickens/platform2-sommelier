@@ -89,7 +89,7 @@ TEST_F(ArchiveManagerTest, DoMountFailedWithUnsupportedExtension) {
   vector<string> options;
 
   manager_.avfs_started_ = true;
-  EXPECT_EQ(kMountErrorUnsupportedArchive,
+  EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_ARCHIVE,
             manager_.DoMount(source_path, filesystem_type, options,
                              mount_path));
 }

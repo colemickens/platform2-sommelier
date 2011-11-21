@@ -29,7 +29,7 @@ Mounter::~Mounter() {
 
 MountErrorType Mounter::Mount() {
   MountErrorType error = MountImpl();
-  if (error != kMountErrorNone) {
+  if (error != MOUNT_ERROR_NONE) {
     // Try to mount the filesystem read-only if mounting it read-write failed.
     if (!mount_options_.IsReadOnlyOptionSet()) {
       LOG(INFO) << "Trying to mount '" << source_path_ << "' read-only";
@@ -38,7 +38,7 @@ MountErrorType Mounter::Mount() {
     }
   }
 
-  if (error == kMountErrorNone) {
+  if (error == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Mounted '" << source_path_
       << "' to '" << target_path_
       << "' as filesystem '" << filesystem_type_

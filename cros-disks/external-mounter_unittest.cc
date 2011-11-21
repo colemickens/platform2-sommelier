@@ -29,7 +29,7 @@ TEST_F(ExternalMounterTest, RunAsRootMount) {
                           "tmpfs", MountOptions());
   EXPECT_FALSE(mounter.GetMountProgramPath().empty());
   if (!mounter.GetMountProgramPath().empty()) {
-    EXPECT_EQ(kMountErrorNone, mounter.Mount());
+    EXPECT_EQ(MOUNT_ERROR_NONE, mounter.Mount());
     umount2(temp_dir.path().value().c_str(), MNT_FORCE);
   } else {
     LOG(WARNING) << "Could not find an external mount program for testing.";
@@ -44,12 +44,12 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
   // about source path.
   ExternalMounter mounter("/nonexistent", temp_dir.path().value(),
                           "ext2", MountOptions());
-  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
   ExternalMounter mounter("/dev/null", "/nonexistent", "tmpfs", MountOptions());
-  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
@@ -57,7 +57,7 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
                           "nonexistentfs", MountOptions());
-  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
@@ -69,7 +69,7 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
   mount_options.Initialize(options, false, "", "");
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
                           "tmpfs", mount_options);
-  EXPECT_EQ(kMountErrorMountProgramFailed, mounter.Mount());
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
 }  // namespace cros_disks

@@ -37,18 +37,18 @@ MountErrorType SystemMounter::MountImpl() {
       << ", '" << flags_and_data.second << "') failed";
     switch (errno) {
       case ENODEV:
-        return kMountErrorUnsupportedFilesystem;
+        return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
       case ENOENT:
       case ENOTBLK:
       case ENOTDIR:
-        return kMountErrorInvalidPath;
+        return MOUNT_ERROR_INVALID_PATH;
       case EPERM:
-        return kMountErrorInsufficientPermissions;
+        return MOUNT_ERROR_INSUFFICIENT_PERMISSIONS;
       default:
-        return kMountErrorInternal;
+        return MOUNT_ERROR_INTERNAL;
     }
   }
-  return kMountErrorNone;
+  return MOUNT_ERROR_NONE;
 }
 
 }  // namespace cros_disks

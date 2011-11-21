@@ -37,7 +37,7 @@ MountErrorType ExternalMounter::MountImpl() {
   string mount_program = GetMountProgramPath();
   if (mount_program.empty()) {
     LOG(WARNING) << "Could not find an external mount program.";
-    return kMountErrorMountProgramNotFound;
+    return MOUNT_ERROR_MOUNT_PROGRAM_NOT_FOUND;
   }
 
   chromeos::ProcessImpl mount_process;
@@ -56,9 +56,9 @@ MountErrorType ExternalMounter::MountImpl() {
   if (return_code != 0) {
     LOG(WARNING) << "External mount program failed with a return code "
                  << return_code;
-    return kMountErrorMountProgramFailed;
+    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
   }
-  return kMountErrorNone;
+  return MOUNT_ERROR_NONE;
 }
 
 string ExternalMounter::GetMountProgramPath() const {

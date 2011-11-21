@@ -114,12 +114,12 @@ MountErrorType ArchiveManager::DoMount(const string& source_path,
   }
   if (avfs_path.empty()) {
     LOG(ERROR) << "Path '" << source_path << "' is not a supported archive";
-    return kMountErrorUnsupportedArchive;
+    return MOUNT_ERROR_UNSUPPORTED_ARCHIVE;
   }
 
   if (!StartAVFS()) {
     LOG(ERROR) << "Failed to start AVFS mounts.";
-    return kMountErrorInternal;
+    return MOUNT_ERROR_INTERNAL;
   }
 
   // Perform a bind mount from the archive path under the AVFS mount
@@ -136,7 +136,7 @@ MountErrorType ArchiveManager::DoUnmount(const string& path,
                                          const vector<string>& options) {
   CHECK(!path.empty()) << "Invalid path argument";
   // TODO(benchan): Extract error from low-level unmount operation.
-  return platform_->Unmount(path) ? kMountErrorNone : kMountErrorUnknown;
+  return platform_->Unmount(path) ? MOUNT_ERROR_NONE : MOUNT_ERROR_UNKNOWN;
 }
 
 string ArchiveManager::SuggestMountPath(const string& source_path) const {

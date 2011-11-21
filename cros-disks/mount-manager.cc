@@ -75,11 +75,11 @@ MountErrorType MountManager::Mount(const string& source_path,
                                    string *mount_path) {
   if (source_path.empty()) {
     LOG(ERROR) << "Failed to mount an empty path";
-    return kMountErrorInvalidArgument;
+    return MOUNT_ERROR_INVALID_ARGUMENT;
   }
   if (!mount_path) {
     LOG(ERROR) << "Invalid mount path argument";
-    return kMountErrorInvalidArgument;
+    return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
   string actual_mount_path;
@@ -92,7 +92,7 @@ MountErrorType MountManager::Mount(const string& source_path,
       *mount_path = actual_mount_path;
       return GetMountErrorOfReservedMountPath(actual_mount_path);
     } else {
-      return kMountErrorPathAlreadyMounted;
+      return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
     }
   }
 
@@ -110,7 +110,7 @@ MountErrorType MountManager::Mount(const string& source_path,
   if (!mount_path_created) {
     LOG(ERROR) << "Failed to create directory '" << actual_mount_path
                << "' to mount '" << source_path << "'";
-    return kMountErrorDirectoryCreationFailed;
+    return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
   if (!platform_->SetOwnership(actual_mount_path, getuid(),
@@ -120,12 +120,12 @@ MountErrorType MountManager::Mount(const string& source_path,
     LOG(ERROR) << "Failed to set ownership and permissions of directory '"
                << actual_mount_path << "' to mount '" << source_path << "'";
     platform_->RemoveEmptyDirectory(actual_mount_path);
-    return kMountErrorDirectoryCreationFailed;
+    return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
   MountErrorType error_type =
       DoMount(source_path, filesystem_type, options, actual_mount_path);
-  if (error_type == kMountErrorNone) {
+  if (error_type == MOUNT_ERROR_NONE) {
     LOG(INFO) << "Path '" << source_path << "' is mounted to '"
               << actual_mount_path << "'";
   } else if (ShouldReserveMountPathOnError(error_type)) {
@@ -147,7 +147,7 @@ MountErrorType MountManager::Unmount(const string& path,
                                      const vector<string>& options) {
   if (path.empty()) {
     LOG(ERROR) << "Failed to unmount an empty path";
-    return kMountErrorInvalidArgument;
+    return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
   // Deteremine whether the path is a source path or a mount path.
@@ -155,19 +155,19 @@ MountErrorType MountManager::Unmount(const string& path,
   if (!GetMountPathFromCache(path, &mount_path)) {  // is a source path?
     if (!IsMountPathInCache(path)) {  // is a mount path?
       LOG(ERROR) << "Path '" << path << "' is not mounted";
-      return kMountErrorPathNotMounted;
+      return MOUNT_ERROR_PATH_NOT_MOUNTED;
     }
     mount_path = path;
   }
 
-  MountErrorType error_type = kMountErrorNone;
+  MountErrorType error_type = MOUNT_ERROR_NONE;
   if (IsMountPathReserved(mount_path)) {
     LOG(INFO) << "Removing mount path '" << mount_path
               << "' from the reserved list";
     UnreserveMountPath(mount_path);
   } else {
     error_type = DoUnmount(mount_path, options);
-    if (error_type == kMountErrorNone) {
+    if (error_type == MOUNT_ERROR_NONE) {
       LOG(INFO) << "Unmounted '" << mount_path << "'";
     } else {
       LOG(ERROR) << "Failed to unmount '" << mount_path << "'";
@@ -188,7 +188,7 @@ bool MountManager::UnmountAll() {
   MountPathMap mount_paths_copy = mount_paths_;
   for (MountPathMap::const_iterator path_iterator = mount_paths_copy.begin();
        path_iterator != mount_paths_copy.end(); ++path_iterator) {
-    if (Unmount(path_iterator->first, options) != kMountErrorNone) {
+    if (Unmount(path_iterator->first, options) != MOUNT_ERROR_NONE) {
       all_umounted = false;
     }
   }
@@ -245,7 +245,7 @@ MountErrorType MountManager::GetMountErrorOfReservedMountPath(
   if (path_iterator != reserved_mount_paths_.end()) {
     return path_iterator->second;
   }
-  return kMountErrorNone;
+  return MOUNT_ERROR_NONE;
 }
 
 set<string> MountManager::GetReservedMountPaths() const {

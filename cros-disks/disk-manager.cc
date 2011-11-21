@@ -383,13 +383,13 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   Disk disk;
   if (!GetDiskByDevicePath(source_path, &disk)) {
     LOG(ERROR) << "'" << source_path << "' is not a valid device.";
-    return kMountErrorInvalidDevicePath;
+    return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
   const string& device_file = disk.device_file();
   if (device_file.empty()) {
     LOG(ERROR) << "'" << source_path << "' does not have a device file";
-    return kMountErrorInvalidDevicePath;
+    return MOUNT_ERROR_INVALID_DEVICE_PATH;
   }
 
   string device_filesystem_type = filesystem_type.empty() ?
@@ -399,14 +399,14 @@ MountErrorType DiskManager::DoMount(const string& source_path,
   if (device_filesystem_type.empty()) {
     LOG(ERROR) << "Failed to determine the file system type of device '"
                << source_path << "'";
-    return kMountErrorUnknownFilesystem;
+    return MOUNT_ERROR_UNKNOWN_FILESYSTEM;
   }
 
   const Filesystem* filesystem = GetFilesystem(device_filesystem_type);
   if (filesystem == NULL) {
     LOG(ERROR) << "File system type '" << device_filesystem_type
                << "' on device '" << source_path << "' is not supported";
-    return kMountErrorUnsupportedFilesystem;
+    return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
   scoped_ptr<Mounter> mounter(CreateMounter(disk, *filesystem, mount_path,
@@ -422,15 +422,15 @@ MountErrorType DiskManager::DoUnmount(const string& path,
   int unmount_flags;
   if (!ExtractUnmountOptions(options, &unmount_flags)) {
     LOG(ERROR) << "Invalid unmount options";
-    return kMountErrorInvalidUnmountOptions;
+    return MOUNT_ERROR_INVALID_UNMOUNT_OPTIONS;
   }
 
   if (umount2(path.c_str(), unmount_flags) != 0) {
     PLOG(ERROR) << "Failed to unmount '" << path << "'";
     // TODO(benchan): Extract error from low-level unmount operation.
-    return kMountErrorUnknown;
+    return MOUNT_ERROR_UNKNOWN;
   }
-  return kMountErrorNone;
+  return MOUNT_ERROR_NONE;
 }
 
 string DiskManager::SuggestMountPath(const string& source_path) const {
@@ -443,8 +443,8 @@ string DiskManager::SuggestMountPath(const string& source_path) const {
 
 bool DiskManager::ShouldReserveMountPathOnError(
     MountErrorType error_type) const {
-  return error_type == kMountErrorUnknownFilesystem ||
-         error_type == kMountErrorUnsupportedFilesystem;
+  return error_type == MOUNT_ERROR_UNKNOWN_FILESYSTEM ||
+         error_type == MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
 }
 
 }  // namespace cros_disks
