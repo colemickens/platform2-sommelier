@@ -10,9 +10,12 @@
 
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/stl_util-inl.h>
 #include <chromeos/process.h>
 
-#include "cros-disks/cros-disks-server-impl.h"
+#include "cros-disks/format-manager-observer-interface.h"
+
+using std::string;
 
 namespace {
 
@@ -26,7 +29,7 @@ const char* kSupportedFilesystems[] = {
   "vfat"
 };
 
-const char* kDefaultLabel = "UNTITLED";
+const char kDefaultLabel[] = "UNTITLED";
 
 void OnFormatProcessExit(pid_t pid, gint status, gpointer data) {
   cros_disks::FormatManager* format_manager =
@@ -34,8 +37,7 @@ void OnFormatProcessExit(pid_t pid, gint status, gpointer data) {
   format_manager->FormattingFinished(pid, status);
 }
 
-}  // annoymous namespace
-
+}  // namespace
 
 namespace cros_disks {
 
@@ -45,27 +47,27 @@ FormatManager::FormatManager() {
 FormatManager::~FormatManager() {
 }
 
-bool FormatManager::StartFormatting(const std::string& device_path,
-    const std::string& filesystem) {
+FormatErrorType FormatManager::StartFormatting(const string& device_path,
+                                               const string& filesystem) {
   // Check if the file system is supported for formatting
   if (!IsFilesystemSupported(filesystem)) {
     LOG(WARNING) << filesystem
-      << " filesystem is not supported for formatting";
-    return false;
+                 << " filesystem is not supported for formatting";
+    return FORMAT_ERROR_UNSUPPORTED_FILESYSTEM;
   }
 
   // Localize mkfs on disk
-  std::string format_program = GetFormatProgramPath(filesystem);
+  string format_program = GetFormatProgramPath(filesystem);
   if (format_program.empty()) {
-    LOG(WARNING) << "Could not find an external format program "
-      "for filesystem" << filesystem;
-    return false;
+    LOG(WARNING) << "Could not find a format program for filesystem '"
+                 << filesystem << "'";
+    return FORMAT_ERROR_FORMAT_PROGRAM_NOT_FOUND;
   }
 
-  if (format_process_.find(device_path) != format_process_.end()) {
+  if (ContainsKey(format_process_, device_path)) {
     LOG(WARNING) << "Device '" << device_path
-      << "' is already being formatted";
-    return false;
+                 << "' is already being formatted";
+    return FORMAT_ERROR_DEVICE_BEING_FORMATTED;
   }
 
   chromeos::ProcessImpl* process = &format_process_[device_path];
@@ -81,47 +83,56 @@ bool FormatManager::StartFormatting(const std::string& device_path,
   process->AddArg(device_path);
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start a process for formatting '"
-      << device_path << "' as filesystem '" << filesystem << "'";
+                 << device_path << "' as filesystem '" << filesystem << "'";
     format_process_.erase(device_path);
-    return false;
+    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
   pid_to_device_path_[process->pid()] = device_path;
-  g_child_watch_add(process->pid(),
-                    &OnFormatProcessExit,
-                    this);
-  return true;
+  g_child_watch_add(process->pid(), &OnFormatProcessExit, this);
+  return FORMAT_ERROR_NONE;
 }
 
 void FormatManager::FormattingFinished(pid_t pid, int status) {
-  std::string device_path = pid_to_device_path_[pid];
+  string device_path = pid_to_device_path_[pid];
   format_process_.erase(device_path);
   pid_to_device_path_.erase(pid);
-  if (parent_)
-    parent_->SignalFormattingFinished(device_path, status);
+  FormatErrorType error_type = FORMAT_ERROR_UNKNOWN;
+  if (WIFEXITED(status)) {
+    int exit_status = WEXITSTATUS(status);
+    if (exit_status == 0) {
+      error_type = FORMAT_ERROR_NONE;
+      LOG(INFO) << "Process " << pid << " for formatting '" << device_path
+                << "' completed successfully";
+    } else {
+      error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+      LOG(ERROR) << "Process " << pid << " for formatting '" << device_path
+                 << "' exited with a status " << exit_status;
+    }
+  } else if (WIFSIGNALED(status)) {
+    error_type = FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
+    LOG(ERROR) << "Process " << pid << " for formatting '" << device_path
+               << "' killed by a signal " << WTERMSIG(status);
+  }
+  if (observer_)
+    observer_->OnFormatCompleted(device_path, error_type);
 }
 
-bool FormatManager::StopFormatting(const std::string& device_path) {
+FormatErrorType FormatManager::StopFormatting(const string& device_path) {
   // TODO(sidor): implement
   // When the cancel button is hit
-  return false;
+  return FORMAT_ERROR_INTERNAL;
 }
 
-void FormatManager::set_parent(CrosDisksServer* parent) {
-  parent_ = parent;
-}
-
-std::string FormatManager::GetFormatProgramPath(
-    const std::string& filesystem) const {
+string FormatManager::GetFormatProgramPath(const string& filesystem) const {
   for (size_t i = 0; i < arraysize(kFormatProgramPaths); ++i) {
-    std::string path = kFormatProgramPaths[i] + filesystem;
+    string path = kFormatProgramPaths[i] + filesystem;
     if (file_util::PathExists(FilePath(path)))
       return path;
   }
-  return std::string();
+  return string();
 }
 
-bool FormatManager::IsFilesystemSupported(
-    const std::string& filesystem) const {
+bool FormatManager::IsFilesystemSupported(const string& filesystem) const {
   for (size_t i = 0; i < arraysize(kSupportedFilesystems); ++i) {
     if (filesystem == kSupportedFilesystems[i])
       return true;

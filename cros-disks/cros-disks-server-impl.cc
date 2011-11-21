@@ -42,7 +42,7 @@ CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
   mount_managers_.push_back(archive_manager_);
 
   InitializeProperties();
-  format_manager_->set_parent(this);
+  format_manager_->set_observer(this);
 }
 
 CrosDisksServer::~CrosDisksServer() {
@@ -52,23 +52,23 @@ bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
   return true;
 }
 
-void CrosDisksServer::SignalFormattingFinished(const string& device_path,
-                                               int status) {
-  if (status) {
-    FormattingFinished(std::string("!") + device_path);
-    LOG(ERROR) << "Could not format device '" << device_path
-               << "'. Formatting process failed with an exit code " << status;
-  } else {
-    FormattingFinished(device_path);
-  }
+void CrosDisksServer::Format(const string& path,
+                             const string& filesystem_type,
+                             const vector<string>& options,
+                             DBus::Error &error) {  // NOLINT
+  FormatDevice(path, filesystem_type, error);
 }
 
-bool CrosDisksServer::FormatDevice(const string& device_path,
-                                   const string& filesystem,
+// TODO(benchan): Remove this method after Chrome switches to use Format().
+bool CrosDisksServer::FormatDevice(const string& path,
+                                   const string& filesystem_type,
                                    DBus::Error &error) {  // NOLINT
-  if (!format_manager_->StartFormatting(device_path, filesystem)) {
-    LOG(ERROR) << "Could not format device " << device_path
-               << " as file system '" << filesystem << "'";
+  FormatErrorType error_type =
+      format_manager_->StartFormatting(path, filesystem_type);
+  if (error_type != FORMAT_ERROR_NONE) {
+    LOG(ERROR) << "Could not format device '" << path
+               << "' as filesystem '" << filesystem_type << "'";
+    FormatCompleted(error_type, path);
     return false;
   }
   return true;
@@ -162,6 +162,19 @@ DBusDisk CrosDisksServer::GetDeviceProperties(const string& device_path,
     error.set(kCrosDisksServiceError, message.c_str());
   }
   return disk.ToDBusFormat();
+}
+
+void CrosDisksServer::OnFormatCompleted(const string& device_path,
+                                        FormatErrorType error_type) {
+  // TODO(benchan): Deprecate the FormattingFinished signal once Chrome
+  // switches to observe the FormatCompleted signal instead.
+  if (error_type != FORMAT_ERROR_NONE) {
+    FormattingFinished("!" + device_path);
+    LOG(ERROR) << "Failed to format '" << device_path << "'";
+  } else {
+    FormattingFinished(device_path);
+  }
+  FormatCompleted(error_type, device_path);
 }
 
 void CrosDisksServer::OnSessionStarted(const string& user) {

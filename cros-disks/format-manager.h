@@ -9,6 +9,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest_prod.h>
 
 namespace chromeos {
 
@@ -18,24 +20,26 @@ class ProcessImpl;
 
 namespace cros_disks {
 
-class CrosDisksServer;
+class FormatManagerObserverInterface;
 
 class FormatManager {
  public:
   FormatManager();
-  virtual ~FormatManager();
+  ~FormatManager();
 
   // Starts a formatting process of a given device.
-  virtual bool StartFormatting(const std::string& device_path,
-      const std::string& filesystem);
+  FormatErrorType StartFormatting(const std::string& device_path,
+                                  const std::string& filesystem);
 
   // Stops a formatting process of a given device.
-  virtual bool StopFormatting(const std::string& device_path);
+  FormatErrorType StopFormatting(const std::string& device_path);
 
   // Handles a terminated formatting process.
-  virtual void FormattingFinished(pid_t pid, int status);
+  void FormattingFinished(pid_t pid, int status);
 
-  virtual void set_parent(CrosDisksServer* parent);
+  void set_observer(FormatManagerObserverInterface* observer) {
+    observer_ = observer;
+  }
 
  private:
   // Returns the full path of an external formatting program if it is
@@ -52,7 +56,10 @@ class FormatManager {
   // Given the pid of formatting process it finds the device path.
   std::map<pid_t, std::string> pid_to_device_path_;
 
-  CrosDisksServer* parent_;
+  FormatManagerObserverInterface* observer_;
+
+  FRIEND_TEST(FormatManagerTest, GetFormatProgramPath);
+  FRIEND_TEST(FormatManagerTest, IsFilesystemSupported);
 
   DISALLOW_COPY_AND_ASSIGN(FormatManager);
 };

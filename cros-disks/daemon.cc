@@ -22,7 +22,6 @@ Daemon::Daemon(DBus::Connection* dbus_connection)
       event_moderator_(&server_, &disk_manager_),
       power_manager_proxy_(dbus_connection),
       session_manager_proxy_(dbus_connection) {
-  format_manager_.set_parent(&server_);
 }
 
 Daemon::~Daemon() {

@@ -12,7 +12,7 @@
 #include "cros-disks/device-event-dispatcher-interface.h"
 #include "cros-disks/device-event-queue.h"
 #include "cros-disks/disk.h"
-#include "cros-disks/power-manager-observer-interface.h"
+#include "cros-disks/format-manager-observer-interface.h"
 #include "cros-disks/session-manager-observer-interface.h"
 
 namespace cros_disks {
@@ -45,6 +45,7 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                         public DBus::PropertiesAdaptor,
                         public DBus::ObjectAdaptor,
                         public DeviceEventDispatcherInterface,
+                        public FormatManagerObserverInterface,
                         public SessionManagerObserverInterface {
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
@@ -54,9 +55,13 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
                   FormatManager* format_manager);
   virtual ~CrosDisksServer();
 
-  // Called by FormatManager when the formatting is finished
-  virtual void SignalFormattingFinished(const std::string& device_path,
-      int status);
+  // A method for formatting a device specified by |path|.
+  // On completion, a FormatCompleted signal is emitted to indicate whether
+  // the operation succeeded or failed using a FormatErrorType enum value.
+  virtual void Format(const std::string& path,
+                      const std::string& filesystem_type,
+                      const std::vector<std::string>& options,
+                      DBus::Error& error);  // NOLINT
 
   // A method for asynchronous formatting device using specified file system.
   // Assumes device path is valid (should it be invalid singal
@@ -96,6 +101,11 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   // Returns properties of a disk device attached to the system.
   virtual DBusDisk GetDeviceProperties(const std::string& device_path,
       DBus::Error& error);  // NOLINT
+
+  // Implements the FormatManagerObserverInterface interface to handle
+  // the event when a formatting operation has completed.
+  virtual void OnFormatCompleted(const std::string& device_path,
+                                 FormatErrorType error_type);
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been started.
