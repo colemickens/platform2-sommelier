@@ -101,6 +101,11 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   fi
 fi
 
+# Sanity check the date (crosbug.com/13200)
+if [ $(date +%Y) -lt 1970 ]; then
+  date 010200001970.00
+fi
+
 # DEV_MODE is used to determine if we're booted in developer mode,
 # by checking only the developer and recovery switch states.
 # Values: 0=recovery/non-dev mode, 1=dev (SSD) mode, 2=bypass devcheck
