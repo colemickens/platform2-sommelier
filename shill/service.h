@@ -197,6 +197,8 @@ class Service : public base::RefCounted<Service> {
       std::string(Service::*get)(Error *),
       void(Service::*set)(const std::string&, Error *));
 
+  ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
+
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
   // value is encrypted.

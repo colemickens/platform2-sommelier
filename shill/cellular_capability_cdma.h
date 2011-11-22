@@ -27,6 +27,7 @@ class CellularCapabilityCDMA : public CellularCapability,
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error);
+  virtual bool IsRegistered();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();

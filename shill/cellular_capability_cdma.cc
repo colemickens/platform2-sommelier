@@ -162,6 +162,11 @@ void CellularCapabilityCDMA::GetProperties() {
   // No properties.
 }
 
+bool CellularCapabilityCDMA::IsRegistered() {
+  return registration_state_evdo_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN ||
+      registration_state_1x_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+}
+
 string CellularCapabilityCDMA::GetNetworkTechnologyString() const {
   if (registration_state_evdo_ != MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN) {
     return flimflam::kNetworkTechnologyEvdo;

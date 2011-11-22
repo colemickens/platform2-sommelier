@@ -277,7 +277,7 @@ TEST_F(CellularTest, StartCDMARegister) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnology1Xrtt,
-            device_->service_->network_tech());
+            device_->service_->network_technology());
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateHome, device_->service_->roaming_state());
 }
@@ -315,7 +315,7 @@ TEST_F(CellularTest, StartGSMRegister) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   ASSERT_TRUE(device_->service_.get());
   EXPECT_EQ(flimflam::kNetworkTechnologyEdge,
-            device_->service_->network_tech());
+            device_->service_->network_technology());
   EXPECT_EQ(kStrength, device_->service_->strength());
   EXPECT_EQ(flimflam::kRoamingStateRoaming, device_->service_->roaming_state());
   EXPECT_EQ(kNetworkID, device_->service_->serving_operator().GetCode());
@@ -446,19 +446,19 @@ TEST_F(CellularTest, Connect) {
       &control_interface_, &dispatcher_, &manager_, device_);
 
   device_->allow_roaming_ = false;
-  device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
+  device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
   device_->Connect(&error);
   ASSERT_TRUE(device_->task_factory_.empty());
   EXPECT_EQ(Error::kNotOnHomeNetwork, error.type());
   error.Populate(Error::kSuccess);
 
-  device_->service_->set_roaming_state(flimflam::kRoamingStateHome);
+  device_->service_->roaming_state_ = flimflam::kRoamingStateHome;
   device_->Connect(&error);
   ASSERT_FALSE(device_->task_factory_.empty());
   EXPECT_TRUE(error.IsSuccess());
 
   device_->allow_roaming_ = true;
-  device_->service_->set_roaming_state(flimflam::kRoamingStateRoaming);
+  device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
   device_->Connect(&error);
   EXPECT_TRUE(error.IsSuccess());
 

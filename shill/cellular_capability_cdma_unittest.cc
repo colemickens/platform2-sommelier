@@ -177,6 +177,30 @@ TEST_F(CellularCapabilityCDMATest, GetIdentifiers) {
   EXPECT_EQ(kMEID, cellular_->meid());
 }
 
+TEST_F(CellularCapabilityCDMATest, IsRegisteredEVDO) {
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
+  EXPECT_TRUE(capability_->IsRegistered());
+  SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
+  EXPECT_TRUE(capability_->IsRegistered());
+  SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
+  EXPECT_TRUE(capability_->IsRegistered());
+}
+
+TEST_F(CellularCapabilityCDMATest, IsRegistered1x) {
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED);
+  EXPECT_TRUE(capability_->IsRegistered());
+  SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);
+  EXPECT_TRUE(capability_->IsRegistered());
+  SetRegistrationState1x(MM_MODEM_CDMA_REGISTRATION_STATE_ROAMING);
+  EXPECT_TRUE(capability_->IsRegistered());
+}
+
 TEST_F(CellularCapabilityCDMATest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetRegistrationStateEVDO(MM_MODEM_CDMA_REGISTRATION_STATE_HOME);

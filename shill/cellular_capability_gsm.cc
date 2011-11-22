@@ -135,9 +135,13 @@ void CellularCapabilityGSM::GetIdentifiers() {
     }
   }
   if (cellular()->mdn().empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    cellular()->set_mdn(card_proxy_->GetMSISDN());
-    VLOG(2) << "MSISDN/MDN: " << cellular()->mdn();
+    try {
+      // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+      cellular()->set_mdn(card_proxy_->GetMSISDN());
+      VLOG(2) << "MSISDN/MDN: " << cellular()->mdn();
+    } catch (const DBus::Error e) {
+      LOG(WARNING) << "Unable to obtain MSISDN/MDN: " << e.what();
+    }
   }
   SetHomeProvider();
 }
@@ -298,6 +302,11 @@ void CellularCapabilityGSM::RegisterOnNetwork(
       task_factory_.NewRunnableMethod(
           &CellularCapabilityGSM::RegisterOnNetworkTask,
           network_id));
+}
+
+bool CellularCapabilityGSM::IsRegistered() {
+  return (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
+          registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
 }
 
 void CellularCapabilityGSM::RegisterOnNetworkTask(const string &network_id) {
@@ -463,32 +472,29 @@ Stringmap CellularCapabilityGSM::ParseScanResult(
 void CellularCapabilityGSM::SetAccessTechnology(uint32 access_technology) {
   access_technology_ = access_technology;
   if (cellular()->service().get()) {
-    cellular()->service()->set_network_tech(GetNetworkTechnologyString());
+    cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
   }
 }
 
 string CellularCapabilityGSM::GetNetworkTechnologyString() const {
-  if (registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_HOME ||
-      registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING) {
-    switch (access_technology_) {
-      case MM_MODEM_GSM_ACCESS_TECH_GSM:
-      case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
-        return flimflam::kNetworkTechnologyGsm;
-      case MM_MODEM_GSM_ACCESS_TECH_GPRS:
-        return flimflam::kNetworkTechnologyGprs;
-      case MM_MODEM_GSM_ACCESS_TECH_EDGE:
-        return flimflam::kNetworkTechnologyEdge;
-      case MM_MODEM_GSM_ACCESS_TECH_UMTS:
-        return flimflam::kNetworkTechnologyUmts;
-      case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
-      case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
-      case MM_MODEM_GSM_ACCESS_TECH_HSPA:
-        return flimflam::kNetworkTechnologyHspa;
-      case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
-        return flimflam::kNetworkTechnologyHspaPlus;
-      default:
-        NOTREACHED();
-    }
+  switch (access_technology_) {
+    case MM_MODEM_GSM_ACCESS_TECH_GSM:
+    case MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT:
+      return flimflam::kNetworkTechnologyGsm;
+    case MM_MODEM_GSM_ACCESS_TECH_GPRS:
+      return flimflam::kNetworkTechnologyGprs;
+    case MM_MODEM_GSM_ACCESS_TECH_EDGE:
+      return flimflam::kNetworkTechnologyEdge;
+    case MM_MODEM_GSM_ACCESS_TECH_UMTS:
+      return flimflam::kNetworkTechnologyUmts;
+    case MM_MODEM_GSM_ACCESS_TECH_HSDPA:
+    case MM_MODEM_GSM_ACCESS_TECH_HSUPA:
+    case MM_MODEM_GSM_ACCESS_TECH_HSPA:
+      return flimflam::kNetworkTechnologyHspa;
+    case MM_MODEM_GSM_ACCESS_TECH_HSPA_PLUS:
+      return flimflam::kNetworkTechnologyHspaPlus;
+    default:
+      break;
   }
   return "";
 }

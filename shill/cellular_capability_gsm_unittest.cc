@@ -158,6 +158,22 @@ TEST_F(CellularCapabilityGSMTest, RegisterOnNetwork) {
   EXPECT_EQ(kTestCarrier, capability_->selected_network_);
 }
 
+TEST_F(CellularCapabilityGSMTest, IsRegistered) {
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_IDLE);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
+  EXPECT_TRUE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_SEARCHING);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_DENIED);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN);
+  EXPECT_FALSE(capability_->IsRegistered());
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
+  EXPECT_TRUE(capability_->IsRegistered());
+}
+
 TEST_F(CellularCapabilityGSMTest, RequirePIN) {
   Error error;
   EXPECT_CALL(*card_proxy_, EnablePIN(kPIN, true));
@@ -253,11 +269,11 @@ TEST_F(CellularCapabilityGSMTest, SetAccessTechnology) {
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GSM, capability_->access_technology_);
   SetService();
-  capability_->registration_state_ = MM_MODEM_GSM_NETWORK_REG_STATUS_HOME;
+  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
   capability_->SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GPRS);
   EXPECT_EQ(MM_MODEM_GSM_ACCESS_TECH_GPRS, capability_->access_technology_);
   EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
-            cellular_->service()->network_tech());
+            cellular_->service()->network_technology());
 }
 
 TEST_F(CellularCapabilityGSMTest, UpdateOperatorInfo) {
@@ -334,8 +350,6 @@ TEST_F(CellularCapabilityGSMTest, InitAPNList) {
 TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   EXPECT_EQ("", capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM);
-  EXPECT_EQ("", capability_->GetNetworkTechnologyString());
-  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_HOME);
   EXPECT_EQ(flimflam::kNetworkTechnologyGsm,
             capability_->GetNetworkTechnologyString());
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_GSM_COMPACT);
@@ -350,7 +364,6 @@ TEST_F(CellularCapabilityGSMTest, GetNetworkTechnologyString) {
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_UMTS);
   EXPECT_EQ(flimflam::kNetworkTechnologyUmts,
             capability_->GetNetworkTechnologyString());
-  SetRegistrationState(MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
   SetAccessTechnology(MM_MODEM_GSM_ACCESS_TECH_HSDPA);
   EXPECT_EQ(flimflam::kNetworkTechnologyHspa,
             capability_->GetNetworkTechnologyString());

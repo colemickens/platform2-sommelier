@@ -273,8 +273,7 @@ void Cellular::HandleNewRegistrationState() {
 
 void Cellular::HandleNewRegistrationStateTask() {
   VLOG(2) << __func__;
-  const string network_tech = capability_->GetNetworkTechnologyString();
-  if (network_tech.empty()) {
+  if (!capability_->IsRegistered()) {
     if (state_ == kStateLinked) {
       manager()->DeregisterService(service_);
     }
@@ -298,8 +297,8 @@ void Cellular::HandleNewRegistrationStateTask() {
     SetState(kStateConnected);
     EstablishLink();
   }
-  service_->set_network_tech(network_tech);
-  service_->set_roaming_state(capability_->GetRoamingStateString());
+  service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
+  service_->SetRoamingState(capability_->GetRoamingStateString());
 }
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {

@@ -39,6 +39,7 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void GetProperties();
   virtual void Register();
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual bool IsRegistered();
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
   virtual void EnterPIN(const std::string &pin, Error *error);
   virtual void UnblockPIN(const std::string &unblock_code,

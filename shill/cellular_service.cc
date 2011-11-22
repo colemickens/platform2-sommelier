@@ -10,6 +10,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/cellular.h"
 
 using std::string;
@@ -33,7 +34,7 @@ CellularService::CellularService(ControlInterface *control_interface,
   store->RegisterConstStringmap(flimflam::kCellularLastGoodApnProperty,
                                 &last_good_apn_info_);
   store->RegisterConstString(flimflam::kNetworkTechnologyProperty,
-                             &network_tech_);
+                             &network_technology_);
   store->RegisterConstString(flimflam::kPaymentURLProperty, &payment_url_);
   store->RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
   store->RegisterConstStringmap(flimflam::kServingOperatorProperty,
@@ -70,6 +71,23 @@ string CellularService::GetStorageIdentifier() const {
 
 string CellularService::GetDeviceRpcId(Error */*error*/) {
   return cellular_->GetRpcIdentifier();
+}
+
+void CellularService::SetNetworkTechnology(const string &technology) {
+  if (technology == network_technology_) {
+    return;
+  }
+  network_technology_ = technology;
+  adaptor()->EmitStringChanged(flimflam::kNetworkTechnologyProperty,
+                               technology);
+}
+
+void CellularService::SetRoamingState(const string &state) {
+  if (state == roaming_state_) {
+    return;
+  }
+  roaming_state_ = state;
+  adaptor()->EmitStringChanged(flimflam::kRoamingStateProperty, state);
 }
 
 const Cellular::Operator &CellularService::serving_operator() const {

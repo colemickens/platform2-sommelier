@@ -48,6 +48,7 @@ class CellularCapability {
   // Network registration.
   virtual void Register();
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual bool IsRegistered() = 0;
 
   // Retrieves identifiers associated with the modem and the capability.
   virtual void GetIdentifiers() = 0;

@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular.h"
 #include "shill/refptr_types.h"
@@ -55,13 +56,18 @@ class CellularService : public Service {
   const Cellular::Operator &serving_operator() const;
   void set_serving_operator(const Cellular::Operator &oper);
 
-  const std::string &network_tech() const { return network_tech_; }
-  void set_network_tech(const std::string &tech) { network_tech_ = tech; }
+  // Sets network technology to |technology| and broadcasts the property change.
+  void SetNetworkTechnology(const std::string &technology);
+  const std::string &network_technology() const { return network_technology_; }
 
+  // Sets roaming state to |state| and broadcasts the property change.
+  void SetRoamingState(const std::string &state);
   const std::string &roaming_state() const { return roaming_state_; }
-  void set_roaming_state(const std::string &state) { roaming_state_ = state; }
 
  private:
+  friend class CellularServiceTest;
+  FRIEND_TEST(CellularTest, Connect);
+
   static const char kServiceType[];
 
   virtual std::string GetDeviceRpcId(Error *error);
@@ -69,7 +75,7 @@ class CellularService : public Service {
   // Properties
   std::string activation_state_;
   Cellular::Operator serving_operator_;
-  std::string network_tech_;
+  std::string network_technology_;
   std::string roaming_state_;
   std::string payment_url_;
   uint8 strength_;

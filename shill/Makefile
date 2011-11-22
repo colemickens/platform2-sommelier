@@ -152,6 +152,7 @@ TEST_OBJS = \
 	byte_string_unittest.o \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
+	cellular_service_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
