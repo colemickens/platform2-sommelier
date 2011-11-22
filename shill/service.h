@@ -144,11 +144,13 @@ class Service : public base::RefCounted<Service> {
   // manager's advertised services list, false otherwise.
   virtual bool IsVisible() const { return true; }
 
+  virtual void MakeFavorite();
+
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
   bool favorite() const { return favorite_; }
-  void set_favorite(bool favorite) { favorite_ = favorite; }
+  // Setter is deliberately omitted; use MakeFavorite.
 
   const std::string &friendly_name() const { return friendly_name_; }
 

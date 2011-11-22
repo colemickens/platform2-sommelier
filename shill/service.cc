@@ -291,6 +291,18 @@ bool Service::Save(StoreInterface *storage) {
   return true;
 }
 
+void Service::MakeFavorite() {
+  if (favorite_) {
+    // We do not want to clobber the value of auto_connect_ (it may
+    // be user-set). So return early.
+    return;
+  }
+
+  auto_connect_ = true;
+  favorite_ = true;
+}
+
+// static
 bool Service::DecideBetween(int a, int b, bool *decision) {
   if (a == b)
     return false;
@@ -298,6 +310,7 @@ bool Service::DecideBetween(int a, int b, bool *decision) {
   return true;
 }
 
+// static
 bool Service::Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
                       const vector<Technology::Identifier> &tech_order) {

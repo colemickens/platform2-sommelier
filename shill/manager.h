@@ -62,7 +62,7 @@ class Manager {
 
   virtual void RegisterService(const ServiceRefPtr &to_manage);
   virtual void DeregisterService(const ServiceRefPtr &to_forget);
-  virtual void UpdateService(const ServiceConstRefPtr &to_update);
+  virtual void UpdateService(const ServiceRefPtr &to_update);
 
   void FilterByTechnology(Technology::Identifier tech,
                           std::vector<DeviceRefPtr> *found);

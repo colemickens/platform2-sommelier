@@ -367,10 +367,14 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   }
 }
 
-void Manager::UpdateService(const ServiceConstRefPtr &to_update) {
+void Manager::UpdateService(const ServiceRefPtr &to_update) {
+  CHECK(to_update);
   LOG(INFO) << "Service " << to_update->UniqueName() << " updated;"
             << " state: " << to_update->state() << " failure: "
             << to_update->failure();
+  LOG(INFO) << "IsConnected(): " << to_update->IsConnected();
+  if (to_update->IsConnected())
+    to_update->MakeFavorite();
   SortServices();
 }
 

@@ -181,7 +181,7 @@ TEST_F(ProfileTest, ServiceConfigure) {
   ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
                                               manager()));
-  service1->set_favorite(!service1->favorite());
+  service1->set_priority(service1->priority() + 1);  // Change from default.
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->ContainsService(service1));
 
@@ -190,10 +190,10 @@ TEST_F(ProfileTest, ServiceConfigure) {
   ServiceRefPtr service2(new ServiceUnderTest(control_interface(),
                                               dispatcher(),
                                               manager()));
-  bool orig_favorite = service2->favorite();
+  int32 orig_priority = service2->priority();
   ASSERT_TRUE(profile_->ConfigureService(service2));
-  ASSERT_EQ(service1->favorite(), service2->favorite());
-  ASSERT_NE(orig_favorite, service2->favorite());
+  ASSERT_EQ(service1->priority(), service2->priority());
+  ASSERT_NE(orig_priority, service2->priority());
 
   // Clean up.
   ASSERT_TRUE(profile_->AbandonService(service1));

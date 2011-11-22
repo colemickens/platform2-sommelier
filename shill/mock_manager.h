@@ -23,7 +23,7 @@ class MockManager : public Manager {
   MOCK_METHOD0(mutable_store, PropertyStore*(void));
   MOCK_CONST_METHOD0(store, const PropertyStore&(void));
   MOCK_METHOD1(RegisterService, void(const ServiceRefPtr &to_manage));
-  MOCK_METHOD1(UpdateService, void(const ServiceConstRefPtr &to_update));
+  MOCK_METHOD1(UpdateService, void(const ServiceRefPtr &to_update));
   MOCK_METHOD1(DeregisterService, void(const ServiceRefPtr &to_forget));
 
  private:

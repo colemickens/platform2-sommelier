@@ -207,7 +207,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateUnknown, service_->state());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
 
-  ServiceConstRefPtr service_ref(service_);
+  ServiceRefPtr service_ref(service_);
 
   // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
   // EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
@@ -233,6 +233,26 @@ TEST_F(ServiceTest, ActivateCellularModem) {
   Error error;
   service_->ActivateCellularModem("Carrier", &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
+}
+
+TEST_F(ServiceTest, MakeFavorite) {
+  EXPECT_FALSE(service_->favorite());
+  EXPECT_FALSE(service_->auto_connect());
+
+  service_->MakeFavorite();
+  EXPECT_TRUE(service_->favorite());
+  EXPECT_TRUE(service_->auto_connect());
+}
+
+TEST_F(ServiceTest, ReMakeFavorite) {
+  service_->MakeFavorite();
+  EXPECT_TRUE(service_->favorite());
+  EXPECT_TRUE(service_->auto_connect());
+
+  service_->set_auto_connect(false);
+  service_->MakeFavorite();
+  EXPECT_TRUE(service_->favorite());
+  EXPECT_FALSE(service_->auto_connect());
 }
 
 }  // namespace shill

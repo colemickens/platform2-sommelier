@@ -279,7 +279,6 @@ TEST_F(ManagerTest, RegisterKnownService) {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
                                                 &manager));
-    service1->set_favorite(!service1->favorite());
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
   }  // Force destruction of service1.
@@ -308,7 +307,6 @@ TEST_F(ManagerTest, RegisterUnknownService) {
     ServiceRefPtr service1(new ServiceUnderTest(control_interface(),
                                                 dispatcher(),
                                                 &manager));
-    service1->set_favorite(!service1->favorite());
     ASSERT_TRUE(profile->AdoptService(service1));
     ASSERT_TRUE(profile->ContainsService(service1));
   }  // Force destruction of service1.
@@ -648,6 +646,10 @@ TEST_F(ManagerTest, TechnologyOrder) {
 }
 
 TEST_F(ManagerTest, SortServices) {
+  // TODO(quiche): Some of these tests would probably fit better in
+  // service_unittest, since the actual comparison of Services is
+  // implemented in Service. (crosbug.com/23370)
+
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
@@ -656,8 +658,6 @@ TEST_F(ManagerTest, SortServices) {
       new NiceMock<MockService>(control_interface(),
                                 dispatcher(),
                                 manager()));
-  string service1_name(mock_service0->UniqueName());
-  string service2_name(mock_service1->UniqueName());
 
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
@@ -708,7 +708,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Favorite
-  mock_service1->set_favorite(true);
+  mock_service1->MakeFavorite();
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
@@ -736,6 +736,25 @@ TEST_F(ManagerTest, DisconnectServicesOnStop) {
   manager()->RegisterService(mock_service);
   EXPECT_CALL(*mock_service.get(), Disconnect()).Times(1);
   manager()->Stop();
+}
+
+TEST_F(ManagerTest, UpdateServiceConnected) {
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  manager()->RegisterService(mock_service);
+  EXPECT_FALSE(mock_service->favorite());
+  EXPECT_FALSE(mock_service->auto_connect());
+
+  EXPECT_CALL(*mock_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  manager()->UpdateService(mock_service);
+  // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
+  // to mock out MakeFavorite. And mocking that out would break the
+  // SortServices test. (crosbug.com/23370)
+  EXPECT_TRUE(mock_service->favorite());
+  EXPECT_TRUE(mock_service->auto_connect());
 }
 
 }  // namespace shill

@@ -854,7 +854,7 @@ TEST_F(WiFiMainTest, ScanHidden) {
                         NULL, NULL, true, &e);
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_TRUE(service->hidden_ssid());
-    service->set_favorite(true);
+    service->MakeFavorite();
   }
   {
     // Create a hidden, non-favorite service.
@@ -873,7 +873,7 @@ TEST_F(WiFiMainTest, ScanHidden) {
                         NULL, NULL, false, &e);
     EXPECT_TRUE(e.IsSuccess());
     EXPECT_FALSE(service->hidden_ssid());
-    service->set_favorite(true);
+    service->MakeFavorite();
   }
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(HasHiddenSSID("ssid0")));
   StartWiFi();
