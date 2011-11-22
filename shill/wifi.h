@@ -62,9 +62,9 @@ class WiFi : public Device {
  private:
   friend class WiFiMainTest;  // access to supplicant_*_proxy_, link_up_
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
+  FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
-  typedef std::map<const std::string, WiFiServiceRefPtr> ServiceMap;
   typedef std::map<WiFiService *, std::string> ReverseServiceMap;
 
   static const char kManagerErrorPassphraseRequired[];
@@ -83,6 +83,7 @@ class WiFi : public Device {
   WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
                                 const std::string &mode,
                                 const std::string &security) const;
+  WiFiServiceRefPtr FindServiceForEndpoint(const WiFiEndpoint &endpoint);
   ByteArrays GetHiddenSSIDList();
   void HandleDisconnect();
   void HandleRoam(const ::DBus::Path &new_bssid);
@@ -93,7 +94,6 @@ class WiFi : public Device {
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
   void ScanTask();
-  WiFiServiceRefPtr GetServiceForEndpoint(const WiFiEndpoint &endpoint);
   void StateChanged(const std::string &new_state);
 
   // Store cached copies of singletons for speed/ease of testing.
@@ -102,11 +102,9 @@ class WiFi : public Device {
   ScopedRunnableMethodFactory<WiFi> task_factory_;
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;
   scoped_ptr<SupplicantInterfaceProxyInterface> supplicant_interface_proxy_;
-  EndpointMap endpoint_by_bssid_;
   // The rpcid used as the key is wpa_supplicant's D-Bus path for the
   // Endpoint (BSS, in supplicant parlance).
   EndpointMap endpoint_by_rpcid_;
-  ServiceMap service_by_private_id_;
   // Map from Services to the D-Bus path for the corresponding wpa_supplicant
   // Network.
   ReverseServiceMap rpcid_by_service_;

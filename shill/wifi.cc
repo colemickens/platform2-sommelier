@@ -153,9 +153,7 @@ void WiFi::Stop() {
   // TODO(quiche): Remove interface from supplicant.
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   supplicant_process_proxy_.reset();
-  endpoint_by_bssid_.clear();
   endpoint_by_rpcid_.clear();
-  service_by_private_id_.clear();       // breaks reference cycles
   rpcid_by_service_.clear();
 
   for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
@@ -177,10 +175,10 @@ void WiFi::Stop() {
           << (supplicant_interface_proxy_.get() ? "is set." : "is not set.");
   VLOG(3) << "WiFi " << link_name() << " pending_service_ "
           << (pending_service_.get() ? "is set." : "is not set.");
-  VLOG(3) << "WiFi " << link_name() << " has " << endpoint_by_bssid_.size()
+  VLOG(3) << "WiFi " << link_name() << " has " << endpoint_by_rpcid_.size()
           << " EndpointMap entries.";
-  VLOG(3) << "WiFi " << link_name() << " has " << service_by_private_id_.size()
-          << " ServiceMap entries.";
+  VLOG(3) << "WiFi " << link_name() << " has " << services_.size()
+          << " Services.";
 }
 
 bool WiFi::Load(StoreInterface *storage) {
@@ -235,8 +233,12 @@ void WiFi::BSSAdded(
   // means that if an AP reuses the same BSSID for multiple SSIDs, we
   // lose.
   WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
-  endpoint_by_bssid_[endpoint->bssid_hex()] = endpoint;
   endpoint_by_rpcid_[path] = endpoint;
+  LOG(INFO) << "Found endpoint. "
+            << "ssid: " << endpoint->ssid_string() << ", "
+            << "bssid: " << endpoint->bssid_string() << ", "
+            << "signal: " << endpoint->signal_strength() << ", "
+            << "security: " << endpoint->security_mode();
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
@@ -296,6 +298,8 @@ void WiFi::ConnectTo(WiFiService *service,
   CHECK(current_service_.get() != pending_service_.get());
 }
 
+// To avoid creating duplicate services, call FindServiceForEndpoint
+// before calling this method.
 WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
                                                  bool hidden_ssid) {
   WiFiServiceRefPtr service =
@@ -307,10 +311,7 @@ WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
                       endpoint.network_mode(),
                       endpoint.security_mode(),
                       hidden_ssid);
-  string service_id_private;
-  // TODO(quiche): Eliminate duplication with GetServiceForEndpoint.
-  service_id_private = endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
-  service_by_private_id_[service_id_private] = service;
+  services_.push_back(service);
   return service;
 }
 
@@ -398,7 +399,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
   }
 
   const WiFiEndpoint &endpoint(*endpoint_it->second);
-  WiFiServiceRefPtr service = GetServiceForEndpoint(endpoint);
+  WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
   if (!service.get()) {
       LOG(WARNING) << "WiFi " << link_name()
                    << " could not find Service for Endpoint "
@@ -496,6 +497,12 @@ WiFiServiceRefPtr WiFi::FindService(const vector<uint8_t> &ssid,
     }
   }
   return NULL;
+}
+
+WiFiServiceRefPtr WiFi::FindServiceForEndpoint(const WiFiEndpoint &endpoint) {
+  return FindService(endpoint.ssid(),
+                     endpoint.network_mode(),
+                     endpoint.security_mode());
 }
 
 ByteArrays WiFi::GetHiddenSSIDList() {
@@ -632,25 +639,18 @@ void WiFi::ScanDoneTask() {
   LOG(INFO) << __func__;
 
   scan_pending_ = false;
-
-  for (EndpointMap::iterator i(endpoint_by_bssid_.begin());
-       i != endpoint_by_bssid_.end(); ++i) {
+  for (EndpointMap::iterator i(endpoint_by_rpcid_.begin());
+       i != endpoint_by_rpcid_.end(); ++i) {
     const WiFiEndpoint &endpoint(*(i->second));
-    if (!GetServiceForEndpoint(endpoint).get()) {
-      LOG(INFO) << "found new endpoint. "
-                << "ssid: " << endpoint.ssid_string() << ", "
-                << "bssid: " << endpoint.bssid_string() << ", "
-                << "signal: " << endpoint.signal_strength() << ", "
-                << "security: " << endpoint.security_mode();
+    if (FindServiceForEndpoint(endpoint).get())
+      continue;
 
-      const bool hidden_ssid = false;
-      WiFiServiceRefPtr service =
-          CreateServiceForEndpoint(endpoint, hidden_ssid);
-      services_.push_back(service);
-      manager()->RegisterService(service);
-
-      LOG(INFO) << "new service " << service->GetRpcIdentifier();
-    }
+    const bool hidden_ssid = false;
+    WiFiServiceRefPtr service =
+        CreateServiceForEndpoint(endpoint, hidden_ssid);
+    manager()->RegisterService(service);
+    LOG(INFO) << "New service " << service->GetRpcIdentifier()
+              << " (" << service->friendly_name() << ")";
   }
 
   // TODO(quiche): Unregister removed services from manager.
@@ -671,37 +671,6 @@ void WiFi::ScanTask() {
   // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
   supplicant_interface_proxy_->Scan(scan_args);
   scan_pending_ = true;
-}
-
-WiFiServiceRefPtr WiFi::GetServiceForEndpoint(const WiFiEndpoint &endpoint) {
-  // TODO(quiche): We should probably be indexing on BSSID alone,
-  // rather than SSID + BSSID.
-  //
-  // The current arrangement allows us to pass tests in which an AP
-  // changes SSID, even though we don't update endpoint or service
-  // state when that happens. (This works because the difference in
-  // SSID means we don't find a match.)
-  //
-  // But with the current arrangment, we will likely fail if the AP
-  // changes its security requirements (unless it also changes its
-  // SSID). So the current scheme "overfits" the current tests.
-  //
-  // Furthermore, this causes the creation of a Service for every
-  // Endpoint, rather than grouping Endpoints with the same SSID into
-  // a single Service.
-  string service_id_private;
-  // TODO(quiche): Eliminate duplication with CreateServiceForEndpoint.
-  service_id_private = endpoint.ssid_hex() + "_" + endpoint.bssid_hex();
-  ServiceMap::iterator it = service_by_private_id_.find(service_id_private);
-  if (it == service_by_private_id_.end()) {
-    return NULL;
-  }
-
-  // TODO(quiche): Check that the service actually represents the
-  // endpoint, and warn if it does not. (This might happen if, e.g.,
-  // we failed to update the service, or service/endpoint
-  // association, when the endpoint was reconfigured.)
-  return it->second;
 }
 
 void WiFi::StateChanged(const string &new_state) {
@@ -844,7 +813,6 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
                               security_method,
                               hidden_ssid);
     services_.push_back(service);
-    // TODO(quiche): Add to |service_by_private_id_|?
     // TODO(quiche): Register |service| with Manager.
   }
 

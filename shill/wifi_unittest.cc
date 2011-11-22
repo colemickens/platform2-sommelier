@@ -186,13 +186,13 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return wifi_->current_service_;
   }
   const WiFi::EndpointMap &GetEndpointMap() {
-    return wifi_->endpoint_by_bssid_;
+    return wifi_->endpoint_by_rpcid_;
   }
   const WiFiServiceRefPtr &GetPendingService() {
     return wifi_->pending_service_;
   }
-  const WiFi::ServiceMap &GetServiceMap() {
-    return wifi_->service_by_private_id_;
+  const vector<WiFiServiceRefPtr> &GetServices() {
+    return wifi_->services_;
   }
   // note: the tests need the proxies referenced by WiFi (not the
   // proxies instantiated by WiFiMainTest), to ensure that WiFi
@@ -465,10 +465,20 @@ TEST_F(WiFiMainTest, ScanResultsWithUpdates) {
   ReportBSS(
       "bss1", "ssid1", "00:00:00:00:00:01", 3, kNetworkModeInfrastructure);
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 4, kNetworkModeAdHoc);
-  EXPECT_EQ(3, GetEndpointMap().size());
-  ASSERT_TRUE(ContainsKey(GetEndpointMap(), "000000000000"));
-  EXPECT_EQ(4, GetEndpointMap().find("000000000000")->second->
-            signal_strength());
+
+  const WiFi::EndpointMap &endpoints_by_rpcid = GetEndpointMap();
+  EXPECT_EQ(3, endpoints_by_rpcid.size());
+
+  WiFi::EndpointMap::const_iterator i;
+  WiFiEndpointRefPtr endpoint;
+  for (i = endpoints_by_rpcid.begin();
+       i != endpoints_by_rpcid.end();
+       ++i) {
+    if (i->second->bssid_string() == "00:00:00:00:00:00")
+      break;
+  }
+  ASSERT_TRUE(i != endpoints_by_rpcid.end());
+  EXPECT_EQ(4, i->second->signal_strength());
 }
 
 TEST_F(WiFiMainTest, ScanCompleted) {
@@ -481,7 +491,31 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   EXPECT_CALL(*manager(), RegisterService(_))
       .Times(3);
   ReportScanDone();
-  EXPECT_EQ(3, GetServiceMap().size());
+  EXPECT_EQ(3, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, EndpointGroupingTogether) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  EXPECT_EQ(1, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, EndpointGroupingDifferentSSID) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid1", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid2", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  EXPECT_EQ(2, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, EndpointGroupingDifferentMode) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeInfrastructure);
+  ReportScanDone();
+  EXPECT_EQ(2, GetServices().size());
 }
 
 TEST_F(WiFiMainTest, Connect) {
@@ -495,7 +529,7 @@ TEST_F(WiFiMainTest, Connect) {
   {
     InSequence s;
     DBus::Path fake_path("/fake/path");
-    WiFiService *service(GetServiceMap().begin()->second);
+    WiFiService *service(GetServices().begin()->get());
 
     EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
         .WillOnce(Return(fake_path));

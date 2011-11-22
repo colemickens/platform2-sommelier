@@ -123,7 +123,7 @@ const char *WiFiEndpoint::ParseSecurity(
 
   set<KeyManagement> wpa_key_management_methods;
   if (ContainsKey(properties, wpa_supplicant::kPropertyWPA)) {
-    // TODO(qucihe): check type before casting
+    // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
         properties.find(wpa_supplicant::kPropertyWPA)->second.
         operator map<string, ::DBus::Variant>());
