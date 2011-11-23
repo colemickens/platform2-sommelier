@@ -145,6 +145,8 @@ SHILL_OBJS = \
 	wpa_supplicant.o
 
 SHILL_BIN = shill
+# Broken out separately, because (unlike other SHILL_OBJS), it
+# shouldn't be linked into TEST_BIN.
 SHILL_MAIN_OBJ = shill_main.o
 
 TEST_BIN = shill_unittest
@@ -235,7 +237,7 @@ $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
 .cc.o:
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -c $< -o $@
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(SHILL_OBJS): $(DBUS_BINDINGS)
 
@@ -250,7 +252,12 @@ $(TEST_BIN): $(TEST_OBJS) $(SHILL_OBJS)
 clean:
 	rm -rf \
 		*.o \
+		*.d \
 		$(CLEAN_FILES) \
 		$(DBUS_BINDINGS) \
 		$(SHILL_BIN) \
 		$(TEST_BIN)
+
+-include $(SHILL_OBJS:.o=.d)
+-include $(SHILL_MAIN_OBJ:.o=.d)
+-include $(TEST_OBJS:.o=.d)
