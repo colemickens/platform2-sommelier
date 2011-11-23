@@ -97,7 +97,7 @@ TEST_F(DeviceEventQueueTest, AddDeviceRemoved) {
 
 TEST_F(DeviceEventQueueTest, AddDeviceAddedAndDeviceRemoved) {
   // A DeviceAdded event followed by a DeviceRemoved event of the same
-  // device path are both discared
+  // device path are both discarded
   queue_.Add(DeviceEvent(DeviceEvent::kDeviceAdded, "d1"));
   queue_.Add(DeviceEvent(DeviceEvent::kDeviceRemoved, "d1"));
   EXPECT_TRUE(VerifyDeviceEventQueue());
@@ -151,7 +151,7 @@ TEST_F(DeviceEventQueueTest, AddDiskRemoved) {
 
 TEST_F(DeviceEventQueueTest, AddDiskAddedAndDiskRemoved) {
   // A DiskAdded event followed by a DiskRemoved event
-  // of the same device path are both discared
+  // of the same device path are both discarded
   queue_.Add(DeviceEvent(DeviceEvent::kDiskAdded, "d1"));
   queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
   EXPECT_TRUE(VerifyDeviceEventQueue());
@@ -194,7 +194,7 @@ TEST_F(DeviceEventQueueTest, AddDiskAddedAfterRemovedAndDiskChanged) {
 
 TEST_F(DeviceEventQueueTest, AddDiskChangedAndDiskRemoved) {
   // A DiskChanged event followed by a DiskRemoved event
-  // of the same device path are both discared
+  // of the same device path are both discarded
   queue_.Add(DeviceEvent(DeviceEvent::kDiskChanged, "d1"));
   queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
   EXPECT_TRUE(VerifyDeviceEventQueue());
@@ -218,7 +218,7 @@ TEST_F(DeviceEventQueueTest, AddDiskRemovedAndDiskAdded) {
 
 TEST_F(DeviceEventQueueTest, AddDiskAddedAfterRemovedAndDiskRemoved) {
   // A DiskAddedAfterRemoved event followed by a DiskRemoved event of the
-  // same device path are both discared
+  // same device path are both discarded
   queue_.Add(DeviceEvent(DeviceEvent::kDiskAddedAfterRemoved, "d1"));
   queue_.Add(DeviceEvent(DeviceEvent::kDiskRemoved, "d1"));
   EXPECT_TRUE(VerifyDeviceEventQueue());

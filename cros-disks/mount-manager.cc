@@ -16,7 +16,6 @@
 
 #include "cros-disks/platform.h"
 
-using std::map;
 using std::pair;
 using std::set;
 using std::string;
@@ -24,10 +23,15 @@ using std::vector;
 
 namespace {
 
+// Permissions to set on the mount root directory (u+rwx,og+rx).
 const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+// Permissions to set on the mount directory (u+rwx,g+rwx).
 const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
+// Literal for unmount option: "force".
 const char kUnmountOptionForce[] = "force";
+// Maximum number of trials on creating a mount directory using
+// Platform::CreateOrReuseEmptyDirectoryWithFallback().
 const unsigned kMaxNumMountTrials = 10000;
 
 }  // namespace
@@ -99,9 +103,8 @@ MountErrorType MountManager::Mount(const string& source_path,
   bool mount_path_created;
   if (mount_path->empty()) {
     actual_mount_path = SuggestMountPath(source_path);
-    mount_path_created =
-        platform_->CreateOrReuseEmptyDirectoryWithFallback(
-            &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
+    mount_path_created = platform_->CreateOrReuseEmptyDirectoryWithFallback(
+        &actual_mount_path, kMaxNumMountTrials, GetReservedMountPaths());
   } else {
     actual_mount_path = *mount_path;
     mount_path_created = !IsMountPathReserved(actual_mount_path) &&
@@ -150,7 +153,7 @@ MountErrorType MountManager::Unmount(const string& path,
     return MOUNT_ERROR_INVALID_ARGUMENT;
   }
 
-  // Deteremine whether the path is a source path or a mount path.
+  // Determine whether the path is a source path or a mount path.
   string mount_path;
   if (!GetMountPathFromCache(path, &mount_path)) {  // is a source path?
     if (!IsMountPathInCache(path)) {  // is a mount path?

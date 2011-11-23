@@ -67,7 +67,7 @@ class Platform {
 
   // Makes |user_name| to perform mount operations, which changes the value of
   // mount_group_id_ and mount_user_id_. When |user_name| is a non-root user, a
-  // mount operation repsecting the value of mount_group_id_ and mount_user_id_
+  // mount operation respecting the value of mount_group_id_ and mount_user_id_
   // becomes non-privileged. Returns false if it fails to obtain the user and
   // group ID of |user_name|.
   bool SetMountUser(const std::string& user_name);

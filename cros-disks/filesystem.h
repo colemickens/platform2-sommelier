@@ -65,7 +65,7 @@ class Filesystem {
 
  private:
   // This variable is set to true if default user and group ID can be
-  // specified for mounting the fileystem.
+  // specified for mounting the filesystem.
   bool accepts_user_and_group_id_;
 
   // Extra mount options to specify when mounting the filesystem.

@@ -24,7 +24,7 @@ class Metrics {
   // Records the type of archive that cros-disks is trying to mount.
   void RecordArchiveType(const std::string& archive_type);
 
-  // Records the type of filessytem that cros-disks is trying to mount.
+  // Records the type of filesystem that cros-disks is trying to mount.
   void RecordFilesystemType(const std::string& filesystem_type);
 
   // Records the type of device media that cros-disks is trying to mount.

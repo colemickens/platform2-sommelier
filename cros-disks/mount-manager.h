@@ -161,10 +161,13 @@ class MountManager {
   bool IsPathImmediateChildOfParent(const std::string& path,
                                     const std::string& parent) const;
 
+  // Returns the root directory under which mount directories are created.
   const std::string& mount_root() const { return mount_root_; }
 
+  // Returns an object that provides platform service.
   Platform* platform() const { return platform_; }
 
+  // Returns an object that collects UMA metrics.
   Metrics* metrics() const { return metrics_; }
 
  private:

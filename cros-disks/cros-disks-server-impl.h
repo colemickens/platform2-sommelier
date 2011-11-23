@@ -58,8 +58,8 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   virtual void SignalFormattingFinished(const std::string& device_path,
       int status);
 
-  // A method for asynchronous formating device using specified file system.
-  // Assumes device path is vaild (should it be invaild singal
+  // A method for asynchronous formatting device using specified file system.
+  // Assumes device path is valid (should it be invalid singal
   // FormattingFinished(false) will be sent)
   // Return true if formatting is successfully INITIALIZED, rather than finished
   virtual bool FormatDevice(const std::string& device_path,

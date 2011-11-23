@@ -91,6 +91,8 @@ class MountManagerTest : public ::testing::Test {
   vector<string> options_;
 };
 
+// Verifies that MountManager::Initialize() returns false when it fails to
+// create the mount root directory.
 TEST_F(MountManagerTest, InitializeFailedInCreateDirectory) {
   EXPECT_CALL(platform_, CreateDirectory(kMountRootDirectory))
       .WillOnce(Return(false));
@@ -103,6 +105,8 @@ TEST_F(MountManagerTest, InitializeFailedInCreateDirectory) {
   EXPECT_FALSE(manager_.Initialize());
 }
 
+// Verifies that MountManager::Initialize() returns false when it fails to
+// set the ownership of the created mount root directory.
 TEST_F(MountManagerTest, InitializeFailedInSetOwnership) {
   EXPECT_CALL(platform_, CreateDirectory(kMountRootDirectory))
       .WillOnce(Return(true));
@@ -115,6 +119,8 @@ TEST_F(MountManagerTest, InitializeFailedInSetOwnership) {
   EXPECT_FALSE(manager_.Initialize());
 }
 
+// Verifies that MountManager::Initialize() returns false when it fails to
+// set the permissions of the created mount root directory.
 TEST_F(MountManagerTest, InitializeFailedInSetPermissions) {
   EXPECT_CALL(platform_, CreateDirectory(kMountRootDirectory))
       .WillOnce(Return(true));
@@ -127,6 +133,8 @@ TEST_F(MountManagerTest, InitializeFailedInSetPermissions) {
   EXPECT_FALSE(manager_.Initialize());
 }
 
+// Verifies that MountManager::Initialize() returns true when it creates
+// the mount root directory with the specified ownership and permissions.
 TEST_F(MountManagerTest, InitializeSucceeded) {
   EXPECT_CALL(platform_, CreateDirectory(kMountRootDirectory))
       .WillOnce(Return(true));
@@ -139,6 +147,8 @@ TEST_F(MountManagerTest, InitializeSucceeded) {
   EXPECT_TRUE(manager_.Initialize());
 }
 
+// Verifies that MountManager::Mount() returns an error when it is invoked
+// to mount an empty source path.
 TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -153,6 +163,8 @@ TEST_F(MountManagerTest, MountFailedWithEmptySourcePath) {
                            &mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns an error when it is invoked
+// with a NULL mount path.
 TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
   source_path_ = "source";
 
@@ -168,6 +180,8 @@ TEST_F(MountManagerTest, MountFailedWithNullMountPath) {
             manager_.Mount(source_path_, filesystem_type_, options_, NULL));
 }
 
+// Verifies that MountManager::Mount() returns an error when it fails to
+// create the specified mount directory.
 TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -188,6 +202,8 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectory) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns an error when it fails to
+// create a specified but already reserved mount directory.
 TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -214,6 +230,8 @@ TEST_F(MountManagerTest, MountFailedInCreateDirectoryDueToReservedMountPath) {
             manager_.GetMountErrorOfReservedMountPath(mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns an error when it fails to
+// create a mount directory after a number of trials.
 TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -234,6 +252,8 @@ TEST_F(MountManagerTest, MountFailedInCreateOrReuseEmptyDirectoryWithFallback) {
   EXPECT_FALSE(manager_.IsMountPathInCache(suggested_mount_path));
 }
 
+// Verifies that MountManager::Mount() returns an error when it fails to
+// set the ownership of the created mount directory.
 TEST_F(MountManagerTest, MountFailedInSetOwnership) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -258,6 +278,8 @@ TEST_F(MountManagerTest, MountFailedInSetOwnership) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns an error when it fails to
+// set the permissions of the created mount directory.
 TEST_F(MountManagerTest, MountFailedInSetPermissions) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -283,6 +305,8 @@ TEST_F(MountManagerTest, MountFailedInSetPermissions) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns no error when it successfully
+// mounts a source path to a specified mount path.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -313,6 +337,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() returns no error when it successfully
+// mounts a source path with no mount path specified.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -343,6 +369,8 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() handles the mounting of an already
+// mounted source path properly.
 TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -398,6 +426,8 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(suggested_mount_path));
 }
 
+// Verifies that MountManager::Mount() successfully reserves a path for a given
+// type of error. A specific mount path is given in this case.
 TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -432,6 +462,8 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() successfully reserves a path for a given
+// type of error. No specific mount path is given in this case.
 TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -466,6 +498,9 @@ TEST_F(MountManagerTest, MountSucceededWithEmptyMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() successfully reserves a path for a given
+// type of error and returns the same error when it tries to mount the same path
+// again.
 TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -509,6 +544,9 @@ TEST_F(MountManagerTest, MountSucceededWithAlreadyReservedMountPath) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() successfully reserves a path for a given
+// type of error and returns the same error when it tries to mount the same path
+// again.
 TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -540,6 +578,8 @@ TEST_F(MountManagerTest, MountFailedWithGivenMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Mount() fails to mount or reserve a path for
+// a type of error that is not enabled for reservation.
 TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
   source_path_ = "source";
   string suggested_mount_path = "target";
@@ -571,6 +611,8 @@ TEST_F(MountManagerTest, MountFailedWithEmptyMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Unmount() returns an error when it is invoked
+// to unmount an empty path.
 TEST_F(MountManagerTest, UnmountFailedWithEmptyPath) {
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectory(_)).Times(0);
   EXPECT_CALL(platform_, CreateOrReuseEmptyDirectoryWithFallback(_, _, _))
@@ -584,6 +626,8 @@ TEST_F(MountManagerTest, UnmountFailedWithEmptyPath) {
             manager_.Unmount(mount_path_, options_));
 }
 
+// Verifies that MountManager::Unmount() returns an error when it fails to
+// unmount a path that is not mounted.
 TEST_F(MountManagerTest, UnmountFailedWithPathNotMounted) {
   mount_path_ = "nonexistent-path";
 
@@ -599,6 +643,8 @@ TEST_F(MountManagerTest, UnmountFailedWithPathNotMounted) {
             manager_.Unmount(mount_path_, options_));
 }
 
+// Verifies that MountManager::Unmount() returns no error when it successfully
+// unmounts a source path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -630,6 +676,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Unmount() returns no error when it successfully
+// unmounts a mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -665,6 +713,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::Unmount() returns no error when it is invoked
+// to unmount the source path of a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -700,6 +750,8 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::Unmount() returns no error when it is invoked
+// to unmount a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -739,6 +791,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
   EXPECT_FALSE(manager_.IsMountPathReserved(mount_path_));
 }
 
+// Verifies that MountManager::AddMountPathToCache() works as expected.
 TEST_F(MountManagerTest, AddMountPathToCache) {
   string result;
   source_path_ = "source";
@@ -755,6 +808,7 @@ TEST_F(MountManagerTest, AddMountPathToCache) {
   EXPECT_TRUE(manager_.RemoveMountPathFromCache(mount_path_));
 }
 
+// Verifies that MountManager::GetMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, GetMountPathFromCache) {
   string result;
   source_path_ = "source";
@@ -768,6 +822,7 @@ TEST_F(MountManagerTest, GetMountPathFromCache) {
   EXPECT_FALSE(manager_.GetMountPathFromCache(source_path_, &result));
 }
 
+// Verifies that MountManager::IsMountPathInCache() works as expected.
 TEST_F(MountManagerTest, IsMountPathInCache) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -779,6 +834,7 @@ TEST_F(MountManagerTest, IsMountPathInCache) {
   EXPECT_FALSE(manager_.IsMountPathInCache(mount_path_));
 }
 
+// Verifies that MountManager::RemoveMountPathFromCache() works as expected.
 TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   source_path_ = "source";
   mount_path_ = "target";
@@ -789,6 +845,7 @@ TEST_F(MountManagerTest, RemoveMountPathFromCache) {
   EXPECT_FALSE(manager_.RemoveMountPathFromCache(mount_path_));
 }
 
+// Verifies that MountManager::GetReservedMountPaths() works as expected.
 TEST_F(MountManagerTest, GetReservedMountPaths) {
   set<string> reserved_paths;
   set<string> expected_paths;
@@ -819,6 +876,8 @@ TEST_F(MountManagerTest, GetReservedMountPaths) {
   EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
 }
 
+// Verifies that MountManager::ReserveMountPath() and
+// MountManager::UnreserveMountPath() work as expected.
 TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
   mount_path_ = "target";
 
@@ -853,6 +912,8 @@ TEST_F(MountManagerTest, ReserveAndUnreserveMountPath) {
             manager_.GetMountErrorOfReservedMountPath(mount_path_));
 }
 
+// Verifies that MountManager::ExtractUnmountOptions() extracts supported
+// unmount options and returns true.
 TEST_F(MountManagerTest, ExtractSupportedUnmountOptions) {
   int unmount_flags = 0;
   int expected_unmount_flags = MNT_FORCE;
@@ -861,6 +922,8 @@ TEST_F(MountManagerTest, ExtractSupportedUnmountOptions) {
   EXPECT_EQ(expected_unmount_flags, unmount_flags);
 }
 
+// Verifies that MountManager::ExtractUnmountOptions() returns false when
+// unsupported unmount options are given.
 TEST_F(MountManagerTest, ExtractUnsupportedUnmountOptions) {
   int unmount_flags = 0;
   options_.push_back("foo");
@@ -868,6 +931,8 @@ TEST_F(MountManagerTest, ExtractUnsupportedUnmountOptions) {
   EXPECT_EQ(0, unmount_flags);
 }
 
+// Verifies that MountManager::IsPathImmediateChildOfParent() correctly
+// determines if a path is an immediate child of another path.
 TEST_F(MountManagerTest, IsPathImmediateChildOfParent) {
   EXPECT_TRUE(manager_.IsPathImmediateChildOfParent(
       "/media/archive/test.zip", "/media/archive"));
