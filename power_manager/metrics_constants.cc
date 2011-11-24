@@ -42,7 +42,9 @@ const int kMetricBatteryTimeToEmptyMax = 1000;
 const int kMetricBatteryTimeToEmptyBuckets = 50;
 const time_t kMetricBatteryTimeToEmptyInterval = 30;  // seconds
 
-const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
+const char kMetricBatteryRemainingAtEndOfSessionName[] =
+    "Power.BatteryRemainingAtEndOfSession";  // %
+const int kMetricBatteryRemainingAtEndOfSessionMax = 101;
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms
@@ -50,4 +52,5 @@ const int kMetricPowerButtonDownTimeMin = 1;
 const int kMetricPowerButtonDownTimeMax = 8 * 1000;
 const int kMetricPowerButtonDownTimeBuckets = 50;
 
+const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
 }  // namespace power_manager

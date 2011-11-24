@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cmath>
 #include <gtest/gtest.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkx.h>
@@ -95,6 +96,22 @@ class DaemonTest : public Test {
         .WillOnce(Return(true))
         .RetiresOnSaturation();
   }
+  void ExpectEnumMetricWithPowerState(const std::string& name,
+                                      int sample,
+                                      int max) {
+    std::string name_with_power_state = name;
+    if (daemon_.plugged_state_ == kPowerDisconnected) {
+      name_with_power_state += "OnBattery";
+    } else if (daemon_.plugged_state_ == kPowerConnected) {
+      name_with_power_state += "OnAC";
+    } else {
+      return;
+    }
+
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name_with_power_state, sample, max))
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
+  }
 
   // Adds a metrics library mock expectation for the battery discharge
   // rate metric with the given |sample|.
@@ -119,6 +136,14 @@ class DaemonTest : public Test {
                  kMetricBatteryTimeToEmptyMin,
                  kMetricBatteryTimeToEmptyMax,
                  kMetricBatteryTimeToEmptyBuckets);
+  }
+
+  // Adds a metrics library mock expectation for the remaining battery at end of
+  // session metric with the given |sample|.
+  void ExpectBatteryRemainingAtEndOfSessionMetric(int sample) {
+    ExpectEnumMetricWithPowerState(kMetricBatteryRemainingAtEndOfSessionName,
+                                   sample,
+                                   kMetricBatteryRemainingAtEndOfSessionMax);
   }
 
   // Resets all fields of |info| to 0.
@@ -306,6 +331,34 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
   EXPECT_FALSE(daemon_.GenerateBatteryTimeToEmptyMetric(
       status_, 2 * kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
+  const double battery_percentages[] = {10.1, 10.7,
+                                        20.4, 21.6,
+                                        60.4, 61.6,
+                                        82.4, 82.5};
+  const int num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
+
+  for(int i = 0; i < num_percentages; i++) {
+    status_.battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status_.battery_percentage);
+
+    daemon_.plugged_state_ = kPowerConnected;
+    ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
+    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status_));
+
+    daemon_.plugged_state_ = kPowerDisconnected;
+    ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
+    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status_));
+
+    daemon_.plugged_state_ = kPowerUnknown;
+    ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
+    EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status_));
+  }
 }
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
