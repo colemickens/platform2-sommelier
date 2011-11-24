@@ -49,6 +49,21 @@ class WiFiServiceTest : public PropertyStoreTest {
 
  protected:
   static const char fake_mac[];
+  bool CheckConnectable(const std::string &security, const char *passphrase) {
+    Error error;
+    vector<uint8_t> ssid(1, 'a');
+    WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                                dispatcher(),
+                                                manager(),
+                                                wifi(),
+                                                ssid,
+                                                flimflam::kModeManaged,
+                                                security,
+                                                false);
+    if (passphrase)
+      service->SetPassphrase(passphrase, &error);
+    return service->connectable();
+  }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
  private:
@@ -432,6 +447,31 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier) {
   EXPECT_EQ(StringToLowerASCII(string(fake_mac)), address);
   EXPECT_EQ(flimflam::kModeManaged, mode);
   EXPECT_EQ(flimflam::kSecurityNone, security);
+}
+
+TEST_F(WiFiServiceTest, Connectable) {
+  // Open network should be connectable.
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL));
+
+  // Open network should remain connectable if we try to set a password on it.
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde"));
+
+  // WEP network with passphrase set should be connectable.
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde"));
+
+  // WEP network without passphrase set should NOT be connectable.
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL));
+
+  // A bad passphrase should not make a WEP network connectable.
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a"));
+
+  // Similar to WEP, for WPA.
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh"));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a"));
+
+  // Unconfigured 802.1x should NOT be connectable.
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL));
 }
 
 }  // namespace shill

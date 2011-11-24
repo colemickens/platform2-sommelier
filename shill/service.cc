@@ -414,6 +414,11 @@ const ProfileRefPtr &Service::profile() const { return profile_; }
 
 void Service::set_profile(const ProfileRefPtr &p) { profile_ = p; }
 
+void Service::set_connectable(bool connectable) {
+  connectable_ = connectable;
+  adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
+}
+
 string Service::CalculateState(Error */*error*/) {
   switch (state_) {
     case kStateIdle:
@@ -493,6 +498,7 @@ void Service::LoadEapCredentials(StoreInterface *storage, const string &id) {
   storage->GetString(id, kStorageEapPIN, &eap_.pin);
   storage->GetCryptedString(id, kStorageEapPassword, &eap_.password);
   storage->GetString(id, kStorageEapKeyManagement, &eap_.key_management);
+  // TODO(quiche): Update Connectable property. (crosbug.com/23466)
 }
 
 void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {

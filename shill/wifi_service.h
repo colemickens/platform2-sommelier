@@ -80,6 +80,7 @@ class WiFiService : public Service {
   void ConnectTask();
 
   std::string GetDeviceRpcId(Error *error);
+  void UpdateConnectable();
 
   static void ValidateWEPPassphrase(const std::string &passphrase,
                                     Error *error);

@@ -151,7 +151,7 @@ class Service : public base::RefCounted<Service> {
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
   bool connectable() const { return connectable_; }
-  void set_connectable(bool connectable) { connectable_ = connectable; }
+  void set_connectable(bool connectable);
 
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.

@@ -100,6 +100,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
 
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetGenericStorageIdentifier();
+  UpdateConnectable();
 }
 
 WiFiService::~WiFiService() {
@@ -151,6 +152,8 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
 
   if (error->IsSuccess())
     passphrase_ = passphrase;
+
+  UpdateConnectable();
 }
 
 bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
@@ -192,6 +195,9 @@ bool WiFiService::Load(StoreInterface *storage) {
 
   // Load properties specific to WiFi services.
   storage->GetBool(id, kStorageHiddenSSID, &hidden_ssid_);
+
+  // TODO(quiche): Load Passphrase property, ensure that UpdateConnectable
+  // is called (maybe via SetPassphrase). (crosbug.com/23467)
   return true;
 }
 
@@ -204,6 +210,8 @@ bool WiFiService::Save(StoreInterface *storage) {
   // Save properties specific to WiFi services.
   const string id = GetStorageIdentifier();
   storage->SetBool(id, kStorageHiddenSSID, &hidden_ssid_);
+
+  // TODO(quiche): Save Passphrase property. (crosbug.com/23467)
   return true;
 }
 
@@ -279,6 +287,21 @@ void WiFiService::ConnectTask() {
 
 string WiFiService::GetDeviceRpcId(Error */*error*/) {
   return wifi_->GetRpcIdentifier();
+}
+
+void WiFiService::UpdateConnectable() {
+  if (security_ == flimflam::kSecurityNone) {
+    DCHECK(passphrase_.empty());
+    set_connectable(true);
+  } else if (security_ == flimflam::kSecurityWep ||
+      security_ == flimflam::kSecurityWpa ||
+      security_ == flimflam::kSecurityPsk ||
+      security_ == flimflam::kSecurityRsn) {
+    set_connectable(!passphrase_.empty());
+  } else {
+    // TODO(quiche): Handle connectability for 802.1x. (crosbug.com/23466)
+    set_connectable(false);
+  }
 }
 
 // static
