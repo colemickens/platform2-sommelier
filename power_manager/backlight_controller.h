@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_BACKLIGHT_CONTROLLER_H_
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "base/basictypes.h"
 #include "power_manager/signal_callback.h"
 
@@ -65,6 +67,8 @@ class BacklightController {
 
   PowerState state() const { return state_; }
 
+  uint32 als_adjustment_count() const { return als_adjustment_count_; }
+
   // Initialize the object.
   bool Init();
 
@@ -96,6 +100,7 @@ class BacklightController {
   bool SetPowerState(PowerState state);
 
   // Mark the computer as plugged or unplugged, and adjust the brightness
+
   // appropriately.  Returns true if the brightness was changed and false
   // otherwise.
   bool OnPlugEvent(bool is_plugged);
@@ -108,6 +113,9 @@ class BacklightController {
   bool IsBacklightActiveOff();
 
  private:
+  friend class DaemonTest;
+  FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
+
   // Clamp |value| to fit between 0 and 100.
   double Clamp(double value);
 
@@ -170,6 +178,9 @@ class BacklightController {
   // Also apply temporal hysteresis to light sensor samples.
   AlsHysteresisState als_temporal_state_;
   int als_temporal_count_;
+
+  // Count of the number of adjustments that the ALS has caused
+  uint32 als_adjustment_count_;
 
   // User adjustable brightness offset when AC plugged.
   double plugged_brightness_offset_;

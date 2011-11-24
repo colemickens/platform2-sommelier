@@ -71,6 +71,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       als_brightness_level_(0),
       als_hysteresis_level_(0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
+      als_adjustment_count_(0),
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
@@ -276,6 +277,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   // Force a backlight refresh immediately after returning from dim or idle.
   if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
     als_temporal_state_ = ALS_HYST_IDLE;
+    als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
     WriteBrightness(false);
     return;
@@ -302,6 +304,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   }
   if (als_temporal_count_ >= kAlsHystSamples) {
     als_temporal_count_ = 0;
+    als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
     WriteBrightness(false);  // ALS adjustment should not change brightness
                              // offset.

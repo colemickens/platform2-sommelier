@@ -101,6 +101,7 @@ class Daemon : public XIdleObserver {
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
+  FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
@@ -222,6 +223,12 @@ class Daemon : public XIdleObserver {
   // Generates a remaining battery charge at start of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryRemainingAtStartOfSessionMetric(const PowerStatus& info);
+
+  // Generates a number of tiumes the ALS adjusted the backlight during a
+  // session UMA metric sample. Returns true if a sample was sent to UMA, false
+  // otherwise.
+  bool GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+    const BacklightController& backlight);
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See

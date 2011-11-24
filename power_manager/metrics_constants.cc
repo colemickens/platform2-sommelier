@@ -48,6 +48,12 @@ const int kMetricBatteryRemainingAtEndOfSessionMax = 101;
 const char kMetricBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";  // %
 const int kMetricBatteryRemainingAtStartOfSessionMax = 101;
+const char kMetricNumberOfAlsAdjustmentsPerSessionName[] =
+    "Power.NumberOfAlsAdjustmentsPerSession";  // %
+
+const int kMetricNumberOfAlsAdjustmentsPerSessionMin = 0;
+const int kMetricNumberOfAlsAdjustmentsPerSessionMax = 10000;
+const int kMetricNumberOfAlsAdjustmentsPerSessionBuckets = 50;
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms

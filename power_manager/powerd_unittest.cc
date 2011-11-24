@@ -160,6 +160,16 @@ class DaemonTest : public Test {
     memset(&status, 0, sizeof(PowerStatus));
   }
 
+  // Adds a metrics library mock expectation for the number of ALS adjustments
+  // per session metric with the given |sample|.
+  void ExpectNumberOfAlsAdjustmentsPerSessionMetric(int sample) {
+    ExpectMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
+                 sample,
+                 kMetricNumberOfAlsAdjustmentsPerSessionMin,
+                 kMetricNumberOfAlsAdjustmentsPerSessionMax,
+                 kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+  }
+
   StrictMock<MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockAudioDetector> audio_detector_;
@@ -316,6 +326,20 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
       status_, 2 * kMetricBatteryTimeToEmptyInterval));
   EXPECT_EQ(2 * kMetricBatteryTimeToEmptyInterval,
             daemon_.battery_time_to_empty_metric_last_);
+}
+
+TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
+  static const uint adjustment_counts[] = {0, 100, 500, 1000};
+  size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
+
+  for(size_t i = 0; i < num_counts; i++) {
+    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
+    ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
+    EXPECT_TRUE(
+        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+            backlight_ctl_));
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
+  }
 }
 
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {

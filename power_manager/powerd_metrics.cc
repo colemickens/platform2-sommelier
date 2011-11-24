@@ -161,6 +161,15 @@ bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
       kMetricBatteryRemainingAtStartOfSessionMax);
 }
 
+bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+    const BacklightController& backlight) {
+  return SendMetric(kMetricNumberOfAlsAdjustmentsPerSessionName,
+                    backlight.als_adjustment_count(),
+                    kMetricNumberOfAlsAdjustmentsPerSessionMin,
+                    kMetricNumberOfAlsAdjustmentsPerSessionMax,
+                    kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+}
+
 bool Daemon::SendMetric(const std::string& name, int sample,
                         int min, int max, int nbuckets) {
   DLOG(INFO) << "Sending metric: " << name << " " << sample << " "
