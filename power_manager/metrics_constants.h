@@ -40,6 +40,8 @@ extern const int kMetricBatteryTimeToEmptyBuckets;
 extern const time_t kMetricBatteryTimeToEmptyInterval;
 extern const char kMetricBatteryRemainingAtEndOfSessionName[];
 extern const int kMetricBatteryRemainingAtEndOfSessionMax;
+extern const char kMetricBatteryRemainingAtStartOfSessionName[];
+extern const int kMetricBatteryRemainingAtStartOfSessionMax;
 extern const char kMetricBrightnessAdjust[];
 extern const char kMetricPowerButtonDownTimeName[];
 extern const int kMetricPowerButtonDownTimeMin;

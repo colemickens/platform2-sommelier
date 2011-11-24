@@ -45,6 +45,9 @@ const time_t kMetricBatteryTimeToEmptyInterval = 30;  // seconds
 const char kMetricBatteryRemainingAtEndOfSessionName[] =
     "Power.BatteryRemainingAtEndOfSession";  // %
 const int kMetricBatteryRemainingAtEndOfSessionMax = 101;
+const char kMetricBatteryRemainingAtStartOfSessionName[] =
+    "Power.BatteryRemainingAtStartOfSession";  // %
+const int kMetricBatteryRemainingAtStartOfSessionMax = 101;
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms

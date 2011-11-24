@@ -152,6 +152,15 @@ bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
                                       kMetricBatteryRemainingAtEndOfSessionMax);
 }
 
+bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
+    const PowerStatus& info) {
+  int charge = static_cast<int>(round(info.battery_percentage));
+  return SendEnumMetricWithPowerState(
+      kMetricBatteryRemainingAtStartOfSessionName,
+      charge,
+      kMetricBatteryRemainingAtStartOfSessionMax);
+}
+
 bool Daemon::SendMetric(const std::string& name, int sample,
                         int min, int max, int nbuckets) {
   DLOG(INFO) << "Sending metric: " << name << " " << sample << " "

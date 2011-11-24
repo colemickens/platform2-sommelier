@@ -94,6 +94,7 @@ class Daemon : public XIdleObserver {
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric);
+  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected);
@@ -217,6 +218,10 @@ class Daemon : public XIdleObserver {
   // Generates a remaining battery charge at end of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryRemainingAtEndOfSessionMetric(const PowerStatus& info);
+
+  // Generates a remaining battery charge at start of session UMA metric
+  // sample. Returns true if a sample was sent to UMA, false otherwise.
+  bool GenerateBatteryRemainingAtStartOfSessionMetric(const PowerStatus& info);
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See

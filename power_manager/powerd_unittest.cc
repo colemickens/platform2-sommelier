@@ -146,6 +146,14 @@ class DaemonTest : public Test {
                                    kMetricBatteryRemainingAtEndOfSessionMax);
   }
 
+  // Adds a metrics library mock expectation for the remaining battery at start
+  // of session metric with the given |sample|.
+  void ExpectBatteryRemainingAtStartOfSessionMetric(int sample) {
+    ExpectEnumMetricWithPowerState(kMetricBatteryRemainingAtStartOfSessionName,
+                                   sample,
+                                   kMetricBatteryRemainingAtStartOfSessionMax);
+  }
+
   // Resets all fields of |info| to 0.
   void ResetPowerStatus(PowerStatus& status) {
     memset(&status, 0, sizeof(PowerStatus));
@@ -357,6 +365,34 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
     daemon_.plugged_state_ = kPowerUnknown;
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status_));
+  }
+}
+
+TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
+  const double battery_percentages[] = {10.1, 10.7,
+                                        20.4, 21.6,
+                                        60.4, 61.6,
+                                        82.4, 82.5};
+  const int num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
+
+  for(int i = 0; i < num_percentages; i++) {
+    status_.battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status_.battery_percentage);
+
+    daemon_.plugged_state_ = kPowerConnected;
+    ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
+    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
+        status_));
+
+    daemon_.plugged_state_ = kPowerDisconnected;
+    ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
+    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
+        status_));
+
+    daemon_.plugged_state_ = kPowerUnknown;
+    ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
+    EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
         status_));
   }
 }

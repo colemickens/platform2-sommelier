@@ -815,6 +815,9 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
   }
 
   if (strcmp(state, "started") == 0) {
+    LOG_IF(ERROR,
+           (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
+           << "Start Started: Unable to generate battery remaining metric!";
     current_user_ = user;
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
