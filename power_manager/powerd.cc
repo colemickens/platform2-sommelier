@@ -562,10 +562,12 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerButtonDown)) {
     LOG(INFO) << "Button Down event";
+    daemon->OnPowerButtonDownMetric(base::Time::Now());
     daemon->power_button_handler_->HandleButtonDown();
   } else if (dbus_message_is_signal(message, kPowerManagerInterface,
                                     kPowerButtonUp)) {
     LOG(INFO) << "Button Up event";
+    daemon->OnPowerButtonUpMetric(base::Time::Now());
     daemon->power_button_handler_->HandleButtonUp();
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kDecreaseScreenBrightness)) {
@@ -826,6 +828,44 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     LOG(WARNING) << "Got unexpected state in session state change signal: "
                  << state;
   }
+}
+
+bool Daemon::OnPowerButtonDownMetric(const base::Time& now) {
+  bool ret = true;
+  if (!last_power_button_down_timestamp_.is_null()) {
+    LOG(WARNING) << "More than one button down event without "
+                 << "button up events";
+    ret = false;
+  }
+
+  last_power_button_down_timestamp_ = now;
+  return ret;
+}
+
+bool Daemon::OnPowerButtonUpMetric(const base::Time& now) {
+  bool ret = true;
+  if (last_power_button_down_timestamp_.is_null()) {
+    LOG(WARNING) << "Power button up event without timestamp for "
+                 << "last power button down event";
+    ret = false;
+  } else if (last_power_button_down_timestamp_ > now) {
+    LOG(WARNING) << "Timing messed up that power button down is "
+                 << "earlier than power button up";
+    ret = false;
+  } else {
+    base::TimeDelta delta = now - last_power_button_down_timestamp_;
+    if (!SendMetric(kMetricPowerButtonDownTimeName,
+                    delta.InMilliseconds(),
+                    kMetricPowerButtonDownTimeMin,
+                    kMetricPowerButtonDownTimeMax,
+                    kMetricPowerButtonDownTimeBuckets)) {
+      LOG(WARNING) << "Could not send kMetricPowerButtonDownTime";
+      ret = false;
+    }
+  }
+  // Always clear the timestmp of the last button down event.
+  last_power_button_down_timestamp_ = base::Time();
+  return ret;
 }
 
 void Daemon::Shutdown() {

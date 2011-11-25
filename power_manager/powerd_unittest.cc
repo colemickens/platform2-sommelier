@@ -42,6 +42,7 @@ static const int64 kPluggedSuspend = 3 * kBigInterval;
 static const int64 kUnpluggedDim = kPluggedDim;
 static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
+static const int64 kPowerButtonInterval = 20;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -362,6 +363,27 @@ TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   ExpectEnumMetric("Power.BacklightLevelOnAC",
                    kDefaultBrightness, kMaxBrightness);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+}
+
+TEST_F(DaemonTest, PowerButtonDownMetric) {
+    EXPECT_FALSE(daemon_.OnPowerButtonUpMetric(base::Time::Now()));
+    EXPECT_TRUE(daemon_.OnPowerButtonDownMetric(base::Time::Now()));
+
+    const base::Time before_down_time = base::Time::Now();
+    const base::Time down_time = before_down_time +
+        base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
+    const base::Time up_time = down_time +
+        base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
+    EXPECT_FALSE(daemon_.OnPowerButtonDownMetric(down_time));
+    EXPECT_FALSE(daemon_.OnPowerButtonUpMetric(before_down_time));
+
+    EXPECT_TRUE(daemon_.OnPowerButtonDownMetric(down_time));
+    ExpectMetric(kMetricPowerButtonDownTimeName,
+                 (up_time - down_time).InMilliseconds(),
+                 kMetricPowerButtonDownTimeMin,
+                 kMetricPowerButtonDownTimeMax,
+                 kMetricPowerButtonDownTimeBuckets);
+    EXPECT_TRUE(daemon_.OnPowerButtonUpMetric(up_time));
 }
 
 }  // namespace power_manager

@@ -39,6 +39,10 @@ extern const int kMetricBatteryTimeToEmptyMax;
 extern const int kMetricBatteryTimeToEmptyBuckets;
 extern const time_t kMetricBatteryTimeToEmptyInterval;
 extern const char kMetricBrightnessAdjust[];
+extern const char kMetricPowerButtonDownTimeName[];
+extern const int kMetricPowerButtonDownTimeMin;
+extern const int kMetricPowerButtonDownTimeMax;
+extern const int kMetricPowerButtonDownTimeBuckets;
 
 }  // namespace power_manager
 

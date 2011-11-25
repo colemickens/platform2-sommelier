@@ -88,6 +88,7 @@ class Daemon : public XIdleObserver {
 
  private:
   friend class DaemonTest;
+  FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, GenerateBacklightLevelMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricInterval);
@@ -165,6 +166,9 @@ class Daemon : public XIdleObserver {
   // Invoked by RetrieveSessionState() and also in response to
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
+
+  bool OnPowerButtonDownMetric(const base::Time& now);
+  bool OnPowerButtonUpMetric(const base::Time& now);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -294,6 +298,9 @@ class Daemon : public XIdleObserver {
   // Timestamp the last generated battery's remaining time to empty
   // metric.
   time_t battery_time_to_empty_metric_last_;
+
+  // Timestamp of the last time power button is down.
+  base::Time last_power_button_down_timestamp_;
 
   // Timestamp of the last idle event.
   base::TimeTicks last_idle_event_timestamp_;
