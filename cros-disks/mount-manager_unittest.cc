@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Unit tests for cros_disks::MountManager. See mount-manager.h for details
+// on MountManager.
+
 #include "cros-disks/mount-manager.h"
 
 #include <sys/mount.h>
@@ -28,12 +31,6 @@ namespace {
 
 const char kMountRootDirectory[] = "/test";
 
-// Returns true if |expected| and |actual| have identical elements.
-bool EqualStringSets(const set<string>& expected, const set<string>& actual) {
-  return expected.size() == actual.size() &&
-         std::equal(expected.begin(), expected.end(), actual.begin());
-}
-
 }  // namespace
 
 namespace cros_disks {
@@ -41,8 +38,7 @@ namespace cros_disks {
 // A mock platform class for testing the mount manager base class.
 class MockPlatform : public Platform {
  public:
-  MockPlatform() {
-  }
+  MockPlatform() {}
 
   MOCK_CONST_METHOD1(CreateDirectory, bool(const string& path));
   MOCK_CONST_METHOD1(CreateOrReuseEmptyDirectory, bool(const string& path));
@@ -58,7 +54,7 @@ class MockPlatform : public Platform {
 // A mock mount manager class for testing the mount manager base class.
 class MountManagerUnderTest : public MountManager {
  public:
-  explicit MountManagerUnderTest(Platform* platform, Metrics* metrics)
+  MountManagerUnderTest(Platform* platform, Metrics* metrics)
       : MountManager(kMountRootDirectory, platform, metrics) {
   }
 
@@ -77,9 +73,7 @@ class MountManagerUnderTest : public MountManager {
 
 class MountManagerTest : public ::testing::Test {
  public:
-  MountManagerTest()
-      : manager_(&platform_, &metrics_) {
-  }
+  MountManagerTest() : manager_(&platform_, &metrics_) {}
 
  protected:
   Metrics metrics_;
@@ -853,27 +847,27 @@ TEST_F(MountManagerTest, GetReservedMountPaths) {
   string path2 = "path2";
 
   reserved_paths = manager_.GetReservedMountPaths();
-  EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
+  EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.ReserveMountPath(path1, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   reserved_paths = manager_.GetReservedMountPaths();
   expected_paths.insert(path1);
-  EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
+  EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.ReserveMountPath(path2, MOUNT_ERROR_UNKNOWN_FILESYSTEM);
   reserved_paths = manager_.GetReservedMountPaths();
   expected_paths.insert(path2);
-  EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
+  EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.UnreserveMountPath(path1);
   reserved_paths = manager_.GetReservedMountPaths();
   expected_paths.erase(path1);
-  EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
+  EXPECT_TRUE(expected_paths == reserved_paths);
 
   manager_.UnreserveMountPath(path2);
   reserved_paths = manager_.GetReservedMountPaths();
   expected_paths.erase(path2);
-  EXPECT_TRUE(EqualStringSets(expected_paths, reserved_paths));
+  EXPECT_TRUE(expected_paths == reserved_paths);
 }
 
 // Verifies that MountManager::ReserveMountPath() and

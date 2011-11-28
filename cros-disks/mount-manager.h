@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Defines cros-disks::MountManager, which is a base class for implementing
+// the filesystem mounting service used by CrosDisksServer. It is further
+// subclassed to provide the mounting service for particular types of
+// filesystem.
+
 #ifndef CROS_DISKS_MOUNT_MANAGER_H_
 #define CROS_DISKS_MOUNT_MANAGER_H_
 
@@ -26,11 +31,25 @@ class Platform;
 // supporting certain kinds of filesystem.
 class MountManager {
  public:
+  // Constructor that takes a mount root directory, an object for providing
+  // platform service, and an object for collecting UMA metrics. The mount
+  // root directory |mount_root| must be a non-empty path string, but it is
+  // OK if the directory does not exist. Both |platform| and |metrics| must
+  // be a valid object. An instance of this class does not take ownership
+  // of the |platform| and |metrics| object, and thus expects these objects
+  // to exist until its destruction. No actual operation is performed at
+  // construction. Initialization is performed when Initializes() is called.
   MountManager(const std::string& mount_root, Platform* platform,
                Metrics* metrics);
+
+  // Destructor that performs no specific operations and does not unmount
+  // any mounted or reserved mount paths. A derived class should override
+  // the destructor to perform appropriate cleanup, such as unmounting
+  // mounted filesystems.
   virtual ~MountManager();
 
   // Initializes the mount manager. Returns true on success.
+  // It must be called only once before other methods are called.
   // This base class provides a default implementation that creates the
   // mount root directory. A derived class can override this method to
   // perform any necessary initialization.
@@ -39,13 +58,22 @@ class MountManager {
   // Starts a session for |user|. Returns true on success.
   // This base class provides a default implementation that does nothing.
   // A derived class can override this method to perform any necessary
-  // operations when a session starts.
+  // operations when a session starts. This method is called in response
+  // to a SessionStateChanged event from the Chromium OS session manager.
+  // The implementation of this method needs to support multiple concurrent
+  // users but can assume that it is only called once per user. Only after
+  // a session is stopped by StopSession(), StartSession() may be called
+  // again for the same user.
   virtual bool StartSession(const std::string& user);
 
   // Stops a session for |user|. Returns true on success.
   // This base class provides a default implementation that does nothing.
   // A derived class can override this method to perform any necessary
-  // operations when a session stops.
+  // operations when a session stops. This method is called in response
+  // to a SessionStateChanged event from the Chromium OS session manager.
+  // The implementation of this method needs to support multiple concurrent
+  // users but can assume that it is always called once after a corresponding
+  // StartSession() is called for a user.
   virtual bool StopSession(const std::string& user);
 
   // Implemented by a derived class to return true if it supports mounting

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Implements cros-disks::MountManager. See mount-manager.h for details.
+
 #include "cros-disks/mount-manager.h"
 
 #include <sys/mount.h>
@@ -32,7 +34,9 @@ const mode_t kMountDirectoryPermissions = S_IRWXU | S_IRWXG;
 const char kUnmountOptionForce[] = "force";
 // Maximum number of trials on creating a mount directory using
 // Platform::CreateOrReuseEmptyDirectoryWithFallback().
-const unsigned kMaxNumMountTrials = 10000;
+// A value of 100 seems reasonable and enough to handle directory name
+// collisions under common scenarios.
+const unsigned kMaxNumMountTrials = 100;
 
 }  // namespace
 
@@ -100,6 +104,10 @@ MountErrorType MountManager::Mount(const string& source_path,
     }
   }
 
+  // Create a directory and set up its ownership/permissions for mounting
+  // the source path. If an error occurs, ShouldReserveMountPathOnError()
+  // is not called to reserve the mount path as a reserved mount path still
+  // requires a proper mount directory.
   bool mount_path_created;
   if (mount_path->empty()) {
     actual_mount_path = SuggestMountPath(source_path);
@@ -126,6 +134,9 @@ MountErrorType MountManager::Mount(const string& source_path,
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
+  // Perform the underlying mount operation. If an error occurs,
+  // ShouldReserveMountPathOnError() is called to check if the mount path
+  // should be reserved.
   MountErrorType error_type =
       DoMount(source_path, filesystem_type, options, actual_mount_path);
   if (error_type == MOUNT_ERROR_NONE) {
@@ -200,9 +211,7 @@ bool MountManager::UnmountAll() {
 
 bool MountManager::AddMountPathToCache(const string& source_path,
                                        const string& mount_path) {
-  pair<MountPathMap::iterator, bool> result =
-      mount_paths_.insert(std::make_pair(source_path, mount_path));
-  return result.second;
+  return mount_paths_.insert(std::make_pair(source_path, mount_path)).second;
 }
 
 bool MountManager::GetMountPathFromCache(const string& source_path,
