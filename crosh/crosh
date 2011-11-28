@@ -116,6 +116,9 @@ HELP_ADVANCED='
 
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
+
+ syslog <message>
+  Logs a message to syslog.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
@@ -678,6 +681,10 @@ cmd_autest() {
 
 cmd_tpcontrol() {
   /opt/google/touchpad/tpcontrol "$@"
+}
+
+cmd_syslog() {
+  logger -t crosh -- "$*"
 }
 
 substr() {
