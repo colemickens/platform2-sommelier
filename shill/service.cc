@@ -192,6 +192,13 @@ void Service::SetState(ConnectState state) {
   }
   manager_->UpdateService(this);
   Error error;
+  if (state == kStateConnected) {
+    // TODO(quiche): After we have portal detection in place, CalculateState
+    // should map kStateConnected to kStateReady. At that point, we should
+    // remove this. crosbug.com/23318.
+    adaptor_->EmitStringChanged(
+        flimflam::kStateProperty, flimflam::kStateReady);
+  }
   adaptor_->EmitStringChanged(flimflam::kStateProperty, CalculateState(&error));
 }
 
