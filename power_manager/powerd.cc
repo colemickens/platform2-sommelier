@@ -840,13 +840,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     current_user_.clear();
     DLOG(INFO) << "Session stopping";
   } else if (strcmp(state, "stopped") == 0) {
-    LOG_IF(ERROR,
-           (!GenerateBatteryRemainingAtEndOfSessionMetric(power_status_)))
-        << "Session Stopped : Unable to generate battery remaining metric!";
-    LOG_IF(ERROR,
-           (!GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-               *backlight_controller_)))
-        << "Session Stopped: Unable to generate ALS adjustments per session!";
+    GenerateEndOfSessionMetrics(power_status_, *backlight_controller_);
     current_user_.clear();
     DLOG(INFO) << "Session stopped";
   } else {

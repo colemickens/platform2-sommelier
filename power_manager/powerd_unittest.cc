@@ -366,6 +366,18 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected) {
   EXPECT_EQ(0, daemon_.battery_time_to_empty_metric_last_);
 }
 
+TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
+  status_.battery_percentage = 10.1;
+  int expected_percentage = round(status_.battery_percentage);
+  ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
+
+  backlight_ctl_.als_adjustment_count_ = 10;
+  ExpectNumberOfAlsAdjustmentsPerSessionMetric(
+      backlight_ctl_.als_adjustment_count_);
+
+  daemon_.GenerateEndOfSessionMetrics(status_, backlight_ctl_);
+}
+
 TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
   const double battery_percentages[] = {10.1, 10.7,
                                         20.4, 21.6,

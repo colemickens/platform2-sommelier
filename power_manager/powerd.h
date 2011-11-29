@@ -96,8 +96,9 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
-  FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
+  FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
+  FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
@@ -203,6 +204,12 @@ class Daemon : public XIdleObserver,
   // otherwise.
   bool GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
                                         time_t now);
+
+
+  // Calls all of the metric generation functions that need to be called at the
+  // end of a session.
+  void GenerateEndOfSessionMetrics(const PowerStatus& info,
+                                   const BacklightController& backlight);
 
   // Generates a remaining battery charge at end of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.

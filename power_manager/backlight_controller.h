@@ -134,6 +134,7 @@ class BacklightController {
 
  private:
   friend class DaemonTest;
+  FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
 
   // Clamp |value| to fit between 0 and 100.

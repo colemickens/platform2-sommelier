@@ -144,6 +144,17 @@ bool Daemon::GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
   return true;
 }
 
+void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
+                                         const BacklightController& backlight) {
+  LOG_IF(ERROR,
+         (!GenerateBatteryRemainingAtEndOfSessionMetric(info)))
+      << "Session Stopped : Unable to generate battery remaining metric!";
+  LOG_IF(ERROR,
+         (!GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+             backlight)))
+      << "Session Stopped: Unable to generate ALS adjustments per session!";
+}
+
 bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
     const PowerStatus& info) {
   int charge = static_cast<int>(round(info.battery_percentage));
