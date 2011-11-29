@@ -7,21 +7,21 @@
 #include <stdio.h>
 
 #include <string>
+#include <vector>
 
 #include <base/file_path.h>
 #include <base/logging.h>
 
 #include "shill/dhcp_provider.h"
+#include "shill/error.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 #include "shill/shill_config.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
-
-// Daemon: Main for connection manager.  Starts main process and holds event
-// loop.
 
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
@@ -39,16 +39,9 @@ void Daemon::AddDeviceToBlackList(const string &device_name) {
   manager_.AddDeviceToBlackList(device_name);
 }
 
-void Daemon::Start() {
-  glib_.TypeInit();
-  ProxyFactory::GetInstance()->Init();
-  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
-  DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
-  manager_.Start();
-}
-
-void Daemon::Stop() {
-  manager_.Stop();
+void Daemon::SetStartupProfiles(const vector<string> &profile_name_list) {
+  Error error;
+  manager_.set_startup_profiles(profile_name_list);
 }
 
 void Daemon::Run() {
@@ -63,5 +56,16 @@ void Daemon::Quit() {
   dispatcher_.PostTask(new MessageLoop::QuitTask);
 }
 
+void Daemon::Start() {
+  glib_.TypeInit();
+  ProxyFactory::GetInstance()->Init();
+  RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
+  DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
+  manager_.Start();
+}
+
+void Daemon::Stop() {
+  manager_.Stop();
+}
 
 }  // namespace shill

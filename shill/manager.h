@@ -75,6 +75,9 @@ class Manager {
   void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
+  // Set up the profile list starting with a default profile along with
+  // an (optional) list of startup profiles.
+  void InitializeProfiles();
   // Create a profile.  This does not affect the profile stack.
   void CreateProfile(const std::string &name, Error *error);
   // Pushes existing profile with name |name| onto stack of managed profiles.
@@ -92,6 +95,9 @@ class Manager {
     return devices_.begin();
   }
   std::vector<DeviceRefPtr>::iterator devices_end() { return devices_.end(); }
+  void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
+    startup_profiles_ = startup_profiles;
+  }
 
  private:
   friend class ManagerAdaptorInterface;
@@ -140,6 +146,8 @@ class Manager {
   std::vector<DeviceRefPtr> devices_;
   // We store Services in a vector, because we want to keep them sorted.
   std::vector<ServiceRefPtr> services_;
+  // List of startup profile names to push on the profile stack on startup.
+  std::vector<std::string> startup_profiles_;
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
   ControlInterface *control_interface_;

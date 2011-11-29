@@ -37,6 +37,8 @@ static const char kConfigDir[] = "config-dir";
 static const char kDefaultConfigDir[] = "default-config-dir";
 // Don't attempt to manage these devices.
 static const char kDeviceBlackList[] = "device-black-list";
+// Flag to specify specific profiles to be pushed.
+static const char kPushProfiles[] = "push";
 // Flag that causes shill to show the help message and exit.
 static const char kHelp[] = "help";
 // LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.
@@ -57,6 +59,8 @@ static const char kHelpMessage[] = "\n"
     "    Do not manage devices named device1 or device2\n"
     "  --log-level=N\n"
     "    LOG() level. 0 = INFO, 1 = WARNING, 2 = ERROR.\n"
+    "  --push=profile1,profile2\n"
+    "    Specify profiles to push on startup.\n"
     "  --use-flimflam-profiles\n"
     "    Use the same directories flimflam uses for global, user profiles.\n"
     "  --v=N\n"
@@ -135,6 +139,13 @@ int main(int argc, char** argv) {
   dbus_control->Init();
 
   shill::Daemon daemon(&config, dbus_control);
+
+  if (cl->HasSwitch(switches::kPushProfiles)) {
+    vector<string> profile_list;
+    base::SplitString(cl->GetSwitchValueASCII(switches::kPushProfiles),
+                      ',', &profile_list);
+    daemon.SetStartupProfiles(profile_list);
+  }
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {
     vector<string> device_list;

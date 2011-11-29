@@ -117,14 +117,7 @@ void Manager::Start() {
   CHECK(file_util::CreateDirectory(run_path_)) << run_path_.value();
   Resolver::GetInstance()->set_path(run_path_.Append("resolv.conf"));
 
-  CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
-
-  profiles_.push_back(new DefaultProfile(control_interface_,
-                                         this,
-                                         storage_path_,
-                                         props_));
-  CHECK(profiles_[0]->InitStorage(glib_, Profile::kCreateOrOpenExisting, NULL));
-
+  InitializeProfiles();
   running_ = true;
   adaptor_->UpdateRunning();
   device_info_.Start();
@@ -148,6 +141,21 @@ void Manager::Stop() {
   adaptor_->UpdateRunning();
   modem_info_.Stop();
   device_info_.Stop();
+}
+
+void Manager::InitializeProfiles() {
+  DCHECK(profiles_.empty());
+  // The default profile must go first on the stack.
+  CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
+  profiles_.push_back(new DefaultProfile(control_interface_,
+                                         this,
+                                         storage_path_,
+                                         props_));
+  CHECK(profiles_[0]->InitStorage(glib_, Profile::kCreateOrOpenExisting, NULL));
+  Error error;
+  for (vector<string>::iterator it = startup_profiles_.begin();
+       it != startup_profiles_.end(); ++it)
+    PushProfile(*it, &error);
 }
 
 void Manager::CreateProfile(const string &name, Error *error) {
