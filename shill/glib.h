@@ -110,7 +110,7 @@ class GLib {
   virtual void KeyFileSetString(GKeyFile *key_file,
                                 const gchar *group_name,
                                 const gchar *key,
-                                const gchar *string);
+                                const gchar *value);
   // g_key_file_set_string_list
   virtual void KeyFileSetStringList(GKeyFile *key_file,
                                     const gchar *group_name,

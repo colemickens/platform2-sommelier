@@ -86,7 +86,7 @@ class MockGLib : public GLib {
   MOCK_METHOD4(KeyFileSetString, void(GKeyFile *key_file,
                                       const gchar *group_name,
                                       const gchar *key,
-                                      const gchar *string));
+                                      const gchar *value));
   MOCK_METHOD5(KeyFileSetStringList, void(GKeyFile *key_file,
                                           const gchar *group_name,
                                           const gchar *key,

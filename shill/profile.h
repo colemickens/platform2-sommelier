@@ -134,8 +134,8 @@ class Profile : public base::RefCounted<Profile> {
 
   void HelpRegisterDerivedStrings(
       const std::string &name,
-      Strings(Profile::*get)(Error *),
-      void(Profile::*set)(const Strings&, Error *));
+      Strings(Profile::*get)(Error *error),
+      void(Profile::*set)(const Strings&, Error *error));
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section

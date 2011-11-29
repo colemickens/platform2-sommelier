@@ -5,6 +5,9 @@
 #ifndef MOCK_SUPPLICANT_PROCESS_PROXY_H_
 #define MOCK_SUPPLICANT_PROCESS_PROXY_H_
 
+#include <map>
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

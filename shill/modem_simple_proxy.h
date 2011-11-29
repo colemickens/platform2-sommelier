@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_SIMPLE_PROXY_
 #define SHILL_MODEM_SIMPLE_PROXY_
 
+#include <string>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_bindings/modem-simple.h"

@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_SERVICE_
 #define SHILL_MOCK_SERVICE_
 
+#include <string>
+
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 

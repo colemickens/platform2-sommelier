@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_RESOLVER_H_
 #define SHILL_MOCK_RESOLVER_H_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

@@ -5,6 +5,9 @@
 #ifndef SHILL_MOCK_WIFI_SERVICE_
 #define SHILL_MOCK_WIFI_SERVICE_
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 #include "shill/wifi_service.h"

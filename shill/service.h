@@ -202,12 +202,12 @@ class Service : public base::RefCounted<Service> {
 
   void HelpRegisterDerivedBool(
       const std::string &name,
-      bool(Service::*get)(Error *),
-      void(Service::*set)(const bool&, Error *));
+      bool(Service::*get)(Error *error),
+      void(Service::*set)(const bool &value, Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
-      std::string(Service::*get)(Error *),
-      void(Service::*set)(const std::string&, Error *));
+      std::string(Service::*get)(Error *error),
+      void(Service::*set)(const std::string &value, Error *error));
 
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 

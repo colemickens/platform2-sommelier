@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_IPCONFIG_
 #define SHILL_MOCK_IPCONFIG_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -22,8 +24,10 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD0(RenewIP, bool(void));
   MOCK_METHOD0(ReleaseIP, bool(void));
 
-  MOCK_METHOD2(Load, bool(StoreInterface *, const std::string &));
-  MOCK_METHOD2(Save, bool(StoreInterface *, const std::string &));
+  MOCK_METHOD2(Load, bool(StoreInterface *storage,
+                          const std::string &id_suffix));
+  MOCK_METHOD2(Save, bool(StoreInterface *storage,
+                          const std::string &id_suffix));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockIPConfig);

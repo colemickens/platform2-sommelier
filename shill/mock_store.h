@@ -5,6 +5,10 @@
 #ifndef SHILL_MOCK_STORE_
 #define SHILL_MOCK_STORE_
 
+#include <set>
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
@@ -22,8 +26,8 @@ class MockStore : public StoreInterface {
   MOCK_METHOD1(GetGroupsWithKey,
                std::set<std::string>(const std::string &key));
   MOCK_METHOD1(ContainsGroup, bool(const std::string &group));
-  MOCK_METHOD2(DeleteKey,
-               bool(const std::string &group, const std::string &key));
+  MOCK_METHOD2(DeleteKey, bool(const std::string &group,
+                               const std::string &key));
   MOCK_METHOD1(DeleteGroup, bool(const std::string &group));
   MOCK_METHOD1(SetHeader, bool(const std::string &header));
   MOCK_METHOD3(GetString, bool(const std::string &group,

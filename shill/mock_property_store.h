@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_PROPERTY_STORE_
 #define SHILL_MOCK_PROPERTY_STORE_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

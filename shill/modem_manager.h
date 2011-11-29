@@ -6,6 +6,7 @@
 #define SHILL_MODEM_MANAGER_
 
 #include <map>
+#include <string>
 #include <tr1/memory>
 
 #include <base/basictypes.h>

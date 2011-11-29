@@ -5,6 +5,9 @@
 #ifndef SHILL_RESOLVER_
 #define SHILL_RESOLVER_
 
+#include <string>
+#include <vector>
+
 #include <base/file_path.h>
 #include <base/lazy_instance.h>
 #include <base/memory/ref_counted.h>

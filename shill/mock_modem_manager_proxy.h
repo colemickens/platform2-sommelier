@@ -5,6 +5,8 @@
 #ifndef SHILL_MOCK_MODEM_MANAGER_PROXY_H_
 #define SHILL_MOCK_MODEM_MANAGER_PROXY_H_
 
+#include <vector>
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 

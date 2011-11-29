@@ -74,8 +74,8 @@ class WiFiService : public Service {
   void HelpRegisterDerivedString(
       PropertyStore *store,
       const std::string &name,
-      std::string(WiFiService::*get)(Error *),
-      void(WiFiService::*set)(const std::string&, Error *));
+      std::string(WiFiService::*get)(Error *error),
+      void(WiFiService::*set)(const std::string &value, Error *error));
 
   void ConnectTask();
 

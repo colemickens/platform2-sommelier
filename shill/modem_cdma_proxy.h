@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_CDMA_PROXY_
 #define SHILL_MODEM_CDMA_PROXY_
 
+#include <string>
+
 #include "shill/dbus_bindings/modem-cdma.h"
 #include "shill/dbus_properties.h"
 #include "shill/modem_cdma_proxy_interface.h"

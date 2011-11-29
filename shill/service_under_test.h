@@ -24,11 +24,11 @@ class ServiceUnderTest : public Service {
                    Manager *manager);
   virtual ~ServiceUnderTest();
 
-  virtual void Connect(Error */*error*/);
+  virtual void Connect(Error *error);
   virtual void Disconnect();
-  virtual std::string CalculateState(Error */*error*/);
+  virtual std::string CalculateState(Error *error);
   virtual std::string GetRpcIdentifier() const;
-  virtual std::string GetDeviceRpcId(Error */*error*/);
+  virtual std::string GetDeviceRpcId(Error *error);
   virtual std::string GetStorageIdentifier() const;
 
  private:

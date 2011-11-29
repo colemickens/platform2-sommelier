@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_GSM_NETWORK_PROXY_
 #define SHILL_MODEM_GSM_NETWORK_PROXY_
 
+#include <string>
+
 #include "shill/dbus_bindings/modem-gsm-network.h"
 #include "shill/modem_gsm_network_proxy_interface.h"
 

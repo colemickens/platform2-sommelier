@@ -50,7 +50,6 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
   Proxy proxy_;
 
   DISALLOW_COPY_AND_ASSIGN(SupplicantProcessProxy);
-
 };
 
 }  // namespace shill

@@ -101,8 +101,8 @@ class CustomAccessor : public AccessorInterface<T> {
   // attempts to set via the accessor.
   // It is an error to pass NULL for either of the other two arguments.
   CustomAccessor(C *target,
-                 T(C::*getter)(Error *),
-                 void(C::*setter)(const T&, Error *))
+                 T(C::*getter)(Error *error),
+                 void(C::*setter)(const T &value, Error *error))
       : target_(target),
         getter_(getter),
         setter_(setter) {
@@ -131,8 +131,8 @@ class CustomAccessor : public AccessorInterface<T> {
   // Get() returns a const&, so we need to have internal storage to which to
   // return a reference.
   T storage_;
-  T(C::*getter_)(Error *);
-  void(C::*setter_)(const T&, Error *);
+  T(C::*getter_)(Error *error);
+  void(C::*setter_)(const T &value, Error *error);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };
 

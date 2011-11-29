@@ -5,6 +5,8 @@
 #ifndef SHILL_MODEM_PROXY_INTERFACE_
 #define SHILL_MODEM_PROXY_INTERFACE_
 
+#include <string>
+
 #include <dbus-c++/types.h>
 
 namespace shill {

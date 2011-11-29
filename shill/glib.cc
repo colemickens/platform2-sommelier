@@ -157,8 +157,8 @@ void GLib::KeyFileSetInteger(GKeyFile *key_file,
 void GLib::KeyFileSetString(GKeyFile *key_file,
                             const gchar *group_name,
                             const gchar *key,
-                            const gchar *string) {
-  g_key_file_set_string(key_file, group_name, key, string);
+                            const gchar *value) {
+  g_key_file_set_string(key_file, group_name, key, value);
 }
 
 void GLib::KeyFileSetStringList(GKeyFile *key_file,

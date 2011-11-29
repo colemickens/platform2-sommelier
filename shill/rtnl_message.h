@@ -178,7 +178,8 @@ class RTNLMessage {
     LinkStatus link_status_;
     AddressStatus address_status_;
     RouteStatus route_status_;
-    base::hash_map<uint16, ByteString> attributes_;
+    base::hash_map<uint16, ByteString> attributes_;  // NOLINT
+    // NOLINT above: hash_map from base, no need to #include <hash_map>
 
     DISALLOW_COPY_AND_ASSIGN(RTNLMessage);
 };

@@ -5,6 +5,9 @@
 #ifndef SHILL_MODEM_MANAGER_PROXY_
 #define SHILL_MODEM_MANAGER_PROXY_
 
+#include <string>
+#include <vector>
+
 #include <base/basictypes.h>
 
 #include "shill/dbus_bindings/modem_manager.h"

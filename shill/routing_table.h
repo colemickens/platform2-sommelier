@@ -6,6 +6,7 @@
 #define SHILL_ROUTING_TABLE_
 
 #include <string>
+#include <vector>
 
 #include <base/callback_old.h>
 #include <base/hash_tables.h>
@@ -74,7 +75,9 @@ class RoutingTable {
   static const char kRouteFlushPath4[];
   static const char kRouteFlushPath6[];
 
-  base::hash_map<int, std::vector<RoutingTableEntry> > tables_;
+  base::hash_map<int, std::vector<RoutingTableEntry> > tables_; // NOLINT
+  // NOLINT above: hash_map from base, no need to #include <hash_map>
+
   scoped_ptr<Callback1<const RTNLMessage &>::Type> route_callback_;
   scoped_ptr<RTNLListener> route_listener_;
 
