@@ -3,6 +3,8 @@
 // found in the LICENSE file.
 
 #include <time.h>
+#include <unistd.h>
+
 #include <string>
 #include <vector>
 
@@ -92,6 +94,10 @@ int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
+
+  const int nochdir = 0, noclose = 0;
+  if (!cl->HasSwitch(switches::kForeground))
+    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
 
   // If the help flag is set, force log in foreground.
   SetupLogging(cl->HasSwitch(switches::kForeground) ||
