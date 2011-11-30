@@ -76,8 +76,9 @@ class MockEventDispatchTester {
 
   void HandleData(InputData *inputData) {
     LOG(INFO) << "MockEventDispatchTester handling data len "
-              << base::StringPrintf("%d %.*s", inputData->len,
-                                    inputData->len, inputData->buf);
+              << base::StringPrintf("%zd %.*s", inputData->len,
+                                    static_cast<int>(inputData->len),
+                                    inputData->buf);
     got_data_ = true;
     IOComplete(inputData->len);
     StopDispatcher();

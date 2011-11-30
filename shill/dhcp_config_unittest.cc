@@ -209,7 +209,7 @@ TEST_F(DHCPConfigTest, ProcessEventSignalSuccess) {
         NewCallback(&callback_test, &UpdateCallbackTest::Callback));
     config_->ProcessEventSignal(kReasons[r], conf);
     EXPECT_TRUE(callback_test.called()) << message;
-    EXPECT_EQ(base::StringPrintf("%u.0.0.0", r), config_->properties().address)
+    EXPECT_EQ(base::StringPrintf("%zu.0.0.0", r), config_->properties().address)
         << message;
   }
 }
