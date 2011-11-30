@@ -40,6 +40,28 @@ enum AlsHysteresisState {
   ALS_HYST_IMMEDIATE,
 };
 
+// Possible causes of changes to the backlight brightness level.
+enum BrightnessChangeCause {
+  // The brightness was changed automatically (in response to e.g. an idle
+  // transition or AC getting plugged or unplugged).
+  BRIGHTNESS_CHANGE_AUTOMATED,
+
+  // The user requested that the brightness be changed.
+  BRIGHTNESS_CHANGE_USER_INITIATED,
+};
+
+// Interface for observing changes made by the backlight controller.
+class BacklightControllerObserver {
+ public:
+  // Invoked when the brightness level is changed.  |brightness_level| is the
+  // current brightness in the range [0, 100].
+  virtual void OnBrightnessChanged(double brightness_level,
+                                   BrightnessChangeCause cause) {}
+
+ protected:
+  ~BacklightControllerObserver() {}
+};
+
 // Control the backlight.
 class BacklightController {
  public:
@@ -48,6 +70,9 @@ class BacklightController {
   virtual ~BacklightController() {}
 
   void set_light_sensor(AmbientLightSensor* als) { light_sensor_ = als; }
+  void set_observer(BacklightControllerObserver* observer) {
+    observer_ = observer;
+  }
 
   double plugged_brightness_offset() const {
     return plugged_brightness_offset_;
@@ -80,20 +105,15 @@ class BacklightController {
   // transition completes, this equals the current brightness.
   bool GetTargetBrightness(double* level);
 
-  // Get the scale level that is to be displayed visually to the user, in the
-  // UI's brightness adjustment bar.  This is typically based on what percentage
-  // of the allowable min-max range the brightness has been set to.
-  bool GetBrightnessScaleLevel(double *level);
-
   // Increase the brightness level of the backlight by one level.
-  void IncreaseBrightness();
+  void IncreaseBrightness(BrightnessChangeCause cause);
 
   // Decrease the brightness level of the backlight by one level.
   //
   // If |allow_off| is false, the backlight will never be entirely turned off.
   // This should be used with on-screen controls to prevent their becoming
   // impossible for the user to see.
-  void DecreaseBrightness(bool allow_off);
+  void DecreaseBrightness(bool allow_off, BrightnessChangeCause cause);
 
   // Turn the backlight on or off.  Returns true if the state was successfully
   // changed, and false otherwise.
@@ -136,7 +156,8 @@ class BacklightController {
   // Returns true if the brightness was changed and false otherwise.
   // Set adjust_brightness_offset = true if the local brightness offset should
   //   be set to a new value to permanently reflect the new brightness.
-  bool WriteBrightness(bool adjust_brightness_offset);
+  bool WriteBrightness(bool adjust_brightness_offset,
+                       BrightnessChangeCause cause);
 
   // Changes the brightness to |target_level| over time.  This is used for
   // smoothing effects.
@@ -168,6 +189,9 @@ class BacklightController {
 
   // Light sensor we need to enable/disable on power events.  Non-owned.
   AmbientLightSensor* light_sensor_;
+
+  // Observer for changes to the brightness level.  Not owned by us.
+  BacklightControllerObserver* observer_;
 
   // The brightness offset recommended by the light sensor.
   int64 als_brightness_level_;

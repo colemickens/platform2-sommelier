@@ -68,6 +68,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
     : backlight_(backlight),
       prefs_(prefs),
       light_sensor_(NULL),
+      observer_(NULL),
       als_brightness_level_(0),
       als_hysteresis_level_(0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
@@ -124,15 +125,7 @@ bool BacklightController::GetTargetBrightness(double* level) {
   return true;
 }
 
-bool BacklightController::GetBrightnessScaleLevel(double *level) {
-  CHECK(level);
-  double brightness;
-  GetTargetBrightness(&brightness);
-  *level = (brightness - min_percent_) / (max_percent_ - min_percent_) * 100.;
-  return true;
-}
-
-void BacklightController::IncreaseBrightness() {
+void BacklightController::IncreaseBrightness(BrightnessChangeCause cause) {
   if (!IsInitialized())
     return;
 
@@ -145,11 +138,12 @@ void BacklightController::IncreaseBrightness() {
     // outside of clamped brightness region.
     double absolute_brightness = als_brightness_level_ + *brightness_offset_;
     *brightness_offset_ += new_brightness - absolute_brightness;
-    WriteBrightness(true);
+    WriteBrightness(true, cause);
   }
 }
 
-void BacklightController::DecreaseBrightness(bool allow_off) {
+void BacklightController::DecreaseBrightness(bool allow_off,
+                                             BrightnessChangeCause cause) {
   if (!IsInitialized())
     return;
 
@@ -169,7 +163,7 @@ void BacklightController::DecreaseBrightness(bool allow_off) {
     // outside of clamped brightness region.
     double absolute_brightness = als_brightness_level_ + *brightness_offset_;
     *brightness_offset_ += new_brightness - absolute_brightness;
-    WriteBrightness(true);
+    WriteBrightness(true, cause);
   }
 }
 
@@ -190,7 +184,7 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     return false;
 
   state_ = new_state;
-  WriteBrightness(true);
+  WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
 
   // Do not go to dim if backlight is already dimmed.
   if (new_state == BACKLIGHT_DIM &&
@@ -260,7 +254,7 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
       *brightness_offset_ + als_brightness_level_ < 1)
     *brightness_offset_ = 1 - als_brightness_level_;
 
-  return WriteBrightness(true);
+  return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
@@ -279,7 +273,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
-    WriteBrightness(false);
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
     return;
   }
 
@@ -306,8 +300,8 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     als_temporal_count_ = 0;
     als_adjustment_count_++;
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
-    WriteBrightness(false);  // ALS adjustment should not change brightness
-                             // offset.
+    // ALS adjustment should not change brightness offset.
+    WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
   }
 }
 
@@ -377,7 +371,8 @@ bool BacklightController::IsInitialized() {
   return (is_initialized_ && brightness_offset_);
 }
 
-bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
+bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
+                                          BrightnessChangeCause cause) {
   if (!IsInitialized())
     return false;
 
@@ -411,12 +406,17 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset) {
   } else if (state_ == BACKLIGHT_IDLE_OFF || state_ == BACKLIGHT_SUSPENDED) {
     local_brightness_ = 0;
   }
+
   als_hysteresis_level_ = als_brightness_level_;
   int64 val = LocalBrightnessToRawBrightness(local_brightness_);
   LOG(INFO) << "WriteBrightness: " << old_brightness << "% -> "
             << local_brightness_ << "%";
-  if (SetBrightnessGradual(val))
+  if (SetBrightnessGradual(val)) {
     WritePrefs();
+    if (observer_)
+      observer_->OnBrightnessChanged(local_brightness_, cause);
+  }
+
   return local_brightness_ != old_brightness;
 }
 

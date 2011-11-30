@@ -1,9 +1,12 @@
 .sconsign.dblite
 *.[ao]
 *_unittest
+als_brightness_level
 backlight-tool
-power-supply-info
-power_manager_bindings_server.h
+plugged_brightness_offset
 power[dm]
+power_manager_bindings_server.h
+power-supply-info
 suspend_delay_sample
+unplugged_brightness_offset
 xidle-example

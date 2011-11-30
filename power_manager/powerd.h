@@ -40,7 +40,8 @@ class MonitorReconfigure;
 class PowerButtonHandler;
 class VideoDetectorInterface;
 
-class Daemon : public XIdleObserver {
+class Daemon : public XIdleObserver,
+               public BacklightControllerObserver {
  public:
   Daemon(BacklightController* ctl,
          PowerPrefs* prefs,
@@ -64,16 +65,6 @@ class Daemon : public XIdleObserver {
   void OnRequestRestart(bool notify_window_manager);
   void OnRequestShutdown(bool notify_window_manager);
 
-  // Decreases the screen brightness and announces the change as a D-Bus signal.
-  //
-  // If |allow_off| is FALSE, the backlight will never be entirely turned off.
-  // This should be used with on-screen controls to prevent their becoming
-  // impossible for the user to see.
-  void DecreaseScreenBrightness(bool allow_off, bool user_initiated);
-
-  // Increases the screen brightness and announces the change as a D-Bus signal.
-  void IncreaseScreenBrightness(bool user_initiated);
-
   // Set idle_time_ms to how long the user has been idle, in milliseconds.
   // On success, return true; otherwise return false. Used in idle API on
   // chrome side.
@@ -85,6 +76,10 @@ class Daemon : public XIdleObserver {
 
   // Overridden from XIdleObserver:
   virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
+
+  // Overridden from BacklightControllerObserver:
+  virtual void OnBrightnessChanged(double brightness_level,
+                                   BrightnessChangeCause cause);
 
  private:
   friend class DaemonTest;
@@ -181,13 +176,6 @@ class Daemon : public XIdleObserver {
   static gboolean PrefChangeHandler(const char* name, int wd,
                                     unsigned int mask,
                                     gpointer data);
-
-  // Sends a D-Bus signal announcing that the screen brightness has been set to
-  // its current level, given as a percentage between 0 and 100.
-  // |user_initiated| specifies whether this brightness change was requested by
-  // the user (i.e. brightness keys) instead of being automatic (e.g. idle, AC
-  // plugged or unplugged, etc.).
-  void SendBrightnessChangedSignal(bool user_initiated);
 
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);

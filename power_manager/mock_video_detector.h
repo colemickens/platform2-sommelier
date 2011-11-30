@@ -12,8 +12,11 @@
 namespace power_manager {
 
 class MockVideoDetector : public VideoDetectorInterface {
-  public:
-    MOCK_METHOD3(GetVideoActivity, bool(int64, int64*, bool*));
+ public:
+  MockVideoDetector() {}
+  virtual ~MockVideoDetector() {}
+
+  MOCK_METHOD3(GetVideoActivity, bool(int64, int64*, bool*));
 };
 
 }  // namespace power_manager

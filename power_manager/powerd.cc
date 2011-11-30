@@ -126,6 +126,7 @@ void Daemon::Init() {
   power_supply_.GetPowerStatus(&power_status_);
   OnPowerEvent(this, power_status_);
   file_tagger_.Init();
+  backlight_controller_->set_observer(this);
   backlight_controller_->SetMinimumBrightness(min_backlight_percent_);
   monitor_reconfigure_->SetProjectionCallback(
       &AdjustIdleTimeoutsForProjectionThunk, this);
@@ -243,8 +244,7 @@ void Daemon::SetPlugged(bool plugged) {
   else
     SetIdleOffset(0, kIdleNormal);
 
-  if (backlight_controller_->OnPlugEvent(plugged))
-    SendBrightnessChangedSignal(false);  // user_initiated=false
+  backlight_controller_->OnPlugEvent(plugged);
   SetIdleState(idle_time_ms);
 }
 
@@ -353,30 +353,24 @@ void Daemon::SetActive() {
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
-  bool changed_brightness = false;
   if (idle_time_ms >= suspend_ms_) {
     // Note: currently this state doesn't do anything.  But it can be possibly
     // useful in future development.  For example, if we want to implement
     // fade from suspend, we would want to have this state to make sure the
     // backlight is set to zero when suspended.
-    changed_brightness =
-        backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
+    backlight_controller_->SetPowerState(BACKLIGHT_SUSPENDED);
     Suspend();
   } else if (idle_time_ms >= off_ms_) {
-    if (util::LoggedIn() &&
-        backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF)) {
-      changed_brightness = true;
-    }
+    if (util::LoggedIn())
+      backlight_controller_->SetPowerState(BACKLIGHT_IDLE_OFF);
   } else if (idle_time_ms >= dim_ms_) {
-    if (backlight_controller_->SetPowerState(BACKLIGHT_DIM))
-      changed_brightness = true;
+    backlight_controller_->SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->state() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
       if (backlight_controller_->state() == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
         suspender_.CancelSuspend();
       }
-      changed_brightness = true;
     }
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
@@ -385,9 +379,6 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
       backlight_controller_->state() != BACKLIGHT_SUSPENDED) {
     locker_.LockScreen();
   }
-
-  if (changed_brightness)
-    SendBrightnessChangedSignal(false);  // user_initiated=false
 }
 
 void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
@@ -399,29 +390,13 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
     daemon->OnLowBattery(info.battery_percentage);
 }
 
-void Daemon::DecreaseScreenBrightness(bool allow_off, bool user_initiated) {
-  backlight_controller_->DecreaseBrightness(allow_off);
-  SendBrightnessChangedSignal(user_initiated);
-  if (user_initiated)
-    SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessDown,
-                                 kBrightnessEnumMax);
-}
-
-void Daemon::IncreaseScreenBrightness(bool user_initiated) {
-  backlight_controller_->IncreaseBrightness();
-  SendBrightnessChangedSignal(user_initiated);
-  if (user_initiated)
-    SendEnumMetricWithPowerState(kMetricBrightnessAdjust, kBrightnessUp,
-                                 kBrightnessEnumMax);
-}
-
 bool Daemon::GetIdleTime(int64* idle_time_ms) {
   return idle_.GetIdleTime(idle_time_ms);
 }
 
 void Daemon::BrightenScreenIfOff() {
   if (util::LoggedIn() && backlight_controller_->IsBacklightActiveOff())
-    backlight_controller_->IncreaseBrightness();
+    backlight_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
@@ -465,6 +440,38 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
     SetIdleOffset(0, kIdleNormal);
+}
+
+void Daemon::OnBrightnessChanged(double brightness_level,
+                                 BrightnessChangeCause cause) {
+  dbus_int32_t brightness_level_int =
+      static_cast<dbus_int32_t>(round(brightness_level));
+
+  dbus_bool_t user_initiated = FALSE;
+  switch (cause) {
+    case BRIGHTNESS_CHANGE_AUTOMATED:
+      user_initiated = TRUE;
+      break;
+    case BRIGHTNESS_CHANGE_USER_INITIATED:
+      user_initiated = FALSE;
+      break;
+    default:
+      NOTREACHED() << "Unhandled brightness change cause " << cause;
+  }
+
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kPowerManagerInterface,
+                                                kBrightnessChangedSignal);
+  CHECK(signal);
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_INT32, &brightness_level_int,
+                           DBUS_TYPE_BOOLEAN, &user_initiated,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -583,11 +590,19 @@ DBusHandlerResult Daemon::DBusMessageHandler(DBusConnection* connection,
                    << (dbus_error_is_set(&error) ? error.message
                                                  : "Unknown error");
     }
-    daemon->DecreaseScreenBrightness(allow_off, true);
+    daemon->backlight_controller_->DecreaseBrightness(
+        allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
+    daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                                         kBrightnessDown,
+                                         kBrightnessEnumMax);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kIncreaseScreenBrightness)) {
     LOG(INFO) << "Increase screen brightness request.";
-    daemon->IncreaseScreenBrightness(true);
+    daemon->backlight_controller_->IncreaseBrightness(
+        BRIGHTNESS_CHANGE_USER_INITIATED);
+    daemon->SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
+                                         kBrightnessUp,
+                                         kBrightnessEnumMax);
   } else if (dbus_message_is_method_call(message, kPowerManagerInterface,
                                          kGetIdleTime)) {
     LOG(INFO) << "Idle time request.";
@@ -916,31 +931,6 @@ gboolean Daemon::PrefChangeHandler(const char* name,
     daemon->SetIdleOffset(0, kIdleNormal);
   }
   return true;
-}
-
-void Daemon::SendBrightnessChangedSignal(bool user_initiated) {
-  double brightness = 0.;
-  int64 brightness_rounded;
-  if (!backlight_controller_->GetBrightnessScaleLevel(&brightness))
-    return;
-  brightness_rounded = lround(brightness);
-
-  // DBUS_TYPE_BOOLEAN actually corresponds to an int.
-  int user_initiated_int = user_initiated;
-
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                kBrightnessChangedSignal);
-  CHECK(signal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &brightness_rounded,
-                           DBUS_TYPE_BOOLEAN, &user_initiated_int,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
 }
 
 void Daemon::HandleResume() {
