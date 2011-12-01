@@ -24,6 +24,7 @@ namespace power_manager {
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
@@ -346,9 +347,9 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
                                         20.4, 21.6,
                                         60.4, 61.6,
                                         82.4, 82.5};
-  const int num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
+  const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  for(int i = 0; i < num_percentages; i++) {
+  for(size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 
@@ -366,6 +367,8 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
         status_));
+
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
@@ -374,9 +377,9 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
                                         20.4, 21.6,
                                         60.4, 61.6,
                                         82.4, 82.5};
-  const int num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
+  const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  for(int i = 0; i < num_percentages; i++) {
+  for(size_t i = 0; i < num_percentages; i++) {
     status_.battery_percentage = battery_percentages[i];
     int expected_percentage = round(status_.battery_percentage);
 
@@ -394,6 +397,8 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
         status_));
+
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
