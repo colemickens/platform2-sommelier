@@ -8,4 +8,8 @@ a single interface with only synchronous methods. Methods are bound in a table
 of (name, function) pairs; new methods are added by adding entries to this
 table.
 
-(The implementation docs will go here once there's more of an implementation.)
+A tool is a set of closely related API functions that diagnoses one thing (for
+example, ICMP connectivity). The debug daemon invokes the corresponding tool for
+each of its API functions. Dividing the DBus interface from the implementations
+of each tool keeps the DebugDaemon class from growing too large and makes it
+easier to test the individual tools.

@@ -6,7 +6,8 @@
       <tp:docstring>
         Starts pinging the specified hostname with the specified options, with
         output directed to the given output file descriptor. The returned opaque
-        string functions as a handle for this particular ping.
+        string functions as a handle for this particular ping. Multiple pings
+        can be running at once.
       </tp:docstring>
       <arg name="outfd" type="h" direction="in">
         <tp:docstring>

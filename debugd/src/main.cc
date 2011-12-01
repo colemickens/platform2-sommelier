@@ -2,40 +2,41 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <errno.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/mount.h>
-#include <syslog.h>
 #include <unistd.h>
 
+#include <base/command_line.h>
+#include <base/logging.h>
 #include <chromeos/libminijail.h>
+#include <chromeos/process.h>
+#include <chromeos/syslog_logging.h>
 
-#include "debugdaemon.h"
+#include "debug_daemon.h"
 
-const char *kHelpers[] = {
+namespace {
+const char* kHelpers[] = {
   NULL,
 };
 
-void die(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vsyslog(LOG_ERR, fmt, ap);
-  va_end(ap);
-  exit(1);
+// @brief Enter a VFS namespace.
+//
+// We don't want anyone other than our descendants to see our tmpfs.
+void enter_vfs_namespace() {
+  struct minijail* j = minijail_new();
+  minijail_namespace_vfs(j);
+  minijail_enter(j);
+  minijail_destroy(j);
 }
 
 // @brief Enter a minijail.
 //
-// We need to be in a vfs namespace so that our tmpfs is only visible to us and
+// We are already in a vfs namespace so that our tmpfs is only visible to us and
 // our descendants, and we don't want to be root. Note that minijail_enter()
 // exits the process if it can't succeed.
 void enter_sandbox() {
-  static const char *kDebugdUser = "debugd";
-  static const char *kDebugdGroup = "debugd";
-  struct minijail *j = minijail_new();
-  minijail_namespace_vfs(j);
+  static const char* kDebugdUser = "debugd";
+  static const char* kDebugdGroup = "debugd";
+  struct minijail* j = minijail_new();
   minijail_change_user(j, kDebugdUser);
   minijail_change_group(j, kDebugdGroup);
   minijail_enter(j);
@@ -49,44 +50,39 @@ void make_tmpfs() {
   int r = mount("none", "/debugd", "tmpfs", MS_NODEV | MS_NOSUID | MS_NOEXEC,
                 NULL);
   if (r < 0)
-    die("mount() failed: %s", strerror(errno));
-}
-
-// @brief Launch a single helper program.
-//
-// Helper programs are launched with no arguments.
-void launch_one_helper(const char *progname) {
-  // execve() fails to declare the pointers inside its argument array as const,
-  // so we have to cast away constness here, even though argv does not touch
-  // them.
-  char *const argv[] = { const_cast<char *>(progname), NULL };
-  int r = fork();
-  if (r < 0)
-    die("forking helper %s failed: %s", progname, strerror(errno));
-  if (r > 0) {
-    syslog(LOG_NOTICE, "forked helper %d for %s", r, progname);
-    return;
-  }
-  r = execve(progname, argv, environ);
-  syslog(LOG_ERR, "execing helper %s failed: %s", progname, strerror(errno));
-  exit(r);
+    PLOG(FATAL) << "mount() failed";
 }
 
 // @brief Launch all our helper programs.
 void launch_helpers() {
-  for (int i = 0; kHelpers[i]; i++) {
-    launch_one_helper(kHelpers[i]);
+  for (int i = 0; kHelpers[i]; ++i) {
+    chromeos::ProcessImpl p;
+    p.AddArg(kHelpers[i]);
+    p.Start();
+    p.Release();
   }
 }
 
-void start_dbus() {
-  // TODO(ellyjones): Implement this
+// @brief Start the debugd DBus interface.
+void start() {
+  DBus::BusDispatcher dispatcher;
+  DBus::default_dispatcher = &dispatcher;
+  DBus::Connection conn = DBus::Connection::SystemBus();
+  debugd::DebugDaemon debugd(&conn, &dispatcher);
+  if (!debugd.Init())
+    LOG(FATAL) << "debugd.Init() failed";
+  debugd.Run();
+  LOG(FATAL) << "debugd.Run() returned";
 }
+};  // namespace
 
-int __attribute__((visibility("default"))) main(int argc, char *argv[]) {
-  enter_sandbox();
+int __attribute__((visibility("default"))) main(int argc, char* argv[]) {
+  CommandLine::Init(argc, argv);
+  chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogToStderr);
+  enter_vfs_namespace();
   make_tmpfs();
+  enter_sandbox();
   launch_helpers();
-  start_dbus();
+  start();
   return 0;
 }

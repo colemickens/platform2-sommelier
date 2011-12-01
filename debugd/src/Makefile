@@ -5,25 +5,32 @@
 include common.mk
 
 DBUSXX_XML2CPP ?= dbusxx-xml2cpp
-CXXFLAGS += $(shell $(PKG_CONFIG) --cflags dbus-c++-1)
-LDFLAGS += $(shell $(PKG_CONFIG) --libs dbus-c++-1)
+CXXFLAGS += $(shell $(PKG_CONFIG) --cflags dbus-c++-1 glib-2.0)
+LDFLAGS += $(shell $(PKG_CONFIG) --libs dbus-c++-1 glib-2.0)
 
 CXXFLAGS += -fvisibility=hidden
 CXXFLAGS += -I$(OUT)		# for bindings
 
-all: debugd
+all: $(OUT)debugd
 
 install:
-	cp $(OUT)debugd .
+	cp $(OUT)debugd ..
+
+small_tests: $(OUT)testrunner
 
 RM_ON_CLEAN += debugd
-debugd: $(OUT)debugd
 
-$(OUT)debugd: $(OUT)debugdaemon.o $(OUT)main.o
-	$(call cxx_binary,-lminijail)
+TOOLS:= $(patsubst %,%_tool.o,ping)
+OBJS := $(patsubst %,$(OUT)%,debug_daemon.o process_with_id.o $(TOOLS))
+TESTOBJS := $(patsubst %,$(OUT)%,process_with_id_test.o)
+
+$(OUT)debugd: $(OUT)main.o $(OBJS)
+	$(call cxx_binary,-lminijail -lchromeos -lbase)
+$(OUT)testrunner: $(OUT)testrunner.o $(OBJS) $(TESTOBJS)
+	$(call cxx_binary,-lgtest -lminijail -lchromeos -lbase)
 
 $(OUT)main.o: $(OUT)bindings/org.chromium.debugd.h
-$(OUT)debugdaemon.o: $(OUT)bindings/org.chromium.debugd.h
+$(OUT)debug_daemon.o: $(OUT)bindings/org.chromium.debugd.h
 
 RM_ON_CLEAN += bindings/org.chromium.debugd.h
 $(OUT)bindings/%.h: ../share/%.xml
