@@ -55,10 +55,6 @@ HELP='
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
 
- shill_manager [on|off]
-  Use shill (instead of flimflam) as the connection manager. This is off by
-  default and is currently a lab feature.
-
  ssh [optional args...]
   Starts the ssh subsystem if invoked without any arguments.
   "ssh <user> <host>", "ssh <user> <host> <port>", "ssh <user>@<host>",
