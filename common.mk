@@ -59,17 +59,19 @@
 #   - NOSTRIP=[0|1] determines if binaries are stripped. (default: 1)
 #        NOSTRIP=0 and MODE=opt will also drop -g from the CFLAGS.
 #   - VALGRIND=[0|1] runs tests under valgrind (default: 0)
-#   - OUT=/path/to/builddir puts all output in given path
-#           (default: $PWD/build-$MODE. Use OUT=$PWD for mixed source/build)
+#   - OUT=/path/to/builddir puts all output in given path (default: $PWD)
 #   - VALGRIND_ARGS="" supplies extra memcheck arguments
 #
-# Per-target variable:
+# Per-target(-ish) variable:
 #   - NEEDS_ROOT=[0|1] allows a TEST() target to run with root.
 #     Default is 0 unless it is running under QEmu.
 #   - NEEDS_MOUNTS=[0|1] allows a TEST() target running on QEmu to get
 #     setup mounts in the $(SYSROOT)
 #
 # Caveats:
+# - Directories or files with spaces in them DO NOT get along with GNU Make.
+#   If you need them, all uses of dir/notdir/etc will need to have magic
+#   wrappers.  Proceed at risk to your own sanity.
 # - External CXXFLAGS and CFLAGS should be passed via the environment since
 #   this file does not use 'override' to control them.
 # - Our version of GNU Make doesn't seem to support the 'private' variable
@@ -94,11 +96,14 @@ NEEDS_MOUNTS = 0
 # Or
 #   make -C $SRCDIR OUT=$PWD
 # This variable is extended on subdir calls and doesn't need to be re-called.
-OUT ?= $(PWD)/build-$(MODE)/
+OUT ?= $(PWD)/
+
+# Make OUT now so we can use realpath.
+$(shell mkdir -p "$(OUT)")
 
 # TODO(wad) Relative paths are resolved against SRC and not the calling dir.
 # Ensure a command-line supplied OUT has a slash
-override OUT := $(abspath $(OUT))/
+override OUT := $(realpath $(OUT))/
 
 # SRC is not meant to be set by the end user, but during make call relocation.
 # $(PWD) != $(CURDIR) all the time.
@@ -113,16 +118,18 @@ override RELOCATE_BUILD := 1
 endif
 # Make sure we're running with no builtin targets. They cause
 # leakage and mayhem!
-ifeq ($(subst r,,$(MAKEFLAGS)),$(MAKEFLAGS))
-override RELOCATE_BUILD := 1
-endif
 ifneq (${PWD},${CURDIR})
 override RELOCATE_BUILD := 1
 # If we're run from the build dir, don't let it get cleaned up later.
 ifeq (${PWD}/,${OUT})
-$(shell touch $(PWD)/.dont_delete_on_clean)
+$(shell touch "$(PWD)/.dont_delete_on_clean")
 endif
 endif  # ifneq (${PWD},${CURDIR}
+
+# "Relocate" if we need to restart without implicit rules.
+ifeq ($(subst r,,$(MAKEFLAGS)),$(MAKEFLAGS))
+override RELOCATE_BUILD := 1
+endif
 
 ifeq (${RELOCATE_BUILD},1)
 # By default, silence build output. Reused below as well.
@@ -138,7 +145,7 @@ RUN_ONCE := 0
 MAKECMDGOALS ?= all
 _all %::
 	$(if $(filter 0,$(RUN_ONCE)), \
-	  $(QUIET)mkdir -p $(OUT) && \
+	  $(QUIET)mkdir -p "$(OUT)" && \
 	  cd $(OUT) && \
 	  $(MAKE) -r -I "$(SRC)" -f "$(CURDIR)/Makefile" \
 	    SRC="$(CURDIR)" OUT="$(OUT)" $(foreach g,$(MAKECMDGOALS),"$(g)"),)
@@ -162,7 +169,7 @@ ifeq ($(words $(filter-out Makefile common.mk %.d $(SRC)/Makefile \
 # Creates the actual archive with an index.
 # The target $@ must end with .pic.a or .pie.a.
 define update_archive
-  $(QUIET)mkdir -p $(dir $(TARGET_OR_MEMBER))
+  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
   $(QUIET)# Create the archive in one step to avoid parallel use accessing it
   $(QUIET)# before all the symbols are present.
   @$(ECHO) "AR		$(subst \
@@ -301,7 +308,7 @@ TARGET_OR_MEMBER = $(lastword $(subst $(LP), ,$(subst $(RP),,$(or $%,$@))))
 # all non-.o files.
 define COMPILE_BINARY_implementation
   @$(ECHO) "LD$(1)		$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p $(dir $(TARGET_OR_MEMBER))
+  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
   $(QUIET)$($(1)) $(COMPILE_PIE_FLAGS) -o $(TARGET_OR_MEMBER) \
     $(filter %.o %.a,$(^:.o=.pie.o)) \
     $(foreach so,$(filter %.so,$^),-L$(dir $(so)) \
@@ -324,7 +331,7 @@ endef
 COMMA := ,
 define COMPILE_LIBRARY_implementation
   @$(ECHO) "SHARED$(1)	$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p $(dir $(TARGET_OR_MEMBER))
+  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
   $(QUIET)$($(1)) -shared -Wl,-E -o $(TARGET_OR_MEMBER) \
     $(if $(filter %.a,$^),-Wl$(COMMA)--whole-archive,) \
     $(filter %.o ,$(^:.o=.pic.o)) \
@@ -469,24 +476,24 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # ensures we get a relative directory offset from $(OUT) which otherwise would
 # not match without further magic on a per-subdirectory basis.
 $(C_OBJECTS): %.o: $(SRC)/%.c
-	$(QUIET)mkdir -p $(dir $@)
+	$(QUIET)mkdir -p "$(dir $@)"
 	$(call OBJECT_PATTERN_implementation,CC,\
           $(basename $@).pie,$(CFLAGS) $(OBJ_PIE_FLAG))
 	$(call OBJECT_PATTERN_implementation,CC,\
           $(basename $@).pic,$(CFLAGS) -fPIC)
-	$(QUIET)touch $@
+	$(QUIET)touch "$@"
 
 $(CXX_OBJECTS): %.o: $(SRC)/%.cc
-	$(QUIET)mkdir -p $(dir $@)
+	$(QUIET)mkdir -p "$(dir $@)"
 	$(call OBJECT_PATTERN_implementation,CXX,\
           $(basename $@).pie,$(CXXFLAGS) $(OBJ_PIE_FLAG))
 	$(call OBJECT_PATTERN_implementation,CXX,\
           $(basename $@).pic,$(CXXFLAGS) -fPIC)
-	$(QUIET)touch $@
+	$(QUIET)touch "$@"
 
 define OBJECT_PATTERN_implementation
   @$(ECHO) "$(1)		$(subst $(SRC)/,,$<) -> $(2).o"
-  $(QUIET)mkdir -p $(dir $(2))
+  $(QUIET)mkdir -p "$(dir $(2))"
   $(QUIET)$($(1)) -c -MD -MF $(2).d $(3) -o $(2).o $<
   $(QUIET)# Wrap all the deps in $(wildcard) so a missing header
   $(QUIET)# won't cause weirdness.  First we remove newlines and \,
@@ -497,13 +504,10 @@ endef
 
 # Disable default pattern rules to help avoid leakage.
 # These may already be handled by '-r', but let's keep it to be safe.
-%: %.o
-
-%.a: %.o
-
-%.o: %.c
-
-%.o: %.cc
+%: %.o ;
+%.a: %.o ;
+%.o: %.c ;
+%.o: %.cc ;
 
 # NOTE: A specific rule for archive objects is avoided because parallel
 #       update of the archive causes build flakiness.
@@ -515,7 +519,6 @@ endef
 # Architecture detection and QEMU wrapping
 #
 
-ARCH ?= $(shell uname -m)
 HOST_ARCH ?= $(shell uname -m)
 override ARCH := $(strip $(ARCH))
 override HOST_ARCH := $(strip $(HOST_ARCH))
@@ -592,7 +595,6 @@ all:
 # Builds and runs tests for the target arch
 # Run them in parallel
 tests:
-	$(QUIET)# All tests have run.
 .PHONY: tests
 
 qemu_clean:
@@ -610,14 +612,17 @@ endif
 #           doesn't hang traversing /proc from SYSROOT.
 QEMU_CMD =
 ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),sudo , )
-MOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNT)),$(ROOT_CMD) mount, \#)
-UMOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNT)),$(ROOT_CMD) umount, \#)
+MOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) mount, \#)
+UMOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) umount, \#)
+QEMU_LDPATH = $(SYSROOT_LDPATH):/lib64:/lib:/usr/lib64:/usr/lib
+ROOT_CMD_LDPATH = $(SYSROOT_LDPATH):$(SYSROOT)/lib64:
+ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/lib:$(SYSROOT)/usr/lib64:
+ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/usr/lib
 ifeq ($(USE_QEMU),1)
   export QEMU_CMD = \
    sudo chroot $(SYSROOT) $(SYSROOT_OUT)qemu-$(QEMU_ARCH) \
    -drop-ld-preload \
-   -E LD_LIBRARY_PATH="$(SYSROOT_LDPATH):/lib:/usr/lib:/lib64:\
-/usr/lib64:$(patsubst $(OUT),,$(LD_DIRS))" \
+   -E LD_LIBRARY_PATH="$(QEMU_LDPATH):$(patsubst $(OUT),,$(LD_DIRS))" \
    -E HOME="$(HOME)" --
   # USE_QEMU conditional function
   define if_qemu
@@ -625,8 +630,7 @@ ifeq ($(USE_QEMU),1)
   endef
 else
   ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),sudo, ) \
-    LD_LIBRARY_PATH="$(SYSROOT_LDPATH):$(SYSROOT)/lib:\
-$(SYSROOT)/lib64:$(SYSROOT)/usr/lib:$(SYSROOT)/usr/lib64:$(LD_DIRS)"
+    LD_LIBRARY_PATH="$(ROOT_CMD_LDPATH):$(LD_DIRS)"
   define if_qemu
     $(2)
   endef
@@ -653,34 +657,38 @@ define TEST_setup
   $(QUIET)# No setup if we are not using QEMU
   $(QUIET)# TODO(wad) this is racy until we use a vfs namespace
   $(call if_qemu,\
-    $(QUIET)sudo mkdir -p $(SYSROOT)/tmp $(SYSROOT)/proc $(SYSROOT)/dev)
+    $(QUIET)sudo mkdir -p "$(SYSROOT)/proc" "$(SYSROOT)/dev")
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /tmp $(SYSROOT)/tmp)
+    $(QUIET)$(MOUNT_CMD) --bind /proc "$(SYSROOT)/proc")
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /proc $(SYSROOT)/proc)
+    $(QUIET)$(MOUNT_CMD) --bind /dev "$(SYSROOT)/dev")
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /dev $(SYSROOT)/dev)
+    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/proc'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
   $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l $(SYSROOT)/tmp $(SYSROOT)/proc" \
-             >> $(OUT)$(TARGET_OR_MEMBER).cleanup.test))
-  $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l $(SYSROOT)/dev" \
-             >> $(OUT)$(TARGET_OR_MEMBER).cleanup.test))
+    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/dev'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
 endef
 
 define TEST_teardown
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_YELLOW)TEARDOWN$(COLOR_RESET)]"
-  $(call if_qemu, $(QUIET)$(SHELL) $(OUT)$(TARGET_OR_MEMBER).cleanup.test)
+  $(call if_qemu, $(QUIET)$(SHELL) "$(OUT)$(TARGET_OR_MEMBER).cleanup.test")
 endef
+
+# Use GTEST_ARGS.[arch] if defined.
+override GTEST_ARGS.real = \
+ $(call if_qemu,$(GTEST_ARGS.qemu.$(QEMU_ARCH)),$(GTEST_ARGS.host.$(HOST_ARCH)))
 
 define TEST_run
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_GREEN)RUN$(COLOR_RESET)]"
-  $(QUIET)(echo 1 > $(OUT)$(TARGET_OR_MEMBER).status.test)
-  $(QUIET)($(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
-    $(call if_qemu, $(SYSROOT_OUT),$(OUT))$(TARGET_OR_MEMBER) $(GTEST_ARGS) && \
-    echo 0 > $(OUT)$(TARGET_OR_MEMBER).status.test)
+  $(QUIET)(echo 1 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
+  -($(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
+    "$(strip $(call if_qemu, $(SYSROOT_OUT),$(OUT))$(TARGET_OR_MEMBER))" \
+      $(if $(filter-out 0,$(words $(GTEST_ARGS.real))),$(GTEST_ARGS.real),\
+           $(GTEST_ARGS)) && \
+    echo 0 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
 endef
 
 # Recursive list reversal so that we get RMDIR_ON_CLEAN in reverse order.
@@ -747,18 +755,18 @@ $(eval $(MODULE_NAME)_CXX_OBJECTS ?= $(MODULE_CXX_OBJECTS))
 # Note, $(MODULE) is implicit in the path to the %.c.
 # See $(C_OBJECTS) for more details.
 $(MODULE_C_OBJECTS): %.o: $(SRC)/%.c
-	$(QUIET)mkdir -p $(dir $@)
+	$(QUIET)mkdir -p "$(dir $@)"
 	$(call OBJECT_PATTERN_implementation,CC,\
           $(basename $@).pie,$(CFLAGS) $(OBJ_PIE_FLAG))
 	$(call OBJECT_PATTERN_implementation,CC,$(basename $@).pic,$(CFLAGS) -fPIC)
 	$(QUIET)touch $@
 
 $(MODULE_CXX_OBJECTS): %.o: $(SRC)/%.cc
-	$(QUIET)mkdir -p $(dir $@)
+	$(QUIET)mkdir -p "$(dir $@)"
 	$(call OBJECT_PATTERN_implementation,CXX,\
 $(basename $@).pie,$(CXXFLAGS) $(OBJ_PIE_FLAG))
 	$(call OBJECT_PATTERN_implementation,CXX,$(basename $@).pic,$(CXXFLAGS) -fPIC)
-	$(QUIET)touch $@
+	$(QUIET)touch "$@"
 
 # Continue recursive inclusion of module.mk files
 SUBMODULE_DIRS = $(wildcard $(SRC)/$(MODULE)/*/module.mk)
