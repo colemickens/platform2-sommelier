@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -172,6 +172,13 @@ Service::Service(ControlInterface *control_interface,
 
 Service::~Service() {
   metrics_->DeregisterService(this);
+}
+
+void Service::AutoConnect() {
+  if (this->IsAutoConnectable()) {
+    Error error;
+    Connect(&error);
+  }
 }
 
 void Service::ActivateCellularModem(const string &/*carrier*/, Error *error) {
@@ -424,9 +431,15 @@ bool Service::Compare(ServiceRefPtr a,
     if (DecideBetween(a->IsConnecting(), b->IsConnecting(), &ret)) {
       return ret;
     }
+
+    if (DecideBetween(!a->IsFailed(), !b->IsFailed(), &ret)) {
+      return ret;
+    }
   }
 
-  if (DecideBetween(a->favorite(), b->favorite(), &ret) ||
+  if (DecideBetween(a->connectable(), b->connectable(), &ret) ||
+      DecideBetween(a->auto_connect(), b->auto_connect(), &ret) ||
+      DecideBetween(a->favorite(), b->favorite(), &ret) ||
       DecideBetween(a->priority(), b->priority(), &ret)) {
     return ret;
   }

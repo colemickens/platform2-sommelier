@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include <netinet/ether.h>
 #include <linux/if.h>  // Needs definitions from netinet/ether.h
 
+#include <algorithm>
 #include <map>
 #include <set>
 #include <string>
@@ -65,7 +66,6 @@ const char WiFi::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 
-// NB: we assume supplicant is already running. [quiche.20110518]
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
            Manager *manager,
@@ -202,6 +202,12 @@ bool WiFi::TechnologyIs(const Technology::Identifier type) const {
   return type == Technology::kWifi;
 }
 
+bool WiFi::IsConnectingTo(const WiFiService &service) const {
+  return pending_service_ == &service
+      || (current_service_ == &service
+          && service.state() != Service::kStateConnected);
+}
+
 void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
   // TODO(quiche): Figure out how to relate these events to supplicant
   // events. E.g., may be we can ignore LinkEvent, in favor of events
@@ -264,8 +270,17 @@ void WiFi::ConnectTo(WiFiService *service,
   DBus::Path network_path;
 
   // TODO(quiche): Handle cases where already connected.
-  // TODO(quiche): Handle case where there's already a pending
-  // connection attempt.
+  if (pending_service_ && pending_service_ == service) {
+    // TODO(quiche): Return an error to the caller. crosbug.com/23832
+    LOG(INFO) << "WiFi " << link_name() << " ignoring ConnectTo "
+              << service->friendly_name()
+              << ", which is already pending.";
+    return;
+  }
+
+  if (pending_service_ && pending_service_ != service) {
+    DisconnectFrom(pending_service_);
+  }
 
   try {
     // TODO(quiche): Set a timeout here. In the normal case, we expect
@@ -277,7 +292,6 @@ void WiFi::ConnectTo(WiFiService *service,
         append_uint32(scan_ssid);
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
-    // TODO(quiche): Figure out when to remove services from this map.
     rpcid_by_service_[service] = network_path;
   } catch (const DBus::Error e) {  // NOLINT
     LOG(ERROR) << "exception while adding network: " << e.what();
@@ -286,6 +300,9 @@ void WiFi::ConnectTo(WiFiService *service,
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
 
+  pending_service_ = service;
+  CHECK(current_service_.get() != pending_service_.get());
+
   // SelectService here (instead of in LinkEvent, like Ethernet), so
   // that, if we fail to bring up L2, we can attribute failure correctly.
   //
@@ -293,8 +310,6 @@ void WiFi::ConnectTo(WiFiService *service,
   // reconsider if this is the right place to change the selected service.
   // see discussion in crosbug.com/20191.
   SelectService(service);
-  pending_service_ = service;
-  CHECK(current_service_.get() != pending_service_.get());
 }
 
 void WiFi::DisconnectFrom(WiFiService *service) {
@@ -353,7 +368,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
         || current_service_.get() != pending_service_.get());
 }
 
-bool WiFi::IsIdle() {
+bool WiFi::IsIdle() const {
   return !current_service_ && !pending_service_;
 }
 
@@ -385,6 +400,8 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   }
 
   SelectService(current_service_);
+  // Invariant check: a Service can either be current, or pending, but
+  // not both.
   CHECK(current_service_.get() != pending_service_.get() ||
         current_service_.get() == NULL);
 
@@ -423,6 +440,9 @@ void WiFi::HandleDisconnect() {
   // TODO(quiche): Reconsider giving up immediately. Maybe give
   // wpa_supplicant some time to retry, first.
   supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
+  // TODO(quiche): If we initated the disconnect, we should probably
+  // go to the idle state instead. crosbug.com/24700
+  affected_service->SetFailure(Service::kFailureUnknown);
 
   if (affected_service == pending_service_.get()) {
     // The attempt to connect to |pending_service_| failed. Clear
@@ -528,9 +548,9 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
         << " new current Endpoint "
         << endpoint.bssid_string()
         << (current_service_.get() ?
-            StringPrintf("%s is not part of current service ",
+            StringPrintf(" is not part of current service %s",
                          current_service_->friendly_name().c_str()) :
-            "with no current service");
+            " with no current service");
     // We didn't expect to be here, but let's cope as well as we
     // can. Update |current_service_| to keep it in sync with
     // supplicant.
@@ -743,12 +763,40 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
 
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   CHECK(service);
+  VLOG(2) << "Removing Endpoint " << endpoint->bssid_string()
+          << " from Service " << service->friendly_name();
   service->RemoveEndpoint(endpoint);
-  manager()->UpdateService(service);
 
-  // TODO(quiche): If the Service no longer has any Endpoints, we may
-  // want to unregister it from the Manager, and possibly our own
-  // |services_| list as well. (crosbug.com/23703)
+  bool disconnect_service = !service->HasEndpoints() &&
+      (service->IsConnecting() || service->IsConnected());
+  bool forget_service =
+      // Forget Services without Endpoints, except that we always keep
+      // hidden services around. (We need them around to populate the
+      // hidden SSIDs list.)
+      !service->HasEndpoints() && !service->hidden_ssid();
+  bool deregister_service =
+      // Only deregister a Service if we're forgetting it. Otherwise,
+      // Manager can't keep our configuration up-to-date (as Profiles
+      // change).
+      forget_service;
+
+  if (disconnect_service) {
+    DisconnectFrom(service);
+  }
+
+  if (deregister_service) {
+    manager()->DeregisterService(service);
+  } else {
+    manager()->UpdateService(service);
+  }
+
+  if (forget_service) {
+    vector<WiFiServiceRefPtr>::iterator it;
+    it = std::find(services_.begin(), services_.end(), service);
+    if (it != services_.end()) {
+      services_.erase(it);
+    }
+  }
 }
 
 void WiFi::PropertiesChangedTask(
@@ -826,6 +874,10 @@ void WiFi::StateChanged(const string &new_state) {
     // IP connectivity.
     affected_service->SetState(Service::kStateConfiguring);
   } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
+    // TODO(quiche): Resolve race with LinkEvent. It's possible for us
+    // to receive this state notification after LinkEvent. In that case,
+    // our state transitions are Associating -> Configuring ->
+    // Associating -> Configuring -> Ready. (crosbug.com/22831)
     affected_service->SetState(Service::kStateAssociating);
   } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
              new_state == wpa_supplicant::kInterfaceStateAssociating ||
@@ -838,7 +890,7 @@ void WiFi::StateChanged(const string &new_state) {
     // TOOD(quiche): On backwards transitions, we should probably set
     // a timeout for getting back into the completed state. At present,
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
-    // has changed. But there may be cases where that signal is sent.
+    // has changed. But there may be cases where that signal is not sent.
     // (crosbug.com/23207)
   } else {
     // Other transitions do not affect Service state.

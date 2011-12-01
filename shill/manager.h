@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -61,7 +61,11 @@ class Manager {
   void DeregisterDevice(const DeviceRefPtr &to_forget);
 
   virtual bool HasService(const ServiceRefPtr &service);
+  // Register a Service with the Manager. Manager may choose to
+  // connect to it immediately.
   virtual void RegisterService(const ServiceRefPtr &to_manage);
+  // Deregister a Service from the Manager. Caller is responsible
+  // for disconnecting the Service before-hand.
   virtual void DeregisterService(const ServiceRefPtr &to_forget);
   virtual void UpdateService(const ServiceRefPtr &to_update);
 
@@ -116,6 +120,8 @@ class Manager {
   static const char kManagerErrorNoDevice[];
 
   std::string CalculateState(Error *error);
+  void AutoConnect();
+  void AutoConnectTask();
   std::vector<std::string> AvailableTechnologies(Error *error);
   std::vector<std::string> ConnectedTechnologies(Error *error);
   std::string DefaultTechnology(Error *error);
@@ -138,6 +144,8 @@ class Manager {
   bool OrderServices(ServiceRefPtr a, ServiceRefPtr b);
   void SortServices();
 
+  EventDispatcher *dispatcher_;
+  ScopedRunnableMethodFactory<Manager> task_factory_;
   const FilePath run_path_;
   const FilePath storage_path_;
   const std::string user_storage_format_;

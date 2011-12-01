@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -21,6 +21,8 @@
 #include "shill/mock_store.h"
 #include "shill/mock_wifi.h"
 #include "shill/property_store_unittest.h"
+#include "shill/refptr_types.h"
+#include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
 using std::map;
@@ -63,6 +65,9 @@ class WiFiServiceTest : public PropertyStoreTest {
     if (passphrase)
       service->SetPassphrase(passphrase, &error);
     return service->connectable();
+  }
+  WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid) {
+    return WiFiEndpoint::MakeOpenEndpoint(ssid, bssid);
   }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
 
@@ -472,6 +477,61 @@ TEST_F(WiFiServiceTest, Connectable) {
 
   // Unconfigured 802.1x should NOT be connectable.
   EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL));
+}
+
+TEST_F(WiFiServiceTest, IsAutoConnectable) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  EXPECT_CALL(*wifi(), IsIdle())
+      .WillRepeatedly(Return(true));
+  EXPECT_FALSE(service->HasEndpoints());
+  EXPECT_FALSE(service->IsAutoConnectable());
+
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01");
+  service->AddEndpoint(endpoint);
+  EXPECT_CALL(*wifi(), IsIdle())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(service->HasEndpoints());
+  EXPECT_TRUE(service->IsAutoConnectable());
+
+  // WiFi only supports connecting to one Service at a time. So, to
+  // avoid disrupting connectivity, we only allow auto-connection to
+  // a WiFiService when the corresponding WiFi is idle.
+  EXPECT_CALL(*wifi(), IsIdle())
+      .WillRepeatedly(Return(false));
+  EXPECT_TRUE(service->HasEndpoints());
+  EXPECT_FALSE(service->IsAutoConnectable());
+}
+
+TEST_F(WiFiServiceTest, AutoConnect) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  EXPECT_FALSE(service->IsAutoConnectable());
+  EXPECT_CALL(*wifi(), ConnectTo(_, _))
+      .Times(0);
+  service->AutoConnect();
+
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01");
+  service->AddEndpoint(endpoint);
+  EXPECT_CALL(*wifi(), IsIdle())
+      .WillRepeatedly(Return(true));
+  EXPECT_TRUE(service->IsAutoConnectable());
+  EXPECT_CALL(*wifi(), ConnectTo(_, _));
+  service->AutoConnect();
 }
 
 }  // namespace shill

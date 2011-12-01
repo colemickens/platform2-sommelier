@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -359,6 +359,13 @@ void Device::SelectService(const ServiceRefPtr &service) {
                            service->UniqueName().c_str(),
                            service->friendly_name().c_str()) :
               "*reset*");
+
+  if (selected_service_.get() == service.get()) {
+    // No change to |selected_service_|. Return early to avoid
+    // changing its state.
+    return;
+  }
+
   if (selected_service_.get()) {
     if (selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);

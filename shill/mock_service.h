@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,6 +25,7 @@ class MockService : public Service {
               Manager *manager);
   virtual ~MockService();
 
+  MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD1(CalculateState, std::string(Error *error));
@@ -34,6 +35,7 @@ class MockService : public Service {
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_CONST_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsConnecting, bool());
+  MOCK_CONST_METHOD0(IsFailed, bool());
   MOCK_METHOD1(SetFailure, void(ConnectFailure failure));
   MOCK_CONST_METHOD0(failure, ConnectFailure());
   MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -163,7 +163,19 @@ class ManagerTest : public PropertyStoreTest {
     manager->PushProfile(name, &path, &error);
     return error.type();
   }
+
  protected:
+  typedef scoped_refptr<MockService> MockServiceRefPtr;
+
+  MockServiceRefPtr MakeAutoConnectableService() {
+    MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
+                                                          dispatcher(),
+                                                          manager());
+    service->MakeFavorite();
+    service->set_connectable(true);
+    return service;
+  }
+
   scoped_refptr<MockWiFi> mock_wifi_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;
@@ -345,6 +357,18 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   manager.RegisterService(mock_service2);
   EXPECT_NE(mock_service2->profile().get(), profile.get());
   manager.Stop();
+}
+
+TEST_F(ManagerTest, DeregisterUnregisteredService) {
+  // WiFi assumes that it can deregister a service that is not
+  // registered.  (E.g. a hidden service can be deregistered when it
+  // loses its last endpoint, and again when WiFi is Stop()-ed.)
+  //
+  // So test that doing so doesn't cause a crash.
+  MockServiceRefPtr service = new NiceMock<MockService>(control_interface(),
+                                                        dispatcher(),
+                                                        manager());
+  manager()->DeregisterService(service);
 }
 
 TEST_F(ManagerTest, GetProperties) {
@@ -733,26 +757,53 @@ TEST_F(ManagerTest, SortServices) {
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  // Favorite
+  // Favorite.
   mock_service1->MakeFavorite();
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
-  // Connecting.
-  EXPECT_CALL(*mock_service0.get(), state())
-      .WillRepeatedly(Return(Service::kStateAssociating));
-  EXPECT_CALL(*mock_service0.get(), IsConnecting())
-      .WillRepeatedly(Return(true));
+  // Auto-connect.
+  mock_service0->set_auto_connect(true);
   manager()->UpdateService(mock_service0);
+  mock_service1->set_auto_connect(false);
+  manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  // Connected.
+  // Connectable.
+  mock_service1->set_connectable(true);
+  manager()->UpdateService(mock_service1);
+  mock_service0->set_connectable(false);
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  // IsFailed.
+  EXPECT_CALL(*mock_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*mock_service0.get(), IsFailed())
+      .WillRepeatedly(Return(false));
+  manager()->UpdateService(mock_service0);
+  EXPECT_CALL(*mock_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateFailure));
+  EXPECT_CALL(*mock_service1.get(), IsFailed())
+      .WillRepeatedly(Return(true));
+  manager()->UpdateService(mock_service1);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
+
+  // Connecting.
   EXPECT_CALL(*mock_service1.get(), state())
-      .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*mock_service1.get(), IsConnected())
+      .WillRepeatedly(Return(Service::kStateAssociating));
+  EXPECT_CALL(*mock_service1.get(), IsConnecting())
       .WillRepeatedly(Return(true));
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
+
+  // Connected.
+  EXPECT_CALL(*mock_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*mock_service0.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  manager()->UpdateService(mock_service0);
+  EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
@@ -975,6 +1026,47 @@ TEST_F(ManagerTest, SaveSuccessfulService) {
   EXPECT_CALL(*profile.get(), AdoptService(expect_service))
       .WillOnce(Return(true));
   manager()->UpdateService(service);
+}
+
+TEST_F(ManagerTest, AutoConnectOnRegister) {
+  MockServiceRefPtr service = MakeAutoConnectableService();
+  EXPECT_CALL(*service.get(), AutoConnect());
+  manager()->RegisterService(service);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectOnUpdate) {
+  MockServiceRefPtr service1 = MakeAutoConnectableService();
+  service1->set_priority(1);
+  MockServiceRefPtr service2 = MakeAutoConnectableService();
+  service2->set_priority(2);
+  manager()->RegisterService(service1);
+  manager()->RegisterService(service2);
+  dispatcher()->DispatchPendingEvents();
+
+  EXPECT_CALL(*service1.get(), AutoConnect());
+  EXPECT_CALL(*service2.get(), state())
+      .WillRepeatedly(Return(Service::kStateFailure));
+  EXPECT_CALL(*service2.get(), IsFailed())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*service2.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  manager()->UpdateService(service2);
+  dispatcher()->DispatchPendingEvents();
+}
+
+TEST_F(ManagerTest, AutoConnectOnDeregister) {
+  MockServiceRefPtr service1 = MakeAutoConnectableService();
+  service1->set_priority(1);
+  MockServiceRefPtr service2 = MakeAutoConnectableService();
+  service2->set_priority(2);
+  manager()->RegisterService(service1);
+  manager()->RegisterService(service2);
+  dispatcher()->DispatchPendingEvents();
+
+  EXPECT_CALL(*service1.get(), AutoConnect());
+  manager()->DeregisterService(service2);
+  dispatcher()->DispatchPendingEvents();
 }
 
 }  // namespace shill

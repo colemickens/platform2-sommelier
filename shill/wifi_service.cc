@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -113,6 +113,22 @@ WiFiService::~WiFiService() {
   LOG(INFO) << __func__;
 }
 
+void WiFiService::AutoConnect() {
+  if (IsAutoConnectable()) {
+    // Execute immediately, for two reasons:
+    //
+    // 1. We need IsAutoConnectable to return the correct value for
+    //    other WiFiServices, and that depends on WiFi's state.
+    //
+    // 2. We should probably limit the extent to which we queue up
+    //    actions (such as AutoConnect) which depend on current state.
+    //    If we queued AutoConnects, we could build a long queue of
+    //    useless work (one AutoConnect per Service), which blocks
+    //    more timely work.
+    ConnectTask();
+  }
+}
+
 void WiFiService::Connect(Error */*error*/) {
   LOG(INFO) << __func__;
   // Defer handling, since dbus-c++ does not permit us to send an
@@ -133,10 +149,22 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
   return wifi_->TechnologyIs(type);
 }
 
-bool WiFiService::IsAutoConnectable() {
-  // TODO(quiche): Need to also handle the case where there might be
-  // another service that has posted a Connect task.  crosbug.com/24276
-  return connectable() && wifi_->IsIdle();
+bool WiFiService::IsAutoConnectable() const {
+  return connectable()
+      // Only auto-connect to Services which have visible Endpoints.
+      // (Needed because hidden Services may remain registered with
+      // Manager even without visible Endpoints.)
+      && HasEndpoints()
+      // Do not preempt other connections (whether pending, or
+      // connected).
+      && wifi_->IsIdle();
+}
+
+bool WiFiService::IsConnecting() const {
+  // WiFi does not move us into the associating state until it gets
+  // feedback from wpa_supplicant. So, to answer whether or
+  // not we're connecting, we consult with |wifi_|.
+  return wifi_->IsConnectingTo(*this);
 }
 
 void WiFiService::AddEndpoint(WiFiEndpointConstRefPtr endpoint) {
@@ -185,12 +213,10 @@ bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
 }
 
 bool WiFiService::IsVisible() const {
-  const bool is_visible_in_scan = !endpoints_.empty();
-
   // WiFi Services should be displayed only if they are in range (have
   // endpoints that have shown up in a scan) or if the service is actively
   // being connected.
-  return is_visible_in_scan || IsConnected() || IsConnecting();
+  return HasEndpoints() || IsConnected() || IsConnecting();
 }
 
 bool WiFiService::Load(StoreInterface *storage) {

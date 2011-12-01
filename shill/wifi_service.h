@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -34,11 +34,12 @@ class WiFiService : public Service {
   ~WiFiService();
 
   // Inherited from Service.
+  virtual void AutoConnect();
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
-  virtual bool IsAutoConnectable();
+  virtual bool IsConnecting() const;
 
   virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
@@ -63,6 +64,7 @@ class WiFiService : public Service {
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
 
+  virtual bool HasEndpoints() const { return !endpoints_.empty(); }
   virtual bool IsVisible() const;
   bool IsSecurityMatch(const std::string &security) const;
   bool hidden_ssid() const { return hidden_ssid_; }
@@ -70,13 +72,18 @@ class WiFiService : public Service {
   virtual void InitializeCustomMetrics() const;
   virtual void SendPostReadyStateMetrics() const;
 
+ protected:
+  virtual bool IsAutoConnectable() const;
+
  private:
   friend class WiFiServiceSecurityTest;
   FRIEND_TEST(MetricsTest, WiFiServiceChannel);
+  FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
+  FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
 
   static const char kStorageHiddenSSID[];

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -98,6 +98,15 @@ class Service : public base::RefCounted<Service> {
           Technology::Identifier technology);
   virtual ~Service();
 
+  // AutoConnect MAY choose to ignore the connection request in some
+  // cases. For example, if the corresponding Device only supports one
+  // concurrent connection, and another Service is already connected
+  // or connecting.
+  //
+  // AutoConnect MAY issue RPCs immediately. So AutoConnect MUST NOT
+  // be called from a D-Bus signal handler context.
+  virtual void AutoConnect();
+  // Queue up a connection attempt.
   virtual void Connect(Error *error) = 0;
   virtual void Disconnect(Error *error) = 0;
 
@@ -109,12 +118,6 @@ class Service : public base::RefCounted<Service> {
 
   virtual bool IsActive(Error *error);
 
-  // Returns whether this service is in a state conducive to auto-connect.
-  // This should include any tests used for computing connectable(),
-  // as well as other critera such as whether the device associated with
-  // this service is busy with another connection.
-  virtual bool IsAutoConnectable() { return connectable(); }
-
   virtual ConnectState state() const { return state_; }
   // Updates the state of the Service and alerts the manager.  Also
   // clears |failure_| if the new state isn't a failure.
@@ -124,6 +127,9 @@ class Service : public base::RefCounted<Service> {
   virtual bool IsConnected() const { return state() == kStateConnected; }
   virtual bool IsConnecting() const {
     return state() == kStateAssociating || state() == kStateConfiguring;
+  }
+  virtual bool IsFailed() const {
+    return state() == kStateFailure;
   }
 
   virtual ConnectFailure failure() const { return failure_; }
@@ -223,6 +229,12 @@ class Service : public base::RefCounted<Service> {
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   virtual std::string CalculateState(Error *error);
+
+  // Returns whether this service is in a state conducive to auto-connect.
+  // This should include any tests used for computing connectable(),
+  // as well as other critera such as whether the device associated with
+  // this service is busy with another connection.
+  virtual bool IsAutoConnectable() const { return connectable(); }
 
   void HelpRegisterDerivedBool(
       const std::string &name,

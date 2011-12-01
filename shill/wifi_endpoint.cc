@@ -95,6 +95,30 @@ const string &WiFiEndpoint::security_mode() const {
 }
 
 // static
+WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(
+    const string &ssid, const string &bssid) {
+  map <string, ::DBus::Variant> args;
+  ::DBus::MessageIter writer;
+
+  writer = args[wpa_supplicant::kBSSPropertySSID].writer();
+  writer << vector<uint8_t>(ssid.begin(), ssid.end());
+
+  string bssid_nosep;
+  RemoveChars(bssid, ":", &bssid_nosep);
+  vector<uint8_t> bssid_bytes;
+  base::HexStringToBytes(bssid_nosep, &bssid_bytes);
+  writer = args[wpa_supplicant::kBSSPropertyBSSID].writer();
+  writer << bssid_bytes;
+
+  args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(0);
+  args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
+      wpa_supplicant::kNetworkModeInfrastructure);
+  // We indicate this is an open BSS by leaving out all security properties.
+
+  return new WiFiEndpoint(args);
+}
+
+// static
 const char *WiFiEndpoint::ParseMode(const string &mode_string) {
   if (mode_string == wpa_supplicant::kNetworkModeInfrastructure) {
     return flimflam::kModeManaged;

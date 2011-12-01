@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -98,7 +98,8 @@ void SupplicantInterfaceProxy::Proxy::NetworkAdded(
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
     const ::DBus::Path &/*network*/) {
   LOG(INFO) << __func__;
-  // XXX
+  // TODO(quiche): Pass this up to WiFi, so that it can clean its
+  // rpcid_by_service_ map. crosbug.com/24699
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(

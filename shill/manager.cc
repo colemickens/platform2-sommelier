@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -55,17 +55,19 @@ Manager::Manager(ControlInterface *control_interface,
                  const string &run_directory,
                  const string &storage_directory,
                  const string &user_storage_format)
-  : run_path_(FilePath(run_directory)),
-    storage_path_(FilePath(storage_directory)),
-    user_storage_format_(user_storage_format),
-    adaptor_(control_interface->CreateManagerAdaptor(this)),
-    device_info_(control_interface, dispatcher, this),
-    modem_info_(control_interface, dispatcher, this, glib),
-    running_(false),
-    connect_profiles_to_rpc_(true),
-    ephemeral_profile_(new EphemeralProfile(control_interface, this)),
-    control_interface_(control_interface),
-    glib_(glib) {
+    : dispatcher_(dispatcher),
+      task_factory_(this),
+      run_path_(FilePath(run_directory)),
+      storage_path_(FilePath(storage_directory)),
+      user_storage_format_(user_storage_format),
+      adaptor_(control_interface->CreateManagerAdaptor(this)),
+      device_info_(control_interface, dispatcher, this),
+      modem_info_(control_interface, dispatcher, this, glib),
+      running_(false),
+      connect_profiles_to_rpc_(true),
+      ephemeral_profile_(new EphemeralProfile(control_interface, this)),
+      control_interface_(control_interface),
+      glib_(glib) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileName,
                             NULL);
@@ -215,6 +217,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     // to avoid leaving permanent side effects to devices under test.  This
     // whole thing will need to be reworked in order to allow that to happen,
     // or the autotests (or their expectations) will need to change.
+    // crosbug.com/24461
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Cannot load non-default global profile " + name);
     return;
@@ -422,7 +425,8 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
             << " state: " << Service::ConnectStateToString(to_update->state())
             << " failure: "
             << Service::ConnectFailureToString(to_update->failure());
-  LOG(INFO) << "IsConnected(): " << to_update->IsConnected();
+  VLOG(2) << "IsConnected(): " << to_update->IsConnected();
+  VLOG(2) << "IsConnecting(): " << to_update->IsConnecting();
   if (to_update->IsConnected()) {
     to_update->MakeFavorite();
     if (to_update->profile().get() == ephemeral_profile_.get()) {
@@ -508,13 +512,48 @@ void Manager::SortServices() {
     }
   }
 
+  AutoConnect();
+}
+
+void Manager::AutoConnect() {
+  // We might be called in the middle of another request (e.g., as a
+  // consequence of Service::SetState calling UpdateService). To avoid
+  // re-entrancy issues in dbus-c++, defer to the event loop.
+  dispatcher_->PostTask(
+      task_factory_.NewRunnableMethod(&Manager::AutoConnectTask));
+  return;
+}
+
+void Manager::AutoConnectTask() {
+  if (services_.empty()) {
+    LOG(INFO) << "No services.";
+    return;
+  }
+
+  if (VLOG_IS_ON(4)) {
+    for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
+         it != services_.end(); ++it) {
+      VLOG(4) << "Sorted service list: ";
+      VLOG(4) << "Service " << (*it)->friendly_name()
+              << " IsConnected: " << (*it)->IsConnected()
+              << " IsConnecting: " << (*it)->IsConnecting()
+              << " IsFailed: " << (*it)->IsFailed()
+              << " connectable: " << (*it)->connectable()
+              << " auto_connect: " << (*it)->auto_connect()
+              << " favorite: " << (*it)->favorite()
+              << " priority: " << (*it)->priority()
+              << " security_level: " << (*it)->security_level()
+              << " strength: " << (*it)->strength()
+              << " UniqueName: " << (*it)->UniqueName();
+    }
+  }
+
   // Perform auto-connect.
-  for (it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->auto_connect() && (*it)->IsAutoConnectable()) {
-      Error error;
-      (*it)->Connect(&error);
-      // We intentionally ignore the error returned by Connect() here since it
-      // should not prevent us from trying to connect a different service.
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->auto_connect()) {
+      LOG(INFO) << "Initiating connect to " << (*it)->friendly_name() << ".";
+      (*it)->AutoConnect();
     }
   }
 }

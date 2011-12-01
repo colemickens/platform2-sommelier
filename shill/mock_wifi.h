@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,6 +40,7 @@ class MockWiFi : public WiFi {
   MOCK_METHOD2(ConnectTo,
                void(WiFiService *service,
                     std::map<std::string, ::DBus::Variant> service_params));
+  MOCK_CONST_METHOD0(IsIdle, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);

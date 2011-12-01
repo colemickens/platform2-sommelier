@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -206,8 +206,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
   SupplicantProcessProxyInterface *GetSupplicantProcessProxy() {
     return wifi_->supplicant_process_proxy_.get();
   }
-  SupplicantInterfaceProxyInterface *GetSupplicantInterfaceProxy() {
-    return wifi_->supplicant_interface_proxy_.get();
+  MockSupplicantInterfaceProxy *GetSupplicantInterfaceProxy() {
+    return dynamic_cast<MockSupplicantInterfaceProxy *>(
+        wifi_->supplicant_interface_proxy_.get());
   }
   const string &GetSupplicantState() {
     return wifi_->supplicant_state_;
@@ -223,25 +224,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     return wifi_->link_up_;
   }
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid) {
-    map <string, ::DBus::Variant> args;
-    ::DBus::MessageIter writer;
-
-    writer = args[wpa_supplicant::kBSSPropertySSID].writer();
-    writer << vector<uint8_t>(ssid.begin(), ssid.end());
-
-    string bssid_nosep;
-    RemoveChars(bssid, ":", &bssid_nosep);
-    vector<uint8_t> bssid_bytes;
-    base::HexStringToBytes(bssid_nosep, &bssid_bytes);
-    writer = args[wpa_supplicant::kBSSPropertyBSSID].writer();
-    writer << bssid_bytes;
-
-    args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(0);
-    args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
-        wpa_supplicant::kNetworkModeInfrastructure);
-    // We indicate this is an open BSS by leaving out all security properties.
-
-    return new WiFiEndpoint(args);
+    return WiFiEndpoint::MakeOpenEndpoint(ssid, bssid);
   }
   MockWiFiServiceRefPtr MakeMockService() {
     vector<uint8_t> ssid(1, 'a');
@@ -554,10 +537,45 @@ TEST_F(WiFiMainTest, LoneBSSRemoved) {
   EXPECT_EQ(1, GetServices().size());
   EXPECT_TRUE(GetServices().front()->IsVisible());
 
-  EXPECT_CALL(*manager(), UpdateService(_));
+  EXPECT_CALL(*manager(), DeregisterService(_));
   RemoveBSS("bss0");
-  EXPECT_FALSE(GetServices().front()->IsVisible());
+  EXPECT_TRUE(GetServices().empty());
+}
+
+TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnected) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  ReportCurrentBSSChanged("bss0");
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*manager(), DeregisterService(_));
+  RemoveBSS("bss0");
+  EXPECT_TRUE(GetServices().empty());
+}
+
+TEST_F(WiFiMainTest, LoneBSSRemovedWhileConnectedToHidden) {
+  StartWiFi();
+
+  Error e;
+  WiFiServiceRefPtr service =
+      GetServiceInner(flimflam::kTypeWifi, "ssid", flimflam::kModeManaged,
+                      NULL, NULL, true, &e);
   EXPECT_EQ(1, GetServices().size());
+
+  ReportBSS("bss", "ssid", "00:00:00:00:00:01", 0, kNetworkModeInfrastructure);
+  ReportScanDone();
+  ReportCurrentBSSChanged("bss");
+  EXPECT_EQ(1, GetServices().size());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*manager(), UpdateService(_));
+  RemoveBSS("bss");
+  EXPECT_TRUE(manager()->HasService(service));
+  EXPECT_EQ(1, GetServices().size());
+  // Verify expectations now, because WiFi may call UpdateService when
+  // WiFi is Stop()-ed (during TearDown()).
+  Mock::VerifyAndClearExpectations(manager());
 }
 
 TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
@@ -1183,7 +1201,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToDisconnected) {
   EXPECT_EQ(NULL, GetPendingService().get());
 
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
-  EXPECT_EQ(Service::kStateIdle, service->state());
+  EXPECT_EQ(Service::kStateFailure, service->state());
   EXPECT_EQ(NULL, GetCurrentService().get());
   EXPECT_EQ(NULL, GetPendingService().get());
 }
@@ -1243,6 +1261,38 @@ TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {
   EXPECT_CALL(*manager(), RegisterService(_));
   ReportBSS("ap0", "an_ssid", "00:00:00:00:00:00", 0,
             kNetworkModeInfrastructure);
+}
+
+TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
+  WiFiEndpointRefPtr ap1 = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiEndpointRefPtr ap2 = MakeEndpoint("another_ssid", "01:02:03:04:05:06");
+  WiFiServiceRefPtr service1 = CreateServiceForEndpoint(*ap1);
+  WiFiServiceRefPtr service2 = CreateServiceForEndpoint(*ap2);
+
+  StartWiFi();
+  ReportBSS("ap1", ap1->ssid_string(), ap1->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  ReportBSS("ap2", ap2->ssid_string(), ap2->bssid_string(), 0,
+            kNetworkModeInfrastructure);
+  InitiateConnect(service1);
+  EXPECT_EQ(service1.get(), GetPendingService().get());
+
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_));
+  InitiateConnect(service2);
+  EXPECT_EQ(service2.get(), GetPendingService().get());
+}
+
+TEST_F(WiFiMainTest, IsIdle) {
+  StartWiFi();
+  EXPECT_TRUE(wifi()->IsIdle());
+
+  WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
+  WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
+  Error error;
+  service->AddEndpoint(ap);
+  service->AutoConnect();
+  EXPECT_FALSE(wifi()->IsIdle());
 }
 
 }  // namespace shill

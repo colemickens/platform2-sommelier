@@ -39,6 +39,8 @@ class WiFiEndpoint : public Endpoint {
 
  private:
   friend class WiFiEndpointTest;
+  friend class WiFiMainTest;  // for MakeOpenEndpoint
+  friend class WiFiServiceTest;  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
@@ -49,6 +51,9 @@ class WiFiEndpoint : public Endpoint {
     kKeyManagementPSK
   };
 
+  // Build a simple WiFiEndpoint, for testing purposes.
+  static WiFiEndpoint *MakeOpenEndpoint(
+      const std::string &ssid, const std::string &bssid);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
   // in chromeos/dbus/service_constants.h
   static const char *ParseMode(const std::string &mode_string);

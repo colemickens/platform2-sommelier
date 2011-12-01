@@ -1,4 +1,4 @@
-Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 
@@ -64,7 +64,7 @@ Running integration tests
 - stop flimflam, and start shill
   localhost / # stop flimflam
   localhost / # shill --foreground --v=1000 \
-            --device-black-list=managed0,managed1,mon.managed0,mon.managed1
+            --device-black-list=managed0,managed1
   (the black list keep shill from configuring the devices used by the hostapd
   processes.)
 

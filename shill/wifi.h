@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,6 +41,7 @@ class WiFi : public Device {
   virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
+  virtual bool IsConnectingTo(const WiFiService &service) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
 
   // Called by SupplicantInterfaceProxy, in response to events from
@@ -57,7 +58,7 @@ class WiFi : public Device {
       WiFiService *service,
       std::map<std::string, ::DBus::Variant> service_params);
   virtual void DisconnectFrom(WiFiService *service);
-  virtual bool IsIdle();
+  virtual bool IsIdle() const;
 
   // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
