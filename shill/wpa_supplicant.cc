@@ -34,6 +34,7 @@ const char kNetworkModeInfrastructure[] = "infrastructure";
 const char kNetworkModeAdHoc[]       = "ad-hoc";
 const char kNetworkModeAccessPoint[] = "ap";
 const char kNetworkPropertyMode[]   = "mode";
+const char kNetworkPropertyScanSSID[] = "scan_ssid";
 const char kNetworkPropertySSID[]   = "ssid";
 const char kPropertyAuthAlg[]       = "auth_alg";
 const char kPropertyKeyManagement[] = "key_mgmt";

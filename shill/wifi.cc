@@ -264,7 +264,7 @@ void WiFi::ScanDone() {
 }
 
 void WiFi::ConnectTo(WiFiService *service,
-                     const map<string, DBus::Variant> &service_params) {
+                     map<string, DBus::Variant> service_params) {
   CHECK(service);
   DBus::Path network_path;
 
@@ -272,12 +272,14 @@ void WiFi::ConnectTo(WiFiService *service,
   // TODO(quiche): Handle case where there's already a pending
   // connection attempt.
 
-  // TODO(quiche): Set scan_ssid=1 in service_params, like flimflam does?
   try {
     // TODO(quiche): Set a timeout here. In the normal case, we expect
     // that, if wpa_supplicant fails to connect, it will eventually send
     // a signal that its CurrentBSS has changed. But there may be cases
     // where the signal is not sent. (crosbug.com/23206)
+    const uint32_t scan_ssid = 1;  // "True": Use directed probe.
+    service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
+        append_uint32(scan_ssid);
     network_path =
         supplicant_interface_proxy_->AddNetwork(service_params);
     // TODO(quiche): Figure out when to remove services from this map.

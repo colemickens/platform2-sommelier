@@ -38,6 +38,9 @@ extern const char kNetworkModeAdHoc[];
 extern const char kNetworkModeAccessPoint[];
 extern const char kNetworkPropertyMode[];
 extern const char kNetworkPropertySSID[];
+extern const char kNetworkPropertyScanSSID[];
+// TODO(quiche): Make the naming scheme more consistent, by adding the
+// object type to the property names below. (crosbug.com/23656)
 extern const char kPropertyAuthAlg[];
 extern const char kPropertyBSSID[];
 extern const char kPropertyKeyManagement[];

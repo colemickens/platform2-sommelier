@@ -37,8 +37,8 @@ class MockWiFi : public WiFi {
   MOCK_METHOD2(GetService,
                WiFiServiceRefPtr(const KeyValueStore &args, Error *error));
   MOCK_METHOD2(ConnectTo,
-               void(WiFiService *,
-                    const std::map<std::string, ::DBus::Variant> &));
+               void(WiFiService *service,
+                    std::map<std::string, ::DBus::Variant> service_params));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);
