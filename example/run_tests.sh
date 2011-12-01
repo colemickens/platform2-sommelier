@@ -19,70 +19,93 @@ log "TEST: out of dir"
 mkdir -p foo
 pushd foo
 make -C ../ all
-stat build-opt
 make -C ../ tests
+stat project_test
 make -C ../ clean
-(stat build-opt && false || true) &> /dev/null
-popd
-rmdir foo
-log "PASSED"
-
-log "TEST: out of dir, pwd=out"
-mkdir -p foo
-pushd foo
-make -C ../ all OUT=$PWD
-make -C ../ tests OUT=$PWD
-make -C ../ clean OUT=$PWD
+((stat project_test && false) || true) 2>&1
 stat .dont_delete_on_clean
 popd
 rm foo/.dont_delete_on_clean
 rmdir foo
 log "PASSED"
 
+log "TEST: out of dir, out=pwd"
+mkdir -p foo
+pushd foo
+make -C ../ all OUT=$PWD
+make -C ../ tests OUT=$PWD
+stat project_test
+make -C ../ clean OUT=$PWD
+((stat project_test && false) || true) 2>&1
+stat .dont_delete_on_clean
+popd
+rm foo/.dont_delete_on_clean
+rmdir foo
+log "PASSED"
+
+log "TEST: out of dir, out=src/build-opt"
+mkdir -p foo
+pushd foo
+make -C ../ all OUT=$PWD/../build-opt
+ls ../build-opt
+make -C ../ tests OUT=$PWD/../build-opt
+make -C ../ clean OUT=$PWD/../build-opt
+((stat ../build-opt/project_test && false) || true) 2>&1
+((stat ../build-opt && false) || true) 2>&1
+popd
+rmdir foo
+log "PASSED"
+
+
 log "TEST: out of dir, targets"
 mkdir foo
 pushd foo
 make -C ../ 'CXX_BINARY(project_test)' \
             'CC_LIBRARY(component/subcomponent/libsubcomponent.so)'
-stat build-opt
+stat project_test
+stat component/subcomponent/libsubcomponent.so
 make -C ../ tests
 make -C ../ clean
-(stat build-opt && false || true) &> /dev/null
+((stat project_test && false) || true) 2>&1
+stat .dont_delete_on_clean
 popd
+rm foo/.dont_delete_on_clean
 rmdir foo
 log "PASSED"
 
 log "TEST: in dir"
 make all
-stat build-opt
 make tests
+stat project_test
 make clean
-(stat build-opt && false || true) &> /dev/null
+((stat project_test && false) || true) 2>&1
 log "PASSED"
 
 log "TEST: in dir, qemu (no mounts)"
 make all
-stat build-opt
 make tests USE_QEMU=1
+stat project_test
 make clean USE_QEMU=1
-(stat build-opt && false || true) &> /dev/null
+((stat project_test && false) || true) 2>&1
 log "PASSED"
 
 log "TEST: in dir, target"
 make 'CXX_BINARY(project_test)'
-stat build-opt
+stat project_test
 make tests
 make clean
-(stat build-opt && false || true) &> /dev/null
+((stat project_test && false) || true) 2>&1
 log "PASSED"
 
 log "TEST: in dir, targets"
 make 'CXX_BINARY(project_test)' \
      'CXX_LIBRARY(component/libcomponent.so)'
-stat build-opt
+stat project_test
+stat component/libcomponent.so
 make tests
 make clean
-(stat build-opt && false || true) &> /dev/null
+((stat project_test && false) || true) 2>&1
+((stat component/libcomponent.so && false) || true) 2>&1
 log "PASSED"
 
 log "TEST: non-existent automatic target"
