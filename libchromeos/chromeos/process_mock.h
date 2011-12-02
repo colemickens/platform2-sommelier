@@ -20,6 +20,7 @@ class ProcessMock : public Process {
   MOCK_METHOD1(AddArg, void(const std::string& arg));
   MOCK_METHOD1(RedirectOutput, void(const std::string& output_file));
   MOCK_METHOD2(RedirectUsingPipe, void(int child_fd, bool is_input));
+  MOCK_METHOD2(BindFd, void(int parent_fd, int child_fd));
   MOCK_METHOD1(SetUid, void(uid_t));
   MOCK_METHOD1(SetGid, void(gid_t));
   MOCK_METHOD1(GetPipe, int(int child_fd));

@@ -49,6 +49,20 @@ void ProcessImpl::RedirectOutput(const std::string& output_file) {
 void ProcessImpl::RedirectUsingPipe(int child_fd, bool is_input) {
   PipeInfo info;
   info.is_input_ = is_input;
+  info.is_bound_ = false;
+  pipe_map_[child_fd] = info;
+}
+
+void ProcessImpl::BindFd(int parent_fd, int child_fd) {
+  PipeInfo info;
+  info.is_bound_ = true;
+
+  // info.child_fd_ is the 'child half' of the pipe, which gets dup2()ed into
+  // place over child_fd. Since we already have the child we want to dup2() into
+  // place, we can set info.child_fd_ to parent_fd and leave info.parent_fd_
+  // invalid.
+  info.child_fd_ = parent_fd;
+  info.parent_fd_ = -1;
   pipe_map_[child_fd] = info;
 }
 
@@ -84,6 +98,10 @@ bool ProcessImpl::PopulatePipeMap() {
   }
 
   for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
+    if (i->second.is_bound_) {
+      // already have a parent fd, and the child fd gets dup()ed later.
+      continue;
+    }
     int pipefds[2];
     if (pipe(pipefds) < 0) {
       int saved_errno = errno;

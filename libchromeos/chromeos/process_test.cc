@@ -9,6 +9,8 @@
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
+#include <unistd.h>
+
 // This test assumes the following standard binaries are installed.
 static const char kBinBash[] = "/bin/bash";
 static const char kBinCat[] = "/bin/cat";
@@ -33,6 +35,21 @@ TEST(SimpleProcess, Basic) {
   process.AddArg(kBinEcho);
   EXPECT_EQ(0, process.Run());
   EXPECT_EQ("", GetLog());
+}
+
+TEST(SimpleProcess, BindFd) {
+  int fds[2];
+  char buf[16];
+  static const char *kMsg = "hello, world!";
+  ProcessImpl process;
+  EXPECT_EQ(0, pipe(fds));
+  process.AddArg(kBinEcho);
+  process.AddArg(kMsg);
+  process.BindFd(fds[1], 1);
+  process.Start();
+  memset(buf, 0, sizeof(buf));
+  EXPECT_EQ(read(fds[0], buf, sizeof(buf) - 1), strlen(kMsg) + 1);
+  EXPECT_EQ(std::string(kMsg) + "\n", std::string(buf));
 }
 
 class ProcessTest : public ::testing::Test {

@@ -51,6 +51,10 @@ class Process {
   // from child process's perspective iff |is_input|.
   virtual void RedirectUsingPipe(int child_fd, bool is_input) = 0;
 
+  // Binds the given file descriptor in the parent to the given file
+  // descriptor in the child.
+  virtual void BindFd(int parent_fd, int child_fd) = 0;
+
   // Set the real/effective/saved user ID of the child process.
   virtual void SetUid(uid_t uid) = 0;
 
@@ -112,6 +116,7 @@ class ProcessImpl : public Process {
   virtual void AddArg(const std::string& arg);
   virtual void RedirectOutput(const std::string& output_file);
   virtual void RedirectUsingPipe(int child_fd, bool is_input);
+  virtual void BindFd(int parent_fd, int child_fd);
   virtual void SetUid(uid_t uid);
   virtual void SetGid(gid_t gid);
   virtual int GetPipe(int child_fd);
@@ -133,6 +138,8 @@ class ProcessImpl : public Process {
     int child_fd_;
     // Is this an input or output pipe from child's perspective.
     bool is_input_;
+    // Is this a bound (pre-existing) file descriptor?
+    bool is_bound_;
   };
   typedef std::map<int, PipeInfo> PipeMap;
 
