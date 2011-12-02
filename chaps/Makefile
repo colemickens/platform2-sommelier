@@ -36,6 +36,8 @@ attributes.pb.cc: attributes.pb.h
 
 attributes.cc: attributes.pb.h
 
+chaps_adaptor.cc chaps_proxy.cc chaps.cc chapsd.cc: dbus-headers
+
 $(OUT)libchaps.so: dbus-headers \
                    protobufs \
                    $(OUT)chaps.o \
