@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_SERVICE_
 #define SHILL_WIFI_SERVICE_
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -37,6 +38,9 @@ class WiFiService : public Service {
   virtual void Disconnect();
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
+
+  virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
+  virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;
@@ -128,6 +132,7 @@ class WiFiService : public Service {
 
   ScopedRunnableMethodFactory<WiFiService> task_factory_;
   WiFiRefPtr wifi_;
+  std::set<WiFiEndpointConstRefPtr> endpoints_;
   const std::vector<uint8_t> ssid_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };

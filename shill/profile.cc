@@ -207,6 +207,9 @@ bool Profile::GetStoragePath(FilePath *path) {
 }
 
 vector<string> Profile::EnumerateAvailableServices(Error *error) {
+  // TOOD(quiche): This list should be based on the information we
+  // have about services, rather than the Manager's service
+  // list. (crosbug.com/23702)
   return manager_->EnumerateAvailableServices(error);
 }
 

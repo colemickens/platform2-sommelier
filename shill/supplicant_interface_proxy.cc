@@ -79,9 +79,9 @@ void SupplicantInterfaceProxy::Proxy::BSSAdded(
   wifi_->BSSAdded(BSS, properties);
 }
 
-void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &/*BSS*/) {
+void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
   LOG(INFO) << __func__;
-  // XXX
+  wifi_->BSSRemoved(BSS);
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(

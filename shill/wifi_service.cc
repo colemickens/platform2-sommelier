@@ -26,6 +26,7 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
+using std::set;
 using std::string;
 using std::vector;
 
@@ -124,6 +125,23 @@ bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
   return wifi_->TechnologyIs(type);
 }
 
+void WiFiService::AddEndpoint(WiFiEndpointConstRefPtr endpoint) {
+  DCHECK(endpoint->ssid() == ssid());
+  endpoints_.insert(endpoint);
+}
+
+void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
+  set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.find(endpoint);
+  DCHECK(i != endpoints_.end());
+  if (i == endpoints_.end()) {
+    LOG(WARNING) << "In " << __func__ << "(): "
+                 << "ignorning non-existent endpoint "
+                 << endpoint->bssid_string();
+    return;
+  }
+  endpoints_.erase(i);
+}
+
 string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
@@ -162,9 +180,7 @@ bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
 }
 
 bool WiFiService::IsVisible() const {
-  // TODO(quiche): Write a function that returns whether (or which)
-  // endpoints are associated with this service.  crosbug.com/22948
-  const bool is_visible_in_scan = true;
+  const bool is_visible_in_scan = !endpoints_.empty();
 
   // WiFi Services should be displayed only if they are in range (have
   // endpoints that have shown up in a scan) or if the service is actively

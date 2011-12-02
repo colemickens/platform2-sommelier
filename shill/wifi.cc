@@ -241,6 +241,47 @@ void WiFi::BSSAdded(
             << "bssid: " << endpoint->bssid_string() << ", "
             << "signal: " << endpoint->signal_strength() << ", "
             << "security: " << endpoint->security_mode();
+
+  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
+  if (service) {
+    LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
+              << " to service " << service->friendly_name() << ".";
+    service->AddEndpoint(endpoint);
+    // TODO(quiche): Handle the case where |service| has not been
+    // registered with the Manager. (crosbug.com/23713)
+    manager()->UpdateService(service);
+    return;
+  }
+
+  const bool hidden_ssid = false;
+  service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
+  LOG(INFO) << "New service " << service->GetRpcIdentifier()
+            << " (" << service->friendly_name() << ")";
+  service->AddEndpoint(endpoint);
+  manager()->RegisterService(service);
+}
+
+void WiFi::BSSRemoved(const ::DBus::Path &path) {
+  EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
+  if (i == endpoint_by_rpcid_.end()) {
+    LOG(WARNING) << "WiFi " << link_name()
+                 << " could not find BSS " << path
+                 << " to remove.";
+    return;
+  }
+
+  WiFiEndpointRefPtr endpoint = i->second;
+  CHECK(endpoint);
+  endpoint_by_rpcid_.erase(i);
+
+  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
+  CHECK(service);
+  service->RemoveEndpoint(endpoint);
+  manager()->UpdateService(service);
+
+  // TODO(quiche): If the Service no longer has any Endpoints, we may
+  // want to unregister it from the Manager, and possibly our own
+  // |services_| list as well. (crosbug.com/23703)
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
@@ -641,23 +682,7 @@ void WiFi::PropertiesChangedTask(
 
 void WiFi::ScanDoneTask() {
   LOG(INFO) << __func__;
-
   scan_pending_ = false;
-  for (EndpointMap::iterator i(endpoint_by_rpcid_.begin());
-       i != endpoint_by_rpcid_.end(); ++i) {
-    const WiFiEndpoint &endpoint(*(i->second));
-    if (FindServiceForEndpoint(endpoint).get())
-      continue;
-
-    const bool hidden_ssid = false;
-    WiFiServiceRefPtr service =
-        CreateServiceForEndpoint(endpoint, hidden_ssid);
-    manager()->RegisterService(service);
-    LOG(INFO) << "New service " << service->GetRpcIdentifier()
-              << " (" << service->friendly_name() << ")";
-  }
-
-  // TODO(quiche): Unregister removed services from manager.
 }
 
 void WiFi::ScanTask() {
@@ -817,7 +842,8 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
                               security_method,
                               hidden_ssid);
     services_.push_back(service);
-    // TODO(quiche): Register |service| with Manager.
+    // NB: We do not register the newly created Service with the Manager.
+    // The Service will be registered if/when we find Endpoints for it.
   }
 
   if (security_method == flimflam::kSecurityWep ||

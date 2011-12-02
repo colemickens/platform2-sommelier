@@ -47,6 +47,7 @@ class WiFi : public Device {
   // wpa_supplicant.
   void BSSAdded(const ::DBus::Path &BSS,
                 const std::map<std::string, ::DBus::Variant> &properties);
+  void BSSRemoved(const ::DBus::Path &BSS);
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();

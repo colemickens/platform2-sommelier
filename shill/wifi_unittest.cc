@@ -246,6 +246,7 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
         flimflam::kSecurityNone,
         false);
   }
+  void RemoveBSS(const ::DBus::Path &bss_path);
   void ReportBSS(const ::DBus::Path &bss_path,
                  const string &ssid,
                  const string &bssid,
@@ -376,6 +377,10 @@ const char WiFiMainTest::kDeviceAddress[] = "000102030405";
 const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
 
+void WiFiMainTest::RemoveBSS(const ::DBus::Path &bss_path) {
+  wifi_->BSSRemoved(bss_path);
+}
+
 void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
                              const string &ssid,
                              const string &bssid,
@@ -483,19 +488,23 @@ TEST_F(WiFiMainTest, ScanResultsWithUpdates) {
 
 TEST_F(WiFiMainTest, ScanCompleted) {
   StartWiFi();
+  EXPECT_CALL(*manager(), RegisterService(_))
+      .Times(3);
   ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS(
       "bss1", "ssid1", "00:00:00:00:00:01", 1, kNetworkModeInfrastructure);
   ReportBSS(
       "bss2", "ssid2", "00:00:00:00:00:02", 2, kNetworkModeInfrastructure);
-  EXPECT_CALL(*manager(), RegisterService(_))
-      .Times(3);
   ReportScanDone();
   EXPECT_EQ(3, GetServices().size());
 }
 
 TEST_F(WiFiMainTest, EndpointGroupingTogether) {
   StartWiFi();
+
+  InSequence s;
+  EXPECT_CALL(*manager(), RegisterService(_));
+  EXPECT_CALL(*manager(), UpdateService(_));
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -504,6 +513,8 @@ TEST_F(WiFiMainTest, EndpointGroupingTogether) {
 
 TEST_F(WiFiMainTest, EndpointGroupingDifferentSSID) {
   StartWiFi();
+  EXPECT_CALL(*manager(), RegisterService(_))
+      .Times(2);
   ReportBSS("bss0", "ssid1", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS("bss1", "ssid2", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
   ReportScanDone();
@@ -512,10 +523,46 @@ TEST_F(WiFiMainTest, EndpointGroupingDifferentSSID) {
 
 TEST_F(WiFiMainTest, EndpointGroupingDifferentMode) {
   StartWiFi();
+  EXPECT_CALL(*manager(), RegisterService(_))
+      .Times(2);
   ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
   ReportBSS("bss1", "ssid", "00:00:00:00:00:01", 0, kNetworkModeInfrastructure);
   ReportScanDone();
   EXPECT_EQ(2, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, NonExistentBSSRemoved) {
+  // Removal of non-existent BSS should not cause a crash.
+  StartWiFi();
+  RemoveBSS("bss0");
+  EXPECT_EQ(0, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, LoneBSSRemoved) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  EXPECT_EQ(1, GetServices().size());
+  EXPECT_TRUE(GetServices().front()->IsVisible());
+
+  EXPECT_CALL(*manager(), UpdateService(_));
+  RemoveBSS("bss0");
+  EXPECT_FALSE(GetServices().front()->IsVisible());
+  EXPECT_EQ(1, GetServices().size());
+}
+
+TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
+  StartWiFi();
+  ReportBSS("bss0", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportScanDone();
+  EXPECT_EQ(1, GetServices().size());
+  EXPECT_TRUE(GetServices().front()->IsVisible());
+
+  EXPECT_CALL(*manager(), UpdateService(_));
+  RemoveBSS("bss0");
+  EXPECT_TRUE(GetServices().front()->IsVisible());
+  EXPECT_EQ(1, GetServices().size());
 }
 
 TEST_F(WiFiMainTest, Connect) {
