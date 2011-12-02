@@ -153,6 +153,11 @@ void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
          (!GenerateNumberOfAlsAdjustmentsPerSessionMetric(
              backlight)))
       << "Session Stopped: Unable to generate ALS adjustments per session!";
+  LOG_IF(ERROR,
+         (!GenerateUserBrightnessAdjustmentsPerSessionMetric(
+             backlight)))
+      << "Session Stopped: Unable to generate user brightness adjustments per"
+      << " session!";
 }
 
 bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
@@ -179,6 +184,16 @@ bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
                     kMetricNumberOfAlsAdjustmentsPerSessionMin,
                     kMetricNumberOfAlsAdjustmentsPerSessionMax,
                     kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+}
+
+bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
+    const BacklightController& backlight) {
+  return SendMetricWithPowerState(
+      kMetricUserBrightnessAdjustmentsPerSessionName,
+      backlight.user_adjustment_count(),
+      kMetricUserBrightnessAdjustmentsPerSessionMin,
+      kMetricUserBrightnessAdjustmentsPerSessionMax,
+      kMetricUserBrightnessAdjustmentsPerSessionBuckets);
 }
 
 bool Daemon::SendMetric(const std::string& name, int sample,

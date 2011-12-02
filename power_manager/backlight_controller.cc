@@ -74,6 +74,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       als_hysteresis_level_(0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
       als_adjustment_count_(0),
+      user_adjustment_count_(0),
       plugged_brightness_offset_(-1),
       unplugged_brightness_offset_(-1),
       brightness_offset_(NULL),
@@ -388,6 +389,9 @@ bool BacklightController::WriteBrightness(bool adjust_brightness_offset,
                                           BrightnessChangeCause cause) {
   if (!IsInitialized())
     return false;
+
+  if(cause == BRIGHTNESS_CHANGE_USER_INITIATED)
+    user_adjustment_count_++;
 
   double old_brightness = local_brightness_;
   if (state_ == BACKLIGHT_ACTIVE || state_ == BACKLIGHT_ALREADY_DIMMED) {

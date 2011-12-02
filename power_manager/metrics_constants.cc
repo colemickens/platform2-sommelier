@@ -49,11 +49,15 @@ const char kMetricBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";  // %
 const int kMetricBatteryRemainingAtStartOfSessionMax = 101;
 const char kMetricNumberOfAlsAdjustmentsPerSessionName[] =
-    "Power.NumberOfAlsAdjustmentsPerSession";  // %
-
+    "Power.NumberOfAlsAdjustmentsPerSession";
 const int kMetricNumberOfAlsAdjustmentsPerSessionMin = 0;
 const int kMetricNumberOfAlsAdjustmentsPerSessionMax = 10000;
 const int kMetricNumberOfAlsAdjustmentsPerSessionBuckets = 50;
+const char kMetricUserBrightnessAdjustmentsPerSessionName[] =
+    "Power.UserBrightnessAdjustmentsPerSession";
+const int kMetricUserBrightnessAdjustmentsPerSessionMin = 0;
+const int kMetricUserBrightnessAdjustmentsPerSessionMax = 10000;
+const int kMetricUserBrightnessAdjustmentsPerSessionBuckets = 50;
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms

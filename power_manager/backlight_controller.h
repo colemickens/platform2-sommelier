@@ -92,7 +92,9 @@ class BacklightController {
 
   PowerState state() const { return state_; }
 
-  uint32 als_adjustment_count() const { return als_adjustment_count_; }
+  int als_adjustment_count() const { return als_adjustment_count_; }
+
+  int user_adjustment_count() const { return user_adjustment_count_; }
 
   // Initialize the object.
   bool Init();
@@ -136,6 +138,7 @@ class BacklightController {
   friend class DaemonTest;
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
+  FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
 
   // Clamp |value| to fit between 0 and 100.
   double Clamp(double value);
@@ -209,7 +212,10 @@ class BacklightController {
   int als_temporal_count_;
 
   // Count of the number of adjustments that the ALS has caused
-  uint32 als_adjustment_count_;
+  int als_adjustment_count_;
+
+  // Count of the number of adjustments that the user has caused
+  int user_adjustment_count_;
 
   // User adjustable brightness offset when AC plugged.
   double plugged_brightness_offset_;

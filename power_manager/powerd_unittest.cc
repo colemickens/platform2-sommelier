@@ -97,6 +97,30 @@ class DaemonTest : public Test {
         .WillOnce(Return(true))
         .RetiresOnSaturation();
   }
+
+  void ExpectMetricWithPowerState(const std::string& name,
+                                  int sample,
+                                  int min,
+                                  int max,
+                                  int buckets) {
+    std::string name_with_power_state = name;
+    if (daemon_.plugged_state_ == kPowerDisconnected) {
+      name_with_power_state += "OnBattery";
+    } else if (daemon_.plugged_state_ == kPowerConnected) {
+      name_with_power_state += "OnAC";
+    } else {
+      return;
+    }
+
+    EXPECT_CALL(metrics_lib_, SendToUMA(name_with_power_state,
+                                        sample,
+                                        min,
+                                        max,
+                                        buckets))
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
+  }
+
   void ExpectEnumMetricWithPowerState(const std::string& name,
                                       int sample,
                                       int max) {
@@ -168,6 +192,17 @@ class DaemonTest : public Test {
                  kMetricNumberOfAlsAdjustmentsPerSessionMin,
                  kMetricNumberOfAlsAdjustmentsPerSessionMax,
                  kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
+  }
+
+  // Adds a metrics library mock expectation for the number of ALS adjustments
+  // per session metric with the given |sample|.
+  void ExpectUserBrightnessAdjustmentsPerSessionMetric(int sample) {
+    ExpectMetricWithPowerState(
+        kMetricUserBrightnessAdjustmentsPerSessionName,
+        sample,
+        kMetricUserBrightnessAdjustmentsPerSessionMin,
+        kMetricUserBrightnessAdjustmentsPerSessionMax,
+        kMetricUserBrightnessAdjustmentsPerSessionBuckets);
   }
 
   StrictMock<MockBacklight> backlight_;
@@ -328,20 +363,6 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
             daemon_.battery_time_to_empty_metric_last_);
 }
 
-TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
-  static const uint adjustment_counts[] = {0, 100, 500, 1000};
-  size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
-
-  for(size_t i = 0; i < num_counts; i++) {
-    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
-    ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
-    EXPECT_TRUE(
-        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-            backlight_ctl_));
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
-  }
-}
-
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
   daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_time_to_empty = 100;
@@ -374,6 +395,10 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   backlight_ctl_.als_adjustment_count_ = 10;
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       backlight_ctl_.als_adjustment_count_);
+
+  backlight_ctl_.user_adjustment_count_ = 10;
+  ExpectUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_.user_adjustment_count_);
 
   daemon_.GenerateEndOfSessionMetrics(status_, backlight_ctl_);
 }
@@ -436,6 +461,42 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
 
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
+}
+
+TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
+  static const uint adjustment_counts[] = {0, 100, 500, 1000};
+  size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
+
+  for(size_t i = 0; i < num_counts; i++) {
+    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
+    ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
+    EXPECT_TRUE(
+        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+            backlight_ctl_));
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
+  }
+}
+
+TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
+  backlight_ctl_.user_adjustment_count_ = 10;
+
+  daemon_.plugged_state_ = kPowerConnected;
+  ExpectUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_.user_adjustment_count_);
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_));
+
+  daemon_.plugged_state_ = kPowerDisconnected;
+  ExpectUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_.user_adjustment_count_);
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_));
+
+  daemon_.plugged_state_ = kPowerUnknown;
+  ExpectUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_.user_adjustment_count_);
+  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
+      backlight_ctl_));
 }
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {

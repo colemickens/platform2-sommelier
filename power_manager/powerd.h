@@ -99,6 +99,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
+  FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, PowerButtonDownMetric);
   FRIEND_TEST(DaemonTest, SendEnumMetric);
   FRIEND_TEST(DaemonTest, SendMetric);
@@ -223,6 +224,12 @@ class Daemon : public XIdleObserver,
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
   bool GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+    const BacklightController& backlight);
+
+  // Generates a number of tiumes the user adjusted the backlight during a
+  // session UMA metric sample. Returns true if a sample was sent to UMA, false
+  // otherwise.
+  bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
     const BacklightController& backlight);
 
   // Sends a regular (exponential) histogram sample to Chrome for
