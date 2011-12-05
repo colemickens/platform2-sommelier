@@ -194,6 +194,10 @@ class BacklightController {
   // Observer for changes to the brightness level.  Not owned by us.
   BacklightControllerObserver* observer_;
 
+  // Indicate whether the ALS value has been read by powerd for the first time
+  // when SetAlsBrightnessLevel() is called.
+  bool has_als_been_read_for_first_time_;
+
   // The brightness offset recommended by the light sensor.
   int64 als_brightness_level_;
 
