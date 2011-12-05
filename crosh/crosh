@@ -565,22 +565,22 @@ cmd_network_diag(){
 }
 
 cmd_ping() {
-  local option=""
+  local option="dict:string:variant:"
 
   # NB: use printf to avoid echo interpreting -n
   while [ "$(printf '%s' "$1" | cut -c1)" = "-" ]; do
     # Do just enough parsing to filter/map options; we
     # depend on ping to handle final validation
     if [ "$1" = "-i" ]; then
-      shift; option="$option -i $1"
+      shift; option="${option}interval,int32:$1,"
     elif [ "$1" = "-c" ]; then
-      shift; option="$option -c $1"
+      shift; option="${option}count,int32:$1,"
     elif [ "$1" = "-W" ]; then
-      shift; option="$option -W $1"
+      shift; option="${option}waittime,int32:$1,"
     elif [ "$1" = "-s" ]; then
-      shift; option="$option -s $1"
+      shift; option="${option}packetsize,int32:$1,"
     elif [ "$1" = "-n" ]; then
-      option="$option -n"
+      option="${option}numeric,boolean:true"
     else
       echo "Unknown option: $1"
       return 1
@@ -607,7 +607,36 @@ cmd_ping() {
     fi
   fi
 
-  /bin/ping $option "$dest"
+  option=$(echo "$option" | sed 's/,$//')
+
+  # We want C-c to terminate the running ping so that the UI stays the same.
+  # Therefore, create a fifo to direct the output of the ping to, and have a
+  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
+  # C-c), we stop the ping and clean up the fifo.
+  # no way to mktemp a fifo, so make a dir to hold it instead
+  dir=$(mktemp -d "/tmp/crosh-ping-XXXXXXXXXX")
+  if [ $? -ne 0 ]; then
+    echo "Can't create temporary directory"
+    return 1
+  fi
+  fifo="${dir}/fifo"
+  if ! mkfifo "$fifo"; then
+    echo "Can't create fifo at $fifo"
+    return 1
+  fi
+  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
+       /org/chromium/debugd org.chromium.debugd.PingStart "fd:1" \
+       "string:$dest" "$option" 2>&1 > "$fifo" &
+  read pid < "$fifo"
+  echo "pid: $pid"
+  (while read line; do echo "$line"; done) < "$fifo"
+  dbus-send --system --print-reply --fixed --dest=org.chromium.debugd \
+      /org/chromium/debugd org.chromium.debugd.PingStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop ping"
+    return 1
+  fi
+  rm -rf "$dir"
 }
 
 # TODO(gauravsh): Remove once this is the default. crosbug.com/23531
