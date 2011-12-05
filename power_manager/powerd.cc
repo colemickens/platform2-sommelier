@@ -450,10 +450,10 @@ void Daemon::OnBrightnessChanged(double brightness_level,
   dbus_bool_t user_initiated = FALSE;
   switch (cause) {
     case BRIGHTNESS_CHANGE_AUTOMATED:
-      user_initiated = TRUE;
+      user_initiated = FALSE;
       break;
     case BRIGHTNESS_CHANGE_USER_INITIATED:
-      user_initiated = FALSE;
+      user_initiated = TRUE;
       break;
     default:
       NOTREACHED() << "Unhandled brightness change cause " << cause;
