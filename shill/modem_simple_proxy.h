@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,25 +17,38 @@ namespace shill {
 // A proxy to ModemManager.Modem.Simple.
 class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
-  ModemSimpleProxy(DBus::Connection *connection,
+  ModemSimpleProxy(ModemSimpleProxyDelegate *delegate,
+                   DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);
   virtual ~ModemSimpleProxy();
 
   // Inherited from ModemSimpleProxyInterface.
-  virtual DBusPropertiesMap GetStatus();
-  virtual void Connect(const DBusPropertiesMap &properties);
+  virtual void GetModemStatus(AsyncCallHandler *call_handler, int timeout);
+  virtual void Connect(const DBusPropertiesMap &properties,
+                       AsyncCallHandler *call_handler, int timeout);
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem::Simple_proxy,
                 public DBus::ObjectProxy {
    public:
-    Proxy(DBus::Connection *connection,
+    Proxy(ModemSimpleProxyDelegate *delegate,
+          DBus::Connection *connection,
           const std::string &path,
           const std::string &service);
     virtual ~Proxy();
 
    private:
+    // Signal callbacks inherited from ModemManager::Modem::Simple_proxy.
+    // [None]
+
+    // Method callbacks inherited from ModemManager::Modem::Simple_proxy.
+    virtual void GetStatusCallback(const DBusPropertiesMap &props,
+                                   const DBus::Error &dberror, void *data);
+    virtual void ConnectCallback(const DBus::Error &dberror, void *data);
+
+    ModemSimpleProxyDelegate *delegate_;
+
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 

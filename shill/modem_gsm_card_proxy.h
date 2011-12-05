@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -25,15 +25,19 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
   virtual ~ModemGSMCardProxy();
 
   // Inherited from ModemGSMCardProxyInterface.
-  virtual std::string GetIMEI();
-  virtual std::string GetIMSI();
-  virtual std::string GetSPN();
-  virtual std::string GetMSISDN();
-  virtual void EnablePIN(const std::string &pin, bool enabled);
-  virtual void SendPIN(const std::string &pin);
-  virtual void SendPUK(const std::string &puk, const std::string &pin);
+  virtual void GetIMEI(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetIMSI(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetSPN(AsyncCallHandler *call_handler, int timeout);
+  virtual void GetMSISDN(AsyncCallHandler *call_handler, int timeout);
+  virtual void EnablePIN(const std::string &pin, bool enabled,
+                         AsyncCallHandler *call_handler, int timeout);
+  virtual void SendPIN(const std::string &pin,
+                       AsyncCallHandler *call_handler, int timeout);
+  virtual void SendPUK(const std::string &puk, const std::string &pin,
+                       AsyncCallHandler *call_handler, int timeout);
   virtual void ChangePIN(const std::string &old_pin,
-                         const std::string &new_pin);
+                         const std::string &new_pin,
+                         AsyncCallHandler *call_handler, int timeout);
 
  private:
   class Proxy
@@ -48,7 +52,21 @@ class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem::Gsm::Card_proxy.
-    // None.
+    // [None]
+
+    // Method callbacks inherited from ModemManager::Modem::Gsm::Card_proxy.
+    virtual void GetImeiCallback(const std::string &imei,
+                                 const DBus::Error &dberror, void *data);
+    virtual void GetImsiCallback(const std::string &imsi,
+                                 const DBus::Error &dberror, void *data);
+    virtual void GetSpnCallback(const std::string &spn,
+                                 const DBus::Error &dberror, void *data);
+    virtual void GetMsIsdnCallback(const std::string &misisdn,
+                                 const DBus::Error &dberror, void *data);
+    virtual void EnablePinCallback(const DBus::Error &dberror, void *data);
+    virtual void SendPinCallback(const DBus::Error &dberror, void *data);
+    virtual void SendPukCallback(const DBus::Error &dberror, void *data);
+    virtual void ChangePinCallback(const DBus::Error &dberror, void *data);
 
     ModemGSMCardProxyDelegate *delegate_;
 

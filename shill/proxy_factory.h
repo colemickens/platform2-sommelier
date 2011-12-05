@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,6 +29,7 @@ class ModemManager;
 class ModemManagerProxyInterface;
 class ModemProxyDelegate;
 class ModemProxyInterface;
+class ModemSimpleProxyDelegate;
 class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
@@ -60,6 +61,7 @@ class ProxyFactory {
                                                 const std::string &service);
 
   virtual ModemSimpleProxyInterface *CreateModemSimpleProxy(
+      ModemSimpleProxyDelegate *delegate,
       const std::string &path,
       const std::string &service);
 

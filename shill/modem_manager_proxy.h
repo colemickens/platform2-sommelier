@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,6 +44,9 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
     // Signal callbacks inherited from ModemManager_proxy.
     virtual void DeviceAdded(const DBus::Path &device);
     virtual void DeviceRemoved(const DBus::Path &device);
+
+    // Method callbacks inherited from ModemManager_proxy.
+    // [None]
 
     // The owner of this proxy.
     ModemManager *manager_;

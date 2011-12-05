@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,7 @@ namespace shill {
 // static
 const Error::Info Error::kInfos[kNumErrors] = {
   { "Success", "Success (no error)" },
+  { "Failure", "Operation failed (no other information)" },
   { "AlreadyConnected", "Already connected" },
   { "AlreadyExists", "Already exists" },
   { "InProgress", "In progress" },
@@ -35,7 +36,10 @@ const Error::Info Error::kInfos[kNumErrors] = {
   { "OperationAborted", "Operation aborted" },
   { "OperationTimeout", "Operation timeout" },
   { "PassphraseRequired", "Passphrase required" },
-  { "PermissionDenied", "Permission denied" },
+  { "IncorrectPin", "Incorrect PIN" },
+  { "PinRequired", "SIM PIN is required"},
+  { "PinBlocked", "SIM PIN is blocked"},
+  { "PermissionDenied", "Permission denied" }
 };
 
 // static
@@ -103,3 +107,8 @@ void Error::PopulateAndLog(Error *error, Type type, const string &message) {
 }
 
 }  // namespace shill
+
+std::ostream &operator<<(std::ostream &stream, const shill::Error &error) {
+  stream << error.GetName(error.type()) << ":" << error.message();
+  return stream;
+}

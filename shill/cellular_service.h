@@ -34,7 +34,8 @@ class CellularService : public Service {
   // Inherited from Service.
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
-  virtual void ActivateCellularModem(const std::string &carrier, Error *error);
+  virtual void ActivateCellularModem(const std::string &carrier,
+                                     ReturnerInterface *returner);
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
   // cellular_<MAC>_<Service_Operator_Name>

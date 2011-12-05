@@ -30,6 +30,7 @@ class HTTPProxy;
 class KeyValueStore;
 class Manager;
 class Metrics;
+class ReturnerInterface;
 class ServiceAdaptorInterface;
 class StoreInterface;
 
@@ -113,8 +114,9 @@ class Service : public base::RefCounted<Service> {
   // auto-connect until a subsequent call to Connect, or Load.
   virtual void Disconnect(Error *error);
 
-  // The default implementation sets |error| to kInvalidArguments.
-  virtual void ActivateCellularModem(const std::string &carrier, Error *error);
+  // The default implementation returns the error kInvalidArguments.
+  virtual void ActivateCellularModem(const std::string &carrier,
+                                     ReturnerInterface *returner);
 
   // Base method always returns false.
   virtual bool TechnologyIs(const Technology::Identifier type) const;

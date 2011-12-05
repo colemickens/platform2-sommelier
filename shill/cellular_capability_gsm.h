@@ -26,38 +26,40 @@ class CellularCapabilityGSM : public CellularCapability,
   static const char kPropertyUnlockRequired[];
   static const char kPropertyUnlockRetries[];
 
-  CellularCapabilityGSM(Cellular *cellular);
+  CellularCapabilityGSM(Cellular *cellular, ProxyFactory *proxy_factory);
 
   // Inherited from CellularCapability.
-  virtual void OnDeviceStarted();
-  virtual void OnDeviceStopped();
+  virtual void StartModem();
+  virtual void StopModem();
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetSignalQuality();
-  virtual void GetRegistrationState();
-  virtual void GetProperties();
-  virtual void Register();
-  virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual void GetRegistrationState(AsyncCallHandler *call_handler);
+  virtual void GetProperties(AsyncCallHandler *call_handler);
+  virtual void GetIMEI(AsyncCallHandler *call_handler);
+  virtual void GetIMSI(AsyncCallHandler *call_handler);
+  virtual void GetSPN(AsyncCallHandler *call_handler);
+  virtual void GetMSISDN(AsyncCallHandler *call_handler);
+  virtual void Register(AsyncCallHandler *call_handler);
+  virtual void RegisterOnNetwork(const std::string &network_id,
+                                 AsyncCallHandler *call_handler);
   virtual bool IsRegistered();
   virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(
-      const std::string &pin, bool require, ReturnerInterface *returner);
-  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
+      const std::string &pin, bool require, AsyncCallHandler *call_handler);
+  virtual void EnterPIN(const std::string &pin, AsyncCallHandler *call_handler);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
-                          ReturnerInterface *returner);
+                          AsyncCallHandler *call_handler);
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
-                         ReturnerInterface *returner);
-  virtual void Scan(Error *error);
+                         AsyncCallHandler *call_handler);
+  virtual void Scan(AsyncCallHandler *call_handler);
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
-
-  // Obtains the IMEI, IMSI, SPN and MSISDN.
-  virtual void GetIdentifiers();
 
   const std::string &spn() const { return spn_; }
   const std::string &sim_lock_type() const {
@@ -66,8 +68,17 @@ class CellularCapabilityGSM : public CellularCapability,
   uint32 sim_lock_retries_left() const { return sim_lock_status_.retries_left; }
 
  private:
+  friend class CellularTest;
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularCapabilityGSMTest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetIMEI);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetIMSI);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetMSISDN);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetSPN);
+  FRIEND_TEST(CellularCapabilityGSMTest, RequirePIN);
+  FRIEND_TEST(CellularCapabilityGSMTest, EnterPIN);
+  FRIEND_TEST(CellularCapabilityGSMTest, UnblockPIN);
+  FRIEND_TEST(CellularCapabilityGSMTest, ChangePIN);
   FRIEND_TEST(CellularCapabilityGSMTest, InitAPNList);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResult);
   FRIEND_TEST(CellularCapabilityGSMTest, ParseScanResultProviderLookup);
@@ -76,6 +87,7 @@ class CellularCapabilityGSM : public CellularCapability,
   FRIEND_TEST(CellularCapabilityGSMTest, SetAccessTechnology);
   FRIEND_TEST(CellularCapabilityGSMTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityGSMTest, UpdateOperatorInfo);
+  FRIEND_TEST(CellularCapabilityGSMTest, GetRegistrationState);
 
   struct SimLockStatus {
    public:
@@ -96,18 +108,6 @@ class CellularCapabilityGSM : public CellularCapability,
   static const char kPhoneNumber[];
   static const char kPropertyAccessTechnology[];
 
-  void RegisterOnNetworkTask(const std::string &network_id);
-  void RequirePINTask(
-      const std::string &pin, bool require, ReturnerInterface *returner);
-  void EnterPINTask(const std::string &pin, ReturnerInterface *returner);
-  void UnblockPINTask(const std::string &unblock_code,
-                      const std::string &pin,
-                      ReturnerInterface *returner);
-  void ChangePINTask(const std::string &old_pin,
-                     const std::string &new_pin,
-                     ReturnerInterface *returner);
-  void ScanTask();
-
   void SetAccessTechnology(uint32 access_technology);
 
   // Sets the upper level information about the home cellular provider from the
@@ -124,8 +124,7 @@ class CellularCapabilityGSM : public CellularCapability,
   // Initializes the |apn_list_| property based on the current |home_provider_|.
   void InitAPNList();
 
-  Stringmap ParseScanResult(
-      const ModemGSMNetworkProxyInterface::ScanResult &result);
+  Stringmap ParseScanResult(const GSMScanResult &result);
 
   StrIntPair SimLockStatusToProperty(Error *error);
 
@@ -138,8 +137,31 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void OnGSMNetworkModeChanged(uint32 mode);
   virtual void OnGSMRegistrationInfoChanged(uint32 status,
                                             const std::string &operator_code,
-                                            const std::string &operator_name);
+                                            const std::string &operator_name,
+                                            const Error &error,
+                                            AsyncCallHandler *call_handler);
   virtual void OnGSMSignalQualityChanged(uint32 quality);
+  //
+  // Method callbacks inherited from ModemGSMNetworkProxyDelegate.
+  virtual void OnRegisterCallback(const Error &error,
+                                  AsyncCallHandler *call_handler);
+  virtual void OnGetIMEICallback(const std::string &imei,
+                                 const Error &error,
+                                 AsyncCallHandler *call_handler);
+  virtual void OnGetIMSICallback(const std::string &imsi,
+                                 const Error &error,
+                                 AsyncCallHandler *call_handler);
+  virtual void OnGetSPNCallback(const std::string &spn,
+                                const Error &error,
+                                AsyncCallHandler *call_handler);
+  virtual void OnGetMSISDNCallback(const std::string &msisdn,
+                                   const Error &error,
+                                   AsyncCallHandler *call_handler);
+  virtual void OnPINOperationCallback(const Error &error,
+                                      AsyncCallHandler *call_handler);
+  virtual void OnScanCallback(const GSMScanResults &results,
+                              const Error &error,
+                              AsyncCallHandler *call_handler);
 
   scoped_ptr<ModemGSMCardProxyInterface> card_proxy_;
   scoped_ptr<ModemGSMNetworkProxyInterface> network_proxy_;
@@ -151,6 +173,7 @@ class CellularCapabilityGSM : public CellularCapability,
   Cellular::Operator serving_operator_;
   std::string spn_;
   mobile_provider *home_provider_;
+  std::string desired_network_;
 
   // Properties.
   std::string selected_network_;

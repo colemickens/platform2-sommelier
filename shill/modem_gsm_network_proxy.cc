@@ -1,10 +1,13 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/modem_gsm_network_proxy.h"
 
 #include <base/logging.h>
+
+#include "shill/cellular_error.h"
+#include "shill/error.h"
 
 using std::string;
 
@@ -19,21 +22,23 @@ ModemGSMNetworkProxy::ModemGSMNetworkProxy(
 
 ModemGSMNetworkProxy::~ModemGSMNetworkProxy() {}
 
-ModemGSMNetworkProxyInterface::RegistrationInfo
-ModemGSMNetworkProxy::GetRegistrationInfo() {
-  return proxy_.GetRegistrationInfo();
+void ModemGSMNetworkProxy::GetRegistrationInfo(AsyncCallHandler *call_handler,
+                                               int timeout) {
+  proxy_.GetRegistrationInfo(call_handler, timeout);
 }
 
 uint32 ModemGSMNetworkProxy::GetSignalQuality() {
   return proxy_.GetSignalQuality();
 }
 
-void ModemGSMNetworkProxy::Register(const string &network_id) {
-  proxy_.Register(network_id);
+void ModemGSMNetworkProxy::Register(const string &network_id,
+                                    AsyncCallHandler *call_handler,
+                                    int timeout) {
+  proxy_.Register(network_id, call_handler, timeout);
 }
 
-ModemGSMNetworkProxyInterface::ScanResults ModemGSMNetworkProxy::Scan() {
-  return proxy_.Scan();
+void ModemGSMNetworkProxy::Scan(AsyncCallHandler *call_handler, int timeout) {
+  proxy_.Scan(call_handler, timeout);
 }
 
 uint32 ModemGSMNetworkProxy::AccessTechnology() {
@@ -60,12 +65,39 @@ void ModemGSMNetworkProxy::Proxy::RegistrationInfo(
     const string &operator_name) {
   VLOG(2) << __func__ << "(" << status << ", " << operator_code << ", "
           << operator_name << ")";
-  delegate_->OnGSMRegistrationInfoChanged(status, operator_code, operator_name);
+  delegate_->OnGSMRegistrationInfoChanged(status, operator_code, operator_name,
+                                          Error(), NULL);
 }
 
 void ModemGSMNetworkProxy::Proxy::NetworkMode(const uint32_t &mode) {
   VLOG(2) << __func__ << "(" << mode << ")";
   delegate_->OnGSMNetworkModeChanged(mode);
+}
+
+void ModemGSMNetworkProxy::Proxy::RegisterCallback(const DBus::Error &dberror,
+                                                   void *data) {
+  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  delegate_->OnRegisterCallback(error, call_handler);
+}
+
+void ModemGSMNetworkProxy::Proxy::GetRegistrationInfoCallback(
+    const GSMRegistrationInfo &info, const DBus::Error &dberror, void *data) {
+  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  delegate_->OnGSMRegistrationInfoChanged(info._1, info._2, info._3,
+                                          error, call_handler);
+}
+
+void ModemGSMNetworkProxy::Proxy::ScanCallback(const GSMScanResults &results,
+                                               const DBus::Error &dberror,
+                                               void *data) {
+  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  delegate_->OnScanCallback(results, error, call_handler);
 }
 
 }  // namespace shill

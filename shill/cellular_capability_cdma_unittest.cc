@@ -12,6 +12,7 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/mock_adaptors.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -23,6 +24,28 @@ using testing::Return;
 using testing::SetArgumentPointee;
 
 namespace shill {
+
+class TestAsyncCallHandler : public AsyncCallHandler {
+public:
+  explicit TestAsyncCallHandler(ReturnerInterface *returner)
+      : AsyncCallHandler(returner) { }
+  virtual ~TestAsyncCallHandler() { }
+
+  bool CompleteOperationWithError(const Error &error) {
+    error_.Populate(error.type(), error.message());
+    return AsyncCallHandler::CompleteOperationWithError(error);
+  }
+
+  static const Error &error() { return error_; }
+
+private:
+  // static because AsyncCallHandlers are deleted before callbacks return
+  static Error error_;
+
+  DISALLOW_COPY_AND_ASSIGN(TestAsyncCallHandler);
+};
+
+Error TestAsyncCallHandler::error_;
 
 class CellularCapabilityCDMATest : public testing::Test {
  public:
@@ -95,15 +118,17 @@ TEST_F(CellularCapabilityCDMATest, PropertyStore) {
 }
 
 TEST_F(CellularCapabilityCDMATest, Activate) {
-  Error error;
   SetDeviceState(Cellular::kStateEnabled);
-  EXPECT_CALL(*proxy_, Activate(kTestCarrier))
-      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR));
-  capability_->Activate(kTestCarrier, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*proxy_,
+              Activate(kTestCarrier, _, CellularCapability::kTimeoutActivate));
+  MockReturner returner;
+  scoped_ptr<TestAsyncCallHandler> handler(new TestAsyncCallHandler(&returner));
   SetProxy();
+  capability_->Activate(kTestCarrier, handler.get());
   SetService();
-  dispatcher_.DispatchPendingEvents();
+  capability_->OnActivateCallback(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR,
+                                  Error(), NULL);
+  EXPECT_TRUE(TestAsyncCallHandler::error().IsSuccess());
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateActivating,
@@ -112,19 +137,21 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
 }
 
 TEST_F(CellularCapabilityCDMATest, ActivateError) {
-  Error error;
-  capability_->Activate(kTestCarrier, &error);
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  MockReturner returner;
+  TestAsyncCallHandler *handler = new TestAsyncCallHandler(&returner);
+  capability_->Activate(kTestCarrier, handler);
+  EXPECT_EQ(Error::kInvalidArguments, TestAsyncCallHandler::error().type());
 
-  error.Reset();
+  handler = new TestAsyncCallHandler(&returner);
   SetDeviceState(Cellular::kStateRegistered);
-  EXPECT_CALL(*proxy_, Activate(kTestCarrier))
-      .WillOnce(Return(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
-  capability_->Activate(kTestCarrier, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_CALL(*proxy_, Activate(kTestCarrier, handler,
+                                CellularCapability::kTimeoutActivate));
   SetProxy();
   SetService();
-  dispatcher_.DispatchPendingEvents();
+  capability_->Activate(kTestCarrier, handler);
+  capability_->OnActivateCallback(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL,
+                                  Error(), handler);
+  EXPECT_TRUE(TestAsyncCallHandler::error().IsFailure());
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateNotActivated,
@@ -174,15 +201,6 @@ TEST_F(CellularCapabilityCDMATest, GetActivationErrorString) {
                 MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL));
   EXPECT_EQ(flimflam::kErrorActivationFailed,
             CellularCapabilityCDMA::GetActivationErrorString(1234));
-}
-
-TEST_F(CellularCapabilityCDMATest, GetIdentifiers) {
-  EXPECT_CALL(*proxy_, MEID()).WillOnce(Return(kMEID));
-  SetProxy();
-  capability_->GetIdentifiers();
-  EXPECT_EQ(kMEID, cellular_->meid());
-  capability_->GetIdentifiers();
-  EXPECT_EQ(kMEID, cellular_->meid());
 }
 
 TEST_F(CellularCapabilityCDMATest, IsRegisteredEVDO) {
@@ -265,7 +283,7 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
   EXPECT_CALL(*proxy_, GetSignalQuality()).WillOnce(Return(90));
   SetProxy();
   EXPECT_CALL(manager_, RegisterService(_));
-  capability_->GetRegistrationState();
+  capability_->GetRegistrationState(NULL);
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,
             capability_->registration_state_1x());
@@ -279,7 +297,7 @@ TEST_F(CellularCapabilityCDMATest, CreateFriendlyServiceName) {
   EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("CDMANetwork1", capability_->CreateFriendlyServiceName());
   static const char kTestCarrier[] = "A Carrier";
-  cellular_->carrier_ = kTestCarrier;
+  capability_->carrier_ = kTestCarrier;
   EXPECT_EQ(kTestCarrier, capability_->CreateFriendlyServiceName());
 }
 

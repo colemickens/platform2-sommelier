@@ -7,6 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular_capability.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_metrics.h"
@@ -70,7 +71,7 @@ TEST_F(CellularServiceTest, SetRoamingState) {
 
 TEST_F(CellularServiceTest, FriendlyName) {
   static const char kCarrier[] = "Cellular Carrier";
-  device_->carrier_ = kCarrier;
+  device_->capability_->carrier_ = kCarrier;
   service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
   EXPECT_EQ(kCarrier, service_->friendly_name());
 }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,16 +19,20 @@ class MockModemGSMCardProxy : public ModemGSMCardProxyInterface {
   MockModemGSMCardProxy();
   virtual ~MockModemGSMCardProxy();
 
-  MOCK_METHOD0(GetIMEI, std::string());
-  MOCK_METHOD0(GetIMSI, std::string());
-  MOCK_METHOD0(GetSPN, std::string());
-  MOCK_METHOD0(GetMSISDN, std::string());
+  MOCK_METHOD2(GetIMEI, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD2(GetIMSI, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD2(GetSPN, void(AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD2(GetMSISDN, void(AsyncCallHandler *call_handler, int timeout));
 
-  MOCK_METHOD2(EnablePIN, void(const std::string &pin, bool enabled));
-  MOCK_METHOD1(SendPIN, void(const std::string &pin));
-  MOCK_METHOD2(SendPUK, void(const std::string &puk, const std::string &pin));
-  MOCK_METHOD2(ChangePIN,
-               void(const std::string &old_pin, const std::string &new_pin));
+  MOCK_METHOD4(EnablePIN, void(const std::string &pin, bool enabled,
+                               AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD3(SendPIN, void(const std::string &pin,
+                             AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD4(SendPUK, void(const std::string &puk, const std::string &pin,
+                             AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD4(ChangePIN, void(const std::string &old_pin,
+                               const std::string &new_pin,
+                               AsyncCallHandler *call_handler, int timeout));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemGSMCardProxy);

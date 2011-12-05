@@ -72,6 +72,7 @@ DBUS_PROXY_BINDINGS = $(addprefix $(DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 DBUS_BINDINGS = $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
 
 SHILL_OBJS = \
+	async_call_handler.o \
 	async_connection.o \
 	byte_string.o \
 	callback_list.o \
@@ -79,6 +80,7 @@ SHILL_OBJS = \
 	cellular_capability.o \
 	cellular_capability_cdma.o \
 	cellular_capability_gsm.o \
+	cellular_error.o \
 	cellular_service.o \
 	connection.o \
 	crypto_des_cbc.o \
@@ -162,6 +164,7 @@ TEST_OBJS = \
 	callback_list_unittest.o \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_gsm_unittest.o \
+	cellular_capability_unittest.o \
 	cellular_service_unittest.o \
 	cellular_unittest.o \
 	crypto_des_cbc_unittest.o \

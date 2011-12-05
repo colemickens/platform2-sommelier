@@ -94,9 +94,10 @@ void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
 
 void DeviceDBusAdaptor::Register(const string &network_id,
                                  ::DBus::Error &error) {
-  Error e;
-  device_->RegisterOnNetwork(network_id, &e);
-  e.ToDBusError(&error);
+  VLOG(2) << __func__ << "(" << network_id << ")";
+  Returner *returner = Returner::Create(this);
+  device_->RegisterOnNetwork(network_id, returner);
+  returner->DelayOrReturn(&error);
 }
 
 void DeviceDBusAdaptor::RequirePin(

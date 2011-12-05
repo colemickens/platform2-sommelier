@@ -26,9 +26,12 @@ class ModemProxy : public ModemProxyInterface {
   virtual ~ModemProxy();
 
   // Inherited from ModemProxyInterface.
-  virtual void Enable(const bool enable);
+  virtual void Enable(bool enable, AsyncCallHandler *call_handler, int timeout);
+  // TODO(ers): temporarily advertise the blocking version
+  // of Enable, until Cellular::Stop is converted for async.
+  virtual void Enable(bool enable);
   virtual void Disconnect();
-  virtual Info GetInfo();
+  virtual void GetModemInfo(AsyncCallHandler *call_handler, int timeout);
 
  private:
   class Proxy : public org::freedesktop::ModemManager::Modem_proxy,
@@ -42,9 +45,14 @@ class ModemProxy : public ModemProxyInterface {
 
    private:
     // Signal callbacks inherited from ModemManager::Modem_proxy.
-    virtual void StateChanged(const uint32 &old,
-                              const uint32 &_new,
-                              const uint32 &reason);
+    virtual void StateChanged(
+        const uint32 &old, const uint32 &_new, const uint32 &reason);
+
+    // Method callbacks inherited from ModemManager::Modem_proxy.
+    virtual void EnableCallback(const DBus::Error &dberror, void *data);
+    virtual void GetInfoCallback(const ModemHardwareInfo &info,
+                                 const DBus::Error &dberror, void *data);
+    virtual void DisconnectCallback(const DBus::Error &dberror, void *data);
 
     ModemProxyDelegate *delegate_;
 

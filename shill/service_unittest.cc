@@ -252,9 +252,11 @@ TEST_F(ServiceTest, State) {
 }
 
 TEST_F(ServiceTest, ActivateCellularModem) {
+  MockReturner returner;
+  EXPECT_CALL(returner, Return()).Times(0);
+  EXPECT_CALL(returner, ReturnError(_));
   Error error;
-  service_->ActivateCellularModem("Carrier", &error);
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  service_->ActivateCellularModem("Carrier", &returner);
 }
 
 TEST_F(ServiceTest, MakeFavorite) {

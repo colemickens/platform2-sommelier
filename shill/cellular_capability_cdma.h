@@ -18,27 +18,27 @@ class CellularCapabilityCDMA : public CellularCapability,
                                public ModemCDMAProxyDelegate {
 
  public:
-  CellularCapabilityCDMA(Cellular *cellular);
+  CellularCapabilityCDMA(Cellular *cellular, ProxyFactory *proxy_factory);
 
   // Inherited from CellularCapability.
-  virtual void OnDeviceStarted();
-  virtual void OnDeviceStopped();
+  virtual void StartModem();
+  virtual void StopModem();
   virtual void OnServiceCreated();
   virtual void UpdateStatus(const DBusPropertiesMap &properties);
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
-  virtual void Activate(const std::string &carrier, Error *error);
+  virtual void Activate(const std::string &carrier,
+                        AsyncCallHandler *call_handler);
   virtual bool IsRegistered();
   virtual std::string CreateFriendlyServiceName();
   virtual std::string GetNetworkTechnologyString() const;
   virtual std::string GetRoamingStateString() const;
   virtual void GetSignalQuality();
-  virtual void GetRegistrationState();
-  virtual void GetProperties();
+  virtual void GetRegistrationState(AsyncCallHandler *call_handler);
+  virtual void GetProperties(AsyncCallHandler *call_handler);
   virtual void OnModemManagerPropertiesChanged(
       const DBusPropertiesMap &properties);
 
-  // Obtains the MEID.
-  virtual void GetIdentifiers();
+  virtual void GetMEID(AsyncCallHandler *call_handler);
 
   uint32 activation_state() const { return activation_state_; }
   uint32 registration_state_evdo() const { return registration_state_evdo_; }
@@ -46,14 +46,14 @@ class CellularCapabilityCDMA : public CellularCapability,
 
  private:
   friend class CellularCapabilityCDMATest;
+  FRIEND_TEST(CellularCapabilityCDMATest, Activate);
+  FRIEND_TEST(CellularCapabilityCDMATest, ActivateError);
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationStateString);
   FRIEND_TEST(CellularCapabilityCDMATest, GetActivationErrorString);
   FRIEND_TEST(CellularTest, CreateService);
 
   static const char kPhoneNumber[];
-
-  void ActivateTask(const std::string &carrier);
 
   void HandleNewActivationState(uint32 error);
 
@@ -71,6 +71,8 @@ class CellularCapabilityCDMA : public CellularCapability,
   virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo);
   virtual void OnCDMASignalQualityChanged(uint32 strength);
+  virtual void OnActivateCallback(uint32 status, const Error &error,
+                                  AsyncCallHandler *call_handler);
 
   scoped_ptr<ModemCDMAProxyInterface> proxy_;
 

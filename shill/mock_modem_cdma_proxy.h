@@ -19,7 +19,8 @@ class MockModemCDMAProxy : public ModemCDMAProxyInterface {
   MockModemCDMAProxy();
   virtual ~MockModemCDMAProxy();
 
-  MOCK_METHOD1(Activate, uint32(const std::string &carrier));
+  MOCK_METHOD3(Activate, void(const std::string &carrier,
+                              AsyncCallHandler *call_handler, int timeout));
   MOCK_METHOD2(GetRegistrationState, void(uint32 *cdma_1x_state,
                                           uint32 *evdo_state));
   MOCK_METHOD0(GetSignalQuality, uint32());

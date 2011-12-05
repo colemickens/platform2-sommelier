@@ -22,8 +22,9 @@ unsigned int CellularCapabilityCDMA::friendly_service_name_id_ = 0;
 
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
-CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
-    : CellularCapability(cellular),
+CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
+                                               ProxyFactory *proxy_factory)
+    : CellularCapability(cellular, proxy_factory),
       task_factory_(this),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),
       registration_state_evdo_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -34,14 +35,31 @@ CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular)
   store->RegisterConstUint16(flimflam::kPRLVersionProperty, &prl_version_);
 }
 
-void CellularCapabilityCDMA::OnDeviceStarted() {
-  VLOG(2) << __func__;
+
+void CellularCapabilityCDMA::StartModem()
+{
+  CellularCapability::StartModem();
   proxy_.reset(proxy_factory()->CreateModemCDMAProxy(
       this, cellular()->dbus_path(), cellular()->dbus_owner()));
+
+  MultiStepAsyncCallHandler *call_handler =
+      new MultiStepAsyncCallHandler(cellular()->dispatcher());
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+      &CellularCapabilityCDMA::EnableModem, call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+      &CellularCapabilityCDMA::GetModemStatus, call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+      &CellularCapabilityCDMA::GetMEID, call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+      &CellularCapabilityCDMA::GetModemInfo, call_handler));
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+      &CellularCapabilityCDMA::GetRegistrationState, call_handler));
+  call_handler->PostNextTask();
 }
 
-void CellularCapabilityCDMA::OnDeviceStopped() {
+void CellularCapabilityCDMA::StopModem() {
   VLOG(2) << __func__;
+  CellularCapability::StopModem();
   proxy_.reset();
 }
 
@@ -73,39 +91,23 @@ void CellularCapabilityCDMA::UpdateStatus(const DBusPropertiesMap &properties) {
 
 void CellularCapabilityCDMA::SetupConnectProperties(
     DBusPropertiesMap *properties) {
-  (*properties)[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
+  (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
 }
 
-void CellularCapabilityCDMA::Activate(const string &carrier, Error *error) {
+void CellularCapabilityCDMA::Activate(const string &carrier,
+                                      AsyncCallHandler *call_handler) {
   VLOG(2) << __func__ << "(" << carrier << ")";
   if (cellular()->state() != Cellular::kStateEnabled &&
       cellular()->state() != Cellular::kStateRegistered) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
+    Error error;
+    Error::PopulateAndLog(&error, Error::kInvalidArguments,
                           "Unable to activate in " +
                           Cellular::GetStateString(cellular()->state()));
+    CompleteOperation(call_handler, error);
     return;
   }
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityCDMA::ActivateTask, carrier));
-}
-
-void CellularCapabilityCDMA::ActivateTask(const string &carrier) {
-  VLOG(2) << __func__ << "(" << carrier << ")";
-  if (cellular()->state() != Cellular::kStateEnabled &&
-      cellular()->state() != Cellular::kStateRegistered) {
-    LOG(ERROR) << "Unable to activate in "
-               << Cellular::GetStateString(cellular()->state());
-    return;
-  }
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  uint32 status = proxy_->Activate(carrier);
-  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
-    activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
-  }
-  HandleNewActivationState(status);
+  proxy_->Activate(carrier, call_handler, kTimeoutActivate);
 }
 
 void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
@@ -152,16 +154,17 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
   }
 }
 
-void CellularCapabilityCDMA::GetIdentifiers() {
+void CellularCapabilityCDMA::GetMEID(AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
-  if (cellular()->meid().empty()) {
+  if (meid_.empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    cellular()->set_meid(proxy_->MEID());
-    VLOG(2) << "MEID: " << cellular()->meid();
+    meid_ = proxy_->MEID();
+    VLOG(2) << "MEID: " << meid_;
   }
+  CompleteOperation(call_handler);
 }
 
-void CellularCapabilityCDMA::GetProperties() {
+void CellularCapabilityCDMA::GetProperties(AsyncCallHandler */*call_handler*/) {
   VLOG(2) << __func__;
   // No properties.
 }
@@ -207,20 +210,22 @@ void CellularCapabilityCDMA::GetSignalQuality() {
   cellular()->HandleNewSignalQuality(strength);
 }
 
-void CellularCapabilityCDMA::GetRegistrationState() {
+void CellularCapabilityCDMA::GetRegistrationState(
+    AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(petkov) Switch to asynchronous calls (crosbug.com/17583).
   proxy_->GetRegistrationState(
       &registration_state_1x_, &registration_state_evdo_);
   VLOG(2) << "CDMA Registration: 1x(" << registration_state_1x_
           << ") EVDO(" << registration_state_evdo_ << ")";
   cellular()->HandleNewRegistrationState();
+  CompleteOperation(call_handler);
 }
 
 string CellularCapabilityCDMA::CreateFriendlyServiceName() {
   VLOG(2) << __func__;
-  if (!cellular()->carrier().empty()) {
-    return cellular()->carrier();
+  if (!carrier_.empty()) {
+    return carrier_;
   }
   return base::StringPrintf("CDMANetwork%u", friendly_service_name_id_++);
 }
@@ -232,19 +237,30 @@ void CellularCapabilityCDMA::UpdateServingOperator() {
   }
 }
 
+void CellularCapabilityCDMA::OnActivateCallback(
+    uint32 status,
+    const Error &error,
+    AsyncCallHandler *call_handler) {
+  if (error.IsFailure()) {
+    CompleteOperation(call_handler, error);
+    return;
+  }
+
+  if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
+    activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  }
+  HandleNewActivationState(status);
+  CompleteOperation(call_handler);
+}
+
 void CellularCapabilityCDMA::OnCDMAActivationStateChanged(
     uint32 activation_state,
     uint32 activation_error,
     const DBusPropertiesMap &status_changes) {
   VLOG(2) << __func__;
   string mdn;
-  if (DBusProperties::GetString(status_changes, "mdn", &mdn)) {
-    cellular()->set_mdn(mdn);
-  }
-  string min;
-  if (DBusProperties::GetString(status_changes, "min", &min)) {
-    cellular()->set_min(min);
-  }
+  DBusProperties::GetString(status_changes, "mdn", &mdn_);
+  DBusProperties::GetString(status_changes, "min", &min_);
   if (DBusProperties::GetString(status_changes, "payment_url", &payment_url_) &&
       cellular()->service().get()) {
     cellular()->service()->set_payment_url(payment_url_);

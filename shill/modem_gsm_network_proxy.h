@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,10 +23,11 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   virtual ~ModemGSMNetworkProxy();
 
   // Inherited from ModemGSMNetworkProxyInterface.
-  virtual RegistrationInfo GetRegistrationInfo();
+  virtual void GetRegistrationInfo(AsyncCallHandler *call_handler, int timeout);
   virtual uint32 GetSignalQuality();
-  virtual void Register(const std::string &network_id);
-  virtual ScanResults Scan();
+  virtual void Register(const std::string &network_id,
+                        AsyncCallHandler *call_handler, int timeout);
+  virtual void Scan(AsyncCallHandler *call_handler, int timeout);
   virtual uint32 AccessTechnology();
 
  private:
@@ -47,6 +48,14 @@ class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
                                   const std::string &operator_code,
                                   const std::string &operator_name);
     virtual void NetworkMode(const uint32_t &mode);
+
+    // Method callbacks inherited from ModemManager::Modem::Gsm::Network_proxy.
+    virtual void RegisterCallback(const DBus::Error &dberror, void *data);
+    virtual void GetRegistrationInfoCallback(const GSMRegistrationInfo &info,
+                                             const DBus::Error &dberror,
+                                             void *data);
+    virtual void ScanCallback(const GSMScanResults &results,
+                              const DBus::Error &dberror, void *data);
 
     ModemGSMNetworkProxyDelegate *delegate_;
 

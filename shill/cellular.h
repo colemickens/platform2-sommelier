@@ -23,11 +23,9 @@ namespace shill {
 
 class CellularCapability;
 class Error;
-class ModemSimpleProxyInterface;
 class ProxyFactory;
 
-class Cellular : public Device,
-                 public ModemProxyDelegate {
+class Cellular : public Device {
  public:
   enum Type {
     kTypeGSM,
@@ -89,9 +87,6 @@ class Cellular : public Device,
     DISALLOW_COPY_AND_ASSIGN(Operator);
   };
 
-  static const char kConnectPropertyPhoneNumber[];
-  static const char kPropertyIMSI[];
-
   // |owner| is the ModemManager DBus service owner (e.g., ":1.17"). |path| is
   // the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
@@ -116,9 +111,8 @@ class Cellular : public Device,
   // failure, leaves it unchanged otherwise.
   void Disconnect(Error *error);
 
-  // Asynchronously activates the modem. Populates |error| on failure, leaves it
-  // unchanged otherwise.
-  void Activate(const std::string &carrier, Error *error);
+  // Asynchronously activates the modem. Returns an error on failure.
+  void Activate(const std::string &carrier, ReturnerInterface *returner);
 
   const CellularServiceRefPtr &service() const { return service_; }
 
@@ -136,27 +130,8 @@ class Cellular : public Device,
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
 
-  const std::string &carrier() const { return carrier_; }
-
   const Operator &home_provider() const { return home_provider_; }
   void set_home_provider(const Operator &oper);
-
-  const std::string &meid() const { return meid_; }
-  void set_meid(const std::string &meid) { meid_ = meid; }
-
-  const std::string &imei() const { return imei_; }
-  void set_imei(const std::string &imei) { imei_ = imei; }
-
-  const std::string &imsi() const { return imsi_; }
-  void set_imsi(const std::string &imsi) { imsi_ = imsi; }
-
-  const std::string &mdn() const { return mdn_; }
-  void set_mdn(const std::string &mdn) { mdn_ = mdn; }
-
-  const std::string &min() const { return min_; }
-  void set_min(const std::string &min) { min_ = min; }
-
-  ProxyFactory *proxy_factory() const { return proxy_factory_; }
 
   void HandleNewSignalQuality(uint32 strength);
 
@@ -172,7 +147,8 @@ class Cellular : public Device,
   virtual bool TechnologyIs(Technology::Identifier type) const;
   virtual void LinkEvent(unsigned int flags, unsigned int change);
   virtual void Scan(Error *error);
-  virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
+  virtual void RegisterOnNetwork(const std::string &network_id,
+                                 ReturnerInterface *returner);
   virtual void RequirePIN(
       const std::string &pin, bool require, ReturnerInterface *returner);
   virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
@@ -183,8 +159,18 @@ class Cellular : public Device,
                          const std::string &new_pin,
                          ReturnerInterface *returner);
 
+  void OnModemEnabled();
+  void OnModemDisabled();
+  void OnConnected();
+  void OnConnectFailed();
+  void OnDisconnected();
+  void OnDisconnectFailed();
+
+  static Error ConvertDBusError(const DBus::Error &dbus_error);
+
  private:
   friend class CellularTest;
+  friend class CellularCapabilityTest;
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
   friend class ModemTest;
@@ -195,13 +181,14 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, DisconnectModem);
-  FRIEND_TEST(CellularTest, GetModemInfo);
-  FRIEND_TEST(CellularTest, GetModemStatus);
-  FRIEND_TEST(CellularTest, InitProxies);
   FRIEND_TEST(CellularTest, StartConnected);
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemFail);
+  FRIEND_TEST(CellularCapabilityTest, EnableModemSucceed);
+  FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
+  FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
 
   void SetState(State state);
 
@@ -213,28 +200,12 @@ class Cellular : public Device,
   // to the network-connected state and bring the network interface up.
   void EstablishLink();
 
-  void InitCapability(Type type);
-  void InitProxies();
-
-  void EnableModem();
-  void DisableModem();
-  void GetModemStatus();
-
-  // Obtains modem's manufacturer, model ID, and hardware revision.
-  void GetModemInfo();
+  void InitCapability(Type type, ProxyFactory *proxy_factory);
 
   void HandleNewRegistrationStateTask();
 
   void CreateService();
   void DestroyService();
-
-  // Signal callbacks inherited from ModemProxyDelegate.
-  virtual void OnModemStateChanged(uint32 old_state,
-                                   uint32 new_state,
-                                   uint32 reason);
-
-  // Store cached copies of singletons for speed/ease of testing.
-  ProxyFactory *proxy_factory_;
 
   State state_;
   ModemState modem_state_;
@@ -243,8 +214,6 @@ class Cellular : public Device,
 
   const std::string dbus_owner_;  // ModemManager.Modem
   const std::string dbus_path_;  // ModemManager.Modem
-  scoped_ptr<ModemProxyInterface> proxy_;
-  scoped_ptr<ModemSimpleProxyInterface> simple_proxy_;
 
   mobile_provider_db *provider_db_;
 
@@ -253,18 +222,6 @@ class Cellular : public Device,
   ScopedRunnableMethodFactory<Cellular> task_factory_;
 
   // Properties
-  bool allow_roaming_;
-  std::string carrier_;
-  std::string meid_;
-  std::string imei_;
-  std::string imsi_;
-  std::string esn_;
-  std::string mdn_;
-  std::string min_;
-  std::string model_id_;
-  std::string manufacturer_;
-  std::string firmware_revision_;
-  std::string hardware_revision_;
   Operator home_provider_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,10 +19,12 @@ class MockModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
   MockModemGSMNetworkProxy();
   virtual ~MockModemGSMNetworkProxy();
 
-  MOCK_METHOD0(GetRegistrationInfo, RegistrationInfo());
+  MOCK_METHOD2(GetRegistrationInfo, void(AsyncCallHandler *call_handler,
+                                         int timeout));
   MOCK_METHOD0(GetSignalQuality, uint32());
-  MOCK_METHOD1(Register, void(const std::string &network_id));
-  MOCK_METHOD0(Scan, ScanResults());
+  MOCK_METHOD3(Register, void(const std::string &network_id,
+                              AsyncCallHandler *call_handler, int timeout));
+  MOCK_METHOD2(Scan, void(AsyncCallHandler *call_handler, int timeout));
   MOCK_METHOD0(AccessTechnology, uint32());
 
  private:

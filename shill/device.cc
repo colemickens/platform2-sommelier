@@ -177,9 +177,11 @@ void Device::Scan(Error *error) {
 }
 
 void Device::RegisterOnNetwork(const std::string &/*network_id*/,
-                               Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
+                               ReturnerInterface *returner) {
+  Error error;
+  Error::PopulateAndLog(&error, Error::kNotSupported,
                         "Device doesn't support network registration.");
+  returner->ReturnError(error);
 }
 
 void Device::RequirePIN(

@@ -13,13 +13,19 @@
 
 namespace shill {
 
-// These are the methods that a ModemManager.Modem.CDMA proxy must support. The
-// interface is provided so that it can be mocked in tests.
+class AsyncCallHandler;
+class Error;
+
+// These are the methods that a ModemManager.Modem.CDMA proxy must support.
+// The interface is provided so that it can be mocked in tests.
+// All calls are made asynchronously. Call completion is signalled through
+// the corresponding 'OnXXXCallback' method in the ProxyDelegate interface.
 class ModemCDMAProxyInterface {
  public:
   virtual ~ModemCDMAProxyInterface() {}
 
-  virtual uint32 Activate(const std::string &carrier) = 0;
+  virtual void Activate(const std::string &carrier,
+                        AsyncCallHandler *call_handler, int timeout) = 0;
   virtual void GetRegistrationState(uint32 *cdma_1x_state,
                                     uint32 *evdo_state) = 0;
   virtual uint32 GetSignalQuality() = 0;
@@ -40,6 +46,8 @@ class ModemCDMAProxyDelegate {
   virtual void OnCDMARegistrationStateChanged(uint32 state_1x,
                                               uint32 state_evdo) = 0;
   virtual void OnCDMASignalQualityChanged(uint32 strength) = 0;
+  virtual void OnActivateCallback(uint32 status, const Error &error,
+                                  AsyncCallHandler *call_handler) = 0;
 };
 
 }  // namespace shill

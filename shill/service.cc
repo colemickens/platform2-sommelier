@@ -193,11 +193,12 @@ void Service::Disconnect(Error */*error*/) {
   explicitly_disconnected_ = true;
 }
 
-void Service::ActivateCellularModem(const string &/*carrier*/, Error *error) {
-  const string kMessage = "Service doesn't support cellular modem activation.";
-  LOG(ERROR) << kMessage;
-  CHECK(error);
-  error->Populate(Error::kInvalidArguments, kMessage);
+void Service::ActivateCellularModem(const string &/*carrier*/,
+                                    ReturnerInterface *returner) {
+  Error error;
+  Error::PopulateAndLog( &error, Error::kNotSupported,
+                         "Service doesn't support cellular modem activation.");
+  returner->ReturnError(error);
 }
 
 bool Service::TechnologyIs(const Technology::Identifier /*type*/) const {

@@ -17,6 +17,7 @@
 #include <mm/mm-modem.h>
 #include <mobile_provider.h>
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_service.h"
@@ -26,7 +27,6 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
-#include "shill/modem_simple_proxy_interface.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -38,9 +38,6 @@ using std::string;
 using std::vector;
 
 namespace shill {
-
-const char Cellular::kConnectPropertyPhoneNumber[] = "number";
-const char Cellular::kPropertyIMSI[] = "imsi";
 
 Cellular::Operator::Operator() {
   SetName("");
@@ -101,40 +98,25 @@ Cellular::Cellular(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kCellular),
-      proxy_factory_(ProxyFactory::GetInstance()),
       state_(kStateDisabled),
       modem_state_(kModemStateUnknown),
       dbus_owner_(owner),
       dbus_path_(path),
       provider_db_(provider_db),
-      task_factory_(this),
-      allow_roaming_(false) {
+      task_factory_(this) {
   PropertyStore *store = this->mutable_store();
-  store->RegisterConstString(flimflam::kCarrierProperty, &carrier_);
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
-  store->RegisterBool(flimflam::kCellularAllowRoamingProperty, &allow_roaming_);
-  store->RegisterConstString(flimflam::kEsnProperty, &esn_);
-  store->RegisterConstString(flimflam::kFirmwareRevisionProperty,
-                             &firmware_revision_);
-  store->RegisterConstString(flimflam::kHardwareRevisionProperty,
-                             &hardware_revision_);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
-  store->RegisterConstString(flimflam::kImeiProperty, &imei_);
-  store->RegisterConstString(flimflam::kImsiProperty, &imsi_);
-  store->RegisterConstString(flimflam::kManufacturerProperty, &manufacturer_);
-  store->RegisterConstString(flimflam::kMdnProperty, &mdn_);
-  store->RegisterConstString(flimflam::kMeidProperty, &meid_);
-  store->RegisterConstString(flimflam::kMinProperty, &min_);
-  store->RegisterConstString(flimflam::kModelIDProperty, &model_id_);
-
-  InitCapability(type);  // For now, only a single capability is supported.
+  // For now, only a single capability is supported.
+  InitCapability(type, ProxyFactory::GetInstance());
 
   VLOG(2) << "Cellular device " << this->link_name() << " initialized.";
 }
 
-Cellular::~Cellular() {}
+Cellular::~Cellular() {
+}
 
 // static
 string Cellular::GetStateString(State state) {
@@ -156,145 +138,96 @@ void Cellular::SetState(State state) {
 
 void Cellular::Start() {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
+  if (state_ != kStateDisabled) {
+    return;
+  }
   Device::Start();
-  capability_->OnDeviceStarted();
-  InitProxies();
-  EnableModem();
-  capability_->Register();
-  GetModemStatus();
-  capability_->GetIdentifiers();
-  capability_->GetProperties();
-  GetModemInfo();
-  capability_->GetRegistrationState();
+  if (modem_state_ == kModemStateEnabled) {
+    // Modem already enabled.
+    OnModemEnabled();
+    return;
+  }
+  // TODO(ers): this should not be done automatically. It should
+  // require an explicit Enable request to start the modem.
+  capability_->StartModem();
 }
 
 void Cellular::Stop() {
-  capability_->OnDeviceStopped();
   DestroyService();
   DisconnectModem();
-  DisableModem();
-  proxy_.reset();
-  simple_proxy_.reset();
+  if (state_ != kStateDisabled)
+    capability_->DisableModem(NULL);
+  capability_->StopModem();
   Device::Stop();
 }
 
-void Cellular::InitCapability(Type type) {
+void Cellular::InitCapability(Type type, ProxyFactory *proxy_factory) {
   // TODO(petkov): Consider moving capability construction into a factory that's
   // external to the Cellular class.
   VLOG(2) << __func__ << "(" << type << ")";
   switch (type) {
     case kTypeGSM:
-      capability_.reset(new CellularCapabilityGSM(this));
+      capability_.reset(new CellularCapabilityGSM(this, proxy_factory));
       break;
     case kTypeCDMA:
-      capability_.reset(new CellularCapabilityCDMA(this));
+      capability_.reset(new CellularCapabilityCDMA(this, proxy_factory));
       break;
     default: NOTREACHED();
   }
 }
 
-void Cellular::InitProxies() {
-  VLOG(2) << __func__;
-  proxy_.reset(proxy_factory_->CreateModemProxy(this, dbus_path_, dbus_owner_));
-  simple_proxy_.reset(
-      proxy_factory_->CreateModemSimpleProxy(dbus_path_, dbus_owner_));
-}
-
-void Cellular::EnableModem() {
-  CHECK_EQ(kStateDisabled, state_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  try {
-    proxy_->Enable(true);
-  } catch (const DBus::Error e) {
-    LOG(WARNING) << "Enable failed: " << e.what();
-  }
-  SetState(kStateEnabled);
-}
-
-void Cellular::DisableModem() {
-  VLOG(2) << __func__;
+void Cellular::OnModemEnabled() {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
   if (state_ == kStateDisabled) {
-    return;
+    SetState(kStateEnabled);
   }
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). Note,
-  // however, that this is invoked by the Stop method, so some extra refactoring
-  // may be needed to prevent the device instance from being destroyed before
-  // the modem manager calls are complete. Maybe Disconnect and Disable need to
-  // be handled by the parent Modem class.
-  try {
-    proxy_->Enable(false);
-  } catch (const DBus::Error e) {
-    LOG(WARNING) << "Disable failed: " << e.what();
-  }
-  SetState(kStateDisabled);
 }
 
-void Cellular::GetModemStatus() {
-  CHECK_EQ(kStateEnabled, state_);
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  DBusPropertiesMap properties = simple_proxy_->GetStatus();
-  DBusProperties::GetString(properties, "carrier", &carrier_);
-  DBusProperties::GetString(properties, "meid", &meid_);
-  DBusProperties::GetString(properties, "imei", &imei_);
-  DBusProperties::GetString(properties, kPropertyIMSI, &imsi_);
-  DBusProperties::GetString(properties, "esn", &esn_);
-  DBusProperties::GetString(properties, "mdn", &mdn_);
-  DBusProperties::GetString(properties, "min", &min_);
-  DBusProperties::GetString(
-      properties, "firmware_revision", &firmware_revision_);
-
-  uint32 state = 0;
-  if (DBusProperties::GetUint32(properties, "state", &state)) {
-    modem_state_ = static_cast<ModemState>(state);
+void Cellular::OnModemDisabled() {
+  VLOG(2) << __func__ << ": " << GetStateString(state_);
+  if (state_ != kStateDisabled) {
+    SetState(kStateDisabled);
   }
-
-  capability_->UpdateStatus(properties);
 }
 
-void Cellular::Activate(const std::string &carrier, Error *error) {
-  capability_->Activate(carrier, error);
+void Cellular::Activate(const std::string &carrier,
+                        ReturnerInterface *returner) {
+  capability_->Activate(carrier, new AsyncCallHandler(returner));
 }
 
-void Cellular::RegisterOnNetwork(const string &network_id, Error *error) {
-  capability_->RegisterOnNetwork(network_id, error);
+void Cellular::RegisterOnNetwork(const string &network_id,
+                                 ReturnerInterface *returner) {
+  capability_->RegisterOnNetwork(network_id, new AsyncCallHandler(returner));
 }
 
 void Cellular::RequirePIN(
     const string &pin, bool require, ReturnerInterface *returner) {
   VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->RequirePIN(pin, require, returner);
+  capability_->RequirePIN(pin, require, new AsyncCallHandler(returner));
 }
 
 void Cellular::EnterPIN(const string &pin, ReturnerInterface *returner) {
   VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->EnterPIN(pin, returner);
+  capability_->EnterPIN(pin, new AsyncCallHandler(returner));
 }
 
 void Cellular::UnblockPIN(const string &unblock_code,
                           const string &pin,
                           ReturnerInterface *returner) {
   VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->UnblockPIN(unblock_code, pin, returner);
+  capability_->UnblockPIN(unblock_code, pin, new AsyncCallHandler(returner));
 }
 
 void Cellular::ChangePIN(
-    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
+    const string &old_pin, const string &new_pin,
+    ReturnerInterface *returner) {
   VLOG(2) << __func__ << "(" << returner << ")";
-  capability_->ChangePIN(old_pin, new_pin, returner);
+  capability_->ChangePIN(old_pin, new_pin, new AsyncCallHandler(returner));
 }
 
-void Cellular::Scan(Error *error) {
-  capability_->Scan(error);
-}
-
-void Cellular::GetModemInfo() {
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  ModemProxyInterface::Info info = proxy_->GetInfo();
-  manufacturer_ = info._1;
-  model_id_ = info._2;
-  hardware_revision_ = info._3;
-  VLOG(2) << "ModemInfo: " << manufacturer_ << ", " << model_id_ << ", "
-          << hardware_revision_;
+void Cellular::Scan(Error * /*error*/) {
+  // TODO(ers): for now report immediate success.
+  capability_->Scan(NULL);
 }
 
 void Cellular::HandleNewRegistrationState() {
@@ -318,14 +251,11 @@ void Cellular::HandleNewRegistrationStateTask() {
     SetState(kStateRegistered);
   }
   if (!service_.get()) {
-    // For now, no endpoint is created. Revisit if necessary.
     CreateService();
   }
   capability_->GetSignalQuality();
-  if (state_ == kStateRegistered && modem_state_ == kModemStateConnected) {
-    SetState(kStateConnected);
-    EstablishLink();
-  }
+  if (state_ == kStateRegistered && modem_state_ == kModemStateConnected)
+    OnConnected();
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
 }
@@ -371,7 +301,7 @@ void Cellular::Connect(Error *error) {
   }
   CHECK_EQ(kStateRegistered, state_);
 
-  if (!allow_roaming_ &&
+  if (!capability_->allow_roaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     Error::PopulateAndLog(error, Error::kNotOnHomeNetwork,
                           "Roaming disallowed; connection request ignored.");
@@ -380,18 +310,17 @@ void Cellular::Connect(Error *error) {
 
   DBusPropertiesMap properties;
   capability_->SetupConnectProperties(&properties);
-
-  // Defer connect because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::ConnectTask, properties));
+  capability_->Connect(properties);
 }
 
-void Cellular::ConnectTask(const DBusPropertiesMap &properties) {
+void Cellular::OnConnected() {
   VLOG(2) << __func__;
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  simple_proxy_->Connect(properties);
   SetState(kStateConnected);
   EstablishLink();
+}
+
+void Cellular::OnConnectFailed() {
+  // TODO(ers): Signal failure.
 }
 
 void Cellular::Disconnect(Error *error) {
@@ -402,14 +331,12 @@ void Cellular::Disconnect(Error *error) {
         error, Error::kInProgress, "Not connected; request ignored.");
     return;
   }
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&Cellular::DisconnectTask));
+  capability_->Disconnect();
 }
 
-void Cellular::DisconnectTask() {
+void Cellular::OnDisconnected() {
   VLOG(2) << __func__;
-  DisconnectModem();
+  SetState(kStateRegistered);
 }
 
 void Cellular::DisconnectModem() {
@@ -423,12 +350,11 @@ void Cellular::DisconnectModem() {
   // may be needed to prevent the device instance from being destroyed before
   // the modem manager calls are complete. Maybe Disconnect and Disable need to
   // be handled by the parent Modem class.
-  try {
-    proxy_->Disconnect();
-  } catch (const DBus::Error e) {
-    LOG(WARNING) << "Disconnect failed: " << e.what();
-  }
-  SetState(kStateRegistered);
+  capability_->Disconnect();
+}
+
+void Cellular::OnDisconnectFailed() {
+  // TODO(ers): Signal failure.
 }
 
 void Cellular::EstablishLink() {
@@ -460,13 +386,6 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SetState(kStateConnected);
     DestroyService();
   }
-}
-
-void Cellular::OnModemStateChanged(uint32 /*old_state*/,
-                                   uint32 /*new_state*/,
-                                   uint32 /*reason*/) {
-  // TODO(petkov): Implement this.
-  NOTIMPLEMENTED();
 }
 
 void Cellular::OnModemManagerPropertiesChanged(

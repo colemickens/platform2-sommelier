@@ -58,8 +58,8 @@ void CellularService::Disconnect(Error *error) {
 }
 
 void CellularService::ActivateCellularModem(const string &carrier,
-                                            Error *error) {
-  cellular_->Activate(carrier, error);
+                                            ReturnerInterface *returner) {
+  cellular_->Activate(carrier, returner);
 }
 
 bool CellularService::TechnologyIs(const Technology::Identifier type) const {

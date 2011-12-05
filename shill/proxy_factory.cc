@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -61,9 +61,10 @@ ModemProxyInterface *ProxyFactory::CreateModemProxy(
 }
 
 ModemSimpleProxyInterface *ProxyFactory::CreateModemSimpleProxy(
+    ModemSimpleProxyDelegate *delegate,
     const string &path,
     const string &service) {
-  return new ModemSimpleProxy(connection(), path, service);
+  return new ModemSimpleProxy(delegate, connection(), path, service);
 }
 
 ModemCDMAProxyInterface *ProxyFactory::CreateModemCDMAProxy(

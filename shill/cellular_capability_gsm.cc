@@ -14,6 +14,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_service.h"
+#include "shill/error.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
@@ -38,8 +39,9 @@ const char CellularCapabilityGSM::kPropertyAccessTechnology[] =
 const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
 const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
-CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular)
-    : CellularCapability(cellular),
+CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
+                                             ProxyFactory *proxy_factory)
+    : CellularCapability(cellular, proxy_factory),
       task_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
@@ -79,8 +81,9 @@ void CellularCapabilityGSM::HelpRegisterDerivedStrIntPair(
               this, get, set)));
 }
 
-void CellularCapabilityGSM::OnDeviceStarted() {
-  VLOG(2) << __func__;
+void CellularCapabilityGSM::StartModem()
+{
+  CellularCapability::StartModem();
   card_proxy_.reset(
       proxy_factory()->CreateModemGSMCardProxy(this,
                                                cellular()->dbus_path(),
@@ -89,10 +92,44 @@ void CellularCapabilityGSM::OnDeviceStarted() {
       proxy_factory()->CreateModemGSMNetworkProxy(this,
                                                   cellular()->dbus_path(),
                                                   cellular()->dbus_owner()));
+  MultiStepAsyncCallHandler *call_handler =
+      new MultiStepAsyncCallHandler(cellular()->dispatcher());
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::EnableModem, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::Register, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetModemStatus, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetIMEI, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetIMSI, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetSPN, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetMSISDN, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetProperties, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetModemInfo, call_handler));
+
+  call_handler->AddTask(task_factory_.NewRunnableMethod(
+                      &CellularCapabilityGSM::GetRegistrationState,
+                      call_handler));
+  call_handler->PostNextTask();
 }
 
-void CellularCapabilityGSM::OnDeviceStopped() {
+void CellularCapabilityGSM::StopModem() {
   VLOG(2) << __func__;
+  CellularCapability::StopModem();
   card_proxy_.reset();
   network_proxy_.reset();
 }
@@ -104,53 +141,56 @@ void CellularCapabilityGSM::OnServiceCreated() {
 }
 
 void CellularCapabilityGSM::UpdateStatus(const DBusPropertiesMap &properties) {
-  if (ContainsKey(properties, Cellular::kPropertyIMSI)) {
+  if (ContainsKey(properties, kPropertyIMSI)) {
     SetHomeProvider();
   }
 }
 
 void CellularCapabilityGSM::SetupConnectProperties(
     DBusPropertiesMap *properties) {
-  (*properties)[Cellular::kConnectPropertyPhoneNumber].writer().append_string(
+  (*properties)[kConnectPropertyPhoneNumber].writer().append_string(
       kPhoneNumber);
   // TODO(petkov): Setup apn and "home_only".
 }
 
-void CellularCapabilityGSM::GetIdentifiers() {
+void CellularCapabilityGSM::GetIMEI(AsyncCallHandler *call_handler){
   VLOG(2) << __func__;
-  if (cellular()->imei().empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    cellular()->set_imei(card_proxy_->GetIMEI());
+  if (imei_.empty()) {
+    card_proxy_->GetIMEI(call_handler, kTimeoutDefault);
+  } else {
+    VLOG(2) << "Already have IMEI " << imei_;
+    CompleteOperation(call_handler);
   }
-  if (cellular()->imsi().empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    try {
-      cellular()->set_imsi(card_proxy_->GetIMSI());
-      VLOG(2) << "IMSI: " << cellular()->imsi();
-    } catch (const DBus::Error e) {
-      LOG(WARNING) << "Unable to obtain IMSI: " << e.what();
-    }
+}
+
+void CellularCapabilityGSM::GetIMSI(AsyncCallHandler *call_handler){
+  VLOG(2) << __func__;
+  if (imsi_.empty()) {
+    card_proxy_->GetIMSI(call_handler, kTimeoutDefault);
+  } else {
+    VLOG(2) << "Already have IMSI " << imsi_;
+    CompleteOperation(call_handler);
   }
+}
+
+void CellularCapabilityGSM::GetSPN(AsyncCallHandler *call_handler){
+  VLOG(2) << __func__;
   if (spn_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    try {
-      spn_ =  card_proxy_->GetSPN();
-      VLOG(2) << "SPN: " << spn_;
-    } catch (const DBus::Error e) {
-      // Some modems don't support this call so catch the exception explicitly.
-      LOG(WARNING) << "Unable to obtain SPN: " << e.what();
-    }
+    card_proxy_->GetSPN(call_handler, kTimeoutDefault);
+  } else {
+    VLOG(2) << "Already have SPN " << spn_;
+    CompleteOperation(call_handler);
   }
-  if (cellular()->mdn().empty()) {
-    try {
-      // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-      cellular()->set_mdn(card_proxy_->GetMSISDN());
-      VLOG(2) << "MSISDN/MDN: " << cellular()->mdn();
-    } catch (const DBus::Error e) {
-      LOG(WARNING) << "Unable to obtain MSISDN/MDN: " << e.what();
-    }
+}
+
+void CellularCapabilityGSM::GetMSISDN(AsyncCallHandler *call_handler){
+  VLOG(2) << __func__;
+  if (mdn_.empty()) {
+    card_proxy_->GetMSISDN(call_handler, kTimeoutDefault);
+  } else {
+    VLOG(2) << "Already have MSISDN " << mdn_;
+    CompleteOperation(call_handler);
   }
-  SetHomeProvider();
 }
 
 void CellularCapabilityGSM::GetSignalQuality() {
@@ -160,27 +200,19 @@ void CellularCapabilityGSM::GetSignalQuality() {
   cellular()->HandleNewSignalQuality(strength);
 }
 
-void CellularCapabilityGSM::GetRegistrationState() {
+void CellularCapabilityGSM::GetRegistrationState(
+    AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  ModemGSMNetworkProxyInterface::RegistrationInfo info =
-      network_proxy_->GetRegistrationInfo();
-  registration_state_ = info._1;
-  serving_operator_.SetCode(info._2);
-  serving_operator_.SetName(info._3);
-  VLOG(2) << "GSM Registration: " << registration_state_ << ", "
-          << serving_operator_.GetCode() << ", "
-          << serving_operator_.GetName();
-  UpdateOperatorInfo();
-  cellular()->HandleNewRegistrationState();
+  network_proxy_->GetRegistrationInfo(call_handler, kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::GetProperties() {
+void CellularCapabilityGSM::GetProperties(AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
   uint32 tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
   VLOG(2) << "GSM AccessTechnology: " << tech;
+  CompleteOperation(call_handler);
 }
 
 string CellularCapabilityGSM::CreateFriendlyServiceName() {
@@ -192,8 +224,8 @@ string CellularCapabilityGSM::CreateFriendlyServiceName() {
   if (!serving_operator_.GetName().empty()) {
     return serving_operator_.GetName();
   }
-  if (!cellular()->carrier().empty()) {
-    return cellular()->carrier();
+  if (!carrier_.empty()) {
+    return carrier_;
   }
   if (!serving_operator_.GetCode().empty()) {
     return "cellular_" + serving_operator_.GetCode();
@@ -202,16 +234,16 @@ string CellularCapabilityGSM::CreateFriendlyServiceName() {
 }
 
 void CellularCapabilityGSM::SetHomeProvider() {
-  VLOG(2) << __func__ << "(IMSI: " << cellular()->imsi()
+  VLOG(2) << __func__ << "(IMSI: " << imsi_
           << " SPN: " << spn_ << ")";
   // TODO(petkov): The test for NULL provider_db should be done by
   // mobile_provider_lookup_best_match.
-  if (cellular()->imsi().empty() || !cellular()->provider_db()) {
+  if (imsi_.empty() || !cellular()->provider_db()) {
     return;
   }
   mobile_provider *provider =
       mobile_provider_lookup_best_match(
-          cellular()->provider_db(), spn_.c_str(), cellular()->imsi().c_str());
+          cellular()->provider_db(), spn_.c_str(), imsi_.c_str());
   if (!provider) {
     VLOG(2) << "GSM provider not found.";
     return;
@@ -311,22 +343,39 @@ void CellularCapabilityGSM::InitAPNList() {
       flimflam::kCellularApnListProperty, apn_list_);
 }
 
-void CellularCapabilityGSM::Register() {
-  LOG(INFO) << __func__ << " \"" << selected_network_ << "\"";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  network_proxy_->Register(selected_network_);
-  // TODO(petkov): Handle registration failure including trying the home network
-  // when selected_network_ is not empty.
+void CellularCapabilityGSM::Register(AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << " \"" << selected_network_ << "\"";
+  network_proxy_->Register(selected_network_, call_handler,
+                           kTimeoutRegister);
 }
 
 void CellularCapabilityGSM::RegisterOnNetwork(
-    const string &network_id, Error */*error*/) {
-  LOG(INFO) << __func__ << "(" << network_id << ")";
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::RegisterOnNetworkTask,
-          network_id));
+    const string &network_id, AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << network_id << ")";
+  desired_network_ = network_id;
+  network_proxy_->Register(network_id, call_handler,
+                           kTimeoutRegister);
+}
+
+void CellularCapabilityGSM::OnRegisterCallback(const Error &error,
+                                               AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << error << ")";
+
+  if (error.IsSuccess()) {
+    selected_network_ = desired_network_;
+    desired_network_.clear();
+    CompleteOperation(call_handler);
+    return;
+  }
+  // If registration on the desired network failed,
+  // try to register on the home network.
+  if (!desired_network_.empty()) {
+    desired_network_.clear();
+    selected_network_.clear();
+    Register(call_handler);
+    return;
+  }
+  CompleteOperation(call_handler, error);
 }
 
 bool CellularCapabilityGSM::IsRegistered() {
@@ -334,134 +383,60 @@ bool CellularCapabilityGSM::IsRegistered() {
           registration_state_ == MM_MODEM_GSM_NETWORK_REG_STATUS_ROAMING);
 }
 
-void CellularCapabilityGSM::RegisterOnNetworkTask(const string &network_id) {
-  LOG(INFO) << __func__ << "(" << network_id << ")";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  network_proxy_->Register(network_id);
-  // TODO(petkov): Handle registration failure.
-  selected_network_ = network_id;
-}
-
 void CellularCapabilityGSM::RequirePIN(
-    const string &pin, bool require, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::RequirePINTask, pin, require, returner));
-}
-
-void CellularCapabilityGSM::RequirePINTask(
-    const string &pin, bool require, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  try {
-    card_proxy_->EnablePIN(pin, require);
-  } catch (DBus::Error e) {
-    LOG(ERROR) << "EnablePIN failed: " << e.name() << "/" << e.message();
-    returner->ReturnError(Error(Error::kInternalError));
-    return;
-  }
-  returner->Return();
+    const string &pin, bool require, AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << call_handler << ")";
+  card_proxy_->EnablePIN(pin, require, call_handler, kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::EnterPIN(const string &pin,
-                                     ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::EnterPINTask, pin, returner));
-}
-
-void CellularCapabilityGSM::EnterPINTask(const string &pin,
-                                         ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  try {
-    card_proxy_->SendPIN(pin);
-  } catch (DBus::Error e) {
-    LOG(ERROR) << "EnterPIN failed: " << e.name() << "/" << e.message();
-    returner->ReturnError(Error(Error::kInternalError));
-    return;
-  }
-  returner->Return();
+                                     AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << call_handler << ")";
+  card_proxy_->SendPIN(pin, call_handler, kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::UnblockPIN(const string &unblock_code,
                                        const string &pin,
-                                       ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::UnblockPINTask, unblock_code, pin, returner));
-}
-
-void CellularCapabilityGSM::UnblockPINTask(const string &unblock_code,
-                                           const string &pin,
-                                           ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  try {
-    card_proxy_->SendPUK(unblock_code, pin);
-  } catch (DBus::Error e) {
-    LOG(ERROR) << "SendPUK failed: " << e.name() << "/" << e.message();
-    returner->ReturnError(Error(Error::kInternalError));
-    return;
-  }
-  returner->Return();
+                                       AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << call_handler << ")";
+  card_proxy_->SendPUK(unblock_code, pin, call_handler,
+                       kTimeoutDefault);
 }
 
 void CellularCapabilityGSM::ChangePIN(
-    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::ChangePINTask, old_pin, new_pin, returner));
+    const string &old_pin, const string &new_pin,
+    AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__ << "(" << call_handler << ")";
+  card_proxy_->ChangePIN(old_pin, new_pin, call_handler,
+                         kTimeoutDefault);
 }
 
-void CellularCapabilityGSM::ChangePINTask(
-    const string &old_pin, const string &new_pin, ReturnerInterface *returner) {
-  VLOG(2) << __func__ << "(" << returner << ")";
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  try {
-    card_proxy_->ChangePIN(old_pin, new_pin);
-  } catch (DBus::Error e) {
-    LOG(ERROR) << "ChangePIN failed: " << e.name() << "/" << e.message();
-    returner->ReturnError(Error(Error::kInternalError));
-    return;
-  }
-  returner->Return();
-}
-
-void CellularCapabilityGSM::Scan(Error */*error*/) {
-  VLOG(2) << __func__;
-  // Defer because we may be in a dbus-c++ callback.
-  dispatcher()->PostTask(
-      task_factory_.NewRunnableMethod(&CellularCapabilityGSM::ScanTask));
-}
-
-void CellularCapabilityGSM::ScanTask() {
+void CellularCapabilityGSM::Scan(AsyncCallHandler *call_handler) {
   VLOG(2) << __func__;
   // TODO(petkov): Defer scan requests if a scan is in progress already.
-  //
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583). This is a
-  // must for this call which is basically a stub at this point.
-  ModemGSMNetworkProxyInterface::ScanResults results = network_proxy_->Scan();
-  found_networks_.clear();
-  for (ModemGSMNetworkProxyInterface::ScanResults::const_iterator it =
-           results.begin(); it != results.end(); ++it) {
-    found_networks_.push_back(ParseScanResult(*it));
-  }
+  network_proxy_->Scan(call_handler, kTimeoutScan);
 }
 
-Stringmap CellularCapabilityGSM::ParseScanResult(
-    const ModemGSMNetworkProxyInterface::ScanResult &result) {
+void CellularCapabilityGSM::OnScanCallback(const GSMScanResults &results,
+                                           const Error &error,
+                                           AsyncCallHandler *call_handler) {
+  VLOG(2) << __func__;
+  if (error.IsFailure()) {
+    CompleteOperation(call_handler, error);
+    return;
+  }
+  found_networks_.clear();
+  for (GSMScanResults::const_iterator it = results.begin();
+       it != results.end(); ++it) {
+    found_networks_.push_back(ParseScanResult(*it));
+  }
+  CompleteOperation(call_handler);
+}
+
+Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
   Stringmap parsed;
-  for (ModemGSMNetworkProxyInterface::ScanResult::const_iterator it =
-           result.begin(); it != result.end(); ++it) {
+  for (GSMScanResult::const_iterator it = result.begin();
+       it != result.end(); ++it) {
     // TODO(petkov): Define these in system_api/service_constants.h. The
     // numerical values are taken from 3GPP TS 27.007 Section 7.3.
     static const char * const kStatusString[] = {
@@ -589,16 +564,83 @@ void CellularCapabilityGSM::OnGSMNetworkModeChanged(uint32 /*mode*/) {
 }
 
 void CellularCapabilityGSM::OnGSMRegistrationInfoChanged(
-    uint32 status, const string &operator_code, const string &operator_name) {
-  registration_state_ = status;
-  serving_operator_.SetCode(operator_code);
-  serving_operator_.SetName(operator_name);
-  UpdateOperatorInfo();
-  cellular()->HandleNewRegistrationState();
+    uint32 status, const string &operator_code, const string &operator_name,
+    const Error &error, AsyncCallHandler *call_handler) {
+  if (error.IsSuccess()) {
+    VLOG(2) << __func__ << ": regstate=" << status
+            << ", opercode=" << operator_code
+            << ", opername=" << operator_name;
+    registration_state_ = status;
+    serving_operator_.SetCode(operator_code);
+    serving_operator_.SetName(operator_name);
+    UpdateOperatorInfo();
+    cellular()->HandleNewRegistrationState();
+  }
+  CompleteOperation(call_handler, error);
 }
 
 void CellularCapabilityGSM::OnGSMSignalQualityChanged(uint32 quality) {
   cellular()->HandleNewSignalQuality(quality);
+}
+
+void CellularCapabilityGSM::OnGetIMEICallback(const string &imei,
+                                              const Error &error,
+                                              AsyncCallHandler *call_handler) {
+  if (error.IsSuccess()) {
+    VLOG(2) << "IMEI: " << imei;
+    imei_ = imei;
+  } else {
+    VLOG(2) << "GetIMEI failed - " << error;
+  }
+  CompleteOperation(call_handler, error);
+}
+
+void CellularCapabilityGSM::OnGetIMSICallback(const string &imsi,
+                                              const Error &error,
+                                              AsyncCallHandler *call_handler) {
+  if (error.IsSuccess()) {
+    VLOG(2) << "IMSI: " << imsi;
+    imsi_ = imsi;
+    SetHomeProvider();
+  } else {
+    VLOG(2) << "GetIMSI failed - " << error;
+  }
+  CompleteOperation(call_handler, error);
+}
+
+void CellularCapabilityGSM::OnGetSPNCallback(const string &spn,
+                                             const Error &error,
+                                             AsyncCallHandler *call_handler) {
+  if (error.IsSuccess()) {
+    VLOG(2) << "SPN: " << spn;
+    spn_ = spn;
+    SetHomeProvider();
+  } else {
+    VLOG(2) << "GetSPN failed - " << error;
+  }
+  // Ignore the error - it's not fatal.
+  CompleteOperation(call_handler);
+}
+
+void CellularCapabilityGSM::OnGetMSISDNCallback(
+    const string &msisdn, const Error &error, AsyncCallHandler *call_handler) {
+  if (error.IsSuccess()) {
+    VLOG(2) << "MSISDN: " << msisdn;
+    mdn_ = msisdn;
+  } else {
+    VLOG(2) << "GetMSISDN failed - " << error;
+  }
+  // Ignore the error - it's not fatal.
+  CompleteOperation(call_handler);
+}
+
+void CellularCapabilityGSM::OnPINOperationCallback(
+    const Error &error, AsyncCallHandler *call_handler) {
+  if (error.IsFailure())
+    VLOG(2) << "PIN operation failed - " << error;
+  else
+    VLOG(2) << "PIN operation complete";
+  CompleteOperation(call_handler, error);
 }
 
 }  // namespace shill

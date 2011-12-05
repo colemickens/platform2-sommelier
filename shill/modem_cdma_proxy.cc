@@ -1,10 +1,12 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "shill/modem_cdma_proxy.h"
 
 #include <base/logging.h>
+
+#include "cellular_error.h"
 
 using std::string;
 
@@ -18,8 +20,9 @@ ModemCDMAProxy::ModemCDMAProxy(ModemCDMAProxyDelegate *delegate,
 
 ModemCDMAProxy::~ModemCDMAProxy() {}
 
-uint32 ModemCDMAProxy::Activate(const string &carrier) {
-  return proxy_.Activate(carrier);
+void ModemCDMAProxy::Activate(const string &carrier,
+                                AsyncCallHandler *call_handler, int timeout) {
+  proxy_.Activate(carrier, call_handler, timeout);
 }
 
 void ModemCDMAProxy::GetRegistrationState(uint32 *cdma_1x_state,
@@ -32,6 +35,7 @@ uint32 ModemCDMAProxy::GetSignalQuality() {
 }
 
 const string ModemCDMAProxy::MEID() {
+  LOG(INFO) << "ModemCDMAProxy::" << __func__;
   return proxy_.Meid();
 }
 
@@ -64,6 +68,16 @@ void ModemCDMAProxy::Proxy::RegistrationStateChanged(
     const uint32 &evdo_state) {
   VLOG(2) << __func__ << "(" << cdma_1x_state << ", " << evdo_state << ")";
   delegate_->OnCDMARegistrationStateChanged(cdma_1x_state, evdo_state);
+}
+
+void ModemCDMAProxy::Proxy::ActivateCallback(const uint32 &status,
+                                             const DBus::Error &dberror,
+                                             void *data) {
+  VLOG(2) << __func__ << "(" << status << ")";
+  AsyncCallHandler *call_handler = reinterpret_cast<AsyncCallHandler *>(data);
+  Error error;
+  CellularError::FromDBusError(dberror, &error),
+  delegate_->OnActivateCallback(status, error, call_handler);
 }
 
 }  // namespace shill

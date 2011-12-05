@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,6 +19,7 @@ class Error {
  public:
   enum Type {
     kSuccess = 0,  // No error.
+    kOperationFailed,  // failure, otherwise unspecified
     kAlreadyConnected,
     kAlreadyExists,
     kInProgress,
@@ -37,6 +38,9 @@ class Error {
     kOperationAborted,
     kOperationTimeout,
     kPassphraseRequired,
+    kIncorrectPin,
+    kPinRequired,
+    kPinBlocked,
     kPermissionDenied,
     kNumErrors
   };
@@ -86,5 +90,8 @@ class Error {
 };
 
 }  // namespace shill
+
+// stream operator provided to facilitate logging
+std::ostream &operator<<(std::ostream &stream, const shill::Error &error);
 
 #endif  // SHILL_ERROR_
