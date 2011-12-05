@@ -360,6 +360,62 @@ void WiFi::ConnectTo(WiFiService *service,
   CHECK(current_service_.get() != pending_service_.get());
 }
 
+void WiFi::DisconnectFrom(WiFiService *service) {
+  if (service != current_service_ &&  service != pending_service_) {
+    // TODO(quiche): Once we have asynchronous reply support, we should
+    // generate a D-Bus error here. (crosbug.com/23832)
+    LOG(WARNING) << "In " << __func__ << "(): "
+                 << " ignoring request to disconnect from service "
+                 << service->friendly_name()
+                 << " which is neither current nor pending";
+    return;
+  }
+
+  if (pending_service_ && service != pending_service_) {
+    // TODO(quiche): Once we have asynchronous reply support, we should
+    // generate a D-Bus error here. (crosbug.com/23832)
+    LOG(WARNING) << "In " << __func__ << "(): "
+                 << " ignoring request to disconnect from service "
+                 << service->friendly_name()
+                 << " which is not the pending service.";
+    return;
+  }
+
+  if (!pending_service_ && service != current_service_) {
+    // TODO(quiche): Once we have asynchronous reply support, we should
+    // generate a D-Bus error here. (crosbug.com/23832)
+    LOG(WARNING) << "In " << __func__ << "(): "
+                 << " ignoring request to disconnect from service "
+                 << service->friendly_name()
+                 << " which is not the current service.";
+    return;
+  }
+
+  pending_service_ = NULL;
+  try {
+    supplicant_interface_proxy_->Disconnect();
+    // We'll call RemoveNetwork and reset |current_service_| after
+    // supplicant notifies us that the CurrentBSS has changed.
+  } catch (const DBus::Error e) {  // NOLINT
+    // Can't depend on getting a notification of CurrentBSS change.
+    // So effect changes immediately.
+    ReverseServiceMap::const_iterator rpcid_it =
+        rpcid_by_service_.find(service);
+    DCHECK(rpcid_it != rpcid_by_service_.end());
+    if (rpcid_it == rpcid_by_service_.end()) {
+      LOG(WARNING) << "WiFi " << link_name() << " can not disconnect from "
+                   << service->friendly_name() << ": "
+                   << "could not find supplicant network to disable.";
+    } else {
+      supplicant_interface_proxy_->RemoveNetwork(rpcid_it->second);
+    }
+    current_service_ = NULL;
+  }
+
+  CHECK(current_service_ == NULL
+        || current_service_.get() != pending_service_.get());
+}
+
 // To avoid creating duplicate services, call FindServiceForEndpoint
 // before calling this method.
 WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,

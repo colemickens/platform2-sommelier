@@ -35,7 +35,7 @@ class WiFiService : public Service {
 
   // Inherited from Service.
   virtual void Connect(Error *error);
-  virtual void Disconnect();
+  virtual void Disconnect(Error *error);
 
   virtual bool TechnologyIs(const Technology::Identifier type) const;
 
@@ -83,6 +83,7 @@ class WiFiService : public Service {
       void(WiFiService::*set)(const std::string &value, Error *error));
 
   void ConnectTask();
+  void DisconnectTask();
 
   std::string GetDeviceRpcId(Error *error);
   void UpdateConnectable();

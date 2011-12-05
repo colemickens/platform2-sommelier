@@ -49,7 +49,7 @@ void CellularService::Connect(Error *error) {
   cellular_->Connect(error);
 }
 
-void CellularService::Disconnect() { }
+void CellularService::Disconnect(Error */*error*/) { }
 
 void CellularService::ActivateCellularModem(const string &carrier,
                                             Error *error) {

@@ -29,6 +29,7 @@ class SupplicantInterfaceProxy
 
   virtual ::DBus::Path AddNetwork(
       const std::map<std::string, ::DBus::Variant> &args);
+  virtual void Disconnect();
   virtual void FlushBSS(const uint32_t &age);
   virtual void RemoveAllNetworks();
   virtual void RemoveNetwork(const ::DBus::Path &network);

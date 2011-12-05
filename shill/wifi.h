@@ -56,6 +56,7 @@ class WiFi : public Device {
   virtual void ConnectTo(
       WiFiService *service,
       std::map<std::string, ::DBus::Variant> service_params);
+  virtual void DisconnectFrom(WiFiService *service);
 
   // Called by Manager.
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);

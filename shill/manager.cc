@@ -133,9 +133,10 @@ void Manager::Stop() {
   }
 
   vector<ServiceRefPtr>::iterator services_it;
+  Error e;
   for (services_it = services_.begin(); services_it != services_.end();
        ++services_it) {
-    (*services_it)->Disconnect();
+    (*services_it)->Disconnect(&e);
   }
 
   adaptor_->UpdateRunning();

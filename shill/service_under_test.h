@@ -25,7 +25,7 @@ class ServiceUnderTest : public Service {
   virtual ~ServiceUnderTest();
 
   virtual void Connect(Error *error);
-  virtual void Disconnect();
+  virtual void Disconnect(Error *error);
   virtual std::string CalculateState(Error *error);
   virtual std::string GetRpcIdentifier() const;
   virtual std::string GetDeviceRpcId(Error *error);

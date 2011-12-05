@@ -74,7 +74,10 @@ void ServiceDBusAdaptor::Connect(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::Disconnect(::DBus::Error &/*error*/) {
+void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
+  Error e;
+  service_->Disconnect(&e);
+  e.ToDBusError(&error);
 }
 
 void ServiceDBusAdaptor::Remove(::DBus::Error &/*error*/) {

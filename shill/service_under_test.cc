@@ -27,7 +27,7 @@ ServiceUnderTest::~ServiceUnderTest() {}
 
 void ServiceUnderTest::Connect(Error */*error*/) {}
 
-void ServiceUnderTest::Disconnect() {}
+void ServiceUnderTest::Disconnect(Error */*error*/) {}
 
 string ServiceUnderTest::CalculateState(Error */*error*/) { return ""; }
 

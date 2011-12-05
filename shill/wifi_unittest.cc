@@ -216,6 +216,9 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
     map<string, ::DBus::Variant> params;
     wifi_->ConnectTo(service, params);
   }
+  void InitiateDisconnect(WiFiServiceRefPtr service) {
+    wifi_->DisconnectFrom(service);
+  }
   bool IsLinkUp() {
     return wifi_->link_up_;
   }
@@ -591,6 +594,133 @@ TEST_F(WiFiMainTest, Connect) {
     EXPECT_EQ(static_cast<Service *>(service),
               wifi()->selected_service_.get());
   }
+}
+
+TEST_F(WiFiMainTest, DisconnectPendingService) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  WiFiService *service(GetServices().begin()->get());
+  InitiateConnect(service);
+
+  EXPECT_FALSE(GetPendingService() == NULL);
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect());
+  InitiateDisconnect(service);
+
+  EXPECT_TRUE(GetPendingService() == NULL);
+}
+
+TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  WiFiService *service0(GetServices()[0].get());
+  WiFiService *service1(GetServices()[1].get());
+
+  InitiateConnect(service0);
+  ReportCurrentBSSChanged("bss0");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  InitiateConnect(service1);
+
+  EXPECT_EQ(service0, GetCurrentService());
+  EXPECT_EQ(service1, GetPendingService());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect());
+  InitiateDisconnect(service1);
+
+  // |current_service_| will be unchanged until supplicant signals
+  // that CurrentBSS has changed.
+  EXPECT_EQ(service0, GetCurrentService());
+  // |pending_service_| is updated immediately.
+  EXPECT_TRUE(GetPendingService() == NULL);
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentService) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  WiFiService *service(GetServices().begin()->get());
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("bss0");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+
+  EXPECT_EQ(service, GetCurrentService());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect());
+  InitiateDisconnect(service);
+
+  // |current_service_| should not change until supplicant reports
+  // a BSS change.
+  EXPECT_EQ(service, GetCurrentService());
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  ReportBSS("bss1", "ssid1", "00:00:00:00:00:01", 0, kNetworkModeAdHoc);
+  WiFiService *service0(GetServices()[0].get());
+  WiFiService *service1(GetServices()[1].get());
+
+  InitiateConnect(service0);
+  ReportCurrentBSSChanged("bss0");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  InitiateConnect(service1);
+
+  EXPECT_EQ(service0, GetCurrentService());
+  EXPECT_EQ(service1, GetPendingService());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect())
+      .Times(0);
+  InitiateDisconnect(service0);
+
+  EXPECT_EQ(service0, GetCurrentService());
+  EXPECT_EQ(service1, GetPendingService());
+}
+
+TEST_F(WiFiMainTest, DisconnectInvalidService) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+  WiFiService *service(GetServices().begin()->get());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect())
+      .Times(0);
+  InitiateDisconnect(service);
+}
+
+TEST_F(WiFiMainTest, DisconnectCurrentServiceFailure) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, kNetworkModeAdHoc);
+
+  WiFiService *service(GetServices().begin()->get());
+  DBus::Path fake_path("/fake/path");
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
+      .WillOnce(Return(fake_path));
+  InitiateConnect(service);
+  ReportCurrentBSSChanged("bss0");
+  ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+
+  EXPECT_EQ(service, GetCurrentService());
+  EXPECT_CALL(supplicant_interface_proxy, Disconnect())
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.NotConnected",
+              "test threw fi.w1.wpa_supplicant1.NotConnected")));
+  EXPECT_CALL(supplicant_interface_proxy, RemoveNetwork(fake_path));
+  InitiateDisconnect(service);
+
+  EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
 TEST_F(WiFiMainTest, LinkEvent) {

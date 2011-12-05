@@ -31,6 +31,10 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
   return proxy_.AddNetwork(args);
 }
 
+void SupplicantInterfaceProxy::Disconnect() {
+  return proxy_.Disconnect();
+}
+
 void SupplicantInterfaceProxy::FlushBSS(const uint32_t &age) {
   return proxy_.FlushBSS(age);
 }

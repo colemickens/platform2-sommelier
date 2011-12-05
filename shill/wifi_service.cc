@@ -110,15 +110,18 @@ WiFiService::~WiFiService() {
 
 void WiFiService::Connect(Error */*error*/) {
   LOG(INFO) << __func__;
-
-  // NB(quiche) defer handling, since dbus-c++ does not permit us to
-  // send an outbound request while processing an inbound one.
+  // Defer handling, since dbus-c++ does not permit us to send an
+  // outbound request while processing an inbound one.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(&WiFiService::ConnectTask));
 }
 
-void WiFiService::Disconnect() {
-  // TODO(quiche) RemoveNetwork from supplicant
+void WiFiService::Disconnect(Error */*error*/) {
+  LOG(INFO) << __func__;
+  // Defer handling, since dbus-c++ does not permit us to send an
+  // outbound request while processing an inbound one.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFiService::DisconnectTask));
 }
 
 bool WiFiService::TechnologyIs(const Technology::Identifier type) const {
@@ -299,6 +302,10 @@ void WiFiService::ConnectTask() {
   writer << ssid_;
 
   wifi_->ConnectTo(this, params);
+}
+
+void WiFiService::DisconnectTask() {
+  wifi_->DisconnectFrom(this);
 }
 
 string WiFiService::GetDeviceRpcId(Error */*error*/) {

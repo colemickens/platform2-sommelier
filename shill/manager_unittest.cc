@@ -874,7 +874,7 @@ TEST_F(ManagerTest, DisconnectServicesOnStop) {
                                 dispatcher(),
                                 manager()));
   manager()->RegisterService(mock_service);
-  EXPECT_CALL(*mock_service.get(), Disconnect()).Times(1);
+  EXPECT_CALL(*mock_service.get(), Disconnect(_)).Times(1);
   manager()->Stop();
 }
 

@@ -25,7 +25,7 @@ class MockService : public Service {
   virtual ~MockService();
 
   MOCK_METHOD1(Connect, void(Error *error));
-  MOCK_METHOD0(Disconnect, void());
+  MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD1(CalculateState, std::string(Error *error));
   MOCK_CONST_METHOD1(TechnologyIs,
                      bool(const Technology::Identifier technology));
