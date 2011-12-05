@@ -59,6 +59,7 @@ const char Service::kStorageName[] = "Name";
 const char Service::kStoragePriority[] = "Priority";
 const char Service::kStorageProxyConfig[] = "ProxyConfig";
 const char Service::kStorageSaveCredentials[] = "SaveCredentials";
+const char Service::kStorageUIData[] = "UIData";
 
 // static
 unsigned int Service::serial_number_ = 0;
@@ -150,6 +151,7 @@ Service::Service(ControlInterface *control_interface,
                             &Service::CalculateState,
                             NULL);
   // flimflam::kSignalStrengthProperty: Registered in WiFi/CellularService
+  store_.RegisterString(flimflam::kUIDataProperty, &ui_data_);
   // flimflam::kWifiAuthMode: Registered in WiFiService
   // flimflam::kWifiHiddenSsid: Registered in WiFiService
   // flimflam::kWifiFrequency: Registered in WiFiService
@@ -227,6 +229,7 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetInt(id, kStoragePriority, &priority_);
   storage->GetString(id, kStorageProxyConfig, &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
+  storage->GetString(id, kStorageUIData, &ui_data_);
 
   LoadEapCredentials(storage, id);
 
@@ -271,17 +274,18 @@ bool Service::Save(StoreInterface *storage) {
   }
   storage->SetBool(id, kStorageFavorite, favorite_);
   storage->SetString(id, kStorageName, friendly_name_);
-  SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
   if (priority_ != kPriorityNone) {
     storage->SetInt(id, kStoragePriority, priority_);
   } else {
     storage->DeleteKey(id, kStoragePriority);
   }
+  SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
   if (save_credentials_) {
     storage->DeleteKey(id, kStorageSaveCredentials);
   } else {
     storage->SetBool(id, kStorageSaveCredentials, false);
   }
+  SaveString(storage, id, kStorageUIData, ui_data_, false, true);
 
   SaveEapCredentials(storage, id);
 

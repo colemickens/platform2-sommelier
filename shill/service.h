@@ -261,6 +261,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStoragePriority[];
   static const char kStorageProxyConfig[];
   static const char kStorageSaveCredentials[];
+  static const char kStorageUIData[];
 
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 
@@ -283,6 +284,7 @@ class Service : public base::RefCounted<Service> {
   int32 security_level_;
   int32 strength_;
   std::string proxy_config_;
+  std::string ui_data_;
   bool save_credentials_;
   EapCredentials eap_;  // Only saved if |save_credentials_| is true.
   Technology::Identifier technology_;
