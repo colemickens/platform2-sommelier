@@ -137,6 +137,12 @@ class WiFiMainTest : public ::testing::TestWithParam<string> {
                                         &glib_)),
         proxy_factory_(this) {
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
+    // Except for WiFiServices created via WiFi::GetService, we expect
+    // that any WiFiService has been registered with the Manager. So
+    // default Manager.HasService to true, to make the common case
+    // easy.
+    ON_CALL(manager_, HasService(_)).
+        WillByDefault(Return(true));
   }
 
   virtual void SetUp() {
@@ -1095,6 +1101,18 @@ TEST_F(WiFiMainTest, CurrentBSSChangeDisconnectedToConnected) {
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service.get(), GetCurrentService().get());
   EXPECT_EQ(Service::kStateConfiguring, service->state());
+}
+
+TEST_F(WiFiMainTest, ConfiguredServiceRegistration) {
+  Error e;
+  EXPECT_CALL(*manager(), RegisterService(_))
+      .Times(0);
+  EXPECT_CALL(*manager(), HasService(_))
+      .WillOnce(Return(false));
+  GetOpenService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, &e);
+  EXPECT_CALL(*manager(), RegisterService(_));
+  ReportBSS("ap0", "an_ssid", "00:00:00:00:00:00", 0,
+            kNetworkModeInfrastructure);
 }
 
 }  // namespace shill

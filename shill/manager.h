@@ -60,6 +60,7 @@ class Manager {
   void RegisterDevice(const DeviceRefPtr &to_manage);
   void DeregisterDevice(const DeviceRefPtr &to_forget);
 
+  virtual bool HasService(const ServiceRefPtr &service);
   virtual void RegisterService(const ServiceRefPtr &to_manage);
   virtual void DeregisterService(const ServiceRefPtr &to_forget);
   virtual void UpdateService(const ServiceRefPtr &to_update);

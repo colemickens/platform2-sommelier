@@ -242,14 +242,25 @@ void WiFi::BSSAdded(
             << "signal: " << endpoint->signal_strength() << ", "
             << "security: " << endpoint->security_mode();
 
+  if (endpoint->ssid_string().empty()) {
+    // Don't bother trying to find or create a Service for an Endpoint
+    // without an SSID. We wouldn't be able to connect to it anyway.
+    return;
+  }
+
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   if (service) {
     LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
               << " to service " << service->friendly_name() << ".";
     service->AddEndpoint(endpoint);
-    // TODO(quiche): Handle the case where |service| has not been
-    // registered with the Manager. (crosbug.com/23713)
-    manager()->UpdateService(service);
+
+    if (manager()->HasService(service)) {
+      manager()->UpdateService(service);
+    } else {
+      DCHECK_EQ(1, service->NumEndpoints());  // Expect registered by now if >1.
+      manager()->RegisterService(service);
+    }
+
     return;
   }
 
@@ -273,6 +284,12 @@ void WiFi::BSSRemoved(const ::DBus::Path &path) {
   WiFiEndpointRefPtr endpoint = i->second;
   CHECK(endpoint);
   endpoint_by_rpcid_.erase(i);
+
+  if (endpoint->ssid_string().empty()) {
+    // In BSSAdded, we don't create Services for Endpoints with empty
+    // SSIDs. So don't bother looking for a Service to update.
+    return;
+  }
 
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   CHECK(service);

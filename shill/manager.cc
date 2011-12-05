@@ -354,6 +354,15 @@ void Manager::DeregisterDevice(const DeviceRefPtr &to_forget) {
   VLOG(2) << __func__ << " unknown device: " << to_forget->UniqueName();
 }
 
+bool Manager::HasService(const ServiceRefPtr &service) {
+  vector<ServiceRefPtr>::iterator it;
+  for (it = services_.begin(); it != services_.end(); ++it) {
+    if ((*it)->UniqueName() == service->UniqueName())
+      return true;
+  }
+  return false;
+}
+
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
   VLOG(2) << "In " << __func__ << "(): Registering service "
           << to_manage->UniqueName();

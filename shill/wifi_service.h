@@ -41,6 +41,7 @@ class WiFiService : public Service {
 
   virtual void AddEndpoint(WiFiEndpointConstRefPtr endpoint);
   virtual void RemoveEndpoint(WiFiEndpointConstRefPtr endpoint);
+  bool NumEndpoints() const { return endpoints_.size(); }
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;
