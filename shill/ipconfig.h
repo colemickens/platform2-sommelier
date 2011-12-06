@@ -97,7 +97,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   friend class IPConfigAdaptorInterface;
   friend class ConnectionTest;
 
-  FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
+  FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(IPConfigTest, UpdateCallback);
   FRIEND_TEST(IPConfigTest, UpdateProperties);

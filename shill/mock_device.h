@@ -31,6 +31,9 @@ class MockDevice : public Device {
                      bool(const Technology::Identifier technology));
   MOCK_METHOD1(Load, bool(StoreInterface*));
   MOCK_METHOD1(Save, bool(StoreInterface*));
+  MOCK_METHOD0(DisableIPv6, void());
+  MOCK_METHOD0(EnableIPv6, void());
+  MOCK_METHOD0(EnableIPv6Privacy, void());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
 
  private:

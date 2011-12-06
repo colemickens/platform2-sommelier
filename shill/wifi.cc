@@ -210,7 +210,7 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
   if ((flags & IFF_LOWER_UP) != 0 && !link_up_) {
     LOG(INFO) << link_name() << " is up; should start L3!";
     link_up_ = true;
-    if (AcquireDHCPConfig()) {
+    if (AcquireIPConfig()) {
       SetServiceState(Service::kStateConfiguring);
     } else {
       LOG(ERROR) << "Unable to acquire DHCP config.";

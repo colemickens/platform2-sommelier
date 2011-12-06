@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/stringprintf.h>
@@ -38,6 +39,19 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Device::kIPFlagTemplate[] = "/proc/sys/net/%s/conf/%s/%s";
+// static
+const char Device::kIPFlagVersion4[] = "ipv4";
+// static
+const char Device::kIPFlagVersion6[] = "ipv6";
+// static
+const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
+// static
+const char Device::kIPFlagUseTempAddr[] = "use_tempaddr";
+// static
+const char Device::kIPFlagUseTempAddrUsedAndDefault[] = "2";
 
 // static
 const char Device::kStoragePowered[] = "Powered";
@@ -184,6 +198,19 @@ void Device::ChangePIN(const string &/*old_pin*/,
                         "Device doesn't support ChangePIN.");
 }
 
+void Device::DisableIPv6() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
+}
+
+void Device::EnableIPv6() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
+}
+
+void Device::EnableIPv6Privacy() {
+  SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagUseTempAddr,
+            kIPFlagUseTempAddrUsedAndDefault);
+}
+
 bool Device::IsConnected() const {
   if (selected_service_)
     return selected_service_->IsConnected();
@@ -238,6 +265,7 @@ bool Device::Save(StoreInterface *storage) {
 }
 
 void Device::DestroyIPConfig() {
+  DisableIPv6();
   if (ipconfig_.get()) {
     ipconfig_->ReleaseIP();
     ipconfig_ = NULL;
@@ -245,8 +273,9 @@ void Device::DestroyIPConfig() {
   DestroyConnection();
 }
 
-bool Device::AcquireDHCPConfig() {
+bool Device::AcquireIPConfig() {
   DestroyIPConfig();
+  EnableIPv6();
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_);
   ipconfig_->RegisterUpdateCallback(
       NewCallback(this, &Device::IPConfigUpdatedCallback));
@@ -319,6 +348,27 @@ void Device::SetServiceFailure(Service::ConnectFailure failure_state) {
 
 string Device::SerializeIPConfigs(const string &suffix) {
   return StringPrintf("%s:%s", suffix.c_str(), ipconfig_->type().c_str());
+}
+
+bool Device::SetIPFlag(IPAddress::Family family, const string &flag,
+                       const string &value) {
+  string ip_version;
+  if (family == IPAddress::kFamilyIPv4) {
+    ip_version = kIPFlagVersion4;
+  } else if (family == IPAddress::kFamilyIPv6) {
+    ip_version = kIPFlagVersion6;
+  } else {
+    NOTIMPLEMENTED();
+  }
+  FilePath flag_file(StringPrintf(kIPFlagTemplate, ip_version.c_str(),
+                                  link_name_.c_str(), flag.c_str()));
+  VLOG(2) << "Writing " << value << " to flag file " << flag_file.value();
+  if (file_util::WriteFile(flag_file, value.c_str(), value.length()) != 1) {
+    LOG(ERROR) << StringPrintf("IP flag write failed: %s to %s",
+                               value.c_str(), flag_file.value().c_str());
+    return false;
+  }
+  return true;
 }
 
 vector<string> Device::AvailableIPConfigs(Error */*error*/) {

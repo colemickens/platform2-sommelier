@@ -375,7 +375,7 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
     SetState(kStateLinked);
     manager()->RegisterService(service_);
     // TODO(petkov): For GSM, remember the APN.
-    if (AcquireDHCPConfig()) {
+    if (AcquireIPConfig()) {
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
     } else {

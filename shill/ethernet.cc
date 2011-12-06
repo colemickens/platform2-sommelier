@@ -75,7 +75,7 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     link_up_ = true;
     manager()->RegisterService(service_);
     if (service_->auto_connect()) {
-      if (AcquireDHCPConfig()) {
+      if (AcquireIPConfig()) {
         SelectService(service_);
         SetServiceState(Service::kStateConfiguring);
       } else {

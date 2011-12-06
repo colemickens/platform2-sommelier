@@ -136,11 +136,11 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
   ASSERT_FALSE(device_->ipconfig_.get());
 }
 
-TEST_F(DeviceTest, AcquireDHCPConfig) {
+TEST_F(DeviceTest, AcquireIPConfig) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
   EXPECT_CALL(*glib(), SpawnAsync(_, _, _, _, _, _, _, _))
       .WillOnce(Return(false));
-  EXPECT_FALSE(device_->AcquireDHCPConfig());
+  EXPECT_FALSE(device_->AcquireIPConfig());
   ASSERT_TRUE(device_->ipconfig_.get());
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
   EXPECT_TRUE(device_->ipconfig_->update_callback_.get());

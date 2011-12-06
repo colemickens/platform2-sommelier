@@ -55,10 +55,6 @@ const char *DeviceInfo::kModemDrivers[] = {
     "GobiNet",
     NULL
 };
-// static
-const char DeviceInfo::kInterfaceIPv6Privacy[] =
-    "/proc/sys/net/ipv6/conf/%s/use_tempaddr";
-
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
@@ -198,14 +194,14 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
                 << " ignored.";
         return;
       case Technology::kEthernet:
-        EnableDeviceIPv6Privacy(link_name);
         device = new Ethernet(control_interface_, dispatcher_, manager_,
                               link_name, address, dev_index);
+        device->EnableIPv6Privacy();
         break;
       case Technology::kWifi:
-        EnableDeviceIPv6Privacy(link_name);
         device = new WiFi(control_interface_, dispatcher_, manager_,
                           link_name, address, dev_index);
+        device->EnableIPv6Privacy();
         break;
       default:
         device = new DeviceStub(control_interface_, dispatcher_, manager_,
@@ -346,12 +342,6 @@ void DeviceInfo::AddressMsgHandler(const RTNLMessage &msg) {
     address_list.push_back(AddressData(address, status.flags, status.scope));
     VLOG(2) << "Add address for interface " << interface_index;
   }
-}
-
-void DeviceInfo::EnableDeviceIPv6Privacy(const string &iface_name) {
-  FilePath priv_file(StringPrintf(kInterfaceIPv6Privacy, iface_name.c_str()));
-  LOG_IF(ERROR, file_util::WriteFile(priv_file, "2", 1) != 1)
-      << "Write failed for use_tempaddr: " << priv_file.value();
 }
 
 }  // namespace shill

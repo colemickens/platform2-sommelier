@@ -14,6 +14,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
+#include "shill/ip_address.h"
 #include "shill/ipconfig.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
@@ -73,6 +74,9 @@ class Device : public base::RefCounted<Device> {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error);
+  virtual void DisableIPv6();
+  virtual void EnableIPv6();
+  virtual void EnableIPv6Privacy();
 
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
@@ -114,7 +118,7 @@ class Device : public base::RefCounted<Device> {
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
  protected:
-  FRIEND_TEST(DeviceTest, AcquireDHCPConfig);
+  FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
@@ -134,7 +138,7 @@ class Device : public base::RefCounted<Device> {
   // requests a new IP configuration. Registers a callback to
   // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
   // request was successfully sent.
-  bool AcquireDHCPConfig();
+  bool AcquireIPConfig();
 
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
@@ -168,6 +172,12 @@ class Device : public base::RefCounted<Device> {
   friend class CellularTest;
   friend class WiFiMainTest;
 
+  static const char kIPFlagTemplate[];
+  static const char kIPFlagVersion4[];
+  static const char kIPFlagVersion6[];
+  static const char kIPFlagDisableIPv6[];
+  static const char kIPFlagUseTempAddr[];
+  static const char kIPFlagUseTempAddrUsedAndDefault[];
   static const char kStoragePowered[];
   static const char kStorageIPConfigs[];
 
@@ -179,6 +189,12 @@ class Device : public base::RefCounted<Device> {
   // This call generates a string in the right format for this persisting.
   // |suffix| is injected into the storage identifier used for the configs.
   std::string SerializeIPConfigs(const std::string &suffix);
+
+  // Set an IP configuration flag on the device.  |ip_version| should be
+  // "ipv6" or "ipv4".  |flag| should be the name of the flag to be set
+  // and |value| is what this flag should be set to.
+  bool SetIPFlag(IPAddress::Family family, const std::string &flag,
+                 const std::string &value);
 
   std::vector<std::string> AvailableIPConfigs(Error *error);
   std::string GetRpcConnectionIdentifier();
