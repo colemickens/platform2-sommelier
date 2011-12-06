@@ -145,7 +145,9 @@ bool Daemon::GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
 }
 
 void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
-                                         const BacklightController& backlight) {
+                                         const BacklightController& backlight,
+                                         const base::Time& now,
+                                         const base::Time& start) {
   LOG_IF(ERROR,
          (!GenerateBatteryRemainingAtEndOfSessionMetric(info)))
       << "Session Stopped : Unable to generate battery remaining metric!";
@@ -158,6 +160,9 @@ void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
              backlight)))
       << "Session Stopped: Unable to generate user brightness adjustments per"
       << " session!";
+  LOG_IF(ERROR,
+         (!GenerateLengthOfSessionMetric(now, start)))
+      << "Session Stopped: Unable to generate length of session metric!";
 }
 
 bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
@@ -194,6 +199,15 @@ bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
       kMetricUserBrightnessAdjustmentsPerSessionMin,
       kMetricUserBrightnessAdjustmentsPerSessionMax,
       kMetricUserBrightnessAdjustmentsPerSessionBuckets);
+}
+
+bool Daemon::GenerateLengthOfSessionMetric(const base::Time& now,
+                                           const base::Time& start) {
+  return SendMetric(kMetricLengthOfSessionName,
+                    (now - start).InSeconds(),
+                    kMetricLengthOfSessionMin,
+                    kMetricLengthOfSessionMax,
+                    kMetricLengthOfSessionBuckets);
 }
 
 bool Daemon::SendMetric(const std::string& name, int sample,

@@ -45,6 +45,7 @@ static const int64 kUnpluggedDim = kPluggedDim;
 static const int64 kUnpluggedOff = kPluggedOff;
 static const int64 kUnpluggedSuspend = kPluggedSuspend;
 static const int64 kPowerButtonInterval = 20;
+static const int kSessionLength = 5;
 
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
@@ -205,6 +206,16 @@ class DaemonTest : public Test {
         kMetricUserBrightnessAdjustmentsPerSessionBuckets);
   }
 
+  // Adds a metrics library mock expectation for the length of session metric
+  // with the given |sample|.
+  void ExpectLengthOfSessionMetric(int sample) {
+    ExpectMetric(kMetricLengthOfSessionName,
+                 sample,
+                 kMetricLengthOfSessionMin,
+                 kMetricLengthOfSessionMax,
+                 kMetricLengthOfSessionBuckets);
+  }
+
   StrictMock<MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockAudioDetector> audio_detector_;
@@ -363,6 +374,28 @@ TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
             daemon_.battery_time_to_empty_metric_last_);
 }
 
+TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
+  static const uint adjustment_counts[] = {0, 100, 500, 1000};
+  size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
+
+  for(size_t i = 0; i < num_counts; i++) {
+    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
+    ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
+    EXPECT_TRUE(
+        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
+            backlight_ctl_));
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
+  }
+}
+
+TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
+  base::Time now = base::Time::Now();
+  base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);
+
+  ExpectLengthOfSessionMetric(kSessionLength);
+  EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
+}
+
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval) {
   daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_time_to_empty = 100;
@@ -400,7 +433,14 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       backlight_ctl_.user_adjustment_count_);
 
-  daemon_.GenerateEndOfSessionMetrics(status_, backlight_ctl_);
+  base::Time now = base::Time::Now();
+  base::Time start = now - base::TimeDelta::FromSeconds(kSessionLength);
+  ExpectLengthOfSessionMetric(kSessionLength);
+
+  daemon_.GenerateEndOfSessionMetrics(status_,
+                                      backlight_ctl_,
+                                      now,
+                                      start);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
@@ -459,20 +499,6 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
         status_));
 
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
-  }
-}
-
-TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
-  static const uint adjustment_counts[] = {0, 100, 500, 1000};
-  size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
-
-  for(size_t i = 0; i < num_counts; i++) {
-    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
-    ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
-    EXPECT_TRUE(
-        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-            backlight_ctl_));
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }

@@ -97,6 +97,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
   FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
+  FRIEND_TEST(DaemonTest, GenerateLengthOfSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateMetricsOnPowerEvent);
   FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
   FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
@@ -210,7 +211,9 @@ class Daemon : public XIdleObserver,
   // Calls all of the metric generation functions that need to be called at the
   // end of a session.
   void GenerateEndOfSessionMetrics(const PowerStatus& info,
-                                   const BacklightController& backlight);
+                                   const BacklightController& backlight,
+                                   const base::Time& now,
+                                   const base::Time& start);
 
   // Generates a remaining battery charge at end of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
@@ -231,6 +234,11 @@ class Daemon : public XIdleObserver,
   // otherwise.
   bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
     const BacklightController& backlight);
+
+  // Generates length of session session UMA metric sample. Returns true if a
+  // sample was sent to UMA, false otherwise.
+  bool GenerateLengthOfSessionMetric(const base::Time& now,
+                                     const base::Time& start);
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See
@@ -307,6 +315,7 @@ class Daemon : public XIdleObserver,
   FilePath run_dir_;
   PowerSupply power_supply_;
   scoped_ptr<PowerButtonHandler> power_button_handler_;
+  base::Time session_start_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

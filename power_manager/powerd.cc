@@ -834,13 +834,17 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
            (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
            << "Start Started: Unable to generate battery remaining metric!";
     current_user_ = user;
+    session_start_ = base::Time::Now();
     DLOG(INFO) << "Session started for "
                << (current_user_.empty() ? "guest" : "non-guest user");
   } else if (strcmp(state, "stopping") == 0) {
     current_user_.clear();
     DLOG(INFO) << "Session stopping";
   } else if (strcmp(state, "stopped") == 0) {
-    GenerateEndOfSessionMetrics(power_status_, *backlight_controller_);
+    GenerateEndOfSessionMetrics(power_status_,
+                                *backlight_controller_,
+                                base::Time::Now(),
+                                session_start_);
     current_user_.clear();
     DLOG(INFO) << "Session stopped";
   } else {
