@@ -21,6 +21,7 @@ class ObjectMock : public Object {
   MOCK_CONST_METHOD0(GetSize, int ());
   MOCK_METHOD2(GetAttributes, CK_RV (CK_ATTRIBUTE_PTR, int));
   MOCK_METHOD2(SetAttributes, CK_RV (const CK_ATTRIBUTE_PTR, int));
+  MOCK_METHOD2(GetAttributeBool, bool (CK_ATTRIBUTE_TYPE, bool));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ObjectMock);

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/logging.h>
 
 #include "chaps/chaps.h"
 #include "pkcs11/cryptoki.h"
@@ -36,10 +37,6 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
     copy_size = buffer_size;
   memset(buffer, ' ', buffer_size);
   memcpy(buffer, &source.front(), copy_size);
-}
-
-inline std::string ConvertVectorToString(const std::vector<uint8_t>& value) {
-  return std::string(reinterpret_cast<const char*>(&value[0]), value.size());
 }
 
 // RVToString stringifies a PKCS #11 return value.  E.g. CKR_OK --> "CKR_OK".
@@ -166,6 +163,25 @@ class PreservedValue {
 
 typedef PreservedValue<CK_ULONG, uint32_t> PreservedCK_ULONG;
 typedef PreservedValue<uint32_t, CK_ULONG> PreservedUint32_t;
+
+class PreservedByteVector {
+ public:
+  PreservedByteVector(std::vector<uint8_t>* value) {
+    CHECK(value);
+    preserved_ = value;
+    temp_ = ConvertByteVectorToString(*value);
+  }
+  ~PreservedByteVector() {
+    *preserved_ = ConvertByteStringToVector(temp_);
+  }
+  // Allow an implicit cast to a string pointer.
+  operator std::string*() {
+    return &temp_;
+  }
+ private:
+  std::vector<uint8_t>* preserved_;
+  std::string temp_;
+};
 
 }  // namespace
 #endif  // CHAPS_CHAPS_UTILITY_H

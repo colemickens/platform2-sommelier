@@ -5,6 +5,7 @@
 #ifndef CHAPS_SESSION_H
 #define CHAPS_SESSION_H
 
+#include <string>
 #include <vector>
 
 #include "chaps/object.h"
@@ -18,8 +19,6 @@ enum OperationType {
   kDigest,
   kSign,
   kVerify,
-  kSignRecover,
-  kVerifyRecover
 };
 
 // Session is the interface for a PKCS #11 session.  This component is
@@ -48,6 +47,30 @@ class Session {
   virtual CK_RV FindObjects(int max_object_count,
                             std::vector<CK_OBJECT_HANDLE>* object_handles) = 0;
   virtual CK_RV FindObjectsFinal() = 0;
+  // Cryptographic operations.
+  virtual CK_RV OperationInit(OperationType operation,
+                              CK_MECHANISM_TYPE mechanism,
+                              const std::string& mechanism_parameter,
+                              const Object& key) = 0;
+  virtual CK_RV OperationInit(OperationType operation,
+                              CK_MECHANISM_TYPE mechanism,
+                              const std::string& mechanism_parameter) = 0;
+  virtual CK_RV OperationUpdate(OperationType operation,
+                                const std::string& data_in,
+                                int* required_out_length,
+                                std::string* data_out) = 0;
+  virtual CK_RV OperationUpdate(OperationType operation,
+                                const std::string& data_in) = 0;
+  virtual CK_RV OperationFinal(OperationType operation,
+                               int* required_out_length,
+                               std::string* data_out) = 0;
+  virtual CK_RV OperationFinal(OperationType operation,
+                               const std::string& data_in) = 0;
+  virtual CK_RV OperationSinglePart(OperationType operation,
+                                    const std::string& data_in,
+                                    int* required_out_length,
+                                    std::string* data_out) = 0;
+
 };
 
 }  // namespace

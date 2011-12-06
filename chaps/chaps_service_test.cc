@@ -296,7 +296,7 @@ TEST_F(TestService, InitToken) {
 TEST_F(TestService, InitPIN) {
   EXPECT_CALL(slot_manager_, GetSession(0, _))
     .WillOnce(Return(false))
-    .WillOnce(Return(true));
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->InitPIN(0, NULL));
   EXPECT_EQ(CKR_USER_NOT_LOGGED_IN, service_->InitPIN(0, NULL));
 }
@@ -304,7 +304,7 @@ TEST_F(TestService, InitPIN) {
 TEST_F(TestService, SetPIN) {
   EXPECT_CALL(slot_manager_, GetSession(0, _))
     .WillOnce(Return(false))
-    .WillOnce(Return(true));
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SetPIN(0, NULL, NULL));
   EXPECT_EQ(CKR_PIN_INVALID, service_->SetPIN(0, NULL, NULL));
 }
@@ -588,6 +588,446 @@ TEST_F(TestService, FindObjectsFinal) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->FindObjectsFinal(1));
   EXPECT_EQ(CKR_FUNCTION_FAILED, service_->FindObjectsFinal(1));
   EXPECT_EQ(CKR_OK, service_->FindObjectsFinal(1));
+}
+
+TEST_F(TestService, EncryptInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(3, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kEncrypt))
+    .WillOnce(Return(true))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(object_, GetAttributeBool(CKA_ENCRYPT, false))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationInit(kEncrypt, 2, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> p(10, 0x10);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->EncryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_HANDLE_INVALID, service_->EncryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE, service_->EncryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED, service_->EncryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->EncryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OK, service_->EncryptInit(1, 2, p, 3));
+}
+
+TEST_F(TestService, Encrypt) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kEncrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationSinglePart(kEncrypt, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Encrypt(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Encrypt(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->Encrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->Encrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Encrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->Encrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, EncryptUpdate) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kEncrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kEncrypt, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            service_->EncryptUpdate(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptUpdate(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->EncryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->EncryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
+            service_->EncryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->EncryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, EncryptFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kEncrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationFinal(kEncrypt, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptFinal(1, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->EncryptFinal(1, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->EncryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->EncryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->EncryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->EncryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, DecryptInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(3, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDecrypt))
+    .WillOnce(Return(true))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(object_, GetAttributeBool(CKA_DECRYPT, false))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationInit(kDecrypt, 2, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> p(10, 0x10);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->DecryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_HANDLE_INVALID, service_->DecryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE, service_->DecryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED, service_->DecryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DecryptInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OK, service_->DecryptInit(1, 2, p, 3));
+}
+
+TEST_F(TestService, Decrypt) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDecrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationSinglePart(kDecrypt, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Decrypt(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Decrypt(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->Decrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->Decrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Decrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->Decrypt(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, DecryptUpdate) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDecrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kDecrypt, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            service_->DecryptUpdate(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptUpdate(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->DecryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->DecryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
+            service_->DecryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->DecryptUpdate(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, DecryptFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDecrypt))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationFinal(kDecrypt, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptFinal(1, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DecryptFinal(1, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->DecryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->DecryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DecryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->DecryptFinal(1, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, DigestInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDigest))
+    .WillOnce(Return(true))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(session_, OperationInit(kDigest, 2, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> p(10, 0x10);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->DigestInit(1, 2, p));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE, service_->DigestInit(1, 2, p));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DigestInit(1, 2, p));
+  EXPECT_EQ(CKR_OK, service_->DigestInit(1, 2, p));
+}
+
+TEST_F(TestService, Digest) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDigest))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationSinglePart(kDigest, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Digest(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Digest(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->Digest(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->Digest(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Digest(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->Digest(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, DigestUpdate) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDigest))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kDigest, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> data;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->DigestUpdate(1, data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, service_->DigestUpdate(1, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DigestUpdate(1, data));
+  EXPECT_EQ(CKR_OK, service_->DigestUpdate(1, data));
+}
+
+TEST_F(TestService, DigestFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kDigest))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationFinal(kDigest, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DigestFinal(1, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->DigestFinal(1, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->DigestFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->DigestFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DigestFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->DigestFinal(1, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, SignInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(3, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kSign))
+    .WillOnce(Return(true))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(object_, GetAttributeBool(CKA_SIGN, false))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationInit(kSign, 2, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> p(10, 0x10);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SignInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_HANDLE_INVALID, service_->SignInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE, service_->SignInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED, service_->SignInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->SignInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OK, service_->SignInit(1, 2, p, 3));
+}
+
+TEST_F(TestService, Sign) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kSign))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationSinglePart(kSign, _, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Sign(1, data, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->Sign(1, data, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->Sign(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->Sign(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Sign(1, data, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->Sign(1, data, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, SignUpdate) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kSign))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kSign, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> data;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SignUpdate(1, data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, service_->SignUpdate(1, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->SignUpdate(1, data));
+  EXPECT_EQ(CKR_OK, service_->SignUpdate(1, data));
+}
+
+TEST_F(TestService, SignFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kSign))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationFinal(kSign, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(7), Return(CKR_OK)));
+  vector<uint8_t> data;
+  uint32_t len = 0;
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->SignFinal(1, 2, NULL, &data));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->SignFinal(1, 2, &len, NULL));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->SignFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED,
+            service_->SignFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->SignFinal(1, 2, &len, &data));
+  EXPECT_EQ(CKR_OK, service_->SignFinal(1, 2, &len, &data));
+  EXPECT_EQ(len, 7);
+}
+
+TEST_F(TestService, VerifyInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(3, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kVerify))
+    .WillOnce(Return(true))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(object_, GetAttributeBool(CKA_VERIFY, false))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationInit(kVerify, 2, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> p(10, 0x10);
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->VerifyInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_HANDLE_INVALID, service_->VerifyInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OPERATION_ACTIVE, service_->VerifyInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_KEY_FUNCTION_NOT_PERMITTED, service_->VerifyInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->VerifyInit(1, 2, p, 3));
+  EXPECT_EQ(CKR_OK, service_->VerifyInit(1, 2, p, 3));
+}
+
+TEST_F(TestService, Verify) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kVerify))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kVerify, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  EXPECT_CALL(session_, OperationFinal(kVerify, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> data;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->Verify(1, data, data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, service_->Verify(1, data, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Verify(1, data, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->Verify(1, data, data));
+  EXPECT_EQ(CKR_OK, service_->Verify(1, data, data));
+}
+
+TEST_F(TestService, VerifyUpdate) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kVerify))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationUpdate(kVerify, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> data;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->VerifyUpdate(1, data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, service_->VerifyUpdate(1, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->VerifyUpdate(1, data));
+  EXPECT_EQ(CKR_OK, service_->VerifyUpdate(1, data));
+}
+
+TEST_F(TestService, VerifyFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, IsOperationActive(kVerify))
+    .WillOnce(Return(false))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(session_, OperationFinal(kVerify, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> data;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->VerifyFinal(1, data));
+  EXPECT_EQ(CKR_OPERATION_NOT_INITIALIZED, service_->VerifyFinal(1, data));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->VerifyFinal(1, data));
+  EXPECT_EQ(CKR_OK, service_->VerifyFinal(1, data));
 }
 
 }  // namespace chaps

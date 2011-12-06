@@ -199,6 +199,7 @@ uint32_t ChapsServiceImpl::InitPIN(uint32_t session_id, const string* pin) {
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   // Authentication is not handled via this interface.  Since this function can
   // only be called in the "R/W SO Functions" state and we don't support this
   // state, CKR_USER_NOT_LOGGED_IN is the appropriate response.
@@ -211,6 +212,7 @@ uint32_t ChapsServiceImpl::SetPIN(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   // Authentication is not handled via this interface.  We do not support
   // changing a pin or password of any kind.
   return CKR_PIN_INVALID;
@@ -254,6 +256,7 @@ uint32_t ChapsServiceImpl::GetSessionInfo(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   *slot_id = static_cast<uint32_t>(session->GetSlot());
   *state = static_cast<uint32_t>(session->GetState());
   *flags = CKF_SERIAL_SESSION;
@@ -270,6 +273,7 @@ uint32_t ChapsServiceImpl::GetOperationState(
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kEncrypt) &&
                           !session->IsOperationActive(kDecrypt) &&
                           !session->IsOperationActive(kDigest) &&
@@ -288,6 +292,7 @@ uint32_t ChapsServiceImpl::SetOperationState(
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   // We don't give out operation state so there's no way this is valid.
   return CKR_SAVED_STATE_INVALID;
 }
@@ -298,6 +303,7 @@ uint32_t ChapsServiceImpl::Login(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   // We have no notion of a security officer role.
   LOG_CK_RV_AND_RETURN_IF(user_type == CKU_SO, CKR_PIN_INCORRECT);
   // For backwards compatibility we'll accept the hard-coded pin previously used
@@ -315,6 +321,7 @@ uint32_t ChapsServiceImpl::Logout(uint32_t session_id) {
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   return CKR_OK;
 }
 
@@ -325,6 +332,7 @@ uint32_t ChapsServiceImpl::CreateObject(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Attributes parsed_attributes;
   LOG_CK_RV_AND_RETURN_IF(!parsed_attributes.Parse(attributes),
                           CKR_TEMPLATE_INCONSISTENT);
@@ -341,6 +349,7 @@ uint32_t ChapsServiceImpl::CopyObject(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Attributes parsed_attributes;
   LOG_CK_RV_AND_RETURN_IF(!parsed_attributes.Parse(attributes),
                           CKR_TEMPLATE_INCONSISTENT);
@@ -355,6 +364,7 @@ uint32_t ChapsServiceImpl::DestroyObject(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   return session->DestroyObject(object_handle);
 }
 
@@ -365,9 +375,11 @@ uint32_t ChapsServiceImpl::GetObjectSize(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Object* object = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
+  CHECK(object);
   *object_size = object->GetSize();
   return CKR_OK;
 }
@@ -381,9 +393,11 @@ uint32_t ChapsServiceImpl::GetAttributeValue(
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Object* object = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
+  CHECK(object);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes_in), CKR_TEMPLATE_INCONSISTENT);
   CK_RV result = object->GetAttributes(tmp.attributes(), tmp.num_attributes());
@@ -404,9 +418,11 @@ uint32_t ChapsServiceImpl::SetAttributeValue(
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Object* object = NULL;
   LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
                           CKR_OBJECT_HANDLE_INVALID);
+  CHECK(object);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   return object->SetAttributes(tmp.attributes(), tmp.num_attributes());
@@ -418,6 +434,7 @@ uint32_t ChapsServiceImpl::FindObjectsInit(
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
   return session->FindObjectsInit(tmp.attributes(), tmp.num_attributes());
@@ -431,6 +448,7 @@ uint32_t ChapsServiceImpl::FindObjects(uint32_t session_id,
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   vector<CK_OBJECT_HANDLE> tmp;
   CK_RV result = session->FindObjects(max_object_count, &tmp);
   if (result == CKR_OK) {
@@ -445,17 +463,31 @@ uint32_t ChapsServiceImpl::FindObjectsFinal(uint32_t session_id) {
   Session* session = NULL;
   LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
                           CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
   return session->FindObjectsFinal();
 }
 
-// TODO(dkrahn): Implement the rest of the interface.  Here and below are stubs
-// only.
 uint32_t ChapsServiceImpl::EncryptInit(
     uint32_t session_id,
     uint32_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Object* key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
+                          CKR_KEY_HANDLE_INVALID);
+  CHECK(key);
+  LOG_CK_RV_AND_RETURN_IF(session->IsOperationActive(kEncrypt),
+                          CKR_OPERATION_ACTIVE);
+  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_ENCRYPT, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+  return session->OperationInit(kEncrypt,
+                                mechanism_type,
+                                ConvertByteVectorToString(mechanism_parameter),
+                                *key);
 }
 
 uint32_t ChapsServiceImpl::Encrypt(uint32_t session_id,
@@ -464,7 +496,18 @@ uint32_t ChapsServiceImpl::Encrypt(uint32_t session_id,
                                    uint32_t* actual_out_length,
                                    vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kEncrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationSinglePart(
+      kEncrypt,
+      ConvertByteVectorToString(data_in),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::EncryptUpdate(
@@ -474,7 +517,18 @@ uint32_t ChapsServiceImpl::EncryptUpdate(
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kEncrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationUpdate(
+      kEncrypt,
+      ConvertByteVectorToString(data_in),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::EncryptFinal(uint32_t session_id,
@@ -482,7 +536,17 @@ uint32_t ChapsServiceImpl::EncryptFinal(uint32_t session_id,
                                         uint32_t* actual_out_length,
                                         vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kEncrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationFinal(
+      kEncrypt,
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::DecryptInit(
@@ -490,7 +554,22 @@ uint32_t ChapsServiceImpl::DecryptInit(
     uint32_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Object* key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
+                          CKR_KEY_HANDLE_INVALID);
+  CHECK(key);
+  LOG_CK_RV_AND_RETURN_IF(session->IsOperationActive(kDecrypt),
+                          CKR_OPERATION_ACTIVE);
+  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_DECRYPT, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+  return session->OperationInit(kDecrypt,
+                                mechanism_type,
+                                ConvertByteVectorToString(mechanism_parameter),
+                                *key);
 }
 
 uint32_t ChapsServiceImpl::Decrypt(uint32_t session_id,
@@ -499,7 +578,18 @@ uint32_t ChapsServiceImpl::Decrypt(uint32_t session_id,
                                    uint32_t* actual_out_length,
                                    vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDecrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationSinglePart(
+      kDecrypt,
+      ConvertByteVectorToString(data_in),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::DecryptUpdate(
@@ -509,7 +599,18 @@ uint32_t ChapsServiceImpl::DecryptUpdate(
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDecrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationUpdate(
+      kDecrypt,
+      ConvertByteVectorToString(data_in),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::DecryptFinal(uint32_t session_id,
@@ -517,14 +618,32 @@ uint32_t ChapsServiceImpl::DecryptFinal(uint32_t session_id,
                                         uint32_t* actual_out_length,
                                         vector<uint8_t>* data_out) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDecrypt),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationFinal(
+      kDecrypt,
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(data_out));
 }
 
 uint32_t ChapsServiceImpl::DigestInit(
     uint32_t session_id,
     uint32_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(session->IsOperationActive(kDigest),
+                          CKR_OPERATION_ACTIVE);
+  return session->OperationInit(kDigest,
+                                mechanism_type,
+                                ConvertByteVectorToString(mechanism_parameter));
 }
 
 uint32_t ChapsServiceImpl::Digest(uint32_t session_id,
@@ -533,17 +652,35 @@ uint32_t ChapsServiceImpl::Digest(uint32_t session_id,
                                   uint32_t* actual_out_length,
                                   vector<uint8_t>* digest) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDigest),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationSinglePart(
+      kDigest,
+      ConvertByteVectorToString(data_in),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(digest));
 }
 
 uint32_t ChapsServiceImpl::DigestUpdate(uint32_t session_id,
                                         const vector<uint8_t>& data_in) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDigest),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  return session->OperationUpdate(kDigest, ConvertByteVectorToString(data_in));
 }
 
 uint32_t ChapsServiceImpl::DigestKey(uint32_t session_id,
                                      uint32_t key_handle) {
-  return CKR_OK;
+  // We don't give out key digests.
+  return CKR_KEY_INDIGESTIBLE;
 }
 
 uint32_t ChapsServiceImpl::DigestFinal(uint32_t session_id,
@@ -551,7 +688,17 @@ uint32_t ChapsServiceImpl::DigestFinal(uint32_t session_id,
                                        uint32_t* actual_out_length,
                                        vector<uint8_t>* digest) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !digest, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kDigest),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationFinal(
+      kDigest,
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(digest));
 }
 
 uint32_t ChapsServiceImpl::SignInit(
@@ -559,7 +706,22 @@ uint32_t ChapsServiceImpl::SignInit(
     uint32_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Object* key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
+                          CKR_KEY_HANDLE_INVALID);
+  CHECK(key);
+  LOG_CK_RV_AND_RETURN_IF(session->IsOperationActive(kSign),
+                          CKR_OPERATION_ACTIVE);
+  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_SIGN, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+  return session->OperationInit(kSign,
+                                mechanism_type,
+                                ConvertByteVectorToString(mechanism_parameter),
+                                *key);
 }
 
 uint32_t ChapsServiceImpl::Sign(uint32_t session_id,
@@ -568,12 +730,29 @@ uint32_t ChapsServiceImpl::Sign(uint32_t session_id,
                                 uint32_t* actual_out_length,
                                 vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kSign),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationSinglePart(
+      kSign,
+      ConvertByteVectorToString(data),
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(signature));
 }
 
 uint32_t ChapsServiceImpl::SignUpdate(uint32_t session_id,
                                       const vector<uint8_t>& data_part) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kSign),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  return session->OperationUpdate(kSign, ConvertByteVectorToString(data_part));
 }
 
 uint32_t ChapsServiceImpl::SignFinal(uint32_t session_id,
@@ -581,7 +760,17 @@ uint32_t ChapsServiceImpl::SignFinal(uint32_t session_id,
                                      uint32_t* actual_out_length,
                                      vector<uint8_t>* signature) {
   LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kSign),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  *actual_out_length = max_out_length;
+  return session->OperationFinal(
+      kSign,
+      PreservedValue<uint32_t, int>(actual_out_length),
+      PreservedByteVector(signature));
 }
 
 uint32_t ChapsServiceImpl::SignRecoverInit(
@@ -589,7 +778,7 @@ uint32_t ChapsServiceImpl::SignRecoverInit(
       uint32_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint32_t key_handle) {
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::SignRecover(uint32_t session_id,
@@ -597,8 +786,7 @@ uint32_t ChapsServiceImpl::SignRecover(uint32_t session_id,
                                        uint32_t max_out_length,
                                        uint32_t* actual_out_length,
                                        vector<uint8_t>* signature) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !signature, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::VerifyInit(
@@ -606,23 +794,54 @@ uint32_t ChapsServiceImpl::VerifyInit(
     uint32_t mechanism_type,
     const vector<uint8_t>& mechanism_parameter,
     uint32_t key_handle) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Object* key = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(key_handle, &key),
+                          CKR_KEY_HANDLE_INVALID);
+  CHECK(key);
+  LOG_CK_RV_AND_RETURN_IF(session->IsOperationActive(kVerify),
+                          CKR_OPERATION_ACTIVE);
+  LOG_CK_RV_AND_RETURN_IF(!key->GetAttributeBool(CKA_VERIFY, false),
+                          CKR_KEY_FUNCTION_NOT_PERMITTED);
+  return session->OperationInit(kVerify,
+                                mechanism_type,
+                                ConvertByteVectorToString(mechanism_parameter),
+                                *key);
 }
 
 uint32_t ChapsServiceImpl::Verify(uint32_t session_id,
                                   const vector<uint8_t>& data,
                                   const vector<uint8_t>& signature) {
-  return CKR_OK;
+  CK_RV result = VerifyUpdate(session_id, data);
+  if (result == CKR_OK)
+    result = VerifyFinal(session_id, signature);
+  return result;
 }
 
 uint32_t ChapsServiceImpl::VerifyUpdate(uint32_t session_id,
                                         const vector<uint8_t>& data_part) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kVerify),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  return session->OperationUpdate(kVerify,
+                                  ConvertByteVectorToString(data_part));
 }
 
 uint32_t ChapsServiceImpl::VerifyFinal(uint32_t session_id,
                                        const vector<uint8_t>& signature) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  LOG_CK_RV_AND_RETURN_IF(!session->IsOperationActive(kVerify),
+                          CKR_OPERATION_NOT_INITIALIZED);
+  return session->OperationFinal(kVerify, ConvertByteVectorToString(signature));
 }
 
 uint32_t ChapsServiceImpl::VerifyRecoverInit(
@@ -630,7 +849,7 @@ uint32_t ChapsServiceImpl::VerifyRecoverInit(
       uint32_t mechanism_type,
       const vector<uint8_t>& mechanism_parameter,
       uint32_t key_handle) {
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::VerifyRecover(uint32_t session_id,
@@ -638,8 +857,7 @@ uint32_t ChapsServiceImpl::VerifyRecover(uint32_t session_id,
                                          uint32_t max_out_length,
                                          uint32_t* actual_out_length,
                                          vector<uint8_t>* data) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::DigestEncryptUpdate(
@@ -648,8 +866,7 @@ uint32_t ChapsServiceImpl::DigestEncryptUpdate(
     uint32_t max_out_length,
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::DecryptDigestUpdate(
@@ -658,8 +875,7 @@ uint32_t ChapsServiceImpl::DecryptDigestUpdate(
     uint32_t max_out_length,
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::SignEncryptUpdate(
@@ -668,8 +884,7 @@ uint32_t ChapsServiceImpl::SignEncryptUpdate(
     uint32_t max_out_length,
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::DecryptVerifyUpdate(
@@ -678,10 +893,11 @@ uint32_t ChapsServiceImpl::DecryptVerifyUpdate(
     uint32_t max_out_length,
     uint32_t* actual_out_length,
     vector<uint8_t>* data_out) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !data_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
+// TODO(dkrahn): Implement the rest of the interface.  Here and below are stubs
+// only.
 uint32_t ChapsServiceImpl::GenerateKey(
     uint32_t session_id,
     uint32_t mechanism_type,

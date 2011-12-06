@@ -444,7 +444,7 @@ string ValueToString(CK_ATTRIBUTE_TYPE attribute,
     case CKA_LABEL:
     case CKA_SUBJECT:
     case CKA_ISSUER:
-      return ConvertVectorToString(value);
+      return ConvertByteVectorToString(value);
     default:
       return "***";
   }

@@ -61,7 +61,7 @@ void ChapsAdaptor::GetSlotInfo(const uint32_t& slot_id,
                                  &firmware_version_major,
                                  &firmware_version_minor);
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "slot_description="
-                               << ConvertVectorToString(slot_description);
+                               << ConvertByteVectorToString(slot_description);
 }
 
 void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
@@ -109,7 +109,7 @@ void ChapsAdaptor::GetTokenInfo(const uint32_t& slot_id,
                                   &firmware_version_major,
                                   &firmware_version_minor);
   VLOG_IF(2, result == CKR_OK) << "OUT: " << "label="
-                               << ConvertVectorToString(label);
+                               << ConvertByteVectorToString(label);
 }
 
 void ChapsAdaptor::GetMechanismList(const uint32_t& slot_id,
@@ -151,7 +151,7 @@ uint32_t ChapsAdaptor::InitToken(const uint32_t& slot_id,
   VLOG(1) << "CALL: " << __func__;
   VLOG(2) << "IN: " << "slot_id=" << slot_id;
   VLOG(2) << "IN: " << "new_token_label="
-                    << ConvertVectorToString(new_token_label);
+                    << ConvertByteVectorToString(new_token_label);
   const string* tmp_pin = use_null_pin ? NULL : &optional_so_pin;
   return service_->InitToken(slot_id, tmp_pin, new_token_label);
 }

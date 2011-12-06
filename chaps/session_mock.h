@@ -36,6 +36,25 @@ class SessionMock : public Session {
   MOCK_METHOD2(FindObjectsInit, CK_RV (const CK_ATTRIBUTE_PTR, int));
   MOCK_METHOD2(FindObjects, CK_RV (int, std::vector<CK_OBJECT_HANDLE>*));
   MOCK_METHOD0(FindObjectsFinal, CK_RV ());
+  MOCK_METHOD4(OperationInit, CK_RV (OperationType,
+                                     CK_MECHANISM_TYPE,
+                                     const std::string&,
+                                     const Object&));
+  MOCK_METHOD3(OperationInit, CK_RV (OperationType,
+                                     CK_MECHANISM_TYPE,
+                                     const std::string&));
+  MOCK_METHOD4(OperationUpdate, CK_RV (OperationType,
+                                       const std::string&,
+                                       int*,
+                                       std::string*));
+  MOCK_METHOD2(OperationUpdate, CK_RV (OperationType,
+                                       const std::string&));
+  MOCK_METHOD3(OperationFinal, CK_RV (OperationType, int*, std::string*));
+  MOCK_METHOD2(OperationFinal, CK_RV (OperationType, const std::string&));
+  MOCK_METHOD4(OperationSinglePart, CK_RV (OperationType,
+                                           const std::string&,
+                                           int*,
+                                           std::string*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionMock);

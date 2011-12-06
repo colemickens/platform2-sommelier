@@ -19,6 +19,7 @@ class Object {
                               int num_attributes) = 0;
   virtual CK_RV SetAttributes(const CK_ATTRIBUTE_PTR attributes,
                               int num_attributes) = 0;
+  virtual bool GetAttributeBool(CK_ATTRIBUTE_TYPE type, bool default_value) = 0;
 };
 
 }  // namespace
