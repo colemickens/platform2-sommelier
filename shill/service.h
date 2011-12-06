@@ -29,6 +29,7 @@ class EventDispatcher;
 class HTTPProxy;
 class KeyValueStore;
 class Manager;
+class Metrics;
 class ServiceAdaptorInterface;
 class StoreInterface;
 
@@ -54,7 +55,8 @@ class Service : public base::RefCounted<Service> {
     kFailureNeedEVDO,
     kFailureNeedHomeNetwork,
     kFailureOTASPFailure,
-    kFailureAAAFailure
+    kFailureAAAFailure,
+    kFailureMax
   };
   enum ConnectState {
     kStateUnknown,
@@ -63,6 +65,8 @@ class Service : public base::RefCounted<Service> {
     kStateConfiguring,
     kStateConnected,
     kStateDisconnected,
+    kStateReady,
+    kStatePortal,
     kStateFailure,
     kStateOnline
   };
@@ -159,6 +163,13 @@ class Service : public base::RefCounted<Service> {
   // connection to serve requests.
   virtual void SetConnection(ConnectionRefPtr connection);
 
+  // The inherited class should register any custom metrics in this method.
+  virtual void InitializeCustomMetrics() const {}
+
+  // The inherited class that needs to send metrics after the service has
+  // transitioned to the ready state.
+  virtual void SendPostReadyStateMetrics() const {}
+
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
@@ -245,9 +256,11 @@ class Service : public base::RefCounted<Service> {
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
   void SetEAPKeyManagement(const std::string &key_management);
+  Metrics *metrics() const { return metrics_; }
 
  private:
   friend class ServiceAdaptorInterface;
+  friend class MetricsTest;
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
@@ -295,6 +308,9 @@ class Service : public base::RefCounted<Service> {
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
 
+  // For unit testing.
+  void set_metrics(Metrics *metrics) { metrics_ = metrics; }
+
   ConnectState state_;
   ConnectFailure failure_;
   bool auto_connect_;
@@ -326,6 +342,7 @@ class Service : public base::RefCounted<Service> {
   ConnectionRefPtr connection_;
   Manager *manager_;
   Sockets sockets_;
+  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

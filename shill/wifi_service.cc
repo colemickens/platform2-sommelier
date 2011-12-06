@@ -20,6 +20,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
+#include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/store_interface.h"
 #include "shill/wifi.h"
@@ -158,17 +159,6 @@ void WiFiService::RemoveEndpoint(WiFiEndpointConstRefPtr endpoint) {
 string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
-const string &WiFiService::mode() const {
-  return mode_;
-}
-
-const string &WiFiService::key_management() const {
-  return GetEAPKeyManagement();
-}
-
-const vector<uint8_t> &WiFiService::ssid() const {
-  return ssid_;
-}
 
 void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   if (security_ == flimflam::kSecurityWep) {
@@ -263,6 +253,26 @@ bool WiFiService::Save(StoreInterface *storage) {
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
   return GetSecurityClass(security) == GetSecurityClass(security_);
+}
+
+void WiFiService::InitializeCustomMetrics() const {
+  string histogram = metrics()->GetFullMetricName(
+                         Metrics::kMetricTimeToJoinMilliseconds,
+                         technology());
+  metrics()->AddServiceStateTransitionTimer(this,
+                                            histogram,
+                                            Service::kStateAssociating,
+                                            Service::kStateConfiguring);
+}
+
+void WiFiService::SendPostReadyStateMetrics() const {
+  // TODO(thieule): Send physical mode and security metrics.
+  // crosbug.com/24441
+  metrics()->SendEnumToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkChannel,
+                                   technology()),
+      Metrics::WiFiFrequencyToChannel(frequency_),
+      Metrics::kMetricNetworkChannelMax);
 }
 
 // private methods

@@ -51,9 +51,9 @@ class WiFiService : public Service {
                                      std::string *mode,
                                      std::string *security);
 
-  const std::string &mode() const;
-  const std::string &key_management() const;
-  const std::vector<uint8_t> &ssid() const;
+  const std::string &mode() const { return mode_; }
+  const std::string &key_management() const { return GetEAPKeyManagement(); }
+  const std::vector<uint8_t> &ssid() const { return ssid_; }
 
   void SetPassphrase(const std::string &passphrase, Error *error);
 
@@ -67,8 +67,12 @@ class WiFiService : public Service {
   bool IsSecurityMatch(const std::string &security) const;
   bool hidden_ssid() const { return hidden_ssid_; }
 
+  virtual void InitializeCustomMetrics() const;
+  virtual void SendPostReadyStateMetrics() const;
+
  private:
   friend class WiFiServiceSecurityTest;
+  FRIEND_TEST(MetricsTest, WiFiServiceChannel);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);

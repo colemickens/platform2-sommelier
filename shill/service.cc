@@ -21,6 +21,7 @@
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
@@ -89,7 +90,8 @@ Service::Service(ControlInterface *control_interface,
       configured_(false),
       configuration_(NULL),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
-      manager_(manager) {
+      manager_(manager),
+      metrics_(Metrics::GetInstance()) {
 
   store_.RegisterBool(flimflam::kAutoConnectProperty, &auto_connect_);
 
@@ -162,10 +164,15 @@ Service::Service(ControlInterface *control_interface,
   // flimflam::kWifiFrequency: Registered in WiFiService
   // flimflam::kWifiPhyMode: Registered in WiFiService
   // flimflam::kWifiHexSsid: Registered in WiFiService
+
+  metrics_->RegisterService(this);
+
   VLOG(2) << "Service initialized.";
 }
 
-Service::~Service() {}
+Service::~Service() {
+  metrics_->DeregisterService(this);
+}
 
 void Service::ActivateCellularModem(const string &/*carrier*/, Error *error) {
   const string kMessage = "Service doesn't support cellular modem activation.";
@@ -198,6 +205,7 @@ void Service::SetState(ConnectState state) {
     failure_ = kFailureUnknown;
   }
   manager_->UpdateService(this);
+  metrics_->NotifyServiceStateChanged(this, state);
   Error error;
   if (state == kStateConnected) {
     // TODO(quiche): After we have portal detection in place, CalculateState
@@ -354,6 +362,8 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
       return "OTASP Failure";
     case kFailureAAAFailure:
       return "AAA Failure";
+    case kFailureMax:
+      return "Max failure error code";
   }
   return "Invalid";
 }
@@ -373,6 +383,10 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
       return "Connected";
     case kStateDisconnected:
       return "Disconnected";
+    case kStateReady:
+      return "Ready";
+    case kStatePortal:
+      return "Portal";
     case kStateFailure:
       return "Failure";
     case kStateOnline:
