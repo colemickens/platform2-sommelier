@@ -69,7 +69,6 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       prefs_(prefs),
       light_sensor_(NULL),
       observer_(NULL),
-      has_als_been_read_for_first_time_(false),
       als_brightness_level_(0),
       als_hysteresis_level_(0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
@@ -271,21 +270,9 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
   als_brightness_level_ = level;
 
   // Force a backlight refresh immediately after returning from dim or idle.
-  // In the case of a fresh boot, powerd starts before ALS drivers is loaded
-  // and since powerd has already brought the the backlight brightness to the
-  // saved value of last session, we don't want the first ALS read to cause
-  // extra brightness transition. We adjust instead
-  //   brightness_offset_ = local_brightness_ - als_level
-  // so the actual backlight brightness is not changed on first ALS read.
-  // See http://code.google.com/p/chromium-os/issues/detail?id=20727.
   if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
     als_temporal_state_ = ALS_HYST_IDLE;
     als_adjustment_count_++;
-    if (!has_als_been_read_for_first_time_) {
-      *brightness_offset_ = local_brightness_ - level;
-      has_als_been_read_for_first_time_ = true;
-      return;
-    }
     LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
     return;
