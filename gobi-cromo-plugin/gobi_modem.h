@@ -428,6 +428,9 @@ class GobiModem
   // has started
   bool is_connecting_or_connected();
 
+  // Call the Gobi API to stop a data session
+  ULONG StopDataSession(ULONG session_id);
+
   // Force a disconnect of a data session, or stop the process of
   // starting a datasession
   ULONG ForceDisconnect();

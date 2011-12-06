@@ -526,6 +526,15 @@ void GobiModem::Connect(const std::string& unused_number, DBus::Error& error) {
   Connect(properties, error);
 }
 
+ULONG GobiModem::StopDataSession(ULONG session_id)
+{
+  disconnect_time_.Start();
+  ULONG rc = sdk_->StopDataSession(session_id);
+  if (rc != 0)
+    disconnect_time_.Reset();
+  return rc;
+}
+
 void GobiModem::Disconnect(DBus::Error& error) {
   LOG(INFO) << "Disconnect(" << session_id_ << ")";
   if (session_id_ == 0) {
@@ -533,11 +542,7 @@ void GobiModem::Disconnect(DBus::Error& error) {
     error.set(kDisconnectError, "Not connected");
     return;
   }
-
-  disconnect_time_.Start();
-  ULONG rc = sdk_->StopDataSession(session_id_);
-  if (rc != 0)
-    disconnect_time_.Reset();
+  ULONG rc = StopDataSession(session_id_);
   ENSURE_SDK_SUCCESS(StopDataSession, rc, kDisconnectError);
   SetMmState(MM_MODEM_STATE_DISCONNECTING,
              MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
@@ -690,7 +695,7 @@ void GobiModem::SessionStarterDoneCallback(SessionStarter *starter) {
     if (pending_enable_ != NULL) {
       error.set(kConnectError, "StartDataSession Cancelled");
       LOG(INFO) << "Cancellation arrived after connect succeeded";
-      ULONG rc = sdk_->StopDataSession(session_id_);
+      ULONG rc = StopDataSession(session_id_);
       if (rc != 0) {
         LOG(ERROR) << "Could not disconnect: " << rc;
       } else {
@@ -1578,7 +1583,7 @@ ULONG GobiModem::ForceDisconnect() {
   ULONG rc;
   if (session_id_) {
     LOG(INFO) << "ForceDisconnect: Stopping data session";
-    rc = sdk_->StopDataSession(session_id_);
+    rc = StopDataSession(session_id_);
     SetMmState(MM_MODEM_STATE_DISCONNECTING,
                MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED);
     if (rc != 0)
