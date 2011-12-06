@@ -10,6 +10,7 @@
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/object.h"
 #include "chaps/session.h"
 #include "chaps/slot_manager.h"
 
@@ -327,7 +328,8 @@ uint32_t ChapsServiceImpl::CreateObject(uint32_t session_id,
   Attributes parsed_attributes;
   LOG_CK_RV_AND_RETURN_IF(!parsed_attributes.Parse(attributes),
                           CKR_TEMPLATE_INCONSISTENT);
-  return session->CreateObject(parsed_attributes,
+  return session->CreateObject(parsed_attributes.attributes(),
+                               parsed_attributes.num_attributes(),
                                PreservedUint32_t(new_object_handle));
 }
 
@@ -342,7 +344,8 @@ uint32_t ChapsServiceImpl::CopyObject(uint32_t session_id,
   Attributes parsed_attributes;
   LOG_CK_RV_AND_RETURN_IF(!parsed_attributes.Parse(attributes),
                           CKR_TEMPLATE_INCONSISTENT);
-  return session->CopyObject(parsed_attributes,
+  return session->CopyObject(parsed_attributes.attributes(),
+                             parsed_attributes.num_attributes(),
                              object_handle,
                              PreservedUint32_t(new_object_handle));
 }
@@ -355,12 +358,17 @@ uint32_t ChapsServiceImpl::DestroyObject(uint32_t session_id,
   return session->DestroyObject(object_handle);
 }
 
-// TODO(dkrahn): Implement the rest of the interface.  Here and below are stubs
-// only.
 uint32_t ChapsServiceImpl::GetObjectSize(uint32_t session_id,
                                          uint32_t object_handle,
                                          uint32_t* object_size) {
   LOG_CK_RV_AND_RETURN_IF(!object_size, CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  Object* object = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
+                          CKR_OBJECT_HANDLE_INVALID);
+  *object_size = object->GetSize();
   return CKR_OK;
 }
 
@@ -370,24 +378,49 @@ uint32_t ChapsServiceImpl::GetAttributeValue(
     const vector<uint8_t>& attributes_in,
     vector<uint8_t>* attributes_out) {
   LOG_CK_RV_AND_RETURN_IF(!attributes_out, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  Object* object = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
+                          CKR_OBJECT_HANDLE_INVALID);
+  Attributes tmp;
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes_in), CKR_TEMPLATE_INCONSISTENT);
+  CK_RV result = object->GetAttributes(tmp.attributes(), tmp.num_attributes());
+  if (result == CKR_OK ||
+      result == CKR_ATTRIBUTE_SENSITIVE ||
+      result == CKR_ATTRIBUTE_TYPE_INVALID ||
+      result == CKR_BUFFER_TOO_SMALL) {
+    LOG_CK_RV_AND_RETURN_IF(!tmp.Serialize(attributes_out),
+                            CKR_FUNCTION_FAILED);
+  }
+  return result;
 }
 
 uint32_t ChapsServiceImpl::SetAttributeValue(
     uint32_t session_id,
     uint32_t object_handle,
     const vector<uint8_t>& attributes) {
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  Object* object = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!session->GetObject(object_handle, &object),
+                          CKR_OBJECT_HANDLE_INVALID);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
-  return CKR_OK;
+  return object->SetAttributes(tmp.attributes(), tmp.num_attributes());
 }
 
 uint32_t ChapsServiceImpl::FindObjectsInit(
     uint32_t session_id,
     const vector<uint8_t>& attributes) {
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
   Attributes tmp;
   LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
-  return CKR_OK;
+  return session->FindObjectsInit(tmp.attributes(), tmp.num_attributes());
 }
 
 uint32_t ChapsServiceImpl::FindObjects(uint32_t session_id,
@@ -395,13 +428,28 @@ uint32_t ChapsServiceImpl::FindObjects(uint32_t session_id,
                                        vector<uint32_t>* object_list) {
   if (!object_list || object_list->size() > 0)
     LOG_CK_RV_AND_RETURN(CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  vector<CK_OBJECT_HANDLE> tmp;
+  CK_RV result = session->FindObjects(max_object_count, &tmp);
+  if (result == CKR_OK) {
+    for (size_t i = 0; i < tmp.size(); ++i) {
+      object_list->push_back(static_cast<uint32_t>(tmp[i]));
+    }
+  }
+  return result;
 }
 
 uint32_t ChapsServiceImpl::FindObjectsFinal(uint32_t session_id) {
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  return session->FindObjectsFinal();
 }
 
+// TODO(dkrahn): Implement the rest of the interface.  Here and below are stubs
+// only.
 uint32_t ChapsServiceImpl::EncryptInit(
     uint32_t session_id,
     uint32_t mechanism_type,

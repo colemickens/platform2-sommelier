@@ -38,9 +38,7 @@ attributes.cc: attributes.pb.h
 
 chaps_adaptor.cc chaps_proxy.cc chaps.cc chapsd.cc: dbus-headers
 
-$(OUT)libchaps.so: dbus-headers \
-                   protobufs \
-                   $(OUT)chaps.o \
+$(OUT)libchaps.so: $(OUT)chaps.o \
                    $(OUT)chaps_proxy.o \
                    $(OUT)chaps_utility.o \
                    $(OUT)attributes.pb.o \
@@ -48,9 +46,7 @@ $(OUT)libchaps.so: dbus-headers \
 	$(call cxx_library)
 RM_ON_CLEAN += $(OUT)libchaps.so
 
-$(OUT)chapsd: dbus-headers \
-              protobufs \
-              $(OUT)chapsd.o \
+$(OUT)chapsd: $(OUT)chapsd.o \
               $(OUT)chaps_service.o \
               $(OUT)chaps_service_redirect.o \
               $(OUT)chaps_adaptor.o \

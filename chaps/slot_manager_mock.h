@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "chaps/slot_manager.h"
 #include "pkcs11/cryptoki.h"
-#include "slot_manager.h"
 
 namespace chaps {
 

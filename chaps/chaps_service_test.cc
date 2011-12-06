@@ -10,6 +10,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "chaps_service.h"
+#include "object_mock.h"
 #include "session_mock.h"
 #include "slot_manager_mock.h"
 
@@ -35,8 +37,13 @@ protected:
     ASSERT_TRUE(service_->Init());
     // Setup parsable and un-parsable serialized attributes.
     CK_ATTRIBUTE attributes[] = {{CKA_VALUE, NULL, 0}};
+    CK_ATTRIBUTE attributes2[] = {{CKA_VALUE, (void*)"test", 4}};
+    attribute_ = attributes[0];
+    attribute2_ = attributes2[0];
     Attributes tmp(attributes, 1);
     tmp.Serialize(&good_attributes_);
+    Attributes tmp2(attributes2, 1);
+    tmp2.Serialize(&good_attributes2_);
     bad_attributes_ = vector<uint8_t>(100, 0xAA);
   }
   virtual void TearDown() {
@@ -44,9 +51,13 @@ protected:
   }
   SlotManagerMock slot_manager_;
   SessionMock session_;
+  ObjectMock object_;
   scoped_ptr<ChapsServiceImpl> service_;
   vector<uint8_t> bad_attributes_;
   vector<uint8_t> good_attributes_;
+  vector<uint8_t> good_attributes2_;
+  CK_ATTRIBUTE attribute_;
+  CK_ATTRIBUTE attribute2_;
 };
 
 TEST_F(TestService, GetSlotList) {
@@ -414,9 +425,9 @@ TEST_F(TestService, CreateObject) {
   EXPECT_CALL(slot_manager_, GetSession(1, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
-  EXPECT_CALL(session_, CreateObject(_, _))
+  EXPECT_CALL(session_, CreateObject(_, 1, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<1>(2), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgumentPointee<2>(2), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CreateObject(1, good_attributes_, NULL));
   uint32_t object_handle;
@@ -435,9 +446,9 @@ TEST_F(TestService, CopyObject) {
   EXPECT_CALL(slot_manager_, GetSession(1, _))
     .WillOnce(Return(false))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
-  EXPECT_CALL(session_, CopyObject(_, 2, _))
+  EXPECT_CALL(session_, CopyObject(_, 1, 2, _))
     .WillOnce(Return(CKR_FUNCTION_FAILED))
-    .WillRepeatedly(DoAll(SetArgumentPointee<2>(3), Return(CKR_OK)));
+    .WillRepeatedly(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
   EXPECT_EQ(CKR_ARGUMENTS_BAD,
             service_->CopyObject(1, 2, good_attributes_, NULL));
   uint32_t object_handle;
@@ -462,6 +473,121 @@ TEST_F(TestService, DestroyObject) {
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->DestroyObject(1, 2));
   EXPECT_EQ(CKR_FUNCTION_FAILED, service_->DestroyObject(1, 2));
   EXPECT_EQ(CKR_OK, service_->DestroyObject(1, 2));
+}
+
+TEST_F(TestService, GetObjectSize) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(2, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(object_, GetSize())
+    .WillRepeatedly(Return(3));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->GetObjectSize(1, 2, NULL));
+  uint32_t size = 0;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->GetObjectSize(1, 2, &size));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID, service_->GetObjectSize(1, 2, &size));
+  EXPECT_EQ(CKR_OK, service_->GetObjectSize(1, 2, &size));
+  EXPECT_EQ(size, 3);
+}
+
+TEST_F(TestService, GetAttributeValue) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(2, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(object_, GetAttributes(_, 1))
+    .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
+    .WillOnce(Return(CKR_ATTRIBUTE_SENSITIVE))
+    .WillRepeatedly(Return(CKR_OK));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD,
+            service_->GetAttributeValue(1, 2, good_attributes_, NULL));
+  vector<uint8_t> output;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->GetAttributeValue(1, 2, good_attributes_, &output));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
+            service_->GetAttributeValue(1, 2, good_attributes_, &output));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->GetAttributeValue(1, 2, bad_attributes_, &output));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->GetAttributeValue(1, 2, good_attributes_, &output));
+  EXPECT_EQ(output.size(), 0);
+  EXPECT_EQ(CKR_ATTRIBUTE_SENSITIVE,
+            service_->GetAttributeValue(1, 2, good_attributes_, &output));
+  EXPECT_EQ(CKR_OK,
+            service_->GetAttributeValue(1, 2, good_attributes_, &output));
+}
+
+TEST_F(TestService, SetAttributeValue) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GetObject(2, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&object_), Return(true)));
+  EXPECT_CALL(object_, SetAttributes(_, 1))
+    .WillOnce(Return(CKR_TEMPLATE_INCONSISTENT))
+    .WillRepeatedly(Return(CKR_OK));
+  vector<uint8_t> output;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->SetAttributeValue(1, 2, good_attributes_));
+  EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
+            service_->SetAttributeValue(1, 2, good_attributes_));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->SetAttributeValue(1, 2, bad_attributes_));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->SetAttributeValue(1, 2, good_attributes_));
+  EXPECT_EQ(CKR_OK, service_->SetAttributeValue(1, 2, good_attributes_));
+}
+
+TEST_F(TestService, FindObjectsInit) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, FindObjectsInit(_, 1))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->FindObjectsInit(1, good_attributes_));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->FindObjectsInit(1, bad_attributes_));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
+            service_->FindObjectsInit(1, good_attributes_));
+  EXPECT_EQ(CKR_OK, service_->FindObjectsInit(1, good_attributes_));
+}
+
+TEST_F(TestService, FindObjects) {
+  vector<uint32_t> objects_ret(12, 12);
+  vector<CK_OBJECT_HANDLE> objects_mock(12, 12);
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, FindObjects(2, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(objects_mock), Return(CKR_OK)));
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(1, 2, NULL));
+  vector<uint32_t> objects(1, 1);
+  EXPECT_EQ(CKR_ARGUMENTS_BAD, service_->FindObjects(1, 2, &objects));
+  objects.clear();
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->FindObjects(1, 2, &objects));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->FindObjects(1, 2, &objects));
+  EXPECT_EQ(CKR_OK, service_->FindObjects(1, 2, &objects));
+  EXPECT_TRUE(objects == objects_ret);
+}
+
+TEST_F(TestService, FindObjectsFinal) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, FindObjectsFinal())
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(Return(CKR_OK));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->FindObjectsFinal(1));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->FindObjectsFinal(1));
+  EXPECT_EQ(CKR_OK, service_->FindObjectsFinal(1));
 }
 
 }  // namespace chaps
