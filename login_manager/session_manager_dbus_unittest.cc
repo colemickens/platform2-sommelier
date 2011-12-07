@@ -13,6 +13,7 @@
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
+#include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
@@ -147,6 +148,8 @@ class SessionManagerDBusTest : public SessionManagerTest {
     g_array_append_vals(output, input, len);
     return output;
   }
+
+  FilePath machine_info_file_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionManagerDBusTest);
@@ -313,6 +316,30 @@ TEST_F(SessionManagerDBusTest, StartOwnerSession) {
                                          nothing,
                                          &out,
                                          &Resetter(&error).lvalue()));
+}
+
+TEST_F(SessionManagerDBusTest, StartSessionRemovesMachineInfo) {
+  FilePath machine_info_file(tmpdir_.path().AppendASCII("machine_info"));
+
+  MockChildJob* job = CreateTrivialMockJob();
+  manager_->test_api().set_machine_info_file(machine_info_file);
+
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSession(email, job);
+  MockUtils();
+
+  EXPECT_EQ(0, file_util::WriteFile(machine_info_file, NULL, 0));
+  EXPECT_TRUE(file_util::PathExists(machine_info_file));
+
+  ScopedError error;
+  EXPECT_EQ(TRUE, manager_->StartSession(email,
+                                         nothing,
+                                         &out,
+                                         &Resetter(&error).lvalue()));
+
+  EXPECT_FALSE(file_util::PathExists(machine_info_file));
 }
 
 TEST_F(SessionManagerDBusTest, StopSession) {

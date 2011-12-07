@@ -58,6 +58,10 @@ SessionManagerTest::~SessionManagerTest() {
   }
 }
 
+void SessionManagerTest::SetUp() {
+  ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+}
+
 void SessionManagerTest::TearDown() {
   must_destroy_mocks_ = !manager_.get();
   manager_ = NULL;

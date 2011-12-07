@@ -54,7 +54,17 @@ class DevicePolicyService : public PolicyService {
   // Checks whether the key is missing.
   virtual bool KeyMissing();
 
+  // Overriden from PolicyService to check the serial number recovery flag.
+  // TODO(mnissler): Remove once bogus enterprise serials are fixed.
+  virtual bool Initialize();
+  virtual bool Store(const uint8* policy_blob,
+                     uint32 len,
+                     Completion* completion,
+                     int flags);
+
   static const char kPolicyPath[];
+  static const char kSerialRecoveryFlagFile[];
+
   // Format of this string is documented in device_management_backend.proto.
   static const char kDevicePolicyType[];
 
@@ -63,7 +73,8 @@ class DevicePolicyService : public PolicyService {
   friend class MockDevicePolicyService;
 
   // Takes ownership of |policy_store|, |policy_key|, |system_utils|, and |nss|.
-  DevicePolicyService(PolicyStore* policy_store,
+  DevicePolicyService(const FilePath& serial_recovery_flag_file,
+                      PolicyStore* policy_store,
                       OwnerKey* policy_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       NssUtil* nss,
@@ -84,6 +95,11 @@ class DevicePolicyService : public PolicyService {
   // device owner.  Returns false if not, or if that cannot be determined.
   bool CurrentUserIsOwner(const std::string& current_user);
 
+  // Checks the serial number recovery flag and updates the flag file.
+  // TODO(mnissler): Remove once bogus enterprise serials are fixed.
+  void UpdateSerialNumberRecoveryFlagFile();
+
+  const FilePath serial_recovery_flag_file_;
   scoped_ptr<NssUtil> nss_;
   OwnerKeyLossMitigator* mitigator_;
 

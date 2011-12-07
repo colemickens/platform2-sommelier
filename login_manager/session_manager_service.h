@@ -102,6 +102,10 @@ class SessionManagerService
         session_manager_service_->current_user_ = email;
     }
 
+    void set_machine_info_file(const FilePath& file) {
+      session_manager_service_->machine_info_file_ = file;
+    }
+
     // Sets whether the screen is locked.
     // TODO(davemoore) Need to come up with a way to mock dbus so we can
     // better test this functionality.
@@ -426,6 +430,8 @@ class SessionManagerService
   bool session_stopping_;
   std::string current_user_;
   std::string chrome_testing_path_;
+
+  FilePath machine_info_file_;
 
   // D-Bus GLib signal ids.
   guint signals_[kNumSignals];

@@ -13,6 +13,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_temp_dir.h>
 
 #include "login_manager/mock_system_utils.h"
 
@@ -30,6 +31,7 @@ class SessionManagerTest : public ::testing::Test {
   SessionManagerTest();
   virtual ~SessionManagerTest();
 
+  virtual void SetUp();
   virtual void TearDown();
 
  protected:
@@ -63,6 +65,7 @@ class SessionManagerTest : public ::testing::Test {
   MockUpstartSignalEmitter* upstart_;
   MockDevicePolicyService* device_policy_service_;
   bool must_destroy_mocks_;
+  ScopedTempDir tmpdir_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionManagerTest);

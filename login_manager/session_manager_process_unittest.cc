@@ -266,10 +266,7 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
 }
 
 TEST_F(SessionManagerProcessTest, KeygenTest) {
-  const char key_file_name[] = "foo.pub";
-  ScopedTempDir tmpdir;
-  ASSERT_TRUE(tmpdir.CreateUniqueTempDir());
-  FilePath key_file_path(tmpdir.path().AppendASCII(key_file_name));
+  FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
 
   int pid = fork();
   if (pid == 0) {

@@ -10,6 +10,9 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/memory/scoped_temp_dir.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <gmock/gmock.h>
@@ -20,12 +23,14 @@
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_owner_key.h"
+#include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 
 namespace em = enterprise_management;
 
 using google::protobuf::RepeatedPtrField;
 
+using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
 using testing::Expectation;
@@ -55,10 +60,17 @@ class DevicePolicyServiceTest : public ::testing::Test {
     fake_key_vector_.assign(fake_key_.begin(), fake_key_.end());
   }
 
+  virtual void SetUp() {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    serial_recovery_flag_file_ =
+        tmpdir_.path().AppendASCII("serial_recovery_flag");
+  }
+
   void InitPolicy(const em::ChromeDeviceSettingsProto& settings,
                   const std::string& owner,
                   const std::string& signature,
-                  const std::string& request_token) {
+                  const std::string& request_token,
+                  bool valid_serial_number_missing) {
     std::string settings_str;
     ASSERT_TRUE(settings.SerializeToString(&settings_str));
 
@@ -69,6 +81,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
       policy_data.set_username(owner);
     if (!request_token.empty())
       policy_data.set_request_token(request_token);
+    if (valid_serial_number_missing)
+      policy_data.set_valid_serial_number_missing(true);
     std::string policy_data_str;
     ASSERT_TRUE(policy_data.SerializeToString(&policy_data_str));
 
@@ -82,7 +96,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
                        const std::string& signature,
                        const std::string& request_token) {
     em::ChromeDeviceSettingsProto settings;
-    InitPolicy(settings, owner, signature, request_token);
+    InitPolicy(settings, owner, signature, request_token, false);
   }
 
   void InitService(NssUtil* nss) {
@@ -91,7 +105,8 @@ class DevicePolicyServiceTest : public ::testing::Test {
     mitigator_.reset(new MockMitigator);
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::CreateForCurrentThread());
-    service_ = new DevicePolicyService(store_, key_,
+    service_ = new DevicePolicyService(serial_recovery_flag_file_,
+                                       store_, key_,
                                        message_loop,
                                        nss,
                                        mitigator_.get());
@@ -205,11 +220,15 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   MessageLoop loop_;
 
+  ScopedTempDir tmpdir_;
+  FilePath serial_recovery_flag_file_;
+
   // Use StrictMock to make sure that no unexpected policy or key mutations can
   // occur without the test failing.
   StrictMock<MockOwnerKey>* key_;
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMitigator> mitigator_;
+  MockPolicyServiceCompletion completion_;
 
   scoped_refptr<DevicePolicyService> service_;
 };
@@ -217,7 +236,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   InitService(new KeyCheckUtil);
   em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
@@ -240,7 +259,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
@@ -265,7 +284,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
   settings.mutable_user_whitelist()->add_user_whitelist(owner_);
   settings.mutable_allow_new_users()->set_allow_new_users(true);
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
@@ -356,7 +375,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
   InitService(new KeyCheckUtil);
   em::ChromeDeviceSettingsProto settings;
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
@@ -421,7 +440,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
-  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, ""));
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   ExpectMitigating(false);
 
@@ -509,6 +528,73 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
       .WillRepeatedly(Return(false));
 
   EXPECT_TRUE(service_->KeyMissing());
+}
+
+TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
+  InitService(new MockNssUtil);
+
+  EXPECT_CALL(*key_, PopulateFromDiskIfPossible())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, IsPopulated())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, LoadOrCreate())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+
+  em::ChromeDeviceSettingsProto settings;
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
+  EXPECT_TRUE(service_->Initialize());
+  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  EXPECT_TRUE(service_->Initialize());
+  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+}
+
+TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
+  InitService(new MockNssUtil);
+  em::ChromeDeviceSettingsProto settings;
+  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+
+  EXPECT_CALL(*key_, Verify(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
+  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+
+  // Installing a policy blob that doesn't have a request token (indicates local
+  // owner) should not create the file.
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", true));
+  EXPECT_TRUE(
+      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
+                      policy_str_.size(), &completion_,
+                      PolicyService::KEY_CLOBBER));
+  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
+
+  // Storing an enterprise policy blob with the |valid_serial_number_missing|
+  // flag set should create the flag file.
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
+  EXPECT_TRUE(
+      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
+                      policy_str_.size(), &completion_,
+                      PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+
+  // Storing bad policy shouldn't remove the file.
+  EXPECT_FALSE(service_->Store(NULL, 0, &completion_,
+                               PolicyService::KEY_CLOBBER));
+  EXPECT_TRUE(file_util::PathExists(serial_recovery_flag_file_));
+
+  // Clearing the flag should remove the file.
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", false));
+  EXPECT_TRUE(
+      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
+                      policy_str_.size(), &completion_,
+                      PolicyService::KEY_CLOBBER));
+  EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
 }
 
 }  // namespace login_manager

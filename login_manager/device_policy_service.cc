@@ -5,6 +5,7 @@
 #include "device_policy_service.h"
 
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 #include <base/task.h>
@@ -26,6 +27,9 @@ using std::string;
 // static
 const char DevicePolicyService::kPolicyPath[] = "/var/lib/whitelist/policy";
 // static
+const char DevicePolicyService::kSerialRecoveryFlagFile[] =
+    "/var/lib/enterprise_serial_number_recovery";
+// static
 const char DevicePolicyService::kDevicePolicyType[] = "google/chromeos/device";
 
 DevicePolicyService::~DevicePolicyService() {
@@ -36,7 +40,8 @@ DevicePolicyService* DevicePolicyService::Create(
     OwnerKeyLossMitigator* mitigator,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   NssUtil* nss = NssUtil::Create();
-  return new DevicePolicyService(new PolicyStore(FilePath(kPolicyPath)),
+  return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
+                                 new PolicyStore(FilePath(kPolicyPath)),
                                  new OwnerKey(nss->GetOwnerKeyFilePath()),
                                  main_loop,
                                  nss,
@@ -92,18 +97,38 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
 }
 
 DevicePolicyService::DevicePolicyService(
+    const FilePath& serial_recovery_flag_file,
     PolicyStore* policy_store,
     OwnerKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     NssUtil* nss,
     OwnerKeyLossMitigator* mitigator)
     : PolicyService(policy_store, policy_key, main_loop),
+      serial_recovery_flag_file_(serial_recovery_flag_file),
       nss_(nss),
       mitigator_(mitigator) {
 }
 
 bool DevicePolicyService::KeyMissing() {
   return key()->HaveCheckedDisk() && !key()->IsPopulated();
+}
+
+bool DevicePolicyService::Initialize() {
+  bool result = PolicyService::Initialize();
+  UpdateSerialNumberRecoveryFlagFile();
+  return result;
+}
+
+bool DevicePolicyService::Store(const uint8* policy_blob,
+                                uint32 len,
+                                Completion* completion,
+                                int flags) {
+  bool result = PolicyService::Store(policy_blob, len, completion, flags);
+
+  if (result)
+    UpdateSerialNumberRecoveryFlagFile();
+
+  return result;
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
@@ -207,6 +232,25 @@ bool DevicePolicyService::CurrentUserIsOwner(const std::string& current_user) {
             poldata.username() == current_user);
   }
   return false;
+}
+
+void DevicePolicyService::UpdateSerialNumberRecoveryFlagFile() {
+  const em::PolicyFetchResponse& policy(store()->Get());
+  em::PolicyData policy_data;
+  if (policy.has_policy_data() &&
+      policy_data.ParseFromString(policy.policy_data()) &&
+      !policy_data.request_token().empty() &&
+      policy_data.valid_serial_number_missing()) {
+    if (file_util::WriteFile(serial_recovery_flag_file_, NULL, 0) != 0) {
+      PLOG(WARNING) << "Failed to write "
+                    << serial_recovery_flag_file_.value();
+    }
+  } else {
+    if (!file_util::Delete(serial_recovery_flag_file_, false)) {
+      PLOG(WARNING) << "Failed to delete "
+                    << serial_recovery_flag_file_.value();
+    }
+  }
 }
 
 }  // namespace login_manager

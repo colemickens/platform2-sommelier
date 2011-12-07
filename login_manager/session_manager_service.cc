@@ -22,19 +22,19 @@
 #include <utility>
 #include <vector>
 
-#include "base/basictypes.h"
-#include "base/command_line.h"
-#include "base/file_path.h"
-#include "base/file_util.h"
-#include "base/logging.h"
-#include "base/memory/scoped_ptr.h"
-#include "base/message_loop_proxy.h"
-#include "base/stl_util-inl.h"
-#include "base/string_util.h"
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/dbus/error_constants.h"
-#include "chromeos/dbus/service_constants.h"
-#include "metrics/bootstat.h"
+#include <base/basictypes.h>
+#include <base/command_line.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/message_loop_proxy.h>
+#include <base/stl_util-inl.h>
+#include <base/string_util.h>
+#include <chromeos/dbus/dbus.h>
+#include <chromeos/dbus/error_constants.h>
+#include <chromeos/dbus/service_constants.h>
+#include <metrics/bootstat.h>
 
 #include "login_manager/bindings/device_management_backend.pb.h"
 #include "login_manager/child_job.h"
@@ -202,6 +202,10 @@ const int kKillTimeoutCollectChrome = 60;
 static const char kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
+// File that contains world-readable machine statistics. Should be removed once
+// the user session starts.
+const char kMachineInfoFile[] = "/tmp/machine-info";
+
 }  // namespace
 
 SessionManagerService::SessionManagerService(
@@ -219,6 +223,7 @@ SessionManagerService::SessionManagerService(
       upstart_signal_emitter_(new UpstartSignalEmitter),
       session_started_(false),
       session_stopping_(false),
+      machine_info_file_(kMachineInfoFile),
       screen_locked_(false),
       set_uid_(false),
       shutting_down_(false) {
@@ -600,6 +605,10 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     if (device_policy_->KeyMissing() && current_user_ != kIncognitoUser) {
       gen_->Start(set_uid_ ? uid_ : 0, this);
     }
+    // Delete the machine-info file. It contains device-identifiable data such
+    // as the serial number and shouldn't be around during a user session.
+    if (!file_util::Delete(FilePath(machine_info_file_), false))
+      PLOG(WARNING) << "Failed to delete " << machine_info_file_.value();
   }
 
   return *OUT_done;
