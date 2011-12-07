@@ -1030,6 +1030,89 @@ TEST_F(TestService, VerifyFinal) {
   EXPECT_EQ(CKR_OK, service_->VerifyFinal(1, data));
 }
 
+TEST_F(TestService, GenerateKey) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GenerateKey(2, _, _, 1, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<4>(3), Return(CKR_OK)));
+  vector<uint8_t> param;
+  uint32_t handle;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->GenerateKey(1, 2, param, good_attributes_, &handle));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->GenerateKey(1, 2, param, bad_attributes_, &handle));
+  EXPECT_EQ(CKR_FUNCTION_FAILED,
+            service_->GenerateKey(1, 2, param, good_attributes_, &handle));
+  EXPECT_EQ(CKR_OK,
+            service_->GenerateKey(1, 2, param, good_attributes_, &handle));
+  EXPECT_EQ(handle, 3);
+}
+
+TEST_F(TestService, GenerateKeyPair) {
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GenerateKeyPair(2, _, _, 1, _, 1, _, _))
+    .WillOnce(Return(CKR_FUNCTION_FAILED))
+    .WillRepeatedly(DoAll(SetArgumentPointee<6>(3),
+                          SetArgumentPointee<7>(4),
+                          Return(CKR_OK)));
+  vector<uint8_t> param;
+  uint32_t handle[2];
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->GenerateKeyPair(1, 2, param,
+                                      good_attributes_, good_attributes2_,
+                                      &handle[0], &handle[1]));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->GenerateKeyPair(1, 2, param,
+                                      bad_attributes_, good_attributes2_,
+                                      &handle[0], &handle[1]));
+  EXPECT_EQ(CKR_TEMPLATE_INCONSISTENT,
+            service_->GenerateKeyPair(1, 2, param,
+                                      good_attributes_, bad_attributes_,
+                                      &handle[0], &handle[1]));
+  EXPECT_EQ(CKR_FUNCTION_FAILED, service_->GenerateKeyPair(1, 2, param,
+                                                           good_attributes_,
+                                                           good_attributes2_,
+                                                           &handle[0],
+                                                           &handle[1]));
+  EXPECT_EQ(CKR_OK, service_->GenerateKeyPair(1, 2, param,
+                                              good_attributes_,
+                                              good_attributes2_,
+                                              &handle[0],
+                                              &handle[1]));
+  EXPECT_EQ(handle[0], 3);
+  EXPECT_EQ(handle[1], 4);
+}
+
+TEST_F(TestService, SeedRandom) {
+  vector<uint8_t> seed(3, 'A');
+  string seed_str("AAA");
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, SeedRandom(seed_str));
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, service_->SeedRandom(1, seed));
+  EXPECT_EQ(CKR_OK, service_->SeedRandom(1, seed));
+}
+
+TEST_F(TestService, GenerateRandom) {
+  vector<uint8_t> random_data(3, 'B');
+  string random_data_str("BBB");
+  EXPECT_CALL(slot_manager_, GetSession(1, _))
+    .WillOnce(Return(false))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(&session_), Return(true)));
+  EXPECT_CALL(session_, GenerateRandom(8, _))
+    .WillRepeatedly(SetArgumentPointee<1>(random_data_str));
+  vector<uint8_t> output;
+  EXPECT_EQ(CKR_SESSION_HANDLE_INVALID,
+            service_->GenerateRandom(1, 8, &output));
+  EXPECT_EQ(CKR_OK, service_->GenerateRandom(1, 8, &output));
+  EXPECT_TRUE(output == random_data);
+}
+
 }  // namespace chaps
 
 int main(int argc, char** argv) {

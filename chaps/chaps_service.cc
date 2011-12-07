@@ -896,8 +896,6 @@ uint32_t ChapsServiceImpl::DecryptVerifyUpdate(
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-// TODO(dkrahn): Implement the rest of the interface.  Here and below are stubs
-// only.
 uint32_t ChapsServiceImpl::GenerateKey(
     uint32_t session_id,
     uint32_t mechanism_type,
@@ -905,7 +903,17 @@ uint32_t ChapsServiceImpl::GenerateKey(
     const vector<uint8_t>& attributes,
     uint32_t* key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Attributes tmp;
+  LOG_CK_RV_AND_RETURN_IF(!tmp.Parse(attributes), CKR_TEMPLATE_INCONSISTENT);
+  return session->GenerateKey(mechanism_type,
+                              ConvertByteVectorToString(mechanism_parameter),
+                              tmp.attributes(),
+                              tmp.num_attributes(),
+                              PreservedUint32_t(key_handle));
 }
 
 uint32_t ChapsServiceImpl::GenerateKeyPair(
@@ -918,7 +926,25 @@ uint32_t ChapsServiceImpl::GenerateKeyPair(
     uint32_t* private_key_handle) {
   LOG_CK_RV_AND_RETURN_IF(!public_key_handle || !private_key_handle,
                           CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  Attributes tmp_public;
+  LOG_CK_RV_AND_RETURN_IF(!tmp_public.Parse(public_attributes),
+                          CKR_TEMPLATE_INCONSISTENT);
+  Attributes tmp_private;
+  LOG_CK_RV_AND_RETURN_IF(!tmp_private.Parse(private_attributes),
+                          CKR_TEMPLATE_INCONSISTENT);
+  return session->GenerateKeyPair(
+      mechanism_type,
+      ConvertByteVectorToString(mechanism_parameter),
+      tmp_public.attributes(),
+      tmp_public.num_attributes(),
+      tmp_private.attributes(),
+      tmp_private.num_attributes(),
+      PreservedUint32_t(public_key_handle),
+      PreservedUint32_t(private_key_handle));
 }
 
 uint32_t ChapsServiceImpl::WrapKey(
@@ -930,9 +956,7 @@ uint32_t ChapsServiceImpl::WrapKey(
     uint32_t max_out_length,
     uint32_t* actual_out_length,
     vector<uint8_t>* wrapped_key) {
-  LOG_CK_RV_AND_RETURN_IF(!actual_out_length || !wrapped_key,
-                          CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::UnwrapKey(
@@ -943,8 +967,7 @@ uint32_t ChapsServiceImpl::UnwrapKey(
     const vector<uint8_t>& wrapped_key,
     const vector<uint8_t>& attributes,
     uint32_t* key_handle) {
-  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::DeriveKey(
@@ -954,13 +977,17 @@ uint32_t ChapsServiceImpl::DeriveKey(
     uint32_t base_key_handle,
     const vector<uint8_t>& attributes,
     uint32_t* key_handle) {
-  LOG_CK_RV_AND_RETURN_IF(!key_handle, CKR_ARGUMENTS_BAD);
-  return CKR_OK;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 uint32_t ChapsServiceImpl::SeedRandom(uint32_t session_id,
                                       const vector<uint8_t>& seed) {
   LOG_CK_RV_AND_RETURN_IF(seed.size() == 0, CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  session->SeedRandom(ConvertByteVectorToString(seed));
   return CKR_OK;
 }
 
@@ -968,6 +995,11 @@ uint32_t ChapsServiceImpl::GenerateRandom(uint32_t session_id,
                                           uint32_t num_bytes,
                                           vector<uint8_t>* random_data) {
   LOG_CK_RV_AND_RETURN_IF(!random_data || num_bytes == 0, CKR_ARGUMENTS_BAD);
+  Session* session = NULL;
+  LOG_CK_RV_AND_RETURN_IF(!slot_manager_->GetSession(session_id, &session),
+                          CKR_SESSION_HANDLE_INVALID);
+  CHECK(session);
+  session->GenerateRandom(num_bytes, PreservedByteVector(random_data));
   return CKR_OK;
 }
 

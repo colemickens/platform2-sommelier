@@ -47,7 +47,7 @@ class Session {
   virtual CK_RV FindObjects(int max_object_count,
                             std::vector<CK_OBJECT_HANDLE>* object_handles) = 0;
   virtual CK_RV FindObjectsFinal() = 0;
-  // Cryptographic operations.
+  // Cryptographic operations (encrypt, decrypt, digest, sign, verify).
   virtual CK_RV OperationInit(OperationType operation,
                               CK_MECHANISM_TYPE mechanism,
                               const std::string& mechanism_parameter,
@@ -70,7 +70,23 @@ class Session {
                                     const std::string& data_in,
                                     int* required_out_length,
                                     std::string* data_out) = 0;
-
+  // Key generation.
+  virtual CK_RV GenerateKey(CK_MECHANISM_TYPE mechanism,
+                            const std::string& mechanism_parameter,
+                            const CK_ATTRIBUTE_PTR attributes,
+                            int num_attributes,
+                            CK_OBJECT_HANDLE* new_key_handle) = 0;
+  virtual CK_RV GenerateKeyPair(CK_MECHANISM_TYPE mechanism,
+                                const std::string& mechanism_parameter,
+                                const CK_ATTRIBUTE_PTR public_attributes,
+                                int num_public_attributes,
+                                const CK_ATTRIBUTE_PTR private_attributes,
+                                int num_private_attributes,
+                                CK_OBJECT_HANDLE* new_public_key_handle,
+                                CK_OBJECT_HANDLE* new_private_key_handle) = 0;
+  // Random number generation.
+  virtual void SeedRandom(const std::string& seed) = 0;
+  virtual void GenerateRandom(int num_bytes, std::string* random_data) = 0;
 };
 
 }  // namespace

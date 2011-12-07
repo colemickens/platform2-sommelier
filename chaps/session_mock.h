@@ -55,6 +55,21 @@ class SessionMock : public Session {
                                            const std::string&,
                                            int*,
                                            std::string*));
+  MOCK_METHOD5(GenerateKey, CK_RV (CK_MECHANISM_TYPE,
+                                   const std::string&,
+                                   const CK_ATTRIBUTE_PTR,
+                                   int,
+                                   CK_OBJECT_HANDLE*));
+  MOCK_METHOD8(GenerateKeyPair, CK_RV (CK_MECHANISM_TYPE,
+                                       const std::string&,
+                                       const CK_ATTRIBUTE_PTR,
+                                       int,
+                                       const CK_ATTRIBUTE_PTR,
+                                       int,
+                                       CK_OBJECT_HANDLE*,
+                                       CK_OBJECT_HANDLE*));
+  MOCK_METHOD1(SeedRandom, void (const std::string&));
+  MOCK_METHOD2(GenerateRandom, void (int, std::string*));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SessionMock);
