@@ -21,7 +21,27 @@
   "http://standards.freedesktop.org/dbus/1.0/introspect.dtd">
 
 <node name="/org/chromium/Chaps">
+
+  <interface name="org.chromium.ChapsEvents">
+  </interface>
+
   <interface name="org.chromium.Chaps">
+
+    <!-- Event methods. -->
+    <method name="OnLogin">
+      <arg type="s" name="path" direction="in"/>
+      <arg type="s" name="auth_data" direction="in"/>
+    </method>
+
+    <method name="OnLogout">
+      <arg type="s" name="path" direction="in"/>
+    </method>
+
+    <method name="OnChangeAuthData">
+      <arg type="s" name="path" direction="in"/>
+      <arg type="s" name="old_auth_data" direction="in"/>
+      <arg type="s" name="new_auth_data" direction="in"/>
+    </method>
 
     <!-- Methods that map to PKCS #11 calls. Each method name is identical to
          the PKCS #11 function name except for the "C_" prefix.

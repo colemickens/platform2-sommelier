@@ -12,6 +12,7 @@
 namespace chaps {
 
 class ChapsInterface;
+class LoginEventListener;
 
 // The ChapsAdaptor class implements the dbus-c++ generated adaptor interface
 // and redirects IPC calls to a ChapsInterface instance.  All dbus-c++ specific
@@ -22,9 +23,17 @@ class ChapsInterface;
 class ChapsAdaptor : public org::chromium::Chaps_adaptor,
                      public DBus::ObjectAdaptor {
 public:
-  ChapsAdaptor(ChapsInterface* service);
+  ChapsAdaptor(ChapsInterface* service, LoginEventListener* login_listener);
   virtual ~ChapsAdaptor();
 
+  virtual void OnLogin(const std::string& path,
+                       const std::string& auth_data,
+                       ::DBus::Error &error);
+  virtual void OnLogout(const std::string& path, ::DBus::Error &error);
+  virtual void OnChangeAuthData(const std::string& path,
+                                const std::string& old_auth_data,
+                                const std::string& new_auth_data,
+                                ::DBus::Error &error);
   virtual void GetSlotList(const bool& token_present,
                            std::vector<uint32_t>& slot_list,
                            uint32_t& result,
@@ -375,6 +384,7 @@ public:
 
 private:
   ChapsInterface* service_;
+  LoginEventListener* login_listener_;
 
   DISALLOW_COPY_AND_ASSIGN(ChapsAdaptor);
 };

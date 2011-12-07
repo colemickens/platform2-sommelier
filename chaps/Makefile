@@ -36,7 +36,8 @@ attributes.pb.cc: attributes.pb.h
 
 attributes.cc: attributes.pb.h
 
-chaps_adaptor.cc chaps_proxy.cc chaps.cc chapsd.cc: dbus-headers
+chaps_adaptor.cc chapsd.cc: chaps_adaptor_generated.h
+chaps_proxy.cc chaps.cc: chaps_proxy_generated.h
 
 $(OUT)libchaps.so: $(OUT)chaps.o \
                    $(OUT)chaps_proxy.o \
@@ -72,6 +73,14 @@ $(OUT)vpn_replay: $(OUT)vpn_replay.o
 	$(call cxx_binary, -lchaps)
 RM_ON_CLEAN += $(OUT)vpn_replay
 
+$(OUT)chaps_event_generator: $(OUT)chaps_event_generator.o \
+                             $(OUT)chaps_proxy.o \
+                             $(OUT)chaps_utility.o \
+                             $(OUT)attributes.pb.o \
+                             $(OUT)attributes.o
+	$(call cxx_binary)
+RM_ON_CLEAN += $(OUT)chaps_event_generator
+
 $(OUT)chaps_service_test: $(OUT)chaps_service_test.o \
                           $(OUT)chaps_service.o \
                           $(OUT)attributes.pb.o \
@@ -98,7 +107,7 @@ protobufs: attributes.pb.h
 
 tests: $(OUT)chaps_test $(OUT)chaps_service_test
 
-live_tests: $(OUT)chaps_live_test $(OUT)chapsd_test
+live_tests: $(OUT)chapsd_test $(OUT)chaps_event_generator
 
 perf: $(OUT)vpn_replay
 

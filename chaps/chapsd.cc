@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
   if (!lib_target->Init())
     LOG(FATAL) << "Failed to initialize PKCS #11 library (" << args[0] << ").";
   try {
-    chaps::ChapsAdaptor adaptor(lib_target.get());
+    chaps::ChapsAdaptor adaptor(lib_target.get(), NULL);
     g_dispatcher->enter();
   } catch (DBus::Error err) {
     LOG(FATAL) << "DBus::Error - " << err.what();

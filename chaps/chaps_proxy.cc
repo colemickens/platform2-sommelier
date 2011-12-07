@@ -42,6 +42,45 @@ bool ChapsProxyImpl::Init() {
   return false;
 }
 
+void ChapsProxyImpl::FireLoginEvent(const string& path,
+                                    const string& auth_data) {
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    return;
+  }
+  try {
+    proxy_->OnLogin(path, auth_data);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
+void ChapsProxyImpl::FireLogoutEvent(const string& path) {
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    return;
+  }
+  try {
+    proxy_->OnLogout(path);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
+void ChapsProxyImpl::FireChangeAuthDataEvent(const string& path,
+                                             const string& old_auth_data,
+                                             const string& new_auth_data) {
+  if (!proxy_.get()) {
+    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    return;
+  }
+  try {
+    proxy_->OnChangeAuthData(path, old_auth_data, new_auth_data);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+  }
+}
+
 uint32_t ChapsProxyImpl::GetSlotList(bool token_present,
                                      vector<uint32_t>* slot_list) {
   LOG_CK_RV_AND_RETURN_IF(!proxy_.get(), CKR_CRYPTOKI_NOT_INITIALIZED);

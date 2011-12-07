@@ -9,6 +9,7 @@
 #include "chaps/chaps.h"
 #include "chaps/chaps_interface.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/login_event_listener.h"
 
 using std::string;
 using std::vector;
@@ -22,12 +23,39 @@ static DBus::Connection& GetConnection() {
   return connection;
 }
 
-ChapsAdaptor::ChapsAdaptor(ChapsInterface* service)
-    : DBus::ObjectAdaptor(GetConnection(), DBus::Path(kChapsServicePath),
+ChapsAdaptor::ChapsAdaptor(ChapsInterface* service,
+                           LoginEventListener* login_listener)
+    : DBus::ObjectAdaptor(GetConnection(),
+                          DBus::Path(kChapsServicePath),
                           REGISTER_NOW),
-      service_(service) {}
+      service_(service),
+      login_listener_(login_listener) {}
 
 ChapsAdaptor::~ChapsAdaptor() {}
+
+void ChapsAdaptor::OnLogin(const string& path,
+                           const string& auth_data,
+                           ::DBus::Error& /*error*/) {
+  VLOG(1) << "CALL: " << __func__;
+  if (login_listener_)
+    login_listener_->OnLogin(path, auth_data);
+}
+
+void ChapsAdaptor::OnLogout(const string& path,
+                            ::DBus::Error& /*error*/) {
+  VLOG(1) << "CALL: " << __func__;
+  if (login_listener_)
+    login_listener_->OnLogout(path);
+}
+
+void ChapsAdaptor::OnChangeAuthData(const string& path,
+                                    const string& old_auth_data,
+                                    const string& new_auth_data,
+                                    ::DBus::Error& /*error*/) {
+  VLOG(1) << "CALL: " << __func__;
+  if (login_listener_)
+    login_listener_->OnChangeAuthData(path, old_auth_data, new_auth_data);
+}
 
 void ChapsAdaptor::GetSlotList(const bool& token_present,
                                vector<uint32_t>& slot_list,
