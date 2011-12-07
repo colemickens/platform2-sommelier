@@ -366,13 +366,10 @@ fi
 # TODO(yjlou, mnissler):
 #   Fix dump_vpd_log to not take 10+ seconds.
 #   http://code.google.com/p/chromium-os/issues/detail?id=21525
-#
-# TODO(yjlou, mnissler):
-#   /tmp/machine-info should be removed after OOBE because it contains data to
-#   identify a machine and is world-readable.
-if [ ! -e /home/.shadow/install_attributes.pb -a \
-     ! -e /var/lib/whitelist/owner.key -a \
-     ! -e /root/.forget_usernames ]; then
+if [ -e /var/lib/enterprise_serial_number_recovery -o \
+     \( ! -e /home/.shadow/install_attributes.pb -a \
+        ! -e /var/lib/whitelist/owner.key -a \
+        ! -e /root/.forget_usernames \) ]; then
   MACHINE_INFO=/tmp/machine-info
   touch $MACHINE_INFO
   chmod go-stwx $MACHINE_INFO
