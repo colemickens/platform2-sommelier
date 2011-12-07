@@ -387,7 +387,7 @@ const char WiFiMainTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiMainTest::kNetworkModeInfrastructure[] = "infrastructure";
 
 void WiFiMainTest::RemoveBSS(const ::DBus::Path &bss_path) {
-  wifi_->BSSRemoved(bss_path);
+  wifi_->BSSRemovedTask(bss_path);
 }
 
 void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
@@ -412,7 +412,7 @@ void WiFiMainTest::ReportBSS(const ::DBus::Path &bss_path,
   }
   bss_properties["Signal"].writer().append_int16(signal_strength);
   bss_properties["Mode"].writer().append_string(mode);
-  wifi_->BSSAdded(bss_path, bss_properties);
+  wifi_->BSSAddedTask(bss_path, bss_properties);
 }
 
 TEST_F(WiFiMainTest, ProxiesSetUpDuringStart) {

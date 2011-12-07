@@ -92,6 +92,9 @@ class WiFi : public Device {
   // Create services for hidden networks stored in |storage|.  Returns true
   // if any were found, otherwise returns false.
   bool LoadHiddenServices(StoreInterface *storage);
+  void BSSAddedTask(const ::DBus::Path &BSS,
+                    const std::map<std::string, ::DBus::Variant> &properties);
+  void BSSRemovedTask(const ::DBus::Path &BSS);
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();

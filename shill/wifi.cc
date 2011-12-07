@@ -223,82 +223,19 @@ void WiFi::LinkEvent(unsigned int flags, unsigned int change) {
   }
 }
 
-void WiFi::BSSAdded(
-    const ::DBus::Path &path,
-    const map<string, ::DBus::Variant> &properties) {
-  // TODO(quiche): Write test to verify correct behavior in the case
-  // where we get multiple BSSAdded events for a single endpoint.
-  // (Old Endpoint's refcount should fall to zero, and old Endpoint
-  // should be destroyed.)
-  //
-  // Note: we assume that BSSIDs are unique across endpoints. This
-  // means that if an AP reuses the same BSSID for multiple SSIDs, we
-  // lose.
-  WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
-  endpoint_by_rpcid_[path] = endpoint;
-  LOG(INFO) << "Found endpoint. "
-            << "ssid: " << endpoint->ssid_string() << ", "
-            << "bssid: " << endpoint->bssid_string() << ", "
-            << "signal: " << endpoint->signal_strength() << ", "
-            << "security: " << endpoint->security_mode();
-
-  if (endpoint->ssid_string().empty()) {
-    // Don't bother trying to find or create a Service for an Endpoint
-    // without an SSID. We wouldn't be able to connect to it anyway.
-    return;
-  }
-
-  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
-  if (service) {
-    LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
-              << " to service " << service->friendly_name() << ".";
-    service->AddEndpoint(endpoint);
-
-    if (manager()->HasService(service)) {
-      manager()->UpdateService(service);
-    } else {
-      DCHECK_EQ(1, service->NumEndpoints());  // Expect registered by now if >1.
-      manager()->RegisterService(service);
-    }
-
-    return;
-  }
-
-  const bool hidden_ssid = false;
-  service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
-  LOG(INFO) << "New service " << service->GetRpcIdentifier()
-            << " (" << service->friendly_name() << ")";
-  service->AddEndpoint(endpoint);
-  manager()->RegisterService(service);
+void WiFi::BSSAdded(const ::DBus::Path &path,
+                    const map<string, ::DBus::Variant> &properties) {
+  // Called from a D-Bus signal handler, and nay need to send a D-Bus
+  // message. So defer work to event loop.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::BSSAddedTask, path, properties));
 }
 
 void WiFi::BSSRemoved(const ::DBus::Path &path) {
-  EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
-  if (i == endpoint_by_rpcid_.end()) {
-    LOG(WARNING) << "WiFi " << link_name()
-                 << " could not find BSS " << path
-                 << " to remove.";
-    return;
-  }
-
-  WiFiEndpointRefPtr endpoint = i->second;
-  CHECK(endpoint);
-  endpoint_by_rpcid_.erase(i);
-
-  if (endpoint->ssid_string().empty()) {
-    // In BSSAdded, we don't create Services for Endpoints with empty
-    // SSIDs. So don't bother looking for a Service to update.
-    return;
-  }
-
-  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
-  CHECK(service);
-  service->RemoveEndpoint(endpoint);
-  manager()->UpdateService(service);
-
-  // TODO(quiche): If the Service no longer has any Endpoints, we may
-  // want to unregister it from the Manager, and possibly our own
-  // |services_| list as well. (crosbug.com/23703)
+  // Called from a D-Bus signal handler, and nay need to send a D-Bus
+  // message. So defer work to event loop.
+  dispatcher()->PostTask(
+      task_factory_.NewRunnableMethod(&WiFi::BSSRemovedTask, path));
 }
 
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
@@ -730,6 +667,84 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
   }
 
   return created_hidden_service;
+}
+
+void WiFi::BSSAddedTask(
+    const ::DBus::Path &path,
+    const map<string, ::DBus::Variant> &properties) {
+  // TODO(quiche): Write test to verify correct behavior in the case
+  // where we get multiple BSSAdded events for a single endpoint.
+  // (Old Endpoint's refcount should fall to zero, and old Endpoint
+  // should be destroyed.)
+  //
+  // Note: we assume that BSSIDs are unique across endpoints. This
+  // means that if an AP reuses the same BSSID for multiple SSIDs, we
+  // lose.
+  WiFiEndpointRefPtr endpoint(new WiFiEndpoint(properties));
+  endpoint_by_rpcid_[path] = endpoint;
+  LOG(INFO) << "Found endpoint. "
+            << "ssid: " << endpoint->ssid_string() << ", "
+            << "bssid: " << endpoint->bssid_string() << ", "
+            << "signal: " << endpoint->signal_strength() << ", "
+            << "security: " << endpoint->security_mode();
+
+  if (endpoint->ssid_string().empty()) {
+    // Don't bother trying to find or create a Service for an Endpoint
+    // without an SSID. We wouldn't be able to connect to it anyway.
+    return;
+  }
+
+  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
+  if (service) {
+    LOG(INFO) << "Assigned endpoint " << endpoint->bssid_string()
+              << " to service " << service->friendly_name() << ".";
+    service->AddEndpoint(endpoint);
+
+    if (manager()->HasService(service)) {
+      manager()->UpdateService(service);
+    } else {
+      DCHECK_EQ(1, service->NumEndpoints());  // Expect registered by now if >1.
+      manager()->RegisterService(service);
+    }
+
+    return;
+  }
+
+  const bool hidden_ssid = false;
+  service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
+  LOG(INFO) << "New service " << service->GetRpcIdentifier()
+            << " (" << service->friendly_name() << ")";
+  service->AddEndpoint(endpoint);
+  manager()->RegisterService(service);
+}
+
+void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
+  EndpointMap::iterator i = endpoint_by_rpcid_.find(path);
+  if (i == endpoint_by_rpcid_.end()) {
+    LOG(WARNING) << "WiFi " << link_name()
+                 << " could not find BSS " << path
+                 << " to remove.";
+    return;
+  }
+
+  WiFiEndpointRefPtr endpoint = i->second;
+  CHECK(endpoint);
+  endpoint_by_rpcid_.erase(i);
+
+  if (endpoint->ssid_string().empty()) {
+    // In BSSAdded, we don't create Services for Endpoints with empty
+    // SSIDs. So don't bother looking for a Service to update.
+    return;
+  }
+
+  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
+  CHECK(service);
+  service->RemoveEndpoint(endpoint);
+  manager()->UpdateService(service);
+
+  // TODO(quiche): If the Service no longer has any Endpoints, we may
+  // want to unregister it from the Manager, and possibly our own
+  // |services_| list as well. (crosbug.com/23703)
 }
 
 void WiFi::PropertiesChangedTask(
