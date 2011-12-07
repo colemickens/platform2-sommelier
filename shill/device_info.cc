@@ -45,6 +45,8 @@ namespace shill {
 // static
 const char DeviceInfo::kInterfaceUevent[] = "/sys/class/net/%s/uevent";
 // static
+const char DeviceInfo::kInterfaceUeventWifiSignature[] = "DEVTYPE=wlan\n";
+// static
 const char DeviceInfo::kInterfaceDriver[] = "/sys/class/net/%s/device/driver";
 // static
 const char *DeviceInfo::kModemDrivers[] = {
@@ -105,47 +107,46 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
 
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string &iface_name) {
-  char contents[1024];
-  int length;
-  int fd;
-  string uevent_file = StringPrintf(kInterfaceUevent, iface_name.c_str());
-  string driver_file = StringPrintf(kInterfaceDriver, iface_name.c_str());
-  const char *wifi_type;
-  const char *driver_name;
-  int modem_idx;
-
-  fd = open(uevent_file.c_str(), O_RDONLY);
-  if (fd < 0)
+  FilePath uevent_file(StringPrintf(kInterfaceUevent, iface_name.c_str()));
+  string contents;
+  if (!file_util::ReadFileToString(uevent_file, &contents)) {
+    VLOG(2) << StringPrintf("%s: device %s has no uevent file",
+                            __func__, iface_name.c_str());
     return Technology::kUnknown;
-
-  length = read(fd, contents, sizeof(contents) - 1);
-  if (length < 0)
-    return Technology::kUnknown;
+  }
 
   /*
    * If the "uevent" file contains the string "DEVTYPE=wlan\n" at the
    * start of the file or after a newline, we can safely assume this
    * is a wifi device.
    */
-  contents[length] = '\0';
-  wifi_type = strstr(contents, "DEVTYPE=wlan\n");
-  if (wifi_type != NULL && (wifi_type == contents || wifi_type[-1] == '\n'))
+  if (contents.find(kInterfaceUeventWifiSignature) != string::npos) {
+    VLOG(2) << StringPrintf("%s: device %s has wifi signature in uevent file",
+                            __func__, iface_name.c_str());
     return Technology::kWifi;
-
-  length = readlink(driver_file.c_str(), contents, sizeof(contents)-1);
-  if (length < 0)
-    return Technology::kUnknown;
-
-  contents[length] = '\0';
-  driver_name = strrchr(contents, '/');
-  if (driver_name != NULL) {
-    driver_name++;
-    // See if driver for this interface is in a list of known modem driver names
-    for (modem_idx = 0; kModemDrivers[modem_idx] != NULL; modem_idx++)
-      if (strcmp(driver_name, kModemDrivers[modem_idx]) == 0)
-        return Technology::kCellular;
   }
 
+  FilePath driver_file(StringPrintf(kInterfaceDriver, iface_name.c_str()));
+  FilePath driver_path;
+  if (!file_util::ReadSymbolicLink(driver_file, &driver_path)) {
+    VLOG(2) << StringPrintf("%s: device %s has no device symlink",
+                            __func__, iface_name.c_str());
+    return Technology::kUnknown;
+  }
+
+  string driver_name(driver_path.BaseName().value());
+  // See if driver for this interface is in a list of known modem driver names
+  for (int modem_idx = 0; kModemDrivers[modem_idx] != NULL; ++modem_idx) {
+    if (driver_name == kModemDrivers[modem_idx]) {
+      VLOG(2) << StringPrintf("%s: device %s is matched with modem driver %s",
+                              __func__, iface_name.c_str(),
+                              driver_name.c_str());
+      return Technology::kCellular;
+    }
+  }
+
+  VLOG(2) << StringPrintf("%s: device %s is is defaulted to type ethernet",
+                          __func__, iface_name.c_str());
   return Technology::kEthernet;
 }
 
