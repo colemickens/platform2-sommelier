@@ -41,7 +41,7 @@ class CellularCapabilityGSM : public CellularCapability,
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual bool IsRegistered();
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
-  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
                           Error *error);
@@ -95,7 +95,7 @@ class CellularCapabilityGSM : public CellularCapability,
 
   void RegisterOnNetworkTask(const std::string &network_id);
   void RequirePINTask(const std::string &pin, bool require);
-  void EnterPINTask(const std::string &pin);
+  void EnterPINTask(const std::string &pin, ReturnerInterface *returner);
   void UnblockPINTask(const std::string &unblock_code, const std::string &pin);
   void ChangePINTask(const std::string &old_pin, const std::string &new_pin);
   void ScanTask();

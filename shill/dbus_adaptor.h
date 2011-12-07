@@ -13,13 +13,14 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/accessor_interface.h"
+#include "shill/adaptor_interfaces.h"
+#include "shill/error.h"
 
 namespace shill {
 
 #define SHILL_INTERFACE "org.chromium.flimflam"
 #define SHILL_PATH "/org/chromium/flimflam"
 
-class Error;
 class KeyValueStore;
 class PropertyStore;
 
@@ -72,12 +73,57 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsUint16(::DBus::Signature signature);
   static bool IsUint32(::DBus::Signature signature);
 
+ protected:
+  class Returner : public DBus::Tag,
+                   public ReturnerInterface {
+   public:
+    // Creates a new returner instance associated with |adaptor|.
+    static Returner *Create(DBusAdaptor *adaptor);
+
+    // Used by the adaptor to initiate or delay the return, depending on the
+    // state of the returner. A call to this method should be the last statement
+    // in the adaptor method. If none of the interface Return* methods has been
+    // called yet, DelayOrReturn exits to the dbus-c++ message handler by
+    // throwing an exception. Otherwise, it initializes |error|, completes the
+    // RPC call right away and destroys |this|.
+    void DelayOrReturn(DBus::Error *error);
+
+    // Inherited from ReturnerInterface. These methods complete the RPC call
+    // right away and destroy the object if DelayOrReturn has been called
+    // already. Otherwise, they allow DelayOrReturn to complete the call.
+    virtual void Return();
+    virtual void ReturnError(const Error &error);
+
+   private:
+    // The returner transitions through the following states:
+    //
+    // Initialized -> [Delayed|Returned] -> Destroyed.
+    enum State {
+      kStateInitialized,  // No *Return* methods called yet.
+      kStateDelayed,  // DelayOrReturn called, Return* not.
+      kStateReturned,  // Return* called, DelayOrReturn not.
+      kStateDestroyed  // Return complete, returner destroyed.
+    };
+
+    explicit Returner(DBusAdaptor *adaptor);
+
+    // Destruction happens through the *Return* methods.
+    virtual ~Returner();
+
+    DBusAdaptor *adaptor_;
+    Error error_;
+    State state_;
+
+    DISALLOW_COPY_AND_ASSIGN(Returner);
+  };
+
  private:
   static const char kByteArraysSig[];
   static const char kPathArraySig[];
   static const char kStringmapSig[];
   static const char kStringmapsSig[];
   static const char kStringsSig[];
+
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);
 };
 

@@ -56,6 +56,14 @@ TEST_F(ErrorTest, PopulateCustomMessage) {
   EXPECT_EQ(kMessage, e.message());
 }
 
+TEST_F(ErrorTest, CopyFrom) {
+  Error e(Error::kInvalidArguments, "Some message");
+  Error copy;
+  copy.CopyFrom(e);
+  EXPECT_EQ(e.type(), copy.type());
+  EXPECT_EQ(e.message(), copy.message());
+}
+
 TEST_F(ErrorTest, ToDBusError) {
   DBus::Error dbus_error;
   ASSERT_FALSE(dbus_error.is_set());

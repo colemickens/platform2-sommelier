@@ -201,7 +201,11 @@ void Cellular::InitProxies() {
 void Cellular::EnableModem() {
   CHECK_EQ(kStateDisabled, state_);
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  proxy_->Enable(true);
+  try {
+    proxy_->Enable(true);
+  } catch (const DBus::Error e) {
+    LOG(WARNING) << "Enable failed: " << e.what();
+  }
   SetState(kStateEnabled);
 }
 
@@ -239,8 +243,9 @@ void Cellular::RequirePIN(const string &pin, bool require, Error *error) {
   capability_->RequirePIN(pin, require, error);
 }
 
-void Cellular::EnterPIN(const string &pin, Error *error) {
-  capability_->EnterPIN(pin, error);
+void Cellular::EnterPIN(const string &pin, ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
+  capability_->EnterPIN(pin, returner);
 }
 
 void Cellular::UnblockPIN(

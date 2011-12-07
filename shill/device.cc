@@ -179,9 +179,12 @@ void Device::RequirePIN(const string &/*pin*/, bool /*require*/, Error *error) {
                         "Device doesn't support RequirePIN.");
 }
 
-void Device::EnterPIN(const string &/*pin*/, Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported,
+void Device::EnterPIN(const string &/*pin*/, ReturnerInterface *returner) {
+  VLOG(2) << __func__;
+  Error error;
+  Error::PopulateAndLog(&error, Error::kNotSupported,
                         "Device doesn't support EnterPIN.");
+  returner->ReturnError(error);
 }
 
 void Device::UnblockPIN(const string &/*unblock_code*/,

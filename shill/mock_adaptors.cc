@@ -61,4 +61,9 @@ ServiceMockAdaptor::ServiceMockAdaptor() : rpc_id(kRpcId) {}
 ServiceMockAdaptor::~ServiceMockAdaptor() {}
 
 const std::string &ServiceMockAdaptor::GetRpcIdentifier() { return rpc_id; }
+
+MockReturner::MockReturner() {}
+
+MockReturner::~MockReturner() {}
+
 }  // namespace shill

@@ -17,6 +17,7 @@ class Cellular;
 class Error;
 class EventDispatcher;
 class ProxyFactory;
+class ReturnerInterface;
 
 // Cellular devices instantiate subclasses of CellularCapability that handle the
 // specific modem technologies and capabilities.
@@ -62,7 +63,7 @@ class CellularCapability {
 
   // PIN management. The default implementation fails by populating |error|.
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
-  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
                           Error *error);

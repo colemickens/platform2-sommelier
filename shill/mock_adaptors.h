@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/error.h"
 
 namespace shill {
 
@@ -115,6 +116,15 @@ class ServiceMockAdaptor : public ServiceAdaptorInterface {
 
  private:
   const std::string rpc_id;
+};
+
+class MockReturner : public ReturnerInterface {
+ public:
+  MockReturner();
+  virtual ~MockReturner();
+
+  MOCK_METHOD0(Return, void());
+  MOCK_METHOD1(ReturnError, void(const Error &error));
 };
 
 }  // namespace shill

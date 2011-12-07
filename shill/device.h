@@ -31,6 +31,7 @@ class Error;
 class EventDispatcher;
 class Manager;
 class RTNLHandler;
+class ReturnerInterface;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -67,7 +68,7 @@ class Device : public base::RefCounted<Device> {
   virtual void Scan(Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error);
   virtual void RequirePIN(const std::string &pin, bool require, Error *error);
-  virtual void EnterPIN(const std::string &pin, Error *error);
+  virtual void EnterPIN(const std::string &pin, ReturnerInterface *returner);
   virtual void UnblockPIN(const std::string &unblock_code,
                           const std::string &pin,
                           Error *error);

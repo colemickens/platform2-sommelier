@@ -117,12 +117,15 @@ void CellularCapabilityGSM::GetIdentifiers() {
   if (cellular()->imei().empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
     cellular()->set_imei(card_proxy_->GetIMEI());
-    VLOG(2) << "IMEI: " << cellular()->imei();
   }
   if (cellular()->imsi().empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-    cellular()->set_imsi(card_proxy_->GetIMSI());
-    VLOG(2) << "IMSI: " << cellular()->imsi();
+    try {
+      cellular()->set_imsi(card_proxy_->GetIMSI());
+      VLOG(2) << "IMSI: " << cellular()->imsi();
+    } catch (const DBus::Error e) {
+      LOG(WARNING) << "Unable to obtain IMSI: " << e.what();
+    }
   }
   if (spn_.empty()) {
     // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
@@ -332,18 +335,27 @@ void CellularCapabilityGSM::RequirePINTask(const string &pin, bool require) {
   card_proxy_->EnablePIN(pin, require);
 }
 
-void CellularCapabilityGSM::EnterPIN(const string &pin, Error */*error*/) {
-  VLOG(2) << __func__ << "(" << pin << ")";
+void CellularCapabilityGSM::EnterPIN(const string &pin,
+                                     ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // Defer because we may be in a dbus-c++ callback.
   dispatcher()->PostTask(
       task_factory_.NewRunnableMethod(
-          &CellularCapabilityGSM::EnterPINTask, pin));
+          &CellularCapabilityGSM::EnterPINTask, pin, returner));
 }
 
-void CellularCapabilityGSM::EnterPINTask(const string &pin) {
-  VLOG(2) << __func__ << "(" << pin << ")";
+void CellularCapabilityGSM::EnterPINTask(const string &pin,
+                                         ReturnerInterface *returner) {
+  VLOG(2) << __func__ << "(" << returner << ")";
   // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
-  card_proxy_->SendPIN(pin);
+  try {
+    card_proxy_->SendPIN(pin);
+  } catch (DBus::Error e) {
+    LOG(ERROR) << "EnterPIN failed: " << e.name() << "/" << e.message();
+    returner->ReturnError(Error(Error::kInternalError));
+    return;
+  }
+  returner->Return();
 }
 
 void CellularCapabilityGSM::UnblockPIN(

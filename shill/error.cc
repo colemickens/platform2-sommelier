@@ -69,6 +69,10 @@ void Error::Reset() {
   Populate(kSuccess);
 }
 
+void Error::CopyFrom(const Error &error) {
+  Populate(error.type_, error.message_);
+}
+
 bool Error::ToDBusError(::DBus::Error *error) const {
   if (IsFailure()) {
     error->set(GetName(type_).c_str(), message_.c_str());

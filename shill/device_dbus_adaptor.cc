@@ -106,9 +106,10 @@ void DeviceDBusAdaptor::RequirePin(const string &pin,
 }
 
 void DeviceDBusAdaptor::EnterPin(const string &pin, ::DBus::Error &error) {
-  Error e;
-  device_->EnterPIN(pin, &e);
-  e.ToDBusError(&error);
+  VLOG(2) << __func__;
+  Returner *returner = Returner::Create(this);
+  device_->EnterPIN(pin, returner);
+  returner->DelayOrReturn(&error);
 }
 
 void DeviceDBusAdaptor::UnblockPin(const string &unblock_code,

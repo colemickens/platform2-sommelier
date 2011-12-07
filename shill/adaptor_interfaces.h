@@ -14,6 +14,8 @@
 
 namespace shill {
 
+class Error;
+
 // These are the functions that a Device adaptor must support
 class DeviceAdaptorInterface {
  public:
@@ -111,6 +113,19 @@ class ServiceAdaptorInterface {
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
+};
+
+// A ReturnerInterface instance (along with its ownership) is passed by the
+// adaptor to the method handler. The handler releases ownership and initiates
+// an RPC return by calling one of the Return* methods.
+class ReturnerInterface {
+ public:
+  virtual void Return() = 0;
+  virtual void ReturnError(const Error &error) = 0;
+
+ protected:
+  // Destruction happens through the Return* methods.
+  virtual ~ReturnerInterface() {}
 };
 
 }  // namespace shill

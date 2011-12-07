@@ -18,6 +18,7 @@
 #include "shill/mock_modem_gsm_network_proxy.h"
 #include "shill/nice_mock_control.h"
 
+using testing::_;
 using testing::NiceMock;
 using testing::Return;
 
@@ -186,8 +187,10 @@ TEST_F(CellularCapabilityGSMTest, RequirePIN) {
 TEST_F(CellularCapabilityGSMTest, EnterPIN) {
   Error error;
   EXPECT_CALL(*card_proxy_, SendPIN(kPIN));
-  capability_->EnterPIN(kPIN, &error);
-  EXPECT_TRUE(error.IsSuccess());
+  MockReturner returner;
+  EXPECT_CALL(returner, Return());
+  EXPECT_CALL(returner, ReturnError(_)).Times(0);
+  capability_->EnterPIN(kPIN, &returner);
   SetCardProxy();
   dispatcher_.DispatchPendingEvents();
 }

@@ -4,6 +4,7 @@
 
 #include "shill/cellular_capability.h"
 
+#include "shill/adaptor_interfaces.h"
 #include "shill/cellular.h"
 #include "shill/error.h"
 
@@ -41,8 +42,12 @@ void CellularCapability::RequirePIN(const string &/*pin*/,
       error, Error::kNotSupported, "RequirePIN not supported.");
 }
 
-void CellularCapability::EnterPIN(const string &/*pin*/, Error *error) {
-  Error::PopulateAndLog(error, Error::kNotSupported, "EnterPIN not supported.");
+void CellularCapability::EnterPIN(const string &/*pin*/,
+                                  ReturnerInterface *returner) {
+  Error error;
+  Error::PopulateAndLog(
+      &error, Error::kNotSupported, "EnterPIN not supported.");
+  returner->ReturnError(error);
 }
 
 void CellularCapability::UnblockPIN(const string &/*unblock_code*/,
