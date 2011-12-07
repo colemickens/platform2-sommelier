@@ -791,6 +791,11 @@ check_digits() {
   expr "$1" : '^[[:digit:]]*$' > /dev/null
 }
 
+# Don't allow SIGHUP to terminate crosh. This guarantees that even if the user
+# closes the crosh window, we make our way back up to the main loop, which gives
+# cleanup code in command handlers a chance to run.
+trap '' HUP
+
 repl() {
   echo "Welcome to crosh, type 'help' for a list of commands."
   if [ "$IS_BASH" != "1" ]; then
