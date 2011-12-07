@@ -160,6 +160,10 @@ bool ProcessImpl::Start() {
     for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
       HANDLE_EINTR(close(i->second.parent_fd_));
       HANDLE_EINTR(dup2(i->second.child_fd_, i->first));
+    }
+    // Defer the actual close() of the child fd until afterward; this lets the
+    // same child fd be bound to multiple fds using BindFd
+    for (PipeMap::iterator i = pipe_map_.begin(); i != pipe_map_.end(); ++i) {
       HANDLE_EINTR(close(i->second.child_fd_));
     }
     if (!output_file_.empty()) {
