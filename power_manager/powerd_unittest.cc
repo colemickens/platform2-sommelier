@@ -155,6 +155,13 @@ class DaemonTest : public Test {
                      kMetricBatteryRemainingChargeMax);
   }
 
+  // Adds a metrics library mock expectation for the remaining battery
+  // charge metric with the given |sample|.
+  void ExpectBatteryRemainingWhenChargeStartsMetric(int sample) {
+    ExpectEnumMetric(kMetricBatteryRemainingWhenChargeStartsName, sample,
+                     kMetricBatteryRemainingWhenChargeStartsMax);
+  }
+
   // Adds a metrics library mock expectation for the battery's
   // remaining to empty metric with the given |sample|.
   void ExpectBatteryTimeToEmptyMetric(int sample) {
@@ -220,6 +227,7 @@ class DaemonTest : public Test {
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockAudioDetector> audio_detector_;
   StrictMock<MockMonitorReconfigure> monitor_reconfigure_;
+  PluggedState plugged_state_;
   PowerPrefs prefs_;
   PowerStatus status_;
   BacklightController backlight_ctl_;
@@ -350,6 +358,42 @@ TEST_F(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected) {
   EXPECT_EQ(0, daemon_.battery_remaining_charge_metric_last_);
 }
 
+TEST_F(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric) {
+  const double battery_percentages[] = { 10.1, 10.7,
+                                         20.4, 21.6,
+                                         60.4, 61.6,
+                                         82.4, 82.5 };
+  size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
+
+  status_.battery_is_present = true;
+  plugged_state_ = kPowerDisconnected;
+  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+                                                         status_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  plugged_state_ = kPowerUnknown;
+  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+                                                         status_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  status_.battery_is_present = false;
+  plugged_state_ = kPowerConnected;
+  daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+                                                         status_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  status_.battery_is_present = true;
+  for(size_t i = 0; i < num_percentages; i++) {
+    status_.battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status_.battery_percentage);
+
+    ExpectBatteryRemainingWhenChargeStartsMetric(expected_percentage);
+    daemon_.GenerateBatteryRemainingWhenChargeStartsMetric(plugged_state_,
+                                                           status_);
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
+  }
+}
+
 TEST_F(DaemonTest, GenerateBatteryTimeToEmptyMetric) {
   daemon_.plugged_state_ = kPowerDisconnected;
   status_.battery_time_to_empty = 90;
@@ -468,7 +512,6 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
         status_));
-
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
@@ -498,7 +541,6 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
     EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
         status_));
-
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }

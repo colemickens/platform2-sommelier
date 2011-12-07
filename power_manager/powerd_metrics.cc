@@ -119,6 +119,22 @@ bool Daemon::GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
   return true;
 }
 
+void Daemon::GenerateBatteryRemainingWhenChargeStartsMetric(
+    const PluggedState& plugged_state,
+    const PowerStatus& power_status) {
+  // Need to make sure that we are actually charging a battery
+  if (plugged_state != kPowerConnected)
+    return;
+  if (!power_status.battery_is_present)
+    return;
+
+  int charge = static_cast<int>(round(power_status.battery_percentage));
+  LOG_IF(ERROR, !SendEnumMetric(kMetricBatteryRemainingWhenChargeStartsName,
+                                charge,
+                                kMetricBatteryRemainingWhenChargeStartsMax))
+      << "Unable to send battery remaining when charge starts metric!";
+}
+
 bool Daemon::GenerateBatteryTimeToEmptyMetric(const PowerStatus& info,
                                               time_t now) {
   // The battery's remaining time to empty metric is relevant and

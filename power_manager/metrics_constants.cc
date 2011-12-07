@@ -35,6 +35,11 @@ const char kMetricBatteryRemainingChargeName[] =
     "Power.BatteryRemainingCharge";  // %
 const int kMetricBatteryRemainingChargeMax = 101;
 const time_t kMetricBatteryRemainingChargeInterval = 30;  // seconds
+
+const char kMetricBatteryRemainingWhenChargeStartsName[] =
+    "Power.BatteryRemainingWhenChargeStarts";  // %
+const int kMetricBatteryRemainingWhenChargeStartsMax = 101;
+
 const char kMetricBatteryTimeToEmptyName[] =
     "Power.BatteryTimeToEmpty";  // minutes
 const int kMetricBatteryTimeToEmptyMin = 1;

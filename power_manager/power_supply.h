@@ -43,7 +43,7 @@ struct PowerStatus {
   ::int64 battery_time_to_full;
 
   double battery_percentage;
-  bool battery_is_present;  // [needed?]
+  bool battery_is_present;
 
   BatteryState battery_state;
 };

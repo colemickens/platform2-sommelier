@@ -93,6 +93,7 @@ class Daemon : public XIdleObserver,
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryRemainingChargeMetricNotDisconnected);
+  FRIEND_TEST(DaemonTest, GenerateBatteryRemainingWhenChargeStartsMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricInterval);
   FRIEND_TEST(DaemonTest, GenerateBatteryTimeToEmptyMetricNotDisconnected);
@@ -200,6 +201,13 @@ class Daemon : public XIdleObserver,
   // true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryRemainingChargeMetric(const PowerStatus& info,
                                             time_t now);
+
+  // Generates a remaining battery charge when charge starts UMA metric sample
+  // if the current state is correct. Returns true if a sample was sent to UMA,
+  // false otherwise.
+  void GenerateBatteryRemainingWhenChargeStartsMetric(
+      const PluggedState& plugged_state,
+      const PowerStatus& info);
 
   // Generates the battery's remaining time to empty UMA metric
   // sample. Returns true if a sample was sent to UMA, false

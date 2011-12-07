@@ -224,6 +224,14 @@ void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
 
+  // If we are moving from kPowerUknown then we don't know how long the device
+  // has been on AC for and thus our metric would not tell us anything about the
+  // battery state when the user decided to charge.
+  if (plugged_state_ != kPowerUnknown)
+    GenerateBatteryRemainingWhenChargeStartsMetric(
+        plugged ? kPowerConnected : kPowerDisconnected,
+        power_status_);
+
   LOG(INFO) << "Daemon : SetPlugged = " << plugged;
   plugged_state_ = plugged ? kPowerConnected : kPowerDisconnected;
   int64 idle_time_ms;

@@ -33,6 +33,8 @@ extern const time_t kMetricBatteryDischargeRateInterval;
 extern const char kMetricBatteryRemainingChargeName[];
 extern const int kMetricBatteryRemainingChargeMax;
 extern const time_t kMetricBatteryRemainingChargeInterval;
+extern const char kMetricBatteryRemainingWhenChargeStartsName[];
+extern const int kMetricBatteryRemainingWhenChargeStartsMax;
 extern const char kMetricBatteryTimeToEmptyName[];
 extern const int kMetricBatteryTimeToEmptyMin;
 extern const int kMetricBatteryTimeToEmptyMax;
