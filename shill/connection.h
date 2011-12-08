@@ -46,7 +46,9 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, Destructor);
 
   static const uint32 kDefaultMetric;
-  static const uint32 kNonDefaultMetric;
+  static const uint32 kNonDefaultMetricBase;
+
+  uint32 GetMetric(bool is_default);
 
   bool is_default_;
   int interface_index_;

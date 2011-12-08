@@ -19,7 +19,7 @@ namespace shill {
 // static
 const uint32 Connection::kDefaultMetric = 1;
 // static
-const uint32 Connection::kNonDefaultMetric = 10;
+const uint32 Connection::kNonDefaultMetricBase = 10;
 
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
@@ -61,8 +61,8 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
 
   rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
 
-  uint32 metric = is_default_ ? kDefaultMetric : kNonDefaultMetric;
-  routing_table_->SetDefaultRoute(interface_index_, config, metric);
+  routing_table_->SetDefaultRoute(interface_index_, config,
+                                  GetMetric(is_default_));
 
   // Save a copy of the last non-null DNS config
   if (!config->properties().dns_servers.empty()) {
@@ -81,14 +81,20 @@ void Connection::SetDefault(bool is_default) {
     return;
   }
 
-  routing_table_->SetDefaultMetric(interface_index_,
-      is_default ? kDefaultMetric : kNonDefaultMetric);
+  routing_table_->SetDefaultMetric(interface_index_, GetMetric(is_default));
 
   if (is_default) {
     resolver_->SetDNSFromLists(dns_servers_, dns_domain_search_);
   }
 
   is_default_ = is_default;
+}
+
+uint32 Connection::GetMetric(bool is_default) {
+  // If this is not the default route, assign a metric based on the interface
+  // index.  This way all non-default routes (even to the same gateway IP) end
+  // up with unique metrics so they do not collide.
+  return is_default ? kDefaultMetric : kNonDefaultMetricBase + interface_index_;
 }
 
 }  // namespace shill

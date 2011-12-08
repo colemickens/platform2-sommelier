@@ -96,9 +96,11 @@ TEST_F(ConnectionTest, InitState) {
 TEST_F(ConnectionTest, AddConfig) {
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _));
-  EXPECT_CALL(routing_table_, SetDefaultRoute(kTestDeviceInterfaceIndex0,
-                                             ipconfig_,
-                                             Connection::kNonDefaultMetric));
+  EXPECT_CALL(routing_table_,
+              SetDefaultRoute(kTestDeviceInterfaceIndex0,
+                              ipconfig_,
+                              Connection::kNonDefaultMetricBase +
+                              kTestDeviceInterfaceIndex0));
   connection_->UpdateFromIPConfig(ipconfig_);
 
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
@@ -110,8 +112,10 @@ TEST_F(ConnectionTest, AddConfig) {
   connection_->SetDefault(true);
   EXPECT_TRUE(connection_->is_default());
 
-  EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
-                                               Connection::kNonDefaultMetric));
+  EXPECT_CALL(routing_table_,
+              SetDefaultMetric(kTestDeviceInterfaceIndex0,
+                               Connection::kNonDefaultMetricBase +
+                               kTestDeviceInterfaceIndex0));
   connection_->SetDefault(false);
   EXPECT_FALSE(connection_->is_default());
 }
