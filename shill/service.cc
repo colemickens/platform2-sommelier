@@ -318,14 +318,15 @@ void Service::MakeFavorite() {
   favorite_ = true;
 }
 
-void Service::CreateHTTPProxy(ConnectionRefPtr connection) {
-  http_proxy_.reset(new HTTPProxy(connection->interface_name(),
-                                  connection->dns_servers()));
-  http_proxy_->Start(dispatcher_, &sockets_);
-}
-
-void Service::DestroyHTTPProxy() {
-  http_proxy_.reset();
+void Service::SetConnection(ConnectionRefPtr connection) {
+  if (connection.get()) {
+    http_proxy_.reset(new HTTPProxy(connection->interface_name(),
+                                    connection->dns_servers()));
+    http_proxy_->Start(dispatcher_, &sockets_);
+  } else {
+    http_proxy_.reset();
+  }
+  connection_ = connection;
 }
 
 // static

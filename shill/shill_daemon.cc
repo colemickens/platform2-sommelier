@@ -15,6 +15,7 @@
 #include "shill/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/proxy_factory.h"
+#include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/shill_config.h"
 
@@ -60,6 +61,7 @@ void Daemon::Start() {
   glib_.TypeInit();
   ProxyFactory::GetInstance()->Init();
   RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
+  RoutingTable::GetInstance()->Start();
   DHCPProvider::GetInstance()->Init(control_, &dispatcher_, &glib_);
   manager_.Start();
 }

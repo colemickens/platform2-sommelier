@@ -148,10 +148,10 @@ class Service : public base::RefCounted<Service> {
 
   virtual void MakeFavorite();
 
-  // Create an HTTP Proxy that will utilize this service's connection
-  // (interface, DNS servers, default route) to serve requests.
-  virtual void CreateHTTPProxy(ConnectionRefPtr connection);
-  virtual void DestroyHTTPProxy();
+  // Set the connection for this service.  If the connection is
+  // non-NULL, create an HTTP Proxy that will utilize this service's
+  // connection to serve requests.
+  virtual void SetConnection(ConnectionRefPtr connection);
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
@@ -197,6 +197,7 @@ class Service : public base::RefCounted<Service> {
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
+  const ConnectionRefPtr &connection() const { return connection_; }
 
  protected:
   // Returns true if a character is allowed to be in a service storage id.
@@ -242,6 +243,7 @@ class Service : public base::RefCounted<Service> {
  private:
   friend class ServiceAdaptorInterface;
   FRIEND_TEST(DeviceTest, SelectedService);
+  FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);
@@ -314,6 +316,7 @@ class Service : public base::RefCounted<Service> {
   Configuration *configuration_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
+  ConnectionRefPtr connection_;
   Manager *manager_;
   Sockets sockets_;
 

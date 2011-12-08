@@ -70,6 +70,9 @@ class RoutingTable {
                   const RoutingTableEntry &entry,
                   RTNLMessage::Mode mode,
                   unsigned int flags);
+  void ReplaceMetric(uint32 interface_index,
+                     const RoutingTableEntry &entry,
+                     uint32 metric);
   bool FlushCache();
 
   static const char kRouteFlushPath4[];

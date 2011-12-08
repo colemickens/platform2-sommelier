@@ -23,8 +23,10 @@
 #include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
+#include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
@@ -57,7 +59,12 @@ class ManagerTest : public PropertyStoreTest {
                                           manager(),
                                           "wifi0",
                                           "addr4",
-                                          4)) {
+                                          4)),
+        device_info_(new NiceMock<MockDeviceInfo>(
+            control_interface(),
+            reinterpret_cast<EventDispatcher*>(NULL),
+            reinterpret_cast<Manager*>(NULL))),
+        manager_adaptor_(new NiceMock<ManagerMockAdaptor>()) {
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
                                                      manager(),
@@ -83,6 +90,10 @@ class ManagerTest : public PropertyStoreTest {
                                                      "addr3",
                                                      3));
     manager()->connect_profiles_to_rpc_ = false;
+
+    // Replace the manager's adaptor with a quieter one, and one
+    // we can do EXPECT*() against.  Passes ownership.
+    manager()->adaptor_.reset(manager_adaptor_);
   }
   virtual ~ManagerTest() {}
 
@@ -152,6 +163,10 @@ class ManagerTest : public PropertyStoreTest {
  protected:
   scoped_refptr<MockWiFi> mock_wifi_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
+  scoped_ptr<MockDeviceInfo> device_info_;
+
+  // This pointer is owned by the manager, and only tracked here for EXPECT*()
+  ManagerMockAdaptor *manager_adaptor_;
 };
 
 bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
@@ -738,6 +753,43 @@ TEST_F(ManagerTest, SortServices) {
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
+}
+
+TEST_F(ManagerTest, SortServicesWithConnection) {
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                manager()));
+
+  scoped_refptr<MockConnection> mock_connection0(
+      new NiceMock<MockConnection>(device_info_.get()));
+  scoped_refptr<MockConnection> mock_connection1(
+      new NiceMock<MockConnection>(device_info_.get()));
+
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+
+  mock_service0->connection_ = mock_connection0;
+  mock_service1->connection_ = mock_connection1;
+
+  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  manager()->SortServices();
+
+  mock_service1->set_priority(1);
+  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
+  EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
+  manager()->SortServices();
+
+  EXPECT_CALL(*mock_connection0.get(), SetIsDefault(true));
+  mock_service1->connection_ = NULL;
+  manager()->DeregisterService(mock_service1);
+
+  mock_service0->connection_ = NULL;
+  manager()->DeregisterService(mock_service0);
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {

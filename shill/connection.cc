@@ -75,7 +75,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   }
 }
 
-void Connection::SetDefault(bool is_default) {
+void Connection::SetIsDefault(bool is_default) {
   VLOG(2) << __func__;
   if (is_default == is_default_) {
     return;

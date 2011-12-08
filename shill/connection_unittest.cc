@@ -109,14 +109,14 @@ TEST_F(ConnectionTest, AddConfig) {
       ipconfig_->properties().dns_servers,
       ipconfig_->properties().domain_search));
 
-  connection_->SetDefault(true);
+  connection_->SetIsDefault(true);
   EXPECT_TRUE(connection_->is_default());
 
   EXPECT_CALL(routing_table_,
               SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                Connection::kNonDefaultMetricBase +
                                kTestDeviceInterfaceIndex0));
-  connection_->SetDefault(false);
+  connection_->SetIsDefault(false);
   EXPECT_FALSE(connection_->is_default());
 }
 
@@ -125,7 +125,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
                                                Connection::kDefaultMetric));
   vector<std::string> empty_list;
   EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
-  connection_->SetDefault(true);
+  connection_->SetIsDefault(true);
 
   EXPECT_CALL(rtnl_handler_,
               AddInterfaceAddress(kTestDeviceInterfaceIndex0, _, _));

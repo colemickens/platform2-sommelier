@@ -297,10 +297,15 @@ void Device::IPConfigUpdatedCallback(const IPConfigRefPtr &ipconfig,
   if (success) {
     CreateConnection();
     connection_->UpdateFromIPConfig(ipconfig);
-    SetServiceState(Service::kStateConnected);
+    // SetConnection must occur after the UpdateFromIPConfig so the
+    // service can use the values derived from the connection.
     if (selected_service_.get()) {
-      selected_service_->CreateHTTPProxy(connection_);
+      selected_service_->SetConnection(connection_);
     }
+    // The service state change needs to happen last, so that at the
+    // time we report the state change to the manager, the service
+    // has its connection.
+    SetServiceState(Service::kStateConnected);
   } else {
     // TODO(pstew): This logic gets more complex when multiple IPConfig types
     // are run in parallel (e.g. DHCP and DHCP6)
@@ -322,7 +327,7 @@ void Device::DestroyConnection() {
   VLOG(2) << __func__;
   connection_ = NULL;
   if (selected_service_.get()) {
-    selected_service_->DestroyHTTPProxy();
+    selected_service_->SetConnection(NULL);
   }
 }
 
@@ -339,9 +344,9 @@ void Device::SelectService(const ServiceRefPtr &service) {
     }
     // TODO(pstew): We need to revisit the model here: should the Device
     // subclass be responsible for calling DestroyIPConfig() (which would
-    // trigger DestroyConnection() and Service::DestroyHTTPProxy())?
+    // trigger DestroyConnection() and Service::SetConnection(NULL))?
     // Ethernet does, but WiFi currently does not.  crosbug.com/23929
-    selected_service_->DestroyHTTPProxy();
+    selected_service_->SetConnection(NULL);
   }
   selected_service_ = service;
 }

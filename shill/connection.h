@@ -31,12 +31,12 @@ class Connection : public base::RefCounted<Connection> {
 
   // Add the contents of an IPConfig reference to the list of managed state.
   // This will replace all previous state for this address family.
-  void UpdateFromIPConfig(const IPConfigRefPtr &config);
+  virtual void UpdateFromIPConfig(const IPConfigRefPtr &config);
 
   // Sets the current connection as "default", i.e., routes and DNS entries
   // should be used by all system components that don't select explicitly.
   bool is_default() const { return is_default_; }
-  void SetDefault(bool is_default);
+  virtual void SetIsDefault(bool is_default);
 
   const std::string &interface_name() const { return interface_name_; }
   const std::vector<std::string> &dns_servers() const { return dns_servers_; }

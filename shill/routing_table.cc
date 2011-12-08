@@ -130,9 +130,7 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
                       &old_entry)) {
     if (old_entry.gateway.Equals(gateway_address)) {
       if (old_entry.metric != metric) {
-        old_entry.metric = metric;
-        ApplyRoute(interface_index, old_entry, RTNLMessage::kModeAdd,
-                   NLM_F_CREATE | NLM_F_REPLACE);
+        ReplaceMetric(interface_index, old_entry, metric);
       }
       return true;
     } else {
@@ -183,22 +181,16 @@ void RoutingTable::SetDefaultMetric(int interface_index, uint32 metric) {
 
   if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv4, &entry) &&
       entry.metric != metric) {
-    entry.metric = metric;
-    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
-               NLM_F_CREATE | NLM_F_REPLACE);
+    ReplaceMetric(interface_index, entry, metric);
   }
 
   if (GetDefaultRoute(interface_index, IPAddress::kFamilyIPv6, &entry) &&
       entry.metric != metric) {
-    entry.metric = metric;
-    ApplyRoute(interface_index, entry, RTNLMessage::kModeAdd,
-               NLM_F_CREATE | NLM_F_REPLACE);
+    ReplaceMetric(interface_index, entry, metric);
   }
 }
 
 void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
-  VLOG(2) << __func__;
-
   if (msg.type() != RTNLMessage::kTypeRoute ||
       msg.family() == IPAddress::kFamilyUnknown ||
       !msg.HasAttribute(RTA_OIF)) {
@@ -254,9 +246,10 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage &msg) {
         nent->src.Equals(entry.src) &&
         nent->gateway.Equals(entry.gateway) &&
         nent->scope == entry.scope) {
-      if (msg.mode() == RTNLMessage::kModeDelete) {
+      if (msg.mode() == RTNLMessage::kModeDelete &&
+          nent->metric == entry.metric) {
         table.erase(nent);
-      } else {
+      } else if (msg.mode() == RTNLMessage::kModeAdd) {
         nent->from_rtnl = true;
         nent->metric = entry.metric;
       }
@@ -305,6 +298,24 @@ bool RoutingTable::ApplyRoute(uint32 interface_index,
   msg.SetAttribute(RTA_OIF, ByteString::CreateFromCPUUInt32(interface_index));
 
   return RTNLHandler::GetInstance()->SendMessage(&msg);
+}
+
+// Somewhat surprisingly, the kernel allows you to create multiple routes
+// to the same destination through the same interface with different metrics.
+// Therefore, to change the metric on a route, we can't just use the
+// NLM_F_REPLACE flag by itself.  We have to explicitly remove the old route.
+// We do so after creating the route at a new metric so there is no traffic
+// disruption to existing network streams.
+void RoutingTable::ReplaceMetric(uint32 interface_index,
+                                 const RoutingTableEntry &entry,
+                                 uint32 metric) {
+  RoutingTableEntry new_entry = entry;
+  new_entry.metric = metric;
+  // First create the route at the new metric.
+  ApplyRoute(interface_index, new_entry, RTNLMessage::kModeAdd,
+             NLM_F_CREATE | NLM_F_REPLACE);
+  // Then delete the route at the old metric.
+  ApplyRoute(interface_index, entry, RTNLMessage::kModeDelete, 0);
 }
 
 bool RoutingTable::FlushCache() {

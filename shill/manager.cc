@@ -21,6 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/default_profile.h"
@@ -392,6 +393,7 @@ void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->UniqueName() == (*it)->UniqueName()) {
+      DCHECK(!(*it)->connection());
       services_.erase(it);
       SortServices();
       return;
@@ -449,6 +451,12 @@ void Manager::HelpRegisterDerivedStrings(
 }
 
 void Manager::SortServices() {
+  VLOG(4) << "In " << __func__;
+  ConnectionRefPtr default_connection;
+  if (!services_.empty()) {
+    // Keep track of the connection that was last considered default.
+    default_connection = services_[0]->connection();
+  }
   sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
 
   vector<string> service_paths;
@@ -466,6 +474,16 @@ void Manager::SortServices() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(flimflam::kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
+
+  if (!services_.empty()) {
+    if (default_connection.get() &&
+        (services_[0]->connection().get() != default_connection.get())) {
+      default_connection->SetIsDefault(false);
+    }
+    if (services_[0]->connection().get()) {
+      services_[0]->connection()->SetIsDefault(true);
+    }
+  }
 }
 
 string Manager::CalculateState(Error */*error*/) {
