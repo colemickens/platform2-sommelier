@@ -93,7 +93,11 @@ class BacklightControllerTest : public ::testing::Test {
 TEST_F(BacklightControllerTest, IncreaseBrightness) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(false));
+#ifdef HAS_ALS
+  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+#else
   EXPECT_EQ(kUnpluggedBrightness, controller_.local_brightness());
+#endif // defined(HAS_ALS)
 
   double old_local_brightness = controller_.local_brightness();
   controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
@@ -113,7 +117,11 @@ TEST_F(BacklightControllerTest, IncreaseBrightness) {
 TEST_F(BacklightControllerTest, DecreaseBrightness) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
+#ifdef HAS_ALS
+  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+#else
   EXPECT_EQ(kPluggedBrightness, controller_.local_brightness());
+#endif // defined(HAS_ALS)
 
   double old_local_brightness = controller_.local_brightness();
   controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
@@ -134,7 +142,11 @@ TEST_F(BacklightControllerTest, DecreaseBrightness) {
 TEST_F(BacklightControllerTest, DecreaseBrightnessDisallowOff) {
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   ASSERT_TRUE(controller_.OnPlugEvent(true));
+#ifdef HAS_ALS
+  EXPECT_EQ(kDefaultBrightness, controller_.local_brightness());
+#else
   EXPECT_EQ(kPluggedBrightness, controller_.local_brightness());
+#endif // defined(HAS_ALS)
 
   for (int i = 0; i < kStepsToHitLimit; ++i)
     controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
