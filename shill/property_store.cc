@@ -311,6 +311,11 @@ void PropertyStore::RegisterDerivedStrIntPair(const std::string &name,
   strintpair_properties_[name] = acc;
 }
 
+void PropertyStore::RegisterDerivedUint16(const std::string &name,
+                                          const Uint16Accessor &acc) {
+  uint16_properties_[name] = acc;
+}
+
 // private
 template <class V>
 bool PropertyStore::SetProperty(

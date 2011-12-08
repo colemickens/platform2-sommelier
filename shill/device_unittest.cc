@@ -199,13 +199,40 @@ TEST_F(DeviceTest, SelectedService) {
   EXPECT_CALL(*service.get(), state())
     .WillOnce(Return(Service::kStateUnknown));
   EXPECT_CALL(*service.get(), SetState(Service::kStateIdle));
+  EXPECT_CALL(*service.get(), DestroyHTTPProxy());
   device_->SelectService(NULL);
 
   // A service in the "Failure" state should not be reset to "Idle"
   device_->SelectService(service);
   EXPECT_CALL(*service.get(), state())
     .WillOnce(Return(Service::kStateFailure));
+  EXPECT_CALL(*service.get(), DestroyHTTPProxy());
   device_->SelectService(NULL);
+}
+
+TEST_F(DeviceTest, IPConfigUpdatedFailure) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  manager()));
+  device_->SelectService(service);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateDisconnected));
+  EXPECT_CALL(*service.get(), DestroyHTTPProxy());
+  device_->IPConfigUpdatedCallback(NULL, false);
+}
+
+TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
+  scoped_refptr<MockService> service(
+      new StrictMock<MockService>(control_interface(),
+                                  dispatcher(),
+                                  manager()));
+  device_->SelectService(service);
+  device_->manager_ = manager();
+  scoped_refptr<MockIPConfig> ipconfig = new MockIPConfig(control_interface(),
+                                                          kDeviceName);
+  EXPECT_CALL(*service.get(), SetState(Service::kStateConnected));
+  EXPECT_CALL(*service.get(), CreateHTTPProxy(_));
+  device_->IPConfigUpdatedCallback(ipconfig.get(), true);
 }
 
 TEST_F(DeviceTest, Stop) {

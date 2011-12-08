@@ -16,8 +16,10 @@
 #include <base/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
+#include "shill/http_proxy.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
@@ -85,7 +87,6 @@ Service::Service(ControlInterface *control_interface,
       available_(false),
       configured_(false),
       configuration_(NULL),
-      connection_(NULL),
       adaptor_(control_interface->CreateServiceAdaptor(this)),
       manager_(manager) {
 
@@ -127,6 +128,9 @@ Service::Service(ControlInterface *control_interface,
 
   store_.RegisterConstString(flimflam::kErrorProperty, &error_);
   store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
+  HelpRegisterDerivedUint16(shill::kHTTPProxyPortProperty,
+                            &Service::GetHTTPProxyPort,
+                            NULL);
   HelpRegisterDerivedBool(flimflam::kIsActiveProperty,
                           &Service::IsActive,
                           NULL);
@@ -314,6 +318,16 @@ void Service::MakeFavorite() {
   favorite_ = true;
 }
 
+void Service::CreateHTTPProxy(ConnectionRefPtr connection) {
+  http_proxy_.reset(new HTTPProxy(connection->interface_name(),
+                                  connection->dns_servers()));
+  http_proxy_->Start(dispatcher_, &sockets_);
+}
+
+void Service::DestroyHTTPProxy() {
+  http_proxy_.reset();
+}
+
 // static
 const char *Service::ConnectFailureToString(const ConnectFailure &state) {
   switch (state) {
@@ -472,6 +486,15 @@ void Service::HelpRegisterDerivedString(
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
 }
 
+void Service::HelpRegisterDerivedUint16(
+    const string &name,
+    uint16(Service::*get)(Error *),
+    void(Service::*set)(const uint16&, Error *)) {
+  store_.RegisterDerivedUint16(
+      name,
+      Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, set)));
+}
+
 void Service::SaveString(StoreInterface *storage,
                          const string &id,
                          const string &key,
@@ -552,6 +575,13 @@ const string &Service::GetEAPKeyManagement() const {
 
 void Service::SetEAPKeyManagement(const string &key_management) {
   eap_.key_management = key_management;
+}
+
+uint16 Service::GetHTTPProxyPort(Error */*error*/) {
+  if (http_proxy_.get()) {
+    return static_cast<uint16>(http_proxy_->proxy_port());
+  }
+  return 0;
 }
 
 }  // namespace shill

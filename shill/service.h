@@ -16,16 +16,17 @@
 #include "shill/accessor_interface.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/sockets.h"
 #include "shill/technology.h"
 
 namespace shill {
 
-class Connection;
 class Configuration;
 class ControlInterface;
 class Endpoint;
 class Error;
 class EventDispatcher;
+class HTTPProxy;
 class KeyValueStore;
 class Manager;
 class ServiceAdaptorInterface;
@@ -147,6 +148,11 @@ class Service : public base::RefCounted<Service> {
 
   virtual void MakeFavorite();
 
+  // Create an HTTP Proxy that will utilize this service's connection
+  // (interface, DNS servers, default route) to serve requests.
+  virtual void CreateHTTPProxy(ConnectionRefPtr connection);
+  virtual void DestroyHTTPProxy();
+
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
@@ -208,6 +214,10 @@ class Service : public base::RefCounted<Service> {
       const std::string &name,
       std::string(Service::*get)(Error *error),
       void(Service::*set)(const std::string &value, Error *error));
+  void HelpRegisterDerivedUint16(
+      const std::string &name,
+      uint16(Service::*get)(Error *error),
+      void(Service::*set)(const uint16 &value, Error *error));
 
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
@@ -269,6 +279,9 @@ class Service : public base::RefCounted<Service> {
     return "";  // Will need to call Profile to get this.
   }
 
+  // Returns TCP port of service's HTTP proxy in host order.
+  uint16 GetHTTPProxyPort(Error *error);
+
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
@@ -299,9 +312,10 @@ class Service : public base::RefCounted<Service> {
   bool available_;
   bool configured_;
   Configuration *configuration_;
-  Connection *connection_;
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
+  scoped_ptr<HTTPProxy> http_proxy_;
   Manager *manager_;
+  Sockets sockets_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

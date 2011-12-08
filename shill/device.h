@@ -122,6 +122,8 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
   FRIEND_TEST(DeviceTest, GetProperties);
+  FRIEND_TEST(DeviceTest, IPConfigUpdatedFailure);
+  FRIEND_TEST(DeviceTest, IPConfigUpdatedSuccess);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
   FRIEND_TEST(DeviceTest, Stop);

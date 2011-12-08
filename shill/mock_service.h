@@ -10,6 +10,7 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
+#include "shill/connection.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/technology.h"
@@ -40,6 +41,8 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));
+  MOCK_METHOD1(CreateHTTPProxy, void(ConnectionRefPtr connection));
+  MOCK_METHOD0(DestroyHTTPProxy, void());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

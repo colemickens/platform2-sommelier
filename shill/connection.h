@@ -38,6 +38,9 @@ class Connection : public base::RefCounted<Connection> {
   bool is_default() const { return is_default_; }
   void SetDefault(bool is_default);
 
+  const std::string &interface_name() const { return interface_name_; }
+  const std::vector<std::string> &dns_servers() const { return dns_servers_; }
+
  private:
   friend class ConnectionTest;
   FRIEND_TEST(ConnectionTest, InitState);

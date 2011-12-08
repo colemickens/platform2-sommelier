@@ -125,6 +125,8 @@ class PropertyStore {
                               const StringsAccessor &accessor);
   void RegisterDerivedStrIntPair(const std::string &name,
                                  const StrIntPairAccessor &accessor);
+  void RegisterDerivedUint16(const std::string &name,
+                             const Uint16Accessor &accessor);
 
  private:
   template <class V>
