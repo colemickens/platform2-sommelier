@@ -69,6 +69,7 @@ BacklightController::BacklightController(BacklightInterface* backlight,
       prefs_(prefs),
       light_sensor_(NULL),
       observer_(NULL),
+      has_seen_als_event_(false),
       als_brightness_level_(0),
       als_hysteresis_level_(0),
       als_temporal_state_(ALS_HYST_IMMEDIATE),
@@ -185,7 +186,24 @@ bool BacklightController::SetPowerState(PowerState new_state) {
     return false;
 
   state_ = new_state;
+
+#ifdef HAS_ALS
+  // For the first time SetPowerState() is called (when the system just
+  // boots), if the ALS value has not been seen, skip the backlight
+  // adjustment.
+  if (old_state == BACKLIGHT_UNINITIALIZED) {
+    if (has_seen_als_event_) {
+      WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+    } else {
+      LOG(INFO) << "First time SetPowerState() called, skip the backlight "
+                << "brightness adjustment since no ALS value available yet.";
+    }
+  } else {
+    WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+  }
+#else
   WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+#endif // defined(HAS_ALS)
 
   // Do not go to dim if backlight is already dimmed.
   if (new_state == BACKLIGHT_DIM &&
@@ -255,10 +273,27 @@ bool BacklightController::OnPlugEvent(bool is_plugged) {
       *brightness_offset_ + als_brightness_level_ < 1)
     *brightness_offset_ = 1 - als_brightness_level_;
 
+#ifdef HAS_ALS
+  // For the first time OnPlugEvent() is called (when the system just boots),
+  // if the ALS value has not been seen, skip the backlight adjustment.
+  if (is_first_time) {
+    if (has_seen_als_event_) {
+      return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
+    }
+    LOG(INFO) << "First time OnPlugEvent() called, skip the backlight "
+              << "brightness adjustment since no ALS value available yet.";
+    return true;
+  }
+#endif // defined(HAS_ALS)
   return WriteBrightness(true, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
 void BacklightController::SetAlsBrightnessLevel(int64 level) {
+#ifndef HAS_ALS
+  LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
+               << "Please check the platform ALS configuration.";
+#endif
+
   if (!is_initialized_)
     return;
 
@@ -268,6 +303,7 @@ void BacklightController::SetAlsBrightnessLevel(int64 level) {
     return;
 
   als_brightness_level_ = level;
+  has_seen_als_event_ = true;
 
   // Force a backlight refresh immediately after returning from dim or idle.
   if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
