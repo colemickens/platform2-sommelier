@@ -34,6 +34,7 @@ lsmod,/sbin/lsmod
 lspci,/usr/sbin/lspci
 lsusb,/usr/sbin/lsusb
 meminfo,cat /proc/meminfo
+memory_spd_info,/usr/share/userfeedback/scripts/get_log /var/log/memory_spd_info.txt
 mm-status,/usr/share/userfeedback/scripts/mm-status
 network-devices,/usr/bin/connectivity show devices
 network-services,/usr/bin/connectivity show services
