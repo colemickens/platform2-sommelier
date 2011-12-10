@@ -99,17 +99,16 @@ int main(int argc, char** argv) {
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
 
-  const int nochdir = 0, noclose = 0;
-  if (!cl->HasSwitch(switches::kForeground))
-    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
-
-  // If the help flag is set, force log in foreground.
-  SetupLogging(cl->HasSwitch(switches::kForeground) ||
-               cl->HasSwitch(switches::kHelp));
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
     return 0;
   }
+
+  const int nochdir = 0, noclose = 0;
+  if (!cl->HasSwitch(switches::kForeground))
+    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
+
+  SetupLogging(cl->HasSwitch(switches::kForeground));
   if (cl->HasSwitch(switches::kLogLevel)) {
     std::string log_level = cl->GetSwitchValueASCII(switches::kLogLevel);
     int level = 0;
