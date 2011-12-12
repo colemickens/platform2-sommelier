@@ -56,6 +56,21 @@ xidle_example = xidle_env.Program('xidle-example',
                                   ['examples/xidle_example.cc', xidle])
 Default(xidle_example)
 
+# Build backlight tool
+backlight_env = gdk_env.Clone()
+backlight_env.Append(LIBS=Split('base rt pthread gflags \
+  chromeos pthread dl metrics X11 Xrandr udev'))
+backlight_env.ParseConfig(
+  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1')
+backlight = backlight_env.Library('backlight',
+                                  ['ambient_light_sensor.cc', 'backlight.cc',
+                                   'external_backlight.cc',
+                                   'external_backlight_client.cc',
+                                   'power_constants.cc'])
+backlight_tool = backlight_env.Program('backlight-tool',
+                                       ['backlight_tool.cc', backlight])
+Default(backlight_tool)
+
 # Build power supply info app
 power_supply = gdk_env.Library('power_supply',
                                ['power_supply.cc', 'power_prefs.cc',
@@ -79,21 +94,6 @@ powerd_env.ParseConfig(
   os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1'
 )
 
-
-# Build backlight tool
-backlight = powerd_env.Library('backlight',
-                          ['ambient_light_sensor.cc', 'backlight.cc',
-                           'external_backlight.cc',
-                           'external_backlight_client.cc',
-                           'power_constants.cc'])
-backlight_env = powerd_env.Clone()
-backlight_env.Append(LIBS=Split('base rt pthread gflags \
- chromeos pthread dl metrics X11 Xrandr udev'))
-backlight_env.ParseConfig(
-  os.environ['PKG_CONFIG'] + ' --cflags --libs dbus-1 dbus-glib-1')
-backlight_tool = backlight_env.Program('backlight-tool',
-                                       ['backlight_tool.cc', backlight])
-Default(backlight_tool)
 
 powerd_sources = Split(''' audio_detector.cc \
   file_tagger.cc power_button_handler.cc powerd.cc powerd_metrics.cc
