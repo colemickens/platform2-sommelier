@@ -109,6 +109,8 @@ class Pkcs11Init {
   static const char kTokenConfigFile[];
   static const char kPkcsSlotdPath[];
   static const char kPkcsSlotPath[];
+  static const char kChapsdProcessName[];
+  static const char kPkcsslotdProcessName[];
   static const char* kPkcsSlotCmd[];
   static const char* kSymlinkSources[];
   static const char* kSensitiveTokenFiles[];

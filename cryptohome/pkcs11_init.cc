@@ -40,6 +40,8 @@ const char Pkcs11Init::kTokenConfigFile[] =
     "/var/lib/opencryptoki/pk_config_data";
 const char Pkcs11Init::kPkcsSlotdPath[] = "/usr/sbin/pkcsslotd";
 const char Pkcs11Init::kPkcsSlotPath[] = "/usr/sbin/pkcs_slot";
+const char Pkcs11Init::kChapsdProcessName[] = "chapsd";
+const char Pkcs11Init::kPkcsslotdProcessName[] = "pkcsslotd";
 const char* Pkcs11Init::kPkcsSlotCmd[] = {
   Pkcs11Init::kPkcsSlotPath,
   "0",
@@ -111,14 +113,10 @@ bool Pkcs11Init::InitializeOpencryptoki() {
   // We need to get PKCS #11 daemons into an initial state.  This is necessary
   // for force_pkcs11_init.  Pkcsslotd will be restarted below; chapsd will be
   // immediately respawned by init.
-  const std::string kChapsdProcessName("chapsd");
-  const std::string kPkcsslotdProcessName("pkcsslotd");
   if (platform_->TerminatePidsByName(kChapsdProcessName, false))
     LOG(INFO) << "Terminated " << kChapsdProcessName;
   if (platform_->TerminatePidsByName(kPkcsslotdProcessName, false))
     LOG(INFO) << "Terminated " << kPkcsslotdProcessName;
-  if (platform_->TerminatePidsByName(kChapsdProcessName, true))
-    LOG(INFO) << "Killed " << kChapsdProcessName;
   if (platform_->TerminatePidsByName(kPkcsslotdProcessName, true))
     LOG(INFO) << "Killed " << kPkcsslotdProcessName;
 
@@ -183,6 +181,12 @@ bool Pkcs11Init::InitializeToken() {
   // leave these files in a corrupted state. Opencryptoki does not handle
   // this quite that gracefully.
   platform_->Sync();
+  if (success) {
+    // The initialization process can leave chapsd in a security-officer state.
+    // We want to start it in a fresh state for normal use.
+    if (platform_->TerminatePidsByName(kChapsdProcessName, false))
+      LOG(INFO) << "Terminated " << kChapsdProcessName;
+  }
   return success;
 }
 
